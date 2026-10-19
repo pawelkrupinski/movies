@@ -450,9 +450,10 @@ class WorkerWiring(
     readModelProjector.attach()
     val cacheStarted = new java.util.concurrent.CountDownLatch(1)
     boot.inBackground("read-model projector") {
-      try readModelProjector.prepare() finally projectorPrepared = true
+      try readModelProjector.prepare(readModelSweeper) finally projectorPrepared = true
       cacheStarted.await()
       readModelProjector.watch()
+      if (readModelProjector.enabled) readModelSweeper.schedule(readModelScheduler)
     }
     // The cache hydrate (synchronous findAll — the first scrape tick needs a populated cache for
     // sibling/redirect checks). The heavy jobs stay deferred off the boot window: the first

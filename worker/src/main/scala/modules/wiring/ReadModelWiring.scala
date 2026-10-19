@@ -16,12 +16,20 @@ trait ReadModelWiring { self: WorkerWiring =>
   // Typed as the read+write intersection so test wirings can swap in
   // `InMemoryReadModelRepository` (Mongo-free fixture replay).
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
+  // The projector's thread — its learning off the boot thread — and the sweeper's paced passes; the wiring's
+  // stop() shuts it down, as does the projector's.
+  lazy val readModelScheduler: java.util.concurrent.ScheduledExecutorService =
+    managedResources.executor("read-model projector")(tools.DaemonExecutors.scheduler("read-model-projector"))
   lazy val readModelProjector = managedResources.stopping(new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
+    scheduler = readModelScheduler,
     shareCards = shareCardLedger, firstCardHold = configuration.shareCardFirstHold(ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold)), clock = clock,
+    ratingGate = ratingGate, bootStudy = Some(readModelBootStudy)))
+  // The whole-corpus passes over the projector's read model — its boot heal, the prune sweep and the
+  // derivation pass — under its lock. The worker's boot schedules them once the projector watches.
+  lazy val readModelSweeper: ReadModelSweeper = new ReadModelSweeper(readModelProjector.projection,
     pruneInterval  = configuration.readModelPruneInterval(ReadModelSweeper.DefaultPruneInterval),
     pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelSweeper.DefaultPruneBootDelay),
-    derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock),
-    ratingGate = ratingGate, bootStudy = Some(readModelBootStudy)))
+    derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock))
   // What the projector's boot reads take from the cache's boot hydrate (see BootCorpusStudy).
   lazy val readModelBootStudy: BootCorpusStudy = new BootCorpusStudy(titleNormalizer)
 

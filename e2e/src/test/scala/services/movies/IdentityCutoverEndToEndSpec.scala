@@ -27,7 +27,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     Iterator.continually(w.projectIdentity()).take(4).find(_.atRest).getOrElse(first)
     // One of the whole corpus over the settled store: its plan is every film (a scoped projection's, only what moved).
     val tick  = w.identityProjection.tick(whole = true)
-    tools.WholeReconcile(w.readModelProjector)
+    tools.WholeReconcile(w.readModelSweeper)
     w.webReadModel.reload()
     (w, tick)
   }

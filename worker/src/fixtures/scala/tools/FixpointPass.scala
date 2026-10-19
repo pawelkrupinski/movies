@@ -123,12 +123,12 @@ object FixpointPass {
     // a first projection, then the heal's first look at what it changed — which is catching
     // up with the harness, not a tick. Found on the UK sample leg: 99 rows written before
     // attaching, projected by the first tick's sweep, then looked at again by the second's.
-    WholeReconcile(w.readModelProjector)
+    WholeReconcile(w.readModelSweeper)
   }
 
   /** One production tick over whatever the wiring's scrapers report: the runner's landing in the
    *  identity intake and one projection ([[TestWiring.cutoverTick]]). */
-  def run(w: TestWiring): Unit = { w.cutoverTick(); w.readModelProjector.sweeper.pruneOrphans() }
+  def run(w: TestWiring): Unit = { w.cutoverTick(); w.readModelSweeper.pruneOrphans() }
 
   /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
    *  no event waiting on any cursor's apply thread or held by its debounce, and none delivered

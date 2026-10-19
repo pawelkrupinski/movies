@@ -1834,7 +1834,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // split repo + read model, reconcile, and assert the film's screening is RETAINED.
   it should "not prune a split film's web_screenings on reconcile (foreachRecord stitches)" in {
     import services.movies.{MongoScreeningsRepository, StoredMovieRecord}
-    import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
+    import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}
     val db     = specDb
     val scr    = new MongoScreeningsRepository(Some(db))
     val repo   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), normalizer = titleNormalizer)
@@ -1862,7 +1862,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       // Its clock times only share-card holds, and this projector has no share cards: pinned.
       // A full re-project from foreachRecord (stitched).
-      tools.WholeReconcile(new ReadModelProjector(repo, rm, rm, clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))
+      tools.WholeReconcile(new ReadModelSweeper(new ReadModelProjector(repo, rm, rm, clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)).projection))
 
       // The reconcile RETAINED the film's screenings (pre-fix, foreachRecord returned
       // empty showtimes → projectAll produced 0 → the screenings were pruned/never written).

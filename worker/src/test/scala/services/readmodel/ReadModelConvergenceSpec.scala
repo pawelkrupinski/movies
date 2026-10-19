@@ -26,7 +26,8 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     val rm         = new InMemoryReadModelRepository()
     val metrics    = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, metrics, clock = tools.SpecClock.Pinned)
-    projector.start()
+    val sweeper = new ReadModelSweeper(projector.projection)
+    projector.start(sweeper)
 
     def row(title: String): StoredMovieRecord = repository.findAll().find(_.title == title).get
 
@@ -45,7 +46,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
         rm.findAllScreenings().map(_._id).toSet shouldBe screenings
       }
       val prunedBefore = metrics.pruneReasons.size
-      projector.sweeper.pruneOrphans()
+      sweeper.pruneOrphans()
       withClue(s"after '$step' the prune must find nothing: ") {
         metrics.pruneReasons.drop(prunedBefore) shouldBe empty
         rm.findAllMovieIds().toSet shouldBe cards

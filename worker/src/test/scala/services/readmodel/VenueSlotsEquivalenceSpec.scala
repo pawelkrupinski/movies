@@ -171,7 +171,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
   "The projector" should "learn a row from the boot hydrate's read, and apply its venues alone after" in {
     val world = new Restart(7)
     import world.*
-    booted.prepare()
+    booted.prepare(new ReadModelSweeper(booted.projection))
     val venues = change(cinema)
     booted.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
     afterRm.findAllMovies().toSet shouldBe beforeRm.findAllMovies().toSet
@@ -187,7 +187,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val drifted = afterRm.findAllScreenings().head
     val stale   = drifted.copy(showtimes = Seq(times.head))
     afterRm.upsertScreening(stale)                                                       // the read model drifted
-    booted.prepare()
+    booted.prepare(new ReadModelSweeper(booted.projection))
     record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty && c.displayName != drifted.cinema => c }
       .foreach { at =>
         booted.onVenueSlots(change(at)) shouldBe services.movies.VenueVerdict.Applied
@@ -214,7 +214,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val source = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record)), normalizer = titleNormalizer)
     source.findAll().map(_.id) shouldBe Seq(row.id)
     val learning = projector(afterRm, Some(missing), source = source)
-    learning.prepare()
+    learning.prepare(new ReadModelSweeper(learning.projection))
     val venues = change(cinema)
     org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(_root_.tools.SpecTimeouts.Settle)) {
       learning.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
@@ -229,7 +229,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val world = new Restart(13)
     import world.*
     val unlearned = projector(afterRm)
-    unlearned.prepare()
+    unlearned.prepare(new ReadModelSweeper(unlearned.projection))
     unlearned.onVenueSlots(change(cinema)) shouldBe
       services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
     whole.stop(); booted.stop(); unlearned.stop()

@@ -84,7 +84,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
     Iterator.continually(w.projectIdentity()).take(SettleProjections).find(_.atRest)
     // The read model every claim reads, from a whole sweep: passes boot side by side against one
     // local Mongo, where a side read or a read-model write can time out.
-    WholeReconcile(w.readModelProjector)
+    WholeReconcile(w.readModelSweeper)
   }
   private val SettleProjections = 5
 

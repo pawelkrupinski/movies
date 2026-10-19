@@ -3,11 +3,11 @@ package integration
 import org.mongodb.scala.MongoDatabase
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
-import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
+import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}
 import tools.{IntegrationCorpusDatabase, IntegrationMongoTarget}
 
 /** The production storage split — `movies` + `screenings` + `movie_slots` — with the real
- *  read model and a projector over it, in a database of the suite's own (the projector reads
+ *  read model and a projector (and the sweeper over it), in a database of the suite's own (the projector reads
  *  and writes `web_*` whole, so a co-running spec's rows would be indistinguishable).
  *
  *  The projector is NOT subscribed: each spec attaches it to the repository's shared cursor
@@ -22,6 +22,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
     normalizer = titleNormalizer)
   val readModel  = new MongoReadModelRepository(Some(db))
   val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
+  val sweeper    = new ReadModelSweeper(projector.projection)
 
   private def close(): Unit = { readModel.close(); repository.close(); slots.close(); screenings.close() }
 }

@@ -1,6 +1,6 @@
 package tools
 
-import services.readmodel.ReadModelProjector
+import services.readmodel.ReadModelSweeper
 
 /** A harness's read-model seed: `reconcile` again until a sweep completes its source scan, projects
  *  every row it read and prunes every orphan it found. Under a loaded local Mongo a page's side read
@@ -10,8 +10,8 @@ import services.readmodel.ReadModelProjector
 object WholeReconcile {
   val DefaultAttempts = 5
 
-  def apply(projector: ReadModelProjector, attempts: Int = DefaultAttempts): Unit =
-    if (!Iterator.continually(projector.sweeper.reconcile()).take(attempts).contains(true))
+  def apply(sweeper: ReadModelSweeper, attempts: Int = DefaultAttempts): Unit =
+    if (!Iterator.continually(sweeper.reconcile()).take(attempts).contains(true))
       throw new IllegalStateException(s"read-model reconcile: no complete, wholly projected sweep in $attempts attempts — " +
         "Mongo reads or read-model writes kept failing, so the projected read model is not the corpus's")
 }

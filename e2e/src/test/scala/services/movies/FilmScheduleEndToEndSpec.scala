@@ -466,7 +466,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // venue re-scraped into the intake and projected, the read model following — must not duplicate
     // any slot or move the dub onto its own row.
     wiring.cutoverTick()
-    wiring.readModelProjector.sweeper.reconcile()
+    wiring.readModelSweeper.reconcile()
 
     val row = wiring.movieCache.snapshot()
       .find(_.record.tmdbId.contains(DubTmdbId))
@@ -498,7 +498,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   it should "prune no venue row of the freshly projected corpus as unlisted" in {
     val before = wiring.readModelRepository.findAllScreenings().map(_._id).toSet
     before should not be empty
-    val lines = tools.LogCapture.capture(classOf[services.readmodel.ReadModelSweeper].getName)(wiring.readModelProjector.sweeper.pruneOrphans())
+    val lines = tools.LogCapture.capture(classOf[services.readmodel.ReadModelSweeper].getName)(wiring.readModelSweeper.pruneOrphans())
       .map(_.getFormattedMessage).filter(_.contains("no longer lists the venue"))
     withClue("the sweep called served venue rows unlisted: ")(lines shouldBe empty)
     wiring.readModelRepository.findAllScreenings().map(_._id).toSet shouldBe before

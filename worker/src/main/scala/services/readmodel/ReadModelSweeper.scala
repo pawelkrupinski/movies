@@ -23,31 +23,34 @@ import scala.util.Try
  *    projected before the first prune can delete the card it has under an old id.
  *
  * Each projects through the projector it sweeps ([[ReadModelSweeper.Projection]]), under that
- * projector's lock, so a sweep and a stream apply never interleave.
+ * projector's lock, so a sweep and a stream apply never interleave. Built over a projector's
+ * `projection` by the composition root (`ReadModelWiring`), which also schedules its paced passes
+ * ([[schedule]]); the projector runs its boot heal ([[healMissingCards]]) between its boot reads.
  */
 class ReadModelSweeper(
   projection:      ReadModelSweeper.Projection,
-  movieRepository: MovieRepository,
-  writer:          ReadModelWriter,
-  reader:          ReadModelReader,
-  metrics:         ReadModelProjectionMetrics,
-  clock:           java.time.Clock,
   // How often the id-only orphan prune runs, and how long after boot the first one waits
   // (`KINOWO_READMODEL_PRUNE_SECONDS` / `…_BOOT_DELAY_SECONDS`, resolved by the worker's root).
-  pruneInterval:   ReadModelPruneInterval,
-  pruneBootDelay:  ReadModelPruneBootDelay,
+  pruneInterval:   ReadModelPruneInterval  = ReadModelSweeper.DefaultPruneInterval,
+  pruneBootDelay:  ReadModelPruneBootDelay = ReadModelSweeper.DefaultPruneBootDelay,
   // Blocks until the change stream has applied what it had in flight when a sweep let go of the
   // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnSweep`).
-  awaitStreamApplied: ChangeStreamLiveness => Unit,
+  awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelSweeper.awaitStreamApplied(_),
   // Which derivation the stored read model was last re-projected whole under — see
   // [[ReadModelDerivationMarker]] and `advanceDerivationPass`. `none` owes no pass.
-  derivationMarker:  ReadModelDerivationMarker,
+  derivationMarker:  ReadModelDerivationMarker = ReadModelDerivationMarker.none,
   // Every derivation this code knows, the last its own: what a store behind it is owed (see
   // [[ReadModelDerivation.owedSince]]). A parameter so a spec can stage a history.
-  derivationHistory: Seq[Derivation]
+  derivationHistory: Seq[Derivation] = ReadModelDerivation.History
 ) extends ContinuingSteps with Logging {
   import ReadModelProjectionMetrics.{HealTrigger, Op, ProjectTrigger, PruneReason, ReconcileKind, Target}
   import ReadModelSweeper.{ContentSlices, DerivationPass, DerivationPassTickSeconds}
+  // The stores and clock the projection writes and keeps time by: a sweep passes over exactly those.
+  private val movieRepository = projection.movieRepository
+  private val writer          = projection.writer
+  private val reader          = projection.reader
+  private val metrics         = projection.metrics
+  private val clock           = projection.clock
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
@@ -81,8 +84,9 @@ class ReadModelSweeper(
    *  source: a drift candidate for the sweep's verdict. */
   private[readmodel] def noteDrift(row: RowDrift): Unit = sweepDrift += row
 
-  /** Schedule the paced passes on `scheduler`: the orphan prune and the derivation pass's slices. */
-  private[readmodel] def schedule(scheduler: ScheduledExecutorService): Unit = {
+  /** Schedule the paced passes on `scheduler`: the orphan prune and the derivation pass's slices.
+   *  The worker's root calls it once the projector's stream watch is up. */
+  def schedule(scheduler: ScheduledExecutorService): Unit = {
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(
@@ -92,7 +96,7 @@ class ReadModelSweeper(
     scheduler.scheduleAtFixedRate(
       () => Try(advanceDerivationPass()).recover { case exception => logger.warn(s"read-model derivation pass tick failed: ${exception.getMessage}") },
       PruneBootDelaySeconds, DerivationPassTickSeconds, TimeUnit.SECONDS)
-    ()
+    logger.info(s"read-model sweeps scheduled: orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s).")
   }
 
   // Only `reconcile` calls this — a film whose source row vanished or was re-keyed
@@ -635,13 +639,29 @@ class ReadModelSweeper(
         s"another city — this code files them elsewhere: ${ReadModelSweeper.idsForLog(refiled)}.")
     }
   }
+
+  // Hear of every change the projector applies, from now on (see `noteApplied`, `noteDrift`).
+  projection.exclusively(projection.reportTo(new ReadModelSweeper.Listener {
+    def noteApplied(rowId: String): Unit = ReadModelSweeper.this.noteApplied(rowId)
+    def noteDrift(row: RowDrift): Unit   = ReadModelSweeper.this.noteDrift(row)
+  }))
 }
 
 object ReadModelSweeper {
   /** What a sweep asks of the projector it sweeps: its lock, its per-row projection, and the memo
    *  of what it last wrote — which a sweep reads and corrects, since the read model, not the memo,
-   *  is the truth. Every method but `exclusively` and `partition` expects the lock held. */
+   *  is the truth. Every method but the stores, `exclusively` and `partition` expects the lock held. */
   trait Projection {
+    /** The source store the projection reads. */
+    def movieRepository: MovieRepository
+    /** The read model it writes, and reads back. */
+    def writer: ReadModelWriter
+    def reader: ReadModelReader
+    def metrics: ReadModelProjectionMetrics
+    /** The clock it keeps time by — the rolling content check numbers its slice by it. */
+    def clock: java.time.Clock
+    /** Caller holds the lock. Tell `listener`, from now on, of each change the projector applies. */
+    private[readmodel] def reportTo(listener: Listener): Unit
     /** Run `body` under the projection lock: every change-stream apply waits for it. */
     def exclusively[A](body: => A): A
     /** The row split into its cards' display-title groups, under the repository's title rules. */
@@ -667,6 +687,20 @@ object ReadModelSweeper {
     def removeCard(filmId: String, audit: String): Unit
     /** Forget a screenings row a sweep deleted. */
     def forgetScreening(ref: ScreeningRef): Unit
+  }
+
+  /** What the projector tells the sweeper over it, under its lock: the rows the change stream applied
+   *  or deleted, and the content check's rewrites. */
+  private[readmodel] trait Listener {
+    def noteApplied(rowId: String): Unit
+    def noteDrift(row: RowDrift): Unit
+  }
+  private[readmodel] object Listener {
+    /** No sweeper over the projector: nothing to tell. */
+    val none: Listener = new Listener {
+      def noteApplied(rowId: String): Unit = ()
+      def noteDrift(row: RowDrift): Unit   = ()
+    }
   }
 
   /** How many prune sweeps it takes to re-project the whole corpus once — the ROLLING

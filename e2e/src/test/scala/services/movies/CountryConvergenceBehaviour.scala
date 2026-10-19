@@ -640,7 +640,7 @@ abstract class CountryConvergenceBehaviour(
         .indexWhere(_.atRest))
       info(s"${country.displayName}: identity projection at rest after " +
         (if (further < 0) s"MORE than ${CutoverSettleProjections + 1} projections" else s"${further + 2} projection(s)"))
-      step("project")(tools.WholeReconcile(w.readModelProjector))
+      step("project")(tools.WholeReconcile(w.readModelSweeper))
       step("reloadReadModel")(w.webReadModel.reload())
     }
 
@@ -1069,7 +1069,7 @@ abstract class CountryConvergenceBehaviour(
       PhaseTimer.timed(scope, "replayCutover")(rescrapeCutover(w, rnd, failures))
       if (failures.nonEmpty) fail(s"$scope: ${failures.size} venue(s) failed to land: ${failures.take(5).mkString("; ")}")
     }
-    PhaseTimer.timed(scope, "replayProject")(tools.WholeReconcile(w.readModelProjector))
+    PhaseTimer.timed(scope, "replayProject")(tools.WholeReconcile(w.readModelSweeper))
     // Reload AND materialise inside the comparison's lock: this is the step that
     // allocates the corpus, so it is the step that has to be one-at-a-time.
     comparison.submit((seed - OrderSeed).toInt) { () =>
@@ -1776,8 +1776,8 @@ abstract class CountryConvergenceBehaviour(
         // retires its card. Without it the withdrawn films stay served as empty cards. Before
         // the re-try sweep, which would otherwise search for a row with no cinema left.
         w.unscreenedCleanup.removeUnscreened()
-        step("  read model")(tools.WholeReconcile(w.readModelProjector))
-        w.readModelProjector.sweeper.pruneOrphans()
+        step("  read model")(tools.WholeReconcile(w.readModelSweeper))
+        w.readModelSweeper.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
       }
 

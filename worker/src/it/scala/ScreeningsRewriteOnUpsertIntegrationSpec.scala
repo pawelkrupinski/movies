@@ -105,11 +105,12 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer)
     val readModel  = new services.readmodel.MongoReadModelRepository(Some(db))
     val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
+    val sweeper    = new services.readmodel.ReadModelSweeper(projector.projection)
     try {
       repository.upsert(title, year, recordShowing(when))
       counting.reset(); countSlots.reset()
 
-      projector.sweeper.pruneOrphans()
+      sweeper.pruneOrphans()
 
       withClue("the prune read the screenings collection, which it never looks at: ") {
         counting.batchReadCalls.get() shouldBe 0
@@ -121,7 +122,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
 
       // …and the expensive sweep, which really does re-project, still gets its showtimes.
       counting.reset()
-      projector.sweeper.reconcile()
+      sweeper.reconcile()
       withClue("the full reproject writes showtimes, so it must read them: ") {
         counting.batchReadCalls.get() should be > 0
       }

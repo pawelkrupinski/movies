@@ -80,14 +80,15 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(9.9, Seq(at("2026-07-20T18:00"))))
     repository.upsert("Bar", Some(2024), record(6.0, Seq(at("2026-06-14T20:00"))))
     val checker = new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned)
-    checker.start()
+    val checkerSweeper = new ReadModelSweeper(checker.projection)
+    checker.start(checkerSweeper)
 
     val card = cardOf(repository)
     val found = audit(card, repository, rm).get
     found should contain ("ratings")
     found.exists(_.endsWith(".showtimes")) shouldBe true
 
-    (1 to 48).foreach(_ => checker.sweeper.pruneOrphans())   // the rolling content check, whole corpus
+    (1 to 48).foreach(_ => checkerSweeper.pruneOrphans())   // the rolling content check, whole corpus
     audit(card, repository, rm) shouldBe Some(Nil)
     checker.stop()
   }
@@ -113,13 +114,14 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     val rm         = new InMemoryReadModelRepository()
     val writer     = new DroppingWriter(rm, throwing)
     val projector  = new ReadModelProjector(repository, writer, rm, clock = tools.SpecClock.Pinned)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     repository.upsert("Foo", Some(2024), record(9.9, Seq(at("2026-07-20T18:00"))))
     writer.dropping = true
     Try(projector.onMovieUpsert(repository.findAll().find(_.title == "Foo").get))   // the write fails
     writer.dropping = false
-    (1 to 48).foreach(_ => projector.sweeper.pruneOrphans())                                // a whole day of content checks
+    (1 to 48).foreach(_ => sweeper.pruneOrphans())                                // a whole day of content checks
     val found = audit(cardOf(repository), repository, rm)
     projector.stop()
     found

@@ -101,6 +101,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
       val country   = models.Country.Poland
       val metrics   = services.metrics.WorkerMetrics.singleCountry(country, poolSize = settings.WorkerPoolSize(1))
       val projector = new services.readmodel.ReadModelProjector(repository, readModel, readModel, metrics.taskMetricsFor(country), clock = tools.SpecClock.Pinned)
+      val sweeper   = new services.readmodel.ReadModelSweeper(projector.projection)
       val id        = StoredMovieRecord.keyFor(fixpointTitle, year, titleNormalizer)
       val projecting = repository.watchUpserts(projector.onMovieUpsert)
       projecting should not be empty
@@ -114,7 +115,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         // The film's three writes reach the projector on three cursors, asynchronously. Let the
         // last of them land before counting, or a late first-pass projection reads as churn.
         awaitQuiet(metrics.registry)
-        projector.sweeper.pruneOrphans()   // the FIRST sweep may legitimately look
+        sweeper.pruneOrphans()   // the FIRST sweep may legitimately look
 
         val oplog = new tools.OplogWrites(mongoTarget.uri.value, databaseName)
         try new tools.ChurnLedger()
@@ -122,7 +123,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
           .counter(s"oplog writes to $databaseName")(oplog.count())
           .assertNoChurn("re-landing a projected film unchanged and sweeping again") {
             repository.findAll().foreach(film => repository.upsert(film.id, film.title, film.year, film.record))
-            projector.sweeper.pruneOrphans()
+            sweeper.pruneOrphans()
           }
         finally oplog.close()
       } finally projecting.foreach(_.close())
@@ -137,10 +138,10 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
   // served 22 hours). No `watch()` below: in the worker that comes only once the cache has started.
   "the projector's boot reads" should "leave it on the cursor the cache opens, before its watch starts" in {
     ProjectedMongoCorpus.withCorpus(mongoTarget, "boot_attach") { corpus =>
-      import corpus.{projector, readModel, repository}
+      import corpus.{projector, readModel, repository, sweeper}
       val id   = StoredMovieRecord.keyFor(bootTitle, year, titleNormalizer)
       val when = LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
-      projector.prepare()
+      projector.prepare(sweeper)
       repository.isWatchingChangeStream shouldBe false      // attached, but it opened nothing
       val cache = repository.watchChanges(_ => (), _ => ())  // the cache's watch opens the cursor
       try {

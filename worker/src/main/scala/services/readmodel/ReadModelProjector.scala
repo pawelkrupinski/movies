@@ -5,8 +5,8 @@ import services.movies.LatestTitleYear
 import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
-import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
-import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval, ShareCardFirstHold}
+import services.movies.{MovieRepository, StoredMovieRecord}
+import settings.ShareCardFirstHold
 import tools.DaemonExecutors
 
 import java.util.concurrent.TimeUnit
@@ -51,7 +51,8 @@ import scala.util.Try
  * The change-stream callback and the sweeper's passes are serialised by one lock,
  * so the in-memory last-projection state needs no further synchronisation. This class owns
  * the per-row projection, its memo and the share-card hold; [[ReadModelSweeper]] the passes
- * over the whole corpus, which drive it through [[ReadModelSweeper.Projection]].
+ * over the whole corpus, which drive it through its [[projection]]. The projector builds no
+ * sweeper: the composition root builds one over [[projection]] and schedules its passes.
  */
 class ReadModelProjector(
   movieRepository: MovieRepository,
@@ -68,12 +69,6 @@ class ReadModelProjector(
   // No default: the rolling content check numbers its slice by this clock, so a spec left on the
   // wall clock re-projected its row in the half-hours that row's slice came up (Main red, 2026-09-25).
   clock:     java.time.Clock,
-  // The sweeper's cadence, in-flight wait and derivation record — see [[ReadModelSweeper]].
-  pruneInterval:  ReadModelPruneInterval  = ReadModelSweeper.DefaultPruneInterval,
-  pruneBootDelay: ReadModelPruneBootDelay = ReadModelSweeper.DefaultPruneBootDelay,
-  awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelSweeper.awaitStreamApplied(_),
-  derivationMarker: ReadModelDerivationMarker = ReadModelDerivationMarker.none,
-  derivationHistory: Seq[Derivation] = ReadModelDerivation.History,
   // Confidence-gated ratings (identity phase 3): what each card's ratings are served as. `off`
   // — the card as projected — unless the worker's composition root switches it on.
   ratingGate: RatingGate = RatingGate.off,
@@ -145,13 +140,19 @@ class ReadModelProjector(
   private val pendingCards   = scala.collection.mutable.Set.empty[String]
   private val lock           = new AnyRef
 
-  /** The whole-corpus passes over this projector's read model — the prune sweep, the full reconcile,
-   *  the derivation pass and the boot heal — run through [[swept]], under this projector's lock. */
-  val sweeper: ReadModelSweeper = new ReadModelSweeper(swept, movieRepository, writer, reader, metrics, clock,
-    pruneInterval, pruneBootDelay, awaitStreamApplied, derivationMarker, derivationHistory)
+  // The sweeper over [[projection]], when one is: what this projector tells it of each change it applies,
+  // read and replaced under `lock` only.
+  private var sweep: ReadModelSweeper.Listener = ReadModelSweeper.Listener.none
 
-  /** What [[sweeper]] drives: this projector's lock, its per-row projection, and its memo. */
-  private object swept extends ReadModelSweeper.Projection {
+  /** What a [[ReadModelSweeper]] drives — this projector's stores, its lock, its per-row projection
+   *  and its memo. The composition root builds the sweeper over it; a projector constructs none. */
+  val projection: ReadModelSweeper.Projection = new ReadModelSweeper.Projection {
+    def movieRepository: MovieRepository = ReadModelProjector.this.movieRepository
+    def writer: ReadModelWriter = ReadModelProjector.this.writer
+    def reader: ReadModelReader = ReadModelProjector.this.reader
+    def metrics: ReadModelProjectionMetrics = ReadModelProjector.this.metrics
+    def clock: java.time.Clock = ReadModelProjector.this.clock
+    private[readmodel] def reportTo(listener: ReadModelSweeper.Listener): Unit = sweep = listener
     def exclusively[A](body: => A): A = lock.synchronized(body)
     def partition(row: StoredMovieRecord): ReadModelProjection.Partition = ReadModelProjection.partition(row, normalizer)
     def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = ReadModelProjector.this.project(partition, trigger)
@@ -179,7 +180,7 @@ class ReadModelProjector(
   /** Apply one source-row change from the change stream. */
   def onMovieUpsert(stored: StoredMovieRecord): Unit =
     lock.synchronized {
-      sweeper.noteApplied(stored.id.value)
+      sweep.noteApplied(stored.id.value)
       projectRow(stored, ProjectTrigger.Stream)
       // A second way out of a first-publish hold besides the task scheduled for its end: that
       // task may be claimed by a replica other than the one holding the card.
@@ -205,7 +206,7 @@ class ReadModelProjector(
     planVenues(rowId, venues) match {
       case Left(reason) => services.movies.VenueVerdict.Declined(reason)
       case Right(byCard) =>
-        sweeper.noteApplied(rowId)
+        sweep.noteApplied(rowId)
         byCard.foreach(applyVenues)
         if (held.nonEmpty) releaseExpired()
         services.movies.VenueVerdict.Applied
@@ -274,7 +275,7 @@ class ReadModelProjector(
    *  next prune. The cards are what this process remembers producing for the row, plus
    *  anything in the read model under the row's id (a card a previous process wrote). */
   def onMovieDelete(id: services.movies.FilmId): Unit = lock.synchronized {
-    sweeper.noteApplied(id.value)
+    sweep.noteApplied(id.value)
     val remembered = lastCardsByRow.getOrElse(id.value, Set.empty)
     val underId    = lastMovie.keysIterator.filter(card => card == id.value || card.startsWith(id.value + "~")).toSet
     (remembered ++ underId).foreach(retireCard(_, RetireReason.RowDeleted))
@@ -319,7 +320,7 @@ class ReadModelProjector(
     val written = publish.map { case (movie, screenings) => writeVariant(movie, screenings, drift) }.sum
     retireVariantsGone(rowId, publish.map(_._1._id).toSet)
     metrics.recordWriteBurst(trigger, writing.seconds)
-    drift.flatMap(_.of(rowId)).foreach(sweeper.noteDrift)
+    drift.flatMap(_.of(rowId)).foreach(sweep.noteDrift)
     written
   }
 
@@ -459,7 +460,7 @@ class ReadModelProjector(
     val row = held.get(filmId).map(_.row).getOrElse(filmId.takeWhile(_ != '~'))
     // A card held for its share card and published by the render landing is in flight like a
     // stream event: a sweep between the two found it absent (see [[ReadModelSweeper]]'s `verdictOnSweep`).
-    sweeper.noteApplied(row)
+    sweep.noteApplied(row)
     movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.ShareCard))
   }
 
@@ -667,14 +668,16 @@ class ReadModelProjector(
       seeded = true
     }
 
-  def start(): Unit = { prepare(); watch() }
+  /** The whole boot at once — [[prepare]] with `sweeper`'s heal, then [[watch]]; scheduling the
+   *  sweeper's passes is its owner's. */
+  def start(sweeper: ReadModelSweeper): Unit = { prepare(sweeper); watch() }
 
-  /** The boot's reads — the state seed and the missing-card heal — which read the read model and
+  /** The boot's reads — the state seed and `sweeper`'s missing-card heal — which read the read model and
    *  the `movies` store directly, never the in-memory cache, so a worker runs them from the first
    *  moment of its boot, beside the cache hydrate (28–57 s of a US boot, run before anything else
    *  started until 2026-09-30). Attached to the stream first ([[attach]]); what it delivers
    *  meanwhile is projected once they are done. */
-  def prepare(): Unit = if (enabled) {
+  def prepare(sweeper: ReadModelSweeper): Unit = if (enabled) {
     attach()
     // A read that THROWS ends the boot reads, never the boot: [[watch]] runs after this on the same
     // boot thread, and a throw out of here skipped it — no stream projection and no sweeps, for the
@@ -739,19 +742,18 @@ class ReadModelProjector(
     }
   }
 
-  /** The live half: the change-stream watch and the paced sweeps. After [[prepare]]. */
+  /** The live half: the change-stream watch. After [[prepare]]; the sweeper's paced passes are
+   *  scheduled beside it by whoever built the sweeper ([[ReadModelSweeper.schedule]]). */
   def watch(): Unit = if (enabled) {
     // The change-stream watch covers live changes from now on (and, via the persisted
     // resume token, replays every upsert missed while the worker was down); the seeded
-    // state above means incremental writes are no-ops for already-correct documents. Only
-    // the cheap orphan prune is scheduled — the full reproject was retired (see class doc).
+    // state above means incremental writes are no-ops for already-correct documents. The full
+    // reproject was retired (see class doc).
     // Attached since `prepare`; opened here in case nothing else has opened the stream.
     attach()
     releaseBootHold()
     movieRepository.openChanges()
-    sweeper.schedule(scheduler)
-    logger.info(s"ReadModelProjector started; orphan-prune every ${sweeper.PruneSeconds}s (first in ${sweeper.PruneBootDelaySeconds}s); " +
-      s"no periodic reproject (retired); change-stream watch " +
+    logger.info(s"ReadModelProjector started; no periodic reproject (retired); change-stream watch " +
       s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 

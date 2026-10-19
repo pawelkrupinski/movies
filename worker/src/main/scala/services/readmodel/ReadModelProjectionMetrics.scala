@@ -141,7 +141,7 @@ object ReadModelProjectionMetrics {
   object PruneReason  { val RowGone = "row-gone"; val VariantGone = "variant-gone" }
   /** Why the change-stream path retired a card on its own. */
   object RetireReason { val VariantGone = "variant-gone"; val RowDeleted = "row-deleted"; val RowUnready = "row-unready" }
-  /** Which pass healed a row: the scheduled prune sweep, or the check `start()` runs at boot. */
+  /** Which pass healed a row: the scheduled prune sweep, or the check the projector's boot reads run (`prepare`). */
   object HealTrigger { val Sweep = "sweep"; val Boot = "boot"; val Refile = "refile" }
   /** What asked for one projection — the `trigger` label on `readmodel_project_calls`.
    *  `ReadModelProjectionTriggerUnaccounted` compares only the `stream` share against the three

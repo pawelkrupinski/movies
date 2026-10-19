@@ -25,17 +25,18 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
   // that removes deleted/re-keyed rows WITHOUT re-projecting anything.
   "pruneOrphans" should "prune a vanished film WITHOUT re-projecting live rows" in {
     val (projector, repository, rm) = fixture()
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.sweeper.reconcile()                     // full sweep: projects Foo
+    sweeper.reconcile()                     // full sweep: projects Foo
     rm.movieUpserts should have size 1
     // A live row's metadata changes: the CHEAP prune must NOT re-project it — that's
     // the whole point (no per-row projection = no CPU burst).
     repository.upsert("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     rm.movieUpserts should have size 1        // unchanged — prune did not reproject
     // …but a vanished film IS still pruned by the cheap sweep (the load-bearing job).
     repository.delete("Foo", Some(2024))
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     rm.movieDeletes should contain(fid)
   }
 
@@ -58,9 +59,10 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     }
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
-    projector.sweeper.reconcile()
+    val sweeper = new ReadModelSweeper(projector.projection)
+    sweeper.reconcile()
     val cards = rm.findAllMovieIds().toSet
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     written.get shouldBe true
     rm.findAllMovieIds().toSet should have size (cards.size + 1L)
     rm.movieDeletes shouldBe empty
@@ -74,6 +76,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
   // 07:17). A venue the source no longer lists at all is now pruned by the next sweep.
   it should "prune a venue row the source no longer lists, under a card that stays" in {
     val (projector, repository, rm) = fixture()
+    val sweeper = new ReadModelSweeper(projector.projection)
     def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
       cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
     repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
@@ -81,7 +84,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     rm.findAllScreenings() should have size 2
     repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))   // a removal the stream never delivered
 
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
 
     rm.findAllScreenings().map(_._id) shouldBe ReadModelProjection.screeningIds(repository.findAll().head, titleNormalizer)
     rm.findAllMovies().map(_._id) shouldBe Seq(fid)
@@ -97,6 +100,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     val cinemas = Cinema.all.distinct.filter(City.forCinema(_).nonEmpty).take(22)
     cinemas should have size 22
     def foo(screening: Seq[Cinema]) = MovieRecord(tmdbId = Some(1), data = screening.map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
@@ -105,7 +109,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val before = rm.findAllScreenings().map(_._id)
     before should have size 22
     repository.upsert("Foo", Some(2024), foo(cinemas.drop(dropped)))     // removals the stream never delivered
-    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(projector.sweeper.pruneOrphans())
+    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
       .filter(_.getFormattedMessage.contains("no longer lists the venue")).map(e => s"${e.getLevel} ${e.getFormattedMessage}")
     projector.stop()
     (rm, m, before, lines)
@@ -144,20 +148,21 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // delivered at t0
-    projector.sweeper.reconcile()
+    sweeper.reconcile()
     rm.movieUpserts should have size 1
 
     // The store changes after the last delivery and the cursor says nothing — the stall.
     clock.advanceSeconds(60)
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
     // Nothing subscribed to the cursor: nothing was promised, the sweep stays id-only.
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     rm.movieUpserts should have size 1
     m.caughtUp shouldBe empty                                              // not even metered: no cursor, no catch-up
 
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // a cursor is open — and silent
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
 
     withClue("the changed row must be re-projected by the sweep: ") {
       rm.movieUpserts should have size 2
@@ -175,16 +180,17 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // open, and never delivers:
     // every write below goes past the cursor, as a stalled one lets it
     clock.advanceSeconds(60)
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     clock.advanceSeconds(60)
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     m.caughtUp.last shouldBe 1
 
     clock.advanceSeconds(60)
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     withClue("nothing was written since the last catch-up, so there is nothing to catch up: ") {
       m.caughtUp.last shouldBe 0
     }
@@ -192,7 +198,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     clock.advanceSeconds(60)
     repository.putEmbeddedOutOfBand("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00"))))
     clock.advanceSeconds(60)
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     m.caughtUp.last shouldBe 1
     rm.movieUpserts should have size 2                       // Foo once, then Bar — never Foo again
   }
@@ -207,26 +213,27 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.sweeper.reconcile()
+    sweeper.reconcile()
     clock.advanceSeconds(60)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
     clock.advanceSeconds(60)
-    projector.sweeper.pruneOrphans()                                 // the scan: nothing written since
+    sweeper.pruneOrphans()                                 // the scan: nothing written since
     val scannedAt = clock.instant()
 
     clock.setTo(scannedAt.minusSeconds(5))                   // stamped before the scan began…
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
     clock.setTo(scannedAt.plusSeconds(60))                   // …and visible only after it
 
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     withClue("a write that committed after the last scan must be caught up, whatever its stamp: ") {
       rm.movieUpserts.last.ratings.imdb shouldBe Some(9.9)
     }
     m.caughtUp.last shouldBe 1
 
     clock.advanceSeconds(1)
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     withClue("re-reading it inside the overlap writes nothing, so it is not counted again: ") {
       m.caughtUp.last shouldBe 0
       rm.movieUpserts should have size 2
@@ -244,8 +251,9 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val rm         = new InMemoryReadModelRepository()
     val m          = new RecordingReadModelProjectionMetrics()
     val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.sweeper.reconcile()
+    sweeper.reconcile()
     val liveness = repository.changeStreamLiveness
     liveness.watching(ChangeStreamLiveness.Movies)
     clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
@@ -256,7 +264,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val ticket = liveness.queued(ChangeStreamLiveness.Movies) // …and its apply waits in the queue
     clock.advanceSeconds(1)
 
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     withClue("a delivered write whose apply is merely queued is not one the cursor missed: ") {
       m.caughtUp.last shouldBe 0
     }
@@ -273,15 +281,16 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     }
     val m         = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
     clock.advanceSeconds(60)
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     clock.advanceSeconds(60)
-    projector.sweeper.pruneOrphans()                                 // the write throws: Foo is still stale
+    sweeper.pruneOrphans()                                 // the write throws: Foo is still stale
 
     failing = false
     clock.advanceSeconds(60)
-    projector.sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
     withClue("a row the catch-up failed to project must be read again: ") {
       rm.movieUpserts.map(_.title) should contain ("Foo")
     }
@@ -289,14 +298,15 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
 
   it should "not re-project a changed row the cursor did deliver" in {
     val (projector, repository, rm) = fixture()
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.sweeper.reconcile()
-    projector.start()                                        // subscribed: the next write is DELIVERED
+    sweeper.reconcile()
+    projector.start(sweeper)                                        // subscribed: the next write is DELIVERED
     try {
       repository.upsert("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
       rm.movieUpserts should have size 2                     // projected off the stream
       val before = rm.movieUpserts.size
-      projector.sweeper.pruneOrphans()
+      sweeper.pruneOrphans()
       rm.movieUpserts should have size before                // the sweep read nothing to catch up
     } finally projector.stop()
   }
@@ -307,13 +317,14 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val sweeper = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.sweeper.reconcile()                                    // seed Foo — NOT metered
+    sweeper.reconcile()                                    // seed Foo — NOT metered
     m.sweeps shouldBe empty
-    projector.sweeper.pruneOrphans()                                 // nothing to prune (Foo live) → no-op
+    sweeper.pruneOrphans()                                 // nothing to prune (Foo live) → no-op
     m.sweeps.last shouldBe (ReconcileKind.Prune -> false)
     repository.delete("Foo", Some(2024))
-    projector.sweeper.pruneOrphans()                                 // prunes Foo → did work
+    sweeper.pruneOrphans()                                 // prunes Foo → did work
     m.sweeps.last shouldBe (ReconcileKind.Prune -> true)
   }
 }

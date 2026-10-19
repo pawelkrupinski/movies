@@ -14,7 +14,7 @@ import org.scalatest.matchers.should.Matchers
 import services.metrics.{CorpusCensus, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.{BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector}
+import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector, ReadModelSweeper}
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -87,9 +87,10 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val readModel  = new MongoReadModelRepository(Some(db))
     val study      = new BootCorpusStudy(titleNormalizer)
     val projector  = new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned, bootStudy = Some(study))
+    val sweeper    = new ReadModelSweeper(projector.projection)
     val readers: Seq[BootCorpusReader] = if (handOver) Seq(study) else Nil
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = readers)
-    projector.prepare()
+    projector.prepare(sweeper)
     val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
     val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
       WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned)
@@ -113,7 +114,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     // The last process projected the corpus: the boot's check finds nothing to heal, so every
     // `movies` document a boot reads is one of its corpus scans.
     val readModel = new MongoReadModelRepository(Some(db))
-    new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned).sweeper.reconcile()
+    new ReadModelSweeper(new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned).projection).reconcile()
     repository.close()
 
     boot(db, handOver = true)               // warm the JVM, so neither measured boot pays for it
