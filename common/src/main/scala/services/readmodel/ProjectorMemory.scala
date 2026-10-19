@@ -3,8 +3,8 @@ package services.readmodel
 import models.{CityScreening, ResolvedMovie}
 import services.movies.LatestTitleYear
 
-// What the projector remembers between projections, and the working state of one of its passes —
-// the value types [[ReadModelProjector]] keeps under its lock.
+// What the projector remembers between projections, and the working state of one of
+// [[ReadModelSweeper]]'s passes — the value types both keep under the projector's lock.
 
 /** What the projector remembers about a written screenings row: the hash of the row
  *  itself (`output`, the minimal-write diff) and of the inputs it was built from
