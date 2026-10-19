@@ -43,11 +43,16 @@ check() {
 # polls: `sleep 0.1` 200 times is not 20 seconds once process overhead is in it,
 # and a bound that quietly stretches lets a case observe the state it was meant
 # to prove unreachable — which is how the drift case below first passed against
-# a supervisor that had no audit at all. Polled here rather than by a background
+# a supervisor that had no audit at all. Generous (120 s): a cap only stops a
+# hang, so no case may NEED it to be short — under a loaded machine running the
+# specs ~10x slower, a short one cut correct runs off. No case proves anything by
+# elapsed time; each proves it by a state only the behaviour can reach (a stub
+# that never ends on its own, for one). Polled here rather than by a background
 # watchdog, whose kill the shell announces as "Terminated" over the spec's own
 # output.
+SpecCapSeconds=120
 await_child() {
-  local child="$1" deadline=$((SECONDS + ${2:-20}))
+  local child="$1" deadline=$((SECONDS + ${2:-$SpecCapSeconds}))
   while kill -0 "$child" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.1; done
   kill "$child" 2>/dev/null
   wait "$child" 2>/dev/null
@@ -111,7 +116,7 @@ check "a failed seed retries on the next cycle instead of killing the supervisor
 # never hang.
 reseeds_when_it_drifts_while_tailing() {
   local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
-  local asked="$work/gate-answers" reached="$work/reseeded"
+  local asked="$work/gate-answers" reached="$work/reseeded" tailers="$work/tailers"
 
   (
     # shellcheck source=/dev/null
@@ -135,13 +140,13 @@ reseeds_when_it_drifts_while_tailing() {
     # tailer. Every answer after that is the drift appearing mid-stream.
     needs_reseed() { echo x >> "$asked"; [ "$(wc -l < "$asked")" -gt 1 ]; }
 
-    # Stands in for tail.js — a stream that runs a while and then ends. It ends
-    # ON ITS OWN so this case never has to kill anything: the assertion is about
-    # WHEN the re-seed happens, and a supervisor with no audit reaches one too,
-    # just not until the stream is over. A SCRIPT in $MONGOSH_AT's place, as the
-    # tailer is launched: a `mongosh` function never reached it (mongosh-at.sh
-    # execs the binary), so the case leaned on a real mongosh hanging on connect.
-    printf '#!/bin/sh\nexec sleep %s\n' "$TAIL_SECONDS" > "$work/tailer"; chmod +x "$work/tailer"
+    # Stands in for tail.js — a stream that never ends on its own (it records its
+    # pid and blocks until killed), so a supervisor with no mid-stream audit never
+    # reaches a re-seed at all: reaching one proves the audit stopped the stream,
+    # with no timing in it. A SCRIPT in $MONGOSH_AT's place, as the tailer is
+    # launched: a `mongosh` function never reached it (mongosh-at.sh execs the
+    # binary), so the case leaned on a real mongosh hanging on connect.
+    printf '#!/bin/sh\necho $$ >> "%s"\nexec sleep 86400\n' "$tailers" > "$work/tailer"; chmod +x "$work/tailer"
     MONGOSH_AT="$work/tailer"
 
     reseed() { touch "$reached"; exit 0; }
@@ -150,25 +155,17 @@ reseeds_when_it_drifts_while_tailing() {
   ) >/dev/null 2>&1 &
   local child=$!
 
-  # The whole assertion: a re-seed while the stream is still running. Without
-  # the mid-stream audit the earliest one possible is TAIL_SECONDS away, so a
-  # window far shorter than that separates the two behaviours with no timing
-  # luck involved.
-  local deadline=$((SECONDS + 2)) early=no
-  while [ "$SECONDS" -lt "$deadline" ]; do
-    [ -f "$reached" ] && { early=yes; break; }
-    command sleep 0.05
-  done
-
-  await_child "$child" $((TAIL_SECONDS + 5))
+  # The whole assertion: a re-seed at all, the stream never ending on its own --
+  # and the tailer the audit stopped gone, not left streaming beside the next.
+  local reseeded=no stray=0 pid
+  await_child "$child"   # it ends on its own at the re-seed (the stub exits there)
+  [ -f "$reached" ] && reseeded=yes
+  while read -r pid; do
+    kill -0 "$pid" 2>/dev/null && { stray=$((stray + 1)); kill "$pid" 2>/dev/null; }
+  done < <(cat "$tailers" 2>/dev/null)
   rm -rf "$work"
-  [ "$early" = "yes" ]
+  [ "$reseeded" = "yes" ] && [ "$stray" -eq 0 ]
 }
-
-# Long enough that "re-seeded within 2s" cannot happen by the stream simply
-# ending, short enough that the failing case still finishes in seconds.
-TAIL_SECONDS=8
-export TAIL_SECONDS
 
 check "a mirror that drifts while tailing is re-seeded without waiting for the stream to end" \
   reseeds_when_it_drifts_while_tailing
@@ -232,10 +229,11 @@ check "the supervisor sees an edit to code it runs, and ignores one to a spec" \
 # that subshell's own background child: unhandled, the TERM ended the subshell
 # and left its mongosh streaming into the mirror — and launchd's (or service.sh's)
 # restart then started a SECOND tailer for the same database beside the orphan.
-# The tailer stub records its pid and streams until killed.
+# The tailer stub records its pid and streams until killed: it never ends on its
+# own, so its being gone proves the supervisor stopped it.
 tailer_dies_with_its_supervisor() {
   local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
-  printf '#!/bin/sh\necho $$ > "%s/tailer.pid"\nexec sleep 30\n' "$work" > "$work/tailer"; chmod +x "$work/tailer"
+  printf '#!/bin/sh\necho $$ > "%s/tailer.pid"\nexec sleep 86400\n' "$work" > "$work/tailer"; chmod +x "$work/tailer"
   (
     # shellcheck source=/dev/null
     . "$HERE/mirror.sh"
@@ -250,12 +248,12 @@ tailer_dies_with_its_supervisor() {
     SRCZ=stub-source-uri DST=stub-mirror-uri MONGOSH_AT="$work/tailer" TARGETS_POLL=30
     supervise_db kinowo 0
   ) >/dev/null 2>&1 &
-  local supervisor=$! deadline=$((SECONDS + 5))
+  local supervisor=$! deadline=$((SECONDS + SpecCapSeconds))
   while [ ! -s "$work/tailer.pid" ] && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
   local tailer; tailer="$(cat "$work/tailer.pid" 2>/dev/null)"
   kill -TERM "$supervisor" 2>/dev/null
-  await_child "$supervisor" 5
-  deadline=$((SECONDS + 3))
+  await_child "$supervisor"
+  deadline=$((SECONDS + SpecCapSeconds))
   while [ -n "$tailer" ] && kill -0 "$tailer" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
   local orphaned=no
   [ -n "$tailer" ] && kill -0 "$tailer" 2>/dev/null && { orphaned=yes; kill "$tailer" 2>/dev/null; }
@@ -263,7 +261,7 @@ tailer_dies_with_its_supervisor() {
   [ -n "$tailer" ] && [ "$orphaned" = no ]
 }
 
-check "a supervisor stopped by the parent stops its tailer too, within seconds" \
+check "a supervisor stopped by the parent stops its tailer too" \
   tailer_dies_with_its_supervisor
 
 # ── A dead supervisor must take the whole agent down with it ─────────────────
@@ -281,8 +279,8 @@ exits_when_a_supervisor_dies() {
     . "$HERE/mirror.sh"
     LIVENESS_POLL=0.05
 
-    command sleep 30 & local alive=$!
-    command sleep 30 & local doomed=$!
+    command sleep 86400 & local alive=$!
+    command sleep 86400 & local doomed=$!
 
     # While they all live the watch must not return — it is the parent's `wait`.
     ( await_supervisor_exit "$alive" "$doomed" ) >/dev/null 2>&1 &
@@ -292,7 +290,7 @@ exits_when_a_supervisor_dies() {
 
     # …and the moment one is gone it has to return, without waiting for the rest.
     kill "$doomed" 2>/dev/null || true; wait "$doomed" 2>/dev/null || true
-    local deadline=$((SECONDS + 5))
+    local deadline=$((SECONDS + SpecCapSeconds))
     while kill -0 "$watch" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
     local returned=no; kill -0 "$watch" 2>/dev/null || returned=yes
 
