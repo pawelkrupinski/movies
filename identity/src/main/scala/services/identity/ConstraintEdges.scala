@@ -84,7 +84,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  and can link two venues' different films to one (Filmstarts' placeholder 51988 "Film Program"), so its id joins
    *  only listings whose titles already agree. */
   def catalogueKey(id: CatalogueId, node: EvidenceNode): String =
-    if (!SourceReliability.linkDecides(id)) s"${id.key}\u0000${sanitized(node.evidence.cleanTitle)}" else id.key
+    if (!SourceReliability.linkDecides(id) || CatalogueSources.TitleGated(id.source)) s"${id.key}\u0000${sanitized(node.evidence.cleanTitle)}" else id.key
 
   private def catalogueKeys(node: EvidenceNode): Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.map(catalogueKey(_, node))
 

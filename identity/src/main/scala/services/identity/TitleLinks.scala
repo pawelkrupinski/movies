@@ -121,7 +121,7 @@ private[identity] object TitleLinks {
     val blocked: Set[String] = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, normalizer,
       segments = keptPieces.map(_._1) :+ node.evidence.cleanTitle)
     val pinned: Seq[String] = pins.blockKeys(node.listings.head.key).toSeq.sorted
-    val catalogued: Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key)
+    val catalogued: Seq[String] = node.listings.flatMap(_.catalogueIds).filterNot(id => CatalogueSources.TitleGated(id.source)).distinct.sorted.map(_.key)
     def keys: Set[String] = blocked ++ pinned ++ catalogued
   }
 }

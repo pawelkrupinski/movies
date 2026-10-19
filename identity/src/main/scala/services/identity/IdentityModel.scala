@@ -200,7 +200,7 @@ object CatalogueId {
     cm.externalIds.toSeq.collect { case (source, id) if source.trim.nonEmpty && id.trim.nonEmpty =>
       val own = id.trim
       CatalogueId(source.trim, if (CatalogueSources.BoxOfficeOwn(source.trim)) s"${cinema.displayName}/$own" else own)
-    }.sorted
+    }.++(CatalogueSources.CinemaxX.code(cinema, cm).map(CatalogueId(CatalogueSources.CinemaxX.source, _))).sorted
 }
 
 object Listing {

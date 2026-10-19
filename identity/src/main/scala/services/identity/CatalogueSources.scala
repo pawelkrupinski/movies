@@ -24,6 +24,30 @@ object CatalogueSources {
    *  feed's ids and facts are trusted is [[SourceReliability]]'s. */
   val Cineamo: String = "cineamo"
 
+  /** CinemaxX's own Vista film code ("HO00001648"), the fourth piece of every booking URL its venues publish
+   *  (`cinemaxx.de/buchtickets/zusammenfassung/<venue>/<code>/<session>`): one code per film across the chain. Read only
+   *  at CinemaxX's own venues — partners booking through cinemaxx.de (Kino am Raschplatz, Holi) file other films under
+   *  its codes — and never off a multi-film bill ([[MultiFilmBill]]). Even at its own venues a code is now and then
+   *  reused for another billing (DE "Edmund und Luzie" / "Pettersson und Findus", recording 38713274617), so it joins
+   *  only listings whose titles already agree ([[TitleGated]]). Experiment `experiment/cinemaxx-code`. */
+  object CinemaxX {
+    val source = "cinemaxx"
+    private val Code = """^https?://(?:www\.)?cinemaxx\.de/[^?#]*/(HO\d{8})(?:[/?#].*)?$""".r
+    def ownVenue(cinema: models.Cinema): Boolean = cinema.displayName.toLowerCase(java.util.Locale.ROOT).startsWith("cinemaxx ")
+    /** The one code `cm`'s booking URLs carry at a CinemaxX venue, when they carry exactly one. */
+    def code(cinema: models.Cinema, cm: models.CinemaMovie): Option[String] =
+      if (!ownVenue(cinema) || MultiFilmBill.marker(Seq(cm.movie.title)).isDefined || MultiFilmBill.joinsWorks(cm.movie.title)) None
+      else cm.showtimes.flatMap(_.bookingUrl).collect { case Code(code) => code }.distinct match {
+        case Seq(one) => Some(one)
+        case _        => None
+      }
+  }
+
+  /** Sources whose ids join listings only beside an agreeing title, as a feed's do ([[ConstraintEdges.catalogueKey]]),
+   *  though the venue's own: a chain code reused now and then for another billing. Not a block key on its own
+   *  ([[TitleLinks]]): beside an agreeing title the title's own key already blocks them together. */
+  val TitleGated: Set[String] = Set(CinemaxX.source)
+
   /** Box offices whose ids number ONE installation's events, not a chain's films: every Spektrix client and every Savoy
    *  system keeps its own sequence, so two venues' ids meet by coincidence. Measured on UK recording 38326582997: 52 of
    *  the 56 Spektrix ids two venues shared named two films (BEAM Hertford's "Mildred Pierce" was Picture House Uckfield's
