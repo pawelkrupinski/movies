@@ -26,6 +26,11 @@ active=project/target/active.json
 [ -f "\$active" ] || { mkdir -p project/target; echo "{\\"uri\\":\\"local://\$(pwd -P)/sock\\"}" > "\$active"; }
 server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
 printf "%s|%s\\n" "\$server" "\$(cat "\$server/worker/src/s" 2>/dev/null)" >> "$scratch/sbt-sources"
+# a long command: its call's last-used mark aged past the idle timeout mid-run, then whether it is fresh again
+if [ -n "\${STUB_AGE_USED:-}" ]; then
+  touch -t 202001010000 "\$STUB_AGE_USED"; sleep 3
+  [ -n "\$(find "\$STUB_AGE_USED" -mmin +1)" ] && echo idle > "$scratch/busy" || echo busy > "$scratch/busy"
+fi
 STUB
 chmod +x "$scratch/bin/sbt"
 export PATH="$scratch/bin:$PATH"
@@ -224,13 +229,20 @@ sleep 0.3
 check "...and --stop --root stops it" "stopped" "$(kill -0 "$roots" 2>/dev/null && echo running || echo stopped)"
 kill "$roots" 2>/dev/null
 
+# 2026-10-19: the last-used mark was touched only as a call started and ended, so the watchdog (and --reap) stopped the
+# server ten idle minutes into any longer command -- `testUnit` ended in "sbt server disconnected" mid-e2e
+busy_key=$(printf '%s' "$scratch/slotted" | shasum | cut -c1-12)
+scratch_git "$repo" worktree add -q -b slotted "$scratch/slotted" origin/main
+(cd "$scratch/slotted" && KINOWO_SBT_WARM_HEARTBEAT_SECONDS=1 STUB_AGE_USED="$KINOWO_SBT_WARM_STATE/$busy_key.used" \
+  "$REPO_ROOT/scripts/sbt-warm" testUnit >/dev/null 2>&1)
+check "a running command keeps its server marked as in use, however long it runs" "busy" "$(cat "$scratch/busy" 2>/dev/null)"
+
 scratch_git "$repo" worktree add -q -b gated "$scratch/gated" origin/main
 out=$(cd "$scratch/gated" && KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_MEMORY_GATE_MAX_WAIT=0 \
   "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
 check "a new server waits on the memory gate while the Mac is paging (deadline 0: warned, then started)" "yes" \
   "$(grep -q '\[sbt-warm\] memory gate: still 99 GB paged out' <<< "$out" && echo yes || echo no)"
 
-scratch_git "$repo" worktree add -q -b slotted "$scratch/slotted" origin/main
 : > "$scratch/sbt-env"
 (cd "$scratch/slotted" && KINOWO_JVM_SLOTS=4 KINOWO_JVM_CPUS=4 KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a command holds one of the machine's JVM slots, its server sized for KINOWO_JVM_CPUS cores (macOS)" \

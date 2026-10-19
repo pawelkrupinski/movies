@@ -29,7 +29,7 @@
 # file the source's Zinc analysis does not list as a product (another build wrote it) is not seeded: scripts/zinc_orphans.py.
 #
 # THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses). A watchdog beside it stops it when the checkout
-# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB heap) minutes without a call through this script; every call
+# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB heap) minutes without a call running through this script; every call
 # also reaps the servers of removed checkouts. Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm).
 #
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
@@ -264,7 +264,14 @@ echo "$digest" > "$State/$key.build"
 # server's heap stays when idle, its CPU does not. The server it may start outlives the call, so sbt runs with the lock
 # descriptors closed (jvm-gate.sh): it never holds the slot or the start lock for its idle life.
 if [ "$Serve" = 1 ]; then memory_gate sbt-warm; else jvm_slot_take sbt-warm; fi
+# A running command keeps the server in use: touched only as a call started and ended, the last-used mark aged past the
+# idle timeout mid-run and the watchdog stopped the server under any command longer than it ("sbt server disconnected"
+# ten minutes into `testUnit`, 2026-10-19). The heartbeat ends with this call, killed or not.
+( while kill -0 $$ 2>/dev/null; do touch "$State/$key.used"; sleep "${KINOWO_SBT_WARM_HEARTBEAT_SECONDS:-60}"; done ) \
+  > /dev/null 2>&1 6>&- 7>&- 8>&- &
+heartbeat=$!
 (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 6>&- 7>&- 8>&-); rc=$?
+kill "$heartbeat" 2>/dev/null
 jvm_slot_release
 touch "$State/$key.used"
 if [ "$fresh" = 1 ] && pid=$(server_pid "$root"); then
