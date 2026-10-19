@@ -32,7 +32,7 @@ scratch_repo "$tree"
 scratch_git "$tree" add -A && scratch_git "$tree" commit -qm base
 base="$(scratch_git "$tree" rev-parse HEAD)"
 
-run() { (cd "$work" && "${SCRIPT_TESTS_BASH:-bash}" "$runner" --root "$tree" "$@") > "$work/out" 2>&1; echo $?; }
+run() { (cd "$work" && spec_bounded "${SCRIPT_TESTS_BASH:-bash}" "$runner" --root "$tree" "$@") > "$work/out" 2>&1; echo $?; }
 listed() { run --list "$@" >/dev/null; cut -f1 "$work/out" | tr '\n' ' ' | sed 's/ $//'; }
 
 check "discovers *-test.sh and *_test.py under the script roots, sorted, untagged only" \
@@ -101,12 +101,14 @@ echo '# edited' >> "$tree/scripts/ci/takes_lib.py"
 check "--changed: a module a test or its tool imports selects it" "scripts/ci/m_test.py scripts/ci/n_test.py" "$(listed --changed "$libs")"
 scratch_git "$tree" checkout -q -- scripts/ci/takes_lib.py
 
-# The timeout: a hung test is killed at its bound and FAILS as a timeout.
-put scripts/slow-test.sh 'sleep 30'
-start=$SECONDS
+# The timeout: a hung test is killed at its bound and FAILS as a timeout. The test never ends on its own (it records
+# its pid and blocks until killed), so the runner gets past it only by its bound: that, reported, and no test left
+# running prove it, never elapsed wall time (shell-spec.sh's HUNG STUBS).
+put scripts/slow-test.sh "echo \$\$ >> '$work/hung'; exec sleep 86400"
+: > "$work/hung"
 code="$(run --timeout 1 slow-test)"
-check "a hung test is cut off at its timeout and fails" "1 yes" "$code $([ $((SECONDS - start)) -lt 10 ] && echo yes || echo no)"
-check "...reported as a timeout" "1" "$(grep -c '^TIMEOUT .*slow-test' "$work/out")"
+check "a hung test is cut off at its timeout and fails" "1" "$code"
+check "...reported as a timeout, and not left running" "1 0" "$(grep -c '^TIMEOUT .*slow-test' "$work/out") $(spec_still_running "$work/hung")"
 rm "$tree/scripts/slow-test.sh"
 
 # The pool: never more than --jobs tests at once. Each records how many were running while it ran.
