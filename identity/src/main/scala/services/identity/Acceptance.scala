@@ -398,8 +398,8 @@ private[identity] object Acceptance {
    *  between namesakes is no lean. */
   val LeanMargin = 1.25
   /** EXPERIMENT `experiment/margin-signal`: [[Acceptance.clearOfItsRunnerUp]]'s ratio, exemption and rules. */
-  val MarginRefusalRatio = 3.0
-  val MarginExemptWhenFavoured = false
+  val MarginRefusalRatio = 1.5
+  val MarginExemptWhenFavoured = true
   val MarginRefusedRules: Set[String] = Set.empty
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
   def named(scored: Scored): String =
