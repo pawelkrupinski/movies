@@ -291,8 +291,9 @@ for _ in $(seq 1 100); do [ -e "$work/gh-started" ] && break; sleep 0.1; done
 kill -TERM -- "-$cut_short" 2>/dev/null; wait "$cut_short" 2>/dev/null
 # faith_locks_held -> how many of the run's download locks a process still holds
 faith_locks_held() { local f; for f in "$cache"/locks/diagnostics-323456789-*.flock; do [ ! -e "$f" ] || spec_lock_state "$f"; done | grep -c held; }
-# the download's subshell cleans up once bounded has ended gh's group (up to 2s), after the tool itself has gone
-for _ in $(seq 1 50); do
+# the download's subshell cleans up once bounded has ended gh's group (up to 2s), after the tool itself has gone --
+# later still on a loaded machine (the pre-push hook runs eight tests at once)
+for _ in $(seq 1 150); do
   [ -z "$(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*')" ] && [ "$(faith_locks_held)" = 0 ] && break
   sleep 0.1
 done

@@ -407,7 +407,8 @@ if [ -n "$faith" ]; then
   faith_download() (
     [ -f "$diag/$cc-takes/$cc.json.gz" ] && exit 0
     mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX") || exit 1
-    trap 'rm -rf "$dl"' EXIT
+    # every ending signal made an exit, so the EXIT trap runs: bash 3.2 can end a subshell on TERM without it
+    trap 'rm -rf "$dl"' EXIT; trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
     if gh_download "$IDENTITY_GH_DOWNLOAD" run download "$faith" -R "$KINOWO_GH_REPO" \
          --name "convergence-diagnostics-$cc-convergence" --dir "$dl" >&2 && [ -f "$dl/$cc-takes/$cc.json.gz" ]; then
       rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"
