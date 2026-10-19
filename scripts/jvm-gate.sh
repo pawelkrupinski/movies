@@ -20,8 +20,10 @@
 #                          on descriptor 7), held until jvm_slot_release, or until this process and the children it
 #                          started meanwhile (the JVM) end; waits for one (saying so once, polling every
 #                          KINOWO_JVM_SLOT_POLL seconds, 5) and after KINOWO_JVM_SLOT_MAX_WAIT seconds (1800) goes ahead,
-#                          warned. A child of a holder rides its slot (KINOWO_JVM_SLOT_HELD, exported): a tool run by a
-#                          tool never waits on its own parent. KINOWO_JVM_SLOTS=0 turns the slots off.
+#                          warned. A child of a holder rides its slot (KINOWO_JVM_SLOT_HELD, exported, and descriptor 7
+#                          inherited open): a tool run by a tool never waits on its own parent. A child started with the
+#                          descriptors closed (below) holds no slot, whatever its environment names, so it takes its own.
+#                          KINOWO_JVM_SLOTS=0 turns the slots off.
 #   jvm_slot_release       gives this process's slot back
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
@@ -118,7 +120,8 @@ memory_gate() { # <label>
 
 JVM_SLOT=""
 jvm_slot_take() { # <label>
-  [ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && return 0
+  # riding needs the slot's descriptor itself: a process outliving its starter has the name but not the lock
+  [ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && { : >&7; } 2> /dev/null && return 0
   local label=${1:-tool} slots=${KINOWO_JVM_SLOTS:-4} max=${KINOWO_JVM_SLOT_MAX_WAIT:-1800}
   local poll=${KINOWO_JVM_SLOT_POLL:-5} dir n waited=0 said=""
   memory_gate "$label"
