@@ -23,7 +23,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # "<module>/<Config> <fully qualified class>"
 Unit=(
-    "common/Test tools.ConcurrentCandidateProbeSpec"
+    "worker/Test tools.ConcurrentCandidateProbeSpec"
     "worker/Test services.sharecards.ShareCardConcurrencySpec"
     "worker/Test tools.BoundedParallelSpec"
     "worker/Test tools.AdaptiveParallelSpec"
