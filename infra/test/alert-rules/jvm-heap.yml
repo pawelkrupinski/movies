@@ -43,7 +43,7 @@ tests:
               pool: G1 Old Gen
             exp_annotations:
               summary: "kinowo-web us old gen is 85.68% of its cap"
-              description: "The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is left is not enough to collect into and the next large allocation is the one that fails. This is the shape that OOM-killed web-us on 2026-09-03. FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- Flux reconciles the ConfigMap now and Reloader rolls the pod on a real change, so a disagreement here means Flux is FAILING rather than merely waiting -- see flux.rules. Compare `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'` against the overlay. If they already agree, something RETAINS more than this heap holds -- which is NOT always the corpus, so measure before resizing. On a worker (SerialGC) first confirm `increase(jvm_gc_collection_seconds_count{gc=\"MarkSweepCompact\"}[30m])` actually moved: with no full GC under it the floor is uncollected garbage, not the live set. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap."
+              description: "The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is left is not enough to collect into and the next large allocation is the one that fails. This is the shape that OOM-killed web-us on 2026-09-03. FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- Flux reconciles the ConfigMap now and Reloader rolls the pod on a real change, so a disagreement here means Flux is FAILING rather than merely waiting -- see flux.rules. Compare `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'` against the overlay. If they already agree, something RETAINS more than this heap holds -- which is NOT always the corpus, so measure before resizing. On a worker (SerialGC) this pages only while full collections run under the floor, so it is the live set, not uncollected garbage. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap."
 
   # A HEALTHY pod must stay silent. Same cap, floor at ~62% — the shape web-de reads today.
   - interval: 1m
@@ -72,13 +72,16 @@ tests:
         exp_alerts: []
 
   # THE WORKERS ARE COVERED TOO — SerialGC names its tenured pool differently, and a rule that
-  # matched only `G1 Old Gen` would watch nothing here. worker-us at 92% of 1280m.
+  # matched only `G1 Old Gen` would watch nothing here. worker-us at 92% of 1280m, with full
+  # collections running under that floor (one every five minutes) and reclaiming nothing.
   - interval: 1m
     input_series:
       - series: 'jvm_memory_pool_used_bytes{instance="worker-us:9000",job="kinowo-worker",country="us",pool="Tenured Gen"}'
         values: '1234000000+0x200'
       - series: 'jvm_memory_pool_max_bytes{instance="worker-us:9000",job="kinowo-worker",country="us",pool="Tenured Gen"}'
         values: '1342177280+0x200'
+      - series: 'jvm_gc_collection_seconds_count{instance="worker-us:9000",job="kinowo-worker",country="us",gc="MarkSweepCompact"}'
+        values: '0+0.2x200'
     alert_rule_test:
       - eval_time: 2h5m
         alertname: JvmOldGenNearCap
@@ -91,7 +94,23 @@ tests:
               pool: Tenured Gen
             exp_annotations:
               summary: "kinowo-worker us old gen is 91.94% of its cap"
-              description: "The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is left is not enough to collect into and the next large allocation is the one that fails. This is the shape that OOM-killed web-us on 2026-09-03. FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- Flux reconciles the ConfigMap now and Reloader rolls the pod on a real change, so a disagreement here means Flux is FAILING rather than merely waiting -- see flux.rules. Compare `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'` against the overlay. If they already agree, something RETAINS more than this heap holds -- which is NOT always the corpus, so measure before resizing. On a worker (SerialGC) first confirm `increase(jvm_gc_collection_seconds_count{gc=\"MarkSweepCompact\"}[30m])` actually moved: with no full GC under it the floor is uncollected garbage, not the live set. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap."
+              description: "The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is left is not enough to collect into and the next large allocation is the one that fails. This is the shape that OOM-killed web-us on 2026-09-03. FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- Flux reconciles the ConfigMap now and Reloader rolls the pod on a real change, so a disagreement here means Flux is FAILING rather than merely waiting -- see flux.rules. Compare `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'` against the overlay. If they already agree, something RETAINS more than this heap holds -- which is NOT always the corpus, so measure before resizing. On a worker (SerialGC) this pages only while full collections run under the floor, so it is the live set, not uncollected garbage. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap."
+
+  # A SerialGC FLOOR WITH NO FULL GC UNDER IT IS GARBAGE, NOT A LIVE SET. worker-es, 2026-10-18:
+  # tenured 0.79 -> 0.89 of its cap over 2.5h with no MarkSweepCompact at all; the first one, at
+  # 11:40Z, dropped it to 0.60. It paged for twenty minutes and nothing was wrong.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_used_bytes{instance="worker-es:9000",job="kinowo-worker",country="es",pool="Tenured Gen"}'
+        values: '1194000000+0x200'
+      - series: 'jvm_memory_pool_max_bytes{instance="worker-es:9000",job="kinowo-worker",country="es",pool="Tenured Gen"}'
+        values: '1342177280+0x200'
+      - series: 'jvm_gc_collection_seconds_count{instance="worker-es:9000",job="kinowo-worker",country="es",gc="MarkSweepCompact"}'
+        values: '3+0x200'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: JvmOldGenNearCap
+        exp_alerts: []
 
   # ─── JvmResidentNearContainerLimit ─────────────────────────────────────────────────────────────
   #

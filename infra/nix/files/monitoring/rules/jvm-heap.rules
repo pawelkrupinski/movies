@@ -82,11 +82,23 @@ groups:
   - name: jvm-heap
     rules:
       - alert: JvmOldGenNearCap
-        # The floor of the sawtooth, as a fraction of the pool's own cap.
+        # The floor of the sawtooth, as a fraction of the pool's own cap -- on a SerialGC worker only
+        # once a full collection has run under it, because before one its floor is everything tenured
+        # since the last, garbage included (the header above). worker-es paged on 2026-10-18 at 0.89
+        # with no MarkSweepCompact in 2.5h; the first one, at 11:40Z, dropped it to 0.60. worker-de's
+        # real thrash on 10-12 ran 40-600 full GCs per half hour under a 0.88-0.99 floor and still pages.
         expr: >-
-          min_over_time(jvm_memory_pool_used_bytes{pool=~"G1 Old Gen|Tenured Gen"}[30m])
+          min_over_time(jvm_memory_pool_used_bytes{pool="G1 Old Gen"}[30m])
             / on (instance, pool) group_left
-          jvm_memory_pool_max_bytes{pool=~"G1 Old Gen|Tenured Gen"} > 0.85
+          jvm_memory_pool_max_bytes{pool="G1 Old Gen"} > 0.85
+          or
+          (
+            min_over_time(jvm_memory_pool_used_bytes{pool="Tenured Gen"}[30m])
+              / on (instance, pool) group_left
+            jvm_memory_pool_max_bytes{pool="Tenured Gen"} > 0.85
+          )
+          and on (instance)
+          increase(jvm_gc_collection_seconds_count{gc="MarkSweepCompact"}[30m]) > 0
         # TWO HOURS, because this is a trend and not an event. web-us took ~2h from restart to OOM,
         # so this fires with time to act on the pod that is going to die -- and a deploy rolling a
         # pod resets the measurement, which is what keeps a routine restart from paging.
@@ -104,9 +116,8 @@ groups:
             `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'`
             against the overlay. If they already agree, something RETAINS more than this heap
             holds -- which is NOT always the corpus, so measure before resizing. On a worker
-            (SerialGC) first confirm `increase(jvm_gc_collection_seconds_count{gc="MarkSweepCompact"}[30m])`
-            actually moved: with no full GC under it the floor is uncollected garbage, not the live
-            set. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a
+            (SerialGC) this pages only while full collections run under the floor, so it is the
+            live set, not uncollected garbage. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a
             cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap.
 
       # IS A JVM'S WHOLE PROCESS ABOUT TO OUTGROW ITS CONTAINER -- the failure the rule above
