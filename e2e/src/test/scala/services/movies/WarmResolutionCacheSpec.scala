@@ -28,7 +28,7 @@ import tools.{FixpointPass, FixtureTestWiring}
  * every venue shape (chain, single-screen, deferred detail, a dub variant sharing its base
  * film's hints) that makes two rows ask the same question.
  */
-class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
+class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers with StopsItsWirings {
 
   private val Fixture = "08-06-2026"
 
@@ -87,8 +87,8 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
     }).take(12).mkString("\n")
   }
 
-  private lazy val cold = settle(new CitySlice)
-  private lazy val warm = settle(new WarmCitySlice)
+  private lazy val cold = settle(stoppedAfterAll(new CitySlice))
+  private lazy val warm = settle(stoppedAfterAll(new WarmCitySlice))
 
   "the pipeline with production's memoising resolution caches" should
     "settle exactly the corpus the passthrough pipeline does" in {
@@ -139,7 +139,7 @@ class WarmResolutionCacheSpec extends AnyFlatSpec with Matchers {
   // that one, so measuring it here measured whatever the re-ask left behind — and only when the
   // specs ran in file order. Run alone (`-z`), the same test measured a different pass.
   it should "do no work at all on a second tick, every lookup answered from its warm cache" in {
-    val settled = settle(new WarmCitySlice)
+    val settled = settle(stoppedAfterAll(new WarmCitySlice))
     FixpointPass.ledger(settled).assertNoChurn("a tick over unchanged input with every resolution cache warm")(
       FixpointPass.run(settled))
   }

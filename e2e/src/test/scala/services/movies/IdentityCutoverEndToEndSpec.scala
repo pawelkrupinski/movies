@@ -14,12 +14,12 @@ import tools.{CutoverProperties, FixtureTestWiring}
  * projection's properties on the stored films: no cannot-linked pair in one film (P3), no published
  * showtime missing (P4), and a second projection that writes nothing (P2).
  */
-class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
+class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers with StopsItsWirings {
 
   private final class CutOver extends FixtureTestWiring("08-06-2026")
 
   private lazy val booted: (CutOver, ProjectionTick) = {
-    val w = new CutOver
+    val w = stoppedAfterAll(new CutOver)
     // Settled as production's projection interval settles it: the venue pages the boot's enrichment
     // fetched are what the next projection takes in; rest is a projection that writes nothing, and
     // it is the tick every claim below reads.

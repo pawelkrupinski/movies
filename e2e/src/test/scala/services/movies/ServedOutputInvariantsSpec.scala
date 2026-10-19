@@ -20,7 +20,7 @@ import java.time.{LocalDate, LocalDateTime}
  * only place a recorded corpus is enriched, so the only place its cards exist. The allowlist both
  * read is [[ServedOutputAllowlist]].
  */
-class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers {
+class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers with StopsItsWirings {
 
   import ServedOutputInvariantsSpec._
 
@@ -133,7 +133,7 @@ class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers {
   }
 
   "the fixture boot 08-06-2026" should "serve only cards that keep the served-output invariants" in {
-    val wiring = new FixtureTestWiring("08-06-2026")
+    val wiring = stoppedAfterAll(new FixtureTestWiring("08-06-2026"))
     wiring.bootStartup()
     val cards = ServedOutputInvariants.cardsOf(wiring, Country.Poland, SingleCountryNormalizer.titleNormalizer, FixtureNow)
     info(ServedOutputInvariants.coverage(cards))

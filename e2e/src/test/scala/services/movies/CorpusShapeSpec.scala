@@ -38,7 +38,7 @@ object AllowedListing {
  * recorded corpora move nightly, and a film that stopped screening is not a fix. A recorded corpus
  * that is not on disk CANCELS its tests with where to get it, never passes them.
  */
-abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
+abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfiguration with StopsItsWirings {
 
   /** What the rule holds a corpus to, as the test name says it ("hold every field to its shape"). */
   protected def rule: String
@@ -55,7 +55,7 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
   protected def awaitingReRecord: Set[AllowedListing] = Set.empty
 
   private lazy val wiring: FixtureTestWiring = {
-    val w = new FixtureTestWiring("08-06-2026")
+    val w = stoppedAfterAll(new FixtureTestWiring("08-06-2026"))
     w.bootStartup()
     w
   }

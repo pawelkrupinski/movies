@@ -50,7 +50,7 @@ import scala.collection.mutable
  * regressing to None or wrong value fails specifically.
  */
 @CorpusReplay
-class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
+class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers with StopsItsWirings {
   // Anchor film: Guy Ritchie's "Zawodowcy" (orig. "In the Grey") — a
   // mainstream current release showing across six Poznań cinemas in the
   // fixture window, fully enriched (TMDB + IMDb + MC + RT + Filmweb). It
@@ -84,7 +84,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // test runs one further tick on this same wiring, which is the "across
   // multiple scrape ticks" invariant it needs.
   private lazy val wiring: FixtureTestWiring = {
-    val w = new FixtureTestWiring("08-06-2026")
+    val w = stoppedAfterAll(new FixtureTestWiring("08-06-2026"))
     w.eventBus.subscribe { case e => seen.append(e) }
     w.bootStartup()
     w
