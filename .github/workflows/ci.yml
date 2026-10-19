@@ -132,12 +132,13 @@ jobs:
             #
             # `main`, not a pinned ref: these specs should test what is actually DEPLOYED. A pin
             # would go stale silently, which is the failure this repository keeps having to design
-            # away. No credential -- the config repo is public, like this one.
+            # away. No credential -- the config repo is public, like this one -- so a plain anonymous
+            # clone rather than actions/checkout, which sends the job's token and asks the API for the
+            # default branch: on Forgejo (CI since the GitHub suspension) that token reaches only THIS
+            # repository, and the lookup fails "The target couldn't be found" even for a public one.
             - if: matrix.shard == 'worker'
-              uses: actions/checkout@v5
-              with:
-                  repository: pawelkrupinski/movies-gitops
-                  path: infra/kubernetes
+              name: Check out the gitops manifests (movies-gitops main, anonymously)
+              run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
 
             # GENERATED ROSTER ARTEFACTS. Cinema.scala's venue annotations, data/**'s venue
             # lists and the *RosterData/VenueTowns/PolishPages Scala (geodata/, common/) + the apps' City lists

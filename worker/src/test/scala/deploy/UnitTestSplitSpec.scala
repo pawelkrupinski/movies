@@ -57,7 +57,7 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
    *  another row would leave them reading nothing. */
   they should "check the gitops manifests out on the row that runs the worker's deploy specs" in {
     val lines = testJob.linesIterator.toVector
-    val at    = lines.indexWhere(_.contains("repository: pawelkrupinski/movies-gitops"))
+    val at    = lines.indexWhere(_.contains("/pawelkrupinski/movies-gitops"))
     lines.slice(at - 3, at).mkString("\n") should include("if: matrix.shard == 'worker'")
     RepoFile.matrixRows(testJob).find(_("shard") == "worker").map(_("suites")) shouldBe Some("rest")
   }

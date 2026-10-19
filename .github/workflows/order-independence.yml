@@ -73,11 +73,9 @@ jobs:
             - uses: actions/checkout@v5
 
             # The deploy specs read the GitOps manifests at their old path — see ci.yml's
-            # `test` job for why this checkout lands exactly here.
-            - uses: actions/checkout@v5
-              with:
-                  repository: pawelkrupinski/movies-gitops
-                  path: infra/kubernetes
+            # `test` job for why this checkout lands exactly here, and why it is an anonymous clone.
+            - name: Check out the gitops manifests (movies-gitops main, anonymously)
+              run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
 
             - uses: ./.github/actions/setup-jdk
               with:
