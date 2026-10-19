@@ -1,26 +1,36 @@
 {
-  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+weighted-guards-release",
+  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+weighted-guards-certificate",
   "scopes" : {
     "listing-film" : {
       "prior" : -2.264109870948828,
       "signals" : {
-        "release.country" : {
+        "certificate" : {
           "kind" : "categorical",
           "categories" : {
-            "released" : 0.7316022708597942,
-            "unreleased" : -1.2447508382733758
+            "above" : -1.9663965079236956,
+            "below" : -3.8795812235832976,
+            "match" : 1.7919202485156125,
+            "near" : -0.887914398779508
           },
           "bins" : [ ],
           "missing" : {
-            "film" : 0.0
+            "film" : 0.0,
+            "listing" : 0.0,
+            "unrated" : 0.0
           },
           "counts" : {
-            "missing:film" : [ 0, 62 ],
-            "released" : [ 13270, 154220 ],
-            "unreleased" : [ 2784, 233518 ]
+            "above" : [ 4, 776 ],
+            "below" : [ 0, 584 ],
+            "match" : [ 2917, 11741 ],
+            "missing:film" : [ 1238, 82408 ],
+            "missing:listing" : [ 8946, 200556 ],
+            "missing:unrated" : [ 2693, 76682 ],
+            "near" : [ 256, 15053 ]
           },
           "neutral" : {
-            "film" : "missing evidence, weighed by neither side"
+            "film" : "missing evidence, weighed by neither side",
+            "listing" : "the venue's country is unknown, or it bills no certificate",
+            "unrated" : "the venue's country rates no film (Poland): no scale to read a certificate on"
           }
         },
         "originalTitle" : {
