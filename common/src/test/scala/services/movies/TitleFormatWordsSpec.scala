@@ -63,6 +63,7 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Digger - OmU") shouldBe ("Digger", List("OmU"))
     FormatTags.extractFormatTags("DIGGER -OmU") shouldBe ("DIGGER", List("OmU"))
     FormatTags.extractFormatTags("Digger OmU") shouldBe ("Digger", List("OmU"))
+    FormatTags.extractFormatTags("Digger OV") shouldBe ("Digger", List("OV"))
     FormatTags.extractFormatTags("VATERLAND (OmeU)") shouldBe ("VATERLAND", List("OmeU"))
     FormatTags.extractFormatTags("Shaun das schaf - spuk im kürbisfeld df") shouldBe ("Shaun das schaf - spuk im kürbisfeld", List("DF"))
     FormatTags.extractFormatTags("The Odyssey OV") shouldBe ("The Odyssey", List("OV"))
@@ -72,8 +73,8 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("The Rocky Horror Picture Show (1975/Original English Version)") shouldBe ("The Rocky Horror Picture Show", List("OV"))
   }
 
-  // "DF" and "OV" are words of a title too: "Mexico DF" is Mexico City. Bare behind a one-word title, with no separator
-  // or other version word marking them, they are the title's last word.
+  // "DF" is a word of a title too: "Mexico DF" is Mexico City. Bare behind a one-word title, with no separator or
+  // other version word marking it, it is the title's last word. "OV" is no title's word: "Digger OV" is its version.
   it should "stay on a one-word title it ends bare, where it is the title's own word" in {
     FormatTags.extractFormatTags("Mexico DF") shouldBe ("Mexico DF", Nil)
     FormatTags.extractFormatTags("México DF") shouldBe ("México DF", Nil)
