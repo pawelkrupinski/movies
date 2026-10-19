@@ -4,7 +4,8 @@
 //             `VenueTowns`): plain tuples and strings, written by data/**/generate_*.py and read
 //             only through common's typed rosters. dependsOn nothing.
 //   common  — shared domain + data layer (models, MovieRepository/MovieCache, Mongo,
-//             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib. dependsOn(geodata).
+//             UptimeMonitor, the HTTP-fetch family): what more than one module builds on. Code only one
+//             app uses lives in that app. Plain Scala lib. dependsOn(geodata).
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   scrapers — the cinema scrapers (`services.cinemas`): every venue client, its catalogues and the
 //             scrape contract the worker drives them by. dependsOn(common, identity). A library, not
