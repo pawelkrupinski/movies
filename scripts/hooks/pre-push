@@ -373,7 +373,9 @@ check_redgate() {
     errors="$(mktemp)"
     for workflow in "${GatingWorkflows[@]}"; do
         verdict="$(newest_verdict "$workflow" 2>"$errors")" || {
-            warn "could not read $workflow's verdict in ${GhSeconds}s ($(head -n 1 "$errors")) — red-build gate SKIPPED for it"
+            if [ $? = 124 ]; then warn "gh did not answer $workflow's verdict within ${GhSeconds}s: cut off — red-build gate SKIPPED for it"
+            else warn "could not read $workflow's verdict ($(head -n 1 "$errors")) — red-build gate SKIPPED for it"
+            fi
             continue
         }
         [ -n "$verdict" ] || continue

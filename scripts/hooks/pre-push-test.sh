@@ -8,6 +8,7 @@ unset PREPUSH_SKIP
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from it
 . "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/tool-conventions.sh" # bounded: a case whose hook would hang fails instead of holding the spec
 # Run by pre-push's `scripttests` check (scripts/run-script-tests), this inherits the GIT_DIR the hook was handed; the scratch
 # repositories below would otherwise BE the repository being pushed (it once committed this spec's
 # "Spec base" history onto a pushed branch). See scratch-git.sh.
@@ -22,7 +23,8 @@ ghstub="$testroot/gh"; mkdir -p "$ghstub"
 cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
-[ -n "${GH_HANGS:-}" ] && exec sleep 30
+# a gh that never answers: it records its pid in $GH_HANGS and blocks until something kills it
+[ -n "${GH_HANGS:-}" ] && { echo $$ >> "$GH_HANGS"; exec sleep 86400; }
 # a gh that answers but says something on stderr first (a deprecation, an update notice)
 [ -n "${GH_WARNS:-}" ] && echo "! warning: this gh is old" >&2
 # a check that rewrites core.hooksPath of the repository it runs in (what moved the shared config to an absolute path)
@@ -448,9 +450,18 @@ check "...naming only the production commit" "1 0" \
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
 check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
-start=$SECONDS
-code="$(GH_HANGS=1 PREPUSH_GH_SECONDS=1 push "$gbase..$plain")"
-check "gh hanging is cut off within its bound, and does not block" "0 yes" "$code $([ $((SECONDS - start)) -lt 10 ] && echo yes || echo no)"
+# gh hanging: the stub never ends on its own, so the hook gets past it only by its own bound cutting gh off. That
+# mechanism is the proof -- each workflow's gh cut off (bounded's 124) and said so, no stub left running -- never
+# elapsed wall time, which counts every process the hook starts: a "within 10 s" assertion failed whenever the machine
+# ran the spec ~10x slower (a load of ~86: 2026-10-15, 2026-10-19). Nor does it count the stubs that started: that slow,
+# a 1 s bound can end one before bash has read it. The outer bound only makes a hook that does hang a failure instead
+# of a stuck spec.
+hung="$gate/gh-hung"; : > "$hung"
+code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$pathchecks" \
+         bounded 600 bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
+still_running=0; while read -r pid; do kill -0 "$pid" 2>/dev/null && { still_running=$((still_running + 1)); kill "$pid"; }; done < "$hung"
+check "gh hanging is cut off by its bound for each workflow, said out loud, and does not block" "0 3 0" \
+  "$code $(grep -c "gh did not answer .* within 1s: cut off" "$gate/err") $still_running"
 out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
