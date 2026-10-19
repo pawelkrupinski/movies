@@ -76,6 +76,14 @@ check "each call names the checkout and server it uses" "yes" \
 echo stale > "$scratch/fresh/worker/target/scala-3.9.0/zinc/from"
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.9.0/zinc/from")"
+# 2026-10-19: e2e has test sources only, so its Zinc state is test-zinc alone, never zinc: counted unbuilt, every call
+# deleted and re-cloned its target from an older build — 12-16 s a call, under a live server's feet
+mkdir -p "$scratch/fresh/e2e/src" "$scratch/fresh/e2e/target/scala-3.9.0/test-zinc"
+echo mine > "$scratch/fresh/e2e/target/scala-3.9.0/test-zinc/from"
+mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/e2e/target/scala-3.9.0/test-zinc"
+(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a test-only module with Zinc state is never seeded over" "mine" \
+  "$(cat "$scratch/fresh/e2e/target/scala-3.9.0/test-zinc/from" 2>/dev/null)"
 
 scratch_git "$repo" worktree add -q -b other "$scratch/other" origin/main
 (cd "$scratch/other" && KINOWO_SBT_WARM_SEED="$scratch/old" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)

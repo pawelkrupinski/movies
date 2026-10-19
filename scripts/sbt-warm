@@ -152,13 +152,14 @@ seed_source() {
   done | sort -rn | head -1
 }
 
-# What this checkout has not built: project/target, and each module (a directory with src/) without Zinc state.
+# What this checkout has not built: project/target, and each module (a directory with src/) without Zinc state -- of
+# any configuration: e2e has test sources only, so test-zinc alone (counted unbuilt, it was re-seeded on every call).
 unbuilt() {
   local m
   [ -d "$root/project/target" ] || printf '%s\n' project/target project/project/target
   for m in "$root"/*/src; do
     m=$(basename "$(dirname "$m")")
-    compgen -G "$root/$m/target/scala-*/zinc" > /dev/null || echo "$m"
+    compgen -G "$root/$m/target/scala-*/*zinc" > /dev/null || echo "$m"
   done
 }
 
