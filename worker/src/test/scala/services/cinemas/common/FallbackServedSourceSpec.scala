@@ -43,7 +43,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     val intake  = intakeOver(ledger)
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
-      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
+      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, () => DepthGuardTime.clock.instant(), fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
     new CinemaScrapeRunner(intake, tools.SpecClock.Pinned).run(scraper)
     ledger.get(Multikino).flatMap(_.sourceKey)
   }
@@ -80,6 +80,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, films("Film 1", "Fallback Only")(2))), fallbackName = "Filmweb",
       fallbackRef = () => Some("2180"), new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore,
+      () => DepthGuardTime.clock.instant(),
       baseBackoff = Duration.Zero, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero)) // re-probe the primary on the very next tick
     val runner  = new CinemaScrapeRunner(intake, tools.SpecClock.Pinned)
     def stored(title: String): Int = intake.listingOf(Multikino).find(_.movie.title == title).map(_.showtimes.size).getOrElse(0)
@@ -107,7 +108,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
   "a tick's completeness" should "be the serving source's reads, not the other source's" in {
     def scraper(primary: CinemaScraper) = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
-      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
+      new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, () => DepthGuardTime.clock.instant(), fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
     val pageThenThrow = new Source(Primary, { ListingReads.pageFailed(new RuntimeException("day 2 down")); throw new RuntimeException("primary down") })
     scraper(pageThenThrow).fetchWithSource() should have (Symbol("viaFallback")(true), Symbol("complete")(true))
     val pageThenServe = new Source(Primary, { ListingReads.pageFailed(new RuntimeException("day 2 down")); listing })

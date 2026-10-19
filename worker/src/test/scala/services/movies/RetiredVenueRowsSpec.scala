@@ -23,8 +23,7 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
   /** The stores' clock: every row is written at `T0`, and every sweep runs past the grace
    *  period unless a case says otherwise. */
   private val T0 = Instant.parse("2026-09-20T12:00:00Z")
-  private var clockNow = T0
-  private val clock: () => Instant = () => clockNow
+  private val clock = new tools.MutableClock(T0)
   private val later = T0.plusSeconds(RetiredVenueRows.Grace.toSeconds + 3600)
   private def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String]) =
     RetiredVenueRows.sweep(screenings, slots, roster, now = later)
@@ -75,14 +74,14 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     // A rolling deploy: the NEW pod knows a venue the old pod's roster lacks, and has just
     // written its rows. The old pod's sweep must not delete them.
     val (screenings, slots) = corpus()
-    clockNow = later.minusSeconds(3600)   // written an hour before the sweep
+    clock.setTo(later.minusSeconds(3600))   // written an hour before the sweep
     seed(screenings, slots, "fresh|2026", s"$Retired${CinemaShowing.Separator}fresh")
     try {
       sweep(Some(screenings), Some(slots), roster) shouldBe
         RetiredVenueRows(screenings = 2, slots = 3, venues = Map(Retired -> 5L))
       screenings.findForFilm("fresh|2026") should not be empty
       slots.findForFilm("fresh|2026")      should not be empty
-    } finally clockNow = T0
+    } finally clock.setTo(T0)
   }
 
   it should "never split a screenings/slot twin pair: one twin written inside the grace spares both" in {
@@ -91,14 +90,14 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     // the slots and left 8 twinless screenings rows (200 future showtimes) for the stranded
     // sweep to find a day later. A row is as fresh as its freshest twin.
     val (screenings, slots) = corpus()
-    clockNow = later.minusSeconds(3600)   // only the screenings twin is rewritten recently
+    clock.setTo(later.minusSeconds(3600))   // only the screenings twin is rewritten recently
     screenings.upsertSlot("other|2025", s"$Retired${CinemaShowing.Separator}other", ListedShowtimes(tomorrow ++ tomorrow, None))
     try {
       sweep(Some(screenings), Some(slots), roster) shouldBe
         RetiredVenueRows(screenings = 1, slots = 2, venues = Map(Retired -> 3L))
       screenings.findForFilm("other|2025").keySet should contain (s"$Retired${CinemaShowing.Separator}other")
       slots.findForFilm("other|2025").keySet     should contain (s"$Retired${CinemaShowing.Separator}other")
-    } finally clockNow = T0
+    } finally clock.setTo(T0)
   }
 
   it should "be idempotent — a second sweep finds nothing" in {

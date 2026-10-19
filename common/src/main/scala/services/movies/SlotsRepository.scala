@@ -152,7 +152,7 @@ trait SlotsRepository extends SlotKeyedRows {
  * the store its `screenings` twin is built on too. Neither store holds business logic —
  * both just store — so neither can drift from the other's understanding of the rules.
  */
-class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.Instant.now(),
+class InMemorySlotsRepository(clock: java.time.Clock,
                               roster: VenueRoster = VenueRoster.Unrestricted) extends SlotsRepository {
 
   private val rows = new InMemorySlotRows[SourceData](clock)

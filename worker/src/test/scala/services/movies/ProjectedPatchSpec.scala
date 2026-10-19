@@ -8,8 +8,8 @@ import org.scalatest.matchers.should.Matchers
 class ProjectedPatchSpec extends AnyFlatSpec with Matchers {
 
   private def world(): ProjectedPatchCheck.World = {
-    val screenings = new CountingScreeningsRepository(new InMemoryScreeningsRepository)
-    val slots      = new CountingSlotsRepository(new InMemorySlotsRepository)
+    val screenings = new CountingScreeningsRepository(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned))
+    val slots      = new CountingSlotsRepository(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned))
     val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     ProjectedPatchCheck.World(new CaffeineMovieCache(repository, normalizer = SingleCountryNormalizer.titleNormalizer,
       clock = _root_.tools.SpecClock.Pinned), repository, screenings, slots)

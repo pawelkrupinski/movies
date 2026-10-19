@@ -14,7 +14,8 @@ object RetryWithBackoff {
     totalBudget: FiniteDuration = 30.seconds,
     initialDelay: FiniteDuration = 100.millis,
     sleep: Long => Unit = Thread.sleep,
-    now: () => Long = () => System.currentTimeMillis(),
+    // Monotonic milliseconds: the budget is elapsed time, not a date.
+    now: () => Long = () => System.nanoTime() / 1_000_000L,
   )(block: => T): T = {
     val deadline = now() + totalBudget.toMillis
     var delayMs = initialDelay.toMillis

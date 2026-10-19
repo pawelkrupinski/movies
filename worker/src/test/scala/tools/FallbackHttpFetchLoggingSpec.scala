@@ -189,14 +189,14 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-warn a persisting failure once per window, with its count" in {
-    var clock = java.time.Instant.parse("2026-10-02T10:00:00Z")
+    var nanos = 0L
     val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)),
-      repeats = RepeatedFailureLog.Settings(relogEvery = java.time.Duration.ofHours(1), now = () => clock))
+      repeats = RepeatedFailureLog.Settings(relogEvery = java.time.Duration.ofHours(1), nanoTime = () => nanos))
     val url   = uniqueUrl("window")
 
     val (_, events) = capture {
       askFailing(chain, url, 10)
-      clock = clock.plusSeconds(3600)
+      nanos += java.time.Duration.ofHours(1).toNanos
       askFailing(chain, url, 10)
     }
 

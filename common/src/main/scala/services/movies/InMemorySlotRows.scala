@@ -1,6 +1,6 @@
 package services.movies
 
-import java.time.Instant
+import java.time.{Clock, Instant}
 import java.util.concurrent.CopyOnWriteArrayList
 import scala.jdk.CollectionConverters._
 
@@ -20,7 +20,7 @@ import scala.jdk.CollectionConverters._
  *
  * One monitor guards all mutations — fine at test/dev scale.
  */
-final class InMemorySlotRows[A](clock: () => Instant = () => Instant.now()) {
+final class InMemorySlotRows[A](clock: Clock) {
 
   private val byFilm    = scala.collection.mutable.Map.empty[String, Map[String, A]]
   private val stamps    = scala.collection.mutable.Map.empty[String, Instant]   // composite row id -> last change
@@ -98,7 +98,7 @@ final class InMemorySlotRows[A](clock: () => Instant = () => Instant.now()) {
   }
 
   private def stamp(filmId: String, slotKey: String): Unit =
-    stamps.update(SlotKeyed.idOf(filmId, slotKey), clock())
+    stamps.update(SlotKeyed.idOf(filmId, slotKey), clock.instant())
 
   /** Ring `onChange(filmId)` on every genuine change until the handle is closed. Listeners
    *  are rung synchronously, so there is no backlog and nothing for a demand window to

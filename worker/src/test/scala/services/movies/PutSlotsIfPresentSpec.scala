@@ -17,7 +17,7 @@ class PutSlotsIfPresentSpec extends AnyFlatSpec with Matchers {
   private def at(day: Int) = DepthGuardTime.showtimes(12 * day).last
 
   private final class Side {
-    val repository = new InMemoryMovieRepository(normalizer = normalizer, screenings = Some(new InMemoryScreeningsRepository))
+    val repository = new InMemoryMovieRepository(normalizer = normalizer, screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)))
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
     val announced  = new java.util.concurrent.atomic.AtomicInteger(0)
     cache.onChanged(_ => { announced.incrementAndGet(); () })

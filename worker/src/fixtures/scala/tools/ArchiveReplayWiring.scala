@@ -56,9 +56,7 @@ class ArchiveReplayWiring(
   // Where the TMDB bodies the identity store's normalizer and the client read are parsed — one
   // [[SharedJsonBodies]] for every pass of an order-independence replay, so each body is parsed once
   // between them rather than once per pass; production's per-thread handoff otherwise.
-  tmdbBodies:       JsonBodies = new JsonBodies,
-  // The time a RECORDING's requests go out in ([[pacingClock]]) — the wall's, unless a spec pins it.
-  wallClock:        java.time.Clock = java.time.Clock.systemUTC()
+  tmdbBodies:       JsonBodies = new JsonBodies
 ) extends WorkerWiring(country, env = environment) with TestWiring {
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
@@ -96,7 +94,7 @@ class ArchiveReplayWiring(
    *  its step ceilings (run 37562532213). A hermetic replay keeps the frozen clock: its waits are
    *  skipped, and its pacing decisions stay independent of how fast the runner is. */
   override protected def pacingClock: java.time.Clock =
-    if (hermetic.isDefined) super.pacingClock else wallClock
+    if (hermetic.isDefined) super.pacingClock else java.time.Clock.systemUTC()
 
   /** Over a hermetic leaf no request goes out, so no fleet slot is taken: the fleet pacer refuses a request whose slot is
    *  past its horizon, and on the frozen clock no slot ever came round, so from Wikidata's fifth request on it answered

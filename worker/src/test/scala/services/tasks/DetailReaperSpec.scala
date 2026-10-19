@@ -79,8 +79,8 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  [[services.movies.DepthGuardUnderSplitSpec]], where the same divergence silently
    *  disabled the degraded-scrape depth guard. */
   private def splitCacheWith(filmUrl: Option[String]) = {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots      = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots      = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,

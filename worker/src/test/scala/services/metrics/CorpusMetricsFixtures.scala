@@ -66,7 +66,7 @@ object CorpusMetricsFixtures {
   /** A store split as production's is — showtimes in `screenings`, slots in `movie_slots` — so a cache over it holds
    *  every film LEAN, as the worker's does. */
   def splitRepository(): InMemoryMovieRepository =
-    new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository),
+    new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)), slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)),
       normalizer = SingleCountryNormalizer.titleNormalizer)
 
   /** The worker's cache over `repository`, hydrated from it. */

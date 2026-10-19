@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import tools.DaemonExecutors
 
-import java.time.Instant
+import java.time.Clock
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -34,7 +34,7 @@ class BulkRefreshHandler(
   label:                 String,
   run:                   () => BulkRefreshResult,
   resultStore:           BulkTaskResultStore,
-  clock:                 () => Instant       = () => Instant.now(),
+  clock:                 Clock,
   executionContext:      ExecutionContext    = DaemonExecutors.virtualThreadEC("bulk-refresh")
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
@@ -49,11 +49,11 @@ class BulkRefreshHandler(
       logger.info(s"Bulk $label refresh: starting operator-triggered run.")
       Future {
         val result =
-          try BulkTaskResult.from(taskType, clock(), succeeded = true, run())
+          try BulkTaskResult.from(taskType, clock.instant(), succeeded = true, run())
           catch {
             case e: Throwable =>
               logger.error(s"Bulk $label refresh failed", e)
-              BulkTaskResult(taskType, clock(), succeeded = false, s"failed: ${e.getMessage}")
+              BulkTaskResult(taskType, clock.instant(), succeeded = false, s"failed: ${e.getMessage}")
           } finally running.set(false)
         resultStore.record(result)
       }(using executionContext)

@@ -44,10 +44,10 @@ object HeapDumper extends Logging {
   /** Write a live-objects HPROF dump to `directory/<reason>-<millis>.hprof`. Returns the
    *  path on success, None on any failure. */
   def dump(directory: settings.HeapDumpDirectory, reason: Reason,
-           now: () => Long = () => System.currentTimeMillis()): Option[String] =
+           clock: java.time.Clock): Option[String] =
     Try {
       Files.createDirectories(directory.value)
-      val path = directory.value.resolve(fileName(reason, now())).toString
+      val path = directory.value.resolve(fileName(reason, clock.millis())).toString
       val bean = ManagementFactory.newPlatformMXBeanProxy(
         ManagementFactory.getPlatformMBeanServer,
         "com.sun.management:type=HotSpotDiagnostic",

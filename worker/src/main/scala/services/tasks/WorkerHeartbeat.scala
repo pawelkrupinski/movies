@@ -23,7 +23,7 @@ import scala.util.Try
 class WorkerHeartbeat(
   queue:           TaskQueue,
   intervalSeconds: Long      = 60,
-  now:             () => Long = () => System.currentTimeMillis()
+  now:             () => Long
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("worker-heartbeat")

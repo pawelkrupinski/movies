@@ -2,7 +2,7 @@ package tools
 
 import play.api.Logger
 
-import java.time.{Duration, Instant}
+import java.time.Duration
 
 /**
  * Logs a failure once, not on every ask that hits it again.
@@ -28,6 +28,9 @@ import java.time.{Duration, Instant}
  * says so at INFO, and simply warns afresh if it fails again.
  *
  * State is per instance — each `FallbackHttpFetch` owns one.
+ *
+ * The relog window is ELAPSED time, so it is measured on `Settings.nanoTime` (monotonic, not a
+ * date): no wall clock to disagree with the wiring's, and nothing for a pinned clock to freeze.
  */
 final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Settings) {
   import RepeatedFailureLog.Entry
@@ -45,10 +48,10 @@ final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Sett
   /** Records a failure of `key` with `detail`, warning unless it repeats the last one. */
   def failed(key: String, detail: String): Unit = {
     val hash = detail.hashCode
-    val at   = settings.now()
+    val at   = settings.nanoTime()
     val line: Option[String] = entries.synchronized {
       Option(entries.get(key)) match {
-        case Some(e) if e.detailHash == hash && Duration.between(e.loggedAt, at).compareTo(settings.relogEvery) < 0 =>
+        case Some(e) if e.detailHash == hash && at - e.loggedAt < settings.relogEvery.toNanos =>
           entries.put(key, e.copy(suppressed = e.suppressed + 1))
           None
         case Some(e) if e.detailHash == hash =>
@@ -86,9 +89,9 @@ object RepeatedFailureLog {
    *  a hash — a few hundred bytes — and only failing keys are held. */
   final case class Settings(maxEntries: Int = 16384,
                             relogEvery: Duration = Duration.ofHours(1),
-                            now: () => Instant = () => Instant.now()) {
+                            nanoTime: () => Long = () => System.nanoTime()) {
     require(maxEntries > 0, "maxEntries must be positive")
   }
 
-  private final case class Entry(detailHash: Int, loggedAt: Instant, suppressed: Int)
+  private final case class Entry(detailHash: Int, loggedAt: Long, suppressed: Int)
 }

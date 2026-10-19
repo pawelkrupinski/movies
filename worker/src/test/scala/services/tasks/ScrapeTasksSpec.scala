@@ -859,7 +859,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     queue.enqueue(TaskType.ScrapeCinema, "a", submittedAt = _root_.tools.SpecClock.Pinned.instant())
     queue.enqueue(TaskType.ScrapeCinema, "b", submittedAt = _root_.tools.SpecClock.Pinned.instant())
-    val line = new WorkerHeartbeat(queue).statusLine()
+    val line = new WorkerHeartbeat(queue, now = () => _root_.tools.SpecClock.Pinned.millis()).statusLine()
     line should include ("waiting=2")
     line should include ("backlog=2")
   }

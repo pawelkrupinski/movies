@@ -52,7 +52,7 @@ object LiveUpstream {
     probe:       () => Unit,
     totalBudget: FiniteDuration = 30.seconds,
     sleep:       Long => Unit   = Thread.sleep,
-    now:         () => Long     = () => System.currentTimeMillis()
+    now:         () => Long     = () => System.nanoTime() / 1_000_000L   // monotonic: the budget is elapsed time
   )(body: => T): T =
     try RetryWithBackoff(totalBudget, sleep = sleep, now = now)(body)
     catch {

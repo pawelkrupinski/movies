@@ -89,7 +89,7 @@ class SourceFallbackScraper(
   fallbackRef:     () => Option[String],
   monitor:         UptimeMonitor,
   store:           FallbackStore,
-  now:             () => Instant = () => Instant.now(),
+  now:             () => Instant,
   baseBackoff:     FiniteDuration = SourceFallbackScraper.DefaultBaseBackoff,
   maxBackoff:      FiniteDuration = SourceFallbackScraper.DefaultMaxBackoff,
   fallbackAfter:   FallbackAfter = FallbackAfter.FailingFor(SourceFallbackScraper.DefaultFallbackAfter),

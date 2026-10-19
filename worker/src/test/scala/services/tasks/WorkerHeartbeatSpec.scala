@@ -28,7 +28,7 @@ class WorkerHeartbeatSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "log an unreadable queue as UNKNOWN, never as an empty one" in {
-    val line = new WorkerHeartbeat(new FailingReadTaskQueue(new RuntimeException("Mongo down"))).statusLine()
+    val line = new WorkerHeartbeat(new FailingReadTaskQueue(new RuntimeException("Mongo down")), now = () => 1000L).statusLine()
     line should include ("UNKNOWN")
     line should include ("Mongo down")
     line should not include ("waiting=0")

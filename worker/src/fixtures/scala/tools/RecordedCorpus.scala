@@ -41,7 +41,7 @@ object RecordedCorpus {
       override def loadAll(): Map[String, CachedResponse] = files.loadAll()
       override def put(key: String, response: CachedResponse): Unit = ()
     }
-    val cache = new EnrichmentCache(store, clock = () => TestWiring.FixedInstant.toEpochMilli)
+    val cache = new EnrichmentCache(store)
     val leaf  = new GapLeaf(missing)
     cache.preload()
     val fetch = replayChain(new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root), cache, leafOf(leaf))

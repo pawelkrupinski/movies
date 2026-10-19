@@ -14,7 +14,7 @@ class BulkRefreshHandlerSpec extends AnyFlatSpec with Matchers {
     EnrichTaskKeys.bulkDedup(TaskType.RefreshAllImdb), Map.empty, attempts = 1)
 
   private def handler(store: BulkTaskResultStore, run: () => BulkRefreshResult) =
-    new BulkRefreshHandler(TaskType.RefreshAllImdb, "test", run, store)
+    new BulkRefreshHandler(TaskType.RefreshAllImdb, "test", run, store, tools.SpecClock.Pinned)
 
   "BulkRefreshHandler" should "dispatch the run and return Done immediately" in {
     val runs = new AtomicInteger(0)

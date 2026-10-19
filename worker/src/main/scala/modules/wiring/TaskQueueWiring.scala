@@ -75,7 +75,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
-  lazy val workerHeartbeat = managedResources.stopping(new WorkerHeartbeat(taskQueue))
+  lazy val workerHeartbeat = managedResources.stopping(new WorkerHeartbeat(taskQueue, now = () => clock.millis()))
 
   // Last-resort backstop for a WEDGED-but-alive JVM (the 2026-06-23 heap OOM, where
   // the process limped on for ~2h answering /health 200 because the OOM had killed
@@ -90,7 +90,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
   lazy val livenessWatchdog = managedResources.stopping(new LivenessWatchdog(
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
     stalenessThreshold = livenessStaleAfter,
-    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory, tools.HeapDumper.Wedged); sys.exit(70) }))
+    onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory, tools.HeapDumper.Wedged, clock); sys.exit(70) },
+    now                = () => clock.millis()))
 }
 
 object TaskQueueWiring {

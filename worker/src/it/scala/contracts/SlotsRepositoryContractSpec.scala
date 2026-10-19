@@ -32,8 +32,9 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
     Await.result(database.getCollection(SlotsRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
     Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
+      case "java.time.Clock"                               => Some(_root_.tools.SpecClock.Pinned)
       // A decorator (the fixpoint harness's write counter) is held to the contract over the in-memory store.
-      case "services.movies.SlotsRepository"              => Some(new InMemorySlotsRepository())
+      case "services.movies.SlotsRepository"              => Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned))
       case _                                               => None
     }).fold(missing => fail(missing), identity)
   }

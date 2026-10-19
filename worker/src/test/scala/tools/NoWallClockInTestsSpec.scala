@@ -18,10 +18,11 @@ import java.time.{LocalDate, ZoneOffset}
  * Two rules, each naming file:line:
  *
  *  1. No wall-clock READ in test sources — `Instant.now()`, `LocalDate(Time).now()`,
- *     `System.currentTimeMillis()`, `Clock.systemUTC()`, `new Date()` — outside a default
- *     parameter (a seam the caller can pin) or the allowlist below, each entry with its
- *     reason. Take the time from a fixed `Clock` and hand the same clock to the code under
- *     test; measure elapsed time with `System.nanoTime()`, which is not a date.
+ *     `System.currentTimeMillis()`, `Clock.systemUTC()`, `new Date()` — outside the allowlist
+ *     below, each entry with its reason. A default parameter is no exception: a defaulted clock
+ *     is one a caller forgets to pin. Take the time from a fixed `Clock` and hand the same
+ *     clock to the code under test; measure elapsed time with `System.nanoTime()`, which is
+ *     not a date.
  *
  *  2. A test file holding a date literal still in the FUTURE must hand a clock to every
  *     production class whose constructor otherwise defaults it to the system clock. That
@@ -59,7 +60,10 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       "its self-test feeds the zone matcher these reads as string literals",
     "common/src/test/scala/tools/TlsTrustSpec.scala" ->
       "documents that a pinned certificate really is expired — a statement about today by design",
+    "worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala" ->
+      "a RECORDING's requests go out live, so its pacers measure their slots in real time (a hermetic replay keeps the frozen clock)",
     "worker/src/fixtures/scala/tools/FileEnrichmentCacheStore.scala"    -> FileAges,
+    "worker/src/fixtures/scala/tools/EnrichmentFreshness.scala"         -> FileAges,
     "worker/src/test/scala/tools/FileEnrichmentCacheStoreSpec.scala"    -> FileAges,
     "worker/src/test/scala/tools/EnrichmentFreshnessSpec.scala"         -> FileAges
   ) ++ Seq(
@@ -76,22 +80,23 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   private val Now = """\b(?:Instant|LocalDate|LocalDateTime|LocalTime|ZonedDateTime|OffsetDateTime|Year|YearMonth)\.now\(""".r
   private val OtherReads = """System\.currentTimeMillis\(|Clock\.system(?:UTC|DefaultZone)\(|new (?:java\.util\.)?Date\(\)""".r
 
-  /** `name: Type = ` (or `= () =>`) right before the read: a parameter's default. */
-  private val DefaultParameter = """(?:^\s*|[(,]\s*)\w+\s*:(?:=>|[^=])+=(?!>)\s*(?:\(\)\s*=>\s*)?$""".r
-
-  private def wallClockReads(line: String): Seq[Int] = {
+  private[tools] def wallClockReads(line: String): Seq[Int] = {
     val nowCalls = Now.findAllMatchIn(line).collect {
       case m if !argumentsAt(line, m.end - 1).toLowerCase(java.util.Locale.ROOT).contains("clock") => m.start
     }
-    (nowCalls ++ OtherReads.findAllMatchIn(line).map(_.start)).toSeq.filterNot { at =>
-      val prefix = line.substring(0, at).replaceAll("""(?:java\.(?:time|util|lang)\.)$""", "")
-      DefaultParameter.findFirstIn(prefix).isDefined
-    }
+    (nowCalls ++ OtherReads.findAllMatchIn(line).map(_.start)).toSeq
   }
 
   private val testFiles: Seq[Path] = scalaFiles(TestRoots).filterNot(isProgram)
 
-  "Test sources" should "not read the wall clock outside a default parameter or the allowlist" in {
+  "the test-source matcher" should "refuse a wall-clock read even as a parameter's default" in {
+    wallClockReads("def f(now: () => Long = () => System.currentTimeMillis()) = now()") should have size 1
+    wallClockReads("def f(at: Instant = Instant.now()) = at") should have size 1
+    wallClockReads("class W(wallClock: Clock = Clock.systemUTC())") should have size 1
+    wallClockReads("val today = LocalDate.now(clock)") shouldBe empty
+  }
+
+  "Test sources" should "not read the wall clock outside the allowlist" in {
     testFiles.nonEmpty shouldBe true
     val offenders = testFiles.filterNot(p => Allowlist.contains(p.toString)).flatMap { path =>
       read(path).linesIterator.zipWithIndex.collect {
@@ -167,27 +172,40 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // Instant.now()`) lets a caller who holds the injected clock forget to pass it, and nothing
   // notices until two components judge one stamp on different clocks — the detail reaper and
   // handler disagreed about "fresh" exactly that way, and a harness pinned to 2026-06-08 then
-  // re-asked for work a system-clock stamp said was done. A `() => Instant` function default is a
-  // seam and stays allowed here; a `clock: Clock = Clock.systemUTC()` default is refused by
-  // NoDefaultZoneSpec rule 4.
+  // re-asked for work a system-clock stamp said was done. A `() => Instant` function default
+  // (`now: () => Instant = () => Instant.now()`) is refused alike — it escapes the wiring's clock
+  // just as silently; a `clock: Clock = Clock.systemUTC()` default is refused by NoDefaultZoneSpec
+  // rule 4.
 
   /** `file:parameter` → why that main-source parameter may still default to the wall clock. */
   private val MainDefaultAllowlist: Map[String, String] = Map.empty
 
   private val MainWallClockRead = """\b(?:Instant|LocalDate|LocalDateTime|ZonedDateTime|OffsetDateTime)\.now\(\s*\)|System\.currentTimeMillis\(""".r
-  // A value default only: `now: () => Instant = () => Instant.now()` is a seam, like a Clock.
-  private val ParameterName     = """(?:^\s*|[(,]\s*)(\w+)\s*:(?:=>|[^=,(])+=(?!>)\s*$""".r
+  /** `name: Type = ` right before the read — a value default, or a function one (`= () =>`). */
+  private val ParameterName     = """(?:^\s*|[(,]\s*)(\w+)\s*:(?:=>|\(\)\s*=>|[^=,(])+=(?!>)\s*(?:\(\)\s*=>\s*)?$""".r
+
+  /** `parameter` → `line: text` for each parameter in `src` defaulting to a wall-clock read. */
+  private[tools] def clockDefaultsIn(src: String): Seq[(String, String)] =
+    src.linesIterator.zipWithIndex.flatMap { case (raw, index) =>
+      val line = code(raw)
+      MainWallClockRead.findAllMatchIn(line).flatMap { m =>
+        val prefix = line.substring(0, m.start).replaceAll("""(?:java\.(?:time|lang)\.)$""", "")
+        ParameterName.findFirstMatchIn(prefix).map(p => p.group(1) -> s"${index + 1}: ${raw.trim}")
+      }
+    }.toSeq
 
   private def mainClockDefaults: Seq[(String, String)] =
     scalaFiles(ScalaSourceScan.MainRoots).flatMap { path =>
-      read(path).linesIterator.zipWithIndex.flatMap { case (raw, index) =>
-        val line = code(raw)
-        MainWallClockRead.findAllMatchIn(line).flatMap { m =>
-          val prefix = line.substring(0, m.start).replaceAll("""(?:java\.(?:time|lang)\.)$""", "")
-          ParameterName.findFirstMatchIn(prefix).map(p => s"$path:${p.group(1)}" -> s"$path:${index + 1}: ${raw.trim}")
-        }
-      }
+      clockDefaultsIn(read(path)).map { case (parameter, at) => s"$path:$parameter" -> s"$path:$at" }
     }
+
+  "the main-source default matcher" should "refuse value and function defaults alike" in {
+    clockDefaultsIn("def f(at: Instant = Instant.now()) = at").map(_._1) shouldBe Seq("at")
+    clockDefaultsIn("class R(clock: () => java.time.Instant = () => java.time.Instant.now(),").map(_._1) shouldBe Seq("clock")
+    clockDefaultsIn("  now: () => Long = () => System.currentTimeMillis()").map(_._1) shouldBe Seq("now")
+    clockDefaultsIn("  nanoTime: () => Long = () => System.nanoTime(),") shouldBe empty
+    clockDefaultsIn("val at = Instant.now()") shouldBe empty
+  }
 
   "Main sources" should "not default a parameter to a wall-clock READ — take the injected clock's instant instead" in {
     val offenders = mainClockDefaults.filterNot { case (key, _) => MainDefaultAllowlist.contains(key) }.map(_._2)

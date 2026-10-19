@@ -29,8 +29,8 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
 
   private def repositoryWithStrandedRow() = {
-    val screenings = new InMemoryScreeningsRepository
-    val slots      = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     repository.upsert("Live", Some(2026), MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Live"), releaseYear = Some(2026), showtimes = tomorrow))))
@@ -148,8 +148,8 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   /** What the backstop is a backstop FOR: retiring a film (the identity projection's removal of a
    *  merge's loser, or of a film no venue lists) deletes its side rows at that moment, no sweep run. */
   "retiring a film" should "take its side rows with it, without the sweep" in {
-    val screenings = new InMemoryScreeningsRepository
-    val slots      = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     repository.upsert("Gone", Some(2026), MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Gone"), releaseYear = Some(2026), showtimes = tomorrow))))

@@ -26,8 +26,8 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // Counted, because the in-memory stores ring their change listeners only on a REAL change:
   // an identical rewrite — which Mongo still pays for in full — is visible to a fixpoint
   // pass (`FixpointPass.ledger`) only as a write call reaching the store.
-  override lazy val screeningsRepository = new CountingScreeningsRepository(new InMemoryScreeningsRepository)
-  override lazy val slotsRepository      = new CountingSlotsRepository(new InMemorySlotsRepository)
+  override lazy val screeningsRepository = new CountingScreeningsRepository(new InMemoryScreeningsRepository(clock))
+  override lazy val slotsRepository      = new CountingSlotsRepository(new InMemorySlotsRepository(clock))
   override lazy val movieRepository =
     new InMemoryMovieRepository(screenings = Some(screeningsRepository), slots = Some(slotsRepository), normalizer = titleNormalizer)
 

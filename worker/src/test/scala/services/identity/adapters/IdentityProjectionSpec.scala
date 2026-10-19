@@ -312,8 +312,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   it should "rebuild, writing a widely shown film that changed at one venue, only that venue — and serve every showtime" in {
     val venues = Cinema.all.distinct.take(400)
     // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
-    val split  = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer)
+    val split  = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+      slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer)
     val w      = World(split, venues = venues)
     w.scrape(venues.map(c => c -> Seq(film(c, "Diuna", Some(2021), 1, 2, 3))).toMap)
     w.projection.tick(); w.projection.tick()
@@ -360,8 +360,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     // the index holds it under the new key object — in its cluster too. The film was drafted whole again for that
     // (worker-us: ~30k venue slots looked up per tick, 25 films drafted), and its write diffed every venue.
     // As production stores a film, so its write is a patch of the sources it may have moved (`ProjectedFilm.touched`).
-    val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer))
+    val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+      slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer))
     w.scrape(programme)
     w.projection.tick()
     w.scrape(Map(Helios -> Seq(film(Helios, "Lalka", Some(2026), 2), film(Helios, "Diuna", Some(2021), 5, 6))))
@@ -377,8 +377,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
 
   "A projection" should "hold no listing's showtimes, nor any in the films it plans, and read rows only for the venues it builds" in {
     // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
-    val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer), whole = true)
+    val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+      slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer), whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     first.plan.get.films.flatMap(_.record.data.values).flatMap(_.showtimes) shouldBe empty

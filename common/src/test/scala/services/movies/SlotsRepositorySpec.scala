@@ -25,7 +25,7 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
   private def sd(title: String, poster: Option[String] = None) =
     SourceData(title = Some(title), posterUrl = poster)
 
-  private def repo = new InMemorySlotsRepository
+  private def repo = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
 
   "slotsOf" should "key each slot by its wire form" in {
     SlotsRepository.slotsOf(Map(slotA -> sd("A"), slotB -> sd("B"))).keySet shouldBe

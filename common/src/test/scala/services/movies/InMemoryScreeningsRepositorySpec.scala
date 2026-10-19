@@ -13,7 +13,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   private def row(showtimes: Showtime*) = ListedShowtimes(showtimes, None)
 
   "upsertSlot" should "add a slot's showtimes, grouped per film and slot key" in {
-    val repo = new InMemoryScreeningsRepository
+    val repo = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     repo.upsertSlot("wonka|2026", "Kino Muranów␟wonka", row(st(18), st(20)))
     repo.upsertSlot("wonka|2026", "Kinoteka␟wonka",     row(st(19)))
     repo.findForFilm("wonka|2026") shouldBe Map(
@@ -73,7 +73,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   "replaceFilm" should "set a film's screenings to exactly the given slots (deleting the rest)" in {
-    val repo = new InMemoryScreeningsRepository
+    val repo = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     repo.upsertSlot("f|2026", "A␟f", row(st(10)))
     repo.upsertSlot("f|2026", "B␟f", row(st(11)))
     repo.replaceFilm("f|2026", Map("B␟f" -> row(st(12)))) // A dropped, B updated
@@ -84,7 +84,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   "deleteSlot / deleteFilm" should "remove one slot or the whole film" in {
-    val repo = new InMemoryScreeningsRepository
+    val repo = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     repo.upsertSlot("f|2026", "A␟f", row(st(10)))
     repo.upsertSlot("f|2026", "B␟f", row(st(11)))
     repo.deleteSlot("f|2026", "A␟f")
@@ -94,7 +94,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   "watch" should "ring on a genuine change, NOT on a no-op write, and stop after close" in {
-    val repo  = new InMemoryScreeningsRepository
+    val repo  = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     val rings = new AtomicInteger(0)
     val lastFilm = new java.util.concurrent.atomic.AtomicReference[String]("")
     val handle = repo.watchApplied((filmId, applied) => { rings.incrementAndGet(); lastFilm.set(filmId); applied() }).get

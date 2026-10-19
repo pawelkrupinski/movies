@@ -25,8 +25,8 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
   private def slotKey(title: String) = s"helios␟$title"
 
   /** Production's storage shape — showtimes in `screenings`, cinema slots in `movie_slots`. */
-  private def split(screenings: ScreeningsRepository = new InMemoryScreeningsRepository,
-                    slots: SlotsRepository = new InMemorySlotsRepository) = {
+  private def split(screenings: ScreeningsRepository = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned),
+                    slots: SlotsRepository = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)) = {
     val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     (repository, screenings, slots)
   }
@@ -79,7 +79,7 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remove no twinless row while the slot store's ids cannot be read" in {
-    val unreadableSlots = new InMemorySlotsRepository {
+    val unreadableSlots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned) {
       override def rowIdsChecked(): tools.ReadOutcome[Set[String]] = UnreadableRepositories.failed
     }
     val (repository, screenings, _) = split(slots = unreadableSlots)
@@ -101,7 +101,7 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "skip a side store whose id read failed, while still sweeping the other" in {
-    val screeningsStore = new InMemoryScreeningsRepository
+    val screeningsStore = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     val (repository, screenings, slots) = split(screenings = new UnreadableScreeningsRepository(screeningsStore))
     liveFilm(repository, "Live")
     strand(screenings, slots, "dead|2020")
@@ -123,8 +123,8 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refuse to sweep when the corpus scan was INCOMPLETE" in {
-    val screenings = new InMemoryScreeningsRepository
-    val slots      = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     strand(screenings, slots, "dead|2020")
 
     StrandedSideRows.sweep(Some(screenings), Some(slots), liveIds = () => None) shouldBe StrandedSideRows.none

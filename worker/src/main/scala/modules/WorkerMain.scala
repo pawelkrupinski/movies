@@ -163,7 +163,7 @@ object WorkerMain extends Logging {
                                    wirings: Seq[WorkerWiring], heapDumpDir: HeapDumpDirectory): Unit = {
     addMetricsEndpoint(health, metrics, wirings)
     logger.info(s"Worker metrics up on :$port/metrics")
-    addHeapDumpEndpoint(health, heapDumpDir)
+    addHeapDumpEndpoint(health, heapDumpDir, tools.HeapDumper.dump(_, _, wirings.head.clock))
     addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
   }
 
@@ -262,7 +262,7 @@ object WorkerMain extends Logging {
    *  health-checker or a link-prefetch. `dump` is injected so the endpoint is testable
    *  without dumping the test JVM's own heap. */
   private[modules] def addHeapDumpEndpoint(server: HttpServer, dir: HeapDumpDirectory,
-                                           dump: (HeapDumpDirectory, tools.HeapDumper.Reason) => Option[String] = tools.HeapDumper.dump(_, _)): Unit = {
+                                           dump: (HeapDumpDirectory, tools.HeapDumper.Reason) => Option[String]): Unit = {
     server.createContext("/heapdump", exchange => {
       val (status, text) =
         if (exchange.getRequestMethod != "POST") (405, "POST to take a heap dump (it stops the world)")

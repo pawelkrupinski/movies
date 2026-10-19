@@ -56,7 +56,7 @@ class OdeonAuthHarvesterSpec extends AnyFlatSpec with Matchers {
 
   it should "return None (and not cache) when the harvest fails" in {
     var calls = 0
-    val h = new OdeonAuthHarvester(fetchPage = () => { calls += 1; None })
+    val h = new OdeonAuthHarvester(fetchPage = () => { calls += 1; None }, now = () => 1_000_000_000_000L)
     h.token() shouldBe None
     h.token() shouldBe None
     calls shouldBe 2                                   // no cache of a failure — retried each call

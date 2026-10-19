@@ -59,9 +59,10 @@ object EnrichmentFreshness extends Logging {
     (ttl.toMillis - (ttl.toMillis / 2 * spread).toLong).millis
   }
 
-  def prune(root: Path, ttl: FiniteDuration = Ttl, now: Long = System.currentTimeMillis()): Int =
+  def prune(root: Path, ttl: FiniteDuration = Ttl): Int =
     if (!Files.isDirectory(root)) 0
     else {
+      val now   = System.currentTimeMillis()   // file mtimes are wall-clock stamps, so they are aged against the wall
       val stale = Using(Files.walk(root)) { walk =>
         walk.iterator().asScala
           .filter(Files.isRegularFile(_))

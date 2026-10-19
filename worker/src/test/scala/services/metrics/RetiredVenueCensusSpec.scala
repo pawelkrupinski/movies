@@ -36,8 +36,8 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   "RetiredVenueCensus" should "count the side rows filed under a venue the roster no longer lists, and their future showtimes" in {
-    val screenings = new InMemoryScreeningsRepository
-    val slots      = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     // A live venue: never counted, however many rows.
     screenings.upsertSlot("foo|2026", s"${KinoMuranow.displayName}␟foo", ListedShowtimes(Seq(at("2026-09-24T18:00")), None))
     slots.upsertSlot("foo|2026", s"${KinoMuranow.displayName}␟foo", SourceData(title = Some("Foo")))
@@ -58,12 +58,12 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
   it should "judge a retired venue's showtimes on its own city's clock" in {
     val losAngeles = models.City.all.find(_.zoneId == java.time.ZoneId.of("America/Los_Angeles")).get
     val venue      = losAngeles.cinemas.head.displayName
-    val screenings = new InMemoryScreeningsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     // 05:00 UTC on 2 November: 00:00 in New York, 21:00 on the 1st in Los Angeles — a 21:30 show is still ahead.
     screenings.upsertSlot("foo|2026", s"$venue␟foo", ListedShowtimes(Seq(at("2026-11-01T21:30")), None))
     val registry       = new PrometheusRegistry()
     val (rows, future) = RetiredVenueCensus.gauges(registry)
-    new RetiredVenueCensus(screenings, new InMemorySlotsRepository, VenueRoster.venuesOf(Country.UnitedStates) - venue,
+    new RetiredVenueCensus(screenings, new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned), VenueRoster.venuesOf(Country.UnitedStates) - venue,
       rows, future, Country.UnitedStates, Clock.fixed(Instant.parse("2026-11-02T05:00:00Z"), ZoneOffset.UTC)).sample()
     Country.UnitedStates.cities.head.zoneId should not be losAngeles.zoneId // else the country's fallback would agree
     future.labelValues("us").get() shouldBe 1.0
@@ -72,18 +72,18 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
   // "Kino Etiuda" is live while "Kino Etiuda OBK" is not: a prefix match would read one as the
   // other and either hide the retired rows or convict the live ones.
   it should "compare a row's venue to the roster by equality, never by prefix" in {
-    val screenings = new InMemoryScreeningsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     screenings.upsertSlot("foo|2026", s"${KinoMuranow.displayName} OBK␟foo", ListedShowtimes(Seq(at("2026-09-24T18:00")), None))
     screenings.upsertSlot("foo|2026", KinoMuranow.displayName, ListedShowtimes(Seq(at("2026-09-24T18:00")), None))   // a legacy bare key
 
-    val (c, rows, _) = census(screenings, new InMemorySlotsRepository)
+    val (c, rows, _) = census(screenings, new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned))
     c.sample()
 
     rows.labelValues("pl", "screenings").get() shouldBe 1.0
   }
 
   it should "read zero on a clean store" in {
-    val (c, rows, future) = census(new InMemoryScreeningsRepository, new InMemorySlotsRepository)
+    val (c, rows, future) = census(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned), new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned))
     c.sample()
     rows.labelValues("pl", "screenings").get() shouldBe 0.0
     rows.labelValues("pl", "movie_slots").get() shouldBe 0.0
@@ -93,10 +93,10 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
   // A read that failed is not an empty store, and an empty roster is a roster that failed to
   // load, not a country whose every venue retired: neither may publish a count.
   it should "publish nothing when a read failed or the roster is empty" in {
-    val screenings = new InMemoryScreeningsRepository {
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned) {
       override def rowIdsChecked(): tools.ReadOutcome[Set[String]] = services.movies.UnreadableRepositories.failed
     }
-    val slots = new InMemorySlotsRepository
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     slots.upsertSlot("foo|2026", s"$retired␟foo", SourceData(title = Some("Foo")))
 
     val (c, rows, future) = census(screenings, slots)
@@ -107,7 +107,7 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
     future.labelValues("pl").get() shouldBe 3.0
     rows.labelValues("pl", "movie_slots").get() shouldBe 1.0   // the store that did read still reports
 
-    val (empty, emptyRows, _) = census(new InMemoryScreeningsRepository, slots, roster = Set.empty)
+    val (empty, emptyRows, _) = census(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned), slots, roster = Set.empty)
     emptyRows.labelValues("pl", "movie_slots").set(5.0)
     empty.sample()
     emptyRows.labelValues("pl", "movie_slots").get() shouldBe 5.0

@@ -35,7 +35,7 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
   }
 
   "A roster-scoped slots store" should "not write a slot under a foreign venue" in {
-    val slots = new InMemorySlotsRepository(roster = roster)
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned, roster = roster)
     slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> SourceData(title = Some("The Odyssey"))))
     slots.upsertSlot(film, CinemaShowing(CineworldFeltham, "other").displayName, SourceData(title = Some("Other")))
     slots.findForFilm(film).keySet shouldBe Set(polish)
@@ -52,14 +52,14 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
   }
 
   "A roster-scoped screenings store" should "not write showtimes under a foreign venue" in {
-    val screenings = new InMemoryScreeningsRepository(roster = roster)
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned, roster = roster)
     screenings.replaceFilm(film, Map(polish -> ListedShowtimes(tomorrow, None), foreign -> ListedShowtimes(tomorrow, None)))
     screenings.upsertSlot(film, CinemaShowing(CineworldFeltham, "other").displayName, ListedShowtimes(tomorrow, None))
     screenings.findForFilm(film).keySet shouldBe Set(polish)
   }
 
   "An unrestricted store" should "write every venue, as before" in {
-    val slots = new InMemorySlotsRepository()
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> SourceData(title = Some("The Odyssey"))))
     slots.findForFilm(film).keySet shouldBe Set(polish, foreign)
   }

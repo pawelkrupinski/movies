@@ -96,8 +96,8 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   private class FetchOnlyStorage extends tools.ConvergenceStorage {
     override val describe = "unit-spec doubles (enrichment fetch only)"
     override lazy val connection  = new services.MongoConnection(uri = None, dbName = settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional)
-    override lazy val screenings  = new services.movies.InMemoryScreeningsRepository
-    override lazy val slots       = new services.movies.InMemorySlotsRepository
+    override lazy val screenings  = new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
+    override lazy val slots       = new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     override lazy val movies      = new services.movies.InMemoryMovieRepository(
       screenings = Some(screenings), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     override lazy val readModel: services.readmodel.ReadModelReader & services.readmodel.ReadModelWriter =
@@ -132,8 +132,9 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     // initialises, which this compiler turns into a VerifyError once the body captures `leaf`.
     val wiring = new ArchiveReplayWiring(Country.UnitedStates, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
       fixtureTree, settings.FixtureRoot.RepositoryRelative, None, Env.of("KINOWO_FLICKS_US_PACE_MS" -> "40"), None,
-      new JsonBodies, wall) {
+      new JsonBodies) {
       override protected def realHttpLeaf: HttpFetch = leaf
+      override protected def pacingClock: java.time.Clock = wall
       override protected def pacingSleep: Long => Unit = ms => { waits.add(ms); wall.advance(java.time.Duration.ofMillis(ms)) }
     }
     (1 to 10).foreach(i => wiring.httpFetch.get(s"https://www.flicks.us/movie/paced-$i/"))

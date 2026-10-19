@@ -90,8 +90,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   // Production's storage shape: showtimes in `screenings`, venue slots in `movie_slots`.
   private def world(s: Scenario, scopedBetweenWhole: Int) =
-    new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer), venues, clock, s.resolve, s.details,
+    new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+      slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer), venues, clock, s.resolve, s.details,
       scopedBetweenWhole = scopedBetweenWhole)
 
   /** Everything a world stores: every film's id, key, title, year and record, and every slot's showtimes. */
@@ -345,8 +345,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     // No period comes back for them: the trigger tries an unsettled projection again (`EventTrigger.retry`).
     val s = new Scenario(new Random(3))
     var broken = false
-    val w = new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer), venues, clock,
+    val w = new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+      slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer), venues, clock,
       read => if (broken) throw new IllegalStateException("model down") else s.resolve(read), details = (_, _) => None)
     venues.foreach(c => s.programme(c) = Vector.fill(3)(s.listing(c)))
     w.scrape(s.programme.toMap)

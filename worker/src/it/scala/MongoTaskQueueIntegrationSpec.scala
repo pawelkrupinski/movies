@@ -55,7 +55,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     // waiting.
     val worked = s"scrape|it-count-worked-${System.nanoTime()}"
     queue.enqueue(TaskType.ScrapeCinema, worked, submittedAt = t0)
-    val claimed = drainUntil(_.dedupKey == worked, "counter")
+    val claimed = drainUntil(_.dedupKey == worked, "counter", Instant.now())
     queue.enqueue(TaskType.ScrapeCinema, s"scrape|it-count-waiting-${System.nanoTime()}", submittedAt = t0)
 
     val counts = queue.countByState()
@@ -146,7 +146,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "claim the task once, carry its payload, and not hand it out twice" in {
     val key = s"imdb|it-claim-${System.nanoTime()}"
     queue.enqueue(TaskType.ImdbRating, key, Map("title" -> "Dune"), submittedAt = t0)
-    val claimed = drainUntil(_.dedupKey == key, "w1") // now worked_on, owned by w1
+    val claimed = drainUntil(_.dedupKey == key, "w1", Instant.now()) // now worked_on, owned by w1
     claimed.payload shouldBe Map("title" -> "Dune")
     // It's leased now, so a further claim can never hand the same task back out.
     queue.claim("w2", 5.minutes, t0).foreach(t => t.dedupKey should not be key)
@@ -156,7 +156,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val key = s"resolve-imdbid|it-amend-${System.nanoTime()}"
     queue.enqueue(TaskType.ResolveImdbId, key, Map("title" -> "Tosca"), submittedAt = t0)
     queue.amendWaiting(key, Map("retryMiss" -> "true")) shouldBe true
-    val claimed = drainUntil(_.dedupKey == key, "w1")
+    val claimed = drainUntil(_.dedupKey == key, "w1", Instant.now())
     claimed.payload shouldBe Map("title" -> "Tosca", "retryMiss" -> "true")
     queue.amendWaiting(key, Map("force" -> "true")) shouldBe false
     queue.complete(claimed.id, "w1")
@@ -165,7 +165,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "remove on complete only for the holder, and allow re-enqueue after" in {
     val key = s"scrape|it-complete-${System.nanoTime()}"
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0)
-    val task = drainUntil(_.dedupKey == key, "w1")
+    val task = drainUntil(_.dedupKey == key, "w1", Instant.now())
     queue.complete(task.id, "intruder") // wrong owner — no-op
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Duplicate
     queue.complete(task.id, "w1") // real owner — removes the task outright
@@ -180,13 +180,13 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     drainUntil(_.dedupKey == key, "w1", lease = 1.millis, now = t0)
     queue.reapExpiredLeases(t0.plusSeconds(1)) should be >= 1
     // Back to waiting → claimable again.
-    drainUntil(_.dedupKey == key, "w2").dedupKey shouldBe key
+    drainUntil(_.dedupKey == key, "w2", Instant.now()).dedupKey shouldBe key
   }
 
   it should "expose a monitor snapshot listing live active tasks with their state" in {
     val workKey = s"imdb|it-mon-work-${System.nanoTime()}"
     queue.enqueue(TaskType.ImdbRating, workKey, Map("title" -> "Heat"), submittedAt = t0)
-    val worked = drainUntil(_.dedupKey == workKey, "mon-w1") // workKey → worked_on, owned by mon-w1
+    val worked = drainUntil(_.dedupKey == workKey, "mon-w1", Instant.now()) // workKey → worked_on, owned by mon-w1
     // Enqueue the waiting task only AFTER draining, with the newest submittedAt,
     // so `drainUntil` (which leases every task it passes) can never claim it.
     val waitKey = s"scrape|it-mon-wait-${System.nanoTime()}"
@@ -222,7 +222,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       notBefore = Some(Instant.now().plusSeconds(3600)))
     val workKey = s"imdb|it-mon-order-work-${System.nanoTime()}"
     queue.enqueue(TaskType.ImdbRating, workKey, submittedAt = t0.plusSeconds(60))
-    drainUntil(_.dedupKey == workKey, "mon-order-w1")
+    drainUntil(_.dedupKey == workKey, "mon-order-w1", Instant.now())
 
     val listed = queue.monitor(500).active
       .map(t => (t.dedupKey, t.state))
@@ -277,8 +277,8 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   // Claim repeatedly until the task matching `p` is handed out (other tests'
   // leftovers may be claimed first; harmless — they just lease and stay).
-  private def drainUntil(p: services.tasks.Task => Boolean, worker: String, lease: FiniteDuration = 5.minutes,
-                         now: Instant = Instant.now()) = {
+  private def drainUntil(p: services.tasks.Task => Boolean, worker: String, now: Instant,
+                         lease: FiniteDuration = 5.minutes) = {
     var found: Option[services.tasks.Task] = None
     var tries = 0
     while (found.isEmpty && tries < 50) {

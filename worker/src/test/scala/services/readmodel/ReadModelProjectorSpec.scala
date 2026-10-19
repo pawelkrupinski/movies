@@ -602,8 +602,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // slice reached it. So the projector attaches as its boot reads begin, holds what arrives
   // while they run, and projects it as soon as they are done.
   "the boot reads" should "leave the projector attached to the stream, so a change landing after them is projected" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
       cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
@@ -625,8 +625,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
     // The scrape lands just after the heal's scan has read Foo — as on the US, a second before the watch.
     val landed = new java.util.concurrent.atomic.AtomicBoolean(false)
-    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-        slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer) {
+    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+        slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer) {
       override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
         val complete = super.foreachRecordWithSlots(f)
         if (landed.compareAndSet(false, true))
@@ -653,8 +653,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val record  = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00")))))
     val deleted = new java.util.concurrent.atomic.AtomicBoolean(false)
-    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-        slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer) {
+    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+        slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer) {
       override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
         val complete = super.foreachRecordWithSlots(f)
         if (deleted.compareAndSet(false, true)) repository.delete("Foo", Some(2024))
@@ -1095,8 +1095,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // 2026-09-08). A sweep that finds nothing to write must not ask again at the same row state.
   "the orphan prune" should "stop re-projecting a row whose only absent venue is a spent slot" in {
     // The SPLIT storage production runs, so the sweep's scan carries slots without showtimes.
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
     // One venue screening it, one venue whose showtimes are all gone: the second projects no
@@ -1127,8 +1127,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // Found by the convergence legs' fixpoint pass: 13 Polish rows (Janosik's spent slots)
   // re-projected on a sweep over a corpus nothing had written to.
   it should "keep its note about a spent slot across a projection that did not write that venue" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
     def film(times: Seq[Showtime]) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
@@ -1153,8 +1153,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   }
 
   it should "heal a venue it had noted as spent once a projection has written it and it goes missing" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val projector = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)
@@ -1187,8 +1187,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // ReadModelProjectionTriggerUnaccounted fired.
   "the first prune after a boot" should "not re-project a spent-slot row the boot check already found nothing to write for" in {
     val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer, clock = clock)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer, clock = clock)
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
@@ -1219,8 +1219,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // ReadModelProjectionTriggerUnaccounted counts every projection against the cursors' events.
   // Metered by pass, written or not, so the rule can tell a heal from an unmetered trigger.
   "a heal pass" should "meter every row it re-projected, including a look that wrote nothing" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     // Two rows each with a spent slot, so both read as short a venue; only Foo's card is gone.
     Seq("Foo" -> 1, "Bar" -> 2).foreach { case (title, tmdbId) =>
@@ -1268,8 +1268,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // Booted over a read model an older roster wrote: Foo's venue filed under a city this code no longer
   // files it under, Bar's venue row simply gone. No sweep runs: the captured scheduler never fires one.
   private def bootOverRefiledVenue(): (InMemoryReadModelRepository, RecordingReadModelProjectionMetrics) = {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     Seq("Foo" -> 1, "Bar" -> 2).foreach { case (title, tmdbId) =>
       repository.upsert(title, Some(2024), MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
@@ -1330,8 +1330,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   // ff17516a55e08450): no card retired, no write failed, no restart, no stream error — and
   // ReadModelHealsRecurring paged for it.
   "the orphan prune" should "not count as a heal a row whose absent venue was a spent slot, even when it wrote a pending change" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
@@ -1431,8 +1431,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
   }
 
   it should "ask again once the row itself changes" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val projector = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
     val sweeper = new ReadModelSweeper(projector.projection)

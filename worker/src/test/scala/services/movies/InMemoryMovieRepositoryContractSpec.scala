@@ -42,7 +42,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
     store.findAll().values.flatMap(_.values).map(_.size).sum
 
   "InMemoryMovieRepository.upsert" should "keep a film's screenings when the re-stitch read failed" in {
-    val store = new InMemoryScreeningsRepository
+    val store = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     // Seed through the ordinary path, so the rows land under the id and slot key production uses.
     new InMemoryMovieRepository(screenings = Some(store), normalizer = SingleCountryNormalizer.titleNormalizer).upsert(title, year, record(screened))
     showtimesIn(store) shouldBe 1
@@ -59,7 +59,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
   }
 
   it should "still write a film's screenings when the re-stitch read succeeded" in {
-    val store = new InMemoryScreeningsRepository
+    val store = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     val repository = new InMemoryMovieRepository(screenings = Some(store), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(title, year, record(screened))
 
@@ -77,7 +77,7 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
   "InMemoryMovieRepository.foreachRecordUpdatedSince" should "yield only the rows written after the instant, stitched" in {
     val clock  = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val t0     = clock.instant()
-    val store  = new InMemoryScreeningsRepository
+    val store  = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     val repository = new InMemoryMovieRepository(screenings = Some(store), clock = clock, normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert("Written First", year, record(screened))
     clock.advanceSeconds(60)
@@ -112,8 +112,8 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
   // of unresolved rows — which puts back exactly what each row held — read as 283 writes and
   // 282 re-projections per sweep that production never makes.
   it should "announce nothing when an upsert changes nothing, as Mongo writes nothing" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = SingleCountryNormalizer.titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(title, year, record(screened))
     val deliveries = new java.util.concurrent.atomic.AtomicInteger(0)
     repository.watchChanges(_ => { deliveries.incrementAndGet(); () }, _ => { deliveries.incrementAndGet(); () })
@@ -127,8 +127,8 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
   }
 
   it should "still announce a write that changed only the film's side rows" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = SingleCountryNormalizer.titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+                                                 slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert(title, year, record(screened))
     val deliveries = new java.util.concurrent.atomic.AtomicInteger(0)
     repository.watchChanges(_ => { deliveries.incrementAndGet(); () }, _ => ())
@@ -147,8 +147,8 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
   // this reason.
   "a write giving a film a tmdbId another document already holds" should
     "be refused whole, as the unique index refuses it" in {
-    val slots      = new InMemorySlotsRepository
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)), slots = Some(slots), normalizer = SingleCountryNormalizer.titleNormalizer)
     repository.upsert("First", year, record(screened)) shouldBe WriteOutcome.Written
     val second = MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](Helios -> SourceData(title = Some("Second"))))
     repository.upsert("Second", year, second) shouldBe WriteOutcome.IdentityHeld
@@ -169,16 +169,16 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers with
   // stored row OR side rows moved is derived afresh, even when the side rows were written
   // straight to their own store rather than through this repository.
   "InMemoryMovieRepository.findAll" should "hand back the row it already derived for a film nothing touched" in {
-    val repo = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-      slots = Some(new InMemorySlotsRepository), normalizer = SingleCountryNormalizer.titleNormalizer)
+    val repo = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+      slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = SingleCountryNormalizer.titleNormalizer)
     repo.upsert(title, year, record(screened))
     val first = repo.findAll().loneElement
     repo.findAll().loneElement should be theSameInstanceAs first
   }
 
   it should "re-derive a film whose side rows were written behind its back" in {
-    val screenings = new InMemoryScreeningsRepository
-    val slots      = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val repo = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots),
       normalizer = SingleCountryNormalizer.titleNormalizer)
     repo.upsert(title, year, record(screened))

@@ -17,7 +17,7 @@ import tools.contracts.FailsOnPurpose
 
 /** A [[SlotsRepository]] whose reads always fail — empty result, `complete = false`.
  *  Writes still land, so a spec can seed state and then fail only the read. */
-class UnreadableSlotsRepository extends InMemorySlotsRepository with FailsOnPurpose {
+class UnreadableSlotsRepository extends InMemorySlotsRepository(tools.SpecClock.Pinned) with FailsOnPurpose {
   override def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] = UnreadableRepositories.failed
   override def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]]     = UnreadableRepositories.failed
 }
@@ -26,7 +26,7 @@ class UnreadableSlotsRepository extends InMemorySlotsRepository with FailsOnPurp
  *  `complete = false` — while every write is delegated to `store` so a spec can seed real
  *  screenings and then fail only the read. Decorates rather than extends the in-memory
  *  store so an integration spec can fail the read in front of the REAL Mongo repository. */
-class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryScreeningsRepository)
+class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryScreeningsRepository(tools.SpecClock.Pinned))
   extends ScreeningsRepository with FailsOnPurpose {
   def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] = UnreadableRepositories.failed
   def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
@@ -70,7 +70,7 @@ object SimulatedWriteFailure {
 /** A [[SlotsRepository]] whose WRITES always fail. The mirror-image guard: `upsert` may
  *  only drop a film's embedded copy once its slots have actually landed, so a store that
  *  reports every write as failed is what proves the embedded copy is kept. */
-class UnwritableSlotsRepository extends InMemorySlotsRepository with FailsOnPurpose {
+class UnwritableSlotsRepository extends InMemorySlotsRepository(tools.SpecClock.Pinned) with FailsOnPurpose {
   override def replaceFilm(filmId: String, slots: Map[String, SourceData],
                            stored: Option[Map[String, SourceData]] = None): WriteOutcome =
     SimulatedWriteFailure(SlotsRepository.Collection, "replaceFilm")
@@ -94,7 +94,7 @@ class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRe
 /** A [[ScreeningsRepository]] whose WRITES fail. A caller that copies rows to a new id and
  *  then deletes the old ones must verify the copy landed; a Mongo transaction would not
  *  save it, since the repository catches the exception and nothing rolls back. */
-class UnwritableScreeningsRepository extends InMemoryScreeningsRepository with FailsOnPurpose {
+class UnwritableScreeningsRepository extends InMemoryScreeningsRepository(tools.SpecClock.Pinned) with FailsOnPurpose {
   /** Populate a film's rows, bypassing the write block — so a spec can set up the state a
    *  failed copy is supposed to preserve. */
   def seed(filmId: String, slots: Map[String, ListedShowtimes]): Unit = {
@@ -163,7 +163,7 @@ class ThrowingUpsertMovieRepository(metrics: RepositoryWriteMetrics,
 
 /** A [[SlotsRepository]] whose per-slot and whole-film writes THROW while `failing`, through
  *  [[RepositoryWrite]] like `MongoSlotsRepository`'s. */
-class ThrowingSlotsRepository(metrics: RepositoryWriteMetrics) extends InMemorySlotsRepository with FailsOnPurpose {
+class ThrowingSlotsRepository(metrics: RepositoryWriteMetrics) extends InMemorySlotsRepository(tools.SpecClock.Pinned) with FailsOnPurpose {
   @volatile var failing: Boolean = true
   private val log = play.api.Logger(getClass)
   private def write(op: String)(body: => WriteOutcome): WriteOutcome =

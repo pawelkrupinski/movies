@@ -131,7 +131,7 @@ trait ScreeningsRepository extends SlotKeyedRows {
  * grouping, and a change ring that fires only on a real change — all of it
  * [[InMemorySlotRows]], the store its `movie_slots` twin is built on too.
  */
-class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.time.Instant.now(),
+class InMemoryScreeningsRepository(clock: java.time.Clock,
                                    roster: VenueRoster = VenueRoster.Unrestricted) extends ScreeningsRepository {
 
   private val rows = new InMemorySlotRows[ListedShowtimes](clock)

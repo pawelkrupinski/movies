@@ -18,7 +18,7 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
   private val film = MovieRecord(data = Map(slot(Multikino, 0, 2), slot(Helios, 3)))
 
   private final class World {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository),
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)), slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)),
       normalizer = normalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
     val changed = scala.collection.mutable.ListBuffer.empty[FilmId]
@@ -127,7 +127,7 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hear a write the store refused put back as it was" in {
-    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
       slots = Some(new UnwritableSlotsRepository), normalizer = normalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
     val heard = scala.collection.mutable.ListBuffer.empty[Option[MovieRecord]]

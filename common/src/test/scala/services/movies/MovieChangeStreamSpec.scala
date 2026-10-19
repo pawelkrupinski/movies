@@ -108,7 +108,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     screeningsMetrics:   SideCollectionChangeMetrics = ScreeningsMetrics.noop,
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
-    clock:               Clock                       = Clock.systemUTC(),
+    clock:               Clock                       = _root_.tools.SpecClock.Pinned,
     decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
     resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     rereadRetryMillis:   Long                        = 20L,
@@ -273,7 +273,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // (film, venue) pairs, every one a venue missing from the site.
   it should "re-read a film and fan the upsert out when one of its movie_slots rows changes" in {
     val source = new HandFedSource
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val reread = mutable.Buffer.empty[String]
     val under  = stream(source, slots = Some(slots), reread = id => {
       reread += id
@@ -301,8 +301,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // against the cursor that delivered it.
   it should "coalesce a burst of slot changes on one film onto one re-read, shared with the screenings cursor" in {
     val source     = new HandFedSource
-    val slots      = new InMemorySlotsRepository
-    val screenings = new InMemoryScreeningsRepository
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     val slotsSeen, screeningsSeen = new RecordingSideMetrics
     val reread     = new AtomicInteger(0)
     // Hold the apply thread on the `movies` event's own re-read first, so the whole burst
@@ -345,7 +345,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   private def spacedBurst(debounce: Option[MovieChangeStream.Debounce], rows: Int, spacing: Int): Int = {
     val clock  = new tools.MutableClock(Instant.parse("2026-01-01T00:00:00Z"))
     val timer  = new tools.ManualScheduler(clock)
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val reread = new AtomicInteger(0)
     val under  = stream(new HandFedSource, slots = Some(slots), debounce = debounce, clock = clock, debounceScheduler = Some(timer),
       reread = id => { if (id == "film|2024") reread.incrementAndGet(); Some(recordOf(id)) })
@@ -379,7 +379,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   }
 
   it should "apply a film still held by its debounce when it closes, not drop it" in {
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val reread = new AtomicInteger(0)
     val hour   = scala.concurrent.duration.Duration(1, "hour")
     val under  = stream(new HandFedSource, slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)),
@@ -394,7 +394,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   }
 
   it should "apply what it holds at once when a caller releases it" in {
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val reread = new AtomicInteger(0)
     val hour   = scala.concurrent.duration.Duration(1, "hour")
     val under  = stream(new HandFedSource, slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)),
@@ -416,7 +416,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // debounce shipped (2026-09-30). The hold is not apply LAG, though: that gauge still starts at the
   // hand-off, so its alerts keep their thresholds.
   it should "count a re-read its debounce still holds as not yet applied, until it runs" in {
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val hour   = scala.concurrent.duration.Duration(1, "hour")
     val under  = stream(new HandFedSource, slots = Some(slots), debounce = Some(MovieChangeStream.Debounce(hour, hour)))
     val handle = under.watch(_ => (), _ => ())
@@ -443,12 +443,12 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // listener can take it — a wide film's other venues are never read — and whole otherwise.
   private final class VenueWorld(declines: Boolean = false, venueRead: Boolean = true) {
     @volatile var ring: (String, () => Unit) => Unit = null
-    val screenings = new InMemoryScreeningsRepository {
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned) {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) = {
         ring = onChange; Some(new AutoCloseable { def close(): Unit = () }) }
     }
     @volatile var slotRing: (String, () => Unit) => Unit = null
-    val slots = new InMemorySlotsRepository {
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned) {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) = {
         slotRing = onChange; Some(new AutoCloseable { def close(): Unit = () }) }
     }
@@ -533,7 +533,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // resumed after a change that was never applied, and lost it.
   it should "keep its resume position before an event still held, even once a later event is applied" in {
     val source = new HandFedSource
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
     val hour   = scala.concurrent.duration.Duration(1, "hour")
     val quiet  = mutable.Buffer.empty[String]
@@ -562,8 +562,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // covers itself and everything the side burst did in one fresh read.
   it should "coalesce a same-film side-collection burst onto an already-queued movies apply" in {
     val source     = new HandFedSource
-    val slots      = new InMemorySlotsRepository
-    val screenings = new InMemoryScreeningsRepository
+    val slots      = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     val slotsSeen, screeningsSeen = new RecordingSideMetrics
     val reread     = new AtomicInteger(0)
     // Hold the SHARED single-threaded apply executor on an UNRELATED film's re-read first —
@@ -675,11 +675,11 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "close the side cursors and the movies subscription when the stream is closed" in {
     val source = new HandFedSource
     val closedSides = mutable.Buffer.empty[String]
-    val slots = new InMemorySlotsRepository {
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned) {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
         Some(new AutoCloseable { override def close(): Unit = closedSides += "slots" })
     }
-    val screenings = new InMemoryScreeningsRepository {
+    val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned) {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
         Some(new AutoCloseable { override def close(): Unit = closedSides += "screenings" })
     }
@@ -859,7 +859,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "not acknowledge a side-collection event whose re-read failed" in {
     val source = new HandFedSource
     @volatile var ring: (String, () => Unit) => Unit = null
-    val slots = new InMemorySlotsRepository {
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned) {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = {
         ring = onChange
         Some(new AutoCloseable { override def close(): Unit = () })
@@ -934,7 +934,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "acknowledge a side-collection event only once an apply covering it has run" in {
     val source = new HandFedSource
     @volatile var ring: (String, () => Unit) => Unit = null
-    val slots = new InMemorySlotsRepository {
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned) {
       override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = {
         ring = onChange
         Some(new AutoCloseable { override def close(): Unit = () })
@@ -969,7 +969,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "age each cursor from its last delivered event, growing while silent and reset by a delivery" in {
     import ChangeStreamLiveness.{Movies, Slots}
     val source = new HandFedSource
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val clock  = new tools.MutableClock(Instant.parse("2026-09-07T10:00:00Z"))
     val opened = clock.instant()
     val under  = stream(source, slots = Some(slots), clock = clock,
@@ -1010,7 +1010,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "count each cursor's queued, unapplied events and age the oldest until its apply runs" in {
     import ChangeStreamLiveness.{Movies, Slots}
     val source = new HandFedSource
-    val slots  = new InMemorySlotsRepository
+    val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val clock  = new tools.MutableClock(Instant.parse("2026-09-23T10:00:00Z"))
     val gate   = new CountDownLatch(1)
     val under  = stream(source, slots = Some(slots), clock = clock,

@@ -58,9 +58,9 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
    *  `movie_slots`. The corroborating read has to stitch both back, so a fake wired
    *  without them cannot express what the guard is actually deciding. */
   private def splitRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) = {
-    val slots = new InMemorySlotsRepository
+    val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
     val repository = new InMemoryMovieRepository(seed,
-      screenings = Some(new InMemoryScreeningsRepository), slots = Some(slots), normalizer = titleNormalizer)
+      screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)), slots = Some(slots), normalizer = titleNormalizer)
     (repository, slots)
   }
 

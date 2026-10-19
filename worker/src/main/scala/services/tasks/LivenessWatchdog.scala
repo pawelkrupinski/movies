@@ -41,7 +41,7 @@ class LivenessWatchdog(
   stalenessThreshold: LivenessStaleAfter,
   onWedged:           () => Unit,
   checkEvery:         LivenessWatchdog.CheckInterval = LivenessWatchdog.CheckInterval(1.minute),
-  now:                () => Long     = () => System.currentTimeMillis()
+  now:                () => Long
 ) extends Stoppable with Logging {
 
   private val fired = new AtomicBoolean(false)

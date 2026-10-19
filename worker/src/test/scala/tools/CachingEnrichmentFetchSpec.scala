@@ -272,7 +272,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     fill(fetch, 10)
     store.attempts shouldBe EnrichmentCache.MaxConsecutiveWriteFailures
 
-    now += EnrichmentCache.WriteSuspension.toMillis + 1
+    now += EnrichmentCache.WriteSuspension.toNanos + 1
     fill(fetch, 10, round = 2)
 
     withClue("one probe after the cooldown, then suspended again: ") {

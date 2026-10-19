@@ -130,7 +130,7 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
   // doesn't own.
   "reStitch" should "re-inject a stripped slot's showtimes from screenings (no fold data loss)" in {
     val real = Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00"))
-    val scr  = new InMemoryScreeningsRepository()
+    val scr  = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)
     scr.upsertSlot("film1", src.displayName, ListedShowtimes(real, None))
     val restitched = ScreeningsSplit.reStitch(scr, "film1", Map(src -> stripped(real)))
     restitched(src).showtimes shouldBe real
@@ -140,6 +140,6 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
 
   it should "leave slots with real showtimes untouched" in {
     val fresh = SourceData(showtimes = Seq(st("2026-06-11T10:00")))
-    ScreeningsSplit.reStitch(new InMemoryScreeningsRepository(), "film1", Map(src -> fresh)) shouldBe Map(src -> fresh)
+    ScreeningsSplit.reStitch(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned), "film1", Map(src -> fresh)) shouldBe Map(src -> fresh)
   }
 }

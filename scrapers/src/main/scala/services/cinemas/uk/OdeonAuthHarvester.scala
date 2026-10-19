@@ -41,7 +41,7 @@ import scala.util.matching.Regex
  */
 class OdeonAuthHarvester(
   fetchPage:     () => Option[String],
-  now:           () => Long = () => System.currentTimeMillis(),
+  now:           () => Long,
   refreshMargin: FiniteDuration = 2.hours
 ) extends Logging {
   import OdeonAuthHarvester._
