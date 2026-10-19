@@ -56,14 +56,12 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] def filmLike(accepted: Accepted): Verdict = {
     val scored = accepted._1
     val listing = scored.listing
-    if (scored.candidate.tmdbId == 1419814)
-      java.nio.file.Files.writeString(java.nio.file.Path.of("/private/tmp/claude-501/-Users-pawel-projects-movies/844027a1-41de-4850-9b2d-0708cdfb57c2/scratchpad/fn/debug.txt"),
-        s"title=${listing.title} raw=${listing.rawTitle} ev=${listing.eventWords} other=${listing.nonEventWords} film=${scored.candidate.film.titles}\n",
-        java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)
     // V2: an event-worded billing whose record shares none of its other words — found by the event's words alone
     // V3: V2 alone (V1's NonFilmEvents reading dropped), and only where the billing has words beside the event's
     val byEventWordsAlone = listing.eventWords.nonEmpty && listing.nonEventWords.nonEmpty &&
-      !scored.candidate.film.titles.exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))
+      // V3d: the record's own and original title only — an alternative title TMDB files under the gig's own billing
+      // (1419814 carries "Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer") is the reused record's echo, not its name
+      !(Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))
     Option.when(byEventWordsAlone)(s"its record shares only the event's words (${listing.eventWords.mkString(", ")})")
       .fold[Verdict](Right(accepted)) { why =>
       Left(Acceptance.Refused("the billing reads as no film", Some(scored.candidate.tmdbId), s"${Acceptance.named(scored)}: $why"))
