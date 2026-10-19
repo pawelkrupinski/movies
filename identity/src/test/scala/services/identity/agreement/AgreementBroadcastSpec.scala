@@ -246,6 +246,25 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     stage.wantedRecords shouldBe empty
   }
 
+  // prod UK 2026-10-15 23:49: the boot's first projection after a deploy lost "RBO Cinema Season 2026-27: Macbeth" at 90
+  // venues and the next, 40 s later, took the Met's record back. The stage's re-reads are its process's, so at every boot it
+  // waited on each year-only record of the work again — the Royal Opera House's 2018 "Macbeth", which no 2026 screening
+  // can be the broadcast of — and the take fell to the model's none until the re-read was filed
+  "a stored record of the billed work holding only a year no screening day's broadcast falls in" should "not hold the take back" in {
+    val roh2018 = FilmTable.F(524667, "Royal Opera House: Macbeth", 2018, "", 0, popularity = 1.0, released = Some(LocalDate.of(2018, 4, 4)))
+    val withOld = new FilmTable(Seq(metSamson, metMacbeth, metFanciulla, rboSamson, film1949, roh2018), normalizer)
+    val listing = rbo("Macbeth", Some("Louisa Proske"), "2026-10-20")
+    val stored  = new YearOnlyRecords(withOld, Set(roh2018.id))
+    val stage   = new AgreementStage(silentFamilies + (VoterFamily.RottenTomatoes -> new Productions(VoterFamily.RottenTomatoes, rtProductions)),
+      stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored))
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.Vetoed, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val taken = stage.apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
+    withClue(taken.render)((taken.film, taken.basis) shouldBe ((Some(metMacbeth.id), ResolverDecision.Basis.Broadcast)))
+    stage.wantedRecords shouldBe empty
+  }
+
   // prod UK 2026-10-18: Theatr Gwaun Fishguard's bare "Romeo and Juliet" on 25 May 2027, the RBO 2026/27 relay's day (its
   // synopsis: "The Royal Ballet … Approximate runtime: 2 hours and 50 minutes"), stayed the model's pooled take of
   // Zeffirelli's 1968 film: the relay's stored record held its year alone, and a correction waited on no record's day

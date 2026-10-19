@@ -33,7 +33,8 @@ object Broadcast {
    *
    *  `Left`, the take WAITING, where a record it would weigh but for its day — every listing's billing fits it, and it
    *  states no release day — has a day not known yet (`undated`: a stored record filed when records kept only TMDB's
-   *  year): those records, since any one might be the production broadcast on the cluster's day. A cluster one of whose
+   *  year): those records, since any one might be the production broadcast on the cluster's day — none whose year no
+   *  screening day's [[RelayRunDays]] reach back to, which no day could make the cluster's. A cluster one of whose
    *  listings' days could not be read ([[ScreeningDays.Unknown]]) waits too, asking no record: `Left` none; and so does
    *  one whose `productions` are not all answered.
    *
@@ -50,7 +51,11 @@ object Broadcast {
       credits match {
         case Answer.Unknown => Left(Nil)
         case Answer.Known(credited) =>
-          val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && undated(id) => id }.distinct
+          // a record dating a year no screening day's relay run reaches cannot be the broadcast, whatever its day: never
+          // waited on (UK "RBO Cinema Season 2026-27: Macbeth" lost the Met's record at every worker boot, the stage's
+          // re-reads being its process's, waiting on the Royal Opera House's 2018 "Macbeth" again)
+          def airable(film: Film) = film.year.forall(year => days.days.exists(day => year <= day.getYear && year >= day.minusDays(RelayRunDays).getYear))
+          val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && airable(film) && undated(id) => id }.distinct
           if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records, credited))
       }
     }
