@@ -31,6 +31,10 @@ active=project/target/active.json
 [ -f "\$active" ] || { mkdir -p project/target; echo "{\\"uri\\":\\"local://\$(pwd -P)/sock\\"}" > "\$active"; }
 server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
 printf "%s|%s\\n" "\$server" "\$(cat "\$server/worker/src/s" 2>/dev/null)" >> "$scratch/sbt-sources"
+# a slow command: whether the server named was still running as it ended
+if [ -n "\${STUB_SLOW_SERVER:-}" ]; then
+  sleep 3; kill -0 "\$STUB_SLOW_SERVER" 2>/dev/null && echo running > "$scratch/slow" || echo stopped > "$scratch/slow"
+fi
 # a long command: its call's last-used mark aged past the idle timeout mid-run, then whether it is fresh again
 if [ -n "\${STUB_AGE_USED:-}" ]; then
   touch -t 202001010000 "\$STUB_AGE_USED"; sleep 3
@@ -39,6 +43,9 @@ fi
 STUB
 chmod +x "$scratch/bin/sbt"
 export PATH="$scratch/bin:$PATH"
+
+# fake_server's pid once it carries the server's command line (the background shell has exec'd)
+await_server() { for _ in $(seq 1 100); do grep -q -- --detach-stdio <<<"$(ps -o args= -p "$1" 2>/dev/null)" && return; sleep 0.1; done; }
 
 origin="$scratch/origin.git"; repo="$scratch/repo"
 scratch_repo "$origin" --bare
@@ -138,6 +145,22 @@ sleep 0.3
 check "a call passing other KINOWO_* settings restarts the server with them" "stopped yes" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "settings differ" <<<"$out" && echo yes || echo "no: $out")"
 kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
+check "...and records when, why and by whom in the stops log" "1" \
+  "$(grep -cE "^[0-9-]{10} [0-9:]{8} server pid=$server checkout=$scratch/other why=\"this call's KINOWO_.* settings differ.*\" by=[0-9]+:.*sbt-warm compile" "$KINOWO_SBT_WARM_STATE/stops.log" 2>/dev/null)"
+# ...but never under another call's running command: it waits for that command to end (a restart killed the server under
+# the agent's own test run, "sbt server disconnected", whenever a second call passed other settings)
+(cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
+server=$!; fakes+=("$server"); await_server "$server"
+(cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)  # its settings, kept
+rm -f "$scratch/slow"
+(cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora STUB_SLOW_SERVER=$server "$REPO_ROOT/scripts/sbt-warm" test >/dev/null 2>&1) &
+slow=$!
+sleep 1
+out=$(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
+wait "$slow"
+check "a settings restart waits for another call's running command to end" "running yes" \
+  "$(cat "$scratch/slow" 2>/dev/null) $(grep -q "waiting for it to end" <<<"$out" && echo yes || echo "no: $out")"
+kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)  # back to the default settings
 
 # 2026-10-15: a seed ran every call (a module that never gets Zinc state) and removed active.json under the LIVE server,
@@ -159,8 +182,6 @@ check "several servers in one checkout are all stopped" "stopped stopped" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "$second" 2>/dev/null && echo running || echo stopped)"
 kill "$server" "$second" 2>/dev/null
 
-# fake_server's pid once it carries the server's command line (the background shell has exec'd)
-await_server() { for _ in $(seq 1 100); do grep -q -- --detach-stdio <<<"$(ps -o args= -p "$1" 2>/dev/null)" && return; sleep 0.1; done; }
 
 # two calls finding no server: one starts it, the other waits for it (the stub's call is slow and logs its span)
 scratch_git "$repo" worktree add -q -b locked "$scratch/locked" origin/main
@@ -287,7 +308,8 @@ counted_key="$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/counted" | shasum | 
 one_slot="$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock"
 fake_server "$scratch/counted"; server=$!; await_server "$server"
 for _ in $(seq 1 50); do [ "$(spec_lock_state "$one_slot")" = free ] && break; sleep 0.1; done  # earlier keepers done
-(cd "$scratch/counted" && KINOWO_JVM_SLOTS=1 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+echo "2026-10-19 15:14:01 REAP pid=$server ppid=1 rule=hog age=1h42m" > "$scratch/jvm-reaper.log"
+(cd "$scratch/counted" && KINOWO_JVM_SLOTS=1 KINOWO_JVM_REAPER_LOG="$scratch/jvm-reaper.log" "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 keeper=$(cat "$counted_key.keep.flock" 2>/dev/null)
 check "a live server holds a JVM slot after its call has ended: its keeper's" "held ${keeper:-none} alive" \
   "$(spec_lock_state "$one_slot") $(cat "$one_slot") $(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone)"
@@ -298,6 +320,11 @@ kill "$server"; wait "$server" 2>/dev/null
 for _ in $(seq 1 50); do kill -0 "${keeper:-0}" 2>/dev/null || break; sleep 0.1; done
 check "...and once the server is gone, its keeper ends and the slot is free" "gone free" \
   "$(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$one_slot")"
+# 2026-10-19: two kept servers vanished between calls, nothing logged anywhere sbt-warm wrote (the JVM reaper had killed
+# one). A server its keeper saw end without sbt-warm stopping it is a "vanished" line in the stops log, naming what
+# else logged its end.
+check "...a server ended by something else is logged as vanished, with the JVM reaper's kill of it" "1" \
+  "$(grep -c "vanished pid=$server checkout=$scratch/counted why=\"ended without sbt-warm stopping it; .*REAP pid=$server .*rule=hog" "$KINOWO_SBT_WARM_STATE/stops.log" 2>/dev/null)"
 
 # IDLE EXIT: the keeper stops a server idle past KINOWO_SBT_WARM_IDLE_MINUTES, freeing its heap and slot -- but never
 # under a running command, even one whose last-used mark has aged past the timeout (the heartbeat slowed here to 100 s)

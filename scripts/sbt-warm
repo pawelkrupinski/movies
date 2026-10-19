@@ -50,7 +50,12 @@
 # agent's test may queue, and an agent's edit-test loop calls far more often than that. It never stops a server under a
 # running command: every call holds $key.busy's lock SHARED for its life, and the keeper stops the server only holding
 # it EXCLUSIVELY (so a call arriving meanwhile waits for the stop, then starts a fresh server, counted); the last-used
-# mark is also kept fresh by a heartbeat while a command runs. It stops the server when the checkout is removed, too.
+# mark is also kept fresh by a heartbeat while a command runs. It stops the server when the checkout is removed, too. A
+# call whose KINOWO_* settings differ from the server's restarts it only once no other call runs a command in it.
+#
+# EVERY STOP IS LOGGED in $State/stops.log -- when, which server or keeper, the checkout, why, and the stopping process
+# with its parents -- and a server its keeper saw end without one (a crash, the JVM reaper, a stray kill) is a "vanished"
+# line there, naming the reaper's kill or a crash file when one does. Each keeper's own log is $State/<key>.log.
 #
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
 # one classes dir delete each other's classes (the pre-push hook steps around a live one). Use this script, or --stop.
@@ -63,7 +68,7 @@ IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-10}
 # shellcheck source=scripts/jvm-gate.sh
 . "$(dirname "$0")/jvm-gate.sh"
 IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
-log() { echo "[sbt-warm] $*" >&2; }
+log() { echo "[sbt-warm]${LogStamp:+ $(date '+%F %T')} $*" >&2; }
 Self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
@@ -89,6 +94,33 @@ server_pid() { # <root>
   echo "$pids" | tail -1
 }
 
+# THE STOPS LOG: every server and keeper this script stops is a line of $State/stops.log -- when, which, the checkout, why,
+# and by whom (the stopping process and its parents) -- and a server its keeper saw end WITHOUT one is a "vanished" line
+# there, naming the JVM reaper's kill (~/Library/Logs/jvm-reaper.log) or a crash file when either names it. Two kept
+# servers vanished on 2026-10-19 with nothing logged anywhere sbt-warm wrote; the next one says how.
+StopsLog="$State/stops.log"
+stopper() { # -> "pid:args <- ppid:args <- ..." for this process and two parents
+  local p=$$ out="" _
+  for _ in 1 2 3; do
+    out="$out${out:+ <- }$p:$(ps -o args= -p "$p" 2>/dev/null | cut -c1-100)"
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+    [ -n "$p" ] && [ "$p" -gt 1 ] || break
+  done
+  echo "$out"
+}
+record_stop() { # <server|keeper|vanished> <pid> <checkout> <why>
+  printf '%s %s pid=%s checkout=%s why="%s" by=%s\n' "$(date '+%F %T')" "$1" "$2" "$3" "$4" "$(stopper)" >> "$StopsLog"
+  [ "$(wc -l < "$StopsLog")" -le 5000 ] || { tail -n 2000 "$StopsLog" > "$StopsLog.tmp" && mv "$StopsLog.tmp" "$StopsLog"; }
+  log "$([ "$1" = vanished ] && echo "server pid $2 of $3 vanished" || echo "stopped the $1 of $3 (pid $2)"): $4"
+}
+# Stops the server <pid> of <checkout> (SIGTERM; with "-9" first, SIGKILL), recorded
+stop_server() { # [-9] <pid> <checkout> <why>
+  local signal=TERM
+  [ "$1" = -9 ] && { signal=KILL; shift; }
+  kill -"$signal" "$1" 2>/dev/null || return 1
+  record_stop server "$1" "$2" "$3 (SIG$signal)"
+}
+
 # At most ONE server per checkout. 2026-10-15: 69 leaked servers, ~40 in one worktree — so when a checkout has several,
 # they are all stopped and one started afresh.
 dedupe() { # <root>
@@ -96,17 +128,17 @@ dedupe() { # <root>
   pids=$(server_pids "$1")
   [ "$(echo "$pids" | grep -c .)" -gt 1 ] || return 0
   log "$(echo "$pids" | grep -c .) servers run in $1 ($(echo $pids)): stopping all, starting one"
-  for pid in $pids; do kill "$pid" 2>/dev/null; done
+  for pid in $pids; do stop_server "$pid" "$1" "one of $(echo "$pids" | grep -c .) servers in one checkout"; done
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$1")" ] && break; sleep 1; done
-  for pid in $(server_pids "$1"); do kill -9 "$pid" 2>/dev/null; done
+  for pid in $(server_pids "$1"); do stop_server -9 "$pid" "$1" "one of several servers in one checkout, alive 10 s after SIGTERM"; done
   rm -f "$1/project/target/active.json"
 }
 
 # Stops <root>'s own servers, by pid: never `sbt --client shutdown`, which reaches whichever server
 # project/target/active.json names (a seed's source: another worktree's live run) and starts one when none answers.
-stop_servers_of() { # <root>
+stop_servers_of() { # <root> <why>
   local pid stopped=1
-  for pid in $(server_pids "$1"); do kill "$pid" 2>/dev/null && { log "stopped the server of $1 (pid $pid)"; stopped=0; }; done
+  for pid in $(server_pids "$1"); do stop_server "$pid" "$1" "$2" && stopped=0; done
   return "$stopped"
 }
 
@@ -115,23 +147,23 @@ stop_servers_of() { # <root>
 # its whole process group (the keeper and its poll's sleep), and waits for the lock -- so its JVM slot is free on return.
 # A keeper left running after its server was stopped held the slot the next call waited for, and that call, holding the
 # busy lock the keeper waited on to end, kept it alive: a deadlock (2026-10-19).
-stop_keeper_of() { # <state prefix>
+stop_keeper_of() { # <state prefix> <why>
   local keep=$1.keep.flock pid
   lock_busy "$keep" || return 0
   pid=$(cat "$keep" 2>/dev/null)
   [ -n "$pid" ] && ps -o args= -p "$pid" 2>/dev/null | grep -q -- 'sbt-warm --keep' || return 0
   kill -TERM -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null
   for _ in $(seq 1 100); do lock_busy "$keep" || break; sleep 0.1; done
-  log "stopped the keeper pid $pid"
+  record_stop keeper "$pid" "$(cat "$1.root" 2>/dev/null || echo "?")" "$2"
 }
 
 # Forgets a checkout's server: its keeper and servers stopped (stop_servers_of), its records removed -- but never the lock
 # files: a keeper alive past a deleted $key.keep.flock was invisible to the next call, which started a second keeper for
 # the same server (and waited for the slot the first held). The keeper's log stays, for the next vanishing's diagnosis.
-stop_checkout() { # <root> <state prefix>
+stop_checkout() { # <root> <state prefix> <why>
   local stopped=1
-  stop_keeper_of "$2"
-  stop_servers_of "$1" && stopped=0
+  stop_keeper_of "$2" "$3"
+  stop_servers_of "$1" "$3" && stopped=0
   rm -f "$2".root "$2".pid "$2".used "$2".env "$2".build
   return "$stopped"
 }
@@ -153,11 +185,10 @@ reap() { # [idle]
     r=$(cat "$f")
     if [ ! -d "$r" ]; then
       pid=$(cat "${f%.root}.pid" 2>/dev/null || true)
-      [ -n "$pid" ] && server_of_removed_checkout "$pid" && kill "$pid" 2>/dev/null \
-        && log "stopped the server of the removed checkout $r (pid $pid)"
+      [ -n "$pid" ] && server_of_removed_checkout "$pid" && stop_server "$pid" "$r" "its checkout was removed (reap)"
       rm -f "${f%.root}".*
     elif [ "${1:-}" = idle ] && [ -n "$(find "${f%.root}.used" -mmin +"$IdleMinutes" 2>/dev/null)" ]; then
-      stop_checkout "$(cd "$r" && pwd -P)" "${f%.root}" || true
+      stop_checkout "$(cd "$r" && pwd -P)" "${f%.root}" "idle past $IdleMinutes minutes (--reap)" || true
     fi
   done
 }
@@ -219,28 +250,41 @@ seed() {
 # The build definition's digest: a server started on another one runs `reload` first.
 build_digest() { (cd "$root" && cat build.sbt project/*.sbt project/*.scala project/build.properties 2>/dev/null) | shasum | cut -c1-16; }
 
+# The server <pid> its keeper watched has ended: unless this script stopped it (the stops log names it), a "vanished" line,
+# with what else might know -- the JVM reaper's log, a crash file, a heap dump
+server_vanished() { # <pid>
+  local found
+  tail -n 200 "$StopsLog" 2>/dev/null | grep -q " pid=$1 checkout=$root " && return 0
+  found=$(grep " pid=$1 " "${KINOWO_JVM_REAPER_LOG:-$HOME/Library/Logs/jvm-reaper.log}" 2>/dev/null | tail -2 | tr '\n' ' ')
+  found="$found$(ls "$root"/hs_err_pid"$1".log "$root"/target/oom-* "$HOME"/hs_err_pid"$1".log 2>/dev/null | tr '\n' ' ')"
+  record_stop vanished "$1" "$root" "ended without sbt-warm stopping it; ${found:-no reaper kill, crash file or heap dump names it}"
+}
+
 # THE KEEPER (--keep, run in the checkout, holding its slot on descriptor 7 and $key.keep.flock on 5): see the header.
 keep() {
   local poll=${KINOWO_SBT_WARM_KEEPER_POLL:-10} grace=${KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS:-60} absent=0 pid="" p
   local busy="$State/$key.busy"
+  LogStamp=1   # its log, $key.log, is read hours later
+  trap 'log "keeper pid $$ of $root: terminated (SIGTERM)"; exit 0' TERM
   log "keeper of $root: pid $$, $(jvm_slot_riding && echo "holding JVM slot ${KINOWO_JVM_SLOT_HELD##*/}" || echo "no JVM slot yet")"
   while :; do
     if [ ! -d "$root" ]; then
-      [ -n "$pid" ] && server_of_removed_checkout "$pid" && kill "$pid" 2>/dev/null && log "stopped the server of the removed checkout $root (pid $pid)"
+      [ -n "$pid" ] && server_of_removed_checkout "$pid" && stop_server "$pid" "$root" "its checkout was removed (keeper)"
       exit 0
     fi
     if jvm_slot_take_if_free; then log "took JVM slot ${JVM_SLOT##*/}"; fi
-    if p=$(server_pid "$root"); then
+    p=$(server_pid "$root") || p=""
+    [ -n "$pid" ] && [ "$p" != "$pid" ] && ! kill -0 "$pid" 2> /dev/null && server_vanished "$pid"
+    if [ -n "$p" ]; then
       pid=$p; absent=0
       [ "$(cat "$State/$key.pid" 2>/dev/null)" = "$pid" ] || echo "$pid" > "$State/$key.pid"
       # aged, then aged STILL once no call holds $busy: a call ending between the two refreshed the mark and let go of
       # the lock, and the server it just used was stopped under the next one (2026-10-19, under load)
       if [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ] && lock_take 4 "$busy" &&
         { [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ] || { lock_give 4 "$busy"; false; }; }; then
-        log "server pid $pid idle for $IdleMinutes minutes: stopping it"
-        kill "$pid" 2>/dev/null
+        stop_server "$pid" "$root" "idle for $IdleMinutes minutes (keeper)"
         for _ in $(seq 1 30); do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
-        for p in $(server_pids "$root"); do kill -9 "$p" 2>/dev/null; done
+        for p in $(server_pids "$root"); do stop_server -9 "$p" "$root" "idle, alive 30 s after SIGTERM (keeper)"; done
         exit 0
       fi
     else
@@ -260,7 +304,7 @@ case "${1:-}" in
       log "refusing --stop in the root checkout ($root): cd into your own worktree first, or --stop --root to stop the root's server"
       exit 2
     fi
-    stop_checkout "$root" "$State/$key" || log "no server of $root to stop"; exit 0 ;;
+    stop_checkout "$root" "$State/$key" "--stop" || log "no server of $root to stop"; exit 0 ;;
   --status)
     pid=$(server_pid "$root") && echo "this checkout ($root): server pid $pid" || echo "this checkout ($root): no server"
     for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), keeper $(lock_busy "${f%.root}.keep.flock" && cat "${f%.root}.keep.flock" || echo none), last used $(date -r "${f%.root}.used" '+%Y-%m-%d %H:%M' 2>/dev/null))"; done
@@ -325,9 +369,16 @@ fi
 settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' | sort | shasum | cut -c1-16)
 if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" != "$settings" ]; then
   log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
-  stop_servers_of "$root" >/dev/null
+  # never under another call's running command (it holds $key.busy shared, as this one does): this call waits for the
+  # lock EXCLUSIVELY -- every other call ended -- then restarts the server and shares it again
+  if ! python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then
+    log "another call is running a command in server pid $pid: waiting for it to end before restarting it"
+    python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
+  fi
+  stop_servers_of "$root" "this call's KINOWO_* settings differ from the ones it started with"
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
   rm -f "$root/project/target/active.json"
+  python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
   fresh=1
 fi
 [ "$fresh" = 1 ] && echo "$settings" > "$State/$key.env"
