@@ -868,7 +868,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {
     IdentityMeasures.FactMeasures shouldBe Set("originalTitle", "year.delta", "year.distance", "titleYear.delta", "season.delta",
-      "director", "runtime.delta", "country")
+      "director", "runtime.delta", "country", "cast")
     val film = Film("The Last Whale Singer", year = Some(2025), directors = Some(Seq("Reza Memari")))
     // A title and nothing else: no fact to compare, whatever the titles' relation.
     IdentityMeasures.comparesAFact(IdentityMeasures.ListingFilm, measures(Listing("Vincent. Legenda oceanu"), film)) shouldBe false
@@ -1307,5 +1307,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),
       Film("Star Wars: The Force Awakens", year = Some(2015))) shouldBe false
   }
-}
 
+  // EXPERIMENT cast-overlap: how many of the film's top-billed cast the venue's own text names
+  "the cast measure" should "grade a listed cast by how many of the film's names it holds, and read prose only when it names two" in {
+    val film   = Film("Lalka", cast = FilmCast.of(Seq("Marcin Dorociński", "Sandra Drzymalska", "Jan Frycz")))
+    def listed(names: String*) = Listing("Lalka", names = VenueNames.of(Nil, names))
+    def prose(text: String)    = Listing("Lalka", names = VenueNames.of(Seq(text)))
+    measures(listed("Marcin Dorocinski", "Sandra Drzymalska"), film)("cast") shouldBe Category("two_plus")
+    measures(listed("Marcin Dorociński", "Kayla Wetherell"), film)("cast") shouldBe Category("one")
+    measures(listed("Andrzej Seweryn", "Beata Tyszkiewicz"), film)("cast") shouldBe Category("none")
+    measures(prose("W rolach głównych Marcin Dorociński i Sandra Drzymalska."), film)("cast") shouldBe Category("two_plus")
+    measures(prose("W roli głównej Marcin Dorociński, w Warszawie."), film)("cast") shouldBe Missing("prose")
+    measures(Listing("Lalka"), film)("cast") shouldBe IdentityMeasures.MissingListing
+    measures(listed("Andrzej Seweryn", "Beata Tyszkiewicz"), Film("Lalka"))("cast") shouldBe IdentityMeasures.MissingFilm
+    FilmCast.of(Nil) shouldBe None
+  }
+}
