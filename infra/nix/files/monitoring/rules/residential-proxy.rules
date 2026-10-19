@@ -38,8 +38,11 @@
 # undersells UK's outage. Per-country is what lets the alert -- and its email subject, which
 # `.CommonLabels.country` already renders for the worker/read-model rules -- name which pool.
 #
-# THE THRESHOLD AND WINDOW ARE UNCHANGED FROM THE GRAFANA RULE: over half the residential-proxy
-# fetches in the last 30 min failing, sustained 15m. `clamp_min` keeps a quiet country (proxy
+# THE THRESHOLD AND WINDOW ARE THE GRAFANA RULE'S: over half the residential-proxy fetches in the
+# last 30 min failing. SUSTAINED 45m, not its 15m: PL's 2026-10-15 02:35Z Decodo blip held the ratio
+# about half an hour, paged at 15m and cleared on its own with nobody acting -- the proxied venues ride
+# out that long on their last-good listings. The outages worth a person (09-10's 503 cascade, 3.5h;
+# 09-24's 2h) are hours long. `clamp_min` keeps a quiet country (proxy
 # disabled, or simply no proxied traffic in the window) from dividing by zero; an absent series
 # yields no data -> no alarm, same as before. Warning, not critical: the UK chains keep their
 # per-venue flicks fallback, so a proxy outage degrades rather than blanks a country.
@@ -57,7 +60,7 @@ groups:
               1
             )
           ) > 0.5
-        for: 15m
+        for: 45m
         labels:
           severity: warning
         annotations:
