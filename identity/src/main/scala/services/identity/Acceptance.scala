@@ -386,8 +386,8 @@ private[identity] object Acceptance {
    *  between namesakes is no lean. */
   val LeanMargin = 1.25
   /** EXPERIMENT `experiment/margin-take`: the floor and the margin over its runner-up a candidate below the cut is taken at. */
-  val DominanceFloor = 0.25
-  val DominanceRatio = 5.0
+  val DominanceFloor = 0.20
+  val DominanceRatio = 2.0
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
   def named(scored: Scored): String =
     s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"
