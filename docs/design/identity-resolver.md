@@ -1,5 +1,11 @@
 # Identity resolver: film identity as a function of the listing set
 
+> **How to read this file.** §1–18 are HISTORICAL — the design and rollout record of the old film pipeline, the shadow
+> run and the per-country cutover; the classes they name (`ScrapeLanding`, `FilmCanonicalizer`, the staging fold, …)
+> are deleted. **Current reference:** §14 (calibration tooling), §19 (the paced lookup fill), §20 (the unified evidence
+> model) and §21 (the consolidated rules). For investigating takes today use the tools in
+> `.claude/skills/identity-investigation/SKILL.md`; what was tried and not landed is in `docs/identity-experiments.md`.
+
 Status: implemented and the ONLY path. Every country is cut over; ea3d56300 (2026-10-03) removed
 the cut-over switch and the shadow run, and 43e8ed84c (2026-10-04) deleted the old film pipeline
 (`ScrapeLanding`, the staging fold, `FilmCanonicalizer`, `MixedFilmSplitter`, `SideCollectionMove`,
@@ -16,6 +22,8 @@ Related: `docs/read-model-convergence.md`, `docs/promotion.md`.
 ---
 
 ## 1. The problem
+
+> *Historical (§1–18): the old pipeline and the rollout. Current reference starts at §19; §14 is still current.*
 
 Today no single place decides which film a listing belongs to. Identity is decided a little at a
 time by stages that each mutate stored state, and each stage reads what the previous ones wrote:

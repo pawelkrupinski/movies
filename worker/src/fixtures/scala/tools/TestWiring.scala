@@ -1,7 +1,7 @@
 package tools
 
 import clients.TmdbClient
-import models.Cinema
+import models.{Cinema, City}
 import modules.WorkerWiring
 import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus}
@@ -25,7 +25,7 @@ trait TestWiring extends WorkerWiring {
   // local/CI env might set, so the recorded fixtures and the coverage spec
   // always see the full catalogue. (Production already defaults to every city;
   // this pin just makes the test set immune to a narrowing override.)
-  override def scrapeCities: Set[String] = ScrapeCities.allCities
+  override def scrapeCities: Set[String] = City.all.map(_.slug).toSet
 
   // Pin a DISABLED Mongo connection. Tests get their movie data from
   // `InMemoryMovieRepository` / fixtures and don't exercise the user repos, so a real

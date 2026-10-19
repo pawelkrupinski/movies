@@ -1,5 +1,14 @@
 # White-cinema investigations
 
+> **Summary.** An append-only log, newest run first (27 runs, 2026-06-25 → 2026-10-07). Before
+> investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
+> (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
+> that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
+> dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists (prod Mongo is
+> reached through `scripts/local-mirror/prod-tunnel.sh` / `scripts/with-prod-mongo.sh` now).
+>
+> **Runs:** [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
 *parser returned zero showtimes* (parsed-but-empty), as opposed to red/yellow

@@ -36,8 +36,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   `_repertoireView.scala.html`, and the rendered HTML shape those JS
   blocks read.
 - **`cd page-tests-playwright && npx playwright test [--project …]`**
-  — mobile + desktop × Chromium / WebKit / Firefox / Edge. `--project`
-  narrows to one engine; the default `--list` shows which exist.
+  — mobile + desktop × Chromium / Chrome / WebKit (CI runs these; the
+  Firefox projects stay in `playwright.config.ts` for local runs only).
+  `--project` narrows to one; `--list` shows which exist.
 - **iOS LocalServer** — `scripts/sbt-warm --serve 'web/PageTest/runMain
   tools.FixtureServerMain <port-file>'` in the background (`--serve`: a server
   running until stopped holds no JVM slot, so it never queues other agents'
@@ -62,6 +63,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   runs them under macOS's bash 3.2, the floor the tools promise: the pre-push
   hook does so on a Mac for the tests a push selects, and the nightly Order
   independence `swift` job for all of them.
+  `--linux` runs them in CI's ubuntu-26.04 container (Docker / Rancher
+  Desktop; the pre-push hook runs that leg beside the native one when Docker
+  is up). A new self-test needs no wiring: name it by the scheme and CI runs it.
 
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 

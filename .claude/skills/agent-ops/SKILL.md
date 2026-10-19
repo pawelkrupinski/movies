@@ -1,0 +1,123 @@
+---
+name: agent-ops
+description: How an agent works in this many-agent repository — its own worktree, the landing flow (ff-merge while GitHub is suspended, `<sha>:main` push when it is back), batching pushes, the red-build gate, process hygiene (agent-procs, never pkill by pattern), waiting on long runs and CI (wait-for, ci-wait), where time went (agent-time), the kept sbt server (sbt-warm, `--serve`, JVM slots), and the worker/web downtime policy. Use when starting a task, landing or pushing, waiting on anything, running sbt, killing a process, or restarting a deployment.
+---
+
+# Agent operations
+
+The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated incidents behind them:
+`docs/agent-workflow-history.md`.
+
+## Worktree and landing flow
+
+- **Work in your own worktree, never the root checkout** (`/Users/pawel/projects/movies`, branch `main`, shared,
+  must end every session clean). A worktree may be a sibling directory or under `.claude/worktrees/` (gitignored):
+  `git worktree add -b <branch> ../movies-<branch> origin/main` (from local `main` while GitHub is unreachable).
+  Tool calls start in the root checkout: `cd` into your worktree in **every** command.
+- Enforced: `.claude/settings.json` runs `scripts/claude-hooks/root-checkout-guard`, which denies an Edit/Write to
+  any non-ignored root path and reports a Bash command that dirties the root or switches its branch;
+  `scripts/hooks/pre-commit` refuses a commit in the root (`ALLOW_ROOT_COMMIT=1` for a person doing it on purpose).
+  `scripts/root-checkout-check` (run by `agent-procs` and every push) warns when the root is off `main` or dirty.
+- **The only ref that reaches origin is `main`.** Never push a feature branch, never open a PR (the five bot
+  workflows are the exception — see `CLAUDE.md`). Before typing `git push` or `gh pr create`, run `git rev-parse --abbrev-ref HEAD` and name the
+  ref you push (`<sha>:main`); a push of anything but `main` violates the rule.
+- **Landing:** rebase onto main → every relevant layer green locally → land → `git worktree remove <path>` and
+  `git branch -d <branch>` (your own, merged: `-d` refuses an unmerged one; never `-D`). Deleting a branch you didn't
+  create, or an unmerged one, needs the user's OK first.
+  - *While GitHub is suspended* (fetch/push 403): land with `git merge --ff-only <branch>` in the clean root
+    checkout on `main`; nothing is pushed.
+  - *When GitHub is back:* `git fetch && git rebase origin/main`, then push the named commit from your own
+    worktree: `git push origin <sha>:main`. Never `HEAD` while a rebase is stopped (a stopped rebase landed 7 commits
+    at once), never `git push origin main` from the shared root (others detach it).
+- **Subagents** commit on their own branch, rebase, and hand back to the agent that spawned them. A subagent lands
+  only when every gate is already green locally; it never waits on CI — the lead (one landing agent) does.
+- **Never yield with a dirty tree you own:** commit (preferred) or `git stash push -u -m "<what + why>"`. An
+  interrupted task still owes a checkpoint: a `wip: <state>` commit on your own branch or a labelled stash. Note
+  `git stash` is shared by every worktree of the clone.
+- **Don't strand work on a stale base:** behind main → rebase before piling on more.
+- **Touch only what's yours:** dirty files you did not create are a co-agent's WIP — surface them; never
+  `git add -A`, commit, stash or discard them.
+
+## Pushing to main (when GitHub is reachable)
+
+A push to `main` starts ~20 jobs and a newer push CANCELS the run in flight (`main.yml`'s `cancel-in-progress: true`,
+kept on purpose: the superseding run tests a superset, and letting runs finish would either serialise pushes behind
+~12-minute runs or break the 20-runner budget `CiRunnerBudgetSpec` guards). A cancelled run says nothing, so:
+
+- Push when a coherent change is locally green, not after every commit; several commits in one push are one run.
+- If the run for your previous push is under ~10 minutes old, keep committing and push once.
+- Judge `main` by the newest COMPLETED run, never a cancelled one.
+- Always fetch + rebase immediately before pushing. If a push's CI fails, fix forward; don't undo the push.
+
+## The pre-push hook and the red gate
+
+Install once per clone: `scripts/install-hooks.sh` (shared, relative `core.hooksPath=scripts/hooks`, so every
+worktree runs its own copy). The full check inventory, what selects each check, and the red-gate design are in the
+header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-push --range <base>..HEAD`.
+
+- Checks are selected by the paths the push changes (eslint, roster drift, snapshot stamp, one warm sbt run of the
+  lint specs — every repo-reading lint spec too on a change under `scripts/`, `.github/`, `.claude/`, `CLAUDE.md`,
+  `build.sbt`, `project/` or test trees — dashboards, scripttests incl. the Linux leg when Docker is up, actionlint,
+  shellcheck on added warnings, oldrefs, ios compile, judgements lint).
+- **Red gate:** before the path checks, the hook reads the newest COMPLETED run on main of Main, Identity model
+  convergence and Record scrape fixtures (one bounded `gh run list` each; gh unreachable → warned, not blocked).
+  While one is red, every pushed commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`,
+  `project/`, `infra/nix/`, `Dockerfile`) carries `Fixes-Red: <run id>` naming a red run. Tools-only commits
+  (scripts, docs, skills, tests, fixtures, `test/resources/`, `.github/`) land without one. The Identity findings
+  report (a recording's data findings, one issue per country) is not gating.
+- Bypasses — always say so in your report: `PREPUSH_SKIP=redgate`, `PREPUSH_SKIP="<checks>"` (names: `redgate`,
+  `lintspecs`, `linux`, `sbt`, `ios`, … — every check name in the header), `git push --no-verify` (all).
+
+## Processes
+
+- **Never `pkill -f` / `killall` by pattern** — other agents' processes match it. `scripts/agent-procs kill --mine`
+  (SIGTERM what runs under the current worktree; `--worktree P`, `--dry-run`, `--force`).
+- `scripts/agent-procs` audits every worktree (dirty, unmerged vs main, lock owner, its processes);
+  `scripts/agent-procs prune [--yes]` removes the removable ones and their merged branches.
+- `scripts/agent-time [--longest N] [--agent <id> --top N]` shows where a session's subagents spent their hours
+  (polls and background waits by what they waited on, idle gaps, sbt runs by shape, the pre-push hook).
+
+## Waiting
+
+- **Your own long run** (slice batch, local measure, sbt suite, capture): `scripts/wait-for <log> <pattern>
+  [--pid P] [--timeout S]` with `run_in_background`, then act on its notification. Never a foreground
+  `until grep; sleep` loop.
+- **CI:** `scripts/ci-wait`, never a hand-written `gh run view`/`sleep` loop. `--run <id>`; `--workflow <w> --sha
+  <commit>` (waits for the run to appear, then to finish); several `--workflow`s for a set; `--or-later` (a green run
+  at that commit or later), `--until-green` (wait through reds), `--any-completed` (each workflow's newest verdict).
+  A cancelled run is followed to the run that superseded it (`--no-follow`: exit 3). Exit 0 green, 1 red,
+  2 timeout/unreadable, 3 cancelled. Run it in the background.
+
+## sbt: `scripts/sbt-warm`
+
+- Run sbt through `scripts/sbt-warm "<command>"`: one kept server per worktree (extras stopped on the next call;
+  exits after 10 idle minutes), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
+  run becomes ~50 s). Don't mix with a plain `sbt` in the same checkout while the server lives. Details: `test-layers`.
+- **Long-lived servers** (the fixture server, any `runMain` that serves until stopped):
+  `scripts/sbt-warm --serve '<command>'` — through the memory gate but holding no JVM slot, so it never queues other
+  agents' tests behind it.
+- sbt-warm, identity-slice and identity-measure-local share the machine-wide JVM slots (`KINOWO_JVM_SLOTS`, default
+  4; `scripts/jvm-gate.sh`), wait while the Mac is paging, and size their JVMs for 4 cores. Never lower
+  `KINOWO_JVM_SLOTS` to get ahead — wait for a slot.
+
+## Speed habits
+
+- Dispatch every variant of a CI experiment at once (refit and measure dispatches each get their own lane).
+- A CI speed-up counts only when a CI run proves it (a Mac is not the 2-core runner).
+- Run a changed script's self-test on Linux (`scripts/run-script-tests --linux`) before landing it.
+- Start local checks beside a dispatch, not after it; wait in the background, never in foreground sleep loops.
+
+## Downtime policy
+
+- **Workers** (`worker-pl`, `worker-uk`, `worker-de`, `worker-us`, `worker-es` Deployments on k3s) may go fully down
+  without ceremony: scale to zero and back or delete the pod, watch Flux roll out, sanity-check, move on. Up to ~15
+  minutes is in the "just do it" bucket — the read model keeps serving what is projected.
+- **The web / read tier (`kinowo.net`, `showtimes.cc`) must not go fully down if there is any way not to.** Prefer a
+  rolling deploy that keeps one pod serving; when moving or resizing a node, bring the replacement up first. A brief
+  5xx window during a rolling deploy is fine, and so is a genuinely unavoidable short full outage (a host move) — keep
+  it short and say out loud afterwards that the tier was fully down. No elaborate zero-downtime orchestration.
+- This is about lifecycle only. Destructive data ops (dropping a collection, truncating, deleting a branch you
+  didn't create or one not merged) still need explicit confirmation.
+- Ops entry points: Grafana <https://grafana.kinowo.net> (dashboards in
+  `infra/nix/files/monitoring/grafana/dashboards/apps/`); secrets via the Touch ID vault —
+  `secrets run movies <KEY> -- <command>`, never a `.env.local`.
