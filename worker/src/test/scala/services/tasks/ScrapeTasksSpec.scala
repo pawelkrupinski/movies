@@ -224,6 +224,30 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     scraper.calls shouldBe 1
   }
 
+  // Phoenix Leicester, 2026-10-12: three "the Savoy template changed" parse failures inside three
+  // minutes filed a Sentry ERROR, and the next scrape was fine and stayed fine. An ERROR is a page to
+  // act on; a parser that read the venue within the last day is a hiccup, so it is a WARN, and a
+  // venue broken for a day (or never read at all) still files one, with its stack.
+  private def levelOfParseFailure(lastSuccess: Option[Instant]): Seq[ch.qos.logback.classic.Level] = {
+    val scraper = new StubCinemaScraper(Multikino, throw new IllegalArgumentException("requirement failed: no '#Detail'"))
+    val archive = new InMemoryScrapeArchiveRepository
+    lastSuccess.foreach(at => archive.record(ScrapeAttempt(Multikino, None, at, listingComplete = true, films = movieAt(Multikino))))
+    val h = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(),
+      new InMemoryFreshnessStore, clock = specClock, scrapeArchive = archive)
+    tools.LogCapture.thisThread(classOf[ScrapeCinemaHandler].getName, Some(ch.qos.logback.classic.Level.WARN)) {
+      h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    }.map(_.getLevel)
+  }
+
+  it should "log a parse failure at WARN, not ERROR, when the venue scraped fine within the last day" in {
+    levelOfParseFailure(Some(specClock.instant().minusSeconds(3600))) shouldBe Seq(ch.qos.logback.classic.Level.WARN)
+  }
+
+  it should "log a parse failure at ERROR once the venue has not scraped for a day, or never has" in {
+    levelOfParseFailure(Some(specClock.instant().minusSeconds(25 * 3600))) shouldBe Seq(ch.qos.logback.classic.Level.ERROR)
+    levelOfParseFailure(None) shouldBe Seq(ch.qos.logback.classic.Level.ERROR)
+  }
+
   it should "drop a task whose cinema is no longer in the catalogue" in {
     val h = new ScrapeCinemaHandler(Map.empty, freshRunner(), new InMemoryFreshnessStore, clock = _root_.tools.SpecClock.Pinned)
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done

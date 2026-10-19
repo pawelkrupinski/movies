@@ -6,7 +6,8 @@ import models.Cinema
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
 import services.scrapes.{GoneUpstream, ScrapeArchiveRepository}
 
-import java.time.Clock
+import java.time.{Clock, Instant}
+import scala.concurrent.duration._
 
 /**
  * Handles a `ScrapeCinema` task: scrape one cinema, unless it is no longer due
@@ -109,7 +110,7 @@ class ScrapeCinemaHandler(
         } catch {
           case e: Exception =>
             val elapsed = t0.millis
-            if (ScrapeErrors.isTransientHttpError(e))
+            if (ScrapeErrors.isTransientHttpError(e) || readWithin(cinema, BrokenFor, now))
               logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")
             else
               logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
@@ -120,9 +121,19 @@ class ScrapeCinemaHandler(
         }
     }
   }
+
+  /** Did the venue's scraper read it successfully within `window` before `now`? */
+  private def readWithin(cinema: Cinema, window: FiniteDuration, now: Instant): Boolean =
+    scrapeArchive.find(cinema).flatMap(_.lastSuccess).exists(_.at.isAfter(now.minusMillis(window.toMillis)))
 }
 
 object ScrapeCinemaHandler {
+  /** How long a venue's scraper must have failed to read it before a non-transient failure is an ERROR
+   *  (a Sentry issue). Phoenix Leicester, 2026-10-12: three "the Savoy template changed" failures in three
+   *  minutes filed one, and the next scrape was fine and stayed fine. Read within the day, it is a WARN;
+   *  broken past it, or never read at all, it files an ERROR with its stack. */
+  val BrokenFor: FiniteDuration = 24.hours
+
   /** Payload field carrying the cinema's display name (the scraper-map key). */
   val CinemaKey = "cinema"
 
