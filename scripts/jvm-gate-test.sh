@@ -57,6 +57,13 @@ check "a free slot is taken, held by this process, and named to its children" "$
   "$(cat "$work/held") $([ "$(cat "$work/pid1")" = "$(cat "$work/me")" ] && echo yes || echo no) $(cat "$work/during")"
 check "...a child tool rides it rather than waiting on its own parent" "rode" "$(cat "$work/child")"
 check "...and it is given back on release" "free" "$(cat "$work/after")"
+# a process started with the lock descriptors closed (an sbt server, a kept JVM: jvm-gate.sh) still has the name in its
+# environment, but holds no slot: it takes one of its own rather than riding one it does not hold
+( jvm_slot_take t
+  bash -c '. "'"$REPO_ROOT"'/scripts/jvm-gate.sh"; jvm_slot_take outliving; echo "${JVM_SLOT:-rode}"' 7>&- > "$work/outliving"
+  jvm_slot_release )
+check "...a child started with the slot's descriptor closed rides nothing: it takes a slot of its own" "$slots/2.flock" \
+  "$(cat "$work/outliving")"
 
 spec_lock_holder "$slots/1.flock"; a=$SPEC_LOCK_HOLDER; spec_lock_holder "$slots/2.flock"; b=$SPEC_LOCK_HOLDER
 ( jvm_slot_take t; echo "${JVM_SLOT##*/}" > "$work/got" ) 2> "$work/err" &
