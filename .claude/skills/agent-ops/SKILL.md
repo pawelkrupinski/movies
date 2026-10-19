@@ -93,7 +93,12 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 
 - Run sbt through `scripts/sbt-warm "<command>"`: one kept server per worktree (extras stopped on the next call;
   stopped by its keeper after 10 idle minutes, `KINOWO_SBT_WARM_IDLE_MINUTES`, never under a running command), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
-  run becomes ~50 s). Don't mix with a plain `sbt` in the same checkout while the server lives. Details: `test-layers`.
+  run becomes ~50 s). Don't mix with a plain `sbt` (or a bare `sbt --client`) in the same checkout while the server
+  lives: only a call through the script counts as in use. Details: `test-layers`.
+- **A server gone missing?** `~/.cache/kinowo-sbt-warm/stops.log` has a line for every server and keeper sbt-warm
+  stopped (when, why, which process asked) and a `vanished` line for one that ended otherwise, naming the JVM reaper's
+  kill (`~/Library/Logs/jvm-reaper.log`) or a crash file when one exists; each keeper's own log is `<key>.log` beside it.
+  `--stop` stops the checkout's keeper with its server. The reaper's hog rule spares a server whose keeper lives.
 - **Long-lived servers** (the fixture server, any `runMain` that serves until stopped):
   `scripts/sbt-warm --serve '<command>'` — it keeps the checkout's server (and so its slot) in use until stopped, so
   stop it when done.
