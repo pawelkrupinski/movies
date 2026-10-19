@@ -71,7 +71,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // 323-byte-artifact bug). A literal `val` only worked because the compiler
   // inlined it as a constant. A `def` is evaluated fresh on every read, so it is
   // always correct regardless of init order.
-  def captureDate: String = configuration.localStackFixtureDirectory.fold("today")(_.value)
+  def captureDate: String = configuration.recordingFixtureDirectory.fold("today")(_.value)
 
   override lazy val movieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)
   override lazy val httpFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())

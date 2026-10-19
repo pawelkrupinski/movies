@@ -97,12 +97,8 @@ final case class HeapDumpDirectory(value: Path) extends AnyVal
 final case class ScrapeCitySlugs(value: Set[String]) extends AnyVal
 
 // ── Test and replay harness ─────────────────────────────────────────────────────
-/** `KINOWO_LOCAL_MONGO_URI` — the local stack's Mongo. */
-final case class LocalStackMongoUri(value: String) extends AnyVal
-/** `KINOWO_LOCAL_MONGO_DB` — the local stack's database. */
-final case class LocalStackDatabaseName(value: String) extends AnyVal
-/** `KINOWO_FIXTURE_DIR` — the fixture tree the local stack's worker replays. */
-final case class LocalStackFixtureDirectory(value: String) extends AnyVal
+/** `KINOWO_FIXTURE_DIR` — the fixture tree the recorder (`RecordAllDataToFixture`) writes into. */
+final case class RecordingFixtureDirectory(value: String) extends AnyVal
 /** `KINOWO_ALLOW_REMOTE_IT` — an integration run deliberately allowed onto a credentialed
  *  cluster. */
 final case class RemoteIntegrationAllowed(value: Boolean) extends AnyVal

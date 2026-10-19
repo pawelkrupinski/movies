@@ -4,10 +4,9 @@ import java.nio.file.Path
 
 /**
  * `KINOWO_FIXTURE_ROOT` — the directory the recorded fixture trees live under,
- * `test/resources/fixtures` relative to the repository root by default. A process whose
- * working directory is NOT the repository root (the local stack's forked worker) or that
- * keeps its trees elsewhere (`scripts/hard-clusters.sh`) hands a different one to the fetches
- * that replay and record.
+ * `test/resources/fixtures` relative to the repository root by default. A process that keeps
+ * its trees elsewhere (`scripts/hard-clusters.sh`) hands a different one to the fetches that
+ * replay and record.
  */
 final case class FixtureRoot(value: Path) extends AnyVal {
 

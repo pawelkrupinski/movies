@@ -7,7 +7,7 @@
 //
 // Every action runs `scripts/devpanel.py <action>` as a background subprocess, streaming live
 // output into an in-panel console. There are two consoles:
-//   • Web    — shared by the two server actions; KEEPS its scrollback across
+//   • Web    — shared by the web server actions; KEEPS its scrollback across
 //              runs (long-lived servers you want to keep watching).
 //   • Device — shared by Android + iOS; CLEARED at the start of each run.
 // Each console is independently collapsible. When BOTH are collapsed the panel
@@ -17,12 +17,6 @@
 //
 // Long-press (or right-click) any button to pick which git worktree to run the
 // task in; the chosen path is handed to devpanel.py via DEVPANEL_REPO_ROOT.
-//
-// Some rows are split buttons (the web servers, the local-DB actions): a main
-// button plus a ▾ that drops down the grouped options. The main button's
-// identity is the last-used option, remembered across launches (UserDefaults);
-// until one is picked it shows the group name and clicking it opens the
-// dropdown. ▾ always opens the dropdown.
 //
 // The absolute scripts directory is baked into Info.plist (DevPanelScriptsDir)
 // at build time, so the .app keeps working if moved out of the repo tree.
@@ -120,7 +114,7 @@ final class CommandRunner {
         p.terminationHandler = { [weak self] proc in
             // What the child printed just before exiting can still be in the
             // pipe; wait for EOF so it reaches onOutput before onExit. Bounded,
-            // because a forked grandchild (sbt's bgRun worker) can hold the pipe
+            // because a forked grandchild (a JVM sbt forks) can hold the pipe
             // open long after the action itself has exited.
             _ = drained.wait(timeout: .now() + 1)
             self?.process = nil
@@ -186,15 +180,13 @@ final class ConsoleView: NSObject {
     private var runner: CommandRunner?
 
     private let clearsOnRun: Bool
-    private let reapsWorkerOnStop: Bool
     private let titleText: String
     var onLayoutChange: (() -> Void)?
     /// Absolute path to the dir holding devpanel.py. Set by the app delegate after init.
     var scriptsDir = ""
 
-    init(title: String, clearsOnRun: Bool, reapsWorkerOnStop: Bool = false) {
+    init(title: String, clearsOnRun: Bool) {
         self.clearsOnRun = clearsOnRun
-        self.reapsWorkerOnStop = reapsWorkerOnStop
         self.titleText = title
         super.init()
 
@@ -287,32 +279,8 @@ final class ConsoleView: NSObject {
 
     @objc private func stopRunning() { doStop() }
 
-    /// Stop the running action AND, for the web console, reap a stale fixture
-    /// worker. The web+worker stack forks the worker (LocalFixtureWorkerMain)
-    /// into its own process tree via sbt's bgRunMain, so SIGTERM-ing the
-    /// action's process group leaves it running; devpanel.py's reap-worker
-    /// pattern-kills it the same way the web actions do at launch.
     private func doStop() {
         runner?.stop()
-        if reapsWorkerOnStop { reapStaleWorker() }
-    }
-
-    private func reapStaleWorker() {
-        guard !scriptsDir.isEmpty else { return }
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/bash")
-        p.arguments = ["-l"] + devpanelArguments(scriptsDir, "reap-worker")
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else { return }
-            let text = String(decoding: data, as: UTF8.self)
-            DispatchQueue.main.async { self?.append(text) }
-        }
-        p.terminationHandler = { _ in pipe.fileHandleForReading.readabilityHandler = nil }
-        try? p.run()
     }
 
     @objc private func toggle() { setExpanded(!isExpanded) }
@@ -364,58 +332,17 @@ private struct Action {
     let console: Console
 }
 
-/// One row in the palette. A single-option group renders as a plain button; a
-/// multi-option group renders as a *split button* — a main button whose
-/// identity is the last-used option (remembered in UserDefaults under
-/// `defaultsKey`) plus a ▾ that drops down all the options. In the default
-/// state (no option used yet) the main button shows `title`/`subtitle` and
-/// clicking it opens the dropdown instead of running anything.
-private struct ButtonGroup {
-    let title: String        // placeholder shown until an option is first used
-    let subtitle: String     // placeholder subtitle
-    let defaultsKey: String? // UserDefaults key for the remembered option; nil ⇒ plain button
-    let options: [Action]
-
-    var isSplit: Bool { options.count > 1 }
-
-    /// The (title, subtitle) for the main button: the remembered option's, or
-    /// the group placeholder when nothing valid is remembered.
-    func label(forSelectedAction actionName: String?) -> (title: String, subtitle: String) {
-        if let s = actionName, let a = options.first(where: { $0.actionName == s }) {
-            return (a.title, a.subtitle)
-        }
-        return (title, subtitle)
-    }
-}
-
-private let groups: [ButtonGroup] = [
-    ButtonGroup(title: "Android → device", subtitle: "build · install · launch", defaultsKey: nil,
-                options: [Action(title: "Android → device", subtitle: "build · install · launch",
-                                 actionName: "deploy-android", console: .device)]),
-    ButtonGroup(title: "iOS → device", subtitle: "build · install · launch", defaultsKey: nil,
-                options: [Action(title: "iOS → device", subtitle: "build · install · launch",
-                                 actionName: "deploy-ios", console: .device)]),
-    ButtonGroup(title: "Web servers", subtitle: "▾ web/run · localStack", defaultsKey: "group.webServers",
-                options: [Action(title: "Web server", subtitle: "sbt web/run · :9000",
-                                 actionName: "run-web", console: .web),
-                          Action(title: "Web + worker", subtitle: "sbt localStack · fixtures",
-                                 actionName: "run-local-stack", console: .web)]),
-    ButtonGroup(title: "Kill web + worker", subtitle: "free :9000 · reap worker", defaultsKey: nil,
-                options: [Action(title: "Kill web + worker", subtitle: "free :9000 · reap worker",
-                                 actionName: "kill-stack", console: .web)]),
-    ButtonGroup(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape", defaultsKey: nil,
-                options: [Action(title: "Reset local corpus", subtitle: "drop kinowo_local · re-scrape",
-                                 actionName: "reset-local-corpus", console: .web)]),
+/// The palette's buttons, top to bottom: one per devpanel.py action.
+private let allActions: [Action] = [
+    Action(title: "Android → device", subtitle: "build · install · launch",
+           actionName: "deploy-android", console: .device),
+    Action(title: "iOS → device", subtitle: "build · install · launch",
+           actionName: "deploy-ios", console: .device),
+    Action(title: "Web server", subtitle: "sbt web/run · :9000",
+           actionName: "run-web", console: .web),
+    Action(title: "Kill web", subtitle: "free :9000",
+           actionName: "kill-web", console: .web),
 ]
-
-private let allActions: [Action] = groups.flatMap { $0.options }
-
-/// A remembered split-button choice. Choices saved before the actions moved
-/// to devpanel.py are script names ("run-web.sh"); read those as the action.
-func savedActionName(_ raw: String?) -> String? {
-    guard let raw = raw else { return nil }
-    return raw.hasSuffix(".sh") ? String(raw.dropLast(3)) : raw
-}
 
 private let defaultExpandedWidth: CGFloat = 380
 
@@ -431,24 +358,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().path
 
-    private let webConsole = ConsoleView(title: "Web output", clearsOnRun: false, reapsWorkerOnStop: true)
+    private let webConsole = ConsoleView(title: "Web output", clearsOnRun: false)
     private let deviceConsole = ConsoleView(title: "Device output", clearsOnRun: true)
     private var suppressClick: Set<String> = []
     private var expandedWidth = defaultExpandedWidth
     private var relayouting = false
-
-    // Split-button state: the remembered option (script) per group, keyed by the
-    // group's defaultsKey, plus a handle to each split main button so its label
-    // can be refreshed when the selection changes. Loaded from UserDefaults at launch.
-    private var groupSelection: [String: String] = [:]
-    private var groupMainButtons: [String: NSButton] = [:]
 
     func applicationDidFinishLaunching(_ note: Notification) {
         installMenu()
         installStatusItem()
         webConsole.scriptsDir = scriptsDir
         deviceConsole.scriptsDir = scriptsDir
-        loadGroupSelections()
 
         let content = NSStackView()
         content.orientation = .vertical
@@ -457,7 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         content.translatesAutoresizingMaskIntoConstraints = false
 
         content.addArrangedSubview(headerRow())
-        for group in groups { content.addArrangedSubview(row(for: group)) }
+        for action in allActions { content.addArrangedSubview(button(for: action)) }
         content.addArrangedSubview(deviceConsole.container)
         content.addArrangedSubview(webConsole.container)
         // Every row fills the content width, so buttons stay equal and stretch
@@ -608,67 +528,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     /// A 44pt palette button with a two-line centred title and a long-press
-    /// gesture (the worktree picker). Shared by plain and split-main buttons.
-    private func paletteButton(title: String, subtitle: String, action: Selector, longPress lp: Selector) -> NSButton {
-        let b = NSButton(title: "", target: self, action: action)
-        b.attributedTitle = twoLineTitle(title, subtitle)
+    /// gesture (the worktree picker).
+    private func button(for action: Action) -> NSButton {
+        let b = NSButton(title: "", target: self, action: #selector(run(_:)))
+        b.attributedTitle = twoLineTitle(action.title, action.subtitle)
         b.bezelStyle = .regularSquare
         b.alignment = .center
         b.imagePosition = .noImage
         b.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        let g = NSPressGestureRecognizer(target: self, action: lp)
+        let g = NSPressGestureRecognizer(target: self, action: #selector(longPress(_:)))
         g.minimumPressDuration = 0.4
         b.addGestureRecognizer(g)
-        return b
-    }
-
-    private func row(for group: ButtonGroup) -> NSView {
-        group.isSplit ? splitRow(for: group) : button(for: group.options[0])
-    }
-
-    private func button(for action: Action) -> NSButton {
-        let b = paletteButton(title: action.title, subtitle: action.subtitle,
-                              action: #selector(run(_:)), longPress: #selector(longPress(_:)))
         b.identifier = NSUserInterfaceItemIdentifier(action.actionName)
         b.toolTip = "Click to run · long-press or right-click to pick a worktree"
         return b
-    }
-
-    /// A split button: a wide main button (runs the remembered option, or opens
-    /// the dropdown when none is remembered) + a narrow ▾ that always opens the
-    /// dropdown. Picking an option becomes the main button's identity.
-    private func splitRow(for group: ButtonGroup) -> NSView {
-        let key = group.defaultsKey!
-        let main = paletteButton(title: group.title, subtitle: group.subtitle,
-                                 action: #selector(runGroup(_:)), longPress: #selector(longPressGroup(_:)))
-        main.identifier = NSUserInterfaceItemIdentifier(key)
-        main.toolTip = "Click to run the last-used option · ▾ to switch · long-press for a worktree"
-        main.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        groupMainButtons[key] = main
-        refreshMainButton(group)
-
-        let arrow = NSButton(title: "▾", target: self, action: #selector(showGroupMenu(_:)))
-        arrow.identifier = NSUserInterfaceItemIdentifier(key)
-        arrow.bezelStyle = .regularSquare
-        arrow.font = .systemFont(ofSize: 13, weight: .medium)
-        arrow.toolTip = "Choose which to run"
-        arrow.setContentHuggingPriority(.required, for: .horizontal)
-        arrow.setContentCompressionResistancePriority(.required, for: .horizontal)
-        arrow.widthAnchor.constraint(equalToConstant: 30).isActive = true
-        arrow.heightAnchor.constraint(equalToConstant: 44).isActive = true
-
-        let row = NSStackView(views: [main, arrow])
-        row.orientation = .horizontal
-        row.distribution = .fill
-        row.alignment = .centerY
-        row.spacing = 4
-        return row
-    }
-
-    private func refreshMainButton(_ group: ButtonGroup) {
-        guard let key = group.defaultsKey, let b = groupMainButtons[key] else { return }
-        let (t, s) = group.label(forSelectedAction: groupSelection[key])
-        b.attributedTitle = twoLineTitle(t, s)
     }
 
     private func installMenu() {
@@ -755,78 +628,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let actionName = sender.identifier?.rawValue else { return }
         if suppressClick.remove(actionName) != nil { return }   // long-press already handled it
         start(actionName: actionName, repoRoot: nil)
-    }
-
-    // MARK: split-button groups
-
-    private func splitGroup(_ key: String) -> ButtonGroup? { groups.first { $0.defaultsKey == key } }
-
-    private func loadGroupSelections() {
-        for group in groups {
-            guard let key = group.defaultsKey,
-                  let saved = savedActionName(UserDefaults.standard.string(forKey: key)),
-                  group.options.contains(where: { $0.actionName == saved }) else { continue }
-            groupSelection[key] = saved
-        }
-    }
-
-    /// Main-button click: run the remembered option, or — in the default state,
-    /// before any option has been chosen — drop down the options to pick one.
-    @objc private func runGroup(_ sender: NSButton) {
-        guard let key = sender.identifier?.rawValue, let group = splitGroup(key) else { return }
-        if suppressClick.remove(key) != nil { return }      // long-press already handled it
-        if let actionName = groupSelection[key] {
-            start(actionName: actionName, repoRoot: nil)
-        } else {
-            popUpGroupMenu(group, from: sender)
-        }
-    }
-
-    @objc private func showGroupMenu(_ sender: NSButton) {
-        guard let key = sender.identifier?.rawValue, let group = splitGroup(key) else { return }
-        popUpGroupMenu(group, from: sender)
-    }
-
-    /// Choosing an option makes it the button's remembered identity (persisted),
-    /// refreshes the main label, and runs it.
-    @objc private func chooseGroupOption(_ item: NSMenuItem) {
-        guard let info = item.representedObject as? [String: String],
-              let key = info["key"], let actionName = info["action"] else { return }
-        groupSelection[key] = actionName
-        UserDefaults.standard.set(actionName, forKey: key)
-        if let group = splitGroup(key) { refreshMainButton(group) }
-        start(actionName: actionName, repoRoot: nil)
-    }
-
-    /// Long-press the main button: pick a worktree for the remembered option, or
-    /// — in the default state — drop down the options (nothing to run a worktree on yet).
-    @objc private func longPressGroup(_ gr: NSPressGestureRecognizer) {
-        guard gr.state == .began, let button = gr.view as? NSButton,
-              let key = button.identifier?.rawValue else { return }
-        suppressClick.insert(key)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.suppressClick.remove(key) }
-        if let actionName = groupSelection[key] {
-            worktreeMenu(forAction: actionName).popUp(positioning: nil, at: gr.location(in: button), in: button)
-        } else if let group = splitGroup(key) {
-            popUpGroupMenu(group, from: button)
-        }
-    }
-
-    private func popUpGroupMenu(_ group: ButtonGroup, from view: NSView) {
-        groupMenu(group).popUp(positioning: nil, at: NSPoint(x: 0, y: view.bounds.maxY), in: view)
-    }
-
-    private func groupMenu(_ group: ButtonGroup) -> NSMenu {
-        let key = group.defaultsKey ?? ""
-        let menu = NSMenu()
-        for opt in group.options {
-            let item = NSMenuItem(title: opt.title, action: #selector(chooseGroupOption(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = ["key": key, "action": opt.actionName]
-            item.state = (groupSelection[key] == opt.actionName) ? .on : .off
-            menu.addItem(item)
-        }
-        return menu
     }
 
     private func start(actionName: String, repoRoot: String?) {
@@ -991,22 +792,6 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
         && s2 == 0 && o2.contains("ROOT=/tmp/devpanel-selftest-root")
         && s3 == 2 && o3.contains("usage: devpanel.py")
 
-    // Split-button identity logic: default state shows the group placeholder;
-    // a remembered (or freshly persisted) option shows that option's label; an
-    // unknown script falls back to the placeholder.
-    let web = groups.first { $0.defaultsKey == "group.webServers" }!
-    let labelOK = web.label(forSelectedAction: nil).title == "Web servers"
-        && web.label(forSelectedAction: "run-local-stack").title == "Web + worker"
-        && web.label(forSelectedAction: "bogus").title == "Web servers"
-    let suite = "devpanel.selftest.\(getpid())"
-    let ud = UserDefaults(suiteName: suite)!
-    ud.set("run-local-stack", forKey: "group.webServers")
-    let persistOK = ud.string(forKey: "group.webServers") == "run-local-stack"
-        && web.label(forSelectedAction: ud.string(forKey: "group.webServers")).title == "Web + worker"
-    UserDefaults.standard.removePersistentDomain(forName: suite)
-    let migrateOK = savedActionName("run-local-stack.sh") == "run-local-stack"
-        && savedActionName("run-web") == "run-web" && savedActionName(nil) == nil
-
     // LAN-IP selection rule: site-local wins over a public address regardless of
     // order, loopback is never offered, and a lone non-loopback is the fallback.
     let ipOK =
@@ -1020,9 +805,9 @@ if ProcessInfo.processInfo.environment["DEVPANEL_SELFTEST"] == "1" {
         && LocalHostIp.isSiteLocal("172.16.0.1") && LocalHostIp.isSiteLocal("172.31.9.9")
         && !LocalHostIp.isSiteLocal("172.15.0.1") && !LocalHostIp.isSiteLocal("172.32.0.1")
 
-    let ok = streamOK && injectionOK && labelOK && persistOK && migrateOK && ipOK
-    print(ok ? "SELFTEST_OK stream+env+groups+migrate+ip status=\(s1),\(s2)"
-             : "SELFTEST_FAIL stream=\(streamOK) injection=\(injectionOK) label=\(labelOK) persist=\(persistOK) migrate=\(migrateOK) ip=\(ipOK) "
+    let ok = streamOK && injectionOK && ipOK
+    print(ok ? "SELFTEST_OK stream+env+ip status=\(s1),\(s2)"
+             : "SELFTEST_FAIL stream=\(streamOK) injection=\(injectionOK) ip=\(ipOK) "
                + "o1=\(o1.debugDescription) o2=\(o2.debugDescription) o3=\(o3.debugDescription) st=\(s1),\(s2),\(s3)")
     exit(ok ? 0 : 1)
 }

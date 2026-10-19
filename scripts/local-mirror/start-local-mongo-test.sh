@@ -12,7 +12,7 @@
 #
 # Why this file exists: the script hardcoded `mongodb-community@7.0`, and on a
 # machine where `brew services` could not load that service it died under
-# `set -e` with nothing started — the local stack and every it/ suite waiting on
+# `set -e` with nothing started — the dev server and every it/ suite waiting on
 # :28017 with it.
 
 set -uo pipefail

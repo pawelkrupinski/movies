@@ -2,13 +2,13 @@
 #
 # Ensure the native (Homebrew) single-node replica-set Mongo that backs local
 # dev is up on :28017. Single-node replica set (not standalone) because both the
-# /debug live SSE view AND the local web+worker stack read change streams, which
+# /debug live SSE view AND the local web dev server read change streams, which
 # a standalone mongod rejects (error 40573) — the same reason prod runs
 # `--replSet rs0`. No auth: it's loopback-only, dev-only, already-public data.
 #
 # One instance, two databases:
 #   - kinowo_prod_mirror  synced from prod by mirror.sh (the /debug corpus mirror, read-only)
-#   - kinowo_local        the local web+worker read/write playground (its own change streams)
+#   - kinowo_local        the local web dev server's playground (its own change streams)
 #
 # This replaces the former `mongo:7.0` Docker container. It's managed by
 # `brew services` when that works, so it restarts at login on its own; mirror.sh

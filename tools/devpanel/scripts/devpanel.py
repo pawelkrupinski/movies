@@ -26,7 +26,6 @@ from typing import Callable, Mapping, Optional, Sequence
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 WEB_PORT = 9000
-FIXTURE_WORKER_MAIN = "modules.LocalFixtureWorkerMain"
 
 
 class Host:
@@ -134,33 +133,6 @@ def free_port(ctx: Context, port: int) -> None:
     if pids:
         say(f"  freeing :{port} (killing {' '.join(map(str, pids))})")
         _terminate(ctx, listeners)
-
-
-def kill_pattern(ctx: Context, pattern: str, label: str) -> None:
-    """Kill every process whose FULL command line matches <pattern>, except
-    this process and its parent. The companion to free_port for processes that
-    bind no port: a stale `sbt localStack` worker is a JVM forked by sbt's
-    bgRunMain, so no pid file ever reaches us; its main class on the command
-    line is the one stable handle."""
-    own = {os.getpid(), os.getppid()}
-
-    def matches() -> list[int]:
-        return [p for p in _pids(ctx.host.capture(["pgrep", "-f", pattern])[1]) if p not in own]
-    pids = matches()
-    if pids:
-        say(f"  killing stale {label} ({' '.join(map(str, pids))})")
-        _terminate(ctx, matches)
-
-
-def kill_stale_worker(ctx: Context) -> None:
-    """Reap a previous run's fixture worker so it can't keep projecting
-    fixtures into the local Mongo under a fresh stack."""
-    kill_pattern(ctx, FIXTURE_WORKER_MAIN, "local fixture worker")
-
-
-def reset_local_stack(ctx: Context) -> None:
-    free_port(ctx, WEB_PORT)
-    kill_stale_worker(ctx)
 
 
 # ── Android ──────────────────────────────────────────────────────────────────
@@ -416,41 +388,16 @@ def run_web(ctx: Context) -> int:
     web/run`: the wrapper narrows the heap so an OOM trips early and leaves
     target/oom-<pid>.hprof behind (the 2026-09-04 dev server died with nothing
     but one OutOfMemoryError line)."""
-    reset_local_stack(ctx)
+    free_port(ctx, WEB_PORT)
     dispatch(ctx, ctx.repo_root, "Local web server (:9000)", ["./scripts/dev-server.sh"])
     return 0
 
 
-def run_local_stack(ctx: Context) -> int:
-    """Web + a fixture-replaying worker (sbt localStack; see build.sbt)."""
-    reset_local_stack(ctx)
-    dispatch(ctx, ctx.repo_root, "Local web + worker (fixtures)", ["sbt", "localStack"])
-    return 0
-
-
-def kill_stack(ctx: Context) -> int:
+def kill_web(ctx: Context) -> int:
     """The panel has already SIGTERM'd its runner's process group before this
-    runs; this is the belt-and-braces reap that guarantees nothing keeps :9000
-    and no orphaned worker keeps projecting into the local Mongo."""
+    runs; this is the belt-and-braces reap that guarantees nothing keeps :9000."""
     say(f"▶ free :{WEB_PORT}")
     free_port(ctx, WEB_PORT)
-    say("▶ reap stale fixture worker")
-    kill_stale_worker(ctx)
-    return 0
-
-
-def reset_local_corpus(ctx: Context) -> int:
-    """Drop the kinowo_local corpus so a local worker re-scrapes from scratch.
-    --yes because the panel console has no TTY for the confirm word."""
-    dispatch(ctx, ctx.repo_root, "Reset local corpus (kinowo_local)",
-             ["scripts/reset-corpus.sh", "--local", "--yes"])
-    return 0
-
-
-def reap_worker(ctx: Context) -> int:
-    """Run by the web console's Stop button: the worker JVM lives outside the
-    process group Stop signals."""
-    kill_stale_worker(ctx)
     return 0
 
 
@@ -458,10 +405,7 @@ ACTIONS: dict[str, Callable[[Context], int]] = {
     "deploy-android": deploy_android,
     "deploy-ios": deploy_ios,
     "run-web": run_web,
-    "run-local-stack": run_local_stack,
-    "kill-stack": kill_stack,
-    "reset-local-corpus": reset_local_corpus,
-    "reap-worker": reap_worker,
+    "kill-web": kill_web,
 }
 
 

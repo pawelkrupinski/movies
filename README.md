@@ -91,30 +91,16 @@ docs/                     # Runbooks, design notes, investigation logs (index: d
 ## Running locally
 
 Prereqs: **JDK 27** (the build emits Java 21 bytecode), **sbt 1.12**, and a local
-**MongoDB** (the local stack expects it on port **27018** as a
-single-node replica set — see below).
+**MongoDB** (the native brew single-node replica set on port **28017** —
+`scripts/local-mirror/start-local-mongo.sh`, see `scripts/local-mirror/README.md`).
 
 The repository is two apps: **worker** scrapes + enriches into Mongo and
-projects a read model; **web** serves that read model. `sbt localStack`
-boots both against one local Mongo — the worker replays a recorded fixture
-tree (`test/resources/fixtures/today`, not checked in: record it with
-`.github/scripts/record-country-fixture.sh` or unzip the daily
-`country-fixture-artifact` workflow's artifact; `KINOWO_FIXTURE_DIR` picks
-another tree) so you get a full corpus offline, and web serves it on :9000:
-
-```bash
-# One-time: a local Mongo on 27018 (replica set → live change streams)
-docker run -d -p 27018:27017 --name kinowo-local-mongo mongo --replSet rs0
-docker exec kinowo-local-mongo mongosh --quiet --eval 'rs.initiate()'
-
-sbt localStack
-# → http://localhost:9000  (web serving; worker replaying fixtures in the background)
-```
-
-To run just the serving app against an existing Mongo, use `sbt web/run`
-— it reads `MONGODB_URI` / `MONGODB_DB` (db defaults to `kinowo`) and
-serves whatever a worker has already projected into the read model
-(`web_movies` / `web_screenings`, loaded into memory by `WebReadModel`).
+projects a read model; **web** serves that read model. Only **web** runs
+locally: `scripts/dev-server.sh` runs `sbt web/run` on :9000 against the local
+Mongo (starting it if nothing answers), reading `MONGODB_URI` / `MONGODB_DB`
+and serving whatever a worker has already projected into the read model
+(`web_movies` / `web_screenings`, loaded into memory by `WebReadModel`). The
+worker runs only in the cluster and in the test layers.
 
 ### Useful local endpoints (city-scoped routes take a `:city` slug, e.g. `poznan`)
 

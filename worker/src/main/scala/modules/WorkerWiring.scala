@@ -308,8 +308,7 @@ class WorkerWiring(
 
   // ── Mongo ─────────────────────────────────────────────────────────────────
   // Where this worker's Mongo is — resolved HERE, the composition root, and nowhere below
-  // it. The local stack overrides it with its own local address instead of rewriting the
-  // process's MONGODB_URI.
+  // it.
   lazy val mongoAddress: MongoAddress = configuration.mongoAddress
 
   // This country's Mongo database — an explicit database on the address still wins for

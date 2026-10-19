@@ -241,12 +241,8 @@ final class ProcessConfiguration(val env: Env) {
     HostPace(java.time.Duration.ofMillis(env.positiveLong(knob.key, default.value.toMillis)))
 
   // ── Test and replay harness ─────────────────────────────────────────────────
-  /** `KINOWO_LOCAL_MONGO_URI` — the local stack's Mongo (`sbt localStack`). */
-  def localStackMongoUri: Option[LocalStackMongoUri] = text("KINOWO_LOCAL_MONGO_URI").map(LocalStackMongoUri(_))
-  /** `KINOWO_LOCAL_MONGO_DB` — the local stack's database. */
-  def localStackDatabase: Option[LocalStackDatabaseName] = text("KINOWO_LOCAL_MONGO_DB").map(LocalStackDatabaseName(_))
-  /** `KINOWO_FIXTURE_DIR` — the fixture tree the local stack's worker replays. */
-  def localStackFixtureDirectory: Option[LocalStackFixtureDirectory] = text("KINOWO_FIXTURE_DIR").map(LocalStackFixtureDirectory(_))
+  /** `KINOWO_FIXTURE_DIR` — the fixture tree the recorder writes into. */
+  def recordingFixtureDirectory: Option[RecordingFixtureDirectory] = text("KINOWO_FIXTURE_DIR").map(RecordingFixtureDirectory(_))
 
   /** `KINOWO_FIXTURE_ROOT`, else the repository's own tree. */
   def fixtureRoot: FixtureRoot = text("KINOWO_FIXTURE_ROOT").map(root => FixtureRoot(Path.of(root))).getOrElse(FixtureRoot.RepositoryRelative)

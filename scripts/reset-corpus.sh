@@ -5,62 +5,45 @@
 # the read model; serving is empty until that completes (a few minutes of sparse
 # repertoire — acceptable per the "short downtime is fine" rule).
 #
-# Two targets:
-#   (default)   PROD  — the `web-<cc>` + `worker-<cc>` Deployments on k3s, prod
-#                       Mongo over the ssh tunnel scripts/local-mirror/prod-tunnel.sh
-#                       opens to the Hetzner Mongo host. Both are scaled to ZERO
-#                       first so the worker can't race a half-finished scrape into a
-#                       collection we're dropping, and scaled back only after the
-#                       wipe lands. Needs a kubeconfig for the cluster.
+# Target: PROD — the `web-<cc>` + `worker-<cc>` Deployments on k3s, prod Mongo over
+# the ssh tunnel scripts/local-mirror/prod-tunnel.sh opens to the Hetzner Mongo host.
+# Both are scaled to ZERO first so the worker can't race a half-finished scrape into a
+# collection we're dropping, and scaled back only after the wipe lands. Needs a
+# kubeconfig for the cluster.
 #
-#                       This used to stop and start FLY machines named `kinowo` and
-#                       `kinowo-worker`. Both tiers moved to k3s on 2026-08-29, which
-#                       made that both useless and harmful: the running worker was
-#                       never stopped (so it raced the wipe) and the restart STARTED
-#                       the stopped Fly worker, giving the fleet two workers holding
-#                       change streams against one database.
-#   --local           — the native brew Mongo the local web+worker share (:28017,
-#                       db `kinowo_local`; see scripts/local-mirror/start-local-mongo.sh).
-#                       No cluster and no tunnel — stop your local `sbt web/run` +
-#                       `sbt worker/run` yourself first so the worker doesn't
-#                       re-scrape into the wipe.
+# This used to stop and start FLY machines named `kinowo` and `kinowo-worker`. Both
+# tiers moved to k3s on 2026-08-29, which made that both useless and harmful: the
+# running worker was never stopped (so it raced the wipe) and the restart STARTED the
+# stopped Fly worker, giving the fleet two workers holding change streams against one
+# database.
 #
 # Drops: detailCache, freshness, movies, tasks, web_movies, web_screenings and
 #        the identity model's derived state (identity_model_families,
 #        identity_model_meta, identity_traces, identity_slot_fingerprints) — i.e.
 #        everything the scrape→identity projection pipeline rebuilds from scratch.
-#        --local ALSO drops scheduled_runs (see below).
 #   NOT dropped — operational state, curated config, and accounts the worker does
 #   not rebuild: uptimeBuckets, uptimeServiceTags (monitoring history), users,
 #   userStates (accounts). Add filmwebFallback / filmwebFallbackMeta (per-cinema
 #   fallback prober state) to COLLECTIONS below if you want a fully-clean slate
 #   that re-derives those too. (Title rules are code, not a collection: see
 #   common/src/main/scala/services/titlerules/.)
-#   scheduled_runs is kept in PROD (worker scheduling — dropping it re-fires every
-#   sweep at once) but DROPPED in --local: the fixture worker's reapers are
-#   once-daily and gate on it, so a leftover `scrape@<today>` record makes a
-#   restarted local stack skip the scrape and never repopulate kinowo_local.
+#   scheduled_runs is kept too (worker scheduling — dropping it re-fires every
+#   sweep at once).
 #
-# PROD reads MONGODB_URI (prod tunnel) from the environment, else from the Touch ID
-#      vault (the script re-runs itself under `secrets run movies MONGODB_URI`), and
-#      MONGODB_DB from the environment (default `kinowo`, Poland's database).
-# LOCAL defaults to mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true
-#       and db `kinowo_local`; override with LOCAL_MONGO_URI / LOCAL_MONGO_DB.
+# Reads MONGODB_URI (prod tunnel) from the environment, else from the Touch ID vault
+# (the script re-runs itself under `secrets run movies MONGODB_URI`), and MONGODB_DB
+# from the environment (default `kinowo`, Poland's database).
 #
-# Usage:  scripts/reset-corpus.sh [--local] [--dry-run] [--yes]
-#           --local     reset the local brew Mongo instead of prod
+# Usage:  scripts/reset-corpus.sh [--dry-run] [--yes]
 #           --dry-run   list which collections WOULD be dropped, change nothing
 #           --yes       skip the confirmation prompt
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Shared plumbing for every prod-sourced local script: ensure_vault_env (the
-# environment-else-vault secret lookup), the tunnel, and — where relevant — the
-# local Mongo starter. Sourcing is side-effect free by contract, so an early
-# source starts nothing.
+# environment-else-vault secret lookup) and the tunnel. Sourcing is side-effect
+# free by contract, so an early source starts nothing.
 . "$HERE/local-mirror/prod-tunnel.sh"
-# shellcheck source=scripts/tool-conventions.sh
-. "$HERE/tool-conventions.sh" # local_mongo_uri
 
 # The country whose Deployments are scaled around the wipe. `MONGODB_DB` names the
 # database (kinowo / kinowo_uk / …); the overlays are suffixed by country code.
@@ -69,58 +52,36 @@ COUNTRY="${KINOWO_RESET_COUNTRY:-pl}"
 COLLECTIONS=(detailCache freshness movies tasks web_movies web_screenings
              identity_model_families identity_model_meta identity_traces identity_slot_fingerprints)
 
-MODE="prod"
 ASSUME_YES=""
 DRY=""
 for arg in "$@"; do
   case "$arg" in
-    --local)   MODE="local" ;;
     --dry-run) DRY=1 ;;
     --yes)     ASSUME_YES=1 ;;
     *) echo "[reset] unknown argument: $arg (see the header for usage)" >&2; exit 1 ;;
   esac
 done
 
-# LOCAL also drops scheduled_runs: the local fixture worker's scrape/enrich
-# reapers run once-daily and gate on this collection, so a leftover
-# `scrape@<today>` record makes a freshly-restarted local stack skip the scrape —
-# leaving an empty kinowo_local that never repopulates. Dropping it forces the
-# next boot to re-scrape from scratch. PROD deliberately keeps it: dropping it
-# there would re-fire every scheduled sweep at once.
-[ "$MODE" = "local" ] && COLLECTIONS+=(scheduled_runs)
-
-
-if [ "$MODE" = "local" ]; then
-  URI="${LOCAL_MONGO_URI:-$(local_mongo_uri)}"
-  DB="${LOCAL_MONGO_DB:-kinowo_local}"
-else
-  ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
-  URI="$(prod_tunnel_uri "$MONGODB_URI")"
-  # The database is the COUNTRY's (models.Country.mongoDb): Poland's is `kinowo`, every other
-  # `kinowo_<cc>`. It must be the one whose web/worker get scaled to zero below, so an exported
-  # MONGODB_DB naming another country's is refused rather than wiped while that country serves.
-  if [ "$COUNTRY" = pl ]; then country_db=kinowo; else country_db="kinowo_$COUNTRY"; fi
-  if [ -n "${MONGODB_DB:-}" ] && [ "$MONGODB_DB" != "$country_db" ]; then
-    echo "[reset] MONGODB_DB=$MONGODB_DB is not $COUNTRY's database ($country_db) — refusing" >&2
-    exit 1
-  fi
-  DB="$country_db"
+ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
+URI="$(prod_tunnel_uri "$MONGODB_URI")"
+# The database is the COUNTRY's (models.Country.mongoDb): Poland's is `kinowo`, every other
+# `kinowo_<cc>`. It must be the one whose web/worker get scaled to zero below, so an exported
+# MONGODB_DB naming another country's is refused rather than wiped while that country serves.
+if [ "$COUNTRY" = pl ]; then country_db=kinowo; else country_db="kinowo_$COUNTRY"; fi
+if [ -n "${MONGODB_DB:-}" ] && [ "$MONGODB_DB" != "$country_db" ]; then
+  echo "[reset] MONGODB_DB=$MONGODB_DB is not $COUNTRY's database ($country_db) — refusing" >&2
+  exit 1
 fi
+DB="$country_db"
 
-echo "[reset] $MODE — target db '$DB'; ${DRY:+would }drop: ${COLLECTIONS[*]}"
-if [ "$MODE" = "local" ]; then
-  echo "[reset] LOCAL: stop your local web+worker (sbt) first so the worker can't re-scrape into the wipe."
-  CONFIRM_WORD="wipe-local"
-else
-  echo "[reset] will scale down+up: deploy/web-$COUNTRY, deploy/worker-$COUNTRY (ns $KUBE_NAMESPACE)"
-  CONFIRM_WORD="wipe"
-fi
+echo "[reset] prod — target db '$DB'; ${DRY:+would }drop: ${COLLECTIONS[*]}"
+echo "[reset] will scale down+up: deploy/web-$COUNTRY, deploy/worker-$COUNTRY (ns $KUBE_NAMESPACE)"
 if [ -z "$DRY" ] && [ -z "$ASSUME_YES" ]; then
-  read -r -p "[reset] This wipes the $MODE corpus. Type '$CONFIRM_WORD' to proceed: " ans
-  [ "$ans" = "$CONFIRM_WORD" ] || { echo "[reset] aborted."; exit 1; }
+  read -r -p "[reset] This wipes the prod corpus. Type 'wipe' to proceed: " ans
+  [ "$ans" = "wipe" ] || { echo "[reset] aborted."; exit 1; }
 fi
 
-# --- scale a Deployment down / up (prod only) -------------------------------
+# --- scale a Deployment down / up -------------------------------------------
 # Fatal on failure, unlike most of this script's helpers: the point of scaling to
 # zero is that nothing is writing while collections are dropped, so a scale that
 # silently failed would leave the worker racing the wipe — the exact thing this
@@ -134,7 +95,7 @@ scale_deploy() {
   return 0
 }
 
-# --- tunnel to prod Mongo (prod only), torn down on any exit ----------------
+# --- tunnel to prod Mongo, torn down on any exit ----------------------------
 # The database moved to the Hetzner host mongo-1 on 2026-08-29, so the tunnel is
 # an ssh forward. See scripts/local-mirror/prod-tunnel.sh, the single definition
 # every prod-sourced local script shares.
@@ -159,23 +120,13 @@ open_tunnel() {
   ensure_prod_tunnel || { echo "[reset] prod Mongo not reachable via the tunnel" >&2; exit 1; }
 }
 
-require_local_mongo() {
-  mongosh_at "$URI" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && return 0
-  echo "[reset] local Mongo not reachable at $URI — start it with scripts/local-mirror/start-local-mongo.sh" >&2
-  exit 1
-}
-
 # --- run ---------------------------------------------------------------------
-if [ "$MODE" = "prod" ]; then
-  # The tunnel FIRST: scaled to zero and then finding prod unreachable, the script exited with the web tier down.
-  open_tunnel               # needed to query, even for --dry-run
-  if [ -z "$DRY" ]; then SCALED_DOWN=1; scale_deploy "web-$COUNTRY" 0; scale_deploy "worker-$COUNTRY" 0; fi
-else
-  require_local_mongo
-fi
+# The tunnel FIRST: scaled to zero and then finding prod unreachable, the script exited with the web tier down.
+open_tunnel               # needed to query, even for --dry-run
+if [ -z "$DRY" ]; then SCALED_DOWN=1; scale_deploy "web-$COUNTRY" 0; scale_deploy "worker-$COUNTRY" 0; fi
 
 echo "[reset] ${DRY:+[dry-run] }collections in '$DB':"
-# `getSiblingDB($DB)` targets the db explicitly — the --local URI carries no db,
+# `getSiblingDB($DB)` targets the db explicitly — the tunnel URI may carry no db,
 # so a bare `db` would resolve to `test`.
 COLLS_JS="$(printf '"%s",' "${COLLECTIONS[@]}")"
 mongosh_at "$URI" --quiet --eval "
@@ -190,7 +141,7 @@ mongosh_at "$URI" --quiet --eval "
   });
 "
 
-if [ "$MODE" = "prod" ] && [ -z "$DRY" ]; then
+if [ -z "$DRY" ]; then
   SCALED_DOWN=""
   scale_deploy "worker-$COUNTRY" 1
   scale_deploy "web-$COUNTRY" 1

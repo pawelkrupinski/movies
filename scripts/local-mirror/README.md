@@ -2,14 +2,14 @@
 
 A single **native (Homebrew) single-node replica-set Mongo on `:28017`** backs
 local development. It's a replica set (not a standalone) because both the
-`/debug` live SSE view and the local web+worker stack read **change streams**,
+`/debug` live SSE view and the local web dev server read **change streams**,
 which a standalone rejects (error 40573) — the same reason prod runs `--replSet
 rs0`. One instance, two databases:
 
 | DB           | Role | Written by |
 |--------------|------|------------|
 | `<prod db>_prod_mirror` | The `/debug` mirror — prod's data synced in, read-only locally. One per country: `kinowo_prod_mirror`, `kinowo_uk_prod_mirror`, `kinowo_de_prod_mirror` | `mirror.sh` tailers |
-| `kinowo_local` | The local **web + worker** read/write playground (its own change streams) | a locally-run worker |
+| `kinowo_local` | The local **web dev server**'s playground (its own change streams) | nothing by default (the worker runs only in the cluster) |
 
 Why the mirror exists: everything `/debug` reads is otherwise a prod-tunnel
 round-trip, and the tunnel charges **~110ms per round-trip** on top of queries
@@ -52,8 +52,8 @@ side, and `MongoConnectionSpec` fails if the two drift apart or if `/debug`
 starts reading a collection the sync doesn't carry.
 
 > One source of truth per collection. The tailers **replace** the mirrored
-> collections from prod, so don't also write them from a local worker — point
-> the worker at `kinowo_local`. That's the whole reason for the suffix.
+> collections from prod, so nothing else may write them — anything that writes
+> locally goes to `kinowo_local`. That's the whole reason for the suffix.
 
 ## Tools that read the mirror: check its freshness first
 
@@ -169,21 +169,21 @@ whenever it passes 8MB (in place — launchd holds an append fd on it, so renami
 would strand the agent writing to the old inode). Prereqs: `MONGODB_URI` in the
 Touch ID vault and non-interactive ssh to the Mongo host working.
 
-## Running the web + worker stack locally (`kinowo_local`)
+## Running the web dev server locally (`kinowo_local`)
 
-Point both apps at the native Mongo, using the **`kinowo_local`** database so the
-local worker's writes never collide with the prod-synced `kinowo_prod_mirror`:
+`scripts/dev-server.sh` points `web/run` at the native Mongo, using the
+**`kinowo_local`** database so nothing it writes collides with the prod-synced
+`kinowo_prod_mirror`:
 
 ```
 MONGODB_URI=mongodb://127.0.0.1:28017/?directConnection=true
 MONGODB_DB=kinowo_local
 ```
 
-`kinowo_local` is a normal database on the same replica set, so the read-model
-projector and the Filmweb-fallback watcher both
-get the change streams they need. `/debug` keeps reading the prod-synced
-`kinowo_prod_mirror` (via `MONGODB_MOVIES_MIRROR_URI`); the rest of the local
-site serves from whatever the local worker projects into `kinowo_local`.
+`kinowo_local` is a normal database on the same replica set, so web gets the
+change streams it needs. `/debug` keeps reading the prod-synced
+`kinowo_prod_mirror` (via `MONGODB_MOVIES_MIRROR_URI`). No worker runs locally,
+so the rest of the site serves whatever read model `kinowo_local` already holds.
 
 ## Review answers (`review_local.review_answers`)
 
@@ -471,7 +471,7 @@ Then stop exporting `MONGODB_MOVIES_MIRROR_URI` for the web app. To wipe the dat
 | Port  | What                                                              |
 |-------|-------------------------------------------------------------------|
 | 27100-27899 | prod tunnel, one per caller (`ssh -N -L <port>:127.0.0.1:27017`) — everything except `/debug` reads, and the sync **source** |
-| 28017 | native local Mongo — `/debug` mirror reads + the sync **target**, and the web+worker `kinowo_local` |
+| 28017 | native local Mongo — `/debug` mirror reads + the sync **target**, and the web dev server's `kinowo_local` |
 
 Override the Mongo port with `LOCAL_MIRROR_PORT` (and match it in
 `MONGODB_MOVIES_MIRROR_URI`).

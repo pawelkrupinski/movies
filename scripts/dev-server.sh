@@ -30,7 +30,7 @@
 # Raise it back by passing your own, e.g. `scripts/dev-server.sh -J-Xmx4g`.
 #
 # MONGO. The local, password-free Mongo (tool-conventions.sh's local_mongo_port: :28017, or $LOCAL_MIRROR_PORT) —
-# the same one `sbt localStack` and scripts/local-mirror/start-local-mongo.sh use:
+# the same one scripts/local-mirror/start-local-mongo.sh starts:
 # the app reads its playground `kinowo_local`, /debug reads the prod-synced `kinowo_prod_mirror`
 # (scripts/local-mirror/README.md). The app reads config from the process only (no .env.local
 # since 2026-10-12), so without these it refused to boot. Anything already exported wins; for

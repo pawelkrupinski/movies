@@ -368,10 +368,10 @@ lazy val worker = (project in file("worker"))
     // Reference that dir on the test classpath WITHOUT copying it — the tree is
     // ~400MB, so copyResources is out; unmanagedClasspath points at it in place.
     Test / unmanagedClasspath += Attributed.blank((LocalRootProject / baseDirectory).value / "test" / "resources"),
-    // `sbt localStack` background-runs LocalFixtureWorkerMain via bgRunMain, which
-    // by default snapshots the run classpath into a temp dir. That copy chokes on
-    // the ~400MB+ `test/resources` tree above (and any fixtures symlink). Run the
-    // bg job against the live classpath instead — we never mutate classes mid-run.
+    // sbt runs `Test/runMain` (the recorder, the identity tools) through bgRunMain,
+    // which by default snapshots the run classpath into a temp dir. That copy chokes
+    // on the ~400MB+ `test/resources` tree above (and any fixtures symlink). Run
+    // against the live classpath instead — we never mutate classes mid-run.
     Test / bgCopyClasspath := false,
     libraryDependencies ++= Seq(
       // jsoup + mongo + caffeine arrive transitively via `common`; Sentry is the
@@ -514,76 +514,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "movies",
     publish / skip := true,
-    commands += localStack,
   )
-
-// ── Local dev stack: `sbt localStack` ────────────────────────────────────────
-//
-// Runs `web` + `worker` together against ONE shared local Mongo (never prod), where the WORKER replays every HTTP fetch
-// from test/resources/fixtures/today while WEB hits the real internet (posters,
-// etc.) and serves the corpus the worker projects into the local read model.
-//
-//   - worker: `worker/Test/bgRunMain modules.LocalFixtureWorkerMain` (background,
-//     forked). Fetches via FakeHttpFetch("today"); real local Mongo + projector.
-//   - web: `web/run` (foreground, Play dev on :9000). Loaded in THIS sbt JVM, so
-//     a JVM property is how it picks up the local Mongo. Env precedence is
-//     process-env > -D, so launch it WITHOUT a MONGODB_URI in the environment —
-//     plain `sbt localStack`, never under `secrets run movies MONGODB_URI …`,
-//     or that (prod) URI wins over these properties. It needs no secrets.
-//
-// Override via env: KINOWO_LOCAL_MONGO_URI, KINOWO_LOCAL_MONGO_DB, KINOWO_FIXTURE_DIR.
-// Uses the native brew Mongo on port 28017 (NOT 27017 — that's the prod ssh-tunnel
-// to prod Mongo; this stack must never touch prod): the same single-node-replica-
-// set instance scripts/local-mirror/start-local-mongo.sh sets up and the /debug
-// mirror + scripts/reset-corpus.sh --local share. `ensureLocalMongo` runs that
-// script if :28017 isn't already up. (The replica set gives web instant
-// change-stream updates; a standalone also works — web falls back to its
-// periodic full reload.)
-//
-// Stop: quit `web/run` (Enter), then `bgStop <id>` for the worker (`jobs` lists
-// it), or just exit sbt.
-lazy val localStack = Command.command("localStack") { state =>
-  val uri        = sys.env.getOrElse("KINOWO_LOCAL_MONGO_URI", "mongodb://127.0.0.1:28017/?directConnection=true")
-  val db         = sys.env.getOrElse("KINOWO_LOCAL_MONGO_DB", "kinowo_local")
-  val fixtureDir = sys.env.getOrElse("KINOWO_FIXTURE_DIR", "today")
-  ensureLocalMongo(state, uri)
-  // The worker fork can't see these JVM props; LocalFixtureWorkerMain re-forces
-  // the SAME defaults itself, so both land on the same db.
-  System.setProperty("MONGODB_URI", uri)
-  System.setProperty("MONGODB_DB", db)
-  // Point the web app's /debug read-mirror at the SAME local db, so /debug shows what
-  // the local worker projects into `db` rather than an exported
-  // MONGODB_MOVIES_MIRROR_URI (the prod-synced kinowo_prod_mirror). The mirror only
-  // exists to dodge the slow prod tunnel; on a local Mongo it's pointless.
-  System.setProperty("MONGODB_MOVIES_MIRROR_URI", uri)
-  state.log.info(s"[localStack] worker replays fixtures/$fixtureDir, web hits the internet — both on Mongo $uri db=$db (mirror→$db too, not prod)")
-  "worker/Test/bgRunMain modules.LocalFixtureWorkerMain" :: "web/run" :: state
-}
-
-/** Make sure the local Mongo is listening for the stack. For a LOCAL uri whose
- *  port is closed, start the native brew Mongo via
- *  scripts/local-mirror/start-local-mongo.sh (a single-node replica set, so web's
- *  change streams deliver live, not just the 30-min reload backstop) and wait for
- *  it. Never touches a remote/custom uri. */
-def ensureLocalMongo(state: State, uri: String): Unit = {
-  val log = state.log
-  val (host, port) = """mongodb://([^:/]+):(\d+)""".r.findFirstMatchIn(uri)
-    .map(m => (m.group(1), m.group(2).toInt)).getOrElse(("127.0.0.1", 28017))
-  val isLocal = host == "127.0.0.1" || host == "localhost"
-  def portOpen: Boolean =
-    try { val s = new java.net.Socket(); s.connect(new java.net.InetSocketAddress(host, port), 500); s.close(); true }
-    catch { case _: Throwable => false }
-  if (!isLocal || portOpen) return
-  log.info(s"[localStack] no Mongo on $host:$port — starting the brew Mongo (scripts/local-mirror/start-local-mongo.sh)…")
-  val rc = scala.sys.process.Process(Seq("bash", "scripts/local-mirror/start-local-mongo.sh"))
-    .!(scala.sys.process.ProcessLogger(line => log.info(s"[start-local-mongo] $line")))
-  if (rc != 0)
-    log.warn("[localStack] start-local-mongo.sh failed — start it yourself, then re-run `sbt localStack`.")
-  var waited = 0
-  while (!portOpen && waited < 40) { Thread.sleep(1000); waited += 1 }
-  if (portOpen) log.info(s"[localStack] local mongo ready on $host:$port")
-  else log.warn(s"[localStack] mongo didn't come up on $host:$port — see scripts/local-mirror/start-local-mongo.sh")
-}
 
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
 // listed task in parallel and reports all failures instead of stopping at the

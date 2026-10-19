@@ -3,7 +3,7 @@
 
 The action logic runs against `ScriptedHost`, which records every command and
 answers `capture` from a scripted reply function — the device/adb/devicectl
-side of the seam. free_port / kill_pattern run against real processes, and the
+side of the seam. free_port runs against a real process, and the
 Swift panel is compiled and self-tested for real.
 """
 from __future__ import annotations
@@ -339,30 +339,20 @@ class WebActionsTest(unittest.TestCase):
         run_action(action, context(host, root))
         return host.execed, host.captured
 
-    def assert_resets_stack_first(self, captured):
+    def assert_frees_the_web_port(self, captured):
         self.assertIn(["lsof", "-ti", "tcp:9000", "-sTCP:LISTEN"], captured)
-        self.assertIn(["pgrep", "-f", "modules.LocalFixtureWorkerMain"], captured)
 
     def test_web_runs_through_the_heap_canary(self):
         execed, captured = self.execed(devpanel.run_web)
         self.assertEqual(execed, (Path("/repo"), ["./scripts/dev-server.sh"]))
-        self.assert_resets_stack_first(captured)
+        self.assert_frees_the_web_port(captured)
 
-    def test_local_stack(self):
-        execed, captured = self.execed(devpanel.run_local_stack)
-        self.assertEqual(execed, (Path("/repo"), ["sbt", "localStack"]))
-        self.assert_resets_stack_first(captured)
-
-    def test_kill_stack(self):
+    def test_kill_web(self):
         host = ScriptedHost(lambda cmd: (1, ""))
-        _, out = run_action(devpanel.kill_stack, context(host))
+        _, out = run_action(devpanel.kill_web, context(host))
         self.assertIsNone(host.execed)
-        self.assert_resets_stack_first(host.captured)
+        self.assert_frees_the_web_port(host.captured)
         self.assertIn("free :9000", out)
-
-    def test_reset_local_corpus(self):
-        self.assertEqual(self.execed(devpanel.reset_local_corpus)[0],
-                         (Path("/repo"), ["scripts/reset-corpus.sh", "--local", "--yes"]))
 
     def test_worktree_override(self):
         self.assertEqual(devpanel.repo_root({"DEVPANEL_REPO_ROOT": "/tmp/wt"}), Path("/tmp/wt"))
@@ -383,9 +373,8 @@ class CliTest(unittest.TestCase):
     def test_every_panel_button_names_a_real_action(self):
         swift = (HERE / "DevPanel/main.swift").read_text()
         buttons = re.findall(r'actionName: "([a-z-]+)"', swift)
-        self.assertGreaterEqual(len(buttons), 6)
+        self.assertGreaterEqual(len(buttons), 4)
         self.assertLessEqual(set(buttons), set(devpanel.ACTIONS))
-        self.assertIn('"reap-worker"', swift)
 
     def test_dev_tool_path_appends_existing_dirs_once(self):
         path = devpanel.with_dev_tool_path({"PATH": "/usr/bin:/usr/local/bin"})["PATH"].split(":")
@@ -416,14 +405,6 @@ class RealProcessTest(unittest.TestCase):
         run_action(lambda c: devpanel.free_port(c, port), self.ctx())
         self.assertEqual(listening(), "")
 
-    def test_kill_pattern_reaps_a_match_but_not_itself(self):
-        marker = f"DEVPANEL_KILLTEST_{os.getpid()}"
-        sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)", marker])
-        self.addCleanup(sleeper.kill)
-        matching = lambda: devpanel.Host().capture(["pgrep", "-f", marker])[1].strip()
-        self.assertTrue(wait_until(matching))
-        run_action(lambda c: devpanel.kill_pattern(c, marker, "test marker"), self.ctx())
-        self.assertTrue(wait_until(lambda: sleeper.poll() is not None))
 
 
 @unittest.skipUnless(shutil.which("swiftc"), "swiftc not installed")
