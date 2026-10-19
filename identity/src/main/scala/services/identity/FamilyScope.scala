@@ -157,9 +157,16 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     private lazy val named = candidates.filterNot(scored => scored.denied || untitled(scored)).map(_.probability).maxOption
     private def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
 
+    // A venue whose other billings are often relays and events ([[VenueKinds]]): an ordinary feature for a billing that
+    // itself looks like an event or relay, or names the film only by a piece, needs a fact of the billing's own to stand.
+    private val kindHeavy = !VenueKinds.statesAFact(listing) && scoring.generation.context.venueKinds.eventHeavy(venue, IdentityMeasures.key(listing.title))
+    private def heldByVenueKind(scored: Scored) = kindHeavy && VenueKinds.ordinaryFeature(scored.candidate.film) &&
+      (VenueKinds.looksNonFilm(listing) || VenueKinds.namesOnlyByAPiece(listing, scored.candidate.film))
+
     /** Why another candidate's evidence denies `scored`, if it does. */
     private def deniedBeside(scored: Scored): Option[String] =
       if (ownLanguageUntitled(scored)) Some("a film of the venue's own language its title shares no word with")
+      else if (heldByVenueKind(scored)) Some("an ordinary film for an event- or relay-shaped billing at a venue of relays and events, stating no fact of its own")
       else if (anotherRecordOfItsBroadcast(scored)) Some("another record of a broadcast its film database holds twice")
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         Some("its director's other film, which the title does not name")

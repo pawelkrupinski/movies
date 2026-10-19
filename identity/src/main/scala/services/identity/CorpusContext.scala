@@ -51,6 +51,8 @@ private[identity] trait CorpusContext {
   /** The evidence the context already holds for `listing` — one instance kept across resolves, so
    *  what it caches (its measured listing's title forms) is computed once — or `None`. */
   def evidenceOf(listing: Listing): Option[Evidence] = None
+  /** Each venue's kind profile ([[VenueKinds]], experiment `venue-kinds`): none where the context does not derive it. */
+  def venueKinds: VenueKinds = VenueKinds.None
 
   /** A fresh one per resolve (`CandidateScoring` takes one): its memo is not thread-safe, and a
    *  context kept across events would serve a group's backing after the group moved. */
@@ -87,7 +89,8 @@ private[identity] final class WholeCorpusContext(
   titleGroups:    Map[String, Seq[(String, IdentityMeasures.Listing)]],
   wholeTitles:    Set[String],
   reachedByTitle: Map[String, Seq[(String, Set[Int])]],
-  segmentSpreads: Map[String, Int]
+  segmentSpreads: Map[String, Int],
+  override val venueKinds: VenueKinds = VenueKinds.None
 ) extends CorpusContext {
   def segmentSpread(sanitised: String): Int = segmentSpreads.getOrElse(sanitised, 0)
   def candidate(id: Int): Option[Candidate] = candidates.get(id)
@@ -226,6 +229,7 @@ private[identity] object CorpusContext {
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     val reachedByTitle = nodes.groupBy(titleOf).filter(_._1.nonEmpty).map { case (title, sameTitled) =>
       title -> sameTitled.map(node => node.id -> reached(node).toSet) }
-    new WholeCorpusContext(answers, candidates, houseEvidence, titleGroups, wholeTitles, reachedByTitle, spreads(nodes, sanitize))
+    new WholeCorpusContext(answers, candidates, houseEvidence, titleGroups, wholeTitles, reachedByTitle, spreads(nodes, sanitize),
+      VenueKinds.of(nodes.flatMap(node => node.listings.map(titleOf(node) -> _))))
   }
 }
