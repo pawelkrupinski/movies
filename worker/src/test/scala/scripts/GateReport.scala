@@ -10,8 +10,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{Executors, TimeUnit}
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 /**
@@ -363,7 +362,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
   private def runPool[A, B](workers: Int, items: Seq[A])(f: A => B): Seq[B] = {
     val pool = Executors.newFixedThreadPool(workers); implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
     val done = new AtomicInteger(0)
-    val out = Await.result(Future.sequence(items.map(it => Future { val r = f(it); val n = done.incrementAndGet(); if (n % 25 == 0) println(s"  ...$n/${items.size}"); r })), 40.minutes)
+    val out = ParallelTasks.all(items) { it => val r = f(it); val n = done.incrementAndGet(); if (n % 25 == 0) println(s"  ...$n/${items.size}"); r }
     pool.shutdown(); pool.awaitTermination(1, TimeUnit.MINUTES); out
   }
 }

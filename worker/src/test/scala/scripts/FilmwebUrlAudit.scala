@@ -9,8 +9,7 @@ import services.movies.{CaffeineMovieCache, StoredMovieRecord}
 import tools.{DaemonExecutors, RealHttpFetch}
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
+import scala.concurrent.ExecutionContextExecutorService
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -65,25 +64,21 @@ object FilmwebUrlAudit {
     val total      = candidates.size
     val startedAt  = tools.Stopwatch.start()
 
-    val tasks = candidates.map { case StoredMovieRecord(title, year, _, _, _) =>
-      Future {
-        val outcome = ratings.auditOneSync(title, year)
-        val index = done.incrementAndGet()
-        outcome match {
-          case FilmwebRatings.Corrected(before, after) =>
-            println(f"[$index%4d/$total%4d] CORRECTED $title (${yearLabel(year)})")
-            println(s"             before: $before")
-            println(s"             after : $after")
-          case FilmwebRatings.Dropped(before) =>
-            println(f"[$index%4d/$total%4d] DROPPED   $title (${yearLabel(year)})")
-            println(s"             was: $before")
-          case FilmwebRatings.Kept(_) | FilmwebRatings.NoUrl => () // silent; counted in summary.
-        }
-        (title, year, outcome)
+    val outcomes = ParallelTasks.all(candidates) { case StoredMovieRecord(title, year, _, _, _) =>
+      val outcome = ratings.auditOneSync(title, year)
+      val index = done.incrementAndGet()
+      outcome match {
+        case FilmwebRatings.Corrected(before, after) =>
+          println(f"[$index%4d/$total%4d] CORRECTED $title (${yearLabel(year)})")
+          println(s"             before: $before")
+          println(s"             after : $after")
+        case FilmwebRatings.Dropped(before) =>
+          println(f"[$index%4d/$total%4d] DROPPED   $title (${yearLabel(year)})")
+          println(s"             was: $before")
+        case FilmwebRatings.Kept(_) | FilmwebRatings.NoUrl => () // silent; counted in summary.
       }
+      (title, year, outcome)
     }
-
-    val outcomes = Await.result(Future.sequence(tasks), 60.minutes)
     executionContext.shutdown()
     repository.close()
 
