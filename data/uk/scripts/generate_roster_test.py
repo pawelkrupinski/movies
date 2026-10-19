@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for the UK generate_roster.py — pages.json into UkPages.scala and the
-apps' fallback lists — on synthetic pages, and the committed output against it.
+"""Tests for the UK generate_roster.py — roster.json into UkRosterData.scala and
+UkSourcesData.scala, pages.json into UkPages.scala and the apps' fallback lists —
+on synthetic data, and the committed output against it.
 
     python3 data/uk/scripts/generate_roster_test.py
 """
@@ -70,15 +71,85 @@ def synthetic():
     check("a nation with no place in the pickers' order is refused", refused)
 
 
+def v(obj, display, slug, primary=None, **kw):
+    row = {"object": obj, "displayName": display, "pillName": display, "flicks": slug, **kw}
+    return dict(row, primary=primary) if primary else row
+
+
+ROSTER = [
+    {"group": "leeds", "venues": [
+        v("HydeParkPictureHouse", "Hyde Park Picture House", "hyde-park-picture-house",
+          ["spektrix", "leedsheritagetheatres", "Hyde Park Picture House"]),
+        v("CineworldLeeds", "Cineworld Leeds", "cineworld-leeds", ["cineworld", "x01-leeds"]),
+        v("IlkleyCinema", "Ilkley Cinema", "ilkley-cinema"),
+    ]},
+    {"group": "london", "venues": [
+        v("BfiLondonSouthbank", "BFI London Southbank", "bfi-southbank", ["bfiSouthbank"], seasonal=True),
+        v("TheOldCourtWindsor", "The Old Court Windsor", None, ["theOldCourt"], note="on no Flicks page"),
+    ]},
+]
+
+
+def roster():
+    venues = g.venues_source(ROSTER)
+    check("a venue is a top-level val named as its object, keeping its names and its Scala name",
+          'val CineworldLeeds: UkCinema = new UkCinema("Cineworld Leeds", "Cineworld Leeds", "CineworldLeeds")'
+          in venues)
+    check("a seasonal venue opens with the UK's season",
+          'new UkCinema("BFI London Southbank", "BFI London Southbank", "BfiLondonSouthbank", '
+          'Opening.Seasonal(SeasonWindow.UnitedKingdom))' in venues)
+    sources = g.sources_source(ROSTER)
+    check("a Flicks venue reads its slug as its primary", '    f(IlkleyCinema, "ilkley-cinema"),' in sources)
+    check("an own-site venue keeps its Flicks slug as the fallback",
+          '    o(CineworldLeeds, UkFeed.Cineworld("x01-leeds"), "cineworld-leeds"),' in sources
+          and '    o(HydeParkPictureHouse, UkFeed.Spektrix("leedsheritagetheatres", Some("Hyde Park Picture House")), '
+              '"hyde-park-picture-house"),' in sources)
+    check("a venue on no Flicks page has no fallback", "    own(TheOldCourtWindsor, UkFeed.TheOldCourt)," in sources)
+    check("the venues keep the roster's order, group by group",
+          sources.index("HydeParkPictureHouse") < sources.index("IlkleyCinema") < sources.index("BfiLondonSouthbank")
+          and "group0 ++ group1" in sources)
+    pages = [page("leeds", "Leeds", "major", "West Yorkshire",
+                  ["HydeParkPictureHouse", "CineworldLeeds", "IlkleyCinema", "BfiLondonSouthbank", "TheOldCourtWindsor"],
+                  ["Leeds, West Yorkshire"])]
+    check("a sound roster on its pages has no problems", g.roster_problems(ROSTER, pages) == [])
+
+    def refused(change, needle, pages=pages):
+        bad = json.loads(json.dumps(ROSTER))
+        change(bad)
+        found = g.roster_problems(bad, pages)
+        return any(needle in f for f in found)
+
+    check("two venues under one display name are refused — they would read each other's slots",
+          refused(lambda r: r[0]["venues"][2].update(displayName="Cineworld Leeds"), "displayName"))
+    check("a Flicks venue with no slug is refused",
+          refused(lambda r: r[0]["venues"][2].update(flicks=None), "no Flicks slug"))
+    check("an unknown source is refused", refused(lambda r: r[0]["venues"][1].update(primary=["regal", "1"]), "unknown"))
+    check("a source missing its handle is refused", refused(lambda r: r[0]["venues"][1].update(primary=["odeon"]), "takes"))
+    check("Derby QUAD's client on another venue is refused",
+          refused(lambda r: r[0]["venues"][2].update(primary=["quadDerby"]), "reads QuadDerby"))
+    check("a venue on no page is refused", refused(lambda r: None, "on no page", pages=[dict(pages[0], cinemas=[])]))
+    check("roster.json is written one venue per line, and reads back the same",
+          g.uk_roster.dumps(ROSTER).count("\n") == 2 + 2 * 2 + 5 + 2
+          and json.loads(g.uk_roster.dumps(ROSTER))["groups"] == ROSTER)
+
+
 def committed():
     data = json.loads(g.PAGES.read_text(encoding="utf-8"))
     towns = {k: t["name"] for k, t in json.loads(g.TOWNS.read_text(encoding="utf-8"))["towns"].items()}
     check("UkPages.scala is what the generator makes of pages.json",
           g.OUT.read_text(encoding="utf-8") == g.scala_source(data["pages"], data["retired"], towns))
+    groups = g.uk_roster.load()
+    check("roster.json is sound, and on the pages", g.roster_problems(groups, data["pages"]) == [])
+    check("roster.json is in its canonical layout", g.uk_roster.ROSTER.read_text(encoding="utf-8") == g.uk_roster.dumps(groups))
+    check("UkRosterData.scala is what the generator makes of roster.json",
+          g.VENUES_OUT.read_text(encoding="utf-8") == g.venues_source(groups))
+    check("UkSourcesData.scala is what the generator makes of roster.json",
+          g.SOURCES_OUT.read_text(encoding="utf-8") == g.sources_source(groups))
 
 
 def main():
     synthetic()
+    roster()
     committed()
     print("all passed")
 

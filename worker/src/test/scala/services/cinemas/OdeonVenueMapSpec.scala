@@ -57,10 +57,9 @@ class OdeonVenueMapSpec extends AnyFlatSpec with Matchers {
     assert(mismatched.isEmpty, mismatched.mkString("; "))
   }
 
-  /** The case-object name the venue map's third column carries — `Cinema` is a
-   *  sealed abstract class, so the object's own name only shows up reflectively. */
-  private def caseObjectName(cinema: Cinema): String =
-    cinema.getClass.getSimpleName.stripSuffix("$")
+  /** The name the venue map's third column carries: the venue's Scala name, a UK
+   *  venue's `toString` (`data/uk/roster.json`'s `object`). */
+  private def caseObjectName(cinema: Cinema): String = cinema.toString
 }
 
 object OdeonVenueMapSpec {

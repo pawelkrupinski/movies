@@ -28,6 +28,20 @@ CINEWORLD_VENUES = os.path.join(HERE, "testdata", "cineworld-venues.json")
 import harvest_towns as ht  # noqa: E402  (this file's directory leads sys.path)
 
 
+def test_every_venue_flicks_lists_is_wired_whichever_way_it_reads_flicks():
+    # The sweep's input is roster.json's `flicks` slugs: a venue Flicks scrapes and a venue that only
+    # falls back to Flicks both count, and one Flicks does not list at all is entered by hand.
+    # (Read off the Scala until 2026-10, from a catalog file the Flicks-primary venues had moved out
+    # of — so `--sync` saw only the fallbacks, and would have dropped the other 382 venues' towns.)
+    roster = ht.uk_roster.venues(ht.uk_roster.load())
+    wired = ht.wired_venues(roster)
+    assert wired["movieland-newtownards"] == "IMCNewtownardsMovieland"      # Flicks is its primary
+    assert wired["cineworld-cardiff"] == "CineworldCardiff"                 # Flicks is its fallback
+    assert "TheOldCourtWindsor" not in wired.values()                       # on no Flicks page
+    assert len(wired) == len(roster) - 1
+    assert ht.display_names(roster)["CineworldCardiff"] == "Cineworld Cardiff"
+
+
 def test_town_carries_the_postcode():
     assert ht.town_of("Riverside, Wherry Road, Norwich NR1 1XA") == "Norwich"
     assert ht.town_of("High Street, Banchory AB31 5SR") == "Banchory"
@@ -131,7 +145,7 @@ def test_sync_keeps_fetches_and_forgets_the_right_venues():
     assert sorted(keep) == ["kept", "renamed"]
     assert retired == ["gone"]                       # no longer wired: forgotten
     assert renamed == ["New Name"]
-    # Re-keyed in place, so the row keeps matching after a rename in Cinema.scala.
+    # Re-keyed in place, so the row keeps matching after a rename in roster.json.
     assert keep["renamed"]["displayName"] == "New Name"
     assert keep["renamed"]["town"] == "Hull"         # and keeps the town it had
     # What is left for the sweep to actually fetch: only the new venue.

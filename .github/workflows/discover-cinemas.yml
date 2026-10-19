@@ -3,19 +3,18 @@ name: Discover UK cinemas
 # Weekly discovery of NEW UK cinemas on flicks.co.uk, wired into the catalog as a
 # PR for a human to review.
 #
-# The UK roster is one hand-wired `FlicksClient` per venue (a `case object … extends
-# Cinema` in common/.../models/Cinema.scala + a `flicks("<slug>", Obj)` line in
-# worker/.../UkScraperCatalog.scala). Flicks lists every cinema in
+# Every UK venue is one row of data/uk/roster.json (its name, display and pill names,
+# Flicks slug and primary source), generated into the Scala by
+# data/uk/scripts/generate_roster.py. Flicks lists every cinema in
 # sitemap-cinemas.xml; scripts/discover-cinemas/discover.py diffs that against the
 # slugs we already wire (minus scripts/discover-cinemas/exclude.txt, the known-
-# defunct venues) and splices compilable Scala for each genuinely new venue,
-# wiring it beside the nearest already-wired UK venue. "Already wired" spans
-# both the `flicks(...)` catalogue lines and the chain venues catalogued
-# own-site-primary, whose Flicks slug lives in worker/.../ChainFlicksFallback.scala.
+# defunct venues) and appends a row for each genuinely new venue, beside the
+# nearest already-wired UK venue. "Already wired" spans every row's `flicks` slug,
+# whether Flicks is the venue's primary or the fallback of its own-site client.
 #
 # Venues it can't wire safely — London (needs a manual area-group), name
 # collisions, no coordinates, or no sessions this week — are PARKED into the PR
-# body, never written as broken Scala. It also lists GONE venues (wired by us but
+# body, never written as a row the generator would refuse. It also lists GONE venues (wired by us but
 # dropped from Flicks' sitemap) as retirement candidates; it never auto-deletes.
 #
 # A newly wired venue then needs its TOWN, or it is on no page: which page lists
@@ -91,7 +90,7 @@ jobs:
             # Give the venues it just wired their town. Incremental: --sync fetches
             # only the ones venues.json does not already hold, forgets any that are
             # no longer wired, and re-reads the display names it is keyed on (a
-            # rename in Cinema.scala would otherwise orphan a row in silence). A
+            # rename in roster.json would otherwise orphan a row in silence). A
             # week with no new venues fetches nothing and changes no file.
             - name: Harvest towns for the newly wired venues
               run: |
@@ -116,7 +115,7 @@ jobs:
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/UkScraperCatalog.scala common/src/main/scala/models/VenueTowns.scala data/uk; then
+                  if git diff --quiet -- common/src/main/scala/models/UkRosterData.scala worker/src/main/scala/services/cinemas/uk/UkSourcesData.scala common/src/main/scala/models/VenueTowns.scala data/uk; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -158,8 +157,9 @@ jobs:
                   branch: chore/discover-cinemas
                   delete-branch: true
                   add-paths: |
-                      common/src/main/scala/models/Cinema.scala
-                      worker/src/main/scala/services/cinemas/UkScraperCatalog.scala
+                      data/uk/roster.json
+                      common/src/main/scala/models/UkRosterData.scala
+                      worker/src/main/scala/services/cinemas/uk/UkSourcesData.scala
                       common/src/main/scala/models/VenueTowns.scala
                       common/src/main/scala/models/UkPages.scala
                       data/uk/venues.json

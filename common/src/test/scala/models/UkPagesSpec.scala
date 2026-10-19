@@ -33,6 +33,24 @@ class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     }.toMap
   }
 
+  "A UK venue" should "keep what it had as a hand-written case object: its name, hash and slug" in {
+    // Generated from data/uk/roster.json since 2026-10. The case object's name was its
+    // `toString`, its `hashCode` that name's, and its `slug` (the per-cinema title rules'
+    // key and a metric label) derived from it — so all three have to read as before.
+    ActOneActon.toString shouldBe "ActOneActon"
+    ActOneActon.hashCode shouldBe "ActOneActon".hashCode
+    ActOneActon.slug shouldBe "act-one-acton"
+    IMAXAtGlasgowScienceCentre.slug shouldBe "imaxat-glasgow-science-centre"
+    venue("Act One Cinema Acton") should be theSameInstanceAs ActOneActon
+    ActOneActon.pillName shouldBe "Act One Acton"
+  }
+
+  it should "screen all year unless roster.json marks it seasonal" in {
+    ActOneActon.opening shouldBe Opening.YearRound
+    RooftopFilmClubStratfordRoofEast.opening shouldBe Opening.Seasonal(SeasonWindow.UnitedKingdom)
+    Country.UnitedKingdom.cities.flatMap(_.cinemas).distinct.count(_.opening != Opening.YearRound) shouldBe 1
+  }
+
   "Every UK venue" should "have coordinates in data/uk/venues.json" in {
     // The cap below can only judge a venue it can place, so the next venue to go
     // missing fails here instead of being skipped there.
