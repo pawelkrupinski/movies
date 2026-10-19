@@ -342,7 +342,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     // and `pending_movies` blanked the staging table — each silently, and each
     // while this list still looked deliberate.
     val read = DebugMirror.Collections
-    val mirrored = """"([a-z_]+)"""".r.findAllMatchIn(
+    val mirrored = """"([A-Za-z_]+)"""".r.findAllMatchIn(
       """\[([^\]]*)\]""".r.findFirstMatchIn(
         mirrorTargetsJs.linesIterator.dropWhile(!_.contains("MIRRORED_COLLECTIONS")).mkString(" ")
       ).map(_.group(1)).getOrElse("")
@@ -360,5 +360,13 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     // remove. Named explicitly rather than left to the set-difference above,
     // which only catches a collection some reader ALREADY names.
     DebugMirror.Collections should contain (services.scrapes.ScrapeArchiveRepository.Collection)
+  }
+
+  it should "mirror the uptime buckets, so the white-cinema sweep can classify venues locally" in {
+    // Like `cinema_scrapes`, no /debug page reads `uptimeBuckets`: the scheduled
+    // white-cinema investigation replays `/uptime`'s classification over them from
+    // the mirror (the page is admin-gated, prod Mongo is off limits). Absent from the
+    // sync, every mirror holds none and the sweep silently loses its bucket history.
+    DebugMirror.Collections should contain (UptimeMonitor.Collection)
   }
 }

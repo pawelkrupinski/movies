@@ -34,7 +34,10 @@ source of truth for both halves:
   paths of each candidate's TMDB posters, filed beside their hashes) and `identity_traces` (each listing's
   evidence and every rule's refusal, read when a card's "Why" is opened); and, for
   `scripts/identity-slice --prod-mirror` alone, `identity_agreements` (the agreement stage's stored verdicts)
-  and `identity_pins` (operator pins) — prod state no recording holds. A running mirror picks a newly
+  and `identity_pins` (operator pins) — prod state no recording holds; and, for the scheduled
+  white-cinema investigation (`docs/white-cinema-investigations.md`), `uptimeBuckets` (~24 h of
+  15-minute scrape outcomes per service, the data `/uptime` classifies — the page itself is
+  admin-gated). A running mirror picks a newly
   listed collection up by itself: the tailers restart on the changed list and the
   staleness audit re-seeds a database missing one. A collection this list
   omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
@@ -43,6 +46,13 @@ source of truth for both halves:
   `services.DebugMirror` rather than a literal — which is how `web_movies` /
   `web_screenings` (a blank `/debug/readmodel` for every non-boot country) turned
   up missing.
+
+  **Adding a collection re-seeds every mirror once.** A database missing the new
+  collection is stale to the audit, and `seed.js` drops and refills EVERY listed
+  collection, so each country's mirror takes one full re-copy at its next audit after
+  the edit reaches the checkout the mirror service runs from (added `uptimeBuckets`
+  2026-10-19: one full re-seed of all five, then steady tailing; prod upserts its
+  buckets every 10 s, so expect a constant trickle of change events).
 - **Databases:** every `kinowo*` database the tunnel exposes, discovered at
   startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
   (`/debug?country=uk`) is LAN-fast too, not just the boot country.

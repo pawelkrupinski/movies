@@ -13,6 +13,7 @@
 const STAMPS = {
   movies: "updatedAt", screenings: "updatedAt", movie_slots: "updatedAt", cinema_scrapes: "scrapedAt",
   venue_pages: "readAt", identity_family_answers: "fetchedAt", tmdb_films: "fetchedAt",
+  uptimeBuckets: "bucket",
 };
 
 function stampMs(v) {

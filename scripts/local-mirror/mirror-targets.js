@@ -37,6 +37,11 @@
 // `scripts/identity-slice --prod-mirror` reads so a slice decides — and explains — as prod's stage does. Without them
 // an agreement take (Agreed, Filled, Poster, …) has no prod-side record at all: the model's families and traces hold
 // only the model's decision.
+//
+// `uptimeBuckets` (~24 h of 15-minute scrape outcomes per service, TTL-expired in
+// prod; the tailer carries those deletes) backs no page either: the scheduled
+// white-cinema investigation replays `/uptime`'s classification over it, since
+// `/uptime` is admin-gated and prod Mongo is off limits to agents.
 const MIRRORED_COLLECTIONS = [
   "movies", "screenings", "movie_slots",
   "enrichment_attempts", "rating_cadence",
@@ -45,6 +50,7 @@ const MIRRORED_COLLECTIONS = [
   "identity_model_families", "identity_listings", "venue_pages", "tmdb_films",
   "identity_family_answers", "identity_traces",
   "identity_agreements", "identity_pins",
+  "uptimeBuckets",
 ];
 
 // Prod's per-country databases sit side by side on the ONE local mirror

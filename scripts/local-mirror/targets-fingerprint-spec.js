@@ -34,6 +34,10 @@ check("ignores duplicates", digest(base) === digest(base.concat("movies")));
 check("sees an added collection", digest(base) !== digest(base.concat("cinema_scrapes")));
 check("sees a removed collection", digest(base) !== digest(["movies", "screenings"]));
 check("sees a renamed collection", digest(base) !== digest(["movies", "screenings", "film_slots"]));
+// Mongo collection names are case-sensitive and the list mixes cases
+// (`uptimeBuckets` beside the snake_case corpus), so a case change is a rename.
+check("sees a camelCase collection added", digest(base) !== digest(base.concat("uptimeBuckets")));
+check("is case-sensitive", digest(["uptimeBuckets"]) !== digest(["uptimebuckets"]));
 
 // Names that differ only by where the split falls must not collide — the digest
 // joins on a separator for exactly this reason.

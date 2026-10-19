@@ -26,8 +26,8 @@ import services.scrapes.ScrapeArchiveRepository
  * ADD A READER TO A `/debug` STACK ⇒ ADD ITS COLLECTION HERE.
  *
  * The reverse does not hold: an entry here need not back a page. `cinema_scrapes`
- * is mirrored for INSPECTION and local replay rather than for a reader — see its
- * note below. The rule is "a reader implies an entry", not "an entry implies a
+ * is mirrored for INSPECTION and local replay rather than for a reader, and
+ * `uptimeBuckets` for the white-cinema sweep — see their notes below. The rule is "a reader implies an entry", not "an entry implies a
  * reader".
  *
  * `tasks` is deliberately absent: it is a WRITE path (the /debug row's ↻
@@ -80,6 +80,13 @@ object DebugMirror {
     IdentityListings,
     TmdbFilms,
     FamilyAnswers,
-    IdentityTraces
+    IdentityTraces,
+    // The /uptime buckets (~24 h of 15-minute scrape outcomes per service). Backs no
+    // /debug page either: the scheduled white-cinema investigation
+    // (docs/white-cinema-investigations.md) replays `UptimeController`'s classification
+    // over them — `/uptime` itself is admin-gated — to find venues whose last three
+    // buckets were all fetch-ok-but-empty, and to tell "was green hours ago" from
+    // "never had a programme".
+    UptimeMonitor.Collection
   )
 }

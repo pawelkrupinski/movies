@@ -63,7 +63,7 @@ class UptimeMonitor(
   private val data = new BucketStore()
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
+  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(UptimeMonitor.Collection))
   private val tagColl: Option[MongoCollection[Document]] = db.map(_.getCollection(ServiceTags.Collection))
 
   // The cross-process reads (boot hydrate + serving-app poll) share this
@@ -410,6 +410,9 @@ class UptimeMonitor(
 
 object UptimeMonitor {
   type BucketListener = (String, BucketSnapshot) => Unit
+
+  /** The per-service 15-minute scrape-outcome buckets, shared by the worker (writer) and web (reader). */
+  val Collection = "uptimeBuckets"
 
   val BucketDurationMs: Long = 15 * 60 * 1000L
   // Kept in lock-step with BucketDurationMs so the retained window stays 24h:
