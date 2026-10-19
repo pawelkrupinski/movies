@@ -1307,5 +1307,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),
       Film("Star Wars: The Force Awakens", year = Some(2015))) shouldBe false
   }
-}
 
+  /** Where in the billing the piece naming the film sits (experiment/title-head). */
+  "a film a piece of the billing names" should "be placed by where that piece sits and what the rest of the billing is" in {
+    def piece(raw: String, film: String) = measures(Listing(raw), Film(film))("title.piece")
+    piece("Le Moulin + Q&A", "Q & A") shouldBe Category("decoration")
+    piece("The Tea Alchemist - Preview", "Preview") shouldBe Category("decoration")
+    piece("Le Moulin + Q&A", "Le Moulin") shouldBe Category("head")
+    piece("Ukrainian Film Festival Berlin: CAMOUFLAGE", "Camouflage") shouldBe Category("head")
+    piece("Archiv Negativ: Turksib", "Turksib") shouldBe Category("trail")
+    piece("Pornfilmfestival: The Dating Game", "Pornfilmfestival") shouldBe Category("lead")
+    piece("Lalka", "Lalka") shouldBe Missing("whole")
+  }
+}

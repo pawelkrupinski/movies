@@ -529,6 +529,7 @@ object IdentityMeasures {
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
+    slots(14) = titlePiece(l, f, title)
     premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))
   }
 
@@ -668,7 +669,7 @@ final class ListingFilmMeasures private[identity] (private val slots: Array[Iden
 object ListingFilmMeasures {
   /** The keys, by slot. */
   val Keys: IndexedSeq[String] = IndexedSeq("title", "numeral", "originalTitle", "year.delta", "year.distance", "titleYear.delta",
-    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating", "title.piece")
   private val Slots = { val m = new java.util.HashMap[String, Integer](Keys.length * 2); Keys.zipWithIndex.foreach { case (k, i) => m.put(k, i) }; m }
   private def slotOf(key: String): Int = { val i = Slots.get(key); if (i == null) -1 else i.intValue }
 }

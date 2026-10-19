@@ -105,6 +105,42 @@ private[identity] object TitleRelationMeasures {
     else None
   }
 
+  /** WHERE in the billing the piece naming the film sits, for a title that names it by a piece (`segment`, `decorated`)
+   *  — `Missing("whole")` (neutral) for any other relation:
+   *  - `decoration`: the piece is itself decoration vocabulary — an event, edition or format word ([[DecorationWords]]):
+   *    "Le Moulin + Q&A" → "Q & A" (1990), "The Tea Alchemist - World Premiere + …" → "World Premiere" (1941);
+   *  - `head`: the rest of the billing is decoration, or names an event — the piece IS the work: "Le Moulin + Q&A" →
+   *    "Le Moulin", "Ukrainian Film Festival Berlin: CAMOUFLAGE" → "Camouflage";
+   *  - `lead`: the piece opens the billing and words of no decoration follow — a work and its subtitle, or a banner
+   *    taken as the work ("Pornfilmfestival: …" → a film called "Pornfilmfestival");
+   *  - `trail`: the piece closes it after words of no decoration — a work under a series banner ("Archiv Negativ:
+   *    Turksib", "FBF: Freud and Gale…"), or a subtitle taken as the work;
+   *  - `inner`: words of no decoration on both sides.
+   *  The most favourable placement of any naming piece counts. Read only for the pairs a piece names. */
+  def titlePiece(l: Listing, f: Film, title: Category): Measure =
+    if (title != Category("segment") && title != Category("decorated")) WholeTitle
+    else {
+      val pieces = namingPieces(l, f).toSeq
+      val forms  = l.ownForms.map(_.words).filter(_.nonEmpty).distinct
+      val placed = for {
+        piece <- pieces
+        words <- forms
+        at    <- words.indices.find(words.startsWith(piece, _)).toSeq
+      } yield {
+        val rest    = words.take(at) ++ words.drop(at + piece.size)
+        val counted = rest.filterNot(w => w.length <= 2 || w.forall(_.isDigit))
+        if (piece.forall(DecorationWords.billedAround) || DecorationWords.namesAnEvent(piece) && piece.sizeIs <= 3) "decoration"
+        else if (counted.isEmpty || counted.forall(DecorationWords.billedAround) || DecorationWords.namesAnEvent(rest)) "head"
+        else if (at == 0) "lead"
+        else if (at + piece.size == words.size) "trail"
+        else "inner"
+      }
+      placed.minByOption(PieceOrder.indexOf).fold[Measure](Missing("unplaced"))(Category(_))
+    }
+  private val WholeTitle = Missing("whole")
+  /** The placements, most favourable first. */
+  private val PieceOrder = Seq("head", "trail", "lead", "inner", "decoration")
+
   /** The pieces of the listing's title that NAME the film, as words: a title shape equal to one of
    *  the film's titles (the whole title, a banner segment), or one of the film's titles as a run
    *  along one edge of the listing's (a decoration). Empty when no piece names it. */
