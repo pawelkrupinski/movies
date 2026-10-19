@@ -1,35 +1,16 @@
 {
-  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+weighted-guards-both",
+  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+weighted-guards-certificate-agrees",
   "scopes" : {
     "listing-film" : {
       "prior" : -2.264109870948828,
       "signals" : {
-        "release.country" : {
-          "kind" : "categorical",
-          "categories" : {
-            "released" : 0.7316022708597942,
-            "unreleased" : -1.2447508382733758
-          },
-          "bins" : [ ],
-          "missing" : {
-            "film" : 0.0
-          },
-          "counts" : {
-            "missing:film" : [ 0, 62 ],
-            "released" : [ 13270, 154220 ],
-            "unreleased" : [ 2784, 233518 ]
-          },
-          "neutral" : {
-            "film" : "missing evidence, weighed by neither side"
-          }
-        },
         "certificate" : {
           "kind" : "categorical",
           "categories" : {
-            "above" : -1.9663965079236956,
-            "below" : -3.8795812235832976,
-            "match" : 1.7919202485156125,
-            "near" : -0.887914398779508
+            "above" : 0.0,
+            "below" : -3.8811172940863443,
+            "match" : 1.793039690999164,
+            "near" : 0.0
           },
           "bins" : [ ],
           "missing" : {
@@ -38,13 +19,13 @@
             "unrated" : 0.0
           },
           "counts" : {
-            "above" : [ 4, 776 ],
-            "below" : [ 0, 584 ],
-            "match" : [ 2917, 11741 ],
-            "missing:film" : [ 1238, 82408 ],
+            "above" : [ 4, 777 ],
+            "below" : [ 0, 585 ],
+            "match" : [ 2922, 11750 ],
+            "missing:film" : [ 1238, 82563 ],
             "missing:listing" : [ 8946, 200556 ],
             "missing:unrated" : [ 2693, 76682 ],
-            "near" : [ 256, 15053 ]
+            "near" : [ 256, 15075 ]
           },
           "neutral" : {
             "film" : "missing evidence, weighed by neither side",
