@@ -3,105 +3,26 @@
 Would one country's fact-backed take settle a bare-title listing of the same original title in another country?
 
 Data: the LOCAL prod mirror (read-only, after scripts/local-mirror/freshness), exported once per country to <data dir>
-by scripts/ml-identity/cross_country_export.js:
-  traces-<cc>.jsonl    db.identity_traces   -> {v, r, f (taken TMDB id), b (basis), ru (rules), e (evidence), c (candidates)}
-  listings-<cc>.jsonl  db.identity_listings -> {v, t, o (originalTitle), y (releaseYear), rt, d (director), s0, s1, n}
-  films-<cc>.jsonl     db.tmdb_films        -> {id, t, o, y, rt, d}
+by scripts/ml-identity/cross_country_export.js (full, not LIGHT: the rule reads candidates); read by
+scripts/ci/cross_country.py, which documents the files.
 Run: python3 -I scripts/ml-identity/cross_country_experiment.py <repo root> <data dir>
 """
 import collections
-import json
 import os
-import re
 import sys
-import unicodedata
 
 ROOT, DATA = sys.argv[1], sys.argv[2]
 sys.path.insert(0, os.path.join(ROOT, "scripts/ci"))
+import cross_country as X  # noqa: E402  (the one reading of the countries' takes side by side)
 import identity_judgements as J  # noqa: E402
 
 COUNTRIES = ["pl", "uk", "de", "es", "us"]
-DAY = 86400000
-SLACK = 3 * DAY  # "the same week": screening windows overlapping within three days
-CAND = re.compile(r"^(\d+) ([\d.]+)% rank (\S+) (.*?)'(.*)'(?: \((\d{4})\))?\s*$")
-YEAR_IN_TITLE = re.compile(r"\((1[89]\d\d|20\d\d)\)")
-
-
-def fold(s):
-    s = unicodedata.normalize("NFD", s or "").replace("ł", "l").replace("Ł", "L")
-    return "".join(ch for ch in s if not unicodedata.combining(ch)).lower()
-
-
-def title_key(s):
-    """Normalised original title: brackets, format tokens, punctuation and a leading article dropped."""
-    s = fold(s)
-    s = re.sub(r"\([^)]*\)|\[[^\]]*\]", " ", s)
-    s = re.sub(r"\b(omu|omeu|ov|ome|2d|3d|imax|4dx|dolby|atmos|vose|vo|napisy|dubbing)\b", " ", s)
-    s = s.replace("&", " and ")
-    s = re.sub(r"[^\w]+", " ", s).strip()
-    s = re.sub(r"^(the|a|an|der|die|das|el|la|los|las|le|les) ", "", s)
-    return s
-
-
-def person(s):
-    return re.sub(r"[^a-z]", "", fold(s))
-
+title_key, overlap = X.title_key, X.overlap
 
 rows = J.read(os.path.join(ROOT, "test/resources/fixtures/identity-judgements.tsv"))
 labels = J.labels_by_country(rows)
-
-films = {}
-for cc in COUNTRIES:
-    for line in open(os.path.join(DATA, f"films-{cc}.jsonl")):
-        f = json.loads(line)
-        try:
-            fid = int(f["id"])
-        except (TypeError, ValueError):
-            continue
-        y = f.get("y")
-        films[fid] = dict(t=f.get("t"), o=f.get("o"), y=int(y) if y and str(y).isdigit() else None,
-                          d={person(x) for x in (f.get("d") or [])} - {""})
-
-
-def cands(trace):
-    out = {}
-    for c in trace.get("c") or []:
-        m = CAND.match(c)
-        if m:
-            out[int(m.group(1))] = dict(p=float(m.group(2)) / 100, denied="DENIED" in m.group(4))
-    return out
-
-
-listings = []  # one per trace, with the facts its billing states
-for cc in COUNTRIES:
-    facts = collections.defaultdict(list)
-    for line in open(os.path.join(DATA, f"listings-{cc}.jsonl")):
-        l = json.loads(line)
-        facts[(l["v"], l["t"])].append(l)
-    for line in open(os.path.join(DATA, f"traces-{cc}.jsonl")):
-        t = json.loads(line)
-        fs = facts.get((t["v"], t["r"]), [])
-        own_year = next((f["y"] for f in fs if f.get("y")), None)
-        m = YEAR_IN_TITLE.search(t["r"] or "")
-        if own_year is None and m:
-            own_year = int(m.group(1))
-        directors = {person(d) for f in fs for d in f.get("d") or []} - {""}
-        runtime = next((f["rt"] for f in fs if f.get("rt")), None)
-        original = next((f["o"] for f in fs if f.get("o")), None)
-        s0 = min((f["s0"] for f in fs if f.get("s0")), default=None)
-        s1 = max((f["s1"] for f in fs if f.get("s1")), default=None)
-        film = t.get("f")
-        rec = films.get(film) if film else None
-        backed = None  # does a fact of the listing's own agree with the taken film's record?
-        if rec:
-            if directors and rec["d"] and directors & rec["d"]:
-                backed = "director"
-            elif own_year and rec["y"] and abs(own_year - rec["y"]) <= 1:
-                backed = "year"
-        listings.append(dict(cc=cc, v=t["v"], r=t["r"], f=film, b=t.get("b"), year=own_year, dirs=directors,
-                             rt=runtime, o=original, s0=s0, s1=s1, backed=backed,
-                             bare=own_year is None and not directors, strict_bare=own_year is None and not directors and not runtime,
-                             keys={k for k in {title_key(original), title_key(t["r"])} if k}, cands=cands(t)))
+films = X.read_films(DATA, COUNTRIES)
+listings = X.read_listings(DATA, COUNTRIES, films)  # one per trace, with the facts its billing states
 
 
 def verdict(l, film):
@@ -139,36 +60,9 @@ vb = collections.Counter(verdict(l, l["f"]) for l in bare_backed_elsewhere)
 print("   judged verdicts of those bare takes:", dict(vb))
 
 # ---- 3. disagreement
-index = collections.defaultdict(list)
-for l in listings:
-    for k in l["keys"]:
-        index[k].append(l)
-
-
-def overlap(a, b):
-    if a["s0"] is None or b["s0"] is None:
-        return False
-    return a["s0"] <= b["s1"] + SLACK and b["s0"] <= a["s1"] + SLACK
-
-
-groups = 0
-disagree_keys = []
-pairs = collections.Counter()
-for k, ls in index.items():
-    ccs = {l["cc"] for l in ls}
-    if len(ccs) < 2:
-        continue
-    by_cc = collections.defaultdict(set)
-    linked = [l for l in ls if any(m["cc"] != l["cc"] and overlap(l, m) for m in ls)]
-    if not linked:
-        continue
-    groups += 1
-    for l in linked:
-        by_cc[l["cc"]].add(l["f"])
-    taken_sets = {cc: fs - {None} for cc, fs in by_cc.items()}
-    films_all = set().union(*taken_sets.values())
-    if len(films_all) >= 2 and sum(1 for fs in taken_sets.values() if fs) >= 2:
-        disagree_keys.append(k)
+index = X.index_by_title(listings)
+groups = sum(1 for ls in index.values() if len({l["cc"] for l in ls}) >= 2 and X.same_week_across_border(ls))
+disagree_keys = [k for k, _ in X.disagreeing(index)]
 print(f"\n== disagreement: title keys billed in >=2 countries in the same week: {groups}; "
       f"countries take different films: {len(disagree_keys)}")
 
