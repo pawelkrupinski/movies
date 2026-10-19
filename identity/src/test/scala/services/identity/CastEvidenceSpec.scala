@@ -95,7 +95,9 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
     listing.names.names("Marek Kondrat") shouldBe true
     listing.names.size should be <= 8
     // outside the listing's equality: a venue rewording its synopsis re-resolves nothing
-    listing shouldBe Listing.of(models.KinoMuza, cm.copy(synopsis = None, cast = Nil), normalizer)
+    listing shouldBe Listing.of(models.KinoMuza, cm.copy(synopsis = None), normalizer)
+    // its cast FIELD is inside it: the model reads it (the cast mismatch, experiment `cast-mismatch`)
+    listing should not be Listing.of(models.KinoMuza, cm.copy(cast = Nil), normalizer)
     Listing.of(models.KinoMuza, cm.copy(externalIds = Map("webedia" -> "1")), normalizer).names shouldBe VenueNames.None
     def perListing(row: models.CinemaMovie) = {
       Listing.of(models.KinoMuza, row, normalizer)
@@ -122,5 +124,55 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
       synopsisExcerpt = Some("Marcin Dorociński, Kamila Urzędowska i Marek Kondrat w ekranizacji powieści Bolesława Prusa"))
     val listing = Listing.of(models.KinoMuza, cm, services.movies.SingleCountryNormalizer.titleNormalizer)
     listing.names.names("Kamila Urzędowska") shouldBe true
+  }
+
+  // ── the MISMATCH (experiment `cast-mismatch`): the venue's own cast FIELD naming none of a film's cast ──
+
+  private def lalkaAt(cast: Seq[String], director: Option[String] = None, title: String = "Lalka") =
+    FilmTable.listing(models.Multikino, title, director = director).copy(listedCast = ListedCast.of(cast))
+  private def film(cast: Seq[String], year: Int, director: String, language: String = "pl") =
+    IdentityMeasures.Film("Lalka", year = Some(year), directors = Some(Seq(director)), originalLanguage = Some(language), cast = FilmCast.of(cast))
+  // Helios' cast field of its "Lalka", as recorded 2026-10-15 (recording 38713274617)
+  private val helios = Seq("Andrzej Seweryn, Krystyna Janda, Maria Dębska, Mateusz Damięcki, Marcin Dorociński, Kamila Urzędowska")
+  private val has1968      = film(doll1968, 1968, "Wojciech Has")
+  private val kawalski2026 = film(doll2026, 2026, "Maciej Kawalski")
+
+  "the mismatch" should "rule Has's 1968 'Lalka' out where the venue's cast field lists the 2026 film's, and not the 2026 film" in {
+    CastEvidence.mismatch(Seq(lalkaAt(helios)), has1968, Some("pl"), castIsTheFilms = true) shouldBe defined
+    CastEvidence.mismatch(Seq(lalkaAt(helios)), kawalski2026, Some("pl"), castIsTheFilms = true) shouldBe None
+  }
+
+  it should "stand down where a fact the venue states agrees with the film (its director, its year)" in {
+    CastEvidence.mismatch(Seq(lalkaAt(helios, director = Some("Wojciech Has"))), has1968, Some("pl"), castIsTheFilms = true) shouldBe None
+    CastEvidence.mismatch(Seq(lalkaAt(helios).copy(year = Some(1968))), has1968, Some("pl"), castIsTheFilms = true) shouldBe None
+  }
+
+  it should "read no film of another language than the venue's: a dub's field lists its voices (UK 'Arrietty': Saoirse Ronan, Tom Holland)" in {
+    val arrietty = IdentityMeasures.Film("Arrietty", year = Some(2010), originalLanguage = Some("ja"),
+      cast = FilmCast.of(Seq("Mirai Shida", "Ryunosuke Kamiki", "Tomokazu Miura")))
+    CastEvidence.mismatch(Seq(lalkaAt(Seq("Saoirse Ronan, Tom Holland, Olivia Colman"), title = "Arrietty")), arrietty, Some("en"), castIsTheFilms = true) shouldBe None
+  }
+
+  it should "read nothing beside a stage relay, nor where no listing lists a cast field" in {
+    val relay = lalkaAt(Seq("Paul Marque, Sae Eun Park, Francesco Mura"), title = "Balet z Opery Paryskiej 2026-2027: Romeo i Julia")
+    CastEvidence.castIsTheFilms(Seq(relay)) shouldBe false
+    CastEvidence.castIsTheFilms(Seq(lalkaAt(helios))) shouldBe true
+    CastEvidence.mismatch(Seq(FilmTable.listing(models.Multikino, "Lalka")), has1968, Some("pl"), castIsTheFilms = true) shouldBe None
+  }
+
+  "a listed cast" should "name a name whatever order its words come in (UK 'Raise the Red Lantern': 'Li Gong' is TMDB's 'Gong Li')" in {
+    FilmCast.of(Seq("Gong Li", "He Saifei")).get.namedBy(ListedCast.of(Seq("Li Gong | Saifei He"))) shouldBe 2
+  }
+
+  it should "be no evidence with fewer than two names, or beside a one-word entry: a mononymous star or a role (UK 'Jailer': Rajinikanth)" in {
+    ListedCast.of(Seq("Marcin Dorociński")) shouldBe ListedCast.None
+    ListedCast.of(Seq("Jackie Shroff | Vinayakan | Rajinikanth | Mohanlal")) shouldBe ListedCast.None
+    ListedCast.of(Seq("Paul Marque (Romeo), Sae Eun Park (Julia)")) shouldBe ListedCast.None
+  }
+
+  "a film's cast" should "be no evidence in other letters than a venue's, nor for an animated film or a documentary" in {
+    FilmCast.of(Seq("Γιάννης Κοκιασμένος", "Μαρία Διακοπαναγιώτου", "Αργύρης Πανταζάρας")) shouldBe None
+    FilmCast.of(doll2026, animatedOrDocumentary = true) shouldBe None
+    FilmCast.of(doll2026) shouldBe defined
   }
 }

@@ -51,13 +51,20 @@ object TmdbFilmRecord {
         taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf),
         certificates      = main.flatMap(d => (d \ "release_dates").toOption.map(Certificates.ofReleaseDates)
           .getOrElse((d \ CertificatesField).asOpt[String])).headOption,
-        originalLanguage  = originalLanguage(main)) -> imdbId)
+        originalLanguage  = originalLanguage(main),
+        cast              = cast(answers).flatMap(FilmCast.of(_, voiceOrContributors(main)))) -> imdbId)
     }
   }
 
   /** The running times TMDB's answers about one film state, in the answers' order and each once: TMDB keeps a runtime per
    *  translation, so its localized and English answers can state different cuts (`IdentityMeasures.Film.runtimes`). */
   def runtimes(stated: Seq[Int]): Seq[Int] = stated.filter(_ > 0).distinct
+
+  /** TMDB's genres whose cast is no on-screen cast of the film (experiment `cast-mismatch`): Animation (a dub's voices),
+   *  Documentary (whoever appears in it). */
+  private val VoiceOrContributorGenres = Set(16, 99)
+  private def voiceOrContributors(main: Seq[JsValue]): Boolean =
+    main.exists(d => (d \ "genres").asOpt[Seq[JsValue]].getOrElse(Nil).exists(g => (g \ "id").asOpt[Int].exists(VoiceOrContributorGenres)))
 
   /** The film's top-billed cast, the first [[TopBilled]] names in TMDB's billing order, from the localized response's
    *  `credits` block — `None` when no answer holds a cast: not fetched, or cut away by a store filing records before they
