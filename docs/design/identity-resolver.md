@@ -1010,10 +1010,11 @@ published are untouched.
   projects. The gate's `version` is part of the metadata-reuse key, so a new gate re-projects
   instead of reusing cards gated under the old one. `ReadModelContentAudit` projects through the
   same gate, so a withheld card is not reported as drift. The worker's `ReadModelWiring` passes
-  `RatingGate.off` unless `KINOWO_IDENTITY_RATING_GATE=true`
-  (`ProcessConfiguration.identityRatingGate`, a typed `IdentityRatingGateEnabled`), and
-  `EvidenceRatingGate` when it is. The switch is read per worker process, so it is flipped
-  per country in that country's worker env. This is a staged-migration switch (allowed here per
+  `EvidenceRatingGate` for the countries in `ReadModelWiring.RatingGateCountries` (Germany,
+  Spain) and `RatingGate.off` for the rest, unless `KINOWO_IDENTITY_RATING_GATE=true`
+  (`ProcessConfiguration.identityRatingGate`, a typed `IdentityRatingGateEnabled`) forces it on
+  for that worker's country. The variable cannot turn a listed country's gate off: rolling one
+  back is a change to that set. This is a staged-migration switch (allowed here per
   the program brief), to be removed at cutover.
 - **Open.** Posters, synopsis and credits also come from the matched film and are equally
   suspect below the threshold. The gate covers ratings and rating links only, as specified.

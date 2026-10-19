@@ -187,13 +187,13 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
   private def bodyKeyFor(request: RequestHeader, cacheKey: String): String =
     PageMeta.host(request) + request.path + cacheKey
 
-    // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
-    // keeps Play's GzipFilter off it: the filter skips any response that already
-    // names an encoding — as the uncached branch below does too.
-    //
-    // Served stale across a content change until the re-render lands, but never
-    // across the city's midnight: a copy rendered before it names the old
-    // midnight as its reload time, and would reload straight back into itself.
+  // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
+  // keeps Play's GzipFilter off it: the filter skips any response that already
+  // names an encoding — as `serve`'s uncached gzip branch does too.
+  //
+  // Served stale across a content change until the re-render lands, but never
+  // across the city's midnight: a copy rendered before it names the old
+  // midnight as its reload time, and would reload straight back into itself.
   private def serveCachedGzip(request: RequestHeader, contentType: String, city: Option[City], instant: Instant,
                               lastMod: Instant, validators: ResponseValidators)(body: => ResponseBody): Result = {
     val staleFloor = city.fold(Instant.MIN)(c => ConditionalResponse.dayStart(c.zoneId, instant))

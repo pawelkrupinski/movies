@@ -119,8 +119,9 @@ final case class GapFill(value: Boolean) extends AnyVal
 /** `KINOWO_CONVERGENCE_ORDER_PASSES` — the order-independence passes (`0,1`) a split order row replays
  *  and compares; every pass when unset. A leg over its time budget splits its passes across rows. */
 final case class OrderPasses(indices: Seq[Int]) extends AnyVal
-/** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
- *  calibrated identity confidence are served without ratings. Off by default. */
+/** `KINOWO_IDENTITY_RATING_GATE` — forces the identity phase-3 rating gate on (cards below the
+ *  calibrated identity confidence served without ratings) for a country the worker wiring does not
+ *  already gate (`ReadModelWiring.RatingGateCountries`: Germany, Spain). It cannot turn the gate off. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity model's paced live lookup fill
  *  runs a round (its own claimed window, independent of the settle). */

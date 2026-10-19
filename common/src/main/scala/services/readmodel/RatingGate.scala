@@ -11,9 +11,10 @@ import services.movies.StoredMovieRecord
  *
  * The confidence is the calibration artefact's probability over the row's own stored evidence
  * (`services.identity.StoredIdentityConfidence`), and the line is the artefact's `showRatings` threshold — both
- * fitted by `scripts.IdentityCalibrate`, neither set by hand. Off in production:
- * `ReadModelProjector` takes [[RatingGate.off]] unless the worker's composition root sets
- * `KINOWO_IDENTITY_RATING_GATE` (`services.identity.EvidenceRatingGate`).
+ * fitted by `scripts.IdentityCalibrate`, neither set by hand. On per country:
+ * `ReadModelProjector` takes [[RatingGate.off]] unless the worker's composition root gates the
+ * country (`ReadModelWiring.RatingGateCountries`, or `KINOWO_IDENTITY_RATING_GATE` set), and then
+ * `services.identity.EvidenceRatingGate`.
  */
 trait RatingGate {
   /** The card as served: `movie` itself, or with its ratings withheld. */

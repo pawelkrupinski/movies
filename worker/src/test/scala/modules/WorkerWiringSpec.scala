@@ -460,9 +460,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  // Confidence-gated ratings are a staged-migration switch (identity phase 3): nothing the
-  // resolver computes may reach the read model until the composition root is told so.
-  "the rating gate" should "be off unless KINOWO_IDENTITY_RATING_GATE switches it on" in {
+  // Confidence-gated ratings are a staged migration (identity phase 3), country by country: a
+  // country not in `ReadModelWiring.RatingGateCountries` serves ungated cards unless its worker
+  // sets KINOWO_IDENTITY_RATING_GATE.
+  "the rating gate" should "be off for a country that has not chosen it, unless KINOWO_IDENTITY_RATING_GATE switches it on" in {
     val budget = new SharedExecutionBudget(4)
     new Probe(Country.Poland, budget).ratingGate shouldBe theSameInstanceAs(services.readmodel.RatingGate.off)
     new Probe(Country.Poland, budget, tools.Env.of("KINOWO_IDENTITY_RATING_GATE" -> "true")).ratingGate should not be

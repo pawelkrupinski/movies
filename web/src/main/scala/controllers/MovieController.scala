@@ -92,7 +92,7 @@ class MovieController( cc: ControllerComponents,
   // Validators, `Cache-Control`, the 304 short-circuit and the gzip blob for
   // every client-independent response this controller serves. The validator
   // starts from the city's own read-model stamp, or the model-wide one for a
-  // payload with no city in it -- see `ConditionalResponse.serve` for why that
+  // payload with no city in it -- see `ConditionalResponse.validatorFor` for why that
   // distinction, and the city's calendar day, decide when a held copy retires.
   private val conditionalResponse = new ConditionalResponse(
     responseCache,
