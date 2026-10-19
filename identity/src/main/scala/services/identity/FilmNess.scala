@@ -15,6 +15,8 @@ private[identity] object FilmNess {
   private val Stems = Seq("konzert", "concert", "koncert", "festival", "festiwal", "party", "comedy", "musical", "tribute", "karaoke",
     "lesung", "poetry", "signierstunde", "kabarett", "kabaret", "cabaret", "soulnight", "tournee")
 
+  private val Bracketed = """[(\[][^)\]]*[)\]]""".r
+
   def isEventWord(word: String): Boolean = Whole(word) || Stems.exists(word.contains)
 
   /** The billing's event words — none when it states a fact of a film, names a relay or attaches a screening. */
@@ -26,7 +28,8 @@ private[identity] object FilmNess {
         // a relay by its broadcast's name or its stage work — never by a year alone, which a gig's "Tour 2026" bills too
         services.cinemas.pl.NonMovieEventClassifier.isNamedBroadcast(raw) ||
         StageRelays.billsStageWork(listing.ownTitles.distinct, raw)) Nil
-    else IdentityMeasures.countedWords(raw).filter(isEventWord)
+    // V3e: an event word inside a bracketed decoration decorates a film billed before it ("ELF (Pyjama Party)")
+    else IdentityMeasures.countedWords(Bracketed.replaceAllIn(raw, " ")).filter(isEventWord)
   }
 
   /** The billing's words that are no event's: what a record of the event itself must share. */

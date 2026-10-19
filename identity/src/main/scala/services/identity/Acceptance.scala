@@ -61,7 +61,12 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     val byEventWordsAlone = listing.eventWords.nonEmpty && listing.nonEventWords.nonEmpty &&
       // V3d: the record's own and original title only — an alternative title TMDB files under the gig's own billing
       // (1419814 carries "Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer") is the reused record's echo, not its name
-      !(Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))
+      !(Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords)) &&
+      // V3e: a record in another script is named by its alternatives (Cinema City's "ENHYPEN WORLD TOUR 'BLOOD SAGA'"), and a
+      // year the billing states that the record shares is a film's fact ("Silent Night, Bloody Night (1972)")
+      !(scored.candidate.film.title.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c) != Character.UnicodeScript.LATIN) &&
+        scored.candidate.film.titles.exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))) &&
+      !listing.statedYear.exists(year => scored.candidate.film.year.exists(film => math.abs(film - year) <= 1))
     Option.when(byEventWordsAlone)(s"its record shares only the event's words (${listing.eventWords.mkString(", ")})")
       .fold[Verdict](Right(accepted)) { why =>
       Left(Acceptance.Refused("the billing reads as no film", Some(scored.candidate.tmdbId), s"${Acceptance.named(scored)}: $why"))
