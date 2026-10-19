@@ -61,7 +61,7 @@ final case class Listing(
   properTitle:   Option[String] = None,
   /** The age certificate the venue bills it with (its `ageRating`, from its feed or peeled off its title at intake,
    *  `services.movies.TitleFacts`): which cut of which film it screens, as the fill's guard reads it ([[Certificates.below]]).
-   *  OUTSIDE the listing's equality and hash, as the poster is: the model never reads it, only the stages after it. */
+   *  The model weighs it too (the `certificate` measure, [[IdentityMeasures.certificateRelation]]): inside equality and hash. */
   certificate:   Option[String] = None,
   /** The venue's own cast FIELD, as the cast mismatch reads it ([[ListedCast]]) — none for a
    *  listing whose facts a feed catalogue states, as for [[names]]. The model reads it ([[CastEvidence.mismatch]]): inside
@@ -122,7 +122,7 @@ final case class Listing(
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
-      screenedSeason == that.screenedSeason && listedCast == that.listedCast)
+      screenedSeason == that.screenedSeason && listedCast == that.listedCast && certificate == that.certificate)
     case _ => false
   }
   override def hashCode: Int = {
@@ -135,7 +135,8 @@ final case class Listing(
     h = mix(h, searchTitle.##)
     h = mix(h, properTitle.##)
     h = mix(h, listedCast.##)
-    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 4)
+    h = mix(h, certificate.##)
+    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 5)
   }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
@@ -214,13 +215,13 @@ object Listing {
   val StagingPredatesSeason = 1
 
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
-   *  names and words its venue's text gives, its certificate — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
+   *  names and words its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
    *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). Days count only
    *  where both sides know them: a lean read leaves out the days of a film billing no stage work
    *  (`services.scrapes.LeanListing.leanFilm`), which beside the model's object holding the scrape's days moved nothing —
    *  read as moved, every venue read again looked re-published, on every tick. */
   def movedOutsideEquality(was: Listing, now: Listing): Boolean =
-    was.poster != now.poster || was.names != now.names || was.words != now.words || was.certificate != now.certificate ||
+    was.poster != now.poster || was.names != now.names || was.words != now.words ||
       (knowsDays(was.screenings) && knowsDays(now.screenings) && was.screenings != now.screenings)
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
@@ -365,7 +366,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                            *  ([[services.movies.TitleSeason.near]]), never a fact it states. */
                           screeningsSeason: Option[Int] = None,
                           /** Its screening days, where the air-day test reads them ([[Listing.airDays]]); else empty. */
-                          airDays: Seq[java.time.LocalDate] = Nil) {
+                          airDays: Seq[java.time.LocalDate] = Nil,
+                          /** The venue's certificate ([[Listing.certificate]]): what the weighted `certificate` measure reads. */
+                          certificate: Option[String] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
@@ -374,14 +377,16 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       // only where it bounds what the title names, so every other listing keeps its key
       screeningsSeason.filter(_ => TitleSeason.of(Seq(title, rawTitle)) != TitleSeason.of(Seq(title, rawTitle), screeningsSeason))
         .fold("")(season => s"\u0000screenings:$season") +
-      (if (airDays.isEmpty) "" else airDays.mkString("\u0000aired:", ",", ""))
+      (if (airDays.isEmpty) "" else airDays.mkString("\u0000aired:", ",", "")) +
+      // only where a venue bills one, so every other listing keeps its key
+      certificate.fold("")(c => s"\u0000certificate:$c")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
-      screeningsSeason = screeningsSeason, airDays = airDays)
+      screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -395,7 +400,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
 
   /** The evidence with its stated facts set aside — its titles alone: what a node whose facts a feed copied from an
    *  overruled link is read as ([[FeedLink]]). */
-  def titlesOnly: Evidence = copy(year = None, directors = Nil, runtime = None, originalTitle = None, countries = Nil)
+  def titlesOnly: Evidence = copy(year = None, directors = Nil, runtime = None, originalTitle = None, countries = Nil, certificate = None)
 }
 
 object Evidence {
@@ -416,7 +421,8 @@ object Evidence {
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screeningsSeason = listing.screenings.season,
-    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty))
+    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty),
+    certificate     = listing.certificate.map(_.trim).filter(_.nonEmpty))
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

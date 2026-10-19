@@ -46,7 +46,10 @@ object IdentityMeasures {
                            screeningsSeason: Option[Int] = None,
                            /** Its screening days, held only where its stated year is more than a season before the season
                             *  it screens in ([[services.identity.Listing.airDays]]): what the air-day test reads. */
-                           airDays: Seq[java.time.LocalDate] = Nil) {
+                           airDays: Seq[java.time.LocalDate] = Nil,
+                           /** The age certificate the venue bills it with ([[services.identity.Listing.certificate]]): read
+                           *  against the film's certificate in the venue's country by the weighted `certificate` measure. */
+                           certificate: Option[String] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle
@@ -353,6 +356,32 @@ object IdentityMeasures {
    *  anything this listing published. */
   val PooledMeasures: Set[String] = Set("venues.corroborating")
 
+  /** The listing-film measures read from a GUARD that weigh as well: the venue's certificate against the film's in its
+   *  country ([[Certificates.below]]). They weigh in the calibrated probability only: no fact a rule counts
+   *  ([[FactMeasures]]), nothing the listing's own-evidence sums read ([[EvidenceWeights]]), so every guard and rule
+   *  reading those stays as it was. */
+  val GuardMeasures: Set[String] = Set("certificate")
+
+  /** The title relations under which a listing's certificate is its film's: the billing names the film as a WHOLE title
+   *  (its own, original or an alternative). Beside a film one piece of the billing names, the certificate rates the
+   *  programme — UK Hyde Park's "The Tiger Who Came for Tea and We're Going on a Bear Hunt" (U) bills two shorts. */
+  val CertifiedRelations: Set[String] = Set("exact", "original", "alternative")
+
+  /** The venue's certificate against the film's in the venue's country, on that country's scale ([[Certificates.Ladders]]):
+   *  `match` on one step, `near` within [[Certificates.StepsBelow]], `below` / `above` that far or further the venue's
+   *  under / over the film's. `missing:unrated` where the country has no scale (Poland), `missing:piece` where the
+   *  billing names the film by a piece only ([[CertifiedRelations]]), else the side that states none. */
+  def certificateRelation(l: Listing, f: Film, country: Option[String], title: Category): Measure =
+    if (l.certificate.isDefined && !CertifiedRelations(title.value)) Missing("piece")
+    else country.flatMap(c => Certificates.Ladders.get(c).map(c -> _)).fold[Measure](Missing("unrated")) { case (c, ladder) =>
+      l.certificate.flatMap(ladder.step).fold[Measure](MissingListing) { own =>
+        Certificates.in(f.certificates, c).flatMap(ladder.step).fold[Measure](MissingFilm) { rated =>
+          val gap = rated - own
+          Category(if (gap == 0) "match" else if (math.abs(gap) < Certificates.StepsBelow) "near" else if (gap > 0) "below" else "above")
+        }
+      }
+    }
+
   /** The listing-film measures that read the TITLE itself — how it names the film, and the
    *  instalment numbers it carries: a title alone never vetoes, so none of them is a fact. */
   val TitleMeasures: Set[String] = Set("title", "numeral")
@@ -362,7 +391,7 @@ object IdentityMeasures {
    *  measure but the title measures, the ranking priors and the pooled count. Derived from
    *  [[listingFilm]] itself, so a new measure is a fact unless it is classified otherwise. */
   lazy val FactMeasures: Set[String] =
-    listingFilm(Listing(""), Film(""), None, 0, 0).keySet -- RankingPriors -- PooledMeasures -- TitleMeasures
+    listingFilm(Listing(""), Film(""), None, 0, 0).keySet -- RankingPriors -- PooledMeasures -- TitleMeasures -- GuardMeasures
 
   /** The listing-listing measure that says WHERE the two listings are (one venue or two), not
    *  anything either published about its film. */
@@ -529,6 +558,7 @@ object IdentityMeasures {
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
+    slots(14) = certificateRelation(l, f, country, title)
     premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))
   }
 
@@ -668,7 +698,8 @@ final class ListingFilmMeasures private[identity] (private val slots: Array[Iden
 object ListingFilmMeasures {
   /** The keys, by slot. */
   val Keys: IndexedSeq[String] = IndexedSeq("title", "numeral", "originalTitle", "year.delta", "year.distance", "titleYear.delta",
-    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating",
+    "certificate")
   private val Slots = { val m = new java.util.HashMap[String, Integer](Keys.length * 2); Keys.zipWithIndex.foreach { case (k, i) => m.put(k, i) }; m }
   private def slotOf(key: String): Int = { val i = Slots.get(key); if (i == null) -1 else i.intValue }
 }

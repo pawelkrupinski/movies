@@ -21,6 +21,20 @@ class CertificatesSpec extends AnyFlatSpec with Matchers {
       None, Nil, Some(96), None, None, certificate = certificate)
   }
 
+  "The weighted certificate measure" should "weigh a certificate only beside a film the billing names as a whole title" in {
+    val tiger = IdentityMeasures.Film("The Tiger Who Came to Tea", year = Some(2019), certificates = Some("GB=U"))
+    def certificate(title: String) =
+      IdentityMeasures.listingFilm(IdentityMeasures.Listing(title, certificate = Some("U")), tiger, Some(1), 0, 0, country = Some("GB"))("certificate")
+    certificate("The Tiger Who Came to Tea") shouldBe IdentityMeasures.Category("match")
+    // UK Hyde Park Picture House bills two shorts under one U: the certificate rates the programme, not a film it names by a piece
+    certificate("The Tiger Who Came for Tea and We're Going on a Bear Hunt") shouldBe IdentityMeasures.Missing("piece")
+  }
+
+  it should "re-resolve a listing whose certificate moved: the model reads it" in {
+    listing(Country.UnitedKingdom, Some("PG")) should not equal listing(Country.UnitedKingdom, Some("18"))
+    listing(Country.UnitedKingdom, Some("PG")).## should not equal listing(Country.UnitedKingdom, Some("18")).##
+  }
+
   "A film's record" should "keep the least restrictive certificate TMDB records in each country a rating scale is read for" in {
     obsession.certificates shouldBe Some("DE=16,ES=18,GB=18,US=R")
     Certificates.in(obsession.certificates, "GB") shouldBe Some("18")

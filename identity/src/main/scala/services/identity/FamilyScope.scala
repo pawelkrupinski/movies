@@ -372,7 +372,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       originalTitle = modal(evidence.flatMap { case (node, stated) => stated.originalTitle.map(_ -> node.weight) }),
       directors     = evidence.flatMap(_._2.directors).distinct.sorted,
       runtime       = runtimes.lift(runtimes.size / 2),
-      countries     = evidence.flatMap(_._2.countries).distinct.sorted)
+      countries     = evidence.flatMap(_._2.countries).distinct.sorted,
+      // a certificate rates one listing's screening of its film: the cluster read as one listing states none
+      certificate   = None)
     val reached = cluster.map(reach)
     val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
     val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)

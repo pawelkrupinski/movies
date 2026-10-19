@@ -1,9 +1,40 @@
 {
-  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta",
+  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+certificate",
   "scopes" : {
     "listing-film" : {
       "prior" : -2.264109870948828,
       "signals" : {
+        "certificate" : {
+          "kind" : "categorical",
+          "categories" : {
+            "above" : 0.0,
+            "below" : -3.8811172940863443,
+            "match" : 1.793039690999164,
+            "near" : 0.0
+          },
+          "bins" : [ ],
+          "missing" : {
+            "film" : 0.0,
+            "listing" : 0.0,
+            "piece" : 0.0,
+            "unrated" : 0.0
+          },
+          "counts" : {
+            "above" : [ 4, 777 ],
+            "below" : [ 0, 585 ],
+            "match" : [ 2922, 11750 ],
+            "missing:film" : [ 1238, 82563 ],
+            "missing:listing" : [ 8946, 200556 ],
+            "missing:unrated" : [ 2693, 76682 ],
+            "near" : [ 256, 15075 ]
+          },
+          "neutral" : {
+            "film" : "missing evidence, weighed by neither side",
+            "listing" : "the venue's country is unknown, or it bills no certificate",
+            "piece" : "the billing names the film by a piece only: its certificate rates the programme",
+            "unrated" : "the venue's country rates no film (Poland): no scale to read a certificate on"
+          }
+        },
         "originalTitle" : {
           "kind" : "categorical",
           "categories" : {
