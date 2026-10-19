@@ -5,7 +5,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.bson.{BsonDocument, BsonInt32}
 import org.scalatest.matchers.should.Matchers
-import services.identity.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
+import services.identity.adapters.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
 
 /**
  * `kinowo_worker_cache_*` publishes what a cache holds against what it may hold —

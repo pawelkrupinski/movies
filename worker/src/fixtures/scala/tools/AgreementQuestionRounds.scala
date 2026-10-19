@@ -1,6 +1,6 @@
 package tools
 
-import services.identity.{AgreementQuestions, FamilyAnswerStore, FamilySource}
+import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, FamilySource}
 import services.identity.agreement.VoterFamily
 
 import java.util.concurrent.ConcurrentHashMap

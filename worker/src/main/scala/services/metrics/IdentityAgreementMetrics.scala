@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.AgreementQuestionMetrics
+import services.identity.adapters.AgreementQuestionMetrics
 import services.identity.agreement.{AgreementStage, VoterFamily}
 
 /**

@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.time.{Clock, Instant, ZoneOffset}
 import java.util.Locale
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -36,7 +37,11 @@ import scala.util.Try
  *   selectors: --venue S --title S (substrings, case and accents aside) | --key 'venue|raw title' | --batch FILE
  * }}}
  */
+@nowarn("msg=unused import")
 object IdentitySlice {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+  import services.identity.adapters.*
+
 
   final case class Selector(venue: Option[String], title: Option[String], exact: Boolean) {
     def label: String = (if (exact) "key" else "match") + s" ${venue.getOrElse("*")} | ${title.getOrElse("*")}"

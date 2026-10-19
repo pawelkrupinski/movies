@@ -1,5 +1,6 @@
 package tools
 
+import scala.annotation.nowarn
 import models.Country
 import services.scrapes.ArchivedScrape
 
@@ -15,13 +16,17 @@ import java.nio.file.Path
 object RecordedCorpus {
 
   /** One country's recording, opened: its archived scrapes, the replay fetch, its gap leaf and the gaps it named. */
+  @nowarn("msg=unused import")
   final class Opened(val country: Country, val rows: Seq[ArchivedScrape], val fetch: HttpFetch, val leaf: GapLeaf, val missing: MissingFixtures) {
+    // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+    import services.identity.*, services.identity.adapters.*
+
     /** The gaps met so far, as `TmdbIdentityLookups` tells a gap from an answer: per thread, lookups reading side by side. */
-    def gaps: services.identity.TmdbIdentityLookups.Gaps = new services.identity.TmdbIdentityLookups.Gaps {
-      def answered[A](read: => A): services.identity.Answer[A] = {
+    def gaps: TmdbIdentityLookups.Gaps = new TmdbIdentityLookups.Gaps {
+      def answered[A](read: => A): Answer[A] = {
         val before = leaf.metOnThread
         scala.util.Try(read).toOption.filter(_ => leaf.metOnThread == before)
-          .fold[services.identity.Answer[A]](services.identity.Answer.Unknown)(services.identity.Answer.Known(_))
+          .fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
       }
     }
   }

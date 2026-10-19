@@ -9,6 +9,7 @@ import services.identity._
 import services.identity.agreement.{AgreementStage, MongoAgreementVerdicts, StoredVerdict}
 import services.movies.ListingKey
 
+import scala.annotation.nowarn
 import scala.concurrent.Await
 import scala.jdk.CollectionConverters._
 
@@ -65,7 +66,11 @@ object ProdState {
  * Prod's identity state as the LOCAL prod mirror holds it (scripts/local-mirror: `<prod db>_prod_mirror` on :28017, kept
  * by change-stream tailers) — never prod itself: a URI that is not the loopback mirror is refused. Read-only.
  */
+@nowarn("msg=unused import")
 final class ProdMirror(client: MongoClient, val country: Country) extends AutoCloseable {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+  import services.identity.adapters.*
+
   val database: String = services.MongoConnection.mirrorDbFor(country.mongoDb)
   private val db: MongoDatabase = client.getDatabase(database)
   private val Timeout = SpecTimeouts.Run

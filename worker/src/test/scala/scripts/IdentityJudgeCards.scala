@@ -1,7 +1,8 @@
 package scripts
 
 import models.Country
-import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes, TmdbIdentityLookups}
+import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes}
+import services.identity.adapters.TmdbIdentityLookups
 import services.movies.ListingKey
 import tools.{IdentityJudgements, UnmatchedClusters}
 import tools.UnmatchedClusters.{Capture, Label, Take}

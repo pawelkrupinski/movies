@@ -5,6 +5,7 @@ import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
+import services.identity.adapters.TmdbKind
 
 import java.nio.file.Files
 

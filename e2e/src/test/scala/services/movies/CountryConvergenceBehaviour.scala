@@ -1398,8 +1398,8 @@ abstract class CountryConvergenceBehaviour(
       tools.IdentityJudgements.tolerated(judged, tools.IdentityJudgements.Scope.Served).keySet))
     // what the worker's count costs, on its own thread, per written projection of the whole corpus (`SuspectTakeCount`): held, nothing
     val counted = tools.Stopwatch.start()
-    val (_, counting) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(lookups,
-      services.identity.SuspectTakeCount.recordsOf(w.storedLookups()), clock, CorpusCoverage.zoneOf(country), _ => (), _.run(), () => false)(
+    val (_, counting) = tools.ThreadAllocation.of(new services.identity.adapters.SuspectTakeCount(lookups,
+      services.identity.adapters.SuspectTakeCount.recordsOf(w.storedLookups()), clock, CorpusCoverage.zoneOf(country), _ => (), _.run(), () => false)(
       decided, model.listings))
     info(f"${country.displayName}: the worker's suspect-take count took ${counted.seconds}%.1fs and allocated ${counting / 1000000} MB")
     info(s"${country.displayName}: ${corpus.takes.size} listings' takes, ${verdict.suspects.size} suspect billing(s), ${verdict.fresh.size} unjudged; " +

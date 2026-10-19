@@ -1,8 +1,8 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.identity.{FilmIdCounterStore, IdentityListingIntake, IdentityProjection,
-  InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
+import services.identity.{FilmIdCounterStore, IdentityListingIntake, InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
+import services.identity.adapters.IdentityProjection
 import services.identity.toAnswer
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
@@ -44,7 +44,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       announce    = movieService.announceReidentified,
       normalizer  = titleNormalizer,
       slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool,
-        new services.identity.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language)),
+        new services.identity.adapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language)),
       tokens      = screeningTokens,
       metrics     = workerMetrics.identityProjection.forCountry(country.code),
       clock       = clock,
@@ -57,16 +57,16 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
    *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
-  lazy val suspectTakeCount: services.identity.SuspectTakeCount =
-    new services.identity.SuspectTakeCount(venueDetailLookups(),
-      services.identity.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
+  lazy val suspectTakeCount: services.identity.adapters.SuspectTakeCount =
+    new services.identity.adapters.SuspectTakeCount(venueDetailLookups(),
+      services.identity.adapters.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
       pressed = () => tools.HeapPressure.pressed())
 
   // ── Agreement: the no-matches ≥3 other film database families agree on ─────────────────────
   /** What the other film database families answered (`identity_family_answers`), kept long. */
-  lazy val familyAnswerStore: services.identity.FamilyAnswerStore = identityTmdbLayer.familyAnswers
+  lazy val familyAnswerStore: services.identity.adapters.FamilyAnswerStore = identityTmdbLayer.familyAnswers
   /** The families asked in this country: Filmweb only where it indexes the country's titles (measured 2026-10-04: it helps
    *  in PL, DE and ES, adds nothing in the UK, and its dissent blocks a right US agreement). */
   def agreementFamilies: Seq[services.identity.agreement.VoterFamily] = {
@@ -80,7 +80,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       titleNormalizer, services.identity.IdentityCalibration.resolver,
       tmdbOf = imdbId => identityTmdbStore.foundFirst(imdbId).toAnswer,
       stored = agreementVerdicts,
-      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
+      ask = open => services.identity.adapters.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
         open.catalogue, open.records),
       metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
       posters = posterAnswerStore,
@@ -90,34 +90,34 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       catalogue = catalogueAnswerStore,
       listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
-  lazy val posterAnswerStore: services.identity.PosterAnswerStore = new services.identity.PosterAnswerStore(familyAnswerStore, clock)
+  lazy val posterAnswerStore: services.identity.adapters.PosterAnswerStore = new services.identity.adapters.PosterAnswerStore(familyAnswerStore, clock)
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
-  lazy val catalogueLinkReader: services.identity.CatalogueLinkReader = new services.identity.CatalogueLinkReader(Seq(
+  lazy val catalogueLinkReader: services.identity.adapters.CatalogueLinkReader = new services.identity.adapters.CatalogueLinkReader(Seq(
     services.cinemas.common.FlicksClient.CatalogueLinkPages -> flicksFetch,
     services.cinemas.pl.KinotekaClient.CatalogueLinkPages   -> httpFetch,
     services.cinemas.us.AlamoDrafthouseClient.CatalogueLinkPages -> cinemaScraperCatalog.alamoDetailHttp))
   /** The catalogue ids' mappings and the venue pages' catalogue links, filed among the families' answers. */
-  lazy val catalogueAnswerStore: services.identity.CatalogueAnswerStore =
-    new services.identity.CatalogueAnswerStore(familyAnswerStore, clock, catalogueLinkReader.pages)
+  lazy val catalogueAnswerStore: services.identity.adapters.CatalogueAnswerStore =
+    new services.identity.adapters.CatalogueAnswerStore(familyAnswerStore, clock, catalogueLinkReader.pages)
   /** Maps a catalogue id to its film: Wikidata's statement of it, a Letterboxd slug by its own page else. */
-  lazy val catalogueMapping: services.identity.CatalogueMapping = new services.identity.WikidataCatalogueMapping(wikidataClient, letterboxdClient)
+  lazy val catalogueMapping: services.identity.adapters.CatalogueMapping = new services.identity.adapters.WikidataCatalogueMapping(wikidataClient, letterboxdClient)
   /** Hashes a venue's or a TMDB film's poster: the image through the enrichment fetch chain (its pacing and breakers; a
    *  host blocking the worker through its scrapes' egress), cut to the card's slot under the process's decode gate. */
-  lazy val posterHashing: services.identity.PosterHashing = new services.identity.PosterHashing(
+  lazy val posterHashing: services.identity.adapters.PosterHashing = new services.identity.adapters.PosterHashing(
     services.sharecards.PosterDownload.routed(new services.sharecards.EgressPosterDownload(enrichmentFetch), posterEgressRoutes),
     posterShrinker, tmdbId => tmdbClient.posters(tmdbId, also = Seq("en")), country.language.getLanguage)
   /** How the agreement's questions are enqueued and asked, per family and outcome. */
-  lazy val agreementQuestionMetrics: services.identity.AgreementQuestionMetrics = workerMetrics.identityAgreement.questions(country.code)
+  lazy val agreementQuestionMetrics: services.identity.adapters.AgreementQuestionMetrics = workerMetrics.identityAgreement.questions(country.code)
   /** The agreement's verdicts (`identity_agreements`), kept as the model's families are. */
   lazy val agreementVerdicts: services.identity.agreement.AgreementVerdicts =
     mongoConnection.database.fold[services.identity.agreement.AgreementVerdicts](new services.identity.agreement.InMemoryAgreementVerdicts)(
       new services.identity.agreement.MongoAgreementVerdicts(_))
   /** The families' live sources the agreement fill asks. */
-  lazy val familySources: Map[services.identity.agreement.VoterFamily, services.identity.FamilySource] = {
-    val all: Seq[services.identity.FamilySource] = Seq(new services.identity.ImdbFamily(imdbClient),
-      new services.identity.WikiFamily(wikidataClient, country.language.getLanguage),
-      new services.identity.FilmwebFamily(filmwebClient, venue => filmwebProgrammes.fold(Seq.empty[services.identity.agreement.Showing])(_.of(venue))),
-      new services.identity.RottenTomatoesFamily(rottenTomatoesClient), new services.identity.MetacriticFamily(metacriticClient))
+  lazy val familySources: Map[services.identity.agreement.VoterFamily, services.identity.adapters.FamilySource] = {
+    val all: Seq[services.identity.adapters.FamilySource] = Seq(new services.identity.adapters.ImdbFamily(imdbClient),
+      new services.identity.adapters.WikiFamily(wikidataClient, country.language.getLanguage),
+      new services.identity.adapters.FilmwebFamily(filmwebClient, venue => filmwebProgrammes.fold(Seq.empty[services.identity.agreement.Showing])(_.of(venue))),
+      new services.identity.adapters.RottenTomatoesFamily(rottenTomatoesClient), new services.identity.adapters.MetacriticFamily(metacriticClient))
     all.filter(source => agreementFamilies.contains(source.family)).map(source => source.family -> source).toMap
   }
   /** Each venue's programme on Filmweb — its own, else its town's — in Poland alone, where Filmweb lists programmes: what
@@ -132,12 +132,12 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = {
     val filed: () => Unit = () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
     Seq(
-      new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources, filed, clock, agreementQuestionMetrics),
-      new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
+      new services.identity.adapters.AgreementQuestionHandler(familyAnswerStore, familySources, filed, clock, agreementQuestionMetrics),
+      new services.identity.adapters.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
         film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(services.identity.agreement.AgreementStage.recordReadId(film)) },
         filed, clock, agreementQuestionMetrics),
-      new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing, filed, clock, agreementQuestionMetrics),
-      new services.identity.AgreementCatalogueHandler(catalogueAnswerStore, catalogueMapping, catalogueLinkReader, filed, clock,
+      new services.identity.adapters.AgreementPosterHandler(posterAnswerStore, posterHashing, filed, clock, agreementQuestionMetrics),
+      new services.identity.adapters.AgreementCatalogueHandler(catalogueAnswerStore, catalogueMapping, catalogueLinkReader, filed, clock,
         agreementQuestionMetrics))
   }
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film

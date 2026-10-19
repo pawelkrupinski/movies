@@ -58,13 +58,13 @@ object TaskType {
   case object AuditReadModelContent extends TaskType { val name = "AuditReadModelContent" }
   case object AuditShareCards       extends TaskType { val name = "AuditShareCards"       }
   /** An identity agreement question one film database family has not answered yet, and TMDB's find of an agreed
-   *  IMDb id (`services.identity.AgreementQuestions`). */
+   *  IMDb id (`services.identity.adapters.AgreementQuestions`). */
   case object AgreementQuestion     extends TaskType { val name = "AgreementQuestion"     }
   case object AgreementFind         extends TaskType { val name = "AgreementFind"         }
-  /** A venue's or a TMDB film's poster to hash for the agreement's poster evidence (`services.identity.AgreementPosterHandler`). */
+  /** A venue's or a TMDB film's poster to hash for the agreement's poster evidence (`services.identity.adapters.AgreementPosterHandler`). */
   case object AgreementPoster       extends TaskType { val name = "AgreementPoster"       }
   /** A batch of catalogue ids to map, or a venue film page whose catalogue links to read, for the agreement's catalogue
-   *  take (`services.identity.AgreementCatalogueHandler`). */
+   *  take (`services.identity.adapters.AgreementCatalogueHandler`). */
   case object AgreementCatalogue    extends TaskType { val name = "AgreementCatalogue"    }
 
   val all: Seq[TaskType] =

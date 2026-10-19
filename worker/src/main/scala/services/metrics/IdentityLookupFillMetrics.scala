@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{LookupFillMetrics, LookupFillRound}
+import services.identity.adapters.{LookupFillMetrics, LookupFillRound}
 
 /**
  * The identity model's paced live lookup fill (`LookupFill`, docs/design/identity-resolver.md §19),

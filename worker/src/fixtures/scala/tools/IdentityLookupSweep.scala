@@ -1,7 +1,7 @@
 package tools
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  IdentityResolver, Listing, ObservationReads, TmdbIdentityLookups, TrackedLookups}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ObservationReads, TrackedLookups}
+import services.identity.adapters.TmdbIdentityLookups
 import services.movies.TitleNormalizer
 
 /**

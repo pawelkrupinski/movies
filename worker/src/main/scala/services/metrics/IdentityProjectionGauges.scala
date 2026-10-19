@@ -2,7 +2,8 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{IdentityProjectionMetrics, Regroupings, SuspectTakes}
+import services.identity.{Regroupings, SuspectTakes}
+import services.identity.adapters.IdentityProjectionMetrics
 
 /**
  * Each country's identity projection (`IdentityProjection`, docs/design/identity-resolver.md §8 phase 5), each series
@@ -105,7 +106,7 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     .labelNames("country", "signal")
     .register(registry)
 
-  /** Where a country's suspect-take count goes ([[services.identity.SuspectTakeCount]]): one series per signal. */
+  /** Where a country's suspect-take count goes ([[services.identity.adapters.SuspectTakeCount]]): one series per signal. */
   def suspects(country: String): Map[SuspectTakes.Signal, Int] => Unit =
     counts => counts.foreach { case (signal, n) => suspectTakes.labelValues(country, signal.label).set(n.toDouble) }
 

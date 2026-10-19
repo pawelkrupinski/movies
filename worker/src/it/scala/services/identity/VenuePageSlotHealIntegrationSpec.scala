@@ -1,5 +1,7 @@
 package services.identity
 
+
+import services.identity.adapters.{IndexedVenuePageFacts, VenuePageIndex}
 import models.{CinemaMovie, CinemaShowing, Country, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

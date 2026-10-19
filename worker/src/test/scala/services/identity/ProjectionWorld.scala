@@ -1,5 +1,7 @@
 package services.identity
 
+
+import services.identity.adapters.{IdentityProjection, IdentityProjectionMetrics}
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord}
 import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger,
   ScreeningTokens, SingleCountryNormalizer, StringPool}

@@ -253,7 +253,7 @@ done < <(printf '%s\n' "${journal_cases[@]}")
 echo "==> a worker's JSON line arrives as fields, its message as the text"
 python3 -c "
 import json
-line = json.dumps({'level': 'INFO', 'logger': 'services.identity.IdentityProjection', 'thread': 'main',
+line = json.dumps({'level': 'INFO', 'logger': 'services.identity.adapters.IdentityProjection', 'thread': 'main',
                    'message': 'identity take change: lost Kino Muza | Lalka: tmdb 501 -> none',
                    'build': '0e41a4812', 'projection_id': '2026-10-13T21:24:50.290Z', 'kind': 'lost',
                    'basis': 'Withdrawn', 'tmdb_before': 501, 'country': 'xx'})

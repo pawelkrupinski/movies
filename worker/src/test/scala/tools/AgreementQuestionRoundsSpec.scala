@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{FamilyAnswerStore, FamilySource, InMemoryTmdbDocuments}
+import services.identity.adapters.{FamilyAnswerStore, FamilySource, InMemoryTmdbDocuments}
 import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
 
 import java.nio.file.Files

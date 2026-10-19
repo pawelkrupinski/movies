@@ -3,13 +3,18 @@ package tools
 import services.identity._
 
 import java.time.Clock
+import scala.annotation.nowarn
 import scala.util.Try
 
 /** The agreement's catalogue questions answered as the worker answers them — the ids mapped by Wikidata (a Letterboxd
  *  slug on no item by its own page), the venue pages' links read — through `fetch` (the experiment's cache, else live,
  *  kept: [[ExperimentCacheFetch]]), and filed among `families`' answers, where the unmatched-cluster fixtures record them.
  *  For the measures and the fixture tools only. */
-final class CatalogueFill(families: FamilyAnswerStore, clock: Clock, fetch: HttpFetch) {
+@nowarn("msg=unused import")
+final class CatalogueFill(families: CatalogueFill.Families, clock: Clock, fetch: HttpFetch) {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+  import services.identity.adapters.*
+
   val answers: CatalogueAnswerStore = new CatalogueAnswerStore(families, clock, UnmatchedClusters.CataloguePages)
   private val mapping = new WikidataCatalogueMapping(new services.enrichment.WikidataClient(fetch), new services.enrichment.LetterboxdClient(fetch))
   private val pages   = new CatalogueLinkReader(UnmatchedClusters.CataloguePages.map(_ -> fetch))
@@ -23,4 +28,12 @@ final class CatalogueFill(families: FamilyAnswerStore, clock: Clock, fetch: Http
     tools.ConcurrentAsks.each(read, atOnce = 4)(page =>
       Try(AgreementCatalogueQuestions.file(answers, mapping, pages, Seq(page))).failed.foreach(e => println(s"catalogue page: $e")))
   }
+}
+
+@nowarn("msg=unused import")
+object CatalogueFill {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+  import services.identity.adapters.*
+
+  type Families = FamilyAnswerStore
 }

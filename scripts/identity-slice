@@ -99,7 +99,8 @@ TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/t
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
-  worker/src/fixtures/scala/tools/ProdMirror.scala worker/src/fixtures/scala/tools/IdentityJudgements.scala)
+  worker/src/fixtures/scala/tools/ProdMirror.scala worker/src/fixtures/scala/tools/IdentityJudgements.scala
+  worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala)
 
 threads="" fresh=0 serve=0 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then

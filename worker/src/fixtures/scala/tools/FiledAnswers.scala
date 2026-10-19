@@ -5,6 +5,7 @@ import services.identity._
 
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 
 /**
@@ -28,7 +29,11 @@ final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String
     s"${capture.films.size} TMDB record(s), ${capture.details.size} venue page(s), ${live.size} live HTTP answer(s)"
 }
 
+@nowarn("msg=unused import")
 object FiledAnswers {
+  // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+  import services.identity.adapters.*
+
   def of(country: models.Country): FiledAnswers = FiledAnswers(UnmatchedClusters.Capture(country, Nil, Nil, Map.empty, Map.empty, Map.empty, Set.empty,
     Map.empty, Map.empty), "")
 

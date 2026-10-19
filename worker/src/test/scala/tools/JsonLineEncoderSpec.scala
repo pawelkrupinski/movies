@@ -29,7 +29,7 @@ class JsonLineEncoderSpec extends AnyFlatSpec with Matchers {
   }
 
   private def event(context: LoggerContext, message: String, level: Level = Level.INFO, error: Throwable = null): LoggingEvent = {
-    val logger = context.getLogger("services.identity.IdentityProjection")
+    val logger = context.getLogger("services.identity.adapters.IdentityProjection")
     new LoggingEvent("fqcn", logger, level, message, error, null)
   }
 
@@ -44,7 +44,7 @@ class JsonLineEncoderSpec extends AnyFlatSpec with Matchers {
     }
     json("message") shouldBe JsString("identity take change: lost Kino \"Muza\" | Lalka\tnew")
     json("level") shouldBe JsString("INFO")
-    json("logger") shouldBe JsString("services.identity.IdentityProjection")
+    json("logger") shouldBe JsString("services.identity.adapters.IdentityProjection")
     json("kind") shouldBe JsString("lost")
     json("tmdb_before") shouldBe JsNumber(501)
     json("confidence") shouldBe JsNumber(0.875)

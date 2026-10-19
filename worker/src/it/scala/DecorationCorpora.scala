@@ -2,6 +2,7 @@ package integration
 
 import scripts.IdentityCalibrationData.{TmdbAnswers, languageOf}
 import services.identity._
+import services.identity.adapters.TmdbIdentityLookups
 import services.movies.ListingKey
 import tools.{ConvergenceStorage, IntegrationMongoTarget}
 

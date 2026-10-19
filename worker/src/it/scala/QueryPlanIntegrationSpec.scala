@@ -159,7 +159,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   }
 
   "the TMDB store" should "read, write and sweep by id" in {
-    import services.identity.{MongoTmdbDocuments, TmdbKind, TmdbStore}
+    import services.identity.adapters.{MongoTmdbDocuments, TmdbKind, TmdbStore}
     assertIndexed(plansOf("tmdb") { db =>
       val documents = new MongoTmdbDocuments(db)
       def film(n: Int) = new org.bson.BsonDocument(TmdbStore.FetchedAt, new org.bson.BsonInt64(n.toLong))

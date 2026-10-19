@@ -82,8 +82,8 @@ trait ResolutionWiring { self: WorkerWiring =>
   def identityModelTakenUp(): Unit = identityProjectionTrigger.once(scala.concurrent.duration.Duration.Zero)(bootProjectionTick())
   lazy val settleReaper = {
     managedResources.stopping(new SettleReaper(() => settleTick(),
-    interval = SettleInterval(services.identity.IdentityProjection.ReconcileEvery),
-    initialDelay = SettleReaper.InitialDelay(services.identity.IdentityProjection.ReconcileEvery),
+    interval = SettleInterval(services.identity.adapters.IdentityProjection.ReconcileEvery),
+    initialDelay = SettleReaper.InitialDelay(services.identity.adapters.IdentityProjection.ReconcileEvery),
     runStore = scheduledRunStore, clock = clock))
   }
 }

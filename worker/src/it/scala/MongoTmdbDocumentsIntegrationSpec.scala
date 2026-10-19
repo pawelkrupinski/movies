@@ -4,14 +4,14 @@ import tools.SpecTimeouts
 
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
-import services.identity.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
+import services.identity.adapters.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
 import org.scalatest.BeforeAndAfterAll
 import tools.{IntegrationMongoSuite, IsolatedMongoDatabase}
 
 import scala.concurrent.Await
 
 /** The normalized TMDB store's storage contract over Mongo: the cases `TmdbDocumentsSpec` runs in memory. */
-class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRetentionBehaviour with IntegrationMongoSuite
+class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbDocumentRetentionBehaviour with IntegrationMongoSuite
     with BeforeAndAfterAll {
   // A database of this run's own, dropped (and its client closed) when the suite ends: a per-suite
   // `<MONGODB_DB>_tmdb` was never dropped, and two runs on one server shared it.
@@ -20,7 +20,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
-  protected def newDocuments(): TmdbDocuments & services.identity.TmdbDocumentRetention = {
+  protected def newDocuments(): TmdbDocuments & services.identity.adapters.TmdbDocumentRetention = {
     TmdbKind.values.foreach(k => Await.result(database.getCollection(k.collection).drop().toFuture(), SpecTimeouts.Io))
     new MongoTmdbDocuments(database)
   }
@@ -55,7 +55,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
       }).build())
     try {
       newDocuments()
-      val documents = new services.identity.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(database.name)))
+      val documents = new services.identity.adapters.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(database.name)))
       val pool  = java.util.concurrent.Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory())
       val start = new java.util.concurrent.CountDownLatch(1)
       val filed = (0 until 64).map(i => pool.submit((() => {
@@ -85,7 +85,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
       }).build())
     try {
       newDocuments()
-      val documents = new services.identity.CoalescedTmdbDocuments(new services.identity.CachedTmdbDocuments(
+      val documents = new services.identity.adapters.CoalescedTmdbDocuments(new services.identity.adapters.CachedTmdbDocuments(
         new MongoTmdbDocuments(watched.getDatabase(database.name))))
       def film(n: Int) = new org.bson.BsonDocument("hit", new org.bson.BsonDocument("n", new org.bson.BsonInt32(n)))
       documents.put(TmdbKind.Film, (1 to 600).map(i => i.toString -> film(i)))

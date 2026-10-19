@@ -82,7 +82,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
    *  number so an entry survives unrelated edits above it, and a new swallow elsewhere in
    *  the file is not covered by an old entry that happens to share its text. */
   private val Allowlist: Map[(String, String, String), String] = Map(
-    ("worker/src/main/scala/services/identity/IdentityProjection.scala", "quietly",
+    ("worker/src/main/scala/services/identity/adapters/IdentityProjection.scala", "quietly",
       "catch { case NonFatal(e) =>") ->
       "not a failure read as data: a projection that throws is logged, counted as a Failed refusal and answers 'not settled', which is what makes `EventTrigger` run it again after a backoff — the stored films keep serving meanwhile",
     ("common/src/main/scala/tools/DaemonExecutors.scala", "run",
@@ -97,7 +97,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/cinemas/common/GatsbyBoxOfficeClient.scala", "ask",
       "case NonFatal(e) =>") ->
       "the film details are optional credits beside the schedule, which is the scrape: after a second attempt (a response naming none of the batch counts as a failure), an empty map lists those films without a credit or runtime, exactly as every scrape before the details request did, and the failure is logged",
-    ("worker/src/main/scala/services/identity/TmdbNormalizer.scala", "normalize",
+    ("worker/src/main/scala/services/identity/adapters/TmdbNormalizer.scala", "normalize",
       "case Failure(_)                                          => None") ->
       "None is 'write nothing': a transient failure is not an answer, so the store keeps what it held and the model's question stays a gap — the opposite of turning it into data",
     ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "fromNationalFeed",

@@ -1,5 +1,7 @@
 package services.identity
 
+
+import services.identity.adapters.TmdbIdentityLookups
 import scala.util.Try
 
 /** A replay counting the requests it could not answer in one counter (`misses`): a lookup during

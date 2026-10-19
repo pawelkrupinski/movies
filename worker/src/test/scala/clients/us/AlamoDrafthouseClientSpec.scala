@@ -7,7 +7,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{DetailFetchOutcome, ScrapeHorizon}
 import services.cinemas.us.{AlamoDrafthouseClient, AlamoDrafthouseParser}
-import services.identity.{CatalogueId, CatalogueLinkReader, Listing, TmdbIdentityLookups, VenueDetails}
+import services.identity.{CatalogueId, Listing}
+import services.identity.adapters.{CatalogueLinkReader, TmdbIdentityLookups, VenueDetails}
 import services.movies.TitleNormalizer
 import tools.{HttpFetch, RoutingHttpFetch}
 

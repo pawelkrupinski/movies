@@ -18,7 +18,7 @@ sealed trait DomainEvent
 /** A venue detail page was read into venue_pages — its detail, or that it is gone — for the enricher
  *  group `detailGroup` (one page serves every venue of a chain) and `page`, the ref the enrichment
  *  fetched (`DetailEnricher.nativeDetailRef`). Published AFTER the page is stored, so the model's
- *  index of venue_pages (`services.identity.VenuePageIndex`) reads the answer it announces: the
+ *  index of venue_pages (`services.identity.adapters.VenuePageIndex`) reads the answer it announces: the
  *  identity model re-asks the listings that read that page. */
 case class VenueDetailRead(detailGroup: String, page: String) extends DomainEvent
 

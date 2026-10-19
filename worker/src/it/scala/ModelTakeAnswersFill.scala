@@ -1,6 +1,7 @@
 package integration
 
 import services.identity._
+import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, FamilySource, FilmwebFamily, ImdbFamily, InMemoryTmdbDocuments, MetacriticFamily, PosterAnswerStore, RottenTomatoesFamily, TmdbKind, WikiFamily}
 import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord, VoterFamily}
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 

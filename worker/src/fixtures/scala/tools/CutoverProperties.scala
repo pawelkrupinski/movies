@@ -1,7 +1,8 @@
 package tools
 
 import models.{Cinema, CinemaMovie, CinemaShowing}
-import services.identity.{Listing, ProjectionTick}
+import services.identity.Listing
+import services.identity.adapters.ProjectionTick
 import services.movies.{ListingKey, StoredMovieRecord}
 
 /**

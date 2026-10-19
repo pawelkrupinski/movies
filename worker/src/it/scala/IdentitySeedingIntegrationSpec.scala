@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import services.identity._
+import services.identity.adapters.TmdbIdentityLookups
 import services.movies.{ListingKey, ScrapeListing, ScreeningTokens}
 import tools._
 

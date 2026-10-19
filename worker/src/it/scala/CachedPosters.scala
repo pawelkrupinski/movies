@@ -2,7 +2,7 @@ package integration
 
 import clients.TmdbClient
 import play.api.libs.json.{JsArray, Json}
-import services.identity.{HashedPoster, PosterAnswerStore, PosterHashing}
+import services.identity.adapters.{HashedPoster, PosterAnswerStore, PosterHashing}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{HttpPosterDownload, PosterDownload, PosterFailure}
 

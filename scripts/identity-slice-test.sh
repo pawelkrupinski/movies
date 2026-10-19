@@ -33,14 +33,14 @@ chmod +x "$work/bin/xargs"
 # A repository holding the tool (its scripts and the files it drops into a ref's tree) at two commits.
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/scripts" "$repo/worker/src/test/scala/services/identity" \
-  "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src" "$repo/test/resources/fixtures/identity-unmatched"
+  "$repo/worker/src/fixtures/scala/tools" "$repo/worker/src/fixtures/scala/services/identity/adapters" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src" "$repo/test/resources/fixtures/identity-unmatched"
 cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$REPO_ROOT/scripts/zinc_orphans.py" "$repo/scripts/"
 mkdir -p "$repo/scripts/ci" && cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the shared modules the diff imports
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
   worker/src/fixtures/scala/tools/FiledAnswers.scala worker/src/fixtures/scala/tools/ProdMirror.scala \
-  worker/src/fixtures/scala/tools/IdentityJudgements.scala; do
+  worker/src/fixtures/scala/tools/IdentityJudgements.scala worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala; do
   echo "// $f" > "$repo/$f"
 done
 echo "build" > "$repo/build.sbt"

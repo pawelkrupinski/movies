@@ -2385,7 +2385,7 @@ projects the whole corpus. A stored film another writer changed is projected on 
 searches, director walks, candidate records) are ones the pipeline never asks: over the Poznań
 capture, 4,559 lookups were unobserved and 337 of 723 clusters matched.
 
-`LookupFill` (worker, `services.identity`) closes that gap. On its own cluster-claimed
+`LookupFill` (worker, `services.identity.adapters`) closes that gap. On its own cluster-claimed
 schedule (`WorkerWiring.identityLookupRefreshSchedule`, the `identity-lookup-refresh` task, every
 `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS`, default 30 minutes), on its own daemon thread, one round
 at a time:

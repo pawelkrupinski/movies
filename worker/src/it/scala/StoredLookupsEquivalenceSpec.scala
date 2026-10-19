@@ -5,6 +5,7 @@ import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
+import services.identity.adapters.TmdbIdentityLookups
 
 class StoredLookupsEquivalenceSpec extends AnyFlatSpec with Matchers {
 

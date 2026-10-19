@@ -481,6 +481,7 @@ jobs:
                       worker/src/test/scala/services/identity/OlderRefs.scala
                       worker/src/test/scala/services/identity/TitleTrace.scala
                       worker/src/fixtures/scala/tools/**
+                      worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala
                       scripts/identity-slice
                       scripts/title-trace
                       scripts/identity-tools.sh
@@ -499,7 +500,7 @@ jobs:
               uses: actions/cache@v5
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
-                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
+                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
                   restore-keys: |
                       identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
 

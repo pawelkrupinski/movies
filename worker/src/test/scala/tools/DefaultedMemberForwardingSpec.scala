@@ -53,12 +53,12 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d))),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
       // A budget with room: every call reaches the fetch it decorates.
-      classOf[services.identity.LookupFillLiveFetch] -> ((d: HttpFetch) =>
-        new services.identity.LookupFillLiveFetch(d, new services.identity.LookupFillBudget(Int.MaxValue, 0.seconds, _ => ()))),
+      classOf[services.identity.adapters.LookupFillLiveFetch] -> ((d: HttpFetch) =>
+        new services.identity.adapters.LookupFillLiveFetch(d, new services.identity.adapters.LookupFillBudget(Int.MaxValue, 0.seconds, _ => ()))),
       // Normalizes what it sees into a store as a side effect; every call reaches the fetch it decorates.
-      classOf[services.identity.NormalizingHttpFetch] -> ((d: HttpFetch) =>
-        new services.identity.NormalizingHttpFetch(d, new services.identity.TmdbNormalizer(
-          new services.identity.TmdbStore(new services.identity.InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))))
+      classOf[services.identity.adapters.NormalizingHttpFetch] -> ((d: HttpFetch) =>
+        new services.identity.adapters.NormalizingHttpFetch(d, new services.identity.adapters.TmdbNormalizer(
+          new services.identity.adapters.TmdbStore(new services.identity.adapters.InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))))
     ),
     mayInherit =
       // The default runs `this.get(url)` on a pool thread — through the decorator's own
@@ -66,8 +66,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       Seq(classOf[PacedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
-          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.LookupFillLiveFetch],
-          classOf[services.identity.NormalizingHttpFetch])
+          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.adapters.LookupFillLiveFetch],
+          classOf[services.identity.adapters.NormalizingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

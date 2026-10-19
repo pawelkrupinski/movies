@@ -6,7 +6,7 @@ import java.util.Locale
 
 /**
  * How each TMDB response body is read: ONE parser per response, shared by [[TmdbClient]]'s own
- * calls and by the normalized identity store (`services.identity.TmdbStore`), so a stored answer is
+ * calls and by the normalized identity store (`services.identity.adapters.TmdbStore`), so a stored answer is
  * by construction what the client would have made of the body. Pure — no HTTP, no key.
  */
 object TmdbResponses {

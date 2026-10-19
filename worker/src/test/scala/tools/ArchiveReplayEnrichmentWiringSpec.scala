@@ -716,11 +716,11 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     def pass() = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
       fixtureTree, settings.FixtureRoot.RepositoryRelative)
     val (first, second) = (pass(), pass())
-    val question = services.identity.TmdbStore.titleSearchId("pl-PL", "Diuna")
+    val question = services.identity.adapters.TmdbStore.titleSearchId("pl-PL", "Diuna")
     first.identityTmdbNormalizer.filed("GET", "https://api.themoviedb.org/3/search/movie?query=Diuna&language=pl-PL",
       scala.util.Success("""{"results":[{"id":438631,"title":"Diuna","original_title":"Dune","release_date":"2021-09-15","popularity":50.0}]}"""))
-    first.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
-    second.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)) shouldBe empty
+    first.identityTmdbStore.get(services.identity.adapters.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
+    second.identityTmdbStore.get(services.identity.adapters.TmdbKind.Query, Seq(question)) shouldBe empty
     second.familyAnswerStore should not be theSameInstanceAs(first.familyAnswerStore)
   }
 }

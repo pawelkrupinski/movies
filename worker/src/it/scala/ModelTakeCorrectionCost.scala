@@ -1,6 +1,7 @@
 package integration
 
 import services.identity._
+import services.identity.adapters.{CatalogueAnswerStore, FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity.agreement.{AgreementStage, AgreementVerdicts, InMemoryAgreementVerdicts}
 import tools.{CommandLine, ConvergenceStorage, SpecClock, UnmatchedClusters}
 

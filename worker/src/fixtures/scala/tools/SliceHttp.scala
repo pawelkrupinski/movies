@@ -4,6 +4,7 @@ import play.api.libs.json.{JsObject, JsString, JsNumber, Json}
 
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
 
 /**
@@ -59,18 +60,22 @@ object SliceHttp {
 
   /** A slice's notes as the fetch: the recording's outcomes replayed, a gap counted on the thread as the recording's
    *  gap leaf counts it ([[gaps]]), anything else LACKING — or, with `widen`, read from the full recording and noted. */
+  @nowarn("msg=unused import")
   final class Replaying(notes: Map[Request, Outcome], widen: Option[Noting] = None) extends HttpFetch {
+    // The identity adapters, in either package a ref keeps them (OlderRefsPackage).
+    import services.identity.*, services.identity.adapters.*
+
     val lacking = ConcurrentHashMap.newKeySet[Request]()
     val gapsMet = ConcurrentHashMap.newKeySet[Request]()
     private val onThread = ThreadLocal.withInitial[java.lang.Long](() => 0L)
     def metOnThread: Long = onThread.get()
     /** The requests read from the full recording because the slice lacked them. */
     def widened: Map[Request, Outcome] = widen.fold(Map.empty[Request, Outcome])(_.noted.asScala.toMap)
-    def gaps: services.identity.TmdbIdentityLookups.Gaps = new services.identity.TmdbIdentityLookups.Gaps {
-      def answered[A](read: => A): services.identity.Answer[A] = {
+    def gaps: TmdbIdentityLookups.Gaps = new TmdbIdentityLookups.Gaps {
+      def answered[A](read: => A): Answer[A] = {
         val before = metOnThread
         scala.util.Try(read).toOption.filter(_ => metOnThread == before)
-          .fold[services.identity.Answer[A]](services.identity.Answer.Unknown)(services.identity.Answer.Known(_))
+          .fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
       }
     }
     private def replay(request: Request, empty: => Any)(fromRecording: HttpFetch => Any): Any =
