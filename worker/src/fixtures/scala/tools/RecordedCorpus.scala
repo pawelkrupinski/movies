@@ -41,7 +41,7 @@ object RecordedCorpus {
       override def loadAll(): Map[String, CachedResponse] = files.loadAll()
       override def put(key: String, response: CachedResponse): Unit = ()
     }
-    val cache = new EnrichmentCache(store, Stopwatch.System)
+    val cache = constructed(classOf[EnrichmentCache], store)
     val leaf  = new GapLeaf(missing)
     cache.preload()
     val fetch = replayChain(new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root), cache, leafOf(leaf))
@@ -51,7 +51,21 @@ object RecordedCorpus {
   /** A full corpus's chain: the recorded `tree`, then the remembered verdicts in `cache` ([[RememberedVerdicts]],
    *  read-only), then `leaf` for a request neither answers. */
   def replayChain(tree: HttpFetch, cache: EnrichmentCache, leaf: HttpFetch): HttpFetch =
-    new FallbackHttpFetch(Seq("tree" -> tree, "verdicts" -> new RememberedVerdicts(cache, leaf)), Stopwatch.System)
+    constructed(classOf[FallbackHttpFetch], Seq("tree" -> tree, "verdicts" -> new RememberedVerdicts(cache, leaf)))
+
+  /** `new T(first, …)`, every later parameter the wiring's `Stopwatch.System` where it takes a [[Stopwatch]] and its
+   *  default otherwise. Built BY NAME because identity-slice drops this file into refs older than the required
+   *  stopwatch (EnrichmentCache's and FallbackHttpFetch's, 2026-10-19), whose second parameter was a defaulted
+   *  function instead; `services.identity.OlderRefs` is the test tree's, out of this fixtures file's reach. */
+  private[tools] def constructed[T](cls: Class[T], first: AnyRef): T = {
+    val constructor = cls.getConstructors.maxBy(_.getParameterCount)
+    lazy val companion = Class.forName(cls.getName + "$").getField("MODULE$").get(null)
+    val rest = constructor.getParameterTypes.toSeq.zipWithIndex.drop(1).map { case (kind, index) =>
+      if (kind.isAssignableFrom(classOf[Stopwatch])) Stopwatch.System
+      else companion.getClass.getMethod(s"$$lessinit$$greater$$default$$${index + 1}").invoke(companion)
+    }
+    constructor.newInstance((first +: rest)*).asInstanceOf[T]
+  }
 
   /** The verdicts a recording remembered beside its tree, READ-ONLY: a remembered answer is answered, a remembered failure
    *  thrown as it was, and anything else asked of `leaf` every time. Never a [[CachingEnrichmentFetch]], which remembers
