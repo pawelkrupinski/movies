@@ -57,6 +57,21 @@ object UnmatchedClusters {
                             *  ([[IdentityLookups.overview]]): none in a capture recorded before it, whose replay knows none. */
                            overviews: Map[Int, Option[ProseWords]] = Map.empty)
 
+  /** `capture` with what a recording's TMDB tree answers that it was taken without: the cast of every candidate the
+   *  evidence asked one of (`asked`, beside the ones it already noted) and holds none for, and each held record's original
+   *  language. A capture taken through a [[MemoLookups]] that passed no cast on (before 5faaac6c8) noted every cast it
+   *  asked as unknown, and a record parsed before the store kept `original_language` holds none: answered off the tree,
+   *  as the store's re-read record would be. A record the tree states no language of keeps none; neither changes a
+   *  model decision the capture holds. */
+  def withRecorded(capture: Capture, asked: Iterable[Int], castOf: Int => Option[Seq[String]],
+                   originalLanguageOf: Int => Option[String]): Capture = {
+    val casts = (capture.casts.keys ++ asked).toSeq.distinct.filter(id => capture.casts.get(id).flatten.isEmpty)
+      .flatMap(id => castOf(id).map(cast => id -> Option(cast)))
+    val films = capture.films.collect { case (id, Some(film)) if film.originalLanguage.isEmpty =>
+      originalLanguageOf(id).map(language => id -> Option(film.copy(originalLanguage = Some(language)))) }.flatten
+    capture.copy(casts = capture.casts ++ casts, films = capture.films ++ films)
+  }
+
   /** The family questions `wanted` that `capture` holds no reason to leave open: those it gave up on as unreachable aside,
    *  every question the stage asks of a complete capture is answered. */
   def unasked(capture: Capture, wanted: Set[(VoterFamily, String)]): Set[(VoterFamily, String)] = wanted -- capture.unreachable
@@ -322,13 +337,17 @@ object UnmatchedClusters {
     val films   = ConcurrentHashMap.newKeySet[Int]()
     /** The films whose overview the synopsis evidence asked and the capture holds none of: a fill answers them. */
     val overviews = ConcurrentHashMap.newKeySet[Int]()
+    /** The films whose cast the cast evidence asked and the capture holds none of: a fill answers them. */
+    val casts = ConcurrentHashMap.newKeySet[Int]()
     def unanswered: Set[String] = queries.asScala.map(DecisionTrace.renderQuery).toSet ++ films.asScala.map(id => s"tmdb $id")
     override def hasDetail(listing: Listing): Boolean = capture.withDetail(ListingKey.serialised(listing.key))
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = known(capture.details.get(ListingKey.serialised(listing.key)))(())
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = known(capture.queries.get(query))(queries.add(query))
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = known(capture.films.get(tmdbId))(films.add(tmdbId))
-    // a cast the capture did not record is not known — what the cast evidence reads as nothing to go on, never a gap
-    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(capture.casts.get(tmdbId).flatten)
+    // a cast the capture did not record is not known — what the cast evidence reads as nothing to go on, never a gap —
+    // noted for a fill to answer
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =
+      Answer.Known(capture.casts.get(tmdbId).fold { casts.add(tmdbId); Option.empty[Seq[String]] }(identity))
     // nor is an overview: not known, the evidence reads nothing — noted for a fill to answer
     override def overview(tmdbId: Int): Answer[Option[ProseWords]] =
       Answer.Known(capture.overviews.get(tmdbId).fold { overviews.add(tmdbId); Option.empty[ProseWords] }(identity))

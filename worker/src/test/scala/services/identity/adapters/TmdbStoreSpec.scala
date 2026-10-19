@@ -501,6 +501,17 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.film(onceUpon).toOption.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
   }
 
+  // A showing subtitled into a language asks whether that language is the film's own: TMDB's original language must
+  // survive the cut-down record the store files, and the record read back (its cast: "keep its top-billed cast" below).
+  "a film's record" should "keep its original language as filed" in {
+    val w = new World
+    val onceUpon = 311
+    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
+    w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
+    w.lookups.film(onceUpon).toOption.flatten.flatMap(_.originalLanguage) shouldBe Some("en")
+  }
+
   // "Frauen bildet Banden" (DE Museum-Lichtspiele Tübingen bills it "- Eine Spurensuche zur Geschichte der Roten Zora"): TMDB's
   // de-DE tagline is the subtitle a venue bills beside the title, which a filed record must carry for billedBeside to read.
   "a film's record" should "carry its tagline as filed" in {

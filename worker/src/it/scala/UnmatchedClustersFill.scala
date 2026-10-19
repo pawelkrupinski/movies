@@ -22,8 +22,9 @@ import scala.util.Try
  * }}}
  *
  * `--recording` (a recording's fixtures directory: `corpus/cinema-scrapes-<cc>.json.gz` and `enrichment-<cc>/`) answers
- * from its TMDB tree the film overviews the synopsis evidence asks ([[IdentityLookups.overview]]) that the capture
- * holds none of; with `--listing-words`, which only the recording the capture was taken from may be given for, the
+ * from its TMDB tree the film overviews the synopsis evidence asks ([[IdentityLookups.overview]]), the casts the cast
+ * and synopsis evidence ask ([[IdentityLookups.cast]]) and the records' original languages that the capture holds none
+ * of ([[UnmatchedClusters.withRecorded]]); with `--listing-words`, which only the recording the capture was taken from may be given for, the
  * captured listings also gain the words their own synopses capitalise ([[Listing.words]]), read off its corpus as a
  * capture reads them.
  *
@@ -79,6 +80,16 @@ object UnmatchedClustersFill {
         language = country.language, retrySleep = (_: Long) => ())
       new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(opened.fetch), Nil, opened.gaps)
     }
+    // the casts and original languages a capture taken without them lacks, off the same tree
+    def recordedOf(tree: TmdbIdentityLookups, asked: Iterable[Int]): Unit = {
+      val before = capture
+      capture = UnmatchedClusters.withRecorded(capture, asked, id => tree.cast(id).toOption.flatten,
+        id => tree.film(id).toOption.flatten.flatMap(_.originalLanguage))
+      println(s"[${country.code}] fill: ${capture.casts.count(_._2.isDefined) - before.casts.count(_._2.isDefined)} cast(s) and " +
+        s"${capture.films.count(_._2.exists(_.originalLanguage.isDefined)) - before.films.count(_._2.exists(_.originalLanguage.isDefined))} " +
+        s"original language(s) read from the recording")
+    }
+    overviewsOf.foreach(recordedOf(_, Nil))
     val clock    = new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z"))
     val docs     = new InMemoryTmdbDocuments
     docs.put(TmdbKind.Family, capture.families.toSeq)
@@ -107,7 +118,8 @@ object UnmatchedClustersFill {
     val asked = new AgreementQuestionRounds(store, sources, s"${country.code} fill").run(() => agree())(_.stage.wanted,
       pending = o => o.stage.wantedPosters.nonEmpty || o.stage.wantedCatalogue.nonEmpty || o.stage.wantedFinds.nonEmpty ||
         (live.isDefined && (!lookups.queries.isEmpty || !lookups.films.isEmpty)) ||
-        (overviewsOf.isDefined && lookups.overviews.asScala.exists(id => !capture.overviews.contains(id))),
+        (overviewsOf.isDefined && lookups.overviews.asScala.exists(id => !capture.overviews.contains(id))) ||
+        (overviewsOf.isDefined && lookups.casts.asScala.exists(id => !capture.casts.contains(id))),
       beside = { o =>
         println(s"[${country.code}] fill: ${o.stage.wantedPosters.size} poster(s), ${o.stage.wantedCatalogue.size} catalogue question(s), ${o.stage.wantedFinds.size} find(s)")
         posters.file(posterStore, o.stage.wantedPosters.toSeq)
@@ -122,12 +134,14 @@ object UnmatchedClustersFill {
         overviewsOf.foreach { tree =>
           // an overview the tree does not hold is none: asked again, it would be no more known
           val read = lookups.overviews.asScala.toSeq.filterNot(capture.overviews.contains).map(id => id -> tree.overview(id).toOption.flatten)
+          println(s"[${country.code}] fill: ${read.size} TMDB overview(s) read from the recording, ${read.count(_._2.isDefined)} held")
+          capture = capture.copy(overviews = capture.overviews ++ read)
           // and the cast of each film the evidence reads, where the capture holds none: a synopsis naming a film's cast
-          // names it ([[agreement.SynopsisEvidence]]), and a capture taken before the store kept casts knows no cast
-          val casts = read.map(_._1).filter(id => capture.casts.get(id).flatten.isEmpty)
-            .flatMap(id => tree.cast(id).toOption.flatten.map(cast => id -> Option(cast)))
-          println(s"[${country.code}] fill: ${read.size} TMDB overview(s) read from the recording, ${read.count(_._2.isDefined)} held; ${casts.size} cast(s)")
-          capture = capture.copy(overviews = capture.overviews ++ read, casts = capture.casts ++ casts)
+          // names it ([[agreement.SynopsisEvidence]]), as the cast evidence reads it; a cast the tree holds none of is
+          // filed unknown, asked again it would be no more known
+          val asked = lookups.casts.asScala.toSeq ++ read.map(_._1)
+          recordedOf(tree, asked)
+          capture = capture.copy(casts = asked.filterNot(capture.casts.contains).map(_ -> Option.empty[Seq[String]]).toMap ++ capture.casts)
         }
       })
     val (outcome, rounds) = (asked.outcome, asked.rounds)

@@ -90,14 +90,14 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 }
 
 object TmdbNormalizer {
-  /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title, release day,
+  /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title and language, release day,
    *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles, the directors
    *  among the crew, the top-billed cast's names and which countries date a release of it, its cinema releases (country, year, edition) and
    *  the certificates rating it where a scale is read ([[Certificates]]) and the words its overview capitalises
    *  ([[TmdbFilmRecord.OverviewWords]]) — keeping the shape it reads them in (a `credits` block stays a `credits` block:
    *  its presence is what marks the localized response, and "directors known"). */
   def minimal(body: JsValue): JsValue = {
-    val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country", "tagline")
+    val keep = Seq("title", "original_title", "original_language", "runtime", "imdb_id", "origin_country", "tagline")
       .flatMap(k => (body \ k).toOption.map(k -> _))
     // the whole day: a broadcast airs on it ([[services.identity.agreement.Broadcast]])
     val date = (body \ "release_date").asOpt[String].map(d => "release_date" -> Json.toJson(d.take(10)))
@@ -108,7 +108,9 @@ object TmdbNormalizer {
       "alternative_titles" -> Json.obj("titles" -> JsArray(ts.flatMap(t => (t \ "title").asOpt[String]).map(t => Json.obj("title" -> t)))))
     def directors(crew: Seq[JsValue]) = JsArray(TmdbJson.crewWith(crew, TmdbFilmRecord.DirectorJobs)
       .flatMap(c => for { job <- (c \ "job").asOpt[String]; name <- (c \ "name").asOpt[String] } yield Json.obj("job" -> job, "name" -> name)))
-    // the top-billed cast's names, in billing order: all the cast evidence reads of it (`TmdbFilmRecord.cast`)
+    // the top-billed cast's names, in billing order: all the cast evidence reads of it (`TmdbFilmRecord.cast`). Budget: at
+    // most `TmdbFilmRecord.TopBilled` (10) names, ~15 characters each, ~300 B a stored document — on disk and in the documents
+    // a prefetch holds, never on the record the model keeps per candidate
     def cast(c: JsValue) = TmdbFilmRecord.cast(Seq(Json.obj("credits" -> c))).map(names => "cast" -> JsArray(names.map(name => Json.obj("name" -> name))))
     val credits = (body \ "credits").toOption.map(c => "credits" -> JsObject(Seq("crew" -> directors((c \ "crew").asOpt[Seq[JsValue]].getOrElse(Nil))) ++ cast(c)))
     val crew    = (body \ "crew").asOpt[Seq[JsValue]].map(c => "crew" -> directors(c))

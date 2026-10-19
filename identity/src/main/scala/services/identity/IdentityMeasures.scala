@@ -209,7 +209,12 @@ object IdentityMeasures {
                         /** The certificates TMDB records for it in the countries a rating scale is read for, the least
                          *  restrictive one each ("GB=18,US=R", [[Certificates.ofReleaseDates]]); `None` when none is known.
                          *  One string, as [[releases]] is. */
-                        certificates: Option[String] = None) {
+                        certificates: Option[String] = None,
+                        /** TMDB's `original_language`, its ISO 639-1 code ("en", "pl"), interned: every record holds one of a
+                         *  few dozen shared strings, a reference each and no copy; `None` for a record filed before records
+                         *  kept it, or one TMDB names none for. What a showing billed as subtitled into a language asks of the
+                         *  film: is that language its own? */
+                        originalLanguage: Option[String] = None) {
     /** The film as a line names it: `'Lalka' (1968)`, its year left out where none is known. */
     def titled: String = s"'$title'${year.fold("")(y => s" ($y)")}"
     /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */

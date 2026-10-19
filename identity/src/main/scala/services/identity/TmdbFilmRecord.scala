@@ -50,7 +50,8 @@ object TmdbFilmRecord {
         releases          = main.flatMap(d => (d \ "release_dates").toOption.map(releases).orElse((d \ Releases).asOpt[String])).headOption,
         taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf),
         certificates      = main.flatMap(d => (d \ "release_dates").toOption.map(Certificates.ofReleaseDates)
-          .getOrElse((d \ CertificatesField).asOpt[String])).headOption) -> imdbId)
+          .getOrElse((d \ CertificatesField).asOpt[String])).headOption,
+        originalLanguage  = originalLanguage(main)) -> imdbId)
     }
   }
 
@@ -86,6 +87,10 @@ object TmdbFilmRecord {
   /** The answers, a body a recorder wrapped as `{"text": …}` unwrapped. */
   private def unwrapped(answers: Seq[JsValue]): Seq[JsValue] =
     answers.map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
+
+  /** TMDB's `original_language` of the film, off the first answer stating one, interned ([[IdentityMeasures.Film.originalLanguage]]). */
+  def originalLanguage(answers: Seq[JsValue]): Option[String] =
+    unwrapped(answers).flatMap(d => (d \ "original_language").asOpt[String]).map(_.trim).find(_.nonEmpty).map(_.intern)
 
   /** How many of a film's cast count as its top-billed: as many as the offline measure read (2026-10-06). */
   val TopBilled = 10

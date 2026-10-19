@@ -21,6 +21,7 @@ object IdentityAnswerBson {
     if (f.alternativeRuntimes.nonEmpty) d.append("alternativeRuntimes", BsonArray.fromIterable(f.alternativeRuntimes.map(BsonInt32(_))))
     if (f.taglineKey != 0) d.append("taglineKey", BsonInt32(f.taglineKey))
     f.certificates.foreach(codes => d.append("certificates", BsonString(codes)))
+    f.originalLanguage.foreach(code => d.append("originalLanguage", BsonString(code)))
     d
   }
 
@@ -30,7 +31,7 @@ object IdentityAnswerBson {
       Option(d.get("popularity")).map(_.asDouble.getValue), int(d, "imdbNumber").getOrElse(0),
       string(d, "released").flatMap(day => scala.util.Try(java.time.LocalDate.parse(day)).toOption), string(d, "releaseCountries"),
       Option(d.get("alternativeRuntimes")).fold(Seq.empty[Int])(BsonFields.intsOf),
-      string(d, "releases"), int(d, "taglineKey").getOrElse(0), string(d, "certificates"))
+      string(d, "releases"), int(d, "taglineKey").getOrElse(0), string(d, "certificates"), string(d, "originalLanguage").map(_.intern))
   }
 
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))
