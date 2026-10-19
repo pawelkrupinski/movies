@@ -546,7 +546,7 @@ Every country and stage 0 lost / 0 gained: the captures the final stage replays 
 
 ## 2026-10-19 — a listing-level "is this a film at all?" signal (branch `experiment-film-ness`, recording 38713274617, base `b79c71a78`)
 
-### Hold off a take whose billing reads as no film (film-ness) — not landed
+### Hold off a take whose billing reads as no film (film-ness) — V3f landed 2026-10-19
 - **Inventory first:** `NonFilmEvents` (venue-aware, read only by the agreement stage, so the MODEL still takes an
   event billing), `Acceptance.notPerformedBeside` (a performance piece beside the film's piece), `onNoReusedPage`
   (needs a copied director), the scrape filter `NonMovieEventClassifier`. The brief's examples are mostly gone from the
@@ -580,7 +580,7 @@ Every country and stage 0 lost / 0 gained: the captures the final stage replays 
   Andreas Kümmert … live 2.0 → Allen Anders) = 9 cures, 0 right lost, 0 new wrong; ES/PL/UK/US and every final stage
   unmoved. Tanzwut stays taken (its page copies a year within one of the record's). Cost: a few regexes per listing,
   two lazy word lists, no state.
-- **Why not landed:** fitted round by round to one recording's listings (each refinement spared a loss it had just
+- **Why it was first parked:** fitted round by round to one recording's listings (each refinement spared a loss it had just
   caused) and its 9 cures are all one feed (kinoheld) — measure on a newer recording before trusting it; the
   surviving wrong takes of the class (Giorgia Fumo, Auf Augenhöhe, Soul Kitchen Band, Purple Rising) share a real
   word with their records, which no title rule reaches.
@@ -593,13 +593,15 @@ Every country and stage 0 lost / 0 gained: the captures the final stage replays 
   minus one Italo Cinema Festival listing), 0 right lost, 0 new wrong, 0 unjudged moves; ES/PL/UK/US and every final
   stage unmoved. So it holds, but this adds little independence: still one feed, no new cure. Separately, V3f breaks
   `ResolverAllocationBudgetSpec` ("a title dated by the year…": 35,177 B vs the 35,000 budget; main passes).
-  **Fixed (b94f622a1):** not the lazy vals (read once per listing) but the rule's `.flatMap(filmLike)` — a function, a
+  **Fixed (72400733f):** not the lazy vals (read once per listing) but the rule's `.flatMap(filmLike)` — a function, a
   fresh `Right` and a fold closure per accepted take; a match returning the verdict untouched brings it to 34,968.7 B,
   main's own 34,969 (budget unchanged), and drops the unused `Listing.eventBilled` with its `NonFilmEvents.Billing`
   refactor. Re-measured on main `db31941c7`, recording 38713274617: DE model 9 cures (the six event billings main now
   carries as known-wrong `served,rows` rows), 0 right lost, 0 new wrong; every other country and stage unmoved; the
-  identity suite green. Landing it would make those six rows' scopes stale: strike them in the same commit. Parked
-  on branch `film-ness-recheck` until the measure on the next recording once GitHub is back.
+  identity suite green. - **Landed (2026-10-19, at the user's call):** measured on two LOCAL recordings only (38713274617, tuned on, and
+  38666576506), both clean; the six known-wrong rows struck to `open` with the takes rows re-emitted. Still owed: a
+  measure on a newer recording (`scripts/identity-measure`) once GitHub is back — a new wrong or right lost there
+  sends V3f back here.
 - **Code:** `experiment/film-ness` (V1 `b03ef128a`, V2 `10610e9db`, V3f `a0429af20`).
 - **Next angle:** a venue prior — the share of a venue's listings the model leaves unmatched or reads as events,
   computed once per corpus (it singles out the gig venues), as a condition beside V3f's test or Giorgia Fumo's bare
