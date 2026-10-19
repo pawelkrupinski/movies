@@ -5,6 +5,10 @@
 #
 #   scripts/sbt-warm <sbt command>...    run the commands (each one argument, e.g. "worker/testOnly services.identity.X")
 #                                        in this checkout's server — started, and seeded, when there is none
+#   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server): through the
+#                                        memory gate but holding no JVM slot -- a slot held for a server's whole life
+#                                        queued every other agent's tests behind an idle process (2026-10-19: two of them,
+#                                        ~30 min per run, 3 runs to the 1800 s cap)
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --status            this checkout's server, and every kept one
 #   scripts/sbt-warm --stop              stop this checkout's server (by pid, its own only: never `sbt --client shutdown`,
@@ -192,6 +196,11 @@ case "${1:-}" in
     exit 0 ;;
   ""|-h|--help) usage_from_header; exit 0 ;;
 esac
+Serve=0
+if [ "$1" = --serve ]; then
+  Serve=1; shift
+  [ $# -gt 0 ] || { log "--serve needs the command it serves"; exit 2; }
+fi
 
 # ONE STARTER per checkout: two calls finding no server would each start one (sbt --client starts it in the background,
 # outliving the call). The first holds a lock until its command ends, the others wait for it and then find the
@@ -250,7 +259,7 @@ echo "$digest" > "$State/$key.build"
 # KINOWO_JVM_CPUS cores on a Mac agents share (scripts/jvm-gate.sh). The command holds one of the machine's JVM slots: the
 # server's heap stays when idle, its CPU does not. The server it may start outlives the call, so sbt runs with the lock
 # descriptors closed (jvm-gate.sh): it never holds the slot or the start lock for its idle life.
-jvm_slot_take sbt-warm
+if [ "$Serve" = 1 ]; then memory_gate sbt-warm; else jvm_slot_take sbt-warm; fi
 (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 6>&- 7>&- 8>&-); rc=$?
 jvm_slot_release
 touch "$State/$key.used"

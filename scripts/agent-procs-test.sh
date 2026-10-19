@@ -140,6 +140,14 @@ survived="$(cd "$work/wt-orphan" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS
 sleep 0.3
 check "kill --mine spares its calling shell when ps -p fails" "survived" "$survived"
 check "...and still ends the worktree's own process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
+# ...nor the other commands of the caller's own pipeline: `agent-procs kill --mine | tail -3`, run from the worktree,
+# SIGTERMed its `tail` (a sibling under the same shell, not an ancestor) and the pipeline exited 143 (2026-10-19).
+(cd "$work/wt-orphan" && exec sleep 300) & victim=$!
+piped="$(cd "$work/wt-orphan" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND \
+  sh -c '"$1" kill --mine | tail -1; echo "exit=$?"' sh "$TOOL")"
+sleep 0.3
+check "kill --mine spares the other commands of its own pipeline" "exit=0" "$(printf '%s\n' "$piped" | tail -1)"
+check "...and still ends the worktree's own process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
 check "kill --worktree refuses a path that is no worktree" "1" \
   "$(cd "$root" && "$TOOL" kill --worktree "$work" > /dev/null 2>&1; echo $?)"
 (cd "$root" && "$TOOL" kill --worktree "$work/wt-other" > /dev/null)

@@ -14,8 +14,9 @@ match the same pattern.
                                           lock owner pid and whether it lives, the processes whose cwd is inside it,
                                           and a SUGGESTION: removable | orphan-procs | keep. Then the heavy
                                           processes (RSS > 1 GB or lifetime CPU > 50%) that belong to no worktree.
-  scripts/agent-procs kill --mine         SIGTERM the processes under the CURRENT worktree (never this process or
-                                          its ancestors — your own shell and agent)
+  scripts/agent-procs kill --mine         SIGTERM the processes under the CURRENT worktree (never this process,
+                                          its ancestors — your own shell and agent — or the other commands of its
+                                          own pipeline, e.g. the `tail` of `kill --mine | tail -3`)
   scripts/agent-procs kill --worktree P   the same for worktree P
   scripts/agent-procs prune [--yes]       remove the `removable` worktrees and their fully merged branches; prints
                                           the plan, acts only with --yes
@@ -250,7 +251,10 @@ def kill_command(all_worktrees, found, args, here):
             sys.exit(f"agent-procs: {args.worktree} is not a worktree of this repository")
     if target is None:
         sys.exit("agent-procs: the current directory is in no worktree of this repository")
-    protected = ancestors(found)
+    # The caller's pipeline siblings share its parent shell: `agent-procs kill --mine | tail -3` from the worktree
+    # SIGTERMed the `tail`, and the pipeline exited 143 as if the tool had killed its own caller (2026-10-19). A
+    # sibling doing real work (`sbt … & agent-procs kill --mine`) is still what --mine is for.
+    protected = ancestors(found) | {p.pid for p in found.values() if p.ppid == os.getppid() and not notable(p)}
     victims = [p for p in target.processes if p.pid not in protected]
     print(f"{len(victims)} process(es) under {target.path}")
     for process in victims:

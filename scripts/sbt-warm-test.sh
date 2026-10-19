@@ -226,4 +226,11 @@ check "...sbt (and the server it starts, outliving the call) inheriting neither 
   "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f3)"
 check "...and gives the slot back when it ends" "free" "$(spec_lock_state "$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock")"
 
+: > "$scratch/sbt-env"
+(cd "$scratch/slotted" && KINOWO_JVM_SLOTS=4 KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" --serve "web/PageTest/runMain tools.FixtureServerMain port" >/dev/null 2>&1)
+check "a --serve command (a server running until stopped) holds no JVM slot for its life" "" \
+  "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f2)"
+check "...and runs the command it serves, not the flag" "--client web/PageTest/runMain tools.FixtureServerMain port" \
+  "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
+
 spec_summary
