@@ -161,6 +161,14 @@ check "...nor one checkout before and after an uncommitted edit of its code" "ye
 scratch_git "$repo" checkout -q -- worker/src/test/scala/services/identity/IdentitySlicing.scala
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null
 check "...and the same checkout at the same code keeps its key" "$here" "$(refOf)"
+# 2026-10-19: the scrapers and geodata modules reach the resolver (a venue's details, its catalogue links), but the key
+# hashed only common/identity/worker/testkit: a scraper edit reused the kept JVM's pre-edit classes and cached the answer
+for module in scrapers geodata; do
+  mkdir -p "$repo/$module/src/main"; echo "// new" > "$repo/$module/src/main/Edited.scala"
+  rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null
+  check "...nor before and after an uncommitted edit of the $module module" "yes" "$([ "$(refOf)" != "$here" ] && echo yes || echo no)"
+  rm -rf "${repo:?}/$module"
+done
 
 rm -f "$work/calls" "$work/sbt-calls"
 check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \

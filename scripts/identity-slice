@@ -336,9 +336,11 @@ worktree_key() {
   local where head edits
   where=$(printf '%s' "$repo" | shasum | cut -c1-8)
   head=$(git -C "$repo" rev-parse --short=12 HEAD)
-  edits=$( { git -C "$repo" diff HEAD -- common identity worker testkit build.sbt project
+  # every module the tool's classpath compiles (the scrapers and geodata reach the resolver too: a venue's details)
+  local modules=(geodata common identity scrapers worker testkit)
+  edits=$( { git -C "$repo" diff HEAD -- "${modules[@]}" build.sbt project
              # hashed from the repository's root, where ls-files' paths are -- from anywhere else a new file hashed nothing
-             git -C "$repo" ls-files -z --others --exclude-standard -- common identity worker testkit project \
+             git -C "$repo" ls-files -z --others --exclude-standard -- "${modules[@]}" project \
                | (cd "$repo" && hash_each); } | shasum | cut -c1-8)
   echo "worktree-$where-$head-$edits"
 }
