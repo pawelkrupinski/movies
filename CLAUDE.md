@@ -107,7 +107,9 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   `.claude/worktrees/`. Enforced by `scripts/claude-hooks/root-checkout-guard` and `scripts/hooks/pre-commit`.
 - **No PRs, and never push a feature branch** — the only ref that reaches origin is `main`. The sole exceptions
   are five bot workflows: decoration-discovery, identity-refit, identity-capture (a PR only when its ratchet is
-  clean), discover-cinemas and retire-venues.
+  clean), discover-cinemas and retire-venues; an agent may push judged verdicts to that bot's `chore/identity-capture`
+  branch (`identity-investigation` skill); and `scripts/mobile-ship.sh` pushes only the release commit it cut in its
+  own detached worktree.
 - **Landing:** rebase onto main → all relevant layers green → land → remove the worktree and delete your own
   merged branch with `git branch -d` (refuses an unmerged branch; never `-D`). While GitHub is
   suspended, land with `git merge --ff-only <branch>` in the clean root checkout on `main`; when it is back, fetch,
