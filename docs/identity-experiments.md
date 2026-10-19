@@ -592,8 +592,14 @@ Every country and stage 0 lost / 0 gained: the captures the final stage replays 
   identity-measure-local, every country — DE model 8 lost, all 8 cures already judged wrong (the same kinoheld set
   minus one Italo Cinema Festival listing), 0 right lost, 0 new wrong, 0 unjudged moves; ES/PL/UK/US and every final
   stage unmoved. So it holds, but this adds little independence: still one feed, no new cure. Separately, V3f breaks
-  `ResolverAllocationBudgetSpec` ("a title dated by the year…": 35,177 B vs the 35,000 budget; main passes) — its
-  three new lazy vals on `IdentityMeasures.Listing`. Re-run the measure on the next recording once GitHub is back.
+  `ResolverAllocationBudgetSpec` ("a title dated by the year…": 35,177 B vs the 35,000 budget; main passes).
+  **Fixed (b94f622a1):** not the lazy vals (read once per listing) but the rule's `.flatMap(filmLike)` — a function, a
+  fresh `Right` and a fold closure per accepted take; a match returning the verdict untouched brings it to 34,968.7 B,
+  main's own 34,969 (budget unchanged), and drops the unused `Listing.eventBilled` with its `NonFilmEvents.Billing`
+  refactor. Re-measured on main `db31941c7`, recording 38713274617: DE model 9 cures (the six event billings main now
+  carries as known-wrong `served,rows` rows), 0 right lost, 0 new wrong; every other country and stage unmoved; the
+  identity suite green. Landing it would make those six rows' scopes stale: strike them in the same commit. Parked
+  on branch `film-ness-recheck` until the measure on the next recording once GitHub is back.
 - **Code:** `experiment/film-ness` (V1 `b03ef128a`, V2 `10610e9db`, V3f `a0429af20`).
 - **Next angle:** a venue prior — the share of a venue's listings the model leaves unmatched or reads as events,
   computed once per corpus (it singles out the gig venues), as a condition beside V3f's test or Giorgia Fumo's bare
