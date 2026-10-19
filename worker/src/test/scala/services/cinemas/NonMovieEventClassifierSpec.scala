@@ -409,4 +409,10 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
   it should "keep a Spanish title saying \"quizás\", which only begins like a quiz" in {
     Seq("Quizás, quizás, quizás", "Quizá mañana").foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
   }
+
+  "isBroadcastLabel" should "read a piece that is only a broadcast's name or screening label, never a work carrying one" in {
+    Seq("LIVE VIEWING", "Live Viewing", "NT Live", "National Theatre").foreach(p => withClue(p)(NonMovieEventClassifier.isBroadcastLabel(p) shouldBe true))
+    Seq("The Metamorphosis", "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES", "Live", "Hamlet", "").foreach(p =>
+      withClue(p)(NonMovieEventClassifier.isBroadcastLabel(p) shouldBe false))
+  }
 }

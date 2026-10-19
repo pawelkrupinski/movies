@@ -676,4 +676,23 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val worlds26Record = (1, Film("League of Legends Worlds 26 - Finals in Cinema", year = Some(2026)), Some(1))
     acceptance.pooled(pooledAt(ranked(worlds26, worlds26Record))).map(_._1.candidate.tmdbId) shouldBe Some(1)
   }
+
+  "directors-work" should "not read a broadcast's screening label as the work two concerts' titles bill" in {
+    // UK, 2026-10-18 00:18–00:20 (IdentityTakeOscillating): TMDB renamed its Buenos Aires record to "BTS WORLD TOUR
+    // [ARIRANG] in Buenos Aires" two minutes before the São Paulo one, which still read "…In São Paulo: Live Viewing"
+    // crediting the tour's director. The 218 "…IN BUENOS AIRES: LIVE VIEWING" listings {Jungjae Ha} then billed "live
+    // viewing" under the "house" "…in buenos aires" and São Paulo's record under "…in são paulo", took that record as
+    // his staging of the work, and flipped back once both records were renamed. The search ranks as TMDB's did.
+    val buenosAires = Listing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", runtime = Some(195), directors = Seq("Jungjae Ha"))
+    val renamed  = (1770237, Film("BTS WORLD TOUR [ARIRANG] in Buenos Aires", year = Some(2026), runtime = Some(195), directors = Some(Nil)), Some(1))
+    val saoPaulo = (1770234, Film("BTS World Tour 'Arirang' In São Paulo: Live Viewing", year = Some(2026), runtime = Some(195),
+      directors = Some(Seq("Jungjae HA"))), Some(3))
+    acceptance.byRule("directors-work")(ranked(buenosAires, renamed, saoPaulo)) shouldBe None
+    taken(ranked(buenosAires, renamed, saoPaulo)) should not be Some(1770234)
+    // a staging billed under two houses' banners is still its director's work
+    val ntLive  = Listing("NT Live: The Importance of Being Earnest", runtime = Some(180), directors = Seq("Max Webster"))
+    val national = (1438380, Film("National Theatre Live: The Importance of Being Earnest", year = Some(2025), runtime = Some(180),
+      directors = Some(Seq("Max Webster"))), Some(4))
+    acceptance.byRule("directors-work")(ranked(ntLive, national)).map(_._1.candidate.tmdbId) shouldBe Some(1438380)
+  }
 }

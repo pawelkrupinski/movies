@@ -161,6 +161,15 @@ object NonMovieEventClassifier {
     NeutralBroadcastVeto.exists(t.contains)
   }
 
+  /** Is `piece` — a delimited piece of a title — nothing but a broadcast's name or screening label ([[isNamedBroadcast]]'s
+   *  vocabulary, whole: "LIVE VIEWING", "NT Live"), no work's? Words alone, case and punctuation aside: "The
+   *  Metamorphosis" carries "the met" and is a work. */
+  def isBroadcastLabel(piece: String): Boolean = {
+    def words(s: String) = s.toLowerCase(Locale.ROOT).split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty).toSeq
+    val own = words(piece)
+    own.nonEmpty && NeutralBroadcastVeto.exists(marker => words(marker) == own)
+  }
+
   /** The listings box-office staff create to try their own site, billed as such: BFI Southbank's "Z Test Show
    *  please ignore" (2026-10-12), Spektrix's "Website Test Event 2". A test NAMED as a show, event or screening —
    *  not "Screen Test" or "The Test", which are films — or a plea not to book it. */

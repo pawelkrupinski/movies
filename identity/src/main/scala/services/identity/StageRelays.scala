@@ -90,9 +90,18 @@ object StageRelays {
    *  [[billing]]'s order: a record carrying its broadcast title beside an alternative streaming
    *  title ("National Theatre at Home: …") bills the work under both. */
   def billings(listing: Listing, film: Film): Seq[Billing] = {
-    val works = (listing.billedWorks intersect film.billedWorks).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
+    val works = (listing.billedWorks intersect film.billedWorks).filterNot(broadcastLabel).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
     works.iterator.map(work => billedUnder(listing, work, film, work, work.mkString)).find(_.nonEmpty).getOrElse(Nil)
   }
+
+  /** A piece that is only how a broadcast is screened — the label a relay's records end on ("…: LIVE VIEWING"), whole
+   *  ([[services.cinemas.pl.NonMovieEventClassifier.isBroadcastLabel]]) — is no work two titles bill alike: the banners
+   *  before it are what name the work. UK "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING" {Jungjae Ha} billed
+   *  "live viewing" under the "house" "…in buenos aires", São Paulo's record under "…in são paulo", and took that record
+   *  as its director's staging (directors-work) while TMDB had renamed its own city's record to "BTS WORLD TOUR
+   *  [ARIRANG] in Buenos Aires" (2026-10-18, IdentityTakeOscillating). */
+  private def broadcastLabel(work: Seq[String]): Boolean =
+    services.cinemas.pl.NonMovieEventClassifier.isBroadcastLabel(work.mkString(" "))
 
   /** The banners a title puts on a work it carries — its words before or after the work. */
   private def bannerOf(title: Seq[String], work: Seq[String]): Option[Seq[String]] =
