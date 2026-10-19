@@ -320,4 +320,37 @@ check "...an idle one is: stopped by its keeper, which ends, its slot free" "sto
 check "...and the next call goes ahead with a fresh server and keeper" "1 alive" \
   "$(grep -c "$scratch/idler|--client compile" "$scratch/sbt-calls") $(kill -0 "$(cat "$idler_key.keep.flock" 2>/dev/null || echo 0)" 2>/dev/null && echo alive || echo gone)"
 
+# 2026-10-19: --stop stopped the server but not its keeper, and deleted the lock file naming it. The next call, finding
+# no keeper, waited for a JVM slot the old keepers held -- and while it waited it held the checkout's busy lock, the very
+# "no call running" the old keepers waited for before ending: a deadlock, broken only by killing them by pid. Its own
+# slots here (one), the old keeper given a long grace: a keeper mid-grace is what the next call meets.
+scratch_git "$repo" worktree add -q -b restopped "$scratch/restopped" origin/main
+restopped_key="$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/restopped" | shasum | cut -c1-12)"
+own_slot="$scratch/own-slots/jvm-slots/1.flock"
+# the keepers whose working directory is <checkout>, as "<count> <pids>" -- less a keeper's own subshells (each $(...) of
+# its poll is a fork carrying its command line: counted, they made one keeper two)
+keepers_of() { pgrep -f 'sbt-warm --keep' | while read -r p; do
+    ps -o args= -p "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')" 2>/dev/null | grep -q -- 'sbt-warm --keep' && continue
+    [ "$(lsof -a -p "$p" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')" = "$1" ] && echo "$p"; done | tr '\n' ' ' | awk '{ print NF, $0 } END { if (NR == 0) print 0 }' | sed 's/ *$//'; }
+fake_server "$scratch/restopped"; server=$!; await_server "$server"
+(cd "$scratch/restopped" && KINOWO_IDENTITY_CACHE="$scratch/own-slots" KINOWO_JVM_SLOTS=1 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=60 \
+  "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+old_keeper=$(cat "$restopped_key.keep.flock" 2>/dev/null)
+(cd "$scratch/restopped" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1)
+check "--stop stops the checkout's keeper with its server, its JVM slot free" "stopped gone free" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${old_keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$own_slot")"
+out=$(cd "$scratch/restopped" && KINOWO_IDENTITY_CACHE="$scratch/own-slots" KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_MAX_WAIT=4 KINOWO_MEMORY_GATE=0 \
+  "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
+check "...so the next call takes the slot at once, never waiting on a keeper it keeps alive" "no" \
+  "$(grep -q 'slots busy\|slot still busy' <<<"$out" && echo "yes: $out" || echo no)"
+new_keeper=$(cat "$restopped_key.keep.flock" 2>/dev/null)
+fake_server "$scratch/restopped"; server=$!; await_server "$server"
+sleep 0.5
+check "...and the server it keeps has ONE keeper, the new one" "1 $new_keeper" "$(keepers_of "$scratch/restopped")"
+# the idle reap stops a checkout the same way: its keeper too
+(cd "$scratch/restopped" && KINOWO_SBT_WARM_IDLE_MINUTES=0 "$REPO_ROOT/scripts/sbt-warm" --reap >/dev/null 2>&1)
+check "--reap stops an idle server's keeper with it" "stopped 0" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(keepers_of "$scratch/restopped")"
+kill "$server" 2>/dev/null
+
 spec_summary
