@@ -21,6 +21,114 @@ holds the clusters the model left unmatched when it was recorded. A take the hea
 reaches that replay: a final-stage 0 there means not seen, not refilled. Variants B–D below were first misread as
 "moving nothing served" for this reason. Count model-stage losses as candidate served losses.
 
+## 2026-10-19 — veto-only signals as logistic weights: release countries, certificate, poster, synopsis (branch `experiment-weighted-guards`, tag `experiment/weighted-guards`, recording 38713274617)
+
+**Tried.** Promote four signals that today only veto or pin a take to weighted levels of the per-candidate model,
+with every guard left as it is:
+
+- `release.country`: released / unreleased in the venue's country ([[ReleaseVeto]]'s record).
+- `certificate`: match / near / below / above, on the venue country's scale ([[Certificates.below]]'s ladder).
+- Poster pHash: match ≤8 bits / near / far / contradicts (another candidate matches).
+- Synopsis proper names against the TMDB overview: match ≥2 / near 1 / none / contradicts.
+
+Release and certificate became `ListingFilmMeasures` slots (`IdentityMeasures.GuardMeasures`). They sit outside
+`FactMeasures` and the own-evidence sums, so they weigh in the probability only, and the venue's certificate is
+carried into `Evidence`. With no table, the control commit moved 0 takes over all five corpora. Each signal's table
+was fitted the calibration's way (log-likelihood ratio, α 0.5, missing neutral) on every candidate of the five
+recorded corpora: weak labels from today's takes, judgements overriding (`integration.IdentityGuardUnits`,
+`scripts/ml-identity/weighted_guards.py`).
+
+**Poster and synopsis cannot be per-candidate measures.**
+
+- *Poster:* hashes exist only for the posters the agreement stage asks about. A node averages ~20 candidates × 8 TMDB
+  posters, so hashing for every candidate means millions of image fetches. A hash costs 8 bytes to hold.
+- *Synopsis:* overviews come from the whole TMDB document, one Mongo read per candidate. The recordings answer none (0%).
+- Both were measured for confidence (B) on the captures only.
+
+**Coverage.**
+
+- Captures (3,547 hand-labelled units, 189 right): release 100%, certificate 5.2% (UK only), poster 17.7% (UK, PL),
+  synopsis 8.1% (UK, PL).
+- Recordings (403,854 candidate rows): release 100%, certificate 7.8% (match 2,917/11,741, below 0/584).
+
+**(B) Confidence**, grouped 5-fold cross-validation over today's log-odds. The joint row is the levels refit by a
+logistic beside today's score; the additive row is the calibration's own fit added to it.
+
+| units | variant | AUC | log-loss |
+|---|---|---|---|
+| captures | today | 0.928 | 0.1341 |
+| captures | + poster (joint) | 0.938 | 0.1223 |
+| captures | + synopsis (joint) | 0.932 | 0.1255 |
+| captures | + all four (joint) | 0.942 | 0.1148 |
+| captures | + release / + certificate (joint) | 0.928 / 0.926 | 0.1340 / 0.1349 |
+| recordings | today | 0.9975 | 0.01939 |
+| recordings | + release, additive | 0.9968 | 0.02074 |
+| recordings | + both, joint | 0.9976 | 0.01906 |
+
+- *Recordings:* release added the calibration's way hurts, and pushes down 347 of 759 judged-right takes by more than
+  0.3 log-odds. The joint refit gains next to nothing.
+- *Captures:* poster and synopsis separate right from wrong where known. Poster contradicts 0/155 right, match 24/0;
+  synopsis contradicts 0/126, match 25/4.
+
+**(A) Takes against base** (identity-measure-local; model stage, final 0 throughout).
+
+| variant | gained right | gained unjudged | right lost | new wrong | other |
+|---|---|---|---|---|---|
+| release (base b79c71a78) | 12 | 9 | 16 | 2 | 3 cures, 65 unjudged moves |
+| certificate (base b79c71a78) | 10 (5 judged in 916c9835d) | 0 | 1 | 1 | 3 unjudged lost, 1 switch |
+| both (base b79c71a78) | 17 | 15 | 17 | 1 | 3 cures |
+| certificate-agrees: match +1.79, below −3.88 only (base 0c1a0ae3b) | 11 | 1 (Almost Famous, right) | 0 | 1 | 1 switch not accepted |
+
+- *Release losses:* new and festival films TMDB dates no release of in the venue's country: UK "ODEON Pride Nights -
+  We Will Find Happiness" ×14, DE "Rodychi", PL "Lalka" 2026, UK "Short Cuts (35mm)". Its gains are DE "The Killer" ×3
+  (1989) and Notre-Dame ×2 cured.
+- *Certificate-agrees gains:* Moana 2026, E.T., Doctor Zhivago, LOTR, Caravaggio, The Enforcer 1951.
+- *Certificate-agrees new wrong:* Hyde Park's double bill "The Tiger Who Came for Tea and We're Going on a Bear Hunt" →
+  The Tiger Who Came to Tea, 36.6% → 49%.
+- *Certificate-agrees switch:* Ciné Lumière's "De Gaulle 1: Resistance" moves from 2026 to Resistance (2020).
+- *Full certificate table only:* "near" and "above" cost "Home Alone with Wine" (18 at the venue against PG) and
+  "Kissing Jessica Stein (25th Anniversary)".
+
+**Why it stopped.**
+
+- Release as a weight trades right for right, and double-counts what the veto and the country measure already read.
+- Certificate agreement is the one real gain, 11 right with nothing lost. It stays blocked by one double-bill take
+  and one switch.
+
+**Retried with the bill guards (base 75a28ea41).** A certificate of a listing that `MultiFilmBill.billsTwoWorks` (the
+`notADoubleBill` gate) or `MultiFilmBill.marker` names now reads `missing:bill`, pinned by `CertificatesSpec`. The
+measure did not move:
+
+- 11 right gained, 0 right lost.
+- 1 unjudged gain: Kino KILN's "Almost Famous", which looks right.
+- The same new wrong and the same switch.
+
+None of the existing bill reads catches Hyde Park's title, which joins its two works with "and". title-trace shows
+marker none and billsSeveral no, so the guard cannot reach that take. The switch comes from a learned listing-listing
+cannot-link: it now keeps "De Gaulle 1: Resistance" apart from "De Gaulle Part 1: Résistance" [2026] {Baudry}, and the
+listing pools to Resistance (2020). That reads as wrong, and it is not judged.
+
+**The switch was the pooled reading, not a listing-listing cannot-link.** `listingListing` holds no certificate. The
+switch came from `FamilyScope.pooled`, which reads a cluster as its lead listing and so carried the lead's certificate
+into the pooled scores. That lifted Resistance (2020) to a tie with the 2026 film. Now the pooled reading states no
+certificate. The fix is pinned by an identity-slice case, "De Gaulle 1: Resistance" judged right for 1165366, which
+fails before the fix and passes after.
+
+Re-measured (base 75a28ea41):
+
+- 9 right gained, 0 right lost.
+- 1 unjudged gain, Almost Famous, now judged right.
+- The switch is gone.
+- The one new wrong is still Hyde Park's "The Tiger Who Came for Tea and We're Going on a Bear Hunt".
+
+**Blocked.** An "and"/"&" bill read the way `Acceptance.slashesTwoWorks` reads a slash (each half exactly titles a
+distinct eligible candidate, and no candidate is titled as the whole) cannot catch that billing. Its first half
+misspells the film ("…Came **for** Tea" against "…Came **to** Tea"), so no candidate is named exactly. Catching it needs a
+near-spelling half, which is a fuzzier rule than the exact one asked for. Not landed. Poster
+and synopsis as WEIGHTS in the unified stage (`UnifiedEvidence`), where their answers already exist, rather than per
+candidate.
+>>>>>>> d24b32d1b (docs: record the weighted-guards experiment (release, certificate, poster, synopsis as weights))
+
 ## 2026-10-19 — margin over the runner-up as a REFUSAL (branch `experiment-margin-signal`, tag `experiment/margin-signal`, recording 38713274617, base `82de60cf0`)
 
 The "next angle" of `experiment/margin-take` (its entry lives on that tag): refuse a take whose runner-up is close.
@@ -616,6 +724,38 @@ Every country and stage 0 lost / 0 gained: the captures the final stage replays 
   partner venues booking through cinemaxx.de, e.g. Kino am Raschplatz) and title-gate it as a feed id
   (`SourceReliability.linkDecides` = false); the mirror's lean `cinema_scrapes` keeps few showtimes, so measure
   coverage on a recording, not the mirror.
+
+## 2026-10-19 — where in the billing the candidate matched (branch `experiment-title-head`, recording 38713274617)
+
+### A `title.piece` measure: head, lead, trail, inner or decoration vocabulary — not landed
+- **Tried:** a listing-film measure, read only for `segment`/`decorated` titles (`TitleRelationMeasures.titlePiece`, built
+  on `namingPieces`). It places the piece that names the film within the billing:
+  - `decoration`: every word of the piece is an event, edition or format word (`DecorationWords`);
+  - `head`: no word beside the piece bills a work;
+  - `lead` / `trail` / `inner`: words of a work follow it, precede it, or stand on both sides.
+  The weights came from a residual logistic on the refit's labelled units (`scripts.TitlePieceUnits`).
+- **State of the target wrongs on main (measured 10-19):** six of the seven "title piece or banner taken as the title"
+  wrongs were already cured (Tea Alchemist, Lumière, Le Moulin and FBF take none; Turksib takes the right film). The one
+  left, "Pornfilmfestival: The Dating Game", matches the HEAD (a German alternative title), so this signal cannot reach it.
+- **Offline (B):** over 3,546 capture units, AUC is flat (0.928). Near the cut (log-odds −8..10), on segment/decorated
+  units, log-loss goes 0.468 → 0.425 and AUC 0.815 → 0.833. The fitted offsets: decoration −4.7, head +4.7, inner −6,
+  lead/trail ≈ 0.
+- **Whole corpus (`identity-measure-local`):**
+  - V1 (decoration −4.7, inner −6): 0 cured, 20 judged-right and ~96 unjudged lost. "inner" fired on
+    "Banner: Work - Cert PG", and "decoration" on "Pillow Talk".
+  - V2 (+ head +4.7): 26 judged-right gained, but 3 new wrong (Ausverkauft!, Człowiek znikąd 2010, Manon 1981) and
+    right→other moves (the Twilight Rifftraxes).
+  - V3 (placement on the words that bill a work, certificates peeled; decoration −4.7 only, base `bf2a47648`): 1 cured
+    (DE "ES (ULRICH SCHAMONI)"), 2 new wrong ("Amazing Grace + Q&A" → 2007, "Dracula + Q&A" → 2025), 4× "Fallen Angels"
+    and "I.K.U" right lost, 4 unjudged "+ Q&A" gains that look right (Inside Gaza, Journey There, My Daughter Is a
+    Zombie, The Assassin).
+- **Why stopped:** every variant makes new wrong takes. Weighing the "Q & A" record down takes away the one rival that
+  held a bare, factless head off its namesakes. A decoration piece's real effect is relational: the head is then the
+  billing, and a factless head should stay unmatched, not win by default.
+- **Code:** `experiment/title-head`.
+- **Next angle:** use the placement as a guard, not a weight: a `decoration` piece names no film at all, so the
+  candidate drops out without lifting the head's namesakes. The word table also lacks English "premiere" ("World
+  Premiere"); add it only with a whole-corpus measure, since every reader of the table moves with it.
 
 ## 2026-10-15/17 — wrong-match classes, round 2 (recording 38713274617, base `d0d3ffb1c` unless noted)
 
