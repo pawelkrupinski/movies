@@ -169,11 +169,12 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
           lazy val named   = services.identity.CastEvidence.take(venueNames(listings),
             (candidatesOf(id, digest, listings) :+ film).distinct.map(candidate => candidate -> lookups.cast(candidate).toOption.flatten)).map(_._1)
           def posterMatches = posters.exists(_.get(film).flatten.exists(_ <= PosterEvidence.VoteBits)) && PosterEvidence.veto(Some(film), posters).isEmpty
-          val votes = Set("poster").filter(_ => (variant == 1 || variant == 3) && posterMatches) ++
-            Set("cast").filter(_ => (variant == 2 || variant == 3) && named.contains(film))
-          val against = variant == 4 && (PosterEvidence.veto(Some(film), posters).isDefined || named.exists(_ != film) ||
-            lookups.film(film).toOption.flatten.exists(record => listings.exists(services.identity.Certificates.below(_, record).isDefined)))
-          Agreement.VenueEvidence(votes, if (against) 1 else 0)
+          val votes = Set("poster").filter(_ => (variant == 1 || variant == 3 || variant == 5) && posterMatches) ++
+            Set("cast").filter(_ => (variant == 2 || variant == 3 || variant == 5) && named.contains(film))
+          val dissents = if (variant != 4 && variant != 5) Set.empty[String] else
+            Set("poster").filter(_ => PosterEvidence.veto(Some(film), posters).isDefined) ++ Set("cast").filter(_ => named.exists(_ != film)) ++
+              Set("certificate").filter(_ => lookups.film(film).toOption.flatten.exists(record => listings.exists(services.identity.Certificates.below(_, record).isDefined)))
+          Agreement.VenueEvidence(votes, if (variant == 4 && dissents.nonEmpty) 1 else 0, dissents)
         }
     }.getOrElse(Agreement.VenueEvidence.Silent)
   }

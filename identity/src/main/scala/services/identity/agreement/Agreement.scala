@@ -160,9 +160,9 @@ object Agreement {
   /** EXPERIMENT (experiment/quorum-votes): which of the venue's own evidence counts in the quorum. 0 none (main);
    *  1 a venue poster matching the film's TMDB poster is a vote; 2 the venue naming two whole names of its cast (one
    *  candidate only) is a vote; 3 both; 4 a poster, cast or certificate CONTRADICTION is one dissenting vote. */
-  val QuorumVariant: Int = 4
+  val QuorumVariant: Int = 5
   /** The venue's own evidence on one film the families took, read beside the quorum ([[QuorumVariant]]). */
-  final case class VenueEvidence(votes: Set[String], against: Int)
+  final case class VenueEvidence(votes: Set[String], against: Int, dissents: Set[String] = Set.empty)
   object VenueEvidence { val Silent: VenueEvidence = VenueEvidence(Set.empty, 0) }
   /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
   val ListingFacts = "listing"
@@ -267,7 +267,13 @@ object Agreement {
     named.map { group =>
       val film  = supported(listings, asStated, group, verdicts, modelVote, thisYear)
       val venue = venueEvidence(group.map(_.record))
-      film.copy(agreed = film.agreed.copy(corroborated = film.agreed.corroborated ++ venue.votes), venueAgainst = venue.against)
+      if (QuorumVariant == 5) {
+        val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
+        System.err.println(s"QVDIAG\t${listings.headOption.map(_.cinema).getOrElse("")}\t${listings.headOption.map(_.rawTitle).getOrElse("")}\t" +
+          s"${group.head.record.crossIds.get("tmdb").getOrElse("")}\t${group.head.record.film.titled}\t${film.support}\t${Quorum + dissent + film.turnedDown}\t" +
+          s"${venue.votes.toSeq.sorted.mkString(",")}\t${venue.dissents.toSeq.sorted.mkString(",")}")
+        film
+      } else film.copy(agreed = film.agreed.copy(corroborated = film.agreed.corroborated ++ venue.votes), venueAgainst = venue.against)
     }.sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       val taken = film.records.take(film.agreed.families.size)
