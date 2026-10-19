@@ -1317,6 +1317,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     piece("Ukrainian Film Festival Berlin: CAMOUFLAGE", "Camouflage") shouldBe Category("head")
     piece("Archiv Negativ: Turksib", "Turksib") shouldBe Category("trail")
     piece("Pornfilmfestival: The Dating Game", "Pornfilmfestival") shouldBe Category("lead")
+    piece("Nostalgic Cinema 27: Pillow Talk", "Pillow Talk") shouldBe Category("trail")
+    piece("Family Cinema: Flow - Cert U", "Flow") shouldBe Category("trail")
     piece("Lalka", "Lalka") shouldBe Missing("whole")
   }
 }
