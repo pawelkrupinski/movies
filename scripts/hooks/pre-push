@@ -597,7 +597,9 @@ check_sbt() {
     if [ "$sbt_client" = 1 ]; then
         local line
         line="$(printf '%s; ' ${compiles[@]+"${compiles[@]}"} "${tests[@]}")"
-        run=(sbt --client "${line%; }")
+        # through scripts/sbt-warm, as any call to the kept server: a bare `sbt --client` held no busy lock and kept no
+        # last-used mark fresh, so the server's keeper, seeing it idle, could stop it mid-check (2026-10-19)
+        run=("$root/scripts/sbt-warm" "${line%; }")
     fi
     "${run[@]}" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
@@ -683,7 +685,7 @@ if ! in_place; then
     isolate_reason="the working tree is not ${head_sha:0:9}"
 elif printf '%s\n' "$checks" | grep -qx sbt && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
     # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
-    # it is the one compiler: the check runs through it, in place and warm
+    # it is the one compiler: the check runs through it (by scripts/sbt-warm), in place and warm
     if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then
         sbt_client=1
         log "the sbt check runs through this checkout's kept sbt server (pid $live_pid), warm"

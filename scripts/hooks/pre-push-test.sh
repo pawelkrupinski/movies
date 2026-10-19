@@ -180,6 +180,7 @@ if command -v shellcheck >/dev/null; then
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
   cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
+  for f in sbt-warm jvm-gate.sh zinc_orphans.py; do cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"; done
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
   base="$(scratch_git "$repo" rev-parse HEAD)"
@@ -275,8 +276,21 @@ if command -v shellcheck >/dev/null; then
     "$(printf '%s\n' "$out" | grep -c "sbt (pid $live_sbt)")"
 
   # The checkout's KEPT sbt server (scripts/sbt-warm, `sbt --client`) is no rival compiler: the check runs through it,
-  # in place and warm, instead of in a cold temporary checkout.
-  printf '#!/usr/bin/env bash\necho "$(pwd -P) $1" > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
+  # in place and warm, instead of in a cold temporary checkout -- and through scripts/sbt-warm itself, holding the
+  # checkout's busy lock as any call does: a bare `sbt --client` held none, so the server's keeper, seeing it idle, could
+  # stop it mid-check ("sbt server disconnected", 2026-10-19). sbt-warm's state, slots and keeper are the spec's own.
+  export KINOWO_SBT_WARM_STATE="$scratch/sbt-warm" KINOWO_IDENTITY_CACHE="$scratch/identity" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
+    KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=1
+  cat > "$scratch/bin/sbt" <<STUB
+#!/usr/bin/env bash
+echo "\$(pwd -P) \$1" > "$scratch/sbt-ran-in"
+python3 -I -c 'import fcntl, glob, sys
+for f in glob.glob(sys.argv[1] + "/*.busy"):
+    try:
+        fcntl.flock(open(f, "a"), fcntl.LOCK_EX | fcntl.LOCK_NB); print("free")
+    except OSError:
+        print("held")' "$scratch/sbt-warm" > "$scratch/sbt-busy"
+STUB
   (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
   live_sbt=$!
   for _ in $(seq 1 100); do grep -q 'fake/sbt-launch.jar --detach' <<<"$(ps -o args= -p "$live_sbt" 2>/dev/null)" && break; sleep 0.1; done
@@ -285,6 +299,7 @@ if command -v shellcheck >/dev/null; then
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
   check "with the checkout's kept sbt server, the sbt check runs through it, in place" \
     "$(cd "$repo" && pwd -P) --client" "$(cat "$scratch/sbt-ran-in" 2>/dev/null)"
+  check "...through scripts/sbt-warm, holding the checkout's busy lock while it runs" "held" "$(cat "$scratch/sbt-busy" 2>/dev/null)"
   printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
 
   # Pushed from a worktree, git hands the hook GIT_DIR for THAT worktree. Left exported into the
