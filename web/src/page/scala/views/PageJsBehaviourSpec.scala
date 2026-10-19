@@ -1498,13 +1498,41 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Munich: no Polish place within reach, so only Germany's failed pane can answer.
       page.eval("__panes.locateAt(48.137, 11.575)")
       otherCountries.filterNot(_ == "de").foreach { code => releasePane(page, code); waitForPane(page, code) }
-      page.waitFor("document.querySelector('#picker-locate-status .locate-status-text').textContent.indexOf('spróbować ponownie') >= 0")
+      page.waitFor("document.getElementById('picker-locate-status').textContent.indexOf('spróbować ponownie') >= 0")
       page.evalBool("__panes.picked === undefined") shouldBe true
       val asked = paneRequests(page, "de")
 
       // "tap to try again" means it: the tap asks for Germany's pane once more, and the pick lands.
       page.eval("__panes.fail('de', false)")
-      page.eval("document.getElementById('picker-locate-status').click()")
+      page.eval("document.querySelector('#picker-locate-status .locate-status-retry').click()")
+      page.waitFor(s"__panes.requestsFor('de') === ${asked + 1}")
+      releasePane(page, "de")
+      page.waitFor("__panes.picked !== undefined")
+      page.evalString("__panes.picked.country") shouldBe "de"
+    }
+  }
+
+  it should "retry a failed pane from the keyboard too, its \"try again\" a focusable control Enter presses" in {
+    onLanding { page =>
+      holdingPanes(page, failing = Set("de"))
+      page.waitFor(s"__panes.requests.length === ${otherCountries.size}")
+      page.eval("__panes.locateAt(48.137, 11.575)")
+      otherCountries.filterNot(_ == "de").foreach { code => releasePane(page, code); waitForPane(page, code) }
+      page.waitFor("document.getElementById('picker-locate-status').textContent.indexOf('spróbować ponownie') >= 0")
+      val asked = paneRequests(page, "de")
+      page.eval("__panes.fail('de', false)")
+
+      // Focus whatever in the status a keyboard can reach: a tappable div is not such a thing.
+      page.evalBool("""(function () {
+        const reachable = document.querySelector('#picker-locate-status button:not([hidden]), #picker-locate-status [tabindex]');
+        if (reachable) reachable.focus();
+        return document.activeElement !== null && document.activeElement.closest('#picker-locate-status') !== null;
+      })()""") shouldBe true
+      Seq("keyDown", "keyUp").foreach { kind =>
+        page.send("Input.dispatchKeyEvent", play.api.libs.json.Json.obj(
+          "type" -> kind, "key" -> "Enter", "code" -> "Enter", "windowsVirtualKeyCode" -> 13, "nativeVirtualKeyCode" -> 13,
+          "text" -> (if (kind == "keyDown") "\r" else "")))
+      }
       page.waitFor(s"__panes.requestsFor('de') === ${asked + 1}")
       releasePane(page, "de")
       page.waitFor("__panes.picked !== undefined")

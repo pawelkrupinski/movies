@@ -173,6 +173,8 @@
       animation: picker-spin .8s linear infinite; vertical-align: middle;
     }
     .locate-status .picker-spinner { width: 1rem; height: 1rem; margin-right: .4rem; }
+    /* The load error's "tap to try again": a real button (Enter/Space reach it), drawn as the status text. */
+    .locate-status-retry { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; text-align: inherit; cursor: pointer; }
     @@keyframes picker-spin { to { transform: rotate(360deg); } }
     @@media (prefers-reduced-motion: reduce) { .picker-spinner { animation-duration: 2.4s; } }
     .picker-error { color: #ffb4b4; font-size: .95rem; margin: .25rem 0 1rem; cursor: pointer; }
@@ -246,7 +248,7 @@
           </svg>
         </button>
       </div>
-      <div id="picker-locate-status" class="locate-status" role="status" hidden><span class="picker-spinner" aria-hidden="true" hidden></span><span class="locate-status-text"></span></div>
+      <div id="picker-locate-status" class="locate-status" role="status" hidden><span class="picker-spinner" aria-hidden="true" hidden></span><span class="locate-status-text"></span><button type="button" class="locate-status-retry" hidden></button></div>
       <div id="picker-back-row" class="picker-back-row" style="display:none" onclick="pickerBack()">
         <span class="picker-back-arrow" aria-hidden="true">&#8249;</span>
         <span data-i18n="back.back">@messages("back.back")</span>
@@ -670,14 +672,19 @@
     }
 
     // `onTap`, when given, is what tapping the status does — the load error's
-    // "tap to try again" asks for the panes once more.
+    // "tap to try again" asks for the panes once more. Its text is then a
+    // button, so a keyboard reaches it too; otherwise plain status text.
     function setLocateStatus(text, busy, onTap) {
       const status = document.getElementById('picker-locate-status');
-      status.querySelector('.locate-status-text').textContent = text;
+      const plain = status.querySelector('.locate-status-text');
+      const retry = status.querySelector('.locate-status-retry');
+      plain.textContent = onTap ? '' : text;
+      plain.hidden = !!onTap;
+      retry.textContent = onTap ? text : '';
+      retry.hidden = !onTap;
+      retry.onclick = onTap ? function () { onTap(); } : null;
       status.querySelector('.picker-spinner').hidden = !busy;
       status.hidden = !text;
-      status.onclick = onTap || null;
-      status.style.cursor = onTap ? 'pointer' : '';
     }
 
     // The picker's own manual locate button — unlike the automatic check
