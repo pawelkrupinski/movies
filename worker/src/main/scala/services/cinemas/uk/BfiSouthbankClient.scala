@@ -45,9 +45,9 @@ import scala.util.{Failure, Success, Try}
  *      `<bfi-calendar>` with ISO times, but not all: Deep Cover's seven performances are only
  *      in the blocks.)
  *
- * About 150 requests a scrape (117 films on 2026-10-12, seven weeks ahead), the film pages
- * read two at a time; one that fails drops only its film and leaves the listing
- * incomplete. The same site sells the BFI IMAX at Waterloo, a venue of its own that reads
+ * About 125 requests a scrape (118 films and seven list pages on 2026-10-12, seven weeks
+ * ahead), the film pages read [[BfiSouthbankClient.FilmPagesAtOnce]] at a time; one that
+ * fails drops only its film and leaves the listing incomplete. The same site sells the BFI IMAX at Waterloo, a venue of its own that reads
  * Flicks: only performances whose venue is BFI Southbank, on one of its NFT screens, are
  * kept — not the talks it sells in the Reuben Library.
  */
@@ -65,7 +65,7 @@ class BfiSouthbankClient(
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val day   = today
     val cards = listCards(1, Vector.empty)
-    val dates = ListingPages.readMore("bfi-southbank-films", cards.map(_.slug), filmUrl)(url =>
+    val dates = ListingPages.readMore("bfi-southbank-films", cards.map(_.slug), filmUrl, maxConcurrent = FilmPagesAtOnce)(url =>
       performances(HttpRead.page(http, url), day)).toMap
     films(cards, dates, cinema)
   }
@@ -90,6 +90,13 @@ object BfiSouthbankClient {
 
   def listUrl(page: Int): String = s"$BaseUrl/whats-on/show-list-page.partial?page=$page"
   def filmUrl(slug: String): String = s"$BaseUrl/whats-on/$slug"
+
+  /** How many film pages are read at once. The site takes ~1.2s to render each one (from the
+   *  worker and from a Mac alike, 2026-10-19), so at the default two the ~120 of them took
+   *  ~75s and every scrape was cut at the 45s adaptive ceiling, leaving the venue on Flicks,
+   *  which lists it with no times (2026-10-12..19, every run). Eight brings the whole scrape
+   *  to ~30s: the seven list pages, walked in turn, are ~10s of it. */
+  val FilmPagesAtOnce = 8
 
   /** The venue the site gives the Southbank's own screens. */
   val Venue = "BFI Southbank"

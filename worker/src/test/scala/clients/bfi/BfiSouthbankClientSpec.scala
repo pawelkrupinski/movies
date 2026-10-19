@@ -8,6 +8,10 @@ import models.BfiLondonSouthbank
 import services.cinemas.uk.BfiSouthbankClient
 
 import java.time.{LocalDate, LocalDateTime}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import scala.concurrent.duration._
+import tools.SpecTimeouts
 
 /** Replays a 2026-10-12 capture of cinemas.bfi.org.uk (`WriteBfiSouthbank`): its seven
  *  `whats-on/show-list-page.partial?page=N` pages and every film page they link, each
@@ -68,6 +72,35 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
 
   it should "drop performances before today" in {
     scrape(LocalDate.of(2026, 10, 24)).flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 24)
+  }
+
+  it should "read the film pages eight at a time, so the whole programme lands inside the 45s scrape ceiling" in {
+    // Each film page takes the site ~1.2s to render; at two at a time the ~120 of them ran past
+    // the adaptive ceiling every scrape (2026-10-12..19: cut at 45000ms, every run, onto Flicks).
+    // A film page's fetch holds until eight are in flight at once; if they never are, the first
+    // ones give up waiting and the rest go straight through.
+    val inFlight = new AtomicInteger(0)
+    val peak     = new AtomicInteger(0)
+    val eight    = new CountDownLatch(1)
+    val gaveUp   = new AtomicBoolean(false)
+    val replay   = new FakeHttpFetch("bfi")
+    val gated = new tools.GetOnlyHttpFetch {
+      private def read(url: String, body: => String): String =
+        if (url.contains("show-list-page")) body
+        else {
+          val now = inFlight.incrementAndGet()
+          peak.accumulateAndGet(now, (a, b) => math.max(a, b))
+          try {
+            if (now >= 8) eight.countDown()
+            else if (!gaveUp.get && !eight.await(SpecTimeouts.quiet(2.seconds).toMillis, TimeUnit.MILLISECONDS)) gaveUp.set(true)
+            body
+          } finally inFlight.decrementAndGet()
+        }
+      override def get(url: String): String = read(url, replay.get(url))
+      override def get(url: String, headers: Map[String, String]): String = read(url, replay.get(url, headers))
+    }
+    new BfiSouthbankClient(gated, BfiLondonSouthbank, today).fetch().size shouldBe 118
+    peak.get should be >= 8
   }
 
   // Each a film page's `section#shows` as cinemas.bfi.org.uk served it on 2026-10-16
