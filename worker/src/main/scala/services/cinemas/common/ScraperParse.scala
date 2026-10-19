@@ -358,7 +358,7 @@ private[cinemas] object ScraperParse {
    *  Luc Dardenne"). */
   def commaItems(s: String): Seq[String] = s.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
 
-  /** A JSON feed's string field, trimmed; a missing, non-string or blank one as none ([[JsonScalars.text]]). */
+  // A JSON feed's string field, trimmed; a missing, non-string or blank one as none (JsonScalars.text).
   export JsonScalars.text as jsonText
 
   /** The first four-digit year in `s` — a premiere date's ("24 marca 1980"), a credits line's ("…, USA, 2018"). */

@@ -131,7 +131,7 @@ object AmcParser {
     (for {
       theatre <- arrayAt(item \ "theatres")
       format  <- arrayAt(theatre \ "formats" \ "items")
-      labels   = arrayAt(format \ "attributes").flatMap(a => (a \ "name").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+      labels   = arrayAt(format \ "attributes").flatMap(a => jsonText(a \ "name"))
       group   <- arrayAt(format \ "groups" \ "edges")
       edge    <- arrayAt(group \ "node" \ "showtimes" \ "edges")
       node     = edge \ "node"

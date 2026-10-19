@@ -107,7 +107,7 @@ object AlamoDrafthouseParser {
           slug          = showSlug,
           title         = title,
           posterUrl     = (p \ "show" \ "posterImages").asOpt[Seq[JsValue]].getOrElse(Nil)
-            .headOption.flatMap(i => (i \ "uri").asOpt[String]).map(_.trim).filter(_.nonEmpty),
+            .headOption.flatMap(i => jsonText(i \ "uri")),
           certification = certificate((p \ "show" \ "certification").asOpt[String])
         )
       }.toMap
@@ -143,7 +143,7 @@ object AlamoDrafthouseParser {
       releaseYear    = releaseYear(text("nationalReleaseDateUtc"), text("title").getOrElse(""), text("headline"), today),
       genres         = names("genres"),
       posterUrl      = (show \ "posterImages").asOpt[Seq[JsValue]].getOrElse(Nil)
-        .headOption.flatMap(i => (i \ "uri").asOpt[String]).map(_.trim).filter(_.nonEmpty),
+        .headOption.flatMap(i => jsonText(i \ "uri")),
       trailerUrl     = jsonText(show \ "trailer" \ "videoUri"),
       ageRating      = certificate(text("certification"))
     )

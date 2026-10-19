@@ -261,7 +261,7 @@ object WebediaShowtimesClient {
       year           = (movie \ "data" \ "productionYear").asOpt[Int],
       runtimeMinutes = (movie \ "runtime").asOpt[String].flatMap(parseRuntime(_, market)),
       genres         = (movie \ "genres").asOpt[Seq[JsValue]].getOrElse(Nil)
-        .flatMap(g => (g \ "translate").asOpt[String]).map(_.trim).filter(_.nonEmpty),
+        .flatMap(g => jsonText(g \ "translate")),
       director       = parseDirectors(movie \ "credits"),
       posterUrl      = jsonText(movie \ "poster" \ "url"),
       // `synopsisFull` is HTML (`<p class="bo-p">…</p>` per paragraph), not prose —
