@@ -1,13 +1,15 @@
 package tools
 
 import models.{Movie, Showtime}
+import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import play.api.libs.json._
 import services.scrapes.{ArchivedFilmDto, ArchivedScrape, BarrenAttemptDto, ScrapeArchiveRepository, ScrapeAttempt, StoredScrapeDto}
 
-import java.io.FileOutputStream
+import java.io.{BufferedInputStream, ByteArrayOutputStream, FileOutputStream}
 import java.nio.file.{Files, Path, Paths}
 import java.time.Instant
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
+import scala.util.Using
 
 /**
  * A country's real `cinema_scrapes` corpus, captured to a compressed file so a
@@ -78,8 +80,30 @@ object CorpusFixture {
    *  mirroring `ReadModelSnapshot.render` / `.parse`. */
   def render(rows: Seq[ArchivedScrape]): String = Json.toJson(capture(rows)).toString
 
-  def parse(json: String): Seq[ArchivedScrape] =
-    Json.parse(json).as[Seq[StoredScrapeDto]].flatMap(StoredScrapeDto.toDomain)
+  def parse(json: String): Seq[ArchivedScrape] = rowsOf(Factory.createParser(json))
+
+  /** Reads a corpus row by row: one row's JSON tree at a time, never the whole file's. The US corpus is 328 MB of
+   *  JSON; held whole as bytes, then a String, then one `JsValue` tree, a single read peaked at several GB, and two
+   *  corpus specs reading it side by side in e2eShared drove the test JVM to its ceiling (2026-10-19). */
+  private def rowsOf(parser: JsonParser): Seq[ArchivedScrape] =
+    Using.resource(parser) { parser =>
+      if (parser.nextToken() != JsonToken.START_ARRAY) throw new IllegalArgumentException("a corpus is one JSON array of scrape rows")
+      val rows = Vector.newBuilder[ArchivedScrape]
+      while (parser.nextToken() == JsonToken.START_OBJECT)
+        rows ++= StoredScrapeDto.toDomain(Json.parse(rowBytes(parser)).as[StoredScrapeDto])
+      rows.result()
+    }
+
+  /** The row the parser stands at, as its own JSON text — parsed by `Json.parse` like the whole file was, so a row
+   *  reads exactly as before. (play-json's Jackson deserializer, run on a shared stream, reads one token past each
+   *  value and skips every other row.) */
+  private def rowBytes(parser: JsonParser): Array[Byte] = {
+    val out = new ByteArrayOutputStream()
+    Using.resource(Factory.createGenerator(out))(_.copyCurrentStructure(parser))
+    out.toByteArray
+  }
+
+  private val Factory = new JsonFactory()
 
   /** A written fixture, and how much JSON it compressed — the number worth logging is how much
    *  did NOT have to cross the tunnel. Measured here, from the one render, because the capture
@@ -99,11 +123,8 @@ object CorpusFixture {
 
   /** A corpus fixture from anywhere — [[CorpusProvenance]] reads the last green leg's
    *  copy from beside the checkout, not from `pathFor`. */
-  def readFrom(path: Path): Seq[ArchivedScrape] = {
-    val in = new GZIPInputStream(Files.newInputStream(path))
-    val bytes = try in.readAllBytes() finally in.close()
-    parse(new String(bytes, java.nio.charset.StandardCharsets.UTF_8))
-  }
+  def readFrom(path: Path): Seq[ArchivedScrape] =
+    rowsOf(Factory.createParser(new GZIPInputStream(new BufferedInputStream(Files.newInputStream(path)), 1 << 16)))
 
   /** Replay the fixture into an archive through `record`, so the archive's own
    *  "content only" rule and its BSON round-trip stay on the path exactly as they
