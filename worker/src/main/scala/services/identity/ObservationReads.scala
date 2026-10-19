@@ -97,7 +97,7 @@ object ObservationReads {
  *  corpus is network-bound, not CPU-bound — and the asks that follow are served once each from
  *  what it fetched; a prefetch drops whatever the last one fetched and nobody asked. */
 final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
-                           pool: Option[java.util.concurrent.ExecutorService] = None) extends IdentityLookups {
+                           pool: Option[java.util.concurrent.ExecutorService] = None) extends ForwardingIdentityLookups(inner) {
   import ObservationReads.Question
   private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
   private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
@@ -127,14 +127,13 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   private def askFilm(id: Int)                = reads.asking(Question.Record(id))(inner.film(id))
   private def askDetail(listing: Listing)     = reads.asking(Question.Detail(listing.key))(inner.detail(listing))
 
-  def hasDetail(listing: Listing): Boolean = inner.hasDetail(listing)
-  def detail(listing: Listing): Answer[Option[DetailFacts]] = Option(details.remove(listing.key)).map(served).getOrElse(single(askDetail(listing)))
-  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = Option(queries.remove(query)).map(served).getOrElse(single(askQuery(query)))
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))
-  /** The agreement stage's fill reads it, never the model: no read of the model's is tracked by it. */
-  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = inner.cast(tmdbId)
-  /** The agreement stage's synopsis evidence reads it, never the model: untracked, as the cast is. */
-  override def overview(tmdbId: Int): Answer[Option[ProseWords]] = inner.overview(tmdbId)
+  // Every other question (the hasDetail check, the cast and overview the agreement stage reads, the release day, how the
+  // source numbers its films) is forwarded untracked: no read of the model's is tracked by it.
+  override def detail(listing: Listing): Answer[Option[DetailFacts]] = Option(details.remove(listing.key)).map(served).getOrElse(single(askDetail(listing)))
+  override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = Option(queries.remove(query)).map(served).getOrElse(single(askQuery(query)))
+  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))
+  /** Nothing to hand on: a [[prefetch]] tells `inner` its asks were answered once it has asked them itself. */
+  override def prefetchAnswered(): Unit = ()
 
   override def released(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit = {
     asked.foreach(query => reads.forget(Question.Query(query)))
