@@ -158,29 +158,50 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
 
   /** Re-derive what the touched nodes, re-answered questions and re-recorded films reach; the keys
    *  whose facts moved. */
-  private def refresh(touched: Set[NodeKey], reasked: Set[CandidateQuery], rerecorded: Set[Int]): CorpusContext.Changed = {
-    val films     = mutable.HashSet.empty[Int] ++ rerecorded
-    val titleKeys = mutable.HashSet.empty[String]
-    val segments  = mutable.HashSet.empty[String]
-    val moved     = mutable.HashSet.empty[Int]
-    val rebuilt   = touched ++ reasked.flatMap(askers.getOrElse(_, Set.empty))
+  private def refresh(touched: Set[NodeKey], reasked: Set[CandidateQuery], rerecorded: Set[Int]): CorpusContext.Changed =
+    new Refresh(touched, reasked, rerecorded).changed
+
+  /** One [[refresh]]: its steps, in order, over what it has found moved so far. */
+  private final class Refresh(touched: Set[NodeKey], reasked: Set[CandidateQuery], rerecorded: Set[Int]) {
+    private val films     = mutable.HashSet.empty[Int] ++ rerecorded
+    private val titleKeys = mutable.HashSet.empty[String]
+    private val segments  = mutable.HashSet.empty[String]
+    private val moved     = mutable.HashSet.empty[Int]
+    private val rebuilt   = touched ++ reasked.flatMap(askers.getOrElse(_, Set.empty))
     // 1. nodes: unhook the old, re-ask what was asked anew, hook the new — noting each touched piece's
     // banner and recurring bits before, so a piece crossing `CorpusContext.BannerSpread`, `TagSpread` or `PieceSpread`
     // dirties the families reading it
-    val bannersBefore = mutable.HashMap.empty[String, (Boolean, Boolean, Boolean)]
-    def bits(piece: String) = (bannerSegment(piece), recurringSegment(piece), repeatedSegment(piece))
-    def noteBefore(pieces: Set[String]): Unit = pieces.foreach(piece => bannersBefore.getOrElseUpdate(piece, bits(piece)))
-    rebuilt.foreach(key => nodes.remove(key).foreach(old => { noteBefore(old.pieces); films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
-    val built = rebuilt.toSeq.flatMap(key => members.get(key).map(_.held).map { held =>
-      val listed  = held.values.toSeq
-      val head    = heads.get(key).filter(_._1 == listed.head.key).map(_._2).getOrElse(derive(listed.head))
-      heads(key)  = listed.head.key -> head
-      val node    = new EvidenceNode(head, listed)
-      (key, node, CandidateQueries.of(node.evidence))
-    })
-    // A slice of nodes at a time, its answers read for that slice only and dropped with it: a
-    // refresh of the whole corpus (a take-up) never holds every answer at once.
-    built.grouped(slices.nodes).foreach { slice =>
+    private val bannersBefore = mutable.HashMap.empty[String, (Boolean, Boolean, Boolean)]
+    private def bits(piece: String) = (bannerSegment(piece), recurringSegment(piece), repeatedSegment(piece))
+    private def noteBefore(pieces: Set[String]): Unit = pieces.foreach(piece => bannersBefore.getOrElseUpdate(piece, bits(piece)))
+
+    def changed: CorpusContext.Changed = {
+      rebuildNodes()
+      val filedUnder = refile()
+      val billed     = recandidate(retitled(filedUnder))
+      val banners    = rebill(billed)
+      relearnHouses(banners)
+      groupView --= titleKeys
+      reachedView --= titleKeys
+      segments ++= bannersBefore.collect { case (piece, before) if bits(piece) != before => piece }
+      CorpusContext.Changed(titleKeys.toSet, segments.toSet, banners.toSet, moved.toSet)
+    }
+
+    private def rebuildNodes(): Unit = {
+      rebuilt.foreach(key => nodes.remove(key).foreach(old => { noteBefore(old.pieces); films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
+      val built = rebuilt.toSeq.flatMap(key => members.get(key).map(_.held).map { held =>
+        val listed  = held.values.toSeq
+        val head    = heads.get(key).filter(_._1 == listed.head.key).map(_._2).getOrElse(derive(listed.head))
+        heads(key)  = listed.head.key -> head
+        val node    = new EvidenceNode(head, listed)
+        (key, node, CandidateQueries.of(node.evidence))
+      })
+      // A slice of nodes at a time, its answers read for that slice only and dropped with it: a
+      // refresh of the whole corpus (a take-up) never holds every answer at once.
+      built.grouped(slices.nodes).foreach(linkSlice)
+    }
+
+    private def linkSlice(slice: Seq[(NodeKey, EvidenceNode, Seq[CandidateQuery])]): Unit = {
       val answers = mutable.HashMap.empty[CandidateQuery, Answer[Seq[Hit]]]
       val answer  = (query: CandidateQuery) => answers.getOrElseUpdate(query, lookups.candidates(query))
       lookups.prefetch(slice.flatMap(_._3).distinct, Nil, Nil)
@@ -196,85 +217,108 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
         segments += live.whole
       }
     }
+
     // 2. films: each one's base candidate, and the title keys it files under — a fallback source's film none: it is a
     // candidate only a no-match's fallback scores, never a record the corpus's titles, seasons or houses are read off
-    val filedUnder = mutable.HashSet.empty[String]
-    def filmKeysOf(id: Int, film: IdentityMeasures.Film) = if (FallbackIds.isFallback(id)) Set.empty[String] else film.ownTitleKeys
-    films.toSeq.sorted.grouped(slices.records).foreach { slice =>
-    lookups.prefetch(Nil, slice.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
-    slice.foreach { id =>
-      base.remove(id).foreach(old => filmKeysOf(id, old.film).foreach { key => filedUnder += key; filmsByKey.removeValue(key, id) })
-      bestHits.get(id) match {
-        case Some(byQuery) =>
-          if (rerecorded(id) || !records.contains(id)) records(id) = lookups.film(id)
-          val candidate = Candidate.of(id, byQuery.values.toSeq, records(id).toOption.flatten)
-          base(id) = candidate
-          filmKeysOf(id, candidate.film).foreach { key => filedUnder += key; filmsByKey.addValue(key, id) }
-        case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)
-      }
-    }
-    }
-    // 3. venue titles of every title key a touched node carries, whose original a touched film files under,
-    // or whose nodes reach a touched film (the titles their facts give it)
-    val retitled  = mutable.HashSet.empty[Int] ++ films
-    val reachKeys = films.iterator.flatMap(id => reachers.getOrElse(id, Set.empty)).flatMap(nodes.get).map(_.titleKey)
-    (titleKeys ++ filedUnder.flatMap(keysOfOrigin.getOrElse(_, Set.empty)) ++ reachKeys).foreach(key => retitled ++= retitle(key))
-    // 4. candidates; a changed one re-bills every node reaching it
-    val billed = mutable.HashSet.empty[NodeKey] ++ rebuilt
-    retitled.foreach { id =>
-      val next = base.get(id).map(candidate => candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film,
-        venueTitlesOf.get(id).fold(Seq.empty[String])(_.values.flatten.toSeq.distinct.sorted))))
-      if (next != candidates.get(id)) {
-        def seasonWorksOf(candidate: Candidate) = if (FallbackIds.isFallback(id)) Set.empty[(String, Int)] else StageRelays.seasonWorks(candidate.film)
-        val before = candidates.get(id).toSeq.flatMap(seasonWorksOf)
-        next.fold(candidates.remove(id))(candidate => candidates.put(id, candidate))
-        val after  = next.toSeq.flatMap(seasonWorksOf)
-        before.foreach(pair => seasonFilms.removeValue(pair, id))
-        after.foreach(pair => seasonFilms.addValue(pair, id))
-        billed ++= reachers.getOrElse(id, Set.empty) ++ (before ++ after).distinct.flatMap(seasonNodes.getOrElse(_, Set.empty))
-        moved += id
-      }
-    }
-    // 5. billings, and each touched banner's house
-    val banners = mutable.HashSet.empty[String]
-    // Film by film: each copied once, billed against every node here that reaches it, and dropped —
-    // a take-up bills every node, and a film reached by many nodes derived its title forms again for
-    // each (6 of a UK take-up's 16 s). A node's billings are its films' in its reached order, which is
-    // `Houses.evidence` over them all.
-    val billedBy  = mutable.HashMap.empty[NodeKey, Map[Int, Seq[StageRelays.Billing]]]
-    val billedOn  = billed.iterator.flatMap(key => nodes.get(key).map(live => key -> CorpusContext.billedFilms(live.reached,
-      live.node.evidence.measured, seasonFilms.getOrElse(_, Set.empty)).filter(candidates.contains))).toMap
-    val billersOf = billedOn.toSeq.flatMap { case (key, ids) => ids.map(_ -> key) }.groupMap(_._1)(_._2)
-    billersOf.foreach { case (id, keys) =>
-      val film = fresh(candidates(id)).film
-      keys.foreach { key =>
-        val own = StageRelays.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
-        if (own.nonEmpty) billedBy.addEntry(key, id -> own)
-      }
-    }
-    billed.foreach { key =>
-      billingsOf.remove(key).foreach(_.map(_.listingHouse).distinct.foreach { banner =>
-        banners += banner; byBanner.removeEntry(banner, key) })
-      nodes.get(key).foreach { live =>
-        val byFilm   = billedBy.getOrElse(key, Map.empty)
-        val billings = billedOn.getOrElse(key, Nil).flatMap(byFilm.getOrElse(_, Nil))
-        if (billings.nonEmpty) {
-          billingsOf(key) = billings
-          billings.groupBy(_.listingHouse).foreach { case (banner, own) =>
-            banners += banner; byBanner.addEntry(banner, key -> own) }
+    private def filmKeysOf(id: Int, film: IdentityMeasures.Film) = if (FallbackIds.isFallback(id)) Set.empty[String] else film.ownTitleKeys
+
+    /** Each touched film's base candidate made again: the title keys they were or are filed under. */
+    private def refile(): mutable.HashSet[String] = {
+      val filedUnder = mutable.HashSet.empty[String]
+      films.toSeq.sorted.grouped(slices.records).foreach { slice =>
+        lookups.prefetch(Nil, slice.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
+        slice.foreach { id =>
+          base.remove(id).foreach(old => filmKeysOf(id, old.film).foreach { key => filedUnder += key; filmsByKey.removeValue(key, id) })
+          bestHits.get(id) match {
+            case Some(byQuery) =>
+              if (rerecorded(id) || !records.contains(id)) records(id) = lookups.film(id)
+              val candidate = Candidate.of(id, byQuery.values.toSeq, records(id).toOption.flatten)
+              base(id) = candidate
+              filmKeysOf(id, candidate.film).foreach { key => filedUnder += key; filmsByKey.addValue(key, id) }
+            case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)
+          }
         }
       }
+      filedUnder
     }
-    banners.foreach { banner =>
-      val evidence = byBanner.getOrElse(banner, Map.empty).values.flatten.toSeq
-      StageRelays.Houses.learn(evidence).of.get(banner).fold(houseOf.remove(banner))(house => houseOf.put(banner, house))
-      StageRelays.Houses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
+
+    /** 3. venue titles of every title key a touched node carries, whose original a touched film files under,
+     *  or whose nodes reach a touched film (the titles their facts give it): the films retitled. */
+    private def retitled(filedUnder: mutable.HashSet[String]): mutable.HashSet[Int] = {
+      val retitled  = mutable.HashSet.empty[Int] ++ films
+      val reachKeys = films.iterator.flatMap(id => reachers.getOrElse(id, Set.empty)).flatMap(nodes.get).map(_.titleKey)
+      (titleKeys ++ filedUnder.flatMap(keysOfOrigin.getOrElse(_, Set.empty)) ++ reachKeys).foreach(key => retitled ++= retitle(key))
+      retitled
     }
-    if (banners.nonEmpty) housesView = None
-    groupView --= titleKeys
-    reachedView --= titleKeys
-    segments ++= bannersBefore.collect { case (piece, before) if bits(piece) != before => piece }
-    CorpusContext.Changed(titleKeys.toSet, segments.toSet, banners.toSet, moved.toSet)
+
+    /** 4. candidates; a changed one re-bills every node reaching it. The nodes to bill again. */
+    private def recandidate(retitled: mutable.HashSet[Int]): mutable.HashSet[NodeKey] = {
+      val billed = mutable.HashSet.empty[NodeKey] ++ rebuilt
+      retitled.foreach { id =>
+        val next = base.get(id).map(candidate => candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film,
+          venueTitlesOf.get(id).fold(Seq.empty[String])(_.values.flatten.toSeq.distinct.sorted))))
+        if (next != candidates.get(id)) {
+          def seasonWorksOf(candidate: Candidate) = if (FallbackIds.isFallback(id)) Set.empty[(String, Int)] else StageRelays.seasonWorks(candidate.film)
+          val before = candidates.get(id).toSeq.flatMap(seasonWorksOf)
+          next.fold(candidates.remove(id))(candidate => candidates.put(id, candidate))
+          val after  = next.toSeq.flatMap(seasonWorksOf)
+          before.foreach(pair => seasonFilms.removeValue(pair, id))
+          after.foreach(pair => seasonFilms.addValue(pair, id))
+          billed ++= reachers.getOrElse(id, Set.empty) ++ (before ++ after).distinct.flatMap(seasonNodes.getOrElse(_, Set.empty))
+          moved += id
+        }
+      }
+      billed
+    }
+
+    /** 5. billings of every node `billed`: the banners whose billings moved. */
+    private def rebill(billed: mutable.HashSet[NodeKey]): mutable.HashSet[String] = {
+      val banners = mutable.HashSet.empty[String]
+      val billedOn = billed.iterator.flatMap(key => nodes.get(key).map(live => key -> CorpusContext.billedFilms(live.reached,
+        live.node.evidence.measured, seasonFilms.getOrElse(_, Set.empty)).filter(candidates.contains))).toMap
+      val billedBy = billingsByFilm(billedOn)
+      billed.foreach { key =>
+        billingsOf.remove(key).foreach(_.map(_.listingHouse).distinct.foreach { banner =>
+          banners += banner; byBanner.removeEntry(banner, key) })
+        nodes.get(key).foreach { live =>
+          val byFilm   = billedBy.getOrElse(key, Map.empty)
+          val billings = billedOn.getOrElse(key, Nil).flatMap(byFilm.getOrElse(_, Nil))
+          if (billings.nonEmpty) {
+            billingsOf(key) = billings
+            billings.groupBy(_.listingHouse).foreach { case (banner, own) =>
+              banners += banner; byBanner.addEntry(banner, key -> own) }
+          }
+        }
+      }
+      banners
+    }
+
+    /** Film by film: each copied once, billed against every node here that reaches it, and dropped —
+     *  a take-up bills every node, and a film reached by many nodes derived its title forms again for
+     *  each (6 of a UK take-up's 16 s). A node's billings are its films' in its reached order, which is
+     *  `Houses.evidence` over them all. */
+    private def billingsByFilm(billedOn: Map[NodeKey, Seq[Int]]): mutable.HashMap[NodeKey, Map[Int, Seq[StageRelays.Billing]]] = {
+      val billedBy  = mutable.HashMap.empty[NodeKey, Map[Int, Seq[StageRelays.Billing]]]
+      val billersOf = billedOn.toSeq.flatMap { case (key, ids) => ids.map(_ -> key) }.groupMap(_._1)(_._2)
+      billersOf.foreach { case (id, keys) =>
+        val film = fresh(candidates(id)).film
+        keys.foreach { key =>
+          val own = StageRelays.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
+          if (own.nonEmpty) billedBy.addEntry(key, id -> own)
+        }
+      }
+      billedBy
+    }
+
+    /** Each touched banner's house, and its ranking. */
+    private def relearnHouses(banners: mutable.HashSet[String]): Unit = {
+      banners.foreach { banner =>
+        val evidence = byBanner.getOrElse(banner, Map.empty).values.flatten.toSeq
+        StageRelays.Houses.learn(evidence).of.get(banner).fold(houseOf.remove(banner))(house => houseOf.put(banner, house))
+        StageRelays.Houses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
+      }
+      if (banners.nonEmpty) housesView = None
+    }
   }
 
   private def fresh(candidate: Candidate): Candidate = candidate.copy(film = candidate.film.copy())
