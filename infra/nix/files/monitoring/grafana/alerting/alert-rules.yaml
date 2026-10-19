@@ -466,7 +466,7 @@ groups:
       # precisely the state we put it in deliberately.
       #
       # ON RESTORE: set both back to `Alerting`, so absence is the alarm again for
-      # an app that is once more supposed to be running. See docs/restoring-a-country.md.
+      # an app that is once more supposed to be running. See docs/adding-a-country.md, "Appendix: restoring a stopped country".
       # RETIRED RULE showtimes-uk-serving-down -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_up{app="showtimes-uk"}`. The UK site is a k3s pod, covered by
       # `kinowo-web-serving-down`'s per-instance `up{job="kinowo-web"}`.

@@ -1,5 +1,11 @@
 # Identity: known wrong matches and open work
 
+> **SUPERSEDED / HISTORICAL — a frozen snapshot of 2026-10-15; its counts are stale by construction.** Current
+> sources: every judgement (wrong, known-wrong, accepted) lives in `test/resources/fixtures/identity-judgements.tsv`;
+> ask it about a listing or film with `scripts/label-lookup`, read a capture run's findings with
+> `scripts/identity-ratchet-report`, and a recording's data findings in the Identity findings report (one issue per
+> country). See `.claude/skills/identity-investigation/SKILL.md`. Kept as design history; do not update it.
+
 Status: snapshot of 2026-10-15 ~06:30 CEST. Wrong matches are what prod served at that time (local prod mirror,
 all five countries fresh, lag 2–40 s) judged against `test/resources/fixtures/identity-judgements.tsv` at main
 409391b8e. Fixes that landed or were queued after the snapshot are noted under "Open work". To refresh: re-run

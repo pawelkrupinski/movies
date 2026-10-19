@@ -1,5 +1,9 @@
 # Identity resolver: rules inventory (2026-10-06)
 
+> **HISTORICAL — a snapshot at `984f4857b` (2026-10-06), before the rules were consolidated.** Line numbers point at
+> that commit, not at main. The current consolidated rules are §21 of [identity-resolver.md](identity-resolver.md);
+> the code (`identity/src/main/scala/services/identity/`) is the truth.
+
 Every rule the identity resolver and its agreement stage decide by — guard, veto, denial, fill, take, correction,
 signal — with where it lives, what it reads, what pins it, how often it fires, and what else implements the same
 concept. Written before the consolidation of `identity-resolver.md` §21; line numbers are at `984f4857b` (the

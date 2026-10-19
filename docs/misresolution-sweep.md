@@ -84,9 +84,11 @@ title-rule wave without letting a stuck row hide.
 
 ## Test-layer notes for anyone working this area
 
-- **`itAll` is flaky under parallel load on a laptop** — two different specs
+- **`itAll` has failed under parallel load on a laptop** — two different specs
   have been seen failing, each passing alone and on a quiet machine. Run a
-  baseline at `HEAD` before believing your change broke it.
+  baseline at `HEAD` to learn whether your change broke it; either way the
+  failure is a flake to investigate and fix (`scripts/it-local.sh` gives a run
+  its own mongod), never one to rerun to green.
 - **Do not add a `Thread.sleep` to wait for a change stream** in
   `worker/src/it/scala/MovieRepositoryIntegrationSpec.scala`. A fixed nap is a
   guess at the cursor-open window, and it makes a slow runner look exactly like

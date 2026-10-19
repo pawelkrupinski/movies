@@ -7,9 +7,9 @@ import java.nio.file.{Files, Path, Paths}
 import java.util.zip.GZIPInputStream
 
 /**
- * Whether a gradient-boosted model of the identity ML experiment (docs/design/identity-ml-experiment.md) can score
- * in-JVM, and at what cost: a plain-Scala evaluator of a LightGBM `dump_model()` JSON (no native library, no new
- * dependency), checked against the scores Python's LightGBM gave the same rows, timed and measured by
+ * Whether a gradient-boosted model of the identity ML experiment (docs/identity-experiments.md, "2026-10-06 —
+ * learning the matching rules") can score in-JVM, and at what cost: a plain-Scala evaluator of a LightGBM
+ * `dump_model()` JSON (no native library, no new dependency), checked against the scores Python's LightGBM gave the same rows, timed and measured by
  * [[tools.ThreadAllocation]] over the whole pinned corpus of contenders:
  *
  *   timeout 1800 <env>/bin/python scripts/ml-identity/identity_ml_experiment.py     # writes target/identity-ml/

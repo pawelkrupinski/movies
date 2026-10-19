@@ -374,7 +374,7 @@ Prod Mongo used to be the Fly app `kinowo-mongo`, reached with
 `flyctl proxy 27017:27017`. On **2026-08-29** it moved to the Hetzner host
 `mongo-1`, and the Fly machine is now **stopped**. `mongod` there listens on
 `127.0.0.1`, on `10.20.0.10` (a private Hetzner subnet no laptop can route to)
-and on a Fly 6PN WireGuard address (how the deployed apps reach it) — so from a
+and, in the Fly era, on a Fly 6PN WireGuard address (how the Fly apps reached it; the host has moved since — see `infra/ansible/inventory`) — so from a
 laptop the only way in is ssh, and the only far-side address that answers inside
 that session is the loopback one:
 
@@ -405,7 +405,8 @@ naming the tunnel as the cause. A liveness check a dead backend passes is worse
 than none, because it routes the failure somewhere it can't be diagnosed. When
 the port is held by a process that isn't ours and prod doesn't answer through
 it, the scripts say so and stop rather than killing a tunnel that may be
-someone's `sbt run` — the fix is `pkill -f 'flyctl proxy 27017'`.
+someone's `sbt run` — find the holder with `lsof -nP -iTCP:27017 -sTCP:LISTEN` and stop that one
+process by its pid (never `pkill -f` by pattern: other agents' processes match it too).
 
 The tunnel is also `ExitOnForwardFailure=yes` (ssh otherwise holds a session
 open with *no* forward when the local bind fails, which reads as live and fails

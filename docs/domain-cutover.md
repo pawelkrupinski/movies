@@ -12,8 +12,8 @@ hostnames onto two domains this project owns:
 | `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (sslip name RETIRED 2026-09-01 — see below) |
 | — (ssh tunnel to 10.20.0.11:9428) | `logs.kinowo.net` | VictoriaLogs vmui + LogsQL API (`/select` only; Google sign-in via `auth.kinowo.net`) |
 
-`docs/adding-a-country.md` and `docs/restoring-a-country.md` cover the country
-dimension. This file covers the HOST dimension, and exists mainly for its
+`docs/adding-a-country.md` (and its appendix on restoring a stopped country) covers
+the country dimension. This file covers the HOST dimension, and exists mainly for its
 ordering — several of the steps below are only safe in one sequence.
 
 ## The order, and why it is not arbitrary
