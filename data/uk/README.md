@@ -1,17 +1,28 @@
 # UK venues and pages
 
-The UK's ~840 venues are hand-written `case object`s in
-`common/src/main/scala/models/Cinema.scala` — a display name and a pill name,
-nothing else. Everything a page needs beside that lives here:
+Every UK venue (~840) is declared once, in `roster.json`, and everything a page
+needs beside that lives here too:
 
 ```
+roster.json   each venue: its Scala name, display name (the wire key its slots are stored
+              under — never change one lightly), pill name, flicks.co.uk slug and primary
+              source, grouped in scrape order (data/uk/scripts/uk_roster.py says what a row holds)
 venues.json   each venue's postal town (off its Flicks address) and coordinates
 towns.json    the town each venue is in: GeoNames centre, population, county, island
 pages.json    which page lists each venue, and where every retired slug now goes
 ```
 
-and is generated into `models.UkPages` (the pages) and `models.VenueTowns` (the
-town each venue's address names).
+and is generated into `models.UkRosterData` (a top-level `val` per venue, named as
+its row's `object`), `services.cinemas.uk.UkSourcesData` (each venue's scraper and
+Flicks fallback), `models.UkPages` (the pages) and `models.VenueTowns` (the town
+each venue's address names).
+
+A venue is added, renamed or re-sourced by editing its `roster.json` row — a row
+with no `primary` is scraped off Flicks; `["savoy", "<dll base>"]`,
+`["spektrix", "<client>", "<building>"]` and the rest name its own-site client and
+keep `flicks` as the fallback — and rerunning `generate_roster.py`, which refuses
+a duplicate object, display name or slug, an unknown source, and a venue on no
+page.
 
 ## Re-harvesting
 
@@ -22,16 +33,13 @@ python3 data/scripts/generate_venue_towns.py      # -> VenueTowns.scala
 curl -sO https://download.geonames.org/export/dump/cities1000.zip && unzip cities1000.zip
 python3 data/uk/scripts/geocode_towns.py cities1000.txt   # -> towns.json
 python3 data/uk/scripts/build_pages.py                    # -> pages.json
-python3 data/uk/scripts/generate_roster.py                # -> UkPages.scala + the apps' lists
+python3 data/uk/scripts/generate_roster.py                # -> UkRosterData, UkSourcesData, UkPages + the apps' lists
 python3 data/uk/scripts/geocode_towns_test.py
 python3 data/uk/scripts/build_pages_test.py
 ```
 
-`harvest_towns.py` needs no venue list of its own: every UK venue's Flicks slug
-is already in the repo, in the two places a venue can be wired —
-`CinemaScraperCatalog`'s `flicks("<slug>", Obj)` for the venues Flicks scrapes,
-and `ChainFlicksFallback`'s `Obj -> "<slug>"` for the chain venues that only
-fall back to it. A venue Flicks does not list at all (The Old Court, Windsor,
+`harvest_towns.py` reads its venue list off `roster.json`: every venue's `flicks`
+slug, whether Flicks is its primary or only its fallback. A venue Flicks does not list at all (The Old Court, Windsor,
 scraped off its own site) is entered by hand with `"flicksSlug": null`, and every
 sweep keeps it. `--reparse` re-derives every town from the stored addresses with
 no network — what to run after changing the parser.

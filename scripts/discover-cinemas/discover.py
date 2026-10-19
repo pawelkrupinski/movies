@@ -1,37 +1,34 @@
 #!/usr/bin/env python3
 """Discover new UK cinemas on flicks.co.uk and wire them into the catalog.
 
-The UK roster is scraped via one `FlicksClient` per venue, wired by hand in two
-files:
+Every UK venue is declared once, as a row of data/uk/roster.json (see
+data/uk/scripts/uk_roster.py): its Scala name, display and pill names, its
+flicks.co.uk slug and its primary source. A venue Flicks scrapes is a row with
+only a `flicks` slug; data/uk/scripts/generate_roster.py turns the rows into the
+Scala (`UkRosterData`, `UkSourcesData`).
 
-  * common/src/main/scala/models/Cinema.scala        — the `case object … extends
-    Cinema(display, pill)`.
-  * worker/.../services/cinemas/UkScraperCatalog.scala — a `flicks("<slug>",
-    Obj)` line inside a `// ── <group>` of its `scrapers` Seq.
+Which PAGE lists a venue is not wired by hand either: it is generated from the
+venue's town (data/uk/scripts/build_pages.py → UkPages.scala), after the
+workflow has harvested and geocoded the new venue.
 
-Which PAGE lists a venue is not wired by hand: it is generated from the venue's
-town (data/uk/scripts/build_pages.py → UkPages.scala), after the workflow has
-harvested and geocoded the new venue.
-
-UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) are the exception:
-they are catalogued under their own-site client, and keep their Flicks slug only as
-the aggregator fallback in ChainFlicksFallback.scala. They are wired all the same,
-so both files are read when deciding what is already covered.
+UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) and the
+independents read off their own box office keep their Flicks slug as the
+aggregator FALLBACK — a row with a `primary` as well as a `flicks` slug. Either
+way the slug is in `flicks`, so it counts as covered.
 
 Flicks publishes every cinema in sitemap-cinemas.xml. This tool diffs that list
 against the slugs we already wire (minus an exclude list of known-defunct venues)
 and, for each genuinely new venue, resolves its display name + coordinates +
-whether it currently lists sessions, wires it into the `// ── <group>` of the
-nearest already-wired venue (great-circle distance over data/uk/venues.json),
-and splices compilable Scala into both files.
+whether it currently lists sessions, and appends its row to the roster group of
+the nearest already-wired venue (great-circle distance over data/uk/venues.json).
 
 Anything it can't wire safely — a London venue (needs a manual area-group
-assignment), an object-name collision, missing coordinates, or a venue with no
-sessions this week — is PARKED: reported for a human, never written as broken
-Scala. It also reports GONE venues (wired by us but dropped from the sitemap) as
+assignment), an object-name or display-name collision, missing coordinates, or a
+venue with no sessions this week — is PARKED: reported for a human, never
+written as a row the generator would refuse. It also reports GONE venues (wired by us but dropped from the sitemap) as
 retirement candidates; it never auto-deletes.
 
-Default mode is report-only. Pass --apply to edit the source files.
+Default mode is report-only. Pass --apply to write the rows into roster.json.
 
 Network: stdlib only (urllib). Per-venue page fetches run in a small thread pool
 (default 6 workers) to stay polite; see repo CLAUDE.md scraping guidance.
@@ -40,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures as futures
+import copy
 import datetime as dt
 import json
 import math
@@ -49,21 +47,17 @@ import sys
 import urllib.request
 from dataclasses import dataclass, field
 
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(REPO, "data/uk/scripts"))
+import uk_roster  # noqa: E402
+
 FLICKS = "https://www.flicks.co.uk"
 SITEMAP = f"{FLICKS}/sitemap-cinemas.xml/"
 UA = "Mozilla/5.0 (compatible; kinowo-cinema-discovery/1.0)"
 SESSION_DAYS = 7  # today .. +6, matching FlicksClient.daysAhead
 
-REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-CINEMA_SCALA = os.path.join(REPO, "common/src/main/scala/models/Cinema.scala")
 UK_VENUES = os.path.join(REPO, "data/uk/venues.json")
 UK_PAGES = os.path.join(REPO, "data/uk/pages.json")
-CATALOG_SCALA = os.path.join(
-    REPO, "worker/src/main/scala/services/cinemas/UkScraperCatalog.scala"
-)
-CHAIN_FALLBACK_SCALA = os.path.join(
-    REPO, "worker/src/main/scala/services/cinemas/ChainFlicksFallback.scala"
-)
 EXCLUDE_TXT = os.path.join(os.path.dirname(__file__), "exclude.txt")
 
 
@@ -93,18 +87,10 @@ def sitemap_slugs(text: str) -> set[str]:
     return set(re.findall(r"/cinema/([a-z0-9-]+)/", text))
 
 
-def wired_slugs(catalog_text: str, chain_fallback_text: str) -> set[str]:
-    """Every Flicks slug we already cover, however the venue is catalogued.
-
-    Two wirings, both of which make a slug NOT a new candidate:
-      * `flicks("<slug>", Obj)` in the catalog — Flicks is the primary scraper.
-      * `Obj -> "<slug>"` in ChainFlicksFallback — a chain venue catalogued under
-        its own-site client (Cineworld / Vue / Showcase / Everyman / Odeon), with
-        Flicks kept only as the aggregator fallback.
-    """
-    flicks_primary = re.findall(r'flicks\("([^"]+)"', catalog_text)
-    chain_fallback = re.findall(r'->\s*"([^"]+)"', chain_fallback_text)
-    return set(flicks_primary) | set(chain_fallback)
+def wired_slugs(groups: list[dict]) -> set[str]:
+    """Every Flicks slug we already cover, however the venue is scraped: a row's
+    `flicks` is its slug whether Flicks is its primary or only its fallback."""
+    return {v["flicks"] for v in uk_roster.venues(groups) if v.get("flicks")}
 
 
 def load_exclude(text: str) -> set[str]:
@@ -116,51 +102,26 @@ def load_exclude(text: str) -> set[str]:
     return out
 
 
-# ── Where a new venue is wired (read off the catalog and data/uk) ────────────
+# ── Where a new venue is wired (read off roster.json and data/uk) ─────────────
 @dataclass
 class Group:
-    """The `// ── <group>` of the catalog's `scrapers` list a new venue is wired into:
-    the one its nearest already-wired venue is in. Which PAGE lists the venue is not
-    decided here — `data/uk/scripts/build_pages.py` places it by its town, and the
-    catalog files every UK scraper under that page whatever group it sits in."""
+    """The roster.json group a new venue is wired into: the one its nearest
+    already-wired venue is in. Which PAGE lists the venue is not decided here —
+    `data/uk/scripts/build_pages.py` places it by its town, and the catalog files
+    every UK scraper under that page whatever group it sits in."""
     section: str      # e.g. "cardiff"
-    near: str         # the nearest wired venue's case object
+    near: str         # the nearest wired venue's object name
     km: float
     london: bool      # that venue is on the London page
 
 
-SCRAPERS = re.compile(r"val scrapers: Seq\[CinemaScraper\] = Seq\((.*?)\n  \)", re.S)
-SECTION = re.compile(r"\n    // ── (\S+)[^\n]*")
-
-
-def scraper_vals(catalog_text: str) -> dict[str, str]:
-    """Every venue object the catalog wires → the `// ── <group>` it is in."""
-    out = {}
-    m = SCRAPERS.search(catalog_text)
-    if not m:
-        return out
-    parts = SECTION.split("\n" + m.group(1))
-    for section, body in zip(parts[1::2], parts[2::2]):
-        for obj in re.findall(r"\b([A-Z]\w*)\)", body):
-            out.setdefault(obj, section)
-    return out
-
-
-def append_to_section(catalog_text: str, section: str, line: str) -> str:
-    """`line` on its own line at the end of `// ── <section>`: before the next group's
-    header, or the list's closing `\n  )`."""
-    m = SCRAPERS.search(catalog_text)
-    start = re.search(rf"\n    // ── {re.escape(section)}\b[^\n]*", catalog_text[m.start(1):m.end(1)])
-    if not start:
-        raise SystemExit(f"no `// ── {section}` group in the catalog")
-    body_from = m.start(1) + start.end()
-    nxt = SECTION.search(catalog_text, body_from, m.end(1))
-    at = nxt.start() if nxt else m.end(1)
-    return catalog_text[:at] + "\n    " + line + catalog_text[at:]
+def scraper_vals(groups: list[dict]) -> dict[str, str]:
+    """Every venue object the roster wires → the group it is in."""
+    return {v["object"]: g["group"] for g in groups for v in g["venues"]}
 
 
 def nearest_group(lat, lon, venues: list[dict], vals: dict[str, str], london: set[str]) -> Group | None:
-    """The val the wired venue nearest (lat, lon) is in. `venues`: data/uk/venues.json
+    """The group the wired venue nearest (lat, lon) is in. `venues`: data/uk/venues.json
     rows (cinemaObject, lat, lon); only those the catalog wires count."""
     placed = [v for v in venues if v["cinemaObject"] in vals and v.get("lat") is not None]
     if not placed:
@@ -239,9 +200,9 @@ def venue_meta(slug: str, today: dt.date) -> VenueMeta:
     return meta
 
 
-# ── Scala generation ────────────────────────────────────────────────────────
+# ── Roster rows ─────────────────────────────────────────────────────────────
 def pascal(display: str) -> str:
-    """Turn a display name into a Scala object identifier (PascalCase, alnum)."""
+    """Turn a display name into a venue's Scala name (PascalCase, alnum)."""
     cleaned = re.sub(r"[^0-9A-Za-z]+", " ", display).strip()
     parts = [p[:1].upper() + p[1:] for p in cleaned.split(" ") if p]
     name = "".join(parts)
@@ -292,16 +253,15 @@ def partition_gone(gone_slugs, probe) -> tuple[list[str], list[str]]:
     return dead, live
 
 
-def existing_objects(cinema_text: str) -> set[str]:
-    return set(re.findall(r"case object (\w+) extends Cinema\(", cinema_text))
-
-
-def build_plan(cinema_text, catalog_text, venues, london, metas, gone_dead, gone_live) -> Plan:
+def build_plan(groups, venues, london, metas, gone_dead, gone_live) -> Plan:
     """Pure planning step (no I/O) — decides wire vs park for each new venue.
-    `venues`: data/uk/venues.json; `london`: the venues the London page lists."""
+    `groups`: roster.json's; `venues`: data/uk/venues.json; `london`: the venues
+    the London page lists."""
     plan = Plan(gone_dead=sorted(gone_dead), gone_live=sorted(gone_live))
-    taken = existing_objects(cinema_text)
-    vals = scraper_vals(catalog_text)
+    rows = uk_roster.venues(groups)
+    taken = {v["object"] for v in rows}
+    names = {v["displayName"] for v in rows}
+    vals = scraper_vals(groups)
     for meta in metas:
         if not meta.display:
             plan.park.append(Parked(meta.slug, "could not read cinema page / display name"))
@@ -316,6 +276,10 @@ def build_plan(cinema_text, catalog_text, venues, london, metas, gone_dead, gone
         if not obj or obj in taken:
             plan.park.append(Parked(meta.slug, f"object-name collision/empty ({obj!r})", meta.display))
             continue
+        if meta.display in names:
+            plan.park.append(Parked(meta.slug, "display-name collision: another venue's slots are stored "
+                                               "under that name", meta.display))
+            continue
         group = nearest_group(meta.lat, meta.lon, venues, vals, london)
         if group is None:
             plan.park.append(Parked(meta.slug, "no wired UK venue to place it beside", meta.display))
@@ -325,29 +289,20 @@ def build_plan(cinema_text, catalog_text, venues, london, metas, gone_dead, gone
                                                "area-group assignment", meta.display))
             continue
         taken.add(obj)
+        names.add(meta.display)
         plan.wire.append(Wired(meta.slug, obj, meta.display, group))
     return plan
 
 
-def _insert_before_last(text: str, pattern: str, insertion: str) -> str:
-    matches = list(re.finditer(pattern, text))
-    if not matches:
-        raise SystemExit(f"anchor not found: {pattern}")
-    at = matches[-1].end()
-    return text[:at] + insertion + text[at:]
-
-
-def apply_plan(cinema_text: str, catalog_text: str, plan: Plan) -> tuple[str, str]:
+def apply_plan(groups: list[dict], plan: Plan) -> list[dict]:
+    """The roster with each wired venue's row at the end of its group, scraped off
+    Flicks; `groups` itself is left as it was."""
+    out = copy.deepcopy(groups)
+    by_name = {g["group"]: g for g in out}
     for w in plan.wire:
-        # 1) case object, appended after the last existing Cinema case object.
-        cinema_text = _insert_before_last(
-            cinema_text,
-            r"case object \w+ extends Cinema\([^\n]*\)\n",
-            f'case object {w.obj} extends Cinema("{w.display}", "{w.display}")\n',
-        )
-        # 2) flicks(...) line at the end of the nearest venue's group, on its own line.
-        catalog_text = append_to_section(catalog_text, w.group.section, f'flicks("{w.slug}", {w.obj}),')
-    return cinema_text, catalog_text
+        by_name[w.group.section]["venues"].append(
+            {"object": w.obj, "displayName": w.display, "pillName": w.display, "flicks": w.slug})
+    return out
 
 
 # ── Report ──────────────────────────────────────────────────────────────────
@@ -356,7 +311,7 @@ def render_report(plan: Plan, applied: bool) -> str:
     verb = "Wired" if applied else "Would wire"
     lines.append(f"### {verb} {len(plan.wire)} new cinema(s)")
     for w in plan.wire:
-        lines.append(f"- **{w.display}** (`{w.slug}`) → `// ── {w.group.section}`, beside `{w.group.near}` "
+        lines.append(f"- **{w.display}** (`{w.slug}`) → group `{w.group.section}`, beside `{w.group.near}` "
                      f"({w.group.km:.0f} km) — `{w.obj}`")
     if not plan.wire:
         lines.append("- _none_")
@@ -385,7 +340,7 @@ def render_report(plan: Plan, applied: bool) -> str:
 # ── main ────────────────────────────────────────────────────────────────────
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--apply", action="store_true", help="edit the source files (default: report only)")
+    ap.add_argument("--apply", action="store_true", help="write the rows into roster.json (default: report only)")
     ap.add_argument("--report-path", help="also write the markdown report here (for the PR body)")
     ap.add_argument("--workers", type=int, default=6, help="concurrent venue-page fetches")
     ap.add_argument("--today", help="override today (YYYY-MM-DD), for tests")
@@ -393,13 +348,12 @@ def main(argv=None) -> int:
 
     today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
 
-    cinema_text = read_text(CINEMA_SCALA)
-    catalog_text = read_text(CATALOG_SCALA)
+    groups = uk_roster.load()
     venues = json.loads(read_text(UK_VENUES))
     london = london_venues(read_text(UK_PAGES))
 
     flicks = sitemap_slugs(fetch(SITEMAP))
-    wired = wired_slugs(catalog_text, read_text(CHAIN_FALLBACK_SCALA))
+    wired = wired_slugs(groups)
     exclude = load_exclude(read_text(EXCLUDE_TXT))
 
     new_slugs = sorted(flicks - wired - exclude)
@@ -423,12 +377,10 @@ def main(argv=None) -> int:
         gone_dead, gone_live = partition_gone(gone, lambda s: liveness[s])
     print(f"gone → retirement candidates: {len(gone_dead)}  live index-gaps: {len(gone_live)}", file=sys.stderr)
 
-    plan = build_plan(cinema_text, catalog_text, venues, london, metas, gone_dead, gone_live)
+    plan = build_plan(groups, venues, london, metas, gone_dead, gone_live)
 
     if args.apply and plan.wire:
-        new_cinema, new_catalog = apply_plan(cinema_text, catalog_text, plan)
-        write_text(CINEMA_SCALA, new_cinema)
-        write_text(CATALOG_SCALA, new_catalog)
+        uk_roster.dump(apply_plan(groups, plan))
 
     report = render_report(plan, applied=args.apply and bool(plan.wire))
     print(report)

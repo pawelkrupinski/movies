@@ -4,15 +4,13 @@
 The UK roster is the one that never had one. Germany, Spain and the US each
 carry their venues' towns from their own harvest, so `City.coveredPlaces` can
 say that /koeln/ covers Bonn and /san-diego/ covers Chula Vista. The UK's ~840
-venues are hand-written `case object`s with a display name and nothing else, so
-its region pages — /aberdeenshire/, /cornwall/, /cheshire/ — named no town at
-all.
+venues are declared in data/uk/roster.json with a display name, a pill name and
+their sources, and nothing else, so its region pages — /aberdeenshire/,
+/cornwall/, /cheshire/ — named no town at all.
 
 Flicks has the town: every `/cinema/<slug>/` page carries the venue's postal
-address, and the repo already holds that slug for every UK venue, in the two
-places a venue can be wired (`CinemaScraperCatalog`'s `flicks("<slug>", Obj)`
-for the ones Flicks scrapes, `ChainFlicksFallback`'s `Obj -> "<slug>"` for the
-chain venues that only fall back to it).
+address, and roster.json holds that slug for every UK venue Flicks lists (its
+`flicks`, whether Flicks is the venue's primary or its fallback).
 
 The town is the last address line before the postcode. That rule is not
 guessed: `town_of` is checked against Cineworld's and Odeon's OWN `city` fields,
@@ -34,11 +32,11 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import uk_roster  # noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 OUT = ROOT / "data" / "uk" / "venues.json"
-CINEMA_SCALA = ROOT / "common/src/main/scala/models/Cinema.scala"
-CATALOG = ROOT / "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala"
-FALLBACK = ROOT / "worker/src/main/scala/services/cinemas/ChainFlicksFallback.scala"
 
 FLICKS = "https://www.flicks.co.uk"
 UA = "Mozilla/5.0 (compatible; kinowo-cinema-discovery/1.0)"
@@ -89,28 +87,21 @@ COUNTIES = frozenset(x.lower() for x in [
     # The island groups fill the same slot: "Kenneth Street, Stornoway, Isle of
     # Lewis HS1 2DS" is Stornoway, and every island venue in the roster is
     # written this way. "Okney" is Flicks' own misspelling of Orkney, which the
-    # display name in Cinema.scala carries too — spelled as harvested, because
+    # display name in roster.json carries too — spelled as harvested, because
     # this list has to match what the address actually says.
     "Isle of Bute", "Isle of Lewis", "Isle of Man", "Isle of Wight", "Okney Islands",
     "Orkney Islands", "Shetland Islands", "Western Isles",
 ])
 
 
-def scala_venues() -> dict[str, str]:
-    """Every UK venue's Flicks slug -> its `case object` name."""
-    catalog = CATALOG.read_text()
-    fallback = FALLBACK.read_text()
-    wired = dict(re.findall(r'flicks\("([^"]+)",\s*([A-Za-z0-9_]+)\)', catalog))
-    for obj, slug in re.findall(r'([A-Za-z0-9_]+)\s*->\s*"([^"]+)"', fallback):
-        wired.setdefault(slug, obj)
-    return wired
+def wired_venues(roster: list[dict]) -> dict[str, str]:
+    """Every UK venue's Flicks slug -> its `object` name, off roster.json's venues."""
+    return {v["flicks"]: v["object"] for v in roster if v.get("flicks")}
 
 
-def display_names() -> dict[str, str]:
-    """`case object` name -> displayName, read off Cinema.scala."""
-    return dict(re.findall(
-        r'case object ([A-Za-z0-9_]+) extends \w*Cinema\("((?:[^"\\]|\\.)*)"',
-        CINEMA_SCALA.read_text()))
+def display_names(roster: list[dict]) -> dict[str, str]:
+    """`object` name -> displayName, off roster.json's venues."""
+    return {v["object"]: v["displayName"] for v in roster}
 
 
 def town_of(address: str) -> str:
@@ -229,7 +220,7 @@ def sync_plan(held: dict, wired: dict, names: dict) -> tuple[dict, list, list]:
     and the display names that changed.
 
     Re-reading the display name matters more than it looks: it is the key
-    `models.VenueTowns` is keyed on, so a venue renamed in Cinema.scala would keep
+    `models.VenueTowns` is keyed on, so a venue renamed in roster.json would keep
     its row under the old name and quietly stop matching — the town would vanish
     from its city with nothing to say so.
     """
@@ -298,11 +289,12 @@ def main() -> int:
         print(f"re-parsed {len(venues)} venues, {changed} towns changed", file=sys.stderr)
         return 0
 
-    wired = scala_venues()
-    names = display_names()
+    roster = uk_roster.venues(uk_roster.load())
+    wired = wired_venues(roster)
+    names = display_names(roster)
 
     # --sync is the incremental pass. The weekly discovery job wires new venues
-    # into Cinema.scala + the catalog, and a venue with no town simply drops out
+    # into roster.json, and a venue with no town simply drops out
     # of its city's list — quietly, which is the failure worth designing away.
     # So: harvest only what is missing, forget what is no longer wired, and
     # re-read the display names, which are the table's KEY and change under a

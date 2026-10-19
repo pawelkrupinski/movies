@@ -10,10 +10,10 @@ import discover as d
 
 # Minimal but structurally faithful fixtures ----------------------------------
 #
-# Where a venue is wired is read off the CATALOG (which `// ── <group>` of its
-# `scrapers` list holds each venue) and data/uk/venues.json (where each venue is): a
-# new venue joins the group of the wired venue nearest it. Which PAGE lists it is generated later, from
-# its town (data/uk/scripts/build_pages.py), so nothing here touches a page.
+# Where a venue is wired is read off data/uk/roster.json (which group holds each
+# venue) and data/uk/venues.json (where each venue is): a new venue joins the group
+# of the wired venue nearest it. Which PAGE lists it is generated later, from its
+# town (data/uk/scripts/build_pages.py), so nothing here touches a page.
 VENUES = [
     {"cinemaObject": "BfiLondonSouthbank", "lat": 51.5069, "lon": -0.1150},
     {"cinemaObject": "ChapterCardiff", "lat": 51.4820, "lon": -3.2010},
@@ -22,31 +22,22 @@ VENUES = [
 ]
 LONDON = {"BfiLondonSouthbank"}
 
-CINEMA_SCALA = '''
-case object ChapterCardiff extends Cinema("Chapter Cardiff", "Chapter")
-case object CineworldCardiff extends Cinema("Cineworld Cardiff", "Cineworld Cardiff")
-case object HomeManchester extends Cinema("HOME Manchester", "HOME")
-'''
 
-CATALOG_SCALA = '''  val scrapers: Seq[CinemaScraper] = Seq(
-    // ── london
-    flicks("bfi-london-southbank", BfiLondonSouthbank),
-    // ── cardiff
-    flicks("chapter-cardiff", ChapterCardiff),
-    cineworldUk("cardiff", CineworldCardiff),
-    // ── manchester
-    flicks("home-manchester", HomeManchester),
-  )
-'''
+def row(obj, display, slug, primary=None):
+    v = {"object": obj, "displayName": display, "pillName": display, "flicks": slug}
+    return dict(v, primary=primary) if primary else v
 
-# Chain venues are catalogued under their own-site client (above), so their Flicks
-# slug — the aggregator FALLBACK — lives only here.
-CHAIN_FALLBACK_SCALA = '''object ChainFlicksFallback {
-  val slugs: Map[Cinema, String] = Map(
-    CineworldCardiff -> "cineworld-cardiff",
-  )
-}
-'''
+
+# A chain venue is scraped off its own site (`primary`), and keeps its Flicks slug
+# — the aggregator FALLBACK — in `flicks` all the same.
+ROSTER = [
+    {"group": "london", "venues": [row("BfiLondonSouthbank", "BFI London Southbank", "bfi-london-southbank",
+                                       ["bfiSouthbank"])]},
+    {"group": "cardiff", "venues": [row("ChapterCardiff", "Chapter Cardiff", "chapter-cardiff"),
+                                    row("CineworldCardiff", "Cineworld Cardiff", "cineworld-cardiff",
+                                        ["cineworld", "x078m-cineworld-cinema-cardiff"])]},
+    {"group": "manchester", "venues": [row("HomeManchester", "HOME Manchester", "home-manchester")]},
+]
 
 SITEMAP = """<?xml version="1.0"?><urlset>
 <url><loc>https://www.flicks.co.uk/cinema/bfi-london-southbank/</loc></url>
@@ -67,10 +58,10 @@ class EnumerationTests(unittest.TestCase):
         )
 
     def test_wired_slugs_spans_flicks_and_chain_fallback(self):
-        # cineworld-cardiff is wired own-site-primary, so it appears only in the
-        # fallback map — it is still WIRED and must never read as a new candidate.
+        # cineworld-cardiff is wired own-site-primary, Flicks only its fallback — it
+        # is still WIRED and must never read as a new candidate.
         self.assertEqual(
-            d.wired_slugs(CATALOG_SCALA, CHAIN_FALLBACK_SCALA),
+            d.wired_slugs(ROSTER),
             {"bfi-london-southbank", "chapter-cardiff", "cineworld-cardiff", "home-manchester"},
         )
 
@@ -80,7 +71,7 @@ class EnumerationTests(unittest.TestCase):
 
     def test_diff_new_and_gone(self):
         flicks = d.sitemap_slugs(SITEMAP)
-        wired = d.wired_slugs(CATALOG_SCALA, CHAIN_FALLBACK_SCALA)
+        wired = d.wired_slugs(ROSTER)
         exclude = {"odeon-luxe-manchester"}  # pretend this one is defunct
         self.assertEqual(sorted(flicks - wired - exclude), ["premiere-cinema-cardiff"])
         self.assertEqual(wired - flicks - exclude, set())
@@ -88,13 +79,13 @@ class EnumerationTests(unittest.TestCase):
 
 class GroupTests(unittest.TestCase):
     def test_reads_the_group_each_wired_venue_is_in(self):
-        vals = d.scraper_vals(CATALOG_SCALA)
+        vals = d.scraper_vals(ROSTER)
         self.assertEqual(vals["ChapterCardiff"], "cardiff")
         self.assertEqual(vals["CineworldCardiff"], "cardiff")   # own-site clients count too
         self.assertEqual(vals["HomeManchester"], "manchester")
 
     def test_nearest_wired_venue_decides_the_group(self):
-        vals = d.scraper_vals(CATALOG_SCALA)
+        vals = d.scraper_vals(ROSTER)
         # a point in central Cardiff resolves to a Cardiff venue, not Manchester/London
         group = d.nearest_group(51.48, -3.18, VENUES, vals, LONDON)
         self.assertEqual(group.section, "cardiff")
@@ -124,7 +115,7 @@ class PlanTests(unittest.TestCase):
     def test_wire_good_candidate(self):
         metas = [self._meta(slug="premiere-cinema-cardiff", display="Premiere Cinema Cardiff",
                             lat=51.48, lon=-3.18, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertEqual(len(plan.wire), 1)
         w = plan.wire[0]
         self.assertEqual(w.obj, "PremiereCinemaCardiff")
@@ -132,57 +123,56 @@ class PlanTests(unittest.TestCase):
 
     def test_park_london(self):
         metas = [self._meta(slug="x", display="New Picturehouse Soho", lat=51.51, lon=-0.13, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertEqual(plan.wire, [])
         self.assertIn("London", plan.park[0].reason)
 
     def test_park_no_sessions(self):
         metas = [self._meta(slug="x", display="Dark Hall Cardiff", lat=51.48, lon=-3.18, has_sessions=False)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertIn("no sessions", plan.park[0].reason)
 
     def test_park_no_coords(self):
         metas = [self._meta(slug="x", display="Somewhere", lat=None, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertIn("coordinates", plan.park[0].reason)
 
     def test_park_name_collision(self):
         metas = [self._meta(slug="chapter-cardiff-2", display="Chapter Cardiff",
                             lat=51.48, lon=-3.18, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertIn("collision", plan.park[0].reason)
 
 
-class SpliceTests(unittest.TestCase):
-    def test_apply_plan_edits_both_files(self):
-        metas = [d.VenueMeta("premiere-cinema-cardiff", "Premiere Cinema Cardiff", 51.48, -3.18, True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
-        new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
-        # case object added
-        self.assertIn('case object PremiereCinemaCardiff extends Cinema("Premiere Cinema Cardiff"', new_cin)
-        # catalog flicks line added inside the cardiff group, on ITS OWN line
-        self.assertIn(
-            '\n    flicks("premiere-cinema-cardiff", PremiereCinemaCardiff),\n', new_cat
-        )
-        # exactly one flicks(...) per line — the new entry didn't graft onto another
-        for line in new_cat.splitlines():
-            self.assertLessEqual(line.count("flicks("), 1, f"two flicks on one line: {line!r}")
-        # it lands at the end of the cardiff group, above the manchester one
-        self.assertLess(new_cat.index("cineworldUk"), new_cat.index("premiere-cinema-cardiff"))
-        self.assertLess(new_cat.index("premiere-cinema-cardiff"), new_cat.index("// ── manchester"))
+class ApplyTests(unittest.TestCase):
+    def _groups(self, roster):
+        return {g["group"]: [v["object"] for v in g["venues"]] for g in roster}
 
-    def test_apply_plan_appends_to_the_last_group_before_the_list_closes(self):
+    def test_display_name_collision_is_parked(self):
+        # A new venue under a name another holds would read that venue's stored slots.
+        metas = [d.VenueMeta("home-manchester-2", "HOME Manchester", 53.47, -2.24, True)]   # HOMEManchester
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        self.assertEqual(plan.wire, [])
+        self.assertIn("display-name collision", plan.park[0].reason)
+
+    def test_apply_plan_appends_a_flicks_row_to_the_nearest_group(self):
+        metas = [d.VenueMeta("premiere-cinema-cardiff", "Premiere Cinema Cardiff", 51.48, -3.18, True)]
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        new = d.apply_plan(ROSTER, plan)
+        self.assertEqual(self._groups(new)["cardiff"], ["ChapterCardiff", "CineworldCardiff", "PremiereCinemaCardiff"])
+        self.assertEqual(new[1]["venues"][-1], {"object": "PremiereCinemaCardiff", "displayName": "Premiere Cinema Cardiff",
+                                                "pillName": "Premiere Cinema Cardiff", "flicks": "premiere-cinema-cardiff"})
+        self.assertEqual(d.uk_roster.problems(new), [])     # a row the generator takes
+        self.assertEqual(len(ROSTER[1]["venues"]), 2)       # and the input is left alone
+
+    def test_apply_plan_appends_to_the_last_group(self):
         metas = [d.VenueMeta("new-manchester", "New Manchester", 53.47, -2.24, True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
-        _, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
-        self.assertIn('flicks("home-manchester", HomeManchester),\n    flicks("new-manchester", NewManchester),\n  )', new_cat)
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        self.assertEqual(self._groups(d.apply_plan(ROSTER, plan))["manchester"], ["HomeManchester", "NewManchester"])
 
     def test_no_candidates_is_noop(self):
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas=[],
-                            gone_dead=["gone-slug"], gone_live=[])
-        new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
-        self.assertEqual(new_cin, CINEMA_SCALA)
-        self.assertEqual(new_cat, CATALOG_SCALA)
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas=[], gone_dead=["gone-slug"], gone_live=[])
+        self.assertEqual(d.apply_plan(ROSTER, plan), ROSTER)
         self.assertIn("gone-slug", d.render_report(plan, applied=False))
 
 
@@ -199,7 +189,7 @@ class GoneLivenessTests(unittest.TestCase):
 
     def test_live_index_gap_is_not_a_retirement_candidate(self):
         dead, live = d.partition_gone({"vue-cinemas-colchester"}, probe=lambda s: True)
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas=[],
+        plan = d.build_plan(ROSTER, VENUES, LONDON, metas=[],
                             gone_dead=dead, gone_live=live)
         report = d.render_report(plan, applied=False)
         # reported as an index gap, NOT under retirement candidates
@@ -211,7 +201,7 @@ class GoneLivenessTests(unittest.TestCase):
 
 class RealRepoInvariantTests(unittest.TestCase):
     """Guards against a known-defunct venue creeping back into the live wiring.
-    Reads the real repo files, so it fails if any of the 8 closed/duplicate UK
+    Reads the real roster, so it fails if any of the 8 closed/duplicate UK
     venues is re-wired or dropped from the exclude list."""
 
     DEFUNCT = {
@@ -221,7 +211,7 @@ class RealRepoInvariantTests(unittest.TestCase):
     }
 
     def _wired(self):
-        return d.wired_slugs(d.read_text(d.CATALOG_SCALA), d.read_text(d.CHAIN_FALLBACK_SCALA))
+        return d.wired_slugs(d.uk_roster.load())
 
     def test_defunct_are_excluded_and_unwired(self):
         exclude = d.load_exclude(d.read_text(d.EXCLUDE_TXT))

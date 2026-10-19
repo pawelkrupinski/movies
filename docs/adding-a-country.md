@@ -125,8 +125,10 @@ those is expensive to change once a `Country` is switchable.
      reach cap (the UK's 40 km), town spellings and slug rule, and the picker
      groups the pages by an administrative level (voivodeship, province,
      Bundesland, state, nation and county). The venues themselves may stay
-     hand-written `case object`s (Poland, the UK) with only the page each is on
-     generated. This needs a `case class` data subtype of the sealed
+     hand-written `case object`s (Poland) with only the page each is on generated;
+     the UK's are data too (`data/uk/roster.json` → `UkRosterData`, one top-level
+     `val` per venue named as the `case object` it was, so code still names a venue).
+     This needs a `case class` data subtype of the sealed
      `City`/`Cinema` fed into `Cinema.byCity`.
 3. **Cinemas** (`Cinema.scala`) — each venue is a `Cinema(displayName, pillName)`
    **and a `Source`** (merge/priority). `Cinema.all` = `byCity.flatMap(_._2)`, and

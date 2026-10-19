@@ -14,8 +14,8 @@ films all year. A venue whose name does not say so is seasonal when it is listed
 those is a judgement on evidence, so each carries it.
 
 The generators emit the matches as `seasonal` beside their pages; `models.*Roster`
-gives those venues `Opening.Seasonal`. Poland's and the UK's hand-declared venues are
-marked in `Cinema.scala` instead.
+gives those venues `Opening.Seasonal`. Poland's hand-declared venues are marked in
+`Cinema.scala` instead, and the UK's by a `"seasonal": true` on their data/uk/roster.json row.
 """
 import re
 

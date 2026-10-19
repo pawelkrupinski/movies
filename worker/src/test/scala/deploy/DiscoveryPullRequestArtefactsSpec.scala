@@ -4,7 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The weekly UK discovery job (`discover-cinemas.yml`) wires a new venue, and a new
+ * The weekly UK discovery job (`discover-cinemas.yml`) wires a new venue (a row of
+ * `data/uk/roster.json` and the Scala generated from it), and a new
  * venue in a new town is a new PAGE: the pages, the generated Scala, the apps' city
  * lists and their bundled catalog seeds all move. Its PR has to regenerate and carry
  * every one of them, or it opens red — `CatalogSeedSpec` and `tree-unchanged.sh` fail
@@ -24,8 +25,8 @@ class DiscoveryPullRequestArtefactsSpec extends AnyFlatSpec with Matchers {
 
   "the discovery PR" should "commit every artefact a new UK page moves" in {
     addPaths should contain allOf (
-      "common/src/main/scala/models/Cinema.scala",
-      "worker/src/main/scala/services/cinemas/UkScraperCatalog.scala",
+      "data/uk/roster.json", "common/src/main/scala/models/UkRosterData.scala",
+      "worker/src/main/scala/services/cinemas/uk/UkSourcesData.scala",
       "data/uk/venues.json", "data/uk/towns.json", "data/uk/pages.json",
       "common/src/main/scala/models/UkPages.scala", "common/src/main/scala/models/VenueTowns.scala",
       "android/app/src/main/java/pl/kinowo/model/City.kt", "ios/Kinowo/Models/City.swift",

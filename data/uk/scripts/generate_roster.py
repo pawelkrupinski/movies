@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/UkPages.scala from data/uk/pages.json.
+"""Generate the UK roster's Scala from data/uk: roster.json and pages.json.
 
-The Scala side of `build_pages.py`: every UK venue's page, as code. The venues
-stay the hand-written `case object`s in Cinema.scala; this says which page lists
-each. London is hand-declared in `City` (it keeps its compass areas) and reads
-its venues from `UkPages.london`; every other page is a generated row that
-`City` turns into a `UkPage`. The apps' first-run city lists carry the same
-pages, between the UK markers below.
+  * `models.UkRosterData` — every venue, from roster.json (`uk_roster.py` says
+    what a row holds): a top-level `val` per venue, named as the row's `object`,
+    so a venue is addressed by name everywhere as it was when it was a
+    hand-written `case object`.
+  * `services.cinemas.uk.UkSourcesData` — each venue's primary scraper and the
+    Flicks slug it keeps as the aggregator fallback, in roster.json's order (the
+    scrape order), for `UkScraperCatalog` and `ChainFlicksFallback`.
+  * `models.UkPages` — the Scala side of `build_pages.py`: which page lists each
+    venue. London is hand-declared in `City` (it keeps its compass areas) and
+    reads its venues from `UkPages.london`; every other page is a generated row
+    that `City` turns into a `UkPage`. The apps' first-run city lists carry the
+    same pages, between the UK markers below.
 
     python3 data/uk/scripts/generate_roster.py
 """
@@ -15,10 +21,15 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import uk_roster  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[3]
 PAGES = ROOT / "data/uk/pages.json"
 TOWNS = ROOT / "data/uk/towns.json"
 OUT = ROOT / "common/src/main/scala/models/UkPages.scala"
+VENUES_OUT = ROOT / "common/src/main/scala/models/UkRosterData.scala"
+SOURCES_OUT = ROOT / "worker/src/main/scala/services/cinemas/uk/UkSourcesData.scala"
 # The order the pickers show the nations in — the old roster's, kept in one place.
 NATIONS = ["England", "Scotland", "Northern Ireland", "Wales", "Crown Dependencies"]
 
@@ -135,6 +146,89 @@ def scala_source(pages, retired, town_names):
     return "\n".join(out) + "\n"
 
 
+def venues_source(groups):
+    """UkRosterData.scala, whole: one top-level `val` per venue."""
+    rows = uk_roster.venues(groups)
+    out = [
+        "// GENERATED from data/uk/roster.json by data/uk/scripts/generate_roster.py",
+        "// — do NOT edit by hand. Add, rename or re-source a UK venue in data/uk/roster.json and regenerate;",
+        "// see data/uk/README.md.",
+        "package models",
+        "",
+        f"// Every UK venue, {len(rows)} of them, each a `UkCinema` built once and named as roster.json's `object`:",
+        "// the page lists ([[UkPages]]), `Cinema.byCity` and the scrape catalog all hold the same instance.",
+    ]
+    for v in rows:
+        args = f"{q(v['displayName'])}, {q(v['pillName'])}, {q(v['object'])}"
+        if v.get("seasonal"):
+            args += ", Opening.Seasonal(SeasonWindow.UnitedKingdom)"
+        out.append(f"val {v['object']}: UkCinema = new UkCinema({args})")
+    return "\n".join(out) + "\n"
+
+
+def feed(primary):
+    """A roster row's `primary` as the Scala `UkFeed` it names."""
+    kind, args = primary[0], primary[1:]
+    name = kind[:1].upper() + kind[1:]
+    if not uk_roster.PRIMARY_ARGS[kind]:
+        return f"UkFeed.{name}"
+    if kind == "spektrix":
+        building = f"Some({q(args[1])})" if len(args) > 1 else "None"
+        return f"UkFeed.Spektrix({q(args[0])}, {building})"
+    return f"UkFeed.{name}({', '.join(q(a) for a in args)})"
+
+
+def sources_source(groups):
+    """UkSourcesData.scala, whole: each venue's sources, a method per group."""
+    out = [
+        "// GENERATED from data/uk/roster.json by data/uk/scripts/generate_roster.py",
+        "// — do NOT edit by hand. Re-source a UK venue in data/uk/roster.json and regenerate; see data/uk/README.md.",
+        "package services.cinemas.uk",
+        "",
+        "import models._",
+        "",
+        "/** Every UK venue's sources, in scrape order: its primary, and the flicks.co.uk slug an own-site",
+        " *  primary falls back to. Grouped as roster.json groups them, by the town each venue was first",
+        " *  wired near — the order the groups stand in is each page's scrape order. */",
+        "private[cinemas] object UkSourcesData {",
+        "  private def f(cinema: Cinema, slug: String): UkVenueSources = UkVenueSources(cinema, UkFeed.Flicks(slug), None)",
+        "  private def o(cinema: Cinema, primary: UkFeed, fallback: String): UkVenueSources =",
+        "    UkVenueSources(cinema, primary, Some(fallback))",
+        "  private def own(cinema: Cinema, primary: UkFeed): UkVenueSources = UkVenueSources(cinema, primary, None)",
+        "",
+    ]
+    for i, g in enumerate(groups):
+        out.append(f"  // ── {g['group']}")
+        out.append(f"  private def group{i}: Seq[UkVenueSources] = Seq(")
+        for v in g["venues"]:
+            if "primary" not in v:
+                out.append(f"    f({v['object']}, {q(v['flicks'])}),")
+            elif v.get("flicks"):
+                out.append(f"    o({v['object']}, {feed(v['primary'])}, {q(v['flicks'])}),")
+            else:
+                out.append(f"    own({v['object']}, {feed(v['primary'])}),")
+        out.append("  )")
+    out.append("")
+    out.append("  val venues: Seq[UkVenueSources] =")
+    calls = [f"group{i}" for i in range(len(groups))]
+    lines = [" ++ ".join(calls[i:i + 12]) for i in range(0, len(calls), 12)]
+    out.append("    " + " ++\n    ".join(lines))
+    out.append("}")
+    return "\n".join(out) + "\n"
+
+
+def roster_problems(groups, pages):
+    """roster.json's own problems, and every venue it and pages.json disagree on: a venue on no
+    page is never shown, and a page naming a venue the roster lacks does not compile."""
+    found = uk_roster.problems(groups)
+    rostered = {v["object"] for v in uk_roster.venues(groups)}
+    paged = [c for p in pages for c in p["cinemas"]]
+    found += [f"{c}: on a page but not in roster.json" for c in sorted(set(paged) - rostered)]
+    found += [f"{c}: in roster.json but on no page" for c in sorted(rostered - set(paged))]
+    found += [f"{c}: on more than one page" for c in sorted({c for c in paged if paged.count(c) > 1})]
+    return found
+
+
 def mobile_rows(pages):
     """The apps' fallback rows, in pages.json order (the majors biggest first,
     London leading): a county holding more than one page is the third picker
@@ -155,10 +249,18 @@ def main():
     data = json.loads(PAGES.read_text(encoding="utf-8"))
     town_names = {k: t["name"] for k, t in json.loads(TOWNS.read_text(encoding="utf-8"))["towns"].items()}
     pages, retired = data["pages"], data["retired"]
+    groups = uk_roster.load()
+    found = roster_problems(groups, pages)
+    if found:
+        sys.exit("data/uk/roster.json cannot be generated from:\n  " + "\n  ".join(found))
+    VENUES_OUT.write_text(venues_source(groups), encoding="utf-8")
+    SOURCES_OUT.write_text(sources_source(groups), encoding="utf-8")
     OUT.write_text(scala_source(pages, retired, town_names), encoding="utf-8")
     rows = mobile_rows(pages)
     for path, line in MOBILE:
         path.write_text(splice(path.read_text(encoding="utf-8"), rows, line), encoding="utf-8")
+    print(f"Wrote {VENUES_OUT.relative_to(ROOT)} + {SOURCES_OUT.relative_to(ROOT)}: "
+          f"{len(uk_roster.venues(groups))} venues in {len(groups)} groups")
     print(f"Wrote {OUT.relative_to(ROOT)}: London and {len(pages) - 1} generated pages, {len(retired)} retired slugs")
 
 
