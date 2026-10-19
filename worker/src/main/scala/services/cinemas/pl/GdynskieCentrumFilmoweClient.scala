@@ -80,7 +80,7 @@ object GdynskieCentrumFilmoweClient {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, s.booking, s.room, s.format),
       distinctBy = s => (s.dateTime, s.room)
     ) { (title, group, showtimes) =>

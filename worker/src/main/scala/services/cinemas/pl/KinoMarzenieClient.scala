@@ -91,7 +91,7 @@ class KinoMarzenieClient(
   def fetchChunk(key: String): Seq[CinemaMovie] = {
     val slots = DayChunks.days(key).flatMap(date => parseDay(HttpRead.page(http, eventsUrl(date)), date))
 
-    SlotsToMovies.fold(slots, titleOf = _.title, showtimeOf = _.showtime) { (_, group, showtimes) =>
+    SlotsToMovies.fold(slots, keyOf   = _.title, showtimeOf = _.showtime) { (_, group, showtimes) =>
       val head = group.head
       CinemaMovie(
         movie     = Movie(title = head.title, genres = head.genres),

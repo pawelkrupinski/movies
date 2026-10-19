@@ -1,5 +1,6 @@
 package services.enrichment
 
+import services.enrichment.scraping.JsonScalars
 import java.util.Locale
 
 import play.api.libs.json._
@@ -48,7 +49,7 @@ class CinemetaClient(http: HttpFetch) {
   private def candidate(meta: JsValue): Option[Candidate] =
     for {
       id   <- (meta \ "id").asOpt[String].map(_.trim).filter(_.startsWith("tt"))
-      name <- (meta \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      name <- JsonScalars.text(meta \ "name")
     } yield Candidate(id, name, (meta \ "releaseInfo").asOpt[String].flatMap(firstYear))
 
   private def corroborated(c: Candidate, queryTitle: String, year: Option[Int]): Boolean = {

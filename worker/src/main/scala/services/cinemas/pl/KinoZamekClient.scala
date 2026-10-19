@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 
@@ -111,11 +113,8 @@ class KinoZamekClient(
     // `Reżyseria:` line, so the merge has to UNION the fields and anchor on the
     // page that has them; taking the first entry seen would drop every director
     // the moment the umbrella page happened to be scraped first.
-    films.groupBy(_.movie.title).toSeq.sortBy(_._1).flatMap { case (_, group) =>
-      val showtimes = group.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      val richest   = group.maxBy(_.director.size)
-      if (showtimes.isEmpty) None
-      else Some(richest.copy(showtimes = showtimes, director = group.flatMap(_.director).distinct))
+    SlotsToMovies.foldBlocks(films, _.movie.title, _.showtimes) { (_, group, showtimes) =>
+      Some(group.maxBy(_.director.size).copy(showtimes = showtimes, director = group.flatMap(_.director).distinct))
     }
   }
 }
@@ -191,10 +190,9 @@ object KinoZamekClient {
     // not the film. So headings only name films when they actually vary.
     val isCycle = screenings.flatMap(_.heading).distinct.sizeIs > 1
 
-    screenings
-      .groupBy(screening => if (isCycle) screening.heading.orElse(pageTitle) else pageTitle)
-      .toSeq
-      .collect { case (Some(rawTitle), group) if rawTitle.nonEmpty =>
+    SlotsToMovies.foldSome(screenings, screening => if (isCycle) screening.heading.orElse(pageTitle) else pageTitle,
+      s => Showtime(LocalDateTime.of(s.date, s.time), bookingUrl = None), distinctBy = _.dateTime) {
+      case (Some(rawTitle), group, showtimes) if rawTitle.nonEmpty => Some(
         CinemaMovie(
           movie     = Movie(ScraperParse.sentenceCase(stripStrand(rawTitle))),
           cinema    = cinema,
@@ -205,11 +203,10 @@ object KinoZamekClient {
           director  = group.flatMap(_.director).distinct,
           // The castle sells at the box office and through the portal that went
           // dark, so there is no per-screening booking link to carry.
-          showtimes = group.map(s => Showtime(LocalDateTime.of(s.date, s.time), bookingUrl = None))
-            .distinctBy(_.dateTime).sortBy(_.dateTime)
-        )
-      }
-      .sortBy(_.movie.title)
+          showtimes = showtimes
+        ))
+      case _ => None
+    }
   }
 
   private case class Paragraph(text: String, isHeading: Boolean)

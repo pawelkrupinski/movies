@@ -97,7 +97,7 @@ object KinoAwangarda2Client {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, None),
       distinctBy = _.dateTime
     ) { (title, group, showtimes) =>

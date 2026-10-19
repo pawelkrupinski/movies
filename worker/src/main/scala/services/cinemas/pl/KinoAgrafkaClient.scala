@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -44,15 +46,9 @@ class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends Ci
     val html = HttpRead.page(http, RepertoireUrl)
     val slots = parseDocument(html)
 
-    val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
-    byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.bookingUrl))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
+    SlotsToMovies.fold(slots, s => (s.title, s.filmUrl), s => Showtime(s.dateTime, s.bookingUrl)) { case ((title, filmUrl), group, showtimes) =>
       val meta = group.map(_.meta).find(m => m.directors.nonEmpty || m.year.isDefined).getOrElse(MetaInfo.empty)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+      CinemaMovie(
         movie     = Movie(title, releaseYear = meta.year),
         cinema    = cinema,
         posterUrl = None,
@@ -61,8 +57,8 @@ class KinoAgrafkaClient(http: HttpFetch, override val cinema: Cinema) extends Ci
         cast      = Seq.empty,
         director  = meta.directors,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import java.util.Locale
 
 import tools.{HeliosFetch, HttpFetch, HttpRead}
@@ -224,7 +225,7 @@ class HeliosClient(
                             .flatMap(_.asOpt[String])
                             .filter(_.startsWith("http")),
           slug          = (js \ "slug").asOpt[String].filter(_.nonEmpty),
-          countries     = (js \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          countries     = jsonText(js \ "country")
                             .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
           // Helios ships `genres: [{id, name, description}]` with lowercase
           // Polish names ("science fiction", "dramat"). Title-case at the

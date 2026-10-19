@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.enrichment.scraping.JsonLdBlocks
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 import play.api.libs.json.{JsArray, JsLookupResult, JsObject, JsString, Json}
@@ -30,7 +32,7 @@ object FlicksFilmPage {
   /** What [[parse]] reads off a parsed page — the whole page or its [[slimmed]] parts alike. */
   private[common] def parseDocument(document: Document, slug: String, today: LocalDate): FilmDetail = {
     val movie    = movieBlock(document)
-    def text(field: String): Option[String] = movie.flatMap(m => (m \ field).asOpt[String]).map(_.trim).filter(_.nonEmpty)
+    def text(field: String): Option[String] = movie.flatMap(m => jsonText(m \ field))
     def names(field: String): Seq[String]   = movie.fold(Seq.empty[String])(m => listOf(m \ field)).distinct
     val heroMeta = document.select(".movie-hero-v6__meta > span").asScala.map(_.text.trim).toSeq
     val title    = text("name").orElse(Option(document.selectFirst(".movie-hero-v6__title h1")).map(_.text.trim)).getOrElse("")
@@ -46,7 +48,7 @@ object FlicksFilmPage {
       countries      = text("countryOfOrigin").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty),
       genres         = names("genre"),
       posterUrl      = heroPoster(document).orElse(ScraperParse.ogImage(document).filter(_.contains(PosterPath))),
-      trailerUrl     = movie.flatMap(m => (m \ "trailer" \ "url").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+      trailerUrl     = movie.flatMap(m => jsonText(m \ "trailer" \ "url"))
     )
   }
 
@@ -92,8 +94,8 @@ object FlicksFilmPage {
 
   /** The page's schema.org `Movie` block. A block that is not JSON throws: that is not a page we can read. */
   private def movieBlock(document: Document): Option[JsObject] =
-    document.select("script[type=application/ld+json]").asScala.iterator
-      .map(script => Json.parse(script.data))
+    JsonLdBlocks.scripts(document).iterator
+      .map(Json.parse)
       .collectFirst { case block: JsObject if (block \ "@type").asOpt[String].contains("Movie") => block }
 
   /** A schema.org list field, which may be one string or an array of them. */

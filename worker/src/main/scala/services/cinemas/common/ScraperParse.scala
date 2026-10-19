@@ -3,7 +3,7 @@ package services.cinemas.common
 import java.util.Locale
 
 import org.jsoup.nodes.{Document, Element, TextNode}
-import play.api.libs.json.JsLookupResult
+import services.enrichment.scraping.JsonScalars
 import services.movies.FormatTags
 import tools.Whitespace.collapsedSpaces
 
@@ -358,8 +358,8 @@ private[cinemas] object ScraperParse {
    *  Luc Dardenne"). */
   def commaItems(s: String): Seq[String] = s.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
 
-  /** A JSON feed's string field, trimmed; a missing, non-string or blank one as none. */
-  def jsonText(js: JsLookupResult): Option[String] = js.asOpt[String].map(_.trim).filter(_.nonEmpty)
+  // A JSON feed's string field, trimmed; a missing, non-string or blank one as none (JsonScalars.text).
+  export JsonScalars.text as jsonText
 
   /** The first four-digit year in `s` — a premiere date's ("24 marca 1980"), a credits line's ("…, USA, 2018"). */
   def yearIn(s: String): Option[Int] = FourDigitYear.findFirstIn(s).map(_.toInt)

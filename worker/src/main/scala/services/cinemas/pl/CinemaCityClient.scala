@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -48,8 +50,10 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
    *  + sorting their showtimes — the cross-day fold the old whole-venue scrape did
    *  (deterministic by id; first day's film metadata wins, as before). */
   def reduce(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
-    movies.groupBy(m => m.externalIds.getOrElse("cc", m.movie.title)).toSeq.sortBy(_._1)
-      .map { case (_, group) => group.head.copy(showtimes = group.flatMap(_.showtimes).sortBy(_.dateTime)) }
+    SlotsToMovies.foldBlocks(movies, m => m.externalIds.getOrElse("cc", m.movie.title), _.showtimes,
+      distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.byKey) { (_, group, showtimes) =>
+      Some(group.head.copy(showtimes = showtimes))
+    }
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL (Cinema City's `link`). Goes through the shared
@@ -124,9 +128,9 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
         Try(LocalDateTime.parse((event \ "eventDateTime").as[String])).toOption
           .map(dt => filmId -> Showtime(dt, bookingUrl, room, format))
       }
-    }.toSeq.groupBy(_._1)
+    }.toSeq
 
-    slotsByFilm.toSeq.flatMap { case (filmId, slots) =>
+    SlotsToMovies.foldSome(slotsByFilm, _._1, _._2, distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, _, showtimes) =>
       info.get(filmId).map { fi =>
         CinemaMovie(
           movie       = Movie(CinemaCityClient.cleanTitle(fi.name, titles), fi.runtimeMinutes, fi.releaseYear, rawTitle = Some(fi.name)),
@@ -136,7 +140,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
           synopsis    = None,
           cast        = Seq.empty,
           director    = Seq.empty,
-          showtimes   = slots.map(_._2).sortBy(_.dateTime),
+          showtimes   = showtimes,
           externalIds = Map("cc" -> filmId),
           trailerUrl  = None)
       }

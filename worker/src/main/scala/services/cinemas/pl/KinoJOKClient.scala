@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -78,7 +79,7 @@ object KinoJOKClient {
   }
 
   private def parseEvent(ev: JsObject): Seq[RawSlot] = {
-    val title = (ev \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+    val title = jsonText(ev \ "title")
     val url   = (ev \ "url").asOpt[String].filter(_.nonEmpty)
     val range = for {
       startStr <- (ev \ "start_date").asOpt[String]

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -87,21 +89,9 @@ object KinoPatriaClient {
     // Merge: a title present in both sections gets its showtimes combined;
     // the daily section carries absolute dates so is preferred for overlap
     // resolution — we use distinctBy(dateTime) after merging.
-    val byTitle = (dailyMovies ++ weeklyMovies)
-      .groupBy(_.movie.title)
-      .values
-      .toSeq
-      .map { group =>
-        val head = group.head
-        val merged = group.flatMap(_.showtimes)
-          .distinctBy(s => s.dateTime)
-          .sortBy(_.dateTime)
-        head.copy(showtimes = merged)
-      }
-      .filter(_.showtimes.nonEmpty)
-      .sortBy(_.movie.title)
-
-    byTitle
+    SlotsToMovies.foldBlocks(dailyMovies ++ weeklyMovies, _.movie.title, _.showtimes, distinctBy = _.dateTime) { (_, group, showtimes) =>
+      Some(group.head.copy(showtimes = showtimes))
+    }
   }
 
   /** A film as its item shows it: the title and showtimes its section gives, and the credits and running time every

@@ -2,18 +2,21 @@ package services.cinemas.common
 
 import models._
 
-/** The "fold raw screening slots into [[CinemaMovie]]s" shape every hand-rolled
-  * cinema scraper repeats: group the per-screening slots by their (already
-  * cleaned) title, turn each group's slots into deduplicated, time-ordered
-  * [[Showtime]]s, drop a film whose slots all collapsed to nothing, build one
-  * [[CinemaMovie]] per surviving title, and return them title-sorted.
+/** The "fold raw screening slots into [[CinemaMovie]]s" shape every cinema
+  * scraper repeats: group the per-screening slots by one film's key (its cleaned
+  * title, or a feed's film id / slug), turn each group's slots into
+  * deduplicated, time-ordered [[Showtime]]s, drop a film whose slots all
+  * collapsed to nothing, build one [[CinemaMovie]] per surviving key, and order
+  * the result (title-sorted unless the scraper asks otherwise).
   *
-  * Only the slot → [[Showtime]] mapping, the dedup key and the per-film
-  * [[CinemaMovie]] assembly differ between scrapers; this captures the invariant
-  * skeleton (group → map → distinct → sort → empty-drop → outer sort) so a fix
-  * to the merge/dedup/ordering rule lands in every scraper at once.
+  * Only the grouping key, the slot → [[Showtime]] mapping, the dedup key, the
+  * per-film [[CinemaMovie]] assembly and the output order differ between
+  * scrapers; this captures the invariant skeleton (group → map → distinct →
+  * sort → empty-drop → order) so a fix to the merge/dedup/ordering rule lands
+  * in every scraper at once.
   *
-  * @tparam S the scraper's own raw-slot type (one per screening). */
+  * @tparam S the scraper's own raw-slot type (one per screening).
+  * @tparam K the grouping key: one film per distinct key. */
 private[cinemas] object SlotsToMovies {
 
   /** The dedup key most scrapers use: a screening is the same showing iff it
@@ -24,32 +27,82 @@ private[cinemas] object SlotsToMovies {
     * (an OmU and a dubbed print at the same time): time, booking link AND format. */
   def byTimeBookingAndFormat(showtime: Showtime): Any = (showtime.dateTime, showtime.bookingUrl, showtime.format)
 
+  /** Dedup on the whole showtime: two are one only when every field agrees. */
+  def byWholeShowtime(showtime: Showtime): Any = showtime
+
+  /** No dedup: every slot's showtime is kept, a repeated one too — each gets a
+    * key of its own that equals no other. */
+  val keepEvery: Showtime => Any = _ => new Object
+
+  /** How the folded films are ordered: each film with the key it was grouped by. */
+  final class MovieOrder[K] private[SlotsToMovies] (private[SlotsToMovies] val arrange: Seq[(K, CinemaMovie)] => Seq[(K, CinemaMovie)])
+
+  object MovieOrder {
+    /** The default: by the film's title. */
+    def byTitle[K]: MovieOrder[K] = new MovieOrder(_.sortBy(_._2.movie.title))
+
+    /** The films in the order `groupBy` yields their keys — for a scraper whose
+      * output was never sorted, so that moving it onto this fold moves nothing. */
+    def asGrouped[K]: MovieOrder[K] = new MovieOrder(identity)
+
+    /** By the grouping key (a feed's film id, a film page URL). */
+    def byKey[K](using ordering: Ordering[K]): MovieOrder[K] = new MovieOrder(_.sortBy(_._1))
+  }
+
   /**
-   * Fold `slots` into title-sorted [[CinemaMovie]]s.
+   * Fold `slots` into [[CinemaMovie]]s, one per distinct `keyOf`.
    *
    * @param slots       the raw per-screening slots (titles already normalised:
-   *                    grouping is on the verbatim `titleOf` value).
-   * @param titleOf     the group key — each slot's (cleaned) film title.
+   *                    grouping is on the verbatim `keyOf` value).
+   * @param keyOf       the group key — each slot's (cleaned) film title, or the
+   *                    feed's own film id when the feed has one.
    * @param showtimeOf  build the [[Showtime]] for one slot.
    * @param distinctBy  the dedup key for showtimes within a film (default
    *                    `(dateTime, bookingUrl)`); a film's showtimes are deduped
-   *                    by it then sorted by time.
-   * @param buildMovie  assemble one [[CinemaMovie]] from a film's title, its
+   *                    by it (first kept) then sorted by time.
+   * @param order       the output order (default [[MovieOrder.byTitle]]).
+   * @param buildMovie  assemble one [[CinemaMovie]] from a film's key, its
    *                    slots (in encounter order) and its prepared showtimes.
    *                    Called only for films with at least one showtime.
    */
-  def fold[S](
+  def fold[S, K](
     slots:      Seq[S],
-    titleOf:    S => String,
+    keyOf:      S => K,
     showtimeOf: S => Showtime,
-    distinctBy: Showtime => Any = byTimeAndBooking
-  )(buildMovie: (String, Seq[S], Seq[Showtime]) => CinemaMovie): Seq[CinemaMovie] =
-    slots.groupBy(titleOf).toSeq.flatMap { case (title, group) =>
+    distinctBy: Showtime => Any = byTimeAndBooking,
+    order:      MovieOrder[K] = MovieOrder.byTitle[K]
+  )(buildMovie: (K, Seq[S], Seq[Showtime]) => CinemaMovie): Seq[CinemaMovie] =
+    foldSome(slots, keyOf, showtimeOf, distinctBy, order)((key, group, showtimes) => Some(buildMovie(key, group, showtimes)))
+
+  /** [[fold]] for a scraper that can still refuse a film once its slots are in
+    * hand (its detail record is missing, it has no title): `buildMovie` returns
+    * `None` for a film to drop. */
+  def foldSome[S, K](
+    slots:      Seq[S],
+    keyOf:      S => K,
+    showtimeOf: S => Showtime,
+    distinctBy: Showtime => Any = byTimeAndBooking,
+    order:      MovieOrder[K] = MovieOrder.byTitle[K]
+  )(buildMovie: (K, Seq[S], Seq[Showtime]) => Option[CinemaMovie]): Seq[CinemaMovie] =
+    foldBlocks(slots, keyOf, (slot: S) => Seq(showtimeOf(slot)), distinctBy, order)(buildMovie)
+
+  /** [[foldSome]] for a scraper whose unit carries any number of showtimes — a
+    * film block with its slots, a detail page's schedule, one day's
+    * [[CinemaMovie]] being merged across days: a film's showtimes are every
+    * unit's, deduped by `distinctBy` and time-sorted as [[fold]]'s are. */
+  def foldBlocks[S, K](
+    blocks:      Seq[S],
+    keyOf:       S => K,
+    showtimesOf: S => Seq[Showtime],
+    distinctBy:  Showtime => Any = byTimeAndBooking,
+    order:       MovieOrder[K] = MovieOrder.byTitle[K]
+  )(buildMovie: (K, Seq[S], Seq[Showtime]) => Option[CinemaMovie]): Seq[CinemaMovie] =
+    order.arrange(blocks.groupBy(keyOf).toSeq.flatMap { case (key, group) =>
       val showtimes = group
-        .map(showtimeOf)
+        .flatMap(showtimesOf)
         .distinctBy(distinctBy)
         .sortBy(_.dateTime)
       if (showtimes.isEmpty) None
-      else Some(buildMovie(title, group, showtimes))
-    }.sortBy(_.movie.title)
+      else buildMovie(key, group, showtimes).map(key -> _)
+    }).map(_._2)
 }

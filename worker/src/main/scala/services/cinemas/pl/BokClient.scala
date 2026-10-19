@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.{ScraperParse, ListingPages}
@@ -56,18 +58,21 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     val showings: Seq[DayShowing] =
       days.map(_._1).zip(dayHtml).flatMap { case (date, html) => showingsOn(html, date) }
 
-    // One CinemaMovie per slug, showtimes aggregated across the week.
-    val bySlug = showings.groupBy(_.slug)
-    val slugs  = bySlug.keys.toSeq.distinct
+    val slugs = showings.map(_.slug).distinct
 
     val detailPages = ListingPages.readMore("bok-films", slugs, s => s"$BaseUrl/$prefix/$s", timeout = 1.minute) { url =>
       Option(HttpRead.page(http, url))
     }.toMap
 
-    slugs.flatMap { slug =>
-      val group = bySlug(slug)
-      val detail = detailPages.getOrElse(slug, None).map(Jsoup.parse)
-      buildMovie(slug, group, detail)
+    val details = slugs.map(slug => slug -> detailPages.getOrElse(slug, None).map(Jsoup.parse)).toMap
+    // Biletyna booking links live on the detail page's `movieshow-list` blocks,
+    // keyed by their date+time — match each day-page screening to its link.
+    val bookings = details.map { case (slug, detail) => slug -> detail.toSeq.flatMap(detailBookings).toMap }
+
+    // One CinemaMovie per slug, showtimes aggregated across the week.
+    SlotsToMovies.foldBlocks(showings, _.slug, s => s.dateTimes.map(dt => Showtime(dt, bookings(s.slug).get(dt))),
+      distinctBy = _.dateTime, order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+      buildMovie(slug, group, details(slug), showtimes)
     }
   }
 
@@ -107,16 +112,12 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
     }
   }
 
-  private def buildMovie(slug: String, showings: Seq[DayShowing], detail: Option[Document]): Option[CinemaMovie] = {
+  private def buildMovie(slug: String, showings: Seq[DayShowing], detail: Option[Document],
+                         showtimes: Seq[Showtime]): Option[CinemaMovie] = {
     val title    = showings.map(_.title).headOption.filter(_.nonEmpty)
     val rawTitle = showings.map(_.rawTitle).headOption
-    // Biletyna booking links live on the detail page's `movieshow-list` blocks,
-    // keyed by their date+time — match each day-page screening to its link.
-    val bookingByTime: Map[LocalDateTime, String] = detail.toSeq.flatMap(detailBookings).toMap
-    val showtimes = showings.flatMap(_.dateTimes).distinct.sorted
-      .map(dt => Showtime(dt, bookingByTime.get(dt)))
 
-    title.filter(_ => showtimes.nonEmpty).map { t =>
+    title.map { t =>
       val director  = detail.flatMap(d => metaRow(d, "reżyseria")).toSeq.flatMap(splitCsv)
       val countries = detail.flatMap(d => metaRow(d, "produkcja")).toSeq.flatMap(splitCsv)
       val cast      = detail.flatMap(d => metaRow(d, "obsada")).toSeq.flatMap(splitCsv)

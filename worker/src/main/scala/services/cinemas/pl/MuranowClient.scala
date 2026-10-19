@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -65,13 +67,9 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
       }
     }
 
-    val bySlug = slots.groupBy(_.slug)
-    bySlug.toSeq.flatMap { case (slug, group) =>
-      val primary   = group.head
-      val showtimes = group.distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-                        .map(s => Showtime(s.dateTime, s.bookingUrl, None, Nil))
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.bookingUrl, None, Nil), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
         movie      = Movie(title = primary.title),
         cinema     = cinema,
         posterUrl  = group.flatMap(_.poster).headOption,
@@ -81,7 +79,7 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
         director   = Seq.empty,
         showtimes  = showtimes,
         trailerUrl = None
-      ))
+      )
     }
   }
 

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
@@ -46,12 +48,10 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
     val slots = ListingPages.readMore("kino-kultura-days", dates, (d: String) => s"$PostersUrl?ajax=1&u_time=$nonce&rep_date=$d")(HttpRead.page(http, _))
       .flatMap { case (_, page) => parseDay(page) }
 
-    slots.groupBy(_.filmId).toSeq.flatMap { case (_, group) =>
-      val primary    = group.head
-      val showtimes  = group.distinctBy(s => (s.dateTime, s.room)).sortBy(_.dateTime)
-                         .map(s => Showtime(s.dateTime, Some(s.booking), s.room, Nil))
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.filmId, s => Showtime(s.dateTime, Some(s.booking), s.room, Nil),
+      distinctBy = s => (s.dateTime, s.room), order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
         movie     = Movie(title = primary.title, runtimeMinutes = None, releaseYear = None),
         cinema    = cinema,
         posterUrl = primary.poster,
@@ -60,7 +60,7 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
+      )
     }
   }
 

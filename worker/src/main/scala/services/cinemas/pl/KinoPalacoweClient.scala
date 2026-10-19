@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import play.api.libs.json._
@@ -130,12 +132,9 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
   def fetch(): Seq[CinemaMovie] = parseBare(fetchAllEntries())
 
   private def parseBare(entries: Seq[ScreeningEntry]): Seq[CinemaMovie] =
-    entries
-      .groupBy(_.movieTitle)
-      .toSeq
-      .map { case (title, group) =>
-        val sorted = group.sortBy(_.dateTime)
-        val first  = sorted.head
+    SlotsToMovies.fold(entries, _.movieTitle, entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room),
+      distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (title, group, showtimes) =>
+        val first = group.sortBy(_.dateTime).head
         CinemaMovie(
           movie     = Movie(title = title, runtimeMinutes = first.runtimeMinutes, rawTitle = Some(first.rawTitle)),
           cinema    = KinoPalacowe,
@@ -144,10 +143,10 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
           synopsis   = first.synopsis,
           cast       = Seq.empty,
           director   = Seq.empty,
-          showtimes  = sorted.map(entry => Showtime(entry.dateTime, entry.bookingUrl, entry.room)),
+          showtimes  = showtimes,
           trailerUrl = None
         )
-      }
+    }
 
   override val detailGroup: String = "kino-palacowe"
 

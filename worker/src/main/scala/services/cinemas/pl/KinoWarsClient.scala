@@ -117,7 +117,7 @@ object KinoWarsClient {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _._1.title,
+      keyOf      = _._1.title,
       showtimeOf = { case (post, dateTime) => Showtime(dateTime, post.booking, None, post.format) }
     ) { (title, group, showtimes) =>
       val post = group.head._1

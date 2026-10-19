@@ -1,5 +1,8 @@
 package services.cinemas.us
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
@@ -94,10 +97,10 @@ object RegalParser {
 
     val films = mine.flatMap(show => arrayAt(show, "Film").getOrElse(Nil))
 
-    films.flatMap { film =>
+    val rows = films.flatMap { film =>
       for {
-        title <- (film \ "Title").asOpt[String].map(_.trim).filter(_.nonEmpty)
-        code  <- (film \ "MasterMovieCode").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        title <- jsonText(film \ "Title")
+        code  <- jsonText(film \ "MasterMovieCode")
       } yield {
         val showtimes = arrayAt(film, "Performances").getOrElse(Nil).flatMap(performance)
         (code, title, showtimes)
@@ -105,14 +108,9 @@ object RegalParser {
     }
       // One film can appear more than once across a theatre's rows (a re-issue
       // sharing a code, a batch answering twice); union rather than pick one.
-      .groupBy { case (code, _, _) => code }
-      .toSeq.sortBy(_._1)
-      .flatMap { case (code, group) =>
-        val showtimes = group.flatMap(_._3)
-          .distinctBy(s => (s.dateTime, s.room, s.format))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None
-        else Some(CinemaMovie(
+    SlotsToMovies.foldBlocks(rows, (row: (String, String, Seq[Showtime])) => row._1, _._3,
+      distinctBy = s => (s.dateTime, s.room, s.format), order = SlotsToMovies.MovieOrder.byKey) { (code, group, showtimes) =>
+        Some(CinemaMovie(
           movie     = Movie(title = group.head._2),
           cinema    = cinema,
           posterUrl = None,
@@ -131,7 +129,7 @@ object RegalParser {
           // The chain's own film id, kept so a later pass can join to it.
           externalIds = Map("regal" -> code)
         ))
-      }
+    }
   }
 
   /** One `Performances[]` entry → a [[Showtime]]. The auditorium becomes the
@@ -189,7 +187,7 @@ object RegalParser {
       case other           => other
     }
     def text(field: String): Option[String] =
-      (root \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+      jsonText(root \ field)
     def list(field: String): Seq[String] =
       (root \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty)
 

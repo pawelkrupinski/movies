@@ -39,7 +39,7 @@ class KinoDianaClient(http: HttpFetch, override val cinema: Cinema = KinoDiana)
   def fetch(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
       parseFeed(HttpRead.page(http, FeedUrl)),
-      titleOf    = _._1,
+      keyOf      = _._1,
       showtimeOf = { case (_, dt, booking) => Showtime(dt, booking) }
     ) { (title, _, showtimes) =>
       CinemaMovie(

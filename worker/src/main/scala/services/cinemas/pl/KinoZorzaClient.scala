@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
@@ -62,27 +64,20 @@ class KinoZorzaClient(
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
 
-    val byFilmUrl = slots.groupBy(_.filmUrl)
-    byFilmUrl.toSeq.flatMap { case (_, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, bookingUrl = None, room = Some(s.hall)))
-        .distinctBy(s => (s.dateTime, s.room))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val head = group.head
-        Some(CinemaMovie(
-          movie     = Movie(head.title),
-          cinema    = cinema,
-          posterUrl = None,
-          filmUrl   = Some(BaseUrl + head.filmUrl),
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.filmUrl, s => Showtime(s.dateTime, bookingUrl = None, room = Some(s.hall)),
+      distinctBy = s => (s.dateTime, s.room)) { (_, group, showtimes) =>
+      val head = group.head
+      CinemaMovie(
+        movie     = Movie(head.title),
+        cinema    = cinema,
+        posterUrl = None,
+        filmUrl   = Some(BaseUrl + head.filmUrl),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
   }
 }
 

@@ -96,7 +96,7 @@ object VisualTicketClient {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _._1,
+      keyOf      = _._1,
       showtimeOf = s => Showtime(s._2, s._3),
       distinctBy = s => (s.dateTime, s.bookingUrl)
     ) { (title, _, showtimes) =>

@@ -1,5 +1,8 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
+
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
@@ -63,7 +66,9 @@ class Cinema1Client(
       Option(HttpRead.page(http, movieUrl(id))).flatMap(parseMovie)
     }.toMap
 
-    screenings.groupBy(_.movieId).toSeq.flatMap { case (movieId, slots) =>
+    SlotsToMovies.foldSome(screenings, _.movieId,
+      s => Showtime(s.dateTime, Some(bookingUrl(cinemaId, s.screeningId)), roomByScreen.get(s.screenId), s.format),
+      distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (movieId, _, showtimes) =>
       movieById.getOrElse(movieId, None).map { m =>
         CinemaMovie(
           movie     = Movie(m.title, m.runtimeMinutes, m.releaseYear, countries = m.countries, genres = m.genres),
@@ -73,8 +78,7 @@ class Cinema1Client(
           synopsis  = m.synopsis,
           cast      = m.cast,
           director  = m.director,
-          showtimes = slots.map(s => Showtime(s.dateTime, Some(bookingUrl(cinemaId, s.screeningId)), roomByScreen.get(s.screenId), s.format))
-            .sortBy(_.dateTime),
+          showtimes = showtimes,
           ageRating = m.ageRating
         )
       }
@@ -145,11 +149,11 @@ object Cinema1Client {
    *  usable title (a malformed/blank response). */
   private[cinemas] def parseMovie(raw: String): Option[MovieInfo] = Try {
     val j     = Json.parse(raw)
-    val title = (j \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+    val title = jsonText(j \ "title")
     title.map { t =>
       MovieInfo(
         title          = t,
-        synopsis       = (j \ "description").asOpt[String].map(_.trim).filter(_.nonEmpty),
+        synopsis       = jsonText(j \ "description"),
         cast           = splitNames((j \ "filmCast").asOpt[String]),
         director       = splitNames((j \ "director").asOpt[String]),
         runtimeMinutes = (j \ "duration").asOpt[Int].filter(_ > 0),

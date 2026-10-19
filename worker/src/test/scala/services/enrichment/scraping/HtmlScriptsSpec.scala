@@ -48,7 +48,7 @@ class HtmlScriptsSpec extends AnyFlatSpec with Matchers {
   it should "read a page whose scripts never close in one pass, not one pass per opening" in {
     val html    = "<script>x " * 30000
     val started = System.nanoTime()
-    JsonLdAggregateRating.scripts(html) shouldBe empty
+    JsonLdBlocks.scripts(html) shouldBe empty
     RottenTomatoesScorecard.criticsScore(html) shouldBe None
     (System.nanoTime() - started) / 1000000 should be < 1000L
   }

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -52,14 +54,8 @@ class KinoPodBaranamiClient(
     // "(Napisy PL)"/"(Dubbing PL)" tag. The shared FormatTags at ingest peels that
     // tag (into each showing's format badge) and folds the editions onto one film
     // — no per-client stripping/merging here.
-    val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
-    byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.bookingUrl))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, s => (s.title, s.filmUrl), s => Showtime(s.dateTime, s.bookingUrl)) { case ((title, filmUrl), group, showtimes) =>
+      CinemaMovie(
         movie     = Movie(title, originalTitle = group.flatMap(_.originalTitle).headOption),
         cinema    = cinema,
         posterUrl = None,
@@ -68,8 +64,8 @@ class KinoPodBaranamiClient(
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   // The listing already carries an originalTitle hint (the anchor `title=` attr)

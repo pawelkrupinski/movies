@@ -148,7 +148,7 @@ object Bilety24OrganizerClient {
 
     SlotsToMovies.fold(
       slots.filter(_.title.nonEmpty),
-      titleOf    = s => titles.cinemaClean(cinema.slug, s.title),
+      keyOf      = s => titles.cinemaClean(cinema.slug, s.title),
       showtimeOf = s => Showtime(s.dateTime, s.eventUrl, format = s.format)
     ) { (title, group, showtimes) =>
       CinemaMovie(

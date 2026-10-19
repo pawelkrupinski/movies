@@ -1,5 +1,8 @@
 package services.cinemas.common
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -134,15 +137,8 @@ class WebediaShowtimesClient(
    *  title); the Webedia id (`externalIds("webedia")`) is the stable key. A film
    *  with no showtimes on any day drops out. */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    chunks.toSeq.sortBy(_._1).flatMap(_._2)
-      .groupBy(m => m.externalIds.getOrElse("webedia", m.movie.title))
-      .toSeq.sortBy(_._1)
-      .flatMap { case (_, group) =>
-        val showtimes = group.flatMap(_.showtimes)
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
-      }
+    SlotsToMovies.foldBlocks(chunks.toSeq.sortBy(_._1).flatMap(_._2), m => m.externalIds.getOrElse("webedia", m.movie.title),
+      _.showtimes, order = SlotsToMovies.MovieOrder.byKey) { (_, group, showtimes) => Some(group.head.copy(showtimes = showtimes)) }
 
   /** Build the venue-agnostic film row from one parsed Webedia result. The
    *  showtimes to attach are supplied by the caller — one day's in `fetchChunk`,
@@ -257,17 +253,17 @@ object WebediaShowtimesClient {
     val movie = js \ "movie"
     for {
       id    <- (movie \ "internalId").asOpt[Long]
-      title <- (movie \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      title <- jsonText(movie \ "title")
     } yield RawWebediaFilm(
       internalId     = id,
       title          = title,
-      originalTitle  = (movie \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      originalTitle  = jsonText(movie \ "originalTitle"),
       year           = (movie \ "data" \ "productionYear").asOpt[Int],
       runtimeMinutes = (movie \ "runtime").asOpt[String].flatMap(parseRuntime(_, market)),
       genres         = (movie \ "genres").asOpt[Seq[JsValue]].getOrElse(Nil)
-        .flatMap(g => (g \ "translate").asOpt[String]).map(_.trim).filter(_.nonEmpty),
+        .flatMap(g => jsonText(g \ "translate")),
       director       = parseDirectors(movie \ "credits"),
-      posterUrl      = (movie \ "poster" \ "url").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      posterUrl      = jsonText(movie \ "poster" \ "url"),
       // `synopsisFull` is HTML (`<p class="bo-p">…</p>` per paragraph), not prose —
       // flatten it, keeping the paragraph breaks, or the tags render as visible text.
       synopsis       = (movie \ "synopsisFull").asOpt[String]

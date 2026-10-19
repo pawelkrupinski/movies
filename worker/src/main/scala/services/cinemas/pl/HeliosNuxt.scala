@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import models.{Cinema, CinemaMovie, Helios, HeliosStarachowice, HeliosKrosno, HeliosTczew, HeliosZory, HeliosLubin, HeliosOstrowWlkp, HeliosKedzierzynKozle, HeliosWolomin, HeliosLegionowo, HeliosPabianice, HeliosGrudziadz, HeliosPiotrkow, HeliosBelchatow, HeliosTomaszow, HeliosSiedlce, HeliosPila, HeliosGniezno, HeliosStalowaWola, HeliosLomza, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBielskoBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosDabrowaGornicza, HeliosForum, HeliosGorzow, HeliosJeleniaGora, HeliosJurowiecka, HeliosKalisz, HeliosKatowice, HeliosKielce, HeliosKonin, HeliosKoszalin, HeliosLegnica, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosNowySacz, HeliosOlsztyn, HeliosOpoleKarolinka, HeliosOpoleSolaris, HeliosOutletPark, HeliosPlock, HeliosPrzemysl, HeliosRadom, HeliosRiviera, HeliosRzeszow, HeliosSosnowiec, HeliosSzczecin, Movie, Showtime}
 import play.api.libs.json._
 
@@ -142,20 +144,26 @@ object HeliosNuxt {
       parsed.movies.get(movieId).map(movie => movie -> slots)
     }
 
-    nuxtRows
-      .groupBy { case (m, _) => cleanTitle(m.title, titles) }
-      .toSeq
-      .map { case (title, rows) =>
+    def showtimeOf(slot: (LocalDateTime, String, List[String])) = slot match {
+      case (dateTime, screeningId, format) =>
+        Showtime(
+          dateTime   = dateTime,
+          bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=${config.sourceId}").filter(_ => screeningId.nonEmpty),
+          room       = None,
+          format     = format
+        )
+    }
+    SlotsToMovies.foldBlocks(nuxtRows, { case (m, _) => cleanTitle(m.title, titles) }, _._2.map(showtimeOf),
+      distinctBy = SlotsToMovies.byWholeShowtime, order = SlotsToMovies.MovieOrder.asGrouped) { (title, rows, showtimes) =>
         val movies = rows.map(_._1)
         val movie  = movies.find(_.runtimeMinutes.nonEmpty).getOrElse(movies.head)
-        val slots  = rows.flatMap(_._2).distinct.sortBy(_._1)
         // When both a regular film and an event share the same cleaned title (e.g. "Diabeł" + "Diabeł - KNT"),
         // prefer the /filmy/ URL — it points to the canonical movie page rather than a specific event.
         val urls   = movies.flatMap(_.filmUrl)
         // Keep the raw titleOriginal (e.g. "The Pianist (re-release)") as a TMDB
         // resolution hint — downstream de-decoration strips the suffix itself.
         val originalTitle = movies.flatMap(_.originalTitle).map(_.trim).find(_.nonEmpty)
-        CinemaMovie(
+        Some(CinemaMovie(
           movie = Movie(title = title, runtimeMinutes = movie.runtimeMinutes, releaseYear = None,
             rawTitle = movies.map(_.title).headOption, originalTitle = originalTitle),
           cinema    = config.cinema,
@@ -164,17 +172,9 @@ object HeliosNuxt {
           synopsis  = None,
           cast      = Seq.empty,
           director  = Seq.empty,
-          showtimes = slots.map { case (dateTime, screeningId, format) =>
-            Showtime(
-              dateTime   = dateTime,
-              bookingUrl = Some(s"$BookingBase/$screeningId?cinemaId=${config.sourceId}").filter(_ => screeningId.nonEmpty),
-              room       = None,
-              format     = format
-            )
-          }.distinct
-        )
-      }
-      .filter(_.showtimes.nonEmpty)
+          showtimes = showtimes
+        ))
+    }
   }
 
   // ── NUXT IIFE parser ──────────────────────────────────────────────────────

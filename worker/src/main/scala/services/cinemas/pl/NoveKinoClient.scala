@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -49,13 +51,10 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
     // The same film is listed once per presentation variant ("- napisy" /
     // "- dubbing"); group by the cleaned title so it's one row, the variant
     // captured as the showtime format.
-    slots.groupBy(_.title).toSeq.flatMap { case (_, group) =>
-      val primary    = group.head
-      val filmId     = primary.filmId
-      val showtimes  = group.map(s => Showtime(s.dateTime, s.booking, None, s.format))
-                         .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format), order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, showtimes) =>
+      val primary = group.head
+      val filmId  = primary.filmId
+      CinemaMovie(
         movie     = Movie(
           title     = primary.title,
           countries = primary.countries,
@@ -69,7 +68,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
         director  = Seq.empty,
         showtimes = showtimes,
         trailerUrl = None
-      ))
+      )
     }
   }
 

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -53,27 +55,19 @@ class OkfIluzjaClient(
 
     // Group by filmUrl (the per-film page slug) so the same title on multiple
     // days collapses into one CinemaMovie with all its showtimes.
-    val byFilmUrl = slots.groupBy(_.filmUrl)
-    byFilmUrl.toSeq.flatMap { case (_, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, bookingUrl = None))
-        .distinctBy(_.dateTime)
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val head = group.head
-        Some(CinemaMovie(
-          movie     = Movie(head.title),
-          cinema    = cinema,
-          posterUrl = Some(head.posterUrl).filter(_.nonEmpty),
-          filmUrl   = Some(head.filmUrl),
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.filmUrl, s => Showtime(s.dateTime, bookingUrl = None), distinctBy = _.dateTime) { (_, group, showtimes) =>
+      val head = group.head
+      CinemaMovie(
+        movie     = Movie(head.title),
+        cinema    = cinema,
+        posterUrl = Some(head.posterUrl).filter(_.nonEmpty),
+        filmUrl   = Some(head.filmUrl),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
   }
 }
 

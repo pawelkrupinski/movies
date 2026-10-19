@@ -1,5 +1,6 @@
 package services.cinemas.uk
 
+import services.cinemas.common.ScraperParse.jsonText
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -120,7 +121,7 @@ object SavoyClient {
     } yield Slot(event, title, Showtime(
       dateTime   = when,
       bookingUrl = (perf \ "URL").asOpt[String].filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else s"$dllBase$u"),
-      room       = (perf \ "AuditoriumName").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      room       = jsonText(perf \ "AuditoriumName"),
       format     = if ((perf \ "SU").asOpt[String].contains("Y")) List("SUB") else Nil
     ))
 

@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.ScraperParse
 import services.movies.TitleNormalizer
 import models._
@@ -98,7 +99,7 @@ object SystemBiletowyClient {
                               countries: Seq[String], runtime: Option[Int])
 
   private def identity(event: JsLookupResult, title: String): Identity = {
-    def text(field: String) = (event \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+    def text(field: String) = jsonText(event \ field)
     val director = text("director").map(names => names.split("[,;]").iterator.map(_.trim).filter(_.nonEmpty).toSeq)
       .getOrElse((event \ "description").asOpt[String].map(parseDirector).getOrElse(Seq.empty))
     Identity(

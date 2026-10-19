@@ -1,5 +1,8 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
+
 import models._
 import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
@@ -111,18 +114,14 @@ class FilmwebShowtimesClient(
     ListingPages.reportFailed(infoReads.filterNot(read => titled(read._1)).map(_._2))
     val infos = infoReads.flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
 
-    seances.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
+    SlotsToMovies.foldBlocks(seances, _.filmId, _.showtimes, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, group, showtimes) =>
       val info = infos.get(filmId).flatten
       val title = info.flatMap(_.title).map(_.trim).filter(_.nonEmpty)
         .orElse(group.flatMap(_.fallbackTitle).headOption)
       title match {
         case None => None
         case Some(t) =>
-          val showtimes = group.flatMap(_.showtimes)
-            .distinctBy(s => (s.dateTime, s.bookingUrl))
-            .sortBy(_.dateTime)
-          if (showtimes.isEmpty) None
-          else Some(CinemaMovie(
+          Some(CinemaMovie(
             movie       = Movie(
               title         = t,
               releaseYear   = info.flatMap(_.year),
@@ -153,7 +152,7 @@ class FilmwebShowtimesClient(
       (js \ "film").asOpt[Long].map { filmId =>
         val format        = formatTokens(js)
         val orderLinks    = (js \ "orderLinks").asOpt[Map[String, String]].getOrElse(Map.empty)
-        val fallbackTitle = (js \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        val fallbackTitle = jsonText(js \ "title")
         val showtimes = (js \ "hours").asOpt[String].getOrElse("")
           .split("\\s+").iterator.map(_.trim).filter(_.nonEmpty).flatMap { tok =>
             hourToTime(tok).map(time => Showtime(date.atTime(time), orderLinks.get(tok), None, format))
@@ -176,7 +175,7 @@ class FilmwebShowtimesClient(
     Option.when(json.trim.nonEmpty)(Json.parse(json)).map { j =>
       FilmInfo(
         title         = (j \ "title").asOpt[String],
-        originalTitle = (j \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),
+        originalTitle = jsonText(j \ "originalTitle"),
         year          = (j \ "year").asOpt[Int],
         posterUrl     = (j \ "posterPath").asOpt[String].filter(_.nonEmpty).map(posterUrlFor)
       )
@@ -196,7 +195,7 @@ object FilmwebShowtimesClient extends play.api.Logging {
   final case class CinemaInfo(name: String, city: String, street: Option[String], location: Option[GeoPoint])
   def parseCinemaInfo(body: String): Option[CinemaInfo] =
     Try(Json.parse(body)).toOption.flatMap { js =>
-      def field(key: String) = (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
+      def field(key: String) = jsonText(js \ key)
       val location = for { lat <- (js \ "lat").asOpt[Double]; lon <- (js \ "lon").asOpt[Double] } yield GeoPoint(lat, lon)
       for { name <- field("name"); city <- field("city") } yield CinemaInfo(name, city, field("street"), location)
     }

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import tools.HttpRead
 
 import services.cinemas.common.ScraperParse
@@ -51,9 +53,8 @@ class KinoForumClient(
       .flatMap(parseRow)
       .filter(!_.dateTime.toLocalDate.isBefore(today))
 
-    slots.groupBy(_.title).toSeq.map { case (title, group) =>
-      val sorted = group.sortBy(_.dateTime)
-      val first  = sorted.head
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+      val first = group.sortBy(_.dateTime).head
       CinemaMovie(
         movie     = Movie(title, runtimeMinutes = first.runtimeMinutes, countries = first.countries),
         cinema    = cinema,
@@ -62,9 +63,9 @@ class KinoForumClient(
         synopsis  = None,
         cast      = Seq.empty,
         director  = Seq.empty,
-        showtimes = sorted.map(s => Showtime(s.dateTime, s.booking)).distinctBy(s => (s.dateTime, s.bookingUrl))
+        showtimes = showtimes
       )
-    }.sortBy(_.movie.title)
+    }
   }
 }
 

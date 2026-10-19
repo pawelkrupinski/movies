@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -45,13 +47,10 @@ class AmondoClient(http: HttpFetch
       pane.select("div.movie-tabs").asScala.toSeq.flatMap(block => blockSlots(block, date))
     }
 
-    val bySlug = slots.groupBy(_.slug)
-    bySlug.toSeq.flatMap { case (slug, group) =>
-      val primary   = group.head
-      val showtimes = group.distinctBy(s => (s.dateTime, s.room)).sortBy(_.dateTime)
-                        .map(s => Showtime(s.dateTime, s.booking, s.room, Nil))
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking, s.room, Nil),
+      distinctBy = s => (s.dateTime, s.room), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
         movie     = Movie(title = primary.title, genres = primary.genres),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
@@ -60,7 +59,7 @@ class AmondoClient(http: HttpFetch
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
+      )
     }
   }
 

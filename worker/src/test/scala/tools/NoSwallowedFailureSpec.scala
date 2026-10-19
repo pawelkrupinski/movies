@@ -269,18 +269,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/cinemas/es/OcineParser.scala", "filmIds",
       "val root = Try(Json.parse(json)).getOrElse(JsNull)") ->
       "not a swallow into data: a body that is not JSON yields None, which OcineClient turns into a failed scrape; only a parsed pelicules array is an answer",
-    ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "parseEvents",
-      "Try(Json.parse(block)).toOption.toSeq.flatMap { json =>") ->
-      "one of several JSON-LD blocks on a page that answered; a block that is not JSON (a malformed CMS embed) is skipped, the page's other blocks stand",
-    ("worker/src/main/scala/services/cinemas/pl/BiletynaClient.scala", "pageEventCount",
-      "Try(Json.parse(block)).toOption.flatMap(json => (json \\ \"events\").asOpt[JsArray]).fold(0)(_.value.size)") ->
-      "counts the events the same blocks parseEvents reads, for the paging cap; a block it cannot parse is one parseEvents skipped too",
     ("worker/src/main/scala/services/cinemas/pl/CharlieClient.scala", "parseEvent",
       "Try(Json.parse(block)).toOption") ->
       "one JSON-LD block of many on a page that answered — most are not ScreeningEvents at all; a malformed one is skipped",
-    ("worker/src/main/scala/services/cinemas/pl/CharlieMonroeClient.scala", "parseHtml",
-      ".flatMap(element => Try(Json.parse(element.data())).toOption)") ->
-      "the page's JSON-LD blocks, of which only ScreeningEvents count; a malformed block is skipped, the page that carried it answered",
     ("worker/src/main/scala/services/cinemas/pl/CinemaCityClient.scala", "parseDetails",
       "val js  = FilmDetailsRe.findFirstMatchIn(html).flatMap(m => Try(Json.parse(m.group(1))).toOption)") ->
       "optional fields (cast, runtime) off a film-details page; a missing or malformed embedded JSON leaves them empty, the listing comes from the dates/events API",
@@ -302,9 +293,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/cinemas/us/RegalParser.scala", "body",
       "Try(Json.parse(json)).getOrElse(") ->
       "not a swallow: the getOrElse THROWS (\"…not JSON\"), turning a parse failure into a named failed read",
-    ("worker/src/main/scala/services/enrichment/scraping/JsonLdAggregateRating.scala", "of",
-      "def of(html: String): JsonLd = JsonLd(scripts(html).flatMap(raw => Try(Json.parse(raw)).toOption))") ->
-      "the JSON-LD blocks of a rating page that answered (read through HttpRead); a malformed block is skipped and the page's other blocks still give the score",
+    ("worker/src/main/scala/services/enrichment/scraping/JsonLdBlocks.scala", "asJson",
+      "private def asJson(raw: String): Option[JsValue] = Try(Json.parse(raw)).toOption") ->
+      "one of a page's JSON-LD blocks, the page itself read and answered (biletyna, Charlie Monroe, a rating page through HttpRead); a block that is not JSON (a malformed CMS embed) is skipped, the page's other blocks stand",
     ("worker/src/main/scala/services/enrichment/scraping/RottenTomatoesScorecard.scala", "criticsScore",
       "Try(Json.parse(raw)).toOption.toSeq.flatMap { js =>") ->
       "a data island inside a page that answered (read through HttpRead); JSON-LD is the fallback parseScore tries next, so a malformed island is not 'no score' by itself",

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -75,26 +77,22 @@ class UjazdowskiClient(
     }
     val slots = byUt.values.toSeq.flatten
 
-    slots.groupBy(_.slug).toSeq.flatMap { case (slug, group) =>
-      val primary    = group.head
-      val detailUrl  = s"$BaseUrl/kino/repertuar/$slug"
-      val showtimes  = group.map(s => Showtime(s.dateTime, Some(detailUrl), None, Nil))
-                         .distinctBy(_.dateTime).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val meta = UjazdowskiClient.parseMeta(primary.meta.getOrElse(""))
-        Some(CinemaMovie(
+    def detailUrl(slug: String) = s"$BaseUrl/kino/repertuar/$slug"
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, Some(detailUrl(s.slug)), None, Nil),
+      distinctBy = _.dateTime, order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+        val primary = group.head
+        val meta    = UjazdowskiClient.parseMeta(primary.meta.getOrElse(""))
+        CinemaMovie(
           movie     = Movie(title = primary.title, runtimeMinutes = meta.runtime, releaseYear = meta.year,
                             countries = meta.countries, rawTitle = UjazdowskiClient.programmeHeading(primary.title, primary.meta)),
           cinema    = cinema,
           posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = Some(detailUrl),
+          filmUrl   = Some(detailUrl(slug)),
           synopsis  = None,
           cast      = Seq.empty,
           director  = meta.director,
           showtimes = showtimes
-        ))
-      }
+        )
     }
   }
 

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -37,18 +39,12 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
     val html  = HttpRead.page(http, RepertoireUrl)
     val slots = parseDocument(html)
 
-    val byFilmUrl = slots.groupBy(s => (s.title, s.filmUrl))
-    byFilmUrl.toSeq.flatMap { case ((title, filmUrl), group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.bookingUrl))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
+    SlotsToMovies.fold(slots, s => (s.title, s.filmUrl), s => Showtime(s.dateTime, s.bookingUrl)) { case ((title, filmUrl), group, showtimes) =>
       val directors = group.map(_.directors).find(_.nonEmpty).getOrElse(Seq.empty)
       val year      = group.flatMap(_.year).headOption
       val runtime   = group.flatMap(_.runtime).headOption
       val countries = group.map(_.countries).find(_.nonEmpty).getOrElse(Seq.empty)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+      CinemaMovie(
         movie     = Movie(title, runtimeMinutes = runtime, releaseYear = year, countries = countries),
         cinema    = cinema,
         posterUrl = None,
@@ -57,8 +53,8 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
         cast      = Seq.empty,
         director  = directors,
         showtimes = showtimes
-      ))
-    }.sortBy(_.movie.title)
+      )
+    }
   }
 
   // The listing already carries director + release year (TMDB-identity hints),

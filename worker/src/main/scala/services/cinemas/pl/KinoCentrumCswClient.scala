@@ -37,7 +37,7 @@ class KinoCentrumCswClient(
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, bookingUrl = s.ticketUrl),
       distinctBy = _.dateTime
     ) { (title, group, showtimes) =>

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.{ScraperParse, ListingPages}
@@ -38,11 +40,10 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
 
     // The source formats the same film inconsistently (quoted vs ALL-CAPS), so
     // group case-insensitively and display the best-cased variant.
-    events.groupBy(_.title.toLowerCase(Locale.ROOT)).toSeq.map { case (_, group) =>
-      val primary   = group.head
-      val title     = group.map(_.title).find(_.exists(_.isLower)).getOrElse(primary.title)
-      val showtimes = group.flatMap(_.showtime).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      CinemaMovie(
+    SlotsToMovies.foldBlocks(events, _.title.toLowerCase(Locale.ROOT), _.showtime.toSeq, order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, showtimes) =>
+      val primary = group.head
+      val title   = group.map(_.title).find(_.exists(_.isLower)).getOrElse(primary.title)
+      Some(CinemaMovie(
         movie     = Movie(title = title, runtimeMinutes = primary.runtime, releaseYear = primary.year, countries = primary.countries),
         cinema    = cinema,
         posterUrl = primary.poster,
@@ -51,8 +52,8 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
         cast      = Seq.empty,
         director  = primary.director,
         showtimes = showtimes
-      )
-    }.filter(_.showtimes.nonEmpty)
+      ))
+    }
   }
 }
 
