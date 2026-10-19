@@ -393,7 +393,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         val thisYear = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
-        val weighed  = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
+        val weighed  = Agreement.weighed(listings, known, lean, Some(thisYear), stated,
+          records => venueEvidence(id, digest, listings, records, pass.postersAsked))
         val agreed   = weighed.agreed
         // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
         val fill     = if (agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None) else filledOf(decision, listings, known, stated, thisYear, version, pass.asked)

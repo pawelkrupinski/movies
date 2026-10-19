@@ -154,6 +154,30 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         taking(decision)(ResolverDecision.Basis.Catalogue, taken.line, film = Some(film)))
     }
 
+  /** EXPERIMENT: the venue's own evidence on the film `records` (one film's takers) are, for the quorum
+   *  ([[Agreement.QuorumVariant]]) — read as the cast and the synopsis are, never waited on: a poster or cast not known yet
+   *  votes nothing. Independent of the families by provenance: a feed's poster shows nothing ([[PosterEvidence.shows]]), a
+   *  feed catalogue's text names nobody ([[venueNames]]). */
+  private[agreement] def venueEvidence(id: String, digest: Long, listings: Seq[Listing], records: Seq[SourceRecord],
+                                       postersAsked: mutable.Set[AgreementStage.PosterQuestion]): Agreement.VenueEvidence = {
+    val variant = Agreement.QuorumVariant
+    tmdb.filter(_ => variant != 0).flatMap { lookups =>
+      records.iterator.flatMap(_.crossIds.get("tmdb").flatMap(_.toIntOption)).nextOption()
+        .orElse(records.iterator.flatMap(_.crossIds.get("imdb")).nextOption().flatMap(tt => tmdbOf(tt).toOption.flatten))
+        .map { film =>
+          lazy val posters = posterDistances(id, digest, listings, Some(film), postersAsked).toOption.getOrElse(Nil)
+          lazy val named   = services.identity.CastEvidence.take(venueNames(listings),
+            (candidatesOf(id, digest, listings) :+ film).distinct.map(candidate => candidate -> lookups.cast(candidate).toOption.flatten)).map(_._1)
+          def posterMatches = posters.exists(_.get(film).flatten.exists(_ <= PosterEvidence.VoteBits)) && PosterEvidence.veto(Some(film), posters).isEmpty
+          val votes = Set("poster").filter(_ => (variant == 1 || variant == 3) && posterMatches) ++
+            Set("cast").filter(_ => (variant == 2 || variant == 3) && named.contains(film))
+          val against = variant == 4 && (PosterEvidence.veto(Some(film), posters).isDefined || named.exists(_ != film) ||
+            lookups.film(film).toOption.flatten.exists(record => listings.exists(services.identity.Certificates.below(_, record).isDefined)))
+          Agreement.VenueEvidence(votes, if (against) 1 else 0)
+        }
+    }.getOrElse(Agreement.VenueEvidence.Silent)
+  }
+
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private[agreement] def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>

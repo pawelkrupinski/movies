@@ -157,6 +157,13 @@ object Agreement {
    *  corroboration complete an agreement, never make one alone (PL "Pianista - Kino Konesera": IMDb takes "The
    *  Pianist", Wikidata and Filmweb lean to it). */
   val Quorum = 3
+  /** EXPERIMENT (experiment/quorum-votes): which of the venue's own evidence counts in the quorum. 0 none (main);
+   *  1 a venue poster matching the film's TMDB poster is a vote; 2 the venue naming two whole names of its cast (one
+   *  candidate only) is a vote; 3 both; 4 a poster, cast or certificate CONTRADICTION is one dissenting vote. */
+  val QuorumVariant: Int = 0
+  /** The venue's own evidence on one film the families took, read beside the quorum ([[QuorumVariant]]). */
+  final case class VenueEvidence(votes: Set[String], against: Int)
+  object VenueEvidence { val Silent: VenueEvidence = VenueEvidence(Set.empty, 0) }
   /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
   val ListingFacts = "listing"
   /** The listings' own running time — within [[RuntimeSlack]] minutes of a taker's record on every listing stating one —
@@ -243,7 +250,8 @@ object Agreement {
    *  venue's running time short of it ([[runsShort]]), or a year the title bills dating it away
    *  ([[PosterEvidence.datingApart]]). */
   def weighed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
-              thisYear: Option[Int] = None, stated: Seq[Listing] = Nil): Weighed = {
+              thisYear: Option[Int] = None, stated: Seq[Listing] = Nil,
+              venueEvidence: Seq[SourceRecord] => VenueEvidence = _ => VenueEvidence.Silent): Weighed = {
     // what the venues' own pages add to the listings votes and names films; it never rules one out — a page's year is
     // often its re-release's (PL Kinoteka "Ghost in the shell": 2026 on the page of the 1995 film)
     val asStated = if (stated.nonEmpty) stated else listings
@@ -256,13 +264,17 @@ object Agreement {
     val named = filmsOf(picks).filter(group => asStated.nonEmpty &&
       asStated.forall(listing => namesIt(if (copiesItsSearchHit(listing)) listing.copy(originalTitle = None) else listing, group.map(_.record.film))))
     // each group is the picks of one film, so every film weighed has a taker: a lean or a corroboration alone makes none
-    named.map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
+    named.map { group =>
+      val film  = supported(listings, asStated, group, verdicts, modelVote, thisYear)
+      val venue = venueEvidence(group.map(_.record))
+      film.copy(agreed = film.agreed.copy(corroborated = film.agreed.corroborated ++ venue.votes), venueAgainst = venue.against)
+    }.sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       val taken = film.records.take(film.agreed.families.size)
       // a feed catalogue's facts ruling the film out are its claim, one vote against it, not a veto (DE "To The Bone":
       // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
       val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
-      val stands = film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+      val stands = film.support >= Quorum + dissent + film.turnedDown + catalogueDissent + film.venueAgainst && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !billsAnothersDirector(listings, film.records, verdicts) &&
         !taken.exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
@@ -284,7 +296,7 @@ object Agreement {
 
   /** A film one family or more took, as the evidence stands for it: the takers, the families leaning to it, what
    *  corroborates it, and how many families weighed it and turned it down ([[turnsDown]]). */
-  private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Int) {
+  private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Int, venueAgainst: Int = 0) {
     /** How many families take it, lean to it or corroborate it. */
     val support: Int = agreed.families.size + agreed.leaning.size + agreed.corroborated.size
     /** Short of [[Quorum]] takers, completed by leans or corroboration. */
