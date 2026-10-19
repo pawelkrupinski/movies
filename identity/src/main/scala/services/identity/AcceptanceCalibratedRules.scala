@@ -38,7 +38,15 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       _           <- needOf(probability >= Acceptance.DominanceFloor, "below the dominance floor", best, f"${probability * 100}%.1f%%")
       _           <- noneOf(eligible.lift(1).filter(runnerUp => probability < Acceptance.DominanceRatio * runnerUp.probability), "a rival stands too close", best)
       _           <- noneOf(closerThan(best, eligible), "its title sits inside a closer record", best)
+      _           <- needOf(billsOnlyItsTitle(best), "the billing says more than the film's title", best)
     } yield best -> probability
+  }
+  /** The guard of the experiment's variant D: the venue bills the film's title and nothing else (no banner, event,
+   *  second work or relay words) — every word of the raw billing is a word of one of the record's titles, and back. */
+  private def billsOnlyItsTitle(best: Scored): Boolean = {
+    import services.movies.TitleContainment.tokens
+    val billed = tokens(best.listing.rawTitle.getOrElse(best.listing.title))
+    best.candidate.film.titles.exists(title => tokens(title) == billed)
   }
 
   /** Another eligible film of `best`'s credited director that the title names, or that the listing's year dates as
