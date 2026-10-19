@@ -155,9 +155,23 @@ marker none and billsSeveral no, so the guard cannot reach that take. The switch
 cannot-link: it now keeps "De Gaulle 1: Resistance" apart from "De Gaulle Part 1: Résistance" [2026] {Baudry}, and the
 listing pools to Resistance (2020). That reads as wrong, and it is not judged.
 
-**Next angle:** recognise a bill that joins two works with "and" or "&" as a bill, a heuristic the existing guards lack.
-Hold the certificate weight out of listing-listing cannot-links. Then re-measure the certificate-agrees variant; its
-11 gains stand. Poster
+**The switch was the pooled reading, not a listing-listing cannot-link.** `listingListing` holds no certificate. The
+switch came from `FamilyScope.pooled`, which reads a cluster as its lead listing and so carried the lead's certificate
+into the pooled scores. That lifted Resistance (2020) to a tie with the 2026 film. Now the pooled reading states no
+certificate. The fix is pinned by an identity-slice case, "De Gaulle 1: Resistance" judged right for 1165366, which
+fails before the fix and passes after.
+
+Re-measured (base 75a28ea41):
+
+- 9 right gained, 0 right lost.
+- 1 unjudged gain, Almost Famous, now judged right.
+- The switch is gone.
+- The one new wrong is still Hyde Park's "The Tiger Who Came for Tea and We're Going on a Bear Hunt".
+
+**Blocked.** An "and"/"&" bill read the way `Acceptance.slashesTwoWorks` reads a slash (each half exactly titles a
+distinct eligible candidate, and no candidate is titled as the whole) cannot catch that billing. Its first half
+misspells the film ("…Came **for** Tea" against "…Came **to** Tea"), so no candidate is named exactly. Catching it needs a
+near-spelling half, which is a fuzzier rule than the exact one asked for. Not landed. Poster
 and synopsis as WEIGHTS in the unified stage (`UnifiedEvidence`), where their answers already exist, rather than per
 candidate.
 >>>>>>> d24b32d1b (docs: record the weighted-guards experiment (release, certificate, poster, synopsis as weights))
