@@ -27,6 +27,20 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
     } yield taken
   }
 
+  /** EXPERIMENT `experiment/margin-take` (not landed — docs/identity-experiments.md): the best eligible candidate below the
+   *  rating cut, taken when its probability (the priors lending) clears [[Acceptance.DominanceFloor]] and holds at least
+   *  [[Acceptance.DominanceRatio]] times its runner-up's (or it has none), and no closer record holds the title. */
+  private[identity] def dominantWhy(ranked: Seq[Scored]): Verdict = {
+    val eligible = eligibleOf(ranked)
+    for {
+      best        <- eligible.headOption.toRight(Refused("no eligible candidate"))
+      probability  = priorsLent(best, eligible)
+      _           <- needOf(probability >= Acceptance.DominanceFloor, "below the dominance floor", best, f"${probability * 100}%.1f%%")
+      _           <- noneOf(eligible.lift(1).filter(runnerUp => probability < Acceptance.DominanceRatio * runnerUp.probability), "a rival stands too close", best)
+      _           <- noneOf(closerThan(best, eligible), "its title sits inside a closer record", best)
+    } yield best -> probability
+  }
+
   /** Another eligible film of `best`'s credited director that the title names, or that the listing's year dates as
    *  closely, when the title names nothing of `best` (`title=none`): walking a director's credit reaches his films, and a
    *  title naming none of two his facts fit alike picks neither — DE "München Mord: Leben und Sterben in Schwabing" [2019]
