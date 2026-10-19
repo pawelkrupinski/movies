@@ -9,7 +9,7 @@ package services.identity
 private[identity] object FilmNess {
 
   /** Words whole: a token that IS one. */
-  private val Whole = Set("live", "tour", "show", "band", "gala", "slam", "quiz", "night", "nacht", "stage", "disco", "open", "experience",
+  private val Whole = Set("live", "tour", "show", "band", "gala", "slam", "quiz", "night", "nacht", "stage", "disco", "experience",
     "abend", "noc", "wieczor")
   /** Stems a compound carries ("Halloweenparty", "Wohnzimmerkonzerte", "Kinokonzert"). */
   private val Stems = Seq("konzert", "concert", "koncert", "festival", "festiwal", "party", "comedy", "musical", "tribute", "karaoke",
@@ -17,7 +17,8 @@ private[identity] object FilmNess {
 
   private val Bracketed = """[(\[][^)\]]*[)\]]""".r
 
-  def isEventWord(word: String): Boolean = Whole(word) || Stems.exists(word.contains)
+  // V3f: never a compound naming film ("Pornfilmfestival", "Filmkonzert"): a festival of films screens one
+  def isEventWord(word: String): Boolean = !word.contains("film") && (Whole(word) || Stems.exists(word.contains))
 
   /** The billing's event words — none when it states a fact of a film, names a relay or attaches a screening. */
   def eventWords(listing: IdentityMeasures.Listing): Seq[String] = {
