@@ -177,7 +177,10 @@ identity_tree_layout() {
   local seed apart=""
   seed=$(identity_nearest_compiled "$sha")
   [ -z "$seed" ] || { apart=$(identity_seed_distance "$seed" "$sha"); identity_log "seeding its compile from ${seed} ($apart source file(s) apart)"; }
-  for t in project/target common/target identity/target testkit/target worker/target target; do
+  # every module the ref has (each */src), as sbt-warm's seed reads them: a fixed list missed the scrapers and geodata
+  local modules=() m
+  for m in "$part"/*/src; do modules+=("$(basename "$(dirname "$m")")/target"); done
+  for t in project/target "${modules[@]}" target; do
     if [ -n "$seed" ] && [ -d "$seed/$t" ]; then mkdir -p "$part/$(dirname "$t")"; cp -cR "$seed/$t" "$part/$t" 2>/dev/null || cp -R "$seed/$t" "$part/$t"; fi
   done
   # Zinc never deletes a class file it did not produce: one another build wrote into the seed's classes/ (IntelliJ's JPS,

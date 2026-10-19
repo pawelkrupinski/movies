@@ -43,6 +43,8 @@ for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala
   worker/src/fixtures/scala/tools/IdentityJudgements.scala worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala; do
   echo "// $f" > "$repo/$f"
 done
+# the modules besides the resolver's own that its classpath compiles
+for module in scrapers geodata; do mkdir -p "$repo/$module/src/main" && echo "// $module" > "$repo/$module/src/main/Module.scala"; done
 echo "build" > "$repo/build.sbt"
 # the mirror's freshness check: records how it was asked, answers as $FRESHNESS_EXIT says
 mkdir -p "$repo/scripts/local-mirror"
@@ -164,10 +166,10 @@ check "...and the same checkout at the same code keeps its key" "$here" "$(refOf
 # 2026-10-19: the scrapers and geodata modules reach the resolver (a venue's details, its catalogue links), but the key
 # hashed only common/identity/worker/testkit: a scraper edit reused the kept JVM's pre-edit classes and cached the answer
 for module in scrapers geodata; do
-  mkdir -p "$repo/$module/src/main"; echo "// new" > "$repo/$module/src/main/Edited.scala"
+  echo "// new" > "$repo/$module/src/main/Edited.scala"
   rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null
   check "...nor before and after an uncommitted edit of the $module module" "yes" "$([ "$(refOf)" != "$here" ] && echo yes || echo no)"
-  rm -rf "${repo:?}/$module"
+  rm -f "$repo/$module/src/main/Edited.scala"
 done
 
 rm -f "$work/calls" "$work/sbt-calls"
@@ -211,7 +213,12 @@ again=$(scratch_git "$repo" rev-parse HEAD)
 # classes/ on 2026-10-18: a measure's ratchet died on NoClassDefFoundError naming a class renamed away the day before)
 scratch_zinc_build "$cache/refs/$docs" worker tools/Kept.class
 echo orphan > "$cache/refs/$docs/worker/target/scala-3.9.0/classes/tools/Orphan.class"
+# ...every module's build: the classpath it keeps names scrapers' and geodata's classes too (2026-10-19: they were not
+# seeded, so a kept classpath pointed at class directories the new tree lacked)
+for module in scrapers geodata; do mkdir -p "$cache/refs/$docs/$module/target/scala-3.9.0/classes"; done
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$again" > /dev/null
+check "a new ref is seeded with every module's build" "scrapers geodata" \
+  "$(for module in scrapers geodata; do [ -d "$cache/refs/$again/$module/target/scala-3.9.0/classes" ] && printf '%s ' "$module"; done | sed 's/ $//')"
 check "a new ref's seed carries only the class files its analysis lists" "Kept.class Kept.tasty" \
   "$(cd "$cache/refs/$again/worker/target/scala-3.9.0/classes/tools" 2>/dev/null && echo *)"
 check "a new ref is seeded from the nearest compiled ref" "1" "$(grep -c "seeding its compile from $cache/refs/$docs (0 source file(s) apart)" "$work/err")"
