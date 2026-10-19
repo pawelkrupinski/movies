@@ -152,5 +152,47 @@ class CiWaitTest(unittest.TestCase):
         self.assertEqual(agent_time.launch_kind(command), "CI wait")
 
 
+class WaitForTest(unittest.TestCase):
+    def bucket(self, command, launches=None):
+        return agent_time.bash_bucket(command, launches or agent_time.Launches())
+
+    def test_wait_for_is_a_poll_classified_by_its_file_and_pattern(self):
+        w = "cd /w/movies-x && scripts/wait-for "
+        self.assertEqual(self.bucket(w + 'target/margin/measureA.log "LANDABLE|NOT LANDABLE|error|die" --timeout 5400'),
+                         "poll: measure")
+        self.assertEqual(self.bucket(w + 'target/run.log "LANDABLE" --timeout 9'), "poll: measure")
+        self.assertEqual(self.bucket(w + 'target/testUnit.log "^exit " --timeout 3000'), "poll: sbt suite")
+        self.assertEqual(self.bucket(w + 'target/itAll.log "^exit "'), "poll: sbt suite")
+        self.assertEqual(self.bucket(w + 'target/slice-de.log "done"'), "poll: slice")
+        self.assertEqual(self.bucket(w + 'target/convergence-pl.log "exit"'), "poll: local convergence")
+        self.assertEqual(self.bucket("wait-for target/x.log done"), "poll: other")
+
+    def test_wait_for_on_a_task_output_is_the_launching_commands_kind(self):
+        launches = agent_time.Launches()
+        launches.add("bi9v0hkx2", "scripts/identity-slice de --title x")
+        command = "scripts/wait-for /private/tmp/c/s/tasks/bi9v0hkx2.output done --timeout 60"
+        self.assertEqual(self.bucket(command, launches), "poll: slice")
+
+    def test_a_relative_and_an_absolute_path_name_the_same_file(self):
+        launches = agent_time.Launches()
+        launches.add("b1", "cd /w/movies-x && scripts/identity-measure HEAD > target/out/m.log 2>&1")
+        # waited absolute
+        self.assertEqual(self.bucket("scripts/wait-for /w/movies-x/target/out/m.log done", launches), "poll: measure")
+        # launched absolute, waited relative after a cd
+        launches = agent_time.Launches()
+        launches.add("b2", "scripts/identity-slice de > /w/movies-y/target/out/s.log")
+        self.assertEqual(self.bucket("cd /w/movies-y && scripts/wait-for target/out/s.log done", launches), "poll: slice")
+        # launched relative with no cd, waited absolute: matched by tail
+        launches = agent_time.Launches()
+        launches.add("b3", "scripts/identity-slice de > target/out/t.log")
+        self.assertEqual(self.bucket("scripts/wait-for /w/z/target/out/t.log done", launches), "poll: slice")
+
+    def test_the_same_relative_name_in_another_worktree_is_not_a_match(self):
+        launches = agent_time.Launches()
+        launches.add("b1", "cd /w/movies-x && scripts/identity-measure HEAD > target/out/m.log")
+        self.assertEqual(self.bucket("cd /w/movies-y && scripts/wait-for target/out/m.log done", launches), "poll: other")
+        self.assertEqual(self.bucket("scripts/wait-for /w/movies-y/target/out/m.log done", launches), "poll: other")
+
+
 if __name__ == "__main__":
     unittest.main()

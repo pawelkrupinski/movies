@@ -6,7 +6,7 @@ Each subagent's transcript is a JSONL file in the session's tasks directory (`<i
 "agentId"; the `b*.output` beside them are background commands' logs). Every second between two of an agent's events
 goes to ONE bucket, so parallel tool calls are never counted twice:
   - a tool call in flight: the call's bucket -- a foreground Bash command by its kind (an sbt run by its shape, the
-    pre-push hook's `git push`, a measurement, a slice...), a polling loop by what it waits for (`poll: <kind>`: a CI
+    pre-push hook's `git push`, a measurement, a slice...), a polling loop or `wait-for` by what it waits for (`poll: <kind>`: a CI
     run, or a background command's output file, by the command that launched it);
   - nothing in flight and the next event a background task's notification: `bg wait: <kind>`, the kind of the command
     that launched the task (measure, slice, sbt suite, local convergence, CI wait, ...) or `monitor`;
@@ -25,7 +25,8 @@ import sys
 from collections import Counter
 
 IDLE_GAP_SECONDS = 180
-POLL = re.compile(r"\bsleep\s+\d|\buntil\b|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b|\bci-wait\b")
+POLL = re.compile(r"\bsleep\s+\d|\buntil\b|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b|\bci-wait\b"
+                  r"|(?:^|[\s/;&|])wait-for\b")
 RUN_ID = re.compile(r"\b3\d{10}\b")
 TASK_OUTPUT = re.compile(r"tasks/(b[a-z0-9]+)\.output")
 LAUNCHED = re.compile(r"running in background with ID: (b[a-z0-9]+)")
@@ -74,6 +75,48 @@ WRITES = re.compile(r"(?:>>?|\btee(?: -a)?)\s*\"?([^\s;|&\"<>()]+)")
 QUICK = re.compile(r"^\s*(cd [^;&]+(;|&&)\s*)?(grep|sed|cat|ls|head|tail|wc|find|awk|echo|git (log|show|diff|status))\b")
 
 
+PATH_TOKEN = re.compile(r"[^\s\"';|&<>()]*/[^\s\"';|&<>()]*")
+CD = re.compile(r"\bcd\s+\"?([^\s;&\"]+)")
+WAIT_FOR = re.compile(r"(?:^|[\s/;&|])wait-for\s+(?:--\S+\s+\S+\s+)*(\S+)\s*(\"[^\"]*\"|'[^']*'|\S+)?")
+
+
+def resolved(path: str, command: str) -> str:
+    """<path> made absolute against the command's `cd` directory; as written when it has none to resolve against."""
+    if path.startswith("/"):
+        return os.path.normpath(path)
+    cd = CD.search(command)
+    if cd and cd.group(1).startswith("/"):
+        return os.path.normpath(os.path.join(cd.group(1), path))
+    return os.path.normpath(path)
+
+
+def same_file(a: str, b: str) -> bool:
+    """Two resolved paths name one file: equal, or one is still relative and is the tail of the other's path (a
+    command without a `cd` writing `target/x.log`, waited on as `/work/tree/target/x.log`)."""
+    if a == b:
+        return True
+    if a.startswith("/") and not b.startswith("/"):
+        a, b = b, a
+    return b.startswith("/") and not a.startswith("/") and a.count("/") >= 1 and b.endswith("/" + a)
+
+
+def wait_kind(command: str) -> str | None:
+    """What a `wait-for <file> <pattern>` waits on, by the file's name and the pattern, when no launch explains it."""
+    wait = WAIT_FOR.search(command)
+    if not wait:
+        return None
+    target, pattern = wait.group(1), wait.group(2) or ""
+    if re.search(r"measure", target, re.I) or "LANDABLE" in pattern:
+        return "measure"
+    if re.search(r"slice", target, re.I):
+        return "slice"
+    if re.search(r"convergence|legs|conv-", target, re.I):
+        return "local convergence"
+    if re.search(r"testUnit|itAll|sbt|PageTest|test", target, re.I) or "^exit " in pattern:
+        return "sbt suite"
+    return None
+
+
 class Launches:
     """Every background command of the session, by its task id and by the files it writes: what a wait on it waited
     for. Read from every transcript first, as one agent waits on what another launched."""
@@ -87,14 +130,15 @@ class Launches:
         self.by_task[task] = kind
         for path in WRITES.findall(command):
             if "/" in path and not path.startswith("/dev/"):
-                self.by_file[path] = kind
+                self.by_file[resolved(path, command)] = kind
 
     def waited_on(self, command: str) -> str | None:
         task = TASK_OUTPUT.search(command)
         if task and task.group(1) in self.by_task:
             return self.by_task[task.group(1)]
+        waited = [resolved(token, command) for token in PATH_TOKEN.findall(command)]
         for path, kind in self.by_file.items():
-            if path in command:
+            if any(same_file(path, token) for token in waited):
                 return kind
         return None
 
@@ -104,6 +148,9 @@ def bash_bucket(command: str, launches: Launches) -> str:
     if POLL.search(command):
         kind = launches.waited_on(command)
         if kind and kind != "other":
+            return "poll: " + kind
+        kind = wait_kind(command)
+        if kind:
             return "poll: " + kind
         if "identity-measure" in command:
             return "poll: measure"

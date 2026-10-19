@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Where a Claude Code session's subagents spent their time: every agent's hours by bucket -- polling waits by what they
+# Where a Claude Code session's subagents spent their time: every agent's hours by bucket -- polling waits (sleep loops, ci-wait, wait-for) by what they
 # wait for (a CI run, a measurement, a slice, an sbt suite, a local convergence leg), waits on a background command by the
 # command that launched it, idle gaps over 3 minutes, the model's own short gaps, foreground sbt runs by their shape, the
 # pre-push hook's `git push` -- then the 10 longest agents with their top buckets.
