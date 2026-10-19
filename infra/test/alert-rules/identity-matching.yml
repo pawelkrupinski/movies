@@ -148,3 +148,26 @@ tests:
             exp_annotations:
               summary: "uk: listings moved back to a film they held, in 2 of the last 6 hours"
               description: "The identity projection keeps undoing its own take changes: a listing taken from film A to B is taken back to A within three projections, and it happened again in another hour. Two rules disagree on the listing and each undoes the other (2026-10-13/14: UK \"The Ties That Bind Us\", the exact-top-hit own match against the families-and-poster correction, once per pod start). Which listings: VictoriaLogs `country:<cc> \"identity take change\" | stats by (venue, listing) count() n | sort by (n desc)`, then the listing's lines' basis, reason_last and projection_mode on each side of the flip. Panel: worker diagnostics, \"Identity cutover -- regroupings\"."
+
+  # IdentityBillingTakeOscillating: UK's RBO Macbeth reverses at a boot in each of three hours -- fires once the third
+  # hour holds one; Arirang's one burst of reversals in one hour (two record renames) stays quiet, as does a billing
+  # reversing in two hours only.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_identity_billing_reversals_total{country="uk",billing="rbo cinema season 2026 27 macbeth",instance="w1"}'
+        values: '0x11 1x12 stale 0x11 1x12 stale 0x11 1x12'
+      - series: 'kinowo_worker_identity_billing_reversals_total{country="uk",billing="bts world tour arirang in buenos aires live viewing",instance="w1"}'
+        values: '0x11 5x60'
+      - series: 'kinowo_worker_identity_billing_reversals_total{country="de",billing="the killer",instance="w1"}'
+        values: '0x11 1x12 2x50'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: IdentityBillingTakeOscillating
+        exp_alerts: []
+      - eval_time: 6h
+        alertname: IdentityBillingTakeOscillating
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, billing: "rbo cinema season 2026 27 macbeth" }
+            exp_annotations:
+              summary: "uk: 'rbo cinema season 2026 27 macbeth' moved back to a film it held, in 3 hours of the last 24"
+              description: "Two identity rules or stages keep undoing each other on one billing: its listings were taken from film A to B and back to A within three projections, in three or more separate hours today. Treat it as a bug in the rules, never churn. Which listings and why: `scripts/listing-history <cc> --title '<billing>' --since 1d` (each change's basis, projection_mode and deploy)."

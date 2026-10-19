@@ -180,3 +180,27 @@ groups:
             VictoriaLogs `country:<cc> "identity take change" | stats by (venue, listing) count() n | sort by (n desc)`,
             then the listing's lines' basis, reason_last and projection_mode on each side of the flip.
             Panel: worker diagnostics, "Identity cutover -- regroupings".
+
+      # ONE BILLING'S TAKES MOVED BACK, IN THREE OR MORE HOURS OF A DAY: A BUG, NOT CHURN.
+      #
+      # `kinowo_worker_identity_billing_reversals_total{billing}` (services.identity.BillingReversals): written
+      # projections that reversed a take of the billing (its title folded), once a projection however many venues
+      # bill it; the 25 billings that reversed most recently keep a series. Over 8 days of 2026-10, 971 listings went
+      # A->B->A and a few billings explained ~60% of them: UK "RBO Cinema Season 2026-27: Macbeth" lost the Met's record
+      # at every worker boot and took it back 40 s later, "The Ties That Bind Us" once a pod start. The country-wide
+      # IdentityTakeOscillating says that something flips; this names WHAT, per billing. Counted in distinct hours,
+      # so one burst of projections (a record renamed twice in two minutes) is one hour, never three.
+      - alert: IdentityBillingTakeOscillating
+        expr: |
+          count_over_time(
+            (sum by (country, billing) (increase(kinowo_worker_identity_billing_reversals_total[1h])) > 0)[24h:1h]
+          ) >= 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: '{{ $labels.billing }}' moved back to a film it held, in {{ $value }} hours of the last 24"
+          description: >-
+            Two identity rules or stages keep undoing each other on one billing: its listings were taken from film
+            A to B and back to A within three projections, in three or more separate hours today. Treat it as a bug
+            in the rules, never churn. Which listings and why: `scripts/listing-history <cc> --title '<billing>'
+            --since 1d` (each change's basis, projection_mode and deploy).

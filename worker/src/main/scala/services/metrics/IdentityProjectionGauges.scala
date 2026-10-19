@@ -36,6 +36,10 @@ import services.identity.adapters.IdentityProjectionMetrics
  *  - `kinowo_worker_identity_take_reversals_total` — take changes that move a listing BACK to the film (or no-film) it held
  *    before its last change ([[services.identity.TakeReversals]]): two rules undoing each other, an oscillation. UK
  *    Chichester's "The Ties That Bind Us" flipped between two films on every pod start of 2026-10-13/14;
+ *  - `kinowo_worker_identity_billing_reversals_total{billing}` — written projections that reversed a take of the BILLING
+ *    (its title folded, [[services.identity.BillingReversals]]), once a projection however many venues bill it: what the
+ *    per-billing oscillation alert reads. Bounded: the [[services.identity.BillingReversals.Capacity]] billings that
+ *    reversed most recently keep a series, the least recent past it is dropped;
  *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
  *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
  *    last projection of the whole corpus. A rise between recordings is a wrong take the convergence legs will name;
@@ -100,6 +104,12 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     .labelNames("country")
     .register(registry)
 
+  private val billingReversals: Counter = Counter.builder()
+    .name("kinowo_worker_identity_billing_reversals_total")
+    .help("Written identity projections that moved a billing's listings back to the film (or no-film) they held before: once a projection per billing (title folded), the 25 most recently reversed billings labelled.")
+    .labelNames("country", "billing")
+    .register(registry)
+
   private val suspectTakes: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_suspect_takes")
     .help("Billings whose identity take a suspect-take signal finds against its own evidence, per signal, on the last written whole-corpus projection.")
@@ -118,9 +128,14 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     services.identity.TakeChange.Kind.values.foreach(k => takeChanges.labelValues(country, k.label))
     takeReversals.labelValues(country)
     private val reversals = new services.identity.TakeReversals
+    private val billings  = new services.identity.BillingReversals
     def takesChanged(changes: Seq[services.identity.TakeChange]): Unit = {
       changes.groupMapReduce(_.kind)(_ => 1)(_ + _).foreach { case (kind, n) => takeChanges.labelValues(country, kind.label).inc(n.toDouble) }
-      takeReversals.labelValues(country).inc(reversals.note(changes).size.toDouble)
+      val reversed = reversals.note(changes)
+      takeReversals.labelValues(country).inc(reversed.size.toDouble)
+      val noted = billings.note(reversed)
+      noted.forgotten.foreach(billing => billingReversals.remove(country, billing))
+      noted.reversed.foreach(billing => billingReversals.labelValues(country, billing).inc())
     }
     def reconciled(measured: Boolean): Unit = reconciles.labelValues(country, measured.toString).inc()
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, took: Double): Unit = {
