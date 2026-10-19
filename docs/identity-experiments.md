@@ -310,6 +310,10 @@ The "next angle" of `experiment/margin-take` (its entry lives on that tag): refu
   better cured in-country (the billing "by Noël Coward" names a play — the relay rule's own signal); (2) as a
   REPORT, not a rule, the 53 disagreeing title keys per week are a cheap triage list for the Identity findings issue
   (a country disagreeing with another's director-backed take of the same billed title).
+  **Built (2026-10-20)** as the findings report's "Countries disagree" section (`scripts/ci/countries_disagree.py`,
+  the shared reading in `scripts/ci/cross_country.py`): of the 53 keys only those with a LONE take — a film no other
+  country takes, its billing backing it by no year or director — and not all judged right or all relays/events;
+  9 titles on the 2026-10-20 mirror, Fallen Angels the one `check`.
 
 ## 2026-10-19 — the boot's broadcast flip (UK "RBO Cinema Season 2026-27: Macbeth"), base `1a2e33add`
 

@@ -17,12 +17,19 @@ dropped at once; the rest drop when a recording no longer carries them. An empty
 reopens it. First-seen dates ride in the issue body, so the report needs no store of its own. A row whose diagnostics
 lack either file (its suite died before the audit) reports nothing for its country: the issue stays as it was.
 
+COUNTRIES DISAGREE: with --countries-disagree DIR (the LOCAL prod mirror's light export, written by
+`scripts/ci/countries_disagree.py --mirror mongodb://127.0.0.1:28017 --data DIR`), each issue also lists the titles the
+country bills in the same week as another country that one of them takes as a film no other country takes
+(countries_disagree.py). A triage list beside the findings, never aged: CI has no mirror, so only a run given the
+export carries it.
+
 AGE LIMIT: a finding untriaged for more than --max-age-days (3) days turns the report run red. That red is NOT a
 red-build gate (scripts/hooks/pre-push's GatingWorkflows): a push neither makes nor mends a recording's data, so holding
 pushes behind it is the very coupling this report exists to undo. It reaches the owner through the issue instead.
 
 usage: identity_findings_report.py [--run RUN] [--countries pl,de,uk,es,us] [--judgements F] [--today D]
          [--max-age-days N] [--assignee LOGIN] [--server URL] [--repo OWNER/NAME] [--work DIR] [--dry-run]
+         [--countries-disagree DIR]
 --run defaults (also when empty) to the newest completed `Record scrape fixtures` run on main.
 Exit 0 when every finding is within its age, 1 when one is overdue, 2 when there is no recording to report, no
 country's findings could be read, or a country's issue could not be read or written.
@@ -41,6 +48,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import countries_disagree  # noqa: E402
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402  (the one reading of a judgement)
 
 COUNTRIES = ["pl", "de", "uk", "es", "us"]
@@ -151,13 +159,13 @@ SECTIONS = [
 BODY_LIMIT = 60000  # GitHub refuses an issue body over 65,536 characters
 
 
-def render(cc, findings, seen, today, max_age, run, run_url):
+def render(cc, findings, seen, today, max_age, run, run_url, disagree=()):
     """(issue body, overdue count): each billing in full, its triage commands too, while the body fits; the rest as one
     line each."""
     everything = 10 ** 6
     for detailed, listed in ((everything, everything), (40, everything), (15, everything), (5, everything), (0, everything),
                              (0, 200), (0, 100), (0, 30)):
-        body, overdue = render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed)
+        body, overdue = render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed, disagree)
         if len(body) <= BODY_LIMIT:
             break
     return body, overdue
@@ -168,7 +176,7 @@ def state_key(finding_id):
     return hashlib.sha1(finding_id.encode("utf-8")).hexdigest()[:16]
 
 
-def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed):
+def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed, disagree=()):
     def age(f):
         return (today - datetime.date.fromisoformat(seen[f["id"]])).days
     overdue = [f for f in findings if age(f) > max_age]
@@ -198,6 +206,7 @@ def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed
             else:
                 lines.append(f"- … and {len(group) - n} more: the run's `convergence-diagnostics-{cc}-convergence` artifact")
                 break
+    lines += list(disagree)
     state = {state_key(f["id"]): seen[f["id"]] for f in findings}
     lines += ["", f"<!-- identity-findings-state: {json.dumps(state, ensure_ascii=False, sort_keys=True)} -->", ""]
     return "\n".join(lines), len(overdue)
@@ -238,8 +247,10 @@ def publish(cc, body, has_findings, run_gh, assignee):
     return "updated"
 
 
-def report(countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run):
-    """(overdue total, countries read, countries whose issue gh could not read or write)."""
+def report(countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run,
+           disagree_of=lambda cc: []):
+    """(overdue total, countries read, countries whose issue gh could not read or write). `disagree_of(cc)`: the
+    country's "countries disagree" section lines."""
     overdue_total, read, unwritten = 0, 0, 0
     for cc in countries:
         found = read_findings(directory_of(cc), cc)
@@ -254,8 +265,9 @@ def report(countries, run, directory_of, judgements_path, today, max_age, run_ur
             issue = None if dry_run else find_issue(cc, run_gh)
             seen = first_seen_of(issue[2] if issue else "")
             seen = {f["id"]: seen.get(state_key(f["id"]), today.isoformat()) for f in found}
-            body, overdue = render(cc, found, seen, today, max_age, run, run_url)
-            outcome = "dry run" if dry_run else publish(cc, body, bool(found), run_gh, assignee)
+            disagree = disagree_of(cc)
+            body, overdue = render(cc, found, seen, today, max_age, run, run_url, disagree)
+            outcome = "dry run" if dry_run else publish(cc, body, bool(found or disagree), run_gh, assignee)
         except subprocess.CalledProcessError as e:
             # one country's issue gh cannot reach is that country's no verdict: the others still report
             print(f"::error title={title_of(cc)}::gh could not read or write its issue: {(e.stderr or '').strip() or e}")
@@ -304,6 +316,8 @@ def main(argv=None, run_gh=gh):
     p.add_argument("--work", default="identity-findings")
     p.add_argument("--diagnostics", help="read <dir>/<cc>/ instead of downloading the run's artifacts")
     p.add_argument("--dry-run", action="store_true", help="print the bodies' verdicts, touch no issue")
+    p.add_argument("--countries-disagree", metavar="DIR",
+                   help="the local prod mirror's light export (countries_disagree.py --mirror): add the section")
     a = p.parse_args(argv)
     a.run = a.run or newest_recording(run_gh)
     if not a.run:
@@ -314,8 +328,10 @@ def main(argv=None, run_gh=gh):
     run_url = f"{a.server}/{a.repo}/actions/runs/{a.run}"
     def directory_of(cc):
         return os.path.join(a.diagnostics, cc) if a.diagnostics else download(a.run, cc, a.work, run_gh)
+    disagreeing = countries_disagree.read_found(a.countries_disagree, a.judgements) if a.countries_disagree else []
     overdue, read, unwritten = report([c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
-                           a.max_age_days, run_url, run_gh, a.assignee, a.dry_run)
+                           a.max_age_days, run_url, run_gh, a.assignee, a.dry_run,
+                           lambda cc: countries_disagree.section(disagreeing, cc))
     if read == 0:
         print(f"::error::run {a.run} left no country's findings -- nothing was reported")
         return 2
