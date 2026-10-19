@@ -512,6 +512,19 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.film(onceUpon).toOption.flatten.flatMap(_.originalLanguage) shouldBe Some("en")
   }
 
+  // The cast evidence asks whether a candidate's cast is a voice cast (Animation) or its contributors' (Documentary): TMDB's
+  // genre ids must survive the cut-down record the store files, and the record read back.
+  "a film's record" should "keep its genres as filed" in {
+    val w = new World
+    val onceUpon = 311
+    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
+    w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
+    val film = w.lookups.film(onceUpon).toOption.flatten
+    film.map(_.genreIds) shouldBe Some(Set(18, 80))   // Drama, Crime
+    film.exists(_.hasGenre(16)) shouldBe false
+  }
+
   // "Frauen bildet Banden" (DE Museum-Lichtspiele Tübingen bills it "- Eine Spurensuche zur Geschichte der Roten Zora"): TMDB's
   // de-DE tagline is the subtitle a venue bills beside the title, which a filed record must carry for billedBeside to read.
   "a film's record" should "carry its tagline as filed" in {

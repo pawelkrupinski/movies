@@ -59,16 +59,18 @@ object UnmatchedClusters {
 
   /** `capture` with what a recording's TMDB tree answers that it was taken without: the cast of every candidate the
    *  evidence asked one of (`asked`, beside the ones it already noted) and holds none for, and each held record's original
-   *  language. A capture taken through a [[MemoLookups]] that passed no cast on (before 5faaac6c8) noted every cast it
-   *  asked as unknown, and a record parsed before the store kept `original_language` holds none: answered off the tree,
-   *  as the store's re-read record would be. A record the tree states no language of keeps none; neither changes a
-   *  model decision the capture holds. */
+   *  language and genres. A capture taken through a [[MemoLookups]] that passed no cast on (before 5faaac6c8) noted every
+   *  cast it asked as unknown, and a record parsed before the store kept `original_language` or `genres` holds none:
+   *  answered off the tree, as the store's re-read record would be. What the tree states none of stays none; neither
+   *  changes a model decision the capture holds. */
   def withRecorded(capture: Capture, asked: Iterable[Int], castOf: Int => Option[Seq[String]],
-                   originalLanguageOf: Int => Option[String]): Capture = {
+                   recordOf: Int => Option[IdentityMeasures.Film]): Capture = {
     val casts = (capture.casts.keys ++ asked).toSeq.distinct.filter(id => capture.casts.get(id).flatten.isEmpty)
       .flatMap(id => castOf(id).map(cast => id -> Option(cast)))
-    val films = capture.films.collect { case (id, Some(film)) if film.originalLanguage.isEmpty =>
-      originalLanguageOf(id).map(language => id -> Option(film.copy(originalLanguage = Some(language)))) }.flatten
+    val films = capture.films.collect { case (id, Some(film)) if film.originalLanguage.isEmpty || film.genreBits == 0 =>
+      recordOf(id).map(recorded => id -> Option(film.copy(originalLanguage = film.originalLanguage.orElse(recorded.originalLanguage),
+        genreBits = if (film.genreBits != 0) film.genreBits else recorded.genreBits)))
+    }.flatten.filter { case (id, film) => !capture.films.get(id).contains(film) }
     capture.copy(casts = capture.casts ++ casts, films = capture.films ++ films)
   }
 

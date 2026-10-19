@@ -214,7 +214,15 @@ object IdentityMeasures {
                          *  few dozen shared strings, a reference each and no copy; `None` for a record filed before records
                          *  kept it, or one TMDB names none for. What a showing billed as subtitled into a language asks of the
                          *  film: is that language its own? */
-                        originalLanguage: Option[String] = None) {
+                        originalLanguage: Option[String] = None,
+                        /** TMDB's genres of it, one bit each of [[Film.Genres]] (an Int, no collection per record): what the
+                         *  cast evidence asks of a candidate — is its cast a voice cast (Animation) or its contributors'
+                         *  (Documentary)? 0 for a record filed before records kept them, or one TMDB files under none. */
+                        genreBits: Int = 0) {
+    /** TMDB's genre ids of the film ([[genreBits]]). */
+    def genreIds: Set[Int] = Film.genreIdsOf(genreBits)
+    /** Does TMDB file the film under the genre of TMDB id `genreId`? */
+    def hasGenre(genreId: Int): Boolean = (genreBits & Film.genreBitsOf(Seq(genreId))) != 0
     /** The film as a line names it: `'Lalka' (1968)`, its year left out where none is known. */
     def titled: String = s"'$title'${year.fold("")(y => s" ($y)")}"
     /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */
@@ -303,6 +311,14 @@ object IdentityMeasures {
       titles.map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
   }
   object Film {
+    /** TMDB's movie genre ids (`/genre/movie/list`), each a bit of [[Film.genreBits]] by its place here: an id TMDB adds
+     *  later is not kept until it is added (at the end — a stored record's bits name the places). */
+    val Genres: IndexedSeq[Int] = IndexedSeq(28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 10770, 53, 10752, 37)
+    private val bitOf: Map[Int, Int] = Genres.zipWithIndex.map { case (id, place) => id -> (1 << place) }.toMap
+    /** The bits of `ids` (an unknown id none). */
+    def genreBitsOf(ids: Iterable[Int]): Int = ids.foldLeft(0)((bits, id) => bits | bitOf.getOrElse(id, 0))
+    /** The ids `bits` hold. */
+    def genreIdsOf(bits: Int): Set[Int] = Genres.indices.filter(place => (bits & (1 << place)) != 0).map(Genres).toSet
     /** A tagline's (or a billing piece's) words as one key: [[Film.taglineKey]]; 0 for none. */
     def taglineKeyOf(text: String): Int = {
       val words = services.movies.TitleContainment.tokens(text)

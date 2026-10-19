@@ -90,7 +90,7 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 }
 
 object TmdbNormalizer {
-  /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title and language, release day,
+  /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title and language, genre ids, release day,
    *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles, the directors
    *  among the crew, the top-billed cast's names and which countries date a release of it, its cinema releases (country, year, edition) and
    *  the certificates rating it where a scale is read ([[Certificates]]) and the words its overview capitalises
@@ -120,10 +120,13 @@ object TmdbNormalizer {
     val releases = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.Releases -> Json.toJson(TmdbFilmRecord.releases(block)))
     // and the certificates it records where a rating scale is read (`Certificates.below`): the least restrictive per country
     val certificates = (body \ "release_dates").toOption.flatMap(Certificates.ofReleaseDates).map(TmdbFilmRecord.CertificatesField -> Json.toJson(_))
+    // its genres' ids, never their names: what `TmdbFilmRecord.genreBits` reads. Budget: ~3 genres of ~10 B a stored
+    // document; the record the model keeps holds them as one Int (`IdentityMeasures.Film.genreBits`)
+    val genres = (body \ "genres").asOpt[Seq[JsValue]].map(gs => "genres" -> JsArray(gs.flatMap(g => (g \ "id").asOpt[Int]).map(id => Json.obj("id" -> id))))
     // the words its overview capitalises, never the text: all the synopsis evidence reads of it (`TmdbFilmRecord.overview`)
     val overview = (body \ "overview").asOpt[String].map(text =>
       TmdbFilmRecord.OverviewWords -> Json.toJson(ProseWords.ofDescription(Seq(text)).hashes))
-    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases ++ certificates ++ overview)
+    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases ++ certificates ++ genres ++ overview)
   }
 }
 

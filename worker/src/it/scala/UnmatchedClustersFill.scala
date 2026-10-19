@@ -23,8 +23,8 @@ import scala.util.Try
  *
  * `--recording` (a recording's fixtures directory: `corpus/cinema-scrapes-<cc>.json.gz` and `enrichment-<cc>/`) answers
  * from its TMDB tree the film overviews the synopsis evidence asks ([[IdentityLookups.overview]]), the casts the cast
- * and synopsis evidence ask ([[IdentityLookups.cast]]) and the records' original languages that the capture holds none
- * of ([[UnmatchedClusters.withRecorded]]); with `--listing-words`, which only the recording the capture was taken from may be given for, the
+ * and synopsis evidence ask ([[IdentityLookups.cast]]) and the records' original languages and genres that the capture
+ * holds none of ([[UnmatchedClusters.withRecorded]]); with `--listing-words`, which only the recording the capture was taken from may be given for, the
  * captured listings also gain the words their own synopses capitalise ([[Listing.words]]), read off its corpus as a
  * capture reads them.
  *
@@ -80,14 +80,14 @@ object UnmatchedClustersFill {
         language = country.language, retrySleep = (_: Long) => ())
       new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(opened.fetch), Nil, opened.gaps)
     }
-    // the casts and original languages a capture taken without them lacks, off the same tree
+    // the casts, original languages and genres a capture taken without them lacks, off the same tree
     def recordedOf(tree: TmdbIdentityLookups, asked: Iterable[Int]): Unit = {
       val before = capture
-      capture = UnmatchedClusters.withRecorded(capture, asked, id => tree.cast(id).toOption.flatten,
-        id => tree.film(id).toOption.flatten.flatMap(_.originalLanguage))
-      println(s"[${country.code}] fill: ${capture.casts.count(_._2.isDefined) - before.casts.count(_._2.isDefined)} cast(s) and " +
-        s"${capture.films.count(_._2.exists(_.originalLanguage.isDefined)) - before.films.count(_._2.exists(_.originalLanguage.isDefined))} " +
-        s"original language(s) read from the recording")
+      capture = UnmatchedClusters.withRecorded(capture, asked, id => tree.cast(id).toOption.flatten, id => tree.film(id).toOption.flatten)
+      def held(c: UnmatchedClusters.Capture)(has: IdentityMeasures.Film => Boolean) = c.films.count(_._2.exists(has))
+      println(s"[${country.code}] fill: ${capture.casts.count(_._2.isDefined) - before.casts.count(_._2.isDefined)} cast(s), " +
+        s"${held(capture)(_.originalLanguage.isDefined) - held(before)(_.originalLanguage.isDefined)} original language(s) and " +
+        s"${held(capture)(_.genreBits != 0) - held(before)(_.genreBits != 0)} record(s)' genres read from the recording")
     }
     overviewsOf.foreach(recordedOf(_, Nil))
     val clock    = new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z"))
