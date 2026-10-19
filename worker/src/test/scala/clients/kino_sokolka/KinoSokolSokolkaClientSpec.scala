@@ -32,12 +32,12 @@ class KinoSokolSokolkaClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "pin a concrete screening at its real grid date and detail-page time" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("sprawiedliwość owiec")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("sprawiedliwość owiec")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 23, 18, 0))
   }
 
   it should "surface the screening version labels as format tokens" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("kurozając")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("kurozając")).value
     val showing = film.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 23, 16, 0)).value
     showing.format should contain allOf ("2D", "DUB")
   }

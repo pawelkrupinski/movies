@@ -124,7 +124,7 @@ class CineamoClientSpec extends AnyFlatSpec with Matchers {
   // its other screenings.
   it should "peel a screen format billed in front of the title into the showing's format" in {
     val astor = client("Astor Film Lounge HafenCity").fetch()
-    astor.map(_.movie.title).filter(_.toUpperCase.startsWith("ATMOS")) shouldBe empty
+    astor.map(_.movie.title).filter(_.toUpperCase(java.util.Locale.ROOT).startsWith("ATMOS")) shouldBe empty
     val dune = film(astor, "Dune: Part Three")
     dune.showtimes.count(_.format.contains("ATMOS")) should be > 0
     film(astor, "Verity - Dunkle Geheimnisse").showtimes.flatMap(_.format).toSet should contain allOf ("ATMOS", "OmU")

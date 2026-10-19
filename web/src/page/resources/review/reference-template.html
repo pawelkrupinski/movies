@@ -114,11 +114,11 @@ function parseRef(raw) {
   const s = String(raw || "").trim();
   let m;
   if ((m = s.match(/themoviedb\.org\/movie\/(\d+)/i)) || (m = s.match(/^tmdb:\s*(\d+)$/i)) || (m = s.match(/^(\d+)$/))) return `tmdb:${m[1]}`;
-  if ((m = s.match(/(tt\d{5,})/i))) return `imdb:${m[1].toLowerCase()}`;
+  if ((m = s.match(/(tt\d{5,})/i))) return `imdb:${m[1].toLowerCase(java.util.Locale.ROOT)}`;
   if ((m = s.match(/filmweb\.pl\/(?:film|serial)\/[^?#]*?-(\d+)(?:[/?#]|$)/i)) || (m = s.match(/^filmweb:\s*(\d+)$/i))) return `filmweb:${m[1]}`;
   if ((m = s.match(/\b(Q\d+)\b/))) return `wikidata:${m[1]}`;
-  if ((m = s.match(/rottentomatoes\.com\/m\/([a-z0-9_\-]+)/i)) || (m = s.match(/^rt:\s*([a-z0-9_\-]+)$/i))) return `rt:${m[1].toLowerCase()}`;
-  if ((m = s.match(/letterboxd\.com\/film\/([a-z0-9\-]+)/i)) || (m = s.match(/^letterboxd:\s*([a-z0-9\-]+)$/i))) return `letterboxd:${m[1].toLowerCase()}`;
+  if ((m = s.match(/rottentomatoes\.com\/m\/([a-z0-9_\-]+)/i)) || (m = s.match(/^rt:\s*([a-z0-9_\-]+)$/i))) return `rt:${m[1].toLowerCase(java.util.Locale.ROOT)}`;
+  if ((m = s.match(/letterboxd\.com\/film\/([a-z0-9\-]+)/i)) || (m = s.match(/^letterboxd:\s*([a-z0-9\-]+)$/i))) return `letterboxd:${m[1].toLowerCase(java.util.Locale.ROOT)}`;
   return null;
 }
 function refUrl(ref) {

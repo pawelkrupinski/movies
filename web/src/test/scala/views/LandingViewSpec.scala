@@ -23,7 +23,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     // `/` was once blocked from indexing by a
     // `<meta name="robots" content="noindex">`. The landing page is the
     // homepage; it must be indexable.
-    html.toLowerCase should not include "noindex"
+    html.toLowerCase(java.util.Locale.ROOT) should not include "noindex"
     html should not include """name="robots""""
   }
 

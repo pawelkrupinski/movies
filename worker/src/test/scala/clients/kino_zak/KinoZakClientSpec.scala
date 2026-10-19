@@ -74,7 +74,7 @@ class KinoZakClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val directors = movies.flatMap(_.director)
     directors should not be empty
     directors.foreach { name =>
-      name.toLowerCase should not include "obsada"
+      name.toLowerCase(java.util.Locale.ROOT) should not include "obsada"
       name should fullyMatch regex """\D+"""
     }
   }

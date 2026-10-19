@@ -26,7 +26,7 @@ class KinoDianaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "pin a concrete screening — date from JSON, time from the HTML blob" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("chłopiec na krańcach świata")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("chłopiec na krańcach świata")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 19, 15, 30))
   }
 
@@ -34,11 +34,11 @@ class KinoDianaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // Raw feed title: "CHŁOPIEC NA KRAŃCACH ŚWIATA - dubbing 2D".
     val titles = movies.map(_.movie.title)
     titles should contain("Chłopiec na krańcach świata")
-    all(titles.map(_.toLowerCase)) should not include "dubbing"
+    all(titles.map(_.toLowerCase(java.util.Locale.ROOT))) should not include "dubbing"
   }
 
   it should "attach the /Bilety/Sala booking link to a screening" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("chłopiec na krańcach świata")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("chłopiec na krańcach świata")).value
     film.showtimes.flatMap(_.bookingUrl).exists(_.contains("/Bilety/Sala/")) shouldBe true
   }
 }

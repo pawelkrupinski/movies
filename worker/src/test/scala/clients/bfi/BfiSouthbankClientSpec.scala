@@ -62,7 +62,7 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
 
   it should "leave out the test listing the box office made to try its site" in {
     // "Z Test Show please ignore": one NFT4 performance, listed beside the films on 2026-10-12.
-    byTitle.keySet.filter(_.toLowerCase.contains("test show")) shouldBe empty
+    byTitle.keySet.filter(_.toLowerCase(java.util.Locale.ROOT).contains("test show")) shouldBe empty
   }
 
   it should "leave the BFI IMAX's performances to that venue" in {

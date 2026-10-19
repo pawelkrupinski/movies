@@ -27,7 +27,7 @@ class ProdTitlesNormalizationSpec extends AnyFlatSpec with Matchers {
   // a decoration glued to a numeral only becomes standalone once stripped.
   private def sanitize(t: String): String =
     tools.TextNormalization.deburr(normalize(rs.canonical(t)))
-      .toLowerCase.replaceAll("[^\\p{L}\\p{N}]+", "")
+      .toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "")
 
   private def titles: Seq[String] =
     if (!Files.exists(fixture)) Seq.empty

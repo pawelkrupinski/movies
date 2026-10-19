@@ -191,7 +191,7 @@ object ProxiedAfterDirectFetchSpec {
         else {
           val requestLine = head.head.split(" ")
           val headers     = head.tail.flatMap(line => line.split(":", 2) match {
-            case Array(k, v) => Some(k.trim.toLowerCase -> v.trim)
+            case Array(k, v) => Some(k.trim.toLowerCase(java.util.Locale.ROOT) -> v.trim)
             case _           => None
           }).toMap
           if (requestLine(0) != "CONNECT") { write(out, "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n"); open = false }

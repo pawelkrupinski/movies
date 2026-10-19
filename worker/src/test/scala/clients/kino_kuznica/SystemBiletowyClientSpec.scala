@@ -78,7 +78,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
       movies.map(_.cinema).toSet shouldBe Set(cinema)
       // Every row carrying the title: a programme suffix ("… Tani Poniedziałek")
       // keeps a film's screening on a row of its own.
-      val showtimes = movies.filter(_.movie.title.toLowerCase.contains(title)).flatMap(_.showtimes)
+      val showtimes = movies.filter(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains(title)).flatMap(_.showtimes)
       showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
     }
   }
@@ -86,14 +86,14 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   "SystemBiletowyClient" should "merge a film's dubbed and subtitled screenings into one row carrying each format" in {
     // "OBCY (2D, NAPISY PL)" and its dubbed twin fold onto one "Obcy".
     val obcy = moviesOf("https://bdk.systembiletowy.pl", KinoBieszczadzkiDK)
-      .filter(_.movie.title.toLowerCase.startsWith("obcy"))
+      .filter(_.movie.title.toLowerCase(java.util.Locale.ROOT).startsWith("obcy"))
     obcy.map(_.movie.title) shouldBe Seq("Obcy")
     obcy.head.showtimes.map(_.format).toSet should contain(List("2D", "NAP"))
   }
 
   it should "peel Kino Orzeł's '-Film 2D dubbing' boilerplate into the format" in {
     val film = moviesOf("https://udk.systembiletowy.pl", KinoOrzelUstrzyki)
-      .find(_.movie.title.toLowerCase.startsWith("podręcznik")).value
+      .find(_.movie.title.toLowerCase(java.util.Locale.ROOT).startsWith("podręcznik")).value
     film.movie.title shouldBe "Podręcznik dla suprbohaterów"
     film.showtimes.head.format should contain allOf ("2D", "DUB")
   }
@@ -108,27 +108,27 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "keep only BCKino's film events, peeling their 'BCKino – ' prefix" in {
     val movies = moviesOf("https://bck.systembiletowy.pl", KinoBCKBytom, filmGroups = Set(EventCategory("BCKino")))
     movies.map(_.movie.title) should contain("Koniec imprezy")
-    all(movies.map(_.movie.title.toLowerCase)) should not include "bckino"
+    all(movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))) should not include "bckino"
     // The instance's 47 other events — "BECEK CZYTA" readings, workshops — stay out.
     movies.flatMap(_.showtimes).size shouldBe 6
   }
 
   it should "keep only Kino Frajda's Imprezy SDK events, dropping Chorzów's own" in {
     val movies = moviesOf("https://bilety.chck.pl", KinoFrajda, filmGroups = Set(EventCategory("Imprezy SDK")))
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("zagadka klary muu")) shouldBe true
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("zagadka klary muu")) shouldBe true
     // "KOSZMAREK" screens at both: 10-20 as "Imprezy ChCK", 10-24 as "Imprezy SDK".
-    val koszmarek = movies.find(_.movie.title.toLowerCase.contains("koszmarek")).value.showtimes.map(_.dateTime)
+    val koszmarek = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("koszmarek")).value.showtimes.map(_.dateTime)
     koszmarek should contain(LocalDateTime.of(2026, 10, 24, 15, 0))
     koszmarek should not contain LocalDateTime.of(2026, 10, 20, 17, 0)
   }
 
   it should "scope Oświęcim's instance to Nasze Kino, dropping the culture centre's concerts and plays" in {
     val movies = moviesOf("https://ock.systembiletowy.pl", KinoNaszeKino, institution = Some(Institution("Nasze Kino")))
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("mistyczka")) shouldBe true
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("mistyczka")) shouldBe true
     // A comedy play and a concert sold by the centre on the same instance; the
     // old HTML scrape let "Ale kino, czyli muzyka filmowa…" through as a film.
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("dobrze się kłamie")) shouldBe false
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("ale kino, czyli muzyka filmowa")) shouldBe false
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("dobrze się kłamie")) shouldBe false
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("ale kino, czyli muzyka filmowa")) shouldBe false
   }
 
   it should "split the one Mikro instance between its two screens" in {
@@ -212,7 +212,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   private def film(base: String, cinema: Cinema, titleFragment: String) =
     switchedFetched.getOrElseUpdate((base, cinema),
       new SystemBiletowyClient(switched, VisualSoftPortal(base), cinema, titles = titleNormalizer).fetch())
-      .find(_.movie.title.toLowerCase.contains(titleFragment)).value
+      .find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains(titleFragment)).value
 
   it should "carry the feed's director, original title, year, country and runtime onto the film" in {
     val auta = film("https://bilety.kino.myslenice.pl", KinoMuzaMyslenice, "auta")

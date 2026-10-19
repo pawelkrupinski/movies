@@ -29,7 +29,7 @@ object GenreLanguageAudit {
     "katastroficzny", "erotyczny", "familijne", "przygodowe")
 
   private def isPolish(genres: Seq[String]): Boolean =
-    genres.exists(g => PolishGenres.contains(g.trim.toLowerCase))
+    genres.exists(g => PolishGenres.contains(g.trim.toLowerCase(java.util.Locale.ROOT)))
 
   private val clock = java.time.Clock.systemUTC()
   // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
@@ -52,7 +52,7 @@ object GenreLanguageAudit {
     val titleNormalizer = TitleNormalizer.forCountry(country)
     val repo = AmbientMovieRepository.over(Some(db), titleNormalizer, clock)
     val all  = repo.findAll()
-    val rows = all.filter(s => filter.forall(f => s.title.toLowerCase.contains(f.toLowerCase)))
+    val rows = all.filter(s => filter.forall(f => s.title.toLowerCase(java.util.Locale.ROOT).contains(f.toLowerCase(java.util.Locale.ROOT))))
 
     println(s"${country.displayName} ($dbName): ${all.size} rows, ${rows.size} matched\n")
 

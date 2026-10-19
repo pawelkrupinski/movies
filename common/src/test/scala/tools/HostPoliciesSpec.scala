@@ -97,7 +97,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     // suffix repeated on a later row is silently shadowed by the earlier one.
     for (row <- HostPolicies.all) withClue(s"${row.hostSuffixes}: ") {
       row.hostSuffixes should not be empty
-      row.hostSuffixes.foreach(suffix => suffix shouldBe suffix.toLowerCase)
+      row.hostSuffixes.foreach(suffix => suffix shouldBe suffix.toLowerCase(java.util.Locale.ROOT))
     }
     val suffixes = HostPolicies.all.toList.flatMap(_.hostSuffixes)
     suffixes.distinct shouldBe suffixes

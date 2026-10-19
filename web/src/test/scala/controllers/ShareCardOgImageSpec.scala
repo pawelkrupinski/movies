@@ -18,7 +18,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   private val card = "f0123456789abcd.jpg?v=0123456789abcdef"
 
   private def film(title: String) =
-    TestMovieController.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase}.jpg"))
+    TestMovieController.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase(java.util.Locale.ROOT)}.jpg"))
 
   private val records = Seq(film("Diuna"), film("Belle"))
 

@@ -131,7 +131,7 @@ object GateReport {
     sufs.find(s => t.length - s.length >= 3 && t.endsWith(s)).map(s => t.dropRight(s.length)).getOrElse(t)
   }
   def tokens(s: String, lang: String): Seq[String] =
-    TextNormalization.deburr(TextNormalization.stripUrls(s)).toLowerCase.split("[^\\p{L}]+").iterator
+    TextNormalization.deburr(TextNormalization.stripUrls(s)).toLowerCase(java.util.Locale.ROOT).split("[^\\p{L}]+").iterator
       .filter(_.length > 2).filterNot(stopwords(lang)).map(stem(_, lang)).toSeq
   def buildIdf(docs: Seq[String], lang: String): Map[String, Double] = {
     val n = math.max(1, docs.size); val df = scala.collection.mutable.HashMap.empty[String, Int]
@@ -149,7 +149,7 @@ object GateReport {
     if (na == 0 || nb == 0) 0.0 else dot / (na * nb)
   }
 
-  def norm(s: String): String = TextNormalization.deburr(s).toLowerCase.trim.replaceAll("\\s+", " ")
+  def norm(s: String): String = TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT).trim.replaceAll("\\s+", " ")
   /** The other titles a row is searched under: without its parentheses, each `|` part, and what follows a colon. */
   def stripVariants(t: String): Seq[String] = {
     val noParen = t.replaceAll("\\s*\\([^)]*\\)", "").trim

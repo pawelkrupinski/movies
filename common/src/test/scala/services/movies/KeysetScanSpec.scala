@@ -188,7 +188,7 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
   // page failed (the cadence page's `all`): `collect` hands rows out only for a complete scan.
   "collect" should "answer every decoded row of a complete scan" in {
     KeysetScan.collect[String, String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
-      keyOf = identity, fetchPage = collectionOf("a", "b", "c"))(row => Seq(row.toUpperCase))
+      keyOf = identity, fetchPage = collectionOf("a", "b", "c"))(row => Seq(row.toUpperCase(java.util.Locale.ROOT)))
       .shouldBe(tools.ReadOutcome.Answered(Vector("A", "B", "C")))
   }
 

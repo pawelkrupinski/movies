@@ -26,7 +26,7 @@ class KinoJednoscClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "pin a concrete screening read off the film's detail page" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("władcy wszechświata")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("władcy wszechświata")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 17, 15))
   }
 }

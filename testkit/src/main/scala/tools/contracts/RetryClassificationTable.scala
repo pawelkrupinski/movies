@@ -28,7 +28,7 @@ object RetryClassificationTable {
   }
 
   final case class Row(source: String, error: String, verdict: Verdict) {
-    override def toString: String = s"$source/$error → ${verdict.toString.toLowerCase}"
+    override def toString: String = s"$source/$error → ${verdict.toString.toLowerCase(java.util.Locale.ROOT)}"
 
     /** The status of an `http:NNN` / `tunnel:NNN` error, when it names one. */
     def status: Option[Int] = error.split(':') match {

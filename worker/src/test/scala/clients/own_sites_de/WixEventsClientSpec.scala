@@ -36,7 +36,7 @@ class WixEventsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "leave out a partner's evenings on the same list" in {
     // "HERBSTKINO IM B28: Hamnet" is at Belmsdorfer Str. 28, 01877 Bischofswerda.
-    movies.map(_.movie.title).filter(_.toLowerCase.contains("hamnet")) shouldBe empty
+    movies.map(_.movie.title).filter(_.toLowerCase(java.util.Locale.ROOT).contains("hamnet")) shouldBe empty
   }
 
   it should "drop the evenings already past" in {

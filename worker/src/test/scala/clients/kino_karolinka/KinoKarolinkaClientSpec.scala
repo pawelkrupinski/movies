@@ -32,6 +32,6 @@ class KinoKarolinkaClientSpec extends AnyFlatSpec with Matchers with OptionValue
 
   it should "exclude non-film events (concerts, theatre, festivals)" in {
     // "XVIII Dni Radzionkowa" is a town festival, not a film.
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("dni radzionkowa")) shouldBe false
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("dni radzionkowa")) shouldBe false
   }
 }

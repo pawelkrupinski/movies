@@ -48,7 +48,7 @@
     },
     // Every visible card's title contains `fragment`, case-insensitively.
     titlesContain: function (fragment) {
-      return all('.col[data-title]').filter(unfiltered).every(function (c) { return c.dataset.title.toLowerCase().includes(fragment); });
+      return all('.col[data-title]').filter(unfiltered).every(function (c) { return c.dataset.title.toLowerCase(java.util.Locale.ROOT).includes(fragment); });
     },
     // The visible cards' ratings never rise down the grid (and there are two or more).
     ratingsNonIncreasing: function () {

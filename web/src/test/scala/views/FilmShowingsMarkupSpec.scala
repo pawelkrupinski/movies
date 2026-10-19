@@ -91,7 +91,7 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
     val hostile = Seq("javascript:alert(document.cookie)", " JavaScript:alert(1)", "data:text/html,<script>alert(1)</script>")
     val slots   = hostile.zipWithIndex.map { case (url, i) => Showtime(day.atTime(18, i), Some(url), None, Nil) }
     val html    = views.html._filmShowings(scheduleWith(Seq(Helios -> "javascript:alert(2)"), day -> slots)).body
-    html.toLowerCase should (not include "javascript:" and not include "data:text")
+    html.toLowerCase(java.util.Locale.ROOT) should (not include "javascript:" and not include "data:text")
     // Still listed, just not as links.
     """<span class="badge-time"""".r.findAllIn(html).size shouldBe hostile.size
   }

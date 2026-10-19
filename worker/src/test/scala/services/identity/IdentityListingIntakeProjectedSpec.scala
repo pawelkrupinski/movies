@@ -62,7 +62,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val modelled = Listing.all(w.intake.identities(live), normalizer)
     val projected = w.project()._1.map(_.listing)
     Seq(modelled, projected).foreach { listings =>
-      val samson = listings.find(_.title.toUpperCase.contains("SAMSON")).get
+      val samson = listings.find(_.title.toUpperCase(java.util.Locale.ROOT).contains("SAMSON")).get
       samson.screenings.days shouldBe Seq(start.toLocalDate, start.toLocalDate.plusDays(1))
       samson.broadcastSeason shouldBe Some(2026)
       listings.find(_.title == "Lalka").get.screenings.isEmpty shouldBe true
@@ -80,7 +80,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val intake = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ListingIntakeMetrics.noop)
     archive.store(Multikino, clock.instant(), film(Multikino, "OPERA-SAMSON I DALILA", 0), film(Multikino, "Lalka", 0))
-    def samson = intake.projectedByVenue(live).flatMap(_._2).map(_.listing).find(_.title.toUpperCase.contains("SAMSON")).get
+    def samson = intake.projectedByVenue(live).flatMap(_._2).map(_.listing).find(_.title.toUpperCase(java.util.Locale.ROOT).contains("SAMSON")).get
     samson.screenings.isUnknown shouldBe true          // read, its days unknown — not "screens on none"
     failing = false
     samson.screenings.days shouldBe Seq(start.toLocalDate)   // the row never moved, yet read again

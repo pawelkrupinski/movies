@@ -35,7 +35,7 @@ object IntegrationMongo {
    *  tested without an env or a server. */
   def isProtectedCluster(uri: String): Boolean = {
     val trimmed = uri.trim
-    val isSrv   = trimmed.toLowerCase.startsWith("mongodb+srv://")
+    val isSrv   = trimmed.toLowerCase(java.util.Locale.ROOT).startsWith("mongodb+srv://")
     // Userinfo is the segment between the scheme and the first '/' that follows,
     // and only counts when it actually carries a '@' (mongodb://host/db has none).
     val afterScheme = trimmed.dropWhile(_ != '/').dropWhile(_ == '/')

@@ -40,7 +40,7 @@ class ListingOrderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not be carried by every listing as a string" in {
-    val held = classOf[Listing].getDeclaredFields.map(_.getName).filter(_.toLowerCase.contains("sortkey"))
+    val held = classOf[Listing].getDeclaredFields.map(_.getName).filter(_.toLowerCase(java.util.Locale.ROOT).contains("sortkey"))
     withClue("a field holding the joined sort key: ")(held shouldBe empty)
   }
 }

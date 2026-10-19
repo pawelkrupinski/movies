@@ -21,7 +21,7 @@ final case class FillCredentials(tmdb: Option[settings.TmdbApiKey]) {
     case at =>
       val parameters = url.substring(at + 1).split("&", -1).toSeq.map { parameter =>
         parameter.split("=", 2) match {
-          case Array(name, RedactedUrl.Mask) => byParameter.get(name.toLowerCase).map { case (value, headers) => s"$name=$value" -> headers }
+          case Array(name, RedactedUrl.Mask) => byParameter.get(name.toLowerCase(java.util.Locale.ROOT)).map { case (value, headers) => s"$name=$value" -> headers }
           case _                             => Some(parameter -> Map.empty[String, String])
         }
       }

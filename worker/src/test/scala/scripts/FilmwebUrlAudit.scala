@@ -56,7 +56,7 @@ object FilmwebUrlAudit {
 
     val candidates = repository.findAll()
       .filter(_.record.filmwebUrl.isDefined)
-      .sortBy(r => (r.title.toLowerCase, r.year))
+      .sortBy(r => (r.title.toLowerCase(java.util.Locale.ROOT), r.year))
     val Workers = 3  // CLAUDE.md: Filmweb soft-blocks above ~5.
     println(s"${candidates.size} row(s) carry a filmwebUrl — auditing with $Workers workers.\n")
 

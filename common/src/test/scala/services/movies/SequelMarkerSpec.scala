@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 class SequelMarkerSpec extends AnyFlatSpec with Matchers {
 
   private def toks(s: String): Seq[String] =
-    tools.TextNormalization.deburr(s).toLowerCase.split("[^\\p{L}\\p{N}]+").filter(_.nonEmpty).toSeq
+    tools.TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT).split("[^\\p{L}\\p{N}]+").filter(_.nonEmpty).toSeq
 
   private def anotherEntry(base: String, whole: String) = SequelMarker(LatestTitleYear.current).namesAnotherEntry(toks(base), toks(whole))
 

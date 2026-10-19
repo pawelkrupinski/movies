@@ -29,17 +29,17 @@ class CyfroweKinoClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   it should "pin a concrete screening with the date read off the label" in {
     // Fixture: "STRASZNY FILM / dubbing i napisy" screens 2026-06-12 at 19:00.
-    val film = movies.find(_.movie.title.toLowerCase.contains("straszny")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("straszny")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 19, 0))
   }
 
   it should "clean the dirty title (drop the leading date, DKF tag and version)" in {
     // Raw title in the fixture: "15.06 / DKF WERDYKT / napisy" → "Werdykt".
-    val film = movies.find(_.movie.title.toLowerCase.contains("werdykt")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("werdykt")).value
     film.movie.title should not include "/"
     film.movie.title should not include "15.06"
-    film.movie.title.toLowerCase should not include "napisy"
-    film.movie.title.toLowerCase should not include "dkf"
+    film.movie.title.toLowerCase(java.util.Locale.ROOT) should not include "napisy"
+    film.movie.title.toLowerCase(java.util.Locale.ROOT) should not include "dkf"
   }
 
   it should "carry a poster for every film" in {
@@ -51,7 +51,7 @@ class CyfroweKinoClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   // noise. Same `NoiseSeg` pattern on both sides, so title and badge cannot
   // disagree about what a segment is.
   it should "keep the version segment it strips from the title as the badge" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("werdykt")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("werdykt")).value
     all(film.showtimes.map(_.format)) shouldBe List("NAP")
   }
 

@@ -32,7 +32,7 @@ class KinoZbyszekClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "drop the KINO NIECZYNNE (cinema-closed) placeholder" in {
-    movies.map(_.movie.title.toLowerCase) should not contain "kino nieczynne"
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)) should not contain "kino nieczynne"
   }
 
   it should "pin a concrete screening with its date+time read off the calendar" in {

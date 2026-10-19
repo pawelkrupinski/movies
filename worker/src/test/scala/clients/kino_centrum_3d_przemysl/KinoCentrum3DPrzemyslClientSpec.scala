@@ -46,7 +46,7 @@ class KinoCentrum3DPrzemyslClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry the listing synopsis teaser" in {
-    byTitle("ROBIN HOOD: KONIEC LEGENDY").synopsis.map(_.toLowerCase).getOrElse("") should
+    byTitle("ROBIN HOOD: KONIEC LEGENDY").synopsis.map(_.toLowerCase(java.util.Locale.ROOT)).getOrElse("") should
       include ("hugh jackman")
   }
 }

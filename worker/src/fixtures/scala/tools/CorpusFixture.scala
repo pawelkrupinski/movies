@@ -52,7 +52,7 @@ object CorpusFixture {
    *  `test/resources/fixtures/…` load, so it resolves the same unforked from sbt
    *  and from a CI checkout. */
   def pathFor(countryCode: String): Path =
-    Paths.get("test", "resources", "fixtures", "corpus", s"cinema-scrapes-${countryCode.toLowerCase}.json.gz")
+    Paths.get("test", "resources", "fixtures", "corpus", s"cinema-scrapes-${countryCode.toLowerCase(java.util.Locale.ROOT)}.json.gz")
 
   def exists(countryCode: String): Boolean = Files.exists(pathFor(countryCode))
 

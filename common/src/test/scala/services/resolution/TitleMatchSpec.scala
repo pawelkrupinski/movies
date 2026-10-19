@@ -15,7 +15,7 @@ import tools.TextNormalization
 class TitleMatchSpec extends AnyFlatSpec with Matchers {
 
   /** Filmweb's fold, the `sanitize` its corroboration passes in. */
-  private val deburr: String => String = s => TextNormalization.deburr(s).toLowerCase.trim
+  private val deburr: String => String = s => TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT).trim
 
   // ── foldDashes / fold / deburredFold ───────────────────────────────────────
 

@@ -34,7 +34,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "strip format tags from titles (no '2D napisy' suffix)" in {
-    movies.map(_.movie.title).foreach(_.toLowerCase should not include "2d napisy")
+    movies.map(_.movie.title).foreach(_.toLowerCase(java.util.Locale.ROOT) should not include "2d napisy")
   }
 
   /** Kino Jaworzyna captured on a day the venue was dark (11.06.2026): the bare
@@ -181,7 +181,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "EkobiletClient (nearby-towns sweep)" should "parse Dom Kultury w Górze off the card-grid skin" in {
     gora should not be empty
     gora.map(_.cinema).toSet shouldBe Set(KinoDKGora)
-    val film = gora.find(_.movie.title.toLowerCase.contains("folwark zwierzęcy")).value
+    val film = gora.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("folwark zwierzęcy")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 17, 0))
     film.filmUrl.value should startWith("https://ekobilet.pl/dom-kultury-w-gorze-7114/")
   }
@@ -193,7 +193,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "parse Kino Ton (Żuromin) off the card-grid skin" in {
     zuromin should not be empty
     zuromin.map(_.cinema).toSet shouldBe Set(KinoTon)
-    val film = zuromin.find(_.movie.title.toLowerCase.contains("psi patrol")).value
+    val film = zuromin.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("psi patrol")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 2, 17, 0))
     film.filmUrl.value should startWith("https://ekobilet.pl/kinoton/")
   }
@@ -232,7 +232,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "parse Kino Milenium (Milejów) off the chrono-row skin" in {
     milejow should not be empty
     milejow.map(_.cinema).toSet shouldBe Set(KinoMilenium)
-    val film = milejow.find(_.movie.title.toLowerCase.contains("pucio kocha zwierzaki")).value
+    val film = milejow.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("pucio kocha zwierzaki")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 26, 12, 0))
     film.filmUrl shouldBe None
   }
@@ -244,7 +244,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "parse Kino Opolanka (Opole Lubelskie) off the chrono-row skin" in {
     opoleLubelskie should not be empty
     opoleLubelskie.map(_.cinema).toSet shouldBe Set(KinoOpolanka)
-    val film = opoleLubelskie.find(_.movie.title.toLowerCase.contains("niebo nad normandią")).value
+    val film = opoleLubelskie.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("niebo nad normandią")).value
     film.showtimes.map(_.dateTime) should contain allOf(
       LocalDateTime.of(2026, 9, 25, 20, 0), LocalDateTime.of(2026, 9, 26, 20, 0), LocalDateTime.of(2026, 9, 27, 20, 0))
     film.filmUrl shouldBe None
@@ -296,7 +296,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "keep a screened concert broadcast even when it is ticketed as a concert" in {
-    val rieu = wasosz.find(_.movie.title.toLowerCase.contains("rieu")).value
+    val rieu = wasosz.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("rieu")).value
     rieu.showtimes.flatMap(_.bookingUrl).head should endWith("bilety-na-koncert")
   }
 }

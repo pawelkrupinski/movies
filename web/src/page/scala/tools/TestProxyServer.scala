@@ -43,7 +43,7 @@ class TestProxyServer(user: String, pass: String) extends AutoCloseable {
       val headers = Iterator.continually(in.readLine()).takeWhile(l => l != null && l.nonEmpty).toList
       val out = client.getOutputStream
       val authOk = headers.exists(h =>
-        h.toLowerCase.startsWith("proxy-authorization:") && h.split(":", 2)(1).trim == expectedAuth)
+        h.toLowerCase(java.util.Locale.ROOT).startsWith("proxy-authorization:") && h.split(":", 2)(1).trim == expectedAuth)
       if (!authOk) {
         val body = "auth required"
         out.write(
@@ -74,7 +74,7 @@ class TestProxyServer(user: String, pass: String) extends AutoCloseable {
           val path = Option(uri.getRawQuery).fold(uri.getRawPath)(q => s"${uri.getRawPath}?$q")
           val targetOut = target.getOutputStream
           targetOut.write(s"$method $path HTTP/1.1\r\n".getBytes(StandardCharsets.UTF_8))
-          headers.filterNot(_.toLowerCase.startsWith("proxy-"))
+          headers.filterNot(_.toLowerCase(java.util.Locale.ROOT).startsWith("proxy-"))
             .foreach(h => targetOut.write(s"$h\r\n".getBytes(StandardCharsets.UTF_8)))
           targetOut.write("\r\n".getBytes(StandardCharsets.UTF_8))
           targetOut.flush()

@@ -50,7 +50,7 @@ class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
   private def urlFields(json: JsValue, path: String = ""): Seq[(String, String)] = json match {
     case o: JsObject => o.fields.flatMap { case (k, v) => urlFields(v, s"$path.$k") }.toSeq
     case a: JsArray  => a.value.zipWithIndex.flatMap { case (v, i) => urlFields(v, s"$path[$i]") }.toSeq
-    case JsString(s) if path.toLowerCase.contains("url") => Seq(path -> s)
+    case JsString(s) if path.toLowerCase(java.util.Locale.ROOT).contains("url") => Seq(path -> s)
     case _ => Nil
   }
 

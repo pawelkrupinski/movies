@@ -56,7 +56,7 @@ object VenueReplay {
     }
     argv.toList match {
       case cc :: rest =>
-        val country = Country.byCode(cc.toLowerCase).getOrElse(sys.error(s"no country $cc"))
+        val country = Country.byCode(cc.toLowerCase(java.util.Locale.ROOT)).getOrElse(sys.error(s"no country $cc"))
         go(rest, Args(country, "", None, None, Nil, Nil, scrape = false, None, None, fields = false, None, "worktree"))
       case Nil => sys.error("usage: VenueReplay <cc> --venue S [--corpus GZ] [--recording DIR] [--fixtures DIR]... [--title S]... [--scrape] [--date D] [--prod JSON] [--fields] [--out TSV]")
     }
@@ -65,7 +65,7 @@ object VenueReplay {
   /** Case and accents aside, single-spaced: how a selector matches a venue or a title. */
   def folded(s: String): String =
     java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "").replace('ł', 'l').replace('Ł', 'L')
-      .toLowerCase.replaceAll("\\s+", " ").trim
+      .toLowerCase(java.util.Locale.ROOT).replaceAll("\\s+", " ").trim
 
   /** The one venue `selector` names among `names`: an exact (folded) name wins, else the only one containing it. */
   def pickVenue(selector: String, names: Seq[String]): Either[String, String] = {
