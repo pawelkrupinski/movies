@@ -601,7 +601,9 @@ Every country and stage 0 lost / 0 gained: the captures the final stage replays 
   identity suite green. - **Landed (2026-10-19, at the user's call):** measured on two LOCAL recordings only (38713274617, tuned on, and
   38666576506), both clean; the six known-wrong rows struck to `open` with the takes rows re-emitted. Still owed: a
   measure on a newer recording (`scripts/identity-measure`) once GitHub is back — a new wrong or right lost there
-  sends V3f back here.
+  sends V3f back here. New external traffic, small: a take V3f refuses lets the resolver fall through to per-name
+  searches, so prod asks TMDB/IMDb a few more searches of event-like billings (DE Lagerhalle's "Wohnzimmerkonzerte
+  Festival - Toi Et Moi | …": 5 new, filled into the DE capture).
 - **Code:** `experiment/film-ness` (V1 `b03ef128a`, V2 `10610e9db`, V3f `a0429af20`).
 - **Next angle:** a venue prior — the share of a venue's listings the model leaves unmatched or reads as events,
   computed once per corpus (it singles out the gig venues), as a condition beside V3f's test or Giorgia Fumo's bare
