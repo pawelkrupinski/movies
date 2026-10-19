@@ -36,7 +36,7 @@ class CatalogSeedSpec extends AnyFlatSpec with Matchers {
 
   seeds.foreach { rel =>
     s"The bundled catalog seed $rel" should "match the live Catalog render" in {
-      val file    = testsupport.RepoRoot.file(rel)
+      val file    = new java.io.File(deploy.RepoFile.locate("build.sbt").getParentFile, rel)
       val current = if (file.exists()) new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8) else null
       if (current != expected) {
         file.getParentFile.mkdirs()

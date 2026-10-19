@@ -1,7 +1,7 @@
 import Foundation
 
 /// Dotted numeric version comparison — the Swift mirror of Scala
-/// `models.ClientVersion` (common/src/main/scala/models/ClientSupport.scala),
+/// `models.ClientVersion` (web/src/main/scala/models/ClientSupport.scala),
 /// which is the reference this and the Android gate are written against.
 enum ClientVersion {
 

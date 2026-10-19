@@ -138,7 +138,7 @@ jobs:
             - name: Regenerate the apps' catalog seeds
               if: steps.changed.outputs.wired == 'true'
               run: |
-                  sbt "common/Test/testOnly tools.CatalogSeedSpec" || sbt "common/Test/testOnly tools.CatalogSeedSpec"
+                  sbt "web/Test/testOnly tools.CatalogSeedSpec" || sbt "web/Test/testOnly tools.CatalogSeedSpec"
 
             # A fresh branch off main every run, never a force-push over a stale one --
             # see .github/actions/drop-bot-branch.

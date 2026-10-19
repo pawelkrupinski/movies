@@ -214,7 +214,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "catch { case _: NoSuchFileException => false; case _: IOException => false }") ->
       "a file that could not be deleted is reported as not deleted, which is what happened",
     // ── found once the lint saw chained calls, braces, `Failure(_)`, bare binders and `;` bodies ──
-    ("common/src/main/scala/services/MirrorFreshness.scala", "newestIn",
+    ("web/src/main/scala/services/MirrorFreshness.scala", "newestIn",
       ".recover { case exception => logger.debug(s\"Mirror freshness read failed: ${exception.getMessage}\"); Seq.empty }") ->
       "the local mirror's age for a dev page: None renders as unknown age, and nothing is decided from it",
     ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",

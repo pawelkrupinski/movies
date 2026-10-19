@@ -820,7 +820,7 @@ convergence band. There is no second place to remember for any of them.
 
 5. **Regenerate what derives from the above** — both are guarded, so CI tells you
    if you forget:
-   - mobile catalog seeds — `sbt "common/testOnly tools.CatalogSeedSpec"` rewrites
+   - mobile catalog seeds — `sbt "web/testOnly tools.CatalogSeedSpec"` rewrites
      `ios/Kinowo/catalog-seed.json` and `android/app/src/main/assets/catalog-seed.json`;
      run it twice (the first run fails by design after rewriting).
    - page snapshots — the navbar `<select>` reappears in all four

@@ -9,7 +9,7 @@ package tools
 object RepositoryReadSwallows {
 
   val Swallows: Map[(String, String, String), String] = Map(
-    ("common/src/main/scala/services/MirrorFreshness.scala", "newestIn",
+    ("web/src/main/scala/services/MirrorFreshness.scala", "newestIn",
       "Try(Await.result(") ->
       "a dev /debug label's freshness stamp: None reads as 'freshness unknown', which is what a failed read is; logged",
     ("common/src/main/scala/services/MongoCachingDetailFetch.scala", "cached",
