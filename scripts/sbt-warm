@@ -5,10 +5,8 @@
 #
 #   scripts/sbt-warm <sbt command>...    run the commands (each one argument, e.g. "worker/testOnly services.identity.X")
 #                                        in this checkout's server — started, and seeded, when there is none
-#   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server): through the
-#                                        memory gate but holding no JVM slot -- a slot held for a server's whole life
-#                                        queued every other agent's tests behind an idle process (2026-10-19: two of them,
-#                                        ~30 min per run, 3 runs to the 1800 s cap)
+#   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server) in this
+#                                        checkout's server, which it keeps in use (never idle-stopped) while it serves
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --status            this checkout's server, and every kept one
 #   scripts/sbt-warm --stop              stop this checkout's server (by pid, its own only: never `sbt --client shutdown`,
@@ -28,9 +26,23 @@
 # compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead. A class
 # file the source's Zinc analysis does not list as a product (another build wrote it) is not seeded: scripts/zinc_orphans.py.
 #
-# THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses). A watchdog beside it stops it when the checkout
-# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB heap) minutes without a call running through this script; every call
-# also reaps the servers of removed checkouts. Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm).
+# THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses).
+# Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm); every call also reaps removed checkouts' servers.
+#
+# ONE JVM, ONE SLOT: a kept server holds one of the machine's JVM slots (scripts/jvm-gate.sh) for its whole life, idle or
+# not, and the commands run in it take none. Servers started with the slot's descriptor closed held none, yet each grew
+# to its -Xmx4g heap: ~10 worktrees' idle servers were up to 40 GB nobody counted, and on 2026-10-19 the Mac reached a
+# load of ~100 with 29 of 30 GB of swap used. The slot is held by THE KEEPER, a small process beside the server (this
+# script's --keep, started with descriptor 7 open, so the slot's kernel lock passes to it -- jvm_slot_hand_off -- and
+# is freed the moment it ends, however it ends: the flock model needs no counting of pid files, which a server dying
+# between a count and a take would race). A call that finds the checkout's keeper alive (its lock, $key.keep.flock,
+# held) takes no slot; one that finds none takes a slot (waiting for one like any tool) and starts the keeper with it.
+# A keeper that starts without a slot (KINOWO_JVM_SLOTS=0 then, or past the slot deadline) takes one as soon as one is
+# free. The keeper ends -- and its slot is free -- once the checkout has had no server for
+# KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS (60; a server's start or restart falls inside it).
+#
+# IDLE EXIT: the keeper stops the server after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB
+# heap) minutes without a call running through this script, or when the checkout is removed.
 #
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
 # one classes dir delete each other's classes (the pre-push hook steps around a live one). Use this script, or --stop.
@@ -44,6 +56,7 @@ IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-10}
 . "$(dirname "$0")/jvm-gate.sh"
 IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
 log() { echo "[sbt-warm] $*" >&2; }
+Self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 root=$(cd "$root" && pwd -P)
@@ -172,20 +185,36 @@ seed() {
 # The build definition's digest: a server started on another one runs `reload` first.
 build_digest() { (cd "$root" && cat build.sbt project/*.sbt project/*.scala project/build.properties 2>/dev/null) | shasum | cut -c1-16; }
 
-# The watchdog beside a server: stops it once the checkout is gone, or idle past the timeout.
-watch() { # <pid>
-  ( set -m; nohup bash -c '
-      pid=$1 root=$2 used=$3 idle=$4
-      # still the server, not a process that inherited its pid during the sleep
-      server() { ps -o args= -p "$pid" 2>/dev/null | grep -q -- --detach-stdio; }
-      while server; do
-        sleep 60
-        if [ ! -d "$root" ]; then server && kill "$pid"; break; fi
-        if [ -n "$(find "$used" -mmin +"$idle" 2>/dev/null)" ]; then server && kill "$pid"; break; fi
-      done' watchdog "$1" "$root" "$State/$key.used" "$IdleMinutes" > /dev/null 2>&1 < /dev/null 6>&- 7>&- 8>&- & )
+# THE KEEPER (--keep, run in the checkout, holding its slot on descriptor 7 and $key.keep.flock on 5): see the header.
+keep() {
+  local poll=${KINOWO_SBT_WARM_KEEPER_POLL:-10} grace=${KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS:-60} absent=0 pid="" p
+  log "keeper of $root: pid $$, $(jvm_slot_riding && echo "holding JVM slot ${KINOWO_JVM_SLOT_HELD##*/}" || echo "no JVM slot yet")"
+  while :; do
+    if [ ! -d "$root" ]; then
+      [ -n "$pid" ] && server_of_removed_checkout "$pid" && kill "$pid" 2>/dev/null && log "stopped the server of the removed checkout $root (pid $pid)"
+      exit 0
+    fi
+    if ! jvm_slot_riding && [ "${KINOWO_JVM_SLOTS:-4}" != 0 ] && jvm_slot_try; then log "took JVM slot ${JVM_SLOT##*/}"; fi
+    if p=$(server_pid "$root"); then
+      pid=$p; absent=0
+      [ "$(cat "$State/$key.pid" 2>/dev/null)" = "$pid" ] || echo "$pid" > "$State/$key.pid"
+      if [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ]; then
+        log "server pid $pid idle for $IdleMinutes minutes: stopping it"
+        kill "$pid" 2>/dev/null
+        for _ in $(seq 1 30); do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
+        for p in $(server_pids "$root"); do kill -9 "$p" 2>/dev/null; done
+        exit 0
+      fi
+    else
+      absent=$(_jvm_waited "$absent" "$poll")
+      [ "$absent" -ge "$grace" ] && { log "no server of $root for ${absent}s: done"; exit 0; }
+    fi
+    sleep "$poll"
+  done
 }
 
 case "${1:-}" in
+  --keep) keep; exit 0 ;;
   --reap) reap idle; exit 0 ;;
   --seed) seed; exit 0 ;;
   --stop)
@@ -196,13 +225,13 @@ case "${1:-}" in
     stop_servers_of "$root" || log "no server of $root to stop"; rm -f "$State/$key".*; exit 0 ;;
   --status)
     pid=$(server_pid "$root") && echo "this checkout ($root): server pid $pid" || echo "this checkout ($root): no server"
-    for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), last used $(date -r "${f%.root}.used" '+%Y-%m-%d %H:%M' 2>/dev/null))"; done
+    for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), keeper $(lock_busy "${f%.root}.keep.flock" && cat "${f%.root}.keep.flock" || echo none), last used $(date -r "${f%.root}.used" '+%Y-%m-%d %H:%M' 2>/dev/null))"; done
     exit 0 ;;
   ""|-h|--help) usage_from_header; exit 0 ;;
 esac
-Serve=0
+# --serve runs like any command now that the server, not the command, holds the slot; kept for its callers' clarity
 if [ "$1" = --serve ]; then
-  Serve=1; shift
+  shift
   [ $# -gt 0 ] || { log "--serve needs the command it serves"; exit 2; }
 fi
 
@@ -211,6 +240,8 @@ fi
 # server it started. The lock is the kernel's (jvm-gate.sh's jvm_lock): free the moment its holder has gone, killed or
 # not. Calls reaching a live server take no lock.
 LockFile="$State/$key.flock"
+KeepFile="$State/$key.keep.flock"
+
 lock_start() {
   local waited=0
   until jvm_lock "$LockFile"; do
@@ -231,7 +262,7 @@ echo "$root" > "$State/$key.root"
 # watchdog stopped the server under any command longer than it ("sbt server disconnected" ten minutes into `testUnit`,
 # 2026-10-19). The heartbeat ends with this call, killed or not.
 ( while kill -0 $$ 2>/dev/null; do touch "$State/$key.used"; sleep "${KINOWO_SBT_WARM_HEARTBEAT_SECONDS:-60}"; done ) \
-  > /dev/null 2>&1 6>&- 7>&- 8>&- &
+  > /dev/null 2>&1 5>&- 6>&- 7>&- 8>&- 9>&- &
 heartbeat=$!
 fresh=0
 if pid=$(server_pid "$root"); then
@@ -266,17 +297,29 @@ if [ "$fresh" = 0 ] && [ -f "$State/$key.build" ] && [ "$(cat "$State/$key.build
 fi
 echo "$digest" > "$State/$key.build"
 # sbt --client starts the server (in the background, outliving this call) when the checkout has none -- sized for
-# KINOWO_JVM_CPUS cores on a Mac agents share (scripts/jvm-gate.sh). The command holds one of the machine's JVM slots: the
-# server's heap stays when idle, its CPU does not. The server it may start outlives the call, so sbt runs with the lock
-# descriptors closed (jvm-gate.sh): it never holds the slot or the start lock for its idle life.
-if [ "$Serve" = 1 ]; then memory_gate sbt-warm; else jvm_slot_take sbt-warm; fi
-(cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 6>&- 7>&- 8>&-); rc=$?
+# KINOWO_JVM_CPUS cores on a Mac agents share (scripts/jvm-gate.sh). ONE JVM, ONE SLOT (header): a server kept by a
+# live keeper already holds its slot; otherwise this call takes one and hands it to a keeper it starts. sbt itself runs
+# with every lock descriptor closed: the server it may start outlives the call and must hold none of them.
+if lock_busy "$KeepFile"; then
+  log "server kept by keeper pid $(cat "$KeepFile" 2>/dev/null), which holds its JVM slot: this command takes none"
+else
+  jvm_slot_take sbt-warm
+  if lock_take 5 "$KeepFile"; then
+    ( cd "$root" || exit; set -m; nohup "$Self" --keep >> "$State/$key.log" 2>&1 < /dev/null 6>&- 8>&- 9>&- &
+      echo $! > "$KeepFile" ) 6>&- 8>&- 9>&-
+    exec 5>&-
+    jvm_slot_hand_off "$(cat "$KeepFile")"
+    log "keeper pid $(cat "$KeepFile") holds the server's JVM slot; it stops the server after $IdleMinutes idle minutes, or with the checkout"
+  else
+    jvm_slot_release   # another call's keeper started meanwhile: it holds this server's slot
+  fi
+fi
+(cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 5>&- 6>&- 7>&- 8>&- 9>&-); rc=$?
 kill "$heartbeat" 2>/dev/null
 jvm_slot_release
 touch "$State/$key.used"
 if [ "$fresh" = 1 ] && pid=$(server_pid "$root"); then
   echo "$pid" > "$State/$key.pid"
-  watch "$pid"
-  log "kept sbt server pid $pid for $root (stops after $IdleMinutes idle minutes, or with the checkout)"
+  log "kept sbt server pid $pid for $root"
 fi
 exit "$rc"

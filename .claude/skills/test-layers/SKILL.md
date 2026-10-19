@@ -40,9 +40,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   Firefox projects stay in `playwright.config.ts` for local runs only).
   `--project` narrows to one; `--list` shows which exist.
 - **iOS LocalServer** — `scripts/sbt-warm --serve 'web/PageTest/runMain
-  tools.FixtureServerMain <port-file>'` in the background (`--serve`: a server
-  running until stopped holds no JVM slot, so it never queues other agents'
-  tests behind it), `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
+  tools.FixtureServerMain <port-file>'` in the background (`--serve`: keeps
+  the checkout's sbt server, and so its one JVM slot, in use until stopped —
+  stop it when done), `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
   <port-file>) swift test --package-path ios --filter LocalServer`
   in another. Decodes the live `/{city}/api/repertoire`, `/api/details`
   and `/api/cinemas` JSON through the app's own `Codable` models with the
@@ -123,8 +123,9 @@ A plain `sbt -batch` pays a JVM start and, in a fresh worktree, a cold compile o
 `scripts/sbt-warm "<command>" ["<command>"...]` runs the commands in ONE sbt server kept per
 checkout (`sbt --client`), and seeds a fresh worktree's `project/target` and `*/target/scala-*`
 from the newest local build of a main commit (another worktree's, the root checkout's, or an
-identity tool's ref tree; APFS clones), so the first compile is incremental. A watchdog stops the
-server when the worktree is removed or after 10 idle minutes (`KINOWO_SBT_WARM_IDLE_MINUTES`);
+identity tool's ref tree; APFS clones), so the first compile is incremental. The server holds one
+of the machine's JVM slots for its life (its keeper's; commands in it take none), and its keeper
+stops it when the worktree is removed or after 10 idle minutes (`KINOWO_SBT_WARM_IDLE_MINUTES`);
 `--status`, `--stop`, `--reap`, `--seed`. The pre-push hook runs its sbt check through the kept
 server too (3–5 s instead of a ~55 s sbt JVM). Don't mix it with a plain `sbt` in the same
 checkout while the server lives: two compilers over one target/ delete each other's classes.

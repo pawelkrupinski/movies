@@ -92,14 +92,20 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 ## sbt: `scripts/sbt-warm`
 
 - Run sbt through `scripts/sbt-warm "<command>"`: one kept server per worktree (extras stopped on the next call;
-  exits after 10 idle minutes), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
+  stopped by its keeper after 10 idle minutes, `KINOWO_SBT_WARM_IDLE_MINUTES`), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
   run becomes ~50 s). Don't mix with a plain `sbt` in the same checkout while the server lives. Details: `test-layers`.
 - **Long-lived servers** (the fixture server, any `runMain` that serves until stopped):
-  `scripts/sbt-warm --serve '<command>'` — through the memory gate but holding no JVM slot, so it never queues other
-  agents' tests behind it.
-- sbt-warm, identity-slice and identity-measure-local share the machine-wide JVM slots (`KINOWO_JVM_SLOTS`, default
-  4; `scripts/jvm-gate.sh`), wait while the Mac is paging, and size their JVMs for 4 cores. Never lower
+  `scripts/sbt-warm --serve '<command>'` — it keeps the checkout's server (and so its slot) in use until stopped, so
+  stop it when done.
+- **One JVM, one slot:** sbt-warm, identity-slice and identity-measure-local share the machine-wide JVM slots
+  (`KINOWO_JVM_SLOTS`, default 4; `scripts/jvm-gate.sh`) and size their JVMs for 4 cores. A kept sbt server holds a
+  slot for its whole life, idle or not (held by its keeper process); commands run in it take none. So an idle server
+  of yours can queue another agent: `scripts/sbt-warm --stop` when you are done with a worktree. Never lower
   `KINOWO_JVM_SLOTS` to get ahead — wait for a slot.
+- **The memory gate** (`KINOWO_MEMORY_GATE_GB` 20 paged AND `KINOWO_MEMORY_GATE_FREE_GB` 6 free) waits as long as
+  memory is short, with a status line every `KINOWO_MEMORY_GATE_STATUS_SECONDS` (180); the slot wait goes ahead after
+  `KINOWO_JVM_SLOT_MAX_WAIT` (1800 s) only while memory is fine. Escape hatch: `KINOWO_MEMORY_GATE_MAX_WAIT=<s>` goes
+  ahead after that long; `KINOWO_MEMORY_GATE=0` turns the gate off. Say so in your report if you use either.
 
 ## Speed habits
 

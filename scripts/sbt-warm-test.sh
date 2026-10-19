@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/sbt-warm: a fresh checkout is seeded from the newest local build of a main commit (never a branch's, never
-# its own), the commands reach this checkout's server, and a removed checkout's server is stopped. sbt is a stub.
+# its own), the commands reach this checkout's server, a removed checkout's server is stopped, and a live server holds one JVM
+# slot through its keeper. sbt is a stub.
 # Run: bash scripts/sbt-warm-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,6 +15,8 @@ scratch="$(mktemp -d)"; scratch="$(cd "$scratch" && pwd -P)"
 fakes=()
 trap 'kill ${fakes[@]+"${fakes[@]}"} 2>/dev/null; rm -rf "$scratch"' EXIT
 export KINOWO_SBT_WARM_STATE="$scratch/state" KINOWO_IDENTITY_CACHE="$scratch/identity"
+# this checkout's gate, not local main's; a server's keeper polling fast, done 2 s after its server is gone
+export KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=2
 mkdir -p "$scratch/bin"
 # the stub is sbt --client: it runs the commands in the server project/target/active.json names (as sbt does while that
 # server lives), starting one in the current checkout when there is none, and logs which sources that server sees
@@ -21,7 +24,7 @@ cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 printf "%s|%s\\n" "\$(pwd -P)" "\$*" >> "$scratch/sbt-calls"
 # ...and which of the lock descriptors (scripts/jvm-gate.sh) it inherited: the server it starts must hold none
-printf "%s|%s|%s\\n" "\${SBT_OPTS:-}" "\${KINOWO_JVM_SLOT_HELD:-}" "\$(for fd in 6 7 8; do { : >&\$fd; } 2>/dev/null && printf 'fd%s ' \$fd; done)" >> "$scratch/sbt-env"
+printf "%s|%s|%s\\n" "\${SBT_OPTS:-}" "\${KINOWO_JVM_SLOT_HELD:-}" "\$(for fd in 5 6 7 8 9; do { : >&\$fd; } 2>/dev/null && printf 'fd%s ' \$fd; done)" >> "$scratch/sbt-env"
 active=project/target/active.json
 [ -f "\$active" ] || { mkdir -p project/target; echo "{\\"uri\\":\\"local://\$(pwd -P)/sock\\"}" > "\$active"; }
 server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
@@ -239,6 +242,8 @@ check "a running command keeps its server marked as in use, however long it runs
 # ...and so does a call waiting at the memory gate or for a JVM slot (up to 30 minutes) before its command starts: the
 # gate's first probe ages the mark, as ten minutes of waiting would, and its last one says whether it is fresh again
 used="$KINOWO_SBT_WARM_STATE/$busy_key.used" aged="$scratch/aged-once"
+# (once the last call's keeper has ended: while it lives the call takes no slot, so it never reaches the gate)
+for _ in $(seq 1 50); do [ "$(spec_lock_state "$KINOWO_SBT_WARM_STATE/$busy_key.keep.flock")" = held ] || break; sleep 0.1; done
 (cd "$scratch/slotted" && KINOWO_SBT_WARM_HEARTBEAT_SECONDS=1 KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' \
   KINOWO_MEMORY_GATE_POLL=1 KINOWO_MEMORY_GATE_MAX_WAIT=3 KINOWO_MEMORY_GATE_PROBE="if [ -e '$aged' ]; then
       [ -n \"\$(find '$used' -mmin +1)\" ] && echo idle > '$scratch/waited' || echo busy > '$scratch/waited'
@@ -254,17 +259,34 @@ check "a new server waits on the memory gate while the Mac is paging (deadline 0
 
 : > "$scratch/sbt-env"
 (cd "$scratch/slotted" && KINOWO_JVM_SLOTS=4 KINOWO_JVM_CPUS=4 KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
-check "a command holds one of the machine's JVM slots, its server sized for KINOWO_JVM_CPUS cores (macOS)" \
-  " -XX:ActiveProcessorCount=4|$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock" "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f1,2)"
-check "...sbt (and the server it starts, outliving the call) inheriting neither the slot's nor the start lock's descriptor" "" \
-  "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f3)"
-check "...and gives the slot back when it ends" "free" "$(spec_lock_state "$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock")"
+check "a command's server is sized for KINOWO_JVM_CPUS cores (macOS)" " -XX:ActiveProcessorCount=4" \
+  "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f1)"
+check "...sbt (and the server it starts, outliving the call) inheriting no lock's descriptor and no slot's name" "|" \
+  "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f2,3)"
 
 : > "$scratch/sbt-env"
-(cd "$scratch/slotted" && KINOWO_JVM_SLOTS=4 KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" --serve "web/PageTest/runMain tools.FixtureServerMain port" >/dev/null 2>&1)
-check "a --serve command (a server running until stopped) holds no JVM slot for its life" "" \
-  "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f2)"
-check "...and runs the command it serves, not the flag" "--client web/PageTest/runMain tools.FixtureServerMain port" \
+(cd "$scratch/slotted" && KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" --serve "web/PageTest/runMain tools.FixtureServerMain port" >/dev/null 2>&1)
+check "a --serve command runs the command it serves, not the flag" "--client web/PageTest/runMain tools.FixtureServerMain port" \
   "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
+
+# 2026-10-19: kept servers started with the slot's descriptor closed held no slot, yet each grew to its 4 GB heap: ten
+# worktrees' idle servers were ~40 GB the slots never counted (load ~100, 29 of 30 GB of swap). One JVM, one slot: the
+# server's keeper holds it for the server's life, and the commands run in the server take none.
+scratch_git "$repo" worktree add -q -b counted "$scratch/counted" origin/main
+counted_key="$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/counted" | shasum | cut -c1-12)"
+one_slot="$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock"
+fake_server "$scratch/counted"; server=$!; await_server "$server"
+for _ in $(seq 1 50); do [ "$(spec_lock_state "$one_slot")" = free ] && break; sleep 0.1; done  # earlier keepers done
+(cd "$scratch/counted" && KINOWO_JVM_SLOTS=1 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+keeper=$(cat "$counted_key.keep.flock" 2>/dev/null)
+check "a live server holds a JVM slot after its call has ended: its keeper's" "held ${keeper:-none} alive" \
+  "$(spec_lock_state "$one_slot") $(cat "$one_slot") $(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone)"
+out=$(cd "$scratch/counted" && KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_MAX_WAIT=0 KINOWO_MEMORY_GATE=0 "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
+check "...a command on the warm server takes no second slot for the same JVM (with the only slot held, it never waits)" "yes no" \
+  "$(grep -q 'this command takes none' <<<"$out" && echo yes || echo "no: $out") $(grep -q 'slots busy\|slot still busy' <<<"$out" && echo yes || echo no)"
+kill "$server"; wait "$server" 2>/dev/null
+for _ in $(seq 1 50); do kill -0 "${keeper:-0}" 2>/dev/null || break; sleep 0.1; done
+check "...and once the server is gone, its keeper ends and the slot is free" "gone free" \
+  "$(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$one_slot")"
 
 spec_summary
