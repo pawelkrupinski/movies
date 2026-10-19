@@ -152,10 +152,10 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       stopped.await()
       exchange.close()
     }
-    // A body that dribbles in over ~200 ms but does finish: well inside the 1 s request budget, since
-    // what is asserted is that a body arriving in pieces is read whole, not how close to the budget it
-    // can run. At 150 ms a chunk (750 ms) a loaded CI runner let the JDK's body timer cut it after the
-    // fourth chunk ("fixed content-length: 30, bytes received: 23", run 37993027475).
+    // A body that dribbles in over ~250 ms but does finish. What is asserted is that a body arriving in
+    // pieces is read whole, not how close to a budget it can run: under the 1 s budget a loaded runner
+    // lost that race, at 150 ms a chunk on CI ("bytes received: 23", run 37993027475) and at 50 ms
+    // locally beside five other modules' tests (2026-10-19), so it is read under a roomy budget.
     def dribble(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
       val chunks = Seq("<html>", "<body>", "Kino", "</body>", "</html>")
       exchange.sendResponseHeaders(200, chunks.map(_.length).sum.toLong)
@@ -257,6 +257,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   private val requestBudget = java.time.Duration.ofSeconds(1)
   private def tightFetch = new RealHttpFetch(requestTimeoutFor = _ => requestBudget)
+  private def roomyFetch = new RealHttpFetch(requestTimeoutFor = _ => java.time.Duration.ofSeconds(30))
   // The local server's host has the default connect budget.
   private val deadline = HostPolicies.DefaultConnectTimeout.plus(requestBudget)
 
@@ -296,8 +297,8 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   "a slow body that finishes" should "still be read whole" in withServer { base =>
-    tightFetch.get(s"$base/slow-body") shouldBe "<html><body>Kino</body></html>"
-    tightFetch.getAsync(s"$base/slow-body").get() shouldBe "<html><body>Kino</body></html>"
+    roomyFetch.get(s"$base/slow-body") shouldBe "<html><body>Kino</body></html>"
+    roomyFetch.getAsync(s"$base/slow-body").get() shouldBe "<html><body>Kino</body></html>"
   }
 
   // ── A blocking read on a ForkJoinPool worker ──────────────────────────────
