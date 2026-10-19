@@ -4,13 +4,10 @@ name: Report run timings
 # `timings` job, after every other job but the scheduled-failure report (RunTimingsWiringSpec). The caller's job gives
 # the `needs`, the `if: ${{ !cancelled() }}` and the permissions; this holds the rest once, where 27 workflows each held
 # a copy. The report itself is .github/actions/report-timings (scripts/ci/ci_timings.py). Never fails the run.
+# NO `secrets:` DECLARATION: callers pass `secrets: inherit`, and Forgejo 15 rejects a
+# `workflow_call.secrets` block, which made this file invalid there on every event.
 on:
     workflow_call:
-        secrets:
-            GRAFANA_URL:
-                required: false
-            GRAFANA_ANNOTATION_TOKEN:
-                required: false
 
 permissions:
     actions: read

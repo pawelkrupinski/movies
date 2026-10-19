@@ -112,7 +112,7 @@
     in
     {
       # `nixos-anywhere --flake .#<name>`, `nixos-rebuild --flake .#<name>` and the closure builder
-      # in .github/workflows/nix-stage-closures.yaml all read these. The colmena hive below reads
+      # in .github/workflows/nix-stage-closures.yml all read these. The colmena hive below reads
       # the same definitions. One definition, four consumers -- which is the property that makes
       # "auto apply" safe to leave running: every path that can change a host is evaluating the
       # identical expression.

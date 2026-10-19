@@ -362,7 +362,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    22/80/443 and nothing else).
 
    ⚠️ **MERGING THIS DOES NOT DEPLOY IT, AND NOTHING WILL DEPLOY IT FOR YOU.** CI
-   only STAGES NixOS closures (`nix-stage-closures.yaml` never activates), and
+   only STAGES NixOS closures (`nix-stage-closures.yml` never activates), and
    `fleet/auto-apply.nix` activates only changes that disturb no running unit. A
    new vhost changes `caddy.service`, so auto-apply refuses it by design and logs:
 

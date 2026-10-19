@@ -101,7 +101,7 @@ on:
       # cheap -- nix is content-addressed, so an unchanged closure is a cache hit and the copy is a
       # no-op -- and it is the right side to err on.
       - 'infra/**'
-      - '.github/workflows/nix-stage-closures.yaml'
+      - '.github/workflows/nix-stage-closures.yml'
   workflow_dispatch:
   # PULL REQUESTS, FOR THE EVALUATE JOB ONLY -- see the `if:` on `stage`, which is what keeps a PR
   # from reaching the fleet. It is here because otherwise NOTHING would instantiate a NixOS
@@ -118,7 +118,7 @@ on:
       - 'infra/version-dashboard/**'
       - 'infra/flake.nix'
       - 'infra/flake.lock'
-      - '.github/workflows/nix-stage-closures.yaml'
+      - '.github/workflows/nix-stage-closures.yml'
 
 # NEVER CANCELLED MID-RUN. A cancelled deploy is one that copied some hosts and not others, which is
 # a worse state than not having started -- and `cancel-in-progress: true` would do exactly that
@@ -398,6 +398,7 @@ jobs:
       actions: read
       contents: read
     uses: ./.github/workflows/report-timings.yml
-    secrets:
-      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
-      GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+    # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
+    # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
+    # every event). `inherit` reads the same on github.com and declares nothing.
+    secrets: inherit

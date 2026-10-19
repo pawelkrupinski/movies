@@ -11,7 +11,7 @@
 # found by hand. Measured across all 26 machines the same day, the `nix-gc` timer count was ZERO on
 # every one of them and five hosts were already between 79% and 86% inode use.
 #
-# WHY IT APPLIES HERE. `.github/workflows/nix-stage-closures.yaml` copies a full system closure
+# WHY IT APPLIES HERE. `.github/workflows/nix-stage-closures.yml` copies a full system closure
 # onto all three hosts on every merge that touches infra/nix, and ./auto-apply.nix activates the
 # inert ones. Generations therefore arrive at the rate of MERGES. Nothing in nixpkgs collects them:
 # `nix.gc` is off by default, and a NixOS host will fill its disk with its own history indefinitely

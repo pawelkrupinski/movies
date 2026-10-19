@@ -87,7 +87,7 @@ in
     #
     # IT IS ANSWERABLE ONLY BECAUSE CI BUILDS FROM A REAL CHECKOUT. A flake sees only tracked files,
     # so a build from an rsynced tree with no `.git` has no `self.rev` to read -- which is why
-    # .github/workflows/nix-stage-closures.yaml checks out with `fetch-depth: 0`. `dirtyRev` covers
+    # .github/workflows/nix-stage-closures.yml checks out with `fetch-depth: 0`. `dirtyRev` covers
     # a build from a modified tree, and the fallback says outright that the build had no revision
     # rather than implying one.
     #

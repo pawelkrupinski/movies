@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Activate the closure CI already staged here, but ONLY when doing so would disturb nothing.
 
-WHY THIS EXISTS. `.github/workflows/nix-stage-closures.yaml` builds every host's closure on merge,
+WHY THIS EXISTS. `.github/workflows/nix-stage-closures.yml` builds every host's closure on merge,
 signs it and `nix copy`s it here, then deliberately stops: the staging key is restricted to a
 forced command that cannot activate anything, and `nixdeploy` has no sudo. So the closure is
 already on this disk, pinned at `/var/lib/nixdeploy/staged-system`, and the only step left is the

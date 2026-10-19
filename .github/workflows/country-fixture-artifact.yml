@@ -146,9 +146,10 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        secrets:
-            GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
-            GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
+        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
+        # every event). `inherit` reads the same on github.com and declares nothing.
+        secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
