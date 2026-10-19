@@ -1819,6 +1819,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       IdentityResolver.resolve(Seq(l), new FilmTable(Seq(oz), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
     }
     inUk("The Wizard Of Oz - Hot Rock").film shouldBe None
+    // nor is a current release one when the piece beside it names a pantomime, a staging: UK "CBeebies Panto 2026: Treasure
+    // Island", the BBC's panto at 106 venues, took Ridley Scott's 2027 "Treasure Island" (a current release) whenever TMDB's
+    // search ranked it first (prod 2026-10-17, 212 listings), and none whenever the dated 1950 film led
+    val treasure = F(1710881, "Treasure Island", 2027, "Ridley Scott", 120, countries = Seq("US"), original = Some("Treasure Island"))
+    def panto(raw: String) = {
+      val l = listing(uk, raw).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 21))))
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(treasure), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    val bbc = panto("CBeebies Panto 2026: Treasure Island")
+    withClue(bbc.render)(bbc.film shouldBe None)
+    panto("The CBeebies Pantomime: Treasure Island").film shouldBe None
+    // the film itself, billed alone, is still taken
+    panto("Treasure Island").film shouldBe Some(1710881)
     // nor is a title in the venue's OWN language a foreign one left untranslated, whichever country TMDB files the film
     // under, nor a piece naming the venue's town its venue's offer: DE Trifthof Kinocenter's (Weilheim in Oberbayern)
     // "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local documentary, is not Toscano's 2015

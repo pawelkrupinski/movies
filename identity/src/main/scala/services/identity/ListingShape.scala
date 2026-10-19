@@ -50,7 +50,10 @@ object ListingShape {
   }
 
   /** Words a billing names a stage show by — a theatre, a musical, a stage ([[TitleWords.Concept.Stage]]). */
-  val StageWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Stage)
+  val StageWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Stage, TitleWords.Concept.StageShow)
+  /** The words naming a staged show itself ("CBeebies Panto 2026: Treasure Island"): a staging wherever it is billed, the
+   *  banner's slot too — unlike a stage word a strand names itself by ("Musical Monday: Grease"). */
+  val ShowWords: Set[String] = TitleWords.tokens(TitleWords.Concept.StageShow)
 
   /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …"), or a
    *  house's initials as [[StageRelays.billsAStageHouse]] reads them ("Tosca (ROH)", never "Jin-Roh")? */
@@ -150,8 +153,11 @@ object ListingShape {
    *  A piece holding a word of its own, three letters at least ("Athanor - Startblock", a drama school's showcase; "50 na
    *  51" holds none), is another thing's. Measured on the unmatched clusters' agreed takes (2026-10-13).
    *  `venues`: what else the caller knows a piece's words to be the venue's (the resolver: a banner the corpus bills
-   *  beside other titles). */
-  def billedBeside(listing: Listing, films: Seq[IdentityMeasures.Film], venues: Seq[String] => Boolean = _ => false): Option[String] = {
+   *  beside other titles). `bannerSlot`: whether the banner's slot is the venue's whatever it says — not where it names a
+   *  staged show ([[ShowWords]], [[BilledPiece]]): a pantomime heading its work is a staging of it, not a venue's banner
+   *  (UK "CBeebies Panto 2026: Treasure Island"). */
+  def billedBeside(listing: Listing, films: Seq[IdentityMeasures.Film], venues: Seq[String] => Boolean = _ => false,
+                   bannerSlot: Boolean = true): Option[String] = {
     // a box office's certificate note is the showing's, never a piece of what it bills (UK "Family Cinema: Paddington - Cert PG")
     val raw = services.movies.FormatTags.uncertified(listing.rawTitle)
     // a silent film's billing is its programme's: an accompanist, an anniversary ("Dni Kina Niemego - 100 lat temu: …")
@@ -215,7 +221,7 @@ object ListingShape {
         val tagged = piped.exists(k => programme(words(k)))
         words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty).filterNot(strand)
           // the banner's slot: the leading piece a colon or a pipe closes, the film after it
-          .filterNot(k => k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
+          .filterNot(k => bannerSlot && k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
           // what the screening adds after the film, a "+" closing it (PL "OPĘTANIE + TRASA PLAKATOWA", a poster tour)
           .filterNot(k => k >= to && breaks.lift(to - 1).contains("+"))
           .filterNot(k => tagged && piped.contains(k))

@@ -296,6 +296,15 @@ stage	en	stage
 stage	pl	scena
 stage	it	Scala
 
+# ── stage-show: a word naming the staged show itself, never a strand's name — a staging even heading the billing ──
+stage-show	en	panto
+stage-show	en	pantos
+stage-show	en	pantomime
+stage-show	en	pantomimes
+stage-show	de	Pantomime
+stage-show	pl	pantomima
+stage-show	es	pantomima
+
 # ── house-banner: a house's or a relay series' banner and its season ("Met Opera 2026/27: …", "NT Live") ──
 house-banner	en	Met
 house-banner	en	Metropolitan
