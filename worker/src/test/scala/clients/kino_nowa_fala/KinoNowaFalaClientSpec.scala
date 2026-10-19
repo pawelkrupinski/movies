@@ -24,13 +24,13 @@ class KinoNowaFalaClientSpec extends AnyFlatSpec with Matchers with OptionValues
   }
 
   it should "parse a film's title, showtime and booking link" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("totalna magia")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("totalna magia")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 17, 55))
     film.showtimes.flatMap(_.bookingUrl).head should include("bilety.gizycko.pl")
   }
 
   it should "carry the venue's own production page as the film URL and a poster" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("lalka")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("lalka")).value
     film.filmUrl.value should include("kino.gizycko.pl/production/")
     film.posterUrl should not be empty
   }
@@ -38,7 +38,7 @@ class KinoNowaFalaClientSpec extends AnyFlatSpec with Matchers with OptionValues
   it should "merge repeated screenings of the same film across days into one row" in {
     // "TEDI I MAGICZNA LAMPA" screens 25/26/27 września at several times — all
     // must fold onto the same film's showtimes, not one row per day.
-    val film = movies.find(_.movie.title.toLowerCase.contains("tedi")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("tedi")).value
     film.showtimes.map(_.dateTime) should contain allOf (
       LocalDateTime.of(2026, 9, 25, 16, 0),
       LocalDateTime.of(2026, 9, 26, 14, 0),

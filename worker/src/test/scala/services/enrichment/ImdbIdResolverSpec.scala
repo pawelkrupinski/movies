@@ -30,7 +30,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   private def imdbStub(suggestions: Map[String, String]): ImdbClient =
     new ImdbClient(http = new HttpFetch {
       def get(url: String): String =
-        suggestions.collectFirst { case (q, body) if url.toLowerCase.contains(q.toLowerCase) => body }
+        suggestions.collectFirst { case (q, body) if url.toLowerCase(java.util.Locale.ROOT).contains(q.toLowerCase(java.util.Locale.ROOT)) => body }
           .getOrElse(throw new RuntimeException(s"no stubbed suggestion for $url"))
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("ImdbIdResolver should not POST")
@@ -155,7 +155,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String =
         // The banner never reaches IMDb: only the bare film title answers.
-        if (url.toLowerCase.contains("kino") || url.toLowerCase.contains("azji")) """{"d":[]}"""
+        if (url.toLowerCase(java.util.Locale.ROOT).contains("kino") || url.toLowerCase(java.util.Locale.ROOT).contains("azji")) """{"d":[]}"""
         else loadFixture("/fixtures/imdb/suggestion_ghost_in_the_shell.json")
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("ImdbIdResolver should not POST")

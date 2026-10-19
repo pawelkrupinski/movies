@@ -29,19 +29,19 @@ class KinoLotSwidnikClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "pin a concrete screening read off the date + time bold spans" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("gwiazdozbiór psa")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("gwiazdozbiór psa")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 23, 19, 15))
   }
 
   it should "strip the trailing format tag into Showtime.format" in {
     // Raw title in the fixture: "Gwiazdozbiór psa (2D/napisy)".
-    val film = movies.find(_.movie.title.toLowerCase.contains("gwiazdozbiór psa")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("gwiazdozbiór psa")).value
     film.movie.title should not include "("
     film.showtimes.map(_.format).head should contain allOf ("2D", "NAP")
   }
 
   it should "carry a per-screening booking link and poster" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("gwiazdozbiór psa")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("gwiazdozbiór psa")).value
     film.showtimes.flatMap(_.bookingUrl).head should include("/event/view/id/")
     film.posterUrl.value should include("/file/get/id/")
   }

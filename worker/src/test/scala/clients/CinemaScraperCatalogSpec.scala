@@ -166,7 +166,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     it should s"route ${cinema.displayName} through its biletyna place page, not Filmweb" in {
       val movies = catalog(biletyna = "biletyna-filmweb-desynced").all.find(_.cinema == cinema).value.fetch()
       movies.map(_.cinema).toSet shouldBe Set(cinema)
-      val film = movies.find(_.movie.title.toLowerCase.contains(title)).value
+      val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains(title)).value
       film.showtimes.find(_.dateTime == when).value.bookingUrl.value shouldBe booking
     }
 
@@ -292,12 +292,12 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       "Totalna magia 2", "Klasyka kina: orlando",
       // a comma no version tag precedes is the title's own (MSI's Łęczyca distributor strip must leave it)
       "Powiedz mi, co czujesz", "Czas, który nie nadszedł")
-    titles.exists(_.toLowerCase.contains("rieu")) shouldBe true
-    all (titles.map(_.toLowerCase)) should not startWith "film:"
+    titles.exists(_.toLowerCase(java.util.Locale.ROOT).contains("rieu")) shouldBe true
+    all (titles.map(_.toLowerCase(java.util.Locale.ROOT))) should not startWith "film:"
   }
 
   it should "keep Sucha Beskidzka's systembiletowy feed to its cinema, not the cabaret and musicals it also sells" in {
-    val titles = switchedCatalog.all.find(_.cinema == KinoCKiF).value.fetch().map(_.movie.title.toLowerCase)
+    val titles = switchedCatalog.all.find(_.cinema == KinoCKiF).value.fetch().map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     titles should not be empty
     all (titles) should (not include "kabaret" and not include "musical")
   }
@@ -1053,7 +1053,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "expose only bare lower-case hosts (no scheme, port or path)" in {
     catalog(biletyna = "kino-kameralne").scrapeHosts.foreach { h =>
       withClue(s"malformed host: '$h'") {
-        h shouldBe h.toLowerCase
+        h shouldBe h.toLowerCase(java.util.Locale.ROOT)
         h should not include "/"
         h should not include ":"
       }

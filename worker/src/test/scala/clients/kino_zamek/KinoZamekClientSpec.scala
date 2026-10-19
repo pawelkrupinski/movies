@@ -42,7 +42,7 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     all(summer.map(_.showtimes)) should not be empty
     summer.map(_.movie.title) should contain allOf (
       "Ostatni wiking (den sidste viking)", "Father mother sister brother")
-    summer.map(_.movie.title).exists(_.toLowerCase.contains("zamkowe noce filmowe 2026")) shouldBe false
+    summer.map(_.movie.title).exists(_.toLowerCase(java.util.Locale.ROOT).contains("zamkowe noce filmowe 2026")) shouldBe false
   }
 
   it should "pin a concrete cycle screening with the director off the same block" in {
@@ -59,14 +59,14 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // going to. Only the four remaining nights survive.
     summer.flatMap(_.showtimes).map(_.dateTime) should have size 4
     all(summer.flatMap(_.showtimes).map(_.dateTime.toLocalDate)) should be >= LocalDate.of(2026, 8, 8)
-    summer.map(_.movie.title).exists(_.toLowerCase.startsWith("amadeusz")) shouldBe false  // 4 August, played
+    summer.map(_.movie.title).exists(_.toLowerCase(java.util.Locale.ROOT).startsWith("amadeusz")) shouldBe false  // 4 August, played
   }
 
   it should "ignore a kino-category event that advertises no screenings" in {
     // "44.-45. Pomorskie Spotkania z Diaporamą" is filed under kino but is a
     // photography competition — it carries no `godzina HH:MM` line at all, so it
     // contributes nothing rather than becoming a film with no showtimes.
-    summer.map(_.movie.title).exists(_.toLowerCase.contains("diaporam")) shouldBe false
+    summer.map(_.movie.title).exists(_.toLowerCase(java.util.Locale.ROOT).contains("diaporam")) shouldBe false
   }
 
   // ── In season: one page per film ─────────────────────────────────────────
@@ -76,14 +76,14 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // FILMOWEJ W KINIE ZAMEK" — the bold line nearest each date. Reading that as
     // the title would publish thirty identically-named films.
     season.map(_.movie.title) should contain allOf ("Casablanca", "Milczenie owiec", "Faraon")
-    season.map(_.movie.title).exists(_.toLowerCase.contains("święto klasyki")) shouldBe false
+    season.map(_.movie.title).exists(_.toLowerCase(java.util.Locale.ROOT).contains("święto klasyki")) shouldBe false
   }
 
   it should "not mistake the umbrella page's WEEK headings for films" in {
     // The festival's own page groups the month under "II TYDZIEŃ POKAZÓW – …"
     // headings, which are 14pt-bold exactly like a cycle page's film titles.
     // Keying the title on 14pt produced three "films" named after weeks.
-    season.map(_.movie.title).filter(_.toLowerCase.contains("tydzień pokazów")) shouldBe empty
+    season.map(_.movie.title).filter(_.toLowerCase(java.util.Locale.ROOT).contains("tydzień pokazów")) shouldBe empty
   }
 
   it should "merge a film listed on both its own page and the umbrella page" in {
@@ -91,7 +91,7 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // titled "Pociągi – Dyskusyjny Klub Filmowy Zamek". One 18:00 showing, so it
     // must be ONE card — and the director exists only on the film's own page, so
     // the merge has to keep it rather than take whichever entry came first.
-    val pociagi = season.filter(_.movie.title.toLowerCase.startsWith("pociągi"))
+    val pociagi = season.filter(_.movie.title.toLowerCase(java.util.Locale.ROOT).startsWith("pociągi"))
     pociagi should have size 1
     pociagi.head.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 6, 18, 18, 0))
     pociagi.head.director shouldBe Seq("Maciej J. Drygas")

@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Production code never case-maps a `String` in the JVM's default locale.
+ * No code — production, specs or fixtures — case-maps a `String` in the JVM's default locale.
  *
  * A bare `toLowerCase` / `toUpperCase` reads `Locale.getDefault`: under a Turkish default
  * `"TITLE".toLowerCase` is `"tıtle"` (dotless ı) and `"title".toUpperCase` is `"TİTLE"`, so a
@@ -64,6 +64,20 @@ class NoDefaultLocaleCaseMappingSpec extends AnyFlatSpec with Matchers {
   "Production sources" should "never case-map a String in the JVM's default locale" in {
     val offenders = scalaFiles(MainRoots).flatMap(path => bareCalls(read(path)).map(line => s"$path:$line"))
     withClue("Pass Locale.ROOT (or the language the text is in) to these toLowerCase/toUpperCase calls:\n" +
+      offenders.mkString("\n") + "\n") {
+      offenders shouldBe empty
+    }
+  }
+
+  // Specs and fixtures too: a spec that folds case in the default locale on one side of a
+  // comparison and in Locale.ROOT on the other (ProdTitlesNormalizationSpec's frozen sanitize
+  // against the ROOT-cased rule engine) goes red on whichever JVM default differs, a flake by
+  // machine. This spec's own detector cases are its examples, not calls.
+  "Test sources" should "never case-map a String in the JVM's default locale" in {
+    val offenders = scalaFiles(TestRoots)
+      .filterNot(_.getFileName.toString == "NoDefaultLocaleCaseMappingSpec.scala")
+      .flatMap(path => bareCalls(read(path)).map(line => s"$path:$line"))
+    withClue("Pass java.util.Locale.ROOT (or the language the text is in) to these toLowerCase/toUpperCase calls:\n" +
       offenders.mkString("\n") + "\n") {
       offenders shouldBe empty
     }

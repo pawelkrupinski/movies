@@ -43,7 +43,7 @@ class SquarespaceEventsClientSpec extends AnyFlatSpec with Matchers with OptionV
   }
 
   it should "drop the party, the block pass and the live stage show the collection sells beside its films" in {
-    val titles = results.map(_.movie.title.toLowerCase)
+    val titles = results.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     titles.filter(_.contains("monster bash")) shouldBe empty
     titles.filter(_.contains("block pass")) shouldBe empty
     titles.filter(_.contains("clue")) shouldBe empty

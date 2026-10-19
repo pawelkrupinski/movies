@@ -81,7 +81,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
   private def wallClockReads(line: String): Seq[Int] = {
     val nowCalls = Now.findAllMatchIn(line).collect {
-      case m if !argumentsAt(line, m.end - 1).toLowerCase.contains("clock") => m.start
+      case m if !argumentsAt(line, m.end - 1).toLowerCase(java.util.Locale.ROOT).contains("clock") => m.start
     }
     (nowCalls ++ OtherReads.findAllMatchIn(line).map(_.start)).toSeq.filterNot { at =>
       val prefix = line.substring(0, at).replaceAll("""(?:java\.(?:time|util|lang)\.)$""", "")
@@ -126,7 +126,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
   /** Each wall-clock read on the line: a `now(…)` not handed a clock, or one of the other reads. */
   private def programReads(line: String): Seq[String] =
-    Now.findAllMatchIn(line).collect { case m if !argumentsAt(line, m.end - 1).toLowerCase.contains("clock") => m.matched }.toSeq ++
+    Now.findAllMatchIn(line).collect { case m if !argumentsAt(line, m.end - 1).toLowerCase(java.util.Locale.ROOT).contains("clock") => m.matched }.toSeq ++
       (OtherReads.findAllMatchIn(line) ++ ZonedSystemClock.findAllMatchIn(line) ++ VenueSystemClock.findAllMatchIn(line)).map(_.matched)
 
   /** Every wall-clock read in a program's source but its one `Clock.systemUTC()`, as `file:line: text`. */
@@ -249,7 +249,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       val src = sources(path)
       constructions.flatMap { case (name, ctor) =>
         ctor.findAllMatchIn(src).collect {
-          case m if !argumentsAt(src, m.end - 1).toLowerCase.contains("clock") =>
+          case m if !argumentsAt(src, m.end - 1).toLowerCase(java.util.Locale.ROOT).contains("clock") =>
             s"$path:${src.substring(0, m.start).count(_ == '\n') + 1}: new $name(…) without a clock — the file $why"
         }
       }

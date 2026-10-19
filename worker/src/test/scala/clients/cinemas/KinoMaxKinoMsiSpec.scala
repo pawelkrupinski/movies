@@ -41,7 +41,7 @@ class KinoMaxKinoMsiSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "pin a concrete Backrooms screening (badge-purple anchor in repo-event-dates)" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("backrooms")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("backrooms")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 21, 18, 20))
   }
 
@@ -50,7 +50,7 @@ class KinoMaxKinoMsiSpec extends AnyFlatSpec with Matchers with OptionValues {
     // titles carry a bare DUB suffix ("Straszny Film DUB"); the clean title comes
     // from the poster anchor's `title` attr, sentence-cased and format-stripped.
     val titles = movies.map(_.movie.title)
-    all(titles.map(_.toLowerCase)) should not include "premiera"
-    titles.find(_.toLowerCase.contains("straszny film")).value shouldBe "Straszny film"
+    all(titles.map(_.toLowerCase(java.util.Locale.ROOT))) should not include "premiera"
+    titles.find(_.toLowerCase(java.util.Locale.ROOT).contains("straszny film")).value shouldBe "Straszny film"
   }
 }

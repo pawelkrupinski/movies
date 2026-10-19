@@ -30,8 +30,8 @@ concurrency:
 
 # Pipeline shape:
 #
-#   ci (reusable workflow — lint, test, integration, ──┬─► flake-ledger (only when ci failed)
-#       ios/android local-server, page-tests)           ├─► publish-web
+#   ci (reusable workflow — lint, test, integration, ──┬─► publish-web
+#       ios/android local-server, page-tests)           │
 #   gates (t=0: which tiers changed since their   ──────┴─► publish-worker
 #          last deploy; both publishes read it) ──► image-worker ──┘
 #     └──► kick-convergence (seconds after the push, whether gates passed or not)
@@ -232,37 +232,6 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
               run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Identity model convergence"
-
-    # The flaky-test ledger. Every test job in ci.yml that FAILED reran its failed tests three
-    # times and uploaded the ones that passed any rerun as `flaky-*` (scripts/ci/flake_verdict.py);
-    # this appends them to the one open "Flaky test ledger" issue. The run is red either way. A
-    # job of its own, holding `issues: write`, so no job that runs project code holds it.
-    flake-ledger:
-        needs: ci
-        if: always() && needs.ci.result == 'failure' && github.ref == 'refs/heads/main'
-        runs-on: ubuntu-26.04
-        timeout-minutes: 5
-        permissions:
-            contents: read
-            issues: write
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  sparse-checkout: scripts/ci
-                  sparse-checkout-cone-mode: false
-            - uses: actions/download-artifact@v6
-              with:
-                  pattern: flaky-*
-                  path: flaky
-            - name: Append this run's flaky tests to the ledger
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GH_REPO: ${{ github.repository }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-                  OWNER: ${{ github.repository_owner }}
-              run: |
-                  mapfile -t files < <(find flaky -name flaky.tsv 2>/dev/null)
-                  scripts/ci/flake-ledger.sh --run-url "$RUN_URL" --sha "$GITHUB_SHA" --assignee "$OWNER" "${files[@]}"
 
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #
@@ -558,7 +527,7 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ci, gates, kick-convergence, flake-ledger, publish-web, image-worker, publish-worker]
+        needs: [ci, gates, kick-convergence, publish-web, image-worker, publish-worker]
         if: ${{ !cancelled() }}
         permissions:
             actions: read

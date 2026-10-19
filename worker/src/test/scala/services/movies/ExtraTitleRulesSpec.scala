@@ -1560,7 +1560,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       "Banff Mountain Film Festival", "Folkestone Film Festival", "Bad Film Club", "Apollo 13", "Blade Runner 2049",
       // a festival's own event behind its banner searches whole, not as a film of the event's name
       "Unrestricted View Horror Film Festival 2026: Opening Night", "Purbeck Film Festival - Shorts Social").foreach { t =>
-      withClue(s"searchQuery of '$t': ")(listingQuery(titles, models.KinoCentrum3D, t).toLowerCase shouldBe t.toLowerCase)
+      withClue(s"searchQuery of '$t': ")(listingQuery(titles, models.KinoCentrum3D, t).toLowerCase(java.util.Locale.ROOT) shouldBe t.toLowerCase(java.util.Locale.ROOT))
     }
   }
 

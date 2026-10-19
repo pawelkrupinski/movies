@@ -69,7 +69,7 @@ class RialtoOjczyznaReproSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep the Filmowy Klub Seniora showing as its own row" in {
-    val seniorRow = results.filter(_.movie.title.toLowerCase.contains("klub seniora"))
+    val seniorRow = results.filter(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("klub seniora"))
     seniorRow.size shouldBe 1
     seniorRow.head.movie.title shouldBe "Filmowy Klub Seniora: Ojczyzna"
     val t = times(seniorRow.head)

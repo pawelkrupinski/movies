@@ -75,8 +75,8 @@ object HardClusters {
     else Files.readAllLines(path, StandardCharsets.UTF_8).toArray(Array.empty[String]).toSeq
       .map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#"))
       .flatMap(_.split("\t", -1) match {
-        case Array(c, t, r, _*) => Some(Seed(c.trim.toLowerCase, t.trim, r.trim))
-        case Array(c, t)        => Some(Seed(c.trim.toLowerCase, t.trim, Reason.Finding.label))
+        case Array(c, t, r, _*) => Some(Seed(c.trim.toLowerCase(java.util.Locale.ROOT), t.trim, r.trim))
+        case Array(c, t)        => Some(Seed(c.trim.toLowerCase(java.util.Locale.ROOT), t.trim, Reason.Finding.label))
         case _                  => None
       })
 
@@ -129,7 +129,7 @@ object HardClusters {
       // the fold — then the remaining venues in name order.
       // The RAW spelling, not the sanitized one: sanitize folds "Part 1 (2026)" onto
       // "Part 1", and that re-release decoration is precisely what split the UK corpus.
-      val diverse = ordered.distinctBy(l => (l.film.movie.title.trim.toLowerCase, l.film.movie.releaseYear))
+      val diverse = ordered.distinctBy(l => (l.film.movie.title.trim.toLowerCase(java.util.Locale.ROOT), l.film.movie.releaseYear))
       (diverse ++ ordered.filterNot(diverse.contains)).take(limit)
     }
 
@@ -141,7 +141,7 @@ object HardClusters {
       seed -> cap(listings.filter(l => matchesSeed(tokens, raw, l.film.movie.title, normalizer)), 2 * MaxListingsPerCluster)
     }
 
-    def spellings(ls: Seq[Listing]) = ls.map(_.film.movie.title.trim.toLowerCase).distinct
+    def spellings(ls: Seq[Listing]) = ls.map(_.film.movie.title.trim.toLowerCase(java.util.Locale.ROOT)).distinct
     def years(ls: Seq[Listing])     = ls.flatMap(_.film.movie.releaseYear).distinct.sorted
     def venues(ls: Seq[Listing])    = ls.map(_.venue).distinct.size
 
@@ -155,7 +155,7 @@ object HardClusters {
       .sortBy { case (k, ls) => (-venues(ls), k) }
     val twoFilms = byBase.toSeq.filter { case (_, ls) =>
         (years(ls).size >= 2 && years(ls).last - years(ls).head > 2) ||
-        ls.map(_.film.director.map(_.toLowerCase).sorted).filter(_.nonEmpty).distinct.size >= 2 }
+        ls.map(_.film.director.map(_.toLowerCase(java.util.Locale.ROOT)).sorted).filter(_.nonEmpty).distinct.size >= 2 }
       .sortBy { case (k, ls) => (-venues(ls), k) }
     // Franchise siblings: two base groups sharing their leading tokens that SequelMarker
     // reads as different entries. Bucketed by the first two tokens so the pair search

@@ -54,7 +54,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture()
     val english = contentAsString(ctl.instructions(Some("en")).apply(FakeRequest("GET", "/facebook/data-deletion?lang=en")))
     english should include ("""<html lang="en"""")
-    english.toLowerCase should include ("delete")
+    english.toLowerCase(java.util.Locale.ROOT) should include ("delete")
 
     val polish = contentAsString(ctl.instructions(Some("pl")).apply(FakeRequest("GET", "/facebook/data-deletion?lang=pl")))
     polish should include ("""<html lang="pl"""")

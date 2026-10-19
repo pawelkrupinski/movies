@@ -48,7 +48,7 @@ class OnlyMovieEventsFilterSpec extends AnyFlatSpec with Matchers with OptionVal
     ).fetch().map(_.movie.title)
 
     titles should contain ("Dyrygent")
-    titles.exists(_.toLowerCase.contains("teatr skene")) shouldBe false
+    titles.exists(_.toLowerCase(java.util.Locale.ROOT).contains("teatr skene")) shouldBe false
     titles.exists(NonMovieEventClassifier.isLiveEvent(_)) shouldBe false
   }
 }

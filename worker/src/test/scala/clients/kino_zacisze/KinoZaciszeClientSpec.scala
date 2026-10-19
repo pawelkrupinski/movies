@@ -25,18 +25,18 @@ class KinoZaciszeClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "pin a concrete screening with the date read off the day container" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("toy story")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("toy story")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 25, 15, 30))
   }
 
   it should "split the trailing release year out of the shouted title" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("toy story")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("toy story")).value
     film.movie.title shouldBe "TOY STORY 5"
     film.movie.releaseYear.value shouldBe 2026
   }
 
   it should "carry the systembiletowy booking link off each showtime" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("toy story")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("toy story")).value
     val first = film.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 25, 15, 30)).value
     first.bookingUrl.value should include("systembiletowy.pl")
   }

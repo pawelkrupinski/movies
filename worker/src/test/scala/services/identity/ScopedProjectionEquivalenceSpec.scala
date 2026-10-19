@@ -80,7 +80,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
 
     def listing(cinema: Cinema): CinemaMovie = {
       val (title, year, director) = titles(rng.nextInt(titles.size))
-      val page  = Option.when(rng.nextBoolean())(s"https://${cinema.pillName.toLowerCase}/${normalizer.sanitize(title)}-${year.getOrElse(0)}")
+      val page  = Option.when(rng.nextBoolean())(s"https://${cinema.pillName.toLowerCase(java.util.Locale.ROOT)}/${normalizer.sanitize(title)}-${year.getOrElse(0)}")
       val hours = (0 until 1 + rng.nextInt(4)).map(_ => rng.nextInt(24 * 6)).distinct.sorted
       CinemaMovie(Movie(title, releaseYear = year), cinema, None, page, None, Nil, director.toSeq, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
     }

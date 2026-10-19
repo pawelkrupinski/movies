@@ -127,7 +127,7 @@ object RecordedResponses {
       .getOrElse(Entry(failure = (js \ "failure").asOpt[String]))
 
   def pathFor(countryCode: String): Path =
-    Paths.get("test", "resources", "fixtures", "corpus", s"hard-clusters-responses-${countryCode.toLowerCase}.json.gz")
+    Paths.get("test", "resources", "fixtures", "corpus", s"hard-clusters-responses-${countryCode.toLowerCase(java.util.Locale.ROOT)}.json.gz")
 
   private def load(path: Path): ConcurrentHashMap[String, Entry] = {
     val map = new ConcurrentHashMap[String, Entry]()

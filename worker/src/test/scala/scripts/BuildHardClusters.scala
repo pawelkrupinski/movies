@@ -50,7 +50,7 @@ object BuildHardClusters {
   /** The findings of a titles file (`code<TAB>title`, as scripts/convergence-findings.py writes them; columns after
    *  the title ignored), as seeds — a line with no title is none. */
   def findings(lines: Seq[String]): Seq[HardClusters.Seed] = lines.map(_.split("\t", -1)).collect {
-    case Array(code, title, _*) if title.trim.nonEmpty => HardClusters.Seed(code.trim.toLowerCase, title.trim, HardClusters.Reason.Finding.label)
+    case Array(code, title, _*) if title.trim.nonEmpty => HardClusters.Seed(code.trim.toLowerCase(java.util.Locale.ROOT), title.trim, HardClusters.Reason.Finding.label)
   }
 
   /** The findings no seed holds yet, each once. */

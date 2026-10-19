@@ -34,7 +34,7 @@ class KinoKikaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "pin a concrete screening: Drzewo Magii on 2026-06-07 at 12:00" in {
     val movies = fetched
-    val drzewo = movies.find(_.movie.title.toLowerCase.contains("drzewo magii")).value
+    val drzewo = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("drzewo magii")).value
     drzewo.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 12, 0))
     drzewo.showtimes.flatMap(_.bookingUrl).head should include("bilety.kinokika.pl")
   }

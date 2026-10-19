@@ -114,7 +114,7 @@ object IdentityConjunctionProbe {
               if (takenNow.isEmpty) "" else if (k.film == takenNow) "this" else "other", contenders.size.toString,
               film.flatMap(_.popularity).fold("")(p => f"$p%.2f"), film.flatMap(_.year).fold("")(_.toString),
               film.flatMap(_.runtime).fold("")(_.toString), film.flatMap(_.released).fold("")(_.toString),
-              film.flatMap(_.releasedIn(code.toUpperCase match { case "UK" => "GB"; case cc => cc })).fold("")(b => if (b) "1" else "0"),
+              film.flatMap(_.releasedIn(code.toUpperCase(java.util.Locale.ROOT) match { case "UK" => "GB"; case cc => cc })).fold("")(b => if (b) "1" else "0"),
               film.flatMap(_.countries).fold("")(_.mkString(",")), bits.fold("")(_.toString),
               open.map(_.probability).maxOption.fold("")(p => f"$p%.4f"), open.flatMap(_.rank).minOption.fold("")(_.toString),
               stated.flatMap(_.year).distinct.mkString(","), stated.flatMap(_.runtime).distinct.mkString(","),

@@ -152,7 +152,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   it should "be case-insensitive in its output (so toLowerCase comparison still works)" in {
     val titles = Seq("Mandalorian & Grogu", "Mandalorian i Grogu")
     val keys   = titles.map(t => mergeKey(t, titles))
-    keys.foreach(k => k shouldBe k.toLowerCase)
+    keys.foreach(k => k shouldBe k.toLowerCase(java.util.Locale.ROOT))
   }
 
   // ── preferredDisplay ──────────────────────────────────────────────────────

@@ -163,7 +163,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
       val jobs = countries.flatMap { country =>
         CorpusFixture.read(HardClusters.corpusKey(country))
           .flatMap(row => row.films.map(row.cinema -> _))
-          .distinctBy { case (_, film) => (film.movie.title.trim.toLowerCase, film.movie.releaseYear) }
+          .distinctBy { case (_, film) => (film.movie.title.trim.toLowerCase(java.util.Locale.ROOT), film.movie.releaseYear) }
           .zipWithIndex.map { case ((cinema, film), i) => () =>
             val (w, storage) = wiringFor(country, s"s$i")
             try {

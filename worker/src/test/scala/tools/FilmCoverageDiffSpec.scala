@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class FilmCoverageDiffSpec extends AnyFlatSpec with Matchers {
 
-  private def listing(venue: String, title: String) = RunListing(s"$venue␟${title.toLowerCase}", venue, title)
+  private def listing(venue: String, title: String) = RunListing(s"$venue␟${title.toLowerCase(java.util.Locale.ROOT)}", venue, title)
 
   private def run(id: String, listings: Seq[RunListing], tmdb: Option[Int] = None, covered: Set[String] = Set.empty) =
     RunFilm(id, id, tmdb, None, covered ++ tmdb.map(_ => "tmdbId"), listings)

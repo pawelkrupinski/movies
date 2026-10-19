@@ -46,7 +46,7 @@ class MultikinoParserAgeRatingSpec extends AnyFlatSpec with Matchers {
 
   "MultikinoParser" should "read the Polish rating from certificate.name (real fixture)" in {
     val movies  = new MultikinoClient(new FakeHttpFetch("new-cities"), "0003", MultikinoZabrze, titles = titleNormalizer).fetch()
-    val pasazer = movies.find(_.movie.rawTitle.exists(_.toLowerCase.contains("pasażer")))
+    val pasazer = movies.find(_.movie.rawTitle.exists(_.toLowerCase(java.util.Locale.ROOT).contains("pasażer")))
     pasazer.flatMap(_.ageRating) shouldBe Some("15+")
     // The fixture carries exactly the two "15+" films it was recorded with…
     movies.count(_.ageRating.contains("15+")) shouldBe 2

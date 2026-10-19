@@ -26,7 +26,7 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
 
   "ParallelDetailFetch" should "return fetched results keyed by URL" in {
     val result = ParallelDetailFetch("test-happy", Seq("a", "b", "c"), 5.seconds) { url =>
-      url.toUpperCase
+      url.toUpperCase(java.util.Locale.ROOT)
     }
     result shouldBe Map("a" -> "A", "b" -> "B", "c" -> "C")
   }
@@ -46,7 +46,7 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
     val clock  = new VirtualClock
     val result = ParallelDetailFetch.timed("test-slow", Seq("slow", "fast"), 100.millis, 1, clock)(identity) { url =>
       if (url == "slow") clock.advance(2000)
-      url.toUpperCase
+      url.toUpperCase(java.util.Locale.ROOT)
     }
     result shouldBe Map("fast" -> "FAST")
   }

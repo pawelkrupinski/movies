@@ -38,7 +38,7 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     // Pinned screening seen in the captured fixture: "Minionki i straszydła"
     // plays 11-07-2026 at 13:30 — the 13:30 lives under the 2026-07-11 `dni` key,
     // so this verifies the day-key → date pairing.
-    val minionki = movies.find(_.movie.title.toLowerCase.contains("minionki")).value
+    val minionki = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("minionki")).value
     minionki.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 7, 11, 13, 30))
 
     // Runtime is read off the "… · 90 min" caption; the booking URL is the blob's
@@ -53,7 +53,7 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
     // "Minionki i straszydła" plays on several days; it collapses to a single row
     // whose showtimes span more than one date.
-    val minionki = movies.filter(_.movie.title.toLowerCase.contains("minionki"))
+    val minionki = movies.filter(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("minionki"))
     minionki should have size 1
     minionki.head.showtimes.map(_.dateTime.toLocalDate).distinct.size should be > 1
   }

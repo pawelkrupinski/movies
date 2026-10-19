@@ -107,7 +107,7 @@ class MsiClientSpec
     }
 
     it should s"pin a concrete screening — $label" in {
-      val film = movies.find(_.movie.title.toLowerCase.contains(titleSub)).value
+      val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains(titleSub)).value
       film.showtimes.map(_.dateTime) should contain(when)
     }
   }
@@ -144,7 +144,7 @@ class MsiClientSpec
     // only to infer a year for day-only rows. The month asked for is what matters
     // here, not the dates that come back.)
     movies should not be empty
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("backrooms")) shouldBe true
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("backrooms")) shouldBe true
   }
 
   it should "stop walking once MaxEmptyMonths consecutive months are empty" in {
@@ -192,16 +192,16 @@ class MsiClientSpec
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoWybrzeze)
     // The "-KINO WYBRZEŻE" suffix is stripped from every cleaned title.
-    all(movies.map(_.movie.title.toLowerCase)) should not include "wybrzeże"
+    all(movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))) should not include "wybrzeże"
     // A concrete dubbed screening, with its buried format word recovered.
-    val toyStory = movies.find(_.movie.title.toLowerCase.contains("toy story 5")).value
+    val toyStory = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("toy story 5")).value
     toyStory.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 20, 15, 0))
     toyStory.showtimes.map(_.format).head shouldBe List("DUB")
     // The portal's booking hrefs are root-relative, so `abs:href` resolves them
     // against `baseUrl` — the scheme we fetch on is the scheme users are sent to.
     toyStory.showtimes.flatMap(_.bookingUrl).head should startWith("http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?")
     // A subtitled screening keeps its NAP token.
-    val zawodowcy = movies.find(_.movie.title.toLowerCase == "zawodowcy").value
+    val zawodowcy = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT) == "zawodowcy").value
     zawodowcy.showtimes.map(_.format).head shouldBe List("NAP")
   }
 
@@ -209,7 +209,7 @@ class MsiClientSpec
     val movies = new MsiClient(new FakeHttpFetch("kino-planeta"), "https://rezerwacja.planetabrzesko.pl",
       KinoPlaneta, today = LocalDate.of(2026, 6, 10), mvcPath = "/Rezerwacja/mvc/pl").fetch()
     movies should not be empty
-    val film = movies.find(_.movie.title.toLowerCase.contains("drzewo magii")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("drzewo magii")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 11, 13, 50))
   }
 
@@ -222,7 +222,7 @@ class MsiClientSpec
       KinoMillenium, today = LocalDate.of(2026, 6, 8), mvcPath = "/Kino/mvc/pl").fetch()
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoMillenium)
-    val film = movies.find(_.movie.title.toLowerCase.contains("backrooms")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("backrooms")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 19, 20, 0))
   }
 
@@ -241,23 +241,23 @@ class MsiClientSpec
     val movies = mokKedzierzyn(KinoChemik, "Chemik")
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoChemik)
-    val titles = movies.map(_.movie.title.toLowerCase)
+    val titles = movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     // A Chemik-only film is present; a Twierdza-only film ("Zawodowcy") is not.
     titles.exists(_.contains("mandalorian and grogu")) shouldBe true
     titles.exists(_.contains("zawodowcy")) shouldBe false
     // The venue prefix is stripped from the cleaned titles.
-    all(movies.map(_.movie.title.toLowerCase)) should not include "chemik -"
+    all(movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))) should not include "chemik -"
   }
 
   it should "split the shared MOK portal into Twierdza's own feed via titlePrefix" in {
     val movies = mokKedzierzyn(KinoTwierdza, "TWIERDZA")
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoTwierdza)
-    val titles = movies.map(_.movie.title.toLowerCase)
+    val titles = movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     // A Twierdza-only film is present; a Chemik-only film is not.
     titles.exists(_.contains("zawodowcy")) shouldBe true
     titles.exists(_.contains("mandalorian and grogu")) shouldBe false
-    all(movies.map(_.movie.title.toLowerCase)) should not include "twierdza -"
+    all(movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))) should not include "twierdza -"
   }
 
   it should "give the two MOK venues overlapping films but distinct cinema tags" in {
@@ -265,8 +265,8 @@ class MsiClientSpec
     // film, so the shared title must surface under BOTH cinemas, tagged apart.
     val chemik   = mokKedzierzyn(KinoChemik, "Chemik")
     val twierdza = mokKedzierzyn(KinoTwierdza, "TWIERDZA")
-    chemik.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
-    twierdza.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
+    chemik.exists(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("toy story 5")) shouldBe true
+    twierdza.exists(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("toy story 5")) shouldBe true
   }
 
   // The portal does NOT spell that separator consistently, and drifting on it is
@@ -284,7 +284,7 @@ class MsiClientSpec
     val movies = mokTightPrefix(KinoChemik, "Chemik")
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoChemik)
-    val titles = movies.map(_.movie.title.toLowerCase)
+    val titles = movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     titles.exists(_.contains("flavia de luce")) shouldBe true
     // The stray dots are separator noise, not title text.
     titles should contain("psi patrol i dinozaury")
@@ -296,7 +296,7 @@ class MsiClientSpec
   it should "still read Twierdza's spaced prefix off the same tightened portal" in {
     val movies = mokTightPrefix(KinoTwierdza, "TWIERDZA")
     movies should not be empty
-    val titles = movies.map(_.movie.title.toLowerCase)
+    val titles = movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     titles.exists(_.contains("buntownik")) shouldBe true
     titles.exists(_.contains("flavia de luce")) shouldBe false
   }
@@ -377,7 +377,7 @@ class MsiClientSpec
       KinoMOKMiedzyrzecz, today = LocalDate.of(2026, 9, 23)).fetch()
 
   private def miedzyrzeczFilm(prefix: String): CinemaMovie =
-    miedzyrzecz.find(_.movie.title.toLowerCase.startsWith(prefix)).value
+    miedzyrzecz.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).startsWith(prefix)).value
 
   "MsiClient (poster + synopsis)" should "lift the poster and the full Description off the month page" in {
     val fiveHundredMiles = miedzyrzeczFilm("500 mil")
@@ -416,7 +416,7 @@ class MsiClientSpec
   it should "build the poster from PosterId on a skin that renders no poster img" in {
     val psiPatrol = new MsiClient(new FakeHttpFetch("kino-wolnosc-szczecinek"), "https://bilety.sapik.pl",
       KinoWolnoscSzczecinek, today = LocalDate.of(2026, 9, 23)).fetch()
-      .find(_.movie.title.toLowerCase.contains("psi patrol i dinozaury")).value
+      .find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("psi patrol i dinozaury")).value
     psiPatrol.posterUrl.value shouldBe "https://bilety.sapik.pl/MSI/ImageData.ashx?id=1104&mode=thumb"
     psiPatrol.synopsis.value should startWith("Podczas burzy statek Psiego Patrolu")
   }

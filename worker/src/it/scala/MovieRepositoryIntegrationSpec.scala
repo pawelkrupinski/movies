@@ -277,7 +277,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
       applied.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       applyThread.get              should startWith ("movie-change-apply")
-      applyThread.get.toLowerCase  should not include "eventloop"      // not a Netty I/O loop
+      applyThread.get.toLowerCase(java.util.Locale.ROOT)  should not include "eventloop"      // not a Netty I/O loop
       applyThread.get              should not include "InnocuousThread" // not the NIO2 async pool
       // Clean up the warm row like the other three do — a run killed before `afterAll`
       // otherwise strands it, which is what `beforeAll`'s purge exists for.

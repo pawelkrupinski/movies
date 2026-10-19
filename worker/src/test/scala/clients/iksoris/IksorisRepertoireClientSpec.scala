@@ -73,7 +73,7 @@ class IksorisRepertoireClientSpec extends AnyFlatSpec with Matchers with OptionV
   // koncert 60-lecia na bis"), which went to TMDB as a film: the client never
   // applied the live-event filter its doc said a scrape seam would.
   it should "drop a live concert sold on the same repertoire" in {
-    plon.map(_.movie.title).filter(_.toLowerCase.contains("koncert")) shouldBe empty
+    plon.map(_.movie.title).filter(_.toLowerCase(java.util.Locale.ROOT).contains("koncert")) shouldBe empty
   }
 
   it should "pin a showing's time, seat-picker link and runtime" in {

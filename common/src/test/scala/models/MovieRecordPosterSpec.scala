@@ -46,7 +46,7 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
       Tmdb      -> SourceData(posterUrl = Some(tmdb))))
     record.posterUrl          shouldBe Some(tmdb)
     record.fallbackPosterUrls shouldBe empty
-    MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(posterUrl = Some(placeholder.toUpperCase + "?v=2"))))
+    MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(posterUrl = Some(placeholder.toUpperCase(java.util.Locale.ROOT) + "?v=2"))))
       .posterUrl shouldBe None
   }
 

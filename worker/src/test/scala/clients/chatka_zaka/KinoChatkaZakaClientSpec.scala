@@ -28,7 +28,7 @@ class KinoChatkaZakaClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "parse a French-review film with its date+time and metadata" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("mi amor")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("mi amor")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 23, 18, 0))
     film.movie.originalTitle.value shouldBe "Mi amor"
     film.movie.releaseYear.value shouldBe 2025
@@ -37,14 +37,14 @@ class KinoChatkaZakaClientSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   it should "carry every French-review film in the window" in {
-    val titles = movies.map(_.movie.title.toLowerCase)
+    val titles = movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT))
     titles should have size 5 // the 5 films; the concert is filtered out
     titles.exists(_.contains("nowa fala")) shouldBe true
     titles.exists(_.contains("windą na szafot")) shouldBe true
   }
 
   it should "drop the venue's non-film concert via the event filter" in {
-    movies.map(_.movie.title).exists(_.toLowerCase.contains("koncert")) shouldBe false
+    movies.map(_.movie.title).exists(_.toLowerCase(java.util.Locale.ROOT).contains("koncert")) shouldBe false
   }
 }
 
@@ -60,14 +60,14 @@ class KinoChatkaZakaPipelessDetailSpec extends AnyFlatSpec with Matchers with Op
 
   "KinoChatkaZakaClient" should "time a screening off a detail stamp without pipes" in {
     movies.flatMap(_.showtimes) should have size 5
-    val film = movies.find(_.movie.title.toLowerCase.contains("ktoś całkiem obcy")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("ktoś całkiem obcy")).value
     film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 13, 18, 0))
     film.director should contain("Brandt Andersen")
     film.movie.runtimeMinutes.value shouldBe 103
   }
 
   it should "time a screening whose stamp sits under a banner line" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("czerwone latarnie")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("czerwone latarnie")).value
     film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 14, 18, 0))
   }
 }

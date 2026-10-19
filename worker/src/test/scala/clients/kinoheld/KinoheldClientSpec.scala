@@ -154,14 +154,14 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
 
   it should "leave out a sneak preview, which names no film" in {
     lumen.map(_.movie.title) should not contain ("Sneak Preview")
-    lumen.map(_.movie.title).filter(_.toLowerCase.contains("sneak")) shouldBe empty
+    lumen.map(_.movie.title).filter(_.toLowerCase(java.util.Locale.ROOT).contains("sneak")) shouldBe empty
   }
 
   // Filmwerk Gütersloh bills November's sneak "Sneak_nov", which kinoheld links to an 8-minute short "Sneak Over":
   // the two share only the word "sneak", and a sneak names no film for any link to be right about.
   it should "leave out a sneak billed by its month, whatever film kinoheld linked it to" in {
     val filmwerk = scrape("Filmwerk Gütersloh")
-    filmwerk.map(_.movie.title).filter(_.toLowerCase.contains("sneak")) shouldBe empty
+    filmwerk.map(_.movie.title).filter(_.toLowerCase(java.util.Locale.ROOT).contains("sneak")) shouldBe empty
     filmwerk.flatMap(_.showtimes).flatMap(_.bookingUrl).filter(_.contains("1000-57804")) shouldBe empty
   }
 

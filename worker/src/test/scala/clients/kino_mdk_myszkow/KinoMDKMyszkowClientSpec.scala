@@ -34,7 +34,7 @@ class KinoMDKMyszkowClientSpec extends AnyFlatSpec with Matchers with OptionValu
     val film = movies.find(_.movie.title == "Dzień dziecka księdza Jana Kaczkowskiego").value
     film.movie.runtimeMinutes.value shouldBe 76
     film.synopsis.value should include("Jan Kaczkowski")
-    film.synopsis.value.toLowerCase should not include "czas trwania"
+    film.synopsis.value.toLowerCase(java.util.Locale.ROOT) should not include "czas trwania"
   }
 
   it should "carry the event's own page as the film URL and its poster, with no booking link (door sales only)" in {

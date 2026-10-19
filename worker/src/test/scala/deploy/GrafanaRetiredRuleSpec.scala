@@ -104,6 +104,6 @@ class GrafanaRetiredRuleSpec extends AnyFlatSpec with Matchers {
   "the alert folder" should "not still be named for the platform this fleet left" in {
     val folders = lines.map(_.trim).collect { case s"folder: $name" => name }.distinct
     folders should not be empty
-    folders.foreach(f => withClue(s"folder '$f': ")(f.toLowerCase should not include "fly"))
+    folders.foreach(f => withClue(s"folder '$f': ")(f.toLowerCase(java.util.Locale.ROOT) should not include "fly"))
   }
 }

@@ -10,8 +10,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.Locale
 import java.util.concurrent.Executors
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 /**
  * An evidence card for every take of the unmatched-cluster capture no label judges (`scripts/identity-judge-cards`), so a
@@ -134,7 +133,7 @@ object IdentityJudgeCards {
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
     try {
       val started = tools.Stopwatch.start()
-      val got = Await.result(Future.traverse(ids)(id => Future(id -> lookups.film(id))), Duration.Inf).collect {
+      val got = ParallelTasks.all(ids)(id => id -> lookups.film(id)).collect {
         case (id, Answer.Known(Some(film))) => id -> film
       }.toMap
       if (ids.nonEmpty) println(f"[identity-judge-cards] TMDB live: ${got.size}/${ids.size} record(s) in ${started.seconds}%.1fs")

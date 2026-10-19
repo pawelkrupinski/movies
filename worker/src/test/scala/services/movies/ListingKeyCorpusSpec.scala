@@ -125,7 +125,7 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
       (directors(a).nonEmpty && directors(b).nonEmpty && (directors(a) & directors(b)).isEmpty)
   }
 
-  private def directors(cm: CinemaMovie) = cm.director.map(_.trim.toLowerCase).filter(_.nonEmpty).toSet
+  private def directors(cm: CinemaMovie) = cm.director.map(_.trim.toLowerCase(java.util.Locale.ROOT)).filter(_.nonEmpty).toSet
 
   "The production slot fold" should "never put two films a venue lists under one title on one slot, on every recorded corpus" in {
     corpora.map(_.label) should contain ("listing-key-collisions-us.json.gz")

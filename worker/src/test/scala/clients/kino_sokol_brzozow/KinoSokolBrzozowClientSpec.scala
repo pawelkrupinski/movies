@@ -24,7 +24,7 @@ class KinoSokolBrzozowClientSpec extends AnyFlatSpec with Matchers with OptionVa
   }
 
   it should "pin a concrete screening with its date read off the event" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("mandalorian")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("mandalorian")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 16, 45))
   }
 
@@ -33,10 +33,10 @@ class KinoSokolBrzozowClientSpec extends AnyFlatSpec with Matchers with OptionVa
   // film name, so the central `FormatTags` title strip has nothing to peel and
   // a dubbed screening was indistinguishable from a subtitled one on the badge.
   it should "read the language version off the event's venue line" in {
-    val dubbed = movies.find(_.movie.title.toLowerCase.contains("mandalorian")).value
+    val dubbed = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("mandalorian")).value
     all(dubbed.showtimes.map(_.format)) shouldBe List("2D", "DUB")
 
-    val subtitled = movies.find(_.movie.title.toLowerCase.contains("objawienia")).value
+    val subtitled = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("objawienia")).value
     all(subtitled.showtimes.map(_.format)) shouldBe List("2D", "NAP")
   }
 }

@@ -16,7 +16,7 @@ class ShareCardGalleryControllerSpec extends AnyFlatSpec with Matchers {
   private val card = "f0123456789abcd.jpg?v=0123456789abcdef"
 
   private val records = Seq("Diuna", "Belle").map(title =>
-    TestMovieController.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase}.jpg")))
+    TestMovieController.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase(java.util.Locale.ROOT)}.jpg")))
 
   /** Diuna has a share card, Belle has none. */
   private def controller(): ShareCardGalleryController = {

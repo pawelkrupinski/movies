@@ -65,7 +65,7 @@ object ReadModelSnapshot {
     * than silently merging two films. */
   def orderIndependent(snapshot: Snapshot): Snapshot = {
     def standIn(movie: ResolvedMovie): String = {
-      val base = movie.title.toLowerCase.replaceAll("[^\\p{L}\\p{N}]+", "")
+      val base = movie.title.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "")
       s"$base|${movie.releaseYear.getOrElse("")}"
     }
     // The stand-in comes from the film's PLAIN card (its own title); a split row whose

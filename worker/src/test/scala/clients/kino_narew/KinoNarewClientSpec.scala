@@ -34,7 +34,7 @@ class PultuskClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "union TWO separate date ranges listed for one film at the shared showtime" in {
-    val film = movies.find(_.movie.title.toLowerCase == "100 dni misja zeus").value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT) == "100 dni misja zeus").value
     val dates = film.showtimes.map(_.dateTime)
     dates should have size 8
     dates should contain allOf (LocalDateTime.of(2026, 10, 6, 17, 0), LocalDateTime.of(2026, 10, 14, 17, 0))

@@ -47,7 +47,7 @@ object SpecTimeouts {
   /**
    * THE HUNG-SUITE BUDGET. A generous bound per wait makes a regression that hangs every test
    * of a suite cost a minute PER TEST, which runs a CI job past its `timeout-minutes`: the job is
-   * cancelled, with no JUnit report and no flake rerun to say what broke. So a suite gets a
+   * cancelled, with no JUnit report to say what broke. So a suite gets a
    * deadline, counted from its first [[Io]] / [[Settle]] read: past it, those bounds shrink to
    * [[PastDeadline]], and the rest of a hung suite fails in seconds per test, inside the job.
    *

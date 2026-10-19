@@ -36,7 +36,7 @@ class Bilety24SubdomainClientSpec extends AnyFlatSpec with Matchers with OptionV
   }
 
   it should "pin a concrete Friday screening read off the ?b24_day page" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("dzień objawienia")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("dzień objawienia")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 19, 17, 0))
   }
 

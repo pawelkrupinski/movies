@@ -31,7 +31,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     def candidates(query: CandidateQuery): Answer[Seq[Hit]] = {
       reads.read("q:" + query.sortKey)
       query match {
-        case CandidateQuery.Title(text) => Answer.Known(titles.collect { case (word, hits) if normalizer.searchQuery(text).toLowerCase.contains(word) => hits }.flatten.toSeq)
+        case CandidateQuery.Title(text) => Answer.Known(titles.collect { case (word, hits) if normalizer.searchQuery(text).toLowerCase(java.util.Locale.ROOT).contains(word) => hits }.flatten.toSeq)
         case _                          => Answer.Known(Nil)
       }
     }

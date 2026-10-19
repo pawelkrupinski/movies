@@ -52,7 +52,7 @@ class Bilety24OrganizerClientSpec
     }
 
     it should s"pin a concrete screening that books on www.bilety24.pl — $label" in {
-      val film = movies.find(_.movie.title.toLowerCase.contains(titleSub)).value
+      val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains(titleSub)).value
       val slot = film.showtimes.find(_.dateTime == when).value
       slot.bookingUrl.value should startWith("https://www.bilety24.pl/kino/")
     }
@@ -70,12 +70,12 @@ class Bilety24OrganizerClientSpec
       "https://www.bilety24.pl/kino/organizator/kino-kosmos-1501", KinoKosmos, titles = titleNormalizer)
 
   it should "expose each film's /kino event page as filmUrl for deferred detail" in {
-    val film = kosmos.fetch().find(_.movie.title.toLowerCase.contains("dzień objawienia")).value
+    val film = kosmos.fetch().find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("dzień objawienia")).value
     film.filmUrl.value shouldBe "https://www.bilety24.pl/kino/1501-dzien-objawienia-157217?id=935542"
   }
 
   it should "harvest synopsis and poster off the event page" in {
-    val ref    = kosmos.fetch().find(_.movie.title.toLowerCase.contains("dzień objawienia")).value.filmUrl.value
+    val ref    = kosmos.fetch().find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("dzień objawienia")).value.filmUrl.value
     val detail = kosmos.fetchFilmDetail(ref).value
 
     detail.synopsis.value should startWith("Gdybyś dowiedział się, że nie jesteśmy sami")

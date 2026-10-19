@@ -102,7 +102,7 @@ class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
   it should "point every source URL at a host the scraper declares" in {
     val bad = placed.flatMap { case (city, s) =>
       s.sourceUrl.flatMap { url =>
-        val host = Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase)
+        val host = Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(java.util.Locale.ROOT))
         val scheme = Try(URI.create(url).getScheme).toOption
         Option.when(!scheme.exists(Set("http", "https")) || !host.exists(s.scrapeHosts))(s"${describe(city, s)}: $url")
       }

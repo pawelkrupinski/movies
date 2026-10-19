@@ -62,10 +62,10 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
   "CyfroweKinoClient" should "strip the 'Premiera!' prefix via cinemaClean" in {
     val titles = cyfroweTitles(withExtras)
     titles should have size 1
-    titles.head.toLowerCase shouldBe "toy story 5"
+    titles.head.toLowerCase(java.util.Locale.ROOT) shouldBe "toy story 5"
   }
   it should "be load-bearing — the seed rules alone keep the 'Premiera!' prefix" in {
-    cyfroweTitles(seedOnly).head.toLowerCase should startWith("premiera!")
+    cyfroweTitles(seedOnly).head.toLowerCase(java.util.Locale.ROOT) should startWith("premiera!")
   }
 
   // A bare "Napisy PL" now comes off in the shared format strip (FormatTags drops

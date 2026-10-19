@@ -28,7 +28,7 @@ class KinoKulturaChojnowClientSpec extends AnyFlatSpec with Matchers with Option
   }
 
   it should "pin the single dated screening read off the structured Rozpoczęcie field" in {
-    val film = movies.find(_.movie.title.toLowerCase.contains("vivaldi")).value
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("vivaldi")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 12, 30))
   }
 
@@ -36,7 +36,7 @@ class KinoKulturaChojnowClientSpec extends AnyFlatSpec with Matchers with Option
     // The André Rieu card's Rozpoczęcie is a bare "2026-09-13" (no HH:MM) — it
     // spans multiple screening dates only described in free-text prose, so the
     // card yields no showtime rather than a guessed one.
-    movies.map(_.movie.title.toLowerCase).exists(_.contains("rieu")) shouldBe false
+    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("rieu")) shouldBe false
   }
 
   it should "carry no booking link (ticketing is off-site, with no per-event URL on this page)" in {

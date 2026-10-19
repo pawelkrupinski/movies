@@ -34,7 +34,7 @@ class KinoSokolStrzyzowClientSpec extends AnyFlatSpec with Matchers with OptionV
     val film = movies.find(_.movie.title == "Księga pustyni").value
     film.movie.runtimeMinutes.value shouldBe 92
     film.movie.genres should contain ("Familijny")
-    film.movie.genres.exists(_.toLowerCase.contains("od 10 lat")) shouldBe false
+    film.movie.genres.exists(_.toLowerCase(java.util.Locale.ROOT).contains("od 10 lat")) shouldBe false
   }
 
   it should "carry the venue's own seans page as the film URL and poster, with no booking link (sale not live)" in {
