@@ -10,6 +10,8 @@ best-scored candidate is the right one -- against the shipped log-odds alone. Pu
 
   python3 scripts/ml-identity/weighted_guards.py capture target/weighted-guards/units.tsv
   python3 scripts/ml-identity/weighted_guards.py corpus target/weighted-guards/units-*.tsv
+  python3 scripts/ml-identity/weighted_guards.py weights <variant> <signal,...> target/weighted-guards/units-*.tsv
+      writes identity/src/main/resources/identity-weights.json with each named signal's table fitted from the corpus units
 """
 import csv
 import math
@@ -47,7 +49,9 @@ def corpus_units(paths):
     labels = judgements()
     for path in paths:
         by_node = defaultdict(list)
-        for r in csv.DictReader(open(path, encoding="utf-8"), delimiter="\t"):
+        for r in csv.DictReader(open(path, encoding="utf-8"), delimiter="\t", quoting=csv.QUOTE_NONE):
+            if None in r or r.get("certificate") is None or not r["take"].isdigit() and r["take"] != "":
+                continue  # a raw title carrying a line break splits its row: left out
             by_node[(r["country"], r["node"])].append(r)
         for (cc, node), rows in by_node.items():
             first = rows[0]
@@ -132,6 +136,103 @@ def platt(scores, labels):
     return a, b
 
 
+def solve(matrix, vector):
+    """`matrix` x = `vector` by Gaussian elimination with partial pivoting (a few dozen unknowns)."""
+    n = len(vector)
+    m = [row[:] + [vector[i]] for i, row in enumerate(matrix)]
+    for c in range(n):
+        pivot = max(range(c, n), key=lambda r: abs(m[r][c]))
+        m[c], m[pivot] = m[pivot], m[c]
+        if abs(m[c][c]) < 1e-12:
+            continue
+        for r in range(c + 1, n):
+            f = m[r][c] / m[c][c]
+            if f:
+                for k in range(c, n + 1):
+                    m[r][k] -= f * m[c][k]
+    x = [0.0] * n
+    for c in range(n - 1, -1, -1):
+        x[c] = 0.0 if abs(m[c][c]) < 1e-12 else (m[c][n] - sum(m[c][k] * x[k] for k in range(c + 1, n))) / m[c][c]
+    return x
+
+
+def joint(rows, labels, l2=1.0):
+    """A logistic over sparse rows (lists of (feature, value)), fitted jointly by damped Newton with an L2 penalty."""
+    d = 1 + max((f for row in rows for f, _ in row), default=0)
+    w = [0.0] * d
+    def loss(w):
+        total = sum(w[i] * w[i] for i in range(d)) * l2 / 2
+        for row, y in zip(rows, labels):
+            z = sum(w[f] * v for f, v in row)
+            total += (math.log1p(math.exp(-z)) if z > -30 else -z) if y else (math.log1p(math.exp(z)) if z < 30 else z)
+        return total
+    current = loss(w)
+    for _ in range(30):
+        g = [l2 * x for x in w]
+        h = [[l2 if i == j else 0.0 for j in range(d)] for i in range(d)]
+        for row, y in zip(rows, labels):
+            z = sum(w[f] * v for f, v in row)
+            p = 1 / (1 + math.exp(-max(-35, min(35, z))))
+            r = p - (1 if y else 0)
+            q = max(p * (1 - p), 1e-12)
+            for f, v in row:
+                g[f] += r * v
+                hf = h[f]
+                for f2, v2 in row:
+                    hf[f2] += q * v * v2
+        step_dir = solve(h, g)
+        step = 1.0
+        while step > 1e-6 and loss([a - step * b for a, b in zip(w, step_dir)]) > current:
+            step /= 2
+        if step <= 1e-6:
+            break
+        w = [a - step * b for a, b in zip(w, step_dir)]
+        now = loss(w)
+        if current - now < 1e-7 * max(1.0, abs(current)):
+            break
+        current = now
+    return w
+
+
+def evaluate_joint(units, signals):
+    """Each held-out fold scored by a logistic fitted on the other folds over the shipped log-odds, an intercept, and one
+    indicator per known level of each signal (a missing side none): the signals' weights refitted jointly."""
+    index = {}
+    def row(u):
+        out = [(0, 1.0), (1, u["logit"])]
+        for s in signals:
+            lv = u["levels"][s]
+            if not neutral(lv):
+                out.append((index.setdefault((s, lv), 2 + len(index)), 1.0))
+        return out
+    rows = [row(u) for u in units]
+    held = []
+    weights_seen = {}
+    for k in range(FOLDS):
+        train = [(r, u["label"]) for r, u in zip(rows, units) if fold_of(u["group"]) != k]
+        w = joint([r for r, _ in train], [y for _, y in train])
+        w += [0.0] * (2 + len(index) - len(w))
+        weights_seen[k] = w
+        for r, u in zip(rows, units):
+            if fold_of(u["group"]) == k:
+                z = sum(w[f] * v for f, v in r)
+                held.append((u, 1 / (1 + math.exp(-max(-35, min(35, z)))), z))
+    names = {v: f"{s}={lv}" for (s, lv), v in index.items()}
+    return held, {names[i]: round(sum(weights_seen[k][i] for k in weights_seen) / FOLDS, 2) for i in names}
+
+
+def metrics(held):
+    eps = 1e-12
+    logloss = -sum(math.log(max(eps, p if u["label"] else 1 - p)) for u, p, _ in held) / len(held)
+    brier = sum((p - (1 if u["label"] else 0)) ** 2 for u, p, _ in held) / len(held)
+    nodes = defaultdict(list)
+    for u, p, x in held:
+        nodes[u["node"]].append((x, u["label"]))
+    with_right = [c for c in nodes.values() if any(y for _, y in c)]
+    top1 = sum(1 for c in with_right if max(c)[1]) / max(1, len(with_right))
+    return dict(auc=auc([(x, u["label"]) for u, _, x in held]), logloss=logloss, brier=brier, top1=top1)
+
+
 def auc(pairs):
     pos = [s for s, y in pairs if y]
     neg = [s for s, y in pairs if not y]
@@ -172,8 +273,60 @@ def evaluate(units, signals):
     return dict(auc=auc([(x, u["label"]) for u, _, x in held]), logloss=logloss, brier=brier, top1=top1, nodes=len(with_right)), held
 
 
+SIGNAL_OF = {"release": "release.country", "certificate": "certificate"}
+NEUTRAL = {"listing": "the venue's country is unknown, or it bills no certificate",
+           "unrated": "the venue's country rates no film (Poland): no scale to read a certificate on"}
+
+
+def jackson(value, indent):
+    """`value` as Play's Json.prettyPrint lays it out (`"key" : value`, two spaces a level), so the artefact's diff is the table."""
+    pad = "  " * indent
+    if isinstance(value, dict):
+        if not value:
+            return "{ }"
+        return "{\n" + ",\n".join(f'{pad}  "{k}" : {jackson(v, indent + 1)}' for k, v in value.items()) + f"\n{pad}}}"
+    if isinstance(value, list):
+        if not value:
+            return "[ ]"
+        return "[ " + ", ".join(jackson(v, indent + 1) for v in value) + " ]"
+    if isinstance(value, str):
+        import json
+        return json.dumps(value, ensure_ascii=False)
+    return repr(value)
+
+
+def write_weights(variant, signals, paths):
+    units = list(corpus_units(paths))
+    artefact = "identity/src/main/resources/identity-weights.json"
+    with open(artefact, encoding="utf-8") as f:
+        text = f.read()
+    blocks = []
+    for s in signals:
+        w, c = fit_levels(units, s)
+        table = {
+            "kind": "categorical",
+            "categories": {lv: w[lv] for lv in sorted(c) if not neutral(lv)},
+            "bins": [],
+            "missing": {lv[len("missing:"):]: 0.0 for lv in sorted(c) if lv.startswith("missing:")},
+            "counts": {lv: list(c[lv]) for lv in sorted(c)},
+            "neutral": {lv[len("missing:"):]: NEUTRAL.get(lv[len("missing:"):], "missing evidence, weighed by neither side")
+                        for lv in sorted(c) if lv.startswith("missing:")},
+        }
+        blocks.append(f'        "{SIGNAL_OF[s]}" : {jackson(table, 4)},\n')
+        print(s, {lv: round(x, 3) for lv, x in w.items()}, dict(c))
+    anchor = '"listing-film" : {\n      "prior" : '
+    at = text.index("\n", text.index('"signals" : {', text.index(anchor))) + 1
+    text = text[:at] + "".join(blocks) + text[at:]
+    version = text.index('"version" : "') + len('"version" : "')
+    text = text[:text.index('"', version)] + "+weighted-guards-" + variant + text[text.index('"', version):]
+    with open(artefact, "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 def main():
     mode, paths = sys.argv[1], sys.argv[2:]
+    if mode == "weights":
+        return write_weights(paths[0], paths[1].split(","), paths[2:])
     units = list(capture_units(paths[0]) if mode == "capture" else corpus_units(paths))
     signals = list(units[0]["levels"].keys())
     print(f"units {len(units)}, right {sum(u['label'] for u in units)}, judged {sum(u['judged'] for u in units)}, groups {len({u['group'] for u in units})}")
@@ -191,6 +344,10 @@ def main():
         known = auc([(x, u["label"]) for u, _, x in held if any(not neutral(u["levels"][s]) for s in sigs)]) if sigs else float("nan")
         known_base = auc([(u["logit"], u["label"]) for u, _, x in held if any(not neutral(u["levels"][s]) for s in sigs)]) if sigs else float("nan")
         print(f"{name:12} {m['auc']:.4f} {m['logloss']:.5f} {m['brier']:.5f} {m['top1']:.4f}  {judged:.4f}       {known:.4f} (base {known_base:.4f})")
+        jheld, jweights = evaluate_joint(units, sigs)
+        jm = metrics(jheld)
+        jjudged = auc([(x, u["label"]) for u, _, x in jheld if u["judged"]])
+        print(f"{'  joint':12} {jm['auc']:.4f} {jm['logloss']:.5f} {jm['brier']:.5f} {jm['top1']:.4f}  {jjudged:.4f}       weights {jweights}")
         if name == "base":
             base_held = {id(u): x for u, _, x in held}
         if sigs and mode == "corpus":
