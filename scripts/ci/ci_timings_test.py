@@ -85,11 +85,12 @@ class CollectTest(unittest.TestCase):
             "tick 1": 8.5,
         })                                  # and no indented sub-phase, no unfinished `…` line
 
+    def test_the_reporter_still_running_is_left_out_of_its_own_report(self):
+        self.assertNotIn("timings", [j.name for j in jobs()])
+
     def test_a_short_job_s_log_is_never_fetched(self):
         self.assertEqual(jobs()[2].phases, {})
 
-    def test_an_excluded_job_is_left_out(self):
-        self.assertNotIn("preflight", [j.name for j in timings.collect(JOBS, lambda _: "", exclude={"preflight"})])
 
     def test_run_measures(self):
         self.assertEqual(timings.run_measures(RUN, jobs()), {"wall": 780.0, "queued": 60.0})

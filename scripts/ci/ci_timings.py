@@ -34,7 +34,7 @@ dashboard is a reading aid, not a gate.
 A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.name`, kinowo-ci.
 (The `# TYPE` lines are what GrafanaMetricCoverageSpec reads to know these families exist.)
 
-Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push] [--exclude-job NAME]
+Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push]
       (by hand, too: re-pushing a finished run backfills it)
 Test: python3 scripts/ci/ci_timings_test.py
 """
@@ -92,12 +92,12 @@ class Job:
         self.phases = phase_times(log_for(job["id"])) if self.seconds >= PHASE_LOG_MIN_SECONDS else {}
 
 
-def collect(jobs, log_for, exclude=()):
-    """The run's finished jobs, longest first. `log_for(job_id)` returns that job's log text;
-    `exclude` names jobs to leave out (the in-run reporter itself)."""
+def collect(jobs, log_for):
+    """The run's finished jobs, longest first: the in-run reporter, still in progress, is never one.
+    `log_for(job_id)` returns that job's log text."""
     finished = [Job(job, log_for) for job in jobs
                 if job.get("status") == "completed" and job.get("conclusion") != "skipped"
-                and job["name"] not in exclude and job.get("started_at") and job.get("completed_at")]
+                and job.get("started_at") and job.get("completed_at")]
     return sorted(finished, key=lambda job: -job.seconds)
 
 
@@ -283,7 +283,7 @@ def named(github, run):
 
 def handle(github, run, args, out=sys.stdout):
     run = named(github, run)
-    jobs = collect(github.jobs(run["id"]), github.log, exclude=set(args.exclude_job))
+    jobs = collect(github.jobs(run["id"]), github.log)
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
@@ -299,8 +299,6 @@ def main(argv=None):
     parser.add_argument("--repo")
     parser.add_argument("--run-id")
     parser.add_argument("--push", action="store_true", help="push to Prometheus (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
-    parser.add_argument("--exclude-job", action="append", default=[],
-                        help="leave this job out (the reporting job, still running, names itself)")
     args = parser.parse_args(argv)
 
     if not args.repo:
