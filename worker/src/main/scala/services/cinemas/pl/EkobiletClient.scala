@@ -147,8 +147,7 @@ class EkobiletClient(
    *  `OnlyMovieEventsFilter` mixin applied, moved here so the queue (reduce) path
    *  filters too. */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    SlotsToMovies.foldBlocks(chunks.toSeq.sortBy(_._1).flatMap(_._2), _.movie.title, _.showtimes,
-      order = SlotsToMovies.MovieOrder.byKey) { (_, group, showtimes) => Some(group.head.copy(showtimes = showtimes)) }
+    SlotsToMovies.mergeMovies(chunks.toSeq.sortBy(_._1).flatMap(_._2), _.movie.title, order = SlotsToMovies.MovieOrder.byKey)
       .filterNot(isStageTicket)
       .filterNot(NonMovieEventClassifier.isLiveEvent)
 }

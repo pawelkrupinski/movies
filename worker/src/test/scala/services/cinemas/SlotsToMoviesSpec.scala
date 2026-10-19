@@ -141,4 +141,14 @@ class SlotsToMoviesSpec extends AnyFlatSpec with Matchers {
     out.map(_.movie.title) shouldBe Seq("Dune")
     out.head.showtimes.map(_.dateTime) shouldBe Seq(dt(16), dt(18), dt(20))
   }
+
+  "mergeMovies" should "merge one film's rows under the first one's metadata, showtimes deduped and time-sorted" in {
+    val first  = plain("Dune", Seq(Showtime(dt(20), None), Showtime(dt(18), None))).copy(posterUrl = Some("p1"))
+    val second = plain("Dune", Seq(Showtime(dt(18), None), Showtime(dt(16), None))).copy(posterUrl = Some("p2"))
+    val empty  = plain("Wicked", Nil)
+    val out = SlotsToMovies.mergeMovies(Seq(first, second, empty), _.movie.title)
+    out.map(_.movie.title) shouldBe Seq("Dune")
+    out.head.posterUrl shouldBe Some("p1")
+    out.head.showtimes.map(_.dateTime) shouldBe Seq(dt(16), dt(18), dt(20))
+  }
 }

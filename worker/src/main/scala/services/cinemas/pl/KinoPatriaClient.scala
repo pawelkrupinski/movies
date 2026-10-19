@@ -89,9 +89,7 @@ object KinoPatriaClient {
     // Merge: a title present in both sections gets its showtimes combined;
     // the daily section carries absolute dates so is preferred for overlap
     // resolution — we use distinctBy(dateTime) after merging.
-    SlotsToMovies.foldBlocks(dailyMovies ++ weeklyMovies, _.movie.title, _.showtimes, distinctBy = _.dateTime) { (_, group, showtimes) =>
-      Some(group.head.copy(showtimes = showtimes))
-    }
+    SlotsToMovies.mergeMovies(dailyMovies ++ weeklyMovies, _.movie.title, distinctBy = _.dateTime)
   }
 
   /** A film as its item shows it: the title and showtimes its section gives, and the credits and running time every
