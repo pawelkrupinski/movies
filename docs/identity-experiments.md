@@ -160,7 +160,7 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
   its re-read is outstanding (as `d006d2c3e` did for corrections). `IdentityBillingTakeOscillating` names it when it recurs.
 - **Code:** `experiment/broadcast-airable-year`.
 
-## 2026-10-19 — a venue's cast field naming none of a film's cast, as a NEGATIVE signal (branch `experiment-cast-mismatch`, tag `experiment/cast-mismatch`, recording 38713274617, base `experiment/cast-tiebreak` 1009a8c83)
+## 2026-10-19 — a venue's cast field naming none of a film's cast, as a NEGATIVE signal — LANDED (tag `experiment/cast-mismatch`, recording 38713274617, base `experiment/cast-tiebreak` 1009a8c83)
 
 - **Rule** (`CastEvidence.mismatch`, a model-stage node denial in `FamilyScope.denialByNode`; never a weight): a candidate is
   denied when every listing of the node whose venue lists a cast FIELD of its own (`Listing.listedCast`: no synopsis, no
@@ -184,10 +184,13 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
 - **Measure** (identity-measure-local 1009a8c83 → b62db4ce2, all countries): ES model 14 cured (Ocine ×14 "La maleta"
   Objetos → Therón's 2026 film), 9 gained (Artesiete ×8 + Bahia Mar "LA MALETA" → 2026 film, judged right); 0 right lost,
   0 new wrong; DE, PL, UK, US and every final stage unmoved. LANDABLE locally.
-- **Before landing:** prod's stored records (`TmdbNormalizer.minimal`) keep no genres, so the animation/documentary guard
-  would not fire there (dubbed Ghibli in US/UK is English-language-guarded only if `original_language` is filed); keep
-  genre ids in `minimal` first, and the prod cast backfill decides how often the rule can read at all. `Listing.listedCast`
-  is inside listing equality (the model reads it): a venue editing its cast re-resolves the listing.
+- **LANDED** (rebased on `edb40f880`, genre ids on the record since 4c3f3d604): the animation/documentary guard reads
+  `Film.hasGenre(16 | 99)`, and a record whose genres are NOT known (`genreBits` 0) is never vetoed. Re-measured
+  edb40f880 → the landed commit: ES model 14 cured, 9 gained right, 0 lost, 0 new wrong, all else unmoved. The
+  known-wrong "La maleta" → Objetos row it cures is a plain wrong judgement again. In prod the rule is inert until
+  stored records carry genres and a cast (the TMDB record backfill: a record without `castPairs` or `genreBits` vetoes
+  nothing). `Listing.listedCast` is inside listing equality (the model reads it): a venue editing its cast re-resolves
+  the listing.
 
 ## 2026-10-19 — cast as a positive tie-break among namesakes (branch `experiment-cast-tiebreak`, tag `experiment/cast-tiebreak`, recording 38713274617, base `f48ab8001`)
 
