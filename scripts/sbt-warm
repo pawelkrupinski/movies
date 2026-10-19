@@ -143,6 +143,26 @@ unbuilt() {
   done
 }
 
+# The classes of a seeded scala-* dir that its source's Zinc did not write, removed from the copy: each config's output
+# (`classes`, `test-classes`, ...) beside its analysis (`zinc`, `test-zinc`, ...), which Zinc writes AFTER the classes, so
+# a class or TASTy file newer than it came from elsewhere. IntelliJ's own build (JPS) wrote the worker fixtures config's
+# classes into the root checkout's MAIN classes on 2026-10-18, hours after sbt's last compile there; seeded, they
+# shadowed the real fixtures on the test classpath, and a stale one naming a renamed object hung a unit run for 50 min.
+# Judged in the source, since a copy need not keep mtimes; Zinc recompiles whatever its analysis names and lacks.
+drop_unowned_classes() {
+  local from=$1 to=$2 out analysis f dropped=0
+  for out in "$from"/classes "$from"/*-classes; do
+    [ -d "$out" ] || continue
+    out=$(basename "$out")
+    analysis=$(ls -t "$from/${out%classes}zinc"/* 2>/dev/null | head -1)
+    [ -n "$analysis" ] || continue
+    while IFS= read -r f; do
+      rm -f "$to/${f#"$from"/}"; dropped=$((dropped + 1))
+    done < <(find "$from/$out" -type f \( -name '*.class' -o -name '*.tasty' \) -newer "$analysis")
+  done
+  [ "$dropped" -eq 0 ] || log "dropped $dropped class file(s) of $from that its Zinc did not write (an IDE build?)"
+}
+
 seed() {
   local missing src=${KINOWO_SBT_WARM_SEED:-} d m started=$SECONDS
   missing=$(unbuilt)
@@ -158,6 +178,7 @@ seed() {
       mkdir -p "$root/$(dirname "$d")"
       rm -rf "${root:?}/$d"
       cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
+      drop_unowned_classes "$src/$d" "$root/$d"
     done
   done
   # the source's server socket came with project/target: sbt --client here would run in THAT server
