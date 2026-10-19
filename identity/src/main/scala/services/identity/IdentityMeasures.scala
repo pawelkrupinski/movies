@@ -85,6 +85,9 @@ object IdentityMeasures {
     private[identity] lazy val eventBilled: Option[String] =
       agreement.NonFilmEvents.of(agreement.NonFilmEvents.Billing(rawTitle.getOrElse(title), titles.distinct, screeningsSeason, "",
         directors.exists(_.trim.nonEmpty) && year.isDefined))
+    /** The billing's event words and its other words ([[FilmNess]]), once per listing. */
+    private[identity] lazy val eventWords: Seq[String] = FilmNess.eventWords(this)
+    private[identity] lazy val nonEventWords: Set[String] = if (eventWords.isEmpty) Set.empty else FilmNess.otherWords(this)
     /** How many words the billing shares with `title` at most, over its titles ([[IdentityMeasures.sharedWords]]). */
     private[identity] def wordsBilledOf(title: String): Int = titles.map(IdentityMeasures.sharedWords(title, _)).max
     /** The directors credited beside the published `year` — one listing's own, unless a pooled

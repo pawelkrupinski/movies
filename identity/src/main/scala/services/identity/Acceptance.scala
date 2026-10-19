@@ -55,7 +55,13 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  billing ([[agreement.NonFilmEvents]]); this holds the model's own takes to the same reading. */
   private[identity] def filmLike(accepted: Accepted): Verdict = {
     val scored = accepted._1
-    scored.listing.eventBilled.filterNot(_ => scored.candidate.film.titles.exists(NonMovieEventClassifier.isPerformance(_))).fold[Verdict](Right(accepted)) { why =>
+    val listing = scored.listing
+    // V2: an event-worded billing whose record shares none of its other words — found by the event's words alone
+    lazy val byEventWordsAlone = listing.eventWords.nonEmpty &&
+      !scored.candidate.film.titles.exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))
+    listing.eventBilled.filterNot(_ => scored.candidate.film.titles.exists(NonMovieEventClassifier.isPerformance(_)))
+      .orElse(Option.when(byEventWordsAlone)(s"its record shares only the event's words (${listing.eventWords.mkString(", ")})"))
+      .fold[Verdict](Right(accepted)) { why =>
       Left(Acceptance.Refused("the billing reads as no film", Some(scored.candidate.tmdbId), s"${Acceptance.named(scored)}: $why"))
     }
   }
