@@ -476,8 +476,17 @@ object StageRelays {
     if (l.seasonYear.isDefined) Nil
     // the year as stage-production reads it: its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
     // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
-    else (l.statedYear.orElse(bannerYear(l)).orElse(l.broadcastSeason).toSeq ++ l.screenedSeason.filter(_ => l.billsAStageHouse || barelyTimed(l))).distinct.flatMap(year =>
+    else (l.statedYear.orElse(bannerYear(l)).orElse(l.broadcastSeason).toSeq ++
+      l.screenedSeason.filter(_ => l.billsAStageHouse || billsAHouseBanner(l) || barelyTimed(l))).distinct.flatMap(year =>
       l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year"))
+
+  /** Does the listing's title bill a relay series' banner ([[services.movies.TitleWords.Concept.HouseBanner]]) beside the
+   *  work: UK "Otello (MET)" [200′], "MET:Otello", "Live from the Met: Manon" screen the Met's 2026/27 relays, whose
+   *  records no search of the work's name reaches. "Met" names no opera house as a word of its own ([[StageHouseWords]]:
+   *  "When Harry Met Sally"), but beside a stage work it is the series the work is relayed under. */
+  private def billsAHouseBanner(l: Listing): Boolean =
+    l.ownTitles.exists(title => TitleContainment.tokens(title).exists(HouseBannerWords))
+  private lazy val HouseBannerWords: Set[String] = services.movies.TitleWords.tokens(services.movies.TitleWords.Concept.HouseBanner)
 
   /** Is the listing's whole title a stage work, stating no year and no credit — a running time at most, which
    *  [[Listing.broadcastSeason]] reads as naming its staging? A running time names no staging by itself: UK Empire Theatre

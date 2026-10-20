@@ -108,6 +108,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Flicks dates the relay by the page it links: the year it states is searched, and the season it screens in beside it
     val carmen = IdentityMeasures.searchQueries(Listing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), screenedSeason = Some(2026)))
     carmen should contain allOf ("Carmen 2024", "Carmen 2026")
+    // a relay series' banner beside the work bills the relay as a house does: UK Picture House Uckfield's "Otello (MET)"
+    // [200′], Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" (recording 573) screen the Met's 2026/27
+    // relays, which no search of the work's name alone reaches
+    IdentityMeasures.searchQueries(Listing("Otello (MET)", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
+    IdentityMeasures.searchQueries(Listing("MET:Otello", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
+    IdentityMeasures.searchQueries(Listing("Live from the Met: Manon", runtime = Some(240), screenedSeason = Some(2026))) should
+      contain ("Manon 2026")
   }
 
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
