@@ -236,10 +236,11 @@ jobs:
 
     swift:
         needs: seed
-        # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, where the job would
-        # wait for one forever and hold the run (and its timings/report) open; skipped there instead.
+        # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, and it evaluates a job's
+        # `if` only once a runner takes the job, so a macos-latest job there waits forever and holds the run
+        # (and its timings/report) open. There it goes to a Linux runner instead, which skips it on the `if`.
         if: github.server_url == 'https://github.com'
-        runs-on: macos-latest
+        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'ubuntu-26.04' }}
         timeout-minutes: 105
         steps:
             - uses: actions/checkout@v5
@@ -275,10 +276,11 @@ jobs:
                   /usr/bin/python3 scripts/ci/python_floor_lint.py
 
     ios:
-        # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, where the job would
-        # wait for one forever and hold the run (and its timings/report) open; skipped there instead.
+        # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, and it evaluates a job's
+        # `if` only once a runner takes the job, so a macos-latest job there waits forever and holds the run
+        # (and its timings/report) open. There it goes to a Linux runner instead, which skips it on the `if`.
         if: github.server_url == 'https://github.com'
-        runs-on: macos-latest
+        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'ubuntu-26.04' }}
         timeout-minutes: 150
         steps:
             - uses: actions/checkout@v5
