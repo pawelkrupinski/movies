@@ -38,7 +38,7 @@ object Dependencies {
   // task-pipeline metrics with it (counters, gauges, a bucketed duration
   // histogram) and renders the text exposition via the exposition-formats
   // module, rather than hand-rolling the `0.0.4` format.
-  private val prometheusVersion    = "1.9.0"
+  private val prometheusVersion    = "1.10.0"
 
   // ── Artifacts ──────────────────────────────────────────────────────────────
   val play             = "org.playframework"             %% "play"               % playVersion
