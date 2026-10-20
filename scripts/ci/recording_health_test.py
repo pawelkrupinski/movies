@@ -139,6 +139,34 @@ class RecordingHealthTest(unittest.TestCase):
         previous.write_text(json.dumps({"origins": {"api.themoviedb.org": {"tree": 20, "answered": 20, "notFound": 0, "refused": 0, "refusals": {}}}}))
         self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE), "--previous", str(previous)]), 0)
 
+    def test_a_best_effort_origin_refusing_everything_warns_and_never_fails_the_recording(self):
+        # Run 469: OMDb's key out of its daily quota answered 401 to all 141 asks. OMDb is the one optional
+        # source -- the user's call, 2026-10-20 -- so it is named in the summary but the leg stays healthy.
+        self.tree.response("api.themoviedb.org", DURING, 30)
+        self.tree.failure("https://www.omdbapi.com/", 401, DURING, 141)
+        flags = health.judge(self.manifest(), None)
+        self.assertEqual([(f.origin, f.reason, f.blocking) for f in flags], [("www.omdbapi.com", "refusing", False)])
+        summary = pathlib.Path(self.dir.name) / "summary.md"
+        code = health.main([str(self.tree.root), "--since", str(SINCE), "--summary", str(summary), "--title", "germany"])
+        self.assertEqual(code, 0)
+        text = summary.read_text()
+        self.assertIn("OMDb unavailable: 141 call(s) refused", text)
+        self.assertIn("**REFUSING (BEST EFFORT)**", text)
+
+    def test_a_best_effort_origin_gone_from_the_tree_warns_too(self):
+        previous = {"origins": {"www.omdbapi.com": {"tree": 191, "answered": 191, "notFound": 0, "refused": 0, "refusals": {}}}}
+        self.tree.response("api.themoviedb.org", DURING, 10)
+        flags = health.judge(self.manifest(), previous)
+        self.assertEqual([(f.origin, f.reason, f.blocking) for f in flags], [("www.omdbapi.com", "gone", False)])
+
+    def test_every_other_origin_still_fails_the_recording_beside_a_best_effort_one(self):
+        self.tree.failure("https://www.omdbapi.com/", 401, DURING, 141)
+        self.tree.failure("https://api.themoviedb.org/3/movie/1", 429, DURING, 40)
+        code = health.main([str(self.tree.root), "--since", str(SINCE)])
+        self.assertEqual(code, 1)
+        flags = health.judge(self.manifest(), None)
+        self.assertEqual([(f.origin, f.blocking) for f in flags], [("api.themoviedb.org", True), ("www.omdbapi.com", False)])
+
     def test_a_missing_previous_manifest_falls_back_to_the_absolute_floor(self):
         self.tree.response("api.themoviedb.org", DURING, 30)
         missing = pathlib.Path(self.dir.name) / "none.json"

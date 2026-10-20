@@ -26,7 +26,11 @@ An origin is flagged
     recording_health.py <tree> --since <ISO-8601|epoch-seconds> [--previous previous.json]
                         [--write this.json] [--summary $GITHUB_STEP_SUMMARY] [--title <country>]
 
-Exits 1 when any origin is flagged, after writing the manifest and the table; 2 when the tree (or the
+BEST-EFFORT origins (BEST_EFFORT) are judged the same way but only WARN: OMDb is the one optional
+source, whose free key runs out of its daily quota and then answers 401 to everything (run 469,
+2026-10-20); the user chose to have recordings pass without it. Every other origin still fails the leg.
+
+Exits 1 when any origin other than a best-effort one is flagged, after writing the manifest and the table; 2 when the tree (or the
 `--previous` manifest) cannot be read, or holds no origin at all: no verdict. A missing `--previous`
 file is the absolute floor alone (a country's first recording, or the manifest not yet published).
 Tests: recording_health_test.py beside it.
@@ -47,6 +51,8 @@ MIN_REQUESTS = 20       # below this an origin's share is noise: a handful of 50
 REFUSING_SHARE = 0.5    # "fails for most requests"
 NOT_FOUND = {"404", "410"}   # HttpStatusException.isDurable: a verdict about the URL, not a refusal
 CACHE_DIRECTORY = ".enrichment-cache"
+# Origins whose refusal or absence is reported but never fails a recording, with the name the warning uses.
+BEST_EFFORT = {"www.omdbapi.com": "OMDb"}
 
 
 def _origin(key):
@@ -112,6 +118,11 @@ class Flag:
     origin: str
     reason: str   # `refusing` | `gone`
 
+    @property
+    def blocking(self):
+        """False for a BEST_EFFORT origin: warned about, never failing the recording."""
+        return self.origin not in BEST_EFFORT
+
 
 def judge(this, previous):
     """The flagged origins, in name order: see the module doc for the two rules."""
@@ -144,7 +155,8 @@ def table(this, previous, flags):
         counts = this["origins"].get(origin, _origin_counts())
         was = before.get(origin)
         refusals = ", ".join(f"{label}×{n}" for label, n in sorted(counts["refusals"].items(), key=lambda kv: -kv[1]))
-        verdict = f"**{flagged[origin].upper()}**" if origin in flagged else "ok"
+        verdict = (f"**{flagged[origin].upper()}{' (BEST EFFORT)' if origin in BEST_EFFORT else ''}**"
+                   if origin in flagged else "ok")
         lines.append(f"| {origin} | {verdict} | {_share(counts)} | {refusals or '—'} | {counts['tree']} | "
                      f"{_share(was) if was else 'n/a'} | {was['tree'] if was else 'n/a'} |")
     return "\n".join(lines)
@@ -182,13 +194,19 @@ def main(argv):
               "-- no recording to judge", file=sys.stderr)
         return 2
     flags = judge(this, previous)
+    blocking = [f for f in flags if f.blocking]
     if args.write:
         with open(args.write, "w") as handle:
             json.dump(this, handle, indent=1, sort_keys=True)
     heading = f"### Recording health{f' ({args.title})' if args.title else ''}"
     basis = "against the last green recording" if previous else "absolute floor only — no previous manifest"
-    verdict = (f"**{len(flags)} origin(s) flagged:** " + ", ".join(f"{f.origin} ({f.reason})" for f in flags)
-               if flags else "No origin refused most of what it was asked, and none vanished.")
+    verdict = (f"**{len(blocking)} origin(s) flagged:** " + ", ".join(f"{f.origin} ({f.reason})" for f in blocking)
+               if blocking else "No origin refused most of what it was asked, and none vanished.")
+    for flag in flags:
+        if not flag.blocking:
+            refused = this["origins"].get(flag.origin, _origin_counts())["refused"]
+            verdict += (f"\n\n**{BEST_EFFORT[flag.origin]} unavailable: {refused} call(s) refused** ({flag.origin} {flag.reason}; "
+                        "best effort -- warned, not failing the recording)")
     report = (f"{heading}\n\n{verdict} ({basis}; flagged at ≥{MIN_REQUESTS} asked and >{round(100 * REFUSING_SHARE)}% "
               f"refused, or ≥{MIN_REQUESTS} held last time and none now)\n\n{table(this, previous, flags)}\n")
     print(report)
@@ -199,8 +217,10 @@ def main(argv):
         counts = this["origins"].get(flag.origin, _origin_counts())
         what = (f"refused {_share(counts)} of what this recording asked it" if flag.reason == "refusing"
                 else "held responses in the last green recording and holds none now")
-        print(f"::error::{args.title + ': ' if args.title else ''}{flag.origin} {what}", file=sys.stderr)
-    return 1 if flags else 0
+        level = "error" if flag.blocking else "warning"
+        print(f"::{level}::{args.title + ': ' if args.title else ''}{flag.origin} {what}"
+              f"{'' if flag.blocking else ' (best effort: not failing the recording)'}", file=sys.stderr)
+    return 1 if blocking else 0
 
 
 if __name__ == "__main__":
