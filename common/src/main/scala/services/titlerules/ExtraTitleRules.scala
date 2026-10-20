@@ -178,6 +178,18 @@ object ExtraTitleRules {
     prog("xtra-pp-fks-seniorki",      """(?i)^Filmowy\s+Klub\s+Seniora\s+i\s+Seniorki:\s+""", "Filmowy Klub Seniora i Seniorki"),
     prog("xtra-pp-dkf-named",         """(?i)^DKF\s+[^:]+:\s+""",                         "DKF <name>: film-club prefix"),
     prog("xtra-pp-klub-filmowy",      """(?i)^Klub\s+Filmowy\s+[^:]+:\s+""",              "Klub Filmowy <name> cycle"),
+    // The same club banner with no colon, its film quoted ("Klub Filmowy Perspektywy film „Oczy szeroko zamknięte”",
+    // "Klub Filmowy WCK "Odlot""): the quotes are the film, the closing one the end of the billing.
+    searchReplace("xtra-klub-filmowy-quoted",  """(?iu)^Klub\s+Filmowy\s+[^:„“"]+?\s+(?:film\s+)?[„“"]([^„“”"]+)[”"]\s*$""", "$1", "'Klub Filmowy <name> [film] „<film>”' club banner with no colon (CK Nowy Pafawag, Wawerska Strefa Kultury)"),
+    // CK Nowy Pafawag's narrated screenings, the opening and closing nights alike: the quoted film, never the narrator.
+    searchReplace("xtra-korelacje-quoted",     """(?iu)^(?:Zamknięcie\s+|Otwarcie\s+)?Festiwal(?:u)?\s+Korelacje:\s*[„“"]([^„“”"]+)[”"].*$""", "$1", "'[ZAMKNIĘCIE] FESTIWAL[U] KORELACJE: „<film>” z autorską narracją <name> + spotkanie' narrated-screening festival (CK Nowy Pafawag: Zemsta, Zaklęte rewiry)"),
+    // Strands billed with no separator at all, so the generic splits never see them
+    // (docs/investigations/2026-10-20-pl-unmatched-real-films.md): Kino Studyjne Centrum's "Debiut <film>", a capital
+    // after it — the bare word stays a title; Na Starówce's "<film> święto kina" / "<film> czas kobiet"; Terminal Kultury
+    // Gocław's "<film> Edukacja Młode Horyzonty[, cykl …, <town>]" (its "Młoda" typo too).
+    prog("xtra-pp-debiut",                     """(?u)^Debiut\s+(?=\p{Lu})""",                       "'Debiut <film>' debut strand with no separator (Kino Studyjne Centrum: Klarnet, Mroki, Violetta Villas)"),
+    searchStrip("xtra-swieto-kina-suffix",     """(?iu)(?<=\S)\s+(?:święto\s+kina|czas\s+kobiet)\s*$""",     "'<film> święto kina' / '<film> czas kobiet' strand tail with no separator (Na Starówce: Lalka, Primetime, Supermocni)"),
+    searchStrip("xtra-edukacja-mh-suffix",     """(?iu)(?<=\S)\s+Edukacja\s+Młod[ae]\s+Horyzonty\b.*$""",    "'<film> Edukacja Młode Horyzonty[, cykl \"…\", <town>]' education strand tail with no separator (Terminal Kultury Gocław: Lydia i Władca Burz, Drogi Panie Dyktatorze, Sonia)"),
     prog("xtra-pp-modowy-klub",       """(?i)^Modowy\s+klub\s+filmowy:\s+""",             "Modowy klub filmowy"),
     prog("xtra-pp-klub-dlr",          """(?i)^Klub\s+DLR:\s+""",                          "Klub DLR"),
     prog("xtra-pp-kino-dostepne",     """(?i)^Kino\s+Dostępne:\s+""",                     "Kino Dostępne accessibility cycle"),
@@ -815,7 +827,7 @@ object ExtraTitleRules {
     //  - '(re-release)'. Purely a re-issue marker; the film is the same film.
     searchStrip("xtra-restored-adjective-first-suffix", """(?iu)\s*[-–—|.]\s*(?:odrestaurowan\w*|zremasterowan\w*|zrekonstruowan\w*)\s+wersj\w*\s*$""", "'<film> - odrestaurowana wersja [4K]' restoration suffix with the ADJECTIVE first — the mirror of 'xtra-rerelease-suffix', which only spells 'wersja odrestaurowana' (DKF: Absolwent → TMDB 1443)"),
     searchStrip("xtra-subtitle-paren-tag",             """(?iu)\s*\((?:napisy|dubbing|lektor)(?:\s+\p{L}{2,})?\)\s*$""", "'<film> (napisy PL)' / '(dubbing)' / '(lektor)' parenthesised language tag left on a title that reached the resolver — FormatTags peels these at ingest, this catches the ones that get through (Andy Warhol. Amerykański sen → TMDB 1108437)"),
-    searchStrip("xtra-rerelease-paren-suffix",         """(?iu)\s*\(re[-\s]?release\)\s*$""", "'<film> (re-release)' re-issue marker — the same film (Auta (re-release) → Auta)"),
+    searchStrip("xtra-rerelease-paren-suffix",         """(?iu)\s*\(re\s*[-\s]?\s*release\)\s*$""", "'<film> (re-release)' / '(re- release)' re-issue marker — the same film (Auta (re-release) → Auta; Kino Światowid: Halloween '26: Inni (re- release))"),
     // Eighteenth-wave (2026-07-09) audit of the TMDB-no-match corpus (prod mirror,
     // 200 rating-less rows). An English-subtitled screening is a DISTINCT version
     // (separate audience), so — exactly like the Ukrainian-language rule above — it

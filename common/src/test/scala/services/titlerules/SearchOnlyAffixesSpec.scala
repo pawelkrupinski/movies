@@ -62,4 +62,34 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     // Nor is a pre-premiere's word a premiere's: "przedpremiera" keeps its own rule.
     n.apiQuery("Straszny film – przedpremiera") shouldBe "Straszny film"
   }
+
+  // PL strands billed with no separator: docs/investigations/2026-10-20-pl-unmatched-real-films.md (prod mirror 10-20)
+  "A Polish strand billed with no separator" should "be looked up as its film" in {
+    // Kino Studyjne Centrum's debut strand
+    n.apiQuery("Debiut Klarnet") shouldBe "Klarnet"
+    n.apiQuery("Debiut Violetta Villas") shouldBe "Violetta Villas"
+    // Na Starówce's trailing strands
+    n.apiQuery("Lalka święto kina") shouldBe "Lalka"
+    n.apiQuery("Jak zyć, żeby nie zwariować czas kobiet") shouldBe "Jak zyć, żeby nie zwariować"
+    // Terminal Kultury Gocław's education strand, and the cycle and town after it
+    n.apiQuery("Lydia i Władca Burz Edukacja Młode Horyzonty") shouldBe "Lydia i Władca Burz"
+    n.apiQuery("Drogi Panie Dyktatorze Edukacja Młoda Horyzonty") shouldBe "Drogi Panie Dyktatorze"
+    n.apiQuery("SONIA Edukacja Młode Horyzonty, cykl \"Filmowe sekrety\", Warszawa") shouldBe "SONIA"
+    // CK Nowy Pafawag's narrated screenings: the quotes name the film
+    n.apiQuery("Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa") shouldBe "Zemsta"
+    n.apiQuery("ZAMKNIĘCIE FESTIWALU KORELACJE: „Zaklęte rewiry” z autorską  narracją Malcolma XD + spotkanie z autorem") shouldBe "Zaklęte rewiry"
+    // a film club's banner with no colon, the film quoted
+    n.apiQuery("Klub Filmowy Perspektywy film „Oczy szeroko zamknięte”") shouldBe "Oczy szeroko zamknięte"
+    n.apiQuery("Klub Filmowy WCK \"Odlot\"") shouldBe "Odlot"
+    // a re-release marker spelled with a space after the hyphen (Kino Światowid)
+    n.apiQuery("Inni (re- release)") shouldBe "Inni"
+  }
+
+  it should "leave a title that only opens or ends on the strand's words" in {
+    n.apiQuery("Debiut") shouldBe "Debiut"
+    n.apiQuery("Edukacja Młode Horyzonty") shouldBe "Edukacja Młode Horyzonty"
+    n.apiQuery("Czas kobiet") shouldBe "Czas kobiet"
+    // the screening keeps its own row
+    n.sanitize("Debiut Klarnet") should not be n.sanitize("Klarnet")
+  }
 }
