@@ -116,13 +116,13 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
 
   def scopeOf(node: EvidenceNode): FamilyScope = scopes(familyOf(node.id))
 
-  /** Does `n`'s evidence deny `film` — scored, or, for a film it has no evidence path to, its own
-   *  evidence against the film's record? */
   /** Does `node`'s page read as REUSED ([[Acceptance.copiedBeyondItsBilling]]): a record its copied original title and the
    *  director it credits name stands in its pool, though its billing says more than that record's titles? Its facts are
    *  then the record's, copied onto the page, not its billing's film's. */
   def readsAsReused(node: EvidenceNode): Boolean = scopeOf(node).of(node).exists(acceptance.copiedBeyondItsBilling)
 
+  /** Does `n`'s evidence deny `film` — scored, or, for a film it has no evidence path to, its own
+   *  evidence against the film's record? */
   def denies(node: EvidenceNode, film: Int): Boolean =
     scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(pins.deniedFilms(node.listings.head.key)(film) || {
       candidateOf(film).exists { candidate =>
