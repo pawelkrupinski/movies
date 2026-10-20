@@ -157,10 +157,12 @@ test.describe('app banner', () => {
     expect(stamped).toBe(cityToday);
   });
 
+  // No clear-and-reload first, unlike its neighbours: every test gets a fresh context, so
+  // `beforeEach`'s load already IS the first visit, with nothing stored. The extra load cost
+  // this test its 30s on a starved host: nightly-stress run 414's WebKit phones took ~10s to
+  // reach domcontentloaded at load average 130+, and three loads (four on desktop) did not fit.
   test('a touch device sees it again after 1 day; a mouse/trackpad device needs 10', async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
-    await expect(banner(page)).toBeVisible();   // first visit today
+    await expect(banner(page)).toBeVisible();   // first visit today: beforeEach's load
     const isMobile = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
 
     await backdateShownDayAndReload(page, 1);

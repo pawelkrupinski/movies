@@ -97,7 +97,10 @@ jobs:
                   browsers:   webkit
                   label:      ${{ matrix.label }}
                   runs:       'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; ${{ matrix.shard }}'
-                  extra-args: --repeat-each 5
+                  # On Forgejo the four shards share one ci-runner host with every other job; at the
+                  # action's 5 workers each, run 414's WebKit loads took ~10s (load average 130+), so
+                  # the stress rows run 3. Nothing is appended on github.com.
+                  extra-args: --repeat-each 5 ${{ github.server_url != 'https://github.com' && '--workers 3' || '' }}
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
