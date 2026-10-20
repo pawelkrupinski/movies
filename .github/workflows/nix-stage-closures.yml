@@ -311,9 +311,13 @@ jobs:
       # each closure with the commit it was built from -- and a shallow clone can leave nix unable
       # to resolve that revision, which silently turns every host's `revision` label into the
       # "tree was not a git checkout" sentinel.
+      #
+      # On Forgejo the server's own copy is shallow before 257ad0a, so `fetch-depth: 0` (an unshallow
+      # fetch) dies with "Could not read <sha>"; a depth past the root takes every commit the server
+      # has instead -- the same form main.yml uses.
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
 
       - uses: cachix/install-nix-action@v27
         with:
