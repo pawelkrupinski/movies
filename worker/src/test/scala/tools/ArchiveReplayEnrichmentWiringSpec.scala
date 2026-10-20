@@ -676,6 +676,37 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     withClue("a hermetic replay asks no wire at all: ") { new Probe(credentials, Some(new MissingFixtures)).proxyBuilt shouldBe false }
   }
 
+  // Forgejo run 322: six recording legs at once on ci-runner's one address, each pacing only itself, drew ~70k TMDB 429s.
+  // The runner names a permit service every leg shares; the recording's wire asks it before each live request.
+  private final class LiveRecordingWiring(wire: HttpFetch, environment: Env)
+      extends ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+        settings.FixtureRoot.RepositoryRelative, environment = environment) {
+    override protected def recordingWire: HttpFetch = wire
+  }
+
+  "a recording wiring on a runner that names a rate-permit service" should "ask it for a permit before each live request" in {
+    val permits = new FakeRatePermitService
+    try {
+      val wire   = new CountingLeaf
+      val wiring = new LiveRecordingWiring(wire, Env.of("FORGEJO_RATE_PERMITS" -> permits.url))
+      wiring.enrichmentFetch.get("https://www.omdbapi.com/?i=tt0137523&apikey=k")
+      wiring.httpFetch.get("https://cinema.test/film/dune")
+
+      permits.services shouldBe Seq("omdb")
+      withClue("both reached the wire: ") { wire.calls shouldBe 2 }
+    } finally permits.close()
+  }
+
+  it should "ask none in a hermetic replay, which sends nothing" in {
+    val permits = new FakeRatePermitService
+    try {
+      val wiring = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+          settings.FixtureRoot.RepositoryRelative, Some(new MissingFixtures), environment = Env.of("FORGEJO_RATE_PERMITS" -> permits.url))
+      an [Exception] should be thrownBy wiring.enrichmentFetch.get("https://www.omdbapi.com/?i=tt0137523&apikey=k")
+      permits.services shouldBe empty
+    } finally permits.close()
+  }
+
   // A replay's identity model builds no traces and writes none: they are the admin page's diagnostics,
   // and a US cut-over replay spent a tenth of its CPU deriving them and Mongo bulk writes that timed out
   // filing them. Asked with a database present, where the production wiring files them into it.

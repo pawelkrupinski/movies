@@ -70,9 +70,12 @@ class ArchiveReplayWiring(
    *  recording run builds it, so the two can only differ in whether a request that
    *  falls through all of them reaches the network. */
   override protected def realHttpLeaf: HttpFetch =
-    hermetic.fold(MissingFixtureFill.route(recordingWire, recordingProxy))(new HermeticHttpLeaf(_))
+    hermetic.fold(MissingFixtureFill.route(RatePermits.over(recordingWire, RatePermits.from(configuration.ratePermitService)), recordingProxy))(
+      new HermeticHttpLeaf(_))
 
-  /** The real wire a RECORDING asks first. */
+  /** The real wire a RECORDING asks first -- under the runner's shared rate permits where it names a service
+   *  ([[RatePermits]]): parallel legs on one CI address hold each API to one budget between them. The proxy behind it
+   *  leaves from other addresses, so asks none. */
   protected def recordingWire: HttpFetch = super.realHttpLeaf
 
   /** Where a RECORDING asks again what the origin refused the runner's own address — the residential proxy production

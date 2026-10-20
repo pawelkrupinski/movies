@@ -290,6 +290,11 @@ final class ProcessConfiguration(val env: Env) {
   /** `GITHUB_STEP_SUMMARY` — the file a CI step appends its markdown summary to. */
   def stepSummaryFile: Option[StepSummaryFile] = fact("GITHUB_STEP_SUMMARY").map(file => StepSummaryFile(Path.of(file)))
 
+  /** `FORGEJO_RATE_PERMITS` — set by the Forgejo runners on ci-runner (bitcashier infra): where a recording or fill
+   *  asks for a permit before each third-party request, so parallel jobs on one egress address share one budget per
+   *  service. Unset on github.com and in production. */
+  def ratePermitService: Option[RatePermitService] = fact("FORGEJO_RATE_PERMITS").map(RatePermitService(_))
+
   /** `KINOWO_HARD_CLUSTERS_COUNTRIES` — comma-separated codes narrowing a hard-cluster run; codes
    *  naming no country are dropped. */
   def hardClusterCountries: Option[HardClusterCountries] =

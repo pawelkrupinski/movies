@@ -160,9 +160,11 @@ jobs:
             # (runs 322, 408 -- Forgejo, CI since the GitHub suspension); 8g still fits the runner beside
             # mongod (ConvergenceRunnerMemorySpec). github.com keeps the row's own heap.
             heap: ${{ github.server_url != 'https://github.com' && matrix.code == 'de' && '8g' || matrix.heap }}
-            # ONE RECORDING AT A TIME OFF github.com: Forgejo's runners (CI since the GitHub suspension) share one
-            # IP, and TMDB and IMDb limit per IP — six legs at once drew ~70k 429s (run 322). The
-            # `forgejo-recording` runner takes one job at a time. github.com keeps the leg's default runner.
+            # ONE RATE BUDGET FOR ALL LEGS OFF github.com: Forgejo's runners (CI since the GitHub suspension) share
+            # one IP, and TMDB and IMDb limit per IP — six legs at once, each pacing only itself, drew ~70k 429s
+            # (run 322). The `forgejo-recording` runner sets FORGEJO_RATE_PERMITS, and every leg's live wire asks
+            # that one permit service before each request (tools.RatePermits), so the legs run side by side under
+            # one per-service budget. github.com keeps the leg's default runner, its own IP and no permits.
             runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
         # TMDB_API_KEY / OMDB_API_KEY for the live fills, the GITHUB_TOKEN the setup reads, and
         # MONGO_CI_SSH_KEY / MONGO_CI_SSH_HOST_KEY — which the leg maps into its "Tunnel to prod
