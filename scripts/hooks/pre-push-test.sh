@@ -5,6 +5,8 @@ set -uo pipefail
 # The caller's PREPUSH_SKIP is the PUSH's: a push skipping `redgate` ran this test with the gate skipped in every scratch
 # push below, and its red-gate cases failed (2026-10-14). Each case names what it skips itself.
 unset PREPUSH_SKIP
+# Nor do the caller's Forgejo token and remote reach the scratch pushes: each Forgejo case below names its own.
+unset FORGEJO_API_TOKEN PREPUSH_REMOTE_URL PREPUSH_FORGEJO_URL
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from it
 . "$REPO_ROOT/scripts/shell-spec.sh"
@@ -50,6 +52,39 @@ esac
 printf '%s' "$runs" | jq -r "$jqexpr"
 STUB
 chmod +x "$ghstub/gh"
+# A push to a Forgejo remote reads Forgejo's actions runs API by curl instead: a stub `curl` answers
+# GET …/actions/runs?workflow_id=F from $FJ_MAIN / $FJ_IMC / $FJ_REC (Forgejo's run JSON, default none), records each
+# call's argv in $FJ_ARGV and the config it was handed on stdin (the token's header) in $FJ_CONFIG, and answers 401
+# without that header. $FJ_FAILS: unreachable (curl's exit 7). A stub `secrets` stands for the Touch ID vault: `status`
+# says $SECRETS_STATE (default locked); `get` prints a token and counts itself in $SECRETS_GETS.
+cat > "$ghstub/curl" <<'STUB'
+#!/usr/bin/env bash
+config="$(cat)"
+[ -n "${FJ_CONFIG:-}" ] && printf '%s\n' "$config" >> "$FJ_CONFIG"
+[ -n "${FJ_ARGV:-}" ] && printf '%s\n' "$*" >> "$FJ_ARGV"
+[ -n "${FJ_FAILS:-}" ] && { echo "curl: (7) Failed to connect to forgejo.internal port 3000" >&2; exit 7; }
+out="" url=""
+while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; http*) url="$1" ;; esac; shift; done
+case "$config" in *"Authorization: token "?*) ;; *) echo '{"message":"Unauthorized"}' > "$out"; printf 401; exit 0 ;; esac
+case "$url" in
+  "${FJ_EXPECT_BASE:-http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies}/actions/runs?"*) ;;
+  *) echo '{"message":"Not Found"}' > "$out"; printf 404; exit 0 ;;
+esac
+case "$url" in
+  *workflow_id=main.yml\&*) runs="${FJ_MAIN:-[]}" ;; *workflow_id=identity-model-convergence.yml\&*) runs="${FJ_IMC:-[]}" ;;
+  *workflow_id=record-scrape-fixtures.yml\&*) runs="${FJ_REC:-[]}" ;; *) echo '{}' > "$out"; printf 404; exit 0 ;;
+esac
+printf '{"workflow_runs":%s,"total_count":0}' "$runs" > "$out"; printf 200
+STUB
+cat > "$ghstub/secrets" <<'STUB'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "status movies") echo "${SECRETS_STATE:-locked}" ;;
+  "get movies") [ "$3" = FORGEJO_API_TOKEN ] || exit 1; [ -n "${SECRETS_GETS:-}" ] && echo x >> "$SECRETS_GETS"; echo vaulttoken ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$ghstub/curl" "$ghstub/secrets"
 export PATH="$ghstub:$PATH"
 trap 'rm -rf "$testroot"' EXIT
 
@@ -475,6 +510,49 @@ code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$path
          spec_bounded bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
 check "gh hanging is cut off by its bound for each workflow, said out loud, and does not block" "0 3 0" \
   "$code $(grep -c "gh did not answer .* within 1s: cut off" "$gate/err") $(spec_still_running "$hung")"
+# ── The same gate on a Forgejo remote: Forgejo's actions runs API, read by curl, not gh ────────────────────────────
+fj_run() { printf '{"id":%s,"index_in_repo":%s,"status":"%s","workflow_id":"x.yml","html_url":"http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/%s"}' "$((1000 + $1))" "$1" "$2" "$1"; }
+fjred="$(fj_run 38520439037 failure)"; fjgreen="$(fj_run 164 success)"
+fjcancelled="$(fj_run 170 cancelled)"; fjrunning="$(fj_run 172 running)"
+fjremote=ssh://forgejo-git/pawelkrupinski/movies.git
+# gh fails throughout: a Forgejo push that read it would say so
+fjpush() { GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" SECRETS_STATE="${SECRETS_STATE:-unlocked}" push "$@"; }
+check "Forgejo: every workflow green, the push lands, gh unread" "0 0" \
+  "$(FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" FJ_REC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
+check "Forgejo: a red Identity model convergence refuses an undeclared commit" "1" "$(FJ_IMC="[$fjred,$fjgreen]" fjpush "$gbase..$plain")"
+check "...naming the red run by its number in the run's URL" "1" \
+  "$(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/38520439037' "$gate/err")"
+check "Forgejo: a red Main refuses it too" "1" "$(FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
+check "Forgejo: a red nightly recording refuses it too" "1" "$(FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
+check "Forgejo: a commit naming the red run in Fixes-Red: lands" "0" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$fixing")"
+check "Forgejo: a running or cancelled newest run says nothing: the decided one before it counts" "1 0" \
+  "$(FJ_IMC="[$fjrunning,$fjcancelled,$fjred,$fjgreen]" fjpush "$gbase..$plain") $(FJ_IMC="[$fjcancelled,$fjgreen,$fjred]" fjpush "$gbase..$plain")"
+check "Forgejo: tools-only commits land while red" "0" "$(FJ_IMC="[$fjred]" fjpush "$plain..$tools")"
+check "Forgejo: PREPUSH_SKIP=redgate bypasses it" "0" "$(FJ_IMC="[$fjred]" PREPUSH_SKIP=redgate fjpush "$gbase..$plain")"
+rm -f "$gate/argv" "$gate/config"
+FJ_ARGV="$gate/argv" FJ_CONFIG="$gate/config" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain" >/dev/null
+check "Forgejo: the vault's token is sent as a header on stdin, never in curl's argv" "3 0" \
+  "$(grep -c '^header = "Authorization: token vaulttoken"$' "$gate/config") $(grep -c vaulttoken "$gate/argv")"
+check "Forgejo: \$FORGEJO_API_TOKEN, when set, is used without the vault" "1 0" \
+  "$(rm -f "$gate/gets"; SECRETS_GETS="$gate/gets" FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ')"
+rm -f "$gate/gets"
+check "Forgejo: the vault locked is never unlocked (no Touch ID on a push): skipped in one line, not blocked" "0 0 1" \
+  "$(SECRETS_GETS="$gate/gets" SECRETS_STATE=locked FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ') $(grep -c 'red-build gate SKIPPED\|RED on main\|Forgejo' "$gate/err")"
+check "...that line saying why" "1" "$(grep -c 'no Forgejo token .*red-build gate SKIPPED' "$gate/err")"
+check "Forgejo: unreachable is said for each workflow, and does not block" "0 3" \
+  "$(FJ_FAILS=1 fjpush "$gbase..$plain") $(grep -c 'from Forgejo (curl: (7)' "$gate/err")"
+check "Forgejo: an HTTP refusal is said for each workflow, and does not block" "0 3" \
+  "$(FJ_EXPECT_BASE=http://elsewhere FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(grep -c 'from Forgejo (HTTP 404)' "$gate/err")"
+check "Forgejo: an http remote's own host is read" "1" \
+  "$(FJ_EXPECT_BASE=http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies FJ_IMC="[$fjred]" fjremote=http://forgejo.internal:3000/pawelkrupinski/movies.git fjpush "$gbase..$plain")"
+check "Forgejo: an https remote with credentials reads its host, without them" "1" \
+  "$(FJ_EXPECT_BASE=https://forgejo.example.org/api/v1/repos/o/r FJ_IMC="[$fjred]" fjremote=https://u:p@forgejo.example.org/o/r.git fjpush "$gbase..$plain")"
+check "a GitHub remote still reads gh, not Forgejo" "1 1" \
+  "$(GH_IMC="[$red]" FJ_FAILS=1 PREPUSH_REMOTE_URL=git@github.com:pawelkrupinski/movies.git push "$gbase..$plain") $(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) https://x/' "$gate/err")"
+out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
+        | FJ_IMC="[$fjred]" GH_FAILS=1 SECRETS_STATE=unlocked PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo "$fjremote" 2>&1)"; code=$?
+check "a real push to a Forgejo remote is gated by Forgejo's runs, from the URL git hands the hook" "1 1" \
+  "$code $(printf '%s\n' "$out" | grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) http://forgejo')"
 out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
