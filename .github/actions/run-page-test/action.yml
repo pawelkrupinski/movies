@@ -261,6 +261,10 @@ runs:
       env:
         PW_RUNS: ${{ inputs.runs }}
         PW_EXTRA: ${{ inputs.extra-args }}
+        # Off github.com the job container sees the whole shared ci-runner host
+        # (32 cores → '125%' = 40 workers per job, several jobs at once), so pin
+        # the 5 workers a 4-vCPU GitHub runner gets. Empty on github.com.
+        PW_WORKERS: ${{ github.server_url != 'https://github.com' && '5' || '' }}
       run: |
         cd page-tests-playwright
         # `set -f` so the shell never glob-expands a project pattern

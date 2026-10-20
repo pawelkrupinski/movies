@@ -110,7 +110,12 @@ export default defineConfig({
   // shares those 4 cores, nothing is retried (below), and `expect` gives
   // an assertion only 5s, so contention buys flakes rather than speed past this
   // point. Local runs stay at one worker per core.
-  workers: process.env.CI ? '125%' : '100%',
+  //
+  // `PW_WORKERS` overrides the percentage when the runner's core count lies
+  // about its budget: a Forgejo job container sees the whole 32-core host
+  // (→ 40 workers) while several page-test jobs share it, and every slice
+  // timed out (run 315). The action pins it to the GitHub-runner figure there.
+  workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : process.env.CI ? '125%' : '100%',
   // Never 1: a failed test is investigated and fixed, not retried into green (NoTestRerunSpec).
   retries: 0,
   timeout: 30_000,
