@@ -156,7 +156,10 @@ jobs:
             order-command:  ${{ matrix.order || '' }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
-            heap:                          ${{ matrix.heap }}
+            # Germany's recording ran out of its 4g twice off github.com, in GC thrash from ~20 min into the suite
+            # (runs 322, 408 -- Forgejo, CI since the GitHub suspension); 8g still fits the runner beside
+            # mongod (ConvergenceRunnerMemorySpec). github.com keeps the row's own heap.
+            heap: ${{ github.server_url != 'https://github.com' && matrix.code == 'de' && '8g' || matrix.heap }}
             # ONE RECORDING AT A TIME OFF github.com: Forgejo's runners (CI since the GitHub suspension) share one
             # IP, and TMDB and IMDb limit per IP — six legs at once drew ~70k 429s (run 322). The
             # `forgejo-recording` runner takes one job at a time. github.com keeps the leg's default runner.
