@@ -210,7 +210,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     "uses: ./.github/actions/convergence-bisect-request".r.findAllIn(leg).size shouldBe 1
     convergence should include("uses: ./.github/actions/convergence-bisect-request\n" +
-      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && !startsWith(matrix.phase, 'takes')")
+      "              if: failure() && steps.setup.outcome == 'success' && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && " +
+      "!startsWith(matrix.phase, 'takes')")
     convergence should include("sample-command: ${{ inputs.sample-command }}")
   }
 

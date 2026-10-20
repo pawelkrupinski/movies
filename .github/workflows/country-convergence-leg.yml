@@ -882,8 +882,9 @@ jobs:
             # the sample alias, which the bisect first checks reproduces the failure.
             # Not for a red takes check alone (below too, the ratchet): it names its own range (base..head), and
             # neither the sample nor the suite's findings can reproduce it.
+            # Not when setup itself failed (no pinned pair, run 324): there is no pair to replay, and no commit made it red.
             - uses: ./.github/actions/convergence-bisect-request
-              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && !startsWith(matrix.phase, 'takes')
+              if: failure() && steps.setup.outcome == 'success' && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && !startsWith(matrix.phase, 'takes')
               with:
                   country:        ${{ inputs.country }}
                   code:           ${{ inputs.code }}
