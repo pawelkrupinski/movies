@@ -95,7 +95,7 @@ jobs:
     ui-tests:
         # Forgejo has no macOS runner: there the job would wait forever and hold the run open. Forgejo
         # evaluates a job's `if` on the runner that picks it up, so it is handed to a Linux one to skip it.
-        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'ubuntu-latest' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'ubuntu-26.04' }}
         if: ${{ github.server_url == 'https://github.com' }}
         # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
         timeout-minutes: 75
