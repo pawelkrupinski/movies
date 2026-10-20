@@ -466,7 +466,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     base should not include "statuses/"
     val takes = RepoFile.step(suite, "Check which listings the code moved to another film")
     takes should include("TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}")
-    takes should include("TAKES_BASE_JOB: ${{ inputs.country }} / takes-base")
+    takes should include("TAKES_BASE_JOB: takes-base (${{ inputs.country }})")
   }
 
   /** A country whose single order row ran past the 10-minute target splits it into two rows of two

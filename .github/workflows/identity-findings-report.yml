@@ -92,6 +92,7 @@ jobs:
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). Beside the per-country issues, which
     # carry the findings themselves: this one says the report itself is red (overdue, or unable to run).
     report:
+        name: report (scheduled run)
         needs: [findings, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-26.04

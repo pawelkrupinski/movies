@@ -97,7 +97,9 @@ jobs:
     # whole corpus resident (it died at 8g on a 114-116k-document read model).
     leg:
         needs: preflight
-        name: ${{ matrix.country }}
+        # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`: Forgejo shows this caller as a row of
+        # its own beside the leg's `<phase> (<country>)` rows, where a bare country hid what it was.
+        name: leg (${{ matrix.country }})
         strategy:
             fail-fast: false
             matrix:

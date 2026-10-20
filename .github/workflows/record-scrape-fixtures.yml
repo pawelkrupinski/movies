@@ -187,6 +187,7 @@ jobs:
     # and it waits for the slowest leg; each leg has already posted its own verdict as a
     # commit status the moment it ended (.github/actions/leg-verdict, LegVerdictWiringSpec).
     report:
+        name: report (scheduled run)
         needs: [preflight, enrichment, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-26.04

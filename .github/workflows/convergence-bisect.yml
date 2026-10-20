@@ -92,6 +92,10 @@ jobs:
             actions: read
         outputs:
             requests: ${{ steps.requests.outputs.requests }}
+            # The matrix is the countries alone, each request looked up by its country: Forgejo appends a matrix
+            # computed from `needs` to the row's name, so a matrix of whole requests read `bisect (germany) (map[...])`.
+            countries:  ${{ steps.requests.outputs.countries }}
+            by-country: ${{ steps.requests.outputs.by-country }}
             head-sha: ${{ steps.requests.outputs.head-sha }}
             red-run:  ${{ steps.requests.outputs.red-run }}
         steps:
@@ -120,7 +124,7 @@ jobs:
                   echo "red-run=$url" >> "$GITHUB_OUTPUT"
                   if [ "$branch" != main ]; then
                       echo "run $RUN is on $branch, not main — nothing to bisect"
-                      echo "requests=[]" >> "$GITHUB_OUTPUT"
+                      printf 'requests=[]\ncountries=[]\nby-country={}\n' >> "$GITHUB_OUTPUT"
                       exit 0
                   fi
                   mkdir -p requests
@@ -129,16 +133,20 @@ jobs:
                   echo "bisect requests artifact: $present"
                   requests=$(find requests -name '*.json' -exec cat {} + | jq -sc '.')
                   echo "bisect requests: $requests"
-                  echo "requests=${requests:-[]}" >> "$GITHUB_OUTPUT"
+                  {
+                      echo "requests=${requests:-[]}"
+                      echo "countries=$(jq -c '[.[].country]' <<<"${requests:-[]}")"
+                      echo "by-country=$(jq -c 'map({(.country): .}) | add // {}' <<<"${requests:-[]}")"
+                  } >> "$GITHUB_OUTPUT"
 
+    # No `name:`: both github.com and Forgejo name each row `bisect (<country>)` off its one matrix key.
     bisect:
-        name: bisect (${{ matrix.request.country }})
         needs: [plan, preflight]
         if: needs.plan.outputs.requests != '[]' && needs.plan.outputs.requests != ''
         strategy:
             fail-fast: false
             matrix:
-                request: ${{ fromJson(needs.plan.outputs.requests) }}
+                country: ${{ fromJson(needs.plan.outputs.countries) }}
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         # Above everything the script may spend, so its own cap is what stops it and the
         # verdict it has so far still reaches the summary: up to two replays before bisecting
@@ -163,12 +171,12 @@ jobs:
             # meanwhile cannot move the ground.
             - uses: ./.github/actions/convergence-setup
               with:
-                  code:          ${{ matrix.request.code }}
+                  code:          ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   token:         ${{ secrets.GITHUB_TOKEN }}
                   dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
                   dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   mode:          hermetic
-                  hermetic-pair: ${{ matrix.request.pair }}
+                  hermetic-pair: ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].pair }}
 
             - name: Bisect over the pipeline commits since the last green leg
               id: bisect
@@ -176,23 +184,23 @@ jobs:
               env:
                   GH_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO:         ${{ github.repository }}
-                  COUNTRY:         ${{ matrix.request.country }}
-                  CODE:            ${{ matrix.request.code }}
+                  COUNTRY:         ${{ matrix.country }}
+                  CODE:            ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   WORKFLOW:        ${{ inputs.suite }}
                   RUN_ID:          ${{ inputs.run-id }}
                   BAD:             ${{ needs.plan.outputs.head-sha }}
-                  SAMPLE_COMMAND:  ${{ matrix.request.sample }}
-                  HEAP:            ${{ matrix.request.heap }}
-                  STEP_MINUTES:    ${{ matrix.request.minutes }}
+                  SAMPLE_COMMAND:  ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].sample }}
+                  HEAP:            ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].heap }}
+                  STEP_MINUTES:    ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].minutes }}
                   MAX_STEPS:       3
-                  SAMPLE_FAILED:   ${{ matrix.request.sampleFailed }}
+                  SAMPLE_FAILED:   ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].sampleFailed }}
                   # What every sample replay runs on — the same as the leg's sample step.
-                  KINOWO_COUNTRY:   ${{ matrix.request.code }}
-                  KINOWO_COUNTRIES: ${{ matrix.request.code }}
+                  KINOWO_COUNTRY:   ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
+                  KINOWO_COUNTRIES: ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
-                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.request.code }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   KINOWO_CONVERGENCE_HERMETIC: 'true'
               run: |
                   set -uo pipefail
@@ -228,14 +236,14 @@ jobs:
               shell: bash
               env:
                   SHA:     ${{ steps.bisect.outputs.first-bad }}
-                  COUNTRY: ${{ matrix.request.country }}
+                  COUNTRY: ${{ matrix.country }}
               run: |
                   mkdir -p first-bad
                   printf '%s %s\n' "$SHA" "$COUNTRY" > "first-bad/$COUNTRY.txt"
             - uses: actions/upload-artifact@v6
               if: steps.bisect.outputs.first-bad != ''
               with:
-                  name: first-bad-${{ matrix.request.code }}
+                  name: first-bad-${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   path: first-bad/
                   retention-days: 3
 

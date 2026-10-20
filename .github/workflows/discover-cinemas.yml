@@ -189,6 +189,7 @@ jobs:
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
+        name: report (scheduled run)
         needs: [discover-cinemas, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-26.04

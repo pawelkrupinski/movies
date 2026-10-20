@@ -78,6 +78,7 @@ jobs:
     # A failed scheduled check becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run.
     report:
+        name: report (scheduled run)
         needs: [check, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-26.04

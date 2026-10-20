@@ -227,7 +227,7 @@ check "an upload refused because another run stored the asset meanwhile is no wa
 # `takes` row (TAKES_SIDE=head) runs the head's and waits for them while that row runs (the stub jobs API answers its
 # state from $work/base-row, and hands over what $work/pending holds -- the base row storing it meanwhile).
 side_run() { # <side> <head>
-  REF=refs/heads/measure/c5-side TAKES_SIDE=$1 TAKES_BASE_JOB="poland / takes-base" GITHUB_RUN_ID=7 TAKES_BASE_POLL=0 \
+  REF=refs/heads/measure/c5-side TAKES_SIDE=$1 TAKES_BASE_JOB="takes-base (poland)" GITHUB_RUN_ID=7 TAKES_BASE_POLL=0 \
     TAKES_BASE=$c4 store_run "$2"
 }
 head_calls() { grep -vc identity-takes-base "$work/sbt-calls" || true; }

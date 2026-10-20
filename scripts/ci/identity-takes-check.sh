@@ -212,7 +212,7 @@ reused() { # <asset> <file> <what>: whether a stored result was fetched into <fi
 # (or failed) without storing it, or still queued for a runner when this row needs it, leaves it to this row.
 base_row_state() { # -> the takes-base row's job status (queued, in_progress, completed, ...), empty when there is none
   bounded "$gh_read" gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
-    --jq ".jobs[] | select(.name == \"$TAKES_BASE_JOB\") | .status"
+    --jq '.jobs[] | select(.name | endswith(env.TAKES_BASE_JOB)) | .status' # `takes-base (<country>)`, github.com prefixing `<country> / `
 }
 awaited() { # <asset> <file> <what>: reused, or -- beside a base row -- stored by it meanwhile; sets $how
   [ "$side" = head ] && [ -n "$store" ] && [ -n "$1" ] || { reused "$@"; return; }

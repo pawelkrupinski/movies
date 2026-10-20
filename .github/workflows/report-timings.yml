@@ -14,7 +14,10 @@ permissions:
     contents: read
 
 jobs:
+    # Named, not the bare `report`: Forgejo lists a reusable workflow's jobs without github.com's `timings / ` prefix,
+    # so beside a workflow's own scheduled-run `report` this row read `report-1`.
     report:
+        name: report (timings)
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:

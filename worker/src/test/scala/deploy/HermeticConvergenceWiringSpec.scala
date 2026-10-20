@@ -101,7 +101,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     withClue("the pair comes from this job's own setup, not another job's: ") {
       convergence should not include "needs.sample"
     }
-    RepoFile.read(".github/workflows/convergence-bisect.yml") should include("hermetic-pair: ${{ matrix.request.pair }}")
+    RepoFile.read(".github/workflows/convergence-bisect.yml") should include("hermetic-pair: ${{ fromJson(needs.plan.outputs.by-country)[matrix.country].pair }}")
   }
 
   "the recorder" should "record every country's tree over the corpus it just captured" in {

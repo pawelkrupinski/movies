@@ -61,7 +61,8 @@ jobs:
 
     fill:
         needs: countries
-        name: fill (${{ matrix.code }})
+        # No `name:`: github.com and Forgejo both name each row `fill (<code>)` off its one matrix key -- Forgejo appends a
+        # matrix computed from `needs` even to a named row, so naming it `fill (<code>)` read `fill (de) (de)`.
         strategy:
             fail-fast: false
             matrix:

@@ -802,7 +802,7 @@ jobs:
                   TAKES_STORE: ${{ env.FIXTURE_RELEASE_TAG }}
                   # A takes-only dispatch's base is the `takes-base` row's (below): this row runs the head and waits.
                   TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}
-                  TAKES_BASE_JOB: ${{ inputs.country }} / takes-base
+                  TAKES_BASE_JOB: takes-base (${{ inputs.country }})
               run: |
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
