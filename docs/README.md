@@ -42,6 +42,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   (white) or fail (red), with each venue's verdict; summary and run index at the top.
 - [misresolution-sweep.md](misresolution-sweep.md) — log of the sweep for films resolved to the wrong TMDB record
   (from the old pipeline era; its method predates the identity cutover of 2026-10-03/04).
+- [investigations/2026-10-20-de-corpus-decline-oct12-19.md](investigations/2026-10-20-de-corpus-decline-oct12-19.md) — why
+  Germany's corpus and TMDB-id counts fell 10-12 → 10-19: post-expansion identity settling, the weekly listing
+  horizon, and the 10-14/15 identity rule tightening; cinemas and upstreams ruled out.
 - [synopsis-resolution/investigation.md](synopsis-resolution/investigation.md) — June 2026 investigation of
   synopsis-based resolution; frozen inputs in [synopsis-resolution/archive/](synopsis-resolution/archive/README.md).
 - `venue-maps/*.tsv` — venue-map data read by `data/us/scripts/generate_amc_map.py` and the UK clients (data, not prose).
