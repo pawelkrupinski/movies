@@ -105,6 +105,7 @@ jobs:
                   sparse-checkout: |
                       scripts/ci
                       scripts/tool-conventions.sh
+                      scripts/forge-gh
                   sparse-checkout-cone-mode: false
             - id: requests
               env:

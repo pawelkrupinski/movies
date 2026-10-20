@@ -15,7 +15,7 @@ listener=""
 trap '[ -z "$listener" ] || kill "$listener" 2>/dev/null; rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/tree/scripts"
 # The script cds to its checkout and runs scripts/restore-country-corpus.sh there: a tree of its own, the restore a stub.
-cp "$REPO_ROOT/scripts/convergence-local.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$work/tree/scripts/"
+cp "$REPO_ROOT/scripts/convergence-local.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$work/tree/scripts/"
 cat > "$work/tree/scripts/restore-country-corpus.sh" <<'STUB'
 #!/usr/bin/env bash
 echo "restore $*" >> "$STUB/calls"

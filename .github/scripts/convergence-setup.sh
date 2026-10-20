@@ -31,6 +31,8 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 gh_optional="$repo/scripts/ci/gh-optional.sh"
+# gh, or Forgejo's API from a laptop checkout of a Forgejo remote (scripts/forge-gh; a CI job runs its own gh)
+KINOWO_GH=${KINOWO_GH:-$repo/scripts/forge-gh}
 
 pinned() {
   local code="$1" dir marker present line corpus recorded tree
@@ -114,7 +116,7 @@ corpus() {
     }
     if [ "$present" = present ]; then
       # allow-silenced: the recording date only labels the log line and the provenance env.
-      recorded=$(gh run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)
+      recorded=$("$KINOWO_GH" run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)
       corpus_from "$pinned" "$recorded" "PINNED recording run"
     else
       echo "::error::recording run $pinned's corpus is no longer downloadable — the pinned pair has expired; re-run Record scrape fixtures"
@@ -129,7 +131,7 @@ corpus() {
       corpus_from "$run" "$recorded" "recording run"
       exit 0
     fi
-  done < <(gh run list --workflow "Record scrape fixtures" --status success \
+  done < <("$KINOWO_GH" run list --workflow "Record scrape fixtures" --status success \
                --limit 10 --json databaseId,createdAt --jq '.[] | "\(.databaseId) \(.createdAt)"')
   echo "no recorded scrape corpus for $code — the leg will fail and say so"
 }

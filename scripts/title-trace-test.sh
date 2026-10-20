@@ -16,7 +16,7 @@ mkdir -p "$work/bin"
 
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/services/identity" "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src"
-cp "$REPO_ROOT/scripts/title-trace" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/title-trace" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$REPO_ROOT/scripts/jvm-gate.sh" "$repo/scripts/"
 for f in worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala \
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala; do
   echo "// $f" > "$repo/$f"

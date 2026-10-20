@@ -22,7 +22,7 @@ check "--help prints the header, to its last line" "0 1" "$status $(printf '%s' 
 check "...and stops there" "0" "$(printf '%s' "$out" | grep -c 'pipefail')"
 # a copy whose header grew a line: the help follows the header, not a line range fixed to today's
 mkdir -p "$work/tool"
-cp "$REPO_ROOT/scripts/tool-conventions.sh" "$work/tool/"
+cp "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$work/tool/"
 sed '2a\
 # (a line the header grew)
 ' "$TOOL" > "$work/tool/root-checkout-check"

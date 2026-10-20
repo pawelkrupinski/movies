@@ -14,7 +14,7 @@ trap 'rm -rf "$work"' EXIT
 tree="$work/tree"
 mkdir -p "$work/bin" "$tree/scripts/local-mirror" "$tree/scripts/identity-calibrate" "$tree/test/resources/fixtures/identity-unified"
 # The script cds to its checkout: a tree of its own, with the real shared libraries and stubs for what it hands off to.
-cp "$REPO_ROOT/scripts/identity-calibrate.sh" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$tree/scripts/"
+cp "$REPO_ROOT/scripts/identity-calibrate.sh" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$REPO_ROOT/scripts/jvm-gate.sh" "$tree/scripts/"
 cat > "$tree/scripts/identity-refit" <<'STUB'
 #!/usr/bin/env bash
 echo "identity-refit $*" >> "$STUB/calls"

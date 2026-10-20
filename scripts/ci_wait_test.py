@@ -264,7 +264,8 @@ class ToolTest(unittest.TestCase):
                 f.write('#!/usr/bin/env bash\necho "$*" >> "$WORK/calls"\nn=$(wc -l < "$WORK/calls" | tr -d " ")\n'
                         '[ -f "$WORK/$n" ] || n=3\ncat "$WORK/$n"\n')
             os.chmod(gh, 0o755)
-            env = dict(os.environ, PATH=work + os.pathsep + os.environ["PATH"], WORK=work, CI_WAIT_POLL_SECONDS="0")
+            env = dict(os.environ, PATH=work + os.pathsep + os.environ["PATH"], WORK=work, CI_WAIT_POLL_SECONDS="0",
+                       KINOWO_FORGE="github")
             done = subprocess.run([os.path.join(HERE, "ci-wait"), "--run", "7"], capture_output=True, text=True,
                                   env=env, timeout=60)
             self.assertEqual(done.returncode, 1, done.stderr)

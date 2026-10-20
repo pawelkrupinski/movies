@@ -27,6 +27,9 @@ import subprocess
 import sys
 import time
 
+# gh, or Forgejo's API on a checkout with a Forgejo remote (scripts/forge-gh; KINOWO_FORGE=github|forgejo overrides)
+GH = os.environ.get("KINOWO_GH") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "forge-gh")
+
 EXIT_SUCCESS, EXIT_FAILURE, EXIT_NO_VERDICT, EXIT_CANCELLED = 0, 1, 2, 3
 RUN_FIELDS = "databaseId,headSha,headBranch,status,conclusion,workflowName,createdAt,updatedAt"
 LIST_LIMIT = 50
@@ -50,7 +53,7 @@ def gh_runner(gh_timeout: float):
 
     def run(argv):
         try:
-            done = subprocess.run(["gh"] + argv, capture_output=True, text=True, timeout=gh_timeout,
+            done = subprocess.run([GH] + argv, capture_output=True, text=True, timeout=gh_timeout,
                                   stdin=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             return 124, ""

@@ -28,6 +28,9 @@
 # JVM starts have no business waiting on, and sizes JVMs for a share of the cores, which a spec's command lines would
 # then vary by: all off in every spec unless it asks for it (jvm-gate-test.sh does).
 export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0} KINOWO_JVM_SLOTS=${KINOWO_JVM_SLOTS:-0} KINOWO_JVM_CPUS=${KINOWO_JVM_CPUS:-0}
+# A spec stubs `gh` on the PATH: scripts/forge-gh would read this checkout's Forgejo remote and ask Forgejo's API
+# instead, so every spec is on GitHub's side of it unless it asks for the other (forge-gh's own spec does).
+export KINOWO_FORGE=${KINOWO_FORGE:-github}
 # ...and a spec tests its own checkout's gate, never the root checkout's it would otherwise follow
 export KINOWO_JVM_GATE_FOLLOW_MAIN=${KINOWO_JVM_GATE_FOLLOW_MAIN:-0}
 

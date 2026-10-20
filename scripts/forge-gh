@@ -1,0 +1,449 @@
+#!/usr/bin/env python3
+"""`gh` for the laptop tools, on whichever forge holds the repository's CI: GitHub's own gh, or Forgejo's API.
+
+GitHub suspended the account on 2026-10-19; movies' CI, its run artifacts and the convergence-fixtures release live on
+Forgejo since. Every laptop tool that finds a run, an artifact or a release asset calls this in place of `gh`
+(tool-conventions.sh's gh_download and identity_gh, ci_wait.py), so one switch decides the forge for all:
+
+  KINOWO_FORGE=github|forgejo   -> that forge
+  inside a CI job ($GITHUB_ACTIONS) -> the job's own gh (on Forgejo that is the job image's shim): exec'd as is
+  otherwise                     -> Forgejo when this checkout has a Forgejo remote (ssh://forgejo-git/..., a forgejo.*
+                                   host, localhost:2222 -- the pre-push hook's is_forgejo_url), else GitHub
+  GitHub: `gh "$@"`, exec'd, so a stub `gh` on the PATH answers a spec (shell-spec.sh pins KINOWO_FORGE=github).
+
+THE FORGEJO SUBSET -- what the laptop tools ask, translated to Forgejo 15's API at $KINOWO_FORGEJO_URL (default the
+laptop tunnel's http://forgejo.internal:3000), with $FORGEJO_API_TOKEN, else `secrets get movies FORGEJO_API_TOKEN`
+when that vault is already unlocked (never a Touch ID prompt; the repository is private, so no token is an error):
+  run download <run> [-R repo] [-n/--name N]... [-p/--pattern P]... [-D/--dir D]
+        artifacts live in the generic package registry (infra nix/files/forgejo-actions/forgejo_artifact.py): package
+        ci-artifacts-<repo>, version = the run id, one <name>.tar.gz each. One --name unpacks into D, anything else
+        into D/<name>/, as gh lays them out.
+  release download <tag> [-R repo] [-p/--pattern P]... [-D/--dir D] [-O/--output F|-] [--clobber]
+        each matching asset's file, from its API attachment record's download URL, read with the token
+  release view <tag> [-R repo] --json assets,tagName [-q/--jq EXPR]
+  run view <run> [-R repo] --json FIELDS [-q/--jq EXPR]       run list [-R repo] [-w/--workflow W] [-s/--status S]
+        [-b/--branch B] [-c/--commit SHA] [-L/--limit N] --json FIELDS [-q/--jq EXPR]
+        GitHub's run fields (databaseId, number, headSha, headBranch, status, conclusion, createdAt, startedAt,
+        updatedAt, url, event, workflowName) from GET /repos/{repo}/actions/runs. A run id is Forgejo's run id (528),
+        the package registry's version; its URL shows the run's number in the repository (#193). A workflow named by
+        its name is found by the `name:` of .github/workflows/*.yml (Forgejo filters runs by file).
+  api repos/{repo}/actions/runs/{id}[/artifacts] [-q/--jq EXPR] [--paginate]
+        GitHub's shapes (run_started_at, head_sha, ...; artifacts[].name/expired/size_in_bytes); any other path is
+        Forgejo's own /api/v1/<path>, as Forgejo answers it.
+  A form outside it fails (exit 1) naming itself: no Forgejo API serves a run's log (`run view --log`) or its jobs.
+Errors are worded as gh words them (HTTP <code>, "no artifact matches", "no assets match", "release not found"),
+so gh_download tells a failed read from an absent one the same on both forges. --jq runs jq -r, as gh's --jq prints.
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FORGEJO_URL_RE = re.compile(
+    r"^(ssh://forgejo-git/|forgejo-git:|[a-z+]+://([^/@]*@)?forgejo[.:]|.*@localhost:2222|[a-z+]+://localhost:2222/)")
+
+
+class Fail(Exception):
+    def __init__(self, msg, code=1):
+        super().__init__(msg)
+        self.msg, self.code = msg, code
+
+
+# ── which forge ────────────────────────────────────────────────────────────────────────────────
+def is_forgejo_url(url: str) -> bool:
+    return bool(FORGEJO_URL_RE.match(url.strip()))
+
+
+def forge(env=os.environ, remotes=None) -> str:
+    chosen = env.get("KINOWO_FORGE", "")
+    if chosen in ("github", "forgejo"):
+        return chosen
+    if chosen:
+        raise Fail(f"KINOWO_FORGE={chosen}: github or forgejo", 2)
+    if env.get("GITHUB_ACTIONS") == "true":
+        return "github"
+    if remotes is None:
+        try:
+            done = subprocess.run(["git", "-C", REPO_ROOT, "remote", "-v"], capture_output=True, text=True, timeout=10)
+            remotes = [line.split()[1] for line in done.stdout.splitlines() if len(line.split()) > 1]
+        except (OSError, subprocess.TimeoutExpired):
+            remotes = []
+    return "forgejo" if any(is_forgejo_url(u) for u in remotes) else "github"
+
+
+# ── Forgejo's API ──────────────────────────────────────────────────────────────────────────────
+def server(env=os.environ) -> str:
+    return (env.get("KINOWO_FORGEJO_URL") or "http://forgejo.internal:3000").rstrip("/")
+
+
+def token(env=os.environ) -> str:
+    if env.get("FORGEJO_API_TOKEN"):
+        return env["FORGEJO_API_TOKEN"]
+    try:
+        if subprocess.run(["secrets", "status", "movies"], capture_output=True, text=True,
+                          timeout=5).stdout.strip() == "unlocked":
+            got = subprocess.run(["secrets", "get", "movies", "FORGEJO_API_TOKEN"], capture_output=True, text=True,
+                                 timeout=5).stdout.strip()
+            if got:
+                return got
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    raise Fail("HTTP 401: no Forgejo token ($FORGEJO_API_TOKEN unset; vault 'movies' locked: secrets unlock movies)", 4)
+
+
+class Forgejo:
+    def __init__(self, repo: str, env=os.environ):
+        self.repo = repo
+        self.base = server(env)
+        self.env = env
+        self._token = None
+
+    def open(self, url: str):
+        if self._token is None:
+            self._token = token(self.env)
+        req = urllib.request.Request(url, headers={"Authorization": f"token {self._token}"})
+        try:
+            return urllib.request.urlopen(req, timeout=float(self.env.get("KINOWO_FORGEJO_READ_TIMEOUT", "120")))
+        except urllib.error.HTTPError as e:
+            raise Fail(f"HTTP {e.code}: {e.reason} ({url})")
+        except (urllib.error.URLError, OSError) as e:
+            raise Fail(f"could not reach Forgejo at {self.base} (the laptop tunnel?): {getattr(e, 'reason', e)}")
+
+    def get(self, path: str, query=None):
+        url = f"{self.base}/api/v1/{path.lstrip('/')}"
+        if query:
+            url += ("&" if "?" in url else "?") + urllib.parse.urlencode(query)
+        with self.open(url) as r:
+            return json.load(r)
+
+    def save(self, url: str, dest) -> None:
+        """The file at url, streamed into dest (a path, or a binary stream)."""
+        with self.open(url) as r:
+            if isinstance(dest, str):
+                part = dest + ".part"
+                with open(part, "wb") as f:
+                    shutil.copyfileobj(r, f, 1 << 20)
+                os.replace(part, dest)
+            else:
+                shutil.copyfileobj(r, dest, 1 << 20)
+
+    # runs
+    def run(self, run_id: str) -> dict:
+        return self.get(f"repos/{self.repo}/actions/runs/{run_id}")
+
+    def runs(self, query: dict, limit: int) -> list:
+        out, page = [], 1
+        while len(out) < limit:
+            got = self.get(f"repos/{self.repo}/actions/runs", {**query, "limit": 50, "page": page})
+            batch = got.get("workflow_runs") or []
+            out += batch
+            if len(batch) < 50:
+                break
+            page += 1
+        return out[:limit]
+
+    # artifacts: the generic package registry
+    def package(self) -> str:
+        owner, name = self.repo.split("/", 1)
+        return f"{owner}/generic/ci-artifacts-{name}"
+
+    def artifacts(self, run_id: str) -> list:
+        try:
+            files = self.get(f"packages/{self.package()}/{run_id}/files")
+        except Fail as e:
+            if e.msg.startswith("HTTP 404"):
+                return []
+            raise
+        return [{"name": f["name"][: -len(".tar.gz")], "size": f.get("size") or 0}
+                for f in files if f["name"].endswith(".tar.gz")]
+
+    def artifact_url(self, run_id: str, name: str) -> str:
+        return f"{self.base}/api/packages/{self.package()}/{run_id}/{urllib.parse.quote(name)}.tar.gz"
+
+    # releases
+    def release(self, tag: str) -> dict:
+        try:
+            return self.get(f"repos/{self.repo}/releases/tags/{urllib.parse.quote(tag)}")
+        except Fail as e:
+            if e.msg.startswith("HTTP 404"):
+                raise Fail("release not found")
+            raise
+
+
+# ── GitHub's shapes ────────────────────────────────────────────────────────────────────────────
+def status_of(forgejo_status: str):
+    """(status, conclusion) as gh says them."""
+    if forgejo_status in ("success", "failure", "cancelled", "skipped"):
+        return "completed", forgejo_status
+    if forgejo_status == "running":
+        return "in_progress", ""
+    return "queued", ""
+
+
+def started_of(run: dict):
+    started = run.get("started") or ""
+    return None if started.startswith("0001-") or not started else started
+
+
+def gh_run(run: dict, workflows: dict) -> dict:
+    status, conclusion = status_of(run.get("status", ""))
+    wf = run.get("workflow_id", "")
+    return {
+        "databaseId": run["id"], "number": run.get("index_in_repo"), "headSha": run.get("commit_sha", ""),
+        "headBranch": run.get("prettyref", ""), "status": status, "conclusion": conclusion,
+        "createdAt": run.get("created"), "startedAt": started_of(run), "updatedAt": run.get("updated"),
+        "url": run.get("html_url", ""), "event": run.get("trigger_event") or run.get("event", ""),
+        "workflowName": workflows.get(wf, wf), "displayTitle": run.get("title", ""),
+    }
+
+
+def api_run(run: dict, workflows: dict) -> dict:
+    g = gh_run(run, workflows)
+    return {"id": g["databaseId"], "run_number": g["number"], "head_sha": g["headSha"], "head_branch": g["headBranch"],
+            "status": g["status"], "conclusion": g["conclusion"] or None, "created_at": g["createdAt"],
+            "run_started_at": g["startedAt"], "updated_at": g["updatedAt"], "html_url": g["url"], "event": g["event"],
+            "name": g["workflowName"], "path": f".github/workflows/{run.get('workflow_id', '')}"}
+
+
+def workflows_by_file(root=REPO_ROOT) -> dict:
+    """{file: name} of .github/workflows/*.yml."""
+    out, wdir = {}, os.path.join(root, ".github", "workflows")
+    for f in sorted(os.listdir(wdir)) if os.path.isdir(wdir) else []:
+        if not f.endswith((".yml", ".yaml")):
+            continue
+        with open(os.path.join(wdir, f), encoding="utf-8") as fh:
+            for line in fh:
+                m = re.match(r"""^name:\s*["']?(.*?)["']?\s*$""", line)
+                if m:
+                    out[f] = m.group(1)
+                    break
+    return out
+
+
+def workflow_file(name: str, workflows: dict) -> str:
+    if name.endswith((".yml", ".yaml")):
+        return os.path.basename(name)
+    for f, n in workflows.items():
+        if n == name:
+            return f
+    raise Fail(f"could not find any workflows named {name}")
+
+
+# ── output ─────────────────────────────────────────────────────────────────────────────────────
+def emit(obj, fields, jq):
+    if fields:
+        keep = fields.split(",")
+        pick = lambda o: {k: o.get(k) for k in keep}  # noqa: E731
+        obj = [pick(o) for o in obj] if isinstance(obj, list) else pick(obj)
+    text = json.dumps(obj)
+    if jq:
+        done = subprocess.run(["jq", "-r", jq], input=text, capture_output=True, text=True)
+        if done.returncode != 0:
+            raise Fail(done.stderr.strip() or f"jq exit {done.returncode}")
+        sys.stdout.write(done.stdout)
+    else:
+        sys.stdout.write(text + "\n")
+
+
+# ── the commands ───────────────────────────────────────────────────────────────────────────────
+VALUE_FLAGS = {"-R": "repo", "--repo": "repo", "-n": "name", "--name": "name", "-p": "pattern", "--pattern": "pattern",
+               "-D": "dir", "--dir": "dir", "-O": "output", "--output": "output", "--json": "json", "-q": "jq",
+               "--jq": "jq", "-w": "workflow", "--workflow": "workflow", "-s": "status", "--status": "status",
+               "-b": "branch", "--branch": "branch", "-c": "commit", "--commit": "commit", "-L": "limit",
+               "--limit": "limit", "--job": "job", "-X": "method", "--method": "method"}
+SWITCHES = {"--clobber": "clobber", "--log": "log", "--log-failed": "log", "--paginate": "paginate",
+            "--skip-existing": "skip_existing"}
+LISTS = ("name", "pattern")
+
+
+def parse(argv):
+    opts, positional, i = {k: [] for k in LISTS}, [], 0
+    while i < len(argv):
+        a = argv[i]
+        flag, eq, val = a.partition("=")
+        if flag in VALUE_FLAGS and flag.startswith("--") and eq:
+            key, i = VALUE_FLAGS[flag], i + 1
+        elif a in VALUE_FLAGS:
+            if i + 1 >= len(argv):
+                raise Fail(f"flag needs an argument: {a}", 2)
+            key, val, i = VALUE_FLAGS[a], argv[i + 1], i + 2
+        elif a in SWITCHES:
+            opts[SWITCHES[a]] = True
+            i += 1
+            continue
+        elif a.startswith("-") and a != "-":
+            raise Fail(f"gh (forgejo): unsupported flag {a}")
+        else:
+            positional.append(a)
+            i += 1
+            continue
+        if key in LISTS:
+            opts[key].append(val)
+        else:
+            opts[key] = val
+    return opts, positional
+
+
+def default_repo(env=os.environ):
+    return env.get("GH_REPO") or env.get("KINOWO_REPO") or "pawelkrupinski/movies"
+
+
+def extract(archive: str, dest: str):
+    os.makedirs(dest, exist_ok=True)
+    with tarfile.open(archive, mode="r:gz") as tar:
+        tar.extractall(dest, filter="data")
+
+
+def run_download(fj: Forgejo, opts, pos):
+    if not pos:
+        raise Fail("gh (forgejo): run download needs a run id")
+    run_id, dest = pos[0], opts.get("dir") or "."
+    have = fj.artifacts(run_id)
+    if not have:
+        raise Fail("no valid artifacts found to download")
+    names, patterns = opts["name"], opts["pattern"]
+    want = [a["name"] for a in have
+            if (not names and not patterns) or a["name"] in names or any(fnmatch.fnmatch(a["name"], p) for p in patterns)]
+    if not want:
+        raise Fail("no artifact matches any of the names or patterns provided")
+    isolate = len(names) != 1 or bool(patterns)
+    os.makedirs(dest, exist_ok=True)
+    for name in want:
+        # streamed to a file beside the destination, not held in memory: a scrape corpus is hundreds of MB
+        fd, archive = tempfile.mkstemp(prefix=f".{name}.", suffix=".tar.gz", dir=dest)
+        os.close(fd)
+        try:
+            fj.save(fj.artifact_url(run_id, name), archive)
+            extract(archive, os.path.join(dest, name) if isolate else dest)
+        finally:
+            if os.path.exists(archive):
+                os.remove(archive)
+
+
+def release_download(fj: Forgejo, opts, pos):
+    if not pos:
+        raise Fail("gh (forgejo): release download needs a tag")
+    rel = fj.release(pos[0])
+    patterns = opts["pattern"]
+    assets = [a for a in rel.get("assets") or [] if not patterns or any(fnmatch.fnmatch(a["name"], p) for p in patterns)]
+    if not assets:
+        raise Fail("no assets match the file pattern")
+    out = opts.get("output")
+    if out and len(assets) > 1:
+        raise Fail("unable to write more than one asset with --output")
+    for a in assets:
+        url = a.get("browser_download_url") or fj.get(f"repos/{fj.repo}/releases/{rel['id']}/assets/{a['id']}")[
+            "browser_download_url"]
+        if out == "-":
+            fj.save(url, sys.stdout.buffer)
+            sys.stdout.buffer.flush()
+            continue
+        path = out or os.path.join(opts.get("dir") or ".", a["name"])
+        if os.path.exists(path) and not opts.get("clobber"):
+            if opts.get("skip_existing"):
+                continue
+            raise Fail(f"{path} already exists (use `--clobber` to overwrite file or `--skip-existing` to skip file)")
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        fj.save(url, path)
+
+
+def release_view(fj: Forgejo, opts, pos):
+    rel = fj.release(pos[0])
+    shaped = {"tagName": rel.get("tag_name"), "name": rel.get("name"), "id": rel.get("id"),
+              "assets": [{"name": a["name"], "size": a.get("size"), "url": a.get("browser_download_url"),
+                          "createdAt": a.get("created_at")} for a in rel.get("assets") or []]}
+    emit(shaped, opts.get("json"), opts.get("jq"))
+
+
+def run_view(fj: Forgejo, opts, pos):
+    if opts.get("log") or opts.get("job"):
+        raise Fail("gh (forgejo): unsupported: no Forgejo API serves a run's log or jobs (read it in the web UI, "
+                   "or name what you need from it directly, e.g. --recording)")
+    if not pos:
+        raise Fail("gh (forgejo): run view needs a run id")
+    emit(gh_run(fj.run(pos[0]), workflows_by_file()), opts.get("json"), opts.get("jq"))
+
+
+def run_list(fj: Forgejo, opts, pos):
+    wfs = workflows_by_file()
+    query = {}
+    if opts.get("workflow"):
+        query["workflow_id"] = workflow_file(opts["workflow"], wfs)
+    if opts.get("branch"):
+        query["ref"] = f"refs/heads/{opts['branch']}"
+    if opts.get("commit"):
+        query["head_sha"] = opts["commit"]
+    want = opts.get("status")
+    if want in ("success", "failure", "cancelled", "skipped"):
+        query["status"] = want
+    runs = [gh_run(r, wfs) for r in fj.runs(query, 10 ** 6 if want else int(opts.get("limit") or 20))]
+    if want:  # gh's --status names a status or a conclusion; Forgejo filters on its one status, checked here too
+        runs = [r for r in runs if want in (r["status"], r["conclusion"])]
+    if opts.get("commit"):
+        runs = [r for r in runs if r["headSha"].startswith(opts["commit"])]
+    emit(runs[: int(opts.get("limit") or 20)], opts.get("json"), opts.get("jq"))
+
+
+def api(fj: Forgejo, opts, pos):
+    if not pos:
+        raise Fail("gh (forgejo): api needs a path")
+    if opts.get("method", "GET").upper() != "GET":
+        raise Fail("gh (forgejo): unsupported: only reads go through the api")
+    path, _, query = pos[0].lstrip("/").partition("?")
+    m = re.fullmatch(r"repos/([^/]+/[^/]+)/actions/runs/(\d+)(/artifacts)?", path)
+    if m:
+        fj.repo = m.group(1)
+        if m.group(3):
+            arts = [{"name": a["name"], "expired": False, "size_in_bytes": a["size"],
+                     "archive_download_url": fj.artifact_url(m.group(2), a["name"])} for a in fj.artifacts(m.group(2))]
+            obj = {"total_count": len(arts), "artifacts": arts}
+        else:
+            obj = api_run(fj.run(m.group(2)), workflows_by_file())
+    else:
+        obj = fj.get(path, dict(urllib.parse.parse_qsl(query)) or None)
+    emit(obj, None, opts.get("jq"))
+
+
+COMMANDS = {("run", "download"): run_download, ("run", "view"): run_view, ("run", "list"): run_list,
+            ("release", "download"): release_download, ("release", "view"): release_view}
+
+
+def forgejo_main(argv) -> None:
+    if argv[:1] == ["api"]:
+        opts, pos = parse(argv[1:])
+        return api(Forgejo(opts.get("repo") or default_repo()), opts, pos)
+    command = COMMANDS.get(tuple(argv[:2]))
+    if command is None:
+        raise Fail("gh (forgejo): unsupported: gh " + " ".join(argv))
+    opts, pos = parse(argv[2:])
+    command(Forgejo(opts.get("repo") or default_repo()), opts, pos)
+
+
+def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    try:
+        if forge() == "github":
+            os.execvp("gh", ["gh"] + argv)
+        forgejo_main(argv)
+        return 0
+    except Fail as e:
+        print(e.msg, file=sys.stderr)
+        return e.code
+    except BrokenPipeError:
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

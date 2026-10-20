@@ -30,7 +30,7 @@ IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
 identity_log() { echo "[${IDENTITY_TOOL:-identity}] $*" >&2; }
 
 # identity_gh <seconds> <gh args...> -> gh, killed when it outlasts <seconds> (a hung gh fails, it never waits forever)
-identity_gh() { local seconds=$1; shift; bounded "$seconds" gh "$@"; }
+identity_gh() { local seconds=$1; shift; bounded "$seconds" "$KINOWO_GH" "$@"; }
 IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
 IDENTITY_GH_DOWNLOAD=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
 

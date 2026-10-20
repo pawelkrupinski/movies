@@ -16,7 +16,7 @@
 # calls this one download at a time). Every gh download goes through tool-conventions.sh's gh_download: bounded
 # (KINOWO_IDENTITY_DOWNLOAD_TIMEOUT seconds, default 1800) and a failed read asked again (GH_DOWNLOAD_ATTEMPTS).
 #
-# Needs `gh` signed in. KINOWO_REPO (default pawelkrupinski/movies) and FIXTURE_RELEASE_TAG (default
+# Needs `gh` signed in, or on a Forgejo checkout its API token (scripts/forge-gh). KINOWO_REPO (default pawelkrupinski/movies) and FIXTURE_RELEASE_TAG (default
 # convergence-fixtures) name where the recording lives. Archives are zstd or gzip; each is unpacked by
 # its magic bytes (.github/scripts/unpack-fixture-archive.sh). Downloads are kept in <dest>/archive.
 set -euo pipefail
