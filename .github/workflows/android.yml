@@ -450,6 +450,8 @@ jobs:
             # Hardware acceleration: without KVM the x86_64 emulator falls back
             # to software emulation and does not boot inside the timeout.
             - name: Enable KVM
+              # The script lives at the repo root; this job's run steps default to android/.
+              working-directory: ${{ github.workspace }}
               run: scripts/ci/enable-kvm.sh
 
             # A booted-once AVD snapshot, so later runs cold-start from it
