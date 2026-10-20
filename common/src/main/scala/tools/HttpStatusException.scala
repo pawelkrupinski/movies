@@ -37,6 +37,16 @@ object HttpStatusException {
    *  reaper backs off to the refresh window instead of retrying every tick. */
   def isDurable(code: Int): Boolean = code == 404 || code == 410
 
+  /** The host saying "too many, slow down": a 429, or a 503 that says when to come back
+   *  (`Retry-After`). A bare 503 is a backend at capacity or down, not a pacing ask, so it
+   *  stays the overload `ThrottledHttpFetch` gates but does not retry. The signal must reach
+   *  that gate typed: [[FallbackHttpFetch]] rethrows it rather than burying it in its
+   *  all-legs-failed composite. */
+  def isRateLimit(e: Throwable): Boolean = e match {
+    case s: HttpStatusException => s.code == 429 || (s.code == 503 && s.retryAfter.isDefined)
+    case _                      => false
+  }
+
   /** Parse a `Retry-After` header value: the delta-seconds form ("120") that TMDB and most
    *  APIs send, or the HTTP-date form measured against the SAME response's `Date` header —
    *  the server's clock on both sides, so no local clock is read and no skew between the two

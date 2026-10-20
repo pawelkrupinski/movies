@@ -28,14 +28,19 @@ import scala.concurrent.duration._
  * completely unpaced.
  *
  * Wire it CLOSEST to the wire (inside `MonitoringHttpFetch`) so its waits are
- * invisible to uptime. Only 429 is RETRIED — every other status/exception
+ * invisible to uptime. Only a rate limit (`HttpStatusException.isRateLimit`: a 429,
+ * or a 503 carrying `Retry-After`) is RETRIED — every other status/exception
  * propagates immediately (404 is a real "not found" signal for several clients,
- * not something to retry), though the non-429 overloads still set the gate on
- * their way out. The wait between attempts IS the gate: the next
- * attempt parks on the freshly-set `pausedUntil`, so `Retry-After` is what paces
- * the retry. Persistent 429s past `maxAttempts` propagate the `HttpStatusException`
+ * not something to retry), though the other overloads still set the gate on
+ * their way out. The wait between attempts IS the gate: the next attempt parks
+ * on the freshly-set `pausedUntil` — `Retry-After` (else `defaultPause`), doubled
+ * per further attempt and capped at `maxPause` (see `backoff`), plus jitter.
+ * Persistent rate limits past `maxAttempts` propagate the `HttpStatusException`
  * unchanged, so the resolve path still degrades to a transient miss (and the
- * staging give-up budget concludes it).
+ * staging give-up budget concludes it); each attempt also reaches the
+ * `HostCircuitBreakerHttpFetch` inside, which opens on consecutive 429/5xx.
+ * A rate limit must arrive TYPED: a `FallbackHttpFetch` below rethrows it
+ * rather than its composite failure.
  *
  * The async path delegates directly — every TMDB call is synchronous
  * (`TmdbClient` uses `get`); `getAsync` is the cinema-scrape fan-out, not a
@@ -137,6 +142,16 @@ class ThrottledHttpFetch(
     case _                                     => false
   }
 
+  /** The pause after the `n`th rate-limited attempt: the server's `Retry-After` (else
+   *  `defaultPause`) the first time, doubling each further attempt, never past `maxPause` —
+   *  so a host still refusing after its own ask gets progressively more room, and no single
+   *  call ever waits longer than `maxAttempts × maxPause`. The gate adds jitter on top. */
+  private def backoff(retryAfter: Option[FiniteDuration], n: Int): FiniteDuration = {
+    val base = retryAfter.getOrElse(defaultPause).toMillis
+    val grown = base.toDouble * math.pow(2, (n - 1).toDouble)
+    FiniteDuration(math.min(grown, maxPause.toMillis.toDouble).toLong, MILLISECONDS)
+  }
+
   /** Stand the whole fleet down on this host for `pause`, and say so once. */
   private def gate(host: String, pause: FiniteDuration): Unit = {
     record(host, throttled = true)
@@ -154,14 +169,14 @@ class ThrottledHttpFetch(
           result
         }
         catch {
-          case e: HttpStatusException if e.code == 429 =>
-            val pause = (e.retryAfter.getOrElse(defaultPause)).min(maxPause)
+          case e: HttpStatusException if HttpStatusException.isRateLimit(e) =>
+            val pause = backoff(e.retryAfter, n)
             gate(host, pause)
             if (n >= maxAttempts) {
-              logger.warn(s"HTTP 429 from $host — exhausted $maxAttempts attempts; propagating.")
+              logger.warn(s"HTTP ${e.code} from $host — exhausted $maxAttempts attempts; propagating.")
               throw e
             }
-            logger.warn(s"HTTP 429 from $host — pausing all calls to it for ${pause.toMillis}ms " +
+            logger.warn(s"HTTP ${e.code} from $host — pausing all calls to it for ${pause.toMillis}ms " +
               s"(attempt $n/$maxAttempts, Retry-After=${e.retryAfter.map(d => s"${d.toMillis}ms").getOrElse("absent")}).")
             attempt(n + 1)
 

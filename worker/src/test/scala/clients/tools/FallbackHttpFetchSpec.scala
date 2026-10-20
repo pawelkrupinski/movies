@@ -50,6 +50,32 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     exception.getMessage should include ("d-failure")
   }
 
+  // A 429 wrapped in the composite RuntimeException was invisible to ThrottledHttpFetch, which
+  // sits outside the chain and keys on the typed status: the recording's TMDB fill never paused
+  // or retried and drew ~6,000 429s a minute. A rate limit from any leg is the chain's answer.
+  it should "propagate a leg's 429 as the typed status, Retry-After intact, when every backend fails" in {
+    val limited = new tools.HttpStatusException(429, "GET", "https://example", Some(scala.concurrent.duration.Duration(7, "s")))
+    val chain = new FallbackHttpFetch(Seq(
+      "direct" -> new FailingHttpFetch((_, _) => limited),
+      "proxy"  -> boom("p-failure")
+    ), _root_.tools.Stopwatch.System)
+    val exception = intercept[tools.HttpStatusException](chain.get("https://example"))
+    exception.code shouldBe 429
+    exception.retryAfter shouldBe Some(scala.concurrent.duration.Duration(7, "s"))
+    exception.getSuppressed.map(_.getMessage).mkString should include ("p-failure")
+  }
+
+  it should "propagate a 503 carrying Retry-After as the rate limit it is, but not a bare 503" in {
+    val asked = new tools.HttpStatusException(503, "GET", "https://example", Some(scala.concurrent.duration.Duration(3, "s")))
+    val bare  = new tools.HttpStatusException(503, "GET", "https://example", None)
+    def chainOf(failure: Throwable) = new FallbackHttpFetch(Seq(
+      "direct" -> new FailingHttpFetch((_, _) => failure),
+      "proxy"  -> boom("p-failure")
+    ), _root_.tools.Stopwatch.System)
+    intercept[tools.HttpStatusException](chainOf(asked).get("https://example")).code shouldBe 503
+    intercept[RuntimeException](chainOf(bare).get("https://example")) should not be a [tools.HttpStatusException]
+  }
+
   // A residential-proxy exit IP that Cloudflare challenges answers 200 with the interstitial. The
   // chain took that as the proxy leg SERVING, handed the challenge to the scraper (which failed
   // the read) and never tried Zyte — the leg that exists to clear exactly that block — while

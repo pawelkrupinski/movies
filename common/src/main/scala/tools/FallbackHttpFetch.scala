@@ -73,6 +73,7 @@ class FallbackHttpFetch(
   private def tryEach[T](verb: String, url: String, call: HttpFetch => T)(text: T => String): T = {
     val failures        = mutable.ListBuffer.empty[String]
     var lastFailure     = Option.empty[Throwable]
+    val failuresSeen    = mutable.ListBuffer.empty[Throwable]
     var result: Option[T] = None
     val it              = backends.iterator
     // Every line, key and message below names the URL MASKED (RedactedUrl): a convergence fill asks TMDB with the
@@ -92,6 +93,7 @@ class FallbackHttpFetch(
       } catch {
         case t: Throwable =>
           lastFailure = Some(t)
+          failuresSeen += t
           val message = s"$name: ${t.getClass.getSimpleName}: ${masked(t.getMessage)}"
           safeOutcome(name, Some(message))
           if (endsChain(t)) {
@@ -132,6 +134,18 @@ class FallbackHttpFetch(
                      s"propagating that rather than a composite failure")
         failureLog.cleared(key, s"answered not found (${masked(absent.getMessage)})")
         throw absent
+      }
+      // A rate limit from ANY leg is the origin telling us to slow down, and the gate outside this
+      // chain (ThrottledHttpFetch) can only pause and retry on the typed status — inside the
+      // composite it saw a plain RuntimeException, so TMDB's 429s through the recording's
+      // direct → proxy route were never paced and ~6,000 a minute went out (record-scrape-fixtures).
+      // The leg asking for the longest wait wins; every leg's failure rides along as suppressed.
+      val limits = failuresSeen.collect { case s: HttpStatusException if HttpStatusException.isRateLimit(s) => s }
+      if (limits.nonEmpty) {
+        val limit = limits.maxBy(_.retryAfter.fold(0L)(_.toMillis))
+        failureLog.failed(key, s"FallbackHttpFetch $detail")
+        limit.addSuppressed(new RuntimeException(detail))
+        throw limit
       }
       // NOW it is a warning: nothing answered. Logged as well as thrown because
       // callers routinely catch this to degrade gracefully, and a swallowed

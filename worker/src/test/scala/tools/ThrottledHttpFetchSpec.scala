@@ -141,6 +141,40 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     slept.size shouldBe 2   // waits before attempts 2 and 3; attempt 3's 429 propagates
   }
 
+  it should "back off exponentially across a persistent 429, capped at maxPause" in {
+    val slept = mutable.ListBuffer.empty[Long]
+    val delegate = new ScriptedFetch
+    val t = new ThrottledHttpFetch(delegate, maxAttempts = 4, defaultPause = 1.second, maxPause = 3.seconds,
+      jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH), sleep = ms => { slept += ms; () })
+    delegate.queue(Tmdb, http429(None), http429(None), http429(None), () => "ok")
+    t.get(Tmdb) shouldBe "ok"
+    slept.toList shouldBe List(1000L, 2000L, 3000L)   // 1s, 2s, then 4s clamped to the 3s cap
+  }
+
+  it should "retry a 503 that carries Retry-After, paced by it, as the rate limit it is" in {
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, () => throw new HttpStatusException(503, "GET", Tmdb, Some(4.seconds)), () => "ok")
+    throttle.get(Tmdb) shouldBe "ok"
+    slept should contain (4000L)
+  }
+
+  // The recording's live leg is a FallbackHttpFetch (direct, then the residential proxy) UNDER this
+  // gate. Its all-legs-failed composite hid TMDB's 429, so the gate never paused or retried and the
+  // fill drew ~6,000 429s a minute (record-scrape-fixtures.yml).
+  it should "pause and retry a 429 that reached it through a FallbackHttpFetch" in {
+    val slept    = mutable.ListBuffer.empty[Long]
+    val direct   = new ScriptedFetch
+    val proxy    = new ScriptedFetch
+    val chain    = new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> proxy), Stopwatch.System,
+                                         endsChain = FallbackHttpFetch.OriginAnswered)
+    val throttle = new ThrottledHttpFetch(chain, jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH),
+                                          sleep = ms => { slept += ms; () })
+    direct.queue(Tmdb, http429(Some(2.seconds)), () => "ok")
+    proxy.queue(Tmdb, () => throw new java.io.IOException("proxy refused"))
+    throttle.get(Tmdb) shouldBe "ok"
+    slept should contain (2000L)
+  }
+
   it should "use the default pause when the server sends no Retry-After" in {
     val (delegate, throttle, slept) = fixture()
     val t = new ThrottledHttpFetch(delegate, defaultPause = 7.seconds,
