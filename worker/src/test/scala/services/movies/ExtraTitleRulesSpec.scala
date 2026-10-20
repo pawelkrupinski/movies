@@ -232,6 +232,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "La Odisea: The IMAX Experience"                           -> "La Odisea",
     "A Beautiful Planet - Ein IMAX 3D-Erlebnis"                -> "A Beautiful Planet",
     "Avengers: Doomsday RealD 3D Fan Event"                    -> "Avengers: Doomsday",
+    "Festive Fun with Peppa Cinema Experience"                 -> "Festive Fun with Peppa",
+    "Festive Fun with Peppa Pig Cinema Experince"              -> "Festive Fun with Peppa Pig",
+    "Peppa Meets the Baby - The Cinema Experience"             -> "Peppa Meets the Baby",
     // Found by SearchQueryMarkersSpec over the recorded US / UK corpora (2026-10-05).
     "Live Q&A: Mourning Dove"                                  -> "Mourning Dove",
     "Live Q&A: It's Just Business"                             -> "It's Just Business",

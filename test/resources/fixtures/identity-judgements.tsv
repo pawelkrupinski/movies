@@ -1387,7 +1387,6 @@ uk	*	Fatherland - Film Club	tmdb:1437696	right	open				2026-10-13	judged 10-13: 
 uk	Film Theatre Leiston	Festival of Remembrance	tmdb:899031	wrong	open				2026-10-14	judged 10-14 (wrong-match hunt, sole-result): the annual Royal British Legion festival: a 2026 billing is not the 2021 edition's record
 uk	*	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	open				2026-10-08	hand label: Festive Fun with Peppa Cinema Experience (2026)
 uk	*	Festive Fun with Peppa Cinema Experience	rt:festive_fun_with_peppa_cinema_experience	right	open				2026-10-08	hand label: Festive Fun with Peppa Cinema Experience ()
-uk	Odeon Birmingham New Street	Festive Fun with Peppa Cinema Experience	tmdb:1778515	right	open				2026-10-08	recall target: Festive Fun with Peppa (2026)
 uk	*	Film Society:Everybody to Kenmure Street	tmdb:1484620	right	open				2026-10-13	judged 10-13: title/year/venue evidence consistent with record
 uk	*	Funny Girl - The Musical	filmweb:865914	wrong	open				2026-10-08	hand label: The Language of Flowers (2021) Michael Mayer
 uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	wrong	open				2026-10-08	matchable page: wrong: The Musical (2026) Giselle Bonilla, the id TMDB files tt37775809 under
@@ -1811,6 +1810,9 @@ us	*	Exhibition on Screen: Rembrandt	tmdb:208028	wrong	open				2026-10-08	hand l
 us	Enzian Theater	Exhibition on Screen: Rembrandt	tmdb:527092	right	open				2026-10-08	recall target: Rembrandt: From the National Gallery, London and Rijksmuseum, Amsterdam (2018)
 us	*	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	open				2026-10-08	hand label: Festive Fun with Peppa Cinema Experience (2026)
 us	*	Festive Fun with Peppa Cinema Experience	rt:festive_fun_with_peppa_cinema_experience	right	open				2026-10-08	hand label: Festive Fun with Peppa Cinema Experience ()
+uk	*	Festive Fun with Peppa Cinema Experience	tmdb:1778515	right	open		Festive Fun with Peppa (2026)		2026-10-20	judged 10-20 (U1 cinema-experience suffix): TMDB's record of the user's hand-labelled imdb:tt46666063 event -- 'Festive Fun with Peppa', released 2026-11-14 at 60 min, the date and length the billings screen; TMDB carries no IMDb id for it
+uk	*	Kids Club: Festive Fun with Peppa Cinema Experience	tmdb:1778515	right	open		Festive Fun with Peppa (2026)		2026-10-20	judged 10-20 (U1 cinema-experience suffix): TMDB's record of the user's hand-labelled imdb:tt46666063 event -- 'Festive Fun with Peppa', released 2026-11-14 at 60 min, the date and length the billings screen; TMDB carries no IMDb id for it
+us	*	Festive Fun with Peppa Cinema Experience	tmdb:1778515	right	open		Festive Fun with Peppa (2026)		2026-10-20	judged 10-20 (U1 cinema-experience suffix): TMDB's record of the user's hand-labelled imdb:tt46666063 event -- 'Festive Fun with Peppa', released 2026-11-14 at 60 min, the date and length the billings screen; TMDB carries no IMDb id for it
 us	Alamo Drafthouse Corpus Christi	GONE WITH THE WIND (2026)	tmdb:770	right	open				2026-10-08	review page: right: Gone with the Wind (1939)
 us	*	Hybe Cheering Party	imdb:tt46659669	right	open				2026-10-08	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
 us	*	Invasion of the Body Snatchers (1956)	tmdb:11549	right	open				2026-10-13	judged 10-13 (suspect audit): the venues credit Don Siegel, as the record does

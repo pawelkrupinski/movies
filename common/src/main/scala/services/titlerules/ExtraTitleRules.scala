@@ -563,6 +563,11 @@ object ExtraTitleRules {
     searchStrip("xtra-4k-restoration-suffix",      """(?iu)\s*(?:\(\s*4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|]\s*|\s+)4K\s+(?:(?:Restoration|Remaster(?:ed)?)(?:\s*[-–—]\s*Director['’]?s\s+Cut)?|Director['’]?s\s+Cut))\s*$""", "'<film> (4K Restoration)' / '<film> [-] 4K RESTORATION' / '<film> 4K Director's Cut' / '<film> 4K Restoration - Directors Cut' print tag (Cineworld: Arrietty, Dracula; Alamo: Cemetery Man; US: Cabin Fever; Windmill Littlehampton: Dracula)"),
     searchStrip("xtra-imax-experience-suffix",     """(?iu)\s*[-–—:]\s*(?:The\s+IMAX\s+Experience|Ein\s+IMAX(?:\s+3D)?[-\s]Erlebnis)\s*$""", "'<film> - The IMAX Experience' / '<film> - Ein IMAX 3D-Erlebnis' format billing (Cineworld: Dune: Part Three; ES: La Odisea; DE: A Beautiful Planet)"),
     searchStrip("xtra-fan-event-suffix",           """(?iu)\s+(?:RealD\s+)?(?:3D\s+)?Fan\s+Event\s*$""",   "'<film> RealD 3D Fan Event' early-screening event tail (US: Avengers: Doomsday)"),
+    // A children's-TV cinema event billed with "Cinema Experience" after its name, no separator before it: TMDB holds
+    // the event bare ("Festive Fun with Peppa", 1778515), and searching the suffix weighed only older Peppa films, each
+    // refused (UK 350 / US 366 venues, 2026-10). Its misspelling ("Experince", Savoy Boston) too.
+    searchStrip("xtra-cinema-experience-suffix",   """(?iu)(?<=\S)\s*(?:[-–—:|]\s*)?(?:The\s+)?Cinema\s+Experie?nce\s*$""",
+      "'<event> Cinema Experience' cinema-event tail (Cineworld / Odeon / Vue: Festive Fun with Peppa Cinema Experience)"),
     // Found by SearchQueryMarkersSpec over the recorded US / UK corpora (2026-10-05).
     searchStrip("xtra-live-qa-prefix",             """(?i)^Live\s+Q\s*&\s*A\s*:\s*""",                  "'Live Q&A: <film>' event-night prefix (Alamo Drafthouse Winchester: Mourning Dove, It's Just Business)"),
     searchStrip("xtra-with-live-qa-suffix",        """(?i)\s+with\s+(?:a\s+)?Live\s+Q\s*&\s*A\s*$""",   "'<film> with Live Q&A' event-night tail (Cineworld: NAZA)"),
