@@ -62,7 +62,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       val country = fields("country")
       Seq((s"$country full", fields("job").toInt, fields("suite").toInt)) ++
         // Only the country that splits its order-independence replay out declares these.
-        fields.get("orderJob").map(job => (s"$country order", job.toInt, fields("orderSuite").toInt))
+        fields.get("order-job").map(job => (s"$country order", job.toInt, fields("order-suite").toInt))
     }
     defaults ++ perCountry
   }
@@ -485,20 +485,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "run the United States' next-day test in a row of its own, and nowhere else in that leg" in {
     val convergence = RepoFile.read(".github/workflows/identity-model-convergence.yml")
     val rows = RepoFile.matrixRows(convergence)
-    rows.filter(_.contains("nextDay")).flatMap(_.get("code")) shouldBe Seq("us")
+    rows.filter(_.contains("next-day")).flatMap(_.get("code")) shouldBe Seq("us")
     val us = rows.find(_.get("code").contains("us")).get
     RepoFile.commandAlias(us("cmd")) should include("-l services.movies.NextDay")
-    RepoFile.commandAlias(us("nextDay")) should endWith("-n services.movies.NextDay")
-    convergence should include("next-day-command:              ${{ matrix.nextDay || '' }}")
+    RepoFile.commandAlias(us("next-day")) should endWith("-n services.movies.NextDay")
+    convergence should include("next-day-command:              ${{ matrix.next-day || '' }}")
     RepoFile.block(leg, "convergence") should include(
       "matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command")
   }
 
   it should "split only the countries whose order replay ran past 10 minutes" in {
     val convergence = RepoFile.read(".github/workflows/identity-model-convergence.yml")
-    val split = RepoFile.matrixRows(convergence).filter(_.get("orderSplit").contains("true")).flatMap(_.get("code")).toSet
+    val split = RepoFile.matrixRows(convergence).filter(_.get("order-split").contains("true")).flatMap(_.get("code")).toSet
     split shouldBe Set("de", "uk", "us")
-    convergence should include("order-split:                   ${{ matrix.orderSplit == true }}")
+    convergence should include("order-split:                   ${{ matrix.order-split == true }}")
   }
 
   /**
@@ -518,7 +518,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(block, "strategy") should not include "needs."
   }
 
-  /** Both rows carry their OWN budgets — the caller's `orderJob`/`orderSuite` — and a
+  /** Both rows carry their OWN budgets — the caller's `order-job`/`order-suite` — and a
    *  row that fell back to the full leg's would be the 135/120 that cancelled the US
    *  leg before its heap was raised. */
   it should "run the replay row on its own alias and its own budgets" in {
@@ -587,11 +587,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     rows.foreach { fields =>
       withClue(s"${fields("country")}: ") {
         if (declared(fields, "order")) {
-          fields.contains("orderJob") shouldBe true
-          fields.contains("orderSuite") shouldBe true
+          fields.contains("order-job") shouldBe true
+          fields.contains("order-suite") shouldBe true
         } else {
-          fields.get("orderJob").forall(_ == "155") shouldBe true
-          fields.get("orderSuite").forall(_ == "120") shouldBe true
+          fields.get("order-job").forall(_ == "155") shouldBe true
+          fields.get("order-suite").forall(_ == "120") shouldBe true
         }
       }
     }

@@ -83,14 +83,14 @@ jobs:
     # One row per country; `fail-fast: false`, so every country reports on its own. A hermetic row
     # runs no sample — it replays a slice of the corpus the suite replays, so it only failed sooner, for
     # ~2 minutes of every row (`country-convergence-leg.yml`) — and runs the sample's corpus-shape specs
-    # (`shape`) ahead of its suite instead. `mongoTmpfs` holds Mongo's data in RAM where the heap
+    # (`shape`) ahead of its suite instead. `mongo-tmpfs` holds Mongo's data in RAM where the heap
     # leaves room for it. A row that holds its order-independence replays runs them BESIDE its boot
     # (CountryConvergenceBehaviour.runTests), so its JVM holds both at once: 7g, and 3g of tmpfs for a
     # Mongo that holds at most 1.5 GB. A country whose leg ran past the 10-minute target runs its order-independence
     # replay in rows of its own -- Germany, the United Kingdom (14.1m with its replays beside the boot) and the United
-    # States -- and those rows split in two (`orderSplit`: passes 0,1 and 1,2), since three passes on one 4-core runner
+    # States -- and those rows split in two (`order-split`: passes 0,1 and 1,2), since three passes on one 4-core runner
     # ran 12.9-13.5m. Poland and Spain, under 10 minutes, keep theirs beside the boot (run 38548739769). The United
-    # States' convergence row, 11.4m with no replays at all, runs its next-day test on a boot of its own (`nextDay`).
+    # States' convergence row, 11.4m with no replays at all, runs its next-day test on a boot of its own (`next-day`).
     # No row runs the ~100-film sample (country-convergence-leg.yml's header); `sample` names the alias a red leg's
     # auto-bisect replays, and `shape` the sample's corpus-shape specs each convergence row runs ahead of its
     # suite. `heap` is the sbt JVM's `-Xmx`: the US holds its
@@ -101,15 +101,17 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
+                # LOWERCASE KEYS: Forgejo lowercases the name a `matrix.<key>` read looks up but not the
+                # matrix's own keys, so a camelCase key read in a reusable call's `with:` is "missing" there.
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
                 # value: Forgejo (CI since the GitHub suspension) evaluates a reusable call's `with:` strictly
                 # and refuses `matrix.<key>` a row lacks -- github.com reads it as null. Same values either way.
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: '', orderJob: 155, orderSuite: 120, orderSplit: false, nextDay: '' }
-                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120, orderSplit: true, nextDay: '' }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: convergenceUkOrder, orderJob: 155, orderSuite: 120, orderSplit: true, nextDay: '' }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: '', orderJob: 155, orderSuite: 120, orderSplit: false, nextDay: '' }
-                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, nextDay: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, orderSplit: true, mongoTmpfs: '' }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: '', order-job: 155, order-suite: 120, order-split: false, next-day: '' }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, order: convergenceGermanyOrder, order-job: 155, order-suite: 120, order-split: true, next-day: '' }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 155, suite: 120, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: convergenceUkOrder, order-job: 155, order-suite: 120, order-split: true, next-day: '' }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: '', order-job: 155, order-suite: 120, order-split: false, next-day: '' }
+                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 350, suite: 315, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 350, order-suite: 315, order-split: true, mongo-tmpfs: '' }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -124,16 +126,16 @@ jobs:
             command:        ${{ matrix.cmd }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
-            sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            sample-suite-timeout-minutes:  ${{ matrix.sample-suite }}
             order-command:                 ${{ matrix.order }}
-            order-job-timeout-minutes:     ${{ matrix.orderJob || 155 }}
-            order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
-            order-split:                   ${{ matrix.orderSplit == true }}
-            next-day-command:              ${{ matrix.nextDay || '' }}
+            order-job-timeout-minutes:     ${{ matrix.order-job || 155 }}
+            order-suite-timeout-minutes:   ${{ matrix.order-suite || 120 }}
+            order-split:                   ${{ matrix.order-split == true }}
+            next-day-command:              ${{ matrix.next-day || '' }}
             heap:                          ${{ matrix.heap }}
             # RAM-backed Mongo where the heap leaves the room: 4g + mongod's 2g cache + at most 6g of data
             # on a 16 GB runner. Not the United States (10g heap).
-            mongo-tmpfs:                   ${{ matrix.mongoTmpfs || '' }}
+            mongo-tmpfs:                   ${{ matrix.mongo-tmpfs || '' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.
             mode:                          hermetic
             profile:                       ${{ inputs.profile == true }}

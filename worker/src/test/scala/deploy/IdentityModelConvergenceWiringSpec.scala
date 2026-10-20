@@ -37,8 +37,8 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   it should "replay Germany's order-independence in a row of its own, with a budget of its own" in {
     val germany = byCountry(workflow)("germany")
     germany("order") shouldBe "convergenceGermanyOrder"
-    germany.keySet should contain allOf ("orderJob", "orderSuite")
-    germany("orderJob").toInt should be > (germany("orderSuite").toInt + germany("sampleSuite").toInt)
+    germany.keySet should contain allOf ("order-job", "order-suite")
+    germany("order-job").toInt should be > (germany("order-suite").toInt + germany("sample-suite").toInt)
   }
 
   /** Every split row the lane runs holds up both ends: the full row EXCLUDES the tag and the order

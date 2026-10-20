@@ -104,7 +104,8 @@ object RepoFile {
   def matrixRows(yaml: String): Seq[Map[String, String]] =
     """-\s*\{([^}]*)}""".r
       .findAllMatchIn(block(yaml, "matrix"))
-      .map(row => """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap)
+      // Keys may be kebab-case (identity-model-convergence.yml's are: Forgejo cannot read a camelCase key).
+      .map(row => """([\w-]+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap)
       .toSeq
 
   def jobs(yml: String): Map[String, String] = {
