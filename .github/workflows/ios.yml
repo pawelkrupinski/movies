@@ -52,6 +52,16 @@ jobs:
         runs-on: ubuntu-26.04
         container: mirror.gcr.io/library/swift:5.10
         steps:
+            # Forgejo's runner (act) runs JavaScript actions with the CONTAINER's `node`, and the swift
+            # image has none (github.com's runner mounts its own), so checkout failed with exit 127.
+            - name: Install Node for JavaScript actions (Forgejo)
+              if: ${{ github.server_url != 'https://github.com' }}
+              run: |
+                  command -v node && exit 0
+                  curl -fsSL https://nodejs.org/dist/v24.11.1/node-v24.11.1-linux-x64.tar.gz \
+                      | tar -xz -C /usr/local --strip-components=1
+                  node --version
+
             - uses: actions/checkout@v5
 
             # The Xcode project carries a COPY of mobile-version.txt (an Xcode
@@ -83,6 +93,8 @@ jobs:
 
     ui-tests:
         runs-on: macos-latest
+        # Forgejo has no macOS runner: there the job would wait forever and hold the run open.
+        if: ${{ github.server_url == 'https://github.com' }}
         # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
         timeout-minutes: 75
         steps:
