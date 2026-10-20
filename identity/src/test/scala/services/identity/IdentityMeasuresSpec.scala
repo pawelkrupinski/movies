@@ -145,6 +145,22 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.creditedByTitle(credited, salto, measures(credited, salto))("director") should not be Category("same_person")
   }
 
+  // DE Eulenspiegel's "King Kong" (Cineamo 244m, German premiere 1933-12-01): since f5784855d an old premiere states no
+  // year, and the listing took the 2005 remake. The premiere still bounds the film: none premieres before it is made.
+  "a year upper bound" should "weigh as the year it bounds against a film released after it, and only there" in {
+    val bounded = Listing("King Kong", yearUpperBound = Some(1933))
+    measures(bounded, Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(-72)
+    measures(bounded, Film("King Kong", year = Some(2005)))("year.distance") shouldBe Number(72)
+    // the film of the bound's year or before is no match by it, only not ruled out: no year-equality reward
+    measures(bounded, Film("King Kong", year = Some(1933)))("year.delta") shouldBe Missing("listing")
+    measures(Listing("Rope", yearUpperBound = Some(1963)), Film("Rope", year = Some(1948)))("year.delta") shouldBe Missing("listing")
+    // a year past the premiere by the adjacency a festival premiere is dated by, and a release TMDB dates by it, are no contradiction
+    measures(Listing("Momo", yearUpperBound = Some(2024)), Film("Momo", year = Some(2025)))("year.delta") shouldBe Missing("listing")
+    measures(bounded, Film("King Kong", year = Some(2005), releases = Some("DE1933-")))("year.delta") shouldBe Missing("listing")
+    // a year the listing states is its own evidence, the bound unread
+    measures(bounded.copy(year = Some(2005)), Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(0)
+  }
+
   // ES Cines Bulevar's "Drácula. 30 Aniversario" (review answer: Coppola's 1992 film), its original title "Bram Stoker's
   // Dracula 30th Anniversary": the anniversary and the possessive credit are searched without in the original title too
   "an anniversary re-release's original title" should "be searched without its anniversary" in {

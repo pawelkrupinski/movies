@@ -49,7 +49,10 @@ object IdentityMeasures {
                            airDays: Seq[java.time.LocalDate] = Nil,
                            /** The age certificate the venue bills it with ([[services.identity.Listing.certificate]]): read
                            *  against the film's certificate in the venue's country by the weighted `certificate` measure. */
-                           certificate: Option[String] = None) {
+                           certificate: Option[String] = None,
+                           /** The latest year its film can be from ([[services.identity.Listing.yearUpperBound]]): what
+                            *  weighs against a film released after it as a stated year would ([[yearBound]]), never for one. */
+                           yearUpperBound: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle
@@ -566,8 +569,24 @@ object IdentityMeasures {
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
     slots(14) = certificateRelation(l, f, country, title)
-    premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))
+    yearBound(l, f, country, premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots)))))
   }
+
+  /** `m` with a listing's year UPPER BOUND ([[Listing.yearUpperBound]]: Cineamo's German premiere of an older film) read
+   *  as its published year against a film released more than [[YearWindow.PublishedAdjacency]] after it — and only there.
+   *  No film premieres before it is made, so the film released past the premiere weighs as the year that far before it
+   *  weighs (`year.delta` -2: -1.1; -3 and less: -6.9), the learned cannot-links reading it as they read a stated year:
+   *  Eulenspiegel's "King Kong", premiered in Germany in 1933, is no 2005 remake. A film from the bound's year or before
+   *  stays as a listing stating no year weighs it: the premiere trails a classic by any number of years (Rope 1948,
+   *  premiered there in 1963), so it is no match, only not ruled out — the year-equality bonus stays the stated year's. */
+  private def yearBound(l: Listing, f: Film, country: Option[String], m: Map[String, Measure]): Map[String, Measure] =
+    l.yearUpperBound.filter(_ => l.year.isEmpty) match {
+      case Some(bound) =>
+        val released = if (f.releases.isEmpty) f.year else f.closestYear(bound, country)
+        if (released.exists(_ - bound > YearWindow.PublishedAdjacency)) m ++ Map("year.delta" -> delta(Some(bound), released), "year.distance" -> absDelta(Some(bound), released))
+        else m
+      case None => m
+    }
 
   /** `m` with the published year absent when it predates the season the listing's screenings broadcast its stage work
    *  in ([[Listing.screenedSeason]]), against the house's record of that season ([[StageRelays.screenedSeasonRecord]]): the year dates

@@ -100,6 +100,13 @@ class CineamoClientSpec extends AnyFlatSpec with Matchers {
     film(dettelbach, "Shaun das Schaf - Spuk im Kürbisfeld").movie.releaseYear shouldBe Some(2026)
   }
 
+  // An old German premiere dates no film, but no film premieres before it is made: the premiere's year bounds it.
+  it should "keep an old German premiere's year as the latest the film can be from, not as its year" in {
+    film(babylon, "Hitchcock & Chabrol: Rope").movie.releaseYearUpperBound shouldBe Some(1963)
+    film(babylon, "Hitchcock & Chabrol: Vertigo").movie.releaseYearUpperBound shouldBe Some(1959)
+    film(dettelbach, "Shaun das Schaf - Spuk im Kürbisfeld").movie.releaseYearUpperBound shouldBe None
+  }
+
   // The film record is Cineamo's claim of which film the slot is, as a feed's.
   it should "file Cineamo's film record id as a feed's catalogue id" in {
     film(babylon, "Hitchcock & Chabrol: Rear Window").externalIds shouldBe Map("cineamo" -> "567m")

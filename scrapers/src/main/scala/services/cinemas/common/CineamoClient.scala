@@ -140,10 +140,12 @@ object CineamoClient {
     SlotsToMovies.fold(showings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title)), _.title,
       (s: Showing) => Showtime(s.dateTime, s.bookingUrl, None, s.format), SlotsToMovies.byTimeBookingAndFormat) {
       (title, same, showtimes) =>
+        val premiere = same.flatMap(_.premiere).headOption
+        val year     = premiere.flatMap(filmYear(_, title, today))
         CinemaMovie(
-          movie       = Movie(title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
-                              releaseYear = same.flatMap(_.premiere).headOption.flatMap(filmYear(_, title, today)),
-                              originalTitle = same.flatMap(_.originalTitle).headOption),
+          movie       = Movie(title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption, releaseYear = year,
+                              originalTitle = same.flatMap(_.originalTitle).headOption,
+                              releaseYearUpperBound = premiere.filter(_ => year.isEmpty).map(_.getYear)),
           cinema      = cinema,
           posterUrl   = None,
           filmUrl     = None,
@@ -159,7 +161,9 @@ object CineamoClient {
   /** The year a German premiere states about the film: a film opening now opens in its own year, give or take one, so a
    *  RECENT premiere ([[ReReleaseBilling.recent]]) billed as no re-release is its year; an older one dates the film's
    *  German release, which trails a classic by any number of years (Rope 1963 for 1948, Vertigo 1959 for 1958), and
-   *  states none — as Multikino's Polish release date and Odeon's re-release date state none. */
+   *  states none — as Multikino's Polish release date and Odeon's re-release date state none. It still bounds the film:
+   *  no film premieres before it is made, so the premiere's year stays as `releaseYearUpperBound` (King Kong's 1933
+   *  premiere rules out the 2005 remake without dating the film). */
   private[common] def filmYear(premiere: LocalDate, title: String, today: LocalDate): Option[Int] =
     Option.when(ReReleaseBilling.recent(premiere, today) && !ReReleaseBilling.bills(title))(premiere.getYear)
 

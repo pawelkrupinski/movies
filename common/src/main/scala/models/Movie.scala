@@ -26,5 +26,9 @@ case class Movie(
   // `SourceData.rawTitle` and the merge key stays re-derivable from it when the
   // stripping rules change. None when the client did no cleanup (then `title` is
   // already the raw string).
-  rawTitle:       Option[String]    = None
+  rawTitle:       Option[String]    = None,
+  // The latest year the film can be from, where the source dates an event it cannot precede but not the film itself:
+  // Cineamo's German premiere of an older film (King Kong premiered there in 1933, Rope only in 1963), which states no
+  // `releaseYear` (a premiere trails a classic by years) yet rules out a film made after it.
+  releaseYearUpperBound: Option[Int] = None
 )
