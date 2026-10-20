@@ -91,6 +91,18 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A listing whose title bills its director" should "keep its showtimes on its film, though the credit is not in the row" in {
+    // Record runs 408 (PL, "… reż. Andrzej Wajda" at Kino Sokolnia Kępno) and 469 (DE, "Alpha (dir. Ducournau)"): the
+    // listing's key read the credit off its title, the venue's rows were keyed without it, so the film was drafted
+    // with no slot at the venue -- "held by NO stored film", and a card with no screening.
+    val wajda = row(KinoMuza, "Bez znieczulenia (1985) reż. Andrzej Wajda", hours = Seq(5))
+    wajda.listing.directors shouldBe Seq("Andrzej Wajda")
+    val p = plan(Seq(wajda), resolution(decision(None, wajda)))
+    val film = p.films.find(_.members.contains(wajda.listing.key)).get
+    val atVenue = film.record.data.collect { case (CinemaShowing(c, _), sd) if c == KinoMuza => sd.showtimes }.flatten
+    atVenue.map(_.dateTime) shouldBe full(wajda).showtimes.map(_.dateTime)
+  }
+
   "The films a first projection wrote" should "project to themselves: a second projection changes no id, key or record" in {
     val r     = resolution(decision(Some(1), lalka*), decision(None, obcy*))
     val first = plan(lalka ++ obcy, r)

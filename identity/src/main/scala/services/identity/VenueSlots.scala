@@ -191,7 +191,8 @@ private[identity] object VenueSlots {
    *  every film it builds there — grouped once per film, a venue with many changed films regrouped its whole programme
    *  for each. */
   type VenueRows = Map[ListingKey, Seq[CinemaMovie]]
-  def rowsByKey(cinema: Cinema, fetched: Seq[CinemaMovie]): VenueRows = fetched.groupBy(cm => ListingKey.of(cinema, cm))
+  def rowsByKey(cinema: Cinema, fetched: Seq[CinemaMovie], normalizer: TitleNormalizer): VenueRows =
+    fetched.groupBy(cm => Listing.keyOf(cinema, cm, normalizer))
   /** `record`'s venue slots by the venue showing them. */
   def byVenue(record: MovieRecord): Map[Cinema, Seq[(Source, SourceData)]] =
     record.data.toSeq.collect { case (showing: CinemaShowing, slot) => showing.cinema -> ((showing: Source) -> slot) }.groupMap(_._1)(_._2)

@@ -131,7 +131,7 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
   private def buildBatch(batch: Seq[(Cinema, Seq[VenueGroup])]): Unit = {
     val fetched = rowsOf(batch.map(_._1).toSet)
     batch.foreach { case (cinema, groups) =>
-      val rows = VenueSlots.rowsByKey(cinema, fetched.getOrElse(cinema, Nil))
+      val rows = VenueSlots.rowsByKey(cinema, fetched.getOrElse(cinema, Nil), normalizer)
       groups.foreach { group =>
         val lean = build(cinema, group.rows.map(_.listing.key), rows).map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
         venueSlots(group.key) = lean
@@ -235,7 +235,7 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
     // The listings of the scope whose TMDB film moved — read off the index's clusters, so nothing is built per listing.
     val takes = TakeChange.of(previousOf, l => index.clusterOf.get(l).flatMap(index.clusters.get).map(_.film))
     ProjectionDraft(drafts, retired, retired.filterNot(id => index.placed(id.value)), covered, index.additions,
-      regroupings(drafts, retired), venues, build, rowsOf, takes)
+      regroupings(drafts, retired), venues, build, rowsOf, takes, VenueSlots.rowsByKey(_, _, normalizer))
   }
 
   private def regroupings(drafts: Seq[FilmDraft], retired: Seq[FilmId]): Regroupings = {

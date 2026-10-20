@@ -226,14 +226,25 @@ object Listing {
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
 
+  /** The facts `scraped`'s title bills, in its own fields and off its title, as intake gives the slot
+   *  (`ScrapeListing.prepare`). */
+  private def withFacts(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): CinemaMovie =
+    ScrapeListing.withTitleFacts(scraped, normalizer.titleFacts(cinema, ScrapeListing.billedTitle(scraped)))
+
+  /** The key [[of]] gives `scraped`: read with the facts its title bills, so a credit the title names ("… reż. Andrzej
+   *  Wajda", "Alpha (dir. Ducournau)") is in it. Everything that looks a venue's row up by a listing's key keys the row
+   *  by this — keyed by the bare row, such a listing's film was drafted with no slot at its venue (record runs 408,
+   *  469). */
+  def keyOf(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): ListingKey =
+    ListingKey.of(cinema, withFacts(cinema, scraped, normalizer))
+
   /** `scraped` as `cinema` lists it, the facts its title bills read into its fields ([[services.movies.TitleFacts]]). Blank
    *  director names and non-positive runtimes are absent. Its title as every title is read
    *  ([[services.movies.TitleText.tidy]]), those facts off it: a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
    *  Die") is searched and measured as "Die Tribute von Panem - …", as its family key already reads it — searched as filed,
    *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
   def of(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): Listing = {
-    // the facts its title bills, in its own fields and off its title, as intake gives the slot (`ScrapeListing.prepare`)
-    val cm    = ScrapeListing.withTitleFacts(scraped, normalizer.titleFacts(cinema, ScrapeListing.billedTitle(scraped)))
+    val cm    = withFacts(cinema, scraped, normalizer)
     val title = normalizer.factFree(cm.movie.title)
     val (searchTitle, properTitle) = searchTitlesOf(title, normalizer)
     Listing(

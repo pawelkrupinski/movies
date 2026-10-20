@@ -60,7 +60,10 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
                                  venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty,
                                  build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
                                  rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty,
-                                 takes: Seq[TakeChange] = Nil) {
+                                 takes: Seq[TakeChange] = Nil,
+                                 // A venue's rows by the key each listing is published under (`VenueSlots.rowsByKey`, which
+                                 // needs the drafting's normalizer); none without `rowsOf`'s rows.
+                                 keyRows: (Cinema, Seq[CinemaMovie]) => VenueSlots.VenueRows = (_, _) => Map.empty) {
   /** `films` as they are written over the films stored before (`stored`). Every drafted slot is LEAN (no showtimes,
    *  only their digest and starts — enough to compare and guard by); a venue whose lean slot differs from the stored
    *  one is built in full from its rows, read a batch of venues at a time. One that matches a stored slot kept
@@ -82,7 +85,7 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
     filmsAt.keys.toSeq.sortBy(_.displayName).grouped(IdentityProjectionPlan.RowBatch).foreach { batch =>
       val rows = rowsOf(batch.toSet)
       batch.foreach { cinema =>
-        val byKey = VenueSlots.rowsByKey(cinema, rows.getOrElse(cinema, Nil))
+        val byKey = keyRows(cinema, rows.getOrElse(cinema, Nil))
         filmsAt(cinema).foreach { film =>
           built((film.counter, cinema)) = build(cinema, venues.getOrElse(film.counter, Map.empty).getOrElse(cinema, Nil), byKey)
         }
