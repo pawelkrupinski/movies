@@ -94,6 +94,13 @@ check "keeping the newest five pairs of either compressor, and only their fills 
   "enrichment-pl-3.tar.zst enrichment-pl-4.tar.zst enrichment-pl-5.tar.zst enrichment-pl-6.tar.zst enrichment-pl-7.tar.zst enrichment-pl.tar.zst enrichment-uk-1.tar.zst fill-pl-3-900.tar.zst fill-pl-4-900.tar.zst fill-pl-5-900.tar.zst fill-pl-6-900.tar.zst fill-pl-7-900.tar.zst fill-uk-1-900.tar.zst hermetic-pl.txt refetch-pl-3-900.tsv refetch-pl-4-900.tsv refetch-pl-5-900.tsv refetch-pl-6-900.tsv refetch-pl-7-900.tsv refused-pl-3-900-2-takes.tsv refused-pl-4-900-2-takes.tsv refused-pl-5-900-2-takes.tsv refused-pl-6-900-2-takes.tsv refused-pl-7-900-2-takes.tsv" \
   "$(assets)"
 
+# A country's first pin, its release holding no fill, refetch or refused list at all: the prune's grep finds nothing,
+# which under pipefail failed the step after the pin was written (record run 161, Spain, on Forgejo).
+rm -f "$work/release"/*
+: > "$work/release/enrichment-es-161.tar.zst"
+check "a first pin, with no fills to prune, passes" "0" "$(run env KINOWO_PINNED_TREE=enrichment-es-161.tar.zst \
+  KINOWO_CONVERGENCE_CORPUS_RUN=161 KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-20T08:29:15Z bash "$publish" pin es)"
+
 check "an unknown command is refused" "64" "$(run bash "$publish" publish pl)"
 
 spec_summary

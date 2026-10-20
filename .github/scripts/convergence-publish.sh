@@ -87,7 +87,8 @@ prune_pairs() {
     # allow-silenced: as above.
     names=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets --jq '.assets[].name')
     kept=$(grep -oE "^enrichment-$code-[0-9]+\\.tar\\.(gz|zst)$" <<< "$names" | grep -oE '[0-9]+' | sort -u)
-    grep -E "^(fill|refetch|refused)-$code-[0-9]+-[0-9]+(-[0-9]+)?(-[a-z][a-z-]*)?\\.(tar\\.zst|tsv)$" <<< "$names" \
+    # `|| true`: a release holding none (a country's first pin) is nothing to prune, not a failure under pipefail.
+    { grep -E "^(fill|refetch|refused)-$code-[0-9]+-[0-9]+(-[0-9]+)?(-[a-z][a-z-]*)?\\.(tar\\.zst|tsv)$" <<< "$names" || true; } \
         | while read -r asset; do
               run=$(cut -d- -f3 <<< "$asset")
               grep -qxF "$run" <<< "$kept" || "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$asset" -y || true
