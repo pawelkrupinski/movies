@@ -71,13 +71,14 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
     all.head
   }
 
-  /** The `image:` line of each tier's base Deployment. */
+  /** The `image:` line of each tier's base Deployment, whichever registry it names
+   *  (ghcr.io until the GitHub suspension, registry.kinowo.net since). */
   private def imageLine(app: String): String = {
     val path = s"infra/kubernetes/$app/base/all.yaml"
     RepoFile
       .read(path)
       .linesIterator
-      .find(_.trim.startsWith("image: ghcr.io"))
+      .find(_.trim.startsWith("image: "))
       .getOrElse(throw new AssertionError(s"no `image:` line in $path"))
       .trim
   }
