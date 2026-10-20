@@ -16,6 +16,7 @@ let
   port = 5000;
   keep = 10;
   domain = "registry.kinowo.net";
+  acmeWebroot = "/var/lib/acme/acme-challenge";
   reg = config.services.dockerRegistry;
   # The module keeps its generated config file private; its ExecStart is the one place it is named.
   registryConfig = lib.last (lib.splitString " " config.systemd.services.docker-registry.serviceConfig.ExecStart);
@@ -90,8 +91,31 @@ in
   };
 
   # Served straight, NOT behind Cloudflare: the A record at OVH points at this host and is not
-  # proxied, so Caddy takes its certificate by ACME (no originCertificate), and multi-hundred-MB
-  # layer pushes do not meet Cloudflare's 100 MB request-body cap.
+  # proxied, so the certificate must be a public one, and multi-hundred-MB layer pushes do not meet
+  # Cloudflare's 100 MB request-body cap.
+  #
+  # THE CERTIFICATE COMES FROM security.acme (lego, HTTP-01 by webroot), NOT CADDY'S OWN ACME.
+  # Caddy skips automating any name a manually loaded certificate already covers, and the
+  # `*.kinowo.net` Cloudflare Origin certificate the proxied vhosts load covers this one -- so
+  # Caddy served that origin certificate here (trusted by Cloudflare only; docker and curl reject
+  # it) and never even tried ACME. Neither an explicit `tls { issuer acme }` nor anything short of
+  # the global `auto_https ignore_loaded_certs` changes that, and the global option would put the
+  # proxied names on Let's Encrypt too. An exact-name certificate loaded by file wins the SNI
+  # lookup over the wildcard, and the caddy module wires the group and the reload on renewal.
+  security.acme.certs.${domain}.webroot = acmeWebroot;
+  services.caddy.virtualHosts.${domain}.useACMEHost = domain;
+  # Port 80 for this name is ours to define once the certificate is not Caddy's: the challenge
+  # files from the webroot, everything else to https as Caddy's automatic redirect would.
+  services.caddy.virtualHosts."http://${domain}".extraConfig = ''
+    handle /.well-known/acme-challenge/* {
+      root * ${acmeWebroot}
+      file_server
+    }
+    handle {
+      redir https://{host}{uri} permanent
+    }
+  '';
+
   fleet.publicProxy.vhosts.${domain} = {
     upstream = "127.0.0.1:${toString port}";
     extraConfig = ''
