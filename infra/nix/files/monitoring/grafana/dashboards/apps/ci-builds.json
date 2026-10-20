@@ -133,7 +133,7 @@
     "refresh": 2,
     "sort": 1,
     "hide": 0,
-    "regex": "/^([a-z-]+) \\//"
+    "regex": "/([a-z-]+)(?= \\/|\\)$)/"
    }
   ]
  },
@@ -293,7 +293,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max by (country) (label_replace(quantile_over_time(0.5, kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\",conclusion=\"success\"}[7d]), \"country\", \"$1\", \"ci_job\", \"([a-z-]+) / .*\"))",
+     "expr": "max by (country) (label_replace(quantile_over_time(0.5, kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\",conclusion=\"success\"}[7d]), \"country\", \"$1$2\", \"ci_job\", \"(?:([a-z-]+) / .*|.* [(]([a-z-]+)[)])\"))",
      "legendFormat": "{{country}}",
      "datasource": {
       "type": "prometheus",
@@ -458,7 +458,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*\",ref=~\"$ref\"}[$__interval])",
+     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[$__interval])",
      "legendFormat": "{{ci_job}}",
      "datasource": {
       "type": "prometheus",
@@ -534,7 +534,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*\",ref=~\"$ref\",step=~\"Run the .* (suite|sample.*)\"}[$__interval])",
+     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step=~\"Run the .* (suite|sample.*)\"}[$__interval])",
      "legendFormat": "{{ci_job}}",
      "datasource": {
       "type": "prometheus",
@@ -594,7 +594,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*\",ref=~\"$ref\",step!~\"Run the .* (suite|sample.*)\"}[$__interval]) > 5",
+     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step!~\"Run the .* (suite|sample.*)\"}[$__interval]) > 5",
      "legendFormat": "{{ci_job}} · {{step}}",
      "datasource": {
       "type": "prometheus",
@@ -654,7 +654,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_phase_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*\",ref=~\"$ref\"}[$__interval]) > 5",
+     "expr": "max_over_time(kinowo_ci_phase_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[$__interval]) > 5",
      "legendFormat": "{{ci_job}} · {{phase}}",
      "datasource": {
       "type": "prometheus",
@@ -716,7 +716,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "last_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*\",ref=~\"$ref\"}[7d])",
+     "expr": "last_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[7d])",
      "legendFormat": "{{ci_job}}",
      "instant": true,
      "datasource": {
