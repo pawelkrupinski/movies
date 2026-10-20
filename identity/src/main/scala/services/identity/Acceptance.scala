@@ -38,11 +38,12 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  ([[agreement.NonFilmEvents.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
    *  Film + Awards") keeps its film, and a performance "joined with" the film is its companion ("DYRYGENT - POŁĄCZONY Z
    *  KONCERTEM MUZYKI NA ŻYWO", Wajda's film). A record titled by the performance itself ("Kabaret", "Die Tribute von
-   *  Panem") is the film its event words name. */
+   *  Panem") is the film its event words name. A film of the silent era is screened to a performance — live music is
+   *  its accompaniment (PL Kino Wisła's "PANTEON - Gabinet Doktora Caligari | muzyka na żywo", Wiene's 1920 film). */
   private[identity] def notPerformedBeside(accepted: Accepted): Verdict = {
     val scored    = accepted._1
     val film      = scored.candidate.film
-    val pieces    = scored.listing.performancePieces
+    val pieces    = if (film.year.exists(_ <= ListingShape.SilentEraEnd)) Nil else scored.listing.performancePieces
     lazy val filmWords = film.titles.flatMap(IdentityMeasures.countedWords).toSet
     val performed =
       if (pieces.isEmpty || !pieces.exists(_._2.forall(filmWords))) Nil

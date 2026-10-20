@@ -1726,6 +1726,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "take a silent film its billing screens to live music" in {
+    // PL Kino Wisła (prod mirror 2026-10-20): "PANTEON - Gabinet Doktora Caligari | muzyka na żywo" credits Robert Wiene
+    // and 1920. Live music is how a silent film is screened, not a performance the film is not; Kino Muranów's
+    // "Gabinet doktora Caligari z muzyką Jozefa van Wissema na żywo" takes 234 in prod
+    val films = Seq(F(234, "Gabinet doktora Caligari", 1920, "Robert Wiene", 77, 3.5, alternatives = Seq("The Cabinet of Dr. Caligari")))
+    val l = listing(Multikino, "PANTEON - Gabinet Doktora Caligari | muzyka na żywo", Some(1920), Some("Robert Wiene"), Some(100))
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(234))
+  }
+
   it should "not take by pooled evidence a film the title names only within another candidate's longer title" in {
     // PL Terminal Kultury Gocław (re-capture 2026-10-06, served in prod): "Kacper i Emma – najlepsi przyjaciele Edukacja
     // Młode Horyzonty" is the 2013 "Kacper i Emma: Najlepsi przyjaciele"; the pooled evidence took the 2026 short
