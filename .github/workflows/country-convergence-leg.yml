@@ -346,7 +346,10 @@ jobs:
                   dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
                   dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   mode:          ${{ inputs.mode }}
-                  corpus-run:    ${{ inputs.corpus-run }}
+                  # A recording leg's own run when the caller's `github.run_id` arrives empty: Forgejo (CI since the
+                  # GitHub suspension) expands a reusable call's `with:` before its run has an id, so every
+                  # recording leg there replayed "the newest" corpus, never named its own and never pinned (run 408).
+                  corpus-run:    ${{ inputs.corpus-run || (inputs.mode == 'record' && github.run_id || '') }}
                   mongo-tmpfs:   ${{ inputs.mongo-tmpfs }}
                   takes:         ${{ startsWith(matrix.phase, 'takes') }}
 
