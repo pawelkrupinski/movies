@@ -415,6 +415,30 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
 }
 
 object Evidence {
+  /** The evidence the resolver reads of `listing`: [[of]] its facts and its `detail` page's, and — where neither nor its
+   *  title dates it — the year of the film a TMDB-keyed feed linked it to ([[linkedYear]]). */
+  def derived(listing: Listing, detail: Option[DetailFacts], lookups: IdentityLookups, decorations: TitleDecorations): Evidence =
+    of(linkedYear(listing, detail, lookups).fold(listing)(year => listing.copy(year = Some(year))), detail, decorations)
+
+  /** The year of the TMDB film a TMDB-keyed feed linked `listing` to ([[SourceReliability.tmdbLinked]]: Cineamo's
+   *  "244m"), as that film's own record dates it — for a listing whose own field, `detail` page and title date none.
+   *  It is the feed's [[SourceReliability.Fact.Year]], a fact the feed's own entry states ([[SourceReliability.Cineamo]]
+   *  copies it at Support), so it weighs as the year the feed once copied off the film's German premiere did, without
+   *  dating a classic by its release in Germany (Rope 1948 premiered there in 1963): DE Eulenspiegel's "King Kong",
+   *  linked to 244m, is the 1933 film, not the 2005 remake its title's search ranks first. A HINT, never a verdict: a
+   *  link the title's other sources overrule is read with its facts set aside, this year among them ([[FeedLink]],
+   *  [[Evidence.titlesOnly]]). None where the resolve's films are not TMDB's numbers
+   *  ([[IdentityLookups.numbersFilmsByTmdbId]]), or the record is not known. */
+  def linkedYear(listing: Listing, detail: Option[DetailFacts], lookups: IdentityLookups): Option[Int] =
+    if (detail.exists(_.year.isDefined) || !lookups.numbersFilmsByTmdbId) None
+    else linkedFilm(listing).filter(_ => IdentityMeasures.titleYearOf(Seq(listing.title, listing.rawTitle)).isEmpty)
+      .flatMap(film => lookups.film(film).toOption.flatten.flatMap(_.year))
+
+  /** The TMDB film whose record may date `listing` ([[linkedYear]]): the one a TMDB-keyed feed linked it to, where its own
+   *  field states no year — what a resolve reads the record of before it derives the listing's evidence. */
+  def linkedFilm(listing: Listing): Option[Int] =
+    if (listing.year.isDefined) None else SourceReliability.tmdbLinked(listing).map(_._2)
+
   def of(listing: Listing, detail: Option[DetailFacts], decorations: TitleDecorations = TitleDecorations.None): Evidence = Evidence(
     title         = listing.title,
     cleanTitle    = listing.cleanTitle,

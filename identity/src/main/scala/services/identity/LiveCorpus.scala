@@ -40,6 +40,9 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val listings = mutable.HashMap.empty[ListingKey, NodeKey]
   private val heads    = mutable.HashMap.empty[NodeKey, (ListingKey, Evidence)]
   private val members  = mutable.HashMap.empty[NodeKey, Members]
+  // the listings whose evidence a feed-linked film's record may date (`Evidence.linkedFilm`), by that film
+  private val linkers    = mutable.LongMap.empty[Map[ListingKey, Listing]]
+  private val linkedFilm = mutable.HashMap.empty[ListingKey, Int]
   private val nodes    = mutable.HashMap.empty[NodeKey, Node]
   // questions and films — never a question's whole answer, which the lookups keep: only the films it
   // named, and per film the best hit it gave (all `Candidate.of` reads: the most popular hit first)
@@ -118,9 +121,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val touched = mutable.HashSet.empty[NodeKey]
     // A slice of detail pages at a time: what a prefetch holds is bounded, however many listings arrive.
     arrived.grouped(slices.details).foreach { slice =>
-      lookups.prefetch(Nil, Nil, slice.filter(lookups.hasDetail))
+      lookups.prefetch(Nil, slice.flatMap(Evidence.linkedFilm).distinct.sorted, slice.filter(lookups.hasDetail))
       slice.foreach { listing =>
         listings.remove(listing.key).foreach(key => touched += leave(listing.key, key))
+        unlinkFilm(listing.key)
+        Evidence.linkedFilm(listing).foreach { film => linkedFilm(listing.key) = film; linkers.addEntry(film, listing.key -> listing) }
         val evidence = derive(listing)
         val derived  = CandidateGeneration.nodeKey(listing, evidence, pins)
         val group    = members.getOrElseUpdate(derived, new Members(derived))
@@ -138,6 +143,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
 
   def gone(keys: Seq[ListingKey]): CorpusContext.Changed = {
     val left = keys.flatMap(key => listings.remove(key).map(leave(key, _))).toSet
+    keys.foreach(unlinkFilm)
     lookups.released(Nil, Nil, keys)
     refresh(left, Set.empty, Set.empty)
   }
@@ -154,7 +160,16 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   }
 
   private def derive(listing: Listing): Evidence =
-    Evidence.of(listing, if (lookups.hasDetail(listing)) lookups.detail(listing).toOption.flatten else None, decorations)
+    Evidence.derived(listing, if (lookups.hasDetail(listing)) lookups.detail(listing).toOption.flatten else None, lookups, decorations)
+
+  private def unlinkFilm(key: ListingKey): Unit = linkedFilm.remove(key).foreach(linkers.removeEntry(_, key))
+
+  /** The listings held whose evidence a feed-linked film's record dates ([[Evidence.linkedYear]]) and reads otherwise now
+   *  that `films`' records were filed anew: what is seen again, as a listing whose detail page was read anew is. */
+  def relinked(films: Set[Int]): Seq[Listing] =
+    films.toSeq.sorted.flatMap(film => linkers.get(film).fold(Seq.empty[Listing])(_.values.toSeq.sorted)).filter { listing =>
+      listings.get(listing.key).flatMap(heads.get).forall(_._2.key != derive(listing).key)
+    }
 
   /** Re-derive what the touched nodes, re-answered questions and re-recorded films reach; the keys
    *  whose facts moved. */

@@ -2663,6 +2663,29 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE Eulenspiegel's "King Kong", Forgejo recording 528 (2026-10-20): Cineamo links it to 244m, the 1933 film, and since
+  // f5784855d states no year a classic's German premiere would date; its bare search ranks Jackson's 2005 remake first,
+  // which it took at 39.9%. Records as TMDB holds them, German titles.
+  private val kongFilms = Seq(F(254, "King Kong", 2005, "Peter Jackson", 187, 8.4),
+    F(244, "King Kong und die weiße Frau", 1933, "Merian C. Cooper", 100, 2.9, original = Some("King Kong")), F(10730, "King Kong", 1976, "John Guillermin", 134, 3.1))
+  private val linkedKong = fed(listing(KinoMuza, "King Kong"), "cineamo", "244m")
+
+  "A feed's TMDB link of a listing nothing else dates" should "date it by the linked film's own record" in {
+    val d = shipped(Seq(linkedKong), kongFilms).decisionOf(linkedKong.key)
+    withClue(d.render)(d.film shouldBe Some(244))
+  }
+
+  it should "date it by no record of a film no source numbers by TMDB id, nor over its own year, page or title" in {
+    val lookups = new FilmTable(kongFilms, normalizer)
+    Evidence.linkedYear(linkedKong, None, lookups) shouldBe Some(1933)
+    Evidence.derived(linkedKong, None, lookups, TitleDecorations.None).year shouldBe Some(1933)
+    Evidence.linkedYear(linkedKong.copy(year = Some(2005)), None, lookups) shouldBe None
+    Evidence.linkedYear(linkedKong, Some(DetailFacts(Some(1976), Nil, None, None)), lookups) shouldBe None
+    Evidence.linkedYear(linkedKong.copy(title = "King Kong (1976)", rawTitle = "King Kong (1976)"), None, lookups) shouldBe None
+    Evidence.linkedYear(linkedKong, None, new FilmTable(kongFilms, normalizer, tmdbNumbered = false)) shouldBe None
+    Evidence.linkedYear(listing(KinoMuza, "King Kong"), None, lookups) shouldBe None
+  }
+
   // DE "Karla", recording 38196151886: Cineamo links eleven venues' bare "Karla" [99′] to TMDB 9695, the 2006 US film whose
   // 99 minutes it copies; Filmstarts' entry 1000023315, kinoheld's page and Cineamo's own other entry (1480424m) state
   // the 2025 film's year and director. Records as TMDB holds them (popularity ranks 9695 first, as its search did).

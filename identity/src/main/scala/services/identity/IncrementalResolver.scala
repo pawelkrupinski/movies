@@ -84,6 +84,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // also when its venue re-published it unchanged in the same batch, which alone would not.
     // (A listing that left in this batch is released already, so it is held no more.)
     val redetailed = answered.details.flatMap(heldListing)
+    // So is one whose evidence the record of the film its feed links dates, filed anew ([[Evidence.linkedYear]]).
+    val relinked   = corpus.relinked(answered.films).flatMap(listing => heldListing(listing.key).filter(_ == listing))
     val fresh      = seen.filterNot(listing => heldListing(listing.key).contains(listing))
     // An equal listing re-published with another poster, other screening days or names resolves nothing again, but is
     // held in its place, under the held key object its families name: the stages after the model read those fields
@@ -94,7 +96,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
         keyed.listing = listing.copy(key = held.key)
     })
     val freshKeys  = fresh.iterator.map(_.key).toSet
-    val arrived    = fresh ++ redetailed.filterNot(listing => freshKeys(listing.key))
+    val arrived    = fresh ++ (redetailed.toSeq ++ relinked).filterNot(listing => freshKeys(listing.key)).distinctBy(_.key)
     arrived.foreach(hold)
     val moved   = clock.context(corpus.gone(left) ++ corpus.seen(arrived) ++ corpus.answered(answered))
     val asked   = answered.queries.flatMap(askersOf.getOrElse(_, Set.empty)) ++ answered.films.flatMap(filmReadersOf.getOrElse(_, Set.empty))

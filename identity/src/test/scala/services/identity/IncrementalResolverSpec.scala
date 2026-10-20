@@ -258,6 +258,32 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
 
+  "the record of the film a feed links a listing to, answered anew" should "move its listing as the year it dates decides" in {
+    // DE Eulenspiegel's "King Kong", Cineamo's 244m: the 1933 film's record dates the listing (`Evidence.linkedYear`), and
+    // a model that took the listing in before the record was filed derives its evidence again once it is
+    import FilmTable.{F, listing}
+    // the shipped weights, whose learned cut denies a namesake 27 years or more from the year the listing states
+    val shipped = IdentityCalibration.resolver
+    val films   = Seq(F(254, "King Kong", 2005, "Peter Jackson", 187, 8.4), F(244, "King Kong und die weiße Frau", 1933, "Merian C. Cooper", 100, 2.9, original = Some("King Kong")))
+    val table   = new FilmTable(films, normalizer)
+    var filed   = false
+    val lookups = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean = false
+      def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (id == 244 && !filed) Answer.Unknown else table.film(id)
+    }
+    val kong  = listing(models.Helios, "King Kong").copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "244m")))
+    val model = new IncrementalResolver(lookups, normalizer, shipped, decorations = TitleDecorations.None)
+    model.batch(seen = Seq(kong))
+    def whole = IdentityResolver.resolveWith(Seq(kong), lookups, normalizer, shipped, IdentityResolver.Mutation.None)
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
+    filed = true
+    model.batch(answered = AnswersChanged(Set.empty, Set(244)))
+    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
+    model.decisions.find(_.listings(kong.key)).flatMap(_.film) shouldBe Some(244)
+  }
+
   "a season production another venue's search reaches later" should "re-learn the banner's house and move the broadcasts it names" in {
     // Kino 1410's Met broadcasts arrive first and learn Royal Ballet & Opera; the venue whose search
     // reaches the Met's record arrives after, and must move them as the whole resolve does.
