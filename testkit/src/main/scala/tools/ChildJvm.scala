@@ -18,8 +18,13 @@ final class ChildJvm(javaHome: JavaHome, classPath: JavaClassPath) {
   /** Exit code and combined stdout+stderr. */
   def run(main: String, args: Seq[String] = Nil, jvmArgs: Seq[String] = Nil): (Int, String) = {
     val java    = javaHome.binary("java").toString
-    val process = new ProcessBuilder((Seq(java, "-cp", classpath) ++ jvmArgs ++ (main +: args))*)
-      .redirectErrorStream(true).start()
+    val builder = new ProcessBuilder((Seq(java, "-cp", classpath) ++ jvmArgs ++ (main +: args))*)
+      .redirectErrorStream(true)
+    // Hermetic: a JVM prints "Picked up JAVA_TOOL_OPTIONS: …" (or _JAVA_OPTIONS / JDK_JAVA_OPTIONS) on
+    // stderr, merged into the output callers compare. CI sets JAVA_TOOL_OPTIONS on the self-hosted
+    // Forgejo runners; a short-lived probe JVM needs none of them.
+    Seq("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS").foreach(builder.environment().remove)
+    val process = builder.start()
     val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
     if (!process.waitFor(SpecTimeouts.Run.toMillis, TimeUnit.MILLISECONDS)) { process.destroyForcibly(); (-1, output + "\n[timed out]") }
     else (process.exitValue(), output)
