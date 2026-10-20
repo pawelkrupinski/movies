@@ -24,7 +24,10 @@ The losses fall into two groups:
 | Heimsuchung ×9 | changed 16699 → 635775 | wrong → wrong (the feed links 1089789; the slice takes 1089789 at both refs) |
 | Tagträumer | 1 lost | undecided |
 
-**Most likely cause of the regressions:** the boot's whole-corpus re-resolve. The first periodic projection after a
+**Update (replayed on Forgejo recording 528, below):** the regressions reproduce at both refs. Their cause is the
+year that f5784855d stopped reading from Cineamo for older films. The hypothesis that follows is superseded.
+
+**Most likely cause of the regressions (first read):** the boot's whole-corpus re-resolve. The first periodic projection after a
 boot (07:02:49, 242 s, 67 take changes) is the only whole-corpus resolve. 8b75b704b last ran one at its own boot on
 10-15 23:50 and then moved only incrementally for 4½ days. The 10-20 boot therefore re-resolved, whole, data the old
 code had only ever taken incrementally. LOTR has flipped the same way before:
@@ -35,6 +38,59 @@ code had only ever taken incrementally. LOTR has flipped the same way before:
 
 That points to arrival order or input that changed after 10-15, not to a rule in 8b75b70..aa334f31d. It is not proven
 yet, because no recording newer than 10-15 can be replayed (see "Limits").
+
+## Update: reproduced on Forgejo recording 528 (10-20 02:03 scrape)
+
+`scripts/identity-slice` reads Forgejo since 506d5bef6 (scripts/forge-gh), so the regressions were replayed on
+record-scrape-fixtures run 528 (#193, recorded at a744eff38). That recording holds the DE scrape of 10-20 02:03.
+
+```
+scripts/identity-slice de --title "Herr der Ringe" --recording 528 --ref a744eff38 --ref aa334f31d
+scripts/identity-slice de --batch <Unterbiberger, Gaulle, Eulenspiegel|Kong, Lieferservice, Imana,
+    Friedrichshagen|Versteck, Friedrichshagen|Vorspiel, ROYA> --ref a744eff38 --ref aa334f31d --recording 528
+```
+
+**It reproduces, and the two refs agree:** 501 + 1140 listings, 0 moved between a744eff38 and aa334f31d. The input
+causes the losses, not the resolver's rules. On 528, aa334f31d takes:
+
+| Listing | 10-15 (38713274617) | 528 |
+|---|---|---|
+| Der Herr der Ringe 2 (Extended Version), Kinopolis ×6 | 121, year 2002 | **123 (Bakshi)** at 40.8%, favoured-calibrated; 121 denied by the learned listing-film veto |
+| Der Herr der Ringe 3 (Extended Version), Kinopolis ×6 | 122 | none (Vetoed) |
+| Traumpalast "Herr der Ringe 1/2/3 – ext. Version", Capitol, Kinorama, Lichtburg, Lohne "(Extended Version)" | 120/121/122 | none (Vetoed, `denies-film`) |
+| CineStar "(ext.)" ×9 each | none (Vetoed) | none (Vetoed), unchanged |
+| King Kong (Eulenspiegel, cineamo 244m) | 244 | **254 (2005)** at 39.9% |
+| Vorspiel (Friedrichshagen), Kikis kleiner Lieferservice (Andreasstadel) | 286393 / not held | none (BelowThreshold) |
+| De Gaulle – Zeit des Widerstands (E-Werk, Weltspiegel, Zeise) | 1165366 | none (Vetoed): Bambi's mis-titled Schauder page, NEW in 528, joins and denies |
+| Über Unterbiberger (Cinecitta) | none | none; the other 12 venues still take 1559083 |
+| Ben'Imana, Das Versteck, Roya | — | taken (the whole resolve does not reproduce these; prod's agreement or incremental path does) |
+
+**The cause is the year, and a scraper commit removed it.** f5784855d (10-18, in aa334f31d, not in 8b75b704b) is
+"Read a Cineamo listing's year off its German premiere only when the film opens now". Since then a Cineamo listing of
+an older film has no `releaseYear`. Between the two recordings 999 DE listings lost their year, and 948 of them are
+Cineamo-linked. Examples: every Kinopolis LOTR billing (2001/2002/2003 to none), King Kong 1933 and Vorspiel 1987.
+Without the year:
+
+- `year.delta=0 (+3.40)` is gone. Kinopolis' "Der Herr der Ringe 2 (Extended Version)" no longer pools with the
+  2002-billed LOTR 2 cluster.
+- Its bare search ranks Bakshi's "Der Herr der Ringe" (1978) first, and favoured-calibrated takes that hit. The
+  candidate's title is a decorated prefix of the original title "The Lord of the Rings: The Two Towers – Extended".
+- 121 now falls under the learned listing-film cannot-link cut (`originalTitle=segment -2.52`, no year to offset it).
+  The `denies-film` edges then veto the yearless Extended families at Traumpalast, Capitol, Kinorama and Lichtburg.
+
+So the 06:58 boot was not arrival order. It was the first scrape under f5784855d's scraper and the whole re-resolve of
+that scrape. It also explains the earlier flips: LOTR's year came and went with each scraper build.
+
+The TMDB backfill (genres, language, cast) and the venue keys (aa6d8e682, not deployed) play no part. The slice
+reads the recording's TMDB answers, and both refs agree.
+
+**Not fixed here (a policy choice).** Reverting f5784855d brings back the Rope/Vertigo denials it cured. The fix
+that keeps both: carry an old German premiere as an upper bound ("made no later than the premiere year") instead of
+dropping it. The listing would then keep evidence against Bakshi 1978 and King Kong 2005 without denying Rope 1948.
+That needs a new scraped fact and a resolver signal, measured by `identity-measure` over all countries. Separately,
+a numbered title ("Herr der Ringe 2") whose original title gives a subtitle ("The Two Towers") that none of the
+candidate's titles holds could be denied the way `titlesAnotherPart` (a1cb04588) denies "TEIL 1, …". That would stop
+the Bakshi take even without a year.
 
 ## Timeline (UTC, 2026-10-20)
 
@@ -159,7 +215,8 @@ None of the regressions moves between 8b75b704b and aa334f31d on the 10-15 recor
 
 ## Limits
 
-- No recording newer than 10-15 can be replayed. GitHub is suspended, and the first Forgejo "Record scrape fixtures"
+- (Superseded by "Update: reproduced on Forgejo recording 528" above.) No recording newer than 10-15 could be
+  replayed at first. GitHub is suspended, and the first Forgejo "Record scrape fixtures"
   runs (ids 211…469) failed or were cancelled. Run 508 was still running at 10:00. Without newer input, "regression
   from the code" vs "the whole re-resolve of input that changed since 10-15" is decided by the 10-15 replay alone. On
   that replay the new code keeps every regressed film, which points to the latter.
