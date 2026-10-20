@@ -22,11 +22,12 @@ import scala.util.{Failure, Success, Try}
 final case class ProjectionTick(resolution: Option[Resolution], plan: Option[ProjectionPlan], listings: Int, written: Int,
                                 retired: Int, declined: Int, refused: Option[String], phases: Seq[ProjectionPhase] = Nil,
                                 slotsReused: Int = 0, slotsBuilt: Int = 0, slotMisses: (Int, Int, Int) = (0, 0, 0),
-                                scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil) {
+                                scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil, backlog: Boolean = false) {
   def wroteNothing: Boolean = written == 0 && retired == 0
-  /** Whether projecting again would find nothing to do: it was taken, and wrote nothing. A refused one wrote nothing
-   *  too, but a model not ready yet (a boot whose resolve ran past its budget) has every film still to write. */
-  def atRest: Boolean = refused.isEmpty && wroteNothing
+  /** Whether projecting again would find nothing to do: it was taken, wrote nothing, and its agreement read every model
+   *  take (`backlog`: some were left to a later projection's budget). A refused one wrote nothing too, but a model not
+   *  ready yet (a boot whose resolve ran past its budget) has every film still to write. */
+  def atRest: Boolean = refused.isEmpty && wroteNothing && !backlog
 }
 
 /** One step of a projection: how long it took and what it allocated on the projecting thread (the
@@ -135,6 +136,8 @@ final class IdentityProjection(
    *  the last projection with a field the model's decisions do not move with (`LiveProjectionIndex.republished`; `None`
    *  when there is no last projection to tell by). */
   agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution,
+  /** Whether the agreement left model takes unread for a later projection (`agreement.AgreementStage.backlog`). */
+  agreementBacklog: () => Boolean = () => false,
   /** Handed each WRITTEN projection of the whole corpus's resolution, as projected, and every listing it decided: what
    *  counts its suspect takes (`SuspectTakeCount.submit`), which must return at once — the count is no part of a projection. */
   suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => ()
@@ -440,7 +443,7 @@ final class IdentityProjection(
     metrics.projected(films, listings, plan.regroupings, seconds)
     reportTakes(plan, resolution, before, unwritten)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
-      changed = changed)
+      changed = changed, backlog = agreementBacklog())
     tools.LogFields.info(logger.underlyingLogger, f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
         s"declined $declined; ${plan.regroupings}" +
         f" in $seconds%.1fs (${phases.render})",

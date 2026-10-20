@@ -40,10 +40,11 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
                     accepted: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
                     filmIds: InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
                     fingerprints: VenueSlotFingerprints = new InMemoryVenueSlotFingerprints,
-                    resolveOverride: Option[Seq[Listing] => Option[IdentityProjection.Resolved]] = None): ProjectionWorld =
+                    resolveOverride: Option[Seq[Listing] => Option[IdentityProjection.Resolved]] = None,
+                    backlog: () => Boolean = () => false): ProjectionWorld =
     new ProjectionWorld(repository, venues, clock, resolve = resolveOverride.fold(ProjectionWorld.unmatched)(resolve => read => resolve(read())),
       listingsRead = listingsRead, announceFails = announceFails, archive = archive, accepted = accepted, filmIds = filmIds,
-      fingerprints = fingerprints, scopedBetweenWhole = if (whole) 0 else IdentityProjection.ScopedBetweenWhole)
+      fingerprints = fingerprints, scopedBetweenWhole = if (whole) 0 else IdentityProjection.ScopedBetweenWhole, backlog = backlog)
 
   private val allShowtimes: Set[(String, LocalDateTime)] =
     programme.values.flatten.flatMap(cm => cm.showtimes.map(s => cm.cinema.displayName -> s.dateTime)).toSet
@@ -103,6 +104,20 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     crossing.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.Crossing)
 
     first.repository.findAll().map(r => r.id -> r.record).toMap shouldBe stored // the stored films keep serving, untouched
+  }
+
+  // US run 563: the agreement reads 200 model takes against the evidence an apply; a projection writing nothing while
+  // it still has takes to read is not the steady state, or the boot's settle stopped with 1,400 of them unread
+  it should "not be at rest while the agreement left model takes unread, though it wrote nothing" in {
+    var unread = true
+    val w = World(backlog = () => unread)
+    w.scrape(programme)
+    w.projection.tick()
+    val quiet = w.projection.tick(whole = true)
+    quiet.wroteNothing shouldBe true
+    quiet.atRest shouldBe false
+    unread = false
+    w.projection.tick(whole = true).atRest shouldBe true
   }
 
   // The venue slot fingerprints are a saving: a store that cannot take them must not fail the projection, and the

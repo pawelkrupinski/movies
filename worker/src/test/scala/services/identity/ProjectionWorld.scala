@@ -25,14 +25,15 @@ private[identity] final class ProjectionWorld(
   val filmIds:       InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
   val fingerprints:  VenueSlotFingerprints = new InMemoryVenueSlotFingerprints,
   scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole,
-  slots:             CinemaSlotBuilder = new CinemaSlotBuilder(Country.Poland.language, new StringPool)) {
+  slots:             CinemaSlotBuilder = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
+  backlog:           () => Boolean = () => false) {
   import ProjectionWorld.normalizer
 
   /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
    *  listings, the projection's slot memo and what it last read) built afresh. */
   def restarted: ProjectionWorld =
     new ProjectionWorld(repository, venues, clock, resolve, details, listingsRead, announceFails, archive, accepted, filmIds, fingerprints,
-      scopedBetweenWhole, slots)
+      scopedBetweenWhole, slots, backlog)
 
   val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
   val drifts     = scala.collection.mutable.ListBuffer.empty[Int]
@@ -63,7 +64,7 @@ private[identity] final class ProjectionWorld(
       def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
       def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
     }, clock = clock, fingerprints = fingerprints, takeLines = new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
-    scopedBetweenWhole = scopedBetweenWhole,
+    scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,
     suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () })
 
   def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>

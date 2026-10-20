@@ -661,8 +661,10 @@ abstract class CountryConvergenceBehaviour(
    *  (`settle()` then `canonicalizeBySanitize()`), or — on a cut-over leg — an identity
    *  projection over what the intake holds (repeated only through a shrink's grace). A fixpoint claim re-applies THIS, so it asks the
    *  deciding model whether it is at rest, never the other one whether it agrees. */
-  /** Projections after the boot's first that a cut-over boot may take to reach rest. */
-  private val CutoverSettleProjections = 4
+  /** Projections after the boot's first that a cut-over boot may take to reach rest: enough for the agreement to read
+   *  every model take at its budget an apply (`AgreementStage.CorrectionsPerApply`, 200) — the US's 2,024 (run 563) take
+   *  eleven — with the enrichment's own few on top. */
+  private val CutoverSettleProjections = 16
 
   private def settleOnce(w: ArchiveReplayWiring): Unit = {
       // A projection that would drop more than ProjectionGuard's share of the films is REFUSED, and

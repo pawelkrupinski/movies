@@ -135,6 +135,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  record's [[AgreementStage.RecordWait]]: from then the same decisions at the same version are read again, since
    *  the clock, not a filing, is what releases them. */
   private[agreement] var releaseAt: Option[java.time.Instant] = None
+  /** Did the last [[apply]] leave a model take unread for want of its budget ([[AgreementStage.CorrectionsPerApply]])? */
+  @volatile private var unread = false
+
+  /** Are model takes still to be read against the evidence, the last apply's budget spent before them? Until none is,
+   *  the next apply of the same decisions reads on rather than hand back the last one's result: else a backlog
+   *  beyond one apply's budget was read only as the model's decisions moved (US run 563: Burns Court's "NT Live:
+   *  Hamlet", the 652nd of 2,024 takes, withdrawn only on the next day). */
+  def backlog: Boolean = unread
 
   /** `resolution` with every unmatched, fully answered cluster its families agree on taken as that film. `republished`:
    *  the listings published again since the last apply equal to what the model holds but for a field the stage reads
@@ -144,7 +152,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
             republished: Option[Iterable[ListingKey]] = Some(Nil)): Resolution = synchronized {
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
     val waited = releaseAt.exists(at => !clock.instant().isBefore(at))
-    last.collect { case (was, at, came) if !reread && !waited && at == version && sameDecisions(was, resolution) =>
+    last.collect { case (was, at, came) if !reread && !waited && !unread && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
       last = Some((resolution, version, came))
@@ -181,6 +189,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     wantedNow = pass.wanted(correctionPostersAtOnce)
     handOver(version)
     releaseAt = nextRelease()
+    unread = pass.spent
     report(decisions, pass, started)
     resolution.copy(decisions = decisions)
   }
@@ -548,6 +557,8 @@ object AgreementStage {
     private var budget = corrections
     /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
     def fresh(): Boolean = { val left = budget > 0; budget -= 1; left }
+    /** Did a take go unread for want of budget: asked once the budget was spent? */
+    def spent: Boolean = budget < 0
     /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
      *  take's posters draining behind every other task. */
     def wanted(postersAtOnce: Int): Open = {

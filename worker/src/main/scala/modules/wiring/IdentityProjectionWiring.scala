@@ -52,6 +52,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       takeLines   = new services.identity.TakeChangeLines(country, configuration.commit),
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
+      agreementBacklog = () => agreementStage.backlog,
       suspects    = suspectTakeCount.submit)
 
   /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its

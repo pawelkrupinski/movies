@@ -139,6 +139,29 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
+  it should "read the takes its budget left unread on the next apply of the same decisions, until none is left" in {
+    // US run 563 (2026-10-20): 2,024 model takes against a budget of 200 an apply. The boot read the first few hundred,
+    // and every later projection handed the stage the same decisions, so it gave back the last apply's result unread;
+    // Burns Court's "NT Live: Hamlet", the 652nd, was withdrawn only on the next day, when new decisions reached it
+    val cumberbatch = FilmTable.F(396227, "National Theatre Live: Hamlet", 2015, "Lyndsey Turner", 204,
+      alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2015-10-15")))
+    val abeysekera  = FilmTable.F(1507580, "National Theatre Live: Hamlet", 2026, "Robert Hastie", 178,
+      alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2026-01-22")))
+    val records = new FilmTable(Seq(FilmTable.F(1001, "Lalka", 2026, "Maciej Kawalski", 162), FilmTable.F(1002, "Lalka", 1968, "Wojciech Has", 159),
+      cumberbatch, abeysekera), normalizer)
+    val relay = FilmTable.listing(Multikino, "NT Live: Hamlet", year = Some(2015))
+      .copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.parse("2026-11-24"))), page = Some("https://www.flicks.us/movie/nt-live-hamlet/"))
+    val both = Resolution(model.decisions :+ ResolverDecision(Seq(relay.key), Some(cumberbatch.id), 0.17, ResolverDecision.Basis.OwnMatch,
+      Seq(s"own match ${cumberbatch.id}"))(), 2, Map(listing.key -> 0, relay.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val s = new AgreementStage(takingHas, records, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(records), correctionsPerApply = 1)
+    val listed = Map(listing.key -> listing, relay.key -> relay).get
+    s.apply(both, listed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.OwnMatch)
+    s.backlog shouldBe true
+    s.apply(both, listed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.Withdrawn)
+    s.backlog shouldBe false
+  }
+
   it should "stand as last decided after a deploy, in the whole projection's apply its budget is spent in as in a later one" in {
     // prod UK Chichester Cinema at New Park's "The Ties That Bind Us": every deploy changes the stage's rules, so no stored
     // verdict is current; the boot's whole projection reads afresh only its budget's takes and put the model's 2008 film
