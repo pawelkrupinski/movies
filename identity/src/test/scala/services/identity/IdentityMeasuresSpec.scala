@@ -751,7 +751,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val cut = Listing("Dark City: Director's Cut")
     IdentityMeasures.titleRelation(cut, Film("Director's Cut")) shouldBe Category("segment")
     IdentityMeasures.titleRelation(cut, Film("Director's Cut"), Houses.Unknown, q) shouldBe Category("overlap")
-    IdentityMeasures.titleRelation(cut, Film("Dark City"), Houses.Unknown, q) shouldBe Category("decorated")
+    // the work's record is its title whole once the version tag is dropped (`VersionTags`)
+    IdentityMeasures.titleRelation(cut, Film("Dark City"), Houses.Unknown, q) shouldBe Category("exact")
     IdentityMeasures.titleRelation(cut, Film("Dark City: Director's Cut"), Houses.Unknown, q) shouldBe Category("exact")
   }
 
@@ -775,7 +776,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("Dracula: A Love Tale"), Film("Dracula: Dead and Loving It"))
     val q = IdentityMeasures.Qualifiers.learn(draculas)
     q.of(Listing("Dracula (4K Restoration)")) shouldBe empty
-    IdentityMeasures.titleRelation(Listing("Dracula (4K Restoration)"), draculas.head, Houses.Unknown, q) shouldBe Category("segment")
+    IdentityMeasures.titleRelation(Listing("Dracula (4K Restoration)"), draculas.head, Houses.Unknown, q) shouldBe Category("exact")
     // A work records bill it before stays one: "Dracula: Prince of Darkness" is not the 1958 film.
     IdentityMeasures.titleRelation(Listing("Dracula: Prince of Darkness"), draculas.head, Houses.Unknown, q) should not be Category("segment")
   }
@@ -1022,14 +1023,29 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "a decorated original title" should "read as naming the film, as a decorated title does, not as a word overlap" in {
     val yourName = Seq("Twoje imię", "君の名は。", "Your Name.")
-    IdentityMeasures.originalTitleRelation(Some("Your Name (re-release)"), yourName) shouldBe Category("segment")
+    IdentityMeasures.originalTitleRelation(Some("Your Name (Dolby Night)"), yourName) shouldBe Category("segment")
     IdentityMeasures.originalTitleRelation(Some("Your Name"), yourName) shouldBe Category("match")
     IdentityMeasures.originalTitleRelation(Some("Ken Russell's The Devils"), Seq("The Devils")) shouldBe Category("decorated")
     IdentityMeasures.originalTitleRelation(Some("It"), Seq("It Ends with Us")) shouldBe Category("fragment")
     IdentityMeasures.originalTitleRelation(Some("Stalker"), Seq("Solaris")) shouldBe Category("disjoint")
     // The listing-film measure reads it the same way.
-    measures(Listing("Twoje imię", originalTitle = Some("Your Name (re-release)")),
+    measures(Listing("Twoje imię", originalTitle = Some("Your Name (Dolby Night)")),
       Film("Twoje imię", Some("君の名は。"), alternativeTitles = Seq("Your Name.")))("originalTitle") shouldBe Category("segment")
+  }
+
+  "a version-tagged title" should "name the film's own title whole, as a cut of it, not a segment or an overlap of it" in {
+    // DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)", originally "The Lord of the Rings: The Return of the King –
+    // Extended": `originalTitle=segment` (-2.52) put Jackson's film under the learned listing-film cut, and its `denies-film`
+    // edges vetoed every other venue's Extended billing (recording 528).
+    val returnOfTheKing = Film("Der Herr der Ringe - Die Rückkehr des Königs", Some("The Lord of the Rings: The Return of the King"), year = Some(2003))
+    measures(Listing("Herr der Ringe - Rückkehr des Königs (ext.)", originalTitle = Some("The Lord of the Rings: The Return of the King – Extended")),
+      returnOfTheKing)("originalTitle") shouldBe Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Your Name (re-release)"), Seq("Your Name.")) shouldBe Category("match")
+    // DE Capitol's and Kinorama's billings name its German title whole once the tag is dropped
+    measures(Listing("DER HERR DER RINGE - DIE RÜCKKEHR DES KÖNIGS - EXTENDED VERSION"), returnOfTheKing)("title") shouldBe Category("exact")
+    measures(Listing("Der Herr der Ringe: Die Rückkehr des Königs EXTENDED VERSION"), returnOfTheKing)("title") shouldBe Category("exact")
+    // a tag is no other title: "Pink Floyd: The Final Cut" is not "Pink Floyd"
+    measures(Listing("Pink Floyd: The Final Cut"), Film("Pink Floyd"))("title") should not be Category("exact")
   }
 
   "an original title copying the listing's own title" should "repeat it whether whole or a truncation" in {

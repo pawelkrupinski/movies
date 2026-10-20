@@ -118,7 +118,11 @@ object IdentityMeasures {
      *  resolver relates every listing to every film of its family's pool (`titleRelation`). */
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = ownTitles.map(IdentityMeasures.TitleForm(_))
     /** The own forms' non-empty keys, once per listing: every pool candidate's `titleRelation` asks. */
-    private[identity] lazy val ownKeys: Set[String] = (ownForms.map(_.key) ++ printless.map(IdentityMeasures.key)).filter(_.nonEmpty).toSet
+    private[identity] lazy val ownKeys: Set[String] =
+      (ownForms.map(_.key) ++ printless.map(IdentityMeasures.key) ++ versionless.map(IdentityMeasures.key)).filter(_.nonEmpty).toSet
+    /** Its titles without the closing version tag they bill ([[VersionTags.versionless]]): "Der Herr der Ringe: Die zwei
+     *  Türme EXTENDED VERSION" names "Der Herr der Ringe: Die zwei Türme" whole, as a cut of that film. */
+    private[identity] lazy val versionless: Seq[String] = titles.flatMap(VersionTags.versionless)
     /** Its titles without the print a repertory screening bills ([[IdentityMeasures.billsAPrint]]), format tags and all:
      *  "Tschaikowsky - Genie und Wahnsinn (35mm)" is Ken Russell's film's whole title, not a piece of it. */
     private[identity] lazy val printless: Seq[String] =

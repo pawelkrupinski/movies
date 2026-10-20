@@ -245,9 +245,9 @@ private[identity] object TitleRelationMeasures {
     written.isEmpty || filmYear.exists(y => written.exists(FactRelations.yearsNear(_, y)))
   }
 
-  /** The listing's own ORIGINAL title against every title of the other side: the same title, a
-   *  decorated or delimited spelling of one ([[containment]], as the title relation reads it: "Your
-   *  Name (re-release)" is `segment` of "Your Name."), a shared long word, or nothing. */
+  /** The listing's own ORIGINAL title against every title of the other side: the same title (or the same once its closing
+   *  version tag is dropped, [[VersionTags]]: "Your Name (re-release)" is "Your Name."), a decorated or delimited
+   *  spelling of one ([[containment]], as the title relation reads it), a shared long word, or nothing. */
   def originalTitleRelation(original: Option[String], otherTitles: Seq[String], filmYear: Option[Int] = None): Measure =
     originalFormRelation(original.map(_.trim).filter(_.nonEmpty).map(OriginalForm(_)),
       otherTitles.map(_.trim).filter(_.nonEmpty).map(TitleForm(_)), filmYear)
@@ -262,6 +262,9 @@ private[identity] object TitleRelationMeasures {
     lazy val segmentWords: Seq[Seq[String]] =
       (ownShapes ++ ColonBreak.split(text).headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
     lazy val longWords: Set[String] = form.words.filter(_.length >= 4).toSet
+    /** Its key without the closing version tag it bills ([[VersionTags.versionless]]): "The Lord of the Rings: The Two
+     *  Towers – Extended" is the film's own original title, as a cut of it. */
+    lazy val versionlessKey: Option[String] = VersionTags.versionless(text).map(key).filter(_.nonEmpty)
   }
 
   /** [[originalTitleRelation]] over forms normalised once: a node's original title meets every
@@ -274,7 +277,7 @@ private[identity] object TitleRelationMeasures {
         // The same title — or the film's without its trailing gloss ("TKT (T'inquiète)") — or once years
         // and seasons are dropped: "The Metropolitan Opera: Così fan tutte
         // (2026)" is "The Metropolitan Opera 2026/27: Così fan tutte" (the year is measured apart).
-        else if (others.exists(t => t.key == o.form.key || t.unglossedKey.contains(o.form.key)) ||
+        else if (others.exists(t => t.key == o.form.key || t.unglossedKey.contains(o.form.key) || o.versionlessKey.contains(t.key)) ||
                  others.exists(t => oneTypoApart(o.form.words, t.words)) ||
                  others.exists(_.latinKey == o.form.latinKey) ||
                  (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty && t.yearlessWords == o.form.yearlessWords)))

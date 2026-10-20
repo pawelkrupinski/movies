@@ -133,16 +133,12 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     ("It Ends with Us is It Ends with Us", itEndsWithUs, itEndsWithUsFilm),
     ("Bradley Cooper's A Star Is Born is the 2018 film", starIsBorn2018, cooper))
 
-  // A KNOWN REGRESSION of the r5 refit (docs/design/identity-resolver.md §15.8), pinned pending so
-  // the refit that scores it right flips it red: the resolver now VETOES this listing (its own facts'
-  // probability, 0.06, is under the certified cut) — a 23-minute runtime gap weighs −3.26 and
-  // "Your Name (re-release)" against "Your Name." weighs −2.52, where the same director weighs
-  // +4.22. The old artefact's +5.27 director weight was inflated by unfetched candidate credits.
-  it should "join: an 83-minute Your Name re-release is still Shinkai's film (known regression, pending)" in {
-    pendingUntilFixed {
-      film(yourNameNh, yourName) should be > 0.5
-      model.cannotLink(ListingFilm, IdentityMeasures.listingFilm(yourNameNh, yourName, None, 0, 0)) shouldBe None
-    }
+  // Once a KNOWN REGRESSION of the r5 refit (docs/design/identity-resolver.md §15.8): a 23-minute runtime gap weighs −3.26,
+  // and "Your Name (re-release)" against "Your Name." weighed −2.52 as a `segment`. Read without its version tag
+  // (`VersionTags`) the original title is the film's own (`match`), and the same director (+4.22) carries it.
+  it should "join: an 83-minute Your Name re-release is still Shinkai's film" in {
+    film(yourNameNh, yourName) should be > 0.5
+    model.cannotLink(ListingFilm, IdentityMeasures.listingFilm(yourNameNh, yourName, None, 0, 0)) shouldBe None
   }
 
   differentFilms.foreach { case (name, l, f) =>

@@ -40,6 +40,63 @@ edition	de	restaurierte
 edition	de	Fassung	"Metropolis (rest. Fassung 2010)" dates a restoration, not the film — 6d6e10830
 edition	es	restaurada
 
+# ── version-tag: a WHOLE closing tag naming a version of the film the title names ("– Extended", "(ext.)", "Director's Cut",
+#    "Kinofassung", "wersja reżyserska", "versión extendida") — phrases, read as a closing piece of only these (and format
+#    words), never as loose words: the identity measures read the title without it (services.identity.VersionTags) ──
+version-tag	en	extended
+version-tag	en	extended version
+version-tag	en	extended versions
+version-tag	en	extended edition
+version-tag	en	extended cut
+version-tag	en	ext
+version-tag	en	ext version
+version-tag	en	ext vers
+version-tag	en	director's cut
+version-tag	en	directors cut
+version-tag	en	director's edition
+version-tag	en	final cut
+version-tag	en	theatrical cut
+version-tag	en	theatrical version
+version-tag	en	uncut
+version-tag	en	redux
+version-tag	en	remastered
+version-tag	en	remaster
+version-tag	en	restored
+version-tag	en	restoration
+version-tag	en	4K restoration
+version-tag	en	4K remastered
+version-tag	en	remastered 4K
+version-tag	en	re-release
+version-tag	en	rerelease
+version-tag	en	special edition
+version-tag	en	ultimate edition
+version-tag	en	ultimate cut
+version-tag	de	Kinofassung
+version-tag	de	Langfassung
+version-tag	de	erweiterte Fassung
+version-tag	de	ungekürzte Fassung
+version-tag	de	restaurierte Fassung
+version-tag	de	restauriert
+version-tag	de	restaurierte
+version-tag	de	restaurierte Version
+version-tag	de	Restaurierung
+version-tag	de	4K-Restaurierung
+version-tag	pl	wersja rozszerzona
+version-tag	pl	wersja reżyserska
+version-tag	pl	wersja odrestaurowana
+version-tag	pl	wersja zremasterowana
+version-tag	pl	odrestaurowana
+version-tag	pl	zremasterowana
+version-tag	pl	edycja specjalna
+version-tag	es	versión extendida
+version-tag	es	versión del director
+version-tag	es	montaje del director
+version-tag	es	versión restaurada
+version-tag	es	versión remasterizada
+version-tag	es	remasterizada
+version-tag	es	restaurada
+version-tag	es	edición especial
+
 # ── premiere: a premiere or preview screening ──
 premiere	pl	premiera
 premiere	pl	przedpremiera

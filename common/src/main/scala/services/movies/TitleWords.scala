@@ -24,6 +24,9 @@ object TitleWords {
     case Anniversary     extends Concept("anniversary")
     /** `DecorationWords.EditionWords`. */
     case Edition         extends Concept("edition")
+    /** `services.identity.VersionTags`: a closing tag naming a version of the film ("– Extended", "Director's Cut"), which
+     *  the identity measures read the title without. Read as PHRASES ([[foldedPattern]]), never as loose words. */
+    case VersionTag      extends Concept("version-tag")
     /** `DecorationWords.EventWords` (and `MultiFilmBill.EventTailWords`). */
     case Premiere        extends Concept("premiere")
     case Talk            extends Concept("talk")
