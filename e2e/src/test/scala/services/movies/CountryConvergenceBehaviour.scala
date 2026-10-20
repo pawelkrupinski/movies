@@ -1610,8 +1610,8 @@ abstract class CountryConvergenceBehaviour(
       // scrape and would move nothing anywhere else.
       val firstDays  = today.values.flatMap(_.flatMap(_.showtimes).map(_.dateTime.toLocalDate).minOption).toSeq.sorted
       val cutoff     = firstDays(firstDays.size / 2).plusDays(1).atStartOfDay
-      def fromCutoff(cm: CinemaMovie) = cm.copy(showtimes = cm.showtimes.filterNot(_.dateTime.isBefore(cutoff)))
-      val tomorrow   = today.map { case (c, fs) => c -> fs.map(fromCutoff).filter(_.showtimes.nonEmpty) }
+      def fromCutoff(cm: CinemaMovie) = NextDayListings.fromCutoff(cm, cutoff)
+      val tomorrow   = NextDayListings.of(today, cutoff)
 
       // The two failing venues: the first two, by name, with two or more films still
       // screening tomorrow — so each has something to lose.
@@ -1633,7 +1633,8 @@ abstract class CountryConvergenceBehaviour(
       val receivers  = tomorrow.toSeq.filter { case (c, fs) => fs.nonEmpty && !failing.contains(c) }.sortBy(_._1.displayName)
       val arrivals: Seq[(Cinema, CinemaMovie, StoredMovieRecord)] =
         tomorrow.toSeq.sortBy(_._1.displayName).iterator.flatMap { case (from, fs) =>
-          fs.sortBy(_.movie.title).iterator.flatMap { cm =>
+          // A listing with showtimes: one billed with none (kept as billed) opens nowhere new.
+          fs.filter(_.showtimes.nonEmpty).sortBy(_.movie.title).iterator.flatMap { cm =>
             holderOf.get((from, keyOf(from, cm))).filter(_.record.tmdbId.isDefined).flatMap { film =>
               receivers.find { case (to, listed) =>
                 to != from && Cinema.cityOf(to) == Cinema.cityOf(from) &&
@@ -1660,7 +1661,7 @@ abstract class CountryConvergenceBehaviour(
           def healthyWithout(cm: CinemaMovie): Boolean =
             !ScrapeHealth.looksPartial(today.getOrElse(c, Nil).size, fs.size - 1, listingIsComplete = true) &&
               ScrapeHealth.depth(held, held - cm.showtimes.size, consecutiveRejections = 0) == ScrapeHealth.Depth.Healthy
-          fs.sortBy(_.movie.title).iterator.filter(healthyWithout).flatMap(cm =>
+          fs.filter(_.showtimes.nonEmpty).sortBy(_.movie.title).iterator.filter(healthyWithout).flatMap(cm =>
             holderOf.get((c, keyOf(c, cm)))
               .filter(r => listingsOf.get(r.id).contains(1) && !arrivals.exists(_._3.id == r.id))
               .map(r => (c, cm, r))).take(1)
@@ -1795,13 +1796,9 @@ abstract class CountryConvergenceBehaviour(
       // lacked on day one is the detail refresh coming due again, not churn: `ownUnchanged` exempts every non-venue
       // slot from "did its listings change", so its arrival cannot count as a rewrite either. Run 528 (#193): a
       // record vetoed off its TMDB film on day one carried no Cinema City slot, and day two's refresh wrote one.
-      def networkSlot(source: models.Source) = source match {
-        case models.CinemaShowing(c, _) => models.CinemaNetworks.all.contains(c)
-        case _                          => false
-      }
       def lessArrivedNetwork(next: StoredMovieRecord, first: StoredMovieRecord) =
         next.copy(record = next.record.copy(data = next.record.data.filterNot { case (source, _) =>
-          networkSlot(source) && !first.record.data.contains(source) }))
+          NextDayListings.isNetworkSlot(source) && !first.record.data.contains(source) }))
       val rewritten = unchanged.filterNot(r => afterBy.get(r.id).map(a => undated(lessArrivedNetwork(a, r))).contains(undated(r)))
       val churn = Option.when(rewritten.nonEmpty)(
         s"${rewritten.size} film(s) whose listings did not change were rewritten or lost:\n" +
