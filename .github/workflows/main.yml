@@ -112,9 +112,15 @@ jobs:
         steps:
             # Full history, BLOBLESS — the tier gates below diff against each tier's last DEPLOYED
             # commit, which a shallow checkout would not have; commits and trees only.
+            # ON FORGEJO, A DEPTH INSTEAD OF 0: the Forgejo copy of the repo is itself shallow (at
+            # 257ad0a), and a depth-0 blobless fetch of a shallow server loops — the client rejects
+            # the server's shallow root ("shallow roots are not allowed to be updated"), its
+            # promisor lazy-fetches it, and the recursion spins until `cannot exec 'remote-http':
+            # Argument list too long` or the job's timeout (run #83). A depth past the root takes
+            # every commit the server has and records the root as the client's own shallow line.
             - uses: actions/checkout@v5
               with:
-                  fetch-depth: 0
+                  fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
                   filter: blob:none
             - name: What is the web tier actually running?
               id: base-web
@@ -230,10 +236,10 @@ jobs:
             contents: read
         steps:
             # Full history, BLOBLESS: the gate diffs this push against the head of each
-            # suite's newest run, which can be several pushes back.
+            # suite's newest run, which can be several pushes back. The Forgejo depth: see `gates`.
             - uses: actions/checkout@v5
               with:
-                  fetch-depth: 0
+                  fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
                   filter: blob:none
             # Both convergence suites — the pipeline's and the identity model's — on the same
             # gate: only for a push that can change a verdict (`.github/convergence-paths.txt`),
