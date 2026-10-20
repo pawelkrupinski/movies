@@ -304,7 +304,9 @@ jobs:
     # 3-hour one — the 6-hour cancellation the split exists to escape. The leg costs one
     # more concurrent runner while it is in flight rather than one more afternoon.
     convergence:
-        name: ${{ matrix.phase }}
+        # `<phase> (<country>)`, the label the row's test report carries: Forgejo shows a reusable workflow's jobs without
+        # the caller's `<country> / ` prefix github.com adds, so a bare phase left five countries' rows indistinguishable.
+        name: ${{ matrix.phase }} (${{ inputs.country }})
         strategy:
             fail-fast: false
             matrix:
@@ -468,7 +470,7 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
-                  scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "(${{ inputs.country }}) / convergence" 1080
+                  scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "convergence (${{ inputs.country }})" 1080
                   gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive
                   .github/scripts/unpack-fixture-archive.sh "scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
 

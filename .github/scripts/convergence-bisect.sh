@@ -59,7 +59,7 @@ last_green() {
         # The FULL leg's job, green — a sample alone passing says nothing about the full leg.
         # A run that cannot be read is not a red one: stop rather than bisect from an older base.
         green=$(timeout 60 gh run view "$run" --json jobs \
-               --jq ".jobs[] | select(.name == \"$COUNTRY / convergence\" and .conclusion == \"success\") | .name") || return 2
+               --jq ".jobs[] | select((.name == \"$COUNTRY / convergence\" or (.name | endswith(\"convergence ($COUNTRY)\"))) and .conclusion == \"success\") | .name") || return 2
         if [ -n "$green" ]; then
             echo "$sha"
             return 0

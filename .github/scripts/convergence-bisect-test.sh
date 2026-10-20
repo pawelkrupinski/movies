@@ -31,10 +31,10 @@ case "$1 $2" in
   "run list") [ -f "$STUB/runs" ] || { echo "HTTP 502" >&2; exit 1; }; cat "$STUB/runs" ;;
   "run view") run=$3
               [ -f "$STUB/view-$run.fail" ] && { echo "HTTP 500" >&2; exit 1; }
-              # the jobs that passed, filtered by the job name the caller's --jq asks for
+              # the jobs that passed, run through the caller's own --jq
               jq=""; while [ "$#" -gt 0 ]; do [ "$1" = --jq ] && jq="$2"; shift; done
-              want=$(printf '%s' "$jq" | sed -n 's/.*\.name == "\([^"]*\)".*/\1/p')
-              grep -x "$want" "$STUB/green-$run" 2>/dev/null || true ;;
+              [ -f "$STUB/green-$run" ] || exit 0
+              jq -R '{name: ., conclusion: "success"}' "$STUB/green-$run" | jq -s '{jobs: .}' | jq -r "$jq" ;;
 esac
 STUB
 chmod +x "$work/bin/gh"
@@ -53,6 +53,10 @@ check "...read no further than it" "0" "$(grep -c 'run view 904' "$work/calls")"
 check "...and never this run itself" "0" "$(grep -c 'run view 900' "$work/calls")"
 rm -f "$work/green-903" "$work/green-904"
 check "no run's full leg passed: exit 1, nothing printed" "|1" "$(out=$(last_green); echo "$out|$?")"
+echo "convergence (poland)" > "$work/green-904"
+check "a Forgejo run's leg, named \`<phase> (<country>)\` without the caller prefix" "sha-older-green|0" "$(out=$(last_green); echo "$out|$?")"
+echo "poland / order-independence (poland)" > "$work/green-904"
+check "...but never another phase's row" "|1" "$(out=$(last_green); echo "$out|$?")"
 echo "poland / convergence" > "$work/green-904"
 touch "$work/view-903.fail"
 check "a run that cannot be read is no red run: exit 2, not an older base" "|2" "$(out=$(last_green); echo "$out|$?")"

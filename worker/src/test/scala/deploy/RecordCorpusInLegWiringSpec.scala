@@ -52,7 +52,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "hand a recording's order row the corpus its convergence row records, through the run's artifact" in {
     val restore = RepoFile.step(convergence, Restore)
     restore should include("if: inputs.mode == 'record' && matrix.phase != 'convergence'\n")
-    restore should include("""scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "(${{ inputs.country }}) / convergence"""")
+    restore should include("""scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "convergence (${{ inputs.country }})"""")
     restore should include("""gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive""")
     withClue("restored before anything replays it: ")(at(s"- name: $Restore") should be < at(s"- name: $Suite"))
   }

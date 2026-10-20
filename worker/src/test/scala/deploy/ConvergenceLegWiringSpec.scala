@@ -513,7 +513,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    */
   it should "carry only the phase in its matrix, and pick the rest off the leg's inputs" in {
     val block = RepoFile.block(leg, "convergence")
-    block should include("name: ${{ matrix.phase }}")
+    block should include("name: ${{ matrix.phase }} (${{ inputs.country }})")
     // The MATRIX is planned off the inputs alone — never off another job's outputs.
     RepoFile.block(block, "strategy") should not include "needs."
   }
