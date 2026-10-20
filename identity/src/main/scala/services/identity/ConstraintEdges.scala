@@ -111,6 +111,18 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         !linkedFilm.exists(_ != film) && otherFilm.isEmpty && families.denies(other, film)
     }
 
+  /** Does `other`, holding no film, deny the film `linked`'s TMDB-keyed feed links only by the facts of a REUSED page
+   *  ([[Families.readsAsReused]]) — another record's original title, director and year copied onto it? Its title may be
+   *  the linked film's word for word, but its facts are that other record's, and a cluster pooling them vetoes the film
+   *  for every member. DE Bambi's "De Gaulle Zeit des Widerstands" sits on kinoheld's page of Schauder's "Vater, Sohn
+   *  und der Preis des Widerstands" (1675748): joined by its title to E-Werk's, Weltspiegel's and Zeise's billings, which
+   *  Cineamo links to Baudry's De Gaulle (1165366m), it denied them their film (recording 528). */
+  private def reusedPageDeniesLink(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
+    scoring.generation.numbersFilmsByTmdbId && otherFilm.isEmpty && FeedLink.linked(linked.listings).exists { case (_, film) =>
+      !linkedFilm.exists(_ != film) && !FeedLink.linked(other.listings).exists(_._2 == film) && families.denies(other, film) &&
+        families.readsAsReused(other)
+    }
+
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
     pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
@@ -126,7 +138,9 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         Option.when(firstFilm.exists(families.denies(second, _)) || secondFilm.exists(families.denies(first, _)))("denies-film"),
         listingsApart(first, second),
         Option.when(copiedOriginalJoinsAnotherFilm(first, second, firstFilm, secondFilm) ||
-          copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart)
+          copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart),
+        Option.when(reusedPageDeniesLink(first, second, firstFilm, secondFilm) || reusedPageDeniesLink(second, first, secondFilm, firstFilm))(
+          ConstraintEdges.ReusedPageApart)
       ).flatten
       val titleX = sanitized(firstEvidence.cleanTitle)
       val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
@@ -158,6 +172,8 @@ private[identity] object ConstraintEdges {
   val TitleSegment     = "title-segment"
   /** The cannot-link of two nodes a feed's copied original title alone joins, one's feed linking a film the other's is not. */
   val CopiedOriginalApart = "copied-original-apart"
+  /** The cannot-link of a node a feed links to a film and one whose reused page's copied facts deny it. */
+  val ReusedPageApart = "reused-page-apart"
 
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */
