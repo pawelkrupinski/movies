@@ -52,9 +52,9 @@ let
         deleted=0
         for t in $tags; do
           d=$(digest "$repo" "$t") || continue
-          [ -n "$d" ] && ! grep -qx "$d" <<<"$keepers" || continue
+          if [ -z "$d" ] || grep -qx "$d" <<<"$keepers"; then continue; fi
           # A digest shared by several tags goes with the first; the rest then 404, harmlessly.
-          curl -fsS -o /dev/null -X DELETE "$api/$repo/manifests/$d" && deleted=$((deleted + 1)) || true
+          if curl -fsS -o /dev/null -X DELETE "$api/$repo/manifests/$d"; then deleted=$((deleted + 1)); fi
         done
         echo "$repo: kept $(wc -l <<<"$keepers") image(s), deleted $deleted"
       done
