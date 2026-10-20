@@ -315,7 +315,10 @@ ratchet() { # <checkout> <out file>
   local tool="$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" scope=""
   grep -q '"countries"' "$tool" 2>/dev/null && scope=" --countries $cc"
   if [ -f "$tool" ]; then
-    ( cd "$1" && sbt -J-Xmx"$ratchet_heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched$scope" > "$2.log" 2>&1 ) \
+    # Unforked, whatever the base's build says: a base from 82de60cf0 until project/ForkedTests.scala kept `run` in the
+    # server forked its tools in worker/, where the repo-relative identity-judgements.tsv is missing (Forgejo run 195, every row).
+    ( cd "$1" && sbt -J-Xmx"$ratchet_heap" 'set worker / Test / run / fork := false' 'set worker / Test / runMain / fork := false' \
+        "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched$scope" > "$2.log" 2>&1 ) \
       || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }
   else
     ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \

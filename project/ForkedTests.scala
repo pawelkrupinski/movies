@@ -49,6 +49,13 @@ object ForkedTests {
   /** `config`'s specs in a forked JVM with at most `heap` (an `-Xmx` value, e.g. "2g"). */
   def settings(config: Configuration, heap: String): Seq[Setting[_]] = Seq(
     config / fork := true,
+    // The SPECS fork; a tool run from the configuration (`worker/Test/runMain scripts.UnmatchedClustersRatchet`, the
+    // recorder) does not. Forked, `run` took the module's directory as its working directory -- `run / forkOptions`
+    // is not the specs' -- so every repo-relative path a tool reads went missing (identity-judgements.tsv: the takes
+    // check's base ratchet, Forgejo identity-model-convergence run 195), and its heap was the specs' cap, not the
+    // -J-Xmx its caller gives sbt. In the server, as before the specs forked.
+    config / run / fork     := false,
+    config / runMain / fork := false,
     // Suites in parallel inside the fork, as they ran in the server — unless the order-independence run made them
     // sequential (TEST_ORDER_SEED sets parallelExecution false).
     config / testForkedParallel := (config / parallelExecution).value,
