@@ -251,11 +251,16 @@ object RepoFile {
    *  WORKER leg is `enabled: false`, and the newest country never had a fly toml. This
    *  is the only place a country's sweep rate exists: `Freshness.scrapeTtlFrom`
    *  reads the env var at runtime and `WorkerWiring` captures it once, so no
-   *  `Country` field and no running-JVM test can reach it. */
-  def deployedFreshnessMinutes(cc: String): Option[Int] =
-    scala.util.Try(read(s"infra/kubernetes/worker/overlays/$cc/patch.yaml"))
+   *  `Country` field and no running-JVM test can reach it.
+   *
+   *  A country without an overlay has no cadence; a checkout without the manifests at all fails
+   *  here, pointing at `fetch-gitops`, rather than reading as every country lacking one. */
+  def deployedFreshnessMinutes(cc: String): Option[Int] = {
+    if (!exists(GitOpsRoot)) failMissing(GitOpsRoot)
+    scala.util.Try(read(s"$GitOpsRoot/worker/overlays/$cc/patch.yaml"))
       .toOption
       .flatMap(freshnessMinutesIn)
+  }
 
   /** Every workflow file under `.github/workflows/`, sorted by name — the set a
    *  repo-wide rule about what CI is allowed to do has to be checked against.
