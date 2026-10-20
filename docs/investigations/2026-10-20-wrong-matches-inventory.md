@@ -138,6 +138,16 @@ older record of the same house or work, and the trace ends `BelowThreshold`.
 
 ### U4. Right film weighed but below the calibrated cut: 133 listings, unowned (DE Cineamo subset → feed-link)
 
+**Follow-up (2026-10-20, 22:00 UTC): most of U4 is not lost.** `identity_traces` is the model stage only. Joining
+the 128 non-Cineamo U4/U6 listings through `movie_slots` to `movies.tmdbId` in the same mirrors: **102 are served the
+judged-right film** (the agreement stage takes them after the model's BelowThreshold: Fallen Angels ×16, Candyman ×8,
+Resident Evil ×4, the Korelacje nights, the Purbeck and "+ Q&A" billings …), 1 has no slot, and **25 are really
+lost**: de Das Boot - Director s Cut, TACHELES, Tim Brownlow - Nosferatu, Karmele, Tour du cinéma ×2, Der nackte
+Wahnsinn, O vecech nadprirozených, JUMP SCARE, ZIRKUS FUMEUSEMENT; pl Cicha powódź, Teatr weteranów, FRIDA KAHLO,
+Ice Cream Man ×3 (prod agrees on a Filmweb id only), Audiencja, Lydia, KINO KONESERA, Festiwal Korelacje: „Zemsta”,
+Avengers … Dogrywka, André Rieu; uk Pip and Posy's Cinema Show, Spooked: E.T., Purbeck Film Festival - Dr Zhivago.
+Re-run the class with served films before sizing a fix by it.
+
 The right film is the weighed one (W=R) but scores under `favoured-calibrated`'s cut. There are three shapes:
 
 1. **Strand / programme prefixes and event suffixes left in the title.** The title feature drops to `title=none` or
