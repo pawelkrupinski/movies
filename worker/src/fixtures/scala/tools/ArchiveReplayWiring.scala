@@ -61,6 +61,10 @@ class ArchiveReplayWiring(
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
 
+  // A wiring that reaches the real wire counts toward the run's report of what it asked each service (CiHttpCalls);
+  // a hermetic one's "requests" are refusals its own leaf names, not calls.
+  if (hermetic.isEmpty) CiHttpCalls.track(workerMetrics.httpMetrics)
+
   /** The one seam a hermetic run changes. Every chain above the wire — fixtures first,
    *  remembered verdicts, recorder, throttles, breakers — is built exactly as the
    *  recording run builds it, so the two can only differ in whether a request that

@@ -663,6 +663,67 @@
       ]
     },
     {
+      "type": "timeseries",
+      "title": "CI calls per external service",
+      "description": "What CI itself asked the outside world: every live outbound call a recording convergence leg (Record scrape fixtures) or a hermetic leg's pre-suite fill made, per external service, summed over each run's countries and rows. The same counter as production's (kinowo_worker_http_total), dumped at the end of each CI job and pushed as kinowo_ci_http_calls{job=\"ci-recording\"} through grafana.kinowo.net's token-gated OTLP path (scripts/ci/ci_http_calls.py). One bar per hour a run reported in (a run reports once per leg, hours apart): compare it with the production fetch rate in the panels above -- CI shares TMDB's and IMDb's per-key and per-IP limits with nothing, but OMDb's daily quota with production. The job summary of each leg holds the same counts as a table.",
+      "id": 31,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service) (max_over_time(kinowo_ci_http_calls{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{service}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ],
+      "interval": "1h"
+    },
+    {
       "id": 13,
       "title": "Caches \u2014 bytes held against budget",
       "description": "This tier's in-heap caches, and the reading that was missing for both of its heap incidents. The gzipped-response cache was unbounded when a crawler walking the US sitemap pinned all 55 states in a 768m heap and web-us OOM-crash-looped hourly; the share-card cache repeated it on 2026-09-04 behind a bound that counted ENTRIES over rendered images, taking web-uk's old-gen floor from 29% to 71% in two hours. The budget is plotted rather than written here so it stays right when retuned. Poland's corpus fits several times over and should sit flat well under its ceiling; the US should ride at it \u2014 a country that STARTS evicting when it never used to is a corpus that grew.",
@@ -675,7 +736,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 51
       },
       "fieldConfig": {
         "defaults": {
@@ -757,7 +818,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 51
       },
       "fieldConfig": {
         "defaults": {
@@ -834,7 +895,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 59
       },
       "fieldConfig": {
         "defaults": {
@@ -880,7 +941,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 65,
+        "y": 73,
         "w": 12,
         "h": 8
       },
@@ -940,7 +1001,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 65,
+        "y": 73,
         "w": 12,
         "h": 8
       },
@@ -997,7 +1058,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 73,
+        "y": 81,
         "w": 12,
         "h": 8
       },
@@ -1057,7 +1118,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 73,
+        "y": 81,
         "w": 12,
         "h": 8
       },
@@ -1117,7 +1178,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 81,
+        "y": 89,
         "w": 12,
         "h": 5
       },
@@ -1192,7 +1253,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 86,
+        "y": 94,
         "w": 12,
         "h": 8
       },
@@ -1235,7 +1296,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 86,
+        "y": 94,
         "w": 12,
         "h": 8
       },
@@ -1278,7 +1339,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 94,
+        "y": 102,
         "w": 12,
         "h": 8
       },
@@ -1321,7 +1382,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 94,
+        "y": 102,
         "w": 12,
         "h": 8
       },
@@ -1364,7 +1425,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 102,
+        "y": 110,
         "w": 24,
         "h": 8
       },
@@ -1416,7 +1477,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 110,
+        "y": 118,
         "w": 14,
         "h": 22
       },
@@ -1518,7 +1579,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 110,
+        "y": 118,
         "w": 10,
         "h": 22
       },
@@ -1598,7 +1659,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 132,
+        "y": 140,
         "w": 12,
         "h": 10
       },
@@ -1678,7 +1739,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 132,
+        "y": 140,
         "w": 12,
         "h": 10
       },

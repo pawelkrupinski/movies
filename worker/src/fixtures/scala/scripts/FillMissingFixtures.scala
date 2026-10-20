@@ -70,7 +70,12 @@ object FillMissingFixtures {
     // The residential proxy, when the process holds its credentials: what the origin refuses directly is asked again
     // through it, as production reaches those origins (`MissingFixtureFill.route`).
     val proxy = MissingFixtureFill.residentialProxy(configuration, tls).map(paced)
-    val live: HttpFetch = MissingFixtureFill.route(paced(new RealHttpFetch(tls = tls)), proxy)
+    // Counted as the convergence leg's own wiring counts its wire, under its own phase, for the run's report of what
+    // it asked each service (tools.CiHttpCalls).
+    val calls = new services.metrics.WorkerHttpMetrics(Seq(country.code), new io.prometheus.metrics.model.registry.PrometheusRegistry())
+    tools.CiHttpCalls.track(calls)
+    val live: HttpFetch = new tools.CountingHttpFetch(MissingFixtureFill.route(paced(new RealHttpFetch(tls = tls)), proxy),
+      calls.recorderFor(country.code, "fill"))
     val fill = new MissingFixtureFill(
       MissingFixtureFill.heldIn(settings.FixtureRoot(held), tree),
       MissingFixtureFill.recordingInto(settings.FixtureRoot(out), tree, live),
@@ -89,6 +94,7 @@ object FillMissingFixtures {
     // What the legs after this one replay beyond the pinned tree, where the run's page shows it.
     configuration.stepSummaryFile.foreach(summary => scala.util.Try(Files.writeString(summary.value, s"**fill** — $line\n\n",
       java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
+    scala.util.Try(tools.CiHttpCalls.write())
     sys.exit(0)
   }
 }

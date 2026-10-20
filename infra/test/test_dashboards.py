@@ -351,7 +351,9 @@ class CiTimingsDashboard(unittest.TestCase):
                       if any(needle in (t.get("expr") or "") for p in query_panels(document) for t in p.get("targets", [])))
 
     def test_one_board_charts_every_ci_timing(self):
-        self.assertEqual(self.boards_querying("kinowo_ci_"), ["apps/ci-builds.json"])
+        # The timings, not `kinowo_ci_http_calls`: CI's external calls are charted beside production's (kinowo-http.json).
+        for family in ("kinowo_ci_run_seconds", "kinowo_ci_job_seconds", "kinowo_ci_step_seconds", "kinowo_ci_phase_seconds"):
+            self.assertEqual(self.boards_querying(family), ["apps/ci-builds.json"], family)
 
     def test_it_shows_convergence_per_country_and_every_build(self):
         document = dict(dashboards())["apps/ci-builds.json"]

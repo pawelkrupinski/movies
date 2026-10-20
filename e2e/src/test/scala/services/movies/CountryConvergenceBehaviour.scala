@@ -161,6 +161,8 @@ abstract class CountryConvergenceBehaviour(
       configuration.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
         s"```\n$report\n```\n\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
     }
+    // What this leg asked each external service, for the job summary and Prometheus (scripts/ci/ci_http_calls.py).
+    Try(tools.CiHttpCalls.write())
     enrichmentCacheStore.close()
     passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
     storage.close()

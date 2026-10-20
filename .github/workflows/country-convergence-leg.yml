@@ -708,6 +708,19 @@ jobs:
                   # can silently fall back is one that quietly stops testing what it claims.
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
 
+            # WHAT THIS JOB ASKED THE OUTSIDE WORLD: the live calls of a recording's suite, or of a hermetic leg's
+            # pre-suite fill, per external service and outcome -- the worker's own `kinowo_worker_http_total`, dumped by
+            # tools.CiHttpCalls -- as a table on the summary and as `kinowo_ci_http_calls{job="ci-recording"}` beside
+            # production's (Grafana "Kinowo HTTP", "CI calls per external service"). Nothing asked, nothing reported;
+            # never fails the leg (scripts/ci/ci_http_calls.py).
+            - name: Report the external services this job called
+              if: always() && !startsWith(matrix.phase, 'takes')
+              shell: bash
+              env:
+                  GRAFANA_URL: ${{ secrets.GRAFANA_URL || 'https://grafana.kinowo.net' }}
+                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+              run: python3 scripts/ci/ci_http_calls.py --country "${{ inputs.code }}" --row "${{ matrix.phase }}" --push || true
+
             - name: Upload the suite's CPU profile
               if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')
               uses: actions/upload-artifact@v6

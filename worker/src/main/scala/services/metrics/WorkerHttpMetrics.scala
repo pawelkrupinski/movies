@@ -53,6 +53,10 @@ class WorkerHttpMetrics(countryCodes: Seq[String], registry: PrometheusRegistry)
    *  [[modules.WorkerWiring]] injects into that phase's [[tools.CountingHttpFetch]]. */
   def recorderFor(country: String, phase: String): HttpOutcomeRecorder =
     (outcome: String) => requests.labelValues(country, phase, outcome).inc()
+
+  /** Every cell's count now, whatever labels the family carries — what a CI recording leg dumps
+   *  into its job summary and pushes beside production (tools.CiHttpCalls, scripts/ci/ci_http_calls.py). */
+  def snapshot(): io.prometheus.metrics.model.snapshots.CounterSnapshot = requests.collect()
 }
 
 object WorkerHttpMetrics {
