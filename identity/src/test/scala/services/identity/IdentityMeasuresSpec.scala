@@ -1307,5 +1307,55 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),
       Film("Star Wars: The Force Awakens", year = Some(2015))) shouldBe false
   }
+
+  "a numbered title whose original title gives a subtitle" should "be another instalment only when none of the film's titles holds it" in {
+    // DE Kinopolis' "Der Herr der Ringe 2 (Extended Version)" (Forgejo recording 528) took Bakshi's 1978 film by its bare top hit
+    val lotr2    = Listing("Der Herr der Ringe 2 (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended"))
+    val bakshi   = Film("Der Herr der Ringe", originalTitle = Some("The Lord of the Rings"), year = Some(1978))
+    val twoTowers = Film("Der Herr der Ringe - Die zwei Türme", originalTitle = Some("The Lord of the Rings: The Two Towers"), year = Some(2002))
+    IdentityMeasures.numbersAnotherSubtitle(lotr2, bakshi) shouldBe true
+    // an alternative title's number is a catalogue's, not the film's: TMDB's Spanish one for Bakshi's
+    IdentityMeasures.numbersAnotherSubtitle(lotr2,
+      bakshi.copy(alternativeTitles = Seq("El Señor De Los Anillos (Animación) 2 - El Señor De Los Anillos"))) shouldBe true
+    IdentityMeasures.numbersAnotherSubtitle(lotr2, twoTowers) shouldBe false
+    // the subtitle held only by an alternative title, in another language than the film's own titles
+    IdentityMeasures.numbersAnotherSubtitle(lotr2, Film("Der Herr der Ringe - Die zwei Türme", originalTitle = Some("Il Signore degli Anelli - Le due torri"),
+      alternativeTitles = Seq("The Lord of the Rings: The Two Towers"), year = Some(2002))) shouldBe false
+    // a subtitle that is but a version tag names no instalment
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Der Herr der Ringe 2", originalTitle = Some("The Lord of the Rings - Extended Edition")), bakshi) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Alien 2", originalTitle = Some("Aliens: Director's Cut – Remastered 4K")),
+      Film("Aliens - Die Rückkehr", originalTitle = Some("Aliens"), year = Some(1986))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Terminator 2 (4K)", originalTitle = Some("Terminator 2: Judgment Day – Remastered")),
+      Film("Terminator", originalTitle = Some("The Terminator"), year = Some(1984))) shouldBe true
+    // a number that is no part's: a year, a name, a spelled-out series number
+    IdentityMeasures.numbersAnotherSubtitle(Listing("2001: Odyssee im Weltraum", originalTitle = Some("2001: A Space Odyssey")),
+      Film("2001: Odyssee im Weltraum", originalTitle = Some("2001: A Space Odyssey"), year = Some(1968))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Ocean's 11", originalTitle = Some("Ocean's Eleven: Remastered")),
+      Film("Ocean's Eleven", year = Some(2001))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Fantastic 4", originalTitle = Some("The Fantastic Four: First Steps")),
+      Film("Fantastic Four", year = Some(2005))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(Listing("9½ Wochen", originalTitle = Some("9½ Weeks: Uncut")),
+      Film("9½ Wochen", originalTitle = Some("Nine 1/2 Weeks"), year = Some(1986))) shouldBe false
+    // a number mid-title, in an original title that only repeats the billing: PL Kinoteka's Wajda retrospective
+    val wajda = "BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin"
+    IdentityMeasures.numbersAnotherSubtitle(Listing(wajda, originalTitle = Some(wajda)), Film("Brzezina", year = Some(1970))) shouldBe false
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Der Herr der Ringe Teil Zwei", originalTitle = Some("The Lord of the Rings: The Two Towers")), bakshi) shouldBe true
+    // a series' slot number, not the film's: the subtitle is the film
+    IdentityMeasures.numbersAnotherSubtitle(Listing("KinoKult 3 - Metropolis"), Film("Metropolis", year = Some(1927))) shouldBe false
+    // the billing's own subtitle is the venue's language, which a record in another need not hold (DE Neues Regina)
+    IdentityMeasures.numbersAnotherSubtitle(Listing("HOBBIT 2: SMAUGS EINÖDE (EXTENDED)"),
+      Film("The Hobbit: The Desolation of Smaug", year = Some(2013))) shouldBe false
+    // a year with its century elided numbers no instalment (PL Kino Światowid)
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Halloween '26: Inni (re- release)", originalTitle = Some("Halloween: The Others")),
+      Film("Halloween", year = Some(1978))) shouldBe false
+    // a part the original title numbers, not subtitles
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Harry Potter 7", originalTitle = Some("Harry Potter and the Deathly Hallows: Part 1")),
+      Film("Harry Potter und die Heiligtümer des Todes - Teil 1", originalTitle = Some("Harry Potter and the Deathly Hallows: Part 1"), year = Some(2010))) shouldBe false
+    // a film numbered as the billing's instalment is that instalment, whatever its titles say
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Shrek 2", originalTitle = Some("Shrek 2: The Sing-Along")), Film("Shrek 2", year = Some(2004))) shouldBe false
+    // no number, nothing to compare
+    IdentityMeasures.numbersAnotherSubtitle(Listing("Der Herr der Ringe (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended")),
+      bakshi) shouldBe false
+  }
 }
 
