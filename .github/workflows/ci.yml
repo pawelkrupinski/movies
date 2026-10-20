@@ -652,12 +652,16 @@ jobs:
             # (DeployImageReuseSpec). It was a job of its own, `image-web`, which `needs: e2e` held until the
             # `rest` row finished too and then queued for a runner: it ended at 5.5 min on run 38810289586, after
             # every ci row. Here it costs this row ~1 min and no runner. Never on a PR run.
+            # `!github.event.pull_request`, not `github.event_name != 'pull_request'`: this is a reusable
+            # workflow, and Forgejo (CI since the GitHub suspension) reports a reusable workflow's
+            # event_name as `workflow_call`, so the name test let PR runs push images. The caller's event
+            # payload carries `pull_request` on a PR run on both platforms.
             - name: Lay the staged web dist where the Dockerfile's whitelisted context sees it
-              if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+              if: matrix.shard == 'corpus' && !github.event.pull_request
               # `stage/`, the only path .dockerignore lets through.
               run: cp -R web/target/universal/stage stage
 
-            - if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+            - if: matrix.shard == 'corpus' && !github.event.pull_request
               uses: docker/login-action@v3
               with:
                   registry: ${{ env.REGISTRY_HOST }}
@@ -665,11 +669,11 @@ jobs:
                   password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
             # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
-            - if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+            - if: matrix.shard == 'corpus' && !github.event.pull_request
               uses: ./.github/actions/setup-buildx
 
             - name: Build and push the web image under this commit's SHA tag only
-              if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+              if: matrix.shard == 'corpus' && !github.event.pull_request
               uses: docker/build-push-action@v6
               with:
                   context: .
@@ -690,7 +694,7 @@ jobs:
               # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
               # jars, already zipped, so compressing again only costs upload time — and
               # kept one day, since its one consumer runs minutes after this job.
-              if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+              if: matrix.shard == 'corpus' && !github.event.pull_request
               uses: actions/upload-artifact@v6
               with:
                   name: stage-worker

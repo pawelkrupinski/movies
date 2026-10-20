@@ -158,7 +158,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
         image should not include "steps.tag.outputs.value"
         // The web's build sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
         if (tier == "web") RepoFile.step(ciYml, "Build and push the web image under this commit's SHA tag only") should include(
-          "if: matrix.shard == 'corpus' && github.event_name != 'pull_request'")
+          "if: matrix.shard == 'corpus' && !github.event.pull_request")
         publish should include(if (tier == "web") "needs: [ci, gates]" else "needs: [ci, gates, image-worker]")
         publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:latest")
