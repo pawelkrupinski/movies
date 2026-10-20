@@ -197,7 +197,8 @@ object ListingShape {
    *    film's own titles and director (a word of them misspelt by a letter: "Living - Einma wirklich leben");
    *  - what a "+" adds after the film ("OPĘTANIE + TRASA PLAKATOWA"), tags piped after it one of which names a programme
    *    ("Królestwo Kensuke | EKO-KINO | ZIELONE INSTYTUCJE KULTURY"), anything around a silent-era film a programme bills;
-   *  - the listing's own original title ("Hacer Mucho con Poco - Do More With Less");
+   *  - the listing's own original title ("Hacer Mucho con Poco - Do More With Less"); an animation studio's name
+   *    ([[StudioTags]]: "Kikis kleiner Lieferservice- Studio Ghibli");
    *  - the film quoted: the quotes name the work, what is around them is the evening's (PL "Festiwal Korelacje: „Zemsta”
    *    z autorską narracją Artura Andrusa").
    *  A piece holding a word of its own, three letters at least ("Athanor - Startblock", a drama school's showcase; "50 na
@@ -276,11 +277,15 @@ object ListingShape {
           .filterNot(k => k >= to && breaks.lift(to - 1).contains("+"))
           .filterNot(k => tagged && piped.contains(k))
           .map(words).find(piece => !original.contains(withoutLeadingArticle(piece)) && piece.exists(own) && !numberedNote(piece, own) &&
-            !programmeWords(piece) && !piece.exists(ScreeningNote.matches) && !venues(piece) && !tagline(piece))
+            !programmeWords(piece) && !piece.exists(ScreeningNote.matches) && !venues(piece) && !tagline(piece) && !StudioTags(piece.mkString(" ")))
           .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
       }
     }
   }
+
+  /** An animation studio's name, as a venue tags its strand of the studio's films beside each title: DE Andreasstadel's
+   *  "Kikis kleiner Lieferservice- Studio Ghibli" is Miyazaki's 1989 film, its studio no second thing billed beside it. */
+  private val StudioTags: Set[String] = Set("studio ghibli", "ghibli", "pixar", "disney pixar", "dreamworks", "aardman")
 
   /** The fewest letters of a director's name an inflected form of it starts with. */
   private val DirectorStem = 5
