@@ -1791,7 +1791,18 @@ abstract class CountryConvergenceBehaviour(
       // A day passed, so the daily TMDB re-try asked again for every unmatched film and
       // re-dated its miss: the WHEN of a no-match moves, what it searched must not.
       def undated(r: StoredMovieRecord) = r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_.copy(at = Instant.EPOCH))))
-      val rewritten = unchanged.filterNot(r => afterBy.get(r.id).map(undated).contains(undated(r)))
+      // ...and a chain's network-level detail slot (`CinemaNetworks`: one film's detail for every branch) a record
+      // lacked on day one is the detail refresh coming due again, not churn: `ownUnchanged` exempts every non-venue
+      // slot from "did its listings change", so its arrival cannot count as a rewrite either. Run 528 (#193): a
+      // record vetoed off its TMDB film on day one carried no Cinema City slot, and day two's refresh wrote one.
+      def networkSlot(source: models.Source) = source match {
+        case models.CinemaShowing(c, _) => models.CinemaNetworks.all.contains(c)
+        case _                          => false
+      }
+      def lessArrivedNetwork(next: StoredMovieRecord, first: StoredMovieRecord) =
+        next.copy(record = next.record.copy(data = next.record.data.filterNot { case (source, _) =>
+          networkSlot(source) && !first.record.data.contains(source) }))
+      val rewritten = unchanged.filterNot(r => afterBy.get(r.id).map(a => undated(lessArrivedNetwork(a, r))).contains(undated(r)))
       val churn = Option.when(rewritten.nonEmpty)(
         s"${rewritten.size} film(s) whose listings did not change were rewritten or lost:\n" +
           CorpusDiff.records(unchanged.sortBy(_.title), unchanged.flatMap(r => afterBy.get(r.id)).sortBy(_.title),
