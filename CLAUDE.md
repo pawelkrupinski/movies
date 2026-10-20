@@ -214,6 +214,10 @@ the end. Per-service limits: `external-api-rate-limits` skill.
 
 ## Investigating identity, scraper or CI failures
 
+CI runs on the self-hosted Forgejo since the GitHub suspension (2026-10-19), and workflows must stay valid on
+github.com. Every Forgejo difference these workflows hit and how they were adapted: infra
+`docs/forgejo-actions.md` (`~/bitcashier/infra/docs/forgejo-actions.md`).
+
 Before an ad-hoc test or a full convergence leg (10–90 min), use the local tools that answer in seconds —
 `scripts/identity-slice` (`--explain`, `--ref A --ref B`, `--bisect`, `--batch`, `--prod-mirror`),
 `scripts/title-trace`, `scripts/venue-replay`, `scripts/recording-diff`, `scripts/listing-history`,
