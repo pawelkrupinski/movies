@@ -237,3 +237,8 @@ subagent brief.**
 - The local prod mirror (`mongodb://127.0.0.1:28017`, `kinowo*_prod_mirror`) may be read, READ-ONLY, after
   `scripts/local-mirror/freshness <cc>`; never `:27017`, never prod itself.
 - Secrets come from the Touch ID vault: `secrets run movies <KEY> -- <command>`.
+- **"value X is not a member of object Y" that a clean build doesn't reproduce is stale zinc, not your code.** Zinc
+  misses a member added to an object another source wildcard-`export`s (`IdentityMeasures`' `export
+  TitleShapeMeasures.*`), in a warm local sbt as much as in a CI build cache restored from an older commit (Main #226).
+  `scripts/ci/sbt-invalidate-exporters.sh` deletes the exporters' classes so zinc recompiles them; `sbt-target-cache`
+  runs it after every restore. Locally, run it (or `clean`) before rebuilding.

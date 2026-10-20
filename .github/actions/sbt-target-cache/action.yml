@@ -52,6 +52,12 @@ runs:
           !*/target/scala-*/*.jar
         key: ${{ inputs.key }}
         restore-keys: ${{ inputs.restore-keys }}
+    # zinc misses one change in a restored build: a member added to an object another source `export X.*`s leaves the
+    # exporter's class without its forwarder (Main #226, an entry from an older commit). Recompiling the few wildcard
+    # exporters, seconds, keeps the incremental build correct; on every restore, since not every key hashes every source.
+    - if: inputs.save-only != 'true'
+      shell: bash
+      run: scripts/ci/sbt-invalidate-exporters.sh
     # The same path list as above, or the entry's version would differ and no restore could read it.
     - if: inputs.save-only == 'true'
       uses: actions/cache/save@v5
