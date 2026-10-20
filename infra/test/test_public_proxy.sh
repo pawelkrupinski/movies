@@ -99,10 +99,11 @@ vhost="$(printf '%s\n' "$vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
 # holding fixtures. Read off the config rather than spelled here, so a moved directory is followed.
 # And EVERY vhost on the product host must serve them, the redirecting www. names included, because
 # og:image carries whichever host the page was reached on. filmowo.kinowo.net is NOT a kinowo product
-# vhost -- a separate app sharing the node -- so it is left out.
+# vhost -- a separate app sharing the node -- so it is left out, and so is registry.kinowo.net, the
+# image registry on the same node (nix/modules/roles/registry.nix), which has no pages to share.
 echo "==> every product vhost serves the share cards"
 share_dirs="$(nix "${nix_flags[@]}" eval --json "$infra/nix#nixosConfigurations.k3s-worker-1.config.fleet.publicProxy.vhosts" \
-  --apply 'vs: builtins.mapAttrs (_: v: v.shareCardsDir) (builtins.removeAttrs vs [ "filmowo.kinowo.net" ])' 2>"$work/eval.err")"
+  --apply 'vs: builtins.mapAttrs (_: v: v.shareCardsDir) (builtins.removeAttrs vs [ "filmowo.kinowo.net" "registry.kinowo.net" ])' 2>"$work/eval.err")"
 share_dir="$(printf '%s' "$share_dirs" | python3 -c 'import json,sys; print(json.load(sys.stdin)["showtimes.cc"] or "")')"
 missing="$(printf '%s' "$share_dirs" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(sorted(k for k,v in d.items() if v != d["showtimes.cc"] or not v)))')"
 if [ -n "$share_dir" ] && [ -z "$missing" ]; then echo "  ok  all of $(printf '%s' "$share_dirs" | python3 -c 'import json,sys; print(", ".join(sorted(json.load(sys.stdin))))') serve $share_dir"
