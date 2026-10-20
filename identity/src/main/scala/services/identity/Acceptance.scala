@@ -269,7 +269,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  Man"), and then only that film may be taken ([[takesNoBill]]). */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
     any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(ListingShape.quotesTwoJoined) ||
-    slashesTwoWorks(any.listing, ranked) ||
+    slashesTwoWorks(any.listing, ranked) || andJoinsTwoWorks(any.listing, ranked) ||
     (MultiFilmBill.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
       MultiFilmBill.billsTwoWholeWorks(any.listing)) ||
       markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&
@@ -282,17 +282,13 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  slash ("Le Fabuleux Destin d'Amélie Poulain / Die fabelhafte Welt der Amélie") are its own, and a piece naming no
    *  candidate ("/ Baby Friendly") no second work. */
   private[identity] def slashesTwoWorks(listing: IdentityMeasures.Listing, ranked: Seq[Scored]): Boolean = {
-    def key(text: String) = {
-      val words = services.movies.TitleContainment.tokens(text)
-      if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
-    }
     def slashed(title: String) = {
       val parts  = SlashBreak.split(title).toSeq
-      val pieces = parts.map(key).filter(_.nonEmpty)
+      val pieces = parts.map(pieceKey).filter(_.nonEmpty)
       // a format, a screening note or an event after the slash is no second work, whatever film carries its name
       // ("Baranek Shaun i kudłata bestia / dubbing", '"LALKA" / Premiera')
       pieces.sizeIs >= 2 && parts.forall(MultiFilmBill.namesAWork) && {
-        val named = pieces.map(piece => eligibleOf(ranked).filter(_.candidate.film.titles.exists(key(_) == piece)).map(_.candidate.tmdbId).toSet)
+        val named = pieces.map(piece => eligibleOf(ranked).filter(_.candidate.film.titles.exists(pieceKey(_) == piece)).map(_.candidate.tmdbId).toSet)
         named.forall(_.nonEmpty) && named.combinations(2).forall { case Seq(a, b) => (a intersect b).isEmpty }
       }
     }
@@ -301,6 +297,37 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))
   }
   private[identity] val SlashBreak = """\s+/\s+""".r
+  /** A title's words, a leading article aside: what a piece of a bill is matched to a film's whole title by. */
+  private def pieceKey(text: String): Seq[String] = {
+    val words = services.movies.TitleContainment.tokens(text)
+    if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
+  }
+
+  /** Does an "AND" join two works — the title's one "and" parting two pieces of two words or more, each the title of
+   *  another candidate (denied or not: a denial says the film is not the BILLING's, not that no film bears the piece's
+   *  title), a word of four or more apart at most, and no candidate titled as the whole billing? UK Hyde Park Picture
+   *  House's "The Tiger Who Came for Tea and We're Going on a Bear Hunt" bills the two shorts as one programme, as the
+   *  "+" and the slash bills do: it took The Tiger Who Came to Tea at 49.6%. A film's own title joining two phrases
+   *  ("Willy Wonka and the Chocolate Factory") is its candidate's whole title; a one-word piece ("The Boy and the Heron"
+   *  beside a film titled "The Boy") is too short to name a work of its own. */
+  private[identity] def andJoinsTwoWorks(listing: IdentityMeasures.Listing, ranked: Seq[Scored]): Boolean = {
+    def unjoined(text: String) = pieceKey(text).filterNot(_ == "and")
+    def nearly(title: Seq[String], piece: Seq[String]) =
+      title == piece || (title.sizeIs == piece.size && piece.sizeIs >= 4 && title.zip(piece).count((a, b) => a != b) == 1)
+    def joined(title: String) = AndBreak.split(title).toSeq match {
+      case Seq(first, second) if Seq(first, second).forall(piece => pieceKey(piece).sizeIs >= 2 && MultiFilmBill.namesAWork(piece)) =>
+        val whole = unjoined(title)
+        !ranked.exists(_.candidate.film.titles.exists(unjoined(_) == whole)) && {
+          val named = Seq(first, second).map(piece => ranked.filter(_.candidate.film.titles.exists(t => nearly(pieceKey(t), pieceKey(piece)))).map(_.candidate.tmdbId).toSet)
+          named.forall(_.nonEmpty) && (named.head intersect named.last).isEmpty
+        }
+      case _ => false
+    }
+    // read for every rule's every ranking: a title with no "and" is split for nothing
+    def read(title: String) = AndBreak.findFirstIn(title).isDefined && joined(title)
+    read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))
+  }
+  private val AndBreak = """(?i)\s+and\s+""".r
 
   /** The one film a marathon billing one title names ([[MultiFilmBill.billedOne]]): the one eligible candidate titled
    *  exactly so, when no eligible candidate's title extends it — PL "Inna Mamusia - maraton" is Inna mamusia (2026);

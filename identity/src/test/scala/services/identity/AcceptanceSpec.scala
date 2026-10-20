@@ -466,6 +466,32 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.billsSeveralWorks(ranked(Listing("We're Going on a Bear Hunt / Premiera"), bear, premiera)) shouldBe false
   }
 
+  it should "be read the same when an \"and\" joins two works, each piece another film's title but for a word" in {
+    // UK Hyde Park Picture House "The Tiger Who Came for Tea and We're Going on a Bear Hunt" [2019] {Joanna Harrison,
+    // Robin Shaw} (2026-10-20 wrong-match inventory): the double bill took The Tiger Who Came to Tea at 49.6%, its
+    // credits naming both shorts' directors; Bear Hunt, the second work, stood in the ranking denied by a learned cut
+    val bill  = Listing("The Tiger Who Came for Tea and We're Going on a Bear Hunt", year = Some(2019), runtime = Some(59),
+      directors = Seq("Joanna Harrison", "Robin Shaw"))
+    val tiger = (644120, Film("The Tiger Who Came to Tea", year = Some(2019), directors = Some(Seq("Robin Shaw"))), Some(1))
+    val bear  = (431591, Film("We're Going on a Bear Hunt", year = Some(2016), directors = Some(Seq("Joanna Harrison"))), None)
+    def deniedBear(scored: Seq[Scored]) = scored.map(sc =>
+      if (sc.candidate.tmdbId == 431591) sc.copy(denial = Some(Denial("Learned(runtime.gap >= 6 AND year.distance >= 2)"))) else sc)
+    acceptance.billsSeveralWorks(deniedBear(ranked(bill, tiger, bear))) shouldBe true
+    taken(deniedBear(ranked(bill, tiger, bear))) shouldBe None
+    // a film titled with the whole billing is its own, whatever films its pieces name
+    val wonka     = (252, Film("Willy Wonka & the Chocolate Factory", year = Some(1971)), Some(1))
+    val willy     = (99002, Film("Willy Wonka", year = Some(2015)), Some(2))
+    val chocolate = (99003, Film("The Chocolate Factory", year = Some(2010)), Some(3))
+    acceptance.billsSeveralWorks(ranked(Listing("Willy Wonka and the Chocolate Factory"), wonka, willy, chocolate)) shouldBe false
+    // nor does a one-word piece bill a work beside it: "The Boy and the Heron" beside a film titled "The Boy"
+    val boy   = (99004, Film("The Boy", year = Some(2016)), Some(1))
+    val heron = (99005, Film("Heron", year = Some(2012)), Some(2))
+    acceptance.billsSeveralWorks(ranked(Listing("The Boy and the Heron"), boy, heron)) shouldBe false
+    // nor a piece naming no film: "Pride and Prejudice and Zombies" beside "Pride & Prejudice" alone
+    val pride = (4348, Film("Pride & Prejudice", year = Some(2005)), Some(1))
+    acceptance.billsSeveralWorks(ranked(Listing("Pride and Prejudice and Zombies"), pride)) shouldBe false
+  }
+
   "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {
     // US "Troll (1986)": TMDB ranks "Troll 2" and the 2022 "Troll" above the 1986 film.
     val troll = Listing("Troll (1986)")
