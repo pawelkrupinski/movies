@@ -302,7 +302,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Varavu", Some(2026), noImdb)), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val omdb   = new OMDbClient(RoutingHttpFetch.getOnly(Seq("?t=" ->
       """{"Title":"Varavu","Year":"2026","imdbID":"tt37963237","Director":"Shaji Kailas","Response":"True"}""")),
-      apiKey = Some(settings.OmdbApiKey("stub")))
+      apiKey = Some(settings.OmdbApiKey("stub")), clock = tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       omdb = Some(omdb), stopwatch = tools.Stopwatch.System)
 
@@ -327,7 +327,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noImdb)), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val omdb   = new OMDbClient(new tools.GetOnlyHttpFetch {
       def get(url: String): String = throw new tools.HttpStatusException(401, "GET", url, None)
-    }, apiKey = Some(settings.OmdbApiKey("stub")))
+    }, apiKey = Some(settings.OmdbApiKey("stub")), clock = tools.SpecClock.Pinned)
     val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),

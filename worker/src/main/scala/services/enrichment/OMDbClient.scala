@@ -9,6 +9,8 @@ import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.{Clock, Instant}
+import scala.concurrent.duration._
 
 /**
  * Feature-gated OMDb (omdbapi.com) client that recovers an IDENTIFIER, not a
@@ -30,11 +32,23 @@ import java.nio.charset.StandardCharsets
  *
  * Feature gate: the `OMDB_API_KEY` secret. Unset → every method short-circuits
  * to `None` WITHOUT any HTTP call (the TmdbClient pattern).
+ *
+ * A DEAD KEY is not asked again and again: after [[OMDbClient.RefusalsBeforePause]] refusals
+ * of the key in a row (HTTP 401, "Request limit reached!", "Invalid API key!") every read fails
+ * fast, without a call, for [[OMDbClient.RefusalPause]]; then one read probes it again. The free
+ * key's daily quota is shared by everything holding it, and a spent one answered 401 to hundreds
+ * of a recording's asks, every one of which the quota would count again once it reset (record run
+ * 469, 2026-10-20). A fast failure is still a failure — never booked as "no such film".
  */
 // `apiKey` is OMDB_API_KEY — handed in: the worker wiring passes its resolved value, a spec its
 // stub. Unset turns the backfill off.
-class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
+class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Clock)
+    extends play.api.Logging {
   import OMDbClient._
+
+  // Refusals of the key in a row, and until when it is not asked; any answer resets both.
+  private val refusals    = new java.util.concurrent.atomic.AtomicInteger(0)
+  private val pausedUntil = new java.util.concurrent.atomic.AtomicReference[Option[Instant]](None)
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the
    *  original/English title first — OMDb is an English DB). None when the key is
@@ -79,8 +93,27 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey]) {
 
   /** One OMDb answer: its record, `None` when OMDb says it has none, and a throw for
    *  anything else (see [[OMDbClient.answer]]). */
-  private def record(url: String): Option[JsObject] =
-    HttpRead.jsonObject(http, url)(answer(url, _)).toOptionOrThrow
+  private def record(url: String): Option[JsObject] = {
+    pausedUntil.get.filter(clock.instant().isBefore).foreach { until =>
+      throw new KeyRefusedException(s"OMDb refused its key ${refusals.get} times in a row (spent quota or bad key); " +
+        s"not asked again until $until")
+    }
+    // Past the pause (or never paused): this read is the probe; a refusal pauses again at once.
+    pausedUntil.set(None)
+    try {
+      val read = HttpRead.jsonObject(http, url)(answer(url, _)).toOptionOrThrow
+      refusals.set(0)
+      read
+    } catch {
+      case failure: Throwable if refusesKey(failure) =>
+        if (refusals.incrementAndGet() >= RefusalsBeforePause) {
+          pausedUntil.set(Some(clock.instant().plusMillis(RefusalPause.toMillis)))
+          logger.warn(s"OMDb refused its key ${refusals.get} times in a row — not asking it for ${RefusalPause.toMinutes} min " +
+            s"(last: ${tools.RedactedUrl(Option(failure.getMessage).getOrElse(failure.toString)).linesIterator.nextOption().getOrElse("")})")
+        }
+        throw failure
+    }
+  }
 
   /** Accept a candidate iff it is NOT contradicted (different director, or a
    *  year off by >1 with no exact title) AND a positive signal corroborates it:
@@ -116,6 +149,23 @@ object OMDbClient {
    *  "nothing matches" are an absence; any other error document — "Request limit
    *  reached!", "Invalid API key!", or one with no error at all — is a failed read. */
   private val NoneErrors: Set[String] = Set("Movie not found!", "Incorrect IMDb ID.", "Too many results.")
+
+  /** Refusals of the key in a row before OMDb stops being asked, and for how long (see the class doc). */
+  val RefusalsBeforePause: Int            = 5
+  val RefusalPause:        FiniteDuration = 30.minutes
+
+  /** A read failed because OMDb refused the KEY, not the request: HTTP 401 (OMDb's spent quota), its
+   *  "Request limit reached!" / "Invalid API key!" documents, or a fallback chain's composite naming a 401
+   *  from a leg (FallbackHttpFetch throws a plain RuntimeException carrying each leg's failure). */
+  private[enrichment] def refusesKey(failure: Throwable): Boolean = failure match {
+    case s: tools.HttpStatusException => s.code == 401
+    case other =>
+      val message = Option(other.getMessage).getOrElse("")
+      message.contains("Request limit reached!") || message.contains("Invalid API key!") || message.contains("HTTP 401 for ")
+  }
+
+  /** A read not made because the key is paused — a failed read, as the refusals before it were. */
+  final class KeyRefusedException(message: String) extends RuntimeException(message)
 
   private[enrichment] def answer(url: String, js: JsObject): ReadOutcome[JsObject] =
     (js \ "Response").asOpt[String] match {

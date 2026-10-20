@@ -13,7 +13,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     def get(url: String): String = { urls += url; f(url) }
   }
   private def client(f: String => String, key: Option[settings.OmdbApiKey] = Some(settings.OmdbApiKey("k"))) =
-    new OMDbClient(new FnFetch(f), apiKey = key)
+    new OMDbClient(new FnFetch(f), apiKey = key, clock = tools.SpecClock.Pinned)
 
   private def tParam(url: String): String =
     java.net.URLDecoder.decode(url.split("[?&]").find(_.startsWith("t=")).map(_.drop(2)).getOrElse(""), "UTF-8")
@@ -34,7 +34,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "restrict the search to type=movie (never a series)" in {
     val fetch = new FnFetch(_ => """{"Response":"False","Error":"Movie not found!"}""")
-    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k"))).findImdbId(Seq("Bodyguard"), None, Set.empty)
+    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned).findImdbId(Seq("Bodyguard"), None, Set.empty)
     fetch.urls.head should include ("type=movie")
   }
 
@@ -98,7 +98,7 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT walk (no ?s= call) when we have no director to corroborate with" in {
     val fetch = new FnFetch(url => if (url.contains("?s=")) fail("must not search without a director") else """{"Response":"False","Error":"Movie not found!"}""")
-    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k"))).findImdbId(Seq("Whatever"), None, Set.empty) shouldBe None
+    new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned).findImdbId(Seq("Whatever"), None, Set.empty) shouldBe None
   }
 
   // ── feature gate ─────────────────────────────────────────────────────────────
@@ -146,5 +146,62 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
       client(url => throw new tools.HttpStatusException(503, "GET", url, None)).findImdbId(Seq("Aftersun"), Some(2022), Set.empty)
     a[tools.UnexpectedBodyException] should be thrownBy
       client(_ => "<html><body>502 Bad Gateway</body></html>").findImdbId(Seq("Aftersun"), Some(2022), Set.empty)
+  }
+
+  // ── a dead key: stop asking ──────────────────────────────────────────────────
+
+  private val t0 = java.time.Instant.parse("2026-10-20T08:00:00Z")
+  private def gated(f: String => String) = {
+    val clock = new tools.MutableClock(t0)
+    val fetch = new FnFetch(f)
+    (new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k")), clock = clock), fetch, clock)
+  }
+  private def ask(omdb: OMDbClient): Option[Throwable] =
+    scala.util.Try(omdb.findImdbId(Seq("Aftersun"), Some(2022), Set.empty)).failed.toOption
+
+  "a key OMDb keeps refusing" should "stop being asked after a few refusals in a row, failing fast instead" in {
+    // Record run 469: the free key's daily quota spent, OMDb answered 401 to every one of hundreds of asks,
+    // each a call the quota would count again once it reset.
+    val (omdb, fetch, _) = gated(url => throw new tools.HttpStatusException(401, "GET", url, None))
+    val failures = (1 to 20).map(_ => ask(omdb))
+    fetch.urls.size shouldBe OMDbClient.RefusalsBeforePause
+    every(failures) shouldBe defined
+    failures.last.get.getMessage should include("OMDb refused")
+  }
+
+  it should "count OMDb's own 'Request limit reached!' / 'Invalid API key!' documents, and a fallback chain's 401" in {
+    val (byDocument, docFetch, _) = gated(_ => recorded("invalid_api_key.json"))
+    (1 to 20).foreach(_ => ask(byDocument))
+    docFetch.urls.size shouldBe OMDbClient.RefusalsBeforePause
+    // FallbackHttpFetch's composite when every leg was refused: a plain RuntimeException naming each leg's 401.
+    val (byChain, chainFetch, _) = gated(url => throw new RuntimeException(
+      s"All 2 backends failed for get $url:\n  direct: HttpStatusException: HTTP 401 for GET $url\n  proxy: IOException: WWW-Authenticate header missing for response code 401"))
+    (1 to 20).foreach(_ => ask(byChain))
+    chainFetch.urls.size shouldBe OMDbClient.RefusalsBeforePause
+  }
+
+  it should "ask once more after the pause, and keep asking once OMDb answers again" in {
+    var refusing = true
+    val (omdb, fetch, clock) = gated { url =>
+      if (refusing) throw new tools.HttpStatusException(401, "GET", url, None)
+      """{"Title":"Aftersun","Year":"2022","Director":"Charlotte Wells","imdbID":"tt19770238","Response":"True"}"""
+    }
+    (1 to 10).foreach(_ => ask(omdb))
+    val paused = fetch.urls.size
+    clock.advanceMillis(OMDbClient.RefusalPause.toMillis)
+    ask(omdb) shouldBe defined // the one probe after the pause, still refused: paused again
+    fetch.urls.size shouldBe paused + 1
+    ask(omdb)
+    fetch.urls.size shouldBe paused + 1
+    refusing = false
+    clock.advanceMillis(OMDbClient.RefusalPause.toMillis)
+    (1 to 5).foreach(_ => ask(omdb) shouldBe None)
+    fetch.urls.size shouldBe paused + 1 + 5
+  }
+
+  it should "never pause on failures that say nothing about the key" in {
+    val (omdb, fetch, _) = gated(url => throw new tools.HttpStatusException(503, "GET", url, None))
+    (1 to 20).foreach(_ => ask(omdb))
+    fetch.urls.size shouldBe 20
   }
 }

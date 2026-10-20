@@ -125,7 +125,8 @@ trait HttpWiring { self: WorkerWiring =>
   // The client itself no-ops (returns None, makes no HTTP call) when OMDB_API_KEY
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
-  lazy val omdbClient = new OMDbClient(enrichmentFetch, configuration.omdbApiKey)
+  // `pacingClock`: its dead-key pause runs in the time requests go out in.
+  lazy val omdbClient = new OMDbClient(enrichmentFetch, configuration.omdbApiKey, pacingClock)
   // Letterboxd — an id-crosswalk resolution SOURCE (not a rating source): it
   // turns a known imdbId into the exact tmdbId (and vice versa) for the
   // arthouse/festival long tail TMDB's own indexes leave unmapped, by scraping
