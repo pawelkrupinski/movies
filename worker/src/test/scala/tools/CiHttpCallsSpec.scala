@@ -9,27 +9,29 @@ class CiHttpCallsSpec extends AnyFlatSpec with Matchers {
 
   "WorkerHttpMetrics.snapshot" should "read back every cell's count with its labels" in {
     val metrics = new WorkerHttpMetrics(Seq("pl"), new PrometheusRegistry())
-    metrics.recorderFor("pl", WorkerHttpMetrics.Phase.Enrich).record(HttpOutcome.Http429)
+    metrics.recorderFor("pl", WorkerHttpMetrics.Phase.Enrich).forRequest("https://api.themoviedb.org/3/movie/1")
+      .record(HttpOutcome.Http429)
     val cells = metrics.snapshot().getDataPoints.toArray.toSeq.collect {
       case p: io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot =>
-        (p.getLabels.get("phase"), p.getLabels.get("outcome")) -> p.getValue
+        (p.getLabels.get("phase"), p.getLabels.get("service"), p.getLabels.get("outcome")) -> p.getValue
     }.toMap
-    cells(("enrich", HttpOutcome.Http429)) shouldBe 1.0
-    cells(("scrape", HttpOutcome.Success)) shouldBe 0.0
+    cells(("enrich", ExternalService.Tmdb, HttpOutcome.Http429)) shouldBe 1.0
+    cells(("scrape", ExternalService.Cinema, HttpOutcome.Success)) shouldBe 0.0
   }
 
   "CiHttpCalls" should "sum every tracked wiring's live calls and keep only the cells that were asked" in {
     def pass(successes: Int): WorkerHttpMetrics = {
       val metrics = new WorkerHttpMetrics(Seq("de"), new PrometheusRegistry())
       val enrich  = metrics.recorderFor("de", WorkerHttpMetrics.Phase.Enrich)
-      (1 to successes).foreach(_ => enrich.record(HttpOutcome.Success))
+      (1 to successes).foreach(_ => enrich.forRequest("https://www.omdbapi.com/?i=tt1").record(HttpOutcome.Success))
       metrics
     }
     val (first, second) = (pass(2), pass(3))
     CiHttpCalls.track(first)
     CiHttpCalls.track(second)
     val ours = CiHttpCalls.totals().filter(_._1.contains("country" -> "de"))
-    ours shouldBe Map(Seq("country" -> "de", "outcome" -> HttpOutcome.Success, "phase" -> "enrich") -> 5.0)
+    ours shouldBe Map(
+      Seq("country" -> "de", "outcome" -> HttpOutcome.Success, "phase" -> "enrich", "service" -> ExternalService.Omdb) -> 5.0)
   }
 
   it should "write the cells as a TSV: a header of label names then count, a row per cell" in {

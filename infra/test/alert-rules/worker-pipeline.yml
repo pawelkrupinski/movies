@@ -678,3 +678,85 @@ tests:
       - eval_time: 58m
         alertname: WorkerTelegramAlertsFailing
         exp_alerts: []
+
+  # ───────────────────────────────────────────────────────────────────────────────────────────
+  # WorkerExternalServiceAuthFailing. OMDb's daily quota runs out at 20m: from then on every call
+  # is answered "Request limit reached!" as a 401. TMDB beside it, healthy with a stray 401, and a
+  # service whose few calls all 403 (fewer than the floor of 10) must not fire.
+  - interval: 1m
+    name: a service answering mostly 401 fires, a healthy or near-idle one does not
+    input_series:
+      - series: 'kinowo_worker_http_total{country="de",phase="enrich",service="omdb",outcome="success",job="kinowo-worker"}'
+        values: '0+1x20 20x60'
+      - series: 'kinowo_worker_http_total{country="de",phase="enrich",service="omdb",outcome="http_401",job="kinowo-worker"}'
+        values: '0x20 3+3x60'
+      - series: 'kinowo_worker_http_total{country="de",phase="enrich",service="tmdb",outcome="success",job="kinowo-worker"}'
+        values: '0+100x80'
+      - series: 'kinowo_worker_http_total{country="de",phase="enrich",service="tmdb",outcome="http_401",job="kinowo-worker"}'
+        values: '0x40 1x40'
+      - series: 'kinowo_worker_http_total{country="de",phase="enrich",service="letterboxd",outcome="http_403",job="kinowo-worker"}'
+        values: '0x10 5x70'
+      - series: 'kinowo_worker_http_total{country="de",phase="enrich",service="letterboxd",outcome="success",job="kinowo-worker"}'
+        values: '0x80'
+      # A cinema refusing the scrape is the cinema-scrape rules' business, not this one's.
+      - series: 'kinowo_worker_http_total{country="de",phase="scrape",service="cinema",outcome="http_403",job="kinowo-worker"}'
+        values: '0+50x80'
+    alert_rule_test:
+      # The quota has only just run out: not yet held 15 minutes.
+      - eval_time: 25m
+        alertname: WorkerExternalServiceAuthFailing
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: WorkerExternalServiceAuthFailing
+        exp_alerts:
+          - exp_labels:
+              country: de
+              service: omdb
+              severity: warning
+            exp_annotations:
+              summary: "de: omdb is refusing the worker (100% of calls 401/403)"
+              description: "Over the last 30 minutes most of the worker's calls to omdb were answered 401 or 403 -- an auth or quota problem, not an outage: the key was revoked or rotated, the plan's quota is spent (OMDb answers \"Request limit reached!\" as a 401 until its daily reset), or the service has started blocking the node's IP. Enrichment from it has stopped. The panel \"Calls per external service\" on the kinowo-http dashboard shows when it started; the key is in `worker-secrets`."
+
+  # ───────────────────────────────────────────────────────────────────────────────────────────
+  # WorkerExternalServiceRateLimited. A third of TMDB's attempts 429, sustained -- and the worker
+  # restarts in the middle of it (the counters go stale, then start again from 0). `rate` over
+  # 30m spans the reset, so the hold survives the pod.
+  - interval: 1m
+    name: a service 429ing a third of its calls fires, across a worker restart
+    input_series:
+      - series: 'kinowo_worker_http_total{country="us",phase="enrich",service="tmdb",outcome="success",job="kinowo-worker"}'
+        values: '0+40x30 stale stale stale 0+40x60'
+      - series: 'kinowo_worker_http_total{country="us",phase="enrich",service="tmdb",outcome="http_429",job="kinowo-worker"}'
+        values: '0+20x30 stale stale stale 0+20x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WorkerExternalServiceRateLimited
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: WorkerExternalServiceRateLimited
+        exp_alerts:
+          - exp_labels:
+              country: us
+              service: tmdb
+              severity: warning
+            exp_annotations:
+              summary: "us: tmdb has rate-limited the worker for 30m (33.33% of calls 429)"
+              description: "For half an hour a fifth or more of the worker's calls to tmdb were answered 429, so the 429 gate's Retry-After waits are not bringing it under the provider's limit. Lower that host's pace (`HostPolicies`, the fleet pace in `fleet_host_pace`) or check whether the provider cut the plan's limit; see the `external-api-rate-limits` skill in the movies repo and the panel \"Calls per external service\" on the kinowo-http dashboard."
+
+  # THE 429 GATE DOING ITS JOB STAYS SILENT: TMDB at the fleet's measured worst share (2%), and a
+  # low-volume service whose handful of 429s is a large share but under the floor of 20.
+  - interval: 1m
+    name: an ordinary 429 share, or a handful of 429s, stays quiet
+    input_series:
+      - series: 'kinowo_worker_http_total{country="uk",phase="enrich",service="tmdb",outcome="success",job="kinowo-worker"}'
+        values: '0+100x90'
+      - series: 'kinowo_worker_http_total{country="uk",phase="enrich",service="tmdb",outcome="http_429",job="kinowo-worker"}'
+        values: '0+2x90'
+      - series: 'kinowo_worker_http_total{country="uk",phase="enrich",service="wikidata",outcome="success",job="kinowo-worker"}'
+        values: '0x90'
+      - series: 'kinowo_worker_http_total{country="uk",phase="enrich",service="wikidata",outcome="http_429",job="kinowo-worker"}'
+        values: '0x30 4x60'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: WorkerExternalServiceRateLimited
+        exp_alerts: []

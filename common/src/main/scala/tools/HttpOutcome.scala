@@ -80,6 +80,11 @@ object HttpOutcome {
  */
 trait HttpOutcomeRecorder {
   def record(outcome: String): Unit
+
+  /** The recorder for one request to `url` — this one, unless the sink labels outcomes by where the
+   *  request went (the worker's `service` label, see [[ExternalService]]). [[CountingHttpFetch]]
+   *  asks it for every attempt. */
+  def forRequest(url: String): HttpOutcomeRecorder = this
 }
 
 object HttpOutcomeRecorder {

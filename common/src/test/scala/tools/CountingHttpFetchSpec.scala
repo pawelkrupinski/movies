@@ -115,4 +115,22 @@ class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
     (1 to 4).foreach(_ => try fetch.get("u") catch { case _: HttpStatusException => () })
     seen.toList shouldBe List(HttpOutcome.Http429, HttpOutcome.Http429, HttpOutcome.Http429, HttpOutcome.Success)
   }
+
+  it should "record each attempt through the recorder its request URL selects" in {
+    // The worker's recorder labels an attempt with the external service its URL reaches, so the
+    // counter must hand every attempt's URL over — including the async fan-out's.
+    val seen = mutable.ListBuffer.empty[(String, String)]
+    def recorder(url: String): HttpOutcomeRecorder = new HttpOutcomeRecorder {
+      def record(outcome: String): Unit = { seen += (url -> outcome); () }
+      override def forRequest(requestUrl: String): HttpOutcomeRecorder = recorder(requestUrl)
+    }
+    val fetch = new CountingHttpFetch(new StubFetch(ok), recorder("none"))
+    fetch.get("https://a.example/1")
+    fetch.post("https://b.example/2", "b", "application/json")
+    fetch.getAsync("https://c.example/3").join()
+    seen.toList shouldBe List(
+      "https://a.example/1" -> HttpOutcome.Success,
+      "https://b.example/2" -> HttpOutcome.Success,
+      "https://c.example/3" -> HttpOutcome.Success)
+  }
 }

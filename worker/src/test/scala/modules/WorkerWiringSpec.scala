@@ -245,7 +245,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
-  "The phase-split fetch chains" should "tally cinema-site calls under `scrape` and metadata calls under `enrich`" in {
+  "The phase-split fetch chains" should "tally cinema-site calls under `scrape` and metadata calls under `enrich`, by service" in {
     val wiring = new PhaseLeafProbe
     (wiring.enrichmentFetch eq wiring.httpFetch) shouldBe false
     wiring.httpFetch.get("https://cinema.example/listing")
@@ -254,10 +254,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val text = PrometheusExposition.render(wiring.workerMetrics.registry)
     val scrape = WorkerHttpMetrics.Phase.Scrape
     val enrich = WorkerHttpMetrics.Phase.Enrich
-    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape"} 1""")
-    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$enrich"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape",service="cinema"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$enrich",service="tmdb"} 1""")
     // Not double-counted onto the other phase.
-    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape",service="cinema"} 1""")
     wiring.stop()
   }
 

@@ -510,3 +510,74 @@ groups:
             revoked bot token (`worker-secrets`), a 400/403 "chat not found" or "bot was kicked" a
             chat or topic id in the `worker-env` ConfigMap (movies-gitops worker/base/all.yaml), a
             timeout the node's egress to api.telegram.org.
+
+      # -----------------------------------------------------------------------------------------
+      # A METADATA API REFUSING US -- answering mostly 401/403. The worker's enrichment draws on
+      # nine third-party services (`service` on `kinowo_worker_http_total{phase="enrich"}`), and
+      # when one stops accepting the key the failure is silent: ratings, ids and posters just stop
+      # filling in for new films. OMDb is the sharpest case -- its daily quota answers
+      # "Request limit reached!" AS A 401, indistinguishable from a revoked key on the wire.
+      #
+      # A SHARE, NOT A COUNT, with a floor: more than half of the service's attempts over 30
+      # minutes were 401/403, and at least 10 of them -- so one stray 403 on a quiet service is not
+      # "mostly". Measured over 14d before the `service` label existed, the whole enrich phase saw
+      # at most 15 401s and 38 403s in any 30 minutes against ~600k weekly successes, so a healthy
+      # service sits nowhere near half. `rate`/`increase` over 30m bridge a worker restart.
+      #
+      # NOT REPLAYED: the `service` label is new in this change, so there is no history to replay.
+      - alert: WorkerExternalServiceAuthFailing
+        expr: >-
+          (
+            sum by (country, service) (rate(kinowo_worker_http_total{phase="enrich",outcome=~"http_401|http_403"}[30m]))
+            /
+            sum by (country, service) (rate(kinowo_worker_http_total{phase="enrich"}[30m]))
+          ) > 0.5
+          and on (country, service)
+          sum by (country, service) (increase(kinowo_worker_http_total{phase="enrich",outcome=~"http_401|http_403"}[30m])) >= 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $labels.service }} is refusing the worker ({{ $value | humanizePercentage }} of calls 401/403)"
+          description: >-
+            Over the last 30 minutes most of the worker's calls to {{ $labels.service }} were
+            answered 401 or 403 -- an auth or quota problem, not an outage: the key was revoked or
+            rotated, the plan's quota is spent (OMDb answers "Request limit reached!" as a 401 until
+            its daily reset), or the service has started blocking the node's IP. Enrichment from it
+            has stopped. The panel "Calls per external service" on the kinowo-http dashboard shows
+            when it started; the key is in `worker-secrets`.
+
+      # -----------------------------------------------------------------------------------------
+      # A METADATA API RATE-LIMITING US, AND KEEPING AT IT. A 429 now and then is the 429 gate
+      # (ThrottledHttpFetch) doing its job: it honours Retry-After and every caller waits together.
+      # SUSTAINED 429s mean the gate is not enough -- the fleet's pace for that host is too fast, or
+      # the provider lowered the limit -- and every retry is a request the budget spent for nothing.
+      #
+      # A fifth of the service's attempts 429ed over 30 minutes, at least 20 of them, held 30
+      # minutes. Measured over 14d (phase-wide, before the `service` label): the enrich 429 share
+      # never passed 2.1% in any country, and its worst 30 minutes held 311 429s in DE -- a burst
+      # the share keeps out when it is TMDB's, the volume service. Every 429 retry counts, so the
+      # share is of ATTEMPTS, not of distinct requests.
+      #
+      # NOT REPLAYED: the `service` label is new in this change, so there is no history to replay.
+      - alert: WorkerExternalServiceRateLimited
+        expr: >-
+          (
+            sum by (country, service) (rate(kinowo_worker_http_total{phase="enrich",outcome="http_429"}[30m]))
+            /
+            sum by (country, service) (rate(kinowo_worker_http_total{phase="enrich"}[30m]))
+          ) > 0.2
+          and on (country, service)
+          sum by (country, service) (increase(kinowo_worker_http_total{phase="enrich",outcome="http_429"}[30m])) >= 20
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $labels.service }} has rate-limited the worker for 30m ({{ $value | humanizePercentage }} of calls 429)"
+          description: >-
+            For half an hour a fifth or more of the worker's calls to {{ $labels.service }} were
+            answered 429, so the 429 gate's Retry-After waits are not bringing it under the
+            provider's limit. Lower that host's pace (`HostPolicies`, the fleet pace in
+            `fleet_host_pace`) or check whether the provider cut the plan's limit; see the
+            `external-api-rate-limits` skill in the movies repo and the panel "Calls per external
+            service" on the kinowo-http dashboard.

@@ -16,18 +16,19 @@ import java.util.concurrent.CompletableFuture
  * here once. A circuit-breaker fast-fail never reaches the leaf, so it is
  * correctly NOT counted as a wire attempt.
  *
- * Every synchronous member is counted through the one [[ForwardingHttpFetch]] hook.
+ * Every synchronous member is counted through the one [[ForwardingHttpFetch]] hook, into the
+ * recorder [[HttpOutcomeRecorder.forRequest]] picks for the attempt's URL.
  */
 class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) extends ForwardingHttpFetch {
 
   protected def around[T](url: String)(call: HttpFetch => T): T =
     try {
       val result = call(delegate)
-      recorder.record(HttpOutcome.Success)
+      recorder.forRequest(url).record(HttpOutcome.Success)
       result
     } catch {
       case t: Throwable =>
-        recorder.record(HttpOutcome.classify(t))
+        recorder.forRequest(url).record(HttpOutcome.classify(t))
         throw t
     }
 
@@ -37,8 +38,9 @@ class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) exte
    *  re-raises the same error). */
   override def getAsync(url: String): CompletableFuture[String] =
     delegate.getAsync(url).whenComplete { (_, err) =>
-      if (err == null) recorder.record(HttpOutcome.Success)
-      else recorder.record(HttpOutcome.classify(unwrap(err)))
+      val forUrl = recorder.forRequest(url)
+      if (err == null) forUrl.record(HttpOutcome.Success)
+      else forUrl.record(HttpOutcome.classify(unwrap(err)))
     }
 
   private def unwrap(t: Throwable): Throwable = t match {
