@@ -77,6 +77,10 @@ object IdentityMeasures {
         !IdentityMeasures.shareAWord(original, billed) && !tools.EditDistance.within(IdentityMeasures.key(original), IdentityMeasures.key(billed), 1)
       }
     }
+    /** Is the original title a word-for-word cognate of a billed one ([[TitleTextMeasures.cognateOf]]): the billing's own
+     *  title translated, not another title a search hit? */
+    private[identity] lazy val originalTranslatesBilled: Boolean =
+      originalTitle.exists(original => titles.exists(billed => IdentityMeasures.cognateOf(original, billed)))
     /** The pieces of the event its billing bills ([[agreement.NonFilmEvents.eventBilled]]), each with its counted words
      *  (a piece with none left out) and whether it bills a performance ([[services.cinemas.pl.NonMovieEventClassifier.isPerformance]]) — none unless the
      *  whole event bills one, as most billings bill none. Read once per listing, whichever films it is weighed against

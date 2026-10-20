@@ -283,7 +283,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       // translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
       // Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl")
       .orElse(Option.when(FeedLink.linked(node.listings).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
-        evidenceOf(node).measured.originalSharesNothingBilled)(sourceOf(node) -> None))
+        evidenceOf(node).measured.originalSharesNothingBilled && !evidenceOf(node).measured.originalTranslatesBilled)(sourceOf(node) -> None))
       .filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
       val listing = evidenceOf(node).measured
       // a page feed's copy names no film, so the record must not carry the billing's words either: one sharing two of

@@ -18,6 +18,15 @@ private[identity] object TitleTextMeasures {
     TitleContainment.tokens(title).filterNot(YearWord.matches).filter(w => w.length > 3 || w.forall(_.isDigit))
   private[identity] def shareAWord(a: String, b: String): Boolean = sharedWords(a, b) > 0
 
+  /** Is `a` a word-for-word cognate of `b` — as many words (two or more), each a spelling of the other's word in its place,
+   *  at most half its letters re-spelt? A title translated between related languages: DE "Mein Opa der Bankräuber" of the
+   *  Dutch "Mijn Opa de Bankrover", which shares no counted word with it. */
+  private[identity] def cognateOf(a: String, b: String): Boolean = {
+    val (as, bs) = (TitleContainment.tokens(a), TitleContainment.tokens(b))
+    as.sizeIs >= 2 && as.size == bs.size && as.zip(bs).forall { case (x, y) =>
+      tools.EditDistance.within(x, y, math.max(x.length, y.length) / 2) }
+  }
+
   /** A title word that is a year ("1986" of "Legend (1986)"). */
   private[identity] val YearWord = """(?:18|19|20)\d\d""".r
 

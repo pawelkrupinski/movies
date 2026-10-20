@@ -53,6 +53,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     Listing("Zum Dorfkrug").wordsBilledOf("Zum See") shouldBe 0
   }
 
+  "an original title" should "translate the billing word for word only as a cognate of each of its words" in {
+    // DE Filmmuseum München: kinoheld copied the Dutch original of the billed German title
+    Listing("Mein Opa der Bankräuber", originalTitle = Some("Mijn Opa de Bankrover")).originalTranslatesBilled shouldBe true
+    // another title altogether, word counts alike or not
+    Listing("Das Auge des Bösen", originalTitle = Some("Eye of the Devil")).originalTranslatesBilled shouldBe false
+    Listing("ZIRKUS FUMEUSEMENT", originalTitle = Some("The Circus")).originalTranslatesBilled shouldBe false
+    Listing("Abdul Kader Chahin", originalTitle = Some("5 Centimeters per Second")).originalTranslatesBilled shouldBe false
+    Listing("Bremer Stadtmusikanten").originalTranslatesBilled shouldBe false
+  }
+
   "a bracketed year in a title" should "be its own measure, never the listing's published year" in {
     // A re-release bracket: the 2015 film shown in 2026.
     val m = measures(Listing("The Hunger Games: Mockingjay - Part 2 (2026)"), Film("The Hunger Games: Mockingjay - Part 2", year = Some(2015)))
