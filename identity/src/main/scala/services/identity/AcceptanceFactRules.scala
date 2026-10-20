@@ -36,6 +36,34 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
   private[identity] val TopHitMeasures = Map("title" -> IdentityMeasures.Category("exact"), "search.rank" -> IdentityMeasures.Number(1),
     "rivals" -> IdentityMeasures.Number(0))
 
+  /** The film the listing's TMDB-keyed feed links ([[Scored.feedLinked]]: the venue's operator picked it from TMDB), when
+   *  nothing speaks against the pick: the title names it whole (its title, original or an alternative title), no fact of
+   *  the listing's own contradicts it, no rule denied it (an overruled link's film is denied: [[FeedLink]]), and the
+   *  title's own search ranks no other takeable film it names whole above it. A link is a hint, not ground truth: Cineamo
+   *  links "Niagara" to a 2022 namesake TMDB's search ranks far below Hathaway's 1953 film, and that pick stays
+   *  untaken. A yearless listing's link must name an older film ([[olderThanItsScreenings]]). DE Union
+   *  Friedrichshagen's "Vorspiel" (286393m: Kahane's 1987 DEFA film, second to a 2019 "Das Vorspiel") was taken by
+   *  nothing else (recording 528). */
+  private[identity] def feedLinkedWhy(ranked: Seq[Scored]): Verdict = {
+    val eligible = eligibleOf(ranked)
+    def namesWhole(scored: Scored) = scored.category("title").exists(IdentityMeasures.Rivalling)
+    for {
+      linked <- one(eligible.filter(_.feedLinked), "its feed links no film it may take", "its feed links two films")
+      _      <- needOf(namesWhole(linked), "its title does not name the linked film whole", linked)
+      _      <- needOf(!contradicted(linked), "its own facts contradict the linked film", linked, contradiction(linked))
+      _      <- needOf(linked.listing.year.isDefined || olderThanItsScreenings(linked), "it states no year, and the linked film is no older film", linked)
+      _      <- noneOf(eligible.find(other => (other ne linked) && other.takeable && namesWhole(other) &&
+                  other.rank.exists(rank => linked.rank.forall(rank < _))), "its search ranks a namesake above the linked film", linked)
+    } yield atOwn(linked)
+  }
+
+  /** Is the film at least two seasons older than the season the listing screens in? A Cineamo listing states its year
+   *  only of a film opening now (f5784855d), so a yearless one linked to a current record is an old entry the operator
+   *  linked to a new namesake: Kino Boizenburg's "SINGING IN THE RAIN" (1438810m, a 2025 film, beside Donen's 1952
+   *  one), Tübingen's "Dernier été" (1771134m, 2026, beside the 1981 "Der letzte Sommer"). */
+  private def olderThanItsScreenings(scored: Scored): Boolean =
+    scored.listing.screeningsSeason.exists(season => scored.candidate.film.year.exists(_ <= season - 2))
+
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   private[identity] def contradicted(scored: Scored): Boolean =
     scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || IdentityMeasures.runtimeContradicts(scored.measures)

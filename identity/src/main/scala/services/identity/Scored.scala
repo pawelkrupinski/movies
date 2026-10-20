@@ -12,7 +12,7 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
                                           suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty,
-                                          vetoedRivals: Int = 0, untaken: Option[String] = None) {
+                                          vetoedRivals: Int = 0, untaken: Option[String] = None, feedLinked: Boolean = false) {
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
   /** May a rule take it? Not a denied film, nor an UNTAKEN one — `untaken` says why: a film no rule takes that stays in
@@ -30,6 +30,7 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
   // (IMDb matched another-language title of it) — a candidate for `Acceptance.imdbSuggested` alone.
   // `vetoedRivals`: how many of the namesakes its `rivals` measure counts the release veto took away ([[ReleaseVeto]]) —
   // still counted in its calibrated probability, never in the evidence class it is accepted by (`Acceptance.classAccepted`).
+  // `feedLinked`: a TMDB-keyed feed links the listing to the film ([[FeedLink.linked]]) — `Acceptance.feedLinkedWhy`.
   // `imdbTitled`: the listing's search titles IMDb lists the film under, in some language (an AKA: "Camino dla
   // opornych" is IMDb's Polish title of "Compostelle") — `Acceptance.imdbSuggested`'s titled rung.
 }

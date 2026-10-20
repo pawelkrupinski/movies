@@ -76,7 +76,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
         namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, StageRelays.billsUnderItsHouse(listing, candidate.film, houses),
-        suggestedOnly = onlySuggested(candidate.tmdbId))
+        suggestedOnly = onlySuggested(candidate.tmdbId), feedLinked = linked(candidate.tmdbId))
     }
 
     // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no
