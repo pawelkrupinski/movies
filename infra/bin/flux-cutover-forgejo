@@ -87,8 +87,10 @@ register() { # <title> <pubkey file> <read_only>
     forgejo -X DELETE "$api/repos/$owner/$repo/keys/$id" >/dev/null
     echo "  removed old '$title' (id $id)"
   done
-  jq -n --arg t "$title" --arg k "$(cat "$pub")" --argjson ro "$ro" '{title: $t, key: $k, read_only: $ro}' |
-    forgejo -X POST --data-binary @- "$api/repos/$owner/$repo/keys" |
+  # The body goes through a file: stdin already carries the token header to curl (-K -).
+  jq -n --arg t "$title" --arg k "$(cat "$pub")" --argjson ro "$ro" '{title: $t, key: $k, read_only: $ro}' \
+    >"$work/key.json"
+  forgejo -X POST --data-binary @"$work/key.json" "$api/repos/$owner/$repo/keys" |
     jq -r '"  added \(.title) (id \(.id), read_only \(.read_only))"'
 }
 register "$read_title" "$work/read.pub" true
