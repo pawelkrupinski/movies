@@ -76,6 +76,16 @@ class ListingSearchTitleSpec extends AnyFlatSpec with Matchers {
     listing("Berliner Philharmoniker 25/26: Silvesterkonzert").searchTitle shouldBe None
   }
 
+  "A concert tour's live viewing billed without the tour's name" should "search the tour's title as TMDB files it" in {
+    // UK Odeon's "BTS 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING" ×68 (recording 573): searched as billed it found nothing,
+    // and the director's filmography weighed São Paulo's record, crediting him, over Buenos Aires' (1770237)
+    val l = listing("BTS 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
+    l.searchTitle shouldBe Some("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
+    IdentityMeasures.searchQueries(Evidence.of(l, None).measured) should contain ("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
+    // the tour's own billing is that title already
+    listing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES").searchTitle shouldBe None
+  }
+
   "A plain title" should "have no search title of its own" in {
     listing("Lalka").searchTitle shouldBe None
   }

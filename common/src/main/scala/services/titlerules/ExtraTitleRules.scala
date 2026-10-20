@@ -1176,7 +1176,16 @@ object ExtraTitleRules {
     canonProperName("xtra-canonical-nt-live",
       """(?iu)^(?:(?:NT|National\s+Theatre)\s+Live|NTL(?:\s+Live)?)\s*(?::\s*|\s)(\S.*)$""",
       "National Theatre Live: $1",
-      "'NT Live: <play>' / 'NT Live <play>' / 'NTL: <play>' — one house banner")
+      "'NT Live: <play>' / 'NT Live <play>' / 'NTL: <play>' — one house banner"),
+    // 5. A concert tour's live viewing billed without the tour's own name: UK Odeon's "BTS 'ARIRANG' IN BUENOS AIRES: LIVE
+    //    VIEWING" ×68 (and São Paulo ×68, recording 573) is TMDB's "BTS WORLD TOUR [ARIRANG] in Buenos Aires" (1770237),
+    //    which Cineworld and Flicks bill as "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES". Searched as billed it finds nothing
+    //    (its "LIVE VIEWING" piece finds every K-pop live viewing), and the director's filmography weighs every city's
+    //    record alike: the other city's, crediting him, won. One tour, one title.
+    canonProperName("xtra-canonical-bts-world-tour",
+      """(?iu)^BTS\s+(['‘’][^'‘’]+['‘’])\s+IN\s+(\S.*)$""",
+      "BTS WORLD TOUR $1 IN $2",
+      "'BTS '<tour>' IN <city>[: LIVE VIEWING]' — the tour's title as TMDB and the other venues bill it")
   )
 
   /** Per-cinema (client) cleanups — venue-specific junk too narrow to globalise
