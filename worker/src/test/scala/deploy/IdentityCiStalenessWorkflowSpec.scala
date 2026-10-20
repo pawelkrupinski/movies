@@ -24,9 +24,10 @@ class IdentityCiStalenessWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   // The coverage verdict asks whether a run's commit descends from the newest pipeline commit,
-  // which a shallow clone cannot answer.
+  // which a shallow clone cannot answer. Depth 0 on github.com; on Forgejo a depth past the root,
+  // since its copy of the repo is itself shallow and a depth-0 fetch of it fails.
   it should "check out the whole history" in {
-    check should include("fetch-depth: 0")
+    check should include("fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}")
   }
 
   it should "ask about workflows that exist" in {
