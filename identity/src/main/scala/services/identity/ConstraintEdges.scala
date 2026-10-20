@@ -6,7 +6,8 @@ import services.movies.{ListingConstraints, ListingKey}
  *  1 same accepted film, 2 same catalogue id or same sanitised title, 3 same search form — unless either title carries
  *  another listing's title beside it — or original title, 4 one's title a delimited segment of the
  *  other's, unless the rest of the other's names a film of its own) and cannot-links (different
- *  accepted films; a node denying the other's film; the two listings' own evidence apart). */
+ *  accepted films; a node denying the other's film; the two listings' own evidence apart; a feed's copied original
+ *  title alone joining them; a reused page's copied facts denying the other's feed-linked film). */
 private[identity] final class ConstraintEdges(scoring: CandidateScoring, families: Families, links: TitleLinks) {
   import scoring.{calibration, pins}
   import scoring.generation.{nodeById, nodes}
