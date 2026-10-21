@@ -73,20 +73,33 @@ in
     enableGarbageCollect = false;
   };
 
+  # distribution 3 exports OpenTelemetry traces by default, to a collector this host does not run: a
+  # "traces export: ... connection refused" error in the journal every 10 s, nothing else.
+  systemd.services.docker-registry.environment.OTEL_TRACES_EXPORTER = "none";
+
+  # Bouncing the pruner disturbs nothing that serves, so an edit to it must not hold back every
+  # other change staged onto this host (see the same list in fleet/container-image-gc.nix).
+  fleet.autoApply.restartableUnits = [
+    "registry-prune.service"
+    "registry-prune.timer"
+  ];
+
   # Prune, then collect with the registry STOPPED -- the collector is not safe against a concurrent
   # push. A CI push in that minute fails and is retried by re-running the job.
   systemd.services.registry-prune = {
     description = "Keep the newest ${toString keep} images per repository, then garbage-collect";
+    # NOT `requires`: Requires= propagates an explicit stop of docker-registry to this unit, so
+    # the `systemctl stop` below would kill this very script -- no GC, and the registry left down.
     after = [ "docker-registry.service" ];
-    requires = [ "docker-registry.service" ];
     startAt = "*-*-* 04:00:00";
     serviceConfig.Type = "oneshot";
     script = ''
       ${lib.getExe prune}
+      # However the collector ends, the registry comes back up: the cluster pulls from it.
+      trap 'systemctl start docker-registry.service' EXIT
       systemctl stop docker-registry.service
       ${pkgs.util-linux}/bin/runuser -u docker-registry -- \
         ${reg.package}/bin/registry garbage-collect --delete-untagged ${registryConfig}
-      systemctl start docker-registry.service
     '';
   };
 
