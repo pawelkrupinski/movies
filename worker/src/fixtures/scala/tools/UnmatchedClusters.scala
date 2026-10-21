@@ -429,6 +429,7 @@ object UnmatchedClusters {
     if (!l.words.isEmpty) d.append("words", array(l.words.hashes.map(new BsonInt32(_))))
     put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster); put(d, "certificate", l.certificate)
     putInt(d, "yearUpperBound", l.yearUpperBound)
+    putInt(d, "performanceYear", l.performanceYear)
   }
   private def listingOf(d: BsonDocument): Listing = {
     val name   = d.getString("cinema").getValue
@@ -439,7 +440,7 @@ object UnmatchedClusters {
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
       opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)),
       VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))), properTitle = opt(d, "properTitle"),
-      certificate = opt(d, "certificate"), yearUpperBound = optInt(d, "yearUpperBound"),
+      certificate = opt(d, "certificate"), yearUpperBound = optInt(d, "yearUpperBound"), performanceYear = optInt(d, "performanceYear"),
       words = ProseWords.ofHashes(Option(d.get("words")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))
   }
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {

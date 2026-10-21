@@ -503,6 +503,14 @@ object StageRelays {
     l.statedYear.isEmpty && l.directors.isEmpty && l.ownTitles.exists(title => StageWorks.resolver.named(key(title)).nonEmpty)
 
   private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r
+  /** A year a text gives a PERFORMANCE: "the indelible 2010 Met performance", "its 2019 performance" — the year, at most
+   *  two words before "performance". */
+  private val PerformanceYear = """(?i)(?<![\p{N}])((?:19|20)\d{2})(?![\p{N}])(?:\s+[\p{L}’'.-]+){0,2}\s+performance(?![\p{L}])""".r
+  /** The one year `text` (a venue's synopsis) gives the performance it screens, if it gives exactly one: what dates an
+   *  encore's relay ([[RelayStage.of]]). */
+  def performanceYear(text: String): Option[Int] =
+    Some(PerformanceYear.findAllMatchIn(text).map(_.group(1).toInt).toSeq.distinct).collect { case Seq(one) => one }
+
   /** The one year a relay's banner dates its broadcast by — a piece of its title naming no stage work, beside one that
    *  does: DE "RBO live 2027: Tosca". A year beside the work is the work's own ("Macbeth 2026" is [[stageWorkQueries]]'). */
   def bannerYear(l: Listing): Option[Int] = {
