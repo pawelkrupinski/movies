@@ -69,6 +69,9 @@ class KinoheldClient(
     shows.flatMap(show => show.renamedEntry.map(_ -> show.film.title)).distinct.foreach { (entry, title) =>
       logger.info(s"kinoheld entry $entry renamed: ${cinema.displayName} bills \"$title\" on another film's entry; its facts left out")
     }
+    shows.flatMap(show => show.guessedEntry.map(_ -> show.film.title)).distinct.foreach { (entry, title) =>
+      logger.info(s"kinoheld entry $entry guessed: ${cinema.displayName}'s \"$title\" carries the facts of a film named with part of it; left out")
+    }
     toMovies(shows, cinema)
   }
 
@@ -134,9 +137,11 @@ object KinoheldClient {
   final case class Page(shows: Seq[Show], hasMorePages: Boolean)
 
   /** One screening, the film it shows already decided ([[linkTrusted]]); `renamedEntry` the catalogue id of a linked
-   *  entry its venue renamed for this show ([[entryRenamed]]), whose facts it does not carry. */
+   *  entry its venue renamed for this show ([[entryRenamed]]), `guessedEntry` that of an event's entry kinoheld filled
+   *  with another film's facts ([[entryGuessed]]), whose facts it does not carry. */
   final case class Show(film: Film, dateTime: LocalDateTime, bookingUrl: Option[String],
-                        room: Option[String], format: List[String], renamedEntry: Option[String] = None)
+                        room: Option[String], format: List[String], renamedEntry: Option[String] = None,
+                        guessedEntry: Option[String] = None)
 
   /** The film a show screens: kinoheld's linked film when the link is trusted (`id` its
    *  catalogue id), else only the venue's own name for it (`id` None). */
@@ -177,7 +182,7 @@ object KinoheldClient {
       name     <- (js \ "name").asOpt[String].map(_.trim)
       dateTime <- (js \ "beginning").asOpt[String].flatMap(s => Try(OffsetDateTime.parse(s)).toOption)
                     .map(_.atZoneSameInstant(Zone).toLocalDateTime)
-      (film, renamed) <- filmOf(name, js \ "movie", latestYear)
+      (film, leftOut) <- filmOf(name, js \ "movie", latestYear)
     } yield Show(
       film       = film,
       dateTime   = dateTime,
@@ -186,7 +191,8 @@ object KinoheldClient {
       format     = formatTokens((js \ "flags").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap { f =>
                      for (c <- (f \ "category").asOpt[String]; k <- (f \ "code").asOpt[String]) yield c -> k
                    }, jsonText(js \ "subtitleLanguage" \ "isocode")),
-      renamedEntry = renamed
+      renamedEntry = leftOut.collect { case (id, Renamed) => id },
+      guessedEntry = leftOut.collect { case (id, Guessed) => id }
     )
 
   /** The show's own page on kinoheld, which books it: for a venue that sells through
@@ -198,9 +204,15 @@ object KinoheldClient {
       show   <- jsonText(js \ "urlSlug")
     } yield s"$SiteUrl/kino/$city/$cinema/vorstellung/$show"
 
-  /** The film a show screens, and the id of the linked entry when its venue renamed it ([[entryRenamed]]). A show the
-   *  venue named with nothing is no show. */
-  private def filmOf(showName: String, movie: JsLookupResult, latestYear: Int): Option[(Film, Option[String])] = {
+  /** Why a linked entry's facts were left out. */
+  private sealed trait LeftOut
+  private case object Renamed extends LeftOut
+  private case object Guessed extends LeftOut
+
+  /** The film a show screens, and the id of the linked entry when its facts are left out, with why: its venue renamed
+   *  it ([[entryRenamed]]), or kinoheld guessed them for an event ([[entryGuessed]]). A show the venue named with
+   *  nothing is no show. */
+  private def filmOf(showName: String, movie: JsLookupResult, latestYear: Int): Option[(Film, Option[(String, LeftOut)])] = {
     val linked = for {
       id    <- (movie \ "id").asOpt[String]
       title <- jsonText(movie \ "title")
@@ -209,7 +221,11 @@ object KinoheldClient {
     linked match {
       case Some((id, title, original)) if linkTrusted(showName, title, original) &&
           entryRenamed(title, original, jsonText(movie \ "urlSlug"), jsonText(movie \ "thumbnailImage" \ "url")) =>
-        venueOwn.map(_ -> Some(id))
+        venueOwn.map(_ -> Some(id -> Renamed))
+      case Some((id, title, original)) if linkTrusted(showName, title, original) &&
+          entryGuessed(title, original, jsonText(movie \ "productionYear").flatMap(y => Try(y.take(4).toInt).toOption),
+            (movie \ "duration").asOpt[Int].filter(_ > 0), names(movie \ "productionCountries")) =>
+        venueOwn.map(_ -> Some(id -> Guessed))
       case Some((id, title, original)) if linkTrusted(showName, title, original) =>
         Some(Film(
           id             = Some(id),
@@ -283,6 +299,38 @@ object KinoheldClient {
     billed.nonEmpty && slugWords.nonEmpty && originalWords.nonEmpty &&
       originalWords.intersect(billed.values.flatten.toSet).isEmpty && !slugsTheOriginal && !names.exists(sharesHalf)
   }
+
+  /** Did kinoheld fill an event's entry with the facts of a film named with part of its title? A venue's event gets a
+   *  catalogue entry of its own name, which kinoheld fills from a film database by that name: an original title, credit,
+   *  cast and genres, but no year, runtime or production country (prod 2026-10-22: "Ping Pong Session"
+   *  carries Ping Pong (2025)'s original title and director, "Helmut Schleich" Helmut's, "Sunday Night Jazz" Sunday
+   *  Night's, "ICONIC MOVIE" Iconic's). A copy that backs a judged-wrong film twice as often as a right one (kinoheld's,
+   *  2026-10-21) is mostly these.
+   *
+   *  It is guessed when the entry states no year, runtime or production country (a distributor's entry not yet dated
+   *  states one: "Minions & Monster", Minions 3), and an original title at least half of whose words its title holds,
+   *  beside a word of its own: the name of a film the venue's longer billing contains. Not when
+   *  the title is the original's (a festival film's own entry), nor the original's shortened ("Cloud", "Cloud クラウド"),
+   *  nor translates it ("Red Rocks", "Les Roches Rouges"), nor bills it as one part of a strand's or a translation's
+   *  billing ("FRAUENWELTEN 2026: Killing Anna", "Viva a Vida - Auf das Leben"). On the DE prod mirror of 2026-10-22
+   *  it named 46 entries (47 of 3,081 kinoheld listings), 45 an event on a guessed film's facts and one a documentary
+   *  ("30 Jahre mit Kardeş Türküler") whose facts were its own; over the 1,083 venues' live programmes, 104 entries, 3
+   *  of them a film's own. */
+  def entryGuessed(title: String, original: Option[String], year: Option[Int], runtime: Option[Int],
+                   countries: Seq[String] = Nil): Boolean =
+    year.isEmpty && runtime.isEmpty && countries.isEmpty && original.exists { original =>
+      val billed = words(title)
+      val named  = words(original)
+      def partBills = {
+        val parts = BillingParts.split(title).filter(_.trim.nonEmpty)
+        parts.length > 1 && parts.exists(part => named.subsetOf(words(part)))
+      }
+      named.nonEmpty && named.intersect(billed).size * 2 >= named.size && !billed.subsetOf(named) && !partBills
+    }
+
+  /** Where a billing joins its parts: a strand's colon, a pipe or slash between two languages' titles, a spaced dash,
+   *  a bracket. */
+  private val BillingParts = """\s*(?::|\||/|\s[-–—]\s|\(|\))\s*""".r
 
   /** A venue's own entry's slug — a hash, a bare number — names no title. */
   private val VenueSlug = "[0-9a-f]{24}|\\d+".r
