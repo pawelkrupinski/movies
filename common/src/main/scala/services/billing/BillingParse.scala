@@ -45,7 +45,7 @@ final class BillingParse private (val text: String) {
   lazy val yearless: String = NumberedTitles.withoutYears(text)
 
   /** The instalment the title numbers ([[NumberedTitles.instalmentNumber]]): 2 of "Der Herr der Ringe 2 (Extended
-   *  Version)" and of "Dune: Part Two"; none of "Blade Runner 2049" or "2001: A Space Odyssey". */
+   *  Version)" and of "Dune Part Two"; none of "Blade Runner 2049" or "2001: A Space Odyssey". */
   lazy val instalment: Option[Int] = NumberedTitles.instalmentNumber(text)
 
   /** The subtitle the title gives its series' instalment ([[NumberedTitles.subtitleOf]]): "two", "towers" of "The Lord of
