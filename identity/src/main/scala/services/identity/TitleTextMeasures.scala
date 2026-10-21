@@ -124,7 +124,7 @@ private[identity] object TitleTextMeasures {
   /** The fewest letters a word needs to name something by itself, whole or as an inflected stem: "Kadr" of "Kino w
    *  Kadrze" (the venue's name), a director's surname a billing names ([[Film.directorSurnames]]: "Lang" of "Fritz Lang:
    *  M"), a word of a title billed in another language. */
-  val StemLetters = 4
+  val StemLetters = services.billing.NumberedTitles.StemLetters
 
   /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
   private[identity] val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
@@ -132,9 +132,9 @@ private[identity] object TitleTextMeasures {
   private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
 
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
-  private[identity] val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
+  private[identity] val BracketedYear = services.billing.NumberedTitles.BracketedYear
   /** `t` without its seasons and bracketed years: how a house bills a work, whatever it dates it by. */
-  def withoutYears(t: String): String = if (!TitleSeason.hasAsciiDigit(t)) t else BracketedYear.replaceAllIn(withoutSeasons(t), " ")
+  def withoutYears(t: String): String = services.billing.BillingParse(t).yearless
   private[identity] def yearlessTokens(t: String): Seq[String] = TitleContainment.tokens(withoutYears(t))
 
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */

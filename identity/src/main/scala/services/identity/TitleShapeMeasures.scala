@@ -1,5 +1,6 @@
 package services.identity
 
+import services.billing.{BillingParse, NumberedTitles}
 import services.movies.TitleContainment
 import services.resolution.SearchTitles
 
@@ -9,30 +10,12 @@ import IdentityMeasures.*
  *  can stand for, delimited, quoted, or with its screening year dropped.
  *  Part of [[IdentityMeasures]], which exports it. */
 private[identity] object TitleShapeMeasures {
-  /** A part a title numbers and the subtitle it gives that part, after a comma, a colon or a dash — or an episode and
-   *  the name it gives it, numbered or not: DE "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)", UK "De Gaulle Part
-   *  Two: Liberté", DE "LOVE ISLAND - EPISODE NATURE", US "Star Wars: Episode VII - The Force Awakens". */
-  private val PartWord    = """(?:teil|part|część|parte|partie|kapitel|chapter)"""
-  private val PartNumber  = """(\d+|[ivx]+|one|two|three|eins|zwei|drei)\b"""
-  private val EpisodeWord = """(?:episode|épisode|episodio|folge|odcinek)"""
-  private val TitledPart =
-    (s"""(?iU)\\b(?:$PartWord\\s*$PartNumber\\s*[,:–—-]""" +
-      s"""|$EpisodeWord\\b\\s*(?:(\\d+|[ivx]+)\\b)?\\s*[,:–—-]?)\\s*([^()\\[\\]|]+)""").r
   /** A part a title numbers by name — "Dune: Part Three", "Teil 2", "Episode VII" — not a bare number beside it. */
-  private val NamedPart = s"""(?iU)\\b(?:$PartWord|$EpisodeWord)\\s*$PartNumber""".r
-  /** The parts the listing's own titles number and subtitle ([[TitledPart]]): each one's number, if it has one, and its
-   *  subtitle's words of four letters or more. */
+  private val NamedPart = s"""(?iU)\\b(?:${NumberedTitles.PartWord}|${NumberedTitles.EpisodeWord})\\s*${NumberedTitles.PartNumber}""".r
+  /** The parts the listing's own titles number and subtitle ([[BillingParse.titledParts]]): each one's number, if it has
+   *  one, and its subtitle's words of four letters or more. */
   private[identity] def titledParts(titles: Seq[String]): Seq[(Option[String], Seq[String])] =
-    titles.flatMap(t => TitledPart.findAllMatchIn(t).map { m =>
-      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption).map(partNumber),
-        TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
-    }).filter(_._2.nonEmpty).distinct
-
-  /** A part's number however it is spelled — "2", "II", "two", "zwei" — so "Dune: Part 2 - …" is "Dune: Part Two". */
-  private def partNumber(token: String): String = PartNumbers.getOrElse(token, token)
-  private val PartNumbers: Map[String, String] = Map(
-    "i" -> "1", "one" -> "1", "eins" -> "1", "ii" -> "2", "two" -> "2", "zwei" -> "2", "iii" -> "3", "three" -> "3",
-    "drei" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9", "x" -> "10")
+    titles.flatMap(BillingParse(_).titledParts).filter(_._2.nonEmpty).distinct
 
   /** Does the listing's title give the part it numbers a subtitle ([[titledParts]]) not one word of which is a word
    *  of the film's titles? Then it is another film's part: DE Union Filmtheater Friedrichshagen's "DAS INDISCHE GRABMAL
@@ -44,57 +27,11 @@ private[identity] object TitleShapeMeasures {
   def titlesAnotherPart(l: Listing, f: Film): Boolean = {
     val parts = titledParts(l.ownTitles)
     // a film its titles name as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
-    lazy val numbered = f.titles.flatMap(t => NamedPart.findAllMatchIn(t).flatMap(m => TitleContainment.tokens(m.group(1)).headOption.map(partNumber))).toSet
+    lazy val numbered = f.titles.flatMap(t => NamedPart.findAllMatchIn(t).flatMap(m => TitleContainment.tokens(m.group(1)).headOption.map(NumberedTitles.partNumber))).toSet
     parts.nonEmpty && parts.forall { case (number, words) => !number.exists(numbered) && !words.exists(f.titleWords) }
   }
 
-  /** A break between a title's series and the subtitle it gives an instalment: "The Lord of the Rings: The Two Towers",
-   *  "Terminator 2 - Judgment Day", "Der Herr der Ringe – Die zwei Türme". */
-  private val SubtitleBreak = java.util.regex.Pattern.compile("""\s*(?::\s|\s[–—-]\s)\s*""")
-  /** The words a subtitle closes with that tag a VERSION of the film, never another instalment — "The Lord of the Rings:
-   *  The Two Towers – Extended", "Aliens: Director's Cut", "Terminator 2: Judgment Day – Remastered 4K" — and the words that
-   *  number a part ("… Hallows: Part 1"), which name no subtitle. */
-  private val NoSubtitleWords: Set[String] = Set(
-    "extended", "version", "versions", "edition", "director", "directors", "final", "theatrical", "remastered", "remaster",
-    "restored", "restaurierte", "restauriert", "uncut", "special", "anniversary", "jubilaum", "ultimate", "fassung",
-    "langfassung", "kinofassung", "imax", "rerelease", "release", "intermission", "pause", "dolby", "atmos", "screenx",
-    "part", "teil", "episode", "chapter", "kapitel", "folge", "parte", "partie")
-  /** Numbers spelled out, in English and German: a series NAMED by its number ("The Fantastic Four", "Ocean's Eleven")
-   *  is billed "Fantastic 4", "Ocean's 11" — the number its name, not an instalment's. */
-  private val SpelledNumbers: Set[String] = Set(
-    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "eins", "zwei",
-    "drei", "vier", "funf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwolf")
-
-  /** The instalment a title's series and subtitle name: its subtitle's words of four letters or more that tag no
-   *  version ([[NoSubtitleWords]]), and whether its series spells a number out ([[SpelledNumbers]]). None for a title
-   *  with no subtitle. */
-  private[identity] def subtitleOf(title: String): Option[(Seq[String], Boolean)] = {
-    val pieces = SubtitleBreak.split(withoutYears(title), 2)
-    Option.when(pieces.length == 2) {
-      val words = TitleContainment.tokens(pieces(1)).filter(w => w.length >= StemLetters && w.exists(_.isLetter) && !NoSubtitleWords(w))
-      (words, TitleContainment.tokens(pieces(0)).exists(SpelledNumbers))
-    }.filter(_._1.nonEmpty)
-  }
-
-  /** The break that closes a title's series: "Der Herr der Ringe 2 (Extended Version)", "Avatar 2 – The Way of Water". */
-  private val SeriesBreak = java.util.regex.Pattern.compile("""[:|/()\[\]–—,.;!?]|\s-\s""")
-  /** A year written with its century elided — PL "Halloween '26: Inni" — no instalment's number. */
-  private val ElidedYear  = """['’`]\d\d\b""".r
-  private val PartWords   = Set("teil", "part", "parte", "partie", "kapitel", "chapter")
-  /** The instalment a title numbers: the number closing its first piece, after at least one word — an Arabic one of at
-   *  most three digits, a Roman one of two letters or more, or a number spelled after a part word ("… Part Two"). A year
-   *  ("Blade Runner 2049"), a number alone ("2001: A Space Odyssey"), one mid-title ("9½ Wochen") or in a later piece
-   *  ("WAJDA: re- wizje. Przegląd … w 100. rocznicę urodzin") numbers no instalment. */
-  private[identity] def instalmentNumber(title: String): Option[Int] = {
-    val series = SeriesBreak.split(ElidedYear.replaceAllIn(withoutYears(title), " ")).headOption.map(TitleContainment.tokens).getOrElse(Nil)
-    series.lastOption.filter(_ => series.sizeIs >= 2).flatMap { last =>
-      if (series.init.lastOption.exists(PartWords) && PartNumbers.contains(last)) PartNumbers(last).toIntOption
-      else if ((last.length <= 3 && last.forall(_.isDigit)) || numbersAnInstalment(last)) numbered(last).numbers.headOption
-      else None
-    }
-  }
-
-  /** Does the listing number an instalment ([[instalmentNumber]]: "Der Herr der Ringe 2", "Terminator 2 (4K)") whose
+  /** Does the listing number an instalment ([[BillingParse.instalment]]: "Der Herr der Ringe 2", "Terminator 2 (4K)") whose
    *  subtitle its original title gives ("The Lord of the Rings: The Two Towers – Extended"), while not one word of that
    *  subtitle is a word of the film's titles,
    *  alternative titles included, and none of the film's own titles numbers that instalment? Then it is another
@@ -103,11 +40,11 @@ private[identity] object TitleShapeMeasures {
    *  First Steps") is no instalment; a version tag ("– Extended", ": Director's Cut") or a part number ("…: Part 1") is
    *  no subtitle; an original title that only repeats the billing gives none of its own. */
   def numbersAnotherSubtitle(l: Listing, f: Film): Boolean = {
-    val numbers = l.ownTitles.flatMap(instalmentNumber).toSet
+    val numbers = l.ownTitles.flatMap(BillingParse(_).instalment).toSet
     // the ORIGINAL title's subtitle alone: a billing's own ("HOBBIT 2: SMAUGS EINÖDE (EXTENDED)") is the venue's language,
     // which a record of the film in another ("The Hobbit: The Desolation of Smaug", IMDb's) need not hold
     lazy val original = l.originalTitle.filterNot(o => l.ownTitles.exists(t => key(t) == key(o)))
-    lazy val subtitles = original.flatMap(subtitleOf).filterNot(_._2).map(_._1)
+    lazy val subtitles = original.flatMap(BillingParse(_).subtitle).filterNot(_.seriesSpellsNumber).map(_.words)
     // the film's OWN titles: an alternative one numbers whatever a catalogue did — Bakshi's 1978 film is also "El Señor De
     // Los Anillos (Animación) 2 - El Señor De Los Anillos"
     numbers.nonEmpty && subtitles.nonEmpty && !f.ownTitles.exists(t => numbered(t).numbers.exists(numbers)) &&

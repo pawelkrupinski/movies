@@ -45,11 +45,10 @@ object BillingParseEquivalenceSpec {
       "runtime"     -> peeled.runtimeMinutes.map(Json.toJson(_)),
       "uncertified" -> Some(parse.uncertified).filter(_ != text).map(JsString(_)),
       "versionless" -> parse.versionless.map(JsString(_)),
-      "yearless"    -> Some(IdentityMeasures.withoutYears(text)).filter(_ != text).map(JsString(_)),
-      "instalment"  -> TitleShapeMeasures.instalmentNumber(text).map(Json.toJson(_)),
-      "subtitle"    -> TitleShapeMeasures.subtitleOf(text).map { case (words, spellsNumber) =>
-        Json.obj("words" -> words, "spellsNumber" -> spellsNumber) },
-      "titledParts" -> Some(TitleShapeMeasures.titledParts(Seq(text))).filter(_.nonEmpty).map(parts =>
+      "yearless"    -> Some(parse.yearless).filter(_ != text).map(JsString(_)),
+      "instalment"  -> parse.instalment.map(Json.toJson(_)),
+      "subtitle"    -> parse.subtitle.map(subtitle => Json.obj("words" -> subtitle.words, "spellsNumber" -> subtitle.seriesSpellsNumber)),
+      "titledParts" -> Some(parse.titledParts.filter(_._2.nonEmpty).distinct).filter(_.nonEmpty).map(parts =>
         Json.toJson(parts.map { case (number, words) => Json.obj("number" -> number.fold[JsValue](JsNull)(JsString(_)), "words" -> words) }))
     )
     JsObject(("text" -> JsString(text)) +: fields.collect { case (k, Some(v)) => k -> v })
