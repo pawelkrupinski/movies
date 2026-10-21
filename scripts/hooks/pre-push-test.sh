@@ -261,8 +261,8 @@ if command -v shellcheck >/dev/null; then
     "worker/Test/compile worker/It/compile e2e/Test/compile" \
     "$(grep -E '^[a-z0-9]+/[A-Za-z]+/compile$' "$scratch/sbt-args" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
   check "...ahead of the lints, which still run" "1" "$(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
-  # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place, and are skipped, with a
-  # warning, when it cannot (neither GitHub nor the local clone reachable).
+  # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place; when it cannot (Forgejo
+  # and GitHub unreachable), the push is blocked, never checked against a stale checkout.
   mkdir -p "$repo/worker/src/test/scala/deploy" "$repo/infra/bin"
   echo 'class NodeCpuBudgetSpec' > "$repo/worker/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
   printf '#!/usr/bin/env bash\necho "$KINOWO_GITOPS_DEST" > "%s/gitops-dest"\n' "$scratch" > "$repo/infra/bin/fetch-gitops"
@@ -278,8 +278,10 @@ if command -v shellcheck >/dev/null; then
   scratch_git "$repo" commit -qam "the manifests unreachable"
   rm -f "$scratch/sbt-args"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" 2>&1)"
-  check "unreachable, skips them with a warning, and runs the other lints" "0 1 1" \
-    "$(grep -c 'deploy.NodeCpuBudgetSpec' "$scratch/sbt-args" 2>/dev/null) $(printf '%s\n' "$out" | grep -c 'GitOps manifests unreachable') $(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
+  rc="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1; echo $?)"
+  # a failed fetch leaves the checkout STALE (movies-gitops 24a5162, 2026-10-21: specs read a probe main no longer had)
+  check "unreachable: BLOCKS the push, naming the stale manifests and the fix, never runs the specs on them" "1 0 1 1" \
+    "$rc $(grep -c 'deploy.NodeCpuBudgetSpec' "$scratch/sbt-args" 2>/dev/null) $(printf '%s\n' "$out" | grep -c 'GitOps manifests STALE') $(printf '%s\n' "$out" | grep -c 'PREPUSH_SKIP=lintspecs')"
   printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   mkdir -p "$repo/src"; echo 'object A' > "$repo/src/A.scala"
   scratch_git "$repo" add src/A.scala; scratch_git "$repo" commit -qm "adds a Scala source"

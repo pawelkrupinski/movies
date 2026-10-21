@@ -18,29 +18,76 @@
 # eliminating everywhere else.
 set -euo pipefail
 
+# WHERE FROM. On CI, the server the job runs on ($GITHUB_SERVER_URL: github.com, or Forgejo since GitHub suspended the
+# account on 2026-10-19), anonymously -- the config repo is public. On the laptop, Forgejo first: the tunnel's HTTP
+# ($KINOWO_FORGEJO_URL, default http://forgejo.internal:3000; $FORGEJO_API_TOKEN, if set, rides a header and never lands
+# in .git/config), then the `forgejo-git` ssh alias (its own key, BatchMode: never the Secure Enclave agent, never a
+# Touch ID prompt), then GitHub. $KINOWO_GITOPS_REPO, set, is the only source.
 #
-# The config repo lives on the self-hosted Forgejo since GitHub suspended the account (2026-10-18). When it cannot be
-# reached, it falls back to a local clone of it, $KINOWO_GITOPS_LOCAL (default ~/projects/movies-gitops), and says so.
-repo="${KINOWO_GITOPS_REPO:-ssh://forgejo-git/pawelkrupinski/movies-gitops.git}"
+# A FETCH THAT FAILS IS A FAILURE. It used to fall back to the local clone $KINOWO_GITOPS_LOCAL quietly, and that clone,
+# pulled from GitHub, stopped moving the day GitHub went: the deploy specs then passed or failed against weeks-old
+# manifests (WorkerRolloutStaggerSpec, 2026-10-21). Now every source unreachable exits 1, the checkout left as it was
+# and called STALE; KINOWO_GITOPS_OFFLINE=1 opts into the local clone (default ~/projects/movies-gitops), said so.
+forgejo="${KINOWO_FORGEJO_URL:-http://forgejo.internal:3000}"
+slug=pawelkrupinski/movies-gitops
+if [ -n "${KINOWO_GITOPS_REPO:-}" ]; then
+    sources=("$KINOWO_GITOPS_REPO")
+elif [ -n "${GITHUB_SERVER_URL:-}" ]; then
+    sources=("${GITHUB_SERVER_URL%/}/$slug.git")
+else
+    sources=("${forgejo%/}/$slug.git" "ssh://forgejo-git/$slug.git" "https://github.com/$slug.git")
+fi
 local_repo="${KINOWO_GITOPS_LOCAL:-$HOME/projects/movies-gitops}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 dest="${KINOWO_GITOPS_DEST:-$root/infra/kubernetes}"
+
+# no prompt (a suspended GitHub account asks for credentials), no hang on a dead tunnel, no ssh agent
+export GIT_TERMINAL_PROMPT=0
+git_() { # <source> <git args...>
+    local src="$1"; shift
+    local opts=(-c http.lowSpeedLimit=1000 -c http.lowSpeedTime=20
+        -c core.sshCommand="ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentityAgent=none")
+    case "$src" in
+        "${forgejo%/}"/*) [ -z "${FORGEJO_API_TOKEN:-}" ] || opts+=(-c "http.extraHeader=Authorization: token $FORGEJO_API_TOKEN") ;;
+    esac
+    git "${opts[@]}" "$@"
+}
 
 fetch() { # <repo>
     if [ -d "$dest/.git" ]; then
         echo "updating $dest from $1"
         git -C "$dest" remote set-url origin "$1"
-        git -C "$dest" fetch --quiet origin main && git -C "$dest" reset --quiet --hard origin/main
+        git_ "$1" -C "$dest" fetch --quiet origin main && git -C "$dest" reset --quiet --hard origin/main
     else
         echo "cloning $1 -> $dest"
         rm -rf "$dest"
-        git clone --quiet --depth 1 --single-branch --branch main "${1/#\//file:///}" "$dest"
+        git_ "$1" clone --quiet --depth 1 --single-branch --branch main "${1/#\//file:///}" "$dest"
     fi
 }
 
-if ! fetch "$repo"; then
-    [ -d "$local_repo/.git" ] || { echo "fetch-gitops: $repo unreachable, and no local clone at $local_repo" >&2; exit 1; }
-    echo "fetch-gitops: $repo unreachable -- using the local clone $local_repo ($(git -C "$local_repo" log -1 --format='%h %s'))" >&2
+for src in "${sources[@]}"; do
+    if fetch "$src"; then
+        echo "now at $(git -C "$dest" rev-parse --short HEAD) ($(git -C "$dest" log -1 --format=%s))"
+        exit 0
+    fi
+    echo "fetch-gitops: $src unreachable" >&2
+done
+
+if [ "${KINOWO_GITOPS_OFFLINE:-}" = 1 ]; then
+    [ -d "$local_repo/.git" ] || { echo "fetch-gitops: every source unreachable, and no local clone at $local_repo" >&2; exit 1; }
+    echo "fetch-gitops: KINOWO_GITOPS_OFFLINE=1 -- using the local clone $local_repo ($(git -C "$local_repo" log -1 --format='%h %cr: %s')); it may be behind main" >&2
     fetch "$local_repo"
+    echo "now at $(git -C "$dest" rev-parse --short HEAD) ($(git -C "$dest" log -1 --format=%s))"
+    exit 0
 fi
-echo "now at $(git -C "$dest" rev-parse --short HEAD) ($(git -C "$dest" log -1 --format=%s))"
+{
+    echo "fetch-gitops: could not fetch movies-gitops main from: ${sources[*]}"
+    if [ -d "$dest/.git" ]; then
+        echo "  $dest is STALE -- left at $(git -C "$dest" log -1 --format='%h, committed %cr') -- and the deploy specs must not run against it."
+    else
+        echo "  no manifests at $dest (STALE: never fetched)."
+    fi
+    echo "  Fix: the Forgejo tunnel (launchctl kickstart -k gui/\$(id -u)/net.bitcashier.forgejo-tunnel; forgejo-tunnel ssh alias),"
+    echo "  then rerun infra/bin/fetch-gitops. Knowingly offline: KINOWO_GITOPS_OFFLINE=1 uses $local_repo."
+} >&2
+exit 1

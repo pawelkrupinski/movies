@@ -15,8 +15,8 @@
 #                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
 #                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
 #                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
-#                 infra/bin/fetch-gitops has put them in place (Forgejo, else the local clone; neither reachable:
-#                 warned, and those specs skipped); `lintspecs` skips just those -- and,
+#                 infra/bin/fetch-gitops has put them in place (Forgejo, else GitHub; neither reachable: the push
+#                 BLOCKED, never checked against stale manifests); `lintspecs` skips just those -- and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
@@ -74,9 +74,10 @@
 # its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
 # actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder, gh (judgements; the
 # red gate on a GitHub push), curl and jq (the red gate on a Forgejo push). What stays a WARNING is what lies outside
-# this machine's install: an external service unreachable (the red gate's Forgejo/GitHub API, the GitOps clone, a
-# served-takes download), no Forgejo token, and a Docker or Xcode that is not RUNNING/selected (scripttests --linux,
-# ios: CI runs both).
+# this machine's install: an external service unreachable (the red gate's Forgejo/GitHub API, a served-takes
+# download), no Forgejo token, and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
+# both). Not the GitOps manifests: their fetch failing BLOCKS (the checkout left behind is stale, and specs passed or
+# failed against it; a push needs Forgejo anyway).
 #
 # INSTALL: scripts/install-hooks.sh (sets core.hooksPath=scripts/hooks, which every worktree of
 # this clone shares; the path is relative, so each worktree runs its own checkout's hook).
@@ -702,14 +703,18 @@ check_sbt() {
     local compiles
     # shellcheck disable=SC2207 # task names carry no spaces
     compiles=($(printf '%s\n' "$changed" | compile_plan))
-    local lints module tests=()
+    local lints module tests=() gitops_stale=0
     # The specs reading the GitOps manifests join the lints once infra/bin/fetch-gitops has put them in this checkout
-    # (from Forgejo, else the local clone it falls back to); neither reachable, they are skipped, and said so.
-    if printf '%s\n' "$changed" | reads_repo && ! skipped lintspecs; then
-        if [ -x infra/bin/fetch-gitops ] && KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1; then
+    # (Forgejo, else GitHub). The fetch failing BLOCKS the push: the checkout left behind is stale, and the local clone
+    # the script once fell back to went stale with GitHub (2026-10-19) -- a spec then failed on a probe movies-gitops
+    # 24a5162 had already fixed. The specs needing them stay out of this run; the rest still run, for their verdicts.
+    if printf '%s\n' "$changed" | reads_repo && ! skipped lintspecs && [ -x infra/bin/fetch-gitops ]; then
+        if KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1; then
             export PREPUSH_GITOPS=1
         else
-            warn "GitOps manifests unreachable (Forgejo and the local clone; $tmp/fetch-gitops.log) -- the deploy specs reading them SKIPPED"
+            gitops_stale=1
+            sed 's/^/    /' "$tmp/fetch-gitops.log" | tail -8 >&2
+            warn "GitOps manifests STALE: infra/bin/fetch-gitops could not fetch movies-gitops main, so the push is BLOCKED. Fix: the Forgejo tunnel (launchctl kickstart -k gui/\$(id -u)/net.bitcashier.forgejo-tunnel), then push again (or PREPUSH_SKIP=lintspecs, named in your report)."
         fi
     fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"
@@ -726,6 +731,7 @@ check_sbt() {
     fi
     "${run[@]}" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
+    [ "$gitops_stale" = 0 ]
 }
 
 # The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an

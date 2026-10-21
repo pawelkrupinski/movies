@@ -33,7 +33,8 @@ Bypasses — `PREPUSH_SKIP="<checks>"`, `git push --no-verify` — must be named
 A check's local tool missing (sbt or a working java, shellcheck, actionlint, npm, python3 / timezonefinder, gh, curl,
 jq) BLOCKS the push with the fix, never a skip: for sbt, `. "$HOME/.sdkman/bin/sdkman-init.sh"` (or put
 `~/.sdkman/candidates/{sbt,java}/current/bin` on PATH) before `git push`. Only what lies outside the machine's install
-warns and passes: the red gate's API unreachable or no Forgejo token, the GitOps clone, Docker not running.
+warns and passes: the red gate's API unreachable or no Forgejo token, Docker not running. The GitOps manifests
+(`infra/bin/fetch-gitops`: Forgejo, else GitHub) failing to fetch BLOCKS too: the checkout left behind is stale.
 
 **Red builds gate every push to main.** While the newest COMPLETED run on main of Main, Identity model convergence
 or Record scrape fixtures is red (a cancelled run says nothing), a push lands only as a fix for it: every pushed
