@@ -55,6 +55,17 @@ private[identity] object RelayStage {
     }
   }
 
+  /** Is `l` a relay searched with the season its screenings fall in ([[Listing.screenedSeason]],
+   *  [[StageRelays.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
+   *  ([[services.movies.TitleWords.Concept.HouseBanner]]) beside its work? A house's season record carries the work and
+   *  the season, which no search of the work's name alone reaches: UK Picture House Uckfield's "Tosca (ROH)", "Otello
+   *  (MET)", Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" screen the 2026/27 relays. "Met" names no
+   *  opera house as a word of its own ("When Harry Met Sally"), but beside a stage work it is the series the work is
+   *  relayed under. */
+  def searchedInItsSeason(l: Listing): Boolean =
+    l.billsAStageHouse || l.ownTitles.exists(title => services.movies.TitleContainment.tokens(title).exists(HouseBannerWords))
+  private lazy val HouseBannerWords: Set[String] = services.movies.TitleWords.tokens(services.movies.TitleWords.Concept.HouseBanner)
+
   /** Where a lower-case letter runs into an upper-case one: the seam of a camel-cased word. */
   private val CamelSeam = """(?<=\p{Ll})(?=\p{Lu})""".r
   /** The listing with its titles' camel-cased words read as their parts: US Flicks' "MetOpera" is the Met's "Met Opera",
