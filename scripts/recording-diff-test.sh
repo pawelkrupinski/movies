@@ -45,6 +45,8 @@ case "\$1 \$2" in
     src=$work/src; rm -rf "\$src"; mkdir -p "\$src/test/resources/fixtures/corpus"
     cp "$cache/recordings/100/pair/test/resources/fixtures/corpus/cinema-scrapes-de.json.gz" "\$src/test/resources/fixtures/corpus/cinema-scrapes-uk.json.gz"
     tar -czf "\$dir/scrapes-uk.tar.gz" -C "\$src" test ;;
+  # the archive release holds none of these runs' corpora: the fetch reads the run's artifact
+  "release download") echo "no assets match the file pattern" >&2; exit 1 ;;
   *) exit 1 ;;
 esac
 STUB
