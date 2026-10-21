@@ -2,6 +2,18 @@
   "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+certificate",
   "scopes" : {
     "listing-film" : {
+      "copied" : {
+        "cineamo" : {
+          "support" : 1.000,
+          "dissent" : 0.251,
+          "n" : 190
+        },
+        "kinoheld" : {
+          "support" : 0.000,
+          "dissent" : 0.222,
+          "n" : 136
+        }
+      },
       "prior" : -2.264109870948828,
       "signals" : {
         "certificate" : {

@@ -10,15 +10,14 @@ usage: copied-fact-share-fit.py <scored-*.jsonl>... [--human] [--boot N]
 """
 import json, sys, math, random, collections
 
-args = [a for a in sys.argv[1:] if not a.startswith("--")]
+Valued = {"--boot", "--write", "--min-pairs"}
+args = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith("--") and sys.argv[i - 1] not in Valued]
 human = "--human" in sys.argv
 boot = int(sys.argv[sys.argv.index("--boot") + 1]) if "--boot" in sys.argv else 200
 SIG = ("year.delta", "director", "runtime.delta", "originalTitle")
 rows = []
 seen = set()
 for path in args:
-    if path.endswith(tuple("0123456789")):
-        continue
     for line in open(path):
         r = json.loads(line)
         srcs = r["sources"]
