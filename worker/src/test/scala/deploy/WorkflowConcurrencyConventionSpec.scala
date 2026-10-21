@@ -22,8 +22,8 @@ import org.scalatest.matchers.should.Matchers
  *    every run shared one lane (2026-10-21).
  *
  *  `cancel-in-progress` is NOT part of the convention: each workflow chooses it for its own reason and says so
- *  beside it (Main's `true` is deliberate — CLAUDE.md "Batch pushes to main"; a recording's or a measurement's
- *  `false` keeps hours of paid-for work from being thrown away).
+ *  beside it (a recording's or a measurement's `false` keeps hours of paid-for work from being thrown away). The one
+ *  fixed choice is Main's: it never cancels (below).
  *
  *  A reusable workflow (`workflow_call`) declares none: the caller owns the lane, and a group named in the callee
  *  is shared by every call of it in one run, which then cancel each other (country-convergence-leg.yml).
@@ -33,12 +33,18 @@ import org.scalatest.matchers.should.Matchers
  *  run per group, a newer pending run replacing the older; Forgejo 15 queues the group FIFO and unbounded, so every
  *  queued run would still do its full work (infra docs/forgejo-actions.md). So such a workflow's first job is
  *  `supersede` (.github/actions/supersede-check, a no-op on github.com): a run that starts with a newer run of its
- *  group already waiting ends green there, and every other job needs it and `if:`s on its output. The rule is on
- *  workflow-level groups only: main.yml's job-level `publish-*` lanes sit inside a run-level group that cancels, and
- *  Forgejo records no job's evaluated group where the check could read it.
+ *  group already waiting ends green there, and every other job is gated on its output: directly (it needs
+ *  `supersede` and `if:`s on it), or by needing only gated jobs with an `if:` that keeps the default skip on a
+ *  skipped need (no `always()`, `!cancelled()`, `failure()`). The rule is on workflow-level groups only: Forgejo
+ *  records no job's evaluated group where the check could read it.
+ *
+ *  MAIN NEVER CANCELS (2026-10-22). It used to (`cancel-in-progress: true`, for GitHub Free's runner budget); on
+ *  Forgejo with ~10 agents pushing, 39 of 51 Main runs on 2026-10-21 were cancelled (906 runner-minutes thrown
+ *  away, 8 runs completed), so builds and deploys rarely landed. Now the run in flight finishes and publishes and
+ *  only the newest waiting push runs next: github.com's one running, one pending.
  *
  *  The one name outside the scheme is main.yml's `deploy-${{ github.ref }}`, older than the scheme: renaming it
- *  would buy nothing and leave the landing push's run in a lane the next push no longer cancels. */
+ *  would buy nothing but a lane change under a queue. */
 class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   private val NamedOutsideTheScheme = Map("main" -> "deploy-${{ github.ref }}")
   /** Not reusable, and no lane — unreviewed as of 2026-10-15; giving one a lane is a change of its own. */
@@ -71,19 +77,34 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
     groupOf(yml).isDefined &&
       !RepoFile.block(yml, "concurrency").linesIterator.map(_.trim).contains("cancel-in-progress: true")
 
-  /** The job's OWN `needs`/`if` (its body's indentation), never a step's `if:`. */
-  private def gatedOnSupersede(job: String): Boolean = {
-    val lines   = RepoFile.withoutComments(job).linesIterator.toVector
-    val indent  = lines.drop(1).find(_.trim.nonEmpty).map(_.takeWhile(_ == ' ').length).getOrElse(0)
-    def own(key: String): String = {
-      val start = lines.indexWhere(l => l.takeWhile(_ == ' ').length == indent && l.trim.startsWith(s"$key:"))
-      if (start < 0) ""
-      else (lines(start) +: lines.drop(start + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > indent))
-        .mkString("\n")
+  /** The job's OWN `needs`/`if` (its body's indentation), never a step's `if:`; empty when it has none. */
+  private def own(job: String, key: String): String = {
+    val lines  = RepoFile.withoutComments(job).linesIterator.toVector
+    val indent = lines.drop(1).find(_.trim.nonEmpty).map(_.takeWhile(_ == ' ').length).getOrElse(0)
+    val start  = lines.indexWhere(l => l.takeWhile(_ == ' ').length == indent && l.trim.startsWith(s"$key:"))
+    if (start < 0) ""
+    else (lines(start) +: lines.drop(start + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > indent))
+      .mkString("\n")
+  }
+
+  private def needsOf(job: String): Set[String] =
+    "[A-Za-z][A-Za-z0-9_-]*".r.findAllIn(own(job, "needs").trim.stripPrefix("needs:")).toSet
+
+  private def gatedOnSupersede(job: String): Boolean =
+    needsOf(job).contains("supersede") && own(job, "if").contains(SupersedeGate)
+
+  /** A job whose `if:` calls a status function runs even when a job it needs was skipped. */
+  private def keepsDefaultSkip(job: String): Boolean =
+    !Seq("always()", "cancelled()", "failure()").exists(own(job, "if").contains)
+
+  /** The jobs that cannot run in a superseded run: gated directly, or needing only gated jobs and keeping the
+   *  default skip on a skipped need. */
+  private def gated(jobs: Map[String, String]): Set[String] = {
+    def grow(known: Set[String]): Set[String] = known ++ jobs.collect {
+      case (name, job) if name != "supersede" && (gatedOnSupersede(job) ||
+            (needsOf(job).nonEmpty && needsOf(job).subsetOf(known) && keepsDefaultSkip(job))) => name
     }
-    val needs = own("needs")
-    ("""needs:\s*supersede\s*$""".r.findFirstIn(needs).isDefined || needs.contains("[supersede") ||
-      needs.linesIterator.exists(_.trim == "- supersede")) && own("if").contains(SupersedeGate)
+    Iterator.iterate(Set.empty[String])(grow).sliding(2).collectFirst { case Seq(a, b) if a == b => a }.get
   }
 
   "every non-cancelling group" should "supersede an older queued run as github.com does, gating every job on it" in {
@@ -95,11 +116,20 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
         case None => Seq(s"$stem: no `supersede` job")
         case Some(job) if !job.contains("uses: ./.github/actions/supersede-check") =>
           Seq(s"$stem: `supersede` does not run .github/actions/supersede-check")
-        case _ => jobs.collect { case (name, job) if name != "supersede" && !gatedOnSupersede(job) =>
-            s"$stem/$name: needs `supersede` and its `if:` must include `$SupersedeGate`" }
+        case _ =>
+          val ok = gated(jobs)
+          jobs.keys.filter(n => n != "supersede" && !ok(n)).toSeq.sorted.map(n =>
+            s"$stem/$n: needs `supersede` and its `if:` must include `$SupersedeGate`, or need only gated jobs")
       }
     }
     gaps shouldBe empty
+  }
+
+  /** Main's run in flight finishes and publishes; a newer push queues, superseding only an older queued one. */
+  "Main" should "never cancel its run in flight, superseding its older queued runs instead" in {
+    val main = workflows.collectFirst { case ("main", yml) => yml }.getOrElse(fail("no main.yml"))
+    nonCancelling(main) shouldBe true
+    RepoFile.jobs(main).keySet should contain("supersede")
   }
 
   "the supersede check" should "do nothing on github.com, which supersedes by itself" in {

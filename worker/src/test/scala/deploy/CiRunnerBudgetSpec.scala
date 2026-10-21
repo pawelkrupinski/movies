@@ -95,7 +95,8 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * ONE main.yml job starts alongside ci: `gates`, which answers in seconds
+   * ONE main.yml job starts at t=0: `supersede` (seconds; it is what ci and `gates` wait for, so they
+   * start together right after it — `gates` takes the slot it gives back). `gates` answers in seconds
    * which tiers changed since their last deploy. Everything else — the GHCR
    * build jobs that ship the k3s tiers — hangs off `needs: ci`, which is what keeps
    * the budget above honest: dropping a `needs:` to make a deploy land sooner
@@ -103,12 +104,12 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    * queue would be whichever GitHub felt like. `free-runners` was the earlier
    * t=0 exception and is gone (`DeployImageReuseSpec`).
    */
-  it should "start nothing alongside ci but the tier gates" in {
+  it should "start nothing alongside ci but the supersede check" in {
     val atStart = RepoFile.jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
-    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("gates"))
+    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("supersede"))
   }
 
   /** ...and the gates job holds that slot for seconds, not for whatever it grows into. */
