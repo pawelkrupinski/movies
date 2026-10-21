@@ -20,25 +20,25 @@ object TitleWords {
 
   /** A concept and its readers (who reads it is what a word added to it changes). */
   enum Concept(val id: String) {
-    /** `IdentityMeasures.AnniversaryYears`, `DecorationWords.EditionWords`. */
+    /** `IdentityMeasures.AnniversaryYears`, `services.billing.DecorationWords.EditionWords`. */
     case Anniversary     extends Concept("anniversary")
-    /** `DecorationWords.EditionWords`. */
+    /** `services.billing.DecorationWords.EditionWords`. */
     case Edition         extends Concept("edition")
     /** `services.billing.VersionTags`: a closing tag naming a version of the film ("– Extended", "Director's Cut"), which
      *  the identity measures read the title without. Read as PHRASES ([[foldedPattern]]), never as loose words. */
     case VersionTag      extends Concept("version-tag")
-    /** `DecorationWords.EventWords` (and `MultiFilmBill.EventTailWords`). */
+    /** `services.billing.DecorationWords.EventWords` (and `MultiFilmBill.EventTailWords`). */
     case Premiere        extends Concept("premiere")
     case Talk            extends Concept("talk")
     case Screening       extends Concept("screening")
     case Festival        extends Concept("festival")
     case Performance     extends Concept("performance")
     case Marathon        extends Concept("marathon")
-    /** `ListingShape.billsAFilmFestival`: a film festival billed by its own name alone is its programme, no film. */
+    /** `services.billing.BillingPieces.billsAFilmFestival`: a film festival billed by its own name alone is its programme, no film. */
     case FilmFestival    extends Concept("film-festival")
-    /** `ListingShape.billsAFilmFestival`: a festival's touring edition, billed after its name ("Cinema Edition"). */
+    /** `services.billing.BillingPieces.billsAFilmFestival`: a festival's touring edition, billed after its name ("Cinema Edition"). */
     case FestivalEdition extends Concept("festival-edition")
-    /** `DecorationWords.EventWords` and `ListingShape.HouseWords`. */
+    /** `services.billing.DecorationWords.EventWords` and `ListingShape.HouseWords`. */
     case Relay           extends Concept("relay")
     /** `MultiFilmBill.EventTailWords`, beside the event words. */
     case SideEvent       extends Concept("side-event")
@@ -48,7 +48,7 @@ object TitleWords {
     case Sneak           extends Concept("sneak")
     /** `agreement.NonFilmEvents` — kept as a listing, never a film. */
     case SecretScreening extends Concept("secret-screening")
-    /** `MultiFilmBill`'s markers. */
+    /** `services.billing.BillJoins`' markers. */
     case DoubleBill      extends Concept("double-bill")
     /** `ExtraTitleRules`' screening-note strip (`BareAudience`). */
     case Audience        extends Concept("audience")
