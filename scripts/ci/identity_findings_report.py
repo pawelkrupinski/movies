@@ -7,8 +7,9 @@ it, so no build fails on it (the identity takes check fails only what a commit's
 triaged from here instead. Each `Record scrape fixtures` run's convergence rows leave it in their diagnostics artifact
 (`convergence-diagnostics-<cc>-convergence`):
 
-  <cc>-suspect-unjudged.txt               suspect|wrong <TAB> venues <TAB> rawTitle <TAB> film <TAB> title <TAB> reasons
-                                          (CountryConvergenceBehaviour's suspect audit)
+  <cc>-suspect-unjudged.txt               suspect|wrong|catalogue <TAB> venues <TAB> rawTitle <TAB> film <TAB> title <TAB> reasons
+                                          (CountryConvergenceBehaviour's suspect audit; `catalogue`: one catalogue id
+                                          whose listings were taken as two films, CatalogueSplits, a row per side)
   corpus-shape-recorded-<cc>-<spec>.txt   finding|stale <TAB> venue <TAB> listing <TAB> what (CorpusShapeSpec)
 
 Per country this updates ONE issue, "Identity findings: <cc>", in place: every finding with its ready triage commands,
@@ -108,7 +109,7 @@ def merged(findings):
 def still_unjudged(finding, labels, baseline):
     """Whether a suspect the recording found is still unjudged by the identity judgements as they stand now: a
     judgement made since the recording takes it off the report at once."""
-    if finding["kind"] != "suspect":
+    if finding["kind"] not in JUDGED_TAKES:
         return True
     venues = [v for v in finding["venues"].split(", ") if v] or ["*"]
     if any(label_of(labels, venue, finding["rawTitle"], finding["film"]) is not None for venue in venues):
@@ -131,7 +132,7 @@ def first_seen_of(body):
 def commands(cc, finding, recording):
     q = shlex.quote
     venue, raw = finding["venue"], finding["rawTitle"]
-    if finding["kind"] in ("suspect", "wrong"):
+    if finding["kind"] in TAKES:
         at = [] if venue in ("", "*") else ["--venue", venue]
         return [" ".join(["scripts/identity-slice", cc] + [q(a) for a in at] + ["--title", q(raw), "--recording", recording]),
                 " ".join(["scripts/identity-slice", cc, "--explain"] + [q(a) for a in at] + ["--title", q(raw)]),
@@ -143,11 +144,17 @@ def commands(cc, finding, recording):
     return out
 
 
+TAKES = ("suspect", "wrong", "catalogue")  # findings about a listing's take: its film shown, sliced to triage
+JUDGED_TAKES = ("suspect", "catalogue")    # ... that a judgement of the film settles
+
 SECTIONS = [
     ("suspect", "Suspect takes no label judges",
      "Judge the film into `test/resources/fixtures/identity-judgements.tsv` -- `right`, or `wrong` and fixed."),
     ("wrong", "Takes a label calls wrong",
      "The recording still takes a film labelled wrong: fix the rule that takes it."),
+    ("catalogue", "One catalogue id naming two films",
+     "A catalogue names one film by one id, so one side is wrong -- or the feed filed a namesake under the id and its "
+     "copied facts with it. Judge each side's film into `test/resources/fixtures/identity-judgements.tsv`."),
     ("shape-finding", "Corpus-shape findings",
      "A screening marker left in a query (SearchQueryMarkers) or a slot field read off the wrong node "
      "(CinemaSlotInvariants): fix the title rule or the parser, or allowlist the listing with why."),
@@ -196,7 +203,7 @@ def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed
         lines += ["", f"## {heading} ({len(group)})", "", how]
         for n, f in enumerate(group):
             flag = "⏰ " if age(f) > max_age else ""
-            film = f" → {f['film']} {f.get('title', '')}".rstrip() if kind in ("suspect", "wrong") else ""
+            film = f" → {f['film']} {f.get('title', '')}".rstrip() if kind in TAKES else ""
             where = f" · {f['spec']}" if f.get("spec") else ""
             facts = f"{f['venues']}{where} · first seen {seen[f['id']]} ({age(f)} d) · {f['what']}"
             if n < detailed:

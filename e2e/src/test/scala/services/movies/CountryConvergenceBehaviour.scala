@@ -1415,11 +1415,15 @@ abstract class CountryConvergenceBehaviour(
     tools.UnmatchedClusters.write(ConvergenceDiagnostics.Directory.resolve(s"$corpusKey-takes").resolve(s"${country.code}.json.gz"),
       tools.SuspectTakesAudit.capture(country, corpus, decided.decisions, model.listings))
     val unjudged = verdict.fresh.map(_.render) ++ verdict.wrong.map(t => s"WRONG by identity-judgements.tsv: ${t.listing.venue}\t${t.listing.rawTitle}\t${t.film} ${t.record.title}")
-    // what the Identity findings report reads: `suspect|wrong <TAB> venues <TAB> rawTitle <TAB> film <TAB> title <TAB> reasons`
+    // what the Identity findings report reads: `suspect|wrong|catalogue <TAB> venues <TAB> rawTitle <TAB> film <TAB> title <TAB> reasons`
     val unjudgedLines =
       verdict.fresh.map(s => Seq("suspect", s.venues.mkString(", "), s.rawTitle, s.film, s.title, s.reasons.map(_.render).distinct.mkString("; "))) ++
         verdict.wrong.map(t => Seq("wrong", t.listing.venue, t.listing.rawTitle, t.film,
-          s"${t.record.title} (${t.record.year.fold("?")(_.toString)})", tools.SuspectTakesAudit.WrongReason))
+          s"${t.record.title} (${t.record.year.fold("?")(_.toString)})", tools.SuspectTakesAudit.WrongReason)) ++
+        // one catalogue id whose listings were taken as two films: a row per side and billing, the report's to judge
+        services.identity.CatalogueSplits.of(corpus.takes).flatMap(split => split.takes.groupBy(_.listing.rawTitle).toSeq.sortBy(_._1).map {
+          case (raw, ts) => Seq("catalogue", ts.map(_.listing.venue).distinct.sorted.mkString(", "), raw, split.film, split.title, split.why)
+        })
     ConvergenceDiagnostics.write(s"$corpusKey-suspect-unjudged", unjudgedLines.map(_.map(tools.UnmatchedClusters.singleSpaced).mkString("\t")))
     if (unjudged.nonEmpty)
       ConvergenceDiagnostics.summarise(name, s"${country.displayName}: suspect takes to judge into identity-judgements.tsv -- reported, the " +
