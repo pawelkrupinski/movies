@@ -50,10 +50,13 @@ object LeanListing {
     row.lastSuccess.map(s => LeanListing(row.cinema, s.at, s.films.map(f => leanFilm(f, keepsDays) -> f.showtimes.##)))
 
   /** `film` as a lean read gives it: one showtime per day it screens on, where `keepsDays` keeps it, else the season
-   *  of the first ([[seasonOnly]]). */
+   *  of the first ([[seasonOnly]]). A film read lean already reads the same again, so whoever holds one need not ask how
+   *  it was read (`services.identity.ModelRead`); one whose days were [[unread]] stays unread. */
   def leanFilm(film: CinemaMovie, keepsDays: CinemaMovie => Boolean): CinemaMovie = {
     val screened = film.showtimes.map(_.dateTime.toLocalDate)
-    film.copy(showtimes = if (keepsDays(film)) days(screened) else screened.minOption.fold(Seq.empty[models.Showtime])(seasonOnly))
+    if (screened.contains(UnreadDay)) film
+    else film.copy(showtimes =
+      if (keepsDays(film)) days(screened) else screened.filter(_ != SeasonOnlyDay).minOption.fold(Seq.empty[models.Showtime])(seasonOnly))
   }
 
   /** `keepsDays` remembered by title for one read: a country's films repeat few titles (US 2026-10-06: 98,638 films,

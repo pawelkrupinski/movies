@@ -425,6 +425,8 @@ object UnmatchedClusters {
       .append("catalogueIds", array(l.catalogueIds.map(c => new BsonDocument("source", new BsonString(c.source)).append("id", new BsonString(c.id)))))
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
     if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
+    // a lean read's season alone (`ModelRead`): no day, but the season the rules read
+    else l.screenings.season.foreach(season => d.append("season", new BsonInt32(season)))
     if (!l.names.isEmpty) d.append("names", array(l.names.hashes.map(new BsonInt32(_))))
     if (!l.words.isEmpty) d.append("words", array(l.words.hashes.map(new BsonInt32(_))))
     put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster); put(d, "certificate", l.certificate)
@@ -438,7 +440,8 @@ object UnmatchedClusters {
       d.getString("title").getValue, d.getString("cleanTitle").getValue, optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"),
       opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
-      opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)),
+      opt(d, "searchTitle"), opt(d, "poster"), optInt(d, "season").fold(ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)))(season =>
+        ScreeningDays.ofSeason(java.time.LocalDate.of(season, ScreeningDays.SeasonOpens, 1))),
       VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))), properTitle = opt(d, "properTitle"),
       certificate = opt(d, "certificate"), yearUpperBound = optInt(d, "yearUpperBound"), performanceYear = optInt(d, "performanceYear"),
       words = ProseWords.ofHashes(Option(d.get("words")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))

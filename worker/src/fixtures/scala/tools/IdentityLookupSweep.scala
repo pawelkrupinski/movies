@@ -1,6 +1,6 @@
 package tools
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ObservationReads, TrackedLookups}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ModelRead, ObservationReads, TrackedLookups}
 import services.identity.adapters.TmdbIdentityLookups
 import services.movies.TitleNormalizer
 
@@ -45,7 +45,7 @@ object IdentityLookupSweep {
     val lookups    = new TmdbIdentityLookups(w.tmdbClient, new services.enrichment.ImdbClient(w.identityLookupFetch), w.detailEnrichers)
     val pool = Option.when(threads > 1)(java.util.concurrent.Executors.newFixedThreadPool(threads,
       Thread.ofPlatform().daemon().name(s"identity-sweep-${w.country.code}-", 0).factory()))
-    try run(Listing.corpus(w.archivedListings, normalizer), lookups, normalizer, onLookup, pool = pool)
+    try run(ModelRead.corpus(w.archivedListings, normalizer), lookups, normalizer, onLookup, pool = pool)
     finally pool.foreach(_.shutdownNow())
   }
 

@@ -85,9 +85,11 @@ final class IdentityModelService(
   private val observations = new ConcurrentHashMap[String, ObservationReads.Change]()
   private var model: Option[IncrementalResolver] = scala.None
 
-  /** A venue's scrape was archived with `films`: its listings now. */
+  /** A venue's scrape was archived with `films`: its listings now, read as the take-up reads the archive's
+   *  ([[ModelRead]]). Read whole, a venue scraped since boot fired rules a venue taken up lean never did — and the
+   *  measurement, replaying recordings, could not tell which prod held. */
   def venueScraped(cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
-    venues.put(cinema.displayName, Listing.distinct(Listing.all(Seq(cinema -> films), normalizer))); wake()
+    venues.put(cinema.displayName, ModelRead.corpus(Seq(cinema -> films), normalizer)); wake()
   }
 
   /** New content was filed under `key` (the venue page index, the proposal index): every question that reads it is

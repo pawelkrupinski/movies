@@ -155,6 +155,24 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     w.project() shouldBe ((w.whole, 2))                        // the thirteenth call: whole again
   }
 
+  // Recordings were replayed whole while prod took the archives up lean, so four rules reading what the lean read drops
+  // measured cured and were dead in prod, 10-15 to 10-21 (17da3656b). Every source of the model now reads through
+  // `ModelRead`: the take-up's read of the archives must be exactly what it gives a replay of the same rows.
+  "the identity model's take-up" should "read each listing as a replay of the same archive reads it (ModelRead), days and season alike" in {
+    val w = new World
+    val relay = film(Multikino, "NT Live: Hamlet", 2, 50)
+    LeanStageWorks.billsStageWork(relay) shouldBe true
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 30, 400), relay)
+    w.archive.store(Helios, clock.instant(), film(Helios, "Diuna", 2))
+    w.intake.recordCinemaScrape(KinoMuza, Seq(film(KinoMuza, "Obcy", 1, 900)), listingIsComplete = true, sourceKey = None, viaFallback = false)
+    def held(listings: Seq[Listing]) = listings.map(l => (l, l.screenings)).sortBy(_._1)
+    val taken = held(Listing.all(w.intake.identities(live), normalizer))
+    taken shouldBe held(ModelRead.all(w.intake.listings(live), normalizer))
+    taken.collect { case (l, days) if l.rawTitle == "NT Live: Hamlet" => days.days.size } shouldBe Seq(2)
+    // read lean again, a lean listing reads the same: whoever holds one need not ask how it was read
+    held(ModelRead.all(w.intake.identities(live), normalizer)) shouldBe taken
+  }
+
   // Neither the identity model's take-up nor the projection keeps a showtime, yet a US boot decoded every one in the
   // archive for them: ~11 CPU-s of `ShowtimeCodec.read` at take-up (JFR). The projection wants only their digest.
   "the identity model's take-up and the projection's listing read" should "read the archives without their showtimes, each film's season kept" in {

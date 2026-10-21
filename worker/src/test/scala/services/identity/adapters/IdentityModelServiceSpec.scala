@@ -47,7 +47,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       Seq(Showtime(LocalDateTime.of(2026, 10, 1, 18, 0), None)))
 
   private def listingsOf(scrapes: Map[Cinema, Seq[CinemaMovie]]) =
-    Listing.distinct(Listing.all(scrapes.toSeq, normalizer))
+    ModelRead.corpus(scrapes.toSeq, normalizer)
 
   private def decided(decisions: Seq[ResolverDecision]) = decisions.map(d => (d.listings, d.film)).toSet
 

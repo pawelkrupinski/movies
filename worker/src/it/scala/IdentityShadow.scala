@@ -174,9 +174,9 @@ object IdentityShadow {
   // ── the resolver ──────────────────────────────────────────────────────────────────────
 
   /** The corpus's raw listings — never `ScrapeListing.prepare`'s folded rows, which hide the very
-   *  listings a venue lists twice. */
+   *  listings a venue lists twice — read as prod's model reads them ([[ModelRead]]): lean. */
   def listingsOf(w: ArchiveReplayWiring, normalizer: TitleNormalizer): Seq[Listing] =
-    Listing.corpus(w.archivedListings, normalizer)
+    ModelRead.corpus(w.archivedListings, normalizer)
 
   /** [[tools.MemoLookups]], by the name the shadow harness has always used. */
   type Memo = tools.MemoLookups
