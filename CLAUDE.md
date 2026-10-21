@@ -230,6 +230,13 @@ Before an ad-hoc test or a full convergence leg (10–90 min), use the local too
 answers which question, flags, speed and data sources: `identity-investigation` skill. **Name these tools in every
 subagent brief.**
 
+**Heavy identity work runs on CI (ci-runner, Forgejo), not the laptop** (the user, 2026-10-21): measure with
+`scripts/identity-measure --base X --head Y [--recording RUN] [--countries pl,de]` (pushes a `measure/<user>/…`
+branch the run deletes itself; ~25-40 min); any other heavy sbt command over a cached recording (a resolve dump, an
+ablation, a simulation, a replay sweep) with `scripts/identity-ci-run --recording RUN [--countries …] -- '<sbt command>'`.
+`scripts/identity-measure-local` and other local heavy runs are a fallback only, for what the CI route cannot do yet,
+and only under the shared 3-slot heavy-run wrapper; say so in the report.
+
 - Read `docs/identity-experiments.md` before a resolver change; add an entry for every experiment you drop or park,
   its code kept as an `experiment/<name>` tag, not a stray branch.
 - **Every identity judgement lives in ONE file**, `test/resources/fixtures/identity-judgements.tsv` — one row per

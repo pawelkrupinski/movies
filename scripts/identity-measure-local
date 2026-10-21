@@ -46,7 +46,9 @@
 # it"; the model rows bound what is served.
 #
 # What it does not do that CI does: read the base from the commit statuses, reuse a stored base, run the corpus-shape
-# specs. Use it while GitHub is unreachable; scripts/identity-measure is the verdict of record.
+# specs. A FALLBACK ONLY (the user, 2026-10-21: heavy work runs on ci-runner): measure with scripts/identity-measure
+# (--recording RUN for the same recording), and run this only for what that cannot do, under the agents' shared
+# 3-slot heavy-run wrapper. scripts/identity-measure is the verdict of record.
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
