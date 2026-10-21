@@ -10,8 +10,10 @@
 # git):
 #
 #   1. generates a read and a write ed25519 deploy key in a temp dir (removed on exit);
-#   2. registers them on movies-gitops via the Forgejo API (read_only true / false), replacing any
-#      key with the same title;
+#   2. registers them on movies-gitops via the Forgejo API (read_only true / false) beside any
+#      key an earlier run registered (titles carry the run's UTC time, since Forgejo refuses a
+#      repeated deploy-key title), which is removed only after step 4 hands Flux the new keys -- so
+#      a run that dies half way leaves Flux's current key registered;
 #   3. builds known_hosts with ssh-keyscan run on k3s-worker-1 (Forgejo's :2222 admits only the
 #      cluster nodes, so the laptop cannot scan it);
 #   4. creates/updates Secrets flux-system/flux-git-read and flux-git-write (identity,
@@ -80,21 +82,21 @@ for kind in read write; do
 done
 
 echo "== 2. register deploy keys on $owner/$repo"
-existing=$(forgejo "$api/repos/$owner/$repo/keys?limit=50")
+# The keys these titles held before this run: removed after step 4, once the Secrets carry the new ones.
+old_keys=$(forgejo "$api/repos/$owner/$repo/keys?limit=50" |
+  jq -r --arg r "$read_title" --arg w "$write_title" \
+    '.[] | select(.title | startswith($r) or startswith($w)) | .id')
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
 register() { # <title> <pubkey file> <read_only>
-  local title=$1 pub=$2 ro=$3 id
-  for id in $(jq -r --arg t "$title" '.[] | select(.title == $t) | .id' <<<"$existing"); do
-    forgejo -X DELETE "$api/repos/$owner/$repo/keys/$id" >/dev/null
-    echo "  removed old '$title' (id $id)"
-  done
+  local title=$1 pub=$2 ro=$3
   # The body goes through a file: stdin already carries the token header to curl (-K -).
   jq -n --arg t "$title" --arg k "$(cat "$pub")" --argjson ro "$ro" '{title: $t, key: $k, read_only: $ro}' \
     >"$work/key.json"
   forgejo -X POST --data-binary @"$work/key.json" "$api/repos/$owner/$repo/keys" |
     jq -r '"  added \(.title) (id \(.id), read_only \(.read_only))"'
 }
-register "$read_title" "$work/read.pub" true
-register "$write_title" "$work/write.pub" false
+register "$read_title $stamp" "$work/read.pub" true
+register "$write_title $stamp" "$work/write.pub" false
 
 echo "== 4. Secrets flux-system/flux-git-read and flux-git-write"
 for kind in read write; do
@@ -104,6 +106,12 @@ for kind in read write; do
       metadata: {name: $name, namespace: "flux-system"},
       data: {identity: ($id | @base64), "identity.pub": ($pub | @base64), known_hosts: ($kh | @base64)}}' |
     kube "kubectl apply -f -" | sed 's/^/  /'
+done
+
+echo "== 2b. remove the deploy keys the Secrets no longer hold"
+for id in $old_keys; do
+  forgejo -X DELETE "$api/repos/$owner/$repo/keys/$id" >/dev/null
+  echo "  removed old key id $id"
 done
 
 echo "== 5. GitRepositories"
