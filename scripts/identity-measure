@@ -353,7 +353,8 @@ find_measurement() {
 # for a runner, and on Forgejo it added 32 minutes to run 790's 52 (takes done at +96 of its 129). So the wait ends at
 # whichever comes first: every measured country's takes row done, or the run done (cancelled included). The jobs come
 # from `run view --json jobs` (github.com: "<country> / takes"); Forgejo serves no run's jobs, but posts each job's
-# result on the commit as a status, "Identity model convergence / takes (<country>)", whose link is the run's.
+# result on the commit as a status, "Identity model convergence / takes (<country>)", whose link is the run's -- by its id
+# (.../actions/runs/968), where the run's own url names its number (.../runs/435).
 # Only where the RUN drops its own branch (Forgejo, run_drops_branch): on github.com this script deletes the branch at exit,
 # which would pull it from under the run's tail. IDENTITY_MEASURE_EARLY_COLLECT=1|0 overrides (the self-test).
 early_collect=${IDENTITY_MEASURE_EARLY_COLLECT:-$run_drops_branch}
@@ -366,7 +367,7 @@ takes_rows_done() { # <run id> <sha>: every measured country's takes row has end
     url=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json url --jq .url) || return 1
     slug=${url%/actions/runs/*}; slug=${slug#*://*/}
     rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" api "repos/$slug/commits/$sha/statuses?limit=100" \
-      --jq ".[] | select(.target_url == \"$url\") | [(.context | sub(\"^Identity model convergence / \"; \"\")), (.status // .state)] | @tsv") || return 1
+      --jq ".[] | select(.target_url == \"$url\" or (.target_url | endswith(\"/actions/runs/$id\"))) | [(.context | sub(\"^Identity model convergence / \"; \"\")), (.status // .state)] | @tsv") || return 1
     rows=$(sed -E 's/^takes \(([a-z-]+)\)/\1 \/ takes/' <<< "$rows")
   fi
   for cc in ${countries//,/ }; do
