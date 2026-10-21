@@ -94,6 +94,27 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     both should include("Kafka&#x27;s life.")
   }
 
+  "a card" should "show the cast the venue, its feed's catalogue and each candidate film state, cut short past five names" in {
+    val fed     = services.movies.ListingKey.Published("Planken Lichtspiele Mannheim", "FRANZ KAFKA", None, Nil)
+    val venue   = (1 to 7).map(i => s"Venue Actor $i") :+ "<b>Bold</b> & Co"
+    val catalog = Seq("Catalogue Actor 1", "Catalogue Actor 2")
+    val tmdb    = (1 to 6).map(i => s"TMDB Actor $i")
+    val html = contentAsString(new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+      Seq(heldDecision.copy(members = Seq(Held, fed))(heldDecision.trace)),
+      slotsHeld = Map(Held -> SlotFacts(VenueFacts(cast = venue), now), fed -> SlotFacts(VenueFacts(year = Some(2025), cast = catalog), now)),
+      feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.CatalogueId("webedia", "1")), 1, None, None)),
+      recordsHeld = Map(kafka.tmdb -> kafka.copy(cast = tmdb)))), new ReviewAnswers(new InMemoryReviewAnswerStore),
+      Files.createTempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
+    // the venue's: its first five, the other three behind "+3 more", every name escaped
+    html should include("<summary>Venue Actor 1, Venue Actor 2, Venue Actor 3, Venue Actor 4, Venue Actor 5 <span class=\"more\">+3 more</span></summary>")
+    html should include("Venue Actor 6, Venue Actor 7, &lt;b&gt;Bold&lt;/b&gt; &amp; Co")
+    html should not include "<b>Bold</b>"
+    // the catalogue's, in its own block: two names, nothing to cut
+    html should include("<dt>Cast</dt><dd><span class=\"cast\">Catalogue Actor 1, Catalogue Actor 2</span></dd>")
+    // the candidate film's, from the resolver's stored TMDB record
+    html should include("TMDB Actor 1, TMDB Actor 2, TMDB Actor 3, TMDB Actor 4, TMDB Actor 5 <span class=\"more\">+1 more</span>")
+  }
+
   "the matchable page" should "show the basis and the veto's reason, filterable by basis" in {
     val c = controller(Mode.Dev)
     val all = contentAsString(c.matchable(Some("pl"), 0.5, None, 60, false)(FakeRequest()))

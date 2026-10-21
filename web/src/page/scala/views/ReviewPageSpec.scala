@@ -61,6 +61,20 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
+  /** A cluster whose venue lists a long cast, its feed's catalogue a short one, and whose candidate's stored TMDB record a cast too. */
+  private val cast = {
+    import services.movies.ListingKey
+    val fed = ListingKey.Published("Planken Lichtspiele Mannheim", ReviewFixtures.Held.rawTitle, None, Nil)
+    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+      Seq(ReviewFixtures.heldDecision.copy(members = Seq(ReviewFixtures.Held, fed))(ReviewFixtures.heldDecision.trace)),
+      slotsHeld = Map(
+        ReviewFixtures.Held -> SlotFacts(VenueFacts(year = Some(2025), cast = (1 to 7).map(i => s"Venue Actorwithaverylongname $i") :+ "<i>x</i>"), now),
+        fed -> SlotFacts(VenueFacts(year = Some(2025), cast = Seq("Catalogue Actor")), now)),
+      feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.CatalogueId("webedia", "1")), 1, None, None)),
+      recordsHeld = Map(ReviewFixtures.kafka.tmdb -> ReviewFixtures.kafka.copy(cast = (1 to 6).map(i => s"TMDB Actor $i"))))),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
+  }
+
   /** A listing whose poster only its venue's last scrape (`identity_listings`) carries: no slot row, no venue page. */
   private val listedPoster = "https://biletyna.pl/file/get/id/414402"
   private val listed = {
@@ -122,6 +136,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/debug/review?country=pl&answered=true" => contentAsString(controller.queue(Some("pl"), ReviewController.DefaultLimit, true)(FakeRequest()))
         case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/de/review"               => contentAsString(german.queue(Some("de"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/cast/review"             => contentAsString(cast.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
@@ -182,6 +197,28 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString(s"$robaczki.querySelector('.syn.muted').textContent") shouldBe "The venue gives no synopsis."
       page.evalInt(s"$robaczki.querySelectorAll('.lead').length") shouldBe 0
       page.evalBool(s"$robaczki.querySelector('button[data-verdict=undo]').hidden") shouldBe true
+    }
+  }
+
+  it should "show the venue's, the catalogue's and the candidate's cast cut short, a phone's width unscrolled, a tap unfolding the rest" in {
+    onPage("/cast/review") { page =>
+      page.setViewport(360, 740)
+      val kafka = card("FRANZ KAFKA")
+      val venue = s"$kafka.querySelector('.listing dl.facts:not(.catalogue) details.cast')"
+      page.evalString(s"$venue.querySelector('summary').textContent") shouldBe
+        (1 to 5).map(i => s"Venue Actorwithaverylongname $i").mkString(", ") + " +3 more"
+      page.evalString(s"$venue.getAttribute('title')") should endWith("Venue Actorwithaverylongname 7, <i>x</i>")
+      page.evalInt(s"$kafka.querySelectorAll('.listing i').length") shouldBe 0   // a name is text, never markup
+      page.evalBool(s"$venue.open") shouldBe false
+      page.evalString(s"getComputedStyle($venue.querySelector('.more')).display") should not be "none"
+      page.eval(s"$venue.querySelector('summary').click()")
+      page.waitFor(s"$venue.open")
+      page.evalString(s"getComputedStyle($venue.querySelector('.more')).display") shouldBe "none"
+      page.evalString(s"$venue.textContent") should include("Venue Actorwithaverylongname 6, Venue Actorwithaverylongname 7, <i>x</i>")
+      page.evalString(s"$kafka.querySelector('dl.facts.catalogue .cast').textContent") shouldBe "Catalogue Actor"
+      page.evalString(s"$kafka.querySelector('.lead .with summary').textContent") shouldBe
+        (1 to 5).map(i => s"TMDB Actor $i").mkString(", ") + " +1 more"
+      page.evalBool("document.documentElement.scrollWidth <= document.documentElement.clientWidth") shouldBe true
     }
   }
 

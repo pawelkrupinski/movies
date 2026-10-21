@@ -68,7 +68,7 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
       "Original title" -> facts.flatMap(_.originalTitle).headOption,
       "Year"           -> stated.flatMap(_.year).headOption.map(_.toString),
       "Director"       -> stated.map(_.directors).find(_.nonEmpty).map(_.mkString(", ")),
-      "Cast"           -> list(_.cast).map(c => c.take(8).mkString(", ") + (if (c.size > 8) " …" else "")),
+      "Cast"           -> Option(venueCast.mkString(", ")),
       "Runtime"        -> facts.flatMap(_.runtime).headOption.map(r => s"$r min"),
       "Country"        -> list(_.countries).map(_.mkString(", ")),
       "Catalogue ids"  -> Some(own.flatMap(_.feed).filter(_.catalogueIds.nonEmpty).map(_.catalogue).distinct.mkString(", ")),
@@ -81,6 +81,13 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
       })
   }
 
+  /** The cast the venues themselves list — the first member's that lists one; the page cuts it short ([[ReviewCards.CastShown]]). */
+  lazy val venueCast: Seq[String] =
+    members.filterNot(_.factsFromCatalogue).flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq).map(_.cast).find(_.nonEmpty).getOrElse(Nil)
+  /** The cast an aggregator's catalogue entry lists, copied onto its listings by the feed. */
+  lazy val catalogueCast: Seq[String] =
+    members.filter(_.factsFromCatalogue).flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq).map(_.cast).find(_.nonEmpty).getOrElse(Nil)
+
   /** What an aggregator's catalogue entry claims, copied onto its listings by the feed — never the venue's word. */
   lazy val catalogueSays: Seq[(String, String)] = {
     val fed   = members.filter(_.factsFromCatalogue)
@@ -88,6 +95,7 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
     rows(
       "Year"          -> facts.flatMap(_.year).headOption.map(_.toString),
       "Director"      -> facts.map(_.directors).find(_.nonEmpty).map(_.mkString(", ")),
+      "Cast"          -> Option(catalogueCast.mkString(", ")),
       "Runtime"       -> facts.flatMap(_.runtime).headOption.map(r => s"$r min"),
       "Catalogue ids" -> Some(fed.map(m => m.feed.map(_.catalogue).filter(_.nonEmpty).orElse(m.pageUrl).getOrElse("")).distinct.mkString(", ")))
   }
@@ -114,6 +122,9 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
 
 /** Builds the cards of the clusters on screen — and reads only theirs. */
 object ReviewCards {
+  /** How many of a cast's names a card shows before folding the rest behind "+N more". */
+  val CastShown = 5
+
   def build(source: ReviewSource, clusters: Seq[(ReviewCluster, Option[Instant])], labels: Seq[LabelRow],
             answers: ReviewAnswers.Index): Seq[ReviewCard] = {
     val keys   = clusters.flatMap(_._1.members)
@@ -138,14 +149,15 @@ object ReviewCards {
     }
   }
 
-  /** Each film as the resolver weighed it — its stored TMDB record's title, year, directors and running time — with the
+  /** Each film as the resolver weighed it — its stored TMDB record's title, year, directors, running time and cast — with the
    *  corpus's poster (else the record's) and overview (never a live TMDB call); the corpus's facts only where no record
    *  states them. */
   private[review] def withRecords(corpus: Map[Int, FilmCard], records: Map[Int, FilmCard]): Map[Int, FilmCard] =
     (corpus.keySet ++ records.keySet).toSeq.flatMap { tmdb =>
       ((records.get(tmdb), corpus.get(tmdb)) match {
         case (Some(r), Some(c)) => Some(FilmCard(tmdb, c.imdb.orElse(r.imdb), r.title.orElse(c.title), r.originalTitle.orElse(c.originalTitle),
-          r.year.orElse(c.year), if (r.directors.nonEmpty) r.directors else c.directors, r.runtime.orElse(c.runtime), c.poster.orElse(r.poster), c.overview))
+          r.year.orElse(c.year), if (r.directors.nonEmpty) r.directors else c.directors, r.runtime.orElse(c.runtime), c.poster.orElse(r.poster), c.overview,
+          if (r.cast.nonEmpty) r.cast else c.cast))
         case (r, c) => r.orElse(c)
       }).map(tmdb -> _)
     }.toMap

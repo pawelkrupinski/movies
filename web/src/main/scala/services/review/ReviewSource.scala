@@ -49,10 +49,10 @@ object ListingFeed {
 }
 
 /** A film as the review card shows it: the resolver's stored TMDB record (`tmdb_films`) and the corpus's (`movies` + `web_movies`, else
- *  its TMDB slot), merged by [[ReviewCards.withRecords]] — never a live TMDB call. */
+ *  its TMDB slot), merged by [[ReviewCards.withRecords]] — never a live TMDB call. `cast` its top-billed names in billing order. */
 final case class FilmCard(tmdb: Int, imdb: Option[String], title: Option[String], originalTitle: Option[String],
                           year: Option[Int], directors: Seq[String], runtime: Option[Int], poster: Option[String],
-                          overview: Option[String]) {
+                          overview: Option[String], cast: Seq[String] = Nil) {
   def facts: FilmFacts = FilmFacts(FilmRef.tmdb(tmdb), title, year, directors)
 }
 
@@ -74,7 +74,7 @@ trait ReviewSource {
   /** The corpus's record of each of these TMDB films that it holds. */
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard]
   /** The resolver's own stored TMDB record of each of these films (`tmdb_films`) — its title, original title, year,
-   *  directors, running time and IMDb id, and the TMDB poster its poster evidence hashed (`identity_family_answers`); no
+   *  directors, running time, IMDb id and top-billed cast, and the TMDB poster its poster evidence hashed (`identity_family_answers`); no
    *  overview — the films it weighed whether or not the corpus has them. */
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard]
   /** For each corpus record naming one of `refs` (by its TMDB, IMDb, Filmweb, RT or Metacritic id), every ref it names. */

@@ -15,7 +15,9 @@
    that loads shown: the rest wait in `data-fallbacks` for the error handler below. *@
 @venuePoster(posters: Seq[String]) = {@if(posters.isEmpty) {<div class="poster empty">no venue poster</div>} else {@defining(posters.map(tools.PosterProxy.proxy)) { proxied =>
   <img class="poster" src="@proxied.head" alt="venue poster" loading="lazy" referrerpolicy="no-referrer"@if(proxied.size > 1){ data-fallbacks="@proxied.tail.mkString("|")"}>}}}
-@factRows(rows: Seq[(String, String)], extra: String) = {<dl class="facts@extra">@for((name, value) <- rows){<dt>@name</dt><dd>@value</dd>}</dl>}
+@* A cast, its first names shown and the rest folded behind "+N more": tapped open on a phone, hovered whole on a desktop. *@
+@castList(names: Seq[String]) = {@if(names.size <= ReviewCards.CastShown) {<span class="cast">@names.mkString(", ")</span>} else {<details class="cast" title="@names.mkString(", ")"><summary>@names.take(ReviewCards.CastShown).mkString(", ") <span class="more">+@(names.size - ReviewCards.CastShown) more</span></summary>@names.drop(ReviewCards.CastShown).mkString(", ")</details>}}
+@factRows(rows: Seq[(String, String)], cast: Seq[String], extra: String) = {<dl class="facts@extra">@for((name, value) <- rows){<dt>@name</dt><dd>@if(name == "Cast"){@castList(cast)} else {@value}</dd>}</dl>}
 @filmBody(card: ReviewCard, tmdb: Int, candidate: Option[ReviewCandidate]) = {
   @defining(card.films.get(tmdb)) { known =>
     @* no stored read gives this film a poster: asked of TMDB live, the "no TMDB poster" placeholder should none load *@
@@ -29,6 +31,7 @@
         <a href="https://www.themoviedb.org/movie/@tmdb" target="_blank" rel="noopener">TMDB</a>
         @for(i <- known.flatMap(_.imdb)){ · <a href="https://www.imdb.com/title/@i/" target="_blank" rel="noopener">IMDb</a>}
       </div>
+      @for(k <- known if k.cast.nonEmpty){<div class="s with">with @castList(k.cast)</div>}
       @for(c <- candidate; d <- c.denial){<div class="denial">denied: @d</div>}
       @if(known.isEmpty){<div class="s">neither the corpus nor the resolver's TMDB store holds this film</div>}
       @for(o <- known.flatMap(_.overview)){<div class="ov">@o</div>}
@@ -166,6 +169,11 @@
     dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 6px 0; font-size: .82rem; }
     dl.facts dt { color: var(--muted); }
     dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+    details.cast > summary { cursor: pointer; list-style: none; }
+    details.cast > summary::-webkit-details-marker { display: none; }
+    details.cast .more { color: var(--accent); white-space: nowrap; }
+    details.cast[open] .more { display: none; }
+    .with { overflow-wrap: anywhere; }
     dl.facts.muted, dl.facts.muted dt { color: var(--muted); }
     details.why { font-size: .8rem; color: var(--muted); }
     details.why summary { cursor: pointer; }
@@ -268,10 +276,10 @@
           } else {
             <details class="venues" data-listings><summary>@card.members.size cinemas</summary><ul></ul></details>
           }
-          @if(card.venueSays.nonEmpty){@factRows(card.venueSays, "")} else {<div class="s muted">The venue gives no film details.</div>}
+          @if(card.venueSays.nonEmpty){@factRows(card.venueSays, card.venueCast, "")} else {<div class="s muted">The venue gives no film details.</div>}
           @if(card.catalogueSays.nonEmpty) {
             <div class="s catalogue-note">The aggregator's catalogue entry says (not the venue):</div>
-            @factRows(card.catalogueSays, " muted catalogue")
+            @factRows(card.catalogueSays, card.catalogueCast, " muted catalogue")
           }
           @card.synopsis match {
             case Some(s) => {<div class="syn">@s</div>}

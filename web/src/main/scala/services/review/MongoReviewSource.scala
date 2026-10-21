@@ -146,7 +146,7 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
 
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] =
     tmdbIds.distinct.grouped(500).flatMap { ids =>
-      val records = await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids.map(_.toString)*)).projection(Projections.include("record", "hit"))
+      val records = await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids.map(_.toString)*)).projection(Projections.include("record", "hit", "local.credits.cast"))
         .batchSize(tools.MongoReplies.Default).toFuture()).flatMap(d => filmRecord(d.toBsonDocument))
       val posterIds = ids.map(id => PosterAnswers.idOf(PosterQuestion.Film(id)) -> id).toMap
       val posters = await(collection(FamilyAnswersCollection).find(Filters.in("_id", posterIds.keys.toSeq*))
@@ -178,7 +178,7 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
         val s    = slot.getOrElse(VenueFacts())
         tmdb -> FilmCard(tmdb, imdb, f.title.orElse(s.title), f.originalTitle.orElse(s.originalTitle), f.year.orElse(s.year),
           if (f.directors.nonEmpty) f.directors else s.directors, f.runtime.orElse(s.runtime), f.poster.orElse(s.poster),
-          f.synopsis.orElse(s.synopsis))
+          f.synopsis.orElse(s.synopsis), if (f.cast.nonEmpty) f.cast else s.cast)
       }.toMap
     }
   }
@@ -196,14 +196,18 @@ object MongoReviewSource {
 
 
   /** A `tmdb_films` document as a film card: its parsed `record` (worker `IdentityAnswerBson.film`), else the search
-   *  `hit` that stands in until the record is fetched. `None` when neither carries a title. */
+   *  `hit` that stands in until the record is fetched. `None` when neither carries a title. Its cast is the top-billed
+   *  names the localized response's `credits` block keeps (worker `TmdbNormalizer.minimal`): the record holds only their
+   *  hashes. */
   private[review] def filmRecord(d: BsonDocument): Option[(Int, FilmCard)] =
     for {
       tmdb  <- Option(d.get("_id")).map(idText).flatMap(_.toIntOption)
       film  <- doc(d, "record").orElse(doc(d, "hit"))
       title <- string(film, "title")
     } yield tmdb -> FilmCard(tmdb, int(film, "imdbNumber").filter(_ > 0).map(n => f"tt$n%07d"), Some(title),
-      string(film, "originalTitle"), int(film, "year"), strings(film, "directors"), int(film, "runtime"), None, None)
+      string(film, "originalTitle"), int(film, "year"), strings(film, "directors"), int(film, "runtime"), None, None,
+      doc(d, "local").flatMap(doc(_, "credits")).flatMap(c => Option(c.get("cast"))).filter(_.isArray).toSeq
+        .flatMap(_.asArray.getValues.asScala).filter(_.isDocument).flatMap(n => string(n.asDocument, "name")))
 
   /** A film's poster document (`poster|film|<tmdbId>`) as the film's TMDB poster: the first of the paths filed beside its
    *  hashes, the one the film's country's language prefers. `None` for one filed before paths were. */
