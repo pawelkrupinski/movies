@@ -24,7 +24,7 @@ import scala.util.Try
  *
  * `plan.json` is `{"configs": [{"id": "b001", "rules": ["title:xtra-foo", "veto:seasonsapart", ...],
  * "countries": ["pl"]}, ...]}` (`countries` optional: every country of `--full`). A `title:<id>` rule is left out of
- * the normalizer the configuration resolves with (title rules only, so far). Each
+ * the normalizer the configuration resolves with; every other name is switched off through [[RuleAblation]]. Each
  * country's corpus is seeded and its lookups memoised once, and its baseline resolved first and again last (a
  * replay that is not a pure function of its configuration would show as moves of the second baseline, `base-again`).
  *
@@ -92,8 +92,7 @@ object IdentityRuleAblation {
     def resolve(config: Config): (Seq[Listing], Map[ListingKey, Take], Resolution) = {
       val normalizer = new TitleNormalizer(TitleRuleSet(every.filterNot(r => config.titleRules(r.id))), facts = c.country.titleFacts)
       val listings   = listingsOf(w, normalizer)
-      require(config.identityRules.isEmpty, s"${config.id}: only title rules can be switched off yet: ${config.identityRules.mkString(", ")}")
-      val resolution = IdentityResolver.resolve(listings, lookups, normalizer, IdentityCalibration.resolver)
+      val resolution = RuleAblation.disabling(config.identityRules)(IdentityResolver.resolve(listings, lookups, normalizer, IdentityCalibration.resolver))
       val takes      = listings.map { l =>
         val d = resolution.decisionOf(l.key)
         l.key -> Take(d.film, d.film.flatMap(resolution.films.get).map(f => s"${f.title} (${f.year.getOrElse("?")})"), d.basis.toString)

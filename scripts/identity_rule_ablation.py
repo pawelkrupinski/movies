@@ -8,7 +8,7 @@ by identity_measure.classify against the judgements, so every rule ends with: cu
 right->wrong, new-wrong, gained-right, and the unjudged rest, summed over every recording and country.
 
 Rules (--kinds): every title rule in code (`title:<id>`, from the run's title-rules.tsv; each resolved only in the
-countries it applies to), and, once the resolver can switch them off, every identity rule the baseline's trace names (`accept:`, `veto:`, `join:`, `apart:`), but not the
+countries it applies to), and every identity rule the baseline's trace names (`accept:`, `veto:`, `join:`, `apart:`), but not the
 learned ones (`learned-*`: the refit's, not code's) nor `refused:`/`pooled:`/`format:` (reasons, a pooled rule is its
 `accept:` rule, the format peel is no rule). A veto whose id carries a film or a feed (`...-namesake-1382513-is`) is
 ablated as its family (`veto:...-namesake-*`).
@@ -283,8 +283,7 @@ def main(argv=None):
     p.add_argument("--cold", type=int, default=48, help="batch size of rules none fires")
     p.add_argument("--chunk", type=int, default=25, help="configurations per sbt run")
     p.add_argument("--only", default="", help="comma-separated rule names: ablate these alone")
-    p.add_argument("--kinds", default="title", help="the kinds of rule ablated: title (and, once the resolver can switch them "
-                   "off, accept, veto, join, apart)")
+    p.add_argument("--kinds", default="title", help="the kinds of rule ablated, comma-separated: title, accept, veto, join, apart")
     p.add_argument("--shard", default="", help="I/N: bisect only every N-th first-round batch, from the I-th (a CI row's)")
     p.add_argument("--merge", nargs="*", help="state.json files of several shards: write their one report to --out, run nothing")
     a = p.parse_args(argv)

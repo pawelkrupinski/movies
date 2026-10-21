@@ -73,8 +73,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
           backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue, source),
           relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId)))
       val probability = calibration.probability(ListingFilm, measures)
-      val byNode = deniedByNode(candidate.tmdbId)
-      Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
+      val byNode = RuleAblation.live(deniedByNode(candidate.tmdbId))
+      Scored(candidate, probability, measures, byNode.orElse(RuleAblation.live(evidenceDenial(listing, candidate.film, measures))), listing, ranks.get(candidate.tmdbId),
         namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, StageRelays.billsUnderItsHouse(listing, candidate.film, houses),
         suggestedOnly = onlySuggested(candidate.tmdbId))
     }
@@ -89,7 +89,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         acceptance.weights.factsSupport))
     private val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
       val id = scored.candidate.tmdbId
-      if (vetoed.contains(id)) scored.copy(denial = scored.denial.orElse(vetoed.get(id)))
+      if (vetoed.contains(id)) scored.copy(denial = scored.denial.orElse(RuleAblation.live(vetoed.get(id))))
       else if (rivalling(id)) scored.copy(vetoedRivals = vetoed.size)
       else scored
     }
@@ -172,7 +172,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       else None
 
     def scored: Seq[Scored] =
-      candidates.map(scored => deniedBeside(scored).fold(scored.copy(untaken = shortUntaken(scored)))(why => scored.copy(denial = Some(Denial(why)))))
+      candidates.map(scored => RuleAblation.live(deniedBeside(scored).map(Denial(_))).fold(scored.copy(untaken = shortUntaken(scored)))(denial => scored.copy(denial = Some(denial))))
         .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
 
@@ -382,7 +382,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
       reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked)
-      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some(Denial("a member's own evidence rules it out"))))
+      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = RuleAblation.live(Some(Denial("a member's own evidence rules it out")))))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
         case titles if titles.nonEmpty => scored.copy(imdbTitled = titles)

@@ -14,13 +14,13 @@
 #   --hot/--cold  batch sizes of the rules a baseline listing fires / fires none
 #   --chunk       configurations per sbt run: each run takes --lock anew, so other heavy jobs interleave; the
 #                 recordings run one after another (two sbt runs in one checkout collide)
-#   --kinds       which rules: title (the default; the identity kinds need the resolver's switch first)
+#   --kinds       which rules: title (the default), accept, veto, join, apart (comma-separated)
 #   --only        ablate exactly these rules (trace names: title:<id>, accept:<rule>, veto:<id>, join:<kind>, apart:<id>)
 #   --lock        what every sbt run is gated by (default $KINOWO_HEAVY_LOCK): an executable runs it (`<it> <command…>`, a
 #                 slot runner), any other path is a lockf(1) file; runs are niced either way
 #
-# The JVM half is integration.IdentityRuleAblation (worker/src/it), switching title rules off by leaving them out of
-# the normalizer. BLIND SPOT: it reads the
+# The JVM half is integration.IdentityRuleAblation (worker/src/it), switching identity rules off through
+# services.identity.RuleAblation and title rules by leaving them out of the normalizer. BLIND SPOT: it reads the
 # model's takes only, not the agreement stage's final ones -- confirm a deletion with scripts/identity-measure-local.
 # The logic and its tests: scripts/identity_rule_ablation.py, scripts/identity_rule_ablation_test.py.
 set -euo pipefail

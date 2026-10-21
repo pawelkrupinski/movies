@@ -142,7 +142,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
           copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart),
         Option.when(reusedPageDeniesLink(first, second, firstFilm, secondFilm) || reusedPageDeniesLink(second, first, secondFilm, firstFilm))(
           ConstraintEdges.ReusedPageApart)
-      ).flatten
+      ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
       val titleX = sanitized(firstEvidence.cleanTitle)
       val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
       val musts = Seq(
@@ -160,7 +160,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         // has no delimiter before "Faust" — and the ambiguity rule leaves a spelling whose segment
         // names two films apart, as it does one whose rest names a film of its own (`namesBeside`).
         Option.when((segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)))((4, ConstraintEdges.TitleSegment))
-      ).flatten
+      ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
       cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
 }

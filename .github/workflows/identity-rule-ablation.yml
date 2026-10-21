@@ -16,7 +16,7 @@ on:
                 default: '38713274617,573,528'
                 type: string
             kinds:
-                description: Which rules (title; the identity kinds accept,veto,join,apart once the resolver can switch them off).
+                description: Which rules, comma-separated (title, accept, veto, join, apart).
                 required: false
                 default: 'title'
                 type: string
