@@ -151,6 +151,21 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     slept.toList shouldBe List(1000L, 2000L, 3000L)   // 1s, 2s, then 4s clamped to the 3s cap
   }
 
+  // The gate is SHARED per host, and concurrent calls sit at different attempts: one call's first 429 must not cut
+  // short the longer pause another call's backoff has grown to, or the backoff never gives the host more room.
+  it should "keep a host's longer pause when a later rate limit asks a shorter one" in {
+    val slept = mutable.ListBuffer.empty[Long]
+    val delegate = new ScriptedFetch
+    val t = new ThrottledHttpFetch(delegate, maxAttempts = 4, defaultPause = 1.second, maxPause = 60.seconds,
+      jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH), sleep = ms => { slept += ms; () })
+    delegate.queue(Tmdb, http429(None), http429(None), http429(None), http429(None))
+    a [HttpStatusException] should be thrownBy t.get(Tmdb)   // its 4th 429 leaves the host gated 8s
+    delegate.queue(Tmdb2, http429(None), () => "ok")
+    slept.clear()
+    t.get(Tmdb2) shouldBe "ok"
+    slept.toList shouldBe List(8000L, 8000L)   // its own first 429 (1s) does not shorten the 8s gate
+  }
+
   it should "retry a 503 that carries Retry-After, paced by it, as the rate limit it is" in {
     val (delegate, throttle, slept) = fixture()
     delegate.queue(Tmdb, () => throw new HttpStatusException(503, "GET", Tmdb, Some(4.seconds)), () => "ok")

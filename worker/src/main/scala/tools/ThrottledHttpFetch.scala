@@ -152,10 +152,13 @@ class ThrottledHttpFetch(
     FiniteDuration(math.min(grown, maxPause.toMillis.toDouble).toLong, MILLISECONDS)
   }
 
-  /** Stand the whole fleet down on this host for `pause`, and say so once. */
+  /** Stand the whole fleet down on this host for `pause`, and say so once. Never SHORTENS a pause already set: concurrent
+   *  calls sit at different attempts, and one call's first 429 cutting back the longer pause another's backoff grew to
+   *  would give the host no more room however long it kept refusing. */
   private def gate(host: String, pause: FiniteDuration): Unit = {
     record(host, throttled = true)
-    pausedUntil.put(host, clock.instant().plusMillis(pause.toMillis))
+    val until = clock.instant().plusMillis(pause.toMillis)
+    val _ = pausedUntil.merge(host, until, (held, asked) => if (asked.isAfter(held)) asked else held)
   }
 
   protected def around[T](url: String)(call: HttpFetch => T): T = hostOf(url) match {
