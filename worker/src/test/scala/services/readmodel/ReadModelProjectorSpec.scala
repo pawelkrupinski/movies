@@ -582,7 +582,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val sweeper = new ReadModelSweeper(projector.projection)
     (1 to 25).foreach(i => repository.upsert(s"Film$i", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00")), tmdbId = 100 + i)))
     val ids = repository.findAll().map(_.id.value)
-    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
+    val lines = tools.LogCapture.thisThread(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
       .map(_.getFormattedMessage).filter(_.contains("missing a card"))
     lines should have size 1
     val named = ids.filter(id => lines.head.contains(id))
@@ -1380,7 +1380,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     queued ++= repository.findAll().filter(_.id.value == fid)
     rm.deleteMovie("bar|2024")                           // and a card the stream really did lose
 
-    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
+    val lines = tools.LogCapture.thisThread(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
       .map(_.getFormattedMessage).filter(_.contains("missing a card"))
 
     rm.findAllScreenings().map(_._id) should contain allElementsOf ReadModelProjection.screeningIds(queued.head, titleNormalizer)
@@ -1416,7 +1416,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     // Bar's showtime moves and no event ever comes: real drift.
     repository.putEmbeddedOutOfBand("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-15T20:00")), tmdbId = 2))
 
-    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)((1 to 48).foreach(_ => sweeper.pruneOrphans()))
+    val lines = tools.LogCapture.thisThread(classOf[ReadModelSweeper].getName)((1 to 48).foreach(_ => sweeper.pruneOrphans()))
       .map(_.getFormattedMessage).filter(_.contains("had drifted from its source"))
 
     rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString).sorted shouldBe

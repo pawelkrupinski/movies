@@ -109,7 +109,7 @@ class ReadModelSweeperSpec extends AnyFlatSpec with Matchers with ReadModelProje
     val before = rm.findAllScreenings().map(_._id)
     before should have size 22
     repository.upsert("Foo", Some(2024), foo(cinemas.drop(dropped)))     // removals the stream never delivered
-    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
+    val lines = tools.LogCapture.thisThread(classOf[ReadModelSweeper].getName)(sweeper.pruneOrphans())
       .filter(_.getFormattedMessage.contains("no longer lists the venue")).map(e => s"${e.getLevel} ${e.getFormattedMessage}")
     projector.stop()
     (rm, m, before, lines)
