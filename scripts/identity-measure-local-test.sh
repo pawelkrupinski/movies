@@ -23,8 +23,13 @@ for command in "$@"; do
   [ -n "${KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY:-}" ] && echo "live $KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" >> "$STUB/live"
   set -- $command
   case "$command" in
-    *IdentityResolveDump*) while [ $# -gt 0 ]; do case "$1" in --out) out=$2 ;; --full) cc=$2 ;; esac; shift; done
-                           echo '{}' > "$out/decisions-$cc.jsonl" ;;
+    *IdentityResolveDump*) while [ $# -gt 0 ]; do case "$1" in --out) out=$2 ;; --full) cc=$2 ;; --corpus-dir) corpus=$2 ;; esac; shift; done
+                           # the dump names the recording it was resolved over, so a diff can tell which it read
+                           rec=${corpus%/pair/*}; rec=${rec##*/}
+                           if [ -f "$STUB/crash-dump" ]; then   # the JVM killed mid-write: half a dump, sbt failed
+                             printf '{"recording": "%s", "par' "$rec" > "$out/decisions-$cc.jsonl"; exit 137
+                           fi
+                           echo "{\"recording\": \"$rec\"}" > "$out/decisions-$cc.jsonl" ;;
     *UnmatchedClustersRatchet*) while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done
                                 if [ -f "$STUB/crash-ratchet" ]; then   # as sbt ran it on 2026-10-19: died, then [success]
                                   printf '%s\n' 'Exception in thread "main" java.lang.NoClassDefFoundError: modules/wiring/IdentityCutoverWiring$' \
@@ -34,8 +39,18 @@ for command in "$@"; do
 done
 STUB
 cat > "$repo/scripts/ci/identity_takes_diff.py" <<'STUB'
-import os, sys
-open(os.path.join(os.environ["STUB"], "diffs"), "a").write(" ".join(a for a in sys.argv[1:] if not a.startswith("/")) + "\n")
+import os, sys, time
+stub = os.environ["STUB"]
+open(os.path.join(stub, "diffs"), "a").write(" ".join(a for a in sys.argv[1:] if not a.startswith("/")) + "\n")
+# a diff held open (STUB_PAUSE names a file): it says so, waits for the file to go, then reads its two sides -- the
+# window another run's work falls into
+pause = os.environ.get("STUB_PAUSE")
+if pause and os.path.exists(pause):
+    open(pause + ".reached", "w").close()
+    while os.path.exists(pause): time.sleep(0.05)
+if "--final" not in sys.argv:
+    open(os.path.join(stub, "read"), "a").write(
+        " ".join(open(f).read().strip() for f in sys.argv[2:4]) + "\n")
 sys.exit(1 if os.path.exists(os.path.join(os.environ["STUB"], "moved")) else 0)
 STUB
 # the classification: its directory's layout logged, its verdict the stub's
@@ -54,6 +69,7 @@ base=$(scratch_git "$repo" rev-parse --short=12 HEAD~1) head=$(scratch_git "$rep
 # a laid recording in the cache: its corpus and two countries' trees
 cache="$work/cache"; laid="$cache/recordings/41/pair/test/resources/fixtures"
 mkdir -p "$laid/corpus" "$laid/enrichment-pl" "$laid/enrichment-uk" "$cache/recordings/7/pair/test/resources/fixtures/corpus"
+mkdir -p "$cache/recordings/39/pair/test/resources/fixtures/corpus" "$cache/recordings/39/pair/test/resources/fixtures/enrichment-pl"
 
 measure() { # <args...> -> output in $work/out, exit status in $work/status; bounded: a parse that loops fails, not hangs
   STUB="$work" KINOWO_IDENTITY_CACHE="$cache" perl -e 'alarm 60; exec @ARGV' bash "$repo/scripts/identity-measure-local" "$@" > "$work/out" 2>&1
@@ -170,6 +186,43 @@ $(grep -q 'LANDABLE' "$work/out" && echo yes || echo no)"
 measure --base "$base" --head "$sixth" --countries pl --out "$work/recovered"
 check "...and the next run resolves its ratchet again" "0 yes" \
   "$(cat "$work/status") $(grep -q '^LANDABLE (local)' "$work/out" && echo yes || echo no)"
+
+# 2026-10-21: agents measured one base..head on several recordings at once (three heavy slots). The runs shared one out
+# dir (named by the refs alone) and read the takes through its links, which the other recording's run re-pointed: a
+# diff of one recording's base against another's head, thousands of listings "on one side only", NOT LANDABLE -- or,
+# both links re-pointed, a verdict over the wrong recording, a regression on the right one unseen: a false LANDABLE.
+race() { # <tag> -> the race's two runs: a run on recording 41 held in its first diff while one on 39 runs whole
+  rm -f "$work/read" "$work/pause" "$work/pause.reached"
+  touch "$work/pause"
+  ( STUB_PAUSE="$work/pause" STUB="$work" KINOWO_IDENTITY_CACHE="$cache" perl -e 'alarm 60; exec @ARGV' bash "$repo/scripts/identity-measure-local" \
+      --base "$base" --head "$head" --recording 41 --countries pl "$@" > "$work/race41.out" 2>&1; echo $? > "$work/race41.status" ) &
+  local first=$!
+  for _ in $(seq 1 200); do [ -e "$work/pause.reached" ] && break; sleep 0.05; done
+  STUB="$work" KINOWO_IDENTITY_CACHE="$cache" perl -e 'alarm 60; exec @ARGV' bash "$repo/scripts/identity-measure-local" \
+    --base "$base" --head "$head" --recording 39 --countries pl "$@" > "$work/race39.out" 2>&1; echo $? > "$work/race39.status"
+  rm -f "$work/pause"; wait "$first"
+}
+race
+check "one base..head measured on two recordings at once: each run's diff reads its own recording's takes, both sides" \
+  "0 0 yes yes" "$(cat "$work/race41.status") $(cat "$work/race39.status") \
+$(grep -qx '{"recording": "41"} {"recording": "41"}' "$work/read" && echo yes || echo no) \
+$(grep -qx '{"recording": "39"} {"recording": "39"}' "$work/read" && echo yes || echo no)"
+race --out "$work/one-out"
+check "...even with one --out named for both" "0 0 yes yes" "$(cat "$work/race41.status") $(cat "$work/race39.status") \
+$(grep -qx '{"recording": "41"} {"recording": "41"}' "$work/read" && echo yes || echo no) \
+$(grep -qx '{"recording": "39"} {"recording": "39"}' "$work/read" && echo yes || echo no)"
+
+seventh=$(echo v > "$repo/seventh"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm seventh; scratch_git "$repo" rev-parse --short=12 HEAD)
+# a resolve killed mid-write (an agent's timeout, a kill -9) left half a dump; the next run took any non-empty file for a
+# finished one, and measured against it
+touch "$work/crash-dump"
+measure --base "$base" --head "$seventh" --countries pl --out "$work/half"
+rm -f "$work/crash-dump" "$work/calls"
+check "a resolve whose sbt dies mid-dump: a setup error, no verdict" "2 no" \
+  "$(cat "$work/status") $(grep -q 'LANDABLE' "$work/out" && echo yes || echo no)"
+measure --base "$base" --head "$seventh" --countries pl --out "$work/half2"
+check "...and its half dump is never taken for a finished one: the next run resolves it again" "0 yes" \
+  "$(cat "$work/status") $(grep -q "^$seventh worker/IntegrationTest/runMain integration.IdentityResolveDump" "$work/calls" && echo yes || echo no)"
 
 measure --base "$base" --head "$head" --recording 99
 check "a recording with no laid pair is a setup error" "2" "$(cat "$work/status")"

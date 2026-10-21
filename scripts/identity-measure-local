@@ -12,7 +12,7 @@
 #   --countries  default every country the recording holds
 #   --recording  a "Record scrape fixtures" run whose laid pair is cached
 #                ($KINOWO_IDENTITY_CACHE/recordings/<run>/pair, as identity-slice lays it); default the newest cached one
-#   --out        default target/identity-measure-local/<base>..<head> (…-live with --live-gaps)
+#   --out        default target/identity-measure-local/<recording>/<base>..<head> (…-live with --live-gaps)
 #   --live-gaps  ask TMDB and IMDb live what the recording cannot answer, at both refs alike: the measure of a change that
 #                asks NEW questions (a search spelling, a query), which a hermetic replay answers with nothing. Needs
 #                TMDB_API_KEY (`secrets run movies TMDB_API_KEY -- scripts/identity-measure-local … --live-gaps`); CI's
@@ -21,11 +21,21 @@
 # Each ref resolves in a detached worktree of its own, its compile seeded from the newest local build (sbt-warm --seed),
 # in ONE sbt session over a mongod of its own (scripts/it-local.sh): every country's dump, then the ratchet's final
 # takes. A ref's takes are a pure function of the commit and the recording, so they are SHARED across checkouts: kept in
-# $KINOWO_IDENTITY_CACHE/measure-local/<recording>/<sha>/ (each country's dump on its own, the final takes per country
-# set) with the ref's worktree beside them, and <out>/<sha> links to them. A ref another run is resolving is waited for,
-# not resolved twice (agents measuring against one base resolved it five times over on 2026-10-18), and each resolve
+# $KINOWO_IDENTITY_CACHE/measure-local/<recording>/<sha>/whole/ (each country's dump on its own, the final takes per
+# country set) with the ref's worktree beside them, and <out>/<sha> links to them for reading. A ref another run is
+# resolving is waited for (<sha>.flock's lock, held over its worktree, its build and its writes), not resolved twice
+# (agents measuring against one base resolved it five times over on 2026-10-18), and each resolve
 # holds one of the machine's JVM slots with its sbt sized for KINOWO_JVM_CPUS cores (scripts/jvm-gate.sh). --live-gaps answers change with time, so
-# those resolves stay in <out>. Prints each country's model and final
+# those resolves stay in <out>.
+#
+# CONCURRENT RUNS ARE SAFE (2026-10-21: three heavy slots, one base..head measured on several recordings at once, and
+# runs sharing an out dir read each other's recording through its re-pointed links -- NOT LANDABLE over thousands of
+# listings "on one side only", and as easily a LANDABLE over the wrong recording). So: a resolve writes into a staging
+# directory of its own and moves each dump, and the final takes, into whole/ only once its sbt session exited 0 -- a
+# file in whole/ is finished, and never rewritten (one killed mid-write, a dump cut short, was taken for a finished one
+# by the next run); the verdict reads whole/'s files by their own paths, never through <out>'s links; and what is this
+# run's alone (the judgements, the classified layout) lives in a directory of this run's own. Takes cached before
+# whole/ (in <sha>/ itself) are not trusted: they are resolved again. Prints each country's model and final
 # verdicts as identity_takes_diff.py words them, and exits 1 when any fails (a right take lost or turned wrong, a new
 # wrong take, an unjudged move), 0 when none does, 2 on a usage or setup error.
 #
@@ -79,7 +89,7 @@ if [ -n "$live" ]; then
   [ -n "$key" ] || die "--live-gaps needs TMDB_API_KEY (secrets run movies TMDB_API_KEY -- $0 …)"
   export KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=$key
 fi
-out=${out:-$here/target/identity-measure-local/$base_sha..$head_sha${live:+-live}}
+out=${out:-$here/target/identity-measure-local/$recording/$base_sha..$head_sha${live:+-live}}
 mkdir -p "$out"
 # absolute: each ref's commands run from its own worktree, where a relative path would land the takes
 out=$(cd "$out" && pwd)
@@ -88,55 +98,68 @@ mkdir -p "$store/trees"
 ratchet_key=$(printf '%s\n' "${ccs[@]}" | sort | paste -sd- -)
 echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}${live:+, live gaps}, out $out"
 
-held_lock=""
-trap 'jvm_slot_release; jvm_unlock "$held_lock"' EXIT
+held_lock="" staging=""
+# this run's own: its judgements and its classified layout, which a run sharing <out> must not rewrite under it
+run=$(mktemp -d "$out/.run.XXXXXX") || die "no run directory in $out"
+trap 'jvm_slot_release; jvm_unlock "$held_lock"; [ -z "$staging" ] || rm -rf "$staging"; rm -rf "$run"' EXIT
+whole() { echo "$store/$1/whole"; } # <sha> -> where its finished takes are: each file whole, moved in, never rewritten
 
 resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree, shared across checkouts
-  local sha=$1 tree="$store/trees/$1" dir="$store/$1" commands=() said=""
+  local sha=$1 tree="$store/trees/$1" dir lock="$store/$1.flock" log="$store/$1.log" commands=() said="" cc file
+  dir=$(whole "$sha")
   mkdir -p "$dir"
-  until jvm_lock "$dir.flock"; do
-    [ -n "$said" ] || { echo "identity-measure-local: $sha is being resolved by pid $(cat "$dir.flock" 2>/dev/null): waiting for it"; said=1; }
+  until jvm_lock "$lock"; do
+    [ -n "$said" ] || { echo "identity-measure-local: $sha is being resolved by pid $(cat "$lock" 2>/dev/null): waiting for it"; said=1; }
     sleep "${KINOWO_MEASURE_LOCAL_POLL:-5}"
   done
-  held_lock="$dir.flock"
+  held_lock=$lock
   # each country's dump and the final takes for this country set are a pure function of the commit and the recording:
-  # what any run already resolved is kept, and only what is missing is resolved
+  # what any run already resolved is kept, and only what is missing is resolved -- into a staging directory, moved into
+  # whole/ once the session succeeded, so whole/ never holds a file being written or one a killed run cut short
+  staging=$(mktemp -d "$store/$sha/.staging.XXXXXX") || { jvm_unlock "$held_lock"; held_lock=""; return 1; }
   for cc in "${ccs[@]}"; do
     [ -s "$dir/decisions-$cc.jsonl" ] ||
-      commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $dir --full $cc --corpus-dir $pair/corpus --fixtures $pair")
+      commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $staging --full $cc --corpus-dir $pair/corpus --fixtures $pair")
   done
   [ -s "$dir/ratchet-$ratchet_key/ratchet-takes.tsv" ] ||
-    commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out $dir/ratchet-$ratchet_key --countries $countries")
+    commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out $staging/ratchet-$ratchet_key --countries $countries")
   if [ ${#commands[@]} = 0 ]; then
     echo "identity-measure-local: $sha already resolved in $dir"
   else
-    [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || { jvm_unlock "$held_lock"; return 1; }
+    [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || { jvm_unlock "$held_lock"; held_lock=""; return 1; }
     jvm_slot_take identity-measure-local
     SECONDS=0
     # a fresh worktree compiles cold (~10 min under load); the newest local build's classes cut that to the diff
-    [ -x "$tree/scripts/sbt-warm" ] && ( cd "$tree" && scripts/sbt-warm --seed ) > "$dir.log" 2>&1
-    ( cd "$tree" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" scripts/it-local.sh "${commands[@]}" ) >> "$dir.log" 2>&1
+    [ -x "$tree/scripts/sbt-warm" ] && ( cd "$tree" && scripts/sbt-warm --seed ) > "$log" 2>&1
+    ( cd "$tree" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" scripts/it-local.sh "${commands[@]}" ) >> "$log" 2>&1
     local status=$?
     jvm_slot_release
-    echo "identity-measure-local: $sha resolved in ${SECONDS}s (exit $status, log $dir.log)"
+    echo "identity-measure-local: $sha resolved in ${SECONDS}s (exit $status, log $log)"
+    if [ "$status" = 0 ]; then # a rename within one directory tree: each file appears in whole/ at once, finished
+      for cc in "${ccs[@]}"; do
+        [ -s "$staging/decisions-$cc.jsonl" ] || continue
+        for file in "$staging"/*-"$cc".*; do mv -f "$file" "$dir/"; done
+      done
+      [ -s "$staging/ratchet-$ratchet_key/ratchet-takes.tsv" ] && { rm -rf "$dir/ratchet-$ratchet_key"; mv "$staging/ratchet-$ratchet_key" "$dir/"; }
+    else
+      echo "identity-measure-local: $sha's session failed (exit $status): nothing it wrote is kept" >&2
+    fi
   fi
+  rm -rf "$staging"; staging=""
   jvm_unlock "$held_lock"; held_lock=""
-  # <out>/<sha>: this run's view of the shared takes, laid as before (decisions-<cc>.jsonl, ratchet/ratchet-takes.tsv)
-  if [ "$store" != "$out" ]; then
-    mkdir -p "$out/$sha"
-    for cc in "${ccs[@]}"; do ln -sfn "$dir/decisions-$cc.jsonl" "$out/$sha/decisions-$cc.jsonl"; done
-    ln -sfn "$dir/ratchet-$ratchet_key" "$out/$sha/ratchet"
-    [ -e "$dir.log" ] && ln -sfn "$dir.log" "$out/$sha.log"
-  else
-    [ -d "$dir/ratchet-$ratchet_key" ] && ln -sfn "ratchet-$ratchet_key" "$dir/ratchet"
-  fi
+  # <out>/<sha>: links to the shared takes for reading them (decisions-<cc>.jsonl, ratchet/ratchet-takes.tsv). The
+  # verdict reads whole/ itself: a run sharing <out> re-points these
+  mkdir -p "$out/$sha"
+  for cc in "${ccs[@]}"; do ln -sfn "$dir/decisions-$cc.jsonl" "$out/$sha/decisions-$cc.jsonl"; done
+  ln -sfn "$dir/ratchet-$ratchet_key" "$out/$sha/ratchet"
+  [ -e "$log" ] && [ "$log" != "$out/$sha.log" ] && ln -sfn "$log" "$out/$sha.log"
   for cc in "${ccs[@]}"; do [ -s "$dir/decisions-$cc.jsonl" ] || { echo "identity-measure-local: $sha wrote no decisions-$cc.jsonl" >&2; return 1; }; done
   # no final takes is no resolve: on 2026-10-19 the ratchet died on a NoClassDefFoundError, sbt's runMain still said
   # [success], and the measure went on to NOT LANDABLE with no reason given -- so say what it died of, and stop
   if [ ! -s "$dir/ratchet-$ratchet_key/ratchet-takes.tsv" ]; then
     echo "identity-measure-local: $sha wrote no final takes ($dir/ratchet-$ratchet_key)" >&2
     local cause
-    cause=$(grep -m1 -A1 -E '([A-Za-z_$][A-Za-z0-9_$]*\.)+[A-Za-z0-9_$]*(Exception|Error)(: |$)|\[ratchet\] no takes written' "$dir.log" 2>/dev/null)
+    cause=$(grep -m1 -A1 -E '([A-Za-z_$][A-Za-z0-9_$]*\.)+[A-Za-z0-9_$]*(Exception|Error)(: |$)|\[ratchet\] no takes written' "$log" 2>/dev/null)
     echo "  the ratchet ${cause:+died: }${cause:-left no exception in its log}" | sed '2,$s/^/    /' >&2
     return 1
   fi
@@ -148,26 +171,26 @@ resolve "$head_sha" || die "the head did not resolve (log $out/$head_sha.log)"
 
 failed=0
 # the head's own judgements, read from the commit: a head another run resolved has no worktree made by this one
-judgements="$out/judgements-$head_sha.tsv"
+judgements="$run/judgements-$head_sha.tsv"
 git -C "$here" show "$head_sha:test/resources/fixtures/identity-judgements.tsv" > "$judgements" || die "no judgements at $head_sha"
+base_takes=$(whole "$base_sha") head_takes=$(whole "$head_sha")
 for cc in "${ccs[@]}"; do
   echo "== $cc model"
-  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/decisions-$cc.jsonl" "$out/$head_sha/decisions-$cc.jsonl" \
+  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$base_takes/decisions-$cc.jsonl" "$head_takes/decisions-$cc.jsonl" \
     --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
   echo "== $cc final"   # both refs' final takes are there: a ref without them did not resolve
-  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/ratchet/ratchet-takes.tsv" "$out/$head_sha/ratchet/ratchet-takes.tsv" \
+  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$base_takes/ratchet-$ratchet_key/ratchet-takes.tsv" "$head_takes/ratchet-$ratchet_key/ratchet-takes.tsv" \
     --final --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
 done
 # The verdict CI's measure prints: the moves split by the judgements (cure, right lost, new wrong, ...), from the two
 # refs' takes laid out as each takes row's artifact is.
-classified="$out/classified"
-rm -rf "$classified"
+classified="$run/classified"
 for cc in "${ccs[@]}"; do
-  for side in "base:$base_sha" "head:$head_sha"; do
+  for side in "base:$base_takes" "head:$head_takes"; do
     dir="$classified/identity-takes-$cc/${side%%:*}"
     mkdir -p "$dir"
-    ln -s "$out/${side#*:}/decisions-$cc.jsonl" "$dir/"
-    ln -s "$out/${side#*:}/ratchet/ratchet-takes.tsv" "$dir/"
+    ln -s "${side#*:}/decisions-$cc.jsonl" "$dir/"
+    ln -s "${side#*:}/ratchet-$ratchet_key/ratchet-takes.tsv" "$dir/"
   done
 done
 echo
