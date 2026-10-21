@@ -214,8 +214,7 @@ object ListingShape {
     // a silent film's billing is its programme's: an accompanist, an anniversary ("Dni Kina Niemego - 100 lat temu: …")
     if (films.isEmpty || billsASilentFilm(listing) || Quote.findFirstIn(raw).exists(_ => quotesAFilm(raw, films))) None
     else {
-      val parts  = PieceBreak.split(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq
-      val breaks = PieceBreak.findAllIn(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq.map(_.trim)
+      val (parts, breaks) = segmentsOf(raw)
       val words  = parts.map(TitleContainment.tokens)
       val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
       // each title as its letters run together: a piece spelling it without its stops ("AI" of Spielberg's "A.I.") is it
@@ -286,6 +285,12 @@ object ListingShape {
   /** An animation studio's name, as a venue tags its strand of the studio's films beside each title: DE Andreasstadel's
    *  "Kikis kleiner Lieferservice- Studio Ghibli" is Miyazaki's 1989 film, its studio no second thing billed beside it. */
   private val StudioTags: Set[String] = Set("studio ghibli", "ghibli", "pixar", "disney pixar", "dreamworks", "aardman")
+
+  /** The pieces of a billing and the breaks between them, a bracket read as a pipe ([[PieceBreak]]). */
+  private[identity] def segmentsOf(raw: String): (IndexedSeq[String], IndexedSeq[String]) = {
+    val piped = Bracketed.replaceAllIn(raw, " | ")
+    (PieceBreak.split(piped).toIndexedSeq, PieceBreak.findAllIn(piped).toIndexedSeq.map(_.trim))
+  }
 
   /** The fewest letters of a director's name an inflected form of it starts with. */
   private val DirectorStem = 5
@@ -427,9 +432,10 @@ object ListingShape {
   val FestivalCatalogueYears = 10
 
   /** Is the leading piece of the billing, closed by a colon or a pipe, a film festival's banner ("Pornfilmfestival: …")? */
-  private def underAFilmFestival(rawTitle: String): Boolean =
-    BannerSlot.findFirstMatchIn(rawTitle).exists(banner =>
-      FilmFestival.pattern.matcher(services.movies.TitleContainment.tokens(banner.group(1)).mkString(" ")).find())
+  private[identity] def underAFilmFestival(rawTitle: String): Boolean =
+    bannerOf(rawTitle).exists(banner => FilmFestival.pattern.matcher(services.movies.TitleContainment.tokens(banner).mkString(" ")).find())
+  /** The leading piece of the billing a colon or a pipe closes, a title after it. */
+  private[identity] def bannerOf(rawTitle: String): Option[String] = BannerSlot.findFirstMatchIn(rawTitle).map(_.group(1))
   private val BannerSlot = """^([^:|]+?)\s*[:|]\s*\S""".r
 
   // ── whose facts ────────────────────────────────────────────────────────────────────────────

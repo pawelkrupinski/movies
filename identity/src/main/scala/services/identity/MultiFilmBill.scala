@@ -93,11 +93,13 @@ object MultiFilmBill {
   def slashesAnotherWork(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
     val raw = listing.rawTitle.getOrElse(listing.title)
     raw.contains("//") && {
-      val pieces = SlashJoin.split(raw).toSeq.map(piece => TitleContainment.tokens(piece).filter(_.length > 1)).filter(_.nonEmpty)
+      val pieces = slashPieces(raw).map(piece => TitleContainment.tokens(piece).filter(_.length > 1)).filter(_.nonEmpty)
       def names(piece: Seq[String], titles: Seq[String]) = titles.exists(title => piece.forall(TitleContainment.tokens(title).toSet))
       pieces.sizeIs >= 2 && !pieces.exists(names(_, film.ownTitles)) && pieces.exists(piece => !names(piece, film.titles))
     }
   }
+  /** The pieces a spaced "//" joins in `raw`: one when it joins none. */
+  private[identity] def slashPieces(raw: String): Seq[String] = SlashJoin.split(raw).toSeq
   private val SlashJoin = """\s//\s""".r
 
   private def folded(title: String): String = TitleContainment.tokens(title).mkString(" ")

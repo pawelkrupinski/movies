@@ -3,9 +3,11 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNull, JsObject, JsString, JsValue, Json}
+import services.movies.{FormatTags, TitleContainment}
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Paths}
+
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -49,7 +51,34 @@ object BillingParseEquivalenceSpec {
       "instalment"  -> parse.instalment.map(Json.toJson(_)),
       "subtitle"    -> parse.subtitle.map(subtitle => Json.obj("words" -> subtitle.words, "spellsNumber" -> subtitle.seriesSpellsNumber)),
       "titledParts" -> Some(parse.titledParts.filter(_._2.nonEmpty).distinct).filter(_.nonEmpty).map(parts =>
-        Json.toJson(parts.map { case (number, words) => Json.obj("number" -> number.fold[JsValue](JsNull)(JsString(_)), "words" -> words) }))
+        Json.toJson(parts.map { case (number, words) => Json.obj("number" -> number.fold[JsValue](JsNull)(JsString(_)), "words" -> words) })),
+      // the credit a closing bracket names, and the author a closing authorship word does
+      "credit"       -> TitleCredit.bracketedName(text).map(JsString(_)),
+      "author"       -> ListingShape.authorCredited(text).map(credit => Json.obj("work" -> credit.work, "person" -> credit.person)),
+      // the words billed around a work: an edition's, a format's
+      "editionWords" -> Some(TitleContainment.tokens(text).filter(DecorationWords.EditionWords)).filter(_.nonEmpty).map(Json.toJson(_)),
+      "formatWords"  -> Some(FormatTags.formatTokensIn(text)).filter(_.nonEmpty).map(Json.toJson(_)),
+      // banners and strands: the delimited pieces, the segments a bracket pipes, the banner's slot, a programme's slot
+      "pieces"       -> Some(IdentityMeasures.pieces(text)).filter(_.sizeIs > 1).map(Json.toJson(_)),
+      "segments"     -> Some(ListingShape.segmentsOf(parse.uncertified)).filter(_._1.sizeIs > 1).map { case (parts, breaks) =>
+        Json.obj("parts" -> parts, "breaks" -> breaks) },
+      "banner"       -> ListingShape.bannerOf(text).map(JsString(_)),
+      "slot"         -> ListingShape.programmeSlotOf(text).map(JsString(_)),
+      "shape"        -> Some(Seq(
+        "filmFestival"      -> ListingShape.billsAFilmFestival(text),
+        "underFilmFestival" -> ListingShape.underAFilmFestival(text),
+        "listsWorks"        -> ListingShape.listsWorks(text),
+        "dashedPair"        -> ListingShape.dashedPair(text),
+        "quotesSeveral"     -> ListingShape.quotesSeveral(text),
+        "quotesDated"       -> ListingShape.quotesSeveralDated(text),
+        "quotesJoined"      -> ListingShape.quotesTwoJoined(text),
+        "joinsWorks"        -> MultiFilmBill.joinsWorks(text)
+      ).collect { case (name, true) => name }).filter(_.nonEmpty).map(Json.toJson(_)),
+      // a bill's pieces: a "+"'s, a "//"'s, the word billing several works, the one title a programme word annotates
+      "billPieces"   -> Some(MultiFilmBill.billPieces(text)).filter(_.sizeIs > 1).map(Json.toJson(_)),
+      "slashPieces"  -> Some(MultiFilmBill.slashPieces(text)).filter(_.sizeIs > 1).map(Json.toJson(_)),
+      "marker"       -> MultiFilmBill.marker(Seq(text)).map(JsString(_)),
+      "billedOne"    -> MultiFilmBill.billedOne(Seq(text)).map(JsString(_))
     )
     JsObject(("text" -> JsString(text)) +: fields.collect { case (k, Some(v)) => k -> v })
   }
