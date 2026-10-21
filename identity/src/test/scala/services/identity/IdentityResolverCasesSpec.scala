@@ -3304,4 +3304,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet
   }
+
+  // DE Augustinum's "Island" (prod, 2026-10-21): kinoheld's page matched the billing to a 3-minute 2023 short by title
+  // and copied its director, runtime and year onto the venue's listing. Those copies agree with the short because they
+  // were taken from it, so they are no evidence for it; the venue states nothing of its own.
+  private val islandFilms = Seq(F(1192466, "Island", 2023, "Jack Cronin", 3, 0.6, suggested = false),
+    F(1284001, "Island", 2026, "Anna Berg", 98, 4.0, suggested = false))
+  private def kinoheld(l: Listing, slug: String) = l.copy(page = Some(s"https://www.kinoheld.de/film/$slug"))
+
+  "Facts a page feed copied from the film it matched by title" should "be no evidence for that film" in {
+    val copied = kinoheld(listing(KinoMuza, "Island", Some(2023), Some("Jack Cronin"), Some(3)), "island-2023")
+    val d = shipped(Seq(copied), islandFilms).decisionOf(copied.key)
+    withClue(d.render)(d.film should not be Some(1192466))
+  }
+
+  it should "stay the venue's evidence where the venue states them itself" in {
+    val own = listing(KinoMuza, "Island", Some(2023), Some("Jack Cronin"), Some(3))
+    val d = shipped(Seq(own), islandFilms).decisionOf(own.key)
+    withClue(d.render)(d.film shouldBe Some(1192466))
+  }
 }

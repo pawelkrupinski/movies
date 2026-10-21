@@ -153,6 +153,17 @@ object SourceReliability {
     !decides(if (listing.originalTitle.isDefined) listing else listing.copy(pageFacts = true), Fact.OriginalTitle)
   def decides(listing: Listing, fact: Fact): Boolean = trust(listing, fact) == Trust.Decide
 
+  /** Is `fact` on `listing` a COPY from an entry its feed matched to the billing by itself, by page ([[Recognition.Pages]]:
+   *  kinoheld.de, kinoprogramm.com) — no id another database maps, so nothing checks the match? Such a copy agrees with the
+   *  film it was copied from because it was copied from it: no evidence that film is the venue's (DE Augustinum's "Island"
+   *  took a 3-minute short on kinoheld's copied director, runtime and year). Its dissent from another film still stands.
+   *  A feed's catalogue id (Cineamo's TMDB-keyed one, Webedia's) and a listings site's entry page are checked otherwise:
+   *  the link itself, or many venues reading one page. */
+  def copiedByPage(listing: Listing, fact: Fact): Boolean = {
+    val source = factsOf(listing)
+    source.trust(fact) == Trust.Support && source.recognition.isInstanceOf[Recognition.Pages]
+  }
+
   /** Are the facts a feed's claim — its id or its page on the listing — whether or not they were read ([[factsOf]] with no
    *  page facts): what a listing held as its ids and page alone carries (the review pages' stored listing). */
   def feedStated(catalogueIds: Seq[CatalogueId], page: Option[String]): Boolean =

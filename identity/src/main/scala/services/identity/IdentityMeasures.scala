@@ -353,6 +353,10 @@ object IdentityMeasures {
   final case class Missing(side: String) extends Measure
 
   val MissingListing: Missing = Missing("listing")
+  /** The listing-film signals each fact a source states is weighed by. */
+  val SignalsOfFact: Map[SourceReliability.Fact, Seq[String]] = Map(
+    SourceReliability.Fact.Year -> Seq("year.delta"), SourceReliability.Fact.Directors -> Seq("director"),
+    SourceReliability.Fact.Runtime -> Seq("runtime.delta"), SourceReliability.Fact.OriginalTitle -> Seq("originalTitle"))
   /** The director relation naming one person on both sides ([[directorRelation]]). */
   val SamePersonMeasure: Category = Category("same_person")
   val MissingFilm: Missing    = Missing("film")
