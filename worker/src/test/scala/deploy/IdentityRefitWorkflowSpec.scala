@@ -9,8 +9,10 @@ import org.scalatest.matchers.should.Matchers
 class IdentityRefitWorkflowSpec extends AnyFlatSpec with Matchers {
   private lazy val concurrency = RepoFile.block(RepoFile.read(".github/workflows/identity-refit.yml"), "concurrency")
 
-  "the refit" should "give each dispatch a lane of its own, and the schedule one shared lane" in {
-    concurrency should include("group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.run_id) || '' }}")
+  // keyed by the branch, never the run: Forgejo evaluates `concurrency:` before the run has an id, so `github.run_id` is
+  // empty there and every dispatch fell into one lane (2026-10-21)
+  "the refit" should "give each branch's dispatches a lane of their own, and the schedule one shared lane" in {
+    concurrency should include("group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.ref_name) || '' }}")
     concurrency should include("cancel-in-progress: false")
   }
 

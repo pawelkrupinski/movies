@@ -53,11 +53,12 @@ on:
     schedule:
         - cron: '0 5 * * 4'
 
-# The weekly run is one lane: never two scheduled refits at once. A dispatch is a lane of its own, so measurements
-# (threads, relearn) run side by side rather than queueing ~30 minutes each behind one another (2026-10-15: four
+# The weekly run is one lane: never two scheduled refits at once. A branch's dispatches are a lane of their own (keyed
+# by the branch: Forgejo leaves github.run_id empty when it evaluates `concurrency:`), so measurements (threads,
+# relearn) from distinct branches run side by side rather than queueing ~30 minutes each behind one another (2026-10-15: four
 # thread-count runs, 15:19 to 17:30, one after another).
 concurrency:
-    group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.run_id) || '' }}
+    group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.ref_name) || '' }}
     cancel-in-progress: false
 
 permissions:

@@ -62,11 +62,13 @@ on:
 
 # Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. Every
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
-# lane of its OWN, keyed by the run, so several from one branch run at the same time: it replaces nothing and waits for
-# nothing but runners (2026-10-15: five agents' measurements queued behind each other for about an hour each).
+# lane of its OWN, keyed by the branch (a measurement pushes a measure/ branch per run): it replaces nothing and waits
+# for nothing but runners (2026-10-15: five agents' measurements queued behind each other for about an hour each).
+# Never by github.run_id: Forgejo evaluates `concurrency:` before the run has an id, so it is empty there and every
+# measurement shared one lane (2026-10-21: ~35 queued behind each other).
 # Every workflow's group follows one convention, written down in WorkflowConcurrencyConventionSpec.
 concurrency:
-    group: identity-model-convergence${{ github.ref != 'refs/heads/main' && format('-{0}', github.run_id) || '' }}
+    group: identity-model-convergence${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
     cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the
