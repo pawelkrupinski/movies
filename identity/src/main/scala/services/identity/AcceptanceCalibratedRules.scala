@@ -95,13 +95,36 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       best   = taken._1
       _     <- noneOf(closerThan(best, eligible), "its title sits inside a closer record", best)
       _     <- noneOf(eligible.find(rival => (rival ne best) && {
-                 val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
-                 val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
+                 val alike  = namedAlike(best, rival)
                  val apart  = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
                  (alike && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
                }), "a film the title names alike fits its facts better", best)
+      _     <- noneOf(Option.when(bareAtOneVenue(best))(()).flatMap(_ => eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
+                   comparablyPopular(best, rival))), "a bare billing at one venue whose title names another film alike", best)
       _     <- noneOf(Option.when(namedWithinAnother(best, eligible))(best), "the title names it only within another candidate's longer title", best)
     } yield taken
+  }
+
+  /** Does the listing state nothing of its film — no year, running time, director or original title — and no other venue
+   *  bill it alike ([[EvidenceWeights]]' `venues.corroborating`)? Then among films its title names alike only TMDB's
+   *  ranking picks one, which is no evidence: PL Terminal Kultury Gocław's "Binti Edukacja Młode Horyzonty" took Shamte's
+   *  2021 "Binti" over Migom's 2019 one, the film screened, as popular. A title billed at many venues ("Resident Evil" at
+   *  148) keeps its venue count as measured evidence, and a namesake far less popular ([[comparablyPopular]]) is none. */
+  private def bareAtOneVenue(best: Scored): Boolean = {
+    val l = best.listing
+    l.year.isEmpty && l.runtime.isEmpty && l.directors.isEmpty && l.originalTitle.isEmpty &&
+      best.number("venues.corroborating").forall(_ < 1)
+  }
+  /** Is `rival` at least a quarter as popular as `best` on TMDB: no namesake the ranking's popularity prior tells apart
+   *  (a bare "Chicago" is Rob Marshall's 2002 film, six times as popular as the 1927 one)? */
+  private def comparablyPopular(best: Scored, rival: Scored): Boolean =
+    best.candidate.film.popularity.zip(rival.candidate.film.popularity).forall { case (b, r) => r * ComparablePopularity >= b }
+  private val ComparablePopularity = 4.0
+
+  /** Does the listing's title name `rival` by the very pieces it names `best` by? */
+  private def namedAlike(best: Scored, rival: Scored): Boolean = {
+    val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
+    pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
   }
 
   /** Does the venue's billing name `best` only WITHIN another eligible candidate's longer title — the agreement's same

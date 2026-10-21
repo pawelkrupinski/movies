@@ -1354,6 +1354,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     (credited +: timed +: bare).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(197704)))
   }
 
+  it should "not call a bare billing at one venue unrivalled when its title names several films alike" in {
+    // PL Terminal Kultury Gocław's "Binti Edukacja Młode Horyzonty" (prod 2026-10-21): no year, director, running time or
+    // other venue; "Binti" names Shamte's 2021, Migom's 2019 (the one screened, judged 10-05) and a 2024 film alike. Only
+    // TMDB's ranking carried the first past the cut, and the rule read it as unrivalled.
+    val films = Seq(F(855156, "Binti", 2021, "Seko Shamte", 92, 3), F(577285, "Binti", 2019, "Frederike Migom", 90, 1.5),
+      F(1328293, "Binti", 2024, "Someone Else", 85, 1))
+    val billed = listing(Helios, "Binti Edukacja Młode Horyzonty")
+    val d = shipped(Seq(billed), films).decisionOf(billed.key)
+    withClue(d.render)(d.film should not be Some(855156))
+  }
+
   "A title piece naming the listing's own venue" should "not name a film, whatever TMDB's ranking says" in {
     // PL, Kino Twierdza bills its screenings "TWIERDZA - VINCENT. LEGENDA OCEANU": the venue's
     // name is a segment, and "Twierdza" is The Rock's Polish title. US, the Alamo Drafthouse
