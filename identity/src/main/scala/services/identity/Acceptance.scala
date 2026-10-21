@@ -223,7 +223,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] val aloneRules = Seq(Rule("sole-work", soleWorkWhy), Rule("favoured-calibrated", favouredCalibratedWhy), Rule("exact-top-hit", topHitWhy),
     Rule("segment-top-hit", segmentTopHitWhy), Rule("sole-result", soleResultWhy), Rule("imdb-suggested", imdbSuggestedWhy),
     Rule("directors-work", directorsWorkWhy), Rule("directors-title", directorsTitleWhy), Rule("dated-title", datedTitleWhy),
-    Rule("house-production", houseProductionWhy), Rule("stage-production", stageProductionWhy), Rule("season-record", seasonRecordWhy),
+    Rule("house-production", houseProductionWhy), Rule("season-record", seasonRecordWhy),
     Rule("relay-record", relayRecordWhy))
 
   private[identity] val pooledRules = Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy),
@@ -246,7 +246,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     takenBy(ranked, keep = { case ((taken, _), rule) => rule == "imdb-suggested" || !outweighedBySuggestion(ranked, taken) })(
-      relayRecord(ranked).map(_ -> "relay-record").orElse(datedOrBroadcastSeasonRecord(ranked)).orElse(firstOf(ranked, aloneRules)))
+      relayOrBroadcastSeasonRecord(ranked).orElse(firstOf(ranked, aloneRules)))
 
   /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take),
    *  that another venue's listing of the title corroborates, weigh at least as much on the evidence as `taken`? Then the

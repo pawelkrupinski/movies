@@ -19,29 +19,41 @@ import services.identity.IdentityMeasures.{Film, Listing}
  *  by it, nor does a house TMDB holds no record of (the Opéra national de Paris' "La fanciulla del West" is not the Met's). */
 private[identity] object RelayStage {
 
-  /** A relay as its billing reads: the houses it names in particular, its stage works, and the seasons its performance
-   *  can fall in (a season by the year it opens). */
-  final case class Billed(houses: Seq[Seq[String]], works: Set[String], seasons: Set[Int])
+  /** A relay as its billing reads: the houses it names in particular (none: a banner of the art form alone, "OPERA-
+   *  PARSIFAL"), its stage works, the seasons its performance can fall in (a season by the year it opens), and which
+   *  records name its house ([[StageRelays.bannerNamesItsHouse]]). */
+  final case class Billed(houses: Seq[Seq[String]], works: Set[String], seasons: Set[Int], itsHouse: Film => Boolean) {
+    /** Does it name a house in particular — what lifts the learned vetoes off its record? */
+    def particular: Boolean = houses.nonEmpty
+  }
 
-  /** The relay `l` bills, when it names a house in particular, a stage work and a season. */
+  /** The relay `l` bills, when it names a stage house, a stage work and a season:
+   *  - the season its title names;
+   *  - else the year its title brackets, the performance's ("MetOpera: Carmen (2009)", aired January 2010; "Royal Ballet:
+   *    The Nutcracker (2021)", its 2021 recording): that season or the one before;
+   *  - else the year its field or its banner states ("Royal Ballet & Opera im Kino: Manon" [2026], "RBO live 2027:
+   *    Tosca"), unless it is before the season its screenings fall in, when it dates the staging's premiere (UK
+   *    Aldeburgh's "Royal Ballet: The Nutcracker" [2025], screening in 2026/27) — that season or the one before.
+   *  Never an ENCORE's year, which dates the encore ("The Metropolitan Opera: Samson et Dalila ENCORE (2026)"). */
   def of(l: Listing): Option[Billed] =
     if (!l.billsAStageHouse) None
     else {
-      val houses = l.relay.houses.filter(house => StageRelays.namesAHouseInParticular(house))
-      val works  = l.billedStageWorks
-      val seasons = l.seasonYear.map(Set(_)).orElse(
-        Option.when(!billsAnEncore(l))(l.titleYear).flatten.map(year => Set(year - 1, year))).getOrElse(Set.empty)
-      Option.when(houses.nonEmpty && works.nonEmpty && seasons.nonEmpty)(Billed(houses, works, seasons))
+      val works   = l.billedStageWorks
+      val stated  = l.year.orElse(StageRelays.bannerYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
+      val dated   = if (billsAnEncore(l)) None else l.titleYear.orElse(stated)
+      val seasons = l.seasonYear.map(Set(_)).orElse(dated.map(year => Set(year - 1, year))).getOrElse(Set.empty)
+      Option.when(works.nonEmpty && seasons.nonEmpty)(
+        Billed(l.relay.houses.filter(StageRelays.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l)))
     }
 
-  /** Is `f` the record of the relay `l` bills ([[of]]): its titles name the relay's house ([[StageRelays.namesOneHouse]])
-   *  and its work, and it is dated in one of the relay's seasons — the season its title names, else the season its air day
-   *  falls in, else either season its year is in? */
-  def recordOf(l: Listing, f: Film): Boolean = l.relayBilled.exists(relay => recordOf(relay, f))
+  /** Is `f` the record of the relay `l` bills ([[of]]), naming a house in particular: what no learned veto denies, and no
+   *  sibling's denial withdraws? */
+  def particularRecordOf(l: Listing, f: Film): Boolean = l.relayBilled.exists(relay => relay.particular && recordOf(relay, f))
+  /** Is `f` the relay's record: its titles name the relay's house ([[StageRelays.bannerNamesItsHouse]]) and its work, and
+   *  it is dated in one of the relay's seasons — the season its title names, else the season its air day falls in, else
+   *  either season its year is in? */
   def recordOf(relay: Billed, f: Film): Boolean =
-    f.stageWorkIds.exists(relay.works) &&
-      relay.houses.exists(house => f.houseNames.exists(StageRelays.namesOneHouse(house, _))) &&
-      seasonsOf(f).exists(relay.seasons)
+    f.stageWorkIds.exists(relay.works) && relay.itsHouse(f) && seasonsOf(f).exists(relay.seasons)
 
   /** The seasons a record can be of: the one its title names, else the one its air day falls in, else either its year is
    *  in. */

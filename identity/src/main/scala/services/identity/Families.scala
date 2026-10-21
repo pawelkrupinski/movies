@@ -44,7 +44,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *
    *  A node whose own title names the record's production — its house by its banner and its season
    *  ([[Scored.seasonProduction]] and [[StageRelays.billsItsHouse]]), or its relay's record of its house, work and
-   *  season ([[RelayStage.recordOf]]: US "MetOpera: Carmen (2009)" beside Lark Theater's "MetOpera: Carmen (2023-24)") —
+   *  season ([[RelayStage.particularRecordOf]]: US "MetOpera: Carmen (2009)" beside Lark Theater's "MetOpera: Carmen (2023-24)") —
    *  is withdrawn by no sibling: one house stages a work once a season, so a sibling's denial (another season, another
    *  house, other credits) says the sibling is another production, never that the node is. And a node whose banner alone bills the record under its house
    *  ([[Scored.houseProduction]]) is withdrawn by no sibling denying the record as ANOTHER house's season production
@@ -57,7 +57,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
                       takenAlone: String => Boolean): Option[(EvidenceNode, String)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
     val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film) ||
-      RelayStage.recordOf(best.listing, best.candidate.film)
+      RelayStage.particularRecordOf(best.listing, best.candidate.film)
     def withdraws(denial: Scored) =
       !(best.houseProduction && denial.denial.exists(_.kind == Denial.Kind.AnotherHousesSeason)) &&
         (!denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty)
