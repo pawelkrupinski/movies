@@ -84,7 +84,7 @@ struct ShowingsView: View {
         var lineCount = 0
         var visibleDays: [DayShowings] = []
         var hidden = 0
-        let contentWidth = Self.cardShowingsWidth
+        let contentWidth = cardShowingsWidth
 
         for day in allDays {
             var keptCinemas: [CinemaShowings] = []
@@ -149,14 +149,18 @@ struct ShowingsView: View {
         )
     }
 
+    /// Live width of the listing viewport (`ContentView.viewportWidth`). It
+    /// follows rotation and iPhone Duo fold / unfold, which change the grid's
+    /// column count — and so each card's width — mid-session.
+    @Environment(\.listingViewportWidth) private var viewportWidth
+
     /// Width available to the showings FlowLayout inside one grid card,
-    /// derived from the device screen width by
+    /// derived from the viewport width by
     /// `ShowtimePillMetrics.cardShowingsWidth` (the same formula the
-    /// fit test sweeps every iPhone width through). Computed once at
-    /// view-construction time — the iOS app is phone-only and the screen
-    /// width is constant per launch.
-    private static let cardShowingsWidth: CGFloat =
-        ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
+    /// fit test sweeps every iPhone width through).
+    private var cardShowingsWidth: CGFloat {
+        ShowtimePillMetrics.cardShowingsWidth(screenWidth: viewportWidth)
+    }
 
     @ViewBuilder
     private func cinemaLabel(_ cinema: CinemaShowings) -> some View {
@@ -218,11 +222,14 @@ private struct ShowtimeBadge: View {
     /// Named coordinate space `ShowingsView` pins to the card's content box.
     static let cardCoordinateSpace = "kinowoFilmCardShowings"
 
+    @Environment(\.listingViewportWidth) private var viewportWidth
+
     /// Width of the card's content box — the same value `ShowingsView` uses for
     /// its own wrap math. The card's right content edge sits at this x in
     /// `cardCoordinateSpace`.
-    private static let cardWidth: CGFloat =
-        ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
+    private var cardWidth: CGFloat {
+        ShowtimePillMetrics.cardShowingsWidth(screenWidth: viewportWidth)
+    }
 
     /// Margin the tooltip keeps from the card's left/right edges.
     private static let tooltipEdgePadding: CGFloat = 4
@@ -306,7 +313,7 @@ private struct ShowtimeBadge: View {
         let horizontalOffset = ShowtimePillMetrics.clampedTooltipOffsetX(
             pillMidX: pillMidX,
             tooltipWidth: Self.tooltipWidth(for: room),
-            cardWidth: Self.cardWidth,
+            cardWidth: cardWidth,
             padding: Self.tooltipEdgePadding)
         Text(room)
             .font(.system(size: 16, weight: .semibold))

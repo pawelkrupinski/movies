@@ -140,5 +140,32 @@ final class ShowtimePillMetricsTests: XCTestCase {
         XCTAssertEqual(150 + dx, cardWidth / 2, accuracy: 0.001,
             "an over-wide tooltip should centre in the card")
     }
+
+    /// Portrait phones hold two columns, so the card is the familiar
+    /// `(screen − 36) / 2`.
+    func testPortraitPhonesGetTwoColumnCards() {
+        for phone in Self.iPhoneWidths {
+            XCTAssertEqual(ShowtimePillMetrics.cardWidth(viewportWidth: phone.width),
+                           (phone.width - 36) / 2, accuracy: 0.001, phone.name)
+        }
+    }
+
+    /// Wider viewports — a landscape phone, the unfolded iPhone Duo — fit more
+    /// than two 160 pt columns, and the adaptive grid splits the padded width
+    /// evenly between them. The two-column formula would claim a 220 pt card
+    /// here, so pills would be wrapped against a box wider than the real one.
+    func testWideViewportsSplitIntoMoreColumns() {
+        let cases: [(width: CGFloat, columns: CGFloat)] = [(640, 3), (874, 5)]
+        for c in cases {
+            let card = ShowtimePillMetrics.cardWidth(viewportWidth: c.width)
+            XCTAssertEqual(c.columns * card + (c.columns - 1) * 12, c.width - 24,
+                           accuracy: 0.001, "\(c.width) pt should fill \(c.columns) columns")
+        }
+    }
+
+    /// A single column never grows past the grid's 220 pt maximum.
+    func testCardWidthIsCappedAtTheGridMaximum() {
+        XCTAssertEqual(ShowtimePillMetrics.cardWidth(viewportWidth: 320), 220)
+    }
 }
 #endif

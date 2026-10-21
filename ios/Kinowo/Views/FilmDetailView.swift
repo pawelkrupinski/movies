@@ -22,6 +22,7 @@ struct FilmDetailView: View {
     @EnvironmentObject var prefs: UserPreferences
     @Environment(\.filmDetailStyle) private var style
     @Environment(\.locale) private var locale
+    @Environment(\.listingViewportWidth) private var viewportWidth
     @State private var playingTrailerIndex: Int? = nil
     @State private var showFullScreenPoster = false
 
@@ -82,7 +83,7 @@ struct FilmDetailView: View {
         // device — the user's mental model is "tapping a card opens
         // the same film bigger", so the poster shouldn't shrink on
         // arrival. 2:3 aspect carries the height; no maxHeight cap.
-        let width = Self.listingCardPosterWidth
+        let width = ShowtimePillMetrics.cardWidth(viewportWidth: viewportWidth)
         HStack(alignment: .top, spacing: 16) {
             // A Button (not a bare tap gesture) so the poster is always a
             // queryable accessibility element — even while the AsyncImage is
@@ -128,19 +129,6 @@ struct FilmDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.top, 8)
-    }
-
-    /// Width a poster occupies in the listing's `FilmGridView`. The
-    /// grid uses `GridItem(.adaptive(minimum: 160, maximum: 220),
-    /// spacing: 12)` inside `.padding(.horizontal, 12)`, so on phones
-    /// (always 2 columns) each card is `(screen − 24 − 12) / 2`
-    /// clamped to [160, 220]. Computed once at view-construction
-    /// time; the detail screen doesn't need to react to orientation
-    /// changes finer than that.
-    private static var listingCardPosterWidth: CGFloat {
-        let screenWidth = UIScreen.main.bounds.width
-        let columnWidth = (screenWidth - 24 - 12) / 2
-        return min(220, max(160, columnWidth))
     }
 
     /// Open the full-screen viewer — no-op when the film has no poster, so the

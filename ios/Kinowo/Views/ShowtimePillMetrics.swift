@@ -97,18 +97,27 @@ enum ShowtimePillMetrics {
         return 2 * horizontalInset + timeWidth + formatWidth
     }
 
-    /// Width available to one card's showings `FlowLayout` on a phone of
-    /// the given logical screen width. Mirrors `FilmGridView`'s adaptive
-    /// `GridItem`: the grid's 12 pt horizontal padding + 12 pt spacing
-    /// between the two columns give a card of `(screen − 36) / 2`, clamped
-    /// to the `[160, 220]` adaptive bounds; `FilmCardView`'s `.padding(12)`
-    /// then takes 24 pt off the inside. Pure arithmetic so the fit test
-    /// can sweep it across every iPhone width — keep it the single source
-    /// of this derivation (don't re-spell `(screen − 36) / 2` elsewhere).
+    /// Outer width of one `FilmGridView` card in a viewport of the given
+    /// logical width. Mirrors the grid's `GridItem(.adaptive(minimum: 160,
+    /// maximum: 220), spacing: 12)` inside `.padding(.horizontal, 12)`:
+    /// SwiftUI fits as many 160 pt columns as the padded width holds, splits
+    /// the width evenly between them, and caps each at 220. Portrait phones
+    /// get two columns — `(screen − 36) / 2`; landscape phones and the
+    /// unfolded iPhone Duo get three or more, so the card is narrower than
+    /// the two-column formula claims. Pure arithmetic so the fit test can
+    /// sweep it — keep it the single source of this derivation.
+    static func cardWidth(viewportWidth: CGFloat) -> CGFloat {
+        let available = viewportWidth - 24
+        let columns = max(1, ((available + 12) / (160 + 12)).rounded(.down))
+        let columnWidth = (available - 12 * (columns - 1)) / columns
+        return min(220, max(160, columnWidth))
+    }
+
+    /// Width available to one card's showings `FlowLayout` in a viewport of
+    /// the given logical width: `cardWidth(viewportWidth:)` less
+    /// `FilmCardView`'s `.padding(12)` on each side.
     static func cardShowingsWidth(screenWidth: CGFloat) -> CGFloat {
-        let columnWidth = (screenWidth - 36) / 2
-        let cardWidth = min(220, max(160, columnWidth))
-        return cardWidth - 24
+        cardWidth(viewportWidth: screenWidth) - 24
     }
 
     /// Horizontal correction that keeps a room tooltip — laid out centred over

@@ -51,6 +51,10 @@ struct ContentView: View {
     /// Live viewport width, tracked by a backing GeometryReader so the
     /// search placement re-evaluates on rotation / iPad split-view resize.
     @State private var viewportWidth: CGFloat = UIScreen.main.bounds.width
+    /// Live window width, published to the grid cards, the detail poster and
+    /// the top bar as `listingViewportWidth`. See the NavigationStack's
+    /// measuring background for why it isn't `viewportWidth`.
+    @State private var windowWidth: CGFloat = UIScreen.main.bounds.width
     /// Wide screens host search inline on the top bar; narrow ones keep it
     /// as the floating bottom pill. See `TopBarLayout`.
     private var searchInline: Bool { TopBarLayout.searchInline(width: viewportWidth) }
@@ -194,6 +198,23 @@ struct ContentView: View {
         // "zoomed-in"); rebuilding on the trait-derived size class re-resolves
         // every GeometryReader against the real window. See `vSizeClass`.
         .id(vSizeClass)
+        // Card widths, the detail poster and the top bar's scale all derive
+        // from the live window width rather than `UIScreen` at launch, so they
+        // follow rotation and iPhone Duo fold / unfold.
+        .environment(\.listingViewportWidth, windowWidth)
+        // Measured on the NavigationStack, which takes the window's size, not
+        // on its content: the top bar scales with this width, so a content
+        // measurement feeds back — a bar still at landscape scale after
+        // rotating to portrait overflows the screen and keeps the width wide.
+        // The grid ignores the horizontal safe area, so add those insets back.
+        .background(
+            GeometryReader { geo in
+                let width = geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing
+                Color.clear
+                    .onAppear { windowWidth = width }
+                    .onChange(of: width) { windowWidth = $0 }
+            }
+        )
         // Overlay on the NavigationStack so the label aligns to the
         // device's screen centre, not the safe-area-inset content area.
         // The hint takes precedence over the momentary day label so the two
@@ -608,5 +629,19 @@ struct ContentView: View {
             if Task.isCancelled { return }
             withAnimation(.easeInOut(duration: 0.3)) { showSwipeHint = false }
         }
+    }
+}
+
+private struct ListingViewportWidthKey: EnvironmentKey {
+    /// iPhone 17 — only seen by views hosted outside `ContentView`
+    /// (previews, the tuning screen).
+    static let defaultValue: CGFloat = 393
+}
+
+extension EnvironmentValues {
+    /// Live width of the listing viewport, published by `ContentView`.
+    var listingViewportWidth: CGFloat {
+        get { self[ListingViewportWidthKey.self] }
+        set { self[ListingViewportWidthKey.self] = newValue }
     }
 }

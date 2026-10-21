@@ -84,9 +84,10 @@ struct TopBar: View {
     let searchInline: Bool
     let filtersActive: Bool
     let onTapFilters: () -> Void
+    @Environment(\.listingViewportWidth) private var viewportWidth
 
     var body: some View {
-        let scale = TopBar.viewportScale
+        let scale = TopBar.viewportScale(width: viewportWidth)
         // `spacing: 6 * scale` matches the inter-pill gap inside
         // `DatePillsRow`, so every gap on the bar — 🎬 → pills,
         // pills → search/Filtry — reads as the same width as the
@@ -152,14 +153,12 @@ struct TopBar: View {
 
     /// Linear scale relative to the iPhone 17 viewport (393pt wide).
     /// iPhone 13 mini → 0.95, iPhone 17 → 1.00, iPhone 17 Pro Max →
-    /// 1.09. Clamped so iPad split-view / odd window widths can't
-    /// produce a comically scaled bar. Read once at view init via
-    /// `UIScreen.main` — the value is constant per launch on iPhone,
-    /// which is where this app runs.
-    static let viewportScale: CGFloat = {
-        let width = UIScreen.main.bounds.width
-        return max(0.85, min(1.2, width / 393))
-    }()
+    /// 1.09. Clamped so iPad split-view / odd window widths — and the
+    /// unfolded iPhone Duo — can't produce a comically scaled bar. Takes
+    /// the live viewport width so the bar rescales on fold / unfold.
+    static func viewportScale(width: CGFloat) -> CGFloat {
+        max(0.85, min(1.2, width / 393))
+    }
 
 }
 
