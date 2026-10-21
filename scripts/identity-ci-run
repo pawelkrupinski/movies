@@ -4,13 +4,14 @@
 # (the user's rule, 2026-10-21: measurements, ablations, simulations and replay sweeps run on ci-runner). The CI twin of
 # a local `scripts/it-local.sh 'worker/IntegrationTest/runMain …'` over a laid recording.
 #
-#   scripts/identity-ci-run --recording RUN [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
+#   scripts/identity-ci-run [--recording RUN] [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
 #                           -- '<sbt command>'
 #
 #   the command's placeholders: {cc} the country (the command runs once per country when it names it, else once),
 #   {fixtures} the laid pair's test/resources/fixtures, {corpus} its corpus/, {out} what comes back (per country with {cc})
 #   e.g. scripts/identity-ci-run --recording 528 --countries pl,de -- \
 #          'worker/IntegrationTest/runMain integration.IdentityResolveDump --out {out} --full {cc} --corpus-dir {corpus} --fixtures {fixtures}'
+#   no --recording: any sbt target at the commit, nothing laid (e.g. -- 'worker/testOnly deploy.*' or -- 'Test/compile')
 #   --head     the commit run (default HEAD; uncommitted changes are NOT run). Pushed as measure/<user>/<sha>-<rand>, which
 #              the run deletes when it ends (identity-model-convergence.yml's drop-measure-branch, as scripts/identity-measure)
 #   --out      where the `identity-run` artifact lands (default target/identity-ci-run/<run>)
@@ -40,7 +41,7 @@ while [ "$#" -gt 0 ]; do
     *) usage_error "unknown argument: $1 (the command goes after --)" ;;
   esac
 done
-[[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording RUN (a run id) is required"
+[ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id, not $recording"
 [ -n "$command" ] || usage_error "no command: put the sbt command after --"
 say() { echo "identity-ci-run: $*" >&2; }
 remote=${IDENTITY_MEASURE_REMOTE:-}

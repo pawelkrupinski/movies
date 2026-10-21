@@ -1,5 +1,5 @@
 #
-# ANY sbt COMMAND OVER A CACHED RECORDING, ON CI (scripts/identity-ci-run): an IntegrationTest runMain -- a resolve dump,
+# ANY sbt COMMAND ON CI (scripts/identity-ci-run) -- a targeted testOnly or compile check at a commit, or one over a CACHED RECORDING: an IntegrationTest runMain -- a resolve dump,
 # an ablation, a simulation, a replay sweep -- over one `Record scrape fixtures` run laid out as
 # scripts/identity-fetch-recording.sh lays it (the pair identity-measure-local and identity-slice replay), against a
 # throwaway MongoDB, off the laptop (the user's rule, 2026-10-21: heavy work runs on ci-runner). Once per country, or
@@ -18,8 +18,9 @@ on:
     workflow_dispatch:
         inputs:
             recording:
-                description: The `Record scrape fixtures` run to lay out (e.g. 528).
-                required: true
+                description: The `Record scrape fixtures` run to lay out (e.g. 528); empty lays none (any sbt target at this commit, e.g. a testOnly).
+                required: false
+                default: ''
                 type: string
             countries:
                 description: Comma-separated codes the recording holds and the command runs for.
@@ -56,6 +57,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
             - name: Lay out the recording
+              if: inputs.recording != ''
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
