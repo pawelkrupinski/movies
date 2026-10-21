@@ -214,10 +214,18 @@ answer; nothing is rewritten (an Undo is a newer answer). From a terminal:
 ```
 sbt "web/runMain services.review.ReviewLabelsCli import <all-answers.json>"   # the hand-built pages' answers, once
 sbt "web/runMain services.review.ReviewLabelsCli export"                      # → test/resources/fixtures/identity-judgements.tsv
+sbt "web/runMain services.review.ReviewLabelsCli queue [50] [170]"            # the queue measured: listings the first answers settle
 ```
 
-`export` is the pages' "Export to identity-judgements.tsv" button; `GET /debug/review/answers`
+Each answer is written into the checkout's `test/resources/fixtures/identity-judgements.tsv` as it is given
+(an Undo takes its rows back), as `review page: …` rows; commit the file to hand them to the refit and the
+gates. `export` does the same for answers given while no page was writing the file; `GET /debug/review/answers`
 lists the whole history as JSON.
+
+The queue (`/debug/review`) lists the clusters an answer settles the most listings of first: every
+unmatched cluster, and each pooled take or one prod serves otherwise than the model decided, by the
+listings no label covers yet × the probability the resolver is wrong on them (1 − a take's confidence,
+the best candidate's probability for a no-match, at least ½ where the stages disagree).
 
 ## How the mirror stays in sync
 

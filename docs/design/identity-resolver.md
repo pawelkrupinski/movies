@@ -1692,8 +1692,8 @@ proves:
   A table whose counts do not give its weights back is not refitted. The isotonic map, the prior and the pinned rating
   gate's artefact (`identity-weights-gate.json`) are never touched.
 - **Ground truth**: `labels.tsv` and `expected-matches.tsv` of the unmatched-cluster fixture. The review page's answers
-  live in the laptop's local review store (`review_local.review_answers`); they reach the refit once
-  `ReviewLabelsCli export` has written them into `labels.tsv` and that is committed. A report's "Takes to judge" lists
+  live in the laptop's local review store (`review_local.review_answers`); the page writes each into `labels.tsv` as it
+  is given, and they reach the refit once that is committed. A report's "Takes to judge" lists
   the unjudged takes that alone held a proposal back — judged, the next run measures them.
 - **The measure** is the ratchet's (`UnmatchedClustersRatchetSpec`): the control is the captured decisions themselves,
   the agreement replayed (1390 right, 0 wrong, 0 unjudged today). Under a proposal every capture is resolved again

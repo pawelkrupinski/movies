@@ -37,7 +37,9 @@ final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Opti
 /** A cluster as a review card renders it. `shown` is the film put forward (the match or best surviving candidate);
  *  `updatedAt` the recently-matched page's stand-in for when it was decided. */
 final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], films: Map[Int, FilmCard],
-                            labels: Seq[LabelRow], answer: Option[ReviewAnswer], updatedAt: Option[Instant]) {
+                            labels: Seq[LabelRow], answer: Option[ReviewAnswer], updatedAt: Option[Instant],
+                            // the queue's: what an answer on the card settles, and why the resolver is unsure of it
+                            priority: Option[ReviewPriority] = None) {
   def shown: Option[Int] = cluster.shown
   def filmFacts(tmdb: Int): FilmFacts = films.get(tmdb).fold(FilmFacts(FilmRef.tmdb(tmdb)))(_.facts)
   lazy val reviewMembers: Seq[ReviewMember] = members.map(_.member)

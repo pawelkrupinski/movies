@@ -63,19 +63,24 @@ class ReviewController(cc: ControllerComponents,
       read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" })
   }
 
+  /** The labels file's rows; one that cannot be read is said so on the page, never shown as "no labels". */
+  private def readLabels(): (Seq[LabelRow], Option[String]) = Try(LabelsTsv.read(labelsPath)) match {
+    case Success(rows) => (rows, None)
+    case Failure(e)    => (Nil, Some(s"could not read $labelsPath: ${e.getMessage}"))
+  }
+
   private def render(page: ReviewPage, country: Option[String], selected: Seq[(ReviewCluster, Option[Instant])], limit: Int,
-                     showAnswered: Boolean, errors: Seq[String], controls: ReviewView.Controls): Result = {
+                     showAnswered: Boolean, errors: Seq[String], controls: ReviewView.Controls,
+                     labelsRead: (Seq[LabelRow], Option[String]) = readLabels(),
+                     priorities: Map[String, ReviewPriority] = Map.empty): Result = {
     val index    = new ReviewAnswers.Index(answers.current())
     val (done, notDone) = selected.partition { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
     val open     = if (showAnswered) selected else notDone
     val shown    = open.take(limit)
-    // A labels file that cannot be read is said so on the page, never shown as "no labels".
-    val (labels, labelsError) = Try(LabelsTsv.read(labelsPath)) match {
-      case Success(rows) => (rows, None)
-      case Failure(e)    => (Nil, Some(s"could not read $labelsPath: ${e.getMessage}"))
-    }
+    val (labels, labelsError) = labelsRead
     val byCountry = shown.groupBy(_._1.country)
     val cards    = perCountry(byCountry.keys.toSeq)(c => ReviewCards.build(sources(c), byCountry(c), labels, index)).flatMap(_._2.get)
+      .map(card => card.copy(priority = priorities.get(card.cluster.id)))
     val order    = shown.map(_._1.id).zipWithIndex.toMap
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
       answeredHidden = selected.size - open.size, done.size, showAnswered, limit, controls, errors ++ labelsError ++ notices)
@@ -84,8 +89,13 @@ class ReviewController(cc: ControllerComponents,
 
   def queue(country: Option[String], limit: Int, answered: Boolean): Action[AnyContent] = Action {
     devOnly {
-      val (clusters, errors) = clustersOf(countriesOf(country), unmatchedOnly = true)
-      render(ReviewPage.Queue, country, ReviewSelection.queue(clusters).map(_ -> None), limit, answered, errors, ReviewView.Controls())
+      val labelsRead = readLabels()
+      val judged     = new JudgedListings(labelsRead._1)
+      // each country's clusters ranked against what it serves, the countries side by side, then merged by the same order
+      val (chosen, errors) = chosenOf(countriesOf(country), unmatchedOnly = false)(c => ReviewSelection.queue(_, sources(c).served(), judged))
+      val ranked = chosen.sortBy { case (c, p) => (-p.score, -p.listings, c.title) }
+      render(ReviewPage.Queue, country, ranked.map(_._1 -> None), limit, answered, errors, ReviewView.Controls(), labelsRead,
+        ranked.map { case (c, p) => c.id -> p }.toMap)
     }
   }
 
@@ -140,15 +150,21 @@ class ReviewController(cc: ControllerComponents,
     }
   }
 
-  /** Records one answer; answers with the warnings the venues' own facts raise against it, and the film it named. */
+  /** Records one answer, and writes it into `identity-judgements.tsv` at once ([[exported]]); answers with the warnings
+   *  the venues' own facts raise against it, the film it named, and what the export did — or why it could not: the
+   *  answer is kept either way, and the next answer's export (or the export route) catches the file up. */
   def answer(): Action[JsValue] = Action(parse.tolerantJson) { request =>
     devOnly {
       AnswerRequest.parse(request.body, request.session.get("userId").getOrElse("dev"), clock.instant()) match {
         case Left(why)     => BadRequest(Json.obj("error" -> why))
         case Right(answer) =>
           answers.record(answer)
+          val written = exported() match {
+            case Success(summary) => Json.obj("exported" -> summary.render, "path" -> labelsPath.toString)
+            case Failure(e)       => Json.obj("exportError" -> s"not written to $labelsPath: ${e.getMessage}")
+          }
           Ok(Json.obj("ok" -> true, "verdict" -> answer.verdict.code, "warnings" -> answer.warnings,
-            "ref" -> answer.ref.map(_.render), "url" -> answer.ref.flatMap(_.url)))
+            "ref" -> answer.ref.map(_.render), "url" -> answer.ref.flatMap(_.url)) ++ written)
       }
     }
   }
@@ -156,10 +172,22 @@ class ReviewController(cc: ControllerComponents,
   /** Brings the checkout's `identity-judgements.tsv` up to the answers given since the last export ([[LabelsExport.exportTo]]). */
   def exportLabels(): Action[AnyContent] = Action {
     devOnly {
+      exported() match {
+        case Success(summary) => Ok(Json.obj("summary" -> summary.render, "added" -> summary.added, "flipped" -> summary.flipped,
+          "unchanged" -> summary.unchanged, "alreadyUsed" -> summary.alreadyUsed, "withdrawn" -> summary.withdrawn, "warnings" -> summary.warnings, "path" -> labelsPath.toString))
+        case Failure(e)       => InternalServerError(Json.obj("error" -> s"not written to $labelsPath: ${e.getMessage}"))
+      }
+    }
+  }
+
+  // One export at a time: each reads the file, merges, and writes it back whole.
+  private val exporting = new Object
+
+  /** The labels file brought up to every answer given: what the export did. */
+  private def exported(): Try[LabelsExport.Summary] = exporting.synchronized {
+    Try {
       val history = answers.history()
-      val summary = LabelsExport.exportTo(labelsPath, history, FilmIdentity.linking(history, sources))
-      Ok(Json.obj("summary" -> summary.render, "added" -> summary.added, "flipped" -> summary.flipped,
-        "unchanged" -> summary.unchanged, "alreadyUsed" -> summary.alreadyUsed, "withdrawn" -> summary.withdrawn, "warnings" -> summary.warnings, "path" -> labelsPath.toString))
+      LabelsExport.exportTo(labelsPath, history, FilmIdentity.linking(history, sources))
     }
   }
 

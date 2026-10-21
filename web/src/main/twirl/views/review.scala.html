@@ -105,6 +105,8 @@
     .raw { font-family: var(--display); font-weight: 500; font-size: 1.08rem; overflow-wrap: anywhere; min-width: 0; }
     .conf { font-family: var(--mono); font-size: .8rem; font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
     .meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+    .priority { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+    .priority .settles { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 500; }
     .tag { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-right: 6px; }
     .tag.veto { border-color: var(--bad); color: var(--bad); }
     details.checks { font-size: .8rem; color: var(--warn); }
@@ -191,11 +193,10 @@
         <option value="@view.link("country" -> Some(c))"@if(c == view.country){ selected}>@c</option>
       }
     </select>
-    <button type="button" class="btn" id="export-labels">Export to identity-judgements.tsv</button>
   </nav>
   <h1>@view.page.title</h1>
   <p class="lede">@view.page match {
-    case ReviewPage.Queue => {Listing clusters the resolver left unmatched, the most confident candidate first. Each card shows what the venue says, the film the model leaned to, and why it held back. Mark that film right or wrong, pick another candidate, or give the right film; answers become labels the rules are graded against.}
+    case ReviewPage.Queue => {Listing clusters the resolver left unmatched or is unsure of — a pooled take, or one prod serves otherwise than the model decided — those an answer settles the most listings of first: the listings no label covers yet, weighted by how likely the resolver is wrong on them. Each card shows what the venue says, the film put forward, and why it is unsure. Mark that film right or wrong, pick another candidate, or give the right film; each answer is written to identity-judgements.tsv as it is given.}
     case ReviewPage.Matchable => {Unmatched clusters whose best candidate the resolver itself rated at the threshold or above — held below the line, or vetoed by a guard. Each card shows what the venue says, the film the model leaned to, and why it held back. Confirm or reject it, or give the right film; answers become labels, never hand matches.}
     case ReviewPage.Recent => {Clusters matched to a film lately, least confident first. Each card shows what the venue says, the film it was matched to, the rule that took it and why. Mark each match right or wrong, or give the right film; answers become labels the rules are graded against.}
   }</p>
@@ -251,6 +252,11 @@
           @for(p <- c.lead.flatMap(_.probability)){<span class="conf" title="best candidate">@pct(p)</span>}
         }
       </div>
+      @for(p <- card.priority) {
+        <div class="priority" title="listings an answer labels × the probability the resolver is wrong on them">
+          <span class="settles">settles @p.listings listing@if(p.listings != 1){s}</span> · <span class="unsure">@pct(p.uncertainty) unsure</span>@for(r <- p.reasons){ · <span class="reason">@r</span>}
+        </div>
+      }
       @for(l <- card.labels) {
         <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
       }
@@ -452,6 +458,10 @@
         card.classList.toggle('done', !undone);
         mark(card, undone ? null : button, j);
         status.textContent = (undone ? 'undone' : 'saved: ' + button.textContent) + (j.warnings.length ? ' — ⚠ ' + j.warnings.join('; ') : '');
+        // Each answer is written into identity-judgements.tsv as it is given: what that did, or why it could not.
+        var out = document.getElementById('export-summary');
+        if (j.exportError) { status.classList.add('is-error'); status.textContent += ' — ' + j.exportError; out.textContent = j.exportError; }
+        else out.textContent = j.path + '\n' + j.exported;
         refresh();
         // A warning stays on screen until the reviewer has read it; otherwise the filter takes the card.
         if (!j.warnings.length) setTimeout(function () { applyFilter(card); refresh(); }, 600);
@@ -536,11 +546,6 @@
       empty.textContent = 'no ' + (img.alt || 'poster').replace(/ poster$/, '') + ' poster';
       img.replaceWith(empty);
     }, true);
-    document.getElementById('export-labels').addEventListener('click', function () {
-      var out = document.getElementById('export-summary');
-      post('/debug/review/export', {}).then(function (j) { out.textContent = j.path + '\n' + j.summary; })
-        .catch(function (err) { out.textContent = 'export failed: ' + (err.message || err); });
-    });
 
     setFilter(filter);
   })();

@@ -52,8 +52,9 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
     ReviewCluster.of(Country.Poland, a).id should have length 16
   }
 
-  "the queue" should "list unmatched clusters, the most confident candidate first" in {
-    titles(ReviewSelection.queue(clusters)) shouldBe Seq("FRANZ KAFKA", "Macbeth", "Filmowe popołudnie dla dzieci: Robaczki")
+  "the queue" should "list unmatched clusters, of one listing each the most confident candidate first, and leave an own take out" in {
+    titles(ReviewSelection.queue(clusters, Map.empty, JudgedListings.none).map(_._1)) shouldBe
+      Seq("FRANZ KAFKA", "Macbeth", "Filmowe popołudnie dla dzieci: Robaczki")
   }
 
   "the matchable page" should "list unmatched clusters whose best candidate the resolver rated at the threshold or more" in {

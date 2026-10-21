@@ -30,8 +30,16 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private val now     = Instant.parse("2026-10-06T10:00:00Z")
   private val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
   private val labels  = Files.createTempFile("labels", ".tsv")
+  // each answer a millisecond after the one before, as answers clicked apart are: the export written on each takes the
+  // answers given since the one before it
+  private val ticking = new Clock {
+    private val ticks = new java.util.concurrent.atomic.AtomicLong
+    override def getZone = ZoneOffset.UTC
+    override def withZone(zone: java.time.ZoneId): Clock = this
+    override def instant(): Instant = now.plusMillis(ticks.incrementAndGet())
+  }
   private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
-    Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, Clock.fixed(now, ZoneOffset.UTC))
+    Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, ticking)
 
   /** The pages over the REAL prod sample ([[ProdReviewSample]]), every country at once. */
   private val sample = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
@@ -302,11 +310,40 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
-  it should "export the answers into identity-judgements.tsv from the page's button" in {
+  it should "write each answer into identity-judgements.tsv as it is clicked, with no export button, and say what it wrote" in {
     onQueue { page =>
-      page.eval("document.getElementById('export-labels').click()")
-      page.waitFor("document.getElementById('export-summary').textContent.indexOf('added') >= 0")
+      page.evalInt("document.querySelectorAll('#export-labels').length") shouldBe 0
+      // the answers the cases above gave and took back, already in the file as they stand: no export run
       LabelsTsv.read(labels).map(r => (r.rawTitle, r.film, r.verdict)) shouldBe Seq(("FRANZ KAFKA", "tmdb:1157322", "wrong"))
+      page.evalString("document.getElementById('export-summary').textContent") shouldBe ""
+      val klondike = card("Klondike")
+      page.evalBool(s"!!$klondike") shouldBe false                        // an own take: not the queue's
+      val macbeth = card("Macbeth")
+      def macbethRows = LabelsTsv.read(labels).filter(_.rawTitle == "Macbeth").map(r => (r.venue, r.film, r.verdict, r.note))
+      page.eval(s"$macbeth.querySelector('input.other').value = 'https://www.imdb.com/title/tt0067372/'")
+      page.eval(s"$macbeth.querySelector('button[data-other]').click()")
+      page.waitFor("document.getElementById('export-summary').textContent.indexOf('1 added') >= 0")
+      page.evalString("document.getElementById('export-summary').textContent") should startWith(s"$labels\nidentity-judgements.tsv: 1 added")
+      macbethRows shouldBe Seq(("Kino Muza", "imdb:tt0067372", "right", "review page: hand label: imdb:tt0067372"))
+
+      page.eval(s"$macbeth.querySelector('button[data-verdict=undo]').click()")
+      page.waitFor("document.getElementById('export-summary').textContent.indexOf('taken back') >= 0")
+      macbethRows shouldBe empty
+    }
+  }
+
+  it should "say on each card how many listings an answer settles and why the resolver is unsure, the most first" in {
+    onPage("/crowded/review") { page =>
+      val crowd = card("Kandydaci śmierci")
+      page.evalString(s"$crowd.querySelector('.priority .settles').textContent") shouldBe "settles 50 listings"
+      page.evalString(s"$crowd.querySelector('.priority .unsure').textContent") shouldBe "52.3% unsure"
+      page.evalString(s"$crowd.querySelector('.priority .reason').textContent") shouldBe "best candidate held below the cut at 52%"
+    }
+    // FRANZ KAFKA's listing is labelled by now (wrong for the film it shows): its answer settles nothing more, so it goes last
+    onPage("/debug/review?country=pl&answered=true") { page =>
+      page.evalString("Array.prototype.map.call(document.querySelectorAll('.card .raw-title'), function (t) { return t.textContent; }).join('|')") shouldBe
+        "Macbeth|Filmowe popołudnie dla dzieci: Robaczki|FRANZ KAFKA"
+      page.evalString(s"${card("FRANZ KAFKA")}.querySelector('.priority').textContent") should include("1 of 1 listings already labelled")
     }
   }
 

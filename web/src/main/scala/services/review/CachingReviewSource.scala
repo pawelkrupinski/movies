@@ -25,7 +25,7 @@ final class CachingReviewSource(underlying: ReviewSource, clock: Clock,
                                       // what both ages are measured on: the system's nanosecond ticker outside specs
                                       ticker: Ticker = Ticker.systemTicker(),
                                       refreshOn: Executor = ForkJoinPool.commonPool()) extends ReviewSource {
-  export underlying.{decisions as _, updatedSince as _, slots as _, venuePages as _, feeds as _, films as _, filmRecords as _, *}
+  export underlying.{decisions as _, served as _, updatedSince as _, slots as _, venuePages as _, feeds as _, films as _, filmRecords as _, *}
 
   private def kept[K, V](entries: Long)(read: K => V): LoadingCache[K, V] =
     tools.BoundedCache.ofSize(entries)
@@ -36,6 +36,8 @@ final class CachingReviewSource(underlying: ReviewSource, clock: Clock,
       .build[K, V](new CacheLoader[K, V] { def load(key: K): V = read(key) })
 
   // by `unmatchedOnly`
+  // the one whole read of what each listing is served as
+  private val servedKept    = kept[java.lang.Boolean, Map[String, Option[Int]]](1)(_ => underlying.served())
   private val decisionsKept = kept[java.lang.Boolean, Seq[ResolverDecision]](2)(unmatchedOnly => underlying.decisions(unmatchedOnly))
   // by the look-back in whole minutes, read back from the moment of each (re-)read: a later look-back of the same window
   // starts no earlier than the kept read did, so its rows are the kept ones written since it
@@ -50,6 +52,7 @@ final class CachingReviewSource(underlying: ReviewSource, clock: Clock,
   private val recordsKept = kept[Seq[Int], Map[Int, FilmCard]](8)(underlying.filmRecords)
 
   def decisions(unmatchedOnly: Boolean): Seq[ResolverDecision] = decisionsKept.get(unmatchedOnly)
+  def served(): Map[String, Option[Int]]                         = servedKept.get(true)
   def slots(listingKeys: Seq[String]): Map[String, SlotFacts]                    = slotsKept.get(listingKeys)
   def venuePages(urls: Seq[String]): Map[String, VenueFacts]                     = pagesKept.get(urls)
   def feeds(listings: Seq[(String, String)]): Map[(String, String), ListingFeed] = feedsKept.get(listings)

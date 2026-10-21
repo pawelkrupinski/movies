@@ -35,10 +35,11 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
   private val review  = IsolatedMongoDatabase.open(mongoTarget, "review-answers")
   private val imports = IsolatedMongoDatabase.open(mongoTarget, "review-import")
   private val ordered = IsolatedMongoDatabase.open(mongoTarget, "review-order")
+  private val serving = IsolatedMongoDatabase.open(mongoTarget, "review-served")
   private val now     = Instant.parse("2026-10-06T10:00:00Z")
   private val clock   = Clock.fixed(now, ZoneOffset.UTC)
 
-  override protected def afterAll(): Unit = try { mirror.drop(); review.drop(); imports.drop(); ordered.drop() } finally super.afterAll()
+  override protected def afterAll(): Unit = try { mirror.drop(); review.drop(); imports.drop(); ordered.drop(); serving.drop() } finally super.afterAll()
 
   private def insert(collection: String, docs: BsonDocument*): Unit =
     Await.result(mirror.database.getCollection[Document](collection).insertMany(docs.map(Document(_))).toFuture(), tools.SpecTimeouts.Io): Unit
@@ -131,6 +132,21 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
     reread.current() shouldBe empty
     reread.history().map(_.verdict) shouldBe Seq(ReviewVerdict.Event, ReviewVerdict.Undo)
+  }
+
+  "what each listing is served as" should "be its screening row's film's TMDB id, none for a film without one, absent with no row" in {
+    def put(collection: String, docs: BsonDocument*) =
+      Await.result(serving.database.getCollection[Document](collection).insertMany(docs.map(Document(_))).toFuture(), tools.SpecTimeouts.Io)
+    put(services.movies.MovieRepository.Collection,
+      new BsonDocument("_id", BsonString("m1")).append("tmdbId", BsonInt32(1157322)),
+      new BsonDocument("_id", BsonString("m4")).append("imdbId", BsonString("tt0067372")))       // an IMDb-only film
+    put(services.movies.ScreeningsRepository.Collection,
+      new BsonDocument("_id", BsonString("Kino Opalenica\u241fkafka")).append("filmId", BsonString("m1"))
+        .append("listingKey", BsonString(ListingKey.serialised(Held))),
+      new BsonDocument("_id", BsonString("Kino Muza\u241fmacbeth")).append("filmId", BsonString("m4"))
+        .append("listingKey", BsonString(ListingKey.serialised(Vetoed))))
+    new MongoReviewSource(serving.database).served() shouldBe Map(
+      ListingKey.serialised(Held) -> Some(1157322), ListingKey.serialised(Vetoed) -> None)
   }
 
   "the stored history" should "run in the order of the answers' own times, not the wall clock's" in {

@@ -128,6 +128,22 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
         .map(d => idText(d.toBsonDocument.get("_id")) -> services.identity.MongoIdentityTraceStore.decode(d.toBsonDocument))
     }.toMap
 
+  def served(): Map[String, Option[Int]] = {
+    val tmdbOf = Map.newBuilder[String, Int]
+    scan(MoviesCollection, Filters.exists("tmdbId"), Projections.include("tmdbId"), tools.MongoReplies.Default) { batch =>
+      batch.foreach { d => val b = d.toBsonDocument; int(b, "tmdbId").foreach(t => tmdbOf += idText(b.get("_id")) -> t) }
+    }
+    val films = tmdbOf.result()
+    val out   = Map.newBuilder[String, Option[Int]]
+    scan(ScreeningsCollection, Filters.exists("listingKey"), Projections.include("listingKey", "filmId"), tools.MongoReplies.Default) { batch =>
+      batch.foreach { d =>
+        val b = d.toBsonDocument
+        string(b, "listingKey").foreach(k => out += k -> Option(b.get("filmId")).filterNot(_.isNull).map(idText).flatMap(films.get))
+      }
+    }
+    out.result()
+  }
+
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] =
     tmdbIds.distinct.grouped(500).flatMap { ids =>
       val records = await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids.map(_.toString)*)).projection(Projections.include("record", "hit"))
@@ -176,6 +192,7 @@ object MongoReviewSource {
   val TracesCollection     = services.identity.MongoIdentityTraceStore.Collection
   val MoviesCollection     = services.movies.MovieRepository.Collection
   val WebMoviesCollection  = services.readmodel.MongoReadModelRepository.MoviesCollection
+  val ScreeningsCollection = services.movies.ScreeningsRepository.Collection
 
 
   /** A `tmdb_films` document as a film card: its parsed `record` (worker `IdentityAnswerBson.film`), else the search

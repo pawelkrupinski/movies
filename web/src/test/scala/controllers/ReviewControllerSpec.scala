@@ -112,28 +112,57 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(controller(Mode.Dev).recent(Some("pl"), 0, 60, false)(FakeRequest())) should not include "Klondike"
   }
 
-  "an answer" should "take its cluster out of the queue, an undo bring it back, and export to identity-judgements.tsv" in {
+  "an answer" should "take its cluster out of the queue, an undo bring it back, each written into identity-judgements.tsv as it is given" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
     val labels  = Files.createTempFile("labels", ".tsv")
     val c       = controller(Mode.Dev, answers, labels)
     val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
       new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
-    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right")))) shouldBe OK
+    val reply = contentAsJson(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right"))))
+    (reply \ "exported").as[String] should startWith("identity-judgements.tsv: 1 added")
+    (reply \ "path").as[String] shouldBe labels.toString
+    // in the file at once, in the review page's own words: no export step
+    LabelsTsv.read(labels) shouldBe Seq(LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "right", "review page: right: Franz (2025)"))
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should not include "FRANZ KAFKA"
     contentAsString(c.queue(Some("pl"), 60, true)(FakeRequest())) should include("""class="btn yes right on" data-verdict="right">Right film""")
+    (contentAsJson(c.exportLabels()(FakeRequest())) \ "alreadyUsed").as[Int] shouldBe 1   // written once: not again
 
-    val exported = contentAsJson(c.exportLabels()(FakeRequest()))
-    (exported \ "added").as[Int] shouldBe 1
-    LabelsTsv.read(labels) shouldBe Seq(LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "right", "review page: right: Franz (2025)"))
-    (contentAsJson(c.exportLabels()(FakeRequest())) \ "alreadyUsed").as[Int] shouldBe 1   // exported once: not again
-
-    // the undo a minute after the export: the export it follows takes the undone answer's row back
-    val later = controller(Mode.Dev, answers, labels, Clock.fixed(now.plusSeconds(60), ZoneOffset.UTC))
-    status(later.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
-    contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
-    (contentAsJson(later.exportLabels()(FakeRequest())) \ "withdrawn").as[Int] shouldBe 1
+    // the undo a minute later takes the undone answer's row back as it is given
+    val later  = controller(Mode.Dev, answers, labels, Clock.fixed(now.plusSeconds(60), ZoneOffset.UTC))
+    val undone = contentAsJson(later.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo"))))
+    (undone \ "exported").as[String] should include("1 row of withdrawn answers taken back")
     LabelsTsv.read(labels) shouldBe empty
+    contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "film")))) shouldBe BAD_REQUEST
+  }
+
+  it should "be kept when the labels file cannot be written, the response saying why" in {
+    val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
+    val labels  = Files.createTempDirectory("labels")                    // a directory: no file can be read or written there
+    val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
+      new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
+    val result  = controller(Mode.Dev, answers, labels).answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right")))
+    status(result) shouldBe OK
+    (contentAsJson(result) \ "exportError").as[String] should startWith(s"not written to $labels")
+    answers.current().map(_.title) shouldBe Seq("FRANZ KAFKA")
+  }
+
+  "the queue" should "rank by the listings an answer settles, and say on each card how many and why the resolver is unsure" in {
+    val crowded = services.identity.ResolverDecision((1 to 6).map(i => services.movies.ListingKey.Published(s"Kino $i", "Kandydaci śmierci", None, Nil)),
+      None, 0.48, services.identity.ResolverDecision.Basis.BelowThreshold, Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()
+    val pooled  = services.identity.ResolverDecision(Seq(services.movies.ListingKey.Published("Kino Z", "Dolly", None, Nil)), Some(500), 0.7,
+      services.identity.ResolverDecision.Basis.PooledMatch, Nil)()
+    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+      Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision, crowded, matchedDecision, pooled))),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock)
+    val html = contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest()))
+    val order = Seq("Kandydaci śmierci", "FRANZ KAFKA", "Dolly").map(t => html.indexOf(s"""<span class="raw-title">$t</span>"""))
+    order should not contain -1
+    order shouldBe order.sorted
+    html should include("""<span class="settles">settles 6 listings</span> · <span class="unsure">52.3% unsure</span>""")
+    html should include("""<span class="reason">best candidate held below the cut at 52%</span>""")
+    html should include("""<span class="reason">PooledMatch take at 70%</span>""")
+    html should not include "Klondike"                                       // an own take the stages agree on
   }
 
   it should "take a cluster the reviewer can't determine off the list, and label nothing for it" in {
@@ -143,12 +172,11 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("""data-verdict="unsure">Can't determine""")
     val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
       new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
-    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "unsure")))) shouldBe OK
+    val reply = contentAsJson(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "unsure"))))
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should not include "FRANZ KAFKA"
 
-    val exported = contentAsJson(c.exportLabels()(FakeRequest()))
-    (exported \ "added").as[Int] shouldBe 0
-    (exported \ "summary").as[String] should not include "not exported"   // no film to label is the answer, not a gap
+    (reply \ "exported").as[String] should startWith("identity-judgements.tsv: 0 added")
+    (reply \ "exported").as[String] should not include "not exported"   // no film to label is the answer, not a gap
     LabelsTsv.read(labels) shouldBe empty
   }
 

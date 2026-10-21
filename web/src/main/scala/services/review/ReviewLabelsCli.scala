@@ -12,11 +12,14 @@ import java.nio.file.{Files, Paths}
  * {{{
  *   sbt "web/runMain services.review.ReviewLabelsCli import <all-answers.json>"
  *   sbt "web/runMain services.review.ReviewLabelsCli export [identity-judgements.tsv]"
+ *   sbt "web/runMain services.review.ReviewLabelsCli queue [50] [170]"
  * }}}
  *
  * `import` adds the answers given on the hand-built review pages (skipping any already imported);
- * `export` writes every current answer into `identity-judgements.tsv` (the checkout's, by default) — the page's
- * "Export to identity-judgements.tsv" button. Both print what they did, contradiction warnings included.
+ * `export` writes every current answer into `identity-judgements.tsv` (the checkout's, by default) — the export the
+ * pages run on each answer as it is given — for answers given while no page was writing the file. Both print what they did,
+ * contradiction warnings included. `queue` measures the queue page's order ([[ReviewQueueReport]]): how many listings
+ * the first answers settle, per country and merged.
  */
 object ReviewLabelsCli {
   def main(args: Array[String]): Unit = {
@@ -42,7 +45,13 @@ object ReviewLabelsCli {
       val path = rest.headOption.map(Paths.get(_)).getOrElse(LabelsTsv.locate())
       val history = answers.history()
       s"$path\n" + LabelsExport.exportTo(path, history, FilmIdentity.linking(history, sources)).render
+    case "queue" :: rest =>
+      val top     = rest.headOption.flatMap(_.toIntOption).getOrElse(50)
+      val first   = rest.drop(1).headOption.flatMap(_.toIntOption).getOrElse(170)
+      val judged  = new JudgedListings(LabelsTsv.read(LabelsTsv.locate()))
+      val index   = new ReviewAnswers.Index(answers.current())
+      ReviewQueueReport.render(sources.toSeq.sortBy(_._1.code).map { case (c, s) => ReviewQueueReport.queued(c, s, judged, index) }, top, first)
     case _ =>
-      "usage: ReviewLabelsCli import <answers.json> | export [identity-judgements.tsv]"
+      "usage: ReviewLabelsCli import <answers.json> | export [identity-judgements.tsv] | queue [first per country] [first merged]"
   }
 }

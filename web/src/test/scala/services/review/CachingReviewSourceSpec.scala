@@ -125,6 +125,28 @@ class CachingReviewSourceSpec extends AnyFlatSpec with Matchers {
     underlying.lastSince.get.isAfter(since) shouldBe false
   }
 
+  "what each listing is served as" should "be read whole once while fresh, and again behind the answer once stale" in {
+    var reads = 0
+    var held  = Map[ListingKey, Option[Int]](Held -> Some(1))
+    val underlying: ReviewSource = new ReviewSource {
+      private val source = new InMemoryReviewSource(Seq(heldDecision), written)
+      export source.{served as _, *}
+      def served() = { reads += 1; new InMemoryReviewSource(Nil, servedHeld = held).served() }
+    }
+    val clock  = new tools.MutableClock(now)
+    val behind = new Behind
+    val source = caching(underlying, clock, behind)
+    source.served() shouldBe Map(ListingKey.serialised(Held) -> Some(1))
+    source.served()
+    reads shouldBe 1
+    held = Map(Held -> None)
+    clock.advanceSeconds(31)
+    source.served() shouldBe Map(ListingKey.serialised(Held) -> Some(1))    // at once, as kept
+    behind.runAll()
+    reads shouldBe 2
+    source.served() shouldBe Map(ListingKey.serialised(Held) -> None)
+  }
+
   "the per-card reads" should "be read once while fresh for the same rows, and again behind the answer once stale" in {
     val reads = scala.collection.mutable.ListBuffer.empty[String]
     var feedScreenings = 3

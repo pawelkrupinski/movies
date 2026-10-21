@@ -81,6 +81,11 @@ trait ReviewSource {
   def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]]
   /** The resolver's trace of each of these listings (`identity_traces`, by [[services.movies.ListingKey.serialised]]). */
   def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace]
+  /** What prod serves each listing as, by [[services.movies.ListingKey.serialised]]: the TMDB film of its screening row's
+   *  film (`screenings.filmId` → `movies.tmdbId`), `None` for a listing served with no TMDB film. A listing with no
+   *  screening row is absent. The model's decision passes through the agreement stage and the projection on its way
+   *  here, so a listing served otherwise than its cluster was decided is one the two stages disagree on. Read whole. */
+  def served(): Map[String, Option[Int]]
 }
 
 object ReviewSource {
@@ -95,5 +100,6 @@ object ReviewSource {
     def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] = Map.empty
     def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]] = Nil
     def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace] = Map.empty
+    def served(): Map[String, Option[Int]] = Map.empty
   }
 }

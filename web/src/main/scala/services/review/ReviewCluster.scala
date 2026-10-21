@@ -36,6 +36,9 @@ final case class ReviewCluster(country: Country, members: Seq[ListingKey], film:
   def vetoedCandidates: Seq[ReviewCandidate] = candidates.filterNot(_.survives)
   /** The film the card puts forward: the match, else the best candidate that survived its vetoes. */
   def shown: Option[Int] = film.orElse(lead.map(_.film))
+  /** With `films` — what prod serves its listings as — among its candidates, after those the resolver weighed. */
+  def withCandidates(films: Seq[Int]): ReviewCluster =
+    copy(candidates = (candidates ++ films.filterNot(film.contains).map(ReviewCandidate(_, None))).distinctBy(_.film))
 }
 
 object ReviewCluster {
@@ -65,9 +68,14 @@ object ReviewCluster {
 /** Which clusters each review page lists, and in what order. Pure: the pages and their tests share it. */
 object ReviewSelection {
 
-  /** Unmatched clusters with no answer yet, the most confident candidate first. */
-  def queue(clusters: Seq[ReviewCluster]): Seq[ReviewCluster] =
-    clusters.filter(_.unmatched).sortBy(c => (-c.bestProbability, c.title))
+  /** Every unmatched cluster, and each matched one the resolver is unsure of — a pooled take, or one prod serves a
+   *  listing of otherwise than it was decided — those an answer settles the most listings of first
+   *  ([[ReviewPriority.score]]: listings no label settles yet × the probability the resolver is wrong on them), then
+   *  the most such listings, then by title. */
+  def queue(clusters: Seq[ReviewCluster], served: Map[String, Option[Int]], judged: JudgedListings): Seq[(ReviewCluster, ReviewPriority)] =
+    clusters.map(c => c -> ReviewPriority.of(c, served, judged)).map { case (c, p) => c.withCandidates(p.served.flatten) -> p }
+      .filter { case (c, p) => c.unmatched || p.stagesDisagree || (c.film.isDefined && c.basis == ResolverDecision.Basis.PooledMatch) }
+      .sortBy { case (c, p) => (-p.score, -p.listings, c.title) }
 
   /** Unmatched clusters whose best candidate the resolver itself rated at `min` or more — held back
    *  below the line (BelowThreshold), or vetoed by a guard (Vetoed) — optionally of one basis. */
