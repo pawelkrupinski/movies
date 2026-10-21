@@ -1,13 +1,11 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
 
 import models._
-import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScraperParse}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -90,7 +88,7 @@ object KinoSlezaClient {
   private def versionOf(movie: Element): List[String] =
     Option(movie.selectFirst("p em strong")).map(_.text).toSeq
       .flatMap(_.split("//").drop(1))
-      .flatMap(FormatTags.formatTokensIn)
+      .flatMap(ScraperParse.formatTokensIn)
       .distinct.toList
 
   /** Genres are the comma-list before the first `//` in the "Komedia, Dramat //

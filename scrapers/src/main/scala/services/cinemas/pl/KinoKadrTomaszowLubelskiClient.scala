@@ -1,12 +1,10 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
 import models._
-import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScraperParse}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -94,7 +92,7 @@ object KinoKadrTomaszowLubelskiClient {
 
   private def parseFilm(article: Element, day: LocalDate, cinema: Cinema): Option[CinemaMovie] = {
     val format = Option(article.selectFirst(".movie-extra span.movie-audio")).map(_.text).toSeq
-      .flatMap(FormatTags.formatTokensIn).distinct.toList
+      .flatMap(ScraperParse.formatTokensIn).distinct.toList
 
     val showtimes = article.select(".showtimes .showtime span").asScala.toSeq
       .flatMap(s => ScraperParse.parseHHmm(s.text))

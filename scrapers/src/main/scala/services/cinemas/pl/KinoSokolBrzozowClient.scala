@@ -1,12 +1,10 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
 import models._
-import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -82,6 +80,6 @@ object KinoSokolBrzozowClient {
       // both, so the central `FormatTags` title strip cannot reach it and the two
       // showings were indistinguishable on the badge.
       format   = Option(ev.selectFirst(".wp_theatre_event_venue"))
-        .map(_.text).map(FormatTags.formatTokensIn).getOrElse(Nil)
+        .map(_.text).map(ScraperParse.formatTokensIn).getOrElse(Nil)
     )
 }

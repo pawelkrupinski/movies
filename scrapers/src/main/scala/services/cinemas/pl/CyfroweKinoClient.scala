@@ -1,13 +1,11 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
 import models._
-import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{HttpFetch, HttpRead}
 import services.movies.TitleNormalizer
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScraperParse}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -95,7 +93,7 @@ object CyfroweKinoClient {
    *  segment the recorded fixture does not happen to contain. */
   def versionOf(raw: String): List[String] =
     raw.split("/").map(_.trim).filter(s => NoiseSeg.findFirstMatchIn(s).isDefined)
-      .flatMap(FormatTags.formatTokensIn).distinct.toList
+      .flatMap(ScraperParse.formatTokensIn).distinct.toList
 
   /** "15.06 / DKF WERDYKT / napisy" → "Werdykt". Split on `/`, drop the
    *  short-date and version/age segments, take the longest remaining segment as
