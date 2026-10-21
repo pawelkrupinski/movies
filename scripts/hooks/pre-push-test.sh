@@ -452,6 +452,8 @@ commit_paths() { # <message> [<trailer line>] -- <path>...
   scratch_git "$grepo" commit -q "${msg[@]}"; scratch_git "$grepo" rev-parse HEAD; }
 gbase="$(commit_paths base -- README web/src/main/scala/A.scala)"
 fixing="$(commit_paths "a production fix" "Fixes-Red: 38520439037" -- web/src/main/scala/A.scala)"
+# Forgejo's API run id for the red run fj_run makes below (1000 + its number in the URL).
+fixing_by_id="$(commit_paths "a production fix by run id" "Fixes-Red: $((1000 + 38520439037))" -- web/src/main/scala/A.scala)"
 plain="$(commit_paths "an undeclared production change" -- web/src/main/scala/A.scala)"
 run_json() { printf '{"databaseId":%s,"status":"%s","conclusion":"%s","url":"https://x/%s"}' "$1" "$2" "$3" "$1"; }
 red="$(run_json 38520439037 completed failure 38520439037)"
@@ -525,6 +527,9 @@ check "...naming the red run by its number in the run's URL" "1" \
 check "Forgejo: a red Main refuses it too" "1" "$(FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
 check "Forgejo: a red nightly recording refuses it too" "1" "$(FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
 check "Forgejo: a commit naming the red run in Fixes-Red: lands" "0" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$fixing")"
+check "Forgejo: a commit naming the red run by its API run id (forge-gh's) lands too" "0" \
+  "$(FJ_IMC="[$fjred]" fjpush "$fixing..$fixing_by_id")"
+check "...and names both ids when it refuses" "1" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$plain" >/dev/null; grep -c 'runs/38520439037 (run id 38520440037)' "$gate/err")"
 check "Forgejo: a running or cancelled newest run says nothing: the decided one before it counts" "1 0" \
   "$(FJ_IMC="[$fjrunning,$fjcancelled,$fjred,$fjgreen]" fjpush "$gbase..$plain") $(FJ_IMC="[$fjcancelled,$fjgreen,$fjred]" fjpush "$gbase..$plain")"
 check "Forgejo: tools-only commits land while red" "0" "$(FJ_IMC="[$fjred]" fjpush "$plain..$tools")"

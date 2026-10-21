@@ -36,8 +36,8 @@ or Record scrape fixtures is red (a cancelled run says nothing), a push lands on
 commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
 carries a `Fixes-Red: <run id>` trailer naming a red run. Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
-`PREPUSH_SKIP=redgate` bypasses — say so. A push to the Forgejo remote reads Forgejo's runs (the run number in its
-URL is the `Fixes-Red:` id), with `$FORGEJO_API_TOKEN` or the `movies` vault's token while unlocked; otherwise skipped. The gates judge only what a commit's code changed; a recording's own data
+`PREPUSH_SKIP=redgate` bypasses — say so. A push to the Forgejo remote reads Forgejo's runs (`Fixes-Red:` takes the run number in its
+URL or the API run id), with `$FORGEJO_API_TOKEN` or the `movies` vault's token while unlocked; otherwise skipped. The gates judge only what a commit's code changed; a recording's own data
 findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`).
 
 ## Regenerate the snapshots your change shifts
