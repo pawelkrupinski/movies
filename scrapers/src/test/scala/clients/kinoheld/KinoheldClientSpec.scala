@@ -3,6 +3,7 @@ package clients.kinoheld
 import clients.tools.{FakeHttpFetch, WriteKinoheld}
 import models.{CinemaMovie, GermanCinema}
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.LoneElement
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{KinoheldClient, ListingReads}
 import services.identity.SourceReliability
@@ -15,7 +16,7 @@ import scala.collection.mutable.ListBuffer
 /** Replays seven venues' real kinoheld.de programmes, every `programShows` page,
  *  recorded on 2026-10-11 (Arthaus-Kino Bonn's on 2026-10-12, Filmwerk Gütersloh's on 2026-10-14) by [[WriteKinoheld]]
  *  (see it for why each venue is there). */
-class KinoheldClientSpec extends AnyFlatSpec with Matchers {
+class KinoheldClientSpec extends AnyFlatSpec with Matchers with LoneElement {
 
   private val Today  = LocalDate.of(2026, 10, 11)
   private val venues = WriteKinoheld.Venues.toMap
@@ -192,5 +193,56 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
     KinoheldClient.linkTrusted("Die Assistentin", "Die Mutter", None) shouldBe false
     // A mystery screening names no film, so no film linked to it is the venue's.
     KinoheldClient.linkTrusted("Sneak_nov", "Sneak Over", Some("Sneak Over")) shouldBe false
+  }
+
+  "KinoheldClient.parsePage" should "keep the venue's own name, and none of a renamed entry's facts" in {
+    val body =
+      """{"data":{"programShows":{"paginatorInfo":{"hasMorePages":false},"data":[{
+        |"name":"Tyketto + Special Guest","beginning":"2026-11-07T20:00:00+01:00","urlSlug":"1","deeplink":null,
+        |"flags":[],"subtitleLanguage":null,"auditorium":null,"cinema":null,
+        |"movie":{"id":"74283","title":"Tyketto + Special Guest","titleOriginal":"Rock Around the Clock",
+        |"urlSlug":"ausser-rand-und-band-rock-around-the-clock","duration":76,"productionYear":null,
+        |"description":"In der Provinz entdeckt der Bandmanager Steve Hollis eine Rock-'n'-Roll-Band",
+        |"directors":[{"name":"Fred F. Sears"}],"actors":[{"name":"Bill Haley"}],
+        |"thumbnailImage":{"url":"https://static.kinoheld.de/images/film/ausser-rand-und-band-74283.v17459015592183.jpg"}}}]}}}""".stripMargin
+    val show = KinoheldClient.parsePage(body, latestYear = Today.getYear + 1).shows.loneElement
+    show.film shouldBe KinoheldClient.Film(id = None, title = "Tyketto + Special Guest")
+    show.renamedEntry shouldBe Some("74283")
+  }
+
+  private def poster(stem: String) = Some(s"https://static.kinoheld.de/images/film/$stem.v17483032301696.jpg")
+
+  // kinoheld's entries are reused: a venue renames an old film's entry for its next event, and the entry keeps the old
+  // film's slug, poster, original title, credit, runtime and synopsis (prod 2026-10-21: entry 60643, made for "Hodder
+  // rettet die Welt", titled "Über Unterbiberger - Vom Woid in die Welt" at Filmforum Landsberg; 74283, made for "Rock
+  // Around the Clock", titled "Tyketto + Special Guest" at Kaminwerk).
+  "KinoheldClient.entryRenamed" should "name an entry its title shares no word of the original title with, nor half its slug and poster" in {
+    KinoheldClient.entryRenamed("Über Unterbiberger - Vom Woid in die Welt", Some("En som Hodder"),
+      Some("hodder-rettet-die-welt"), poster("hodder-rettet-die-welt-60643")) shouldBe true
+    KinoheldClient.entryRenamed("Tyketto + Special Guest", Some("Rock Around the Clock"),
+      Some("ausser-rand-und-band-rock-around-the-clock"), poster("ausser-rand-und-band-74283")) shouldBe true
+    KinoheldClient.entryRenamed("Guido Cantz - Komische Zeiten", Some("The Love Punch"),
+      Some("wie-in-alten-zeiten"), poster("wie-in-alten-zeiten-931")) shouldBe true
+    KinoheldClient.entryRenamed("Über Unterbiberger - Vom Woid in die Welt", Some("Октябрь"), Some("der-7-oktober-die-stadt-und-das-leben"),
+      poster("oktober-oktober-1917-zehn-tage-die-die-welt-erschuetterten-71321")) shouldBe true
+  }
+
+  it should "not name an entry one of whose names spells its title, nor one stating no original title" in {
+    // a German title beside a foreign original, the poster named for the German title
+    KinoheldClient.entryRenamed("Mit leiser Stimme", Some("À voix basse"), Some("in-a-whisper"), poster("mit-leiser-stimme-94793")) shouldBe false
+    // a slug left from the entry's first title, the poster and the credit the film's
+    KinoheldClient.entryRenamed("Der Leopard", Some("Il gattopardo"), Some("rampart"), poster("der-leopard-36349")) shouldBe false
+    KinoheldClient.entryRenamed("Regio Tales", Some("Heads and Tales"), Some("regio-tales"), None) shouldBe false
+    KinoheldClient.entryRenamed("Die vergessene Insel", Some("Forgotten Island"), Some("die-vergessene-insel"), None) shouldBe false
+    // a German title translating the original, which it shares a word with
+    KinoheldClient.entryRenamed("Festtagsspaß mit Peppa - Das Kinoerlebnis", Some("Festive Fun with Peppa"),
+      Some("festive-fun-with-peppa-cinema-experience"), None) shouldBe false
+    // an entry made under its original title, then given its German one
+    KinoheldClient.entryRenamed("Schach dem Teufel", Some("Beat the Devil"), Some("beat-the-devil"), None) shouldBe false
+    KinoheldClient.entryRenamed("Nur geträumt", Some("Juste une illusion"), Some("juste-une-illusion"), None) shouldBe false
+    // the Filmmuseum bills Fellini by his own title: no original title says which film the entry was made for
+    KinoheldClient.entryRenamed("E la nave va", None, Some("fellinis-schiff-der-traeume"), poster("fellinis-schiff-der-traeume-1")) shouldBe false
+    // a venue's own entry, named by a hash: nothing to compare
+    KinoheldClient.entryRenamed("Alte Liebe", Some("Old Love"), Some("6a879d07bd18315fab310531"), None) shouldBe false
   }
 }

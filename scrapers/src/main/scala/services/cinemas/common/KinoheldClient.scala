@@ -1,6 +1,7 @@
 package services.cinemas.common
 
 import models._
+import play.api.Logging
 import play.api.libs.json._
 import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.NonMovieEventClassifier
@@ -52,7 +53,7 @@ class KinoheldClient(
   override val cinema: Cinema,
   /** The day the horizon is measured from, asked per scrape — today in Germany. */
   today: => LocalDate
-) extends CinemaScraper {
+) extends CinemaScraper with Logging {
   import KinoheldClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiUrl, SiteUrl)
@@ -65,6 +66,9 @@ class KinoheldClient(
   def fetch(): Seq[CinemaMovie] = {
     val referenceDay = today
     val shows = readAllPages(latestYear = referenceDay.getYear + 1).filterNot(_.dateTime.toLocalDate.isBefore(referenceDay))
+    shows.flatMap(show => show.renamedEntry.map(_ -> show.film.title)).distinct.foreach { (entry, title) =>
+      logger.info(s"kinoheld entry $entry renamed: ${cinema.displayName} bills \"$title\" on another film's entry; its facts left out")
+    }
     toMovies(shows, cinema)
   }
 
@@ -129,9 +133,10 @@ object KinoheldClient {
   /** One page of a programme: its shows and whether another page follows. */
   final case class Page(shows: Seq[Show], hasMorePages: Boolean)
 
-  /** One screening, the film it shows already decided ([[linkTrusted]]). */
+  /** One screening, the film it shows already decided ([[linkTrusted]]); `renamedEntry` the catalogue id of a linked
+   *  entry its venue renamed for this show ([[entryRenamed]]), whose facts it does not carry. */
   final case class Show(film: Film, dateTime: LocalDateTime, bookingUrl: Option[String],
-                        room: Option[String], format: List[String])
+                        room: Option[String], format: List[String], renamedEntry: Option[String] = None)
 
   /** The film a show screens: kinoheld's linked film when the link is trusted (`id` its
    *  catalogue id), else only the venue's own name for it (`id` None). */
@@ -172,7 +177,7 @@ object KinoheldClient {
       name     <- (js \ "name").asOpt[String].map(_.trim)
       dateTime <- (js \ "beginning").asOpt[String].flatMap(s => Try(OffsetDateTime.parse(s)).toOption)
                     .map(_.atZoneSameInstant(Zone).toLocalDateTime)
-      film     <- filmOf(name, js \ "movie", latestYear)
+      (film, renamed) <- filmOf(name, js \ "movie", latestYear)
     } yield Show(
       film       = film,
       dateTime   = dateTime,
@@ -180,7 +185,8 @@ object KinoheldClient {
       room       = jsonText(js \ "auditorium" \ "name"),
       format     = formatTokens((js \ "flags").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap { f =>
                      for (c <- (f \ "category").asOpt[String]; k <- (f \ "code").asOpt[String]) yield c -> k
-                   }, jsonText(js \ "subtitleLanguage" \ "isocode"))
+                   }, jsonText(js \ "subtitleLanguage" \ "isocode")),
+      renamedEntry = renamed
     )
 
   /** The show's own page on kinoheld, which books it: for a venue that sells through
@@ -192,12 +198,18 @@ object KinoheldClient {
       show   <- jsonText(js \ "urlSlug")
     } yield s"$SiteUrl/kino/$city/$cinema/vorstellung/$show"
 
-  private def filmOf(showName: String, movie: JsLookupResult, latestYear: Int): Option[Film] = {
+  /** The film a show screens, and the id of the linked entry when its venue renamed it ([[entryRenamed]]). A show the
+   *  venue named with nothing is no show. */
+  private def filmOf(showName: String, movie: JsLookupResult, latestYear: Int): Option[(Film, Option[String])] = {
     val linked = for {
       id    <- (movie \ "id").asOpt[String]
       title <- jsonText(movie \ "title")
     } yield (id, title, jsonText(movie \ "titleOriginal"))
+    lazy val venueOwn = Option(showName).filter(_.nonEmpty).map(name => Film(id = None, title = name))
     linked match {
+      case Some((id, title, original)) if linkTrusted(showName, title, original) &&
+          entryRenamed(title, original, jsonText(movie \ "urlSlug"), jsonText(movie \ "thumbnailImage" \ "url")) =>
+        venueOwn.map(_ -> Some(id))
       case Some((id, title, original)) if linkTrusted(showName, title, original) =>
         Some(Film(
           id             = Some(id),
@@ -214,8 +226,8 @@ object KinoheldClient {
           posterUrl      = jsonText(movie \ "thumbnailImage" \ "url"),
           trailerUrl     = (movie \ "trailers").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(t => jsonText(t \ "url")).headOption,
           ageRating      = (movie \ "contentRating" \ "minimumAge").asOpt[Int].flatMap(age => AgeRating.normalize(s"FSK $age"))
-        ))
-      case _ => Option(showName).filter(_.nonEmpty).map(name => Film(id = None, title = name))
+        ) -> None)
+      case _ => venueOwn.map(_ -> None)
     }
   }
 
@@ -235,6 +247,60 @@ object KinoheldClient {
       val named = words(showName)
       (words(title) ++ original.toSeq.flatMap(words)).exists(named)
     }
+
+  /** Has a venue renamed the entry for another show, which keeps the facts of the film it was made for? kinoheld lets
+   *  a venue reuse an old entry for its next event: the title changes, and the slug, poster, original title, credit,
+   *  runtime and synopsis stay the old film's (prod 2026-10-21: entry 60643, made for "Hodder rettet die Welt", titled
+   *  "Über Unterbiberger - Vom Woid in die Welt" at Filmforum Landsberg; 74283, made for "Rock Around the Clock",
+   *  "Tyketto + Special Guest" at Kaminwerk; 931, "Wie in alten Zeiten", "Guido Cantz - Komische Zeiten"). The venue's
+   *  name matches the new title, so [[linkTrusted]] passes; the facts would put the old film's card on the show and
+   *  name that film to the resolver.
+   *
+   *  It is renamed when the entry states an original title its title shares no word with, and its slug and poster —
+   *  each named from the title the entry was made under — share less than half their words with it. An original title
+   *  alone tells nothing: a German title translates one ("Mit leiser Stimme", "À voix basse"), and its poster is
+   *  named for it; nor does an entry made under its original title ("Schach dem Teufel", slugged `beat-the-devil`,
+   *  "Nur geträumt" `juste-une-illusion`), then given its German one. Without an original title the entry names no
+   *  other film: the Filmmuseum bills Fellini's "E la nave va" on the entry made as "Fellinis Schiff der Träume". A
+   *  venue's own entry, slugged by a hash, names nothing. On the DE prod mirror of 2026-10-21 it named 17 entries (19
+   *  listings): 15 a concert, reading, event or other film on an old film's entry, "Mit offenen Armen" unsure, and one
+   *  the venue retitled to its film's German title ("Wie weit noch", slugged `nein-doch-wie`), whose facts still find
+   *  it. The facts dropped from those recorded on 2026-10-15 and 10-20 cured 3 wrong takes (Guido Cantz → "Wie in alten
+   *  Zeiten", HG Butzko → "Erlöse uns von dem Bösen", Com Felipe Quartett → "Glücklich wie Lazzaro") and gained 4
+   *  right ones the copied credit had vetoed (Cinecitta's "Über Unterbiberger"), moving no right take. */
+  def entryRenamed(title: String, original: Option[String], slug: Option[String], posterUrl: Option[String]): Boolean = {
+    val billed = spellings(title)
+    def sharesHalf(name: String) = {
+      val named  = spellings(name)
+      val shared = billed.count(_._2.exists(named.values.flatten.toSet))
+      billed.nonEmpty && named.nonEmpty && shared * 2 >= math.min(billed.size, named.size)
+    }
+    val names = slug.filterNot(VenueSlug.matches).map(_.replace('-', ' ')).toSeq ++
+      posterUrl.flatMap(url => PosterStem.findFirstMatchIn(url.substring(url.lastIndexOf('/') + 1))).map(_.group(1).replace('-', ' '))
+    val originalWords = original.map(spellings(_).values.flatten.toSet).getOrElse(Set.empty)
+    val slugWords     = slug.filterNot(VenueSlug.matches).map(s => spellings(s.replace('-', ' '))).getOrElse(Map.empty)
+    def slugsTheOriginal = slugWords.nonEmpty && slugWords.values.forall(_.exists(originalWords))
+    billed.nonEmpty && slugWords.nonEmpty && originalWords.nonEmpty &&
+      originalWords.intersect(billed.values.flatten.toSet).isEmpty && !slugsTheOriginal && !names.exists(sharesHalf)
+  }
+
+  /** A venue's own entry's slug — a hash, a bare number — names no title. */
+  private val VenueSlug = "[0-9a-f]{24}|\\d+".r
+  /** A catalogue poster's file name: the entry's title as it was slugged, its id, a version. */
+  private val PosterStem = """^(.+?)-\d+(?:-\d+)?\.v\d+\.\w+$""".r
+
+  /** Each counted word of `s` ([[words]]), with its spellings: deburred, and transliterated as kinoheld's slugs are
+   *  ("Über" as "ueber", "Außer" as "ausser"). A trailing hash a slug carries is no word. */
+  private def spellings(s: String): Map[String, Set[String]] = {
+    val lower = s.toLowerCase(Locale.ROOT)
+    def split(t: String) = t.split("[^\\p{L}\\p{N}]+").toSeq
+    val plain = split(TextNormalization.deburr(lower))
+    val translit = split(TextNormalization.deburr(lower.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")))
+    if (plain.size != translit.size) words(s).map(w => w -> Set(w)).toMap
+    else plain.zip(translit).collect {
+      case (w, t) if w.length >= 3 && !CommonWords(w) && !(w.length >= 10 && w.exists(_.isDigit) && w.forall(c => c.isDigit || c <= 'f')) => w -> Set(w, t)
+    }.toMap
+  }
 
   private def words(s: String): Set[String] =
     TextNormalization.deburr(s.toLowerCase(Locale.ROOT))
