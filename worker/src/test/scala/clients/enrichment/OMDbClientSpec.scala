@@ -199,6 +199,65 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     fetch.urls.size shouldBe paused + 1 + 5
   }
 
+  /** A fetch whose reads on the thread named `slow` wait at a gate; every other read answers `f` at once. */
+  private class GatedFetch(f: String => String) extends GetOnlyHttpFetch {
+    val entered = new java.util.concurrent.CountDownLatch(1)
+    val release = new java.util.concurrent.CountDownLatch(1)
+    val urls    = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    def get(url: String): String = {
+      urls.add(url)
+      if (Thread.currentThread.getName == "slow") { entered.countDown(); release.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) }
+      f(url)
+    }
+  }
+  private def slowAsk(omdb: OMDbClient): (Thread, java.util.concurrent.atomic.AtomicReference[Option[Throwable]]) = {
+    val result = new java.util.concurrent.atomic.AtomicReference[Option[Throwable]](None)
+    val thread = new Thread(() => result.set(ask(omdb)), "slow")
+    thread.start()
+    (thread, result)
+  }
+  private val aftersun =
+    """{"Title":"Aftersun","Year":"2022","Director":"Charlotte Wells","imdbID":"tt19770238","Response":"True"}"""
+
+  it should "let only ONE read probe OMDb when the pause ends, the others failing fast meanwhile" in {
+    @volatile var refusing = true
+    val fetch = new GatedFetch(url => if (refusing) throw new tools.HttpStatusException(401, "GET", url, None) else aftersun)
+    val clock = new tools.MutableClock(t0)
+    val omdb  = new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k")), clock = clock)
+    (1 to 10).foreach(_ => ask(omdb))
+    val paused = fetch.urls.size
+    clock.advanceMillis(OMDbClient.RefusalPause.toMillis)
+    refusing = false
+    val (probe, probed) = slowAsk(omdb)
+    fetch.entered.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    (1 to 5).foreach(_ => ask(omdb) shouldBe defined) // the probe is in flight: not asked again
+    fetch.urls.size shouldBe paused + 1
+    fetch.release.countDown()
+    probe.join(tools.SpecTimeouts.Io.toMillis)
+    probed.get shouldBe None
+    ask(omdb) shouldBe None // the probe answered: asked again
+    fetch.urls.size shouldBe paused + 2
+  }
+
+  it should "lift the pause when a read already in flight is answered" in {
+    @volatile var refusing = true
+    val fetch = new GatedFetch(url =>
+      if (refusing && Thread.currentThread.getName != "slow") throw new tools.HttpStatusException(401, "GET", url, None)
+      else aftersun)
+    val omdb = new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k")), clock = new tools.MutableClock(t0))
+    val (slow, slowResult) = slowAsk(omdb)
+    fetch.entered.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    (1 to 10).foreach(_ => ask(omdb)) // refused meanwhile: paused
+    ask(omdb).map(_.getMessage).getOrElse("") should include("OMDb refused")
+    refusing = false
+    fetch.release.countDown()
+    slow.join(tools.SpecTimeouts.Io.toMillis)
+    slowResult.get shouldBe None
+    val before = fetch.urls.size
+    ask(omdb) shouldBe None // the key answered, so the pause is over without waiting it out
+    fetch.urls.size shouldBe before + 1
+  }
+
   it should "never pause on failures that say nothing about the key" in {
     val (omdb, fetch, _) = gated(url => throw new tools.HttpStatusException(503, "GET", url, None))
     (1 to 20).foreach(_ => ask(omdb))

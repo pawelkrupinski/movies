@@ -35,7 +35,9 @@ import scala.concurrent.duration._
  *
  * A DEAD KEY is not asked again and again: after [[OMDbClient.RefusalsBeforePause]] refusals
  * of the key in a row (HTTP 401, "Request limit reached!", "Invalid API key!") every read fails
- * fast, without a call, for [[OMDbClient.RefusalPause]]; then one read probes it again. The free
+ * fast, without a call, for [[OMDbClient.RefusalPause]]; then ONE read probes it again (the rest
+ * keep failing fast while it is in flight), and any answer — the probe's, or one from a read already
+ * in flight when the pause began — lifts the pause. The free
  * key's daily quota is shared by everything holding it, and a spent one answered 401 to hundreds
  * of a recording's asks, every one of which the quota would count again once it reset (record run
  * 469, 2026-10-20). A fast failure is still a failure — never booked as "no such film".
@@ -46,9 +48,11 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
     extends play.api.Logging {
   import OMDbClient._
 
-  // Refusals of the key in a row, and until when it is not asked; any answer resets both.
+  // Refusals of the key in a row, and until when it is not asked; any answer resets both. `probing`: a read
+  // past the pause is asking OMDb whether the key works again — the only one let through until it ends.
   private val refusals    = new java.util.concurrent.atomic.AtomicInteger(0)
   private val pausedUntil = new java.util.concurrent.atomic.AtomicReference[Option[Instant]](None)
+  private val probing     = new java.util.concurrent.atomic.AtomicBoolean(false)
 
   /** Resolve an IMDb id for a film. Tries each title spelling in turn (pass the
    *  original/English title first — OMDb is an English DB). None when the key is
@@ -94,15 +98,18 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
   /** One OMDb answer: its record, `None` when OMDb says it has none, and a throw for
    *  anything else (see [[OMDbClient.answer]]). */
   private def record(url: String): Option[JsObject] = {
-    pausedUntil.get.filter(clock.instant().isBefore).foreach { until =>
-      throw new KeyRefusedException(s"OMDb refused its key ${refusals.get} times in a row (spent quota or bad key); " +
-        s"not asked again until $until")
+    // Still paused, or past the pause with another read already probing: fail fast, without a call.
+    val probe = pausedUntil.get.exists { until =>
+      if (clock.instant().isBefore(until) || !probing.compareAndSet(false, true))
+        throw new KeyRefusedException(s"OMDb refused its key ${refusals.get} times in a row (spent quota or bad key); " +
+          s"not asked again until $until${if (clock.instant().isBefore(until)) "" else " and a probe has answered"}")
+      true
     }
-    // Past the pause (or never paused): this read is the probe; a refusal pauses again at once.
-    pausedUntil.set(None)
     try {
       val read = HttpRead.jsonObject(http, url)(answer(url, _)).toOptionOrThrow
+      // An answer — this probe's, or a read in flight since before the pause — means the key works.
       refusals.set(0)
+      pausedUntil.set(None)
       read
     } catch {
       case failure: Throwable if refusesKey(failure) =>
@@ -112,7 +119,7 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
             s"(last: ${tools.RedactedUrl(Option(failure.getMessage).getOrElse(failure.toString)).linesIterator.nextOption().getOrElse("")})")
         }
         throw failure
-    }
+    } finally if (probe) probing.set(false)
   }
 
   /** Accept a candidate iff it is NOT contradicted (different director, or a
