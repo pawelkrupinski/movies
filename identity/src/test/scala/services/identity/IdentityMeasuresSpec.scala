@@ -661,6 +661,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Opera 2026" (recording 38326582997) took Argento's 1987 "Opera" by its "Opera" alone
     StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
     StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+    // a box office's "(Cine)" says how the relay screens, no work: ES taquilla's "Ballet El Cascanueces (Cine)" ×14 and
+    // "Ópera Cosi fan tutte (Cine)" ×5 (prod mirror 2026-10-21) denied their season's records as another work's
+    def cine(title: String) = Listing(title, rawTitle = Some(s"$title (Cine)"))
+    StageRelays.namesAnotherWork(cine("Ballet El Cascanueces"), Film("Royal Ballet & Opera 2026/27: The Nutcracker")) shouldBe false
+    StageRelays.namesAnotherWork(cine("Ópera Cosi fan tutte"), Film("Royal Ballet & Opera 2026/27: Così fan tutte")) shouldBe false
   }
 
   "a stage house's relay" should "deny another production of its work than the season its screenings fall in" in {
