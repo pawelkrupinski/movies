@@ -4,9 +4,10 @@
  *
  * ONE UNRELEASED RECORD AT A TIME. Apple holds at most one iOS appStoreVersion that has not been
  * released, and it is always the one to use -- a draft (PREPARE_FOR_SUBMISSION), a rejection
- * (REJECTED / DEVELOPER_REJECTED / METADATA_REJECTED / INVALID_BINARY) or a submission still in
- * review. Creating another one next to it 409s, so it is renamed to the new version and gets the
- * new build. A submission in review is cancelled first: the build cannot be swapped while Apple
+ * (REJECTED / DEVELOPER_REJECTED / METADATA_REJECTED / INVALID_BINARY), one added to a review
+ * submission that was never sent (READY_FOR_REVIEW -- a run that died before the final submit) or
+ * a submission still in review. Creating another one next to it 409s, so it is renamed to the new
+ * version and gets the new build. A submission in review is cancelled first: the build cannot be swapped while Apple
  * holds it, and cancelling leaves the record DEVELOPER_REJECTED, the same editable state as above.
  *
  * AN APPROVED RECORD STOPS THE LANE. PENDING_DEVELOPER_RELEASE and friends mean Apple has accepted
@@ -17,7 +18,7 @@ import { HttpError } from "../http.js";
 import { IOS_APP_ID, type AscApi, type Sleep } from "../mobile/stores.js";
 import type { Notes } from "./notes.js";
 
-export const EDITABLE = new Set(["PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"]);
+export const EDITABLE = new Set(["PREPARE_FOR_SUBMISSION", "READY_FOR_REVIEW", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"]);
 export const IN_REVIEW = new Set(["WAITING_FOR_REVIEW", "IN_REVIEW"]);
 export const APPROVED = new Set(["PENDING_DEVELOPER_RELEASE", "PENDING_APPLE_RELEASE", "PROCESSING_FOR_APP_STORE", "PROCESSING_FOR_DISTRIBUTION", "ACCEPTED"]);
 

@@ -28,6 +28,13 @@ describe("reading the version records", () => {
     expect(state.released).toEqual(["2.0.9"]);
   });
 
+  it("keeps a record left in an unsent review submission unreleased, so a rerun resumes it", () => {
+    // 2.0.13: the run added it to a review submission, then timed out before submitting it.
+    const state = iosStateFrom(ascVersions(["old", "2.0.12", "READY_FOR_SALE", "2026-10-15"], ["stuck", "2.0.13", "READY_FOR_REVIEW", "2026-10-21"]));
+    expect(state.pending).toMatchObject({ id: "stuck", versionString: "2.0.13" });
+    expect(state.released).toEqual(["2.0.12"]);
+  });
+
   it("counts an approved-but-not-live record as released", () => {
     expect(iosStateFrom(ascVersions(["a", "2.0.10", "PENDING_DEVELOPER_RELEASE", "2026-09-25"])).released).toEqual(["2.0.10"]);
   });
