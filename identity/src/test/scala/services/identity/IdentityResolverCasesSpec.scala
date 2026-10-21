@@ -247,6 +247,28 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "date an encore by the performance its synopsis names, not by the encore's year" in {
+    // US Showcase's "The Metropolitan Opera: Carmen (2026 ENCORE)" {Richard Eyre} [182′] ×17, prod 2026-10-21 (recording
+    // 573): an encore of "the indelible 2010 Met performance", its synopsis says — TMDB's "Bizet: Carmen" (aired 15 January
+    // 2010). Its year dates the encore, so the billing dated no season, and it took the Met's 2019 revival of the staging,
+    // which credits the same stage director.
+    val us = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.UnitedStates)).get
+    val films = Seq(
+      F(248042, "Bizet: Carmen", 2010, "Richard Eyre", 166, 2, alternatives = Seq("The Metropolitan Opera - Bizet: Carmen"),
+        released = Some(java.time.LocalDate.of(2010, 1, 15))),
+      F(543711, "The Metropolitan Opera: Carmen", 2019, "Richard Eyre", 210, 3, released = Some(java.time.LocalDate.of(2019, 2, 2))),
+      F(1143037, "The Metropolitan Opera: Carmen", 2024, "Carrie Cracknell", 225, 3, released = Some(java.time.LocalDate.of(2024, 1, 27))))
+    val synopsis = "Richard Eyre’s beloved production of Bizet’s masterpiece returns to theaters, led by mezzo-soprano Elīna " +
+      "Garanča as the title character and tenor Roberto Alagna as Don José in the indelible 2010 Met performance—a fan " +
+      "favorite of The Met: Live in HD series. Yannick Nézet-Séguin conducts in his company-debut season."
+    val encore = Listing.of(us, models.CinemaMovie(models.Movie("The Metropolitan Opera: Carmen (2026 ENCORE)", runtimeMinutes = Some(182)),
+      us, None, Some("https://www.showcasecinemas.com/movies/1000048089"), Some(synopsis), Nil, Seq("Richard Eyre"),
+      Seq(models.Showtime(java.time.LocalDate.of(2026, 11, 14).atTime(18, 0), None))), normalizer)
+    encore.performanceYear shouldBe Some(2010)
+    val r = shipped(Seq(encore), films)
+    withClue(r.decisionOf(encore.key).render)(r.decisionOf(encore.key).film shouldBe Some(248042))
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")

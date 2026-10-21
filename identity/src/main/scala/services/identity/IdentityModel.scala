@@ -70,7 +70,11 @@ final case class Listing(
   /** The latest year its film can be from, where its source dates an event the film cannot precede and not the film
    *  ([[models.Movie.releaseYearUpperBound]]: Cineamo's German premiere of an older film). It weighs only against a film
    *  released after it (`IdentityMeasures.yearBound`), never for one. Inside equality and hash. */
-  yearUpperBound: Option[Int] = None
+  yearUpperBound: Option[Int] = None,
+  /** The year of the performance its venue's own synopsis says a stage relay screens ("the indelible 2010 Met
+   *  performance", [[StageRelays.performanceYear]]): what dates an ENCORE's relay, whose billed year is the encore's
+   *  ([[RelayStage.of]]). Inside equality and hash. */
+  performanceYear: Option[Int] = None
 ) {
   def venue: String = key.venue
 
@@ -127,7 +131,7 @@ final case class Listing(
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
       screenedSeason == that.screenedSeason && listedCast == that.listedCast && certificate == that.certificate &&
-      yearUpperBound == that.yearUpperBound)
+      yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear)
     case _ => false
   }
   override def hashCode: Int = {
@@ -142,7 +146,8 @@ final case class Listing(
     h = mix(h, listedCast.##)
     h = mix(h, certificate.##)
     h = mix(h, yearUpperBound.##)
-    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 6)
+    h = mix(h, performanceYear.##)
+    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 7)
   }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
@@ -288,7 +293,8 @@ object Listing {
       properTitle   = properTitle,
       certificate   = cm.ageRating.map(_.trim).filter(_.nonEmpty),
       listedCast    = if (cm.cast.isEmpty || !namesAreVenues(cinema, cm)) ListedCast.None else ListedCast.of(cm.cast),
-      yearUpperBound = cm.movie.releaseYearUpperBound)
+      yearUpperBound = cm.movie.releaseYearUpperBound,
+      performanceYear = synopsisOf(cm).filter(_ => namesAreVenues(cinema, cm)).flatMap(StageRelays.performanceYear))
   }
 
   /** The titles external lookups are asked for besides the venue's own, if any: the one its rules ask
@@ -400,7 +406,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           /** The venue's certificate ([[Listing.certificate]]): what the weighted `certificate` measure reads. */
                           certificate: Option[String] = None,
                           /** [[Listing.yearUpperBound]]: weighs against a film released after it, never a year it states. */
-                          yearUpperBound: Option[Int] = None) {
+                          yearUpperBound: Option[Int] = None,
+                          /** [[Listing.performanceYear]]: what dates an encore's relay. */
+                          performanceYear: Option[Int] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
@@ -413,14 +421,17 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       // only where a venue bills one, so every other listing keeps its key
       certificate.fold("")(c => s"\u0000certificate:$c") +
       // only where a source bounds the year, so every other listing keeps its key
-      yearUpperBound.fold("")(bound => s"\u0000yearUpTo:$bound")
+      yearUpperBound.fold("")(bound => s"\u0000yearUpTo:$bound") +
+      // only where a synopsis names the performance, so every other listing keeps its key
+      performanceYear.fold("")(year => s"\u0000performed:$year")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
-      screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate, yearUpperBound = yearUpperBound)
+      screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate, yearUpperBound = yearUpperBound,
+      performanceYear = performanceYear)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -458,7 +469,8 @@ object Evidence {
     screeningsSeason = listing.screenings.season,
     airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty),
     certificate     = listing.certificate.map(_.trim).filter(_.nonEmpty),
-    yearUpperBound  = listing.yearUpperBound)
+    yearUpperBound  = listing.yearUpperBound,
+    performanceYear = listing.performanceYear)
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

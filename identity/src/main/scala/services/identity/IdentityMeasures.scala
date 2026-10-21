@@ -53,7 +53,10 @@ object IdentityMeasures {
                            certificate: Option[String] = None,
                            /** The latest year its film can be from ([[services.identity.Listing.yearUpperBound]]): what
                             *  weighs against a film released after it as a stated year would ([[yearBound]]), never for one. */
-                           yearUpperBound: Option[Int] = None) {
+                           yearUpperBound: Option[Int] = None,
+                           /** The year of the performance a stage relay's synopsis names ([[services.identity.Listing.performanceYear]]):
+                            *  what dates an encore's relay ([[RelayStage.of]]), never measured. */
+                           performanceYear: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle
