@@ -97,6 +97,8 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  can reach them — the worker spec's `WebExportedFamilies` keeps them charted. */
   private val HandRendered = Set(
     "kinowo_web_movies_served",      // WebMovieMetrics: per-city served counts, sampled each minute
+    "kinowo_web_films_by_poster_host", // WebMovieMetrics.PosterCensus: whose poster each served film draws
+    "kinowo_web_films_sharing_poster", // ...and the films sharing one poster image
     "kinowo_uptime_recent_successes", // the in-app /uptime buckets, one series per service
     "kinowo_uptime_recent_failures",
     "kinowo_uptime_recent_zeroes",
