@@ -150,11 +150,13 @@ jobs:
             mongo-tmpfs:                   ${{ matrix.mongo-tmpfs || '' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.
             mode:                          hermetic
-            profile:                       ${{ inputs.profile == true }}
+            # `== 'true'` too: Forgejo hands a dispatch's boolean inputs over as STRINGS ("true"), and "true" == true is
+            # false in an expression -- every takes-only measurement ran the whole suite (run 786, 2026-10-21).
+            profile:                       ${{ inputs.profile == true || inputs.profile == 'true' }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
             runner:                        ${{ inputs.runner || 'ubuntu-24.04' }}
             takes-base:                    ${{ inputs.takes-base || '' }}
-            takes-only:                    ${{ inputs.takes-only == true }}
+            takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
             takes-countries:               ${{ inputs.takes-countries || '' }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
             corpus-run:                    ${{ inputs.recording || '' }}

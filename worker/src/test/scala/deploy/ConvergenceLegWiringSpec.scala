@@ -448,7 +448,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  tool to classify. */
   "a takes-only dispatch" should "run only the takes rows, the takes row uploading the check's output" in {
     RepoFile.read(".github/workflows/identity-model-convergence.yml") should include(
-      "takes-only:                    ${{ inputs.takes-only == true }}")
+      "takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}")
     RepoFile.block(leg, "takes-only") should include("default: false")
     val suite = RepoFile.block(leg, "convergence")
     suite should include("name: identity-takes-${{ inputs.code }}")
@@ -759,7 +759,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {
-    caller should include ("profile:                       ${{ inputs.profile == true }}")
+    caller should include ("profile:                       ${{ inputs.profile == true || inputs.profile == 'true' }}")
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
     leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
     leg should include ("if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')")

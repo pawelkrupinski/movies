@@ -1,0 +1,142 @@
+#
+# ANY sbt COMMAND OVER A CACHED RECORDING, ON CI (scripts/identity-ci-run): an IntegrationTest runMain -- a resolve dump,
+# an ablation, a simulation, a replay sweep -- over one `Record scrape fixtures` run laid out as
+# scripts/identity-fetch-recording.sh lays it (the pair identity-measure-local and identity-slice replay), against a
+# throwaway MongoDB, off the laptop (the user's rule, 2026-10-21: heavy work runs on ci-runner). Once per country, or
+# once in all when the command names no {cc}. What the command writes under {out} comes back as the `identity-run`
+# artifact, with each country's sbt log.
+#
+# Placeholders in `command`: {cc} the country, {fixtures} the laid pair's test/resources/fixtures, {corpus} its corpus/,
+# {out} the directory uploaded ({out} is per country when the command names {cc}).
+#
+# Dispatch-only, from a measure/ branch scripts/identity-ci-run pushes: every run in a lane of its own, and on Forgejo the
+# run deletes that branch as its last job (identity-model-convergence.yml's drop-measure-branch, the same reason).
+#
+name: Identity run
+run-name: identity run ${{ inputs.recording }} ${{ inputs.countries }}
+on:
+    workflow_dispatch:
+        inputs:
+            recording:
+                description: The `Record scrape fixtures` run to lay out (e.g. 528).
+                required: true
+                type: string
+            countries:
+                description: Comma-separated codes the recording holds and the command runs for.
+                required: false
+                default: 'pl,de,uk,us,es'
+                type: string
+            command:
+                description: "The sbt command, e.g. worker/IntegrationTest/runMain integration.IdentityResolveDump --out {out} --full {cc} --corpus-dir {corpus} --fixtures {fixtures}"
+                required: true
+                type: string
+            heap:
+                description: sbt's -Xmx.
+                required: false
+                default: '8g'
+                type: string
+# Every run in a lane of its own off main (a measurement's form): runs side by side, none replaced. On Forgejo a dispatch
+# into a busy non-cancelling group is dropped, so main's runs (one lane) are dispatched one at a time.
+concurrency:
+    group: identity-run${{ github.ref != 'refs/heads/main' && format('-{0}', github.run_id) || '' }}
+    cancel-in-progress: false
+env:
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+permissions:
+    contents: read
+jobs:
+    run:
+        name: run
+        # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-24.04
+        timeout-minutes: 600
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+            - name: Lay out the recording
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RECORDING: ${{ inputs.recording }}
+                  COUNTRIES: ${{ inputs.countries }}
+                  KINOWO_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  [[ "$RECORDING" =~ ^[0-9]+$ ]] || { echo "::error::recording is a run id, not $RECORDING"; exit 1; }
+                  IFS=, read -r -a ccs <<< "$COUNTRIES"
+                  scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" "${ccs[@]}"
+                  rm -rf "$RUNNER_TEMP/recording/archive"
+            - uses: ./.github/actions/setup-sbt-build
+            - name: Start MongoDB (single-node replica set, the command's throwaway database)
+              run: scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Run the command
+              shell: bash
+              env:
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+                  SBT_OPTS: -Xmx${{ inputs.heap }}
+                  COMMAND: ${{ inputs.command }}
+                  COUNTRIES: ${{ inputs.countries }}
+              run: |
+                  set -uo pipefail
+                  fixtures="$RUNNER_TEMP/recording/pair/test/resources/fixtures" out="$RUNNER_TEMP/identity-run"
+                  mkdir -p "$out"
+                  fill() { local c=${COMMAND//\{fixtures\}/$fixtures}; c=${c//\{corpus\}/$fixtures/corpus}; c=${c//\{out\}/$2}; echo "${c//\{cc\}/$1}"; }
+                  failed=0
+                  if [[ "$COMMAND" == *"{cc}"* ]]; then
+                      IFS=, read -r -a ccs <<< "$COUNTRIES"
+                      for cc in "${ccs[@]}"; do
+                          mkdir -p "$out/$cc"; cmd=$(fill "$cc" "$out/$cc")
+                          echo "::group::$cc: sbt $cmd"
+                          sbt -batch "$cmd" 2>&1 | tee "$out/sbt-$cc.log" || failed=1
+                          echo "::endgroup::"
+                      done
+                  else
+                      cmd=$(fill "" "$out")
+                      sbt -batch "$cmd" 2>&1 | tee "$out/sbt.log" || failed=1
+                  fi
+                  exit $failed
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-run
+                  path: ${{ runner.temp }}/identity-run/
+                  retention-days: 14
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [run]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
+        secrets: inherit
+    # The run's own measure/ branch, deleted last (Forgejo only: no API cancels a run there; identity-model-convergence.yml)
+    drop-measure-branch:
+        needs: [run, timings]
+        if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: write
+        steps:
+            - name: Delete this run's measure branch
+              env:
+                  TOKEN: ${{ github.token }}
+                  API: ${{ github.api_url }}
+                  REPO: ${{ github.repository }}
+                  BRANCH: ${{ github.ref_name }}
+              run: |
+                  code=$(curl -sS -o "$RUNNER_TEMP/drop.json" -w '%{http_code}' -X DELETE -H "Authorization: token $TOKEN" \
+                      "$API/repos/$REPO/branches/$BRANCH") || code=000
+                  case "$code" in
+                      204) echo "deleted $BRANCH" ;;
+                      404) echo "$BRANCH is gone already" ;;
+                      *) echo "::warning::could not delete $BRANCH (HTTP $code): $(head -c 300 "$RUNNER_TEMP/drop.json" 2>/dev/null)"; exit 1 ;;
+                  esac

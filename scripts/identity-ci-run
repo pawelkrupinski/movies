@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#
+# ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop
+# (the user's rule, 2026-10-21: measurements, ablations, simulations and replay sweeps run on ci-runner). The CI twin of
+# a local `scripts/it-local.sh 'worker/IntegrationTest/runMain …'` over a laid recording.
+#
+#   scripts/identity-ci-run --recording RUN [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
+#                           -- '<sbt command>'
+#
+#   the command's placeholders: {cc} the country (the command runs once per country when it names it, else once),
+#   {fixtures} the laid pair's test/resources/fixtures, {corpus} its corpus/, {out} what comes back (per country with {cc})
+#   e.g. scripts/identity-ci-run --recording 528 --countries pl,de -- \
+#          'worker/IntegrationTest/runMain integration.IdentityResolveDump --out {out} --full {cc} --corpus-dir {corpus} --fixtures {fixtures}'
+#   --head     the commit run (default HEAD; uncommitted changes are NOT run). Pushed as measure/<user>/<sha>-<rand>, which
+#              the run deletes when it ends (identity-model-convergence.yml's drop-measure-branch, as scripts/identity-measure)
+#   --out      where the `identity-run` artifact lands (default target/identity-ci-run/<run>)
+#   --no-wait  dispatch, print the run, exit; fetch later with  scripts/forge-gh run download <run> -n identity-run -D DIR
+#
+# Typical wall time: ~5 min of setup (recording download, sbt) plus the command. Exit: the run's own (0 success, 1 not),
+# 2 when it could not be made.
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/tool-conventions.sh"
+DIE_STATUS=2
+. "$here/ci/dispatch.sh"
+export DISPATCH_GH=$KINOWO_GH DISPATCH_GH_TIMEOUT=${IDENTITY_CI_RUN_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_CI_RUN_POLL:-30}
+workflow=identity-run.yml
+recording="" head=HEAD heap=8g out="" nowait="" countries="pl,de,uk,us,es" command=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --recording) flag_value "$@"; recording=$2; shift 2 ;;
+    --countries|--country) flag_value "$@"; countries=$2; shift 2 ;;
+    --head) flag_value "$@"; head=$2; shift 2 ;;
+    --heap) flag_value "$@"; heap=$2; shift 2 ;;
+    --out) flag_value "$@"; out=$2; shift 2 ;;
+    --no-wait) nowait=1; shift ;;
+    -h|--help) usage_from_header; exit 0 ;;
+    --) shift; command="$*"; break ;;
+    *) usage_error "unknown argument: $1 (the command goes after --)" ;;
+  esac
+done
+[[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording RUN (a run id) is required"
+[ -n "$command" ] || usage_error "no command: put the sbt command after --"
+say() { echo "identity-ci-run: $*" >&2; }
+remote=${IDENTITY_MEASURE_REMOTE:-}
+[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+commit=$(git rev-parse --verify -q "$head^{commit}") || die "no commit $head"
+[ "$head" = HEAD ] && [ -n "$(git status --porcelain --untracked-files=no)" ] && say "WARNING: uncommitted changes are not run -- only $commit"
+
+# The commit's own workflows must hold identity-run.yml; an older commit gets main's .github/ and scripts/ci/ laid over it.
+push=$commit
+if ! git cat-file -e "$commit:.github/workflows/$workflow" 2> /dev/null; then
+  bounded 120 git fetch -q "$remote" main || die "could not fetch $remote main"
+  index=$(mktemp)
+  GIT_INDEX_FILE=$index git read-tree "$commit" \
+    && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
+    && tree=$(GIT_INDEX_FILE=$index git write-tree) \
+    && push=$(git commit-tree "$tree" -p "$commit" -m "measure: $remote/main's CI over ${commit:0:9}") \
+    || { rm -f "$index"; die "could not lay main's CI over $commit"; }
+  rm -f "$index"
+  say "$commit predates $workflow: running it under $remote/main's .github/ and scripts/ci/ ($push)"
+fi
+
+branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+dispatched=""
+# Before the dispatch the branch is ours to delete; after it, the run's (Forgejo cannot cancel a run through its API).
+trap '[ -n "$dispatched" ] || bounded 120 git push -q "$remote" --delete "refs/heads/$branch" 2> /dev/null || true' EXIT
+bounded 300 git push -q "$remote" "$push:refs/heads/$branch" || die "could not push $branch"
+say "pushed $branch"
+since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+dispatch_workflow "$workflow" "$branch" -f recording="$recording" -f countries="$countries" -f command="$command" -f heap="$heap" \
+  || die "could not dispatch $workflow on $branch"
+dispatched=1
+find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" || die "dispatched, but no run of $push on $branch was found"
+run=$DISPATCHED_RUN
+say "run $("$KINOWO_GH" run view "$run" --json url --jq .url 2> /dev/null || echo "$run") (it deletes $branch when it ends)"
+[ -z "$nowait" ] || { echo "$run"; exit 0; }
+wait_for_run "$run" $(( ${IDENTITY_CI_RUN_TIMEOUT_MINUTES:-660} * 60 )) || die "run $run gave no conclusion in time"
+say "run $run: $RUN_CONCLUSION"
+out=${out:-$(git rev-parse --show-toplevel)/target/identity-ci-run/$run}
+mkdir -p "$out"
+gh_download "$DISPATCH_GH_TIMEOUT" run download "$run" --name identity-run --dir "$out" || die "could not download run $run's identity-run artifact"
+say "output in $out"
+[ "$RUN_CONCLUSION" = success ]
