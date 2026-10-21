@@ -3450,9 +3450,9 @@
     }
 
     // The origin URL behind a proxied `src`, or '' when it wasn't proxied (or
-    // carries no `url=`). PosterProxy hands weserv a scheme-less target
-    // (`image.tmdb.org/p/a.jpg`) so the proxy can pick the scheme; put https://
-    // back before we fetch it ourselves.
+    // carries no `url=`). PosterProxy hands weserv an https target whole and
+    // an http one scheme-less (`kinobulgarska19.pl/x.jpg`); put https:// on a
+    // scheme-less one before we fetch it ourselves.
     function directUrl(src) {
       if (!isProxied(src)) return '';
       try {

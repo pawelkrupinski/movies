@@ -21,7 +21,7 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     // of the `url=` value, NOT bleed out into the weserv URL's own
     // query (which would make weserv interpret `&v=1` as one of its
     // own parameters and either ignore it or break the cache key).
-    proxied should include ("url=image.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fposter.jpg%3Frev%3Dabc%26v%3D1")
+    proxied should include ("url=https%3A%2F%2Fimage.bilety24.pl%2Fsf_api_thumb_400%2Fdealer-default%2F235%2Fposter.jpg%3Frev%3Dabc%26v%3D1")
   }
 
   it should "request a 480×720 webp cover-crop with attention-based focal point" in {
@@ -128,14 +128,23 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     PosterProxy.proxy(lookalike) should startWith ("https://images.weserv.nl/")
   }
 
+  // weserv fetches a scheme-less target over plain http. static.kinoheld.de answers http with
+  // 403 (https: 200), which weserv reports as its own 404, so every kinoheld poster rendered as
+  // "no poster" (probed 2026-10-21: `?url=static.kinoheld.de%2F…` 404, `?url=https%3A%2F%2F…` 200).
+  // An https origin keeps its scheme; only http's is dropped, which weserv fetches over http anyway.
+  it should "keep an https origin's scheme, which weserv would otherwise fetch over http" in {
+    PosterProxy.proxy("https://static.kinoheld.de/images/film/hodder-rettet-die-welt-60643.v17483032301696.jpg") should
+      startWith("https://images.weserv.nl/?url=https%3A%2F%2Fstatic.kinoheld.de%2Fimages%2Ffilm%2F")
+  }
+
   // Built by hand (`FormEncoding`) rather than through `URLEncoder`, so it is pinned to
-  // what the encoder spells, scheme stripped or not.
-  it should "carry the origin URL exactly as URLEncoder spells it, minus its scheme" in {
+  // what the encoder spells, an http scheme stripped or not.
+  it should "carry the origin URL exactly as URLEncoder spells it, minus an http scheme" in {
     Seq("https://kinomuza.pl/wp-content/uploads/Milcząca przyjaciółka.jpg?a=1&b=2",
         "http://kinobulgarska19.pl/x/y.jpg",
         "HTTPS://Example.com/Poster.JPG",
         "example.com/no-scheme.jpg").foreach { url =>
-      val stripped = url.replaceFirst("^https?://", "")
+      val stripped = url.replaceFirst("^http://", "")
       PosterProxy.proxy(url) shouldBe
         s"https://images.weserv.nl/?url=${java.net.URLEncoder.encode(stripped, "UTF-8")}&w=480&h=720&fit=cover&a=attention&output=webp"
     }

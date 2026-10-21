@@ -40,7 +40,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     // values, so the literal HTML carries `&amp;w=480` etc. Browsers
     // unescape on read; weserv sees the original query string. The
     // helper is still tested for its raw output in PosterProxySpec.
-    rendered                          should include ("https://images.weserv.nl/?url=example.com%2Fbroken.jpg")
+    rendered                          should include ("https://images.weserv.nl/?url=https%3A%2F%2Fexample.com%2Fbroken.jpg")
     rendered                          should include ("&amp;w=480")
     rendered                          should include ("&amp;h=720")
     rendered                          should include ("&amp;fit=cover")

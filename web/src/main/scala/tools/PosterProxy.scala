@@ -138,10 +138,10 @@ object PosterProxy {
   private val Hints = s"&w=$TargetWidth&h=$TargetHeight&fit=cover&a=attention&output=webp"
 
   /** Build the weserv URL, or `None` for empty input / a [[SkipHosts]] or
-   *  [[SkipDomains]] origin the caller should fetch directly. weserv accepts
-   *  the URL with or without the scheme prefix; stripping it avoids
-   *  double-encoding `://` and lets the proxy pick the scheme (HTTPS when
-   *  available, HTTP for origins like kinobulgarska19.pl).
+   *  [[SkipDomains]] origin the caller should fetch directly. weserv fetches
+   *  a scheme-less target over plain HTTP, so only an `http://` scheme is
+   *  stripped; an `https://` one is kept: static.kinoheld.de answers HTTP
+   *  with 403 (weserv's 404), which hid every kinoheld poster (2026-10-21).
    *
    *  Written into one builder rather than through a regex strip, a
    *  `URLEncoder` pass and an interpolation: a card proxies its poster and
@@ -149,9 +149,10 @@ object PosterProxy {
    *  cards were not cached. */
   private def weserv(url: String): Option[String] = {
     if (url == null || url.isEmpty) return None
-    val from = if (url.startsWith("https://")) 8 else if (url.startsWith("http://")) 7 else 0
-    val slash = url.indexOf('/', from)
-    val host  = url.substring(from, if (slash < 0) url.length else slash).toLowerCase(Locale.ROOT)
+    val from = if (url.startsWith("http://")) 7 else 0
+    val hostAt = if (url.startsWith("https://")) 8 else from
+    val slash = url.indexOf('/', hostAt)
+    val host  = url.substring(hostAt, if (slash < 0) url.length else slash).toLowerCase(Locale.ROOT)
     if (SkipHosts.contains(host) || skipsDomain(host)) return None
     val out = new java.lang.StringBuilder(Query.length + (url.length - from) * 2 + Hints.length)
     FormEncoding.append(url, from, out.append(Query))
