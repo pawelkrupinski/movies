@@ -51,18 +51,23 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
     // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
     val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope)
+    // a film a reused page's copied original title and director alone name ([[Acceptance.copiedBeyondItsBilling]]): facts
+    // that agree with it by construction, so no vote of TMDB's for it (DE Scheune Dresden's "Regio Tales", an event on
+    // kinoheld's "Heads and Tales" page)
+    def copiedOnly(tmdbId: Int) = eligible.exists(s => s.candidate.tmdbId == tmdbId && acceptance.copiedBeyondItsBilling(s))
     // the one TMDB film the members lean to, none of them denying it
     val leaned  = if (film.isDefined) Nil else cluster.flatMap(node => acceptance.leaning(scope.of(node))).map(_.candidate).distinctBy(_.tmdbId)
     val leaning = leaned match {
-      case Seq(lean) if lean.film.imdbNumber > 0 && !cluster.exists(node => families.denies(node, lean.tmdbId)) =>
+      case Seq(lean) if lean.film.imdbNumber > 0 && !cluster.exists(node => families.denies(node, lean.tmdbId)) && !copiedOnly(lean.tmdbId) =>
         Some(ResolverDecision.Leaning(lean.tmdbId, lean.film.imdbNumber))
       case _ => None
     }
     // the best-ranked TMDB film the pooled evidence weighed that no member denies: the agreement stage's TMDB voter — none
     // where the release veto took out a film ranked above it, as the veto adds no evidence for its namesake
-    // ([[ReleaseVeto]]: PL "Stan wyjątkowy", Brešan's 2018 film best only once Hřebejk's 2024 one was vetoed)
+    // ([[ReleaseVeto]]: PL "Stan wyjątkowy", Brešan's 2018 film best only once Hřebejk's 2024 one was vetoed), nor a
+    // reused page's copied record
     val candidate = if (film.isDefined || scored.takeWhile(_.denied).exists(_.denial.exists(ReleaseVeto.vetoes))) None
-      else eligible.headOption.filter(_.untaken.isEmpty).map(_.candidate)
+      else eligible.headOption.filter(best => best.untaken.isEmpty && !copiedOnly(best.candidate.tmdbId)).map(_.candidate)
       .filterNot(best => cluster.exists(node => families.denies(node, best.tmdbId)))
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,

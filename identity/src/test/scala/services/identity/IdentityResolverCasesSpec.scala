@@ -2262,6 +2262,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "make the record a reused page copied no TMDB vote when it takes nothing" in {
+    // DE Kino in der Scheune Dresden's "Regio Tales" (prod 2026-10-21): kinoheld's page copies the original title "Heads and
+    // Tales" and its director onto an event of the culture centre. The model refused the record (its page reads as reused),
+    // yet leaned to it, the agreement's TMDB vote completing Wikidata's take of it to a quorum.
+    val copied = F(888084, "Heads and Tales", 2021, "Sai Krishna Enreddy", 95, 0.25)
+    val older  = F(326347, "Heads and Tales", 1967, "Someone Else", 90, 1)
+    val billed = listing(Rialto, "Regio Tales", director = Some("Sai Krishna Enreddy")).copy(originalTitle = Some("Heads and Tales"))
+    val d = shipped(Seq(billed), Seq(copied, older)).decisionOf(billed.key)
+    withClue(d.render) {
+      d.film shouldBe None
+      d.leaning shouldBe None
+      d.candidate shouldBe None
+    }
+  }
+
   it should "veto nothing the listing's own facts back, nor on release dates TMDB was not asked for, nor when no namesake is released there" in {
     val released = F(923171, "Obcy w domu", 1986, "", 0, 3, releaseCountries = Some("PL"))
     val namesake = F(56669, "Obcy w domu", 1989, "", 0, 1, releaseCountries = Some("CAUS"))
