@@ -40,7 +40,7 @@
 # (run 38548739769). A key not stored -- other inputs, a fill this row could not publish, a first run -- resolves as before.
 # Each head's corpus-shape findings are stored the same way, keyed by the checks' code and allowlists and the recording.
 # Writes <out>/{base,head}/decisions-<cc>.jsonl and ratchet-takes.tsv (the model's takes and the final ones, below),
-# <out>/{base,head}/shape/ (the corpus-shape findings), <out>/base.txt (the base commit) and <out>/verdict.txt.
+# <out>/{base,head}/shape/ (the corpus-shape findings), <out>/base.txt (the base commit), <out>/recording.txt and <out>/verdict.txt.
 # THE BASE ROW. Neither side's results stored -- a base main has not run yet (a measurement dispatched while main's
 # own run for its base is still queued), or a recording pinned since -- the base was resolved AFTER the head's session,
 # on the same runner: 5.5 of run 38735006233's 13.8-minute US row. A takes-only dispatch (scripts/identity-measure)
@@ -156,6 +156,9 @@ if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]]; then
   base=$full
 fi
 echo "$base" > "$out/base.txt"
+# Which recording the takes are over: `named <run>` for a dispatch's `recording` (convergence-setup.sh's bare pair), else
+# `pinned <run>` -- scripts/identity-measure reuses only a pinned one's run for a later measurement.
+echo "${KINOWO_CONVERGENCE_NAMED_RECORDING:+named $KINOWO_CONVERGENCE_NAMED_RECORDING}${KINOWO_CONVERGENCE_NAMED_RECORDING:-pinned ${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}}" > "$out/recording.txt"
 echo "identity takes ($cc): base $base, head $head"
 bounded "$gh_download" git fetch -q --no-tags --depth=1 origin "$base" \
   || { echo "::error::identity takes ($cc): could not fetch base $base" | tee "$out/verdict.txt"; exit 2; }

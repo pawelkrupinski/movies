@@ -33,7 +33,9 @@
 _dispatch_say() { echo "dispatch: $*" >&2; }
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded
-_dispatch_gh() { bounded "${DISPATCH_GH_TIMEOUT:-60}" gh "$@"; }
+# DISPATCH_GH: the gh to run (default gh; scripts/identity-measure passes scripts/forge-gh, which on a laptop checkout
+# of a Forgejo remote dispatches and lists through Forgejo's API).
+_dispatch_gh() { bounded "${DISPATCH_GH_TIMEOUT:-60}" "${DISPATCH_GH:-gh}" "$@"; }
 
 # Sets RATE_LIMIT_WAIT to the seconds until the token's core limit resets (+DISPATCH_RATE_LIMIT_PAD, 5; a reset
 # already past waits 0), or DISPATCH_RATE_LIMIT_SECONDARY_SECONDS (60) when the core limit is not spent (a secondary

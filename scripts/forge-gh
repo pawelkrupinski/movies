@@ -5,6 +5,7 @@ GitHub suspended the account on 2026-10-19; movies' CI, its run artifacts and th
 Forgejo since. Every laptop tool that finds a run, an artifact or a release asset calls this in place of `gh`
 (tool-conventions.sh's gh_download and identity_gh, ci_wait.py), so one switch decides the forge for all:
 
+  `forge-gh --which` prints which (github or forgejo), for a caller that acts on it.
   KINOWO_FORGE=github|forgejo   -> that forge
   inside a CI job ($GITHUB_ACTIONS) -> the job's own gh (on Forgejo that is the job image's shim): exec'd as is
   otherwise                     -> Forgejo when this checkout has a Forgejo remote (ssh://forgejo-git/..., a forgejo.*
@@ -30,6 +31,10 @@ when that vault is already unlocked (never a Touch ID prompt; the repository is 
   api repos/{repo}/actions/runs/{id}[/artifacts] [-q/--jq EXPR] [--paginate]
         GitHub's shapes (run_started_at, head_sha, ...; artifacts[].name/expired/size_in_bytes); any other path is
         Forgejo's own /api/v1/<path>, as Forgejo answers it.
+  workflow run <workflow> [-R repo] --ref REF [-f/--raw-field/-F/--field key=value]...
+        POST /repos/{repo}/actions/workflows/<file>/dispatches {"ref", "inputs"}: Forgejo answers no run id, so a caller
+        finds the run it made by listing (the CI dispatch helper's find_dispatched_run). `run list --event E` filters
+        the listing by its trigger (workflow_dispatch, push, ...).
   A form outside it fails (exit 1) naming itself: no Forgejo API serves a run's log (`run view --log`) or its jobs.
 Errors are worded as gh words them (HTTP <code>, "no artifact matches", "no assets match", "release not found"),
 so gh_download tells a failed read from an absent one the same on both forges. --jq runs jq -r, as gh's --jq prints.
@@ -127,6 +132,22 @@ class Forgejo:
             url += ("&" if "?" in url else "?") + urllib.parse.urlencode(query)
         with self.open(url) as r:
             return json.load(r)
+
+    def post(self, path: str, body: dict) -> bytes:
+        """POST a JSON body, the answer's bytes (a dispatch answers 204, nothing)."""
+        if self._token is None:
+            self._token = token(self.env)
+        url = f"{self.base}/api/v1/{path.lstrip('/')}"
+        req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
+                                     headers={"Authorization": f"token {self._token}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=float(self.env.get("KINOWO_FORGEJO_READ_TIMEOUT", "120"))) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")[:300]
+            raise Fail(f"HTTP {e.code}: {e.reason} ({url}) {detail}".rstrip())
+        except (urllib.error.URLError, OSError) as e:
+            raise Fail(f"could not reach Forgejo at {self.base} (the laptop tunnel?): {getattr(e, 'reason', e)}")
 
     def save(self, url: str, dest) -> None:
         """The file at url, streamed into dest (a path, or a binary stream)."""
@@ -262,10 +283,12 @@ VALUE_FLAGS = {"-R": "repo", "--repo": "repo", "-n": "name", "--name": "name", "
                "-D": "dir", "--dir": "dir", "-O": "output", "--output": "output", "--json": "json", "-q": "jq",
                "--jq": "jq", "-w": "workflow", "--workflow": "workflow", "-s": "status", "--status": "status",
                "-b": "branch", "--branch": "branch", "-c": "commit", "--commit": "commit", "-L": "limit",
-               "--limit": "limit", "--job": "job", "-X": "method", "--method": "method"}
+               "--limit": "limit", "--job": "job", "-X": "method", "--method": "method", "-e": "event",
+               "--event": "event", "-r": "ref", "--ref": "ref", "-f": "field", "--raw-field": "field", "-F": "field",
+               "--field": "field"}
 SWITCHES = {"--clobber": "clobber", "--log": "log", "--log-failed": "log", "--paginate": "paginate",
             "--skip-existing": "skip_existing"}
-LISTS = ("name", "pattern")
+LISTS = ("name", "pattern", "field")
 
 
 def parse(argv):
@@ -393,6 +416,8 @@ def run_list(fj: Forgejo, opts, pos):
         runs = [r for r in runs if want in (r["status"], r["conclusion"])]
     if opts.get("commit"):
         runs = [r for r in runs if r["headSha"].startswith(opts["commit"])]
+    if opts.get("event"):
+        runs = [r for r in runs if r["event"] == opts["event"]]
     emit(runs[: int(opts.get("limit") or 20)], opts.get("json"), opts.get("jq"))
 
 
@@ -416,7 +441,22 @@ def api(fj: Forgejo, opts, pos):
     emit(obj, None, opts.get("jq"))
 
 
-COMMANDS = {("run", "download"): run_download, ("run", "view"): run_view, ("run", "list"): run_list,
+def workflow_run(fj: Forgejo, opts, pos):
+    if not pos:
+        raise Fail("gh (forgejo): workflow run needs a workflow")
+    if not opts.get("ref"):
+        raise Fail("gh (forgejo): workflow run needs --ref (Forgejo has no default branch fallback here)", 2)
+    inputs = {}
+    for field in opts["field"]:
+        key, eq, value = field.partition("=")
+        if not eq:
+            raise Fail(f"gh (forgejo): a field is key=value: {field}", 2)
+        inputs[key] = value
+    wf = workflow_file(pos[0], workflows_by_file())
+    fj.post(f"repos/{fj.repo}/actions/workflows/{wf}/dispatches", {"ref": opts["ref"], "inputs": inputs})
+
+
+COMMANDS = {("workflow", "run"): workflow_run, ("run", "download"): run_download, ("run", "view"): run_view, ("run", "list"): run_list,
             ("release", "download"): release_download, ("release", "view"): release_view}
 
 
@@ -434,6 +474,9 @@ def forgejo_main(argv) -> None:
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     try:
+        if argv == ["--which"]:  # the forge this checkout reads, for a caller that acts on it (the identity-measure tool)
+            print(forge())
+            return 0
         if forge() == "github":
             os.execvp("gh", ["gh"] + argv)
         forgejo_main(argv)

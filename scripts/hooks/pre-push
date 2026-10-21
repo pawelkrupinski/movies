@@ -532,18 +532,27 @@ base_for() {
 
 ranges=()
 to_main=0
+# A MEASUREMENT'S BRANCH (scripts/identity-measure's `measure/<user>/<sha>-<rand>`) is pushed only for CI to run the
+# commit's identity takes from: it never lands, nothing merges it, and its run deletes it. The checks below guard what
+# main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
+# when it is pushed there. Any other ref in the same push is checked as ever.
+measure_only="" other=""
 if [ "${1:-}" = "--range" ]; then
     ranges+=("${2:?--range A..B}")
     to_main=1   # a dry run is judged as a push to main
 else
     while read -r _local_ref local_sha remote_ref remote_sha; do
         [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
+        case "$remote_ref" in refs/heads/measure/*) measure_only=1; continue ;; *) other=1 ;; esac
         base="$(base_for "$local_sha" "$remote_sha")"
         [ -n "$base" ] && ranges+=("$base..$local_sha")
         [ "$remote_ref" = refs/heads/main ] && to_main=1
     done
 fi
-[ "${#ranges[@]}" -eq 0 ] && exit 0
+if [ "${#ranges[@]}" -eq 0 ]; then
+    [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ branch: a measurement's run ref, never landed -- nothing to check"
+    exit 0
+fi
 
 if [ "$to_main" = 1 ]; then
     if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"

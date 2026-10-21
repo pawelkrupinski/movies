@@ -9,15 +9,22 @@
 # This dispatches that check, and only that check (`takes-only`), for one commit, then classifies its moves
 # (scripts/identity_measure.py) and prints LANDABLE or NOT LANDABLE.
 #
-# usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,de,uk,us,es] [--keep-branch]
-#                                 [--no-wait] [--full] [--fresh] [--json] [--timeout <minutes>]
+# THE DEFAULT WAY TO MEASURE (2026-10-21): it runs on ci-runner (Forgejo CI), not on the laptop. scripts/identity-measure-local
+# is the fallback, run only under the heavy-run slot wrapper. Typical wall time: ~25-40 minutes, most of it the takes rows.
+#
+# usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
+#                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait] [--full] [--fresh] [--json]
+#                                 [--timeout <minutes>]
 #        scripts/identity-measure --sweep
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
-#   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
-#   --base         default the commit's merge-base with origin/main; the commit's parent when it is on main already
-#   --countries    the countries reported and judged (every leg runs: the workflow's matrix is fixed); also a
+#   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
+#   --base         default the commit's merge-base with <remote>/main; the commit's parent when it is on main already
+#   --recording    a `Record scrape fixtures` run (e.g. 528) every leg replays -- its corpus and tree as released, no
+#                  fills, the bare pair identity-measure-local lays -- in place of the pinned pair. Never reused. Name
+#                  the countries it holds with --countries (528: pl,de)
+#   --countries    the countries measured and judged: only their legs run (the workflow's `takes-countries`); also a
 #                  repeatable --country cc[,cc], as the other identity tools take it
-#   --keep-branch  leave the temporary branch on origin
+#   --keep-branch  leave the temporary branch on the remote (on Forgejo the run drops it anyway, below)
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below)
@@ -27,9 +34,15 @@
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
 #                  A run still in progress is waited for (at most --timeout); with --no-wait it exits 2 instead
 #
-# THE BRANCH. The workflow runs a commit only from a ref, so the commit is pushed as `measure/<short sha>-<random>` --
-# the one kind of branch push this repository allows besides main, ONLY to run a build -- and deleted at the end:
-# success, failure, Ctrl-C (which also cancels the run) alike. Pushed with --no-verify: it never lands. A commit
+# THE REMOTE. IDENTITY_MEASURE_REMOTE, else `forgejo` when the clone has one (CI's forge since GitHub suspended the account
+# on 2026-10-19), else origin. Every gh call goes through scripts/forge-gh, Forgejo's API on a Forgejo checkout.
+#
+# THE BRANCH. The workflow runs a commit only from a ref, so the commit is pushed as `measure/<user>/<short sha>-<random>`
+# -- the one kind of branch push this repository allows besides main, ONLY to run a build. The pre-push hook checks
+# nothing on a measure/ ref (it never lands), so the push needs no --no-verify. On github.com it is deleted at the end:
+# success, failure, Ctrl-C (which also cancels the run) alike. On Forgejo, which has no API to cancel a run, the RUN
+# deletes it as its last job (identity-model-convergence.yml's drop-measure-branch): a Ctrl-C after the dispatch leaves
+# the run going and the branch to it; before the dispatch, the script deletes it itself. A commit
 # whose workflows predate the takes-only dispatch gets main's .github/ and scripts/ci/ laid over it in a commit of
 # its own (no identity path: the check diffs only identity code, so the measured code is the commit's).
 #
@@ -68,10 +81,12 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
+ref="" base="" recording="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
+    --head) ref=$2; shift ;;
+    --recording) recording=$2; shift ;;
     # one parser for both spellings (tool-conventions.sh): --countries pl,de and a repeatable --country cc
     --country|--countries|--country=*|--countries=*) country_flag "$@"; shift $((COUNTRY_FLAG_ARGS - 1)) ;;
     --keep-branch) keep=1 ;;
@@ -90,6 +105,9 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 countries=$(selected_countries_csv)
+# the countries named on the command line (empty: every leg), as the workflow's takes-countries
+named_countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || named_countries=$countries
+[ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id, not $recording"
 
 say() { echo "identity-measure: $*" >&2; }
 # Exit 2 is "the measurement could not be made" (above), a failure and a usage slip alike: tool-conventions.sh's die.
@@ -99,20 +117,30 @@ DIE_STATUS=2
 # must not hold the measurement (and its branch) forever.
 . "$here/ci/dispatch.sh"
 export DISPATCH_GH_TIMEOUT=${IDENTITY_MEASURE_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_MEASURE_POLL:-30}
+export DISPATCH_GH=$KINOWO_GH # scripts/forge-gh: Forgejo's API on a Forgejo checkout
+remote=${IDENTITY_MEASURE_REMOTE:-}
+[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+# Forgejo cannot cancel a run through its API, so its run drops its own branch (THE BRANCH above)
+run_drops_branch=""
+[ "$("$KINOWO_GH" --which 2> /dev/null)" = forgejo ] && run_drops_branch=1
 
 branch="" measured_run="" finished="" scratch=""
 delete_branch() {
-  bounded 120 git push -q --no-verify origin --delete "refs/heads/$branch" 2> /dev/null && { say "deleted branch $branch"; return; }
+  bounded 120 git push -q "$remote" --delete "refs/heads/$branch" 2> /dev/null && { say "deleted branch $branch"; return; }
   # A push that failed may never have made the branch (ls-remote's 2: no such ref): nothing to delete.
-  bounded 60 git ls-remote --exit-code origin "refs/heads/$branch" > /dev/null 2>&1
-  [ $? -eq 2 ] || say "could not delete branch $branch -- git push origin --delete $branch"
+  bounded 60 git ls-remote --exit-code "$remote" "refs/heads/$branch" > /dev/null 2>&1
+  [ $? -eq 2 ] || say "could not delete branch $branch -- git push $remote --delete $branch"
 }
 cleanup() {
   # Run to the end: a second Ctrl-C (or the TERM after a first) mid-clean-up would leave the branch behind.
   trap '' INT TERM
   [ -z "$scratch" ] || rm -rf "$scratch"
   # Ctrl-C mid-run: the run would replay a branch about to vanish -- cancel it first.
-  if [ -n "$measured_run" ] && [ -z "$finished" ]; then
+  if [ -n "$measured_run" ] && [ -z "$finished" ] && [ -n "$run_drops_branch" ]; then
+    # Forgejo: no API cancels a run, and the run deletes its own branch when it ends
+    say "run $measured_run goes on (Forgejo has no API to cancel it; cancel it in the web UI if it should not) and deletes $branch when it ends"
+    branch=""
+  elif [ -n "$measured_run" ] && [ -z "$finished" ]; then
     say "cancelling run $measured_run"
     identity_gh "$DISPATCH_GH_TIMEOUT" run cancel "$measured_run" > /dev/null || say "could not cancel run $measured_run -- cancel it by hand"
   fi
@@ -125,14 +153,14 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-[ -n "$take_paths$sweep" ] || bounded 120 git fetch -q origin main || die "could not fetch origin main" # --take-paths reads HEAD alone
+[ -n "$take_paths$sweep" ] || bounded 120 git fetch -q "$remote" main || die "could not fetch $remote main" # --take-paths reads HEAD alone
 
 # sweep_orphans: delete the origin measure/ branches whose newest run finished over IDENTITY_MEASURE_SWEEP_HOURS ago (THE SWEEP above)
 sweep_orphans() {
   local heads ref name latest status created cutoff cutoff_epoch
   cutoff_epoch=$(( $(date +%s) - ${IDENTITY_MEASURE_SWEEP_HOURS:-24} * 3600 ))
   cutoff=$(date -u -d "@$cutoff_epoch" +%Y-%m-%dT%H:%M:%SZ 2> /dev/null || date -u -r "$cutoff_epoch" +%Y-%m-%dT%H:%M:%SZ)
-  heads=$(bounded 60 git ls-remote --heads origin 'refs/heads/measure/*') || { say "sweep: could not list origin's measure/ branches"; return 0; }
+  heads=$(bounded 60 git ls-remote --heads "$remote" 'refs/heads/measure/*') || { say "sweep: could not list $remote's measure/ branches"; return 0; }
   while read -r _ ref; do
     [ -n "$ref" ] || continue
     name=${ref#refs/heads/}
@@ -140,7 +168,7 @@ sweep_orphans() {
       --jq '.[0] | select(. != null) | "\(.status) \(.createdAt)"') || { say "sweep: could not read the runs of $name"; continue; }
     read -r status created <<< "$latest"
     [ "${status:-}" = completed ] && [[ "$created" < "$cutoff" ]] || continue
-    if bounded 120 git push -q --no-verify origin --delete "$ref" 2> /dev/null; then say "sweep: deleted orphaned $name (run finished $created)"
+    if bounded 120 git push -q "$remote" --delete "$ref" 2> /dev/null; then say "sweep: deleted orphaned $name (run finished $created)"
     else say "sweep: could not delete $name"; fi
   done <<< "$heads"
 }
@@ -173,7 +201,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
   rows=$scratch/rows.json judgements=$scratch/identity-judgements.tsv
   mkdir -p "$cache"
   url=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json url --jq .url) || die "could not read run $id"
-  jobs=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '.jobs[] | select(.name | endswith(" / takes")) | [.name, .conclusion] | @tsv') \
+  jobs=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '(.jobs // [])[] | select(.name | endswith(" / takes")) | [.name, .conclusion] | @tsv') \
     || die "could not read run $id's jobs"
   { echo "{"; first=1
     while IFS=$'\t' read -r name conclusion; do
@@ -188,8 +216,8 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
   if [ -n "$checkout_judgements" ] && [ -f "$checkout_judgements" ]; then
     cp "$checkout_judgements" "$judgements" && say "classifying with this checkout's judgements ($checkout_judgements)"
   elif ! git show "$commit:test/resources/fixtures/identity-judgements.tsv" > "$judgements"; then
-    say "$commit holds no identity-judgements.tsv: classifying with origin/main's"
-    git show origin/main:test/resources/fixtures/identity-judgements.tsv > "$judgements" || die "no judgements to classify with"
+    say "$commit holds no identity-judgements.tsv: classifying with $remote/main's"
+    git show "$remote/main:test/resources/fixtures/identity-judgements.tsv" > "$judgements" || die "no judgements to classify with"
   fi
   python3 -I "$here/identity_measure.py" "$dl" --judgements "$judgements" --countries "$countries" --rows "$rows" \
     --run-url "$url" ${json:+--json}
@@ -280,6 +308,9 @@ find_measurement() {
     IFS=$'\t' read -r run h0 at < "$reuse_root/$id/$entry" || continue
     [ $((now - at)) -le "$max" ] || continue
     [ -f "$KINOWO_IDENTITY_CACHE/measure/$run/downloaded" ] || continue
+    # a run that measured fewer countries (--countries), or over a named recording, answers no other measurement
+    for cc in ${countries//,/ }; do [ -d "$KINOWO_IDENTITY_CACHE/measure/$run/artifacts/identity-takes-$cc" ] || continue 2; done
+    grep -qs '^named' "$KINOWO_IDENTITY_CACHE/measure/$run"/artifacts/identity-takes-*/recording.txt && continue
     git cat-file -e "$b0^{commit}" 2> /dev/null && git cat-file -e "$h0^{commit}" 2> /dev/null || continue
     moved=$(git diff --name-only --no-renames "$b0" "$1" | in_convergence_paths "$patterns") || continue
     [ "$moved" = false ] || continue
@@ -307,7 +338,7 @@ if [ -n "$run" ]; then
   # over it). A run whose head this clone lacks is not.
   run_base=$(cat "$KINOWO_IDENTITY_CACHE/measure/$run"/artifacts/identity-takes-*/base.txt 2> /dev/null | head -1)
   if [ "$verdict" -le 1 ] && [ -n "$branch" ] && [ -n "$run_base" ] && git cat-file -e "$run_sha^{commit}" 2> /dev/null; then
-    [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
+    [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* || "$(git log -1 --format=%s "$run_sha")" == "measure: forgejo/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
     created=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json createdAt --jq .createdAt) \
       && created=$(python3 -I -c 'import sys, datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00")).timestamp()))' "$created") \
       && store_measurement "$run_base" "$run_sha" "$run" "$created"
@@ -319,12 +350,12 @@ fi
 commit=$(git rev-parse --verify -q "${ref:-HEAD}^{commit}") || die "no commit ${ref:-HEAD}"
 [ -z "$ref" ] && [ -n "$(git status --porcelain --untracked-files=no)" ] && say "WARNING: uncommitted changes are not measured -- only $commit"
 if [ -z "$base" ]; then
-  base=$(git merge-base "$commit" origin/main) || die "no merge-base of $commit and origin/main"
+  base=$(git merge-base "$commit" "$remote/main") || die "no merge-base of $commit and $remote/main"
   [ "$base" = "$commit" ] && base=$(git rev-parse "$commit^")
 fi
 base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
 
-if [ -z "$fresh$full" ] && found=$(find_measurement "$base" "$commit"); then
+if [ -z "$fresh$full$recording" ] && found=$(find_measurement "$base" "$commit"); then
   read -r reused_run reused_base <<< "$found"
   if [ "$reused_base" = "$base" ]; then how="the same base"; else how="main moved only outside the paths that move a take"; fi
   say "REUSED measurement of run $reused_run (base ${reused_base:0:9}, same change, $how) -- --fresh to dispatch"
@@ -339,24 +370,25 @@ fi
 push=$commit
 # (Read whole, not piped into `grep -q`: under pipefail its early exit SIGPIPEs git show and reads as "no takes-only".)
 leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml") || leg=""
-if [[ "$leg" != *takes-only* ]]; then
+# (takes-countries: the leg that also knows --countries and --recording, 2026-10-21)
+if [[ "$leg" != *takes-countries* ]]; then
   index=$(mktemp)
   GIT_INDEX_FILE=$index git read-tree "$commit" \
     && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "origin/main:.github" \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "origin/main:scripts/ci" \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
     && tree=$(GIT_INDEX_FILE=$index git write-tree) \
-    && push=$(git commit-tree "$tree" -p "$commit" -m "measure: origin/main's CI over ${commit:0:9}") \
+    && push=$(git commit-tree "$tree" -p "$commit" -m "measure: $remote/main's CI over ${commit:0:9}") \
     || { rm -f "$index"; die "could not lay main's CI over $commit"; }
   rm -f "$index"
-  say "$commit predates the takes-only dispatch: measuring it under origin/main's .github/ and scripts/ci/ ($push)"
+  say "$commit predates the takes-only dispatch: measuring it under $remote/main's .github/ and scripts/ci/ ($push)"
 fi
 
-branch="measure/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 say "commit $(git log --oneline -1 "$commit")"
 say "base   $(git log --oneline -1 "$base")"
 # A push that fails -- or times out -- may still have made the branch: the clean-up deletes it either way.
-bounded 300 git push -q --no-verify origin "$push:refs/heads/$branch" || die "could not push the measure branch"
+bounded 300 git push -q "$remote" "$push:refs/heads/$branch" || die "could not push the measure branch"
 say "pushed $branch"
 
 # One deadline for the whole measurement: every (re-)dispatch and the run.
@@ -364,6 +396,8 @@ deadline=$((SECONDS + timeout_min * 60))
 dispatch() { # → measured_run
   local since only=(-f takes-only=true)
   [ -n "$full" ] && only=()
+  [ -z "$recording" ] || only+=(-f recording="$recording")
+  [ -z "$named_countries" ] || only+=(-f takes-countries="$named_countries")
   say "dispatching (attempt $attempts)"
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ) dispatched_at=$(date +%s)
   dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
@@ -398,5 +432,5 @@ finished=1
 say "run $measured_run: $conclusion"
 collect "$measured_run" "$commit"
 verdict=$?
-[ "$verdict" -gt 1 ] || [ -n "$full" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
+[ "$verdict" -gt 1 ] || [ -n "$full$recording" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
 exit $verdict

@@ -29,7 +29,7 @@ echo "old" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "old main, before takes-only"
 old=$(scratch_git "$repo" rev-parse HEAD)
 # Large, as the real one is: a reader that stops at the first match must not read it as lacking takes-only.
-{ echo "takes-only: {}"; for _ in $(seq 1 4000); do echo "# a line of the leg workflow, padding it past a pipe buffer"; done; } \
+{ echo "takes-only: {} takes-countries: {}"; for _ in $(seq 1 4000); do echo "# a line of the leg workflow, padding it past a pipe buffer"; done; } \
   > "$repo/.github/workflows/country-convergence-leg.yml"
 echo "new" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" commit -qam "main learns takes-only"
@@ -71,7 +71,8 @@ case "$1 $2" in
       [ -f "$SWEEP_DIR/${b//\//_}" ] && cat "$SWEEP_DIR/${b//\//_}"; exit 0
     elif [[ " $* " == *" --branch "* ]]; then
       # the run exists only once the commit is on origin's measure/ branch: record what was pushed
-      for f in "$ORIGIN"/refs/heads/measure/*; do [ -f "$f" ] && { basename "$f" > "$STUB/branch"; cat "$f" > "$STUB/pushed"; }; done
+      while IFS= read -r f; do { echo "${f#"$ORIGIN"/refs/heads/measure/}" > "$STUB/branch"; cat "$f" > "$STUB/pushed"; }; done \
+        < <(find "$ORIGIN/refs/heads/measure" -type f 2>/dev/null)
       [ -f "$STUB/pushed" ] && echo 777
     else echo "${LANE_BUSY:-0}"; fi ;;
   "run view")
@@ -132,14 +133,14 @@ measure() { # <artifact> <args...>: exit code; output in $work/out
       "$REPO_ROOT/scripts/identity-measure" "$@" > "$work/out" 2>&1 )
   echo $?
 }
-measure_branches() { ls "$origin/refs/heads/measure" 2>/dev/null | wc -l | tr -d ' '; }
+measure_branches() { find "$origin/refs/heads/measure" -type f 2>/dev/null | wc -l | tr -d ' '; }
 
 check "a commit that moved nothing is LANDABLE" "0" "$(measure landable --countries pl)"
-check "...pushed as itself on a measure/<short sha>-<random> branch" \
+check "...pushed as itself on a measure/<user>/<short sha>-<random> branch" \
   "$tip" "$(cat "$work/stub/pushed")"
-check "...named after the commit" "true" "$([[ "$(cat "$work/stub/branch")" == "${tip:0:9}-"* ]] && echo true || echo false)"
+check "...named after the commit" "true" "$([[ "$(cat "$work/stub/branch")" == "$(id -un)/${tip:0:9}-"* ]] && echo true || echo false)"
 check "...dispatching only the takes rows against the commit's parent (it is on main already)" \
-  "workflow run identity-model-convergence.yml --ref measure/$(cat "$work/stub/branch") -f takes-base=$parent -f takes-only=true" \
+  "workflow run identity-model-convergence.yml --ref measure/$(cat "$work/stub/branch") -f takes-base=$parent -f takes-only=true -f takes-countries=pl" \
   "$(cat "$work/stub/dispatch")"
 check "...and the branch is deleted afterwards" "0" "$(measure_branches)"
 check "...printing the verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && echo true || echo false)"
@@ -165,13 +166,20 @@ check "a commit from before the takes-only dispatch is measured" "0" "$(measure 
 pushed=$(cat "$work/stub/pushed")
 check "...under a commit laying main's CI over it, whose parent is the commit" \
   "$old" "$(scratch_git "$repo" rev-parse "$pushed^")"
-check "...with main's workflows" "takes-only: {}" "$(scratch_git "$repo" show "$pushed:.github/workflows/country-convergence-leg.yml" | sed -n 1p)"
+check "...with main's workflows" "takes-only: {} takes-countries: {}" "$(scratch_git "$repo" show "$pushed:.github/workflows/country-convergence-leg.yml" | sed -n 1p)"
 check "...and main's scripts/ci" "new" "$(scratch_git "$repo" show "$pushed:scripts/ci/identity-takes-check.sh")"
 check "...and nothing else of main's" "false" \
   "$(scratch_git "$repo" cat-file -e "$pushed:rule.txt" 2>/dev/null && echo true || echo false)"
 
 check "a run read that fails once is retried, not the end of the measurement" "0" "$(VIEW_BLIPS=1 measure landable --countries pl)"
 check "--country, the other tools' spelling, is the same flag" "0" "$(VIEW_BLIPS=1 measure landable --country pl)"
+check "--head names the commit, --recording the run every leg replays" "0" \
+  "$(measure landable --head "$tip" --recording 528 --countries pl)"
+check "...dispatched as the workflow's recording input" "true" \
+  "$(grep -q -- '-f takes-only=true -f recording=528 -f takes-countries=pl' "$work/stub/dispatch" && echo true || echo false)"
+check "...and never answered by an earlier measurement over the pinned pair" "0|true" \
+  "$(KEEP_CACHE=1 measure landable --countries pl >/dev/null; KEEP_CACHE=1 measure landable --recording 528 --countries pl)|$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+check "a recording is a run id" "2" "$(measure landable --recording latest)"
 check "a country no tool knows is a usage error" "2" "$(measure landable --countries pl,xx)"
 check "a takes download that fails once is asked again, not the end of the measurement" "0" "$(DOWNLOAD_BLIPS=1 measure landable --countries pl)"
 check "a takes download that keeps failing is no measurement, not a run without takes" "2 1" \

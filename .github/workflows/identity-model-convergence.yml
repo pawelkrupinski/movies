@@ -49,6 +49,16 @@ on:
                 required: false
                 type: boolean
                 default: false
+            recording:
+                description: The `Record scrape fixtures` run every leg replays -- its own corpus and tree, no fills -- in place of the pinned pair (the identity-measure script's --recording; takes-only).
+                required: false
+                type: string
+                default: ''
+            takes-countries:
+                description: The countries (pl,de,uk,us,es) whose takes rows a takes-only run runs; empty runs every leg's.
+                required: false
+                type: string
+                default: ''
 
 # Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. Every
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
@@ -145,6 +155,9 @@ jobs:
             runner:                        ${{ inputs.runner || 'ubuntu-24.04' }}
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true }}
+            takes-countries:               ${{ inputs.takes-countries || '' }}
+            # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
+            corpus-run:                    ${{ inputs.recording || '' }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
         # fill asks what an origin refuses CI again through the residential proxy), and the GITHUB_TOKEN the setup
         # and publish actions read.
@@ -186,3 +199,30 @@ jobs:
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
         secrets: inherit
+
+    # A MEASUREMENT'S BRANCH IS THE RUN'S TO DROP (Forgejo): scripts/identity-measure pushes `measure/<user>/<sha>-<rand>`
+    # only so this run has a ref to run from. Forgejo has no API to cancel a run, so a measurement interrupted on the
+    # laptop cannot stop it, and the branch must outlive the laptop's wait: the run deletes it as its LAST job, whatever
+    # the rows concluded. github.com keeps the script's own clean-up (it can cancel there).
+    drop-measure-branch:
+        needs: [preflight, leg, request-bisect, timings]
+        if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: write
+        steps:
+            - name: Delete this run's measure branch
+              env:
+                  TOKEN: ${{ github.token }}
+                  API: ${{ github.api_url }}
+                  REPO: ${{ github.repository }}
+                  BRANCH: ${{ github.ref_name }}
+              run: |
+                  code=$(curl -sS -o "$RUNNER_TEMP/drop.json" -w '%{http_code}' -X DELETE -H "Authorization: token $TOKEN" \
+                      "$API/repos/$REPO/branches/$BRANCH") || code=000
+                  case "$code" in
+                      204) echo "deleted $BRANCH" ;;
+                      404) echo "$BRANCH is gone already (the measuring script deleted it)" ;;
+                      *) echo "::warning::could not delete $BRANCH (HTTP $code): $(head -c 300 "$RUNNER_TEMP/drop.json" 2>/dev/null)"; exit 1 ;;
+                  esac

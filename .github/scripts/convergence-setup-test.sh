@@ -94,6 +94,12 @@ check "…and exports the pair's parts" \
 step pair de hermetic "7 2026-09-01T00:00:00Z enrichment-de-7.tar.zst fill-a fill-b"
 check "a given pair is replayed as given, its fills included" "pair=7 2026-09-01T00:00:00Z enrichment-de-7.tar.zst fill-a fill-b|KINOWO_CONVERGENCE_FILL_ASSETS=fill-a fill-b" \
   "$(cat "$work/output")|$(grep FILL "$work/env")"
+step pair de hermetic "" 528
+check "a hermetic leg given a corpus run replays that recording's bare pair: its own tree, no fills" \
+  "0|pair=528 2026-10-01T01:00:00Z enrichment-de-528.tar.*" "$status|$(cat "$work/output")"
+check "…and exports it so" \
+  "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=528 KINOWO_CONVERGENCE_TREE_ASSET=enrichment-de-528.tar.* KINOWO_CONVERGENCE_FILL_ASSETS= KINOWO_CONVERGENCE_NAMED_RECORDING=528" \
+  "$(tr '\n' ' ' < "$work/env" | sed 's/ $//')"
 step pair uk hermetic
 check "no pinned pair fails the hermetic leg" "1|yes" "$status|$(logged '::error::No recorded pair pinned for uk')"
 step pair es hermetic

@@ -105,6 +105,20 @@ class Fake(BaseHTTPRequestHandler):
         return self.send(404, {"message": "no route"})
 
 
+    posted = []
+
+    def do_POST(self):  # noqa: N802
+        if self.headers.get("Authorization") != f"token {TOKEN}":
+            return self.send(401, {"message": "unauthorized"})
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+        Fake.posted.append((self.path, body))
+        if self.path == "/api/v1/repos/o/movies/actions/workflows/identity-model-convergence.yml/dispatches":
+            if body.get("ref") == "refs/heads/missing":
+                return self.send(422, {"message": "ref does not exist"})
+            return self.send(204)
+        return self.send(404, {"message": "no route"})
+
+
 class ForgeGhTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -214,6 +228,27 @@ class ForgeGhTest(unittest.TestCase):
         done = self.gh("run", "list", "--workflow", "Record scrape fixtures", "--status", "success", "-L", "100",
                        "--json", "databaseId,createdAt", "-q", '.[] | "\\(.databaseId)\\t\\(.createdAt)"')
         self.assertEqual("528\t2026-10-20T10:15:24Z\n", done.stdout, done.stderr)
+
+    def test_a_dispatch_posts_the_ref_and_inputs_to_the_workflows_file(self):
+        Fake.posted.clear()
+        done = self.gh("workflow", "run", "Identity model convergence", "--ref", "measure/u/abc-1",
+                       "-f", "takes-only=true", "-f", "recording=528")
+        self.assertEqual(0, done.returncode, done.stderr)
+        self.assertEqual([("/api/v1/repos/o/movies/actions/workflows/identity-model-convergence.yml/dispatches",
+                           {"ref": "measure/u/abc-1", "inputs": {"takes-only": "true", "recording": "528"}})], Fake.posted)
+        done = self.gh("workflow", "run", "identity-model-convergence.yml", "--ref", "refs/heads/missing")
+        self.assertEqual(1, done.returncode)
+        self.assertIn("HTTP 422", done.stderr)
+
+    def test_runs_listed_by_event(self):
+        done = self.gh("run", "list", "--workflow", "Record scrape fixtures", "--event", "workflow_dispatch",
+                       "--json", "databaseId", "-q", ".[].databaseId")
+        self.assertEqual("528\n500\n", done.stdout, done.stderr)
+        done = self.gh("run", "list", "--workflow", "Record scrape fixtures", "--event", "push", "--json", "databaseId")
+        self.assertEqual("[]\n", done.stdout, done.stderr)
+
+    def test_which_names_the_forge(self):
+        self.assertEqual("forgejo\n", self.gh("--which").stdout)
 
     def test_a_run_log_is_refused_naming_itself(self):
         done = self.gh("run", "view", "528", "--log")

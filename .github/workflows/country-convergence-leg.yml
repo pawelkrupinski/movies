@@ -250,11 +250,18 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # The countries a takes-only run measures (identity-model-convergence.yml's `takes-countries`): a leg
+            # outside them runs no row at all. Empty is every country.
+            takes-countries:
+                description: Comma-separated codes whose takes rows a takes-only run runs; empty runs every leg's.
+                required: false
+                type: string
+                default: ''
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
                     recorder passes its own run. Empty takes the newest (record) or the pinned
-                    pair's (hermetic).
+                    pair's (hermetic); named in a hermetic leg, that recording's own tree, no fills.
                 required: false
                 type: string
                 default: ''
@@ -307,6 +314,8 @@ jobs:
         # `<phase> (<country>)`, the label the row's test report carries: Forgejo shows a reusable workflow's jobs without
         # the caller's `<country> / ` prefix github.com adds, so a bare phase left five countries' rows indistinguishable.
         name: ${{ matrix.phase }} (${{ inputs.country }})
+        # A takes-only measurement of some countries (scripts/identity-measure --countries) skips the others' legs whole.
+        if: ${{ !inputs.takes-only || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code)) }}
         strategy:
             fail-fast: false
             matrix:

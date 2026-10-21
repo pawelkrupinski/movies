@@ -563,6 +563,13 @@ check "a real push to a Forgejo remote is gated by Forgejo's runs, from the URL 
 out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
+out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\n' "$plain" 0000000000000000000000000000000000000000 \
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
+check "a measurement's measure/ branch alone is checked for nothing: it never lands" "0 1" \
+  "$code $(printf '%s\n' "$out" | grep -c 'measure/ branch: a measurement')"
+out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\nrefs/heads/main %s refs/heads/main %s\n' "$plain" 0000000000000000000000000000000000000000 "$plain" "$gbase" \
+        | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
+check "…but beside a push to main, main is gated as ever" "1" "$code"
 out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a real push to main reads git's stdin and is gated" "1" "$code"

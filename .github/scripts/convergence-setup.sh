@@ -15,8 +15,9 @@
 #   convergence-setup.sh pair <code> <mode> [given pair] [corpus run]
 #       "Resolve the recorded pair to replay". A RECORDING leg takes the corpus it is given (its
 #       own recorder run) or the newest, and the working tree. A HERMETIC leg replays the given
-#       pair, else the pinned one with every fill published over its tree — and with neither,
-#       fails: no pin is never a quiet fall-back to live filling.
+#       pair, else the named corpus run's bare pair (its tree, no fills), else the pinned one with
+#       every fill published over its tree — and with none, fails: no pin is never a quiet
+#       fall-back to live filling.
 #
 #   convergence-setup.sh corpus <code>
 #       "Restore the recorded scrape corpus" into ./scrape-archive: this job's own recording (no
@@ -58,7 +59,15 @@ pair() {
     echo "recording leg: corpus ${corpus_run:-newest}, working tree enrichment-$code.tar.*"
     return 0
   fi
-  pair="$given"
+  pair="$given" named=""
+  # A NAMED recording (identity-model-convergence's `recording` input, scripts/identity-measure --recording): that run's
+  # corpus and the tree recorded with it, and no fills -- the bare pair identity-measure-local and identity-slice lay
+  # (scripts/identity-fetch-recording.sh), so a measurement over it on CI and on a laptop resolve the same inputs.
+  if [ -z "$pair" ] && [ -n "$corpus_run" ]; then
+    # allow-silenced: the recording date only labels the log line and the provenance env.
+    recorded=$("$KINOWO_GH" run view "$corpus_run" --json createdAt --jq .createdAt 2>/dev/null) || recorded=""
+    pair="$corpus_run ${recorded:-unknown} enrichment-$code-$corpus_run.tar.*" named=1
+  fi
   # A failed read or a malformed pin is no pair, and fails just below.
   [ -n "$pair" ] || pair=$(pinned "$code") || pair=""
   read -r corpus recorded tree fills <<< "$pair"
@@ -71,7 +80,7 @@ pair() {
   # published pre-suite fill over them, and its bisect request carries all of them in the pair. Every one
   # is laid over, or the restore fails (restore-enrichment-tree.sh): the pair never names a fill the leg
   # replayed without.
-  if [ -z "$given" ]; then
+  if [ -z "$given" ] && [ -z "$named" ]; then
     fills=$("$here/convergence-fill.sh" fills "$code" "$corpus")
     pair="$corpus $recorded $tree${fills:+ $fills}"
   fi
@@ -80,6 +89,7 @@ pair() {
     echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$corpus"
     echo "KINOWO_CONVERGENCE_TREE_ASSET=$tree"
     echo "KINOWO_CONVERGENCE_FILL_ASSETS=${fills:-}"
+    [ -z "$named" ] || echo "KINOWO_CONVERGENCE_NAMED_RECORDING=$corpus"
   } >> "$GITHUB_ENV"
   echo "pair=$pair" >> "$GITHUB_OUTPUT"
 }

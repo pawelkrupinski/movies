@@ -44,7 +44,8 @@ class RunTimingsWiringSpec extends AnyFlatSpec with Matchers {
       jobs.get("timings") match {
         case None => Seq(s"$path has no `timings` job")
         case Some(timings) =>
-          val others = jobs.keySet - "timings" - "report"
+          // `drop-measure-branch` (identity-model-convergence.yml) deletes the ref the run checks out from: after timings.
+          val others = jobs.keySet - "timings" - "report" - "drop-measure-branch"
           Seq(
             Option.when(!timings.contains(Call))(s"$path: timings does not call $Reusable"),
             Option.when(needsOf(timings) != others)(s"$path: timings needs ${needsOf(timings).toSeq.sorted}, not every other job ${others.toSeq.sorted}"),
@@ -54,7 +55,9 @@ class RunTimingsWiringSpec extends AnyFlatSpec with Matchers {
             // `workflow_call.secrets`, which Forgejo 15 rejects (it runs this CI since the GitHub suspension).
             Option.when(!timings.contains("secrets: inherit"))(
               s"$path: timings does not inherit secrets: report-timings gets no Grafana token, nothing reaches the dashboard"),
-            jobs.get("report").flatMap(r => Option.when(!needsOf(r).contains("timings"))(s"$path: report runs before timings"))
+            jobs.get("report").flatMap(r => Option.when(!needsOf(r).contains("timings"))(s"$path: report runs before timings")),
+            jobs.get("drop-measure-branch").flatMap(d =>
+              Option.when(!needsOf(d).contains("timings"))(s"$path: drop-measure-branch deletes the ref before timings checks it out"))
           ).flatten
       }
     }
