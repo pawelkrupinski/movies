@@ -36,15 +36,19 @@ private[identity] object RelayStage {
    *    Tosca"), unless it is before the season its screenings fall in, when it dates the staging's premiere (UK
    *    Aldeburgh's "Royal Ballet: The Nutcracker" [2025], screening in 2026/27) — that season or the one before.
    *  Never an ENCORE's year, which dates the encore ("The Metropolitan Opera: Samson et Dalila ENCORE (2026)"), but the
-   *  performance its synopsis names ([[Listing.performanceYear]]). */
+   *  performance its synopsis names ([[Listing.performanceYear]]), else its screenings' season or the one before. */
   def of(listing: Listing): Option[Billed] = {
     val l = camelSplit(listing)
     if (!l.billsAStageHouse) None
     else {
-      val works   = l.billedStageWorks
+      val works   = unencored(l).billedStageWorks
       val stated  = l.year.orElse(StageRelays.bannerYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
       val dated   = if (billsAnEncore(l)) l.performanceYear else l.titleYear.orElse(stated)
-      val seasons = l.seasonYear.map(Set(_)).orElse(dated.map(year => Set(year - 1, year))).getOrElse(Set.empty)
+      // an encore dating no performance airs one of its screenings' season or the season before, as a season's record is
+      // encored the next season at most: US Showcase's "The Metropolitan Opera: Samson et Dalila ENCORE (2026)" (9 December
+      // 2026) is the Met's 2026/27 broadcast of 5 December
+      val encored = Option.when(billsAnEncore(l))(l.screeningsSeason).flatten
+      val seasons = l.seasonYear.map(Set(_)).orElse(dated.orElse(encored).map(year => Set(year - 1, year))).getOrElse(Set.empty)
       Option.when(works.nonEmpty && seasons.nonEmpty)(
         Billed(l.relay.houses.filter(StageRelays.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l),
           dated.filter(_ => l.seasonYear.isEmpty)))
@@ -77,6 +81,12 @@ private[identity] object RelayStage {
       .orElse(f.year.map(year => Set(year - 1, year))).getOrElse(Set.empty)
 
   private val Encore = """(?i)(?<![\p{L}])encore(?![\p{L}])""".r
+  /** The listing with the ENCORE its titles bill cut out, its work read past it: "Samson et Dalila ENCORE (2026)" bills
+   *  "Samson et Dalila". */
+  private def unencored(l: Listing): Listing = {
+    def cut(title: String) = Encore.replaceAllIn(title, " ").replaceAll("""\s+""", " ").trim
+    if (!billsAnEncore(l)) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
+  }
   /** Does the billing bill an ENCORE ("… ENCORE (2026)", "(2026 ENCORE)")? Its year is the encore's. */
   private def billsAnEncore(l: Listing): Boolean = l.ownTitles.exists(Encore.findFirstIn(_).isDefined)
 }

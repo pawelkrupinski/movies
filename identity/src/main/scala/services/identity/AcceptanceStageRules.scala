@@ -55,8 +55,19 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
                   "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
                   s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
       _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency), "a published year contradicts it", record, contradiction(record))
-      _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
+      _      <- needOf(!record.category("director").exists(Set("different", "different_script")) || creditsAnotherWorksRecord(ranked, relay),
+                  "it credits another director", record)
     } yield atOwn(record)
+
+  /** Does the relay credit the director of its house's record of ANOTHER work — a credit the venue copied from another
+   *  relay's page, which says nothing of which production of its own work it screens? US Showcase's "The Metropolitan
+   *  Opera: Samson et Dalila ENCORE (2026)" ×7 credits Louisa Proske, who directs the Met's 2026/27 "Macbeth" in its
+   *  pool, not its Samson (Darko Tresnjak). A credit naming a director of none of its house's records, or of a record of
+   *  its own work, still denies. */
+  private def creditsAnotherWorksRecord(ranked: Seq[Scored], relay: RelayStage.Billed): Boolean = ranked.exists { scored =>
+    val film = scored.candidate.film
+    scored.category("director").contains("same_person") && film.stageWorkIds.nonEmpty && !film.stageWorkIds.exists(relay.works) && relay.itsHouse(film)
+  }
 
   /** The one SEASON record whose title is the listing's own once its season is taken out ("&" and "and" alike), when
    *  the listing names no season: UK "Royal Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening

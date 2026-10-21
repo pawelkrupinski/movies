@@ -108,6 +108,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val gorleston  = Listing("RBO: THE NUTCRACKER", rawTitle = Some("RBO: THE NUTCRACKER 2026"), year = Some(2026), screeningsSeason = Some(2026))
     val nutcracker2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026)), Some(2))
     acceptance.byRule("relay-record")(ranked(gorleston, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
+    // an encore dates no performance: it airs its screenings' season's record, or the season before's; and a director it
+    // credits off its house's record of ANOTHER work is a copied credit, no other production — US Showcase's "The
+    // Metropolitan Opera: Samson et Dalila ENCORE (2026)" {Louisa Proske} (9 December 2026, recording 573) is the Met's
+    // 2026/27 Samson (Darko Tresnjak), not the 2018 one; Proske directs the Met's 2026/27 Macbeth
+    val samsonEncore = Listing("The Metropolitan Opera: Samson et Dalila ENCORE (2026)", runtime = Some(234), directors = Seq("Louisa Proske"),
+      searchTitles = Seq("The Metropolitan Opera: Samson et Dalila (2026)"), screeningsSeason = Some(2026))
+    val samson2026 = (1703624, Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026), directors = Some(Seq("Darko Tresnjak"))), Some(2))
+    val samson2018 = (543703, Film("The Metropolitan Opera: Samson et Dalila", year = Some(2018), directors = Some(Seq("Gary Halvorson"))), Some(6))
+    val macbethMet = (1703622, Film("The Metropolitan Opera: Macbeth", year = Some(2026), directors = Some(Seq("Louisa Proske"))), None)
+    acceptance.byRule("relay-record")(ranked(samsonEncore, samson2026, samson2018, macbethMet)).map(_._1.candidate.tmdbId) shouldBe Some(1703624)
+    // a credit no record of another of its house's works carries still denies
+    acceptance.byRule("relay-record")(ranked(samsonEncore, samson2026, samson2018)) shouldBe None
     // a record of another season than its screenings' is no staging it screens, however its house bills the work
     acceptance.byRule("season-record")(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
     // nor is another house's: "MET" names no Royal Ballet & Opera
