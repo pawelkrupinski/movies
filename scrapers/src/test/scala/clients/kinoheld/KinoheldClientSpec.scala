@@ -245,4 +245,49 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers with LoneElement {
     // a venue's own entry, named by a hash: nothing to compare
     KinoheldClient.entryRenamed("Alte Liebe", Some("Old Love"), Some("6a879d07bd18315fab310531"), None) shouldBe false
   }
+
+  "KinoheldClient.parsePage" should "keep the venue's own name, and none of the facts kinoheld guessed for an event's entry" in {
+    val body =
+      """{"data":{"programShows":{"paginatorInfo":{"hasMorePages":false},"data":[{
+        |"name":"Ping Pong Session","beginning":"2026-11-07T20:00:00+01:00","urlSlug":"1","deeplink":null,
+        |"flags":[],"subtitleLanguage":null,"auditorium":null,"cinema":null,
+        |"movie":{"id":"88823","title":"Ping Pong Session","titleOriginal":"Ping Pong","urlSlug":"ping-pong-session",
+        |"duration":null,"productionYear":null,"description":null,"genres":[{"name":"Animation"}],
+        |"directors":[{"name":"Yu Tianji"}],"actors":[],"thumbnailImage":null}}]}}}""".stripMargin
+    val show = KinoheldClient.parsePage(body, latestYear = Today.getYear + 1).shows.loneElement
+    show.film shouldBe KinoheldClient.Film(id = None, title = "Ping Pong Session")
+    show.guessedEntry shouldBe Some("88823")
+  }
+
+  // A venue's event gets a catalogue entry of its own name, which kinoheld fills from a film database by that name: no
+  // year, no runtime, and the original title, credit and cast of a film titled with part of it (prod 2026-10-22:
+  // "Ping Pong Session" -> Ping Pong (2025), "Helmut Schleich" -> Helmut, "Sunday Night Jazz" -> Sunday Night).
+  "KinoheldClient.entryGuessed" should "name a yearless, runtimeless entry whose original title is part of its title" in {
+    KinoheldClient.entryGuessed("Ping Pong Session", Some("Ping Pong"), year = None, runtime = None) shouldBe true
+    KinoheldClient.entryGuessed("Helmut Schleich", Some("Helmut"), None, None) shouldBe true
+    KinoheldClient.entryGuessed("ICONIC MOVIE", Some("ICONIC"), None, None) shouldBe true
+    KinoheldClient.entryGuessed("Regio Tales", Some("Heads and Tales"), None, None) shouldBe true
+    KinoheldClient.entryGuessed("Christmas Time Machine", Some("Time Machine"), None, None) shouldBe true
+  }
+
+  it should "not name an entry with a year or a runtime, a translated title, or a title the original title spells out" in {
+    // a catalogue film: its year and runtime are the distributor's
+    KinoheldClient.entryGuessed("Ping Pong Session", Some("Ping Pong"), year = Some(2025), runtime = None) shouldBe false
+    KinoheldClient.entryGuessed("Ping Pong Session", Some("Ping Pong"), year = None, runtime = Some(15)) shouldBe false
+    // a festival film's own title, or none beside it
+    KinoheldClient.entryGuessed("Nuisance Bear", None, None, None) shouldBe false
+    KinoheldClient.entryGuessed("Falcon Lake", Some("Falcon Lake"), None, None) shouldBe false
+    // a German title translating the original
+    KinoheldClient.entryGuessed("Red Rocks", Some("Les Roches Rouges"), None, None) shouldBe false
+    KinoheldClient.entryGuessed("Festtagsspaß mit Peppa - Das Kinoerlebnis", Some("Festive Fun with Peppa"), None, None) shouldBe false
+    // the venue's title is the original's, shortened
+    KinoheldClient.entryGuessed("Cloud", Some("Cloud クラウド"), None, None) shouldBe false
+    KinoheldClient.entryGuessed("Ghost in the Cell", Some("Ghost in the Cell 2"), None, None) shouldBe false
+    // a strand's or a translation's billing, one part of which is the film's original title
+    KinoheldClient.entryGuessed("FRAUENWELTEN 2026: KILLING ANNA", Some("Killing Anna"), None, None) shouldBe false
+    KinoheldClient.entryGuessed("Viva a Vida - Auf das Leben", Some("Viva a Vida"), None, None) shouldBe false
+    KinoheldClient.entryGuessed("Bratři | Brüder", Some("Bratři"), None, None) shouldBe false
+    // a distributor's entry, its year and runtime not yet known
+    KinoheldClient.entryGuessed("MINIONS & MONSTER", Some("Minions 3"), None, None, countries = Seq("Vereinigte Staaten")) shouldBe false
+  }
 }

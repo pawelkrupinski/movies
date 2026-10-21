@@ -8722,10 +8722,15 @@ services.cinemas.common.KinoheldClient$
 services.cinemas.common.KinoheldClient$$anon$1
 services.cinemas.common.KinoheldClient$$anon$2
 services.cinemas.common.KinoheldClient$$anon$3
+services.cinemas.common.KinoheldClient$$anon$4
+services.cinemas.common.KinoheldClient$$anon$5
 services.cinemas.common.KinoheldClient$Film
 services.cinemas.common.KinoheldClient$Film$
+services.cinemas.common.KinoheldClient$Guessed$
+services.cinemas.common.KinoheldClient$LeftOut
 services.cinemas.common.KinoheldClient$Page
 services.cinemas.common.KinoheldClient$Page$
+services.cinemas.common.KinoheldClient$Renamed$
 services.cinemas.common.KinoheldClient$Show
 services.cinemas.common.KinoheldClient$Show$
 services.cinemas.common.KinoheldVenue
