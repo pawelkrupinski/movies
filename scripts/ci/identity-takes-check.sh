@@ -253,11 +253,13 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
     fi
     return 0
   fi
-  # Only the newest few of a kind are ever a base again; the rest go (best effort -- one left is pruned next time).
+  # Only the newest of a kind are ever a base again; the rest go (best effort -- one left is pruned next time). 24 a kind
+  # and country, not 8: with ~10 agents measuring against main heads hours apart, 8 held about two hours of bases and
+  # the next measurement of an older base resolved it again (2026-10-22). The largest, the US's decisions, is ~13 MB.
   local kind=${2#takes-}; kind=${kind%%-*}
   # allow-silenced: pruning is housekeeping -- a listing that fails to read prunes nothing now and everything next time.
   bounded "$gh_read" gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"takes-$kind-$cc-\"))) \
-      | sort_by(.createdAt) | reverse | .[8:][] | .name" 2>/dev/null \
+      | sort_by(.createdAt) | reverse | .[24:][] | .name" 2>/dev/null \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
 }
 # <decisions|final|shape> <key>: none for a result over the recording when no recording is pinned -- its key would name

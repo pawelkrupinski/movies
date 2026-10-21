@@ -257,6 +257,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # Resolve both sides afresh, neither reusing nor storing a result (identity-takes-check.sh's TAKES_STORE
+            # empty): how scripts/identity-measure --no-store proves the store changes no verdict.
+            takes-no-store:
+                description: The takes check reuses and stores nothing.
+                required: false
+                type: boolean
+                default: false
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -808,7 +815,7 @@ jobs:
                   TAKES_BASE: ${{ inputs.takes-base }}
                   SHAPE_COMMAND: ${{ inputs.shape-command }}
                   # Where each head's resolve is stored for the run whose base it becomes (identity-takes-check.sh).
-                  TAKES_STORE: ${{ env.FIXTURE_RELEASE_TAG }}
+                  TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.FIXTURE_RELEASE_TAG || '' }}
                   # A takes-only dispatch's base is the `takes-base` row's (below): this row runs the head and waits.
                   TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}
                   TAKES_BASE_JOB: takes-base (${{ inputs.country }})
@@ -844,7 +851,7 @@ jobs:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
                   TAKES_BASE: ${{ inputs.takes-base }}
                   SHAPE_COMMAND: ${{ inputs.shape-command }}
-                  TAKES_STORE: ${{ env.FIXTURE_RELEASE_TAG }}
+                  TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.FIXTURE_RELEASE_TAG || '' }}
                   TAKES_SIDE: base
               run: scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes"
 

@@ -129,7 +129,9 @@ corpus() {
       recorded=$("$KINOWO_GH" run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)
       corpus_from "$pinned" "$recorded" "PINNED recording run"
     else
-      echo "::error::recording run $pinned's corpus is no longer downloadable — the pinned pair has expired; re-run Record scrape fixtures"
+      # Not necessarily EXPIRED: Forgejo keeps artifacts until deleted (no package cleanup rule), and a github.com-era
+      # run (e.g. 38713274617, named by --recording) was never on it -- runs 884-893 read that as an expired pin.
+      echo "::error::recording run $pinned's corpus is no longer downloadable — absent from this forge (a run it never recorded, e.g. a github.com-era one, or its artifacts deleted); measure the pinned pair or a recording this forge holds, or re-run Record scrape fixtures"
       exit 1
     fi
     exit 0

@@ -59,6 +59,11 @@ on:
                 required: false
                 type: string
                 default: ''
+            takes-no-store:
+                description: The takes check reuses and stores no resolve (identity-measure --no-store, proving the store changes no verdict).
+                required: false
+                type: boolean
+                default: false
 
 # Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. Every
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
@@ -80,6 +85,10 @@ jobs:
     # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
     # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
     # green, and every other job skips on the output (.github/actions/supersede-check).
+    # AND THE SECRET CHECK, seconds, first: the secret the legs read is set, so a missing one fails here rather than
+    # hours into a leg (scripts/ci/preflight.sh). In this job, not a job of its own: that was a second wait for a
+    # runner in front of every leg -- 12.6 minutes of measure run 968's queue on 2026-10-22.
+    # (IdentityModelConvergenceWiringSpec)
     supersede:
         runs-on: ubuntu-26.04
         timeout-minutes: 5
@@ -88,30 +97,19 @@ jobs:
         outputs:
             superseded: ${{ steps.check.outputs.superseded }}
         steps:
-            # Fail OPEN: a check that cannot run must not stop the run's work.
-            - if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: actions/checkout@v5
+            - uses: actions/checkout@v5
               with:
-                  sparse-checkout: .github/actions/supersede-check
+                  sparse-checkout: |
+                      .github/actions/supersede-check
+                      scripts/ci
+                  sparse-checkout-cone-mode: false
+            # Fail OPEN: a check that cannot run must not stop the run's work.
             - id: check
               if: github.server_url != 'https://github.com'
               continue-on-error: true
               uses: ./.github/actions/supersede-check
-
-    # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
-    # rather than hours into a leg. (PreflightWiringSpec)
-    preflight:
-        needs: supersede
-        if: needs.supersede.outputs.superseded != 'true'
-        runs-on: ubuntu-26.04
-        timeout-minutes: 5
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  sparse-checkout: scripts/ci
-                  sparse-checkout-cone-mode: false
             - name: Secrets present
+              if: steps.check.outputs.superseded != 'true'
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh TMDB_API_KEY
@@ -132,7 +130,7 @@ jobs:
     # suite. `heap` is the sbt JVM's `-Xmx`: the US holds its
     # whole corpus resident (it died at 8g on a 114-116k-document read model).
     leg:
-        needs: [supersede, preflight]
+        needs: supersede
         if: needs.supersede.outputs.superseded != 'true'
         # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`: Forgejo shows this caller as a row of
         # its own beside the leg's `<phase> (<country>)` rows, where a bare country hid what it was.
@@ -185,6 +183,7 @@ jobs:
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
             takes-countries:               ${{ inputs.takes-countries || '' }}
+            takes-no-store:                ${{ inputs.takes-no-store == true || inputs.takes-no-store == 'true' }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
             corpus-run:                    ${{ inputs.recording || '' }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
@@ -218,7 +217,7 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [supersede, preflight, leg, request-bisect]
+        needs: [supersede, leg, request-bisect]
         if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
@@ -234,7 +233,7 @@ jobs:
     # laptop cannot stop it, and the branch must outlive the laptop's wait: the run deletes it as its LAST job, whatever
     # the rows concluded. github.com keeps the script's own clean-up (it can cancel there).
     drop-measure-branch:
-        needs: [supersede, preflight, leg, request-bisect, timings]
+        needs: [supersede, leg, request-bisect, timings]
         if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
