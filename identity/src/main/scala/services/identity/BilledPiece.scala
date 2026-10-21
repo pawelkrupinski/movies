@@ -50,7 +50,13 @@ private[identity] object BilledPiece {
          measures: Map[String, Measure], corroborated: Double, recurs: String => Boolean,
          answered: CandidateQuery => Seq[Hit], keeps: Keeps = Keeps.All): Option[Piece] = {
     def screened = corroborated >= IdentityResolver.PieceCorroboration
-    def stated   = IdentityMeasures.ownAgreement(measures)._1.nonEmpty ||
+    // a staged show ([[ListingShape.ShowWords]]) dates itself by its season, which its work's film of the next year stays a
+    // year off: only its film's exact year is a fact of the film's (UK "CBeebies Panto 2026: Treasure Island", Hyde Park
+    // Picture House publishing 2026, is not Ridley Scott's 2027 "Treasure Island")
+    def exactYear = Seq("year.distance", "titleYear.delta").exists(name => measures.get(name).contains(IdentityMeasures.Number(0)))
+    def show      = services.movies.TitleContainment.tokens(evidence.rawTitle).exists(ListingShape.ShowWords)
+    def agreed    = IdentityMeasures.ownAgreement(measures)._1.filter(fact => fact != "year" || exactYear || !show)
+    def stated    = agreed.nonEmpty ||
       IdentityMeasures.runtimeGap(measures).exists(_ <= IdentityResolver.PieceRuntimeAgreement) ||
       FeedLink.linked(listings).exists(link => tmdbId.contains(link._2))
     // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
