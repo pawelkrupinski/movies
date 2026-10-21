@@ -37,20 +37,24 @@ case class SuccessfulScrape(
   def showtimeCount: Int = films.iterator.map(_.showtimes.size).sum
 }
 
-/** A venue's last successful listing without its showtimes: each film with none (`Nil`), beside the digest of the
+/** A venue's last successful listing without its showtimes: each film with none of them, beside the digest of the
  *  ones it has (`showtimes.##`) — enough to tell they moved, nothing to build a screening from. A film the reader's
  *  `keepsDays` keeps — the identity intake's: one billing a stage work — keeps the DAYS it screens on, one bare showtime
  *  each ([[LeanListing.leanFilm]]): what places a relay in its season and on its broadcast day
- *  (`services.identity.Listing.broadcastSeason`, `agreement.Broadcast`). */
+ *  (`services.identity.Listing.broadcastSeason`, `agreement.Broadcast`). Every other film keeps the SEASON it screens in
+ *  ([[LeanListing.seasonOnly]]), which the identity rules read of every listing (`IdentityMeasures.Listing.screeningsSeason`). */
 final case class LeanListing(cinema: Cinema, at: Instant, films: Seq[(CinemaMovie, Int)])
 
 object LeanListing {
   def of(row: ArchivedScrape, keepsDays: CinemaMovie => Boolean): Option[LeanListing] =
     row.lastSuccess.map(s => LeanListing(row.cinema, s.at, s.films.map(f => leanFilm(f, keepsDays) -> f.showtimes.##)))
 
-  /** `film` as a lean read gives it: with no showtimes, or — one `keepsDays` keeps — one per day it screens on. */
-  def leanFilm(film: CinemaMovie, keepsDays: CinemaMovie => Boolean): CinemaMovie =
-    film.copy(showtimes = if (keepsDays(film)) days(film.showtimes.map(_.dateTime.toLocalDate)) else Nil)
+  /** `film` as a lean read gives it: one showtime per day it screens on, where `keepsDays` keeps it, else the season
+   *  of the first ([[seasonOnly]]). */
+  def leanFilm(film: CinemaMovie, keepsDays: CinemaMovie => Boolean): CinemaMovie = {
+    val screened = film.showtimes.map(_.dateTime.toLocalDate)
+    film.copy(showtimes = if (keepsDays(film)) days(screened) else screened.minOption.fold(Seq.empty[models.Showtime])(seasonOnly))
+  }
 
   /** `keepsDays` remembered by title for one read: a country's films repeat few titles (US 2026-10-06: 98,638 films,
    *  2,181 titles), and read for each film a whole lean read allocated 584 MB. Held by its read alone. */
@@ -66,6 +70,17 @@ object LeanListing {
   /** A kept film's days a lean read could not read: one showtime on [[UnreadDay]], which its listing reads as days
    *  unknown (`services.identity.ScreeningDays.Unknown`) — never as none. */
   val unread: Seq[models.Showtime] = Seq(models.Showtime(UnreadDay.atStartOfDay, None))
+
+  /** The day marking a lean film's other showtime as standing for the season it screens in alone ([[seasonOnly]]): no
+   *  venue screens in year 2. */
+  val SeasonOnlyDay: java.time.LocalDate = java.time.LocalDate.of(2, 1, 1)
+
+  /** A lean film's showtimes when its days are not kept: its first day and [[SeasonOnlyDay]] — which its listing reads
+   *  as the season that day falls in and no screening day (`services.identity.ScreeningDays.ofSeason`). A rule reading
+   *  the season (a festival's catalogue namesake, a namesake only streamed in the venue's country) reads it in prod's
+   *  lean take-up as in a whole read; with no day at all it never fired there (DE "The Killer", 2026-10-21). */
+  def seasonOnly(first: java.time.LocalDate): Seq[models.Showtime] =
+    Seq(models.Showtime(SeasonOnlyDay.atStartOfDay, None), models.Showtime(first.atStartOfDay, None))
 
   /** One bare showtime (no URL, room or format) at the start of each of `screened`'s days, in order. */
   def days(screened: Iterable[java.time.LocalDate]): Seq[models.Showtime] =

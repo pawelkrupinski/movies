@@ -351,7 +351,8 @@ class MongoScrapeArchiveRepository(
 
   /** [[scanVenues]] with `films.showtimes` left on the server and in the reader: each film's showtimes digest is read
    *  instead, as it was written — and of a film billing a stage work, the days it screens on ([[LeanListing.leanFilm]]),
-   *  asked of the server for those films alone ([[screeningDays]]). A venue holding a film written before the digest
+   *  asked of the server for those films alone ([[screeningDays]]); of every other film, the first day, which dates the
+   *  season it screens in ([[firstDays]], [[LeanListing.seasonOnly]]). A venue holding a film written before the digest
    *  existed is read again whole once the lean scan is done — a row's next scrape writes it with one. */
   override def scanLean(keep: Cinema => Boolean, keepsDays: CinemaMovie => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome = {
     val undigested = Set.newBuilder[String]
@@ -374,11 +375,20 @@ class MongoScrapeArchiveRepository(
             None
         }
       val wanted = staged.iterator.map { case (venue, index, _) => venue -> index }.toSet
-      consume(if (wanted.isEmpty) rows else rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
+      // every other film's first day, the season it screens in ([[LeanListing.seasonOnly]]); a failed read leaves none
+      val firsts = if (rows.isEmpty) Map.empty[(String, Int), (Int, java.time.LocalDate)]
+        else Try(firstDays(rows.map(_.cinema.displayName))) match {
+          case Success(read) => read
+          case Failure(e) =>
+            logger.warn(s"ScrapeArchiveRepository.scanLean: the first days of ${rows.size} venues' films could not be read — " +
+              s"no season until the next read: ${e.getClass.getSimpleName}: ${e.getMessage}")
+            Map.empty
+        }
+      consume(rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
         val key = row.cinema.displayName -> index
-        if (!wanted(key)) film -> digest
+        // the days of the very showtimes the digest was read with: a row re-scraped between the two reads keeps none
+        if (!wanted(key)) firsts.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.seasonOnly(dated._2))) -> digest
         else days.fold(film.copy(showtimes = LeanListing.unread)) { read =>
-          // the days of the very showtimes the digest was read with: a row re-scraped between the two reads keeps none
           read.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.days(dated._2)))
         } -> digest
       })))
@@ -414,6 +424,30 @@ class MongoScrapeArchiveRepository(
               (venue, f.getInt32("i").getValue) -> (f.getInt32("g").getValue, days)
           }
         }.toMap
+    }
+
+  /** The first day each film of `venues` screens on, with its showtimes' digest, by venue and place in its row — the
+   *  server reads it ($min of the film's showtimes): one date a film where its showtimes stay on the server. A film
+   *  screening on no day has none. A failed read THROWS. */
+  protected def firstDays(venues: Seq[String]): Map[(String, Int), (Int, java.time.LocalDate)] =
+    coll.fold(Map.empty[(String, Int), (Int, java.time.LocalDate)]) { c =>
+      import org.bson.BsonArray
+      val pick = BsonDocument.parse(
+        """{"$project": {"f": {"$map": {"input": {"$range": [0, {"$size": {"$ifNull": ["$films", []]}}]}, "as": "i",
+          |  "in": {"$let": {"vars": {"f": {"$arrayElemAt": ["$films", "$$i"]}}, "in": {"i": "$$i",
+          |    "g": "$$f.showtimesDigest", "m": {"$min": "$$f.showtimes.dateTime"}}}}}}}}""".stripMargin)
+      val matched = new BsonDocument("$match", new BsonDocument("_id", new BsonDocument("$in",
+        new BsonArray(venues.distinct.map(v => BsonString(v): org.bson.BsonValue).asJava))))
+      val docs = Await.result(c.withDocumentClass[BsonDocument]().aggregate[BsonDocument](Seq(matched, pick))
+        .batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+      docs.iterator.flatMap { d =>
+        val venue = d.getString("_id").getValue
+        d.getArray("f").getValues.asScala.iterator.map(_.asDocument).collect {
+          case f if f.isInt32("g") && f.isDateTime("m") =>
+            (venue, f.getInt32("i").getValue) -> (f.getInt32("g").getValue,
+              Instant.ofEpochMilli(f.getDateTime("m").getValue).atZone(java.time.ZoneOffset.UTC).toLocalDate)
+        }
+      }.toMap
     }
 
   /** The stored rows of the venues `keep` admits, a page at a time; `lean`: without their films' showtimes. */

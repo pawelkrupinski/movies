@@ -112,15 +112,19 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
   }
 
   // The identity model's take-up and the projection's listing read keep no showtime: a US boot decoded every one in
-  // the archive for them (~11 CPU-s of `ShowtimeCodec.read`, JFR). A lean scan leaves them on the server.
-  it should "scan the listings without their showtimes, each film's digest read instead" in {
+  // the archive for them (~11 CPU-s of `ShowtimeCodec.read`, JFR). A lean scan leaves them on the server — all but each
+  // film's first day, the season it screens in, which the identity rules read of every listing (prod 2026-10-21: with
+  // none, DE "The Killer" and Pornfilmfestival's "The more the merrier" kept films every recording's whole read refused).
+  it should "scan the listings without their showtimes, each film's digest and season read instead" in {
     val repository = new MongoScrapeArchiveRepository(Some(db))
     try {
       repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
       repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
       lean.result().map(l => (l.cinema, l.at, l.films)) shouldBe
-        Seq((Multikino, Noon, Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)))
+        Seq((Multikino, Noon, Seq(fullyPopulated, minimal).map(f => services.scrapes.LeanListing.leanFilm(f, services.identity.LeanStageWorks.billsStageWork) -> f.showtimes.##)))
+      lean.result().flatMap(_.films).map(_._1.showtimes) shouldBe
+        Seq(java.time.LocalDate.of(2026, 8, 1), java.time.LocalDate.of(2026, 8, 2)).map(services.scrapes.LeanListing.seasonOnly)
     } finally purge()
   }
 
@@ -137,7 +141,9 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
       repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
       lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, relay, minimal).map(f => services.scrapes.LeanListing.leanFilm(f, services.identity.LeanStageWorks.billsStageWork) -> f.showtimes.##)
       lean.result().flatMap(_.films).map(_._1.showtimes.map(_.dateTime.toLocalDate)) shouldBe
-        Seq(Nil, Seq(java.time.LocalDate.of(2026, 12, 5), java.time.LocalDate.of(2026, 12, 26)), Nil)
+        Seq(Seq(services.scrapes.LeanListing.SeasonOnlyDay, java.time.LocalDate.of(2026, 8, 1)),
+          Seq(java.time.LocalDate.of(2026, 12, 5), java.time.LocalDate.of(2026, 12, 26)),
+          Seq(services.scrapes.LeanListing.SeasonOnlyDay, java.time.LocalDate.of(2026, 8, 2)))
     } finally purge()
   }
 
@@ -156,10 +162,11 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     }
     try {
       repository.record(scraped(Noon, Seq(fullyPopulated, relay)))
-      scanned().map(_.showtimes) shouldBe Seq(Nil, services.scrapes.LeanListing.unread)
+      val august = services.scrapes.LeanListing.seasonOnly(java.time.LocalDate.of(2026, 8, 1))
+      scanned().map(_.showtimes) shouldBe Seq(august, services.scrapes.LeanListing.unread)
       unread shouldBe 1
       failing = false
-      scanned().map(_.showtimes.map(_.dateTime.toLocalDate)) shouldBe Seq(Nil, Seq(java.time.LocalDate.of(2026, 12, 5)))
+      scanned().map(_.showtimes) shouldBe Seq(august, Seq(Showtime(LocalDateTime.of(2026, 12, 5, 0, 0), None)))
       unread shouldBe 1
     } finally purge()
   }
@@ -172,7 +179,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
         org.mongodb.scala.model.Updates.unset("films.$[].showtimesDigest")).toFuture(), SpecTimeouts.Io)
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
       repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
-      lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)
+      lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, minimal).map(f => services.scrapes.LeanListing.leanFilm(f, services.identity.LeanStageWorks.billsStageWork) -> f.showtimes.##)
     } finally purge()
   }
 

@@ -50,8 +50,9 @@ final class IdentityListingIntake(
    *  listings share their repeated values ([[ListingValuePool]]). */
   def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live, lean = false)
 
-  /** [[listings]] without a showtime (each film's `Nil`): what the identity model takes up, which reads none. Left on
-   *  the server, they were ~11 CPU-s of a US boot's take-up decoding them (`ShowtimeCodec.read`, JFR). */
+  /** [[listings]] without their showtimes — a stage relay's days and every other film's season kept
+   *  ([[services.scrapes.LeanListing.leanFilm]]): what the identity model takes up. Left on the server, the showtimes
+   *  were ~11 CPU-s of a US boot's take-up decoding them (`ShowtimeCodec.read`, JFR). */
   def identities(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
     // The boot's take-up reads, row for row, what the projection's first read would read whole: until the projection
     // has read for itself, the rows are kept for it too ([[Held.seed]]), and its first read is by stamp, re-reading

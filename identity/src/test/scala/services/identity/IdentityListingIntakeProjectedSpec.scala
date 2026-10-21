@@ -157,13 +157,17 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
 
   // Neither the identity model's take-up nor the projection keeps a showtime, yet a US boot decoded every one in the
   // archive for them: ~11 CPU-s of `ShowtimeCodec.read` at take-up (JFR). The projection wants only their digest.
-  "the identity model's take-up and the projection's listing read" should "read the archives without their showtimes" in {
+  "the identity model's take-up and the projection's listing read" should "read the archives without their showtimes, each film's season kept" in {
     val w = new World
     w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
     w.archive.store(Helios, clock.instant(), film(Helios, "Diuna", 2))
     w.intake.recordCinemaScrape(Helios, Seq(film(Helios, "Diuna", 2, 3)), listingIsComplete = true, sourceKey = None, viaFallback = false)
     val taken = w.intake.identities(live)
-    taken.flatMap(_._2).flatMap(_.showtimes) shouldBe empty
+    // no showtime of a film billing no stage work: its first day as the season alone (`LeanListing.seasonOnly`)
+    taken.flatMap(_._2).map(f => Listing.of(f.cinema, f, normalizer).screenings) shouldBe
+      taken.flatMap(_._2).map(_ => ScreeningDays.ofSeason(clock.instant().atZone(java.time.ZoneOffset.UTC).toLocalDate))
+    taken.flatMap(_._2).flatMap(_.showtimes).filterNot(_.dateTime.toLocalDate == services.scrapes.LeanListing.SeasonOnlyDay).map(_.bookingUrl) shouldBe
+      Seq.fill(taken.flatMap(_._2).size)(None)
     taken.map { case (c, fs) => c -> fs.map(_.movie.title) } shouldBe w.intake.listings(live).map { case (c, fs) => c -> fs.map(_.movie.title) }
     def wholeRead[A](body: => A): (A, Int) = {
       val before = w.accepted.wholeRowsRead + w.archive.wholeRowsRead

@@ -1425,6 +1425,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     ListingShape.authorCredited("Stand by Me") shouldBe None
   }
 
+  "A listing the identity model takes up lean (prod's archive read, its showtimes left on the server)" should
+    "keep the season it screens in, and be decided as when read whole" in {
+    // prod 2026-10-21 (image 96fb23c): the take-up read no showtime of a film billing no stage work, so every rule reading
+    // the season (a festival's catalogue namesake, an author's credit, a namesake only streamed in the country) never
+    // fired there — DE Pornfilmfestival's "The more the merrier" kept Stevens' 1943 comedy, UK The Poly's "A Christmas Carol
+    // by Patrick Barlow" Zemeckis's 2009 film, while every recording, read whole, cured them
+    def read(title: String, lean: Boolean) = {
+      val whole = models.CinemaMovie(models.Movie(title), KinoMuza, None, None, None, Nil, Nil,
+        Seq(models.Showtime(java.time.LocalDateTime.of(2026, 10, 22, 20, 0), None), models.Showtime(java.time.LocalDateTime.of(2026, 10, 24, 18, 0), None)))
+      Listing.of(KinoMuza, if (lean) services.scrapes.LeanListing.leanFilm(whole, LeanStageWorks.billsStageWork) else whole, normalizer)
+    }
+    val merrier = F(80616, "The More the Merrier", 1943, "George Stevens", 104, 10)
+    val carol   = F(17979, "A Christmas Carol", 2009, "Robert Zemeckis", 96, 30)
+    for ((title, film) <- Seq("Pornfilmfestival: The more the merrier" -> merrier, "A Christmas Carol by Patrick Barlow" -> carol)) {
+      val lean = read(title, lean = true)
+      lean.screenings.season shouldBe Some(2026)
+      lean.screenings.days shouldBe Nil
+      lean.screenings shouldBe read(title, lean = true).screenings
+      val d = shipped(Seq(lean), Seq(film)).decisionOf(lean.key)
+      withClue(d.render)(d.film shouldBe None)
+      shipped(Seq(read(title, lean = false)), Seq(film)).decisionOf(lean.key).film shouldBe None
+    }
+    // a day passing moves no lean listing: its season is all it holds of its days
+    ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 22)) shouldBe ScreeningDays.ofSeason(java.time.LocalDate.of(2027, 3, 1))
+    ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 22)) should not be ScreeningDays.ofSeason(java.time.LocalDate.of(2027, 7, 1))
+  }
+
   "A film festival billed by its own name" should "name no film, not even one whose alternative title it is, nor one a feed links" in {
     // DE "Alpen Film Festival 2026" at nine venues (2026-10-13 suspect audit): the festival's programme; Cineamo linked
     // it to the 13-minute short "How I Started A Film Festival", whose TMDB record carries the billing as an alternative
