@@ -66,6 +66,28 @@ permissions:
     pull-requests: write
 
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check).
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     # ROUND 1 ON FOUR RUNNERS. It is the refit's measure: ~58 proposals, each the five captures re-resolved, CPU-bound
     # (JFR: 97.5% of the runner in the resolver), 17-21 of the measure step's 20-24 minutes on one 4-vCPU runner, where
     # 4 threads beat 2 by only 1.2-1.35x. Shard i measures proposals i, i+4, ... on top of the control
@@ -75,7 +97,8 @@ jobs:
     # on Thursday 05:00 UTC, well inside the 20-runner budget (CiRunnerBudgetSpec). At the triggering commit: the refit
     # job merges them only if main has not moved what they measured (below).
     measure:
-        if: ${{ github.event_name == 'schedule' || inputs.sharded }}
+        needs: supersede
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (github.event_name == 'schedule' || inputs.sharded) }}
         runs-on: ubuntu-26.04 # no Mongo here: the kernel is no matter
         timeout-minutes: 60
         strategy:
@@ -108,8 +131,8 @@ jobs:
                   retention-days: 3
 
     refit:
-        needs: [measure]
-        if: ${{ !cancelled() && (needs.measure.result == 'success' || needs.measure.result == 'skipped') }}
+        needs: [supersede, measure]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled() && (needs.measure.result == 'success' || needs.measure.result == 'skipped')) }}
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         timeout-minutes: 150
         steps:
@@ -231,8 +254,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [measure, refit]
-        if: ${{ !cancelled() }}
+        needs: [supersede, measure, refit]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
             contents: read
@@ -246,8 +269,8 @@ jobs:
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [measure, refit, timings]
-        if: always() && !cancelled() && github.event_name == 'schedule'
+        needs: [supersede, measure, refit, timings]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && !cancelled() && github.event_name == 'schedule') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

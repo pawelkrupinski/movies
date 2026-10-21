@@ -136,6 +136,28 @@ permissions:
   contents: read
 
 jobs:
+  # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+  # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+  # green, and every other job skips on the output (.github/actions/supersede-check).
+  supersede:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      superseded: ${{ steps.check.outputs.superseded }}
+    steps:
+      # Fail OPEN: a check that cannot run must not stop the run's work.
+      - if: github.server_url != 'https://github.com'
+        continue-on-error: true
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/actions/supersede-check
+      - id: check
+        if: github.server_url != 'https://github.com'
+        continue-on-error: true
+        uses: ./.github/actions/supersede-check
+
   # EVERY HOST MUST STILL EVALUATE, and this is the only job that runs on a pull request.
   #
   # It is cheap -- evaluation does not build anything -- and it catches the class of error that is
@@ -144,6 +166,8 @@ jobs:
   # catch by NAME rather than by the module system's unhelpful "was accessed but has no value
   # defined"), or a module that does not parse.
   evaluate:
+    needs: supersede
+    if: needs.supersede.outputs.superseded != 'true'
     name: nix-evaluate
     runs-on: ubuntu-26.04
     steps:
@@ -300,11 +324,13 @@ jobs:
     # rather than a restatement: a dispatch can be run against any branch, and this job would
     # otherwise have built and copied closures from it with the real signing and ssh keys.
     if: >-
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-      && github.ref == 'refs/heads/main'
+      needs.supersede.outputs.superseded != 'true' && (
+        (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        && github.ref == 'refs/heads/main'
+      )
     # STAGING WAITS FOR EVALUATION. While nothing activated on its own, staging was harmless
     # whatever a check said -- a copied closure nobody switches to is inert. It is no longer inert.
-    needs: evaluate
+    needs: [supersede, evaluate]
     steps:
       # FULL HISTORY, not the default shallow clone. `system.configurationRevision` is read from the
       # flake's own `self.rev` (infra/nix/modules/fleet/deploy-staging.nix), which is what stamps
@@ -396,8 +422,8 @@ jobs:
 
   # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
   timings:
-    needs: [evaluate, stage]
-    if: ${{ !cancelled() }}
+    needs: [supersede, evaluate, stage]
+    if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
     permissions:
       actions: read
       contents: read

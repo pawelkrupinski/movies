@@ -48,7 +48,31 @@ permissions:
 # `mobile-local-server` job in ci.yml against a FixtureServerMain boot, not
 # against production.
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check).
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     unit-integration:
+        needs: supersede
+        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ubuntu-26.04
         container: mirror.gcr.io/library/swift:5.10
         steps:
@@ -112,10 +136,11 @@ jobs:
 
 
     ui-tests:
+        needs: supersede
         # Forgejo has no macOS runner: there the job would wait forever and hold the run open. Forgejo
         # evaluates a job's `if` on the runner that picks it up, so it is handed to a Linux one to skip it.
         runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'ubuntu-26.04' }}
-        if: ${{ github.server_url == 'https://github.com' }}
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (github.server_url == 'https://github.com') }}
         # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
         timeout-minutes: 75
         steps:
@@ -235,8 +260,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [unit-integration, ui-tests]
-        if: ${{ !cancelled() }}
+        needs: [supersede, unit-integration, ui-tests]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
             contents: read

@@ -71,7 +71,8 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
     lazy val preflight = all.getOrElse("preflight", fail(s"$file has no `preflight` job"))
 
     s"$file" should "have a preflight job that starts at once and runs for minutes at most" in {
-      needs(preflight) shouldBe empty
+      // only the seconds-long supersede check (WorkflowConcurrencyConventionSpec): a superseded run asserts nothing
+      needs(preflight) -- Set("supersede") shouldBe empty
       val timeout = preflight.linesIterator.map(_.trim).collectFirst { case s"timeout-minutes: $n" => n.toInt }
       timeout.getOrElse(fail("preflight has no timeout-minutes")) should be <= 5
       preflight should include("scripts/ci/preflight.sh")

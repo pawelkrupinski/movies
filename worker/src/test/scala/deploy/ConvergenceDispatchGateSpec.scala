@@ -147,6 +147,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
       ".github/actions/convergence-bisect-request/action.yml", // asks for a bisect of a red run
       ".github/actions/hard-clusters-ratchet/action.yml",     // turns a red leg's findings into seeds
       ".github/actions/report-timings/action.yml",            // reports the run's step timings
+      ".github/actions/supersede-check/action.yml",           // only whether the run works at all, never its verdict
       ".github/workflows/report-timings.yml",                 // ...as the run's last job, `timings`
       "scripts/ci/ci_http_calls.py",                          // reports the external services a job called
     )

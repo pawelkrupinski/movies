@@ -22,7 +22,7 @@ class IdentityRefitWorkflowSpec extends AnyFlatSpec with Matchers {
     val shards = """shard: \[([0-9, ]+)\]""".r.findFirstMatchIn(workflow).map(_.group(1).split(",").map(_.trim.toInt).toSeq)
     val of     = """--shard "\$\{\{ matrix\.shard \}\}/([0-9]+)"""".r.findFirstMatchIn(workflow).map(_.group(1).toInt)
     shards shouldBe of.map(n => 0 until n)
-    workflow should include("needs: [measure]")
+    workflow should include("needs: [supersede, measure]")
     workflow should include("${MERGE:+--merge \"$MERGE\"}")
     // the shards measured the triggering commit, the refit main's tip: merged only when what they measured is unmoved
     workflow should include("git diff --quiet ${{ github.sha }} HEAD -- common identity worker test/resources build.sbt project")

@@ -48,7 +48,31 @@ env:
 permissions:
     contents: read
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check).
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     run:
+        needs: supersede
+        if: needs.supersede.outputs.superseded != 'true'
         name: run
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ubuntu-24.04
@@ -113,8 +137,8 @@ jobs:
                   retention-days: 14
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [run]
-        if: ${{ !cancelled() }}
+        needs: [supersede, run]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
             contents: read
@@ -123,8 +147,8 @@ jobs:
         secrets: inherit
     # The run's own measure/ branch, deleted last (Forgejo only: no API cancels a run there; identity-model-convergence.yml)
     drop-measure-branch:
-        needs: [run, timings]
-        if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
+        needs: [supersede, run, timings]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

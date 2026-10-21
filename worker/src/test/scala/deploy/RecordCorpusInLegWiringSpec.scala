@@ -33,8 +33,8 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   private def at(marker: String): Int = RepoFile.positionOf(convergence, marker)
 
   "the recorder" should "have no scrape jobs ahead of its legs, which every leg would wait for" in {
-    RepoFile.jobs(recorder).keySet shouldBe Set("preflight", "enrichment", "timings", "report")
-    RepoFile.block(recorder, "enrichment") should include("needs: preflight\n")
+    RepoFile.jobs(recorder).keySet shouldBe Set("supersede", "preflight", "enrichment", "timings", "report")
+    RepoFile.block(recorder, "enrichment") should include("needs: [supersede, preflight]\n")
   }
 
   // The corpus is recorded by the convergence row only: a second tunnel would race the first for

@@ -48,9 +48,32 @@ permissions:
     contents: read
 
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check).
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     findings:
+        needs: supersede
         # A recording off main records nothing hermetic legs replay: its findings are no one's to triage.
-        if: github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main'
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 10
         permissions:
@@ -77,8 +100,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [findings]
-        if: ${{ !cancelled() }}
+        needs: [supersede, findings]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
             contents: read
@@ -93,8 +116,8 @@ jobs:
     # carry the findings themselves: this one says the report itself is red (overdue, or unable to run).
     report:
         name: report (scheduled run)
-        needs: [findings, timings]
-        if: always() && !cancelled() && github.event_name == 'schedule'
+        needs: [supersede, findings, timings]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && !cancelled() && github.event_name == 'schedule') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

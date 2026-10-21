@@ -70,10 +70,34 @@ permissions:
     contents: read
 
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check).
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
     # rather than hours into a leg. The tunnel key for each leg's corpus capture, the TMDB key for its enrichment recording. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
+        needs: supersede
+        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
@@ -118,7 +142,8 @@ jobs:
         name: enrichment (${{ matrix.country }})
         # Behind the preflight alone: each leg records its own corpus, so one country's tunnel
         # trouble fails only that country's leg (`fail-fast: false`).
-        needs: preflight
+        needs: [supersede, preflight]
+        if: needs.supersede.outputs.superseded != 'true'
         strategy:
             fail-fast: false
             matrix:
@@ -173,8 +198,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [preflight, enrichment]
-        if: ${{ !cancelled() }}
+        needs: [supersede, preflight, enrichment]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
             contents: read
@@ -190,8 +215,8 @@ jobs:
     # commit status the moment it ended (.github/actions/leg-verdict, LegVerdictWiringSpec).
     report:
         name: report (scheduled run)
-        needs: [preflight, enrichment, timings]
-        if: always() && !cancelled() && github.event_name == 'schedule'
+        needs: [supersede, preflight, enrichment, timings]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && !cancelled() && github.event_name == 'schedule') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

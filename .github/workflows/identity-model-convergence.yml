@@ -77,9 +77,33 @@ permissions:
     contents: read
 
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check).
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
     # rather than hours into a leg. (PreflightWiringSpec)
     preflight:
+        needs: supersede
+        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
@@ -108,7 +132,8 @@ jobs:
     # suite. `heap` is the sbt JVM's `-Xmx`: the US holds its
     # whole corpus resident (it died at 8g on a 114-116k-document read model).
     leg:
-        needs: preflight
+        needs: [supersede, preflight]
+        if: needs.supersede.outputs.superseded != 'true'
         # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`: Forgejo shows this caller as a row of
         # its own beside the leg's `<phase> (<country>)` rows, where a bare country hid what it was.
         name: leg (${{ matrix.country }})
@@ -176,8 +201,8 @@ jobs:
     # A separate run rather than a reusable call, so the bisect holds none of this suite's lane. The leg
     # leaves a request only when it ran hermetic (ConvergenceBisectTriggerSpec).
     request-bisect:
-        needs: [leg]
-        if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}
+        needs: [supersede, leg]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
@@ -193,8 +218,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [preflight, leg, request-bisect]
-        if: ${{ !cancelled() }}
+        needs: [supersede, preflight, leg, request-bisect]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
         permissions:
             actions: read
             contents: read
@@ -209,8 +234,8 @@ jobs:
     # laptop cannot stop it, and the branch must outlive the laptop's wait: the run deletes it as its LAST job, whatever
     # the rows concluded. github.com keeps the script's own clean-up (it can cancel there).
     drop-measure-branch:
-        needs: [preflight, leg, request-bisect, timings]
-        if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
+        needs: [supersede, preflight, leg, request-bisect, timings]
+        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com') }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

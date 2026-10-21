@@ -1,0 +1,53 @@
+name: Supersede check
+description: |
+  github.com's "one running, one pending" for a NON-CANCELLING concurrency group, on Forgejo.
+
+  On github.com a group with `cancel-in-progress: false` holds at most one running and one pending
+  run: a newer pending run replaces the older pending one. Forgejo 15 queues such a group FIFO and
+  unbounded, so every superseded run still does its full work. A run asks, as it starts, whether a
+  NEWER run of its own group (same repository, same evaluated `concurrency.group`) is already
+  waiting or running -- the run github.com would have dropped -- and if so says `superseded=true`;
+  the workflow's other jobs `if:` on it, so the run ends green in seconds and does nothing.
+
+  The decision is the actions API's (infra nix/files/forgejo-gh/actions_api.py, GET
+  .../actions/runs/<id>/superseded-by, unit-tested there): only it can see a run's evaluated group.
+  It fails OPEN: no API, an error, an old API without the route -- the run does its work, as before.
+  On github.com it does nothing (github.com already does this itself).
+
+outputs:
+  superseded:
+    description: "'true' when a newer run of this run's concurrency group is waiting or running; otherwise 'false'."
+    value: ${{ steps.check.outputs.superseded || 'false' }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      if: github.server_url != 'https://github.com'
+      shell: bash
+      env:
+        TOKEN: ${{ github.token }}
+      run: |
+        set -uo pipefail
+        out() { echo "superseded=$1" >> "$GITHUB_OUTPUT"; }
+        api="${FORGEJO_ACTIONS_API:-}"
+        if [ -z "$api" ]; then
+          echo "::notice::supersede check: no FORGEJO_ACTIONS_API here; this run does its work"
+          out false; exit 0
+        fi
+        url="${api%/}/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/superseded-by"
+        if ! body="$(curl -fsS -m 30 --retry 3 --retry-all-errors -H "Authorization: token ${TOKEN}" "$url")"; then
+          echo "::warning::supersede check: the actions API did not answer; this run does its work"
+          out false; exit 0
+        fi
+        group="$(jq -r '.concurrency_group // ""' <<<"$body")"
+        newer="$(jq -r '.superseded_by.run_number // empty' <<<"$body")"
+        if [ -z "$newer" ]; then
+          echo "supersede check: no newer run waiting in group '${group}'; this run does its work"
+          out false; exit 0
+        fi
+        link="$(jq -r '.superseded_by.html_url // ""' <<<"$body")"
+        msg="Superseded by run #${newer} (${link}), newer in concurrency group '${group}': github.com keeps one pending run per group, so this run skips its work."
+        echo "::notice title=Superseded::${msg}"
+        printf '### Superseded\n\n%s\n' "$msg" >> "$GITHUB_STEP_SUMMARY"
+        out true
