@@ -27,13 +27,15 @@ pack "$work/artifacts/scrape-fixtures-uk/scrapes-uk.tar.gz" corpus/cinema-scrape
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 cmd="$1 $2"; shift 2
+tag=""; [ "$cmd" = "release download" ] && { tag="$1"; shift; }
 while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --pattern) pattern="$2" ;; --name) name="$2" ;; esac; shift; done
 case "$cmd" in
   "release download")
     [ -f "$STUB/down" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
     [ -f "$STUB/blip" ] && { rm -f "$STUB/blip"; echo "HTTP 500: Internal Server Error" >&2; exit 1; }
-    [ -f "$STUB/assets/$pattern" ] || { echo "no assets match the file pattern" >&2; exit 1; }
-    mkdir -p "$dir"; cp "$STUB/assets/$pattern" "$dir/" ;;
+    assets="$STUB/assets"; [ "$tag" = convergence-fixtures ] || assets="$STUB/assets-$tag"
+    [ -f "$assets/$pattern" ] || { echo "no assets match the file pattern" >&2; exit 1; }
+    mkdir -p "$dir"; cp "$assets/$pattern" "$dir/" ;;
   "run download")     [ -f "$STUB/run-blip" ] && { rm -f "$STUB/run-blip"; mkdir -p "$dir"; echo half > "$dir/scrapes-uk.tar.gz"; echo "HTTP 502" >&2; exit 1; }
                       [ -d "$STUB/artifacts/$name" ] || { echo "no artifact matches any of the names or patterns provided" >&2; exit 1; }; mkdir -p "$dir"; cp "$STUB/artifacts/$name/"* "$dir/" ;;
   *) exit 1 ;;
@@ -74,7 +76,7 @@ $([ -e "$work/plain/pair/test/resources/fixtures/enrichment-uk/identity/answers"
 rm "$work/assets/identity-overlay-uk-77.tar.gz"
 check "a run without an overlay is laid out too" "0" "$(fetch 77 "$work/no-overlay" uk)"
 check "a run the release holds no tree for fails" "1" "$(fetch 78 "$work/missing" uk)"
-check "...naming what is missing" "1" "$(grep -c 'uk: release convergence-fixtures holds no enrichment-uk-78' "$work/out")"
+check "...naming what is missing" "1" "$(grep -c 'holds enrichment-uk-78' "$work/out")"
 touch "$work/down"
 check "a release that cannot be read fails, not as a missing tree" "1" "$(fetch 77 "$work/down-dest" uk)"
 check "...saying the read failed" "1" "$(grep -c 'uk: could not read release convergence-fixtures' "$work/out")"
@@ -83,6 +85,16 @@ touch "$work/blip" "$work/run-blip"
 check "a release read and a run download that each fail once are asked again" "0 tree corpus" \
   "$(fetch 77 "$work/blip-dest" uk) $(cat "$work/blip-dest/pair/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null) \
 $(cat "$work/blip-dest/pair/test/resources/fixtures/corpus/cinema-scrapes-uk.json.gz" 2>/dev/null)"
+# a recording only the archive release holds (github.com's 38713274617): its tree and its corpus from there, no run read
+mkdir -p "$work/assets-identity-recordings"
+pack "$work/assets-identity-recordings/enrichment-uk-90.tar.zst" enrichment-uk/api.themoviedb.org/search archived-tree zstd
+pack "$work/assets-identity-recordings/scrapes-uk-90.tar.gz" corpus/cinema-scrapes-uk.json.gz archived-corpus gzip
+check "a recording only the archive release holds is laid out from it" "0 archived-tree archived-corpus" \
+  "$(fetch --no-overlay 90 "$work/archived" uk) $(cat "$work/archived/pair/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null) \
+$(cat "$work/archived/pair/test/resources/fixtures/corpus/cinema-scrapes-uk.json.gz" 2>/dev/null)"
+check "...naming where its tree came from" "1" "$(grep -c 'uk: tree from the archive release identity-recordings' "$work/out")"
+check "a run neither release holds names both" "1 1" \
+  "$(fetch 91 "$work/neither" uk) $(grep -c 'neither release convergence-fixtures nor identity-recordings holds enrichment-uk-91' "$work/out")"
 check "--help prints the usage" "0" "$(fetch --help)"
 check "...which names the arguments" "1" "$(grep -c '<recording run id> <dest dir>' "$work/out")"
 check "too few arguments is a usage error" "2" "$(fetch 77)"

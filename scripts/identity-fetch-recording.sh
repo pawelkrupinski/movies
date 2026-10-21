@@ -17,7 +17,10 @@
 # (KINOWO_IDENTITY_DOWNLOAD_TIMEOUT seconds, default 1800) and a failed read asked again (GH_DOWNLOAD_ATTEMPTS).
 #
 # Needs `gh` signed in, or on a Forgejo checkout its API token (scripts/forge-gh). KINOWO_REPO (default pawelkrupinski/movies) and FIXTURE_RELEASE_TAG (default
-# convergence-fixtures) name where the recording lives. Archives are zstd or gzip; each is unpacked by
+# convergence-fixtures) name where the recording lives. A recording the convergence release no longer holds (it keeps
+# the newest five pairs), or one recorded on github.com (Forgejo has no run, so no artifact, by that id: 38713274617),
+# is read from the ARCHIVE release instead (RECORDING_ARCHIVE_TAG, default identity-recordings): its tree under the
+# same name, and its corpus as scrapes-<cc>-<run>.tar.*, which is asked first (absent, the run's artifact is read). Archives are zstd or gzip; each is unpacked by
 # its magic bytes (.github/scripts/unpack-fixture-archive.sh). Downloads are kept in <dest>/archive.
 set -euo pipefail
 
@@ -38,17 +41,19 @@ CCS=("$@")
 [ "${#CCS[@]}" -gt 0 ] || CCS=("${KINOWO_COUNTRIES[@]}")
 REPO=$KINOWO_GH_REPO
 RELEASE=${FIXTURE_RELEASE_TAG:-convergence-fixtures}
+ARCHIVE=${RECORDING_ARCHIVE_TAG:-identity-recordings}
 UNPACK="$(cd "$(dirname "$0")/.." && pwd)/.github/scripts/unpack-fixture-archive.sh"
 LIMIT=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
 mkdir -p "$DEST/pair" "$DEST/archive"
 
-# fetch <asset prefix> -> the downloaded asset's path, whichever compressor packed it; 1 when the release lacks it,
-# 2 when the release could not be read (gh_download tells the two apart, asking a failed read again; a timeout is one)
+# fetch <asset prefix> [release] -> the downloaded asset's path, whichever compressor packed it; 1 when the release
+# lacks it, 2 when the release could not be read (gh_download tells the two apart, asking a failed read again; a
+# timeout is one)
 fetch() {
   local ext status
   for ext in tar.zst tar.gz; do
     # absent (this compressor did not pack it) moves on to the next; a failed read stops the fetch
-    gh_download "$LIMIT" release download "$RELEASE" -R "$REPO" --pattern "$1.$ext" --dir "$DEST/archive" --clobber >&2
+    gh_download "$LIMIT" release download "${2:-$RELEASE}" -R "$REPO" --pattern "$1.$ext" --dir "$DEST/archive" --clobber >&2
     status=$?
     case $status in
       0) echo "$DEST/archive/$1.$ext"; return 0 ;;
@@ -63,7 +68,9 @@ for cc in "${CCS[@]}"; do
   if [ "$corpus_only" = 0 ]; then
     if tree=$(fetch "enrichment-$cc-$RUN"); then :
     elif [ $? -eq 2 ]; then echo "$cc: could not read release $RELEASE (see gh's error above)" >&2; exit 1
-    else echo "$cc: release $RELEASE holds no enrichment-$cc-$RUN" >&2; exit 1; fi
+    elif tree=$(fetch "enrichment-$cc-$RUN" "$ARCHIVE"); then echo "$cc: tree from the archive release $ARCHIVE" >&2
+    elif [ $? -eq 2 ]; then echo "$cc: could not read release $ARCHIVE (see gh's error above)" >&2; exit 1
+    else echo "$cc: neither release $RELEASE nor $ARCHIVE holds enrichment-$cc-$RUN" >&2; exit 1; fi
     bash "$UNPACK" "$tree" "$DEST/pair"
     # the overlay is optional: absent is fine, a failed read is not
     if [ "$overlay" = 0 ]; then :
@@ -72,9 +79,13 @@ for cc in "${CCS[@]}"; do
   fi
   # a download cut short earlier leaves files gh will not overwrite
   rm -rf "$DEST/archive/scrape-$cc"; mkdir -p "$DEST/archive/scrape-$cc"
-  gh_download "$LIMIT" run download "$RUN" -R "$REPO" --name "scrape-fixtures-$cc" --dir "$DEST/archive/scrape-$cc" ||
-    { echo "$cc: could not download run $RUN's scrape-fixtures-$cc (gh failed or timed out)" >&2; exit 1; }
-  corpus=$(compgen -G "$DEST/archive/scrape-$cc/scrapes-$cc.tar.*" | head -1 || true)
+  if corpus=$(fetch "scrapes-$cc-$RUN" "$ARCHIVE"); then echo "$cc: corpus from the archive release $ARCHIVE" >&2
+  elif [ $? -eq 2 ]; then echo "$cc: could not read release $ARCHIVE (see gh's error above)" >&2; exit 1
+  else
+    gh_download "$LIMIT" run download "$RUN" -R "$REPO" --name "scrape-fixtures-$cc" --dir "$DEST/archive/scrape-$cc" ||
+      { echo "$cc: could not download run $RUN's scrape-fixtures-$cc (gh failed or timed out)" >&2; exit 1; }
+    corpus=$(compgen -G "$DEST/archive/scrape-$cc/scrapes-$cc.tar.*" | head -1 || true)
+  fi
   [ -n "$corpus" ] || { echo "$cc: run $RUN's scrape-fixtures-$cc holds no scrapes-$cc.tar.*" >&2; exit 1; }
   # unpacked beside the pair, then moved in: cinema-scrapes-<cc>.json.gz is renamed in last
   rm -rf "$DEST/archive/corpus-$cc"
