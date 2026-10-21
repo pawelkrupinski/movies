@@ -1164,6 +1164,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A double bill joined by a spaced \"//\"" should "be neither film, while one film's two titles joined so stay that film" in {
+    // DE Filmhaus Kino Köln "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE" (judged 10-13: Shinjuku Boys and The Fish with
+    // One Sleeve, a double bill) was served as 797140 by its second work's English title
+    val fish   = F(797140, "片袖の魚", 2021, "Kahori Higashi", 34, 2, original = Some("片袖の魚"), alternatives = Seq("The Fish with One Sleeve"))
+    val bill   = listing(KinoMuza, "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE")
+    val d = shipped(Seq(bill), Seq(fish)).decisionOf(bill.key)
+    withClue(d.render)(d.film shouldBe None)
+    // Central im Bürgerbräu's and Ostpassagen's own two titles of one film (base takes on recording 528)
+    def oneFilm(title: String, film: IdentityMeasures.Film) = !MultiFilmBill.slashesAnotherWork(IdentityMeasures.Listing(title, Some(title)), film)
+    oneFilm("DIE VENUS VON PARIS // LA VÉNUS ÉLECTRIQUE", IdentityMeasures.Film("La Vénus électrique", None, Seq("Die Venus von Paris"))) shouldBe true
+    oneFilm("La Haine // Hass", IdentityMeasures.Film("Hass", Some("La Haine"))) shouldBe true
+    // a translated piece its record files under no title of its: the other piece is its original title (recording 38713274617)
+    oneFilm("DOWN AND OUT IN PARIS // À PIED D'ŒUVRE", IdentityMeasures.Film("À pied d’œuvre", Some("À pied d’œuvre"))) shouldBe true
+    oneFilm("DE GAULLE - ZEIT DES WIDERSTANDS // LA BATAILLE DE GAULLE: L'ÂGE FER",
+      IdentityMeasures.Film("La bataille de Gaulle - partie 1 : L'âge de fer", Some("La bataille de Gaulle - partie 1 : L'âge de fer"))) shouldBe true
+    oneFilm("SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE", IdentityMeasures.Film("片袖の魚", Some("片袖の魚"), Seq("The Fish with One Sleeve"))) shouldBe false
+    oneFilm("Kino//Bar: Hass", IdentityMeasures.Film("Hass")) shouldBe true
+  }
+
   "A double bill one of whose works no database holds" should "be neither film, while a film billed with a talk stays that film" in {
     // PL Kino Pałacowe, 2026-10-05: "Akademia Polskiego Filmu: (Wyobrażone) początki polskiego kina | Historia kina w
     // Popielawach + Pruska kultura" took the 1998 "Historia kina w Popielawach": TMDB holds no "Pruska kultura" (a

@@ -83,6 +83,23 @@ object MultiFilmBill {
   /** Does a listing titled `titles` bill several films, `film` not named by its marker? */
   def billsBeside(titles: Seq[String], film: IdentityMeasures.Film): Boolean = marker(titles).exists(!namedBy(_, film))
 
+  /** Does the billing join pieces with a spaced "//" as two works, `film` one of them? A "//" joins one film's titles in
+   *  two languages — DE Central im Bürgerbräu's "DIE VENUS VON PARIS // LA VÉNUS ÉLECTRIQUE", "DOWN AND OUT IN PARIS // À
+   *  PIED D'ŒUVRE", Ostpassagen's "La Haine // Hass", one piece its original title — or two works: Filmhaus Kino Köln's
+   *  "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE" (judged 10-13, a double bill) is no 2021 "片袖の魚", which neither piece
+   *  titles as its own and whose titles hold no word of "Shinjukuy Boys". Read against the film, as only its titles tell
+   *  the two shapes apart: neither piece is its own or original title, and one is none of its titles at all. A piece
+   *  names a title when every word of it (of two letters or more) is one of the title's. */
+  def slashesAnotherWork(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+    val raw = listing.rawTitle.getOrElse(listing.title)
+    raw.contains("//") && {
+      val pieces = SlashJoin.split(raw).toSeq.map(piece => TitleContainment.tokens(piece).filter(_.length > 1)).filter(_.nonEmpty)
+      def names(piece: Seq[String], titles: Seq[String]) = titles.exists(title => piece.forall(TitleContainment.tokens(title).toSet))
+      pieces.sizeIs >= 2 && !pieces.exists(names(_, film.ownTitles)) && pieces.exists(piece => !names(piece, film.titles))
+    }
+  }
+  private val SlashJoin = """\s//\s""".r
+
   private def folded(title: String): String = TitleContainment.tokens(title).mkString(" ")
 
   private val BillJoin = """\s\+\s""".r
