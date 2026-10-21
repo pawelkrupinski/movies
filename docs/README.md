@@ -45,6 +45,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [investigations/2026-10-20-de-corpus-decline-oct12-19.md](investigations/2026-10-20-de-corpus-decline-oct12-19.md) — why
   Germany's corpus and TMDB-id counts fell 10-12 → 10-19: post-expansion identity settling, the weekly listing
   horizon, and the 10-14/15 identity rule tightening; cinemas and upstreams ruled out.
+- [proposals/2026-10-21-matching-fundamentals.md](proposals/2026-10-21-matching-fundamentals.md) — where the
+  identity error budget is (recall, mostly relays), what was measured and rejected (title-word event gate, hard
+  runtime/date constraints), and the five approved changes; scripts in `scripts/experiments/matching-fundamentals/`.
 - [synopsis-resolution/investigation.md](synopsis-resolution/investigation.md) — June 2026 investigation of
   synopsis-based resolution; frozen inputs in [synopsis-resolution/archive/](synopsis-resolution/archive/README.md).
 - `venue-maps/*.tsv` — venue-map data read by `data/us/scripts/generate_amc_map.py` and the UK clients (data, not prose).
