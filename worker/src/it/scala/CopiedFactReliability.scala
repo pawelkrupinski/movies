@@ -86,6 +86,29 @@ object CopiedFactReliability {
           "weights" -> JsObject(Signals.flatMap(s => weights.get(s).map(x => s -> JsNumber(BigDecimal(x).setScale(3, BigDecimal.RoundingMode.HALF_UP)))))))
       }
     Files.createDirectories(dir)
+    // every judged listing's node, its candidates as the resolve scores them: the full log-odds beside the copied facts' share
+    val judgedKeys = listings.filter(l => byTitle.getOrElse(l.key.rawTitle, Nil).exists(j => j.venue == "*" || j.venue == l.key.venue)).map(_.key).toSet
+    val byKey      = listings.map(l => l.key -> l).toMap
+    val nodes      = IdentityResolver.evidenceOf(listings, lookups, c.normalizer, calibration)(l => judgedKeys(l.key))
+    val scored = nodes.flatMap { node =>
+      val members = node.keys.flatMap(byKey.get)
+      val sources = members.map(l => SourceReliability.factsOf(l.catalogueIds, l.page, l.pageFacts || lookups.detail(l).toOption.flatten.isDefined).name).distinct
+      val verdicts = members.flatMap(l => byTitle.getOrElse(l.key.rawTitle, Nil).filter(j => j.venue == "*" || j.venue == l.key.venue).map(l.key -> _))
+      val takenBy  = members.map(l => resolution.decisionOf(l.key).film).distinct
+      val keep     = verdicts.map(_._2.film).toSet ++ takenBy.flatten
+      node.candidates.filter(cand => keep(cand.tmdbId)).map { cand =>
+        val weights = calibration.contributions(IdentityMeasures.ListingFilm, cand.measures).toMap
+        Json.stringify(JsObject(Seq(
+          "keys" -> JsArray(members.map(l => JsString(s"${l.key.venue}|${l.key.rawTitle}"))), "sources" -> JsArray(sources.map(JsString(_))),
+          "id" -> JsNumber(cand.tmdbId), "title" -> JsString(cand.film.title), "year" -> opt(cand.film.year)(JsNumber(_)),
+          "verdicts" -> JsArray(verdicts.filter(_._2.film == cand.tmdbId).map(_._2).distinct.map(v => JsString(v.verdict + "\t" + v.evidence.take(20)))),
+          "taken" -> JsNumber(takenBy.count(_.contains(cand.tmdbId))), "denied" -> JsString(cand.denied.toString),
+          "probability" -> JsNumber(BigDecimal(cand.probability).setScale(4, BigDecimal.RoundingMode.HALF_UP)),
+          "logOdds" -> JsNumber(BigDecimal(calibration.logOdds(IdentityMeasures.ListingFilm, cand.measures)).setScale(3, BigDecimal.RoundingMode.HALF_UP)),
+          "weights" -> JsObject(Signals.flatMap(s => weights.get(s).map(x => s -> JsNumber(BigDecimal(x).setScale(3, BigDecimal.RoundingMode.HALF_UP))))))))
+      }
+    }
+    Files.writeString(dir.resolve(s"scored-${c.country.code}.jsonl"), scored.mkString("", "\n", "\n"))
     val lines = listings.flatMap { l =>
       val detail   = lookups.detail(l).toOption.flatten
       val source   = SourceReliability.factsOf(l.catalogueIds, l.page, l.pageFacts || detail.isDefined)
