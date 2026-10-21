@@ -96,3 +96,26 @@ for f in feeds:
         s = sorted(x for x in shares[f + d] if x == x)
         lo, hi = (s[int(0.05 * len(s))], s[int(0.95 * len(s)) - 1]) if s else (float("nan"),) * 2
         print(f"{f}\t{d}\t{counts[(f, 1, d)]}/{counts[(f, 0, d)]}\t{w[i] / w[1]:.3f}\t[{lo:.3f}, {hi:.3f}]")
+
+# --write <identity-weights.json>: the fitted shares as the listing-film scope's `copied` (IdentityCalibration.CopiedShare),
+# each clipped to [0, 1] (a copy never weighs more than the venue's own fact), a feed with fewer than --min-pairs judged
+# pairs on a side left at 1 for that side.
+if "--write" in sys.argv:
+    import re
+    target = sys.argv[sys.argv.index("--write") + 1]
+    min_pairs = int(sys.argv[sys.argv.index("--min-pairs") + 1]) if "--min-pairs" in sys.argv else 20
+    entries = []
+    for f in feeds:
+        def share(k, d):
+            n = counts[(f, 1, d)] + counts[(f, 0, d)]
+            return (min(1.0, max(0.0, w[2 + 2 * feeds.index(f) + k] / w[1])) if n >= min_pairs else 1.0), n
+        (sp, np_), (sd, nd) = share(0, "+"), share(1, "-")
+        if sp < 1.0 or sd < 1.0:
+            entries.append(f'        "{f}" : {{\n          "support" : {sp:.3f},\n          "dissent" : {sd:.3f},\n          "n" : {np_ + nd}\n        }}')
+    text = open(target).read()
+    text = re.sub(r'\n      "copied" : \{.*?\n      \},', "", text, flags=re.S)
+    block = '\n      "copied" : {\n' + ",\n".join(entries) + '\n      },'
+    anchor = '"listing-film" : {'
+    i = text.index(anchor) + len(anchor)
+    open(target, "w").write(text[:i] + (block if entries else "") + text[i:])
+    print(f"wrote {len(entries)} feed share(s) into {target}")
