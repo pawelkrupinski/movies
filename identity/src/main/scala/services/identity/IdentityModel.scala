@@ -161,7 +161,8 @@ final case class Listing(
  *  but never "screens on none" (a failed read is not data): the broadcast take waits on it. Or the SEASON alone
  *  ([[ScreeningDays.ofSeason]]): a lean read keeps no day of a film billing no stage work, only the first it screens
  *  on, which dates the season it screens in and nothing else — no day of it is read as a screening day. */
-final class ScreeningDays private (private val epochDays: Array[Int], private val seasonOnly: Option[Int] = scala.None) {
+final class ScreeningDays private (private val epochDays: Array[Int], private val seasonOnly: Option[Int] = scala.None,
+                                   private val firstYearOnly: Option[Int] = scala.None) {
   /** No day, and known to be none. */
   def isEmpty: Boolean = epochDays.isEmpty
   /** The days could not be read. */
@@ -173,10 +174,15 @@ final class ScreeningDays private (private val epochDays: Array[Int], private va
   /** The performing season the first day falls in, by the year it opens: a season runs from July to June, so
    *  January 2027 is the 2026/27 season's, as August 2026 is. Of a lean read's season alone, that season. */
   def season: Option[Int] = first.map(ScreeningDays.seasonOf).orElse(seasonOnly)
+  /** The year of the first day — of a lean read's season alone too, which keeps it ([[ScreeningDays.ofSeason]]): what a rule
+   *  dating a film against its screenings reads. Read off [[first]], it was none in prod's lean read, and the current-release
+   *  test of a billed piece never passed there (DE "Über Unterbiberger – Vom Woid in die Welt" ×9, LeanWholeGuard 10-21). */
+  def firstYear: Option[Int] = first.map(_.getYear).orElse(firstYearOnly)
   /** `other`'s days beside these — unknown when either is. */
   def ++(other: ScreeningDays): ScreeningDays =
     if (isUnknown || other.isUnknown) ScreeningDays.Unknown
-    else if (isEmpty && other.isEmpty) (seasonOnly ++ other.seasonOnly).minOption.fold(ScreeningDays.None)(season => new ScreeningDays(Array.emptyIntArray, Some(season)))
+    else if (isEmpty && other.isEmpty) (seasonOnly ++ other.seasonOnly).minOption.fold(ScreeningDays.None)(season =>
+      new ScreeningDays(Array.emptyIntArray, Some(season), (firstYearOnly ++ other.firstYearOnly).minOption))
     // days date the season themselves: a season alone beside them adds nothing
     else if (other.isEmpty) this else if (isEmpty) other else new ScreeningDays((epochDays ++ other.epochDays).distinct.sorted)
   override def equals(other: Any): Boolean = other match {
@@ -203,9 +209,11 @@ object ScreeningDays {
     else if (days.exists(_ == UnreadDay)) Unknown
     else if (days.exists(_ == SeasonOnlyDay)) days.filter(_ != SeasonOnlyDay).minOption.fold(None)(ofSeason)
     else new ScreeningDays(days.iterator.map(_.toEpochDay.toInt).toArray.distinct.sorted)
-  /** No day, only the season `firstDay` falls in: what a lean read knows of a film billing no stage work. Two films
-   *  screening in one season read alike however their first days move, so a day passing moves no listing. */
-  def ofSeason(firstDay: java.time.LocalDate): ScreeningDays = new ScreeningDays(Array.emptyIntArray, Some(seasonOf(firstDay)))
+  /** No day, only the season `firstDay` falls in (and its year, [[ScreeningDays.firstYear]]): what a lean read knows of a
+   *  film billing no stage work. Two films screening in one season are equal however their first days move — the year is
+   *  outside equality and hash — so a day passing moves no listing. */
+  def ofSeason(firstDay: java.time.LocalDate): ScreeningDays =
+    new ScreeningDays(Array.emptyIntArray, Some(seasonOf(firstDay)), Some(firstDay.getYear))
   private def seasonOf(day: java.time.LocalDate): Int = if (day.getMonthValue >= SeasonOpens) day.getYear else day.getYear - 1
 }
 

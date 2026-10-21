@@ -1934,6 +1934,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(current.render)(current.film shouldBe Some(1559083))
     decided("Über Unterbiberger - Vom Woid in die Welt", unterbiberger, screened = Some(2028)).film shouldBe None
     decided("Über Unterbiberger - Vom Woid in die Welt", unterbiberger, screened = None).film shouldBe None
+    // as prod's model reads it (ModelRead: lean, its season and first day's year alone): read off its first DAY, the
+    // current-release test never passed in prod and its ten venues kept no film (LeanWholeGuard, recording 528, 10-21)
+    val lean = listing(KinoMuza, "Über Unterbiberger - Vom Woid in die Welt").copy(screenings = ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 16)))
+    val leanly = IdentityResolver.resolve(Seq(lean), new FilmTable(Seq(unterbiberger), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(lean.key)
+    withClue(leanly.render)(leanly.film shouldBe Some(1559083))
+    ScreeningDays.ofSeason(java.time.LocalDate.of(2027, 2, 1)).firstYear shouldBe Some(2027)
     val bread = F(1140985, "Ekmek Parası", 1962, "Atıf Yılmaz", 80, countries = Seq("TR"), original = Some("Ekmek Parası"))
     val untranslated = decided("Ekmek parası - Geld für's Brot", bread)
     withClue(untranslated.render)(untranslated.film shouldBe Some(1140985))

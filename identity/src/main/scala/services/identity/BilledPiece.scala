@@ -67,7 +67,7 @@ private[identity] object BilledPiece {
     // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the
     // namesakes a reading or a show is taken for are the catalogue's older films ("Immer Ärger mit Harry", 1955)
     def current = film.year.fold(film.released.isEmpty)(year =>
-      listings.flatMap(_.screenings.first).map(_.getYear).minOption.exists(year >= _ - IdentityResolver.CurrentRelease))
+      listings.flatMap(_.screenings.firstYear).minOption.exists(year >= _ - IdentityResolver.CurrentRelease))
     // a foreign film TMDB knows by no title in the venue's language — its local title is its original — billed first, or
     // under one of its titles after one other piece: what the venue bills beside it is its own translation, subtitle or
     // subject (DE "Ekmek parası - Geld für's Brot", "Épines du Sahel - Die Dornen der Sahelzone", "LÍDA BAAROVÁ – DOOMED

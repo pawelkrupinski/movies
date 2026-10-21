@@ -75,7 +75,7 @@ object IdentityResolveDump {
     // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
     val suspects  = {
       val corpus = SuspectTakes.corpus(resolution, listings, lookups, _ => None)
-      val year   = listings.flatMap(_.screenings.first).map(_.getYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
+      val year   = listings.flatMap(_.screenings.firstYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
       SuspectTakes.suspected(corpus.takes, year, corpus.billings).collect { case (t, found) if found.nonEmpty => t.listing.key -> found.map(_.render) }.toMap
     }
     Files.createDirectories(dir)

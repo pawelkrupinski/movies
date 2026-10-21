@@ -84,7 +84,7 @@ object SuspectTakes {
     val listing  = take.listing
     val film     = take.record
     val pieces   = Piece.of(listing.rawTitle)
-    val screens  = listing.screenings.first.fold(screeningYear)(_.getYear)
+    val screens  = listing.screenings.firstYear.getOrElse(screeningYear)
     val measured = Evidence.of(listing, None, TitleDecorations.resolver).measured
     fragment(listing, pieces, film, screens, billings).toSeq ++ era(listing, measured, film, screens, billings) ++
       runtime(measured, film, billings, listing) ++ sequel(pieces, measured, film) ++ feed(listing, take.tmdb, take.decision) ++
@@ -95,7 +95,7 @@ object SuspectTakes {
    *  same title, facts and film — are one question, whatever venue asks it. */
   def suspected(takes: Seq[Take], screeningYear: Int, billings: Billings): Seq[(Take, Seq[Suspicion])] = {
     def asked(t: Take) = (t.listing.rawTitle, t.listing.cleanTitle, t.listing.title, t.listing.year, t.listing.runtime, t.listing.directors,
-      t.listing.originalTitle, t.listing.catalogueIds, t.listing.factsFromCatalogue, t.listing.screenings.first.map(_.getYear), t.film,
+      t.listing.originalTitle, t.listing.catalogueIds, t.listing.factsFromCatalogue, t.listing.screenings.firstYear, t.film,
       t.decision.basis, t.decision.explanation.lastOption)
     val answers = scala.collection.mutable.HashMap.empty[Any, Seq[Suspicion]]
     takes.map(t => t -> answers.getOrElseUpdate(asked(t), of(t, screeningYear, billings)))
