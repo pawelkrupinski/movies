@@ -2472,7 +2472,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | venues.corroborating | venues of the family billing it | `IdentityMeasures` | LLR per bin (monotone rising) | yes | `model.logit` |
 | isotonic map; showRatings cut 0.375; cannotLink cut 0.033 | log-odds → probability; accept / veto cuts | `IdentityCalibration` | learned | yes | `model.logit`, `model.deniedBySome` |
 | learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
-| acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
+| acceptance rules (13 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record, relay-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
 | double programme | a "+" joining two whole works, whatever a database holds (`MultiFilmBill.billsTwoWholeWorks`) | `Acceptance.billsSeveralWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
@@ -3280,6 +3280,7 @@ code as registries (`Acceptance`'s alone rules, in the order `Acceptance.refusal
 | alone | 11 | house-production | the record billing the work under the listing's house |
 | alone | 12 | stage-production | the season record of the stage work under its house from the listing's year, in its field, title or banner (pre-empts the rest) |
 | alone | 13 | season-record | the one season record carrying the title, or of the season its screenings broadcast it in naming its work under its house (pre-empts the rest when of that season) |
+| alone | 14 | relay-record | the one record of the relay's house, its stage work and the season its title dates, learned vetoes lifted (`RelayStage`; pre-empts the rest) |
 | pooled | 1 | season-production | as alone, over the cluster's pooled evidence |
 | pooled | 2 | unrivalled-calibrated | the calibration accepts it and no namesake out-fits it |
 | pooled | 3 | exact-top-hit | as alone |

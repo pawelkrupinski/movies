@@ -1,6 +1,7 @@
 package services.identity
 
 import services.identity.Scored.Accepted
+import services.resolution.YearWindow
 
 /** The acceptance rules of a stage relay: the house's and the stage's production, and the record of the season it is
  *  broadcast in.
@@ -34,6 +35,22 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
                    (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well", house)
     } yield atOwn(house)
   }
+
+  /** The one eligible record of the listing's RELAY ([[RelayStage]]): its house's record of its work from the season its
+   *  title dates, whatever running time it files, that no year it publishes contradicts and no director it credits
+   *  denies. US "MetOpera: Carmen (2009)" [240′] ×514 is the Met's 2009/10 broadcast, TMDB's "Bizet: Carmen" (aired 15
+   *  January 2010, 166′), not the Met's 2019 or 2024 Carmen. It pre-empts every rule, as [[seasonProduction]] does. */
+  private[identity] def relayRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(relayRecordWhy(ranked)).toOption
+  private[identity] def relayRecordWhy(ranked: Seq[Scored]): Verdict =
+    for {
+      any    <- firstCandidate(ranked)
+      relay  <- any.listing.relayBilled.toRight(Refused("it bills no house's relay of a work in a season"))
+      record <- one(eligibleOf(ranked).filter(scored => RelayStage.recordOf(relay, scored.candidate.film)),
+                  "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
+                  s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
+      _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency), "a published year contradicts it", record, contradiction(record))
+      _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
+    } yield atOwn(record)
 
   /** A stage broadcast billed with no season but with its year — in its field or its title: the one eligible SEASON
    *  record naming the same stage work ([[StageWorks]], in any language), billing the listing's house

@@ -30,7 +30,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  catalogue namesake of a bare billing under a film festival's banner ([[ListingShape.festivalsCatalogueNamesake]]),
    *  a film of another part than the one its title numbers and subtitles ([[IdentityMeasures.titlesAnotherPart]]), or
    *  of another instalment than the one its title numbers and its original title subtitles
-   *  ([[IdentityMeasures.numbersAnotherSubtitle]]). */
+   *  ([[IdentityMeasures.numbersAnotherSubtitle]]). A learned cannot-link never denies a relay its own house's record of
+   *  its work and season ([[RelayStage.recordOf]]). */
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
     evidenceDenial(listing, film, measures).isDefined
 
@@ -53,7 +54,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
         Denial("a part its title gives a subtitle none of the film's titles holds")))
       .orElse(Option.when(IdentityMeasures.numbersAnotherSubtitle(listing, film))(
         Denial("an instalment its title numbers, whose subtitle none of the film's titles holds")))
-      .orElse(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures)))
+      // a relay's record of its house, work and season ([[RelayStage]]) files a broadcast's running time and its house's
+      // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it
+      .orElse(Option.unless(RelayStage.recordOf(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
    *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA

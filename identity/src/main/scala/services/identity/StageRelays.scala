@@ -140,9 +140,10 @@ object StageRelays {
    *  STAGING: DE "Paris Opera Ballett: Romeo und Julia" is the ballet's relay, not Zeffirelli's 1968 film of the play,
    *  however TMDB ranks it, and "RB&O Live: Tosca (Oper)" not the 1976 film. A staging's record bills its house ("RBO
    *  2026/27: …", "The Metropolitan Opera: …", "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE"); a bare one is no house's
-   *  that the listing can tell. */
+   *  that the listing can tell — unless an alternative title files it under the listing's own house: US "MetOpera: Carmen
+   *  (2009)" ×514 is TMDB's "Bizet: Carmen" (2010), filed as "The Metropolitan Opera - Bizet: Carmen" too. */
   def screenNamesake(listing: Listing, film: Film): Boolean =
-    listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords))
+    listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords)) && !billsItsHouse(listing, film)
   /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone, or
    *  split by punctuation ([[splitHouseInitials]]: UK Penrith's "RB&O 26/27: Carmen", DE "Carmen (RB+O 2026/27)"): DE
    *  "Jin-Roh - Die Wolfsbrigade" is Okiura's anime, no Royal Opera House relay, whatever its hyphen splits off. */
@@ -280,6 +281,10 @@ object StageRelays {
   /** A house name's words that say WHICH house: two letters or more, no number, none of [[HouseCommonWords]]. */
   private def particularWords(name: Seq[String]): Seq[String] =
     name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
+  /** Does a house fragment's words ([[Relay.houses]]) name a house IN PARTICULAR — a word beside the art form and a relay's
+   *  own ([[particularWords]]): "MetOpera", "Opéra national de Paris", "RB&O", never "Opera" or "Ballet Live"? */
+  private[identity] def namesAHouseInParticular(house: Seq[String]): Boolean =
+    particularWords(services.movies.StageHouse.initialsJoined(house)).nonEmpty
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
    *  House"), or two names of one house ([[services.movies.StageHouse]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
