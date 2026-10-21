@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
+import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** The CI-only decorator that holds every parallel recording leg on ci-runner's one egress address to one rate
@@ -83,6 +84,16 @@ class RatePermitsSpec extends AnyFlatSpec with Matchers {
       val paused = new ConcurrentLinkedQueue[Long]()
       new HttpRatePermits(service.url, sleep = ms => { paused.add(ms); () }).acquire("rottentomatoes")
       service.services shouldBe Seq.fill(3)("rottentomatoes")
+      paused.asScala.toSeq shouldBe Seq(1000L, 1000L)
+    } finally service.close()
+  }
+
+  it should "stop waiting and let the request go out once the service has stayed busy past maxBusy" in {
+    val service = new FakeRatePermitService(429, 429, 429, 429)
+    try {
+      val paused = new ConcurrentLinkedQueue[Long]()
+      new HttpRatePermits(service.url, maxBusy = 2.seconds, sleep = ms => { paused.add(ms); () }).acquire("omdb")
+      service.services shouldBe Seq.fill(3)("omdb")
       paused.asScala.toSeq shouldBe Seq(1000L, 1000L)
     } finally service.close()
   }

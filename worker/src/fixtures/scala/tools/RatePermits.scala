@@ -54,14 +54,16 @@ final class RatePermittedHttpFetch(delegate: HttpFetch, permits: RatePermits) ex
 /**
  * The permit service over HTTP: `GET <base>/permit?service=<name>` blocks until a permit is granted (200). A 429 is
  * the service saying the next permit is further off than it will hold a request open for, so it is asked again after
- * `busyPause`. Anything else -- the service down, an unexpected status -- lets the request go out unpermitted (said
- * once): the provider's own 429 and [[ThrottledHttpFetch]] remain behind it, and a recording must not stop because
- * its pacer did.
+ * `busyPause` -- for `maxBusy` at most: a service busy past that (a stuck bucket, a misconfigured rate) lets the
+ * request go out, as anything else does -- the service down, an unexpected status -- unpermitted (said once): the
+ * provider's own 429 and [[ThrottledHttpFetch]] remain behind it, and a recording must not stop, or hang to its job's
+ * ceiling, because its pacer did.
  */
 final class HttpRatePermits(
   base:      String,
   client:    HttpClient     = HttpRatePermits.client,
   busyPause: FiniteDuration = 1.second,
+  maxBusy:   FiniteDuration = 10.minutes,
   sleep:     Long => Unit   = Thread.sleep
 ) extends RatePermits with Logging {
 
@@ -76,15 +78,17 @@ final class HttpRatePermits(
       .timeout(requestTimeout)
       .GET()
       .build()
-    @tailrec def ask(): Unit = Try(client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()) match {
+    // `waited`: the busy pauses slept so far, counted rather than read off a clock
+    @tailrec def ask(waited: Long): Unit = Try(client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()) match {
       case Success(200) => ()
-      case Success(429) =>
+      case Success(429) if waited + busyPause.toMillis <= maxBusy.toMillis =>
         sleep(busyPause.toMillis)
-        ask()
+        ask(waited + busyPause.toMillis)
+      case Success(429)    => unpermitted(service, s"still busy after ${maxBusy.toSeconds}s")
       case Success(status) => unpermitted(service, s"HTTP $status")
       case Failure(e)      => unpermitted(service, e.toString)
     }
-    ask()
+    ask(0L)
   }
 
   private def unpermitted(service: String, why: String): Unit =
