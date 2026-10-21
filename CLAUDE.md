@@ -150,8 +150,8 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   secret (credentials, API keys — stage by explicit path); a diff so large a reviewer would balk. Everything else —
   green code, CSS, docs, refactors, pinning a k3s deployment to a known-good image during an incident — just do it.
   If a push's CI fails, fix forward; don't undo the push.
-- **Batch pushes to main:** Main's run in flight always finishes and publishes; a newer push queues, and a queued run
-  with a newer push behind it ends in seconds as superseded. Every run that starts still costs ~20 min of runners:
+- **Batch pushes to main:** Main's run in flight always finishes and publishes; a newer push queues, and an even newer
+  push replaces the queued run (it shows as cancelled). Every run that starts still costs ~20 min of runners:
   push when a coherent change is locally green, not per commit; if your previous push's run is under ~10 minutes
   old, keep committing and push once; judge `main` by the newest completed run.
 - **Downtime:** workers may go fully down (≲15 min, just do it); the web tier must not go fully down if there is any

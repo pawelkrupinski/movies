@@ -37,31 +37,7 @@ permissions:
     contents: read
 
 jobs:
-    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
-    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
-    # green, and every other job skips on the output (.github/actions/supersede-check).
-    supersede:
-        runs-on: ubuntu-26.04
-        timeout-minutes: 5
-        permissions:
-            contents: read
-        outputs:
-            superseded: ${{ steps.check.outputs.superseded }}
-        steps:
-            # Fail OPEN: a check that cannot run must not stop the run's work.
-            - if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: actions/checkout@v5
-              with:
-                  sparse-checkout: .github/actions/supersede-check
-            - id: check
-              if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: ./.github/actions/supersede-check
-
     races:
-        needs: supersede
-        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
         # fit well inside this, and a hung harness still stops.
@@ -99,8 +75,6 @@ jobs:
                   if-no-files-found: ignore
 
     webkit-phones:
-        needs: supersede
-        if: needs.supersede.outputs.superseded != 'true'
         name: webkit phones x5 (${{ matrix.shard }})
         strategy:
             fail-fast: false
@@ -130,8 +104,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [supersede, races, webkit-phones]
-        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
+        needs: [ races, webkit-phones ]
+        if: ${{ !cancelled() }}
         permissions:
             actions: read
             contents: read
@@ -145,8 +119,8 @@ jobs:
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [supersede, races, webkit-phones, timings]
-        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && !cancelled() && github.event_name == 'schedule') }}
+        needs: [ races, webkit-phones, timings ]
+        if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

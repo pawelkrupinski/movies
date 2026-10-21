@@ -33,16 +33,15 @@ class KickConvergenceWiringSpec extends AnyFlatSpec with Matchers {
    * recorded corpus), so making it wait on anything else buys only latency — and behind `ci`
    * a cancelled or red Main run never dispatched at all (2026-10-15: 1 h 40 min between the
    * Arsenal client's push and its first convergence run). `gates`, not nothing: the runner
-   * budget's t=0 set stays the supersede check alone (CiRunnerBudgetSpec). A SUPERSEDED Main run (a newer push
-   * already waits behind it) dispatches nothing: the newer run dispatches for a superset of its commits.
+   * budget's t=0 set stays `gates` alone (CiRunnerBudgetSpec).
    */
   it should "start the convergence suite at the push, behind only the tier gates" in {
-    job("kick-convergence") should include("needs: [supersede, gates]\n")
+    job("kick-convergence") should include("needs: gates\n")
   }
 
   /** A failed tier gate (a deployed-marker read) says nothing about the commit: without `!cancelled()` a red `gates`
    *  would skip the dispatch, the very loss moving off `ci` was for. */
   it should "dispatch even when a tier gate failed" in {
-    job("kick-convergence") should include("if: ${{ !cancelled() && needs.supersede.outputs.superseded != 'true' }}\n")
+    job("kick-convergence") should include("if: ${{ !cancelled() }}\n")
   }
 }

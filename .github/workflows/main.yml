@@ -8,9 +8,9 @@ on:
     workflow_dispatch:
 
 # ONE RUNNING, ONE PENDING; NEVER CANCELLED (2026-10-22). A push's run finishes and publishes; a newer
-# push queues behind it, and when it starts, the `supersede` job below ends it in seconds if a newer push
-# is already waiting (.github/actions/supersede-check; github.com does this itself, Forgejo 15 queues the
-# group FIFO). So under a burst of pushes the run in flight still lands, and the next run covers every
+# push queues behind it, and a newer push replaces it while it waits (github.com does this itself; so does
+# our patched Forgejo, whose stock 15 queued the group FIFO: infra docs/forgejo-actions.md). So under a
+# burst of pushes the run in flight still lands, and the next run covers every
 # push since -- the tier gates measure from the deployed MARKER, so a skipped push's commits stay inside
 # the next run's interval.
 #
@@ -59,31 +59,7 @@ permissions:
     contents: read
 
 jobs:
-    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
-    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
-    # green, and every other job skips on the output (.github/actions/supersede-check). Seconds, at t=0.
-    supersede:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
-        timeout-minutes: 5
-        permissions:
-            contents: read
-        outputs:
-            superseded: ${{ steps.check.outputs.superseded }}
-        steps:
-            # Fail OPEN: a check that cannot run must not stop the run's work.
-            - if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: actions/checkout@v5
-              with:
-                  sparse-checkout: .github/actions/supersede-check
-            - id: check
-              if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: ./.github/actions/supersede-check
-
     ci:
-        needs: supersede
-        if: needs.supersede.outputs.superseded != 'true'
         uses: ./.github/workflows/ci.yml
         # Off github.com, on the production lane (MainLaneSpec).
         with:
@@ -118,13 +94,11 @@ jobs:
     # `gates` below, for the few seconds it takes to answer the tier gates
     # (`CiRunnerBudgetSpec`).
 
-    # Seconds, right after `supersede`, whose slot it takes: the one ci.yml leaves (beside the headroom kept for
+    # Seconds, at t=0 beside ci: the slot ci.yml leaves (beside the headroom kept for
     # overlapping workflows) for the few seconds it runs (CiRunnerBudgetSpec). No secret is checked
     # here: the Grafana marker's are optional by design (mark-grafana-deploy skips without them), and
     # nothing else in this workflow reads one beyond what ci.yml's own jobs check.
     gates:
-        needs: supersede
-        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 5
         # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci, so both
@@ -220,7 +194,7 @@ jobs:
     # next push, or went red on an unrelated spec, never dispatched at all: on 2026-10-15
     # the Arsenal client's push (f58b71add, 09:29 UTC) got its first convergence run at
     # 11:08, after three cancelled and two red Main runs, while a landing waited on it.
-    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `supersede`
+    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `gates`
     # alone (CiRunnerBudgetSpec): this job takes the slot gates has just given back.
     #
     # Two shapes this deliberately is not:
@@ -248,10 +222,9 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        needs: [supersede, gates]
-        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway. A superseded
-        # run dispatches nothing: the newer run behind it dispatches for a superset of its commits.
-        if: ${{ !cancelled() && needs.supersede.outputs.superseded != 'true' }}
+        needs: gates
+        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
+        if: ${{ !cancelled() }}
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
@@ -572,8 +545,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [supersede, ci, gates, kick-convergence, publish-web, image-worker, publish-worker]
-        if: ${{ !cancelled() && needs.supersede.outputs.superseded != 'true' }}
+        needs: [ci, gates, kick-convergence, publish-web, image-worker, publish-worker]
+        if: ${{ !cancelled() }}
         permissions:
             actions: read
             contents: read

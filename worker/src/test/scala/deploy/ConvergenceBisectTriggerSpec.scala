@@ -43,8 +43,8 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
         val dispatching = RepoFile.jobs(RepoFile.read(path)).values.filter(_.contains("gh workflow run convergence-bisect.yml"))
         dispatching should have size 1
         val job = dispatching.head
-        job should include("needs: [supersede, leg]")
-        job should include("if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main') }}")
+        job should include("needs: [ leg ]")
+        job should include("if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}")
         job should include("-f run-id=\"$RUN_ID\"")
         job should include("-f suite=\"$SUITE\"")
         job should include("SUITE: ${{ github.workflow }}")

@@ -108,14 +108,15 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     concurrency should include("cancel-in-progress: false")
   }
 
-  /** ONE HOP before the legs, not two: the secret check runs inside the seconds-long `supersede` job. As a `preflight` job
-   *  of its own it was a second wait for a runner in front of every leg -- 12.6 minutes of measure run 968's queue
-   *  (2026-10-22), for a 3-second check. */
-  it should "check its secret inside the supersede job, so the legs wait for one runner hop, not two" in {
+  /** ONE HOP before the legs, not two: the seconds-long `preflight` job, needing nothing, is the only job in front of
+   *  them. A second job there was a second wait for a runner in front of every leg -- 12.6 minutes of measure run
+   *  968's queue (2026-10-22), for a 3-second check. */
+  it should "check its secret in the one job before the legs, so they wait for one runner hop, not two" in {
     val jobs = RepoFile.jobs(workflow)
-    jobs("supersede") should include("scripts/ci/preflight.sh TMDB_API_KEY")
-    jobs("supersede") should include("TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}")
-    jobs("leg") should include("needs: supersede\n")
+    jobs("preflight") should include("scripts/ci/preflight.sh TMDB_API_KEY")
+    jobs("preflight") should include("TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}")
+    jobs("preflight") should not include "needs:"
+    jobs("leg") should include("needs: [ preflight ]\n")
   }
 
   /** A measurement's measure/ branch is deleted by its own run, last, and only on Forgejo (which cannot cancel a run
@@ -130,7 +131,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   /** A red hermetic leg on main asks the bisect which commit did it — a replay that does not move. */
   it should "request a bisect for a red hermetic leg, and carry no scheduled-failure report (it has no schedule)" in {
-    RepoFile.jobs(workflow).keySet shouldBe Set("supersede", "leg", "request-bisect", "timings", "drop-measure-branch")
+    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "timings", "drop-measure-branch")
     val requests = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("convergence-bisect-request") => cond }.toSeq
     requests should not be empty
     requests.foreach(_ should include("inputs.mode == 'hermetic'"))

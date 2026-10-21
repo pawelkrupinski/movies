@@ -42,8 +42,8 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
 ## Pushing to main (when GitHub is reachable)
 
 A push to `main` starts ~20 jobs. Since 2026-10-22 the run in flight is NEVER cancelled: it finishes and publishes,
-a newer push queues behind it, and a queued run that already has a newer push waiting behind it ends in seconds as
-"superseded" (`main.yml`'s `supersede` job; github.com's one running, one pending). Until then a newer push cancelled
+a newer push queues behind it, and an even newer push replaces that queued run, which shows as cancelled (github.com's
+one running, one pending; our patched Forgejo does the same). Until then a newer push cancelled
 the run in flight, and on 2026-10-21 39 of 51 runs died that way. Still batch, because every run that does start
 takes ~20 min of runners:
 

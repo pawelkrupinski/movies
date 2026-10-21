@@ -58,32 +58,8 @@ permissions:
     contents: read
 
 jobs:
-    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
-    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
-    # green, and every other job skips on the output (.github/actions/supersede-check).
-    supersede:
-        runs-on: ubuntu-26.04
-        timeout-minutes: 5
-        permissions:
-            contents: read
-        outputs:
-            superseded: ${{ steps.check.outputs.superseded }}
-        steps:
-            # Fail OPEN: a check that cannot run must not stop the run's work.
-            - if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: actions/checkout@v5
-              with:
-                  sparse-checkout: .github/actions/supersede-check
-            - id: check
-              if: github.server_url != 'https://github.com'
-              continue-on-error: true
-              uses: ./.github/actions/supersede-check
-
     # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
     preflight:
-        needs: supersede
-        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
@@ -102,8 +78,8 @@ jobs:
 
     capture:
         name: capture (${{ matrix.code }})
-        needs: [supersede, preflight]
-        if: ${{ needs.supersede.outputs.superseded != 'true' && (!inputs.open-pr) }}
+        needs: [ preflight ]
+        if: ${{ !inputs.open-pr }}
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         timeout-minutes: 300
         permissions:
@@ -164,8 +140,8 @@ jobs:
     # ONE branch for the run: every country's refreshed fixture, and what the ratchet makes of them --
     # and its PR only when the ratchet is green. With `open-pr`, the same job over the judged branch.
     publish:
-        needs: [supersede, preflight, capture]
-        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && !cancelled() && needs.preflight.result == 'success') }}
+        needs: [ preflight, capture ]
+        if: ${{ always() && !cancelled() && needs.preflight.result == 'success' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 30
         permissions:
@@ -312,8 +288,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [supersede, preflight, capture, publish]
-        if: ${{ needs.supersede.outputs.superseded != 'true' && (!cancelled()) }}
+        needs: [ preflight, capture, publish ]
+        if: ${{ !cancelled() }}
         permissions:
             actions: read
             contents: read
@@ -327,8 +303,8 @@ jobs:
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [supersede, preflight, capture, publish, timings]
-        if: ${{ needs.supersede.outputs.superseded != 'true' && (always() && !cancelled() && github.event_name == 'schedule') }}
+        needs: [ preflight, capture, publish, timings ]
+        if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
