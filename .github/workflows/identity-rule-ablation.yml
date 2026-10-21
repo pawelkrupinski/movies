@@ -1,7 +1,7 @@
 #
 # RULE ABLATION on CI: which identity and title rules move takes when switched off (scripts/identity-rule-ablation),
 # over the recordings named, off the laptop. Each `ablate` row bisects its own share of the first round's batches
-# (`--shard I/N`) over every recording, one after another; `collect` merges the rows' settled rules into one report.
+# (`--shard I/N`, two rows so the sweep leaves ci-runner's other slots free) over every recording, one after another; `collect` merges the rows' settled rules into one report.
 # Dispatch-only; the report comes back as an artifact (identity-rule-ablation), never pushed.
 #
 name: Identity rule ablation
@@ -32,7 +32,9 @@ concurrency:
 
 env:
     FIXTURE_RELEASE_TAG: convergence-fixtures
-    SHARDS: '6'
+    # TWO rows, not six: six bisecting rows held every ubuntu slot on ci-runner for hours (run 805 blocked main's
+    # deploy and every measurement). A plain count, not `max-parallel`, which Forgejo's scheduler is not known to honour.
+    SHARDS: '2'
 
 permissions:
     contents: read
@@ -49,7 +51,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                shard: [0, 1, 2, 3, 4, 5]
+                # as many as SHARDS
+                shard: [0, 1]
         steps:
             - uses: actions/checkout@v5
 
