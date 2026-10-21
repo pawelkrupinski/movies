@@ -68,7 +68,7 @@ private[identity] object TitleShapeMeasures {
   /** The instalment a title's series and subtitle name: its subtitle's words of four letters or more that tag no
    *  version ([[NoSubtitleWords]]), and whether its series spells a number out ([[SpelledNumbers]]). None for a title
    *  with no subtitle. */
-  private def subtitleOf(title: String): Option[(Seq[String], Boolean)] = {
+  private[identity] def subtitleOf(title: String): Option[(Seq[String], Boolean)] = {
     val pieces = SubtitleBreak.split(withoutYears(title), 2)
     Option.when(pieces.length == 2) {
       val words = TitleContainment.tokens(pieces(1)).filter(w => w.length >= StemLetters && w.exists(_.isLetter) && !NoSubtitleWords(w))
@@ -85,7 +85,7 @@ private[identity] object TitleShapeMeasures {
    *  most three digits, a Roman one of two letters or more, or a number spelled after a part word ("… Part Two"). A year
    *  ("Blade Runner 2049"), a number alone ("2001: A Space Odyssey"), one mid-title ("9½ Wochen") or in a later piece
    *  ("WAJDA: re- wizje. Przegląd … w 100. rocznicę urodzin") numbers no instalment. */
-  private def instalmentNumber(title: String): Option[Int] = {
+  private[identity] def instalmentNumber(title: String): Option[Int] = {
     val series = SeriesBreak.split(ElidedYear.replaceAllIn(withoutYears(title), " ")).headOption.map(TitleContainment.tokens).getOrElse(Nil)
     series.lastOption.filter(_ => series.sizeIs >= 2).flatMap { last =>
       if (series.init.lastOption.exists(PartWords) && PartNumbers.contains(last)) PartNumbers(last).toIntOption

@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.libs.json.{JsObject, JsString, Json}
+import play.api.libs.json.{JsNull, JsObject, JsString, JsValue, Json}
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Paths}
@@ -44,7 +44,13 @@ object BillingParseEquivalenceSpec {
       "certificate" -> peeled.certificate.map(JsString(_)),
       "runtime"     -> peeled.runtimeMinutes.map(Json.toJson(_)),
       "uncertified" -> Some(parse.uncertified).filter(_ != text).map(JsString(_)),
-      "versionless" -> parse.versionless.map(JsString(_))
+      "versionless" -> parse.versionless.map(JsString(_)),
+      "yearless"    -> Some(IdentityMeasures.withoutYears(text)).filter(_ != text).map(JsString(_)),
+      "instalment"  -> TitleShapeMeasures.instalmentNumber(text).map(Json.toJson(_)),
+      "subtitle"    -> TitleShapeMeasures.subtitleOf(text).map { case (words, spellsNumber) =>
+        Json.obj("words" -> words, "spellsNumber" -> spellsNumber) },
+      "titledParts" -> Some(TitleShapeMeasures.titledParts(Seq(text))).filter(_.nonEmpty).map(parts =>
+        Json.toJson(parts.map { case (number, words) => Json.obj("number" -> number.fold[JsValue](JsNull)(JsString(_)), "words" -> words) }))
     )
     JsObject(("text" -> JsString(text)) +: fields.collect { case (k, Some(v)) => k -> v })
   }
