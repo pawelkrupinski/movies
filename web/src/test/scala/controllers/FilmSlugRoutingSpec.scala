@@ -92,4 +92,35 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
       ogImageAt should be < slugAt
     }
   }
+
+  // The prod bug: a film billed only as Multikino's ladies' programme was addressed by
+  // that billing — /poznan/movie/kino-na-obcasach-jak-zyc-zeby-nie-zwariowac. Its
+  // address is now the clean title's, and the billing address 301s onto it.
+  private val eventBilled = "Kino na obcasach: Jak żyć, żeby nie zwariować"
+
+  "an event-billed film" should "live at its clean title's address, with that as its canonical URL" in {
+    val ctrl   = controllerFor((eventBilled, 2026))
+    val result = ctrl.filmBySlug("poznan", "jak-zyc-zeby-nie-zwariowac")
+      .apply(FakeRequest(GET, "/poznan/movie/jak-zyc-zeby-nie-zwariowac"))
+
+    status(result) shouldBe OK
+    contentAsString(result) should include("/poznan/movie/jak-zyc-zeby-nie-zwariowac\"")
+    contentAsString(result) should not include "/movie/kino-na-obcasach-"
+  }
+
+  it should "301 its former billing address onto the clean one" in {
+    val ctrl   = controllerFor((eventBilled, 2026))
+    val result = ctrl.filmBySlug("poznan", "kino-na-obcasach-jak-zyc-zeby-nie-zwariowac")
+      .apply(FakeRequest(GET, "/poznan/movie/kino-na-obcasach-jak-zyc-zeby-nie-zwariowac?utm_source=fb"))
+
+    status(result)           shouldBe MOVED_PERMANENTLY
+    header(LOCATION, result) shouldBe Some("/poznan/movie/jak-zyc-zeby-nie-zwariowac?utm_source=fb")
+  }
+
+  it should "link its card at the clean address" in {
+    val ctrl = controllerFor((eventBilled, 2026))
+    val html = contentAsString(ctrl.index("poznan").apply(FakeRequest(GET, "/poznan/")))
+
+    """data-slug="([^"]*)"""".r.findAllMatchIn(html).map(_.group(1)).toSeq shouldBe Seq("jak-zyc-zeby-nie-zwariowac")
+  }
 }

@@ -120,7 +120,8 @@ class WebReadModel(
     }
   }
 
-  private val filmSlugsIndex  = new CorpusIndex(FilmSlugs(_))
+  // The clean-title strip is the serving country's; a model with no country (specs) uses the default's.
+  private val filmSlugsIndex  = new CorpusIndex(FilmSlugs.forCountry(servingCountry.getOrElse(Country.default)))
   private val filmTitlesIndex = new CorpusIndex(FilmTitles(_))
 
   /** Film→URL addressing for the whole corpus at once ([[FilmSlugs]] explains

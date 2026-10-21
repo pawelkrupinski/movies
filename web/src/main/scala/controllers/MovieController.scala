@@ -457,6 +457,12 @@ class MovieController( cc: ControllerComponents,
   def filmBySlug(city: String, slug: String): Action[AnyContent] = Action { request =>
     withCity(city, request) { implicit c =>
       movieControllerService.filmBySlug(c, slug) match {
+        // A slug that reached the film but is not its address — a former billing-title
+        // address, or a stale fold the fallback re-slugged — 301s onto the address, so a
+        // shared link keeps working and crawlers consolidate on one URL per film.
+        case Some(schedule) if schedule.slug.exists(_ != slug) =>
+          val path = FilmHref.forSlug(schedule.slug, schedule.movie.title)
+          MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
         case Some(schedule) => renderFilm(schedule, request)
         case None           => NotFound(s"Film not found: $slug")
       }

@@ -110,12 +110,13 @@ class FilmPageUrls(reader: ReadModelReader, country: Country, clock: Clock) exte
   // A film's slug depends on every film (collisions are settled across the corpus), so it takes a
   // read of all of `web_movies`; a burst of re-scrapes (a template change re-draws every recent
   // film) shares one read for [[FilmPageUrls.SlugsFor]]. A film the read lacks re-reads.
+  private val slugsOf = FilmSlugs.forCountry(country)
   private var slugs = Option.empty[(FilmSlugs, java.time.Instant)]
   private def slugFor(filmId: String): Option[String] = synchronized {
     val fresh = slugs.filter { case (_, at) => clock.instant().isBefore(at.plusMillis(FilmPageUrls.SlugsFor.toMillis)) }
       .map(_._1).filter(_.slugFor(filmId).isDefined)
     fresh.getOrElse {
-      val read = FilmSlugs(reader.findAllMoviesChecked().required)
+      val read = slugsOf(reader.findAllMoviesChecked().required)
       slugs = Some(read -> clock.instant())
       read
     }.slugFor(filmId)

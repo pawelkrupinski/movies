@@ -37,9 +37,22 @@ import models.ResolvedMovie
  *  produces the same addresses, and two web pods serve the same links. Films
  *  are identified by `_id` rather than title precisely because titles are what
  *  collide here.
+ *
+ *  THE SLUG FOLDS THE FILM'S CLEAN TITLE, not the billing the card shows. A card
+ *  can carry a cinema's event billing — "Kino na obcasach: Jak żyć, żeby nie
+ *  zwariować" — and folding that put the film at
+ *  `/poznan/movie/kino-na-obcasach-jak-zyc-zeby-nie-zwariowac`. `clean` is the
+ *  banner/decoration strip external lookups already use (`TitleRuleSet.search`),
+ *  and a decorated card claims the clean address when nothing else holds it. The
+ *  plain listing of a title always outranks a decorated one for it: while the plain
+ *  card exists, the event card keeps the billing address it already had (its own
+ *  page, its own showtimes) instead of a year-qualified clean slug that would read
+ *  as a different film. An address a card USED to have under the billing fold stays
+ *  answerable through [[formerIdFor]], which the controller 301s onto the new one.
  */
 final class FilmSlugs private(private val idToSlug: Map[String, String],
-                              private val slugToId: Map[String, String]) {
+                              private val slugToId: Map[String, String],
+                              private val formerToId: Map[String, String]) {
 
   /** This film's address, or `None` for a title that folds to nothing
    *  addressable (entirely punctuation, or a script the fold doesn't cover) —
@@ -50,6 +63,12 @@ final class FilmSlugs private(private val idToSlug: Map[String, String],
    *  to their own resolution (re-slugging what a city is showing) so a film the
    *  read model has dropped mid-reprojection still resolves. */
   def idFor(slug: String): Option[String] = slugToId.get(slug)
+
+  /** The film a slug USED to address — its billing-title fold, before addresses
+   *  folded the clean title — when that slug is nobody's address now. Callers
+   *  301 it onto the film's current slug, so every link already shared keeps
+   *  landing on its film. */
+  def formerIdFor(slug: String): Option[String] = formerToId.get(slug)
 }
 
 object FilmSlugs {
@@ -79,22 +98,38 @@ object FilmSlugs {
     (m.releaseYear.isEmpty, -m.releaseYear.getOrElse(0), m.title,
      m.ratings.imdbUrl.isEmpty, m.ratings.imdbUrl.getOrElse(""), m._id)
 
-  def apply(movies: Seq[ResolvedMovie]): FilmSlugs = {
-    // Bare fold per film, dropping those with no addressable slug at all.
-    val folded: Seq[(ResolvedMovie, String)] =
-      movies.flatMap(m => Option(tools.Slugify(m.title)).filter(_.nonEmpty).map(m -> _))
+  /** The addressing for a country's corpus: [[apply]] with that country's
+   *  decoration strip as the clean title. Compiles the country's rule set once —
+   *  hold the returned function, never call this per corpus. */
+  def forCountry(country: models.Country): Seq[ResolvedMovie] => FilmSlugs = {
+    val rules = services.titlerules.TitleRuleSet.forCountry(country)
+    movies => apply(movies, rules.search)
+  }
 
-    val ordered = folded.sortBy { case (m, _) => newestFirst(m) }
+  def apply(movies: Seq[ResolvedMovie], clean: String => String = identity): FilmSlugs = {
+    val current = assign(movies, clean)
+    // What the billing fold assigned (identical whenever no title cleans to something
+    // else, so this costs one more pass and no map for an undecorated corpus).
+    val former  = if (current.cleaned) assign(movies, identity).idTo else Map.empty[String, String]
+    val formerToId = former.collect { case (id, slug) if !current.slugTo.contains(slug) && !current.idTo.get(id).contains(slug) => slug -> id }
+    new FilmSlugs(current.idTo, current.slugTo, formerToId)
+  }
+
+  private final case class Assigned(idTo: Map[String, String], slugTo: Map[String, String], cleaned: Boolean)
+
+  private def fold(title: String): Option[String] = Option(tools.Slugify(title)).filter(_.nonEmpty)
+
+  private def assign(movies: Seq[ResolvedMovie], clean: String => String): Assigned = {
+    // Per film: the billing fold, and the clean-title fold (the billing fold when the
+    // clean title folds to nothing addressable). Films with no billing fold drop out.
+    val folded: Seq[(ResolvedMovie, String, String)] =
+      movies.flatMap(m => fold(m.title).map(raw => (m, raw, fold(clean(m.title)).getOrElse(raw))))
+
+    val ordered = folded.sortBy { case (m, _, _) => newestFirst(m) }
 
     val taken  = collection.mutable.Set.empty[String]
     val idTo   = collection.mutable.Map.empty[String, String]
     val slugTo = collection.mutable.Map.empty[String, String]
-
-    // Two passes: every bare slug's rightful owner claims it before anyone
-    // qualifies, so a qualified slug can never displace a film whose own title
-    // folds to that exact address.
-    val ownerOf: Map[String, String] = ordered.groupBy(_._2).map { case (slug, es) => slug -> es.head._1._id }
-    val (owners, rest) = ordered.partition { case (m, slug) => ownerOf(slug) == m._id }
 
     def claim(m: ResolvedMovie, slug: String): Unit = {
       taken += slug
@@ -102,14 +137,28 @@ object FilmSlugs {
       slugTo += (slug -> m._id)
     }
 
-    owners.foreach { case (m, slug) => claim(m, slug) }
+    val (plain, decorated) = ordered.partition { case (_, raw, cln) => raw == cln }
 
-    rest.foreach { case (m, slug) =>
+    // Three passes. First every bare slug's rightful owner among the PLAIN titles claims
+    // it, so neither a qualified slug nor a decorated card can displace a film whose own
+    // title folds to that exact address.
+    val ownerOf: Map[String, String] = plain.groupBy(_._2).map { case (slug, es) => slug -> es.head._1._id }
+    val (owners, rest) = plain.partition { case (m, slug, _) => ownerOf(slug) == m._id }
+    owners.foreach { case (m, slug, _) => claim(m, slug) }
+
+    // Then each decorated card takes its clean address if it is free, else the billing
+    // address it always had.
+    val unplaced = decorated.filter { case (m, raw, cln) =>
+      Seq(cln, raw).find(!taken.contains(_)).map(claim(m, _)).isEmpty
+    }
+
+    // Last, whoever is left qualifies its billing fold with its year.
+    (rest ++ unplaced).foreach { case (m, slug, _) =>
       val year       = m.releaseYear.map(y => s"$slug-$y")
       val candidates = year.iterator ++ Iterator.from(2).map(n => s"${year.getOrElse(slug)}-$n")
       claim(m, candidates.find(!taken.contains(_)).get)
     }
 
-    new FilmSlugs(idTo.toMap, slugTo.toMap)
+    Assigned(idTo.toMap, slugTo.toMap, cleaned = decorated.nonEmpty)
   }
 }

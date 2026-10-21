@@ -148,4 +148,48 @@ class FilmSlugsSpec extends AnyFlatSpec with Matchers {
     assigned.distinct should have size corpus.size
     assigned.foreach(s => slugs.idFor(s) should not be empty)
   }
+
+  // The prod bug: a film billed only as a cinema's event ("Kino na obcasach: Jak żyć,
+  // żeby nie zwariować") was addressed by that billing, so its page lived at
+  // /poznan/movie/kino-na-obcasach-jak-zyc-zeby-nie-zwariowac. The address is the
+  // film's, so it folds the clean title — the banner/decoration strips the external
+  // lookups already use.
+  private val polish = FilmSlugs.forCountry(models.Country.Poland)
+
+  private val obcasach = movie("jak-zyc|2026", "Kino na obcasach: Jak żyć, żeby nie zwariować", Some(2026))
+
+  "an event-prefixed billing" should "be addressed by the film's clean title" in {
+    val slugs = polish(Seq(obcasach))
+
+    slugs.slugFor(obcasach._id)                  shouldBe Some("jak-zyc-zeby-nie-zwariowac")
+    slugs.idFor("jak-zyc-zeby-nie-zwariowac")    shouldBe Some(obcasach._id)
+  }
+
+  it should "keep resolving its former, billing-derived address, as a former one" in {
+    val slugs = polish(Seq(obcasach))
+
+    slugs.idFor("kino-na-obcasach-jak-zyc-zeby-nie-zwariowac")       shouldBe None
+    slugs.formerIdFor("kino-na-obcasach-jak-zyc-zeby-nie-zwariowac") shouldBe Some(obcasach._id)
+    slugs.formerIdFor("jak-zyc-zeby-nie-zwariowac")                  shouldBe None
+  }
+
+  it should "keep its own billing address while the plain listing of the film holds the clean one" in {
+    // The event screening is its own card next to the plain one; the plain card keeps the bare
+    // address, and the event card keeps the one it already had rather than a year-qualified
+    // address that would look like a different film.
+    val plain = movie("jak-zyc|2026-plain", "Jak żyć, żeby nie zwariować", Some(2026))
+    val slugs = polish(Seq(obcasach, plain))
+
+    slugs.slugFor(plain._id)    shouldBe Some("jak-zyc-zeby-nie-zwariowac")
+    slugs.slugFor(obcasach._id) shouldBe Some("kino-na-obcasach-jak-zyc-zeby-nie-zwariowac")
+    slugs.formerIdFor("kino-na-obcasach-jak-zyc-zeby-nie-zwariowac") shouldBe None
+  }
+
+  it should "leave an undecorated corpus addressed exactly as before" in {
+    val corpus = Seq(invite, jakubowska, lalkaA, lalkaB, movie("mira|2026", "Mira", Some(2026)))
+    val before = FilmSlugs(corpus)
+    val after  = polish(corpus)
+
+    corpus.foreach(m => after.slugFor(m._id) shouldBe before.slugFor(m._id))
+  }
 }

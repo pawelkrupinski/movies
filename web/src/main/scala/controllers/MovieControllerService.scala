@@ -312,7 +312,10 @@ class MovieControllerService(
    *  The fallback tie-breaks on the title rather than taking the head, because
    *  `toSchedules` orders by earliest showtime and that shifts through the day. */
   def filmBySlug(city: City, slug: String): Option[FilmSchedule] = {
-    val addressed = readModel.filmSlugs.idFor(slug)
+    // A slug that is no film's address now but was one under the billing-title fold
+    // joins its film too; the controller 301s it onto the current address.
+    val slugs     = readModel.filmSlugs
+    val addressed = slugs.idFor(slug).orElse(slugs.formerIdFor(slug))
     def reslugged(title: String): Boolean = tools.Slugify(title) == slug
 
     // An address the index knows joins ONE film; only an unknown one walks the
