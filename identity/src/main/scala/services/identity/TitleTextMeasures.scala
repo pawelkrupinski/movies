@@ -129,7 +129,7 @@ private[identity] object TitleTextMeasures {
   /** Where a title's own delimiters cut it into pieces ([[services.billing.BillingPieces.Delimiter]]). */
   private[identity] val PieceBreak = services.billing.BillingPieces.Delimiter
   /** A title's delimited pieces, its seasons and bracketed years out ([[services.billing.BillingParse.pieces]]). */
-  private[identity] def pieces(title: String): Seq[String] = services.billing.BillingParse(title).pieces
+  private[identity] def pieces(title: String): Seq[String] = services.billing.BillingPieces.pieces(title)
 
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private[identity] val BracketedYear = services.billing.NumberedTitles.BracketedYear

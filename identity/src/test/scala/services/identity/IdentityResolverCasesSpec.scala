@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.BillingParse
+
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, PictureHouseUckfield, Rialto, StacjaFalenica, TheForumNorthallerton}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -1449,7 +1451,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       case Answer.Known(Some(record)) => record
       case other                      => fail(s"no record of ${film.id}: $other")
     }
-    def deniesIt(title: String, film: F, season: Int = 2026) = ListingShape.authorCredited(title).exists(credit =>
+    def deniesIt(title: String, film: F, season: Int = 2026) = BillingParse(title).author.exists(credit =>
       ListingShape.creditDenies(credit, recordOf(film), Some(season)))
     deniesIt("Fallen Angels by Noël Coward", wong) shouldBe true
     deniesIt("Fallen Angels By Noël Coward (OV)", wong) shouldBe true
@@ -1463,7 +1465,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     deniesIt("Blow-Up + Intro by Mik Wilkojc", F(1052, "Blow-Up", 1966, "Michelangelo Antonioni", 111, 15)) shouldBe false
     deniesIt("Nosferatu (1922) with Live Score by Hugo Max", F(653, "Nosferatu", 1922, "F.W. Murnau", 94, 10)) shouldBe false
     deniesIt("Sexy Beast - Presented by Jackie Treehorn", F(11826, "Sexy Beast", 2000, "Jonathan Glazer", 89, 10)) shouldBe false
-    ListingShape.authorCredited("Stand by Me") shouldBe None
+    BillingParse("Stand by Me").author shouldBe None
   }
 
   "A listing the identity model takes up lean (prod's archive read, its showtimes left on the server)" should
@@ -1858,7 +1860,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val one = listing(Multikino, cleaned, Some(1917), Some("Aleksander Hertz")).copy(rawTitle = "Akademia Polskiego Filmu: „Bestia”, reż. Aleksander Hertz (1917)")
     IdentityResolver.resolve(Seq(one), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(one.key).film shouldBe Some(319754)
     // a quoted programme beside one dated work bills that work (PL Wajda retrospective „10 na 10”: „Pan Tadeusz” (1999))
-    ListingShape.quotesSeveralDated("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
+    BillingParse("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)").quotesSeveralDated shouldBe false
   }
 
   it should "take no film the billing names as one piece beside another thing, unless the listing states the film's facts" in {
@@ -2046,12 +2048,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
     val bill = decided("„Mieszkanie” i „Owoce rajskich drzew spożywamy”")
     withClue(bill.render)(bill.film shouldBe None)
-    ListingShape.quotesTwoJoined("MAF: \"Obcy\" oraz \"Milcząca Przyjaciółka\"") shouldBe true
+    BillingParse("MAF: \"Obcy\" oraz \"Milcząca Przyjaciółka\"").quotesTwoJoined shouldBe true
     // one quoted work is that work, and two quotes a conjunction does not join are a work and its programme
     decided("Kino Kobiet: „Owoce rajskich drzew spożywamy”").film shouldBe Some(80080)
-    ListingShape.quotesTwoJoined("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
+    BillingParse("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)").quotesTwoJoined shouldBe false
     // words after the two say what they are: an exhibition beside the film (the fixture corpus' PL Kumotry)
-    ListingShape.quotesTwoJoined("\"Kumotry\" i \"All The Diamonds\": wystawa i film w dialogu") shouldBe false
+    BillingParse("\"Kumotry\" i \"All The Diamonds\": wystawa i film w dialogu").quotesTwoJoined shouldBe false
   }
 
   it should "still take the same director's film of the listing's year when both are there" in {

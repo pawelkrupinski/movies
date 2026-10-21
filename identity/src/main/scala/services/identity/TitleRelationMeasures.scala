@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingParse
+import services.billing.{BillJoins, BillingParse}
 import services.movies.TitleContainment
 
 import IdentityMeasures.*
@@ -201,7 +201,7 @@ private[identity] object TitleRelationMeasures {
   def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
     val pool = films.toSeq
     // A bill's title names two works: its facts may single out one, but the title is no record's own.
-    val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !MultiFilmBill.joinsWorks(l.title)).map { l =>
+    val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !BillJoins.joinsWorks(l.title)).map { l =>
       val year = l.statedYear.get
       val ids  = pool.collect { case (id, f) if f.year.exists(FactRelations.yearsNear(_, year)) &&
         creditsItsDirector(l, f) => id }.distinct

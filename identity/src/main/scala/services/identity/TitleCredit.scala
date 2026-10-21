@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingParse
+import services.billing.Credits
 
 /**
  * The director a title CLOSES on, where nobody is credited: a bracket holding nothing but a person's name after the
@@ -16,10 +16,7 @@ import services.billing.BillingParse
  * that is no name's particle. The suggested director must be the bracket's name whole.
  */
 object TitleCredit {
-  /** The name `title`'s closing bracket holds, if it holds nothing but what may be one ([[BillingParse.credit]]). */
-  def bracketedName(title: String): Option[String] = BillingParse(title).credit
-
   /** Of the directors a search for `title` suggests, the one its closing bracket names whole, if any. */
   def named(title: String, suggestedDirectors: Seq[String]): Option[String] =
-    bracketedName(title).map(IdentityMeasures.key).flatMap(key => suggestedDirectors.find(IdentityMeasures.key(_) == key))
+    Credits.bracketedName(title).map(IdentityMeasures.key).flatMap(key => suggestedDirectors.find(IdentityMeasures.key(_) == key))
 }

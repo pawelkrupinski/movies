@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.{BillingParse, BillingPieces, DecorationWords}
+import services.billing.{BillingParse, BillingPieces, Credits, DecorationWords}
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.IdentityMeasures.withoutLeadingArticle
 import services.movies.{TitleContainment, TitleSeason, TitleWords}
@@ -27,14 +27,12 @@ object ListingShape {
 
   // ── an author's credit ─────────────────────────────────────────────────────────────────────
 
-  /** A billing's WORK and the author it credits it to ([[services.billing.Credits.AuthorCredit]]). */
-  type AuthorCredit = services.billing.Credits.AuthorCredit
-  val AuthorCredit = services.billing.Credits.AuthorCredit
+  /** A billing's WORK and the author it credits it to ([[Credits.AuthorCredit]]). */
+  type AuthorCredit = Credits.AuthorCredit
+  val AuthorCredit = Credits.AuthorCredit
 
-  /** The [[AuthorCredit]] `title` closes on, if any ([[services.billing.BillingParse.author]]). */
-  def authorCredited(title: String): Option[AuthorCredit] = services.billing.Credits.authorCredited(title)
 
-  /** Does a billing crediting its work to an author ([[authorCredited]]) rule `film` out: the film its work's title names
+  /** Does a billing crediting its work to an author ([[BillingParse.author]]) rule `film` out: the film its work's title names
    *  word for word, made two seasons or more before the one the billing screens in (`screenedIn`), which the author did
    *  not direct, and whose own titles do not carry the credit ("Mary Shelley's Frankenstein")? The billing stages the
    *  author's work — a play's capture or relay, its current record — not an older namesake film (DE Cineplex "Fallen
@@ -134,21 +132,8 @@ object ListingShape {
     MultiFilmBill.billsBeside(titlesOf(listing), film) || billsSeveralBySigns(listing)
 
   private def titlesOf(listing: Listing): Seq[String] = Seq(listing.rawTitle, listing.title).distinct
-  /** Does the venue's own title quote two works or more ("…: „Bestia”, reż. Hertz (1917), „Cud nad Wisłą”, …")? Read
-   *  off the raw title: a country's title rules may cut the billing down to its first quote. */
-  def quotesSeveral(rawTitle: String): Boolean = BillingParse(rawTitle).quotesSeveral
-  /** [[quotesSeveral]] where two of the quoted works are dated ("(1917)", "(1921)"): a programme of DATED works — a
-   *  quote naming a programme beside one dated work ('„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz”
-   *  (1999)') bills that work. */
-  def quotesSeveralDated(rawTitle: String): Boolean = BillingParse(rawTitle).quotesSeveralDated
-  /** Does the venue's own title join two quoted works by a conjunction — a DOUBLE BILL, neither film (user rule): PL
-   *  "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", 'MAF: "Obcy" oraz "Milcząca Przyjaciółka"'? Undated, unlike
-   *  [[quotesSeveralDated]]: the conjunction says the two are billed as one programme. The two close the billing: words
-   *  after them say what they are ('"Kumotry" i "All The Diamonds": wystawa i film w dialogu', an exhibition beside the
-   *  film Kumotry). */
-  def quotesTwoJoined(rawTitle: String): Boolean = BillingParse(rawTitle).quotesTwoJoined
   private def billsSeveralBySigns(listing: Listing): Boolean =
-    BillingParse(listing.rawTitle).billsASet || quotesSeveral(listing.rawTitle) ||
+    BillingPieces.billsASet(listing.rawTitle) || BillingPieces.quotesSeveral(listing.rawTitle) ||
       MultiFilmBill.billsTwoWholeWorks(Evidence.of(listing, None).measured)
 
   // ── a piece billed beside the film ─────────────────────────────────────────────────────────
@@ -185,7 +170,7 @@ object ListingShape {
     // a silent film's billing is its programme's: an accompanist, an anniversary ("Dni Kina Niemego - 100 lat temu: …")
     if (films.isEmpty || billsASilentFilm(listing) || Quote.findFirstIn(raw).exists(_ => quotesAFilm(raw, films))) None
     else {
-      val BillingPieces.Segments(parts, breaks) = BillingParse(raw).segments
+      val BillingPieces.Segments(parts, breaks) = BillingPieces.segments(raw)
       val words  = parts.map(TitleContainment.tokens)
       val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
       // each title as its letters run together: a piece spelling it without its stops ("AI" of Spielberg's "A.I.") is it
@@ -287,17 +272,12 @@ object ListingShape {
    *  Łony", "Zaproszenie | Zobacz przedpremierowo", DE "Live - Vortrag: Portugal - Der Wanderfilm", "BANKOMATT – Schweizer
    *  Filmwoche – mit Regisseur!". */
   private val ScreeningNote = """discussion|introduction|panel|matinee|parent|baby|relaxed|mins|minutes|narracj\w*|narration|przedpremier\w*|premierow\w*|deluxe|vortrag\w*|regisseur\w*""".r
-  /** Is the billing two pieces a dash joins, and nothing else ("LÍDA BAAROVÁ – DOOMED BEAUTY",
-   *  [[BillingParse.dashedPair]])? */
-  def dashedPair(raw: String): Boolean = BillingParse(raw).dashedPair
-  /** Is the billing two pieces a dash joins ([[dashedPair]]), the second a title of `film`'s, whole ("LÍDA BAAROVÁ –
+  /** Is the billing two pieces a dash joins ([[BillingParse.dashedPair]]), the second a title of `film`'s, whole ("LÍDA BAAROVÁ –
    *  DOOMED BEAUTY": its subject, then the film)? */
-  def titledAfterPiece(raw: String, film: IdentityMeasures.Film): Boolean = dashedPair(raw) && {
+  def titledAfterPiece(raw: String, film: IdentityMeasures.Film): Boolean = BillingPieces.dashedPair(raw) && {
     val titles = film.titles.map(t => withoutLeadingArticle(TitleContainment.tokens(t))).toSet
     BillingPieces.SegmentBreak.split(raw).lastOption.exists(piece => titles.contains(withoutLeadingArticle(TitleContainment.tokens(piece))))
   }
-  /** Does a piece of the billing list three works or more by name ([[BillingParse.listsWorks]])? */
-  def listsWorks(raw: String): Boolean = BillingParse(raw).listsWorks
   /** Any quotation mark a title may carry. */
   private[identity] val Quote = """[„”"“«»]""".r
   private def quotesAFilm(raw: String, films: Seq[IdentityMeasures.Film]): Boolean = {
@@ -307,22 +287,7 @@ object ListingShape {
 
   // ── a programme slot ───────────────────────────────────────────────────────────────────────
 
-  /** The PROGRAMME SLOT the listing bills in place of a film — a festival's or season's banner and a slot of its programme,
-   *  and nothing else: UK "Unrestricted View Horror Film Festival 2026: Opening Night" is the festival's opening night,
-   *  not the 2016 "Opening Night" its search ranks first. A slot billed with a film's own title beside it ("Ars Independent
-   *  Festival 2026: Gala otwarcia + „Czarna godzina”") is that film's screening; a bare slot ("Opening Night", Cassavetes'
-   *  film) bills no banner. `None` unless every other piece of the title is such a banner. */
-  def programmeSlotOf(rawTitle: String): Option[String] = BillingParse(rawTitle).programmeSlot
 
-  /** Does the title bill a FILM FESTIVAL by its own name and nothing else — a piece naming a film festival
-   *  ([[services.movies.TitleWords.Concept.FilmFestival]]), its edition's year or number and its touring edition's name
-   *  ([[services.movies.TitleWords.Concept.FestivalEdition]]: "Cinema Edition") aside? That is the festival's programme,
-   *  never one film: DE "Alpen Film Festival 2026" is no 13-minute short a feed links it to (whose TMDB record carries the
-   *  billing as an alternative title), "Freeride Filmfestival 2026 - Cinema Edition" no documentary whose record does so
-   *  too. A work billed under the festival's banner ("Alpen Film Festival 2026: Mont Blanc") or beside it ("Fargo -
-   *  Purbeck Film Festival") is the work, and a festival that is no film festival may be a film's own name ("Festival
-   *  Express"). */
-  def billsAFilmFestival(rawTitle: String): Boolean = BillingParse(rawTitle).billsAFilmFestival
 
   /** Does a bare billing under a FILM FESTIVAL's banner name `film` as an old catalogue film it cannot be told from? The
    *  banner a colon or a pipe closes names a film festival ([[services.movies.TitleWords.Concept.FilmFestival]]), the
@@ -341,14 +306,12 @@ object ListingShape {
       film.directors.getOrElse(Nil).flatMap(TitleContainment.tokens).exists(name => name.length >= DirectorStem && billed(name))
     }
     listing.year.isEmpty && listing.directors.isEmpty && listing.runtime.isEmpty &&
-      film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && underAFilmFestival(raw) && !creditsIt
+      film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && BillingPieces.underAFilmFestival(raw) && !creditsIt
   }
 
   /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */
   val FestivalCatalogueYears = 10
 
-  /** Is the leading piece of the billing, closed by a colon or a pipe, a film festival's banner ("Pornfilmfestival: …")? */
-  private[identity] def underAFilmFestival(rawTitle: String): Boolean = BillingParse(rawTitle).underAFilmFestival
 
   // ── whose facts ────────────────────────────────────────────────────────────────────────────
 

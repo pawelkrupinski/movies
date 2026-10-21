@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.BillingPieces
+
 import java.awt.image.BufferedImage
 import services.movies.TitleContainment
 
@@ -203,7 +205,7 @@ object PosterEvidence {
    *  40th Anniversary") numbers no edition against a record titled with its own year. Of a title in pieces, only the
    *  pieces naming the film date it: a festival's year beside the work ("O vecech nadprirozených - Von übernatürlichen
    *  Dingen | Tschechischer Filmmittwoch | TDKT 2026") dates the festival, not the 1958 film. A whole title is read as its
-   *  pieces are ([[IdentityMeasures.pieces]]), its seasons and bracketed years out: "Casablanca (2026)" brackets the
+   *  pieces are ([[services.billing.BillingParse.pieces]]), its seasons and bracketed years out: "Casablanca (2026)" brackets the
    *  year it is screened, as "Casablanca (2026) | Klassiker" does. Nor does the year an anniversary the title bills
    *  falls in ("Jaws 50th Anniversary 2025", the 1975 film's fiftieth) date it away. The agreement's guard
    *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. */
@@ -214,7 +216,7 @@ object PosterEvidence {
     val named = film.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
     lazy val anniversary = IdentityMeasures.anniversaryOf(Seq(listing.rawTitle, listing.title) ++ listing.originalTitle)
     val billed = Seq(listing.rawTitle, listing.title).distinct.flatMap { title =>
-      val pieces = IdentityMeasures.pieces(title)
+      val pieces = BillingPieces.pieces(title)
       (if (pieces.sizeIs <= 1) pieces else pieces.filter(piece => named.exists(TitleContainment.tokens(piece).containsSlice(_)))).flatMap(yearsOf)
     }.toSet.filterNot(year => anniversary.exists(years => FactRelations.yearsNear(year - years, released)))
     Option.when(billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released)) &&
@@ -226,7 +228,7 @@ object PosterEvidence {
    *  Way of Water") is none of it. */
   private def numbersAnInstalment(listing: Listing, film: IdentityMeasures.Film): Boolean = {
     val filmKeys = film.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
-    Seq(listing.rawTitle, listing.title).distinct.flatMap(title => IdentityMeasures.pieces(title) :+ title).exists {
+    Seq(listing.rawTitle, listing.title).distinct.flatMap(title => BillingPieces.pieces(title) :+ title).exists {
       case Instalment(base, _) => filmKeys(IdentityMeasures.key(base))
       case _                   => false
     }
@@ -236,7 +238,7 @@ object PosterEvidence {
    *  bill none of? An episode numbered ("Star Wars: Episode IV") is a film's own. */
   private def billsAnEpisode(listing: Listing, film: IdentityMeasures.Film): Boolean =
     !film.titles.exists(title => EpisodeWord.findFirstIn(title).isDefined) &&
-      Seq(listing.rawTitle, listing.title).distinct.flatMap(IdentityMeasures.pieces).exists {
+      Seq(listing.rawTitle, listing.title).distinct.flatMap(BillingPieces.pieces).exists {
         case NamedEpisode(name) => !Numeral.matches(name.trim.takeWhile(!_.isWhitespace))
         case _                  => false
       }

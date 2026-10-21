@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.Credits
+
 /**
  * CANDIDATE GENERATION's question set (docs/design/identity-resolver.md, phase 2, stage a): what
  * the resolver asks the lookup source about one listing's evidence. A family's set is the union of
@@ -26,7 +28,7 @@ object CandidateQueries {
     // every title the listing is searched by, asked of IMDb in every language ([[CandidateQuery.ImdbTitled]])
     val titled    = IdentityMeasures.searchQueries(e.measured).map(CandidateQuery.ImdbTitled(_))
     // the director a title closes on, where nobody is credited ([[TitleCredit]])
-    val credit    = Option.when(e.directors.isEmpty)(e.title.trim).filter(TitleCredit.bracketedName(_).isDefined).map(CandidateQuery.TitleCredit(_))
+    val credit    = Option.when(e.directors.isEmpty)(e.title.trim).filter(Credits.bracketedName(_).isDefined).map(CandidateQuery.TitleCredit(_))
     (titles ++ directors ++ imdb ++ titled ++ credit).distinct.sorted
   }
 }

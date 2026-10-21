@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.BillingPieces
+
 import services.identity.IdentityMeasures.Measure
 
 /** Why a film a billing's cluster took — the model's, or the one the families agree on — is none of the billing's: it
@@ -105,8 +107,8 @@ private[identity] object BilledPiece {
     else if (stated) None
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
     // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
-    else if (screened || (keeps == Keeps.All && !ListingShape.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
-    else if (keeps == Keeps.FactsOrCurrent && !ListingShape.listsWorks(evidence.rawTitle) && current) staged
+    else if (screened || (keeps == Keeps.All && !BillingPieces.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
+    else if (keeps == Keeps.FactsOrCurrent && !BillingPieces.listsWorks(evidence.rawTitle) && current) staged
     else if (keeps != Keeps.All) staged.orElse(ListingShape.billedBeside(listing, Seq(film)).map(Piece(_, staging = false)))
     else {
       lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)

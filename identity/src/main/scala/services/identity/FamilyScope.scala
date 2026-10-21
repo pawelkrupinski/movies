@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.BillingPieces
+
 import services.identity.IdentityMeasures.ListingFilm
 
 import scala.collection.mutable
@@ -341,12 +343,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         billingOf(node).castIsTheFilms))).map(Denial(_))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
-   *  festival billed by its name alone ([[ListingShape.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
+   *  festival billed by its name alone ([[services.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
    *  a cast field listing the film's cast ([[CastEvidence.castIsTheFilms]]). */
   private final case class Billing(festival: Boolean, silent: Boolean, castIsTheFilms: Boolean)
   private def billingOf(node: EvidenceNode): Billing = billingMemo.getOrElseUpdate(node.id, {
     val listing = node.evidence.published
-    Billing(ListingShape.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm),
+    Billing(BillingPieces.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm),
       node.listings.exists(_.listedCast.nonEmpty) && CastEvidence.castIsTheFilms(node.listings))
   })
   private val billingMemo = mutable.HashMap.empty[String, Billing]

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingParse
+import services.billing.{BillingParse, BillingPieces}
 import services.movies.{TitleContainment, TitleSeason, TitleWords}
 import services.resolution.{SearchTitles, YearWindow}
 
@@ -91,7 +91,7 @@ object IdentityMeasures {
      *  (`Acceptance.notPerformedBeside`). */
     private[identity] lazy val performancePieces: Seq[(String, Seq[String], Boolean)] =
       agreement.NonFilmEvents.eventBilled(rawTitle.getOrElse(title)).filter(services.cinemas.pl.NonMovieEventClassifier.isPerformance(_)).toSeq
-        .flatMap(IdentityMeasures.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.cinemas.pl.NonMovieEventClassifier.isPerformance(piece)))
+        .flatMap(BillingPieces.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.cinemas.pl.NonMovieEventClassifier.isPerformance(piece)))
         .filter(_._2.nonEmpty)
     /** The billing's event words and its other words ([[FilmNess]]), once per listing. */
     private[identity] lazy val eventWords: Seq[String] = FilmNess.eventWords(this)

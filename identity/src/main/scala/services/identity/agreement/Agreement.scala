@@ -1,5 +1,7 @@
 package services.identity.agreement
 
+import services.billing.BillingPieces
+
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, ListingShape, PosterEvidence}
 import services.identity.toAnswer
@@ -590,8 +592,8 @@ object Agreement {
    *  its place, four letters at least, and one of them the whole piece? UK "Paddington Bear: Winter Warmers" names IMDb's
    *  "Paddington: Winter Warmers"; "It Follows: Chapter Two" names no "It: Chapter Two". */
   private def namedPieceByPiece(billed: String, title: String): Boolean = {
-    val own   = IdentityMeasures.pieces(billed).map(TitleContainment.tokens)
-    val its   = IdentityMeasures.pieces(title).map(TitleContainment.tokens)
+    val own   = BillingPieces.pieces(billed).map(TitleContainment.tokens)
+    val its   = BillingPieces.pieces(title).map(TitleContainment.tokens)
     own.sizeIs >= 2 && own.size == its.size && own.zip(its).forall { case (o, t) => t.nonEmpty && t.mkString.length >= 4 && o.containsSlice(t) } &&
       own.zip(its).exists { case (o, t) => o == t }
   }

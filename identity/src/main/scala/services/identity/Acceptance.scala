@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.{BillingPieces, Credits}
+
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
@@ -71,7 +73,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     val scored  = accepted._1
     val listing = scored.listing
     val billed  = listing.rawTitle match { case Some(raw) => raw; case None => listing.title }
-    ListingShape.authorCredited(billed) match {
+    Credits.authorCredited(billed) match {
       case Some(credit) if ListingShape.creditDenies(credit, scored.candidate.film, listing.screeningsSeason) =>
         Left(Acceptance.Refused("its billing credits its work to an author who made no such film", Some(scored.candidate.tmdbId),
           s"${Acceptance.named(scored)}: ${credit.work} by ${credit.person}"))
@@ -269,7 +271,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.number("venues.corroborating").exists(_ > 0) &&
       other.probability >= taken.probability)
 
-  /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[ListingShape.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
+  /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[services.billing.BillingParse.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
    *  rajskich drzew spożywamy”"), or a "+" joining two whole works ([[MultiFilmBill.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
    *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
@@ -279,7 +281,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  "The Dark Knight Trilogy", "Maraton Horrorów") — unless an eligible film's own title carries that word ("Marathon
    *  Man"), and then only that film may be taken ([[takesNoBill]]). */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
-    any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(ListingShape.quotesTwoJoined) ||
+    any.listing.rawTitle.exists(BillingPieces.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(BillingPieces.quotesTwoJoined) ||
     slashesTwoWorks(any.listing, ranked) || andJoinsTwoWorks(any.listing, ranked) ||
     (MultiFilmBill.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
       MultiFilmBill.billsTwoWholeWorks(any.listing)) ||

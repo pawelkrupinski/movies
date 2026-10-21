@@ -1,5 +1,7 @@
 package services.identity
 
+import services.billing.BillingParse
+
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -34,42 +36,42 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
   }
 
   "a programme slot" should "be a festival's or season's banner and a slot of its programme, nothing else" in {
-    ListingShape.programmeSlotOf("Unrestricted View Horror Film Festival 2026: Opening Night") shouldBe Some("Opening Night")
-    ListingShape.programmeSlotOf("Festiwal Filmowy Kino Lato 2026: Gala otwarcia") shouldBe Some("Gala otwarcia")
-    ListingShape.programmeSlotOf("Fantasy Filmfest 2026 - Überraschungsfilm") shouldBe Some("Überraschungsfilm")
-    ListingShape.programmeSlotOf("Semana de Cine Fantástico | Sesión inaugural") shouldBe Some("Sesión inaugural")
+    BillingParse("Unrestricted View Horror Film Festival 2026: Opening Night").programmeSlot shouldBe Some("Opening Night")
+    BillingParse("Festiwal Filmowy Kino Lato 2026: Gala otwarcia").programmeSlot shouldBe Some("Gala otwarcia")
+    BillingParse("Fantasy Filmfest 2026 - Überraschungsfilm").programmeSlot shouldBe Some("Überraschungsfilm")
+    BillingParse("Semana de Cine Fantástico | Sesión inaugural").programmeSlot shouldBe Some("Sesión inaugural")
     // a film's own title beside the slot is that film's screening
-    ListingShape.programmeSlotOf("Ars Independent Festival 2026: Gala otwarcia + \"Czarna godzina\"") shouldBe None
+    BillingParse("Ars Independent Festival 2026: Gala otwarcia + \"Czarna godzina\"").programmeSlot shouldBe None
     // the bare slot is a film's title (Cassavetes' Opening Night), and a date is no festival's banner
-    ListingShape.programmeSlotOf("Opening Night") shouldBe None
-    ListingShape.programmeSlotOf("Secret Screening - 5th October") shouldBe None
+    BillingParse("Opening Night").programmeSlot shouldBe None
+    BillingParse("Secret Screening - 5th October").programmeSlot shouldBe None
     // a work under a festival's banner is the work
-    ListingShape.programmeSlotOf("Splat!FilmFest: The Taxidermist") shouldBe None
+    BillingParse("Splat!FilmFest: The Taxidermist").programmeSlot shouldBe None
   }
 
   "a film festival billed by its own name" should "be the festival's whole programme, never a film its search finds" in {
     // DE (2026-10-13 suspect audit): the festival's own billing, which a feed linked to a 13-minute short and a 52-minute
     // documentary its search ranked first
-    ListingShape.billsAFilmFestival("Alpen Film Festival 2026") shouldBe true
-    ListingShape.billsAFilmFestival("ALPEN FILM FESTIVAL 2026") shouldBe true
-    ListingShape.billsAFilmFestival("ALPENFILMFESTIVAL") shouldBe true
-    ListingShape.billsAFilmFestival("Free Ride Filmfestival") shouldBe true
-    ListingShape.billsAFilmFestival("FreerideFilmFestival 2026") shouldBe true
-    ListingShape.billsAFilmFestival("11. Festiwal Filmowy Kino Lato") shouldBe true
-    ListingShape.billsAFilmFestival("Festival de Cine de Sitges 2026") shouldBe true
+    BillingParse("Alpen Film Festival 2026").billsAFilmFestival shouldBe true
+    BillingParse("ALPEN FILM FESTIVAL 2026").billsAFilmFestival shouldBe true
+    BillingParse("ALPENFILMFESTIVAL").billsAFilmFestival shouldBe true
+    BillingParse("Free Ride Filmfestival").billsAFilmFestival shouldBe true
+    BillingParse("FreerideFilmFestival 2026").billsAFilmFestival shouldBe true
+    BillingParse("11. Festiwal Filmowy Kino Lato").billsAFilmFestival shouldBe true
+    BillingParse("Festival de Cine de Sitges 2026").billsAFilmFestival shouldBe true
     // its touring edition's name after it
-    ListingShape.billsAFilmFestival("FREERIDE FILMFESTIVAL 2026 CINEMA EDITION") shouldBe true
-    ListingShape.billsAFilmFestival("FreeRide Film Festival 2026 - CINEMA EDITION") shouldBe true
-    ListingShape.billsAFilmFestival("Fargo - Purbeck Film Festival") shouldBe false
-    ListingShape.billsAFilmFestival("Purbeck Film Festival - Fargo") shouldBe false
+    BillingParse("FREERIDE FILMFESTIVAL 2026 CINEMA EDITION").billsAFilmFestival shouldBe true
+    BillingParse("FreeRide Film Festival 2026 - CINEMA EDITION").billsAFilmFestival shouldBe true
+    BillingParse("Fargo - Purbeck Film Festival").billsAFilmFestival shouldBe false
+    BillingParse("Purbeck Film Festival - Fargo").billsAFilmFestival shouldBe false
     // a work under the festival's banner is the work, and a festival that is no film festival may be a film's name
-    ListingShape.billsAFilmFestival("Alpen Film Festival 2026: Mont Blanc") shouldBe false
-    ListingShape.billsAFilmFestival("Splat!FilmFest: The Taxidermist") shouldBe false
-    ListingShape.billsAFilmFestival("Festival Express") shouldBe false
-    ListingShape.billsAFilmFestival("Festival") shouldBe false
-    ListingShape.billsAFilmFestival("The Festival") shouldBe false
+    BillingParse("Alpen Film Festival 2026: Mont Blanc").billsAFilmFestival shouldBe false
+    BillingParse("Splat!FilmFest: The Taxidermist").billsAFilmFestival shouldBe false
+    BillingParse("Festival Express").billsAFilmFestival shouldBe false
+    BillingParse("Festival").billsAFilmFestival shouldBe false
+    BillingParse("The Festival").billsAFilmFestival shouldBe false
     // a sentence about a festival is a film's title: the short the feed linked Alpen Film Festival to
-    ListingShape.billsAFilmFestival("How I Started A Film Festival") shouldBe false
+    BillingParse("How I Started A Film Festival").billsAFilmFestival shouldBe false
   }
 
   "a bare billing under a film festival's banner" should "name no catalogue film released ten years or more before its screenings" in {
@@ -161,13 +163,13 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     beside("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora", banden) shouldBe defined
     beside("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora",
       banden.copy(taglineKey = IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))) shouldBe None
-    ListingShape.dashedPair("LÍDA BAAROVÁ – DOOMED BEAUTY") shouldBe true
-    ListingShape.dashedPair("DONNERSTAGSKNEIPE + X") shouldBe false
-    ListingShape.dashedPair("Dio - Alive - eine Hommage an Ronnie James Dio") shouldBe false
+    BillingParse("LÍDA BAAROVÁ – DOOMED BEAUTY").dashedPair shouldBe true
+    BillingParse("DONNERSTAGSKNEIPE + X").dashedPair shouldBe false
+    BillingParse("Dio - Alive - eine Hommage an Ronnie James Dio").dashedPair shouldBe false
     // three works or more listed by name, a comma between each: a programme (DE "Retro - An Undiscovered World, …")
-    ListingShape.listsWorks("Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between") shouldBe true
-    ListingShape.listsWorks("Paris, Texas - 40th Anniversary") shouldBe false
-    ListingShape.listsWorks("Ich, du, wir alle - Ein Film über uns") shouldBe false
+    BillingParse("Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between").listsWorks shouldBe true
+    BillingParse("Paris, Texas - 40th Anniversary").listsWorks shouldBe false
+    BillingParse("Ich, du, wir alle - Ein Film über uns").listsWorks shouldBe false
     beside("Dolina Issy | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser", film("Dolina Issy", directors = Seq("Tadeusz Konwicki"))) shouldBe
       None
     beside("KÖNIG DROSSELBART - EIN ADVENTSMÄRCHEN FÜR KINDER", film("König Drosselbart")) shouldBe None

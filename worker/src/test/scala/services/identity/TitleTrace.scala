@@ -182,10 +182,10 @@ object TitleTrace {
       s", screened broadcast ${yesNo(NonMovieEventClassifier.isScreenedBroadcast(lower))}"
     val titles = Seq(listing.rawTitle, listing.title).distinct
     out += s"  MultiFilmBill: marker ${MultiFilmBill.marker(titles).fold("none")(q)}, billed one ${MultiFilmBill.billedOne(titles).fold("none")(q)}"
-    out += s"  ListingShape: billsSeveral ${yesNo(ListingShape.billsSeveral(listing))}, quotesSeveral ${yesNo(ListingShape.quotesSeveral(raw))}" +
-      s", quotesTwoJoined ${yesNo(ListingShape.quotesTwoJoined(raw))}, stagesAWork ${yesNo(ListingShape.stagesAWork(listing))}" +
+    out += s"  ListingShape: billsSeveral ${yesNo(ListingShape.billsSeveral(listing))}, quotesSeveral ${yesNo(billingReader[Boolean]("quotesSeveral", "ListingShape", "quotesSeveral")(raw))}" +
+      s", quotesTwoJoined ${yesNo(billingReader[Boolean]("quotesTwoJoined", "ListingShape", "quotesTwoJoined")(raw))}, stagesAWork ${yesNo(ListingShape.stagesAWork(listing))}" +
       s", billsAHouse ${yesNo(ListingShape.billsAHouse(listing))}, relays ${yesNo(ListingShape.relays(listing, lower))}" +
-      s", billsASilentFilm ${yesNo(ListingShape.billsASilentFilm(listing))}, programme slot ${ListingShape.programmeSlotOf(raw).fold("none")(q)}"
+      s", billsASilentFilm ${yesNo(ListingShape.billsASilentFilm(listing))}, programme slot ${billingReader[Option[String]]("programmeSlot", "ListingShape", "programmeSlotOf")(raw).fold("none")(q)}"
     out += s"  pieces ${IdentityMeasures.pieces(raw).map(q).mkString("[", ", ", "]")}"
     val candidates = SearchTitles.candidates(listing.title, None, Seq(clean))
     val beside = candidates.flatMap(c => ListingShape.billedBeside(listing, Seq(IdentityMeasures.Film(c))).map(c -> _))
@@ -218,4 +218,19 @@ object TitleTrace {
   private val FiledArticle = """(?i)^(the|a|an|der|die|das|ein|eine|le|la|les|el|los|las|il|lo)\s""".r
   private def filedArticleFronted(before: String, after: String): Boolean =
     FiledArticle.findPrefixMatchOf(after).exists(m => !before.toLowerCase(Locale.ROOT).startsWith(m.matched.toLowerCase(Locale.ROOT)))
+
+  /** A billing reader by name, wherever the ref TitleTrace is dropped into keeps it (scripts/identity-slice-old-ref-test.sh):
+   *  `services.billing.BillingParse`'s field `field` since the parse took the reader over (2026-10-22), else the identity's
+   *  old reader `owner.method`. Read reflectively, so this file compiles on either side of the move. */
+  private def billingReader[A](field: String, owner: String, method: String)(raw: String): A = {
+    def module(name: String) = { val c = Class.forName(name); (c, c.getField("MODULE$").get(null)) }
+    scala.util.Try {
+      val (parser, parseModule) = module("services.billing.BillingParse$")
+      val parse = parser.getMethod("apply", classOf[String]).invoke(parseModule, raw)
+      parse.getClass.getMethod(field).invoke(parse)
+    }.getOrElse {
+      val (reader, readerModule) = module(s"services.identity.$owner$$")
+      reader.getMethod(method, classOf[String]).invoke(readerModule, raw)
+    }.asInstanceOf[A]
+  }
 }

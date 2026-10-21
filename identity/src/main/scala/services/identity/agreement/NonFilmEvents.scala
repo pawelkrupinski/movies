@@ -1,5 +1,7 @@
 package services.identity.agreement
 
+import services.billing.BillingPieces
+
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.{Listing, ListingShape}
 import services.movies.{TitleContainment, TitleWords}
@@ -111,7 +113,7 @@ object NonFilmEvents {
         .orElse(liveShow(listing, title))
         .orElse(Option.when(FilmAttached.findFirstIn(title).isEmpty && TheatreCompany.findFirstIn(title).isDefined &&
           CinemaTheatre.findFirstIn(title).isEmpty)("theatre company"))
-        .orElse(ListingShape.programmeSlotOf(raw).map(_ => "programme slot"))
-        .orElse(Option.when(ListingShape.billsAFilmFestival(raw))("film festival"))
+        .orElse(BillingPieces.programmeSlot(raw).map(_ => "programme slot"))
+        .orElse(Option.when(BillingPieces.billsAFilmFestival(raw))("film festival"))
     }
 }
