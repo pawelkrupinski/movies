@@ -30,6 +30,10 @@ Exact commands, module scoping and `testOnly` / `-z` narrowing: `test-layers` sk
 seconds, the checks that otherwise fail CI, selected by the paths the push changes; its header lists every check.
 It complements the layers above and replaces none of them. Dry-run it with `scripts/hooks/pre-push --range A..B`.
 Bypasses — `PREPUSH_SKIP="<checks>"`, `git push --no-verify` — must be named in your report.
+A check's local tool missing (sbt or a working java, shellcheck, actionlint, npm, python3 / timezonefinder, gh, curl,
+jq) BLOCKS the push with the fix, never a skip: for sbt, `. "$HOME/.sdkman/bin/sdkman-init.sh"` (or put
+`~/.sdkman/candidates/{sbt,java}/current/bin` on PATH) before `git push`. Only what lies outside the machine's install
+warns and passes: the red gate's API unreachable or no Forgejo token, the GitOps clone, Docker not running.
 
 **Red builds gate every push to main.** While the newest COMPLETED run on main of Main, Identity model convergence
 or Record scrape fixtures is red (a cancelled run says nothing), a push lands only as a fix for it: every pushed

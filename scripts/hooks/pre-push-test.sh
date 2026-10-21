@@ -250,6 +250,8 @@ if command -v shellcheck >/dev/null; then
   # (NoClassDefFoundError: services/movies/MovieRepository$, twice on 2026-09-26). So with one
   # running, the sbt check moves to a temporary checkout of its own.
   mkdir -p "$scratch/bin"
+  # a java that runs: the sbt check wants one beside sbt (CI's script-test container has none)
+  printf '#!/bin/sh\nexit 0\n' > "$scratch/bin/java"; chmod +x "$scratch/bin/java"
   # The test-config compiles ride the lints' ONE sbt run, ahead of them.
   printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/sbt-args"\n' "$scratch" > "$scratch/bin/sbt"; chmod +x "$scratch/bin/sbt"
   mkdir -p "$repo/worker/src/it/scala"; echo 'object B' > "$repo/worker/src/it/scala/B.scala"
@@ -627,8 +629,9 @@ printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/T.scala)\n' > "$grepo/scripts/tit
 printf '#!/usr/bin/env bash\necho ran >> "$STUB_OLDREFS_RAN"\necho "FAIL: tools compile into c0ffee" \nexit "${STUB_OLDREFS_EXIT:-0}"\n' \
   > "$grepo/scripts/identity-slice-old-ref-test.sh"
 scratch_git "$grepo" add scripts && scratch_git "$grepo" commit -qm "the tools, stubbed"
-# the check wants an sbt to compile with (none, as in CI's script-test container: skipped, warned); the stubbed test needs none
-mkdir -p "$gate/sbt"; printf '#!/bin/sh\nexit 1\n' > "$gate/sbt/sbt"; chmod +x "$gate/sbt/sbt"
+# the check wants an sbt and a java to compile with (CI's script-test container has neither: stubbed); the stubbed test needs neither
+mkdir -p "$gate/sbt"; printf '#!/bin/sh\nexit 1\n' > "$gate/sbt/sbt"; printf '#!/bin/sh\nexit 0\n' > "$gate/sbt/java"
+chmod +x "$gate/sbt/sbt" "$gate/sbt/java"
 oldrefs_base="$(scratch_git "$grepo" rev-parse HEAD)"
 oldrefs_push() { # <path> [<env>...] -> exit code, then how often the old-ref test ran; stderr in $gate/err
   local path=$1 head; shift
@@ -642,6 +645,72 @@ check "...a failing compile blocks the push, its output shown" "1 1 1 1" \
 check "a file neither tool drops in does not run it" "0 0" "$(oldrefs_push tools/C.scala)"
 check "PREPUSH_SKIP=oldrefs skips it, said out loud" "0 0 1" \
   "$(oldrefs_push tools/A.scala PREPUSH_SKIP="$pathchecks oldrefs") $(grep -c 'oldrefs SKIPPED' "$gate/err")"
+
+# ── A CHECK'S TOOL MISSING BLOCKS THE PUSH, WITH THE FIX: never a silent skip ───────────────────────────────────────
+# 2026-10-21: an agent's push, sbt off its PATH, skipped the sbt check ("sbt not installed — SKIPPED") and landed
+# unchecked. A local tool missing is fixed locally, so the push fails and says how (user, 2026-10-21); only an external
+# service unreachable (the red gate's Forgejo API, the GitOps clone) stays a warning.
+printf '\033[36m▸\033[0m pre-push: a missing tool blocks the push, with the fix\n'
+# $PATH with <tool>... gone: a directory holding one is replaced by links to its other commands.
+path_without() { # <tool>...
+  local d f t hit out="" shim
+  shim="$(mktemp -d "$gate/without.XXXXXX")"
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    hit=0; for t in "$@"; do [ -x "$d/$t" ] && hit=1; done
+    if [ $hit = 0 ]; then out="$out:$d"; continue; fi
+    for f in "$d"/*; do
+      t="${f##*/}"; case " $* " in *" $t "*) continue ;; esac
+      [ -e "$shim/$t" ] || ln -s "$f" "$shim/$t"
+    done
+    case ":$out:" in *":$shim:"*) ;; *) out="$out:$shim" ;; esac
+  done < <(printf '%s\n' "$PATH" | tr ':' '\n')
+  printf '%s' "${out#:}"; }
+# a push changing <path> with only <checks> run (every other path check and the red gate skipped) -> exit code; stderr in
+# $gate/err
+tool_push() { # <path> <checks> [<env>...]
+  local path=$1 skip=" $pathchecks oldrefs redgate " c head; shift
+  for c in $1; do skip="${skip/ $c / }"; done; shift
+  scratch_git "$grepo" reset -q --hard "$oldrefs_base"; head="$(commit_paths "change $path" -- "$path")"
+  (cd "$grepo" && all_green env PREPUSH_SKIP="$skip" "$@" \
+    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$head" >/dev/null 2>"$gate/err"); echo $?; }
+nosbt="$(path_without sbt)"
+check "sbt not on PATH: the sbt check BLOCKS the push" "1 1" "$(tool_push src/X.scala sbt PATH="$nosbt") $(grep -c 'sbt FAILED' "$gate/err")"
+check "...saying how to put it there (sdkman's sbt and java, or its init line)" "1 1" \
+  "$(grep -c 'sdkman/candidates/sbt/current/bin' "$gate/err") $(grep -c 'sdkman-init.sh' "$gate/err")"
+check "...and never that it skipped" "0" "$(grep -c 'sbt SKIPPED\|sbt not installed\|— SKIPPED' "$gate/err")"
+check "PREPUSH_SKIP=sbt still skips it, said out loud" "0 1" \
+  "$(tool_push src/X.scala "" PATH="$nosbt") $(grep -c 'sbt SKIPPED (PREPUSH_SKIP)' "$gate/err")"
+mkdir -p "$gate/nojava"; printf '#!/bin/sh\necho "Unable to locate a Java Runtime." >&2\nexit 1\n' > "$gate/nojava/java"
+chmod +x "$gate/nojava/java"
+check "sbt there but no java that runs (macOS's /usr/bin/java stub): BLOCKED, with the fix" "1 1" \
+  "$(tool_push src/X.scala sbt PATH="$gate/nojava:$gate/sbt:$PATH" JAVA_HOME=) $(grep -c 'java.*sdkman/candidates/java/current/bin' "$gate/err")"
+check "the old-ref compile with no sbt: BLOCKED" "1 1" \
+  "$(tool_push tools/A.scala oldrefs PATH="$nosbt") $(grep -c 'oldrefs FAILED' "$gate/err")"
+check "shellcheck missing: the shellcheck check BLOCKS, with the fix" "1 1" \
+  "$(tool_push x.sh shellcheck PATH="$(path_without shellcheck)") $(grep -c 'brew install shellcheck' "$gate/err")"
+check "actionlint missing: a workflow push BLOCKS, with the fix" "1 1" \
+  "$(tool_push .github/workflows/x.yml actionlint PATH="$(path_without actionlint)") $(grep -c 'brew install actionlint' "$gate/err")"
+check "npm missing: the ESLint check BLOCKS, with the fix" "1 1" \
+  "$(tool_push eslint.config.js eslint PATH="$(path_without npm)") $(grep -c 'npm not found' "$gate/err")"
+mkdir -p "$gate/notzf"; printf '#!/bin/sh\n[ "$1" = -c ] && { echo "ModuleNotFoundError: No module named timezonefinder" >&2; exit 1; }\nexit 0\n' \
+  > "$gate/notzf/python3"; chmod +x "$gate/notzf/python3"
+check "timezonefinder missing: the roster drift check BLOCKS, with the fix" "1 1" \
+  "$(tool_push data/pl/venues.json drift PATH="$gate/notzf:$PATH") $(grep -c 'pip install timezonefinder' "$gate/err")"
+check "python3 missing: the dashboards check BLOCKS, with the fix" "1 1" \
+  "$(tool_push infra/test/test_dashboards.py dashboards PATH="$(path_without python3)") $(grep -c 'python3 not found' "$gate/err")"
+check "gh missing on a judgements push: BLOCKED (the served-takes check needs it), with the fix" "1 1" \
+  "$(tool_push test/resources/fixtures/identity-judgements.tsv judgements PATH="$(path_without gh)") $(grep -c 'gh not found' "$gate/err")"
+# The red gate: its TOOLS missing block like any check's; Forgejo itself unreachable stays the documented warning.
+scratch_git "$grepo" reset -q --hard "$oldrefs_base"; tplain="$(commit_paths "a production change" -- web/src/main/scala/A.scala)"
+gate_push() { (cd "$grepo" && PREPUSH_SKIP="$pathchecks" "$@" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$tplain" \
+  >/dev/null 2>"$gate/err"); echo $?; }
+check "jq missing on a Forgejo push: the red gate BLOCKS, with the fix" "1 1" \
+  "$(gate_push env PATH="$(path_without jq)" PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'brew install jq' "$gate/err")"
+check "gh missing on a GitHub push: the red gate BLOCKS, with the fix" "1 1" \
+  "$(gate_push env PATH="$(path_without gh)") $(grep -c 'brew install gh' "$gate/err")"
+check "...Forgejo unreachable: still a warning, the push lands" "0 3" \
+  "$(gate_push env FJ_FAILS=1 GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'red-build gate SKIPPED' "$gate/err")"
 rm -rf "$gate"
 
 spec_summary

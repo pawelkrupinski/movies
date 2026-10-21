@@ -59,7 +59,8 @@
 # skills, tests, fixtures, CI tooling — land while red (user, 2026-10-14). On 2026-10-13/14, 50 of 96 identity commits
 # landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
 # hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
-# bounded; gh missing or unreachable is said out loud and does not block (it is no evidence of a red). A push to a
+# bounded; gh UNREACHABLE is said out loud and does not block (it is no evidence of a red); gh, curl or jq NOT
+# INSTALLED blocks, as any missing tool does (BYPASS below). A push to a
 # Forgejo remote (ssh://forgejo-git/…, since GitHub suspended the account 2026-10-19) reads Forgejo's actions runs API
 # instead, by curl, with $FORGEJO_API_TOKEN or the token in the `movies` vault when it is already unlocked; without
 # one the gate is skipped, said in one line (the repository is private: anonymous reads answer 404).
@@ -67,8 +68,15 @@
 # corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
-# the named checks. A tool that is not installed (actionlint, shellcheck, Docker, Xcode) is
-# skipped with a warning, never silently.
+# the named checks.
+#
+# A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
+# its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
+# actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder, gh (judgements; the
+# red gate on a GitHub push), curl and jq (the red gate on a Forgejo push). What stays a WARNING is what lies outside
+# this machine's install: an external service unreachable (the red gate's Forgejo/GitHub API, the GitOps clone, a
+# served-takes download), no Forgejo token, and a Docker or Xcode that is not RUNNING/selected (scripttests --linux,
+# ios: CI runs both).
 #
 # INSTALL: scripts/install-hooks.sh (sets core.hooksPath=scripts/hooks, which every worktree of
 # this clone shares; the path is relative, so each worktree runs its own checkout's hook).
@@ -336,6 +344,24 @@ esac
 log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
 
+# A local tool a check needs, missing: the check FAILS, saying how to fix it (header: A MISSING LOCAL TOOL).
+missing_tool() { # <check> <tool> <fix>
+    warn "$2 not found: the $1 check cannot run, so the push is BLOCKED (never skipped). Fix: $3 -- then push again (or PREPUSH_SKIP=$1, named in your report)."
+    return 1
+}
+need() { # <check> <tool> <fix>
+    command -v "$2" >/dev/null || missing_tool "$@"
+}
+SdkmanFix='put sdkman'"'"'s sbt and java on PATH: export PATH="$HOME/.sdkman/candidates/sbt/current/bin:$HOME/.sdkman/candidates/java/current/bin:$PATH" (or run: . "$HOME/.sdkman/bin/sdkman-init.sh")'
+# sbt, and a java that RUNS (macOS's /usr/bin/java is a stub that only says no runtime is installed); sbt's launcher
+# takes $JAVA_HOME's first.
+need_jvm() { # <check>
+    local java=java
+    need "$1" sbt "$SdkmanFix" || return 1
+    [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ] && java="$JAVA_HOME/bin/java"
+    bounded 30 "$java" -version >/dev/null 2>&1 || missing_tool "$1" "a java that runs (\$JAVA_HOME or PATH)" "$SdkmanFix"
+}
+
 # ── Red builds gate the push ────────────────────────────────────────────────────────────────────
 GatingWorkflows=("Main" "Identity model convergence" "Record scrape fixtures")
 # The same workflows by file: Forgejo's runs API filters on the workflow file, not its name.
@@ -433,9 +459,8 @@ check_redgate() {
     local workflow verdict conclusion id url api_id reds="" commit fixes ok bad=0 r errors i forge=gh api="" repo=""
     if is_forgejo_url "$remote_url"; then
         forge=Forgejo
-        for r in curl jq; do
-            command -v "$r" >/dev/null || { warn "$r not installed: Forgejo's run verdicts are unread — red-build gate SKIPPED"; return 0; }
-        done
+        need redgate curl "brew install curl" || return 1
+        need redgate jq "brew install jq" || return 1
         read -r api repo <<< "$(forgejo_api_for "$remote_url")"
         # The repository is private: its runs answer 404 to an anonymous read (2026-10-20), so no token is said once and
         # passed -- no evidence of a red, so no block, and no Touch ID prompt on a push.
@@ -444,7 +469,7 @@ check_redgate() {
             return 0
         }
     else
-        command -v gh >/dev/null || { warn "gh not installed: the gating workflows' verdicts are unread — red-build gate SKIPPED"; return 0; }
+        need redgate gh "brew install gh" || return 1
     fi
     # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
     errors="$(mktemp)"
@@ -549,6 +574,7 @@ checks="$(printf '%s\n' "$changed" | plan)"
 changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
 
 check_eslint() {
+    need eslint npm "install Node.js (brew install node)" || return 1
     if [ ! -x node_modules/.bin/eslint ]; then
         log "installing ESLint (npm ci, once per worktree)"
         npm ci --no-audit --no-fund --silent >/dev/null || return 1
@@ -557,10 +583,15 @@ check_eslint() {
 }
 
 check_drift() {
+    need drift python3 "install Python 3 (brew install python)" || return 1
+    # data/us/scripts/generate_roster.py needs it; without it the generator exits before writing any ::error:: line
+    python3 -c 'import timezonefinder' 2>/dev/null \
+        || missing_tool drift "python3's timezonefinder" "python3 -m pip install timezonefinder" || return 1
     # GeoNames' Polish gazetteer, kept in the shared git dir so every worktree downloads it once.
     GEONAMES_CACHE="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/geonames" \
         scripts/ci/generated-artefacts-drift.sh > "$tmp/drift.log" 2>&1 \
-        || { sed -n '/::error::/,$p' "$tmp/drift.log" | head -80 >&2; return 1; }
+        || { if grep -q '::error::' "$tmp/drift.log"; then sed -n '/::error::/,$p' "$tmp/drift.log" | head -80 >&2
+             else tail -30 "$tmp/drift.log" >&2; fi; return 1; }
 }
 
 check_snapshot() {
@@ -568,6 +599,7 @@ check_snapshot() {
 }
 
 check_dashboards() {
+    need dashboards python3 "install Python 3 (brew install python)" || return 1
     python3 infra/test/test_dashboards.py > "$tmp/dashboards.log" 2>&1 \
         || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
 }
@@ -620,7 +652,7 @@ check_actionlint() {
             # shellcheck disable=SC2086 # workflow file names carry no spaces
             SHELLCHECK_OPTS='-S warning' actionlint $workflows || rc=1
         else
-            warn "actionlint not installed (brew install actionlint) — SKIPPED"
+            missing_tool actionlint actionlint "brew install actionlint" || rc=1
         fi
     fi
     if [ -n "$actions" ]; then
@@ -628,7 +660,7 @@ check_actionlint() {
             # shellcheck disable=SC2086 # action paths carry no spaces
             scripts/ci/shellcheck-action-runs.sh $actions || rc=1
         else
-            warn "shellcheck not installed (brew install shellcheck) — composite actions' run blocks SKIPPED"
+            missing_tool actionlint shellcheck "brew install shellcheck" || rc=1
         fi
     fi
     return "$rc"
@@ -636,7 +668,7 @@ check_actionlint() {
 
 # Fail on a warning the push ADDS: count each changed script's warnings at the base and at HEAD.
 check_shellcheck() {
-    command -v shellcheck >/dev/null || { warn "shellcheck not installed (brew install shellcheck) — SKIPPED"; return 0; }
+    need shellcheck shellcheck "brew install shellcheck" || return 1
     local f before after rc=0
     for f in $(changed_matching '(\.sh$|^scripts/hooks/)'); do
         [ -f "$f" ] || continue
@@ -657,7 +689,7 @@ check_shellcheck() {
 }
 
 check_sbt() {
-    command -v sbt >/dev/null || { warn "sbt not installed — SKIPPED"; return 0; }
+    need_jvm sbt || return 1
     local compiles
     # shellcheck disable=SC2207 # task names carry no spaces
     compiles=($(printf '%s\n' "$changed" | compile_plan))
@@ -690,7 +722,7 @@ check_sbt() {
 # The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an
 # incremental compile in the floor's cached tree, minutes only the first time a machine lays it out.
 check_oldrefs() {
-    command -v sbt >/dev/null || { warn "sbt not installed — oldrefs SKIPPED"; return 0; }
+    need_jvm oldrefs || return 1
     env -u OLD_REFS bash scripts/identity-slice-old-ref-test.sh > "$tmp/oldrefs.log" 2>&1 \
         || { grep -v '^PASS\|✓' "$tmp/oldrefs.log" | tail -60 >&2; warn "full log: $tmp/oldrefs.log"; return 1; }
 }
@@ -723,7 +755,9 @@ served_takes() {
 
 check_judgements() {
     local served=() before=""
-    if printf '%s\n' "$changed" | grep -qx 'test/resources/fixtures/identity-judgements.tsv' && command -v gh >/dev/null; then
+    need judgements python3 "install Python 3 (brew install python)" || return 1
+    if printf '%s\n' "$changed" | grep -qx 'test/resources/fixtures/identity-judgements.tsv'; then
+        need judgements gh "brew install gh" || return 1
         while IFS= read -r f; do [ -n "$f" ] && served+=("$f"); done < <(served_takes)
         before="$tmp/judgements-before.tsv"
         git show "$base_sha:test/resources/fixtures/identity-judgements.tsv" > "$before" 2>/dev/null || before=""
