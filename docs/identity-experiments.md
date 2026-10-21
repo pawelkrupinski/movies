@@ -21,6 +21,18 @@ holds the clusters the model left unmatched when it was recorded. A take the hea
 reaches that replay: a final-stage 0 there means not seen, not refilled. Variants B–D below were first misread as
 "moving nothing served" for this reason. Count model-stage losses as candidate served losses.
 
+## 2026-10-21 — the relay stage (WS1 of `docs/proposals/2026-10-21-matching-fundamentals.md`, recordings 573 / 528 / 38713274617, base `c24cbe06d`)
+
+### "MetOpera" as a stage-house word (and a name of the Met in `stage-houses.tsv`) — not landed
+- **Tried:** make US/UK Flicks' run-together "MetOpera" banner a house everywhere, so the relay stage (`RelayStage`) reads
+  "MetOpera: Carmen (2009)" as the Met's.
+- **Result:** 573: US +514 right (Carmen 2009), but UK final lost 3 right "MetOpera: Samson et Dalila" (Luxe Wisbech,
+  Plaza Dorchester, Tyneside): a stage house's billing asks the search a new "<work> <season>" query, the agreement's
+  broadcast join then reads its candidates blind and takes nothing. Same with `--live-gaps`.
+- **Why stopped:** the word reaches every reader of `StageHouse.Words` (search, screen-namesake, another-work denials),
+  not just the relay stage.
+- **Landed instead:** `RelayStage` alone reads a camel-cased banner as its words ("Met Opera"); every other reader sees
+  the billing as billed. Code: `experiment/relay-metopera-house-word` (`711e65a00`).
 ## 2026-10-21 — a page feed's copied facts read as no support for the film it copied them from (fundamentals proposal 4.4, "Island") — NOT LANDED (local tag `experiment/page-copied-no-support` in ~/projects/movies, recordings 528, 38713274617 and 573, base `96fb23c6c`)
 
 - **Target:** the wrong-served listings whose only facts are a feed's copy of the found film (proposal
