@@ -27,7 +27,7 @@ country's check produced its moves (a row that could not run, or left no artifac
 move is then listed in full, to judge before landing.
 
 usage: identity_measure.py <download dir> --judgements F [--countries pl,uk,...] [--rows rows.json] [--run-url U]
-                           [--json] [--examples N]
+                           [--json] [--examples N] [--moved-out FILE]
   <download dir>/identity-takes-<cc>/   the row's artifact, as `gh run download` lays it out
   rows.json                             {cc: "success" | "failure" | ...}: each takes row's own conclusion
 Exit 0 LANDABLE, 1 NOT LANDABLE, 2 unreadable input.
@@ -145,6 +145,11 @@ def counts(buckets):
     return {k: sum(1 for m in moves if m["kind"] == k) for k in ("lost", "changed", "gained")}
 
 
+def moved(countries):
+    """The countries any of whose takes moved, in either stage: what a cross-country change is judged by."""
+    return [cc for cc, c in countries.items() if any(sum(counts(b).values()) for b in c["stages"].values())]
+
+
 def move_line(m):
     target = f" [target {m['target']}]" if "target" in m else ""
     return f"{m['venue']} | {m['rawTitle']}: {m['before']} -> {m['after']}{target}"
@@ -201,6 +206,7 @@ def main(argv=None):
     p.add_argument("--run-url", default="")
     p.add_argument("--json", action="store_true")
     p.add_argument("--examples", type=int, default=3)
+    p.add_argument("--moved-out", help="write the countries whose takes moved (comma-separated) to this file")
     a = p.parse_args(argv)
     try:
         rows = read(a.judgements)
@@ -213,6 +219,9 @@ def main(argv=None):
         print(f"identity-measure: could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
     ok, reasons = landable(countries)
+    if a.moved_out:
+        with open(a.moved_out, "w", encoding="utf-8") as f:
+            f.write(",".join(moved(countries)) + "\n")
     if a.json:
         print(json.dumps({"run": a.run_url, "landable": ok, "reasons": reasons,
                           "countries": {cc: dict(c, row=conclusions.get(cc)) for cc, c in countries.items()}},

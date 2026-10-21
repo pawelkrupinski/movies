@@ -156,6 +156,15 @@ class MeasureTest(unittest.TestCase):
         code, out = self.run_measure("--countries", "pl")
         self.assertRegex(out, r"pl +model .*: identity takes \(pl\): 9 listings")
 
+    def test_moved_out_names_the_countries_whose_takes_moved_the_pre_diff_a_cross_country_change_is_read_from(self):
+        self.artifact("pl", BASE, HEAD, self.final_none(), self.final_none())
+        self.artifact("de", BASE[:1], BASE[:1], self.final_none(), self.final_none())
+        self.artifact("uk", None, None, verdict="identity takes (uk): no identity code changed since abc -- nothing can have moved")
+        moved = os.path.join(self.dir, "moved")
+        self.run_measure("--countries", "pl,de,uk", "--moved-out", moved)
+        with open(moved, encoding="utf-8") as f:
+            self.assertEqual("pl", f.read().strip())
+
 
 if __name__ == "__main__":
     unittest.main()

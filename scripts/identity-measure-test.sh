@@ -24,7 +24,7 @@ printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason
 printf 'pl\t*\tLalka\ttmdb:1\tright\topen\t\t\t\t2026-10-14\t\n' >> "$repo/test/resources/fixtures/identity-judgements.tsv"
 echo "phase: convergence" > "$repo/.github/workflows/country-convergence-leg.yml"
 # What can change a leg's verdict, in the matches.sh dialect: the resolver (rule.txt, engine/**) and the judgements.
-printf '# the paths\nrule.txt\nengine/**\n.github/scripts/convergence-setup.sh\ntest/resources/fixtures/identity-judgements.tsv\n' > "$repo/.github/convergence-paths.txt"
+printf '# the paths\nrule.txt\nengine/**\ncommon/**\n.github/scripts/convergence-setup.sh\ntest/resources/fixtures/identity-judgements.tsv\n' > "$repo/.github/convergence-paths.txt"
 echo "old" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "old main, before takes-only"
 old=$(scratch_git "$repo" rev-parse HEAD)
@@ -100,7 +100,9 @@ JSON
       status,headBranch,headSha) pending=$(( $(cat "$STUB/pending" 2>/dev/null || echo 0) + 1 )); echo "$pending" > "$STUB/pending"
                                  [ "$pending" -le "${RUN_PENDING:-0}" ] && { printf 'in_progress\tmeasure/abc-1\t%s\n' "$HEAD_SHA"; exit 0; }
                                  printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
-      jobs) printf 'poland / takes\tfailure\n' ;;
+      # the takes rows' state (wait_for_takes asks .status), else their conclusions (collect)
+      jobs) if [[ "$jq_filter" == *.status* ]]; then printf 'poland / takes\t%s\n' "${TAKES_STATUS:-in_progress}"
+            else printf 'poland / takes\tfailure\n'; fi ;;
       createdAt) echo "${RUN_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" ;;
     esac ;;
   "run download") [ -n "${DOWNLOAD_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
@@ -228,6 +230,13 @@ kill "$holder" 2> /dev/null; wait "$holder" 2> /dev/null
 check "a dispatch refused after the push is no measurement" "2" "$(DISPATCH_FAILS=1 measure landable --countries pl)"
 check "...and its branch is deleted" "0" "$(measure_branches)"
 check "a run past --timeout is no measurement" "2" "$(IN_PROGRESS=1 measure landable --timeout 0 --countries pl)"
+check "...even collecting early, while its takes rows still run" "2" \
+  "$(IN_PROGRESS=1 IDENTITY_MEASURE_EARLY_COLLECT=1 measure landable --timeout 0 --countries pl)"
+check "a run whose takes rows have ended is collected without waiting for the run's tail" "1" \
+  "$(IN_PROGRESS=1 TAKES_STATUS=completed IDENTITY_MEASURE_EARLY_COLLECT=1 measure lost --timeout 0 --countries pl)"
+check "...and says so" "1" "$(grep -c "every takes row has ended" "$work/out")"
+check "...but not where this script, not the run, deletes the branch (github.com)" "2" \
+  "$(IN_PROGRESS=1 TAKES_STATUS=completed IDENTITY_MEASURE_EARLY_COLLECT=0 measure lost --timeout 0 --countries pl)"
 check "...its run is cancelled" "cancelled" "$(cat "$work/stub/cancelled" 2>/dev/null)"
 check "...and its branch deleted" "0" "$(measure_branches)"
 check "a second signal while cleaning up does not stop the clean-up" "0" \
@@ -324,6 +333,34 @@ done
 check "every path the takes check reads is one a reuse treats as moving a take" "" "$uncovered"
 check "...read from the takes check (identity_paths and the specs it runs)" "true" \
   "$(grep -q UnmatchedClustersRatchetSpec <<<"$read_paths" && grep -q '^identity/src/main$' <<<"$read_paths" && echo true || echo false)"
+
+# THE FOOTPRINT: without --countries only the countries a change can move are measured; THE RECORDINGS: one by default.
+fp_commit() { # <file> <content> -> a commit on top of main changing only it
+  scratch_git "$repo" checkout -q --detach main
+  mkdir -p "$repo/$(dirname "$1")"; printf '%b' "$2" > "$repo/$1"
+  scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "footprint: $1" && scratch_git "$repo" rev-parse HEAD
+}
+plan() { ( cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" IDENTITY_MEASURE_RECORDINGS="528:pl,de 999" \
+  "$REPO_ROOT/scripts/identity-measure" --plan "$@" 2>/dev/null ); }
+main_tip=$(scratch_git "$repo" rev-parse main)
+de_only=$(fp_commit engine/services/cinemas/de/Kinoheld.scala "x")
+check "a change under services/cinemas/de/ measures Germany alone" "footprint de" "$(plan --head "$de_only" --base "$main_tip" | head -1)"
+check "...over one recording, the rest only for a cross-country move" \
+  "measure pinned de|then, when LANDABLE and 2+ countries moved: 528 pl,de;999 pl,de,uk,us,es" \
+  "$(plan --head "$de_only" --base "$main_tip" | tail -2 | tr '\n' '|' | sed 's/|$//')"
+check "...every recording at once with --all-recordings, each over the countries it holds" \
+  "measure pinned de|measure 528 de|measure 999 de" "$(plan --head "$de_only" --base "$main_tip" --all-recordings | tail -3 | tr '\n' '|' | sed 's/|$//')"
+shared=$(fp_commit engine/core.scala "x")
+check "a shared resolver change measures every country" "footprint pl,de,uk,us,es" "$(plan --head "$shared" --base "$main_tip" | head -1)"
+capture=$(fp_commit test/resources/fixtures/identity-unmatched/uk.inputs "x")
+check "a country's capture reaches that country" "footprint uk" "$(plan --head "$capture" --base "$main_tip" | head -1)"
+words=$(fp_commit common/src/main/resources/title-words.tsv "# header\\nanniversary\\ten\\tanniversary\\nanniversary\\tes\\taniversario\\n")
+check "title-words rows reach their languages' countries (en: uk and us)" "footprint uk,us,es" "$(plan --head "$words" --base "$main_tip" | head -1)"
+check "--countries wins over the footprint" "footprint pl" "$(plan --head "$de_only" --base "$main_tip" --countries pl | head -1)"
+check "--all-countries ignores it" "footprint pl,de,uk,us,es" "$(plan --head "$de_only" --base "$main_tip" --all-countries | head -1)"
+docs=$(fp_commit docs/notes.md "x")
+check "a change no take-moving path holds measures every country, as before" "footprint pl,de,uk,us,es" "$(plan --head "$docs" --base "$main_tip" | head -1)"
+scratch_git "$repo" checkout -q main
 
 # THE SWEEP: orphaned measure/ branches (a SIGKILLed measurement leaves one) are deleted by --sweep alone; a measurement never sweeps.
 rm -rf "$work/stub"; mkdir -p "$work/stub" "$work/sweep"; export SWEEP_DIR="$work/sweep"

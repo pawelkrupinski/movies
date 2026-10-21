@@ -233,11 +233,23 @@ answers which question, flags, speed and data sources: `identity-investigation` 
 subagent brief.**
 
 **Heavy identity work runs on CI (ci-runner, Forgejo), not the laptop** (the user, 2026-10-21): measure with
-`scripts/identity-measure --base X --head Y [--recording RUN] [--countries pl,de]` (pushes a `measure/<user>/…`
-branch the run deletes itself; ~25-40 min); any other heavy sbt command over a cached recording (a resolve dump, an
-ablation, a simulation, a replay sweep) with `scripts/identity-ci-run --recording RUN [--countries …] -- '<sbt command>'`.
-`scripts/identity-measure-local` and other local heavy runs are a fallback only, for what the CI route cannot do yet,
-and only under the shared 3-slot heavy-run wrapper; say so in the report.
+`scripts/identity-measure --base X --head Y` (pushes a `measure/<user>/…` branch the run deletes itself); any other
+heavy sbt command over a cached recording (a resolve dump, an ablation, a simulation, a replay sweep) with
+`scripts/identity-ci-run --recording RUN [--countries …] -- '<sbt command>'`. `scripts/identity-measure-local` and other
+local heavy runs are a fallback only, for what the CI route cannot do yet, and only under the shared 3-slot heavy-run
+wrapper; say so in the report.
+
+**Measuring cheaply** (2026-10-22: measurements averaged 37 min queued + 66 min wall for ~12 min of compute):
+- **Let the footprint pick:** without `--countries`, identity-measure measures only the countries the change can move
+  (a `services/cinemas/<cc>/` file, a `<cc>` capture, a title-words row's language; shared resolver code reaches all),
+  over ONE recording (the pinned pair). It measures the other recordings itself only when that one is LANDABLE and
+  takes moved in 2+ countries (cross-country); `--all-recordings` when you need them all at once, `--plan` to see what
+  it would run. Don't hand-run three recordings by default.
+- **Dispatch and keep working:** `--no-wait`, then `--run <id>` later; it collects as soon as the takes rows end, not
+  the run's tail. Never sit idle on a measurement.
+- **Don't re-measure after an unrelated rebase:** a rebase onto a main that moved only outside the take paths
+  (`--take-paths`) is answered by the earlier run (REUSED, no dispatch). Never `--fresh` for that.
+- **Batch pushes** (below): each push to main is a ~20-minute run on the same runners the measurements wait for.
 
 - Read `docs/identity-experiments.md` before a resolver change; add an entry for every experiment you drop or park,
   its code kept as an `experiment/<name>` tag, not a stray branch.

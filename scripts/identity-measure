@@ -14,7 +14,7 @@
 #
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
 #                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait] [--full] [--fresh] [--json]
-#                                 [--timeout <minutes>]
+#                                 [--timeout <minutes>] [--all-countries] [--all-recordings | --one-recording] [--plan]
 #        scripts/identity-measure --sweep
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
@@ -23,7 +23,13 @@
 #                  fills, the bare pair identity-measure-local lays -- in place of the pinned pair. Never reused. Name
 #                  the countries it holds with --countries (528: pl,de)
 #   --countries    the countries measured and judged: only their legs run (the workflow's `takes-countries`); also a
-#                  repeatable --country cc[,cc], as the other identity tools take it
+#                  repeatable --country cc[,cc], as the other identity tools take it. Default: THE FOOTPRINT (below)
+#   --all-countries  every country, whatever the footprint
+#   --all-recordings measure over every recording in IDENTITY_MEASURE_RECORDINGS at once, in parallel (THE RECORDINGS)
+#   --one-recording  never more than the one recording, whatever the change moved
+#   --no-store     the takes check resolves both sides afresh, reusing and storing nothing (implies --fresh): the
+#                  control that proves a stored base changes no verdict
+#   --plan         print the footprint and the (recording, countries) runs it would dispatch, and exit
 #   --keep-branch  leave the temporary branch on the remote (on Forgejo the run drops it anyway, below)
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
@@ -33,6 +39,21 @@
 #   --json         machine output (scripts/identity_measure.py --json)
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
 #                  A run still in progress is waited for (at most --timeout); with --no-wait it exits 2 instead
+#
+# THE FOOTPRINT (2026-10-22). Without --countries, only the countries whose takes the change CAN move are measured: a
+# changed take-moving file under */services/cinemas/<cc>/ or a capture identity-unmatched/<cc>.* reaches <cc>; a
+# changed title-words.tsv row reaches its language's countries (pl, de, es; en: uk and us; any other: all); any other
+# take-moving file -- the resolver, the shared rules -- reaches every country. A change touching none measures all, as
+# before (the takes rows then say "nothing can have moved" in seconds).
+#
+# THE RECORDINGS (2026-10-22). One recording by default: the pinned pair (or --recording), over the footprint's
+# countries. It is also the cheap pre-diff for the rest: when it is LANDABLE and the change moved takes in two or more
+# countries (CROSS-COUNTRY), the same change is measured again over the other recordings in IDENTITY_MEASURE_RECORDINGS
+# (default "528": <run>[:<the countries it holds>], else read from its artifacts), in parallel, for the countries that moved; the
+# verdict is the worst of them. A change that moved nothing, or one country's takes, is answered by the one recording.
+# --all-recordings dispatches every recording at once, without the pre-diff; --one-recording never more than one.
+# With --no-wait only the first is dispatched; collecting it with --run says which recordings a cross-country change
+# still needs.
 #
 # THE REMOTE. IDENTITY_MEASURE_REMOTE, else `forgejo` when the clone has one (CI's forge since GitHub suspended the account
 # on 2026-10-19), else origin. Every gh call goes through scripts/forge-gh, Forgejo's API on a Forgejo checkout.
@@ -82,6 +103,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
 ref="" base="" recording="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
+all_countries="" recordings=auto plan="" no_store=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -94,6 +116,11 @@ while [ "$#" -gt 0 ]; do
     --full) full=1 ;;
     --fresh) fresh=1 ;;
     --take-paths) take_paths=1 ;;
+    --all-countries) all_countries=1 ;;
+    --all-recordings) recordings=all ;;
+    --one-recording) recordings=one ;;
+    --plan) plan=1 ;;
+    --no-store) no_store=1 fresh=1 ;;
     --sweep) sweep=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
@@ -220,7 +247,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
     git show "$remote/main:test/resources/fixtures/identity-judgements.tsv" > "$judgements" || die "no judgements to classify with"
   fi
   python3 -I "$here/identity_measure.py" "$dl" --judgements "$judgements" --countries "$countries" --rows "$rows" \
-    --run-url "$url" ${json:+--json}
+    --run-url "$url" ${json:+--json} --moved-out "$cache/moved"
   local verdict=$?
   timings "$id" "$dl"
   return $verdict
@@ -321,6 +348,46 @@ find_measurement() {
   rm -f "$patterns"; return 1
 }
 
+# THE TAKES ROWS, NOT THE RUN (2026-10-22). The verdict is the takes rows' artifacts, uploaded as each row ends; the run's
+# tail -- request-bisect, timings, drop-measure-branch -- is a job hop apiece, each queued behind every other run's work
+# for a runner, and on Forgejo it added 32 minutes to run 790's 52 (takes done at +96 of its 129). So the wait ends at
+# whichever comes first: every measured country's takes row done, or the run done (cancelled included). The jobs come
+# from `run view --json jobs` (github.com: "<country> / takes"); Forgejo serves no run's jobs, but posts each job's
+# result on the commit as a status, "Identity model convergence / takes (<country>)", whose link is the run's.
+# Only where the RUN drops its own branch (Forgejo, run_drops_branch): on github.com this script deletes the branch at exit,
+# which would pull it from under the run's tail. IDENTITY_MEASURE_EARLY_COLLECT=1|0 overrides (the self-test).
+early_collect=${IDENTITY_MEASURE_EARLY_COLLECT:-$run_drops_branch}
+[ "$early_collect" = 0 ] && early_collect=""
+name_of() { case "$1" in pl) echo poland ;; de) echo germany ;; uk) echo united-kingdom ;; es) echo spain ;; us) echo united-states ;; *) echo "$1" ;; esac; }
+takes_rows_done() { # <run id> <sha>: every measured country's takes row has ended
+  local id=$1 sha=$2 rows url slug cc state
+  rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '(.jobs // [])[] | [.name, .status] | @tsv') || return 1
+  if [ -z "$rows" ]; then
+    url=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json url --jq .url) || return 1
+    slug=${url%/actions/runs/*}; slug=${slug#*://*/}
+    rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" api "repos/$slug/commits/$sha/statuses?limit=100" \
+      --jq ".[] | select(.target_url == \"$url\") | [(.context | sub(\"^Identity model convergence / \"; \"\")), (.status // .state)] | @tsv") || return 1
+    rows=$(sed -E 's/^takes \(([a-z-]+)\)/\1 \/ takes/' <<< "$rows")
+  fi
+  for cc in ${countries//,/ }; do
+    state=$(awk -F'\t' -v n="$(name_of "$cc") / takes" '$1 == n { print $2; exit }' <<< "$rows")
+    case $state in completed|success|failure|error|cancelled|skipped) ;; *) return 1 ;; esac
+  done
+}
+wait_for_takes() { # <run id> <sha> <seconds>: sets RUN_CONCLUSION -- the run's own, or `takes-done`; fails at the deadline
+  local id=$1 sha=$2 end=$((SECONDS + $3)) view unread=0
+  RUN_CONCLUSION=""
+  while :; do
+    # ten unreadable reads in a row end the wait, as scripts/ci-wait's: one is a blip, ten are no answer
+    if view=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json status,conclusion | jq -er '[.status, .conclusion // ""] | @tsv'); then unread=0
+    else unread=$((unread + 1)); view=""; [ "$unread" -lt 10 ] || { say "run $id could not be read ten times in a row"; return 1; }; fi
+    if [ "${view%%$'\t'*}" = completed ]; then RUN_CONCLUSION=${view#*$'\t'}; return 0; fi
+    [ -n "$early_collect" ] && takes_rows_done "$id" "$sha" && { RUN_CONCLUSION=takes-done; return 0; }
+    [ "$SECONDS" -lt "$end" ] || return 1
+    sleep "${DISPATCH_POLL_SECONDS:-30}"
+  done
+}
+
 if [ -n "$run" ]; then
   view=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
     || die "could not read run $run"
@@ -329,9 +396,11 @@ if [ -n "$run" ]; then
     [ -z "$nowait" ] || { say "run $run is $status: collect it once it completes"; exit 2; }
     # wait here, bounded, rather than leave every caller its own poll loop (agents spent ~10 min a measurement on one)
     say "waiting for run $run ($status), at most --timeout $timeout_min minutes"
-    wait_for_run "$run" $((timeout_min * 60)) || die "run $run gave no conclusion within --timeout $timeout_min minutes"
+    wait_for_takes "$run" "$run_sha" $((timeout_min * 60)) || die "run $run gave no conclusion within --timeout $timeout_min minutes"
   fi
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
+  # its takes rows ended, the run's tail still reads the branch, and its last job deletes it
+  if [ "${RUN_CONCLUSION:-}" = takes-done ]; then say "run $run: every takes row has ended -- collecting now"; [ -z "$run_drops_branch" ] || branch=""; fi
   collect "$run" "$run_sha" checkout
   verdict=$?
   # A takes-only measure run is stored for reuse: its base from the artifact, its head the commit (not main's CI laid
@@ -342,6 +411,11 @@ if [ -n "$run" ]; then
     created=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json createdAt --jq .createdAt) \
       && created=$(python3 -I -c 'import sys, datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00")).timestamp()))' "$created") \
       && store_measurement "$run_base" "$run_sha" "$run" "$created"
+  fi
+  moved=$(cat "$KINOWO_IDENTITY_CACHE/measure/$run/moved" 2> /dev/null)
+  if [ "$verdict" = 0 ] && [[ "$moved" == *,* ]]; then
+    say "CROSS-COUNTRY: takes moved in $moved -- before landing, measure the other recordings too (THE RECORDINGS):"
+    say "  scripts/identity-measure --head ${run_sha:0:12} --base ${run_base:0:12} --countries $moved --all-recordings"
   fi
   exit $verdict
 fi
@@ -355,6 +429,120 @@ if [ -z "$base" ]; then
 fi
 base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
 
+# ── the footprint and the recordings (THE FOOTPRINT, THE RECORDINGS above) ───────────────────────────────────────────
+footprint() { # <base> <head> -> the countries the change can move a take in, in KINOWO_COUNTRIES order; empty: none
+  local patterns f lang reach="" out="" cc
+  patterns=$(convergence_patterns "$1"); [ -n "$patterns" ] || { kinowo_countries_csv; return; }
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ "$(printf '%s\n' "$f" | in_convergence_paths "$patterns")" = true ] || continue
+    if [[ "$f" =~ /services/cinemas/(pl|de|uk|us|es)/ || "$f" =~ ^test/resources/fixtures/identity-unmatched/(pl|de|uk|us|es)\. ]]; then
+      reach+=" ${BASH_REMATCH[1]}"
+    elif [ "$f" = common/src/main/resources/title-words.tsv ]; then
+      while IFS= read -r lang; do
+        case $lang in pl|de|es) reach+=" $lang" ;; en) reach+=" uk us" ;; "") ;; *) reach+=" all" ;; esac
+      done < <(git diff -U0 --no-renames "$1" "$2" -- "$f" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)|^[+-][[:space:]]*(#|$)' \
+                 | cut -c2- | cut -f2 | sort -u)
+    else
+      reach+=" all"
+    fi
+  done < <(git diff --name-only --no-renames "$1" "$2")
+  rm -f "$patterns"
+  for cc in "${KINOWO_COUNTRIES[@]}"; do
+    [[ " $reach " == *" all "* || " $reach " == *" $cc "* ]] && out+="${out:+,}$cc"
+  done
+  echo "$out"
+}
+csv_and() { local a out="" ; for a in ${1//,/ }; do [[ ",$2," == *",$a,"* ]] && out+="${out:+,}$a"; done; echo "$out"; } # <a> <b>: a ∩ b
+# holds_of <run> -> the countries whose corpus the recording run holds (its scrape-fixtures-<cc> artifacts), read from the
+# forge; fails when they cannot be read. A run of github.com's era (e.g. 38713274617) is on no Forgejo: it holds nothing
+# there, and every leg replaying it failed "the pinned pair has expired" (runs 884-893, 2026-10-21).
+repo_slug() { git remote get-url "$remote" | sed -E 's#\.git$##; s#^.*[:/]([^/:]+/[^/]+)$#\1#'; }
+holds_of() {
+  local names cc out=""
+  names=$(identity_gh "$DISPATCH_GH_TIMEOUT" api "repos/$(repo_slug)/actions/runs/$1/artifacts" --jq '.artifacts[]?.name') || return 1
+  for cc in "${KINOWO_COUNTRIES[@]}"; do grep -qx "scrape-fixtures-$cc" <<< "$names" && out+="${out:+,}$cc"; done
+  echo "$out"
+}
+# The other recordings: "<run> <the countries it holds>" lines, the pinned pair (or --recording) left out. A spec's
+# `:<countries>` names what it holds; without one it is read from the forge (every country when it cannot be read), and
+# a recording holding none is left out, said. IDENTITY_MEASURE_RECORDINGS: what is on Forgejo since the suspension --
+# 528 (2026-10-20, all five; the pinned pair is 573).
+other_recordings() {
+  local spec rec holds
+  for spec in ${IDENTITY_MEASURE_RECORDINGS-528}; do
+    rec=${spec%%:*} holds=${spec#*:}
+    if [ "$holds" = "$spec" ]; then holds=$(holds_of "$rec") || holds=$(kinowo_countries_csv); fi
+    [ -n "$holds" ] || { say "recording $rec holds no corpus on this forge: skipped"; continue; }
+    [ "$rec" != "${recording:-pinned}" ] && echo "$rec $holds"
+  done
+}
+# fan_out <countries> <recording lines>: measure this change over each recording at once (each its own measurement, its
+# own branch and run), print each one's table, and answer the worst verdict: NOT LANDABLE over could-not-measure.
+fan_out() {
+  local ccs=$1 rec holds on dir pids=() logs=() i worst=0 code
+  dir=$(mktemp -d)
+  while read -r rec holds; do
+    [ -n "$rec" ] || continue
+    on=$(csv_and "$ccs" "$holds"); [ -n "$on" ] || continue
+    say "measuring over recording ${rec} too ($on), in parallel"
+    logs+=("$dir/$rec") 
+    "$0" --head "$commit" --base "$base" ${rec:+$( [ "$rec" = pinned ] || echo "--recording $rec")} --countries "$on" --one-recording \
+      ${json:+--json} --timeout "$timeout_min" > "$dir/$rec" 2>&1 &
+    pids+=($!)
+  done <<< "$2"
+  for i in "${!pids[@]}"; do
+    wait "${pids[$i]}"; code=$?
+    echo; echo "── recording ${logs[$i]##*/} ──"; cat "${logs[$i]}"
+    if [ "$code" = 1 ] || { [ "$code" = 2 ] && [ "$worst" = 0 ]; }; then worst=$code; fi
+  done
+  rm -rf "$dir"
+  return "$worst"
+}
+# then_cross_country <verdict> <run>: the pre-diff's follow-up -- the other recordings, for the countries that moved, when
+# the one recording was LANDABLE and two or more countries moved.
+then_cross_country() {
+  local verdict=$1 moved
+  [ "$verdict" = 0 ] && [ "$recordings" = auto ] || return "$verdict"
+  moved=$(cat "$KINOWO_IDENTITY_CACHE/measure/$2/moved" 2> /dev/null)
+  [[ "$moved" == *,* ]] || return 0
+  say "CROSS-COUNTRY: takes moved in $moved -- measuring the other recordings for them (--one-recording skips this)"
+  fan_out "$moved" "$(other_recordings)"
+}
+
+if [ -z "$named_countries$all_countries$full" ]; then # (named_countries: dispatch.sh re-sources tool-conventions.sh, emptying SELECTED_COUNTRIES)
+  reach=$(footprint "$base" "$commit")
+  if [ -z "$reach" ]; then say "footprint: the change touches no path that can move a take -- measuring every country"
+  elif [ "$reach" != "$countries" ]; then
+    say "footprint: only $reach can move (--all-countries to measure every country)"
+    countries=$reach named_countries=$reach
+  fi
+fi
+# A named recording must hold the countries measured: one it lacks fails every leg of the run, an hour in.
+if [ -n "$recording" ] && held=$(holds_of "$recording"); then
+  [ -n "$held" ] || die "recording $recording holds no corpus on this forge (a github.com-era run?): use the pinned pair (no --recording) or one of IDENTITY_MEASURE_RECORDINGS"
+  if [ -n "$named_countries" ] && [ -n "$(csv_and "$countries" "$held")" ] && [ "$(csv_and "$countries" "$held")" != "$countries" ] && [ -z "$all_countries" ]; then
+    die "recording $recording holds only $held, not all of --countries $countries"
+  fi
+  narrowed=$(csv_and "$countries" "$held")
+  [ -n "$narrowed" ] || die "recording $recording holds $held: none of $countries"
+  [ "$narrowed" = "$countries" ] || { say "recording $recording holds $held: measuring $narrowed"; countries=$narrowed named_countries=$narrowed; }
+fi
+if [ -n "$plan" ]; then
+  echo "footprint ${countries}"
+  if [ "$recordings" = all ]; then
+    echo "measure ${recording:-pinned} $countries"
+    while read -r rec holds; do on=$(csv_and "$countries" "$holds"); [ -z "$rec" ] || [ -z "$on" ] || echo "measure $rec $on"; done <<< "$(other_recordings)"
+  else
+    echo "measure ${recording:-pinned} $countries"
+    [ "$recordings" = one ] || echo "then, when LANDABLE and 2+ countries moved: $(other_recordings | tr '\n' ';' | sed 's/;$//')"
+  fi
+  exit 0
+fi
+if [ "$recordings" = all ] && [ -z "$nowait" ]; then
+  fan_out "$countries" "$(printf '%s %s\n' "${recording:-pinned}" "$countries"; other_recordings)"
+  exit $?
+fi
+
 if [ -z "$fresh$full$recording" ] && found=$(find_measurement "$base" "$commit"); then
   read -r reused_run reused_base <<< "$found"
   if [ "$reused_base" = "$base" ]; then how="the same base"; else how="main moved only outside the paths that move a take"; fi
@@ -362,6 +550,7 @@ if [ -z "$fresh$full$recording" ] && found=$(find_measurement "$base" "$commit")
   say "commit $(git log --oneline -1 "$commit")"
   say "base   $(git log --oneline -1 "$base")"
   collect "$reused_run" "$commit"
+  then_cross_country $? "$reused_run"
   exit $?
 fi
 
@@ -371,7 +560,8 @@ push=$commit
 # (Read whole, not piped into `grep -q`: under pipefail its early exit SIGPIPEs git show and reads as "no takes-only".)
 leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml") || leg=""
 # (takes-countries: the leg that also knows --countries and --recording, 2026-10-21)
-if [[ "$leg" != *takes-countries* ]]; then
+# (takes-no-store: the leg that can resolve without the store, 2026-10-22, for --no-store)
+if [[ "$leg" != *takes-countries* ]] || { [ -n "$no_store" ] && [[ "$leg" != *takes-no-store* ]]; }; then
   index=$(mktemp)
   GIT_INDEX_FILE=$index git read-tree "$commit" \
     && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
@@ -398,6 +588,7 @@ dispatch() { # → measured_run
   [ -n "$full" ] && only=()
   [ -z "$recording" ] || only+=(-f recording="$recording")
   [ -z "$named_countries" ] || only+=(-f takes-countries="$named_countries")
+  [ -z "$no_store" ] || only+=(-f takes-no-store=true)
   say "dispatching (attempt $attempts)"
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ) dispatched_at=$(date +%s)
   dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
@@ -418,7 +609,7 @@ fi
 
 while :; do
   # A read blip (a refused connection once ended a 20-minute measurement) is retried by wait_for_run.
-  wait_for_run "$measured_run" $((deadline - SECONDS)) \
+  wait_for_takes "$measured_run" "$push" $((deadline - SECONDS)) \
     || die "run $measured_run gave no conclusion within --timeout $timeout_min minutes"
   conclusion=$RUN_CONCLUSION
   # Cancelled by hand, or by a lane shared after all: dispatch again until the deadline, not a fixed few times.
@@ -429,8 +620,12 @@ while :; do
   break
 done
 finished=1
-say "run $measured_run: $conclusion"
+if [ "$conclusion" = takes-done ]; then say "run $measured_run: every takes row has ended -- collecting now, the run's tail goes on without us"
+  # its tail still reads the branch, and its last job deletes it
+  [ -z "$run_drops_branch" ] || branch=""
+else say "run $measured_run: $conclusion"; fi
 collect "$measured_run" "$commit"
 verdict=$?
-[ "$verdict" -gt 1 ] || [ -n "$full$recording" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
-exit $verdict
+[ "$verdict" -gt 1 ] || [ -n "$full$recording$no_store" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
+then_cross_country "$verdict" "$measured_run"
+exit $?
