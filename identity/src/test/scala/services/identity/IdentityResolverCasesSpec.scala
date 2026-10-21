@@ -233,9 +233,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       F(1143037, "The Metropolitan Opera: Carmen", 2024, "Carrie Cracknell", 225, 3, released = Some(java.time.LocalDate.of(2024, 1, 27))),
       F(980603, "CARMEN (2009) Opéra Comique", 2009, "", 0, 1),
       F(21193, "Carmen", 1984, "Francesco Rosi", 152, 8))
-    val met = listing(us, "MetOpera: Carmen (2009)", runtime = Some(240)).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 21))))
-    val d   = shipped(Seq(met), films).decisionOf(met.key)
-    withClue(d.render)(d.film shouldBe Some(248042))
+    def met(raw: String, year: Option[Int], director: Option[String], runtime: Int) =
+      listing(us, raw, year, director, Some(runtime)).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 21))))
+    // beside a title-linked sibling of another season (Lark Theater's, crediting the composer), which denies the 2010 record
+    // and is no withdrawal of it: one house stages a work once a season, so the sibling's denial says it is another
+    // production, never that this one is
+    val carmen = met("MetOpera: Carmen (2009)", None, None, 240)
+    val later  = met("MetOpera: Carmen (2023-24)", Some(2024), Some("Georges Bizet"), 212)
+    val r = shipped(Seq(carmen, later), films)
+    withClue(Seq(carmen, later).map(l => r.decisionOf(l.key).render).mkString("\n")) {
+      r.decisionOf(carmen.key).film shouldBe Some(248042)
+      r.decisionOf(later.key).film should not be Some(248042)
+    }
   }
 
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
