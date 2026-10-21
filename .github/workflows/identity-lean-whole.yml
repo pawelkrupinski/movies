@@ -1,0 +1,113 @@
+#
+# DOES THE NEWEST RECORDING DECIDE THE SAME READ AS PROD READS IT? integration.LeanWholeGuard resolves each country's
+# recording read LEAN -- as prod's identity model reads the scrape archives (services.identity.ModelRead), and as every
+# measurement now replays them -- and read WHOLE, every screening day kept, and names each rule firing on whole data
+# only. Such a rule measured cured while dead in prod until 2026-10-21: four were, 10-15 to 10-21 (17da3656b), because
+# the measurements replayed the recordings whole. Measurements read lean now; this is the one place that reads whole,
+# to say which rules a lean read starves.
+#
+# A FINDINGS REPORT, not a gate: the per-rule summary goes to the run's summary and, with each differing listing
+# (lean-whole-<cc>.tsv), to the `identity-lean-whole` artifact. Red when a TAKE differs between the reads (a rule
+# deciding a film is dead in prod); not one of the red-build gate's workflows, since a push neither makes nor mends a
+# recording. After each recording on main, and by hand (`run-id`: any recording's run).
+#
+name: Identity lean vs whole
+
+on:
+    workflow_run:
+        workflows: [Record scrape fixtures]
+        types: [completed]
+    workflow_dispatch:
+        inputs:
+            run-id:
+                description: The Record scrape fixtures run to compare (default the one that just completed).
+                required: true
+                type: string
+            countries:
+                description: Comma-separated codes the recording holds.
+                required: false
+                default: 'pl,de,uk,us,es'
+                type: string
+
+concurrency:
+    group: identity-lean-whole
+    cancel-in-progress: false
+
+env:
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+
+permissions:
+    contents: read
+
+jobs:
+    compare:
+        # A recording off main, or one that failed, records nothing the measurements replay.
+        if: github.event_name != 'workflow_run' || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success')
+        # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-24.04
+        timeout-minutes: 600
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+            - name: Lay out the recording
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RECORDING: ${{ inputs.run-id || github.event.workflow_run.id }}
+                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+                  KINOWO_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  [[ "$RECORDING" =~ ^[0-9]+$ ]] || { echo "::error::run-id is a run id, not $RECORDING"; exit 1; }
+                  IFS=, read -r -a ccs <<< "$COUNTRIES"
+                  scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" "${ccs[@]}"
+                  rm -rf "$RUNNER_TEMP/recording/archive"
+            - uses: ./.github/actions/setup-sbt-build
+            - name: Start MongoDB (single-node replica set, the replay's throwaway database)
+              run: scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Resolve each country lean and whole
+              shell: bash
+              env:
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+                  SBT_OPTS: -Xmx11g
+                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+              run: |
+                  set -uo pipefail
+                  fixtures="$RUNNER_TEMP/recording/pair/test/resources/fixtures" out="$RUNNER_TEMP/identity-lean-whole"
+                  mkdir -p "$out"
+                  failed=0
+                  IFS=, read -r -a ccs <<< "$COUNTRIES"
+                  for cc in "${ccs[@]}"; do
+                      echo "::group::$cc"
+                      sbt -batch "worker/IntegrationTest/runMain integration.LeanWholeGuard --strict --out $out --full $cc --corpus-dir $fixtures/corpus --fixtures $fixtures" \
+                          2>&1 | tee "$out/sbt-$cc.log" || failed=1
+                      echo "::endgroup::"
+                      if [ -f "$out/lean-whole-$cc.txt" ]; then
+                          { echo "### $cc"; echo '```'; cat "$out/lean-whole-$cc.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+                      else
+                          echo "### $cc: no report (see sbt-$cc.log)" >> "$GITHUB_STEP_SUMMARY"
+                      fi
+                  done
+                  exit $failed
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-lean-whole
+                  path: ${{ runner.temp }}/identity-lean-whole/
+                  retention-days: 30
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [compare]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
+        secrets: inherit
