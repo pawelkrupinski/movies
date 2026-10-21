@@ -103,6 +103,11 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val nutcracker = Listing("Royal Ballet: The Nutcracker", year = Some(2025), runtime = Some(140), screenedSeason = Some(2026), screeningsSeason = Some(2026))
     val season2025 = (1483678, Film("Royal Ballet & Opera 2025/26: The Nutcracker", year = Some(2025)), Some(1))
     acceptance.byRule("relay-record")(ranked(nutcracker, season2025)) shouldBe None
+    // a year dating a relay spans two seasons: of a record in each, the one dated that very year — UK Palace Cinema
+    // Gorleston's "RBO: THE NUTCRACKER 2026" (1 December 2026) is the 2026/27 relay, not the 2025/26 one
+    val gorleston  = Listing("RBO: THE NUTCRACKER", rawTitle = Some("RBO: THE NUTCRACKER 2026"), year = Some(2026), screeningsSeason = Some(2026))
+    val nutcracker2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026)), Some(2))
+    acceptance.byRule("relay-record")(ranked(gorleston, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
     // a record of another season than its screenings' is no staging it screens, however its house bills the work
     acceptance.byRule("season-record")(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
     // nor is another house's: "MET" names no Royal Ballet & Opera

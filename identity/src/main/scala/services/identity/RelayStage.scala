@@ -20,9 +20,9 @@ import services.identity.IdentityMeasures.{Film, Listing}
 private[identity] object RelayStage {
 
   /** A relay as its billing reads: the houses it names in particular (none: a banner of the art form alone, "OPERA-
-   *  PARSIFAL"), its stage works, the seasons its performance can fall in (a season by the year it opens), and which
-   *  records name its house ([[StageRelays.bannerNamesItsHouse]]). */
-  final case class Billed(houses: Seq[Seq[String]], works: Set[String], seasons: Set[Int], itsHouse: Film => Boolean) {
+   *  PARSIFAL"), its stage works, the seasons its performance can fall in (a season by the year it opens), which records
+   *  name its house ([[StageRelays.bannerNamesItsHouse]]), and the year it dates them by, when no season. */
+  final case class Billed(houses: Seq[Seq[String]], works: Set[String], seasons: Set[Int], itsHouse: Film => Boolean, year: Option[Int]) {
     /** Does it name a house in particular — what lifts the learned vetoes off its record? */
     def particular: Boolean = houses.nonEmpty
   }
@@ -44,7 +44,8 @@ private[identity] object RelayStage {
       val dated   = if (billsAnEncore(l)) None else l.titleYear.orElse(stated)
       val seasons = l.seasonYear.map(Set(_)).orElse(dated.map(year => Set(year - 1, year))).getOrElse(Set.empty)
       Option.when(works.nonEmpty && seasons.nonEmpty)(
-        Billed(l.relay.houses.filter(StageRelays.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l)))
+        Billed(l.relay.houses.filter(StageRelays.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l),
+          dated.filter(_ => l.seasonYear.isEmpty)))
     }
   }
 

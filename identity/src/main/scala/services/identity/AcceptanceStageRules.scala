@@ -48,7 +48,10 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     for {
       any    <- firstCandidate(ranked)
       relay  <- any.listing.relayBilled.toRight(Refused("it bills no house's relay of a work in a season"))
-      record <- one(eligibleOf(ranked).filter(scored => RelayStage.recordOf(relay, scored.candidate.film)),
+      // a year's two seasons each holding a record of it: the one dated that very year (UK Gorleston's "RBO: THE NUTCRACKER
+      // 2026" is the 2026/27 record, not the 2025/26 one; Ilkley's "The Royal Ballet: The Nutcracker (2025)" the 2025/26)
+      records = eligibleOf(ranked).filter(scored => RelayStage.recordOf(relay, scored.candidate.film))
+      record <- one(Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records),
                   "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
                   s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
       _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency), "a published year contradicts it", record, contradiction(record))
