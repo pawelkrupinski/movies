@@ -126,10 +126,10 @@ private[identity] object TitleTextMeasures {
    *  M"), a word of a title billed in another language. */
   val StemLetters = services.billing.NumberedTitles.StemLetters
 
-  /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
-  private[identity] val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
-  /** A title's delimited pieces, its seasons and bracketed years out. */
-  private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
+  /** Where a title's own delimiters cut it into pieces ([[services.billing.BillingPieces.Delimiter]]). */
+  private[identity] val PieceBreak = services.billing.BillingPieces.Delimiter
+  /** A title's delimited pieces, its seasons and bracketed years out ([[services.billing.BillingParse.pieces]]). */
+  private[identity] def pieces(title: String): Seq[String] = services.billing.BillingParse(title).pieces
 
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private[identity] val BracketedYear = services.billing.NumberedTitles.BracketedYear

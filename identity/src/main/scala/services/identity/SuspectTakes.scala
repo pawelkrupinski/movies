@@ -1,5 +1,6 @@
 package services.identity
 
+import services.billing.DecorationWords
 import services.identity.agreement.Agreement
 import services.movies.{ListingKey, TitleContainment, TitleWords}
 

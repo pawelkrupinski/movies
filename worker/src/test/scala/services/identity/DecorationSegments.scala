@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.DecorationTokens.{allCaps, flag, withoutDecoratedEdges}
-import services.identity.DecorationWords.{EditionWords, EventWords}
+import services.billing.DecorationWords.{EditionWords, EventWords}
 import services.movies.{FormatTags, TitleContainment}
 
 /**

@@ -1,7 +1,8 @@
 package services.identity.agreement
 
+import services.billing.DecorationWords
 import services.identity.StageRelays
-import services.identity.{Answer, DecorationWords, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
+import services.identity.{Answer, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
 import services.identity.IdentityMeasures.Film
 
 
