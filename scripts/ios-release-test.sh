@@ -39,6 +39,8 @@ fake() { # $1 path, stdin body
 fake "$BIN/swift" <<<'exit 0'
 fake "$SCRATCH/xcode/usr/bin/altool" <<<'exit 0'
 fake "$BIN/xcode-select" <<<"echo '$SCRATCH/xcode'"
+# The iOS SDK version the release checks for; the real xcrun is absent on Linux.
+fake "$BIN/xcrun" <<<'echo 27.1'
 # The rsync a Homebrew install puts ahead of /usr/bin.
 fake "$SCRATCH/brew/rsync" <<<'exit 1'
 # xcodebuild: archive succeeds; export records which rsync it would spawn, then lays
@@ -59,5 +61,29 @@ check "runs through to the --no-upload stop" "0" "$?"
 check "exports with the system rsync, not one earlier on PATH" "/usr/bin/rsync" "$(cat "$SCRATCH/export-rsync" 2>/dev/null)"
 # shellcheck disable=SC2154 # fails is shell-spec.sh's tally
 [ "$fails" -eq 0 ] || printf '%s\n' "$out"
+
+# An SDK older than 27.1 would ship an app letterboxed on the unfolded iPhone Duo:
+# refused before the archive (sort -V, so 27.10 counts as newer than 27.9). The build
+# dir moves outside the scratch repo, and the first run's output there is cleared, so
+# the tree stays clean.
+rm -rf "$REPO/ios/build"
+fake "$BIN/xcodebuild" <<SH
+[ "\$1" = archive ] && touch "$SCRATCH/archived"
+exit 0
+SH
+release() {
+  PATH="$SCRATCH/brew:$BIN:$PATH" SECRETS_BIN="$SCRATCH/secrets" IOS_RELEASE_BUILD_DIR="$SCRATCH/build" \
+    "$REPO/scripts/ios-release.sh" --no-upload 2>&1
+}
+archived() { [ -e "$SCRATCH/archived" ] && echo yes || echo no; }
+for sdk in 26.4 27.0; do
+  fake "$BIN/xcrun" <<<"echo $sdk"
+  out=$(release); code=$?
+  check "iOS SDK $sdk is refused before archiving" "1 no yes" \
+    "$code $(archived) $(grep -q 'older than 27.1' <<<"$out" && echo yes || echo no)"
+done
+fake "$BIN/xcrun" <<<'echo 27.10'
+release > /dev/null
+check "iOS SDK 27.10 passes the check and archives" "yes" "$(archived)"
 
 spec_summary

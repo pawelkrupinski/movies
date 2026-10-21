@@ -31,6 +31,15 @@ PROFILE="Kinowo App Store"
 upload=1
 [ "${1:-}" = "--no-upload" ] && upload=0
 
+# The iOS SDK an app is built against decides how much of the unfolded iPhone Duo's
+# inner display it gets: older than 27.0 runs letterboxed in a black frame, 27.0
+# stops short of the status bar, 27.1 reaches the edges. `SDKROOT = iphoneos` means
+# "whatever the selected Xcode ships", so check it rather than trust it.
+MIN_IOS_SDK=27.1
+sdk=$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null) || die "no iOS SDK found — is full Xcode selected?"
+[ "$(printf '%s\n%s\n' "$MIN_IOS_SDK" "$sdk" | sort -V | head -1)" = "$MIN_IOS_SDK" ] \
+  || die "iOS SDK $sdk is older than $MIN_IOS_SDK — the build would not fill the iPhone Duo screen; select Xcode $MIN_IOS_SDK or newer"
+
 # Before anything expensive: a locked vault should fail now, not after the archive.
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app-store-credentials.sh"
 load_app_store_credentials
