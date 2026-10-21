@@ -90,7 +90,7 @@ object CorpusFixture {
       if (parser.nextToken() != JsonToken.START_ARRAY) throw new IllegalArgumentException("a corpus is one JSON array of scrape rows")
       val rows = Vector.newBuilder[ArchivedScrape]
       while (parser.nextToken() == JsonToken.START_OBJECT)
-        rows ++= StoredScrapeDto.toDomain(Json.parse(rowBytes(parser)).as[StoredScrapeDto])
+        rows ++= StoredScrapeDto.toDomain(Json.parse(rowBytes(parser)).as[StoredScrapeDto]).map(guessedStripped)
       rows.result()
     }
 
@@ -104,6 +104,18 @@ object CorpusFixture {
   }
 
   private val Factory = new JsonFactory()
+
+  /** MEASUREMENT ONLY (not to land): a recorded kinoheld listing whose entry [[services.cinemas.common.KinoheldClient.entryGuessed]]
+   *  names, as the scraper now reads it: the venue's name alone. */
+  private def guessedStripped(row: ArchivedScrape): ArchivedScrape =
+    row.copy(lastSuccess = row.lastSuccess.map(s => s.copy(films = s.films.map { f =>
+      val m = f.movie
+      if (f.filmUrl.exists(_.startsWith(services.cinemas.common.KinoheldClient.FilmPagePrefix)) &&
+          services.cinemas.common.KinoheldClient.entryGuessed(m.title, m.originalTitle, m.releaseYear, m.runtimeMinutes, m.countries))
+        f.copy(movie = models.Movie(m.title), posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+          trailerUrl = None, ageRating = None, externalIds = Map.empty)
+      else f
+    })))
 
   /** A written fixture, and how much JSON it compressed — the number worth logging is how much
    *  did NOT have to cross the tunnel. Measured here, from the one render, because the capture
