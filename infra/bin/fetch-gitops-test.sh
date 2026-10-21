@@ -22,6 +22,12 @@ check "...updated in place on the next run" "0 remote" "$(KINOWO_GITOPS_REPO="$r
 check "the config repo unreachable: the local clone's, said so" "0 local 1" \
   "$(KINOWO_GITOPS_REPO="$work/gone" gitops) $(cat "$work/dest/README.md") $(grep -c 'using the local clone' "$work/out")"
 rm -rf "$work/dest"
+# GitHub suspended the account 2026-10-18: the default source is the self-hosted Forgejo copy, not a github.com URL
+# that always falls back to a local clone nobody pulls (pre-push then read a stale manifest, 2026-10-21).
+check "no repo given: the Forgejo config repo's, not the local clone's" "0 remote 0" \
+  "$(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$remote.insteadOf" GIT_CONFIG_VALUE_0=ssh://forgejo-git/pawelkrupinski/movies-gitops.git \
+     gitops) $(cat "$work/dest/README.md") $(grep -c 'using the local clone' "$work/out")"
+rm -rf "$work/dest"
 check "...on a fresh checkout too" "0 local" "$(KINOWO_GITOPS_REPO="$work/gone" gitops) $(cat "$work/dest/README.md")"
 check "unreachable, and no local clone: it fails, naming both" "1 1" \
   "$(KINOWO_GITOPS_REPO="$work/gone" KINOWO_GITOPS_DEST="$work/dest" KINOWO_GITOPS_LOCAL="$work/none" "$REPO_ROOT/infra/bin/fetch-gitops" > "$work/out" 2>&1; echo $?) $(grep -c 'no local clone' "$work/out")"

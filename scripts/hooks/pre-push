@@ -15,7 +15,7 @@
 #                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
 #                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
 #                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
-#                 infra/bin/fetch-gitops has put them in place (GitHub, else the local clone; neither reachable:
+#                 infra/bin/fetch-gitops has put them in place (Forgejo, else the local clone; neither reachable:
 #                 warned, and those specs skipped); `lintspecs` skips just those -- and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
@@ -704,12 +704,12 @@ check_sbt() {
     compiles=($(printf '%s\n' "$changed" | compile_plan))
     local lints module tests=()
     # The specs reading the GitOps manifests join the lints once infra/bin/fetch-gitops has put them in this checkout
-    # (from GitHub, else the local clone it falls back to); neither reachable, they are skipped, and said so.
+    # (from Forgejo, else the local clone it falls back to); neither reachable, they are skipped, and said so.
     if printf '%s\n' "$changed" | reads_repo && ! skipped lintspecs; then
         if [ -x infra/bin/fetch-gitops ] && KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1; then
             export PREPUSH_GITOPS=1
         else
-            warn "GitOps manifests unreachable (GitHub and the local clone; $tmp/fetch-gitops.log) -- the deploy specs reading them SKIPPED"
+            warn "GitOps manifests unreachable (Forgejo and the local clone; $tmp/fetch-gitops.log) -- the deploy specs reading them SKIPPED"
         fi
     fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"

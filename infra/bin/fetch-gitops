@@ -19,9 +19,9 @@
 set -euo pipefail
 
 #
-# When GitHub cannot be reached (the account was suspended 2026-10-18), it falls back to a local clone of the config
-# repo, $KINOWO_GITOPS_LOCAL (default ~/projects/movies-gitops), and says so.
-repo="${KINOWO_GITOPS_REPO:-https://github.com/pawelkrupinski/movies-gitops.git}"
+# The config repo lives on the self-hosted Forgejo since GitHub suspended the account (2026-10-18). When it cannot be
+# reached, it falls back to a local clone of it, $KINOWO_GITOPS_LOCAL (default ~/projects/movies-gitops), and says so.
+repo="${KINOWO_GITOPS_REPO:-ssh://forgejo-git/pawelkrupinski/movies-gitops.git}"
 local_repo="${KINOWO_GITOPS_LOCAL:-$HOME/projects/movies-gitops}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 dest="${KINOWO_GITOPS_DEST:-$root/infra/kubernetes}"
