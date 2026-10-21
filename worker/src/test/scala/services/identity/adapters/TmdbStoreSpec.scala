@@ -98,6 +98,14 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.film(film).toOption.flatten.flatMap(_.released) shouldBe Some(java.time.LocalDate.of(2001, 6, 6))
   }
 
+  // What the rating schedule holds a still-unrated film's premiere week by (`PremiereRatingWatch`).
+  it should "answer each recorded film's release date, and none for a film it holds no record of" in {
+    val w = new World
+    w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))
+    w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
+    w.store.releasedOn(Seq(film, 4242)) shouldBe Map(film -> java.time.LocalDate.of(2001, 6, 6))
+  }
+
   "a search's hit" should "stand in for a film until its record arrives, then give way to it" in {
     val w = new World
     val search = """{"results":[{"id":1018,"title":"Mulholland Dr.","original_title":"Mulholland Drive","release_date":"2001-06-06","popularity":8.9}]}"""

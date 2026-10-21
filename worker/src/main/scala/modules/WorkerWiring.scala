@@ -8,7 +8,6 @@ import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
 import services.{Drainable, MongoAddress, MongoConnection, MongoTuning, UptimeMonitor}
 import settings.{BackgroundConcurrency, MongoDatabaseName, ProcessConfiguration, ScrapeFreshness}
-import services.cadence.RatingCadence
 import services.metrics.WorkerMetrics
 import services.tasks.{CostSpacedPhaseOffset, DueWindow, ScrapeCadence, VenueCadenceStore}
 import tools.{Env, ExecutionBudget, SharedExecutionBudget}
@@ -371,12 +370,13 @@ class WorkerWiring(
         "DetailEnrich must carry a TTL: it is the detail refresh window the reaper, the handler " +
           "and CachingDetailFetch's TTL are all defined against.")))
   // The rating DueWindow resolves each key's period from its cadence stats instead
-  // of a flat 4h (see RatingsWiring); the reaper + every handler share this one
-  // instance so their due definitions agree.
-  val ratingDueWindow = new DueWindow(
-    key => RatingCadence.intervalFor(ratingCadenceStore.statsFor(key)),
-    RatingCadence.BaseInterval
-  )
+  // of a flat 4h (see RatingsWiring), capped while a film around its release still
+  // awaits a site's first rating (`PremiereRatingWatch`); the reaper + every handler
+  // share this one instance so their due definitions agree.
+  lazy val premiereRatingWatch = new services.tasks.PremiereRatingWatch(
+    movieCache, ids => identityTmdbStore.releasedOn(ids), country, clock)
+  val ratingDueWindow: DueWindow =
+    services.tasks.RatingSchedule.dueWindow(ratingCadenceStore, key => premiereRatingWatch.awaitingFirstRating(key))
 
   // Subscribe BEFORE start() so the bus's first events reach their handlers. Ratings are
   // NOT enqueued off any event — the EnrichmentReaper is the sole rating-enqueue path

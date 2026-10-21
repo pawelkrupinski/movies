@@ -158,4 +158,29 @@ class RatingCadenceSpec extends AnyFlatSpec with Matchers {
     }
     RatingCadence.intervalFor(stable) shouldBe RatingCadence.MaxInterval
   }
+
+  // A film whose rating site has nothing yet backs off like any quiet one (no change,
+  // no change …), so on its release day it sat on a 32h interval and its first rating
+  // landed up to ~1.5 days late ("Jak żyć, żeby nie zwariować", fw|tmdb:1489938).
+  "intervalFor around a premiere" should "cap a backed-off film still awaiting its first rating at the premiere interval" in {
+    val quiet = RatingChangeStats(unchangedStreak = 12, windowChecks = 12, windowChanges = 0,
+      windowStartedAt = t0, lastCheckedAt = t0, backoffLevel = 4)
+    RatingCadence.intervalFor(Some(quiet)) shouldBe 32.hours
+    RatingCadence.intervalFor(Some(quiet), awaitingFirstRating = true) shouldBe RatingCadence.PremiereInterval
+    RatingCadence.intervalFor(Some(quiet), awaitingFirstRating = false) shouldBe 32.hours
+    RatingCadence.PremiereInterval shouldBe 4.hours
+  }
+
+  it should "never lengthen a film already faster than the premiere interval" in {
+    RatingCadence.intervalFor(None, awaitingFirstRating = true) shouldBe RatingCadence.BaseInterval
+  }
+
+  "aroundPremiere" should "hold from the day before the release to seven days after it, inclusive" in {
+    val release = java.time.LocalDate.parse("2026-10-23")
+    RatingCadence.aroundPremiere(release, release.minusDays(2)) shouldBe false
+    RatingCadence.aroundPremiere(release, release.minusDays(1)) shouldBe true
+    RatingCadence.aroundPremiere(release, release) shouldBe true
+    RatingCadence.aroundPremiere(release, release.plusDays(7)) shouldBe true
+    RatingCadence.aroundPremiere(release, release.plusDays(8)) shouldBe false
+  }
 }

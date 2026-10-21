@@ -37,7 +37,10 @@ object RatingSources {
     // Which countries this source applies in at all — an axis ABOVE per-row
     // `eligible`. Global sources (IMDb/RT/MC) apply everywhere; Filmweb only where
     // `country.filmwebEnabled` (its handler is wired only there).
-    appliesIn: Country => Boolean = _ => true
+    appliesIn: Country => Boolean = _ => true,
+    // Whether the row already holds this source's rating — what [[PremiereRatingWatch]]
+    // asks to tell a film still awaiting its first one.
+    rated: MovieRecord => Boolean
   )
 
   // Order IS the enqueue priority: [[RatingEnqueuer]] walks this sequence and, under
@@ -52,10 +55,11 @@ object RatingSources {
   // row with no Filmweb URL stays ineligible (nothing to refresh from, nothing to
   // resolve through), so the event/opera/NT-Live long tail isn't enqueued.
   val all: Seq[RatingSource] = Seq(
-    RatingSource(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined),
-    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined || TmdbLessRatingLinks.eligible(r), _.filmwebEnabled),
-    RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r)),
-    RatingSource(TaskType.McRating,      FreshnessKind.McRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r))
+    RatingSource(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined, rated = _.imdbRating.isDefined),
+    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined || TmdbLessRatingLinks.eligible(r), _.filmwebEnabled,
+      rated = _.filmwebRating.isDefined),
+    RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r), rated = _.rottenTomatoes.isDefined),
+    RatingSource(TaskType.McRating,      FreshnessKind.McRating,      r => r.tmdbId.isDefined || TmdbLessRatingLinks.eligible(r), rated = _.metascore.isDefined)
   )
 
   /** The rating sources that apply in `country` — the global ones plus the

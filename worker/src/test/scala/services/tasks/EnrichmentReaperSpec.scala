@@ -1,13 +1,13 @@
 package services.tasks
 
-import models.{CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime}
+import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 
-import java.time.{Instant, LocalDateTime}
+import java.time.Instant
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -17,12 +17,8 @@ class EnrichmentReaperSpec extends AnyFlatSpec with Matchers {
 
   private def newCache() = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
 
-  private def seedRow(cache: CaffeineMovieCache, title: String)(edit: MovieRecord => MovieRecord): Unit = {
-    services.movies.ListingSeed.land(cache, KinoApollo, Seq(CinemaMovie(
-      Movie(title), KinoApollo, None, None, None, Seq.empty, Seq.empty,
-      Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), Some("https://book"))))))
-    cache.putIfPresent(cache.keyOf(title, None), edit)
-  }
+  private def seedRow(cache: CaffeineMovieCache, title: String)(edit: MovieRecord => MovieRecord): Unit =
+    services.movies.ListingSeed.row(cache, title)(edit)
 
   // ── eligibility ─────────────────────────────────────────────────────────────
 

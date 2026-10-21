@@ -271,6 +271,12 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   def filmHits(ids: Seq[String]): Map[String, Hit] = docs.filmHits(ids)
   /** What answers read, for a caller that keeps it decoded ([[TmdbDocuments.answersReadThrough]]). */
   def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.answersReadThrough(kind, ids)
+  /** The release date each of `ids`' records holds (TMDB's `release_date`), for those that hold one: the
+   *  day the rating schedule watches a still-unrated film around ([[services.tasks.PremiereRatingWatch]]). */
+  def releasedOn(ids: Seq[Int]): Map[Int, java.time.LocalDate] =
+    docs.answers(TmdbKind.Film, ids.map(_.toString)).flatMap { case (id, d) =>
+      Option(d.get("record")).flatMap(IdentityAnswerBson.filmOf).flatMap(_.released).map(id.toInt -> _)
+    }
   /** The film TMDB's find of `imdbId` named first — `Some(None)` when it named none, `None` while no find is held. */
   def foundFirst(imdbId: String): Option[Option[Int]] = {
     val id = findId(imdbId)

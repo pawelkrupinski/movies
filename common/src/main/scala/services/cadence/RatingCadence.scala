@@ -1,6 +1,6 @@
 package services.cadence
 
-import java.time.{Duration => JDuration, Instant}
+import java.time.{Duration => JDuration, Instant, LocalDate}
 import scala.concurrent.duration._
 
 /**
@@ -118,6 +118,28 @@ object RatingCadence {
    *  starts at the base; otherwise base doubled per backoff level, capped. */
   def intervalFor(stats: Option[RatingChangeStats]): FiniteDuration =
     stats.map(s => intervalForLevel(s.backoffLevel)).getOrElse(BaseInterval)
+
+  /** The slowest a source still WITHOUT a rating is rechecked around its film's release
+   *  ([[aroundPremiere]]). Before release nothing changes, so the backoff had climbed to
+   *  16–32h by the premiere and the first rating landed up to ~1.5 days late. 4h is
+   *  level 1: across the five countries ~10–50 films sit in the window at once, which
+   *  adds well under 1% to each site's daily refreshes. */
+  val PremiereInterval: FiniteDuration = 4.hours
+
+  /** Days before and after its release that a still-unrated film is held to [[PremiereInterval]]. */
+  val PremiereLeadDays: Int = 1
+  val PremiereTailDays: Int = 7
+
+  /** [[intervalFor]], capped at [[PremiereInterval]] while `awaitingFirstRating` — the
+   *  film is around its release and this source has no rating yet. A film already
+   *  faster keeps its own interval; once a rating appears the flag drops and the
+   *  normal backoff resumes. */
+  def intervalFor(stats: Option[RatingChangeStats], awaitingFirstRating: Boolean): FiniteDuration =
+    if (awaitingFirstRating) intervalFor(stats).min(PremiereInterval) else intervalFor(stats)
+
+  /** Is `today` within [release − [[PremiereLeadDays]], release + [[PremiereTailDays]]], inclusive? */
+  def aroundPremiere(release: LocalDate, today: LocalDate): Boolean =
+    !today.isBefore(release.minusDays(PremiereLeadDays)) && !today.isAfter(release.plusDays(PremiereTailDays))
 
   /** True when this film is on the fastest (base ~2h) cadence — backoff level 0,
    *  or never seen. The rating confirmation deadband only engages here: the
