@@ -1880,6 +1880,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(dated.render)(dated.film shouldBe None)
     // the film itself, billed alone, is still taken
     panto("Treasure Island").film shouldBe Some(1710881)
+    // nor is the staged show's OWN record, titled as the pantomime it bills: BEAM Hertford's "CBeebies Panto: Treasure
+    // Island" [2026, 60′] and Lonsdale Alhambra Penrith's [75′] took TMDB's "Cbeebies Panto: Treasure Island" (2026, 75′, Andy
+    // Day) as their exact top hit (prod 2026-10-21); the user's review 10-21: not a match, a pantomime is an event
+    val show = F(1785679, "Cbeebies Panto: Treasure Island", 2026, "", 75, 0.4, original = Some("Cbeebies Panto: Treasure Island"))
+    def staged(raw: String, year: Option[Int], runtime: Int) = {
+      val l = listing(uk, raw, year = year, runtime = Some(runtime)).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 21))))
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(show), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    val hertford = staged("CBeebies Panto: Treasure Island", Some(2026), 60)
+    withClue(hertford.render)(hertford.film shouldBe None)
+    val penrith = staged("Cbeebies Panto: Treasure Island", None, 75)
+    withClue(penrith.render)(penrith.film shouldBe None)
     // nor is a title in the venue's OWN language a foreign one left untranslated, whichever country TMDB files the film
     // under, nor a piece naming the venue's town its venue's offer: DE Trifthof Kinocenter's (Weilheim in Oberbayern)
     // "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local documentary, is not Toscano's 2015

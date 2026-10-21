@@ -28,6 +28,8 @@ import services.identity.IdentityMeasures.Measure
  *  A piece naming a STAGING beside the film — a theatre, a musical, a pantomime ([[ListingShape.StageWords]]); a pantomime even
  *  in the banner's slot (UK "CBeebies Panto 2026: Treasure Island", not the 2027 film) — outweighs all but a
  *  stated fact: the widely screened film, the current release and the venue's town are no answer to a staging of its work.
+ *  A record titled as the pantomime the billing names is the staged show's own, an event's, whatever the billing states (UK
+ *  "CBeebies Panto: Treasure Island" at BEAM Hertford, not TMDB's "Cbeebies Panto: Treasure Island", 2026).
  *  `measures`: the billing's against the film; `tmdbId`: the film's TMDB id, when it has one —
  *  never a family's own number, so the feed's link ([[FeedLink.linked]]) is read as TMDB's: a family's resolve decides no
  *  piece (`IdentityResolver.resolveScored`), and [[ofFamilies]] is given the agreed record's TMDB id. Measured on the five convergence legs'
@@ -94,7 +96,13 @@ private[identity] object BilledPiece {
       ListingShape.billedBeside(listing, Seq(film), piece => !staging(piece),
         bannerSlot = !tokens(evidence.rawTitle).exists(ListingShape.ShowWords))).flatten
       .map(Piece(_, staging = true))
-    if (stated) None
+    // a pantomime's OWN record — a record titled as the staged show the billing names ("Cbeebies Panto: Treasure Island", TMDB
+    // 1785679, beside BEAM Hertford's "CBeebies Panto: Treasure Island") — is the show's, an event's, whatever facts the
+    // billing shares with it: no film the venue screens (the user's review 10-21)
+    lazy val showsOwn = tokens(evidence.rawTitle).exists(word => ListingShape.ShowWords(word) && !venues(word)) &&
+      film.titles.exists(title => tokens(title).exists(ListingShape.ShowWords))
+    if (showsOwn) Some(Piece("the record is the staged show's own: a pantomime is an event, no film", staging = true))
+    else if (stated) None
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
     // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
     else if (screened || (keeps == Keeps.All && !ListingShape.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
