@@ -41,13 +41,15 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
 
 ## Pushing to main (when GitHub is reachable)
 
-A push to `main` starts ~20 jobs and a newer push CANCELS the run in flight (`main.yml`'s `cancel-in-progress: true`,
-kept on purpose: the superseding run tests a superset, and letting runs finish would either serialise pushes behind
-~12-minute runs or break the 20-runner budget `CiRunnerBudgetSpec` guards). A cancelled run says nothing, so:
+A push to `main` starts ~20 jobs. Since 2026-10-22 the run in flight is NEVER cancelled: it finishes and publishes,
+a newer push queues behind it, and a queued run that already has a newer push waiting behind it ends in seconds as
+"superseded" (`main.yml`'s `supersede` job; github.com's one running, one pending). Until then a newer push cancelled
+the run in flight, and on 2026-10-21 39 of 51 runs died that way. Still batch, because every run that does start
+takes ~20 min of runners:
 
 - Push when a coherent change is locally green, not after every commit; several commits in one push are one run.
 - If the run for your previous push is under ~10 minutes old, keep committing and push once.
-- Judge `main` by the newest COMPLETED run, never a cancelled one.
+- Judge `main` by the newest COMPLETED run, never a superseded (skipped) one.
 - Always fetch + rebase immediately before pushing. If a push's CI fails, fix forward; don't undo the push.
 
 ## The pre-push hook and the red gate

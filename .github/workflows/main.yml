@@ -7,26 +7,21 @@ on:
     # is nothing here to force.
     workflow_dispatch:
 
-# Workflow-level concurrency: a newer push cancels the older workflow
-# mid-flight, freeing its runners so the latest commit's jobs don't queue
-# behind stale work. GitHub Free allows 20 concurrent jobs across the
-# account and a push wants 16 of them at once (see the RUNNER BUDGET note in
-# ci.yml), so two overlapping pushes would otherwise starve each other.
+# ONE RUNNING, ONE PENDING; NEVER CANCELLED (2026-10-22). A push's run finishes and publishes; a newer
+# push queues behind it, and when it starts, the `supersede` job below ends it in seconds if a newer push
+# is already waiting (.github/actions/supersede-check; github.com does this itself, Forgejo 15 queues the
+# group FIFO). So under a burst of pushes the run in flight still lands, and the next run covers every
+# push since -- the tier gates measure from the deployed MARKER, so a skipped push's commits stay inside
+# the next run's interval.
 #
-# WHAT THAT COSTS NOW THAT THE k3s DEPLOY NO LONGER HAPPENS HERE AT ALL, stated
-# rather than left to be rediscovered: a superseding push cancels an in-flight
-# `publish-web` / `publish-worker` too, and no job-level `cancel-in-progress: false`
-# can refuse a workflow-level cancellation. It used to cancel an ssh call that was
-# WATCHING a rollout; there is no rollout here any more, so what it cancels is the
-# marker write — and that is survivable precisely because the gate MEASURES FROM
-# the marker rather than from the push's parent: a cancelled run leaves its commit
-# inside the next push's interval instead of dropping it. The deploy is untouched
-# either way, because CI does not perform one: the image is in GHCR, and
-# image-automation ships it on its own schedule. Do not trade the cancellation
-# away — the runner budget above depends on it.
+# It used to cancel the run in flight (`cancel-in-progress: true`), for GitHub Free's 20-job budget.
+# With ~10 agents pushing to the self-hosted Forgejo that meant 39 of 51 runs on 2026-10-21 were
+# cancelled (906 runner-minutes thrown away) and only 8 completed: builds and deploys rarely landed.
+# The job-level `publish-*` lanes stay as a second guard against two publishes racing a tag.
+# (WorkflowConcurrencyConventionSpec)
 concurrency:
     group: deploy-${{ github.ref }}
-    cancel-in-progress: true
+    cancel-in-progress: false
 
 # WHERE IMAGES GO, chosen by repository VARIABLES that exist only on the self-hosted Forgejo (set
 # 2026-10, after the GitHub suspension): IMAGE_REPO=registry.kinowo.net, REGISTRY_HOST=
@@ -64,7 +59,31 @@ permissions:
     contents: read
 
 jobs:
+    # github.com keeps ONE pending run per non-cancelling concurrency group; Forgejo queues every one. A run that
+    # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
+    # green, and every other job skips on the output (.github/actions/supersede-check). Seconds, at t=0.
+    supersede:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            superseded: ${{ steps.check.outputs.superseded }}
+        steps:
+            # Fail OPEN: a check that cannot run must not stop the run's work.
+            - if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github/actions/supersede-check
+            - id: check
+              if: github.server_url != 'https://github.com'
+              continue-on-error: true
+              uses: ./.github/actions/supersede-check
+
     ci:
+        needs: supersede
+        if: needs.supersede.outputs.superseded != 'true'
         uses: ./.github/workflows/ci.yml
         secrets: inherit
         # ci.yml's jobs post JUnit check-runs, and its `image-*` jobs push this commit's SHA-tagged
@@ -96,11 +115,13 @@ jobs:
     # `gates` below, for the few seconds it takes to answer the tier gates
     # (`CiRunnerBudgetSpec`).
 
-    # Seconds, at t=0. It takes the one slot ci.yml leaves it (beside the headroom kept for
+    # Seconds, right after `supersede`, whose slot it takes: the one ci.yml leaves (beside the headroom kept for
     # overlapping workflows) for the few seconds it runs (CiRunnerBudgetSpec). No secret is checked
     # here: the Grafana marker's are optional by design (mark-grafana-deploy skips without them), and
     # nothing else in this workflow reads one beyond what ci.yml's own jobs check.
     gates:
+        needs: supersede
+        if: needs.supersede.outputs.superseded != 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci, so both
@@ -196,7 +217,7 @@ jobs:
     # next push, or went red on an unrelated spec, never dispatched at all: on 2026-10-15
     # the Arsenal client's push (f58b71add, 09:29 UTC) got its first convergence run at
     # 11:08, after three cancelled and two red Main runs, while a landing waited on it.
-    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `gates`
+    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `supersede`
     # alone (CiRunnerBudgetSpec): this job takes the slot gates has just given back.
     #
     # Two shapes this deliberately is not:
@@ -224,9 +245,10 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        needs: gates
-        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
-        if: ${{ !cancelled() }}
+        needs: [supersede, gates]
+        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway. A superseded
+        # run dispatches nothing: the newer run behind it dispatches for a superset of its commits.
+        if: ${{ !cancelled() && needs.supersede.outputs.superseded != 'true' }}
         runs-on: ubuntu-26.04
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
@@ -547,8 +569,8 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ci, gates, kick-convergence, publish-web, image-worker, publish-worker]
-        if: ${{ !cancelled() }}
+        needs: [supersede, ci, gates, kick-convergence, publish-web, image-worker, publish-worker]
+        if: ${{ !cancelled() && needs.supersede.outputs.superseded != 'true' }}
         permissions:
             actions: read
             contents: read
