@@ -21,7 +21,7 @@ on:
                 default: 'title'
                 type: string
             only:
-                description: Ablate exactly these rules (comma-separated trace names); empty for every rule.
+                description: Ablate exactly these rules (comma-separated trace names); empty for every rule. Keep it to a few dozen, so each row ends well inside its 110 minutes.
                 required: false
                 default: ''
                 type: string
@@ -68,7 +68,9 @@ jobs:
         name: ablate
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ubuntu-24.04
-        timeout-minutes: 600
+        # SHORT ROWS: a row past ~2h holds a runner slot through a drain (run 850 blocked all of CI for 3h). Sweep a large
+        # rule set as several dispatches, each `only` a few dozen rules; a row cut off here still uploads its state.json.
+        timeout-minutes: 110
         permissions:
             contents: read
             actions: read
