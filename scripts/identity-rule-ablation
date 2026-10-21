@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# RULE ABLATION: which identity and title rules move takes when switched off, over the recorded corpora -- each rule's
+# takes moved (cured, gained right, right lost, right->wrong, new wrong, unjudged), summed over every recording and
+# country. Rules are switched off in batches and only a batch that moved is bisected, so the rules that move nothing
+# (most) cost one resolve per batch.
+#
+#   scripts/identity-rule-ablation --out DIR [--recordings 38713274617,573,528] [--hot 8] [--cold 48] [--chunk 25]
+#                                  [--only rule,rule] [--kinds title] [--lock FILE] [--judgements TSV]
+#
+#   --out         where each round's moves, state.json (resumable) and report.md are written
+#   --recordings  "Record scrape fixtures" runs whose laid pair is cached ($KINOWO_IDENTITY_CACHE/recordings/<run>/pair,
+#                 as identity-slice lays it)
+#   --hot/--cold  batch sizes of the rules a baseline listing fires / fires none
+#   --chunk       configurations per sbt run: each run takes --lock anew, so other heavy jobs interleave; the
+#                 recordings run one after another (two sbt runs in one checkout collide)
+#   --kinds       which rules: title (the default; the identity kinds need the resolver's switch first)
+#   --only        ablate exactly these rules (trace names: title:<id>, accept:<rule>, veto:<id>, join:<kind>, apart:<id>)
+#   --lock        what every sbt run is gated by (default $KINOWO_HEAVY_LOCK): an executable runs it (`<it> <command…>`, a
+#                 slot runner), any other path is a lockf(1) file; runs are niced either way
+#
+# The JVM half is integration.IdentityRuleAblation (worker/src/it), switching title rules off by leaving them out of
+# the normalizer. BLIND SPOT: it reads the
+# model's takes only, not the agreement stage's final ones -- confirm a deletion with scripts/identity-measure-local.
+# The logic and its tests: scripts/identity_rule_ablation.py, scripts/identity_rule_ablation_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+exec python3 -I "$(dirname "$0")/identity_rule_ablation.py" "$@"

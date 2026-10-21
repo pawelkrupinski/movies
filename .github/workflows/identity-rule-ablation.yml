@@ -1,0 +1,147 @@
+#
+# RULE ABLATION on CI: which identity and title rules move takes when switched off (scripts/identity-rule-ablation),
+# over the recordings named, off the laptop. Each `ablate` row bisects its own share of the first round's batches
+# (`--shard I/N`) over every recording, one after another; `collect` merges the rows' settled rules into one report.
+# Dispatch-only; the report comes back as an artifact (identity-rule-ablation), never pushed.
+#
+name: Identity rule ablation
+run-name: identity rule ablation ${{ inputs.recordings }}
+
+on:
+    workflow_dispatch:
+        inputs:
+            recordings:
+                description: The `Record scrape fixtures` runs to replay, comma-separated.
+                required: false
+                default: '38713274617,573,528'
+                type: string
+            kinds:
+                description: Which rules (title; the identity kinds accept,veto,join,apart once the resolver can switch them off).
+                required: false
+                default: 'title'
+                type: string
+            only:
+                description: Ablate exactly these rules (comma-separated trace names); empty for every rule.
+                required: false
+                default: ''
+                type: string
+
+concurrency:
+    group: identity-rule-ablation-${{ github.ref }}
+    cancel-in-progress: false
+
+env:
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+    SHARDS: '6'
+
+permissions:
+    contents: read
+
+jobs:
+    ablate:
+        name: ablate
+        # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-24.04
+        timeout-minutes: 600
+        permissions:
+            contents: read
+            actions: read
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [0, 1, 2, 3, 4, 5]
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Lay out the recordings
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RECORDINGS: ${{ inputs.recordings }}
+                  KINOWO_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  cache="$RUNNER_TEMP/kinowo-identity"
+                  echo "KINOWO_IDENTITY_CACHE=$cache" >> "$GITHUB_ENV"
+                  IFS=, read -r -a runs <<< "$RECORDINGS"
+                  for run in "${runs[@]}"; do
+                      scripts/identity-fetch-recording.sh --no-overlay "$run" "$cache/recordings/$run"
+                      rm -rf "$cache/recordings/$run/archive"
+                  done
+
+            - uses: ./.github/actions/setup-sbt-build
+
+            - name: Start MongoDB (single-node replica set, the replay's throwaway database)
+              run: scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            - name: Ablate this shard's batches
+              shell: bash
+              env:
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+                  SBT_OPTS: -Xmx8g
+                  RECORDINGS: ${{ inputs.recordings }}
+                  ONLY: ${{ inputs.only }}
+                  KINDS: ${{ inputs.kinds }}
+                  SHARD: ${{ matrix.shard }}
+              run: |
+                  set -o pipefail
+                  python3 -I scripts/identity_rule_ablation.py --out ablation --recordings "$RECORDINGS" \
+                      --kinds "$KINDS" \
+                      --shard "$SHARD/$SHARDS" ${ONLY:+--only "$ONLY"} 2>&1 | tee ablation.out
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-rule-ablation-shard-${{ matrix.shard }}
+                  path: |
+                      ablation/state.json
+                      ablation/report.md
+                      ablation/sbt-*.log
+                      ablation.out
+                  retention-days: 14
+
+    collect:
+        name: collect
+        needs: [ablate]
+        if: ${{ !cancelled() }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: actions/download-artifact@v6
+              with:
+                  pattern: identity-rule-ablation-shard-*
+                  path: shards
+
+            - name: Merge the shards' reports
+              shell: bash
+              run: |
+                  set -o pipefail
+                  python3 -I scripts/identity_rule_ablation.py --out merged --merge shards/*/state.json | tee merged.out
+                  cat merged/report.md >> "$GITHUB_STEP_SUMMARY"
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-rule-ablation
+                  path: merged/
+                  retention-days: 30
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [ablate, collect]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
+        secrets: inherit
