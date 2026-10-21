@@ -2349,7 +2349,7 @@ de	KNUP – Soziokulturelles Zentrum Oerlinghausen	Heilige Cnaipe	tmdb:1738019	w
 pl	Kino Pionier 1907	Wiedźmin. 25 lat	tmdb:57278	right	open					review page: right: Wiedźmin (2001)
 de	*	ENHYPEN WORLD TOUR 'BLOOD SAGA'	tmdb:1785968	right	open					review page: right: 엔하이픈 월드 투어 ‘블러드 사가’ (2026)
 de	*	Enhypen World Tour 'Blood Saga'	tmdb:1785968	right	open					review page: right: 엔하이픈 월드 투어 ‘블러드 사가’ (2026)
-de	*	ICONIC MOVIE	tmdb:1217647	wrong	open					review page: wrong: Iconic - Dem Wahnsinn verfallen (2024)
+de	*	ICONIC MOVIE	tmdb:1217647	wrong	known-wrong	rows	Iconic - Dem Wahnsinn verfallen (2024)	no safe fix yet: the model still takes it for CinemaxX Augsburg's ICONIC MOVIE (the user's 10-21 review says wrong)		review page: wrong: Iconic - Dem Wahnsinn verfallen (2024)
 de	*	Iconic Movie	tmdb:1217647	wrong	open					review page: wrong: Iconic - Dem Wahnsinn verfallen (2024)
 de	*	Tabaluga & Leo	tmdb:68030	right	open					review page: right: Tabaluga - Der Weihnachtsfilm (2003)
 de	*	Tabaluga & Leo - Der Weihnachtsfilm	tmdb:68030	right	open					review page: right: Tabaluga - Der Weihnachtsfilm (2003)
