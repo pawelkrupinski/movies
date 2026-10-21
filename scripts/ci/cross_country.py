@@ -26,7 +26,7 @@ YEAR_IN_TITLE = re.compile(r"\((1[89]\d\d|20\d\d)\)")
 # billing "Swan Lake" from two houses take two records, rightly; the report skips a title only when EVERY take of it
 # carries one of these.
 EVENT_RULES = frozenset({
-    "accept:season-production", "accept:season-record", "accept:stage-production", "accept:house-production",
+    "accept:season-production", "accept:season-record", "accept:stage-production", "accept:relay-record", "accept:house-production",
     "title:xtra-canonical-broadcast-season", "title:xtra-canonical-met-opera", "title:xtra-canonical-met-opera-suffix",
     "title:xtra-canonical-royal-ballet-opera", "title:xtra-canonical-nt-live", "title:xtra-exhibition-on-screen",
     "title:search-plus-event-suffix", "title:search-with-event-suffix",

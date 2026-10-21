@@ -1,9 +1,10 @@
 package services.identity
 
 import services.identity.Scored.Accepted
+import services.resolution.YearWindow
 
-/** The acceptance rules of a stage relay: the house's and the stage's production, and the record of the season it is
- *  broadcast in.
+/** The acceptance rules of a stage relay: the house's production, the relay's record ([[RelayStage]]), and the record of
+ *  the season it is broadcast in.
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceStageRules { this: Acceptance =>
   import weights.own
@@ -35,30 +36,23 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     } yield atOwn(house)
   }
 
-  /** A stage broadcast billed with no season but with its year — in its field or its title: the one eligible SEASON
-   *  record naming the same stage work ([[StageWorks]], in any language), billing the listing's house
-   *  ([[StageRelays.bannerNamesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
-   *  "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon"
-   *  (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is; DE
-   *  "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests. It pre-empts every rule
-   *  as [[seasonProduction]] does ([[datedOrBroadcastSeasonRecord]]). */
-  private[identity] def stageProduction(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(stageProductionWhy(ranked)).toOption
-  private[identity] def stageProductionWhy(ranked: Seq[Scored]): Verdict =
+  /** The one eligible record of the listing's RELAY ([[RelayStage]]): its house's record of its work from the season its
+   *  title dates, whatever running time it files, that no year it publishes contradicts and no director it credits
+   *  denies. US "MetOpera: Carmen (2009)" [240′] ×514 is the Met's 2009/10 broadcast, TMDB's "Bizet: Carmen" (aired 15
+   *  January 2010, 166′), not the Met's 2019 or 2024 Carmen; DE "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth
+   *  MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon" (October 2026), not the Met's 2026/27 Manon (April 2027), which
+   *  "MET Opera Live im Kino: Manon" [2027] ×4 is; DE "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's
+   *  2011 one IMDb suggests. It pre-empts every rule, as [[seasonProduction]] does. */
+  private[identity] def relayRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(relayRecordWhy(ranked)).toOption
+  private[identity] def relayRecordWhy(ranked: Seq[Scored]): Verdict =
     for {
       any    <- firstCandidate(ranked)
-      _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
-      year   <- any.listing.statedYear.orElse(StageRelays.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
-      // a year before the season its screenings fall in dates the staging's premiere, not the broadcast
-      // ([[Listing.screenedSeason]]): UK Aldeburgh's "Royal Ballet: The Nutcracker" [2025], screening in the 2026/27
-      // season, is no 2025/26 record's, which the season rules then tell apart
-      _      <- need(any.listing.screenedSeason.forall(season => year >= season), "its year predates the season it screens in")
-      works   = StageRelays.stageWorks(any.listing)
-      _      <- need(works.nonEmpty, "the title names no stage work")
-      itsHouse = StageRelays.bannerNamesItsHouse(any.listing)
-      record <- one(eligibleOf(ranked).filter(scored => scored.candidate.film.season.isDefined &&
-                  StageRelays.stageWorks(scored.candidate.film).exists(works) && itsHouse(scored.candidate.film) &&
-                  scored.candidate.film.year.contains(year) && !contradicted(scored)),
-                  "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
+      relay  <- any.listing.relayBilled.toRight(Refused("it bills no house's relay of a work in a season"))
+      record <- one(eligibleOf(ranked).filter(scored => RelayStage.recordOf(relay, scored.candidate.film)),
+                  "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
+                  s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
+      _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency), "a published year contradicts it", record, contradiction(record))
+      _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield atOwn(record)
 
   /** The one SEASON record whose title is the listing's own once its season is taken out ("&" and "and" alike), when
@@ -78,10 +72,10 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
   private[identity] def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
     record.listing.screenedSeason.exists(record.candidate.film.season.contains)
   }
-  /** The season record a relay's own year ([[stageProduction]]) or its screenings' season ([[broadcastSeasonRecord]])
-   *  names, with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
-  private[identity] def datedOrBroadcastSeasonRecord(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    stageProduction(ranked).map(_ -> "stage-production").orElse(broadcastSeasonRecord(ranked).map(_ -> "season-record"))
+  /** The relay's record ([[relayRecord]]) or the season record its screenings' season names ([[broadcastSeasonRecord]]),
+   *  with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
+  private[identity] def relayOrBroadcastSeasonRecord(ranked: Seq[Scored]): Option[(Accepted, String)] =
+    relayRecord(ranked).map(_ -> "relay-record").orElse(broadcastSeasonRecord(ranked).map(_ -> "season-record"))
   private[identity] def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
     for {

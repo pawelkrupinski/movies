@@ -143,6 +143,8 @@ object IdentityMeasures {
     /** Its title read as a stage house's relay ([[StageRelays.Relay]]), once per listing: every candidate asks. */
     private[identity] lazy val relay: StageRelays.Relay =
       if (billsAStageHouse) StageRelays.Relay.of(titles) else StageRelays.Relay.Unbilled
+    /** Its title read as a house's relay of a work in a season ([[RelayStage.of]]), once per listing: every candidate asks. */
+    private[identity] lazy val relayBilled: Option[RelayStage.Billed] = RelayStage.of(this)
     /** The title's words, once per listing: a banner word before the title naming a director is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     /** The title cut after each of its first words, as the key of what follows and the words before it, once per

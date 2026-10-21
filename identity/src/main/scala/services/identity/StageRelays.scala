@@ -280,6 +280,10 @@ object StageRelays {
   /** A house name's words that say WHICH house: two letters or more, no number, none of [[HouseCommonWords]]. */
   private def particularWords(name: Seq[String]): Seq[String] =
     name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
+  /** Does a house fragment's words ([[Relay.houses]]) name a house IN PARTICULAR — a word beside the art form and a relay's
+   *  own ([[particularWords]]): "Met Opera", "Opéra national de Paris", "RB&O", never "Opera" or "Ballet Live"? */
+  private[identity] def namesAHouseInParticular(house: Seq[String]): Boolean =
+    particularWords(services.movies.StageHouse.initialsJoined(house)).nonEmpty
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
    *  House"), or two names of one house ([[services.movies.StageHouse]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
@@ -474,7 +478,7 @@ object StageRelays {
    *  short-season case): the follow-up is the corpus-level join. */
   private[identity] def stageWorkQueries(l: Listing): Seq[String] =
     if (l.seasonYear.isDefined) Nil
-    // the year as stage-production reads it: its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
+    // the year as the relay's record reads it ([[RelayStage]]): its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
     // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
     else (l.statedYear.orElse(bannerYear(l)).orElse(l.broadcastSeason).toSeq ++
       l.screenedSeason.filter(_ => l.billsAStageHouse || billsAHouseBanner(l) || barelyTimed(l))).distinct.flatMap(year =>

@@ -219,6 +219,34 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "take its house's record of the work from the season its title dates, whatever running time TMDB files" in {
+    // US Flicks' "MetOpera: Carmen (2009)" [240′] ×514 (recording 573, screening 21 October 2026): the Met's 2009/10 Live in
+    // HD Carmen, TMDB's "Bizet: Carmen" (aired 15 January 2010, 166′), filed under the Met's name only as an alternative.
+    // "MetOpera" read as no house, so the record was a screen namesake, and the learned runtime-gap veto denied it besides:
+    // a relay's running time is its screening's, intervals and all. The Met's later records of the work, and the Opéra
+    // Comique's 2009 one, are other productions.
+    val us = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.UnitedStates)).get
+    val films = Seq(
+      F(248042, "Bizet: Carmen", 2010, "Gary Halvorson", 166, 2, alternatives = Seq("The Metropolitan Opera - Bizet: Carmen"),
+        released = Some(java.time.LocalDate.of(2010, 1, 15))),
+      F(543711, "The Metropolitan Opera: Carmen", 2019, "Richard Eyre", 210, 3, released = Some(java.time.LocalDate.of(2019, 2, 2))),
+      F(1143037, "The Metropolitan Opera: Carmen", 2024, "Carrie Cracknell", 225, 3, released = Some(java.time.LocalDate.of(2024, 1, 27))),
+      F(980603, "CARMEN (2009) Opéra Comique", 2009, "", 0, 1),
+      F(21193, "Carmen", 1984, "Francesco Rosi", 152, 8))
+    def met(raw: String, year: Option[Int], director: Option[String], runtime: Int) =
+      listing(us, raw, year, director, Some(runtime)).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 21))))
+    // beside a title-linked sibling of another season (Lark Theater's, crediting the composer), which denies the 2010 record
+    // and is no withdrawal of it: one house stages a work once a season, so the sibling's denial says it is another
+    // production, never that this one is
+    val carmen = met("MetOpera: Carmen (2009)", None, None, 240)
+    val later  = met("MetOpera: Carmen (2023-24)", Some(2024), Some("Georges Bizet"), 212)
+    val r = shipped(Seq(carmen, later), films)
+    withClue(Seq(carmen, later).map(l => r.decisionOf(l.key).render).mkString("\n")) {
+      r.decisionOf(carmen.key).film shouldBe Some(248042)
+      r.decisionOf(later.key).film should not be Some(248042)
+    }
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")
