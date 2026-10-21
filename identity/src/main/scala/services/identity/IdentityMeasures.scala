@@ -356,6 +356,20 @@ object IdentityMeasures {
   final case class Missing(side: String) extends Measure
 
   val MissingListing: Missing = Missing("listing")
+  /** The listing-film signals a feed's copied fact is measured by ([[SourceReliability.Fact]]: year, directors, runtime,
+   *  original title). */
+  val CopiedSignals: Seq[String] = Seq("year.delta", "director", "runtime.delta", "originalTitle")
+  /** The signal a fact `signal` the listing holds as `feed`'s copy is weighed by beside its own
+   *  (`IdentityCalibration.ScopeModel.copied`). */
+  def copiedSignal(signal: String, feed: String): String = s"$signal$CopiedMark$feed"
+  val CopiedMark = "@copied:"
+  def isCopiedSignal(name: String): Boolean = name.contains(CopiedMark)
+  /** `m` with each copied signal's measure restated as `feed`'s copy ([[copiedSignal]]) where the listing states the
+   *  fact: what weighs the copy its feed's share of a venue's own fact. */
+  def copiedBy(feed: Option[String], m: Map[String, Measure]): Map[String, Measure] = feed match {
+    case None    => m
+    case Some(f) => m ++ CopiedSignals.flatMap(signal => m.get(signal).filter(_ != MissingListing).map(copiedSignal(signal, f) -> _))
+  }
   /** The director relation naming one person on both sides ([[directorRelation]]). */
   val SamePersonMeasure: Category = Category("same_person")
   val MissingFilm: Missing    = Missing("film")

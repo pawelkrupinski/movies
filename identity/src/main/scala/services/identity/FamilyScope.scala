@@ -27,9 +27,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[Denial], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
-            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty): Seq[Scored] = {
+            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty,
+            copiedBy: Option[String] = None): Seq[Scored] = {
     counted()
-    new ListingScoring(listing, venue, source, ranks, walked, shared, deniedByNode, suggested, directedBy, imdbTitles, country, linked).scored
+    new ListingScoring(listing, venue, source, ranks, walked, shared, deniedByNode, suggested, directedBy, imdbTitles, country, linked, copiedBy).scored
   }
 
   /** One [[score]] of `listing` against the pool: the pool as the listing's titles relate to it, the candidates it reaches
@@ -37,7 +38,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private final class ListingScoring(listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int],
                                      walked: Set[Int], shared: Set[Int], deniedByNode: Int => Option[Denial], suggested: Set[Int],
                                      directedBy: Set[Int], imdbTitles: Map[Int, Set[String]], country: Option[String],
-                                     linked: Set[Int]) {
+                                     linked: Set[Int], copiedBy: Option[String]) {
     private val related    = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
     // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
     // title already: it carries it too, so the listing's facts are read against a film its title names. PL "Camino dla
@@ -68,10 +69,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
 
     private def measure(candidate: Candidate): Scored = {
       val rivals   = close - (if (rivalling(candidate.tmdbId)) 1 else 0)
-      val measures = IdentityMeasures.creditedByTitle(listing, candidate.film, IdentityMeasures.creditedBySearch(
+      val measures = IdentityMeasures.copiedBy(copiedBy, IdentityMeasures.creditedByTitle(listing, candidate.film, IdentityMeasures.creditedBySearch(
         IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
           backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue, source),
-          relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId)))
+          relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId))))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
@@ -240,11 +241,20 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** Whose claim `node`'s facts are, for the sources backing a film ([[SourceReliability.claimOf]]). */
   private def sourceOf(node: EvidenceNode): String = SourceReliability.claimOf(node.listings.head)
 
+  /** The feed whose copy every fact of `nodes`' listings is ([[SourceReliability.factsOf]], one feed for all), its copied
+   *  facts weighed at its measured share ([[IdentityCalibration.CopiedShare]]); none where a venue states its own. */
+  private def copiedByOf(nodes: Seq[EvidenceNode]): Option[String] =
+    nodes.flatMap(_.listings).map(SourceReliability.factsOf).distinct match {
+      case Seq(feed) if feed ne SourceReliability.Venue => Some(feed.name)
+      case _                                           => None
+    }
+
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
       score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
-        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet).map(placedByImdb(Seq(node)))
+        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet,
+        copiedByOf(Seq(node))).map(placedByImdb(Seq(node)))
         .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
 
@@ -381,7 +391,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     score(listing, lead.venue, sourceOf(lead), ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
-      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked)
+      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked, copiedByOf(cluster))
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some(Denial("a member's own evidence rules it out"))))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {

@@ -99,7 +99,7 @@ final case class IdentityCalibration(version: String,
    *  value: a trace keeps these lines and is rewritten when they move, and a count drifting inside one bin
    *  (571 → 570 venues) moved every such trace each tick for a weight that had not changed. */
   def evidence(scope: String, measures: Map[String, Measure]): Seq[String] = {
-    val signals = model(scope).signals
+    val signals = model(scope).weighed
     contributions(scope, measures).filter(_._2 != 0).sortBy(c => (-math.abs(c._2), c._1))
       .map { case (s, w) => f"$s=${binned(signals.get(s), measures.get(s))}%s ${if (w >= 0) "+" else ""}$w%.2f" }
   }
@@ -223,11 +223,34 @@ object IdentityCalibration {
   /** A probability cut and what it measured on held-out data. */
   final case class Threshold(probability: Double, measured: Map[String, Double] = Map.empty, basis: String = "")
 
+  /** How much of a venue's own fact's weight a feed's COPY of the fact earns ([[ScopeModel.copied]]): `support` where the
+   *  fact weighs for the film, `dissent` where it weighs against, each fitted on the judged candidates
+   *  (`scripts/experiments/copied-fact-share-fit.py`) with `n` judged pairs. */
+  final case class CopiedShare(support: Double, dissent: Double, n: Int = 0)
+
+  /** A scope's evidence model. `copied`: per feed ([[SourceReliability.Source.name]]), how much its copied year, director,
+   *  runtime and original title weigh beside a venue's own ([[CopiedShare]]) — a copy agrees with the entry it was copied
+   *  from by construction, so it is worth what the feed's matching is worth, measured per feed. Read as a signal of its
+   *  own per fact and feed ([[IdentityMeasures.copiedSignal]]: the own signal's table times (share − 1)), so the two
+   *  together weigh the copy `share` of a venue's own fact. */
   final case class ScopeModel(prior: Double, signals: Map[String, SignalWeights], calibration: Calibration,
-                              thresholds: Map[String, Threshold] = Map.empty) {
+                              thresholds: Map[String, Threshold] = Map.empty, copied: Map[String, CopiedShare] = Map.empty) {
+    /** The signals a copied fact is weighed by beside its own ([[copied]]), derived from the own signal's table. */
+    lazy val copiedSignals: Map[String, SignalWeights] = for {
+      (feed, share) <- copied
+      signal        <- IdentityMeasures.CopiedSignals
+      own           <- signals.get(signal).toSeq
+    } yield {
+      def scaled(w: Double) = w * ((if (w > 0) share.support else share.dissent) - 1)
+      IdentityMeasures.copiedSignal(signal, feed) -> SignalWeights(own.kind, categories = own.categories.map((k, w) => k -> scaled(w)),
+        bins = own.bins.map(b => b.copy(weight = scaled(b.weight), positives = 0, negatives = 0)),
+        missing = own.missing.map((k, w) => k -> scaled(w)))
+    }
+    /** Every signal weighed: the artefact's own and the copied facts' ([[copiedSignals]]). */
+    lazy val weighed: Map[String, SignalWeights] = signals ++ copiedSignals
     /** The signals in name order, sorted once: every scoring sums its contributions in this order
      *  (`logOdds`), and sorting them per call was ~2–5% of a re-resolve (JFR, 2026-09-29). */
-    lazy val bySignalName: Seq[(String, SignalWeights)] = signals.toSeq.sortBy(_._1)
+    lazy val bySignalName: Seq[(String, SignalWeights)] = weighed.toSeq.sortBy(_._1)
     /** [[bySignalName]] as two arrays, read by index where a score is summed. */
     lazy val signalNames: Array[String]          = bySignalName.map(_._1).toArray
     lazy val signalWeights: Array[SignalWeights] = bySignalName.map(_._2).toArray
@@ -272,6 +295,7 @@ object IdentityCalibration {
   implicit val signalFormat: OFormat[SignalWeights]      = Json.using[Json.WithDefaultValues].format[SignalWeights]
   implicit val calibrationFormat: OFormat[Calibration]   = Json.format[Calibration]
   implicit val thresholdFormat: OFormat[Threshold]       = Json.using[Json.WithDefaultValues].format[Threshold]
+  implicit val copiedShareFormat: OFormat[CopiedShare] = Json.using[Json.WithDefaultValues].format[CopiedShare]
   implicit val scopeFormat: OFormat[ScopeModel]          = Json.using[Json.WithDefaultValues].format[ScopeModel]
   implicit val conditionFormat: OFormat[Condition]       = Json.using[Json.WithDefaultValues].format[Condition]
   implicit val ruleFormat: OFormat[CannotLinkRule]       = Json.using[Json.WithDefaultValues].format[CannotLinkRule]

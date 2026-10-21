@@ -31,7 +31,9 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   def factsSupport(scored: Scored): Boolean = {
     // summed in place, as every rule asks it per candidate: no tuple or option per signal
     val published: IdentityCalibration.Weighed = (name, _) => !NotOwn(name) && name != "title" && !missing(scored, name)
-    calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => weight > 0 && published(name, weight), (_, _) => 1.0) > 0 &&
+    // a copy's share ([[IdentityMeasures.isCopiedSignal]]) weighs in the balance, never as a fact of its own
+    calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => weight > 0 && published(name, weight) &&
+      !IdentityMeasures.isCopiedSignal(name), (_, _) => 1.0) > 0 &&
       calibration.contributionSumWhere(ListingFilm, scored.measures, published) > 0
   }
   private def missing(scored: Scored, name: String): Boolean = scored.measures.getOrElse(name, null).isInstanceOf[IdentityMeasures.Missing]
@@ -56,12 +58,13 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
    *  did not leave missing, with a negative weight? */
   def speaksAgainst(scored: Scored): Boolean =
     // counted in place, as [[against]] finds them: every rule asks it per candidate
-    calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => !NotOwn(name) && weight < 0 && !missing(scored, name),
-      (_, _) => 1.0) > 0
+    calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => !NotOwn(name) && weight < 0 && !missing(scored, name) &&
+      !IdentityMeasures.isCopiedSignal(name), (_, _) => 1.0) > 0
   /** The published facts weighing against `scored` — what [[speaksAgainst]] finds — rendered as the trace's evidence is. */
   def against(scored: Scored): Seq[String] = {
     val names = calibration.contributions(ListingFilm, scored.measures).collect { case (name, weight)
-      if !NotOwn(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
+      if !NotOwn(name) && weight < 0 && !IdentityMeasures.isCopiedSignal(name) &&
+        !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
     if (names.isEmpty) Nil else calibration.evidence(ListingFilm, scored.measures).filter(line => names(line.takeWhile(_ != '=')))
   }
 
