@@ -15,6 +15,9 @@ DIABLY = "suspect\tKino Kosmos\tKF Ambasada: Diabły\ttmdb:31767\tDiabły (1971)
 NOC = ("suspect\tKino Muranów\t\"Noc żywych trupów\" + wstęp Jacka Rokosza\ttmdb:10331\tNoc żywych trupów (1968)\t"
        "fragment: 'Noc żywych trupów' is 3 of the billing's words\n")
 ARRIETTY = "finding\t{venue}\tArrietty (4K Restoration) Experience It In IMAX\tsearches 'Arrietty (4K Restoration) Experience It' (4k → FormatTags)\n"
+# One Webedia id taken as two films (DE prod mirror, 2026-10-21): a CatalogueSplits row of the convergence leg.
+EMIL = ("catalogue\tKino A, Kino B\tEmil und die Detektive\ttmdb:1931\tEmil und die Detektive (1931)\t"
+        "webedia 1234 also names tmdb:2026 (5 listings); this film 2 listings\n")
 PREVIEW = "finding\tFilmRaum\tLa bola negra , Preview am Mi. 18.11. um 20 Uhr\tsearches it (preview)\n"
 
 
@@ -144,6 +147,19 @@ class FindingsReportTest(unittest.TestCase):
         self.assertEqual(0, self.run_report(red, "2026-10-21", countries="pl"))
         self.assertEqual("OPEN", self.gh.state("pl"))
         self.assertIn("first seen 2026-10-21 (0 d)", self.gh.body("pl"))
+
+    def test_a_catalogue_id_naming_two_films_is_a_finding_with_slice_commands_that_leaves_once_judged(self):
+        split = self.recording("a", {("de", "de-suspect-unjudged.txt"): [EMIL], ("de", "corpus-shape-recorded-de-SearchQueryMarkers.txt"): []})
+        self.assertEqual(0, self.run_report(split, "2026-10-21", countries="de"))
+        de = self.gh.body("de")
+        self.assertIn("## One catalogue id naming two films (1)", de)
+        self.assertIn("### Emil und die Detektive → tmdb:1931 Emil und die Detektive (1931)", de)
+        self.assertIn("webedia 1234 also names tmdb:2026 (5 listings)", de)
+        self.assertIn("scripts/identity-slice de --venue 'Kino A' --title 'Emil und die Detektive' --recording 38625654132", de)
+        self.labels = self.file("labels.tsv", ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
+                                               "de\t*\tEmil und die Detektive\ttmdb:1931\tright\tKästner's\n"])
+        self.assertEqual(0, self.run_report(split, "2026-10-22", countries="de"))
+        self.assertEqual("CLOSED", self.gh.state("de"))
 
     def test_a_country_whose_row_left_no_findings_keeps_its_issue_and_none_at_all_is_an_error(self):
         red = self.recording("a", self.RED)
