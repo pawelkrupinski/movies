@@ -68,7 +68,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
   def titleFacts(cinema: Cinema, raw: String): TitleFacts.Facts = TitleFacts.of(facts, peeledFacts(raw).facts, formatPeel(cinema, raw))
 
   private def formatPeel(cinema: Cinema, raw: String): FormatTags.Peeled =
-    formatPeeled.get(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw), FormatTags.peel(_))
+    formatPeeled.get(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw), services.billing.BillingParse(_).peeled)
 
   /** What the title rules did to a venue's `raw` title, as rule ids: the venue's own cleanup and the format
    *  tags it peeled (`format:<tag>`), then the canonical and search tiers over what that leaves (`title:<id>`).
@@ -149,7 +149,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Lives here rather than on `MovieService` because it composes two of THIS
    *  instance's rules; a caller holding the normalizer should not have to route
    *  through the enrichment service to combine them. */
-  def searchQuery(title: String): String = FormatTags.stripFormatTags(apiQuery(recase(title)))
+  def searchQuery(title: String): String = services.billing.BillingParse(apiQuery(recase(title))).formatless
 
   /** Display-side casing applied to EVERY scraper's title at the scrape choke
    *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading

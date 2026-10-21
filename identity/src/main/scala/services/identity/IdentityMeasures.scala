@@ -1,5 +1,6 @@
 package services.identity
 
+import services.billing.BillingParse
 import services.movies.{TitleContainment, TitleSeason, TitleWords}
 import services.resolution.{SearchTitles, YearWindow}
 
@@ -127,13 +128,13 @@ object IdentityMeasures {
     /** The own forms' non-empty keys, once per listing: every pool candidate's `titleRelation` asks. */
     private[identity] lazy val ownKeys: Set[String] =
       (ownForms.map(_.key) ++ printless.map(IdentityMeasures.key) ++ versionless.map(IdentityMeasures.key)).filter(_.nonEmpty).toSet
-    /** Its titles without the closing version tag they bill ([[VersionTags.versionless]]): "Der Herr der Ringe: Die zwei
+    /** Its titles without the closing version tag they bill ([[BillingParse.versionless]]): "Der Herr der Ringe: Die zwei
      *  Türme EXTENDED VERSION" names "Der Herr der Ringe: Die zwei Türme" whole, as a cut of that film. */
-    private[identity] lazy val versionless: Seq[String] = titles.flatMap(VersionTags.versionless)
+    private[identity] lazy val versionless: Seq[String] = titles.flatMap(BillingParse(_).versionless)
     /** Its titles without the print a repertory screening bills ([[IdentityMeasures.billsAPrint]]), format tags and all:
      *  "Tschaikowsky - Genie und Wahnsinn (35mm)" is Ken Russell's film's whole title, not a piece of it. */
     private[identity] lazy val printless: Seq[String] =
-      titles.filter(IdentityMeasures.billsAPrint).map(services.movies.FormatTags.stripFormatTags).filter(_.nonEmpty)
+      titles.filter(IdentityMeasures.billsAPrint).map(BillingParse(_).formatless).filter(_.nonEmpty)
     /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
     private[identity] lazy val anniversary: Option[Int] = IdentityMeasures.anniversaryOf(ownTitles ++ originalTitle)
     /** The stage works its titles bill ([[StageRelays.stageWorksBilled]]), no season named. */
@@ -170,7 +171,7 @@ object IdentityMeasures {
      *  (`StageRelays.billing`): a box office's certificate is no part of the house's billing. UK "NT LIVE: Golden Boy (15)" billed
      *  "Golden Boy" under no banner, its work not at the title's edge, and measured an `overlap` of "Golden Boy (NT Live)". */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
-      ownTitles.flatMap(t => Seq(t, services.movies.FormatTags.stripFormatTags(t))).map(IdentityMeasures.yearlessTokens).distinct
+      ownTitles.flatMap(t => Seq(t, BillingParse(t).formatless)).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
     /** Does the venue publish a FACT beside its title — a year (field, bracket or season), a
      *  running time, a director, a country, or an original title that is not its title again

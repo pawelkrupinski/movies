@@ -1,11 +1,11 @@
-package services.identity
+package services.billing
 
-import services.movies.{FormatTags, TitleContainment, TitleWords}
+import services.movies.{FormatTags, TitleContainment, TitleText, TitleWords}
 
 /** A title's closing VERSION tag — "– Extended", "(ext.)", "EXTENDED VERSION", ": Director's Cut", "(Kinofassung)",
  *  "wersja reżyserska", "versión extendida" ([[TitleWords.Concept.VersionTag]]) — names a cut of the film the rest of the
  *  title names, not another work: TMDB keeps one record for a film and its cuts. The title relations read a billing's
- *  titles and original title without it too ([[versionless]]), so a version-tagged spelling of a film's own title names
+ *  titles and original title without it too ([[BillingParse.versionless]]), so a version-tagged spelling of a film's own title names
  *  that title whole instead of measuring a `segment` or an `overlap` of it — what the learned listing-film cut read as
  *  another film: DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)", originally "The Lord of the Rings: The
  *  Return of the King – Extended", was kept from Jackson's film by `originalTitle=segment`, and its `denies-film`
@@ -19,7 +19,7 @@ object VersionTags {
   private val WholeTag = s"(?:$Format\\s)*$Phrase(?:\\s(?:$Phrase|$Format))*".r
 
   /** Is `piece` a version tag and nothing else? */
-  private[identity] def isTag(piece: String): Boolean = {
+  private def isTag(piece: String): Boolean = {
     val folded = TitleContainment.tokens(piece).mkString(" ")
     folded.nonEmpty && WholeTag.matches(folded)
   }
@@ -30,7 +30,7 @@ object VersionTags {
   /** `title` without its closing version tag, if it closes on one and something of the film's title is left — more than
    *  an article ("The Final Cut" is a title, not "The" cut finally). Several tags go ("(ext.) (OV)"), each a bracket, a
    *  delimited piece ("… – Extended", "…: Director's Cut") or the title's last words ("… EXTENDED VERSION"). */
-  def versionless(title: String): Option[String] = {
+  private[billing] def versionless(title: String): Option[String] = {
     @annotation.tailrec
     def strip(t: String, stripped: Boolean): Option[String] = closingTag(t) match {
       case Some(rest) => strip(rest, stripped = true)
@@ -40,11 +40,11 @@ object VersionTags {
   }
 
   /** "Pink Floyd: The Final Cut" closes on a title, not a tag after "The". */
-  private def endsOnArticle(word: String): Boolean = TitleContainment.tokens(word).lastOption.exists(IdentityMeasures.LeadingArticles)
+  private def endsOnArticle(word: String): Boolean = TitleContainment.tokens(word).lastOption.exists(TitleText.Articles)
 
   private def names(rest: String): Boolean = {
     val words = TitleContainment.tokens(rest)
-    words.nonEmpty && !(words.sizeIs == 1 && IdentityMeasures.LeadingArticles(words.head))
+    words.nonEmpty && !(words.sizeIs == 1 && TitleText.Articles(words.head))
   }
 
   /** The title before its one closing tag, if it closes on one. */

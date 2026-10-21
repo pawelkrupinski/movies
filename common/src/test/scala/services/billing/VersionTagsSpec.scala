@@ -1,4 +1,4 @@
-package services.identity
+package services.billing
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
