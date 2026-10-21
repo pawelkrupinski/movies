@@ -321,4 +321,10 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     Names.distinct.size shouldBe Names.size
     RuleGroups.values.toSet.subsetOf(Names.toSet) shouldBe true
   }
+
+  it should "group every acceptance rule, so a model take by any of them reads as the model's rule" in {
+    // a rule missing here takes its film with no `rule.*` signal, and the agreement's guards then veto the model's own take
+    val acceptance = new Acceptance(IdentityCalibration.resolver)
+    ((acceptance.aloneRules ++ acceptance.pooledRules).map(_.name).toSet -- RuleGroups.keySet) shouldBe empty
+  }
 }

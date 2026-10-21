@@ -109,7 +109,8 @@ object UnifiedEvidence {
     "exact-top-hit" -> "rule.title", "segment-top-hit" -> "rule.title", "sole-result" -> "rule.title", "sole-work" -> "rule.title",
     "dated-title" -> "rule.title", "directors-work" -> "rule.director", "directors-title" -> "rule.director",
     "favoured-calibrated" -> "rule.calibrated", "unrivalled-calibrated" -> "rule.calibrated", "imdb-suggested" -> "rule.imdb",
-    "house-production" -> "rule.stage", "stage-production" -> "rule.stage", "season-record" -> "rule.stage", "season-production" -> "rule.stage")
+    "house-production" -> "rule.stage", "stage-production" -> "rule.stage", "season-record" -> "rule.stage", "season-production" -> "rule.stage",
+    "relay-record" -> "rule.stage")
 
   /** The calibrated probability as a feature: its log-odds, clamped at ±9.2 (1e-4) and rounded to a quarter, so rows the
    *  fit reads fold into few distinct ones. */
