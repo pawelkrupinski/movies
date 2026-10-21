@@ -66,6 +66,16 @@ let
         http_page = http { fail_if_body_not_matches_regexp = [ "</html>" ]; };
         # A share card is an image: any 2xx will do.
         http_asset = http { };
+        # A POSTER MUST ARRIVE AS AN IMAGE, OVER HTTPS. weserv answers a poster it could not fetch
+        # with a JSON 404, but other failures come back 200 as an HTML page, so the type is checked,
+        # not just the status (2026-10-21: kinoheld's posters through weserv were all
+        # `404 application/json`). HTTPS because a browser on an https page refuses an http image
+        # outright -- the mixed-content posters of May 2026 loaded fine anywhere but in a browser.
+        # Size is the alert's half: posters.rules reads probe_http_uncompressed_body_length.
+        http_image = http {
+          fail_if_not_ssl = true;
+          fail_if_header_not_matches = [{ header = "Content-Type"; regexp = "^image/"; }];
+        };
       };
   };
 
@@ -81,9 +91,17 @@ let
   ];
   staticConfigs = map (t: {
     targets = [ t.url ];
-    labels = { inherit (t) country kind; __param_module = "http_page"; };
+    # A control is not a page of ours and need not end in `</html>`: any 2xx will do.
+    labels = { inherit (t) country kind; __param_module = if t.kind == "control" then "http_asset" else "http_page"; };
   });
   isCity = t: t.kind == "city";
+  # The discovered posters go to their own five-minute job; the minute job keeps films and cards.
+  # Appended AFTER relabelToExporter, so its three steps stay first in every job.
+  posterOnly = keep: [{
+    source_labels = [ "kind" ];
+    regex = "poster";
+    action = if keep then "keep" else "drop";
+  }];
   blackboxTargetsYaml = builtins.toJSON {
     scrape_configs = [
       {
@@ -95,7 +113,19 @@ let
         scrape_timeout = "15s";
         static_configs = staticConfigs (lib.filter (t: !isCity t) cfg.targets);
         file_sd_configs = [{ files = [ discoveredFile ]; refresh_interval = "1m"; }];
-        relabel_configs = relabelToExporter;
+        relabel_configs = relabelToExporter ++ posterOnly false;
+      }
+      {
+        # POSTERS EVERY FIVE MINUTES. ~20 targets, through weserv or straight from a CDN, and an
+        # Amazon original is 1-2 MB: once a minute that would be the heaviest thing the probes do,
+        # for an alert (posters.rules) that holds for ten minutes anyway.
+        job_name = "blackbox-poster";
+        metrics_path = "/probe";
+        scrape_interval = "5m";
+        scrape_timeout = "15s";
+        static_configs = [ ];
+        file_sd_configs = [{ files = [ discoveredFile ]; refresh_interval = "1m"; }];
+        relabel_configs = relabelToExporter ++ posterOnly true;
       }
       {
         # CITY PAGES EVERY FIVE MINUTES. They are the heaviest pages there are (London and New York
@@ -141,7 +171,9 @@ in
         options = {
           url = lib.mkOption { type = lib.types.str; };
           country = lib.mkOption { type = lib.types.str; description = "`all` for a door that is no one country's."; };
-          kind = lib.mkOption { type = lib.types.enum [ "front-door" "country-root" "city" ]; };
+          # `control`: NOT the site -- a stable page of someone else's, probed to tell "the site is
+          # failing" from "this host's path out is" (synthetic-probes.rules, ProbeSourceDegraded).
+          kind = lib.mkOption { type = lib.types.enum [ "front-door" "country-root" "city" "control" ]; };
         };
       });
       default = [ ];
@@ -165,6 +197,18 @@ in
           };
         };
       });
+    };
+
+    posterSkipHosts = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      # Both refuse a datacentre address and serve a visitor's browser: PosterProxy sends their
+      # posters to the browser direct for the same reason (its SkipHosts), and the worker reaches
+      # them only through the residential proxy. Probed from Hetzner they could only ever fail.
+      default = [ "multikino.pl" "biletyna.pl" ];
+      description = ''
+        Poster hosts (registrable domains, as `poster_host` names them) the discovery never picks
+        a poster probe from.
+      '';
     };
 
     discoverFrom = lib.mkOption {
@@ -202,6 +246,7 @@ in
       environment = {
         PROBE_USER_AGENT = cfg.userAgent;
         PROBE_TEXTFILE = "${config.fleet.observability.textfileDirectory}/synthetic-probes.prom";
+        PROBE_POSTER_SKIP = lib.concatStringsSep " " cfg.posterSkipHosts;
       } // lib.optionalAttrs (cfg.discoveryOrigin != null) {
         PROBE_ORIGIN_ADDRESS = cfg.discoveryOrigin.address;
         # curl trusts a bundled LEAF certificate (it verifies with OpenSSL's partial-chain flag),

@@ -205,6 +205,11 @@ let
     # Whether the fleet is still deploying itself. The failure this covers is completely silent:
     # an applier that has stopped leaves every service running and every other alert green.
     "nixos-deploy"
+    # IS EVERY CARD STILL DRAWING A POSTER. Added after 2026-10-21, when every kinoheld poster in
+    # Germany rendered as "no poster" for want of an https:// and nothing alerted: the image is the
+    # visitor's browser's fetch from weserv, so no request of ours failed. Synthetic poster probes
+    # from outside, and the web's own count of whose poster each served film draws.
+    "posters"
     # CAN THE READ MODEL'S PROJECTION RATE STILL BE EXPLAINED. The projector is fed by two change
     # streams and only one of them was counted, so a 40x climb on 2026-09-04 sat against a flat
     # "projection trigger" line and could not be attributed for an evening. Alphabetically after

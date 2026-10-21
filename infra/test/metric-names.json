@@ -72,6 +72,7 @@
   "node_vmstat_oom_kill",
   "probe_duration_seconds",
   "probe_http_status_code",
+  "probe_http_uncompressed_body_length",
   "probe_success",
   "process_cpu_seconds_total",
   "process_resident_memory_bytes",
@@ -81,6 +82,6 @@
   "prometheus_tsdb_storage_blocks_bytes",
   "up"
  ],
- "taken": "2026-10-14",
+ "taken": "2026-10-21",
  "window_days": 14
 }

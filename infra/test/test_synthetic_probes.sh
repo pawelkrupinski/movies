@@ -188,6 +188,62 @@ check "with no origin configured a refused film page is still probed (and reads 
   "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
   "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
 
+echo "discovery: one poster per poster host, as the city page hands it to a browser"
+# The 2026-10-21 page: kinoheld's posters handed to weserv SCHEME-LESS (the bug, 5a77a8867), TMDB's
+# with https, an Amazon poster direct, a Multikino one direct (skipped: it refuses datacentres),
+# and a venue site with a single poster (under the floor).
+wk='https://images.weserv.nl/?url='
+hints='&amp;w=480&amp;h=720&amp;fit=cover&amp;output=webp'
+de_page="$(
+  for i in 1 2 3; do
+    printf '<a href="/de/berlin/movie/f%d">x</a><img src="x" data-original-src="%sstatic.kinoheld.de%%2Fimages%%2Ffilm%%2Ff%d.jpg%s" data-fallbacks="%shttps%%3A%%2F%%2Fimage.tmdb.org%%2Ft%%2Fp%%2Fw500%%2Ff%d.jpg%s|https://m.media-amazon.com/images/f%d.jpg">' \
+      "$i" "$wk" "$i" "$hints" "$wk" "$i" "$hints" "$i"
+  done
+  printf '<img data-original-src="https://www.multikino.pl/-/media/a.jpg"><img data-original-src="https://www.multikino.pl/-/media/b.jpg">'
+  printf '<img data-original-src="https://www.multikino.pl/-/media/c.jpg"><img data-original-src="%swww.kino-lumiere.de%%2Fa.jpg%s">' "$wk" "$hints"
+)</html>"
+serve "https://showtimes.cc/de/berlin/" "$de_page"
+serve "https://showtimes.cc/de/berlin/movie/f1" '<meta property="og:image" content="https://showtimes.cc/share-cards/de/hf1.jpg"></html>'
+rm -f "$tmp/targets.json"
+PROBE_POSTER_MIN=3 PROBE_POSTER_SKIP="multikino.pl biletyna.pl" PROBE_HOUR=2026102117 \
+  run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
+check "two poster targets per host drawing at least the floor, the skipped and the tail left out" \
+  "kinoheld.de kinoheld.de media-amazon.com media-amazon.com tmdb.org tmdb.org" \
+  "$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | sort | join(" ")')"
+check "the kinoheld posters are probed EXACTLY as served (the scheme-less weserv URL of the bug), with an hourly cache key" \
+  "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff1.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102117 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102117" \
+  "$(field '[.[] | select(.labels.poster_host == "kinoheld.de") | .targets[0]] | join(" ")')"
+check "a poster served direct is probed direct, with no cache key" "https://m.media-amazon.com/images/f1.jpg" \
+  "$(field '[.[] | select(.labels.poster_host == "media-amazon.com") | .targets[0]][0]')"
+check "posters are probed as images, labelled with their country" "http_image de" \
+  "$(field '[.[] | select(.labels.kind == "poster") | "\(.labels.__param_module) \(.labels.country)"] | unique | join(" ")')"
+check "the film and its card are still found beside them" "film share-card" \
+  "$(field '[.[] | select(.labels.kind != "poster") | .labels.kind] | sort | join(" ")')"
+
+echo "discovery: the probed poster stays put while the page still lists it"
+serve "https://showtimes.cc/de/berlin/" "<img data-original-src=\"${wk}static.kinoheld.de%2Fimages%2Ffilm%2Fnew.jpg${hints}\">$de_page"
+PROBE_POSTER_MIN=3 PROBE_HOUR=2026102118 run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
+check "a newly-first kinoheld poster does not displace the probed ones; the cache key moves with the hour" \
+  "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff1.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118" \
+  "$(field '[.[] | select(.labels.poster_host == "kinoheld.de") | .targets[0]] | join(" ")')"
+serve "https://showtimes.cc/de/berlin/" "$(printf '%s' "$de_page" | sed 's/f1\.jpg/gone.jpg/g')"
+PROBE_POSTER_MIN=3 PROBE_HOUR=2026102118 run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
+check "...and one the page stops listing is replaced, the other kept" \
+  "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Fgone.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118" \
+  "$(field '[.[] | select(.labels.poster_host == "kinoheld.de") | .targets[0]] | join(" ")')"
+
+echo "discovery: a poster host is its registrable domain, as tools.PosterHost names it"
+serve "https://showtimes.cc/uk/london/" "<a href=\"/uk/london/movie/bad-apples\">x</a>$(
+  printf '<img data-original-src="%shttps%%3A%%2F%%2Farthousecrouchend.savoysystems.co.uk%%2Fa.png%s">' "$wk" "$hints"
+  printf '<img data-original-src="%shttps%%3A%%2F%%2Fimages.savoysystems.co.uk%%2Fb.png%s">' "$wk" "$hints"
+  printf '<img data-original-src="https://de.web.img2.acsta.net/a.jpg"><img data-original-src="https://de.web.img3.acsta.net/b.jpg">')</html>"
+rm -f "$tmp/targets.json"
+PROBE_POSTER_MIN=2 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/
+check "a country suffix keeps its name; a CDN's shards are one host" "acsta.net savoysystems.co.uk" \
+  "$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | unique | join(" ")')"
+check "a page with posters under the floor everywhere probes none (PosterProbesMissing's case)" "0" \
+  "$(PROBE_POSTER_MIN=3 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/ >/dev/null; field '[.[] | select(.labels.kind == "poster")] | length')"
+
 # ── THE SCRAPE JOB monitoring-1 WOULD INSTALL ──────────────────────────────────────────────────
 echo "the blackbox job on monitoring-1"
 nix_flags=(--extra-experimental-features 'nix-command flakes')
@@ -205,13 +261,21 @@ check "...and in no other job" "" \
   "$(jq -r '.scrape_configs[] | select(.job_name != "blackbox-city") | .static_configs[] | select(.labels.kind == "city") | .targets[0]' <<<"$job")"
 check "both brands' front doors are static targets" "https://kinowo.net/ https://showtimes.cc/" \
   "$(jq -r '[.scrape_configs[0].static_configs[] | select(.labels.kind == "front-door") | .targets[0]] | sort | join(" ")' <<<"$job")"
-check "every probed URL goes through the public (Cloudflare) names, never an origin address" "" \
-  "$(jq -r '.scrape_configs[].static_configs[].targets[] | select(test("^https://(kinowo\\.net|showtimes\\.cc)/") | not)' <<<"$job")"
+check "every probed URL of the site goes through the public (Cloudflare) names, never an origin address" "" \
+  "$(jq -r '.scrape_configs[].static_configs[] | select(.labels.kind != "control") | .targets[] | select(test("^https://(kinowo\\.net|showtimes\\.cc)/") | not)' <<<"$job")"
+check "two controls that are not the site, one off Cloudflare and one on it, probed every minute as assets" \
+  "blackbox https://www.cloudflare.com/cdn-cgi/trace http_asset blackbox https://www.google.com/generate_204 http_asset" \
+  "$(jq -r '[.scrape_configs[] | .job_name as $j | .static_configs[] | select(.labels.kind == "control") | "\($j) \(.targets[0]) \(.labels.__param_module)"] | sort | join(" ")' <<<"$job")"
 check "the discovered film targets are read from the file the discovery writes" "/var/lib/synthetic-probes/targets.json" \
   "$(jq -r '.scrape_configs[0].file_sd_configs[0].files[0]' <<<"$job")"
 check "the URL becomes the probe target AND the instance label; the scrape goes to the exporter" \
-  "__param_target __param_target>instance 127.0.0.1:9115 __param_target __param_target>instance 127.0.0.1:9115" \
+  "__param_target __param_target>instance 127.0.0.1:9115 __param_target __param_target>instance 127.0.0.1:9115 __param_target __param_target>instance 127.0.0.1:9115" \
   "$(jq -r '[.scrape_configs[].relabel_configs | "\(.[0].target_label) \(.[1].source_labels[0])>\(.[1].target_label) \(.[2].replacement)"] | join(" ")' <<<"$job")"
+
+check "the discovered posters go to the five-minute poster job, and only there" \
+  "blackbox:drop:poster blackbox-poster:keep:poster" \
+  "$(jq -r '[.scrape_configs[] | select(.file_sd_configs) | "\(.job_name):\(.relabel_configs[3].action):\(.relabel_configs[3].regex)"] | join(" ")' <<<"$job")"
+check "...every five minutes" "5m" "$(jq -r '.scrape_configs[] | select(.job_name == "blackbox-poster") | .scrape_interval' <<<"$job")"
 
 discovery_env="$(nix "${nix_flags[@]}" eval --json \
   "$infra#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.environment" 2>/dev/null)"
@@ -221,6 +285,8 @@ check "...pinned to both zones' origin certificates" "kinowo.net.crt showtimes.c
   "$(nix "${nix_flags[@]}" eval --json \
     "$infra#nixosConfigurations.monitoring-1.config.fleet.syntheticProbes.discoveryOrigin.certificates" 2>/dev/null |
     jq -r 'map(split("/") | last) | sort | join(" ")')"
+check "the discovery never picks a poster from a host that refuses datacentres" "multikino.pl biletyna.pl" \
+  "$(jq -r '.PROBE_POSTER_SKIP' <<<"$discovery_env")"
 check "...bundled into the one file curl is told to trust" "synthetic-probe-origin-certificates.pem" \
   "$(jq -r '.PROBE_ORIGIN_CA | split("-") | .[1:] | join("-")' <<<"$discovery_env")"
 

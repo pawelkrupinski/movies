@@ -1,0 +1,249 @@
+# UNIT TESTS FOR THE POSTER RULES (nix/files/monitoring/rules/posters.rules).
+#
+# The first case IS the 2026-10-21 incident (5a77a8867), replayed as the probes would have seen it:
+# both kinoheld posters taken from Berlin's page start answering weserv's `404 application/json`
+# (79 bytes) at once, while TMDB's keep loading. The rest pin what each rule claims not to fire on:
+# one dead image of a host's two, a host's films drifting with the day's churn, the hourly change of
+# a probe's cache key, a web rollout's gap.
+rule_files:
+  - ../../nix/files/monitoring/rules/posters.rules
+  # For `probe:control_failing:any`, which holds PosterProbeFailing while the probes' path is down.
+  - ../../nix/files/monitoring/rules/synthetic-probes.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # 2026-10-21, REPLAYED. PosterProxy strips https:// from kinoheld's origin at 10m: weserv fetches
+  # it over http, kinoheld 403s, weserv answers 404 with a 79-byte JSON body. Probed every five
+  # minutes; three failed probes later (and the ten-minute hold) it pages. TMDB stays quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: the kinoheld outage of 2026-10-21 fires for kinoheld and not for tmdb
+    input_series:
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=static.kinoheld.de%2Fa.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '1 1 0x10'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=static.kinoheld.de%2Fa.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '21898 21898 79x10'
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=static.kinoheld.de%2Fb.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '1 1 0x10'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=static.kinoheld.de%2Fb.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '30000 30000 79x10'
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=https%3A%2F%2Fimage.tmdb.org%2Fa.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="tmdb.org"}'
+        values: '1x11'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=https%3A%2F%2Fimage.tmdb.org%2Fa.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="tmdb.org"}'
+        values: '42562x11'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: PosterProbeFailing
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: PosterProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "de"
+              poster_host: "kinoheld.de"
+              severity: "critical"
+            exp_annotations:
+              summary: "de: every kinoheld.de poster probed from outside fails to load"
+              description: "blackbox_exporter on monitoring-1 cannot load any of the kinoheld.de posters it took from de's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"kinoheld.de\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE PROBES' OWN PATH OUT FAILS (the Cloudflare control answering nothing) while both kinoheld
+  # posters fail: the failure is this host's, and PosterProbeFailing holds.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a failing control probe holds PosterProbeFailing
+    input_series:
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=a",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '1x5 0x40'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=a",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '20000x5 0x40'
+      - series: 'probe_success{instance="https://www.cloudflare.com/cdn-cgi/trace",job="blackbox",country="all",kind="control"}'
+        values: '1x5 0x40'
+      - series: 'probe_http_status_code{instance="https://www.cloudflare.com/cdn-cgi/trace",job="blackbox",country="all",kind="control"}'
+        values: '200x5 0x40'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: PosterProbeFailing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ONE DEAD IMAGE IS NOT A HOST OUTAGE: of tmdb's two probed posters one 404s for good (a poster
+  # deleted upstream) while the other loads. Quiet. A savoy poster that answers 200 with a 300-byte
+  # body -- a placeholder, not an image -- on BOTH probes counts as failed, and fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: one dead image of two stays quiet; a tiny 200 on every probe fires
+    input_series:
+      - series: 'probe_success{instance="https://image.tmdb.org/dead.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="tmdb.org"}'
+        values: '0x12'
+      - series: 'probe_http_uncompressed_body_length{instance="https://image.tmdb.org/dead.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="tmdb.org"}'
+        values: '0x12'
+      - series: 'probe_success{instance="https://image.tmdb.org/live.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="tmdb.org"}'
+        values: '1x12'
+      - series: 'probe_http_uncompressed_body_length{instance="https://image.tmdb.org/live.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="tmdb.org"}'
+        values: '40000x12'
+      - series: 'probe_success{instance="https://images.savoysystems.co.uk/a.png",job="blackbox-poster",country="uk",kind="poster",poster_host="savoysystems.co.uk"}'
+        values: '1x12'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.savoysystems.co.uk/a.png",job="blackbox-poster",country="uk",kind="poster",poster_host="savoysystems.co.uk"}'
+        values: '300x12'
+      - series: 'probe_success{instance="https://images.savoysystems.co.uk/b.png",job="blackbox-poster",country="uk",kind="poster",poster_host="savoysystems.co.uk"}'
+        values: '1x12'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.savoysystems.co.uk/b.png",job="blackbox-poster",country="uk",kind="poster",poster_host="savoysystems.co.uk"}'
+        values: '512x12'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: PosterProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "uk"
+              poster_host: "savoysystems.co.uk"
+              severity: "critical"
+            exp_annotations:
+              summary: "uk: every savoysystems.co.uk poster probed from outside fails to load"
+              description: "blackbox_exporter on monitoring-1 cannot load any of the savoysystems.co.uk posters it took from uk's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"savoysystems.co.uk\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE HOURLY CACHE KEY: at 30m the kinoheld probe's URL changes (`&kinowo_probe=` the next hour),
+  # so one series ends and another begins. Both succeed; nothing fires across the change.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: the hourly change of a probe's cache key does not fire
+    input_series:
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=a&kinowo_probe=2026102117",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '1x6'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=a&kinowo_probe=2026102117",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '20000x6'
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=a&kinowo_probe=2026102118",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '_x6 1x10'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=a&kinowo_probe=2026102118",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '_x6 20000x10'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: PosterProbeFailing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A COUNTRY WHOSE CITY PAGE NAMES NO POSTER: es has its film probe and no poster probe; pl has
+  # both. Thirty minutes on, es fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a country with a film probe and no poster probe fires
+    input_series:
+      - series: 'probe_success{instance="https://showtimes.cc/es/madrid/movie/x",job="blackbox",country="es",kind="film"}'
+        values: '1x60'
+      - series: 'probe_success{instance="https://kinowo.net/warszawa/movie/y",job="blackbox",country="pl",kind="film"}'
+        values: '1x60'
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=https%3A%2F%2Fimage.tmdb.org%2Fa.jpg",job="blackbox-poster",country="pl",kind="poster",poster_host="tmdb.org"}'
+        values: '1x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PosterProbesMissing
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: PosterProbesMissing
+        exp_alerts:
+          - exp_labels:
+              country: "es"
+              severity: "warning"
+            exp_annotations:
+              summary: "es's city page names no poster to probe"
+              description: "The synthetic probes found a film on es's city page but no poster host drawing ten or more of its cards' posters (synthetic-probe-targets.sh), so no poster is being watched from outside. Look at the page: if the cards show \"no poster\", the posters went missing before the browser (PosterPlaceholderShareJumped should agree); if they show posters, they all come from hosts in `fleet.syntheticProbes.posterSkipHosts` or under the floor -- `journalctl -u synthetic-probe-targets` and the page's `data-original-src` attributes say which."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HOST LOST FROM SERVING. de serves 1,000 films: 400 draw kinoheld, 400 tmdb, 200 none. At 26h
+  # (a day of history in) the kinoheld scraper stops extracting posters: its films fall back to
+  # tmdb (300) and none (100), and kinoheld's series is GONE -- which must still fire. The web
+  # rolls out at 27h (three stale minutes); the hold survives it. tmdb's share rising and the
+  # whole country's count dropping 20% (the day's own churn, uk) fire nothing.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 10m
+    name: a host vanishing from what the web serves fires; the day's churn does not
+    input_series:
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-de",job="kinowo-web",country="de",poster_host="kinoheld.de"}'
+        values: '400x156'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-de",job="kinowo-web",country="de",poster_host="tmdb.org"}'
+        values: '400x156 700x5 stale 700x20'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-de",job="kinowo-web",country="de",poster_host="none"}'
+        values: '200x156 300x5 stale 300x20'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-uk",job="kinowo-web",country="uk",poster_host="savoysystems.co.uk"}'
+        values: '500x144 400x40'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-uk",job="kinowo-web",country="uk",poster_host="none"}'
+        values: '100x144 80x40'
+    alert_rule_test:
+      - eval_time: 26h
+        alertname: PosterHostLostFromServing
+        exp_alerts: []
+      - eval_time: 28h
+        alertname: PosterHostLostFromServing
+        exp_alerts:
+          - exp_labels:
+              country: "de"
+              poster_host: "kinoheld.de"
+              severity: "warning"
+            exp_annotations:
+              summary: "de: films drawing a kinoheld.de poster fell to 0% of the country's, from over twice that yesterday"
+              description: "`kinowo_web_films_by_poster_host{country=\"de\"}` -- the films the web serves, by whose poster their card draws -- has kinoheld.de's share under half of what it was 24 hours ago. The posters have not failed to load (that is PosterProbeFailing); the cards stopped asking for them. Where did the films go: a rise in `poster_host=\"none\"` is posters lost outright (a scraper no longer extracting them, or a filter now rejecting them -- PlaceholderPoster, CinemaFallbackPosters); a rise in another host is the projection preferring a different source. `git log` on the chain's scraper and on MovieRecord.posterUrl's ordering."
+      - eval_time: 28h
+        alertname: PosterPlaceholderShareJumped
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE PLACEHOLDER SHARE JUMPS: pl goes from 1% of 1,000 films with no poster to 15% at 25h (a
+  # poster filter rejecting good posters across every source). uk's 9% -> 11% is noise. The web
+  # rolls out mid-hold; it still fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 10m
+    name: the no-poster share rising ten points fires; two does not
+    input_series:
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-pl",job="kinowo-web",country="pl",poster_host="tmdb.org"}'
+        values: '990x150 850x2 stale 850x20'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-pl",job="kinowo-web",country="pl",poster_host="none"}'
+        values: '10x150 150x2 stale 150x20'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-uk",job="kinowo-web",country="uk",poster_host="tmdb.org"}'
+        values: '910x150 890x20'
+      - series: 'kinowo_web_films_by_poster_host{instance="kinowo-web-uk",job="kinowo-web",country="uk",poster_host="none"}'
+        values: '90x150 110x20'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: PosterPlaceholderShareJumped
+        exp_alerts: []
+      - eval_time: 26h30m
+        alertname: PosterPlaceholderShareJumped
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              poster_host: "none"
+              severity: "warning"
+            exp_annotations:
+              summary: "pl: 14% more of the served films have no poster than yesterday"
+              description: "The share of pl's served films whose card renders the \"no poster\" placeholder (`kinowo_web_films_by_poster_host{poster_host=\"none\"}`) rose by over ten points in 24 hours. PosterHostLostFromServing names the host the posters were lost from, if one host accounts for it; if none does, a change to the poster ordering or filtering (MovieRecord.posterUrl, PlaceholderPoster) is dropping them across sources."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A SHARED IMAGE BURST: a Polish venue's scraper starts taking its site-wide og:image for every
+  # film's poster -- 60 films share one image at 25h against 20 a day before. de's steady 50 (the
+  # kinoheld fallback image, normal) and a +10 move in uk fire nothing.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 10m
+    name: a burst of films sharing one image fires; a steady level does not
+    input_series:
+      - series: 'kinowo_web_films_sharing_poster{instance="kinowo-web-pl",job="kinowo-web",country="pl",poster_host="kinoteka.pl"}'
+        values: '20x150 60x2 stale 60x20'
+      - series: 'kinowo_web_films_sharing_poster{instance="kinowo-web-de",job="kinowo-web",country="de",poster_host="kinoheld.de"}'
+        values: '50x175'
+      - series: 'kinowo_web_films_sharing_poster{instance="kinowo-web-uk",job="kinowo-web",country="uk",poster_host="savoysystems.co.uk"}'
+        values: '10x150 20x25'
+    alert_rule_test:
+      - eval_time: 25h30m
+        alertname: PosterSharedImageJump
+        exp_alerts: []
+      - eval_time: 27h
+        alertname: PosterSharedImageJump
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              severity: "warning"
+            exp_annotations:
+              summary: "pl: 60 served films now draw a poster image three or more films share"
+              description: "`kinowo_web_films_sharing_poster` -- films whose poster is one image shared with two or more others -- jumped since yesterday. That is a placeholder, a site-wide og:image or a \"coming soon\" card taken for a poster: it loads fine and is the wrong picture. The `poster_host` label on the series says whose; the city page's `data-original-src` attributes name the image. Past cases: Kinoteka's site-wide og:image (1101ebc6e), Multikino's `wkrotce` card (b8e17077e), bilety24's not-found image (9aa94c8c4)."

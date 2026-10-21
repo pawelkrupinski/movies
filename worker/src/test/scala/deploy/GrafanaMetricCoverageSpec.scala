@@ -75,6 +75,11 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  them as text and no registry can enumerate them. */
   private val WebExportedFamilies = Seq(
     "kinowo_web_movies_served",
+    // Hand-rendered beside it by `WebMovieMetrics.PosterCensus` (2026-10-21, after every kinoheld
+    // poster rendered as "no poster" with nothing alerting): whose poster each served film draws,
+    // and the films sharing one placeholder image. Drawn in the "Posters" row, read by posters.rules.
+    "kinowo_web_films_by_poster_host",
+    "kinowo_web_films_sharing_poster",
     // Added 2026-08-29 with the HTTP filter. These two are the web tier's replacement for Fly's
     // proxy metrics (fly_app_http_*), which died with the Fly Prometheus token -- and unlike them
     // they measure the application's own work rather than the edge in front of it.

@@ -4499,6 +4499,227 @@
           }
         }
       ]
+    },
+    {
+      "id": 9029,
+      "type": "row",
+      "title": "Posters — do the cards draw a poster, and does it load",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 325
+      },
+      "panels": [
+        {
+          "id": 9030,
+          "title": "Poster probes from outside — loads, by country and poster host",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 326
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "custom": {
+                "spanNulls": 600000,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "stepAfter"
+              },
+              "max": 1
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (country, poster_host) (last_over_time(probe_success{kind=\"poster\",country=~\"$country\"}[11m]) * (last_over_time(probe_http_uncompressed_body_length{kind=\"poster\",country=~\"$country\"}[11m]) >= bool 1024))",
+              "legendFormat": "{{country}} {{poster_host}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ],
+          "description": "1 = at least one of the two posters the synthetic probes took for this host from the country's city page loaded as an image (https, image/* Content-Type, over 1 KB) through the URL a browser is handed -- weserv's included. 0 on every probe of a host is PosterProbeFailing (posters.rules). This is the panel that would have shown 2026-10-21: kinoheld.de in de at 0, every other host at 1."
+        },
+        {
+          "id": 9031,
+          "title": "Poster probes — HTTP status by poster host",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 326
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "custom": {
+                "spanNulls": 600000,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "stepAfter"
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (country, poster_host) (last_over_time(probe_http_status_code{kind=\"poster\",country=~\"$country\"}[11m]))",
+              "legendFormat": "{{country}} {{poster_host}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ],
+          "description": "What the probed poster URL answered. weserv answers an origin it could not fetch with its own 404 (2026-10-21: kinoheld refusing weserv's plain-http fetch); 400 is a URL weserv could not parse; 0 is no answer at all."
+        },
+        {
+          "id": 9032,
+          "title": "Served films by poster host (each country's share)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 334
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "custom": {
+                "spanNulls": 600000,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "stepAfter"
+              },
+              "unit": "percentunit",
+              "max": 1
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "country_poster_host:web_films:share{country=~\"$country\"}",
+              "legendFormat": "{{country}} {{poster_host}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ],
+          "description": "The share of each country's served films whose card draws its poster from this host (registrable domain), from the web's own census (`kinowo_web_films_by_poster_host`, WebMovieMetrics.PosterCensus); `none` is the \"no poster\" placeholder, `other` the hosts under twenty films. A host's share halving in a day is PosterHostLostFromServing; `none` rising ten points is PosterPlaceholderShareJumped."
+        },
+        {
+          "id": 9033,
+          "title": "Films served with no poster, and films sharing one image",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 334
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "custom": {
+                "spanNulls": 600000,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "stepAfter"
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (country) (max by (country, poster_host) (last_over_time(kinowo_web_films_by_poster_host{poster_host=\"none\",country=~\"$country\"}[10m])))",
+              "legendFormat": "{{country}} no poster",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "sum by (country) (max by (country, poster_host) (last_over_time(kinowo_web_films_sharing_poster{country=~\"$country\"}[10m])))",
+              "legendFormat": "{{country}} sharing one image",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ],
+          "description": "Films whose card renders the \"no poster\" placeholder (A), and films whose poster is one image three or more films share (B) -- a placeholder, a site-wide og:image or a 'coming soon' card that loads fine and is the wrong picture (PosterSharedImageJump)."
+        },
+        {
+          "id": 9034,
+          "title": "Real visitors' poster loads that failed (browser beacon, last 30 min)",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 342
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "custom": {
+                "spanNulls": 600000,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "stepAfter"
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (country, service) (kinowo_uptime_recent_failures{service=~\"img: .*\",service!~\".*fallback\",country=~\"$country\"}) > 0",
+              "legendFormat": "{{country}} {{service}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ],
+          "description": "Primary posters visitors' browsers reported failing (POST /uptime/img-event, the uptime page's `img:` rows). Charted, deliberately not alerted: a country sees 0-10 such loads per half hour, and their failure share swings 0-100% on a healthy day (2026-10-07..21). Read it beside the probes: a host red here and green there is a browser-side failure the probe does not reproduce."
+        }
+      ]
     }
   ],
   "description": "One screen for the whole application, all of it on k3s: five scraping workers (pl, uk, de, us, es) and five web deployments (pl, uk, de, us, es), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare them all. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

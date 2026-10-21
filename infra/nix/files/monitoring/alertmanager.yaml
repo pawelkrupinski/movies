@@ -118,6 +118,10 @@ route:
     # ShareCardCoverageLow, ShareCardCoverageAbsent, ShareCardRendersFailing), plus the named ones
     # in full below. Every one of them is meant.
     #
+    # `Poster.*` IS A PREFIX TOO, added 2026-10-21 with posters.rules: a poster that will not load
+    # is the visitor's browser failing to fetch from weserv or a CDN, so nothing of ours 500s and
+    # the chat stream would be the only place it ever showed. Every rule in that file has that shape.
+    #
     # `ShareCard.*` IS A PREFIX FOR THE SAME REASON AS THE DISKS, added 2026-09-24: the share cards
     # are files the workers write onto k3s-worker-1's root, so a budget overrun or a stalled prune
     # is a slow disk fill with nothing 500ing, and a failing poster fetch or a stalled render
@@ -189,14 +193,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|Poster.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|Poster.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

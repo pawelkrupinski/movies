@@ -279,6 +279,13 @@ route_is telegram-and-email alertname=ProbeFailing severity=critical country=pl 
 route_is telegram-and-email alertname=ProbeSlow severity=warning country=uk kind=city
 route_is telegram-and-email alertname=ProbeBlockedByEdge severity=warning country=uk kind=city
 route_is telegram-and-email alertname=ProbeDiscoveryStale severity=warning
+route_is telegram-and-email alertname=ProbeSourceDegraded severity=warning kind=control
+# Posters a browser cannot load, or cards that stopped drawing one: nothing of ours fails (posters.rules).
+route_is telegram-and-email alertname=PosterProbeFailing severity=critical country=de poster_host=kinoheld.de
+route_is telegram-and-email alertname=PosterHostLostFromServing severity=warning country=de poster_host=kinoheld.de
+route_is telegram-and-email alertname=PosterPlaceholderShareJumped severity=warning country=pl poster_host=none
+route_is telegram-and-email alertname=PosterSharedImageJump severity=warning country=pl
+route_is telegram-and-email alertname=PosterProbesMissing severity=warning country=es
 route_is telegram-and-email alertname=FluxObjectNotReady severity=warning name=web-pl-config
 route_is telegram-and-email alertname=FluxObjectSuspended severity=warning name=web-pl-config
 

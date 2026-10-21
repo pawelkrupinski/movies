@@ -249,3 +249,74 @@ tests:
             exp_annotations:
               summary: "Cloudflare is refusing the synthetic probe of https://showtimes.cc/us/new-york/movie/coyote-vs-acme (403)"
               description: "The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167 (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the showtimes.cc custom rule \"Challenge non-verified-bot traffic on catalog paths\" challenges `/movie/` and exempts monitoring-1 by address (`ip.src ne 128.140.49.167`), so a showtimes.cc film page here means that exemption was lost -- put it back in the rule's expression (Security > WAF > Custom rules). If real visitors report the same 403, this is an outage, not a probe problem."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # 2026-10-21 10:21-10:48Z, REPLAYED: monitoring-1's route to Cloudflare's FRA edge degrades. The
+  # front door stops answering from here (status 0), and so does the Cloudflare control, on and
+  # off -- while Google's control, off Cloudflare, stays fine. The site was serving visitors:
+  # ProbeFailing must hold, and ProbeSourceDegraded must say why.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a degraded path to Cloudflare holds ProbeFailing and fires ProbeSourceDegraded
+    input_series:
+      - series: 'probe_success{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '1x5 0x30'
+      - series: 'probe_http_status_code{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '200x5 0x30'
+      - series: 'probe_success{instance="https://www.cloudflare.com/cdn-cgi/trace",job="blackbox",country="all",kind="control"}'
+        values: '1x5 0 1 0 0 1 0 0 0 1 0 0x25'
+      - series: 'probe_http_status_code{instance="https://www.cloudflare.com/cdn-cgi/trace",job="blackbox",country="all",kind="control"}'
+        values: '200x5 0 200 0 0 200 0 0 0 200 0 0x25'
+      - series: 'probe_success{instance="https://www.google.com/generate_204",job="blackbox",country="all",kind="control"}'
+        values: '1x35'
+      - series: 'probe_http_status_code{instance="https://www.google.com/generate_204",job="blackbox",country="all",kind="control"}'
+        values: '204x35'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: ProbeFailing
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ProbeSourceDegraded
+        exp_alerts:
+          - exp_labels:
+              country: "all"
+              instance: "https://www.cloudflare.com/cdn-cgi/trace"
+              job: "blackbox"
+              kind: "control"
+              severity: "warning"
+            exp_annotations:
+              summary: "monitoring-1 cannot reliably reach https://www.cloudflare.com/cdn-cgi/trace, so the synthetic probes are held"
+              description: "The control probe of https://www.cloudflare.com/cdn-cgi/trace -- a page that is not ours -- answered only 0% of the last ten minutes' probes, so a failing probe of the site says nothing about the site: ProbeFailing, ProbeSlow and PosterProbeFailing are held while this lasts. Google's endpoint failing is this host's own connectivity (Hetzner, `host-health.rules`); only Cloudflare's failing is the path to Cloudflare -- 2026-10-21 10:21Z was this, retransmits to the FRA edge (`mtr -T -P 443 kinowo.net` from monitoring-1 shows the hop). If visitors report the site down meanwhile, check `WebServerErrorsServed` and the pods: the outside view is blind until this clears."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CONTROL THAT REFUSES IS NOT A DEGRADED PATH: Cloudflare starts challenging this host on its
+  # trace page (403) at the same time as the front door fails with a 502. The 403 must not hold the
+  # page -- ProbeFailing fires -- and ProbeSourceDegraded stays quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a control answering 403 holds nothing
+    input_series:
+      - series: 'probe_success{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '1x5 0x30'
+      - series: 'probe_http_status_code{instance="https://kinowo.net/",job="blackbox",country="pl",kind="front-door"}'
+        values: '200x5 502x30'
+      - series: 'probe_success{instance="https://www.cloudflare.com/cdn-cgi/trace",job="blackbox",country="all",kind="control"}'
+        values: '0x35'
+      - series: 'probe_http_status_code{instance="https://www.cloudflare.com/cdn-cgi/trace",job="blackbox",country="all",kind="control"}'
+        values: '403x35'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: ProbeSourceDegraded
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "pl"
+              instance: "https://kinowo.net/"
+              job: "blackbox"
+              kind: "front-door"
+              severity: "critical"
+            exp_annotations:
+              summary: "https://kinowo.net/ has failed from outside for 5 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."

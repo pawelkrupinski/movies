@@ -109,6 +109,14 @@ in
       { url = "https://showtimes.cc/de/berlin/"; country = "de"; kind = "city"; }
       { url = "https://showtimes.cc/us/new-york/"; country = "us"; kind = "city"; }
       { url = "https://showtimes.cc/es/madrid/"; country = "es"; kind = "city"; }
+      # THE CONTROLS, added after 2026-10-21 10:21-10:48Z: this host's route to Cloudflare's
+      # Frankfurt edge degraded (TCP retransmits, probes rerouted via CDG/MAD/IAD) and ProbeFailing
+      # paged for target after target while the site served visitors normally. One page that is not
+      # behind Cloudflare (Google's 204 endpoint: anycast, tiny, built to be polled) and one that is
+      # but is not ours (Cloudflare's own trace page, served by the same edge as kinowo.net): when
+      # either fails, the fault is on this side, and synthetic-probes.rules holds the site alerts.
+      { url = "https://www.google.com/generate_204"; country = "all"; kind = "control"; }
+      { url = "https://www.cloudflare.com/cdn-cgi/trace"; country = "all"; kind = "control"; }
     ];
     # THE PRODUCT'S ORIGIN, k3s-worker-1's Caddy on the private network: the discovery's FALLBACK
     # should the edge challenge a film page again (the `/movie/` exemption above lost). The share
