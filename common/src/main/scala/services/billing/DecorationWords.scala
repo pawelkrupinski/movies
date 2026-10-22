@@ -38,6 +38,8 @@ object DecorationWords {
    *  delta reads it). */
   def billsAnEdition(titles: Seq[String], filmTitles: Seq[String]): Boolean = {
     val filmWords = filmTitles.iterator.flatMap(TitleContainment.tokens).toSet
-    titles.iterator.flatMap(BillingParse(_).editionWords).exists(!filmWords(_))
+    // its edition words read off each title's tokens in place ([[editionWordsOf]]'s reading), not a parse built per title
+    // and dropped: the runtime measure asks this per listing and film (`ResolverAllocationSpec`'s measures budget)
+    titles.iterator.flatMap(TitleContainment.tokens).exists(word => EditionWords(word) && !filmWords(word))
   }
 }
