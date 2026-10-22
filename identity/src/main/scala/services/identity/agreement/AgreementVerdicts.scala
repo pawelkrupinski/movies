@@ -84,6 +84,9 @@ object AgreementVerdicts {
       if (film.leaning.nonEmpty) d.append("leaning", BsonArray.fromIterable(film.leaning.toSeq.map(_.label).sorted.map(BsonString(_))))
       if (film.corroborated.nonEmpty) d.append("corroborated", BsonArray.fromIterable(film.corroborated.toSeq.sorted.map(BsonString(_))))
       film.record.film.year.foreach(year => d.append("year", BsonInt32(year)))
+      // every fact of the record: the take reads them again from a verdict a restart loads (its title and year above
+      // for the readers of the stored documents)
+      d.append("film", services.identity.FilmBson.encode(film.record.film))
       d
     })
     .append("correction", verdict.correction.fold[BsonValue](BsonNull()) { c =>
@@ -105,7 +108,9 @@ object AgreementVerdicts {
     StoredVerdict(d.getString("_id").getValue, d.getInt64("listings").getValue,
       d.getDocument("reads").asScala.map { case (q, digest) => q -> digest.asInt64.getValue }.toMap,
       Option(d.get("agreed")).filter(_.isDocument).map(_.asDocument).map { a =>
-        val film = IdentityMeasures.Film(a.getString("title").getValue, None, Nil, Option(a.get("year")).map(_.asInt32.getValue), None, None, None, None)
+        val film = Option(a.get("film")).filter(_.isDocument).fold(
+          IdentityMeasures.Film(a.getString("title").getValue, None, Nil, Option(a.get("year")).map(_.asInt32.getValue), None, None, None, None))(
+          f => services.identity.FilmBson.decode(f.asDocument))
         AgreedFilm(a.getArray("families").getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet,
           SourceRecord(film, stringsOf(a.getDocument("crossIds"))),
           stringsOf(a.getDocument("ids")).flatMap { case (label, id) => byLabel.get(label).map(_ -> id) },

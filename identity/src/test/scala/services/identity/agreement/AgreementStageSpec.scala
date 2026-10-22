@@ -484,6 +484,34 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     asked shouldBe 0   // its families' answers cannot have moved while it was down: no answer read again, no resolve
   }
 
+  it should "refuse after a restart, from its stored verdict, the agreed film it refused before: the store keeps what the take reads" in {
+    // DE Museum-Lichtspiele's "Internationales Gitarrenfestival Tübingen - Eröffnungskonzert - Raíces" (identity-slice --drift,
+    // recording 573): three families agree on 'Roots' (1954), its ORIGINAL title the billing's last piece. A fresh stage
+    // refuses it; the stage a deploy brought up from the stored verdict took it, its film kept as a title and year alone
+    val roots   = IdentityMeasures.Film("Roots", Some("Raíces"), Nil, Some(1954), Some(83), None, None, None)
+    val record  = SourceRecord(roots, Map("imdb" -> "tt0047395"))
+    val three   = Map(
+      VoterFamily.Imdb    -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt0047395" -> record)),
+      VoterFamily.Wiki    -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q2" -> record)),
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("880001" -> SourceRecord(roots))))
+    val billed  = listing(KinoMuza, "Internationales Gitarrenfestival Tübingen - Eröffnungskonzert - Raíces")
+    val model   = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+      Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    // the verdicts as Mongo keeps them: each written as its document and read back
+    val kept    = new InMemoryAgreementVerdicts
+    val stored  = new AgreementVerdicts {
+      def all(): Seq[StoredVerdict] = kept.all().map(v => AgreementVerdicts.decode(AgreementVerdicts.encode(v)))
+      def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = kept.replace(removed, added)
+    }
+    def stage() = new AgreementStage(three, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt0047395")(122769)), stored, clock = _root_.tools.SpecClock.Pinned)
+    val fresh = stage().apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
+    fresh.film shouldBe None
+    fresh.explanation.last should include ("one piece of the billing")
+    val restarted = stage().apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
+    (restarted.film, restarted.explanation.last) shouldBe ((fresh.film, fresh.explanation.last))
+  }
+
   it should "decide again a verdict stored under other rules" in {
     val verdicts = new InMemoryAgreementVerdicts
     new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,

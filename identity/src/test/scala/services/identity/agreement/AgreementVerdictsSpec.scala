@@ -22,6 +22,19 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
     AgreementVerdicts.decode(AgreementVerdicts.encode(refused)) shouldBe refused
   }
 
+  it should "read back its agreed film's every fact, which the take reads again after a restart" in {
+    // DE "Internationales Gitarrenfestival Tübingen - Eröffnungskonzert - Raíces": the families agree on 'Roots' (1954), whose
+    // ORIGINAL title is the billing's last piece. Kept as its title and year alone, the restarted stage no longer saw the
+    // piece and took the film the whole resolve refuses (identity-slice --drift, recording 573)
+    val film = IdentityMeasures.Film("Roots", Some("Raíces"), Seq("Raices", "Wurzeln"), Some(1954), Some(83), Some(Seq("Benito Alazraki")),
+      Some(Seq("MX")), Some(1.5), 47395, Some(java.time.LocalDate.of(1955, 4, 21)), Some("MXUS"), Seq(85, 80), Some("MX1955P"), 123,
+      Some("US=PG"), Some("es"), 18, services.identity.FilmCast.ofPairs(Seq(Seq(1, 2), Seq(3))))
+    val agreed = StoredVerdict("r", 7L, Map("imdb|title|Raíces" -> 1L),
+      Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb), SourceRecord(film, Map("imdb" -> "tt0047395", "tmdb" -> "122769")),
+        Map(VoterFamily.Imdb -> "tt0047395", VoterFamily.Wiki -> "Q7366720", VoterFamily.Filmweb -> "100"))))
+    AgreementVerdicts.decode(AgreementVerdicts.encode(agreed)) shouldBe agreed
+  }
+
   "a stored correction of a model take" should "read back with its film, its line, its reads' digests and whether it waits" in {
     val reads     = scala.collection.immutable.ArraySeq(-5L, 3L, 9L)
     val corrected = StoredVerdict(AgreementStage.correctionId("k"), 42L, Map.empty, None, "r",
