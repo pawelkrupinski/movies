@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse.jsonText
+import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
@@ -129,7 +130,7 @@ object IksorisCalendarClient {
     def field(key: String) = jsonText(js \ key)
     for {
       rawTitle        <- field("wydarzenie")
-      (title, format) <- Some(ScraperParse.extractFormatTags(CycleSuffix.replaceFirstIn(rawTitle, ""))).filter(_._1.nonEmpty)
+      (title, format) <- Some(FormatTags.extractFormatTags(CycleSuffix.replaceFirstIn(rawTitle, ""))).filter(_._1.nonEmpty)
       dateTime        <- field("czas").collect { case WhenPat(date, time) =>
                            ScraperParse.parseHHmm(time).map(LocalDateTime.of(LocalDate.parse(date), _)) }.flatten
     } yield RawSlot(
@@ -137,7 +138,7 @@ object IksorisCalendarClient {
       rawTitle = rawTitle,
       dateTime = dateTime,
       booking  = field("terminUrl").filter(_ != "#"),
-      format   = (format ++ field("jezyk").toList.flatMap(ScraperParse.formatTokensIn)).distinct,
+      format   = (format ++ field("jezyk").toList.flatMap(FormatTags.formatTokensIn)).distinct,
       synopsis = field("wydarzenieOpis").map(_.replace("\r\n", "\n").replaceAll("\n{3,}", "\n\n"))
     )
   }

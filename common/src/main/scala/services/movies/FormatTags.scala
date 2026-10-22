@@ -14,7 +14,7 @@ import java.util.Locale
  *
  * Lives in `common` so BOTH the ingest choke point
  * (`MovieCache.recordCinemaScrape`, which every scrape path shares) and the
- * worker cinema clients (via `ScraperParse`, which delegates here) use one
+ * worker cinema clients (which call it directly) use one
  * implementation, instead of format handling being scattered across per-client
  * code and the title-rule set.
  *

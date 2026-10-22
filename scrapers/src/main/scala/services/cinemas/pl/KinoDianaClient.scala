@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
@@ -19,7 +20,7 @@ import scala.util.Try
  *   - `date` (JSON)        — "YYYY-MM-DD HH:MM:SS"; only the DATE is real (the
  *                            time is always 23:59:00 boilerplate, ignored).
  *   - `p.event-title`      — film title, with a trailing format tag stripped by
- *                            [[ScraperParse.stripFormatTags]] ("… - dubbing 2D").
+ *                            [[FormatTags.stripFormatTags]] ("… - dubbing 2D").
  *   - `p.event-hour`       — "piątek, godz.15:30" — the real screening time.
  *   - `a[href*=/Bilety/Sala]` — the per-screening booking link.
  * So we take the date from the JSON field and the time/title/booking from the
@@ -83,5 +84,5 @@ object KinoDianaClient {
   /** Strip the trailing format tag and sentence-case the ALL-CAPS title so
    *  variants merge and the result reads like the other sources. */
   private[cinemas] def cleanTitle(raw: String): String =
-    ScraperParse.sentenceCase(ScraperParse.stripFormatTags(raw))
+    ScraperParse.sentenceCase(FormatTags.stripFormatTags(raw))
 }

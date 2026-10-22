@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.Jsoup
@@ -144,7 +145,7 @@ object KinoIskraClient {
   private[pl] def listing(html: String, today: LocalDate): Seq[Slot] =
     Jsoup.parse(html, BaseUrl).select("div.list-by-movie h2.movie-title[data-movie]").asScala.toSeq.flatMap { heading =>
       val title  = heading.ownText.trim
-      val format = ScraperParse.formatTokensIn(heading.select("sup").asScala.map(_.text).mkString(" ").toLowerCase(Locale.ROOT))
+      val format = FormatTags.formatTokensIn(heading.select("sup").asScala.map(_.text).mkString(" ").toLowerCase(Locale.ROOT))
       val block  = heading.closest("div.bg-gray-light")
       if (title.isEmpty || block == null) Seq.empty
       else block.select("button.event-button").asScala.toSeq.flatMap { button =>

@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
@@ -162,7 +163,7 @@ object KinoWarsClient {
 
   private def parsePost(item: Element): Option[Post] =
     Option(item.selectFirst("h2[itemprop=name]")).map(_.text.trim).filter(_.nonEmpty).map { rawTitle =>
-      val (stripped, format) = ScraperParse.extractFormatTags(rawTitle)
+      val (stripped, format) = FormatTags.extractFormatTags(rawTitle)
       val title      = TrailingVersionSlash.replaceFirstIn(stripped, "").trim
       val paragraphs = item.select(".blog-content-wrapper > p, .blog-content-wrapper > div").asScala.toSeq
       val meta       = paragraphs.find(_.text.contains("|")).map(_.text)

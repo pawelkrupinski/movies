@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
@@ -45,7 +45,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
         (movie \ "title").asOpt[String].filter(_.nonEmpty).map { rawTitle =>
           // The GraphQL title carries the screening version ("… (Dolby Atmos)");
           // peel it off and surface any recognised badge token on the showtimes.
-          val (title, format) = ScraperParse.extractFormatTags(rawTitle)
+          val (title, format) = FormatTags.extractFormatTags(rawTitle)
           val showtimes = group.flatMap { s =>
             (s \ "screeningTimeFrom").asOpt[String].flatMap(timestamp => Try(Instant.parse(timestamp)).toOption).map { inst =>
               val dt = inst.atZone(WarsawZone).toLocalDateTime

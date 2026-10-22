@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.Jsoup
@@ -95,7 +96,7 @@ object KinoGwiazdaKetrzynClient {
     val document = Jsoup.parse(html, BaseUrl)
     val meta     = Option(document.selectFirst("h1")).map(_.parent).toSeq
       .flatMap(_.select("h1 + div span > span").asScala).map(_.text.trim).filter(_.nonEmpty)
-    val format   = ScraperParse.formatTokensIn(meta.mkString(" ").toLowerCase(Locale.ROOT))
+    val format   = FormatTags.formatTokensIn(meta.mkString(" ").toLowerCase(Locale.ROOT))
     for {
       title <- Option(document.selectFirst("h1")).map(_.text.trim).filter(_.nonEmpty)
       showtimes = screenings(document, format) if showtimes.nonEmpty
@@ -123,7 +124,7 @@ object KinoGwiazdaKetrzynClient {
   /** A meta span that is neither the runtime nor the language version is the
    *  genre list. */
   private def isGenreList(span: String): Boolean =
-    Runtime.findFirstIn(span).isEmpty && ScraperParse.formatTokensIn(span.toLowerCase(Locale.ROOT)).isEmpty &&
+    Runtime.findFirstIn(span).isEmpty && FormatTags.formatTokensIn(span.toLowerCase(Locale.ROOT)).isEmpty &&
       !span.toLowerCase(Locale.ROOT).startsWith("wersja")
 
   /** The `dd` text of the `dt` labelled `label` ("Rezyseria", "Obsada"). */

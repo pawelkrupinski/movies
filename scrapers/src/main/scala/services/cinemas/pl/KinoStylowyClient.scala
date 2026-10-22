@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.Jsoup
@@ -123,7 +124,7 @@ object KinoStylowyClient {
             title     = title,
             dateTime  = LocalDateTime.of(day, time),
             booking   = hour.map(_.attr("abs:href")).filter(_.nonEmpty),
-            format    = Option(button.selectFirst(".bKB25feat")).map(f => ScraperParse.formatTokensIn(f.text)).getOrElse(Nil),
+            format    = Option(button.selectFirst(".bKB25feat")).map(f => FormatTags.formatTokensIn(f.text)).getOrElse(Nil),
             filmUrl   = filmUrl,
             poster    = poster,
             trailer   = trailer,

@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
@@ -163,7 +164,7 @@ object KinoMarzenieClient {
       block.select("a.btn.btn-outline-primary[href]").asScala.toSeq.flatMap { a =>
         ScraperParse.parseHHmm(a.text).map { time =>
           val format = Option(a.parent).flatMap(p => Option(p.selectFirst("div.d-flex.flex-wrap")))
-            .map(_.text).toSeq.flatMap(ScraperParse.formatTokensIn).distinct.toList
+            .map(_.text).toSeq.flatMap(FormatTags.formatTokensIn).distinct.toList
           RawSlot(t, genres, poster, filmUrl,
             Showtime(date.atTime(time), Option(a.attr("abs:href")).filter(_.nonEmpty), format = format))
         }

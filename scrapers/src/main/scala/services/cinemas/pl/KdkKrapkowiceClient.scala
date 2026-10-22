@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -22,7 +23,7 @@ import scala.util.Try
  *     ("19:00").
  *   - `div.kino-title`               — film title, carrying a trailing
  *     format/version tag ("… 2D Nap", "… 2D DUB") that
- *     [[ScraperParse.extractFormatTags]] peels into `Showtime.format` so the
+ *     [[FormatTags.extractFormatTags]] peels into `Showtime.format` so the
  *     same film's dubbed + subtitled screenings merge into one row.
  * One fetch yields the full programme — no per-screening pages or booking links
  * (the site sells through one shared bilety24 "Kup bilet" button, not a
@@ -57,7 +58,7 @@ object KdkKrapkowiceClient {
     val slots = document.select("li.latest-kino-item").asScala.toSeq.flatMap { item =>
       for {
         rawTitle <- Option(item.selectFirst("div.kino-title")).map(_.text)
-        (title, tokens) = ScraperParse.extractFormatTags(rawTitle) if title.nonEmpty
+        (title, tokens) = FormatTags.extractFormatTags(rawTitle) if title.nonEmpty
         date <- Option(item.selectFirst("div.kino-date time[datetime]"))
                   .map(_.attr("datetime").take(10))
                   .flatMap(d => Try(LocalDate.parse(d)).toOption)

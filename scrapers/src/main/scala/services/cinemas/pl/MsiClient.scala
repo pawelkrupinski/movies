@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
@@ -226,13 +227,13 @@ object MsiClient {
    *    "STRASZNY FILM - NAPISY"     → ("Straszny film", List("NAP"))
    *    "DZIEŃ OBJAWIENIA (2D NAPISY DOLBY ATMOS)" → ("Dzień objawienia", List("2D","NAP"))
    *  (The strip+token extraction is shared with the other portal clients via
-   *  `ScraperParse.extractFormatTags` — a cross-client concern, not MSI-specific.) */
+   *  `FormatTags.extractFormatTags` — a cross-client concern, not MSI-specific.) */
   private[cinemas] def cleanTitle(raw: String): (String, List[String]) = {
     val (film, tailTokens) = DistributorTail.findFirstMatchIn(raw) match {
       case Some(m) => (raw.substring(0, m.start), (m.group(1) +: Option(m.group(2)).orElse(Option(m.group(3))).toSeq).flatMap(versionToken).toList)
       case None    => (raw, Nil)
     }
-    val (stripped, tokens) = ScraperParse.extractFormatTags(film)
+    val (stripped, tokens) = FormatTags.extractFormatTags(film)
     (ScraperParse.sentenceCase(stripped), (tokens ++ tailTokens).distinct)
   }
 

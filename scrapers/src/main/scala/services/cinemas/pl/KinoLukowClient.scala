@@ -1,11 +1,12 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDateTime
@@ -91,7 +92,7 @@ object KinoLukowClient {
       Showtime(
         dateTime   = at,
         bookingUrl = Option(slot.selectFirst("a.kino-slot-link")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        format     = ScraperParse.formatTokensIn(slot.select("span.kino-format, span.kino-version").asScala.map(_.text).mkString(" ").toLowerCase(Locale.ROOT))
+        format     = FormatTags.formatTokensIn(slot.select("span.kino-format, span.kino-version").asScala.map(_.text).mkString(" ").toLowerCase(Locale.ROOT))
       )
     }
 }

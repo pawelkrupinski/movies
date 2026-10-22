@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
+import services.movies.FormatTags
 import models._
 import play.api.libs.json.Json
 import tools.{HttpFetch, HttpRead}
@@ -110,7 +111,7 @@ object KinoBajkaBlonieClient {
       val runtimeAt = facts.indexWhere(f => ScraperParse.hoursMinutesRuntime(f).isDefined)
       // The age slot follows the runtime: "Od lat: 12", or "Bez ograniczeń" (no rating).
       val ageAt     = if (runtimeAt < 0) -1 else runtimeAt + 1
-      val format    = facts.headOption.map(ScraperParse.formatTokensIn).getOrElse(Nil)
+      val format    = facts.headOption.map(FormatTags.formatTokensIn).getOrElse(Nil)
       // Before the runtime: the version badge, then the genres ("Dramat / Obyczajowy").
       val genres    = (if (runtimeAt < 0) Seq.empty else facts.take(runtimeAt).drop(1))
                         .flatMap(_.split("/")).map(_.trim).filter(_.nonEmpty)

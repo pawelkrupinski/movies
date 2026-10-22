@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -56,7 +57,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
       // nowhere else — the title is the bare film name, so the central
       // `FormatTags` title strip has nothing to peel off it.
       val version  = card.select("span[class*=text-blue]").asScala.toSeq
-                       .flatMap(b => ScraperParse.formatTokensIn(b.text)).distinct.toList
+                       .flatMap(b => FormatTags.formatTokensIn(b.text)).distinct.toList
       val detailUrl = Option(card.attr("onclick")).flatMap(o => """window\.location='([^']+)'""".r.findFirstMatchIn(o).map(_.group(1)))
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = year, genres = genres),

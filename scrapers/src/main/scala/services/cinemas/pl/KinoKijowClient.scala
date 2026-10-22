@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import services.movies.TitleNormalizer
 import models._
@@ -115,7 +116,7 @@ object KinoKijowClient {
       // onto one film row without losing the format.
       val dateTime = parseDateTimePat(cdDate, month)
       val titleTags = h2Title(h2Text)
-        .map(t => ScraperParse.extractFormatTags(titles.cinemaClean("kino-kijow", t)))
+        .map(t => FormatTags.extractFormatTags(titles.cinemaClean("kino-kijow", t)))
         .filter(_._1.nonEmpty)
 
       val bookingUrl = Option(block.selectFirst("a.btn-badge2[href^=\"/MSI/Default.aspx\"]"))

@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.Jsoup
@@ -112,7 +113,7 @@ object KinoRemusClient {
     val html = Jsoup.parseBodyFragment(fragment, TicketManagerUrl)
     for {
       billed <- Option(html.selectFirst("p.event-title")).map(_.text)
-      (bare, format) = ScraperParse.extractFormatTags(billed)
+      (bare, format) = FormatTags.extractFormatTags(billed)
       title  = unquoted(bare) if title.nonEmpty
       hour   <- Option(html.selectFirst("p.event-hour")).flatMap(p => ScreeningHour.findFirstMatchIn(p.text))
       time   <- ScraperParse.parseHHmm(hour.group(1).replace('.', ':'))

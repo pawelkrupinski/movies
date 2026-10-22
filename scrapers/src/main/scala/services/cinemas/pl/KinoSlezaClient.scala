@@ -2,6 +2,7 @@ package services.cinemas.pl
 
 
 import models._
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -88,7 +89,7 @@ object KinoSlezaClient {
   private def versionOf(movie: Element): List[String] =
     Option(movie.selectFirst("p em strong")).map(_.text).toSeq
       .flatMap(_.split("//").drop(1))
-      .flatMap(ScraperParse.formatTokensIn)
+      .flatMap(FormatTags.formatTokensIn)
       .distinct.toList
 
   /** Genres are the comma-list before the first `//` in the "Komedia, Dramat //

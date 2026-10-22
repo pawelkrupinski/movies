@@ -164,7 +164,7 @@ object TitleRules {
       """(?iu)\s*-\s*kino\s+wybrzeże\s*$""", "", applyAll = false, order = 10,
       note = Some("Kino Wybrzeże trailing venue-name suffix"))
     // MSI format-tag stripping is NOT a per-cinema rule: it's a cross-client
-    // concern shared across the portal clients via ScraperParse.stripFormatTags.
+    // concern shared across the portal clients via FormatTags.stripFormatTags.
   )
 
   // Helios (chain) — ordered event/format suffix tags peeled off the end. Order

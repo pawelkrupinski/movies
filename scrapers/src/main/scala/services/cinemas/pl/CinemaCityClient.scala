@@ -4,7 +4,7 @@ import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import play.api.libs.json._
 import models.{Cinema, CinemaMovie, Movie, Showtime}
@@ -175,7 +175,7 @@ object CinemaCityClient {
   def cleanTitle(name: String, titles: TitleNormalizer): String = {
     val decorated = titles.cinemaClean("cinema-city", name)
     if (LanguageDubSuffixRe.findFirstIn(decorated).isDefined) decorated
-    else ScraperParse.stripFormatTags(decorated)
+    else FormatTags.stripFormatTags(decorated)
   }
 
   // A trailing foreign-language dub marker ("… ukraiński dubbing") — left whole

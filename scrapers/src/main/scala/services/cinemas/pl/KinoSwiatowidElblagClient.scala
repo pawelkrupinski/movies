@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -93,7 +94,7 @@ object KinoSwiatowidElblagClient {
   private def parseMovieCard(card: Element, day: LocalDate, cinema: Cinema): Option[CinemaMovie] = {
     val descriptions = card.select("p.movie-card__description").asScala.toSeq
     val (genres, runtime) = descriptions.headOption.map(_.text.trim).flatMap(metaOf).getOrElse((Seq.empty, None))
-    val format = descriptions.lift(1).map(_.text).toSeq.flatMap(ScraperParse.formatTokensIn).distinct.toList
+    val format = descriptions.lift(1).map(_.text).toSeq.flatMap(FormatTags.formatTokensIn).distinct.toList
 
     val showtimes = card.select("ul.movie-card__showtimes a[href]").asScala.toSeq.flatMap { link =>
       ScraperParse.parseHHmm(link.text.trim).map { time =>

@@ -3,6 +3,7 @@ package services.cinemas.common
 import models._
 import play.api.libs.json._
 import services.cinemas.common.ScraperParse.jsonText
+import services.movies.FormatTags
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 
@@ -94,7 +95,7 @@ object CineamoClient {
     } yield {
       val content = js \ "_embedded" \ "content"
       // A format the venue bills in the title ("ATMOS: Michael") is a tag, as the per-showing flags are.
-      val (title, billedFormat) = ScraperParse.extractFormatTags(billed)
+      val (title, billedFormat) = FormatTags.extractFormatTags(billed)
       Showing(
         title          = title,
         originalTitle  = jsonText(content \ "name").filter(_ != title),

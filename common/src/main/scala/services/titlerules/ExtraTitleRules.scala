@@ -1035,7 +1035,7 @@ object ExtraTitleRules {
    *  that never share showtimes — "Mandalorian i Grogu" split ~19 ways by a
    *  lower-case "Gwiezdne wojny:" prefix the seed rule (capitalised only) missed,
    *  the English title, and trailing language/format suffixes left in the title by
-   *  cinemas whose scraper doesn't run `ScraperParse.extractFormatTags`. */
+   *  cinemas whose scraper doesn't run `FormatTags.extractFormatTags`. */
   val canonical: Seq[TitleRule] = Seq(
     // The "Federico Fellini: ciao a tutti!" retrospective decoration, stripped at
     // the MERGE-KEY level (not just the query level above). Without these the

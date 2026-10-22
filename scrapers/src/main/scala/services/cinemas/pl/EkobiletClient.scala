@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.SlotsToMovies
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.nodes.Document
@@ -189,7 +190,7 @@ object EkobiletClient {
   private[cinemas] def parseTitle(raw: String): ListingTitle = {
     @annotation.tailrec
     def peel(t: String, format: List[String], age: Option[String]): ListingTitle = {
-      val (stripped, tokens) = ScraperParse.extractFormatTags(t)
+      val (stripped, tokens) = FormatTags.extractFormatTags(t)
       val withFormat = format ++ tokens.filterNot(format.contains)
       stripped match {
         case AgeTag(a) => peel(AgeTag.replaceFirstIn(stripped, ""), withFormat, age.orElse(Some(a)))

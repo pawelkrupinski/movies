@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -96,7 +97,7 @@ object SckStargardClient {
         .filterNot(_.startsWith("data:")) // skip the lazyload SVG placeholder
 
       val format = wrapper.select(".movie-tags span.movie-tag").asScala.toSeq
-        .flatMap(tag => ScraperParse.FormatToken.get(tag.text.trim.toLowerCase(Locale.ROOT)))
+        .flatMap(tag => FormatTags.FormatToken.get(tag.text.trim.toLowerCase(Locale.ROOT)))
         .distinct
         .toList
 

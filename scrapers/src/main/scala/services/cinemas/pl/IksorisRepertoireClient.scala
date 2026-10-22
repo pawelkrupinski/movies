@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, DayPickerProgramme, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
@@ -100,7 +101,7 @@ object IksorisRepertoireClient {
 
   private def parseShowing(box: Element, day: LocalDate): Seq[RawSlot] =
     Option(box.selectFirst(".nazwa, .kalendarium-nazwa-wydarzenia")).map(_.ownText.trim.stripSuffix("/").trim).filter(_.nonEmpty).toSeq.flatMap { rawTitle =>
-      val (title, format) = ScraperParse.extractFormatTags(rawTitle)
+      val (title, format) = FormatTags.extractFormatTags(rawTitle)
       val runtime = Runtime.findFirstMatchIn(box.text).flatMap(_.group(1).toIntOption)
       val poster  = Option(box.selectFirst("img.termin-img")).map(_.attr("abs:src")).filter(_.nonEmpty)
       // "Kup" (buy) when online sale is open; a showing sold as reservation-only

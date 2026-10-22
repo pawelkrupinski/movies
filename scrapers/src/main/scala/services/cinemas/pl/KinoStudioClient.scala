@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -150,7 +151,7 @@ object KinoStudioClient {
     films.map { case (title, block) =>
       val meta = block.meta
       CinemaMovie(
-        movie     = Movie(ScraperParse.stripFormatTags(title), genres = meta.genres,
+        movie     = Movie(FormatTags.stripFormatTags(title), genres = meta.genres,
                           releaseYear = meta.year, runtimeMinutes = meta.runtime, countries = meta.countries),
         cinema    = cinema,
         posterUrl = block.poster,

@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -105,7 +106,7 @@ object GdynskieCentrumFilmoweClient {
     // onto one film row without losing the format.
     val titleTags = Option(filmDiv.selectFirst("div.box-item-content > a[title]"))
       .map(_.attr("title").trim)
-      .map(ScraperParse.extractFormatTags)
+      .map(FormatTags.extractFormatTags)
       .filter(_._1.nonEmpty)
     val poster   = Option(filmDiv.selectFirst("img.image-film[src]"))
       .map(_.attr("src").trim)

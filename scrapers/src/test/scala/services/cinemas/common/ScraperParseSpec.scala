@@ -1,6 +1,7 @@
 package services.cinemas.common
 
 import org.scalatest.matchers.should.Matchers
+import services.movies.FormatTags
 import org.scalatest.flatspec.AnyFlatSpec
 import org.jsoup.Jsoup
 
@@ -294,15 +295,15 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   }
 
   "extractFormatTags" should "split a parenthesised format tag into clean title + display tokens" in {
-    ScraperParse.extractFormatTags("Film (2D NAPISY)")  shouldBe (("Film", List("2D", "NAP")))
-    ScraperParse.extractFormatTags("Film (2D DUBBING)") shouldBe (("Film", List("2D", "DUB")))
-    ScraperParse.extractFormatTags("Film (3D)")         shouldBe (("Film", List("3D")))
+    FormatTags.extractFormatTags("Film (2D NAPISY)")  shouldBe (("Film", List("2D", "NAP")))
+    FormatTags.extractFormatTags("Film (2D DUBBING)") shouldBe (("Film", List("2D", "DUB")))
+    FormatTags.extractFormatTags("Film (3D)")         shouldBe (("Film", List("3D")))
   }
 
   it should "handle a separator-suffix tag (` / 2D dubbing`, ` - napisy`)" in {
-    ScraperParse.extractFormatTags("Straszny film / 2D dubbing") shouldBe (("Straszny film", List("2D", "DUB")))
-    ScraperParse.extractFormatTags("Straszny film - napisy")     shouldBe (("Straszny film", List("NAP")))
-    ScraperParse.extractFormatTags("Film lektor")                shouldBe (("Film", List("LEK")))
+    FormatTags.extractFormatTags("Straszny film / 2D dubbing") shouldBe (("Straszny film", List("2D", "DUB")))
+    FormatTags.extractFormatTags("Straszny film - napisy")     shouldBe (("Straszny film", List("NAP")))
+    FormatTags.extractFormatTags("Film lektor")                shouldBe (("Film", List("LEK")))
   }
 
   // Nove Kino (Atlantic/Wisła) separates the format with an EN-DASH, not a hyphen
@@ -310,8 +311,8 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // missed that and left the suffix in the title (lost the badge, risked the
   // dub/napisy slot flip-flop). A real dash-bearing title still survives.
   it should "strip a format suffix after an en-dash, leaving a real dash-bearing title intact" in {
-    ScraperParse.extractFormatTags("Wielkie piękno – napisy") shouldBe (("Wielkie piękno", List("NAP")))
-    ScraperParse.extractFormatTags("Mission - Impossible")    shouldBe (("Mission - Impossible", Nil))
+    FormatTags.extractFormatTags("Wielkie piękno – napisy") shouldBe (("Wielkie piękno", List("NAP")))
+    FormatTags.extractFormatTags("Mission - Impossible")    shouldBe (("Mission - Impossible", Nil))
   }
 
   // Planet Cinema Oświęcim glues the separator to the LAST title word, then
@@ -319,8 +320,8 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // words must not leave a dangling "Film-", or the dubbed/subtitled variants
   // fragment into their own row instead of merging with the canonical title.
   it should "trim a separator glued to the last title word (`Film- 2D dubbing`)" in {
-    ScraperParse.extractFormatTags("Straszny Film- 2D dubbing")      shouldBe (("Straszny Film", List("2D", "DUB")))
-    ScraperParse.extractFormatTags("Władcy Wszechświata- 2D napisy") shouldBe (("Władcy Wszechświata", List("2D", "NAP")))
+    FormatTags.extractFormatTags("Straszny Film- 2D dubbing")      shouldBe (("Straszny Film", List("2D", "DUB")))
+    FormatTags.extractFormatTags("Władcy Wszechświata- 2D napisy") shouldBe (("Władcy Wszechświata", List("2D", "NAP")))
   }
 
   // Forum Bolesławiec (bilety24) glues the version word to the title with an
@@ -328,9 +329,9 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // the dubbed/subtitled/3D variants must un-glue, merge to one title, and yield
   // the format token; a non-version underscore must be left intact.
   it should "un-glue an underscore-glued format word into clean title + token" in {
-    ScraperParse.extractFormatTags("Supergirl_dubbing") shouldBe (("Supergirl", List("DUB")))
-    ScraperParse.extractFormatTags("Supergirl_napisy")  shouldBe (("Supergirl", List("NAP")))
-    ScraperParse.extractFormatTags("Spider-Man. Całkiem nowy dzień_3D") shouldBe
+    FormatTags.extractFormatTags("Supergirl_dubbing") shouldBe (("Supergirl", List("DUB")))
+    FormatTags.extractFormatTags("Supergirl_napisy")  shouldBe (("Supergirl", List("NAP")))
+    FormatTags.extractFormatTags("Spider-Man. Całkiem nowy dzień_3D") shouldBe
       (("Spider-Man. Całkiem nowy dzień", List("3D")))
   }
 
@@ -339,17 +340,17 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // "… | DUBBING PL" (Kino Starówka). The bare "PL" is only a qualifier when a
   // format word sits right before it; a title that merely ends in "PL" is kept.
   it should "drop a trailing PL language qualifier that follows a format word" in {
-    ScraperParse.extractFormatTags("Lalka | 2D | PL")   shouldBe (("Lalka", List("2D")))
-    ScraperParse.extractFormatTags("Lalka 2D PL")       shouldBe (("Lalka", List("2D")))
-    ScraperParse.extractFormatTags("Asterix | DUBBING PL") shouldBe (("Asterix", List("DUB")))
-    ScraperParse.extractFormatTags("Obcy - napisy PL")  shouldBe (("Obcy", List("NAP")))
-    ScraperParse.extractFormatTags("Kino PL")           shouldBe (("Kino PL", Nil))
-    ScraperParse.extractFormatTags("Made in PL")        shouldBe (("Made in PL", Nil))
+    FormatTags.extractFormatTags("Lalka | 2D | PL")   shouldBe (("Lalka", List("2D")))
+    FormatTags.extractFormatTags("Lalka 2D PL")       shouldBe (("Lalka", List("2D")))
+    FormatTags.extractFormatTags("Asterix | DUBBING PL") shouldBe (("Asterix", List("DUB")))
+    FormatTags.extractFormatTags("Obcy - napisy PL")  shouldBe (("Obcy", List("NAP")))
+    FormatTags.extractFormatTags("Kino PL")           shouldBe (("Kino PL", Nil))
+    FormatTags.extractFormatTags("Made in PL")        shouldBe (("Made in PL", Nil))
   }
 
   it should "leave a non-version underscore (date, programme tag) intact" in {
-    ScraperParse.extractFormatTags("Seans w ciemno_7.26") shouldBe (("Seans w ciemno_7.26", Nil))
-    ScraperParse.extractFormatTags("Monterey Pop_DKF")    shouldBe (("Monterey Pop_DKF", Nil))
+    FormatTags.extractFormatTags("Seans w ciemno_7.26") shouldBe (("Seans w ciemno_7.26", Nil))
+    FormatTags.extractFormatTags("Monterey Pop_DKF")    shouldBe (("Monterey Pop_DKF", Nil))
   }
 
   // Kino Oskard (bilety24) glues the version word with a SLASH and no spaces —
@@ -357,10 +358,10 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // like the underscore case; a real slashed title ("AC/DC", "Face/Off") whose
   // word after the slash isn't a version word must be left whole.
   it should "un-glue a slash-glued version word but keep a real slashed title" in {
-    ScraperParse.extractFormatTags("Supergirl/dubbing")             shouldBe (("Supergirl", List("DUB")))
-    ScraperParse.extractFormatTags("Spider-Man. Nowy dzień/napisy") shouldBe (("Spider-Man. Nowy dzień", List("NAP")))
-    ScraperParse.extractFormatTags("AC/DC")                         shouldBe (("AC/DC", Nil))
-    ScraperParse.extractFormatTags("Face/Off")                      shouldBe (("Face/Off", Nil))
+    FormatTags.extractFormatTags("Supergirl/dubbing")             shouldBe (("Supergirl", List("DUB")))
+    FormatTags.extractFormatTags("Spider-Man. Nowy dzień/napisy") shouldBe (("Spider-Man. Nowy dzień", List("NAP")))
+    FormatTags.extractFormatTags("AC/DC")                         shouldBe (("AC/DC", Nil))
+    FormatTags.extractFormatTags("Face/Off")                      shouldBe (("Face/Off", Nil))
   }
 
   // Screening-type labels (premiere / special / pre-premiere / a cinema's own
@@ -368,10 +369,10 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // extractFormatTags leaves them (and any format word sitting behind them) in
   // place rather than stripping/partial-stripping.
   it should "keep a screening-type label in the title (not treated as a format tag)" in {
-    ScraperParse.extractFormatTags("Spider-Man - Pokaz specjalny")     shouldBe (("Spider-Man - Pokaz specjalny", Nil))
-    ScraperParse.extractFormatTags("Zaproszenie - przedpremiera")      shouldBe (("Zaproszenie - przedpremiera", Nil))
-    ScraperParse.extractFormatTags("Ojczyzna - pokaz przedpremierowy") shouldBe (("Ojczyzna - pokaz przedpremierowy", Nil))
-    ScraperParse.extractFormatTags("Backrooms - UROCZYSTA POLSKA PREMIERA") shouldBe (("Backrooms - UROCZYSTA POLSKA PREMIERA", Nil))
+    FormatTags.extractFormatTags("Spider-Man - Pokaz specjalny")     shouldBe (("Spider-Man - Pokaz specjalny", Nil))
+    FormatTags.extractFormatTags("Zaproszenie - przedpremiera")      shouldBe (("Zaproszenie - przedpremiera", Nil))
+    FormatTags.extractFormatTags("Ojczyzna - pokaz przedpremierowy") shouldBe (("Ojczyzna - pokaz przedpremierowy", Nil))
+    FormatTags.extractFormatTags("Backrooms - UROCZYSTA POLSKA PREMIERA") shouldBe (("Backrooms - UROCZYSTA POLSKA PREMIERA", Nil))
   }
 
   // Ukrainian-screening guard: a dub/lektor word directly after "ukraiński"/
@@ -380,32 +381,32 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // bracket shapes (the paren form otherwise collapses onto the base). Only
   // dub/lektor are guarded — napisy/2D still strip.
   it should "keep a Ukrainian dub/lektor screening whole in every shape (guard)" in {
-    ScraperParse.extractFormatTags("Toy Story 5 ukraiński dubbing")   shouldBe (("Toy Story 5 ukraiński dubbing", Nil))
-    ScraperParse.extractFormatTags("Toy Story 5 (ukraiński dubbing)") shouldBe (("Toy Story 5 (ukraiński dubbing)", Nil))
-    ScraperParse.extractFormatTags("Toy Story 5 [ukraiński dubbing]") shouldBe (("Toy Story 5 [ukraiński dubbing]", Nil))
-    ScraperParse.extractFormatTags("Straszny film ukrainian lektor")  shouldBe (("Straszny film ukrainian lektor", Nil))
+    FormatTags.extractFormatTags("Toy Story 5 ukraiński dubbing")   shouldBe (("Toy Story 5 ukraiński dubbing", Nil))
+    FormatTags.extractFormatTags("Toy Story 5 (ukraiński dubbing)") shouldBe (("Toy Story 5 (ukraiński dubbing)", Nil))
+    FormatTags.extractFormatTags("Toy Story 5 [ukraiński dubbing]") shouldBe (("Toy Story 5 [ukraiński dubbing]", Nil))
+    FormatTags.extractFormatTags("Straszny film ukrainian lektor")  shouldBe (("Straszny film ukrainian lektor", Nil))
     // a NON-guarded format word (napisy) still strips even next to "ukraiński"
-    ScraperParse.extractFormatTags("Toy Story 5 ukraiński napisy")    shouldBe (("Toy Story 5 ukraiński", List("NAP")))
+    FormatTags.extractFormatTags("Toy Story 5 ukraiński napisy")    shouldBe (("Toy Story 5 ukraiński", List("NAP")))
   }
 
   // "dolby" is the bare carrier word and yields no token; "atmos" carries the
   // ATMOS badge, so "Dolby Atmos", a bare trailing "Atmos", and a standalone
   // "(Atmos)" paren all surface exactly one ATMOS token (deduplicated).
   it should "emit an ATMOS token for atmos but not for the bare 'dolby' carrier" in {
-    ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
+    FormatTags.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
       (("Dzień objawienia", List("2D", "NAP", "ATMOS")))
-    ScraperParse.extractFormatTags("Spider-Man - 2D NAP ATMOS") shouldBe
+    FormatTags.extractFormatTags("Spider-Man - 2D NAP ATMOS") shouldBe
       (("Spider-Man", List("2D", "NAP", "ATMOS")))
-    ScraperParse.extractFormatTags("Vaiana (Dolby Atmos)") shouldBe (("Vaiana", List("ATMOS")))
-    ScraperParse.extractFormatTags("Vaiana (Atmos)")       shouldBe (("Vaiana", List("ATMOS")))
+    FormatTags.extractFormatTags("Vaiana (Dolby Atmos)") shouldBe (("Vaiana", List("ATMOS")))
+    FormatTags.extractFormatTags("Vaiana (Atmos)")       shouldBe (("Vaiana", List("ATMOS")))
   }
 
   it should "return (title, Nil) for a title with no format tag" in {
-    ScraperParse.extractFormatTags("Mavka. Prawdziwy mit") shouldBe (("Mavka. Prawdziwy mit", Nil))
+    FormatTags.extractFormatTags("Mavka. Prawdziwy mit") shouldBe (("Mavka. Prawdziwy mit", Nil))
   }
 
   it should "not mangle a real dash/colon title" in {
-    ScraperParse.extractFormatTags("Tom i Jerry: Przygoda w muzeum") shouldBe
+    FormatTags.extractFormatTags("Tom i Jerry: Przygoda w muzeum") shouldBe
       (("Tom i Jerry: Przygoda w muzeum", Nil))
   }
 
@@ -416,7 +417,7 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
       "Tom i Jerry: Przygoda w muzeum", "Toy story 5 (2D DUBBING DOLBY ATMOS)",
       "Film [2D napisy]", "DKF - Some film"
     )
-    inputs.foreach(in => ScraperParse.extractFormatTags(in)._1 shouldBe ScraperParse.stripFormatTags(in))
+    inputs.foreach(in => FormatTags.extractFormatTags(in)._1 shouldBe FormatTags.stripFormatTags(in))
   }
 
   "canonicalTrailer" should "canonicalise YouTube embed / watch / youtu.be to the watch form" in {

@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
@@ -124,7 +125,7 @@ object Bilety24OrganizerClient {
           // portal buries in the title — "Supergirl_dubbing", "…_3D" on Forum
           // Bolesławiec — is peeled so the variants merge into one film AND
           // surfaced as a `Showtime.format` badge instead of being discarded.
-          val (withTag, format) = ScraperParse.extractFormatTags(m.group(1))
+          val (withTag, format) = FormatTags.extractFormatTags(m.group(1))
           // Forum Bolesławiec glues a programme-strand marker to the title the
           // same way — "Monterey Pop_DKF", "…_FKS". These aren't format/version
           // words, so extractFormatTags leaves them intact; peel the tag here so

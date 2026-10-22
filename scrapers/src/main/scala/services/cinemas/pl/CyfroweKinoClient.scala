@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{HttpFetch, HttpRead}
@@ -93,7 +94,7 @@ object CyfroweKinoClient {
    *  segment the recorded fixture does not happen to contain. */
   def versionOf(raw: String): List[String] =
     raw.split("/").map(_.trim).filter(s => NoiseSeg.findFirstMatchIn(s).isDefined)
-      .flatMap(ScraperParse.formatTokensIn).distinct.toList
+      .flatMap(FormatTags.formatTokensIn).distinct.toList
 
   /** "15.06 / DKF WERDYKT / napisy" → "Werdykt". Split on `/`, drop the
    *  short-date and version/age segments, take the longest remaining segment as

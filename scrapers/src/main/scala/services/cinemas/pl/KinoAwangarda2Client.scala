@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -129,7 +130,7 @@ object KinoAwangarda2Client {
   private def titleOf(linkText: String): String = {
     val raw   = linkText.trim
     val title = Quoted.findAllMatchIn(raw).map(_.group(1)).toSeq.lastOption.getOrElse(raw)
-    ScraperParse.stripFormatTags(title).trim
+    FormatTags.stripFormatTags(title).trim
   }
 
   /** Production countries from `- prod. <list> : …`; empty when absent or when

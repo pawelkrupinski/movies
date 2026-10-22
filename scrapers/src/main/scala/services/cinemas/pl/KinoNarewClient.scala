@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -118,7 +119,7 @@ object KinoNarewClient {
     (paragraphs.headOption.map(_.text.trim).filter(_.nonEmpty), time) match {
       case (Some(rawTitle), Some(t)) if ranges.nonEmpty =>
         val title  = ScraperParse.sentenceCase(rawTitle)
-        val format = godzParagraph.map(p => ScraperParse.formatTokensIn(p.text)).getOrElse(Nil)
+        val format = godzParagraph.map(p => FormatTags.formatTokensIn(p.text)).getOrElse(Nil)
 
         val fields = paragraphs.find(p => p.text.contains("Gatunek")).map(fieldsOf).getOrElse(Map.empty)
         val genres = fields.get("gatunek").map(_.split(",").toSeq.map(_.trim).filter(_.nonEmpty)).getOrElse(Seq.empty)

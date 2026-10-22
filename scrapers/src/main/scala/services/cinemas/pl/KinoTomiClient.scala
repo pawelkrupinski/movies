@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import services.movies.FormatTags
 
 import models._
 import org.jsoup.Jsoup
@@ -93,7 +94,7 @@ object KinoTomiClient {
   private def filmRow(row: Element, date: LocalDate): Seq[RawSlot] =
     Option(row.selectFirst(".movie-name a.name")).toSeq.flatMap { link =>
       val title   = link.ownText.trim
-      val format  = Option(link.selectFirst("span")).map(s => ScraperParse.formatTokensIn(s.text)).getOrElse(Nil)
+      val format  = Option(link.selectFirst("span")).map(s => FormatTags.formatTokensIn(s.text)).getOrElse(Nil)
       val filmUrl = Option(link.attr("abs:href")).filter(_.nonEmpty)
       val poster  = Option(row.selectFirst(".movie-name img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
       if (title.isEmpty) Seq.empty

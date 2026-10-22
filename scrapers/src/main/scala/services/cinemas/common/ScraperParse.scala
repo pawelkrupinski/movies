@@ -4,8 +4,6 @@ import java.util.Locale
 
 import org.jsoup.nodes.{Document, Element, TextNode}
 import services.enrichment.scraping.JsonScalars
-import services.billing.BillingParse
-import services.movies.FormatTags
 import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
@@ -313,14 +311,6 @@ private[cinemas] object ScraperParse {
    */
   def sentenceCase(title: String): String =
     tools.TextNormalization.sentenceCase(title.replaceAll("""(\d)\.(\p{L})""", "$1. $2"))
-
-  // Format/version tags are read off the one structured billing parse (`services.billing.BillingParse`, whose peel is the
-  // shared `services.movies.FormatTags`'), so the ingest choke point (`MovieCache.recordCinemaScrape`), the identity and
-  // the cinema clients read ONE grammar. Every client reads its format through these.
-  val FormatToken: Map[String, String] = FormatTags.FormatToken
-  def stripFormatTags(raw: String): String = BillingParse(raw).formatless
-  def extractFormatTags(raw: String): (String, List[String]) = { val peeled = BillingParse(raw).peeled; (peeled.title, peeled.tokens) }
-  def formatTokensIn(text: String): List[String] = BillingParse(text).formatWords
 
   private val RuntimeHours   = """(?i)(\d+)\s*(?:godz|h\b)""".r
   private val RuntimeMinutes = """(?i)(\d+)\s*m(?:in|\b)""".r

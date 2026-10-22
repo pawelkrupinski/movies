@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -25,7 +26,7 @@ import scala.jdk.CollectionConverters._
  *     (`DD.MM.YYYY`) then the time (`HH:MM`, nested one level deeper under
  *     `span.B-text--nowrap`).
  *   - `div.iframe_all_event_title p a[href^=/artist/view/id/]` → title, with
- *     a trailing `(2D/napisy)`-style format tag [[ScraperParse.extractFormatTags]]
+ *     a trailing `(2D/napisy)`-style format tag [[FormatTags.extractFormatTags]]
  *     peels off.
  *   - `img.img-responsive[src^=/file/get/id/]` → poster.
  *   - `a.B-btn.B-btn--accent[href^=/event/view/id/]` → booking link.
@@ -81,7 +82,7 @@ object KinoLotSwidnikClient {
       titleAnchor <- Option(block.selectFirst("div.iframe_all_event_title p a[href^=\"/artist/view/id/\"]"))
       raw          = titleAnchor.text.trim if raw.nonEmpty
     } yield {
-      val (title, format) = ScraperParse.extractFormatTags(raw)
+      val (title, format) = FormatTags.extractFormatTags(raw)
       RawSlot(
         title    = title,
         dateTime = date.atTime(time),

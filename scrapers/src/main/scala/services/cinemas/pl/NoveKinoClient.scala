@@ -3,6 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -97,7 +98,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
     Jsoup.parse(html).select("tr.repertoire-movie-tr").asScala.toSeq.flatMap { row =>
       val link = Option(row.selectFirst("div.repertoire-movie-title a"))
       val id   = link.flatMap(a => FilmIdPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
-      val parsed = link.map(_.text.trim).filter(_.nonEmpty).map(ScraperParse.extractFormatTags)
+      val parsed = link.map(_.text.trim).filter(_.nonEmpty).map(FormatTags.extractFormatTags)
       (id, parsed) match {
         case (Some(filmId), Some((t, fmt))) =>
           val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
@@ -119,7 +120,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
 object NoveKinoClient {
 
   // The site appends the presentation as a title suffix ("Zawodowcy - napisy",
-  // "Wielkie piękno – napisy"); `ScraperParse.extractFormatTags` peels it into
+  // "Wielkie piękno – napisy"); `FormatTags.extractFormatTags` peels it into
   // format tokens (handling every separator + trailing tag shape) while leaving a
   // real dash-bearing title ("Mission - Impossible") intact, and the clean title
   // groups the presentation variants into one row (see `fetchBare`).

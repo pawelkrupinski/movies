@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -110,7 +111,7 @@ class FalenicaClient(http: HttpFetch
       // The listing bakes the version into the title ("Ścieżki życia – LEKTOR");
       // peel it off and carry it as a per-showtime badge so the LEKTOR/napisy
       // variants collapse onto one film row without losing the format.
-      val (title, format) = ScraperParse.extractFormatTags(a.text.trim)
+      val (title, format) = FormatTags.extractFormatTags(a.text.trim)
       SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)).filter(_ => title.nonEmpty).map { slug =>
         val czas     = Option(art.selectFirst("div.repe_czas")).map(_.text.trim).getOrElse("")
         val runtime  = """(\d+)\s*min""".r.findFirstMatchIn(czas).map(_.group(1).toInt)

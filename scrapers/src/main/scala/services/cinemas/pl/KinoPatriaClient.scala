@@ -3,6 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -141,7 +142,7 @@ object KinoPatriaClient {
       // For each movie item, extract title + times from the amy-item-{id} div
       dailyBlock.select("div.amy-movie-item").asScala.toSeq.flatMap { item =>
         val title = Option(item.selectFirst("h3.amy-movie-field-title a"))
-          .map(a => ScraperParse.stripFormatTags(a.text.trim))
+          .map(a => FormatTags.stripFormatTags(a.text.trim))
           .filter(_.nonEmpty)
         val posterUrl = Option(item.selectFirst("div.amy-movie-item-poster img[src]"))
           .map(_.attr("abs:src")).filter(_.nonEmpty)
@@ -182,7 +183,7 @@ object KinoPatriaClient {
     Option(doc.selectFirst("div.amy-movie-showtimews-1")).toSeq.flatMap { weeklyBlock =>
       weeklyBlock.select("div.amy-movie-item").asScala.toSeq.flatMap { item =>
         val title = Option(item.selectFirst("h3.amy-movie-field-title a"))
-          .map(a => ScraperParse.stripFormatTags(a.text.trim))
+          .map(a => FormatTags.stripFormatTags(a.text.trim))
           .filter(_.nonEmpty)
         val posterUrl = Option(item.selectFirst("div.amy-movie-item-front img[src]"))
           .map(_.attr("abs:src")).filter(_.nonEmpty)

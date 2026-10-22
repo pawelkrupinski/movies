@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 import org.jsoup.Jsoup
@@ -109,7 +110,7 @@ object KinoKreskaClient {
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
       CinemaMovie(
-        movie     = Movie(ScraperParse.stripFormatTags(title)),
+        movie     = Movie(FormatTags.stripFormatTags(title)),
         cinema    = cinema,
         posterUrl = None,
         filmUrl   = group.flatMap(_.filmUrl).headOption,

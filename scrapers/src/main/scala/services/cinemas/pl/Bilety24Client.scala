@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import services.movies.TitleNormalizer
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -66,7 +67,7 @@ object Bilety24Client {
       .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
       .map(t => titles.cinemaClean(cinema.slug, t))
       .filter(_.nonEmpty)
-      .map(ScraperParse.extractFormatTags)
+      .map(FormatTags.extractFormatTags)
     val title    = titled.map(_._1)
     val titleFmt = titled.map(_._2).getOrElse(Nil)
 

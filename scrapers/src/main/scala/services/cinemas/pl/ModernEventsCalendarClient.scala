@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsObject, JsString, Json}
@@ -47,7 +48,7 @@ final case class ModernEventsCalendarPage(url: String)
  *
  * Title quirks: Zambrów files each (film, time) pair as its own event titled
  * "15:30 – Mistyczka" — the leading time is peeled off; Nisko suffixes
- * "[PREMIERA] [DUBBING]" tags — peeled by [[ScraperParse.extractFormatTags]], the
+ * "[PREMIERA] [DUBBING]" tags — peeled by [[FormatTags.extractFormatTags]], the
  * language ones becoming the showing's badge. No booking link is published.
  *
  * Per-film detail (deferred) is the event's page: Nisko's is MEC's single-event
@@ -142,7 +143,7 @@ object ModernEventsCalendarClient {
       rawTitle  = link.text.trim
       time     <- Option(article.selectFirst(".mec-event-time")).map(_.text).flatMap(clockTime)
                     .orElse(clockTime(rawTitle))
-      (title, format) = ScraperParse.extractFormatTags(LeadingTime.replaceFirstIn(rawTitle, ""))
+      (title, format) = FormatTags.extractFormatTags(LeadingTime.replaceFirstIn(rawTitle, ""))
       if title.nonEmpty
     } yield Slot(title, date.atTime(time), format, link.attr("abs:href"))
 

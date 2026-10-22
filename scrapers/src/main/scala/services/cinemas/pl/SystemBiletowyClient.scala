@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse.jsonText
+import services.movies.FormatTags
 import services.cinemas.common.ScraperParse
 import services.movies.TitleNormalizer
 import models._
@@ -141,7 +142,7 @@ object SystemBiletowyClient {
         // The trailing `dubbing`/`napisy`/… tag is peeled into the showtime's
         // format so a film's dubbed and subtitled screenings fold onto one row.
         peeled    = FilmBoilerplate.replaceFirstIn(stripGroupPrefix(rawTitle.trim, group), "")
-        title     = titles.cinemaClean(cinema.slug, recase(ScraperParse.stripFormatTags(peeled)))
+        title     = titles.cinemaClean(cinema.slug, recase(FormatTags.stripFormatTags(peeled)))
         if title.nonEmpty
         dateTime <- (r \ "date").asOpt[String].flatMap(d => Try(OffsetDateTime.parse(d).toLocalDateTime).toOption)
       } yield RawSlot(
@@ -152,7 +153,7 @@ object SystemBiletowyClient {
                        case JsString(id) => id
                        case id           => id.toString
                      }.map(id => s"${portal.url}/index.php/repertoire.html?id=$id")),
-        format   = ScraperParse.extractFormatTags(peeled)._2,
+        format   = FormatTags.extractFormatTags(peeled)._2,
         poster   = (r \ "image").asOpt[String].filter(_.nonEmpty).map(absolute),
         identity = identity(r \ "event", title)
       )

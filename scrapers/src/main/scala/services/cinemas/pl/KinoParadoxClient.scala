@@ -3,6 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
+import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -184,7 +185,7 @@ object KinoParadoxClient {
       fields.get(label).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     val (countries, year) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Nil, None))
     val runtime  = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
-    val format   = fields.get("wersja językowa").map(ScraperParse.formatTokensIn).getOrElse(Nil)
+    val format   = fields.get("wersja językowa").map(FormatTags.formatTokensIn).getOrElse(Nil)
     val synopsis = Option(doc.selectFirst("div.single-os-hero__desc-col"))
       .map(el => ScraperParse.cleanSynopsis(el)).filter(_.length > 20)
     val poster   = Option(doc.selectFirst("div.single-os-hero__img-col img[src]"))

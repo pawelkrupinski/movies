@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
@@ -36,7 +37,7 @@ final case class IksorisBookingPage(origin: IksorisOrigin, eventGroup: Int = 1) 
  *   - `.program__show-header-label` spans → a mix of language ("DUBBING"/
  *     "NAPISY"), age rating ("OGRANICZENIE WIEKOWE N+") and genre words, with
  *     no class telling them apart — only the language ones are recognised
- *     (via [[ScraperParse.formatTokensIn]]), the rest left unparsed
+ *     (via [[FormatTags.formatTokensIn]]), the rest left unparsed
  *   - `.program__show-description`        → "<countries, comma-separated>
  *     NNNmin" free text
  *
@@ -150,7 +151,7 @@ object IksorisBookingClient {
         booking   = bookingOf(show),
         runtime   = runtime,
         countries = countries,
-        format    = ScraperParse.formatTokensIn(labels.mkString(" ")),
+        format    = FormatTags.formatTokensIn(labels.mkString(" ")),
         poster    = None
       )
     }
@@ -164,7 +165,7 @@ object IksorisBookingClient {
     document.select("#termin div.row").asScala.toSeq.filter(_.selectFirst(BookingLink) != null).flatMap { row =>
       for {
         dateTime <- row.children.asScala.iterator.map(_.ownText).flatMap(ScraperParse.parseDateTime).nextOption()
-        (title, format) <- Option(row.selectFirst("b")).map(b => ScraperParse.extractFormatTags(b.text)).filter(_._1.nonEmpty)
+        (title, format) <- Option(row.selectFirst("b")).map(b => FormatTags.extractFormatTags(b.text)).filter(_._1.nonEmpty)
       } yield RawSlot(
         title     = title,
         dateTime  = dateTime,
@@ -206,7 +207,7 @@ object IksorisBookingClient {
         booking   = bookingOf(show, "a.select-term-btn"),
         runtime   = runtime,
         countries = countries,
-        format    = ScraperParse.formatTokensIn(tags.mkString(" ")),
+        format    = FormatTags.formatTokensIn(tags.mkString(" ")),
         poster    = None,
         year      = Option(block.selectFirst("a[href]")).flatMap(a => ScraperParse.filmwebSlugYear(a.attr("href"))),
         genres    = genres

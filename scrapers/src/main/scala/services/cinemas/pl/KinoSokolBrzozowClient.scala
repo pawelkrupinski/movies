@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -80,6 +81,6 @@ object KinoSokolBrzozowClient {
       // both, so the central `FormatTags` title strip cannot reach it and the two
       // showings were indistinguishable on the badge.
       format   = Option(ev.selectFirst(".wp_theatre_event_venue"))
-        .map(_.text).map(ScraperParse.formatTokensIn).getOrElse(Nil)
+        .map(_.text).map(FormatTags.formatTokensIn).getOrElse(Nil)
     )
 }
