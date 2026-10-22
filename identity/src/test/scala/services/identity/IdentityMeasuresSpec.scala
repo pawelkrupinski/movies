@@ -180,9 +180,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val bounded = Listing("King Kong", yearUpperBound = Some(1933))
     measures(bounded, Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(-72)
     measures(bounded, Film("King Kong", year = Some(2005)))("year.distance") shouldBe Number(72)
-    // the film of the bound's year or before is no match by it, only not ruled out: no year-equality reward
-    measures(bounded, Film("King Kong", year = Some(1933)))("year.delta") shouldBe Missing("listing")
+    // a film from before the bound's year is no match by it, only not ruled out: no year-equality reward
     measures(Listing("Rope", yearUpperBound = Some(1963)), Film("Rope", year = Some(1948)))("year.delta") shouldBe Missing("listing")
+    measures(bounded, Film("King Kong", year = Some(1932)))("year.delta") shouldBe Missing("listing")
+    // the film made the premiere's very year is read as of the stated year: DE "Der kleine Prinz" (Cineamo 334199m,
+    // premiered 1972) is the 1972 film, not the 1962 or the 1974 namesake
+    measures(bounded, Film("King Kong", year = Some(1933)))("year.delta") shouldBe Number(0)
+    measures(Listing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1972)))("year.distance") shouldBe Number(0)
+    measures(Listing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1962)))("year.delta") shouldBe Missing("listing")
     // a year past the premiere by the adjacency a festival premiere is dated by, and a release TMDB dates by it, are no contradiction
     measures(Listing("Momo", yearUpperBound = Some(2024)), Film("Momo", year = Some(2025)))("year.delta") shouldBe Missing("listing")
     measures(bounded, Film("King Kong", year = Some(2005), releases = Some("DE1933-")))("year.delta") shouldBe Missing("listing")

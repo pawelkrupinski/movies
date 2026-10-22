@@ -588,12 +588,15 @@ object IdentityMeasures {
    *  weighs (`year.delta` -2: -1.1; -3 and less: -6.9), the learned cannot-links reading it as they read a stated year:
    *  Eulenspiegel's "King Kong", premiered in Germany in 1933, is no 2005 remake. A film from the bound's year or before
    *  stays as a listing stating no year weighs it: the premiere trails a classic by any number of years (Rope 1948,
-   *  premiered there in 1963), so it is no match, only not ruled out — the year-equality bonus stays the stated year's. */
+   *  premiered there in 1963), so it is no match, only not ruled out. Only a film made the premiere's very year is read
+   *  as of the stated year: its premiere is its own (DE "Der kleine Prinz", premiered 1972, is the 1972 film, not the
+   *  1962 or the 1974 one), as Cineamo's year read it before it became a bound. */
   private def yearBound(l: Listing, f: Film, country: Option[String], m: Map[String, Measure]): Map[String, Measure] =
     l.yearUpperBound.filter(_ => l.year.isEmpty) match {
       case Some(bound) =>
         val released = if (f.releases.isEmpty) f.year else f.closestYear(bound, country)
         if (released.exists(_ - bound > YearWindow.PublishedAdjacency)) m ++ Map("year.delta" -> delta(Some(bound), released), "year.distance" -> absDelta(Some(bound), released))
+        else if (f.year.contains(bound)) m ++ Map("year.delta" -> delta(Some(bound), f.year), "year.distance" -> absDelta(Some(bound), f.year))
         else m
       case None => m
     }
