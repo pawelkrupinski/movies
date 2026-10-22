@@ -89,6 +89,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
   }
 
+  "an author's credit in any language ('… von Friedrich Dürrenmatt', '… autorstwa …')" should "leave the work it credits searched" in {
+    // the billing grammar's Credits reads every language's authorship word; the search once read only English "by"
+    IdentityMeasures.searchQueries(Listing("Die Physiker von Friedrich Dürrenmatt")) should contain ("Die Physiker")
+    IdentityMeasures.searchQueries(Listing("Wesele autorstwa Stanisława Wyspiańskiego")) should contain ("Wesele")
+    IdentityMeasures.creditedWork("Fallen Angels by Noël Coward") shouldBe Some("Fallen Angels")
+    IdentityMeasures.creditedWork("Stand by Me") shouldBe None
+    // prod DE Kinostar Arthaus Heilbronn (run 1051): the pianist accompanying a silent film is no author of it
+    IdentityMeasures.creditedWork("THE GENERAL - Stummfilm mit Klavierbegleitung von Andreas Benz") shouldBe None
+    // UK Lowther Pavilion (run 1057): a credit a bracket follows leaves the title whole
+    IdentityMeasures.creditedWork("On Screen: Fallen Angels by Noel Coward (15)") shouldBe None
+  }
+
   "a bracket dating the title beside a name" should "date the film by a studio's, never by a month, an event or an edition" in {
     IdentityMeasures.titleYearOf(Seq("DRACULA (Hammer 1958) 4K Restoration - Directors Cut")) shouldBe Some(1958)
     IdentityMeasures.titleYearOf(Seq("Der Physiopath (März 2027)")) shouldBe None
