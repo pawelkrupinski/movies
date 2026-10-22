@@ -320,14 +320,24 @@ after the year billed, or year AND directors both disagreeing. A card with reaso
 What prod's projection moved, and why, without a capture. The worker logs JSON, which Vector turns into
 fields (`tools.JsonLineEncoder`, `services.identity.TakeChangeLines`), so filter and group on FIELDS, never a
 regex over `_msg`. Every worker line carries `country`, `build` (the image's commit) and, inside a projection,
-`projection_id` + `projection_mode` (whole / periodic / changed). Lines logged before 2026-10-14 are text
-only and have none of these.
+`projection_id` + `projection_mode` (whole / periodic / changed) + `projection_trigger` (`deploy`: a pod's first
+projection, `periodic`: the hourly reconcile or the period's, `scrape` / `answer` / `film-change`: what asked for one of
+what moved, joined by `+` when several did, `retry`: an unsettled one run again). Lines logged before 2026-10-14 are text
+only and have none of these; `projection_trigger` and the take lines' ids below from the 2026-10-22 builds on.
 
 - **`identity take change: <kind> …`** — one per listing whose TMDB film moved (up to 2,000 a tick): `kind`
   (lost/changed/gained), `venue`, `listing`, `film_before`/`film_after`, `tmdb_before`/`tmdb_after`,
   `title_before`/`title_after`, `basis`, `confidence`, `reason_first`/`reason_last`, `rules` (accept:/pooled:/
   veto:/join:/apart:/refused: ids), `blocker`, `runner_up`, `fallback`, `unanswered`, `previous_basis`/
-  `previous_confidence`/`previous_reason` (the take before; absent after an index rebuild), `listing_year`/
+  `previous_confidence`/`previous_reason` (the take before; absent after an index rebuild), and — ids and numbers, so
+  "why did this listing change" is one query — `stage` (`model`, `relay`, `pin`, `agreement`, `poster`, `broadcast`,
+  `fill`, `catalogue`, `correction`, `event`), `decided_by` (the one rule: `accept:sole-work`, `pooled:<rule>`,
+  `veto:<id>`, a blocker such as `search:found-nothing` / `rule:<why>`, `agreed:imdb+wiki`, `fill:<rule>`,
+  `correction:families+poster`, `withdrawal:filmweb`, `poster:vote`, `pin`), `title_rules` (`title:<title-rules.tsv
+  id>` and `format:<tag>` the title took), `score` (the node's own probability of the film it weighed), `runner_up_tmdb`
+  / `runner_up_score` / `margin` (the best other film it weighed, and score minus its score), `trigger` (the
+  projection's, or `review` when a pin decided either side), `previous_decided_by` / `previous_runner_up_tmdb` and
+  `runner_up_won` (`true`: the film taken now is the one the take before beat), `listing_year`/
   `listing_runtime`/`listing_director`/`listing_original_title`, and `repro` — a ready
   `scripts/identity-slice <cc> --key 'venue|raw title' --ref <build>` line (any listing, matched or not; lines logged before
   2026-10-14 name `scripts/identity-explain`, now an alias of `identity-slice --explain`, which finds the listing only if
@@ -338,6 +348,13 @@ only and have none of these.
   `take_changes`, `seconds`, `scoped`, `retired_films`, `declined_films` (first 50 ids).
 - **`identity suspect takes: counted …`** — `suspected` and `suspect_<signal>` per signal, under the
   projection's id.
+- **`identity rule firings: counted …`** — per written whole-corpus projection: `listings_counted`, `rules_fired`,
+  `rules_<kind>` (title, accept, veto, …). The per-rule numbers are Prometheus counters, not log fields:
+  `kinowo_worker_identity_rule_fires_total{country, rule}` (live listings each rule id fired on, added up per counted
+  projection) over `kinowo_worker_identity_rule_counted_listings_total{country}` — Grafana "Identity rules" panels
+  (worker-diagnostics). A rule's share: `sum by (rule) (increase(kinowo_worker_identity_rule_fires_total[1d])) /
+  scalar(sum(increase(kinowo_worker_identity_rule_counted_listings_total[1d])))`. Dead in prod vs dead in the
+  recordings, per title-rules.tsv row: `scripts/rule-firing-prod [--window 7d] [--country cc] [--all-kinds]`.
 
 Run from a shell (or paste the query into https://logs.kinowo.net):
 
@@ -356,6 +373,14 @@ q() { ssh monitoring-1 "curl -s http://10.20.0.11:9428/select/logsql/query --dat
 | Before vs after a deploy | `_time:3d country:pl kind:* \| stats by (build, kind) count()` |
 | Which rule took (or refused) them | `_time:24h kind:gained \| stats by (rules) count() n \| sort by (n desc) \| limit 20` |
 | One tick, whole | `projection_id:="2026-10-14T09:12:03.120Z" \| fields _time, _msg` (any line's `projection_id`) |
+| Why did this listing change — one line | `_time:7d kind:* venue:="Kino Muza" listing:="Lalka" \| fields _time, kind, tmdb_before, tmdb_after, stage, decided_by, previous_decided_by, score, runner_up_tmdb, runner_up_score, margin, trigger, title_rules, build, repro` |
+| All changes caused by rule X (as the deciding rule) | `_time:7d kind:* decided_by:="accept:sole-work" \| stats by (country, kind) count()` |
+| …by rule X anywhere in the trace (vetoes, cannot-links, refusals) | `_time:7d kind:* rules:"apart:learned-listing-listing-probability-below-the-cannot-link-cut" \| stats by (country, decided_by) count()` |
+| …by a title rule | `_time:7d kind:* title_rules:"title:search-programme-prefix" \| fields _time, country, venue, listing, kind, decided_by` |
+| Listings where the runner-up won after deploy Y | `_time:3d build:=<sha> kind:changed runner_up_won:true \| fields _time, country, venue, listing, tmdb_before, tmdb_after, previous_decided_by, decided_by, margin` |
+| Which stages moved takes after a deploy, and by what | `_time:24h build:=<sha> trigger:deploy kind:* \| stats by (country, stage, decided_by) count() n \| sort by (n desc)` |
+| Near-misses: changes decided by a thin margin | `_time:24h kind:* margin:<0.05 \| fields _time, country, venue, listing, decided_by, score, runner_up_tmdb, runner_up_score` |
+| What a scrape vs a filed answer moved | `_time:24h kind:* \| stats by (country, trigger, stage) count()` |
 | Tick sizes over a day | `_time:24h "identity take change: summary" \| fields _time, country, take_changes, lost, changed, gained, logged, by_basis` |
 | Retired / declined films | `_time:24h "identity projection:" retired:>0 \| fields _time, country, retired, retired_films, declined_films` |
 | Suspect-take counts | `_time:24h "identity suspect takes: counted" \| fields _time, country, suspected, suspect_fragment, suspect_era, suspect_runtime` |

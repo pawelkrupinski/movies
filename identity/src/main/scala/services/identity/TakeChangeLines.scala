@@ -14,24 +14,39 @@ import settings.CommitSha
  *  - why: `basis`, `confidence`, `reason_first`/`reason_last` (the explanation's ends), `rules` (the rule ids that decided
  *    the listing: `accept:`, `pooled:`, `veto:`, `join:`, `apart:`, `refused:`), `blocker` (what stopped a listing no rule
  *    took), `runner_up` (the candidate it beat, or the best it did not take), `fallback`, `unanswered`;
- *  - the take before: `previous_basis`, `previous_confidence`, `previous_reason` ([[LiveProjectionIndex.priorTake]]);
+ *  - which stage and rule decided it, as ids ([[DecidedBy]]): `stage` (model, relay, agreement, fill, correction, …),
+ *    `decided_by` (`accept:sole-work`, `veto:<id>`, `fill:<rule>`, `correction:families+poster`, a blocker, …), and the
+ *    title rules the listing's title took (`title_rules`: `title:<title-rules.tsv id>`, `format:<tag>`);
+ *  - how close it was: `score` (the listing's node's own probability of the film it weighed), `runner_up_tmdb` and
+ *    `runner_up_score` (the best other film it weighed), `margin` (the two's difference);
+ *  - what set it off: `trigger` — the projection's (`deploy`: the first after a pod start, `periodic`, `scrape`, `answer`,
+ *    `film-change`, `retry`; [[services.identity.adapters]]' projection names them) or `review` when a pin decided either side;
+ *  - the take before: `previous_basis`, `previous_confidence`, `previous_reason`, `previous_decided_by`,
+ *    `previous_runner_up_tmdb` ([[LiveProjectionIndex.priorTake]]), and `runner_up_won` — whether the film taken now is the
+ *    one the take before beat;
  *  - the listing's own facts: `listing_year`, `listing_runtime`, `listing_director`, `listing_original_title`;
  *  - `repro`: the `scripts/identity-slice` line that replays the listing under the build that took it.
  *
- * The country, the build (`build`) and the projection (`projection_id`) are every line's own fields already.
+ * The country, the build (`build`) and the projection (`projection_id`, `projection_mode`, `projection_trigger`) are every
+ * line's own fields already. Every added field is an id or a number: the line stays bounded.
+ *
+ * `titleRules`: the title rules a listing's title takes (`TitleNormalizer.firedRules`), asked only for a logged line.
  */
-final class TakeChangeLines(country: Country, build: CommitSha) {
+final class TakeChangeLines(country: Country, build: CommitSha, titleRules: Listing => Seq[String] = _ => Nil) {
   import TakeChangeLines.*
 
   /** The line of `take`: the stored film it was on titled `was`, the film it is on now (`now`: id and title), the
    *  decision that took it, the listing as published and the take before. */
   def of(take: TakeChange, was: Option[String], now: Option[(String, String)], decision: Option[ResolverDecision],
-         listing: Option[Listing], prior: Option[TakeChange.Prior]): Line = {
+         listing: Option[Listing], prior: Option[TakeChange.Prior], trigger: Option[String] = None): Line = {
     val key    = take.listing
     // The last explanation first: a stage that took or corrected the film after the resolver appends its own why.
     val reason = decision.fold("no decision")(d => (d.basis.toString +: (d.explanation.lastOption.toSeq ++ d.explanation.headOption).distinct).mkString(": "))
     val node   = decision.flatMap(_.trace.nodes.get(key))
     val repro  = reproOf(key)
+    val score  = node.flatMap(_.score)
+    val rival  = node.flatMap(_.runnerUp)
+    val pinned = decision.exists(_.basis == ResolverDecision.Basis.Pinned) || prior.exists(_.basis == ResolverDecision.Basis.Pinned)
     val message = s"identity take change: ${take.kind.label} ${key.venue} | ${key.rawTitle}: " +
       s"${film(take.before, was)} -> ${film(take.after, now.map(_._2))} (${take.previousFilm}); reason $reason" +
       prior.fold("")(p => s"; before ${p.basis} (${ResolverDecision.percent(p.confidence)})${p.reason.fold("")(r => s": $r")}") +
@@ -55,9 +70,20 @@ final class TakeChangeLines(country: Country, build: CommitSha) {
       "runner_up"              -> node.flatMap(_.candidates.headOption),
       "fallback"               -> decision.flatMap(_.fallback).map(f => s"${f.source}:${f.id}"),
       "unanswered"             -> decision.map(_.unanswered).filter(_ > 0),
+      "stage"                  -> decision.map(DecidedBy.stage(_, key)),
+      "decided_by"             -> decision.map(DecidedBy.of(_, key)),
+      "title_rules"            -> listing.map(titleRules).filter(_.nonEmpty).map(_.mkString(" ")),
+      "score"                  -> score.map(rounded),
+      "runner_up_tmdb"         -> rival.map(_.film),
+      "runner_up_score"        -> rival.map(r => rounded(r.score)),
+      "margin"                 -> score.zip(rival).map { case (s, r) => rounded(s - r.score) },
+      "trigger"                -> (if (pinned) Some("review") else trigger),
       "previous_basis"         -> prior.map(_.basis.toString),
       "previous_confidence"    -> prior.map(p => rounded(p.confidence)),
       "previous_reason"        -> prior.flatMap(_.reason),
+      "previous_decided_by"    -> prior.flatMap(_.decidedBy),
+      "previous_runner_up_tmdb" -> prior.flatMap(_.runnerUp),
+      "runner_up_won"          -> prior.flatMap(_.runnerUp).map(was => take.after.contains(was)),
       "listing_year"           -> listing.flatMap(_.year),
       "listing_runtime"        -> listing.flatMap(_.runtime),
       "listing_director"       -> listing.map(_.directors).filter(_.nonEmpty).map(_.mkString("; ")),

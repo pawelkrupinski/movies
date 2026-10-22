@@ -103,6 +103,24 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     taken.trace.nodes(wajdas.key).candidates.map(_.takeWhile(_ != ' ')) shouldBe Seq("2")
   }
 
+  "a listing's node" should "keep its own score of the film it weighed and the runner-up's, as numbers a take-change line names" in {
+    val tatarak = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))
+    val wajdas  = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
+    val taken   = IdentityResolver.resolve(Seq(wajdas), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(wajdas.key)
+    val node    = taken.trace.nodes(wajdas.key)
+    node.candidate shouldBe Some(1)
+    node.runnerUp.map(_.film) shouldBe Some(2)
+    val (score, rival) = (node.score.get, node.runnerUp.get.score)
+    withClue(s"score $score, runner-up $rival")(score should be > rival)
+    // the line's runner-up ranks as the trace's rendered one does: its probability is the one it prints
+    node.candidates.head should include (ResolverDecision.percent(rival))
+    // and a listing no rule took weighs its best candidate against the next
+    val bare = listing(Rialto, "Tatarak")
+    val open = IdentityResolver.resolve(Seq(bare), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(bare.key)
+    val both = open.trace.nodes(bare.key)
+    (both.candidate.toSet ++ both.runnerUp.map(_.film)) shouldBe Set(1, 2)
+  }
+
   "a listing whose own match a sibling's evidence withdrew" should "say so, naming the sibling and its denial" in {
     // PL Kino Głębocka 66's "WAJDA: re-wizje | Bez znieczulenia (1978)" took the film at 88.1% by its own rules, and
     // its trace said only "below the rating cut": a title-linked sibling, Kino Światowid's, was denying the film

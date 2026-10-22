@@ -480,6 +480,22 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   /** The live alarm's input: a listing still published whose TMDB film a projection moved — lost, changed or gained — is
    *  reported and logged once, naming its venue, title, both films and the decision's reason. A listing leaving the
    *  schedule, and a projection that keeps every listing's film, report nothing. */
+  "A projection's lines" should "name what set it off: the deploy's first projection, the period's, then what asked since the last" in {
+    val w = World()
+    w.scrape(programme)
+    def triggers(run: => Any): Seq[String] = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(run)
+      .flatMap(e => Option(e.getMDCPropertyMap.get("projection_trigger"))).distinct
+    triggers(w.projection.tick()) shouldBe Seq("deploy")
+    triggers(w.projection.tick()) shouldBe Seq("periodic")
+    triggers(w.projection.tick(whole = true)) shouldBe Seq("periodic")
+    w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
+    w.projection.asked(IdentityProjection.Trigger.Scrape)
+    w.projection.asked(IdentityProjection.Trigger.Answer)
+    triggers(w.projection.tickChanged()) shouldBe Seq("answer+scrape")
+    // asked for by nothing new: an unsettled projection run again
+    triggers(w.projection.tickChanged()) shouldBe Seq("retry")
+  }
+
   "A projection that moves a listing's TMDB film" should "report and log the take change, and nothing for expected churn" in {
     var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
     val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
@@ -530,6 +546,11 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     lost("previous_reason") shouldBe "corrected Lalka"
     lost("listing_year") shouldBe 2026
     lost("repro").toString should startWith(s"scripts/identity-slice pl --key '${Helios.displayName}|Lalka'")
+    // which stage and rule decided it, before and now, and what set the projection off: ids a query groups by
+    lost("stage") shouldBe "model"
+    lost("decided_by") shouldBe "pooled:no-film"
+    lost("previous_decided_by") shouldBe "accept:joined"
+    lost("trigger") shouldBe "periodic"
     val summary = events.find(_.getFormattedMessage.startsWith("identity take change: summary")).get
     summary.getFormattedMessage should include("5 take changes (changed 2, lost 3)")
     fieldsOf(summary)("lost") shouldBe 3

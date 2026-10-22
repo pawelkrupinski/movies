@@ -49,11 +49,12 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       metrics     = workerMetrics.identityProjection.forCountry(country.code),
       clock       = clock,
       fingerprints = venueSlotFingerprints,
-      takeLines   = new services.identity.TakeChangeLines(country, configuration.commit),
+      takeLines   = new services.identity.TakeChangeLines(country, configuration.commit,
+        listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle)),
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       agreementBacklog = () => agreementStage.backlog,
-      suspects    = suspectTakeCount.submit)
+      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) })
 
   /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
@@ -62,6 +63,14 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     new services.identity.adapters.SuspectTakeCount(venueDetailLookups(),
       services.identity.adapters.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
+        threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
+      pressed = () => tools.HeapPressure.pressed())
+
+  /** How often each rule fires on the live listings (`kinowo_worker_identity_rule_fires_total{rule}`), over each written
+   *  projection of the whole corpus — counted on a thread of its own, put off while the heap is near its limit. */
+  lazy val ruleFiringCount: services.identity.adapters.RuleFiringCount =
+    new services.identity.adapters.RuleFiringCount(titleNormalizer, workerMetrics.identityProjection.ruleFirings(country.code),
+      runner = managedResources.executor("identity rule firings")(tools.DaemonExecutors.boundedPool(s"identity-rule-firings-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
       pressed = () => tools.HeapPressure.pressed())
 
@@ -131,7 +140,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** The agreement's questions as queue tasks: each family question asked of its live source, and TMDB's find of an
    *  agreed IMDb id — each filed answer asking for a projection, which reads it. */
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = {
-    val filed: () => Unit = () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
+    val filed: () => Unit = () => {
+      identityProjection.asked(IdentityProjection.Trigger.Answer)
+      identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
+    }
     Seq(
       new services.identity.adapters.AgreementQuestionHandler(familyAnswerStore, familySources, filed, clock, agreementQuestionMetrics),
       new services.identity.adapters.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
@@ -147,7 +159,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     val trigger = new services.identity.EventTrigger(() => identityProjection.tickChangedQuietly(),
       services.movies.MovieChangeStream.Debounce.Worker,
       identityProjectionTriggerScheduler, clock)
-    movieCache.onChanged(_ => trigger.request())
+    movieCache.onChanged { _ => identityProjection.asked(IdentityProjection.Trigger.FilmChange); trigger.request() }
     trigger
   }
 

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Which title rules fire on prod's live listings, beside the recordings: scripts/rule_firing_prod.py (its --help).
+exec python3 -I "$(dirname "$0")/rule_firing_prod.py" "$@"

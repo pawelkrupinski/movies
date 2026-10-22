@@ -175,6 +175,7 @@ class WorkerWiring(
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */
   protected[modules] def onModelBatch(batch: services.identity.adapters.ModelBatch): Unit = if (batch.moved) {
+    identityProjection.asked(services.identity.adapters.IdentityProjection.Trigger.Scrape)
     identityProjectionTrigger.request(); identityFillTrigger.request()
   }
 

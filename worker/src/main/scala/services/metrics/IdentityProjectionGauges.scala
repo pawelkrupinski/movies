@@ -43,6 +43,12 @@ import services.identity.adapters.IdentityProjectionMetrics
  *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
  *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
  *    last projection of the whole corpus. A rise between recordings is a wrong take the convergence legs will name;
+ *  - `kinowo_worker_identity_rule_fires_total{rule}` — per rule id (a title rule's `title:<title-rules.tsv id>`, the
+ *    model's `accept:` / `pooled:` / `veto:` / `apart:` / `join:` / `refused:` ids, a later stage's `stage:<rule>`), the
+ *    live listings it fired on, added up over each written whole-corpus projection
+ *    ([[services.identity.adapters.RuleFiringCount]]); `kinowo_worker_identity_rule_counted_listings_total` the listings
+ *    those counts were over, so a rule's share of the corpus is the ratio of the two's increases. A rule with no series,
+ *    or no increase over a week, fired on no live listing: dead in prod. Rule ids only, a few hundred series a country;
  *  - `kinowo_worker_identity_projection_reconciles_total{measured}` — hourly projections of the whole corpus, `measured`
  *    when an earlier projection gave one a scope to check drift against: an hour of `false` alone is drift not measured.
  *
@@ -115,6 +121,25 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     .help("Billings whose identity take a suspect-take signal finds against its own evidence, per signal, on the last written whole-corpus projection.")
     .labelNames("country", "signal")
     .register(registry)
+
+  private val ruleFires: Counter = Counter.builder()
+    .name("kinowo_worker_identity_rule_fires_total")
+    .help("Live listings each identity rule fired on (title rule, model rule, later stage's rule), added up over each written whole-corpus projection.")
+    .labelNames("country", "rule")
+    .register(registry)
+
+  private val ruleCountedListings: Counter = Counter.builder()
+    .name("kinowo_worker_identity_rule_counted_listings_total")
+    .help("Listings the identity rule-firing counts were over, added up over each written whole-corpus projection: the rule shares' denominator.")
+    .labelNames("country")
+    .register(registry)
+
+  /** Where a country's rule-firing count goes ([[services.identity.adapters.RuleFiringCount]]): each rule's listings, and
+   *  how many listings were counted. */
+  def ruleFirings(country: String): (Map[String, Int], Int) => Unit = { (fired, listings) =>
+    fired.foreach { case (rule, n) => ruleFires.labelValues(country, rule).inc(n.toDouble) }
+    ruleCountedListings.labelValues(country).inc(listings.toDouble)
+  }
 
   /** Where a country's suspect-take count goes ([[services.identity.adapters.SuspectTakeCount]]): one series per signal. */
   def suspects(country: String): Map[SuspectTakes.Signal, Int] => Unit =

@@ -226,10 +226,36 @@ final class IdentityProjection(
     tick.refused.isEmpty && tick.declined == 0 &&
       !tick.changed.exists(film => IdentityProjection.awaitsDetails(film.record))
 
-  /** One projection, every line it logs on this thread carrying its id (`projection_id`, the clock's instant at its start)
-   *  and mode — what ties a tick's take changes, summary and warnings together in VictoriaLogs. */
+  /** One projection, every line it logs on this thread carrying its id (`projection_id`, the clock's instant at its start),
+   *  mode and trigger ([[triggerOf]]) — what ties a tick's take changes, summary and warnings together in VictoriaLogs. */
   private def project(mode: IdentityProjection.Mode): ProjectionTick = synchronized {
-    tools.LogFields.within("projection_id" -> clock.instant().toString, "projection_mode" -> mode.label)(projectNow(mode))
+    trigger = triggerOf(mode)
+    tools.LogFields.within("projection_id" -> clock.instant().toString, "projection_mode" -> mode.label,
+      "projection_trigger" -> trigger)(projectNow(mode))
+  }
+
+  /** What asked for a projection since the last one began ([[asked]]): drained by the next. */
+  private val askedFor = new java.util.concurrent.atomic.AtomicReference(Set.empty[IdentityProjection.Trigger])
+  /** Whether this process has projected yet: its first projection is a deploy's (or a pod restart's). */
+  private var projected = false
+  /** The running projection's trigger ([[triggerOf]]), which its take-change lines name. */
+  private var trigger = "deploy"
+
+  /** Note what asks for the projection the caller is about to request: a scrape the model took in, an answer filed, a
+   *  stored film another writer moved. The next projection names it as its `trigger` ([[triggerOf]]). */
+  def asked(trigger: IdentityProjection.Trigger): Unit = { askedFor.updateAndGet(_ + trigger); () }
+
+  /** What set this projection off: `deploy` for the process's first, `periodic` for the hourly reconcile or another tick of
+   *  the period, else what [[asked]] for it since the last (`scrape`, `answer`, `film-change`, several joined by `+`), or
+   *  `retry` for an unsettled projection run again with nothing new asked. */
+  private def triggerOf(mode: IdentityProjection.Mode): String = {
+    val first = !projected
+    projected = true
+    val asked = askedFor.getAndSet(Set.empty)
+    if (first) "deploy"
+    else if (mode != IdentityProjection.Mode.Changed) "periodic"
+    else if (asked.isEmpty) "retry"
+    else asked.toSeq.map(_.label).sorted.mkString("+")
   }
 
   private def projectNow(mode: IdentityProjection.Mode): ProjectionTick = {
@@ -484,7 +510,7 @@ final class IdentityProjection(
         val logged    = takes.take(IdentityProjection.TakeChangesLogged)
         logged.foreach { t =>
           log(takeLines.of(t, before.get(FilmId(t.previousFilm)).map(_.title), now.get(t.listing).map(f => f.id.value -> f.title),
-            decisions.get(t.listing), live.listing(t.listing), live.priorTake(t.listing)))
+            decisions.get(t.listing), live.listing(t.listing), live.priorTake(t.listing), Some(trigger)))
         }
         log(takeLines.summary(takes, t => decisions.get(t.listing).map(_.basis), logged.size))
       }
@@ -590,6 +616,16 @@ object IdentityProjection {
     val tmdbTakers = planned.flatMap(_.record.tmdbId).groupMapReduce(identity)(_ => 1)(_ + _)
     changed.filter(f => !storedIds(f.id) && !heldKeys(f.key) && keyTakers(f.key) == 1 &&
       f.record.tmdbId.forall(id => !heldTmdb(id) && tmdbTakers(id) == 1)).map(_.id).toSet
+  }
+
+  /** What asks for a projection of what moved ([[IdentityProjection.asked]]), as its `trigger` names it. */
+  enum Trigger(val label: String) {
+    /** The identity model took in scrapes that moved it. */
+    case Scrape     extends Trigger("scrape")
+    /** The agreement filed an answer (a family's, a poster's, a catalogue's, a TMDB find). */
+    case Answer     extends Trigger("answer")
+    /** Another writer moved a stored film (`MovieCache.onChanged`). */
+    case FilmChange extends Trigger("film-change")
   }
 
   /** What a projection is run as, and so what it reads and does besides projecting. */

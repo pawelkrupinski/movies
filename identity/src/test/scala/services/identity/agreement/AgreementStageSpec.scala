@@ -44,6 +44,9 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val taken    = decided("SEVENTEEN World Tour 'NEW_'", wide, selected)
     (taken.basis, taken.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
     taken.explanation.last should startWith ("filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed:")
+    // the fill rule, as the id a take-change line and the rule-firing count name the take by
+    (services.identity.DecidedBy.stage(taken, taken.members.head), services.identity.DecidedBy.of(taken, taken.members.head)) shouldBe
+      (("fill", "fill:venues.current"))
     // two venues are no wide billing; a title not naming the film trips a guard; no rule selected takes nothing
     decided("SEVENTEEN World Tour 'NEW_'", wide.take(2), selected).basis shouldBe ResolverDecision.Basis.BelowThreshold
     decided("Muzyka", wide, selected).basis shouldBe ResolverDecision.Basis.BelowThreshold

@@ -132,8 +132,11 @@ final case class ResolverEdge(a: String, b: String, must: Boolean, tier: Int, re
  *  @param pooled  the rule the cluster's POOLED scoring accepted its film by, if that decided it
  *  @param vetoed  why the cluster's best candidate was denied, and the member listing whose own evidence denied it
  *  @param nodes   each member listing's own rules: the rule its node accepted a film by alone, the kinds of
- *                 must-links joining it to the cluster, and the cannot-links holding a neighbour apart */
-final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTrace.Veto], nodes: Map[ListingKey, DecisionTrace.Node]) {
+ *                 must-links joining it to the cluster, and the cannot-links holding a neighbour apart
+ *  @param stage   the rule a stage after the model took (or withdrew) the film by, as one id — `fill:<rule>`,
+ *                 `correction:<evidence>`, `withdrawal:<evidence>` ([[agreement.AgreementStage]]); none for the model's own */
+final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTrace.Veto], nodes: Map[ListingKey, DecisionTrace.Node],
+                               stage: Option[String] = None) {
   /** `key`'s rule ids, by kind: `accept:`, `pooled:`, `veto:`, `join:`, `apart:`, and for a member no rule took alone,
    *  `refused:<rule>:<the first condition that stopped it>` for each rule. */
   def rulesOf(key: ListingKey): Seq[String] = {
@@ -146,11 +149,14 @@ final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTr
 
 object DecisionTrace {
   /** `measures`: the node's own measures against the film its decision took (or its best candidate when it took
-   *  none) — the same map its scoring holds, rendered into weights only when a trace is written. */
+   *  none) — the same map its scoring holds, rendered into weights only when a trace is written. `score`: the node's own
+   *  probability of that film (`candidate`); `runnerUp`: the best other candidate it weighed, and its probability. */
   final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
                         measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None,
                         refusals: Seq[Refusal] = Nil, searched: Seq[String] = Nil, candidates: Seq[String] = Nil,
-                        blocker: Option[String] = None)
+                        blocker: Option[String] = None, score: Option[Double] = None, runnerUp: Option[Rival] = None)
+  /** A candidate a node weighed beside the one its trace is of: its TMDB id and the node's probability of it. */
+  final case class Rival(film: Int, score: Double)
   /** Why `rule` refused a node no rule took alone: the condition that stopped it (`why`, a fixed phrase), the
    *  candidate it was weighing then, and what that candidate's evidence said ("p 26.6% < 40.0%", the facts against
    *  it, the rival it lost to). `ruleId` is the indexed `refused:<rule>:<why>`. */

@@ -63,8 +63,9 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         case Answer.Unknown => None
         case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty &&
             tmdbFilm.forall(synopsis(_).isEmpty)).flatMap { _ =>
-          tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id)))
-            .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line,
+          val rule = Some(s"fill:${fill.rule}")
+          tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id), rule = rule))
+            .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, rule = rule,
               fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))))
         }
       }

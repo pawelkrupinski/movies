@@ -313,6 +313,26 @@ Dzień Dziecka): an October corpus cannot see them, and they are kept.
 | `palacowe-wajda` | venue (kino-palacowe) | retrospective |  | Kino Pałacowe Wajda retrospective prefix |
 | `xtra-starymlyn-sensoryczny` | venue (kino-stary-mlyn) | audience |  | Kino Stary Młyn '… sensoryczny' sensory-screening suffix (Toy Story 5) |
 
+## Dead in prod vs dead in the recordings (live counters, from 2026-10-22)
+
+The `prod fires` column below is one snapshot (ws5's identity-trace export, 2026-10-21). Since 2026-10-22 the worker
+counts every rule's firings on the live listings continuously: `kinowo_worker_identity_rule_fires_total{country, rule}`
+(the listings each rule id fired on, added up over every written whole-corpus projection, `RuleFiringCount`) beside
+`kinowo_worker_identity_rule_counted_listings_total{country}` — the Grafana "Identity rules" panels (worker-diagnostics),
+and per row:
+
+```
+scripts/rule-firing-prod --window 7d            # every title-rules.tsv row: DEAD IN BOTH / DEAD IN PROD ONLY /
+                                                # DEAD IN RECORDINGS ONLY / LIVE IN BOTH / NOT IN INVENTORY
+scripts/rule-firing-prod --window 30d --all-kinds   # + the model's and later stages' rule ids, fewest firings first
+```
+
+It reads this inventory's `recordings (by country)` column for the recordings side. A row DEAD IN BOTH over a window
+covering its season is the deletion candidate; DEAD IN PROD ONLY is a rule the recordings still exercise (a venue
+since gone, or a recording older than the venue's new spelling); DEAD IN RECORDINGS ONLY is what an ablation over the
+recordings cannot measure and must not delete. Re-run after a week of counts, and again after the summer for the
+seasonal rows.
+
 ## Inventory
 
 Every row before the merges, grouped by effect. `words` is the language the pattern's words are in (`any` for

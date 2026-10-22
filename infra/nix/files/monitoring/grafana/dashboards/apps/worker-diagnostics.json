@@ -2901,6 +2901,111 @@
       ]
     },
     {
+      "id": 70,
+      "title": "Identity rules — share of live listings each rule fires on (top 15)",
+      "description": "`kinowo_worker_identity_rule_fires_total{rule}` over `kinowo_worker_identity_rule_counted_listings_total`: per rule id, the share of the live listings it fired on, counted over each written whole-corpus projection (RuleFiringCount). Ids: `title:<title-rules.tsv id>` and `format:<tag>` (the title pipeline), `accept:` / `pooled:` / `veto:` / `apart:` / `join:` / `refused:` (the model's acceptance rules, vetoes and cannot-links), `stage:<rule>` (a later stage's take: `stage:fill:<rule>`, `stage:agreed:<families>`, `stage:correction:<evidence>`). A step in one rule's share is a rule that started or stopped firing — a deploy (`build` in the take-change logs) or a venue's new billing. The take changes it decided: VictoriaLogs `kind:* decided_by:=\"<id>\"` or `rules:\"<id>\"`.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 305
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "topk(15, sum by (rule) (increase(kinowo_worker_identity_rule_fires_total{country=~\"$country\"}[1h])) / scalar(sum(increase(kinowo_worker_identity_rule_counted_listings_total{country=~\"$country\"}[1h]))))",
+          "legendFormat": "{{rule}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 71,
+      "title": "Identity rules — live listings fired on, last 7 days (0 = fired on none this week)",
+      "description": "`increase(kinowo_worker_identity_rule_fires_total[7d])` per rule id, summed over the projections of the week: a rule at 0 fired before and on no live listing since — dead in prod for the week. A title-rules.tsv row with no series at all never fired in prod since the counter shipped: `scripts/rule-firing-prod` lists those beside the recordings' firing counts (docs/investigations/2026-10-22-rule-consolidation.md).",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 305
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": false
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "expr": "sort(sum by (rule) (increase(kinowo_worker_identity_rule_fires_total{country=~\"$country\"}[7d])))",
+          "legendFormat": "{{rule}}",
+          "refId": "A",
+          "instant": true,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
       "id": 50,
       "title": "Identity live lookup fill, last round",
       "description": "`kinowo_worker_identity_shadow_lookups`: the identity model's PACED LIVE LOOKUP FILL (LookupFill, docs/design/identity-resolver.md §19), after each round: the TMDB questions the model's store cannot answer, asked live through the pipeline's own lookup chain and filed only in that store. outcome=asked (live requests), answered, failed, deferred (gaps it had no budget left for this round), rate (asks per minute it ran at — below KINOWO_IDENTITY_SHADOW_LOOKUP_RATE while backed off after a 429/5xx). Deferred falling to zero is the fill caught up. Panel only; no alert.",
@@ -2913,7 +3018,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 305
+        "y": 313
       },
       "fieldConfig": {
         "defaults": {
@@ -2964,7 +3069,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 313
+        "y": 321
       },
       "fieldConfig": {
         "defaults": {
@@ -3042,7 +3147,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 313
+        "y": 321
       },
       "fieldConfig": {
         "defaults": {
@@ -3102,7 +3207,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 321
+        "y": 329
       },
       "fieldConfig": {
         "defaults": {
@@ -3172,7 +3277,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 329
+        "y": 337
       },
       "fieldConfig": {
         "defaults": {
@@ -3214,7 +3319,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 337
+        "y": 345
       },
       "fieldConfig": {
         "defaults": {
@@ -3283,7 +3388,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 337
+        "y": 345
       },
       "fieldConfig": {
         "defaults": {
@@ -3343,7 +3448,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 345
+        "y": 353
       },
       "fieldConfig": {
         "defaults": {
@@ -3394,7 +3499,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 345
+        "y": 353
       },
       "fieldConfig": {
         "defaults": {
@@ -3454,7 +3559,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 353
+        "y": 361
       },
       "fieldConfig": {
         "defaults": {
@@ -3518,7 +3623,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 361
+        "y": 369
       },
       "fieldConfig": {
         "defaults": {
@@ -3569,7 +3674,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 361
+        "y": 369
       },
       "fieldConfig": {
         "defaults": {
@@ -3620,7 +3725,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 369
+        "y": 377
       },
       "fieldConfig": {
         "defaults": {
@@ -3689,7 +3794,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 369
+        "y": 377
       },
       "fieldConfig": {
         "defaults": {

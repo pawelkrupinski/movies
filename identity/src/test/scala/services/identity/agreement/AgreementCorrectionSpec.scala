@@ -45,6 +45,8 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should startWith ("corrected from 'Lalka' (2026) by families and poster — ")
     taken.explanation.last should include ("a venue poster matches 'Lalka' (1968) (3 bits), not the take")
     taken.explanation.last should include ("imdb, wiki take 'Lalka' (1968), none the take")
+    // the evidence it switched on, as one rule id
+    services.identity.DecidedBy.of(taken, taken.members.head) shouldBe "correction:families+poster"
   }
 
   it should "stand when the poster alone names another film, or the films share a director (a re-release's record)" in {
@@ -87,6 +89,8 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val switched = decided(stage(programme(onFilmweb), hasPoster, listedOn = Some(VoterFamily.Filmweb)))
     (switched.basis, switched.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
     switched.explanation.last should startWith ("corrected from 'Lalka' (2026) by filmweb and poster — ")
+    services.identity.DecidedBy.of(withdrawn, withdrawn.members.head) shouldBe "withdrawal:filmweb+poster"
+    services.identity.DecidedBy.of(switched, switched.members.head) shouldBe "correction:filmweb+poster"
     // no poster questioning the take: its venues' programme is not asked at all
     val unasked = stage(programme(onFilmweb), new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(1)))), listedOn = Some(VoterFamily.Filmweb))
     decided(unasked).basis shouldBe ResolverDecision.Basis.OwnMatch
@@ -309,5 +313,12 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     Correction.shareDirector(Seq("Simona Risi"), Seq("Simona Lina Risi")) shouldBe Some(true)
     Correction.shareDirector(Seq("Tobe Hooper"), Seq("David Blue Garcia")) shouldBe Some(false)
     Correction.shareDirector(Nil, Seq("David Blue Garcia")) shouldBe None
+  }
+
+  "a correction's rule id" should "name the evidence its line rests on: the kinds, a relay superseded, a broadcast" in {
+    Correction.ruleOf(Correction.Outcome(None, "withdrawn 'Tosca' (2018) — relay: a newer record of its title aired 2026-09-12")) shouldBe
+      "withdrawal:relay"
+    Correction.ruleOf(Correction.Outcome(Some(7), "corrected from 'Manon' (1949) — screens on the day 'Manon' (2026) was broadcast")) shouldBe
+      "correction:broadcast"
   }
 }

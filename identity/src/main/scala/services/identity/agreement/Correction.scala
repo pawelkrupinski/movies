@@ -32,6 +32,17 @@ object Correction {
   /** The correction: the film switched to (`None`: withdrawn), and the line that explains it. */
   final case class Outcome(film: Option[Int], line: String)
 
+  /** The correction as one rule id: `correction:` (switched to another film) or `withdrawal:` (left with none), then the
+   *  evidence it rests on, read off its line — the kinds it names (`families+poster`), `relay` for a relay superseded by a
+   *  newer record, `broadcast` for a stage work's broadcast record. What a take-change line and the rule-firing count
+   *  name a correction by ([[services.identity.DecidedBy]]). */
+  def ruleOf(outcome: Outcome): String = {
+    val says     = outcome.line.split(" — ", 2).lift(1).getOrElse("")
+    val named    = Seq(Families, Filmweb, Poster).filter(kind => says.contains(s"$kind: "))
+    val evidence = if (says.startsWith("relay: ")) Seq("relay") else if (named.nonEmpty) named else Seq("broadcast")
+    s"${if (outcome.film.isDefined) "correction" else "withdrawal"}:${evidence.mkString("+")}"
+  }
+
   /** The take corrected, if the evidence says so. `sharesDirector(film)`: do `film` and the model's share a director —
    *  `None` where either record credits none, which never lets a correction stand on the guard. */
   def decide(model: String, against: Seq[Against], sharesDirector: Int => Option[Boolean]): Option[Outcome] = {

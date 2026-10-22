@@ -70,8 +70,9 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     correctionWaits.get(key).foreach { w =>
       pass.asked ++= w.questions; pass.finding ++= w.finds; pass.correctionPosters ++= w.posters; pass.dating ++= w.records }
     now.flatMap(_.outcome).fold(decision) { outcome =>
-      val taken = outcome.film.fold(taking(decision)(ResolverDecision.Basis.Withdrawn, outcome.line, film = None))(film =>
-        taking(decision)(ResolverDecision.Basis.Corrected, outcome.line, film = Some(film)))
+      val rule  = Some(Correction.ruleOf(outcome))
+      val taken = outcome.film.fold(taking(decision)(ResolverDecision.Basis.Withdrawn, outcome.line, film = None, rule = rule))(film =>
+        taking(decision)(ResolverDecision.Basis.Corrected, outcome.line, film = Some(film), rule = rule))
       takenAsBefore(decision, taken)
     }
   }
