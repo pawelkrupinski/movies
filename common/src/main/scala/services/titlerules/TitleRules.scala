@@ -1,7 +1,6 @@
 package services.titlerules
 
 import RuleScope._
-import models.Country
 
 /** The baseline rule set — every formerly-hardcoded `TitleNormalizer` regex,
  *  transcribed verbatim and tagged with the tier it ran in. Loaded at class-load
@@ -13,17 +12,6 @@ import models.Country
  *  Per-cinema rules (the old per-client `cleanTitle`) are added in a later step;
  *  at this baseline the per-cinema tier is empty and clients still clean inline. */
 object TitleRules {
-
-  // ── canonical tier — cross-cinema spelling unifications (sanitize) ─────────
-  private val canonical: Seq[TitleRule] = Seq(
-    TitleRule("canonical-gwiezdne-wojny", Canonical, None,
-      """^Gwiezdne Wojny: """, "", applyAll = false, order = 10,
-      note = Some("Strip the 'Gwiezdne Wojny: ' franchise prefix")),
-    TitleRule("canonical-ampersand-to-i", Canonical, None,
-      """ & """, " i ", applyAll = true, order = 20,
-      note = Some("Unify ' & ' and ' i ' spellings — POLISH ONLY ('i' = 'and')"),
-      countries = Some(Set(Country.Poland)))
-  )
 
   // ── per-cinema tier — migrated from each client's `cleanTitle` ─────────────
   // Keyed by `TitleRuleKey.of(cinema)`. A chain shares one key across its venues.
@@ -124,7 +112,7 @@ object TitleRules {
       note = Some("Trim leading/trailing whitespace"))
   }
 
-  val all: Seq[TitleRule] = TitleRuleTable.rows.filter(_.seed).map(_.rule) ++ canonical ++ perCinema ++ heliosRules ++ trimRules
+  val all: Seq[TitleRule] = TitleRuleTable.rows.filter(_.seed).map(_.rule) ++ perCinema ++ heliosRules ++ trimRules
 
   val ruleSet: TitleRuleSet = TitleRuleSet(all)
 }
