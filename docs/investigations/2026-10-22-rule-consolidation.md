@@ -19,6 +19,109 @@ The table's columns: `id kind cinema countries flags effect season pattern repla
 bot now appends rows to the table (above its marker line), and the identity capture counts the table as a decision
 input.
 
+## Follow-ups landed (2026-10-22, the user's approval)
+
+The user approved three follow-ups: the candidate merges below, removing the rows that never fired (keeping any a spec
+or fixture exercises, or that is seasonal and fires on a listing recorded at another time of year), and retiring the
+rows BillingParse reads in full where the parser provably covers them. Three commits, each checked on its own:
+
+| commit | rows before → after | what |
+|---|---:|---|
+| `title rules: remove the 6 rows that fire on nothing …` | 363 → 357 | never-fired rows that fire nowhere |
+| `title rules: retire 6 of the 106 rows BillingParse reads in full …` | 357 → 351 | covered rows whose removal no consumer sees |
+| `title rules: merge 152 rows into 24 alternations …` | 351 → 223 | the candidate merges |
+
+Each: `TitleRulesGoldenSpec` unchanged (no golden diff), the title-rule specs green (common `services.titlerules.*`,
+`services.movies.*`, `services.billing.*` 602 tests; worker `services.movies.*`, `scripts.*`, `TitleTraceSpec`,
+`MovieServiceSpec`, `FilmwebDiffTitleNormalizerSpec` 558; scrapers 2,924; `BillingParseEquivalenceSpec`).
+CI, on the three together (head a495f8282, base b00dd72ea): `FilmScheduleEndToEndSpec` green (Forgejo run 1336);
+identity measure 0 takes moved in all five countries on recording 573 (run 1335) and on 528 (run 1361): no new-wrong,
+no right→wrong, no right lost, nothing for the user to judge. LANDABLE.
+
+### Never-fired rows: 6 removed, 78 kept
+
+The 84 rows were "never fired" on the October recordings, the prod trace and the 17.8k corpus. That is not all the
+repository holds, and it is what the 125-row deletion of 2026-10-21 tripped over. `TitleRuleFiring` (new, test scope)
+folds each row over **5.3M strings**: every checked-in fixture's text (HTML text and attributes, JSON strings; the June
+e2e fixture `08-06-2026` among them), the specs' 10,926 literals, and the billings of all 13 cached recordings
+(`~/.cache/kinowo-identity/recordings`: 38363428661 … 38713274617, 528, 563, 573, 647). It reports whether a row fires
+inside any country's real fold or any venue's cleanup, only alone, or only unanchored.
+
+- **Kept, 78** (18 of them seasonal): every one fires inside a fold on a checked-in fixture or a spec literal (a second
+  pass over the fixtures and specs alone, 1.8M strings, finds all 78). Most are the June fixture's summer and
+  Children's-Day banners ("Bezpieczne Wakacje: Fleak. Futrzak i ja", "KINO LETNIE 2026: Amadeusz (1984)", "DZIEŃ
+  DZIECKA W APOLLO - Drzewo Magii", "LATO W LUNIE | Elio") and the rows' own spec examples; the Helios tags fire on the
+  Helios fixtures ("Avengers: Doomsday - napisy", "… - seanse z konkursami HDD").
+- **Removed, 6**: `xtra-canonical-trailing-paren-lang`, `xtra-pp-psychologia` (no string at all), `helios-suffix-12`
+  ("- Dubbing", capitalised: no Helios title bills it) and `helios-suffix-14` ("- NAP": only Kino Bajka Kluczbork's "-
+  NAPISY" contains it, and the row is anchored at the end), `xtra-klasyka-w-kinie-prefix` and
+  `xtra-wakacje-z-klasyka-prefix` (each changes its spec titles alone, but in the fold an earlier row has already taken
+  the banner off). `TitleRulePipelineDiff --together` on the 6: 10 strings touched, 0 differences.
+
+### BillingParse-covered rows: 6 retired, 100 kept
+
+"BillingParse reads it in full" (the inventory below) means one of the parser's readings equals the rule's output, most
+often a `piece` of the billing. The pipeline does not read pieces for the lookup: `apiQuery` is the rules' fold alone,
+and `ProjectionDrafting` (the stored `searchTitle`), `IdentityModel`, `FilmEvidence` and `FilmwebRatings` read it
+without BillingParse; only `searchQuery` adds the format peel. So "provably covered" is checked where it counts:
+`TitleRulePipelineDiff` (new, test scope) removes one row and reads every string it could touch (of the 5.3M) the ways
+the consumers do — each venue's `cinemaClean` (the scrapers store it), the listing title after `BillingParse.peeled`,
+`apiQuery` (also of the recased title), `searchQuery`, `sanitize`, the display pick, the proper name, the programme
+banner and the recasing — in every country holding the row.
+
+- **99 rows change a reading**, nearly all the lookup query: "Kino Konesera: Drugie życie" searches as "Drugie życie"
+  only because `xtra-pp-konesera` strips it. They stay; retiring them needs the lookup to read `BillingParse.pieces`
+  (WS2's next phase), which is a behaviour change to measure, not a byte-identical batch.
+- **7 change nothing** (alone, and the 7 together: 447 strings, 0 differences). Other rows already fold their titles the same
+  way (the generic `xtra-pipe-cycle-banner` takes the pipe tails of `xtra-10-10-klasyka`, `xtra-pnkf-suffix-pipe`,
+  `xtra-kino-przy-herbatce` and `xtra-klasyczne-srody-suffix`); `xtra-dyskusyjny-suffix` and
+  `xtra-pokazy-specjalne-suffix` are covered the same way. **6 retired.** `canonical-gwiezdne-wojny` stays: it is a seed row, and `ProdTitlesNormalizationSpec` pins
+  the seed set alone ("Gwiezdne Wojny: Mandalorian i Grogu" keys differently without it), where the extra row
+  `xtra-canonical-gwiezdne-wojny-ci` that covers it in production is absent.
+
+### The merges: 152 rows → 24
+
+The 24 candidates above (`xtra-dkf-suffix` landed earlier), less their removed or retired members (`xtra-pp-psychologia`,
+`xtra-klasyka-w-kinie-prefix`, `xtra-wakacje-z-klasyka-prefix`, the five pipe/dash tails retired above), each merged at
+the member the earlier check showed the fewer differences for. `xtra-restored-version-suffix` goes at its LAST member:
+there "Absolwent - odrestaurowana wersja 4K" (`ExtraTitleRulesSpec`) keeps its fold; at the first it did not. The
+user's figure was 23 merges / 138 rows; the doc's table held 24 / 160 besides `xtra-dkf-suffix`, all of which pass.
+
+`TitleRuleTableDiff` (corpus, spec titles, and every decoration stacked two at a time around a bare film), per merge:
+no corpus or spec title changes; the differences are synthetic stacks only.
+
+| merged row | members | placed at | titles beside another row fold differently | stacked members fold differently |
+|---|---:|---|---:|---:|
+| `xtra-pp-senior-banners` | 9 | first | 1006 | 196 |
+| `xtra-pp-summer-banners` | 6 | first | 504 | 70 |
+| `xtra-pp-family-banners` | 8 | first | 624 | 52 |
+| `xtra-pp-audience-banners` | 5 | first | 420 | 18 |
+| `xtra-pp-women-banners` | 7 | last | 234 | 28 |
+| `xtra-pp-classics-banners` | 6 | last | 670 | 42 |
+| `xtra-pp-club-banners` | 6 | last | 762 | 82 |
+| `xtra-pp-psychology-banners` | 2 | first | 0 | 2 |
+| `xtra-pp-festival-banners` | 9 | last | 506 | 78 |
+| `xtra-pp-retrospective-banners` | 7 | last | 642 | 52 |
+| `xtra-pp-cycle-banners` | 10 | last | 984 | 106 |
+| `xtra-pp-us-uk-strands` | 6 | last | 432 | 40 |
+| `xtra-director-dot-prefix` | 4 | first | 48 | 18 |
+| `xtra-pipe-strand-suffix` | 8 | last | 338 | 42 |
+| `xtra-dash-strand-suffix` | 12 | first | 1462 | 218 |
+| `xtra-summer-prefix` | 7 | first | 0 | 0 |
+| `xtra-strand-prefix` | 16 | last | 204 | 40 |
+| `xtra-art-strand-prefix` | 4 | first | 266 | 10 |
+| `xtra-retrospective-prefix` | 2 | first | 0 | 0 |
+| `xtra-festival-prefix` | 4 | first | 208 | 6 |
+| `xtra-premiere-prefix` | 5 | first | 652 | 46 |
+| `xtra-named-cycle-prefix` | 5 | first | 0 | 0 |
+| `xtra-english-subtitles-suffix` | 2 | first | 0 | 4 |
+| `xtra-restored-version-suffix` | 2 | last | 122 | 2 |
+| **all 24 together** | 152 | | 2346 | 6508 |
+
+What a stack does now: "Filmowe popołudnie dla dzieci: SKOCZ Z BAJTLEM DO KINA: Lalka" lost both banners when the
+two rows folded one after the other; the one alternation takes the first and leaves "SKOCZ Z BAJTLEM DO KINA: Lalka"
+(SearchTitles' after-colon candidate still searches "Lalka").
+
 ## Byte-identity, as checked
 
 - **Rule level** (batches 1–3, one per tier): every rule compiles to the same pattern, replacement, flags, countries
@@ -93,7 +196,7 @@ The two merges that landed are of another kind: each member cuts the title from 
 another they cut at the first marker of any of them; one alternation's leftmost match cuts at the same place.
 `TitleRuleTableDiff` with every corpus, spec and stacked title: 0 differences.
 
-Landed: only those two (`xtra-dkf-suffix` from the pipe/underscore, dash and full-stop DKF tails; `xtra-meeting-tail`
+Landed at first: only those two (`xtra-dkf-suffix` from the pipe/underscore, dash and full-stop DKF tails; `xtra-meeting-tail`
 from `xtra-przed-filmem-suffix` and `xtra-dot-spotkanie-suffix`). The other 23 change behaviour on stacked titles only
 (none in the corpus, the recordings or the specs) and wait for the user's call: each group's rows are in the table above, and `TitleRuleTableDiff` re-runs the check
 (`scripts/sbt-warm "common/Test/runMain services.titlerules.TitleRuleTableDiff --extra=<spec titles> <before> <after>"`).
@@ -112,9 +215,12 @@ the same title out of the raw text (its format peel, certificate, version tag, y
 a slash piece or the one billed title). 107 rows are read in full by BillingParse on every corpus title they change
 (mostly banners, through `pieces`), 89 in part. None can be deleted byte-identically yet: the lookup query is the
 rules' fold, which does not consult BillingParse. They are the rows a lookup that read `BillingParse.pieces` would make
-redundant (WS2's next phase), listed per row in the inventory below.
+redundant (WS2's next phase), listed per row in the inventory below. The follow-up above checked each at the pipeline's
+consumers and retired the 6 whose removal none of them sees.
 
-## Rows that never fired (for the user's review; nothing deleted)
+## Rows that never fired (as listed for the user's review)
+
+The follow-up above removed 6 of these and kept 78 (each fires on a fixture or spec title).
 
 84 rows fired nowhere: not in the prod trace (`ws5-prod-title-fired.tsv`, 2026-10-21), not in the ablation's
 recordings (38713274617, 573, 528), and not on the 17.8k-title corpus. 19 of them are seasonal (summer cycles,
