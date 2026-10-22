@@ -19,7 +19,8 @@ class ModelReadOnlySpec extends AnyFlatSpec with Matchers {
   private val Allowed = Map(
     "identity/src/main/scala/services/identity/ModelRead.scala" -> "the one read",
     "identity/src/main/scala/services/identity/IdentityModel.scala" -> "Listing.corpus's own definition",
-    "worker/src/main/scala/modules/WorkerWiring.scala" -> "the take-up's listings, read lean by IdentityListingIntake.identities")
+    "worker/src/main/scala/modules/WorkerWiring.scala" -> "the take-up's listings, read lean by IdentityListingIntake.identities",
+    "worker/src/test/scala/services/identity/OlderRefs.scala" -> "ModelRead where the ref has it; whole only in a ref from before it")
 
   "a listing set the identity model or a measurement resolves" should "be read through ModelRead, never whole off a recording" in {
     val roots = MainRoots ++ TestRoots.filterNot(Set("common/src/test", "identity/src/test", "scrapers/src/test", "web/src/test"))

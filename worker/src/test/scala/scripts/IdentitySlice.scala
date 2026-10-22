@@ -214,7 +214,7 @@ object IdentitySlice {
   def listingsOf(recording: Recording, rows: Seq[services.scrapes.ArchivedScrape]): Seq[Listing] = {
     val venues = tools.CountryScrapeCorpus.cinemasOf(recording.country).toSet
     // as prod's model reads them (lean), as identity-measure replays the recording
-    ModelRead.corpus(rows.filter(r => venues(r.cinema)).map(r => r.cinema -> r.films).filter(_._2.nonEmpty), TitleNormalizer.forCountry(recording.country))
+    OlderRefs.modelCorpus(rows.filter(r => venues(r.cinema)).map(r => r.cinema -> r.films).filter(_._2.nonEmpty), TitleNormalizer.forCountry(recording.country))
   }
 
   // ── deciding a slice: the model, then the agreement ───────────────────────────────────────
