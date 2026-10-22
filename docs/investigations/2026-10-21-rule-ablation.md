@@ -104,3 +104,28 @@ Then confirm the remainder with one CI measure on 573+528 plus the unit layer.
   is not this change.
 - The CI sweep needs a cheaper shape before it can finish inside a row: one recording per row, and the baseline
   resolved once per recording instead of once per round.
+
+## Veto batch b039 resolved (2026-10-22)
+
+I bisected b039 on recording 573 in short resumed runs (1122, 1153, 1163, 1169). Single rules, each switched off alone:
+
+| rule | moved | gained-right | new-wrong | unjudged |
+|---|---|---|---|---|
+| `veto:another-house-s-season-production` | 29 | 29 | 0 | 0 |
+| `veto:another-house-s-staging-of-its-work-beside-its-own-house-s-record` | 13 | 0 | 0 | 13 |
+| `veto:another-production-of-its-work-than-the-season-its-screenings-fall-in` | 24 | 0 | **22** | 0 |
+| `veto:it-bills-a-silent-film-and-this-one-is-of-the-sound-era` | 2 | 0 | **1** | 0 |
+| `veto:billed-as-one-piece`, `veto:bills-both-works`, `veto:another-instalment-than-the-one-the-title-numbers`, `veto:its-director-s-other-film-which-the-title-does-not-name` | 0 | 0 | 0 | 0 |
+
+- **another-production** is load-bearing. Without it, UK "Opéra de Paris Ballet - La Bayadère / Notre-Dame de Paris"
+  takes La Scala's 2006/2013 records, and the bare "Notre-Dame de Paris" takes the 1956 Hunchback.
+- **another-house's season production** costs 29 right takes, all one listing: Flicks UK's "RBO Cinema Season 2026-27:
+  La Fanciulla Del West", which the user's review says is the Met's 2026/27 record. Removing it was measured on CI
+  (1195 on 573, 1196 on 528). Both are LANDABLE: +29 gained-right at the **model** stage, and **0 moves at the final
+  stage**. The final take was already right: the Broadcast stage takes the Met record through the venue's
+  Richard Jones credit (`Broadcast.credits`). The veto also guards seven unit cases, and removing it fails all
+  seven: "A season listing's banner…", "A banner spelling its house…", `IncrementalResolverSpec`'s house re-learning,
+  and four more. In those cases a Met-banner listing must not take RBO's Carmen or Così. The two shapes mirror each
+  other. Only a production credit tells them apart, and that credit is the Broadcast stage's, not the veto layer's.
+- **Decision: no change.** The veto stays. Its only cost is at the model stage, and production does not see it. No
+  narrower veto is warranted until a recording shows a final-stage take the veto loses.
