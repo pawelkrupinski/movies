@@ -233,6 +233,56 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
 
+  "same-title billings crediting different directors" should "keep apart while their films' records are not answered yet" in {
+    // DE "Rose" (prod 10-18..10-22): Filmstarts' venues credit Markus Schleinzer (1176962), Metropol Düsseldorf's kinoheld
+    // page Marie-Camille Babayan (1712584), KiKuBi's Aurélie Saada (846864); Cineamo's venues bill the bare title, linked
+    // to 1176962. Each director's filmography holds a "Rose" of their own, none the others'. While the three records were
+    // unanswered (a deploy's new questions, a new listing's), nothing denied any of them, the title joined every billing
+    // and one film took them all — Metropol and KiKuBi on Schleinzer's film — and the next fill moved them back.
+    import FilmTable.F
+    import models.{Cinema, CinemaMovie, Movie, Showtime}
+    val germany = services.movies.TitleNormalizer.forCountry(models.Country.Germany)
+    val venues  = Cinema.all.filter(c => models.City.forCinema(c).exists(_.country == models.Country.Germany)).take(7)
+    def billed(cinema: Cinema, year: Option[Int], directors: Seq[String], page: Option[String] = None, ids: Map[String, String] = Map.empty) =
+      Listing.of(cinema, CinemaMovie(Movie("Rose", releaseYear = year), cinema, None, page, None, Nil, directors,
+        Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 25, 20, 0), None)), externalIds = ids), germany)
+    val films = Seq(
+      F(1176962, "Rose", 2026, "Markus Schleinzer", 94, 6.0, releaseCountries = Some("ATDE"), releases = Some("AT2026-DE2026-")),
+      F(1712584, "Rose", 2026, "Marie-Camille Babayan", 0, 1.5, releaseCountries = Some("FR"), releases = Some("FR2026-"), searched = false, suggested = false),
+      F(846864, "Rose", 2021, "Aurélie Saada", 102, 1.5, releaseCountries = Some("FR"), releases = Some("FR2021-"), searched = false, suggested = false))
+    val schleinzer = venues.take(2).map(billed(_, Some(2026), Seq("Markus Schleinzer"), ids = Map("webedia" -> "319893")))
+    val bare       = venues.slice(2, 5).map(billed(_, Some(2026), Nil, ids = Map("cineamo" -> "1176962m")))
+    val babayan    = billed(venues(5), None, Seq("Marie-Camille Babayan"), page = Some("https://www.kinoheld.de/film/rose-6ad8438a4098f"))
+    val saada      = billed(venues(6), None, Seq("Aurélie Saada"), page = Some("https://www.kinoheld.de/film/rose-69f2dcdbbbd26"))
+    val table      = new FilmTable(films, germany)
+    var unanswered = films.map(_.id).toSet
+    val lookups = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean = false
+      def detail(l: Listing): Answer[Option[DetailFacts]] = table.detail(l)
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = table.candidates(q)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (unanswered(id)) Answer.Unknown else table.film(id)
+    }
+    val model = new IncrementalResolver(lookups, germany, IdentityCalibration.resolver, decorations = TitleDecorations.None)
+    def filmOf(l: Listing) = model.decisions.find(_.listings(l.key)).flatMap(_.film)
+    def takes = Map("schleinzer" -> schleinzer.map(filmOf).distinct, "bare" -> bare.map(filmOf).distinct,
+      "babayan" -> Seq(filmOf(babayan)), "saada" -> Seq(filmOf(saada)))
+    model.batch(seen = schleinzer ++ bare ++ Seq(babayan, saada))
+    // no record answered: a billing takes its own director's film or none, never another credited director's
+    withClue(takes) {
+      takes("babayan").flatten.toSet should (be(empty) or be(Set(1712584)))
+      takes("saada").flatten.toSet should (be(empty) or be(Set(846864)))
+      takes("schleinzer").flatten.toSet should (be(empty) or be(Set(1176962)))
+    }
+    unanswered = Set.empty
+    model.batch(answered = AnswersChanged(Set.empty, films.map(_.id).toSet))
+    // every record answered: each its own film, the bare billings free to join one — Cineamo's linked film
+    withClue(takes)(takes shouldBe Map("schleinzer" -> Seq(Some(1176962)), "bare" -> Seq(Some(1176962)),
+      "babayan" -> Seq(Some(1712584)), "saada" -> Seq(Some(846864))))
+    ResolutionSignature.of(model) shouldBe
+      ResolutionSignature.of(IdentityResolver.resolveWith(schleinzer ++ bare ++ Seq(babayan, saada), lookups, germany, IdentityCalibration.resolver,
+        IdentityResolver.Mutation.None))
+  }
+
   // A venue re-scraping the listing unchanged in the same drain as its page's answer: the listing is
   // in `seen` (and dropped there, unchanged) and in the answered details (and dropped there, seen), so
   // it was re-read by neither — Identity model convergence's arrival-order check, where Kino Pod

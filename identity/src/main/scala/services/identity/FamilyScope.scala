@@ -101,6 +101,17 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // name, is not the listing's — however its runtime or year fits. A director's filmography is a path to candidates, never a reason to leave
     // the one its title names (Syndicated's "Zodiac", Fincher, 139 minutes, is not Fight Club).
     private val titled = candidates.exists(scored => !scored.denied && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
+    // A film its credited director made that its title names as its own — reached by their filmography
+    // (`directedBy`), whether or not its record is answered yet — says whose film of the title the venue bills: a
+    // namesake their filmography did not reach, whose record does not credit them, is another director's film. DE "Rose":
+    // Metropol Düsseldorf credits Marie-Camille Babayan, KiKuBi Aurélie Saada, each the maker of a "Rose" of their own;
+    // while the three records went unanswered nothing else denied them Schleinzer's 2026 film, which they took by IMDb's
+    // suggestion and joined (prod 10-19, and again with every deploy's new questions).
+    // Not by a short of theirs: a feature's billing whose page copied a short namesake's credits names no short (DE Mal
+    // seh'n Kino's "THE THING WITH FEATHERS", a week of late shows, credits Anja Oelofse's 24-minute film — Southern's).
+    private val creditedNamesake = listing.directors.nonEmpty && candidates.exists(scored =>
+      !scored.denied && directedBy(scored.candidate.tmdbId) && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
+        !ShortFilms.isShort(scored.candidate.film))
     // A billing naming the director of a film its title names ([[IdentityMeasures.bannerNamesItsDirector]]: a series'
     // banner, "Hitchcock & Chabrol: Spellbound") says whose film of the title it shows: a namesake none of the directors
     // it names made is not it, however popular — the 2024 animated "Spellbound" is no Hitchcock.
@@ -165,6 +176,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       else if (anotherRecordOfItsBroadcast(scored)) Some("another record of a broadcast its film database holds twice")
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         Some("its director's other film, which the title does not name")
+      else if (creditedNamesake && !scored.denied && !directedBy(scored.candidate.tmdbId) && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
+               !IdentityMeasures.sameDirector(scored.measures))
+        Some("a namesake of the film its credited director made of its title")
       else if (directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
                !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
         Some("a namesake of the film whose director its billing names")
