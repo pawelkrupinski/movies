@@ -20,6 +20,16 @@ on:
                 required: false
                 default: 'title'
                 type: string
+            resume-run:
+                description: An earlier identity-rule-ablation run whose state this one carries on from (its `identity-rule-ablation` artifact); empty starts afresh.
+                required: false
+                default: ''
+                type: string
+            rounds:
+                description: Bisection rounds this run resolves before it stops (a resumed run carries on); keeps the row short, so a runner drain never waits long on it.
+                required: false
+                default: '1'
+                type: string
             only:
                 description: Ablate exactly these rules (comma-separated trace names); empty for every rule. Keep it to a few dozen, so each row ends well inside its 110 minutes.
                 required: false
@@ -32,9 +42,10 @@ concurrency:
 
 env:
     FIXTURE_RELEASE_TAG: convergence-fixtures
-    # TWO rows, not six: six bisecting rows held every ubuntu slot on ci-runner for hours (run 805 blocked main's
-    # deploy and every measurement). A plain count, not `max-parallel`, which Forgejo's scheduler is not known to honour.
-    SHARDS: '2'
+    # ONE row, a round or so at a time: six bisecting rows held every ubuntu slot on ci-runner for hours (run 805), and a
+    # runner drain (every ci-runner deploy) waits for its longest job (run 1050 held one for ~2h). A sweep is a chain of
+    # short dispatches instead, each resuming the last one's state (`resume-run`, `rounds`).
+    SHARDS: '1'
 
 permissions:
     contents: read
@@ -44,9 +55,9 @@ jobs:
         name: ablate
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ubuntu-24.04
-        # SHORT ROWS: a row past ~2h holds a runner slot through a drain (run 850 blocked all of CI for 3h). Sweep a large
-        # rule set as several dispatches, each `only` a few dozen rules; a row cut off here still uploads its state.json.
-        timeout-minutes: 110
+        # SHORT ROWS: a runner drain waits for its longest job (runs 850, 1050 held the ubuntu runner for hours). One
+        # recording and one round fit in ~20 minutes; a row cut off here still uploads its state.json.
+        timeout-minutes: 30
         permissions:
             contents: read
             actions: read
@@ -54,7 +65,7 @@ jobs:
             fail-fast: false
             matrix:
                 # as many as SHARDS
-                shard: [0, 1]
+                shard: [0]
         steps:
             - uses: actions/checkout@v5
 
@@ -74,6 +85,18 @@ jobs:
                       rm -rf "$cache/recordings/$run/archive"
                   done
 
+            - name: Carry on from the earlier run's state
+              if: ${{ inputs.resume-run != '' }}
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RESUME: ${{ inputs.resume-run }}
+              run: |
+                  set -euo pipefail
+                  gh run download "$RESUME" -R "$GITHUB_REPOSITORY" --name identity-rule-ablation --dir ablation
+                  test -f ablation/state.json
+                  python3 -c 'import json; s=json.load(open("ablation/state.json")); print("resuming round", s["round"], "with", len(s["pending"] or []), "configurations")'
+
             - uses: ./.github/actions/setup-sbt-build
 
             - name: Start MongoDB (single-node replica set, the replay's throwaway database)
@@ -91,11 +114,12 @@ jobs:
                   RECORDINGS: ${{ inputs.recordings }}
                   ONLY: ${{ inputs.only }}
                   KINDS: ${{ inputs.kinds }}
+                  ROUNDS: ${{ inputs.rounds }}
                   SHARD: ${{ matrix.shard }}
               run: |
                   set -o pipefail
                   python3 -I scripts/identity_rule_ablation.py --out ablation --recordings "$RECORDINGS" \
-                      --kinds "$KINDS" \
+                      --kinds "$KINDS" --max-rounds "$ROUNDS" \
                       --shard "$SHARD/$SHARDS" ${ONLY:+--only "$ONLY"} 2>&1 | tee ablation.out
 
             - uses: actions/upload-artifact@v6

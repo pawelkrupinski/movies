@@ -285,6 +285,8 @@ def main(argv=None):
     p.add_argument("--only", default="", help="comma-separated rule names: ablate these alone")
     p.add_argument("--kinds", default="title", help="the kinds of rule ablated, comma-separated: title, accept, veto, join, apart")
     p.add_argument("--shard", default="", help="I/N: bisect only every N-th first-round batch, from the I-th (a CI row's)")
+    p.add_argument("--max-rounds", type=int, default=0, help="stop after this many bisection rounds (0: until settled); "
+                   "a later run with the same --out resumes from its state.json")
     p.add_argument("--merge", nargs="*", help="state.json files of several shards: write their one report to --out, run nothing")
     a = p.parse_args(argv)
     if a.merge is not None:
@@ -308,13 +310,14 @@ def main(argv=None):
             json.dump(state, f, indent=1)
         os.replace(state_path + ".tmp", state_path)
 
-    # round 0: the baselines alone (their fired rules choose the batches; base-again proves the replay deterministic)
+    # round 0: the baselines alone (their fired rules choose the batches; base-again proves the replay deterministic).
+    # A resumed state has chosen its batches already, and every later round resolves its own baseline.
     r0 = os.path.join(a.out, "round-0")
-    run_recordings(repo, recordings, [], r0, a.lock, a.chunk, a.out)
-    noisy = determinism(r0, recordings)
-    if noisy:
-        raise SystemExit(f"[ablation] the baseline moved on a second resolve in {noisy}: the replay is not deterministic")
     if state["pending"] is None:
+        run_recordings(repo, recordings, [], r0, a.lock, a.chunk, a.out)
+        noisy = determinism(r0, recordings)
+        if noisy:
+            raise SystemExit(f"[ablation] the baseline moved on a second resolve in {noisy}: the replay is not deterministic")
         fired, title_countries = defaultdict(int), {}
         for rec in recordings:
             title_countries = read_title_rules(os.path.join(r0, rec, "title-rules.tsv"))
@@ -330,7 +333,9 @@ def main(argv=None):
         state["pending"] = shard_of(batches(rules, lambda r: rules[r], state["fired"], a.hot, a.cold), a.shard)
         state["round"] = 1
         save()
-    while state["pending"]:
+    rounds = 0
+    while state["pending"] and (not a.max_rounds or rounds < a.max_rounds):
+        rounds += 1
         configs = state["pending"]
         rd = os.path.join(a.out, f"round-{state['round']}")
         print(f"[ablation] round {state['round']}: {len(configs)} configurations, {sum(len(c['rules']) for c in configs)} rules", flush=True)
@@ -346,7 +351,8 @@ def main(argv=None):
         state["round"] += 1
         save()
     write_report(state, os.path.join(a.out, "report.md"))
-    print(f"[ablation] done: {len(state['settled'])} rules settled, report {os.path.join(a.out, 'report.md')}")
+    left = f", {len(state['pending'])} configurations left for a resumed run" if state["pending"] else ""
+    print(f"[ablation] done: {len(state['settled'])} rules settled{left}, report {os.path.join(a.out, 'report.md')}")
     return 0
 
 
