@@ -539,8 +539,22 @@ object StageRelays {
   def bannerNamesItsHouse(l: Listing): Film => Boolean = {
     val particular = l.ownTitles.map(billable).flatMap(fragments).map(houseWords).map(particularWords).filter(_.nonEmpty)
     if (particular.nonEmpty) f => particular.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
-    else { val namesByItsWork = l.billsAStageHouse && l.billedStageWorks.sizeIs == 1; _ => namesByItsWork }
+    else { val namesByItsWork = l.billsAStageHouse && ofItsArt(l, l.billedStageWorks).sizeIs == 1; _ => namesByItsWork }
   }
+
+  /** `works` of the one art the billing names, when it names one and a work of it: ES Ocine's "Carmen (OPERA LIVE)" is
+   *  Bizet's opera, not the Carmen ballets ([[StageWorks.dance]]); "Manon (BALLET LIVE)" MacMillan's ballet, not
+   *  Massenet's opera. A billing naming both arts ("Royal Ballet & Opera: Manon"), or neither, keeps them all. */
+  private[identity] def ofItsArt(l: Listing, works: Set[String]): Set[String] = {
+    val words  = l.ownTitles.flatMap(TitleContainment.tokens).toSet
+    val opera  = words.exists(OperaWords)
+    val ballet = words.exists(BalletWords)
+    val ofArt  = if (opera == ballet) works else works.filter(work => StageWorks.resolver.dance(work) == ballet)
+    if (ofArt.nonEmpty) ofArt else works
+  }
+  /** The words a billing names its art by: an opera's, a ballet's ([[ofItsArt]]). */
+  private val OperaWords  = Set("opera", "operas", "oper", "opern", "opery", "operze", "opere")
+  private val BalletWords = Set("ballet", "ballets", "ballett", "balet", "baletu", "balletto")
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
    *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,

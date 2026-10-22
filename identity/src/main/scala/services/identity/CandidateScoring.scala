@@ -59,8 +59,10 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
       .orElse(Option.when(IdentityMeasures.numbersAnotherSubtitle(listing, film))(
         Denial("an instalment its title numbers, whose subtitle none of the film's titles holds")))
       // a relay's record of its house, work and season ([[RelayStage]]) files a broadcast's running time and its house's
-      // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it
-      .orElse(Option.unless(RelayStage.particularRecordOf(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
+      // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it. Nor of the record of the
+      // very season a relay's screenings broadcast its work in ([[StageRelays.screenedSeasonRecord]]), under a banner naming
+      // no house in particular: ES Ocine's "Carmen (OPERA LIVE)", screening the day the RBO's 2026/27 Carmen airs
+      .orElse(Option.unless(RelayStage.particularRecordOf(listing, film) || StageRelays.screenedSeasonRecord(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
    *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA

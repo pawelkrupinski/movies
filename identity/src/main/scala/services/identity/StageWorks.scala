@@ -7,7 +7,8 @@ package services.identity
  *  language names it. One table for every country. A name several works share ("Armida") names them all.
  *  @param works   each name's key ([[IdentityMeasures.key]]) → the works it names
  *  @param english each work → the name a title search asks for it by (its English label, else another) */
-final class StageWorks(works: Map[String, Set[String]], english: Map[String, String], names: Map[String, Seq[String]] = Map.empty) {
+final class StageWorks(works: Map[String, Set[String]], english: Map[String, String], names: Map[String, Seq[String]] = Map.empty,
+                       dances: Set[String] = Set.empty) {
   /** The works a title piece names, by its key. */
   def named(key: String): Set[String] = works.getOrElse(key, Set.empty)
   /** Every name a search asks for `work` by: its English one first, then each other in the Latin script, one per
@@ -21,11 +22,16 @@ final class StageWorks(works: Map[String, Set[String]], english: Map[String, Str
       .distinctBy(IdentityMeasures.key).filter(n => IdentityMeasures.key(n).nonEmpty)
   }
   def size: Int = english.size
+  /** Is `work` a choreographic work — a ballet (`identity-stage-works-dances.tsv`), not an opera of its name? */
+  def dance(work: String): Boolean = dances(work)
+  /** This table with `ids` read as its dances. */
+  def withDances(ids: Set[String]): StageWorks = new StageWorks(works, english, names, ids)
 }
 
 object StageWorks {
   val Resource = "identity-stage-works.tsv"
   val Extra    = "identity-stage-works-extra.tsv"
+  val Dances   = "identity-stage-works-dances.tsv"
 
   /** Lines `<work>\t<English name>\t<name>|<name>…` (the generated table) or `<work>\t<name>|<name>…` (the extra). */
   def parse(lines: Iterator[String]): StageWorks = {
@@ -47,4 +53,5 @@ object StageWorks {
 
   /** The table on the classpath, the extra names beside the generated ones. */
   lazy val resolver: StageWorks = parse((ClasspathResource.lines(Resource) ++ ClasspathResource.lines(Extra)).iterator)
+    .withDances(ClasspathResource.rows(ClasspathResource.lines(Dances).iterator).toSet)
 }

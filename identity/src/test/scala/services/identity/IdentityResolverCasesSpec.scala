@@ -271,6 +271,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(r.decisionOf(encore.key).render)(r.decisionOf(encore.key).film shouldBe Some(248042))
   }
 
+  it should "take the season's record of its work aired the day it screens, under a banner naming its art alone" in {
+    // ES Ocine's "Carmen (OPERA LIVE)" [185′] ×7 (recording 38713274617) screens on 10 November 2026, the day the Royal
+    // Ballet & Opera's 2026/27 Carmen airs live (1702759; DE premiumkino bills it "carmen-bizet-royal-ballet-und-opera-
+    // 2026-27-live/20261110"). "Carmen 2026" finds it, but "Carmen" named Bizet's opera and two Carmen ballets, so the
+    // season record named no one work, and the learned cannot-link cut denied it besides. "OPERA" names the opera.
+    val es = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.Spain)).get
+    val films = Seq(
+      F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "", 0, 1, released = Some(java.time.LocalDate.of(2026, 11, 10))),
+      F(1740965, "Carmen: Salzburger Festspiele 2026", 2026, "Gabriela Carrizo", 0, 2, released = Some(java.time.LocalDate.of(2026, 8, 8))),
+      F(1593191, "Carmen", 2025, "", 0, 2),
+      F(21193, "Carmen", 1984, "Francesco Rosi", 152, 8))
+    val carmen = listing(es, "Carmen (OPERA LIVE)", runtime = Some(185))
+      .copy(originalTitle = Some("Carmen"), screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 10))))
+    val r = shipped(Seq(carmen), films)
+    withClue(r.decisionOf(carmen.key).render) {
+      r.decisionOf(carmen.key).film shouldBe Some(1702759)
+    }
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")
