@@ -1325,6 +1325,15 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   /** Listings of the 2026-10-12 German recording whose TMDB query kept a screening marker
    *  (SearchQueryMarkersSpec over the recorded corpus): a preview / Vorpremiere billed before or after its film, and
    *  a language version written inside the title rather than at its end. Through the whole query path. */
+  /** Listings the billing parse reads alone since the lookup query reads the billing's work (`BillingParse.work`): no
+   *  title rule is load-bearing for them any more. */
+  private val readByTheParse = Set("Preview: Dune: Part Three", "IMAX-Preview: Godzilla Minus Zero",
+    "Early Fan Preview - Dune: Part Three", "OV: Early Fan Preview - Dune: Part Three 70mm", "CINEVILLE PREVIEW: LA BOLA NEGRA",
+    "Prosecco Vorpremiere: Der Perfekte Urlaub", "Clayface - Vorpremiere am 25.10.2026",
+    "Ghosts: The Possession of Button House - Parent & Baby", "Parent & Baby Screening: Sense & Sensibility - Cert PG",
+    "Dementia Friendly: White Christmas - Cert U", "Early Fan Preview | Dune: Part Three", "Vorpremiere - Dune: Part Three",
+    "Minotaurus | Preview Osteuropäische Filmtage 2026")
+
   private val germanScreeningMarkerListings: Seq[(String, String)] = Seq(
     "Preview: Dune: Part Three"                                             -> "Dune: Part Three",
     "IMAX-Preview: Godzilla Minus Zero"                                     -> "Godzilla Minus Zero",
@@ -1369,9 +1378,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   it should "be load-bearing — the seed rules alone search the marker along" in {
     val titles = new TitleNormalizer(seedOnly)
-    germanScreeningMarkerListings.foreach { case (raw, query) =>
-      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) should not be query)
-    }
+    germanScreeningMarkerListings.filterNot(l => readByTheParse(l._1))
+      .filter { case (raw, query) => listingQuery(titles, models.KinoCentrum3D, raw) == query }.map(_._1) shouldBe empty
   }
 
   it should "leave a title that merely contains the words alone" in {
@@ -1424,9 +1432,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   it should "be load-bearing — the seed rules alone search the marker along" in {
     val titles = new TitleNormalizer(seedOnly)
-    rerecordedScreeningMarkerListings.foreach { case (raw, query) =>
-      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) should not be query)
-    }
+    rerecordedScreeningMarkerListings.filterNot(l => readByTheParse(l._1))
+      .filter { case (raw, query) => listingQuery(titles, models.KinoCentrum3D, raw) == query }.map(_._1) shouldBe empty
   }
 
   it should "leave a film whose title merely holds the words, and a format tag after a pipe, alone" in {

@@ -89,6 +89,13 @@ final class BillingParse private (val text: String) {
    *  "Somali Film Festival: Lifeline". */
   lazy val banner: Option[String] = BillingPieces.banner(text)
 
+  /** Its WORK: the text less a leading piece naming a strand, a programme or a club and a closing piece opening on one
+   *  ([[BillingPieces.work]]): "Drugie życie" of "Kino Konesera: Drugie życie". What the lookup query asks for. */
+  lazy val work: String = BillingPieces.work(text)
+
+  /** Where its work starts, when a strand's piece leads it: the end of that banner, delimiter included. */
+  lazy val workStart: Option[Int] = Some(BillingPieces.workSpan(text)._1).filter(_ > 0)
+
   /** Is its banner a film festival's ([[BillingPieces.underAFilmFestival]])? */
   def underAFilmFestival: Boolean = BillingPieces.underAFilmFestival(text)
 

@@ -32,6 +32,78 @@ object BillingPieces {
     Segments(SegmentBreak.split(piped).toIndexedSeq, SegmentBreak.findAllIn(piped).toIndexedSeq.map(_.trim))
   }
 
+  // ── the work ───────────────────────────────────────────────────────────────────────────────
+
+  private def wordsOf(concepts: TitleWords.Concept*) = TitleWords.rawPattern(concepts*)
+  /** A strand's word anywhere in a piece ([[TitleWords.Concept.Strand]]). */
+  private val StrandWord = s"(?iu)(?<![\\p{L}\\p{N}])(?:${wordsOf(TitleWords.Concept.Strand)})(?![\\p{L}\\p{N}])".r
+  /** A piece opening on a strand's word, a quotation mark aside. */
+  private val OpensOnStrand = ("(?iu)^[\\s\"'„“”]*(?:" + wordsOf(TitleWords.Concept.Strand) + ")(?![\\p{L}\\p{N}])").r
+  /** A broadcaster's or a stage's piece ("Royal Ballet & Opera im Kino", "MET live im Kino") or a season's ("RBO Kino
+   *  Saison 2026-27"): the relay's house, which its own readers read off the billing, never a strand of a venue's. */
+  private val HouseWord = s"(?iu)(?<![\\p{L}\\p{N}])(?:${wordsOf(TitleWords.Concept.StageHouse, TitleWords.Concept.HouseBanner,
+    TitleWords.Concept.Relay, TitleWords.Concept.Stage)})(?![\\p{L}\\p{N}])".r
+  private val SeasonSpan = """\d{2,4}\s*[-/–]\s*\d{2}(?!\d)""".r
+
+  /** Does `piece`, its brackets aside ("Godzilla Minus Zero (pokaz nocny)" names no strand), name a strand? */
+  private def namesAStrand(raw: String, strand: scala.util.matching.Regex): Boolean = {
+    val piece = Bracketed.replaceAllIn(raw, " ")
+    strand.pattern.matcher(piece).find() && !HouseWord.pattern.matcher(piece).find() && !SeasonSpan.pattern.matcher(piece).find()
+  }
+  /** What is left is a work's title: a word of three letters or more ("UA" is a language's note), not a day or a running
+   *  time ("19th October", "4 Stunden"), nor a programme's slot ("Opening Night", [[programmeSlot]]) or a festival's own
+   *  part ("Purbeck Film Festival - Shorts Social": its shorts, competition, showcase, talk, awards). */
+  private def namesAWork(rest: String): Boolean =
+    AWord.pattern.matcher(rest).find() && !DateOrCount.pattern.matcher(rest.trim).matches() &&
+      !ProgrammeSlot.pattern.matcher(rest.trim).matches() && !FestivalPart.pattern.matcher(rest).find()
+  private val FestivalPart =
+    """(?iu)(?<![\p{L}\p{N}])(?:shorts?|competition|programmes?|programs?|showcase|forum|talk|edition|selection|\p{L}*preis|awards?)(?![\p{L}\p{N}])""".r
+  private val AWord = """\p{L}{3}""".r
+  /** A day or a running time billed in a work's place: "19th October", "4 Stunden", "12 grudnia". */
+  private val DateOrCount = ("""(?iu)\d{1,4}(?:st|nd|rd|th|\.)?\s+(?:jan|feb|m[aä]r|apr|ma[iy]|jun|jul|aug|sep|o[ck]t|nov|de[cz]|""" +
+    """stycz|lut|kwie|czerw|lip|sierp|wrze|pa[źz]dz|listop|grud|ene|abr|ago|dic|stund|std|hour|hr|min|godz|hora)\p{L}*\.?""").r
+
+  /** The [[Delimiter]]s that cut the billing itself: none inside a bracket or a quotation, nor a clock's colon ("19:45"). */
+  private def cuts(raw: String): IndexedSeq[(Int, Int)] = {
+    val found = Delimiter.matcher(raw)
+    val out   = IndexedSeq.newBuilder[(Int, Int)]
+    var depth = 0; var quoted = false; var at = 0
+    while (found.find()) {
+      while (at < found.start) {
+        raw(at) match {
+          case '(' | '[' => depth += 1
+          case ')' | ']' => depth = math.max(0, depth - 1)
+          case '"' | '„' | '“' | '”' => quoted = raw(at) match { case '„' => true; case '”' => false; case _ => !quoted }
+          case _ =>
+        }
+        at += 1
+      }
+      val clock = found.group().trim == ":" && found.start > 0 && raw(found.start - 1).isDigit && found.end < raw.length && raw(found.end).isDigit
+      if (depth == 0 && !quoted && !clock) out += ((found.start, found.end))
+    }
+    out.result()
+  }
+
+  /** Where the billing's WORK lies in it: the billing less a leading piece naming a strand, a programme or a club
+   *  ([[TitleWords.Concept.Strand]]: "Kino Konesera: Drugie życie", "Japanese Film Club: Your Name") and a closing piece
+   *  opening on one ("Tony | Kino Dostępne", "Lalka - seans dla grupy zorg."), each cut at the billing's own delimiter
+   *  ([[Delimiter]]) and only while a work's title is left. A house's or a season's piece is the relay's, never cut. */
+  def workSpan(raw: String): (Int, Int) = {
+    val at = cuts(raw)
+    var (from, to) = (0, raw.length)
+    var (first, last) = (0, at.size - 1)
+    while (first <= last && namesAStrand(raw.substring(from, at(first)._1), StrandWord) && namesAWork(raw.substring(at(first)._2, to))) {
+      from = at(first)._2; first += 1
+    }
+    while (last >= first && namesAStrand(raw.substring(at(last)._2, to), OpensOnStrand) && namesAWork(raw.substring(from, at(last)._1))) {
+      to = at(last)._1; last -= 1
+    }
+    (from, to)
+  }
+
+  /** The billing's work ([[workSpan]]), trimmed: itself when it bills no strand. */
+  def work(raw: String): String = { val (from, to) = workSpan(raw); if (from == 0 && to == raw.length) raw else raw.substring(from, to).trim }
+
   // ── the banner ─────────────────────────────────────────────────────────────────────────────
 
   private val BannerSlot = """^([^:|]+?)\s*[:|]\s*\S""".r

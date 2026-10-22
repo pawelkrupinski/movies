@@ -51,11 +51,11 @@ object TitleRulesGoldenSpec {
     def changed(key: String, value: String) = Option.when(value != text)(key -> JsString(value))
     val venue = venues.flatMap(v => Option.when(rules.perCinema(v, text) != text)(v -> JsString(rules.perCinema(v, text))))
     JsObject(Seq(
-      changed("query", rules.structural(text)),
+      changed("query", rules.query(text)),
       changed("key", rules.canonical(text)),
       changed("display", rules.spellingUnified(text)),
       changed("properName", rules.properNamed(text)),
-      rules.programmePrefix(text).map("programme" -> JsString(_)),
+      rules.programmeBanner(text).map("programme" -> JsString(_)),
       rules.leadingBannerBoundary(text).map("bannerEnd" -> Json.toJson(_)),
       Option.when(venue.nonEmpty)("venue" -> JsObject(venue))
     ).flatten)

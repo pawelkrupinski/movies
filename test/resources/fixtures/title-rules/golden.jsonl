@@ -9,7 +9,7 @@
 {"text":"\"LALKA\" - Filmowe spotkania z psychoanalizą","pl,uk,de,us,es":{"query":"\"LALKA\"","bannerEnd":10,"venue":{"kino-alternatywy":"LALKA - Filmowe spotkania z psychoanalizą"}}}
 {"text":"\"LALKA\" - english friendly","pl,uk,de,us,es":{"query":"\"LALKA\"","bannerEnd":10,"venue":{"kino-alternatywy":"LALKA - english friendly"}}}
 {"text":"\"LALKA\" / Premiera","pl,uk,de,us,es":{"query":"\"LALKA\"","venue":{"kino-alternatywy":"LALKA / Premiera","kino-mok-miedzyrzecz":"\"LALKA\" /"}}}
-{"text":"\"Local Kino Helden\": Best of \"Filmisches Klassenzimmer\" (Bavaria)","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"Local Kino Helden : Best of Filmisches Klassenzimmer (Bavaria)"}}}
+{"text":"\"Local Kino Helden\": Best of \"Filmisches Klassenzimmer\" (Bavaria)","pl,uk,de,us,es":{"query":"Best of \"Filmisches Klassenzimmer\" (Bavaria)","programme":"\"Local Kino Helden\": ","bannerEnd":21,"venue":{"kino-alternatywy":"Local Kino Helden : Best of Filmisches Klassenzimmer (Bavaria)"}}}
 {"text":"\"Monterey Pop\" z prelekcją Piotra Metza","pl,uk,de,us,es":{"query":"\"Monterey Pop\"","venue":{"kino-alternatywy":"Monterey Pop z prelekcją Piotra Metza"}}}
 {"text":"\"NASZE KRÓLESTWO\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"NASZE KRÓLESTWO"}}}
 {"text":"\"NORYMBERGA\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"NORYMBERGA"}}}
@@ -122,7 +122,7 @@
 {"text":"11FREUNDE live"}
 {"text":"12 OBRAZÓW ZNIEWOLENIA"}
 {"text":"12 obrazów zniewolenia"}
-{"text":"12. Splat!FilmFest | Karnet","pl,uk,de,us,es":{"venue":{"bok":"12. Splat!FilmFest: Karnet"}}}
+{"text":"12. Splat!FilmFest | Karnet","pl,uk,de,us,es":{"query":"Karnet","programme":"12. Splat!FilmFest | ","bannerEnd":21,"venue":{"bok":"12. Splat!FilmFest: Karnet"}}}
 {"text":"125 Finale - Ali Plumb's Untitled Film Quiz Project"}
 {"text":"125 Finale - Archive Day"}
 {"text":"125 Finale - The Band"}
@@ -206,14 +206,14 @@
 {"text":"24 Hour Party People"}
 {"text":"24 Hour Party People (24 Year Anniversary)"}
 {"text":"24 Hour Party People - (24 Year Anniversary)"}
-{"text":"24. Festiwal TERRA - BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA"}
-{"text":"24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH"}
-{"text":"24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ"}
-{"text":"24. Festiwal TERRA - KILIMANDŻARO - GÓRA MARZEŃ"}
-{"text":"24. Festiwal TERRA - MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII"}
-{"text":"24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI"}
-{"text":"24. Festiwal TERRA - O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2"}
-{"text":"24. Festiwal TERRA - WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK"}
+{"text":"24. Festiwal TERRA - BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA","pl,uk,de,us,es":{"query":"BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH","pl,uk,de,us,es":{"query":"DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ","pl,uk,de,us,es":{"query":"JAPONIA - DWIE DEKADY PÓŹNIEJ","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - KILIMANDŻARO - GÓRA MARZEŃ","pl,uk,de,us,es":{"query":"KILIMANDŻARO - GÓRA MARZEŃ","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII","pl,uk,de,us,es":{"query":"MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI","pl,uk,de,us,es":{"query":"NOWA ZELANDIA - W POSZUKIWANIU KIWI","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2","pl,uk,de,us,es":{"query":"O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
+{"text":"24. Festiwal TERRA - WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK","pl,uk,de,us,es":{"query":"WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK","programme":"24. Festiwal TERRA - ","bannerEnd":21}}
 {"text":"24. KOMISCHE NACHT OFFENBACH"}
 {"text":"24. WJFF: BUDAPESZT 1956","pl,uk,de,us,es":{"query":"BUDAPESZT 1956","key":"BUDAPESZT 1956","display":"BUDAPESZT 1956","bannerEnd":10}}
 {"text":"24. WJFF: PRZEMYŚL TO","pl,uk,de,us,es":{"query":"PRZEMYŚL TO","key":"PRZEMYŚL TO","display":"PRZEMYŚL TO","bannerEnd":10}}
@@ -636,10 +636,10 @@
 {"text":"Adult Acting Workshops with Galore Theatre."}
 {"text":"Adults Only: Forgotten Island (£3 Tickets)"}
 {"text":"AdventKino: Auf der Suche nach der Weihnachtswerkstatt"}
-{"text":"Advents-Kino: Der Polarexpress"}
-{"text":"Advents-Kino: Die Eiskönigin 2"}
-{"text":"Advents-Kino: Kevin - Allein in New York"}
-{"text":"Advents-Kino: Kevin - Allein zu Haus"}
+{"text":"Advents-Kino: Der Polarexpress","pl,uk,de,us,es":{"query":"Der Polarexpress","programme":"Advents-Kino: ","bannerEnd":14}}
+{"text":"Advents-Kino: Die Eiskönigin 2","pl,uk,de,us,es":{"query":"Die Eiskönigin 2","programme":"Advents-Kino: ","bannerEnd":14}}
+{"text":"Advents-Kino: Kevin - Allein in New York","pl,uk,de,us,es":{"query":"Kevin - Allein in New York","programme":"Advents-Kino: ","bannerEnd":14}}
+{"text":"Advents-Kino: Kevin - Allein zu Haus","pl,uk,de,us,es":{"query":"Kevin - Allein zu Haus","programme":"Advents-Kino: ","bannerEnd":14}}
 {"text":"Adventskino: Der Grinch"}
 {"text":"Adventskino: Der Polarexpress"}
 {"text":"Adventskino: Die Eiskönigin - Völlig unverfroren"}
@@ -800,7 +800,7 @@
 {"text":"All Is Lost (Filmclub)"}
 {"text":"All Monsters Attack"}
 {"text":"All My Sisters"}
-{"text":"All Out Of Bubblegum Film Club: THE SHINING"}
+{"text":"All Out Of Bubblegum Film Club: THE SHINING","pl,uk,de,us,es":{"query":"THE SHINING","programme":"All Out Of Bubblegum Film Club: ","bannerEnd":32}}
 {"text":"All Rivers Spill Their Stories To The Sea (12A)","pl,uk,de,us,es":{"query":"All Rivers Spill Their Stories To The Sea"}}
 {"text":"All Rivers Spill Their Stories to the Sea"}
 {"text":"All Rivers Spill Their Stories to the Sea (12A)","pl,uk,de,us,es":{"query":"All Rivers Spill Their Stories to the Sea"}}
@@ -811,7 +811,7 @@
 {"text":"All We Imagine As Light"}
 {"text":"All You Need Is Kill"}
 {"text":"All You Need is Kill"}
-{"text":"All You Need is Kill | Kino Azji","pl,uk,de,us,es":{"venue":{"bok":"All You Need is Kill: Kino Azji"}}}
+{"text":"All You Need is Kill | Kino Azji","pl,uk,de,us,es":{"query":"All You Need is Kill","venue":{"bok":"All You Need is Kill: Kino Azji"}}}
 {"text":"All and Nothing"}
 {"text":"All eure Gesichter"}
 {"text":"All of a Sudden"}
@@ -1078,7 +1078,7 @@
 {"text":"Aquaman y el reino perdido"}
 {"text":"Aquarela"}
 {"text":"Arachnophobia"}
-{"text":"Arbeiten für das Kino - Buchpräsentation"}
+{"text":"Arbeiten für das Kino - Buchpräsentation","pl,uk,de,us,es":{"query":"Buchpräsentation","programme":"Arbeiten für das Kino - ","bannerEnd":24}}
 {"text":"Architektur des Glücks"}
 {"text":"Archiv Negativ: Turksib"}
 {"text":"Archiwum Filmowe Pawła Althamera"}
@@ -1127,7 +1127,7 @@
 {"text":"Arthur Christmas | Nova Kids","pl,uk,de,us,es":{"venue":{"bok":"Arthur Christmas: Nova Kids"}}}
 {"text":"Arthur Pauli Filmvortrag"}
 {"text":"Arthur Weihnachtsmann"}
-{"text":"Artist's Choice Screening: Looking for Mr. Goodbar (35mm)"}
+{"text":"Artist's Choice Screening: Looking for Mr. Goodbar (35mm)","pl,uk,de,us,es":{"query":"Looking for Mr. Goodbar (35mm)","programme":"Artist's Choice Screening: ","bannerEnd":27}}
 {"text":"Artistic Interiors: British Avante-Garde Interiors 1912 -1942","pl,uk,de,us,es":{"key":"Artistic Interiors: British Avante-Garde Interiors 1912"}}
 {"text":"Artist’s Film Picks: I Am Not Your Negro"}
 {"text":"Artist’s Film Picks: No Other Choice"}
@@ -1147,7 +1147,7 @@
 {"text":"Ashayir - Clans, die eine und die andere Seite"}
 {"text":"Ashes and Diamonds"}
 {"text":"Ashes of Time"}
-{"text":"Asian Festiwal Pięć Smaków: Pod dachem Ky Nam"}
+{"text":"Asian Festiwal Pięć Smaków: Pod dachem Ky Nam","pl,uk,de,us,es":{"query":"Pod dachem Ky Nam","programme":"Asian Festiwal Pięć Smaków: ","bannerEnd":28}}
 {"text":"Asterix der Gallier"}
 {"text":"Asterix der Gallier: Das Grosse Asterix Kino-Festival"}
 {"text":"Asterix erobert Rom: Das Grosse Asterix Kino-Festival"}
@@ -1164,9 +1164,9 @@
 {"text":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra (re-release)","pl,uk,de,us,es":{"query":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra"}}
 {"text":"Astra Dzieci: Baranek Shaun i kudłata bestia"}
 {"text":"Astra Dzieci: DMUCHAWCE"}
-{"text":"Astra Dzieci: Poranki z muzyką na żywo"}
+{"text":"Astra Dzieci: Poranki z muzyką na żywo","pl,uk,de,us,es":{"query":"Astra Dzieci"}}
 {"text":"Astra Konesera: Sunny Dancer"}
-{"text":"Astra Seniora: Bez końca"}
+{"text":"Astra Seniora: Bez końca","pl,uk,de,us,es":{"query":"Bez końca","programme":"Astra Seniora: ","bannerEnd":15}}
 {"text":"Astrid Lindgren - Die Menschheit hat den Verstand verloren"}
 {"text":"Astro Boy"}
 {"text":"Astronaut Farmer"}
@@ -1355,7 +1355,7 @@
 {"text":"BEUYS"}
 {"text":"BEZ KOŃCA 2D PL LOLO","pl,uk,de,us,es":{"query":"BEZ KOŃCA"}}
 {"text":"BEZ ZNIECZULENIA"}
-{"text":"BEZ ZNIECZULENIA (1978) | „PRZEGLĄD WAJDA: re-wizje”","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA (1978) | \"PRZEGLĄD WAJDA: re-wizje\"","venue":{"bok":"BEZ ZNIECZULENIA (1978): „PRZEGLĄD WAJDA: re-wizje”","kino-alternatywy":"BEZ ZNIECZULENIA (1978) | PRZEGLĄD WAJDA: re-wizje"}}}
+{"text":"BEZ ZNIECZULENIA (1978) | „PRZEGLĄD WAJDA: re-wizje”","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA (1978)","venue":{"bok":"BEZ ZNIECZULENIA (1978): „PRZEGLĄD WAJDA: re-wizje”","kino-alternatywy":"BEZ ZNIECZULENIA (1978) | PRZEGLĄD WAJDA: re-wizje"}}}
 {"text":"BEZ ZNIECZULENIA - DKF","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA"}}
 {"text":"BEZ ZNIECZULENIA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA","venue":{"bok":"BEZ ZNIECZULENIA: WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin"}}}
 {"text":"BEZ ZNIECZULENIA | WAJDA: re-wizje | Przegląd twórczości Andrzeja Wajdy","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA","venue":{"bok":"BEZ ZNIECZULENIA: WAJDA: re-wizje: Przegląd twórczości Andrzeja Wajdy"}}}
@@ -1369,13 +1369,13 @@
 {"text":"BFI LFF 2026: Making Marie Antoinette"}
 {"text":"BFI LFF 2026: Minotaur"}
 {"text":"BFI LFF 2026: The Debut"}
-{"text":"BFI London Film Festival 2026: Club Kid","pl,uk,de,us,es":{"query":"Club Kid","bannerEnd":31}}
-{"text":"BFI London Film Festival 2026: Fatherland","pl,uk,de,us,es":{"query":"Fatherland","bannerEnd":31}}
-{"text":"BFI London Film Festival 2026: Fjord","pl,uk,de,us,es":{"query":"Fjord","bannerEnd":31}}
-{"text":"BFI London Film Festival 2026: Josephine","pl,uk,de,us,es":{"query":"Josephine","bannerEnd":31}}
-{"text":"BFI London Film Festival 2026: Making Marie Antoinette","pl,uk,de,us,es":{"query":"Making Marie Antoinette","bannerEnd":31}}
-{"text":"BFI London Film Festival 2026: Minotaur","pl,uk,de,us,es":{"query":"Minotaur","bannerEnd":31}}
-{"text":"BFI London Film Festival 2026: The Debut","pl,uk,de,us,es":{"query":"The Debut","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: Club Kid","pl,uk,de,us,es":{"query":"Club Kid","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: Fatherland","pl,uk,de,us,es":{"query":"Fatherland","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: Fjord","pl,uk,de,us,es":{"query":"Fjord","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: Josephine","pl,uk,de,us,es":{"query":"Josephine","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: Making Marie Antoinette","pl,uk,de,us,es":{"query":"Making Marie Antoinette","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: Minotaur","pl,uk,de,us,es":{"query":"Minotaur","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
+{"text":"BFI London Film Festival 2026: The Debut","pl,uk,de,us,es":{"query":"The Debut","programme":"BFI London Film Festival 2026: ","bannerEnd":31}}
 {"text":"BHUTAN 26 28 N - Königreich im Himalaya"}
 {"text":"BHUTAN 26° 28° N - Königreich im Himalaya"}
 {"text":"BIBI BLOCKSBERG - DAS GROSSE HEXENTREFFEN"}
@@ -1640,7 +1640,7 @@
 {"text":"Barbarian"}
 {"text":"Barbarian (2022)","pl,uk,de,us,es":{"key":"Barbarian","venue":{"kino-kinematograf":"Barbarian"}}}
 {"text":"Barbie"}
-{"text":"Bardzo Dyskusyjny Klub Filmowy: Wielkie role Sandry Hüller: Róża"}
+{"text":"Bardzo Dyskusyjny Klub Filmowy: Wielkie role Sandry Hüller: Róża","pl,uk,de,us,es":{"query":"Wielkie role Sandry Hüller: Róża","programme":"Bardzo Dyskusyjny Klub Filmowy: ","bannerEnd":32}}
 {"text":"Bardzo Ważne Filmy Na Ten Czas"}
 {"text":"Bardzo ważne filmy na ten czas / Projekcja filmu „Lament”","pl,uk,de,us,es":{"query":"Bardzo ważne filmy na ten czas","venue":{"kino-alternatywy":"Bardzo ważne filmy na ten czas / Projekcja filmu Lament"}}}
 {"text":"Barn Bop Session Vol. I"}
@@ -1658,9 +1658,9 @@
 {"text":"Basia. Radzę sobie!"}
 {"text":"Basic Instinct"}
 {"text":"Basket Case"}
-{"text":"Baskisches Filmfestival: Jone, Batzuetan"}
-{"text":"Baskisches Filmfestival: Karmele"}
-{"text":"Baskisches Filmfestival: Maspalomas"}
+{"text":"Baskisches Filmfestival: Jone, Batzuetan","pl,uk,de,us,es":{"query":"Jone, Batzuetan","programme":"Baskisches Filmfestival: ","bannerEnd":25}}
+{"text":"Baskisches Filmfestival: Karmele","pl,uk,de,us,es":{"query":"Karmele","programme":"Baskisches Filmfestival: ","bannerEnd":25}}
+{"text":"Baskisches Filmfestival: Maspalomas","pl,uk,de,us,es":{"query":"Maspalomas","programme":"Baskisches Filmfestival: ","bannerEnd":25}}
 {"text":"Bat Out of Hell: The Musical"}
 {"text":"Baththa"}
 {"text":"Batman & Robin","pl":{"key":"Batman i Robin","display":"Batman i Robin"}}
@@ -1838,7 +1838,7 @@
 {"text":"Bez znieczulenia - Wajda re-wizje"}
 {"text":"Bez znieczulenia | cykl WAJDA: re-wizje","pl,uk,de,us,es":{"query":"Bez znieczulenia","venue":{"bok":"Bez znieczulenia: cykl WAJDA: re-wizje"}}}
 {"text":"Bezpieczny dystans | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Bezpieczny dystans: Splat!FilmFest"}}}
-{"text":"Bezpłatny seans - ZESTAW BAJEK - 25.10.2026"}
+{"text":"Bezpłatny seans - ZESTAW BAJEK - 25.10.2026","pl,uk,de,us,es":{"query":"ZESTAW BAJEK - 25.10.2026","programme":"Bezpłatny seans - ","bannerEnd":18}}
 {"text":"Bezsenni | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Bezsenni: Splat!FilmFest"}}}
 {"text":"Bheed"}
 {"text":"Bhutan 26 28 N - Königreich im Himalaya (Livekommentar)"}
@@ -1990,7 +1990,7 @@
 {"text":"Blue Whales: Return of the Giants"}
 {"text":"Bluebeard’s Eighth Wife"}
 {"text":"Blues Brothers"}
-{"text":"Bluey w kinie: Kolekcja Zabawy z przyjaciółmi"}
+{"text":"Bluey w kinie: Kolekcja Zabawy z przyjaciółmi","pl,uk,de,us,es":{"query":"Kolekcja Zabawy z przyjaciółmi","programme":"Bluey w kinie: ","bannerEnd":15}}
 {"text":"Blutgericht in Texas"}
 {"text":"Blutige Erdbeeren"}
 {"text":"Blutsbrüder teilen alles"}
@@ -2090,7 +2090,7 @@
 {"text":"Bring her Back"}
 {"text":"Bringing Out the Dead"}
 {"text":"Bringing Up Baby"}
-{"text":"Bristol Bad Film Club presents: Dial Code Santa Claus (18 CTBA) S"}
+{"text":"Bristol Bad Film Club presents: Dial Code Santa Claus (18 CTBA) S","pl,uk,de,us,es":{"query":"Dial Code Santa Claus (18 CTBA) S","programme":"Bristol Bad Film Club presents: ","bannerEnd":32}}
 {"text":"Bristol Surf Cinema: The Big Sea (15)","pl,uk,de,us,es":{"query":"Bristol Surf Cinema: The Big Sea"}}
 {"text":"Brit Rock 2026"}
 {"text":"Brit Rock Tour"}
@@ -2241,11 +2241,11 @@
 {"text":"CINEMAFORUM - Nagrody im. Jana Machulskiego (22. edycja) PROJEKCJA VI Filmy nominowane w kategorii: Najlepszy Aktor, Najlepsza Reżyseria","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"CINEMAFORUM - Nagrody im. Jana Machulskiego (22. edycja) PROJEKCJA VI Filmy nominowane w kategorii: Najlepszy Aktor"}}}
 {"text":"CINEMAFORUM - POKAZ SPECJALNY","pl,uk,de,us,es":{"query":"CINEMAFORUM"}}
 {"text":"CINEMAFORUM - Pokaz Niezależnych Teledysków","pl,uk,de,us,es":{"query":"CINEMAFORUM"}}
-{"text":"CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA I"}
-{"text":"CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA II"}
-{"text":"CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA III"}
+{"text":"CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA I","pl,uk,de,us,es":{"query":"CINEMAFORUM"}}
+{"text":"CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA II","pl,uk,de,us,es":{"query":"CINEMAFORUM"}}
+{"text":"CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA III","pl,uk,de,us,es":{"query":"CINEMAFORUM"}}
 {"text":"CINESCULTURA SCHULVORSTELLUNG 90 MINUTEN"}
-{"text":"CINEVILLE PREVIEW: LA BOLA NEGRA","pl,uk,de,us,es":{"query":"LA BOLA NEGRA","bannerEnd":19}}
+{"text":"CINEVILLE PREVIEW: LA BOLA NEGRA","pl,uk,de,us,es":{"query":"LA BOLA NEGRA","programme":"CINEVILLE PREVIEW: ","bannerEnd":19}}
 {"text":"CINÉMA_FRANÇAIS: La femme la plus riche du monde - Die reichste Frau der Welt"}
 {"text":"CINÉMA_FRANÇAIS: L’attachement - Was uns verbindet"}
 {"text":"CLAYFACE"}
@@ -2255,7 +2255,7 @@
 {"text":"CLIMAX"}
 {"text":"CLOSE YOUR EYES"}
 {"text":"CLUB KIDMonGay-Vorpremiere","pl,uk,de,us,es":{"query":"CLUB KIDMonGay"}}
-{"text":"CLUB KIDMonGay-Vorpremiere - engl. OmU"}
+{"text":"CLUB KIDMonGay-Vorpremiere - engl. OmU","pl,uk,de,us,es":{"query":"engl. OmU","programme":"CLUB KIDMonGay-Vorpremiere - ","bannerEnd":29}}
 {"text":"COCKTAIL FÜR EINE LEICHE"}
 {"text":"COCO"}
 {"text":"COCO - LEBENDIGER ALS DAS LEBEN!"}
@@ -2551,7 +2551,7 @@
 {"text":"Christmas Bloody Christmas"}
 {"text":"Christmas Evil"}
 {"text":"Christmas Family Art Day"}
-{"text":"Christmas Ladies Night: Liebe braucht keine Ferien"}
+{"text":"Christmas Ladies Night: Liebe braucht keine Ferien","pl,uk,de,us,es":{"query":"Liebe braucht keine Ferien","programme":"Christmas Ladies Night: ","bannerEnd":24}}
 {"text":"Christmas Market"}
 {"text":"Christmas Presence"}
 {"text":"Christmas Spirit Film Festival Closing Night"}
@@ -2900,9 +2900,9 @@
 {"text":"Culinarico: A Sad and Beautiful World"}
 {"text":"Culinarico: Sinn und Sinnlichkeit"}
 {"text":"Culinarico: The North"}
-{"text":"Cult Film Club: Clue (PG)","pl,uk,de,us,es":{"query":"Cult Film Club: Clue"}}
-{"text":"Cult Film Club: Highlander (15)","pl,uk,de,us,es":{"query":"Cult Film Club: Highlander"}}
-{"text":"Cult Film Club: Tenacious D In The Pick Of Destiny (15)","pl,uk,de,us,es":{"query":"Cult Film Club: Tenacious D In The Pick Of Destiny"}}
+{"text":"Cult Film Club: Clue (PG)","pl,uk,de,us,es":{"query":"Clue","programme":"Cult Film Club: ","bannerEnd":16}}
+{"text":"Cult Film Club: Highlander (15)","pl,uk,de,us,es":{"query":"Highlander","programme":"Cult Film Club: ","bannerEnd":16}}
+{"text":"Cult Film Club: Tenacious D In The Pick Of Destiny (15)","pl,uk,de,us,es":{"query":"Tenacious D In The Pick Of Destiny","programme":"Cult Film Club: ","bannerEnd":16}}
 {"text":"Culty Classic: Wild Zero"}
 {"text":"Cunk on Cinema - TV Preview","pl,uk,de,us,es":{"query":"Cunk on Cinema"}}
 {"text":"Curator's Talk: I Push My Fingers into My Phone's Eyes"}
@@ -2913,20 +2913,20 @@
 {"text":"Cycle Of Love"}
 {"text":"Cycle of Love"}
 {"text":"Cycling Cities"}
-{"text":"Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie","pl,uk,de,us,es":{"query":"Zawieście czerwone latarnie","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Kultowa klasyka - Zawieście czerwone latarnie"}}}
-{"text":"Cykl \"Kultowe Klasyki\" - Windą na szafot (1958)","pl,uk,de,us,es":{"query":"Windą na szafot (1958)","key":"Cykl \"Kultowe Klasyki\" - Windą na szafot","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Kultowe Klasyki - Windą na szafot (1958)","kino-kinematograf":"Cykl \"Kultowe Klasyki\" - Windą na szafot"}}}
-{"text":"Cykl Ale Kino - Drugie życie"}
-{"text":"Cykl Ale Kino - Father Mother Sister Brother"}
-{"text":"Cykl Ale Kino - Królowa Kier"}
-{"text":"Cykl Ale Kino - O czym sobie nie mówimy"}
-{"text":"Cykl Ale Kino - O czym wie Marielle"}
-{"text":"Cykl Ale Kino - Wolność po włosku"}
-{"text":"Cykl Ale Kino - Wędrówka na północ"}
-{"text":"Cykl Klasyki Filmowe Tak było wczoraj...: Harry Angel | 2D | Napisy","pl,uk,de,us,es":{"query":"Harry Angel | 2D | Napisy","bannerEnd":42,"venue":{"bok":"Cykl Klasyki Filmowe Tak było wczoraj...: Harry Angel: 2D: Napisy"}}}
-{"text":"Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment (1978)","pl,uk,de,us,es":{"query":"Bez znieczulenia","key":"Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Bez znieczulenia / Rough Treatment (1978)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment"}}}
-{"text":"Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)","pl,uk,de,us,es":{"query":"Człowiek z marmuru","key":"Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Człowiek z marmuru / Man of Marble (1977)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble"}}}
-{"text":"Cykl „Wajda: re-wizje\" - Wszystko na sprzedaż / Everything for Sale (1974)","pl,uk,de,us,es":{"query":"Wszystko na sprzedaż","key":"Cykl „Wajda: re-wizje\" - Wszystko na sprzedaż / Everything for Sale","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Wszystko na sprzedaż / Everything for Sale (1974)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Wszystko na sprzedaż / Everything for Sale"}}}
-{"text":"Cykl „Wajda: re-wizje\" - Ziemia obiecana / The Promised Land (1974)","pl,uk,de,us,es":{"query":"Ziemia obiecana","key":"Cykl „Wajda: re-wizje\" - Ziemia obiecana / The Promised Land","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Ziemia obiecana / The Promised Land (1974)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Ziemia obiecana / The Promised Land"}}}
+{"text":"Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie","pl,uk,de,us,es":{"query":"Zawieście czerwone latarnie","programme":"Cykl \"Kultowa klasyka\" - ","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Kultowa klasyka - Zawieście czerwone latarnie"}}}
+{"text":"Cykl \"Kultowe Klasyki\" - Windą na szafot (1958)","pl,uk,de,us,es":{"query":"Windą na szafot (1958)","key":"Cykl \"Kultowe Klasyki\" - Windą na szafot","programme":"Cykl \"Kultowe Klasyki\" - ","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Kultowe Klasyki - Windą na szafot (1958)","kino-kinematograf":"Cykl \"Kultowe Klasyki\" - Windą na szafot"}}}
+{"text":"Cykl Ale Kino - Drugie życie","pl,uk,de,us,es":{"query":"Drugie życie","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Ale Kino - Father Mother Sister Brother","pl,uk,de,us,es":{"query":"Father Mother Sister Brother","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Ale Kino - Królowa Kier","pl,uk,de,us,es":{"query":"Królowa Kier","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Ale Kino - O czym sobie nie mówimy","pl,uk,de,us,es":{"query":"O czym sobie nie mówimy","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Ale Kino - O czym wie Marielle","pl,uk,de,us,es":{"query":"O czym wie Marielle","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Ale Kino - Wolność po włosku","pl,uk,de,us,es":{"query":"Wolność po włosku","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Ale Kino - Wędrówka na północ","pl,uk,de,us,es":{"query":"Wędrówka na północ","programme":"Cykl Ale Kino - ","bannerEnd":16}}
+{"text":"Cykl Klasyki Filmowe Tak było wczoraj...: Harry Angel | 2D | Napisy","pl,uk,de,us,es":{"query":"Harry Angel | 2D | Napisy","programme":"Cykl Klasyki Filmowe Tak było wczoraj...: ","bannerEnd":42,"venue":{"bok":"Cykl Klasyki Filmowe Tak było wczoraj...: Harry Angel: 2D: Napisy"}}}
+{"text":"Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment (1978)","pl,uk,de,us,es":{"query":"Bez znieczulenia","key":"Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment","programme":"Cykl „Wajda: re-wizje\" - ","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Bez znieczulenia / Rough Treatment (1978)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment"}}}
+{"text":"Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)","pl,uk,de,us,es":{"query":"Człowiek z marmuru","key":"Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble","programme":"Cykl „Wajda: re-wizje\" - ","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Człowiek z marmuru / Man of Marble (1977)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble"}}}
+{"text":"Cykl „Wajda: re-wizje\" - Wszystko na sprzedaż / Everything for Sale (1974)","pl,uk,de,us,es":{"query":"Wszystko na sprzedaż","key":"Cykl „Wajda: re-wizje\" - Wszystko na sprzedaż / Everything for Sale","programme":"Cykl „Wajda: re-wizje\" - ","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Wszystko na sprzedaż / Everything for Sale (1974)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Wszystko na sprzedaż / Everything for Sale"}}}
+{"text":"Cykl „Wajda: re-wizje\" - Ziemia obiecana / The Promised Land (1974)","pl,uk,de,us,es":{"query":"Ziemia obiecana","key":"Cykl „Wajda: re-wizje\" - Ziemia obiecana / The Promised Land","programme":"Cykl „Wajda: re-wizje\" - ","bannerEnd":25,"venue":{"kino-alternatywy":"Cykl Wajda: re-wizje - Ziemia obiecana / The Promised Land (1974)","kino-kinematograf":"Cykl „Wajda: re-wizje\" - Ziemia obiecana / The Promised Land"}}}
 {"text":"Czarna Owca | UŚMIECH O PORANKU","pl,uk,de,us,es":{"venue":{"bok":"Czarna Owca"}}}
 {"text":"Czarne zombie | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Czarne zombie: Splat!FilmFest"}}}
 {"text":"Czas , który nie nadszedł"}
@@ -3209,20 +3209,20 @@
 {"text":"DJAM"}
 {"text":"DJANGO"}
 {"text":"DJANGO - EIN LEBEN FÜR DIE MUSIK"}
-{"text":"DKF - DIABŁY","pl,uk,de,us,es":{"query":"DIABŁY","bannerEnd":6}}
-{"text":"DKF - DŹWIĘKI MIŁOŚCI","pl,uk,de,us,es":{"query":"DŹWIĘKI MIŁOŚCI","bannerEnd":6}}
-{"text":"DKF - GURU","pl,uk,de,us,es":{"query":"GURU","bannerEnd":6}}
-{"text":"DKF - HOMO SAPIENS?","pl,uk,de,us,es":{"query":"HOMO SAPIENS?","bannerEnd":6}}
-{"text":"DKF - KANDYDACI ŚMIERCI","pl,uk,de,us,es":{"query":"KANDYDACI ŚMIERCI","bannerEnd":6}}
-{"text":"DKF - LABIRYNT FAUNA","pl,uk,de,us,es":{"query":"LABIRYNT FAUNA","bannerEnd":6}}
-{"text":"DKF - O czym wie Marielle 2D napisy","pl,uk,de,us,es":{"query":"O czym wie Marielle 2D napisy","bannerEnd":6}}
+{"text":"DKF - DIABŁY","pl,uk,de,us,es":{"query":"DIABŁY","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - DŹWIĘKI MIŁOŚCI","pl,uk,de,us,es":{"query":"DŹWIĘKI MIŁOŚCI","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - GURU","pl,uk,de,us,es":{"query":"GURU","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - HOMO SAPIENS?","pl,uk,de,us,es":{"query":"HOMO SAPIENS?","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - KANDYDACI ŚMIERCI","pl,uk,de,us,es":{"query":"KANDYDACI ŚMIERCI","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - LABIRYNT FAUNA","pl,uk,de,us,es":{"query":"LABIRYNT FAUNA","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - O czym wie Marielle 2D napisy","pl,uk,de,us,es":{"query":"O czym wie Marielle 2D napisy","programme":"DKF - ","bannerEnd":6}}
 {"text":"DKF - Oasis: Don’t Look Back in Anger","pl,uk,de,us,es":{"query":"Don’t Look Back in Anger","programme":"DKF - Oasis: ","bannerEnd":13}}
-{"text":"DKF - Obcy","pl,uk,de,us,es":{"query":"Obcy","bannerEnd":6}}
-{"text":"DKF - SALTO","pl,uk,de,us,es":{"query":"SALTO","bannerEnd":6}}
-{"text":"DKF - Vivaldi i ja 2D napisy","pl,uk,de,us,es":{"query":"Vivaldi i ja 2D napisy","bannerEnd":6}}
-{"text":"DKF - WAŁKONIE","pl,uk,de,us,es":{"query":"WAŁKONIE","bannerEnd":6}}
-{"text":"DKF - ZIEMIA OBIECANA","pl,uk,de,us,es":{"query":"ZIEMIA OBIECANA","bannerEnd":6}}
-{"text":"DKF - ZNIKNIĘCIE","pl,uk,de,us,es":{"query":"ZNIKNIĘCIE","bannerEnd":6}}
+{"text":"DKF - Obcy","pl,uk,de,us,es":{"query":"Obcy","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - SALTO","pl,uk,de,us,es":{"query":"SALTO","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - Vivaldi i ja 2D napisy","pl,uk,de,us,es":{"query":"Vivaldi i ja 2D napisy","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - WAŁKONIE","pl,uk,de,us,es":{"query":"WAŁKONIE","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - ZIEMIA OBIECANA","pl,uk,de,us,es":{"query":"ZIEMIA OBIECANA","programme":"DKF - ","bannerEnd":6}}
+{"text":"DKF - ZNIKNIĘCIE","pl,uk,de,us,es":{"query":"ZNIKNIĘCIE","programme":"DKF - ","bannerEnd":6}}
 {"text":"DKF Człowiek w Zagrożeniu: Pociągi","pl,uk,de,us,es":{"query":"Pociągi","programme":"DKF Człowiek w Zagrożeniu: ","bannerEnd":27}}
 {"text":"DKF GAG: W tym kraju nie ma dobrych mężczyzn","pl,uk,de,us,es":{"query":"W tym kraju nie ma dobrych mężczyzn","programme":"DKF GAG: ","bannerEnd":9}}
 {"text":"DKF Immersja: Following (1998) - seans z prelekcją i dyskusją","pl,uk,de,us,es":{"query":"Following (1998)","programme":"DKF Immersja: ","bannerEnd":14}}
@@ -3238,9 +3238,9 @@
 {"text":"DKF Pełna Sala: Diabły","pl,uk,de,us,es":{"query":"Diabły","programme":"DKF Pełna Sala: ","bannerEnd":16}}
 {"text":"DKF Pełna Sala: FEDERICO FELLINI: ciao a tutti: Wałkonie","pl,uk,de,us,es":{"query":"Wałkonie","programme":"DKF Pełna Sala: ","bannerEnd":16}}
 {"text":"DKF Rozpięci: FEDERICO FELLINI: ciao a tutti!","pl,uk,de,us,es":{"query":"","programme":"DKF Rozpięci: ","bannerEnd":14}}
-{"text":"DKF Szpula – DRUGIE ŻYCIE"}
+{"text":"DKF Szpula – DRUGIE ŻYCIE","pl,uk,de,us,es":{"query":"DRUGIE ŻYCIE","programme":"DKF Szpula – ","bannerEnd":13}}
 {"text":"DKF Zamek: Amelia","pl,uk,de,us,es":{"query":"Amelia","programme":"DKF Zamek: ","bannerEnd":11}}
-{"text":"DKF Zamek: Amelia | SEANS WYPRZEDANY","pl,uk,de,us,es":{"query":"Amelia | SEANS WYPRZEDANY","programme":"DKF Zamek: ","bannerEnd":11,"venue":{"bok":"DKF Zamek: Amelia"}}}
+{"text":"DKF Zamek: Amelia | SEANS WYPRZEDANY","pl,uk,de,us,es":{"query":"Amelia","programme":"DKF Zamek: ","bannerEnd":11,"venue":{"bok":"DKF Zamek: Amelia"}}}
 {"text":"DKF Zamek: Diabły","pl,uk,de,us,es":{"query":"Diabły","programme":"DKF Zamek: ","bannerEnd":11}}
 {"text":"DKF Zamek: Frances Ha","pl,uk,de,us,es":{"query":"Frances Ha","programme":"DKF Zamek: ","bannerEnd":11}}
 {"text":"DKF Zamek: Godzilla Minus Zero","pl,uk,de,us,es":{"query":"Godzilla Minus Zero","programme":"DKF Zamek: ","bannerEnd":11}}
@@ -3254,15 +3254,15 @@
 {"text":"DKF-ABSOLWENT","pl,uk,de,us,es":{"query":"ABSOLWENT","bannerEnd":4}}
 {"text":"DKF-AREK. MAMA. PANORAMA","pl,uk,de,us,es":{"query":"AREK. MAMA. PANORAMA","bannerEnd":4}}
 {"text":"DKF-DIABŁY","pl,uk,de,us,es":{"query":"DIABŁY","bannerEnd":4}}
-{"text":"DKF: Kura","pl,uk,de,us,es":{"query":"Kura","bannerEnd":5}}
-{"text":"DKF: Naza","pl,uk,de,us,es":{"query":"Naza","bannerEnd":5}}
-{"text":"DKF: Nikt nie wie","pl,uk,de,us,es":{"query":"Nikt nie wie","bannerEnd":5}}
-{"text":"DKF: OBCY","pl,uk,de,us,es":{"query":"OBCY","bannerEnd":5}}
-{"text":"DKF: Pejzaż w kolorze sepii","pl,uk,de,us,es":{"query":"Pejzaż w kolorze sepii","bannerEnd":5}}
-{"text":"DKF: Primetime","pl,uk,de,us,es":{"query":"Primetime","bannerEnd":5}}
-{"text":"DKF: Róża","pl,uk,de,us,es":{"query":"Róża","bannerEnd":5}}
-{"text":"DKF: SIRÂT","pl,uk,de,us,es":{"query":"SIRÂT","bannerEnd":5}}
-{"text":"DKF: Wieloryb","pl,uk,de,us,es":{"query":"Wieloryb","bannerEnd":5}}
+{"text":"DKF: Kura","pl,uk,de,us,es":{"query":"Kura","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: Naza","pl,uk,de,us,es":{"query":"Naza","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: Nikt nie wie","pl,uk,de,us,es":{"query":"Nikt nie wie","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: OBCY","pl,uk,de,us,es":{"query":"OBCY","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: Pejzaż w kolorze sepii","pl,uk,de,us,es":{"query":"Pejzaż w kolorze sepii","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: Primetime","pl,uk,de,us,es":{"query":"Primetime","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: Róża","pl,uk,de,us,es":{"query":"Róża","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: SIRÂT","pl,uk,de,us,es":{"query":"SIRÂT","programme":"DKF: ","bannerEnd":5}}
+{"text":"DKF: Wieloryb","pl,uk,de,us,es":{"query":"Wieloryb","programme":"DKF: ","bannerEnd":5}}
 {"text":"DO NIEZNANEJ ZIEMI | PALESTINE CINEMA DAYS POLAND 2026","pl,uk,de,us,es":{"venue":{"bok":"DO NIEZNANEJ ZIEMI"}}}
 {"text":"DOBRY CHŁOPIEC"}
 {"text":"DOC'N ROLL: NOFX: 40 YEARS OF F*N’ UP!"}
@@ -3329,7 +3329,7 @@
 {"text":"DZIEŃ DZIECKA KS. JANA KACZKOWSKIEGO"}
 {"text":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO | PL | 12+ |","pl,uk,de,us,es":{"venue":{"bok":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO: PL: 12+:"}}}
 {"text":"DZIEŃ DZIECKA KSIĘDZA JANA KACZKOWSKIEGO"}
-{"text":"DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją"}
+{"text":"DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją","pl,uk,de,us,es":{"query":"Przepraszam, czy tu biją","programme":"DZIEŃ KINA POLSKIEGO: ","bannerEnd":22}}
 {"text":"DZIEŃ OBJAWIENIA"}
 {"text":"DZIKI KOŃ DZIEWIĘĆ"}
 {"text":"DZIKI ROBOT"}
@@ -3412,7 +3412,7 @@
 {"text":"Das Gewicht der Welt"}
 {"text":"Das Gewisse Etwas"}
 {"text":"Das Gewisse Etwas - Filmcafe"}
-{"text":"Das Gewisse Etwas - Kino Kaffee"}
+{"text":"Das Gewisse Etwas - Kino Kaffee","pl,uk,de,us,es":{"query":"Das Gewisse Etwas"}}
 {"text":"Das Haus der Lady Alquist"}
 {"text":"Das Haus der Vergessenen"}
 {"text":"Das Hennefer Sofa"}
@@ -3503,8 +3503,8 @@
 {"text":"Davy Crockett und die Flusspiraten"}
 {"text":"Dawn of the Dead"}
 {"text":"Dawn of the Dead (2004)","pl,uk,de,us,es":{"key":"Dawn of the Dead","venue":{"kino-kinematograf":"Dawn of the Dead"}}}
-{"text":"Dawno temu w kinie - Piętro wyżej"}
-{"text":"Dawno temu w kinie - Szarada"}
+{"text":"Dawno temu w kinie - Piętro wyżej","pl,uk,de,us,es":{"query":"Piętro wyżej","programme":"Dawno temu w kinie - ","bannerEnd":21}}
+{"text":"Dawno temu w kinie - Szarada","pl,uk,de,us,es":{"query":"Szarada","programme":"Dawno temu w kinie - ","bannerEnd":21}}
 {"text":"Dawson City: Frozen Time"}
 {"text":"Day of the Dead"}
 {"text":"Daybreakers"}
@@ -3592,9 +3592,9 @@
 {"text":"Delupi (London Breeze Film Festival UK Premiere + Q&A)","pl,uk,de,us,es":{"query":"Delupi"}}
 {"text":"Demain je tombe amoureux"}
 {"text":"Demain je tombe amoureux - Die kleinen Lektionen der Liebe"}
-{"text":"Dementia Freindly Screening | Holiday Inn","pl,uk,de,us,es":{"venue":{"bok":"Dementia Freindly Screening: Holiday Inn"}}}
-{"text":"Dementia Freindly Screening | Lullaby Of Broadway","pl,uk,de,us,es":{"venue":{"bok":"Dementia Freindly Screening: Lullaby Of Broadway"}}}
-{"text":"Dementia Freindly Screening | Tea For Two","pl,uk,de,us,es":{"venue":{"bok":"Dementia Freindly Screening: Tea For Two"}}}
+{"text":"Dementia Freindly Screening | Holiday Inn","pl,uk,de,us,es":{"query":"Holiday Inn","programme":"Dementia Freindly Screening | ","bannerEnd":30,"venue":{"bok":"Dementia Freindly Screening: Holiday Inn"}}}
+{"text":"Dementia Freindly Screening | Lullaby Of Broadway","pl,uk,de,us,es":{"query":"Lullaby Of Broadway","programme":"Dementia Freindly Screening | ","bannerEnd":30,"venue":{"bok":"Dementia Freindly Screening: Lullaby Of Broadway"}}}
+{"text":"Dementia Freindly Screening | Tea For Two","pl,uk,de,us,es":{"query":"Tea For Two","programme":"Dementia Freindly Screening | ","bannerEnd":30,"venue":{"bok":"Dementia Freindly Screening: Tea For Two"}}}
 {"text":"Dementia Friendly: Butch Cassidy and the Sundance Kid - Cert PG","pl,uk,de,us,es":{"query":"Butch Cassidy and the Sundance Kid","programme":"Dementia Friendly: ","bannerEnd":19}}
 {"text":"Dementia Friendly: Mamma Mia: Here We Go Again - Cert PG","pl,uk,de,us,es":{"query":"Mamma Mia: Here We Go Again","programme":"Dementia Friendly: ","bannerEnd":19}}
 {"text":"Dementia Friendly: My Fair Lady","pl,uk,de,us,es":{"query":"My Fair Lady","programme":"Dementia Friendly: ","bannerEnd":19}}
@@ -3750,8 +3750,8 @@
 {"text":"Der Perfekte Schein - Der Fall Bojarski"}
 {"text":"Der Perfekte Urlaub"}
 {"text":"Der Perfekte Urlaub (auch All Inclusive Preview)","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub"}}
-{"text":"Der Perfekte Urlaub - Ladies Night"}
-{"text":"Der Perfekte Urlaub - Ladies Night!"}
+{"text":"Der Perfekte Urlaub - Ladies Night","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub"}}
+{"text":"Der Perfekte Urlaub - Ladies Night!","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub"}}
 {"text":"Der Perfekte Urlaub - Mädelsabend"}
 {"text":"Der Perfekte Urlaub - Premieren Abend"}
 {"text":"Der Perfekte Urlaub - Strickkino"}
@@ -3859,7 +3859,7 @@
 {"text":"Der perfekte Urlaub (Ladies Night)"}
 {"text":"Der perfekte Urlaub (Preview)","pl,uk,de,us,es":{"query":"Der perfekte Urlaub"}}
 {"text":"Der perfekte Urlaub (Tapas Kino)"}
-{"text":"Der perfekte Urlaub - Ladies Night"}
+{"text":"Der perfekte Urlaub - Ladies Night","pl,uk,de,us,es":{"query":"Der perfekte Urlaub"}}
 {"text":"Der perfekte Urlaub / &#128131;&#10024; MÄDELSABEND &#10024;&#128096;&#127851;&#127916; AUCH DONNERSTAG 22.10.| 20:15","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","venue":{"bok":"Der perfekte Urlaub / &#128131;&#10024; MÄDELSABEND &#10024;&#128096;&#127851;&#127916; AUCH DONNERSTAG 22.10.: 20:15"}}}
 {"text":"Der perfekte Urlaub LN"}
 {"text":"Der perfekte Urlaub VINO & KINO","pl":{"key":"Der perfekte Urlaub VINO i KINO","display":"Der perfekte Urlaub VINO i KINO"}}
@@ -3917,7 +3917,7 @@
 {"text":"Diabolique"}
 {"text":"Diabły"}
 {"text":"Diabły (1971)","pl,uk,de,us,es":{"key":"Diabły","venue":{"kino-kinematograf":"Diabły"}}}
-{"text":"Diabły + pokaz teledysków | Labirynty grozy","pl,uk,de,us,es":{"query":"Diabły","venue":{"bok":"Diabły + pokaz teledysków: Labirynty grozy"}}}
+{"text":"Diabły + pokaz teledysków | Labirynty grozy","pl,uk,de,us,es":{"query":"Diabły","programme":"Diabły + pokaz teledysków | ","bannerEnd":28,"venue":{"bok":"Diabły + pokaz teledysków: Labirynty grozy"}}}
 {"text":"Diabły w Helios RePlay","pl,uk,de,us,es":{"venue":{"helios":"Diabły"}}}
 {"text":"Diabły | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Diabły: Splat!FilmFest"}}}
 {"text":"Diabły | repremiera w 4K","pl,uk,de,us,es":{"query":"Diabły | repremiera w","venue":{"bok":"Diabły: repremiera w 4K"}}}
@@ -3973,7 +3973,7 @@
 {"text":"Die Camino-Therapie - Compostelle"}
 {"text":"Die Camino-Therapie - Finde deinen Weg"}
 {"text":"Die Camino-Therapie - Finde deinen Weg - Filmcafe"}
-{"text":"Die Camino-Therapie - Finde deinen Weg - Kino für Junggebliebene"}
+{"text":"Die Camino-Therapie - Finde deinen Weg - Kino für Junggebliebene","pl,uk,de,us,es":{"query":"Die Camino-Therapie - Finde deinen Weg"}}
 {"text":"Die Camino-Therapie - Finde deinen Weg KoKi"}
 {"text":"Die Chroniken von Erdsee"}
 {"text":"Die Classics! LÿzMixVarieté"}
@@ -4287,17 +4287,17 @@
 {"text":"Djeliya, memoire du Mandé"}
 {"text":"Dla dobra Adama"}
 {"text":"Dmuchawce"}
-{"text":"Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW"}
-{"text":"Dni Kina Niemego - Buster Keaton dla dzieci"}
-{"text":"Dni Kina Niemego - Pierwsze wredne baby kina: KRÓLOWE DESTRUKCJI"}
-{"text":"Dni Kina Niemego - Portier z Hotelu Atlantic"}
-{"text":"Dni Kina Niemego - Quo vadis?"}
+{"text":"Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW","pl,uk,de,us,es":{"query":"100 lat temu: SYMFONIA ZMYSŁÓW","programme":"Dni Kina Niemego - ","bannerEnd":19}}
+{"text":"Dni Kina Niemego - Buster Keaton dla dzieci","pl,uk,de,us,es":{"query":"Buster Keaton dla dzieci","programme":"Dni Kina Niemego - ","bannerEnd":19}}
+{"text":"Dni Kina Niemego - Pierwsze wredne baby kina: KRÓLOWE DESTRUKCJI","pl,uk,de,us,es":{"query":"KRÓLOWE DESTRUKCJI","programme":"Dni Kina Niemego - Pierwsze wredne baby kina: ","bannerEnd":46}}
+{"text":"Dni Kina Niemego - Portier z Hotelu Atlantic","pl,uk,de,us,es":{"query":"Portier z Hotelu Atlantic","programme":"Dni Kina Niemego - ","bannerEnd":19}}
+{"text":"Dni Kina Niemego - Quo vadis?","pl,uk,de,us,es":{"query":"Quo vadis?","programme":"Dni Kina Niemego - ","bannerEnd":19}}
 {"text":"Do You Love Me"}
 {"text":"Do nieznanej ziemi"}
 {"text":"Do the Right Thing"}
 {"text":"Do utraty tchu"}
 {"text":"Dobra siostra"}
-{"text":"Dobrostan nauczyciela. Kino: Kwiaty Ukrainy"}
+{"text":"Dobrostan nauczyciela. Kino: Kwiaty Ukrainy","pl,uk,de,us,es":{"query":"Kwiaty Ukrainy","programme":"Dobrostan nauczyciela. Kino: ","bannerEnd":29}}
 {"text":"Dobry chłopiec"}
 {"text":"Dobry wojak Szwejk"}
 {"text":"Dobry, zły i brzydki"}
@@ -4465,7 +4465,7 @@
 {"text":"Drugie życie (z lektorem)"}
 {"text":"Drugie życie - pokaz specjalny z Urzędem Śródmieście","pl,uk,de,us,es":{"query":"Drugie życie"}}
 {"text":"Drugie życie / Dobre kino po sąsiedzku","pl,uk,de,us,es":{"query":"Drugie życie"}}
-{"text":"Drugie życie | KINO PRZYJAZNE RODZICOM","pl,uk,de,us,es":{"venue":{"bok":"Drugie życie"}}}
+{"text":"Drugie życie | KINO PRZYJAZNE RODZICOM","pl,uk,de,us,es":{"query":"Drugie życie","venue":{"bok":"Drugie życie"}}}
 {"text":"Drugie życie | Kino przy herbatce","pl,uk,de,us,es":{"query":"Drugie życie","venue":{"bok":"Drugie życie: Kino przy herbatce"}}}
 {"text":"Drugie życie | przedpremierowo","pl,uk,de,us,es":{"query":"Drugie życie","venue":{"bok":"Drugie życie: przedpremierowo"}}}
 {"text":"Drugie życie/Kino Cafe","pl,uk,de,us,es":{"venue":{"kino-oskard":"Drugie życie"}}}
@@ -4539,7 +4539,7 @@
 {"text":"Dymkowski. Najważniejszy mecz. Pokaz Specjalny"}
 {"text":"Dyrygent"}
 {"text":"Dyrygent + prelekcja Julii Palmowskiej z portalu Pełna Sala","pl,uk,de,us,es":{"query":"Dyrygent"}}
-{"text":"Dyskusyjny Klub Bajkowy: Tajemnica śpiewających ptaków"}
+{"text":"Dyskusyjny Klub Bajkowy: Tajemnica śpiewających ptaków","pl,uk,de,us,es":{"query":"Tajemnica śpiewających ptaków","programme":"Dyskusyjny Klub Bajkowy: ","bannerEnd":25}}
 {"text":"Dyskusyjny Klub Filmowy- Kandydaci Śmierci"}
 {"text":"Dyskusyjny Klub Filmowy: Kumotry","pl,uk,de,us,es":{"query":"Kumotry","programme":"Dyskusyjny Klub Filmowy: ","bannerEnd":25}}
 {"text":"Dziadek do Orzechów | The Royal Ballet","pl,uk,de,us,es":{"venue":{"bok":"Dziadek do Orzechów: The Royal Ballet"}}}
@@ -4563,17 +4563,17 @@
 {"text":"Dzień Dziecka księdza Jana Kaczkowskiego"}
 {"text":"Dzień Dziecka księdza Jana Kaczkowskiego."}
 {"text":"Dzień Kina Indyjskiego w Narodowym Centrum Kultury Filmowej"}
-{"text":"Dzień Kina Polskiego - Przez ścianę (PL)"}
-{"text":"Dzień Kina Polskiego: Czas, który nie nadszedł"}
-{"text":"Dzień Kina Polskiego: Lalka"}
-{"text":"Dzień Kina Polskiego: Nie ma duchów w mieszkaniu na Dobrej"}
-{"text":"Dzień Kina Polskiego: Niesamowite przygody skarpetek 4. Do roboty!"}
-{"text":"Dzień Kina Polskiego: Ojczyzna"}
-{"text":"Dzień Kina Polskiego: Przez ścianę | Przedpremiera","pl,uk,de,us,es":{"query":"Dzień Kina Polskiego: Przez ścianę","venue":{"bok":"Dzień Kina Polskiego: Przez ścianę: Przedpremiera"}}}
-{"text":"Dzień Kina Polskiego: Pucio kocha zwierzaki"}
-{"text":"Dzień Kina Polskiego: Wiedźmin"}
-{"text":"Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu"}
-{"text":"Dzień Kina Polskiego: Znaki Pana Śliwki"}
+{"text":"Dzień Kina Polskiego - Przez ścianę (PL)","pl,uk,de,us,es":{"query":"Przez ścianę (PL)","programme":"Dzień Kina Polskiego - ","bannerEnd":23}}
+{"text":"Dzień Kina Polskiego: Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Lalka","pl,uk,de,us,es":{"query":"Lalka","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Nie ma duchów w mieszkaniu na Dobrej","pl,uk,de,us,es":{"query":"Nie ma duchów w mieszkaniu na Dobrej","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Niesamowite przygody skarpetek 4. Do roboty!","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4. Do roboty!","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Ojczyzna","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Przez ścianę | Przedpremiera","pl,uk,de,us,es":{"query":"Przez ścianę","programme":"Dzień Kina Polskiego: ","bannerEnd":22,"venue":{"bok":"Dzień Kina Polskiego: Przez ścianę: Przedpremiera"}}}
+{"text":"Dzień Kina Polskiego: Pucio kocha zwierzaki","pl,uk,de,us,es":{"query":"Pucio kocha zwierzaki","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Wiedźmin","pl,uk,de,us,es":{"query":"Wiedźmin","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu","pl,uk,de,us,es":{"query":"Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Znaki Pana Śliwki","pl,uk,de,us,es":{"query":"Znaki Pana Śliwki","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
 {"text":"Dzień Objawienia"}
 {"text":"Dzień dziecka Księdza Jana Kaczkowskiego"}
 {"text":"Dzień dziecka księdza Jana Kaczkowskiego"}
@@ -4590,7 +4590,7 @@
 {"text":"Dzień objawienia"}
 {"text":"Dzień objawienia ukraiński dubbing","pl,uk,de,us,es":{"query":"Dzień objawienia"}}
 {"text":"Dzień objawienia | Kino przy herbatce","pl,uk,de,us,es":{"query":"Dzień objawienia","venue":{"bok":"Dzień objawienia: Kino przy herbatce"}}}
-{"text":"Dzień objawienia | Seans premierowy w Kosmosie","pl,uk,de,us,es":{"venue":{"bok":"Dzień objawienia: Seans premierowy w Kosmosie"}}}
+{"text":"Dzień objawienia | Seans premierowy w Kosmosie","pl,uk,de,us,es":{"query":"Dzień objawienia","venue":{"bok":"Dzień objawienia: Seans premierowy w Kosmosie"}}}
 {"text":"Dziki Koń Dziewięć"}
 {"text":"Dziki Koń Dziewięć | Kino przy herbatce","pl,uk,de,us,es":{"query":"Dziki Koń Dziewięć","venue":{"bok":"Dziki Koń Dziewięć: Kino przy herbatce"}}}
 {"text":"Dziś nie gramy, wybierz inną datę."}
@@ -4705,11 +4705,11 @@
 {"text":"Eagle"}
 {"text":"Eagle Eye - Außer Kontrolle"}
 {"text":"Eagles of the Republic"}
-{"text":"Ealing Film Festival: Homegrown 1","pl,uk,de,us,es":{"query":"Homegrown 1","bannerEnd":22}}
-{"text":"Ealing Film Festival: Homegrown 2","pl,uk,de,us,es":{"query":"Homegrown 2","bannerEnd":22}}
-{"text":"Early Fan Preview - Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","bannerEnd":20}}
-{"text":"Early Fan Preview | Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","bannerEnd":20,"venue":{"bok":"Early Fan Preview: Dune: Part Three"}}}
-{"text":"Early Fan Preview: Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","bannerEnd":19}}
+{"text":"Ealing Film Festival: Homegrown 1","pl,uk,de,us,es":{"query":"Homegrown 1","programme":"Ealing Film Festival: ","bannerEnd":22}}
+{"text":"Ealing Film Festival: Homegrown 2","pl,uk,de,us,es":{"query":"Homegrown 2","programme":"Ealing Film Festival: ","bannerEnd":22}}
+{"text":"Early Fan Preview - Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","programme":"Early Fan Preview - ","bannerEnd":20}}
+{"text":"Early Fan Preview | Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","programme":"Early Fan Preview | ","bannerEnd":20,"venue":{"bok":"Early Fan Preview: Dune: Part Three"}}}
+{"text":"Early Fan Preview: Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","programme":"Early Fan Preview: ","bannerEnd":19}}
 {"text":"Early Man"}
 {"text":"Earth Mama"}
 {"text":"East of Eden"}
@@ -4770,7 +4770,7 @@
 {"text":"Ein Ehepaar erzählt einen Witz - Thiele-Neumann-Theater"}
 {"text":"Ein Eimer Wasser"}
 {"text":"Ein Fast perfekter Antrag"}
-{"text":"Ein Fast perfekter Antrag - Kino für Frauen"}
+{"text":"Ein Fast perfekter Antrag - Kino für Frauen","pl,uk,de,us,es":{"query":"Ein Fast perfekter Antrag"}}
 {"text":"Ein Fest fürs Leben"}
 {"text":"Ein Haufen toller Hunde (1965)","pl,uk,de,us,es":{"key":"Ein Haufen toller Hunde","venue":{"kino-kinematograf":"Ein Haufen toller Hunde"}}}
 {"text":"Ein Herz und eine Krone – Roman Holiday"}
@@ -5192,10 +5192,10 @@
 {"text":"FILMKUNST: Vaterland"}
 {"text":"FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil"}
 {"text":"FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – Rozważna i romantyczna"}
-{"text":"FILMOTERAPIA W LUNIE | Kandydaci śmierci | seans + rozmowa Martyny Harland","pl,uk,de,us,es":{"query":"Kandydaci śmierci","bannerEnd":74,"venue":{"bok":"FILMOTERAPIA W LUNIE: Kandydaci śmierci: seans + rozmowa Martyny Harland"}}}
-{"text":"FILMOTERAPIA W LUNIE | La Perra | seans + rozmowa Martyny Harland","pl,uk,de,us,es":{"query":"La Perra","bannerEnd":65,"venue":{"bok":"FILMOTERAPIA W LUNIE: La Perra: seans + rozmowa Martyny Harland"}}}
-{"text":"FILMOTERAPIA W LUNIE | Ojczyzna | seans","pl,uk,de,us,es":{"query":"Ojczyzna","bannerEnd":39,"venue":{"bok":"FILMOTERAPIA W LUNIE: Ojczyzna: seans"}}}
-{"text":"FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland","pl,uk,de,us,es":{"query":"Ojczyzna","bannerEnd":65,"venue":{"bok":"FILMOTERAPIA W LUNIE: Ojczyzna: seans + rozmowa Martyny Harland"}}}
+{"text":"FILMOTERAPIA W LUNIE | Kandydaci śmierci | seans + rozmowa Martyny Harland","pl,uk,de,us,es":{"query":"Kandydaci śmierci","programme":"FILMOTERAPIA W LUNIE | ","bannerEnd":74,"venue":{"bok":"FILMOTERAPIA W LUNIE: Kandydaci śmierci: seans + rozmowa Martyny Harland"}}}
+{"text":"FILMOTERAPIA W LUNIE | La Perra | seans + rozmowa Martyny Harland","pl,uk,de,us,es":{"query":"La Perra","programme":"FILMOTERAPIA W LUNIE | ","bannerEnd":65,"venue":{"bok":"FILMOTERAPIA W LUNIE: La Perra: seans + rozmowa Martyny Harland"}}}
+{"text":"FILMOTERAPIA W LUNIE | Ojczyzna | seans","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"FILMOTERAPIA W LUNIE | ","bannerEnd":39,"venue":{"bok":"FILMOTERAPIA W LUNIE: Ojczyzna: seans"}}}
+{"text":"FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"FILMOTERAPIA W LUNIE | ","bannerEnd":65,"venue":{"bok":"FILMOTERAPIA W LUNIE: Ojczyzna: seans + rozmowa Martyny Harland"}}}
 {"text":"FILMOWE PODLASIE ATAKUJE! / wstęp wolny","pl,uk,de,us,es":{"query":"FILMOWE PODLASIE ATAKUJE!"}}
 {"text":"FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Klara i Słońce","pl,uk,de,us,es":{"query":"Klara i Słońce","bannerEnd":33}}
 {"text":"FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Ojczyzna","pl,uk,de,us,es":{"query":"Ojczyzna","bannerEnd":33}}
@@ -5204,7 +5204,7 @@
 {"text":"FILMOWY KLUB SENIORA i SENIORKI: PRIMETIME","pl,uk,de,us,es":{"query":"PRIMETIME","programme":"FILMOWY KLUB SENIORA i SENIORKI: ","bannerEnd":33}}
 {"text":"FILMOWY WIECZÓR GROZY - WĘGRÓW 2026"}
 {"text":"FILMOŻARCIE: TRZY POŻEGNANIA"}
-{"text":"FILMREIHE \"LACH MAL WIEDER\" : OH LA LA 2 - NEUE TESTS, NEUES CHAOS","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"FILMREIHE LACH MAL WIEDER : OH LA LA 2 - NEUE TESTS, NEUES CHAOS","kino-kinematograf":"FILMREIHE \"LACH MAL WIEDER\" : OH LA LA 2 - NEUE TESTS"}}}
+{"text":"FILMREIHE \"LACH MAL WIEDER\" : OH LA LA 2 - NEUE TESTS, NEUES CHAOS","pl,uk,de,us,es":{"query":"OH LA LA 2 - NEUE TESTS, NEUES CHAOS","programme":"FILMREIHE \"LACH MAL WIEDER\" : ","bannerEnd":30,"venue":{"kino-alternatywy":"FILMREIHE LACH MAL WIEDER : OH LA LA 2 - NEUE TESTS, NEUES CHAOS","kino-kinematograf":"FILMREIHE \"LACH MAL WIEDER\" : OH LA LA 2 - NEUE TESTS"}}}
 {"text":"FILMY Z LEKTOREM - C'mon C'mon","pl,uk,de,us,es":{"query":"C'mon C'mon","bannerEnd":19}}
 {"text":"FILMY Z LEKTOREM - I tak cię kocham","pl,uk,de,us,es":{"query":"I tak cię kocham","bannerEnd":19}}
 {"text":"FILMY Z LEKTOREM - I znowu zgrzeszyliśmy, dobry Boże!","pl,uk,de,us,es":{"query":"I znowu zgrzeszyliśmy, dobry Boże!","bannerEnd":19}}
@@ -5426,42 +5426,42 @@
 {"text":"Festive Fun with Peppa Pig (U)","pl,uk,de,us,es":{"query":"Festive Fun with Peppa Pig"}}
 {"text":"Festive Fun with Peppa Pig Cinema Experince","pl,uk,de,us,es":{"query":"Festive Fun with Peppa Pig"}}
 {"text":"Festive Wild Cornish Wreaths"}
-{"text":"Festiwal Korelacje: „Czarodziej z Harlemu” z autorską narracją Bartosza  Wierzbięty + spotkanie z autorem","pl,uk,de,us,es":{"query":"Czarodziej z Harlemu","bannerEnd":105,"venue":{"bok":"Festiwal Korelacje: „Czarodziej z Harlemu” z autorską narracją Bartosza Wierzbięty + spotkanie z autorem","kino-alternatywy":"Festiwal Korelacje: Czarodziej z Harlemu z autorską narracją Bartosza Wierzbięty + spotkanie z autorem"}}}
-{"text":"Festiwal Korelacje: „Do widzenia, do jutra” z autorską narracją Grzegorza Uzdańskiego + spotkanie z autorem","pl,uk,de,us,es":{"query":"Do widzenia, do jutra","bannerEnd":107,"venue":{"kino-alternatywy":"Festiwal Korelacje: Do widzenia, do jutra z autorską narracją Grzegorza Uzdańskiego + spotkanie z autorem"}}}
-{"text":"Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze  Śląska + spotkanie z autorką","pl,uk,de,us,es":{"query":"Nie lubię poniedziałku","bannerEnd":103,"venue":{"bok":"Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze Śląska + spotkanie z autorką","kino-alternatywy":"Festiwal Korelacje: Nie lubię poniedziałku z autorską narracją Darii ze Śląska + spotkanie z autorką"}}}
-{"text":"Festiwal Korelacje: „Tylko tylko Rock” z autorską narracją Doroty Masłowskiej","pl,uk,de,us,es":{"query":"Tylko tylko Rock","bannerEnd":77,"venue":{"kino-alternatywy":"Festiwal Korelacje: Tylko tylko Rock z autorską narracją Doroty Masłowskiej"}}}
-{"text":"Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa","pl,uk,de,us,es":{"query":"Zemsta","bannerEnd":63,"venue":{"kino-alternatywy":"Festiwal Korelacje: Zemsta z autorską narracją Artura Andrusa"}}}
-{"text":"Festiwal Pięć Smaków: A Annie dalej swoje"}
-{"text":"Festiwal Pięć Smaków: Dom na krańcu księżyca"}
-{"text":"Festiwal Pięć Smaków: Funky Freaky Freaks"}
-{"text":"Festiwal Pięć Smaków: Ghost in the Cell"}
-{"text":"Festiwal Pięć Smaków: Idę z mnichem (1984)","pl,uk,de,us,es":{"key":"Festiwal Pięć Smaków: Idę z mnichem","venue":{"kino-kinematograf":"Festiwal Pięć Smaków: Idę z mnichem"}}}
-{"text":"Festiwal Pięć Smaków: Kaczka po pekińsku"}
-{"text":"Festiwal Pięć Smaków: Kaczka po pekińsku (1986)","pl,uk,de,us,es":{"key":"Festiwal Pięć Smaków: Kaczka po pekińsku","venue":{"kino-kinematograf":"Festiwal Pięć Smaków: Kaczka po pekińsku"}}}
-{"text":"Festiwal Pięć Smaków: Kształt momo"}
-{"text":"Festiwal Pięć Smaków: Lament"}
-{"text":"Festiwal Pięć Smaków: Memorizu"}
-{"text":"Festiwal Pięć Smaków: Międzyświat"}
-{"text":"Festiwal Pięć Smaków: Morze żółte"}
-{"text":"Festiwal Pięć Smaków: Odsłuch (seans z dyskusją i DJ setem w Przypadku)","pl,uk,de,us,es":{"query":"Festiwal Pięć Smaków: Odsłuch"}}
-{"text":"Festiwal Pięć Smaków: Ostrze"}
-{"text":"Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu)"}
-{"text":"Festiwal Pięć Smaków: Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat"}
-{"text":"Festiwal Pięć Smaków: Po życiu"}
-{"text":"Festiwal Pięć Smaków: Pod dachem Ky Nam"}
-{"text":"Festiwal Pięć Smaków: Riverstone"}
-{"text":"Festiwal Pięć Smaków: Skwar"}
-{"text":"Festiwal Pięć Smaków: Szepty księżyca"}
-{"text":"Festiwal Pięć Smaków: Słońce w tunelu"}
-{"text":"Festiwal Pięć Smaków: Urywki z macierzyństwa"}
-{"text":"Festiwal Pięć Smaków: W pogoni"}
-{"text":"Festiwal Pięć Smaków: W sumie spoko"}
-{"text":"Festiwal Pięć Smaków: W sumie spoko + spotkanie psychologiczne","pl,uk,de,us,es":{"query":"Festiwal Pięć Smaków: W sumie spoko"}}
-{"text":"Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)"}
-{"text":"Festiwal Pięć Smaków: Wielki Budda+ | Otwarcie Repliki i spotkanie z reżyserem","pl,uk,de,us,es":{"query":"Festiwal Pięć Smaków: Wielki Budda+","venue":{"bok":"Festiwal Pięć Smaków: Wielki Budda+: Otwarcie Repliki i spotkanie z reżyserem"}}}
-{"text":"Festiwal Pięć Smaków: Witajcie w Hope"}
-{"text":"Festiwal Pięć Smaków: Zmierzch w Luomu"}
-{"text":"Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)"}
+{"text":"Festiwal Korelacje: „Czarodziej z Harlemu” z autorską narracją Bartosza  Wierzbięty + spotkanie z autorem","pl,uk,de,us,es":{"query":"Czarodziej z Harlemu","programme":"Festiwal Korelacje: ","bannerEnd":105,"venue":{"bok":"Festiwal Korelacje: „Czarodziej z Harlemu” z autorską narracją Bartosza Wierzbięty + spotkanie z autorem","kino-alternatywy":"Festiwal Korelacje: Czarodziej z Harlemu z autorską narracją Bartosza Wierzbięty + spotkanie z autorem"}}}
+{"text":"Festiwal Korelacje: „Do widzenia, do jutra” z autorską narracją Grzegorza Uzdańskiego + spotkanie z autorem","pl,uk,de,us,es":{"query":"Do widzenia, do jutra","programme":"Festiwal Korelacje: ","bannerEnd":107,"venue":{"kino-alternatywy":"Festiwal Korelacje: Do widzenia, do jutra z autorską narracją Grzegorza Uzdańskiego + spotkanie z autorem"}}}
+{"text":"Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze  Śląska + spotkanie z autorką","pl,uk,de,us,es":{"query":"Nie lubię poniedziałku","programme":"Festiwal Korelacje: ","bannerEnd":103,"venue":{"bok":"Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze Śląska + spotkanie z autorką","kino-alternatywy":"Festiwal Korelacje: Nie lubię poniedziałku z autorską narracją Darii ze Śląska + spotkanie z autorką"}}}
+{"text":"Festiwal Korelacje: „Tylko tylko Rock” z autorską narracją Doroty Masłowskiej","pl,uk,de,us,es":{"query":"Tylko tylko Rock","programme":"Festiwal Korelacje: ","bannerEnd":77,"venue":{"kino-alternatywy":"Festiwal Korelacje: Tylko tylko Rock z autorską narracją Doroty Masłowskiej"}}}
+{"text":"Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa","pl,uk,de,us,es":{"query":"Zemsta","programme":"Festiwal Korelacje: ","bannerEnd":63,"venue":{"kino-alternatywy":"Festiwal Korelacje: Zemsta z autorską narracją Artura Andrusa"}}}
+{"text":"Festiwal Pięć Smaków: A Annie dalej swoje","pl,uk,de,us,es":{"query":"A Annie dalej swoje","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Dom na krańcu księżyca","pl,uk,de,us,es":{"query":"Dom na krańcu księżyca","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Funky Freaky Freaks","pl,uk,de,us,es":{"query":"Funky Freaky Freaks","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Ghost in the Cell","pl,uk,de,us,es":{"query":"Ghost in the Cell","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Idę z mnichem (1984)","pl,uk,de,us,es":{"query":"Idę z mnichem (1984)","key":"Festiwal Pięć Smaków: Idę z mnichem","programme":"Festiwal Pięć Smaków: ","bannerEnd":22,"venue":{"kino-kinematograf":"Festiwal Pięć Smaków: Idę z mnichem"}}}
+{"text":"Festiwal Pięć Smaków: Kaczka po pekińsku","pl,uk,de,us,es":{"query":"Kaczka po pekińsku","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Kaczka po pekińsku (1986)","pl,uk,de,us,es":{"query":"Kaczka po pekińsku (1986)","key":"Festiwal Pięć Smaków: Kaczka po pekińsku","programme":"Festiwal Pięć Smaków: ","bannerEnd":22,"venue":{"kino-kinematograf":"Festiwal Pięć Smaków: Kaczka po pekińsku"}}}
+{"text":"Festiwal Pięć Smaków: Kształt momo","pl,uk,de,us,es":{"query":"Kształt momo","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Lament","pl,uk,de,us,es":{"query":"Lament","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Memorizu","pl,uk,de,us,es":{"query":"Memorizu","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Międzyświat","pl,uk,de,us,es":{"query":"Międzyświat","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Morze żółte","pl,uk,de,us,es":{"query":"Morze żółte","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Odsłuch (seans z dyskusją i DJ setem w Przypadku)","pl,uk,de,us,es":{"query":"Odsłuch","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Ostrze","pl,uk,de,us,es":{"query":"Ostrze","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu)","pl,uk,de,us,es":{"query":"Ostrze (1995) (otwarcie Festiwalu)","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat","pl,uk,de,us,es":{"query":"Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Po życiu","pl,uk,de,us,es":{"query":"Po życiu","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Pod dachem Ky Nam","pl,uk,de,us,es":{"query":"Pod dachem Ky Nam","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Riverstone","pl,uk,de,us,es":{"query":"Riverstone","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Skwar","pl,uk,de,us,es":{"query":"Skwar","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Szepty księżyca","pl,uk,de,us,es":{"query":"Szepty księżyca","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Słońce w tunelu","pl,uk,de,us,es":{"query":"Słońce w tunelu","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Urywki z macierzyństwa","pl,uk,de,us,es":{"query":"Urywki z macierzyństwa","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: W pogoni","pl,uk,de,us,es":{"query":"W pogoni","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: W sumie spoko","pl,uk,de,us,es":{"query":"W sumie spoko","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: W sumie spoko + spotkanie psychologiczne","pl,uk,de,us,es":{"query":"W sumie spoko","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)","pl,uk,de,us,es":{"query":"Wielki Budda+ (spotkanie z reżyserem)","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Wielki Budda+ | Otwarcie Repliki i spotkanie z reżyserem","pl,uk,de,us,es":{"query":"Wielki Budda+","programme":"Festiwal Pięć Smaków: ","bannerEnd":22,"venue":{"bok":"Festiwal Pięć Smaków: Wielki Budda+: Otwarcie Repliki i spotkanie z reżyserem"}}}
+{"text":"Festiwal Pięć Smaków: Witajcie w Hope","pl,uk,de,us,es":{"query":"Witajcie w Hope","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Zmierzch w Luomu","pl,uk,de,us,es":{"query":"Zmierzch w Luomu","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)","pl,uk,de,us,es":{"query":"Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festtagsspaß mit Peppa"}
 {"text":"Festtagsspaß mit Peppa - Das Kinoerlebnis"}
 {"text":"Festtagsspaß mit Peppa - Das Kinoerlebnis Special for Kids"}
@@ -5493,9 +5493,9 @@
 {"text":"Film Café: Frau Winkler verlässt das Haus"}
 {"text":"Film Café: Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir"}
 {"text":"Film Café: Spaziergang nach Syrakus"}
-{"text":"Film Club: East Of Eden (1955)","pl,uk,de,us,es":{"key":"Film Club: East Of Eden","venue":{"kino-kinematograf":"Film Club: East Of Eden"}}}
-{"text":"Film Club: Rocky (50th Anniversary)","pl,uk,de,us,es":{"query":"Film Club: Rocky"}}
-{"text":"Film Club: The Masque of the Red Death"}
+{"text":"Film Club: East Of Eden (1955)","pl,uk,de,us,es":{"query":"East Of Eden (1955)","key":"Film Club: East Of Eden","programme":"Film Club: ","bannerEnd":11,"venue":{"kino-kinematograf":"Film Club: East Of Eden"}}}
+{"text":"Film Club: Rocky (50th Anniversary)","pl,uk,de,us,es":{"query":"Rocky","programme":"Film Club: ","bannerEnd":11}}
+{"text":"Film Club: The Masque of the Red Death","pl,uk,de,us,es":{"query":"The Masque of the Red Death","programme":"Film Club: ","bannerEnd":11}}
 {"text":"Film Program"}
 {"text":"Film Quiz Abend"}
 {"text":"Film School"}
@@ -5534,8 +5534,8 @@
 {"text":"Filmcafe & FilmAuslese: Oh la la 2 - Neue Tests, neues Chaos","pl":{"key":"Filmcafe i FilmAuslese: Oh la la 2 - Neue Tests, neues Chaos","display":"Filmcafe i FilmAuslese: Oh la la 2 - Neue Tests, neues Chaos"}}
 {"text":"Filmcafe & Filmauslese: Alte Liebe","pl":{"key":"Filmcafe i Filmauslese: Alte Liebe","display":"Filmcafe i Filmauslese: Alte Liebe"}}
 {"text":"Filmcafé & Filmauslese: Frau Winkler verlässt das Haus","pl":{"key":"Filmcafé i Filmauslese: Frau Winkler verlässt das Haus","display":"Filmcafé i Filmauslese: Frau Winkler verlässt das Haus"}}
-{"text":"Filmclub Classics: Liebe braucht keine Ferien"}
-{"text":"Filmclub Classics: Rocky"}
+{"text":"Filmclub Classics: Liebe braucht keine Ferien","pl,uk,de,us,es":{"query":"Liebe braucht keine Ferien","programme":"Filmclub Classics: ","bannerEnd":19}}
+{"text":"Filmclub Classics: Rocky","pl,uk,de,us,es":{"query":"Rocky","programme":"Filmclub Classics: ","bannerEnd":19}}
 {"text":"Filmclub by Luiii"}
 {"text":"Filme der London Women's Film Group"}
 {"text":"Filme von Ken Jacobs"}
@@ -5560,8 +5560,8 @@
 {"text":"Filmowe popołudnie dla dzieci: Złoto","pl,uk,de,us,es":{"query":"Złoto","programme":"Filmowe popołudnie dla dzieci: ","bannerEnd":31}}
 {"text":"Filmowe spotkania seniora: Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Filmowe spotkania seniora: ","bannerEnd":27}}
 {"text":"Filmowe spotkania seniora: Takie jest życie","pl,uk,de,us,es":{"query":"Takie jest życie","programme":"Filmowe spotkania seniora: ","bannerEnd":27}}
-{"text":"Filmowy Klub Seniora - Drugie życie","pl,uk,de,us,es":{"query":"Drugie życie","bannerEnd":23}}
-{"text":"Filmowy Klub Seniora - Rozważna i romantyczna","pl,uk,de,us,es":{"query":"Rozważna i romantyczna","bannerEnd":23}}
+{"text":"Filmowy Klub Seniora - Drugie życie","pl,uk,de,us,es":{"query":"Drugie życie","programme":"Filmowy Klub Seniora - ","bannerEnd":23}}
+{"text":"Filmowy Klub Seniora - Rozważna i romantyczna","pl,uk,de,us,es":{"query":"Rozważna i romantyczna","programme":"Filmowy Klub Seniora - ","bannerEnd":23}}
 {"text":"Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE","pl,uk,de,us,es":{"query":"DRUGIE ŻYCIE","programme":"Filmowy Klub Seniora i Seniorki: ","bannerEnd":33}}
 {"text":"Filmowy Klub Seniora i Seniorki: OJCZYZNA","pl,uk,de,us,es":{"query":"OJCZYZNA","programme":"Filmowy Klub Seniora i Seniorki: ","bannerEnd":33}}
 {"text":"Filmowy Klub Seniora i Seniorki: ROBIN HOOD. KONIEC LEGENDY","pl,uk,de,us,es":{"query":"ROBIN HOOD. KONIEC LEGENDY","programme":"Filmowy Klub Seniora i Seniorki: ","bannerEnd":33}}
@@ -5755,7 +5755,7 @@
 {"text":"Free At Heart"}
 {"text":"Free Friday: Kinski 100!: Aguirre, der Zorn Gottes"}
 {"text":"Free Late Night Mystery Movie Club"}
-{"text":"Free Remembrance Day Screening: Went the Day Well? (1942)","pl,uk,de,us,es":{"key":"Free Remembrance Day Screening: Went the Day Well?","venue":{"kino-kinematograf":"Free Remembrance Day Screening: Went the Day Well?"}}}
+{"text":"Free Remembrance Day Screening: Went the Day Well? (1942)","pl,uk,de,us,es":{"query":"Went the Day Well? (1942)","key":"Free Remembrance Day Screening: Went the Day Well?","programme":"Free Remembrance Day Screening: ","bannerEnd":32,"venue":{"kino-kinematograf":"Free Remembrance Day Screening: Went the Day Well?"}}}
 {"text":"Free Ride Filmfestival"}
 {"text":"Free Willy"}
 {"text":"Free at Heart"}
@@ -5764,14 +5764,14 @@
 {"text":"FreeRide Film Festival 2026 - CINEMA EDITION"}
 {"text":"Freeride Film Festival 2026"}
 {"text":"Freeride Film Festival Cinema Edition"}
-{"text":"Freeride Filmfestival - FFF Tour"}
+{"text":"Freeride Filmfestival - FFF Tour","pl,uk,de,us,es":{"query":"FFF Tour","programme":"Freeride Filmfestival - ","bannerEnd":24}}
 {"text":"Freeride Filmfestival 2026"}
 {"text":"Freeride Filmfestival 2026 - Cinema Edition"}
-{"text":"Freeride Filmfestival 2026 - Zwischen Kontrolle und Hingabe"}
-{"text":"Freeride Filmfestival 2026: ZWISCHEN KONTROLLE UND HINGABE"}
-{"text":"Freeride Filmfestival 2026: Zwischen Kontrolle und Hingabe"}
+{"text":"Freeride Filmfestival 2026 - Zwischen Kontrolle und Hingabe","pl,uk,de,us,es":{"query":"Zwischen Kontrolle und Hingabe","programme":"Freeride Filmfestival 2026 - ","bannerEnd":29}}
+{"text":"Freeride Filmfestival 2026: ZWISCHEN KONTROLLE UND HINGABE","pl,uk,de,us,es":{"query":"ZWISCHEN KONTROLLE UND HINGABE","programme":"Freeride Filmfestival 2026: ","bannerEnd":28}}
+{"text":"Freeride Filmfestival 2026: Zwischen Kontrolle und Hingabe","pl,uk,de,us,es":{"query":"Zwischen Kontrolle und Hingabe","programme":"Freeride Filmfestival 2026: ","bannerEnd":28}}
 {"text":"Freeride Filmfestival Cinema Edition 2026"}
-{"text":"Freeride Filmfestival Cinema Edition 2026: Zwischen Kontrolle und Hingabe"}
+{"text":"Freeride Filmfestival Cinema Edition 2026: Zwischen Kontrolle und Hingabe","pl,uk,de,us,es":{"query":"Zwischen Kontrolle und Hingabe","programme":"Freeride Filmfestival Cinema Edition 2026: ","bannerEnd":43}}
 {"text":"FreerideFilmFestival 2026"}
 {"text":"Fregata dla seniorów: Vivaldi i ja","pl,uk,de,us,es":{"query":"Vivaldi i ja","programme":"Fregata dla seniorów: ","bannerEnd":22}}
 {"text":"Freibad"}
@@ -5939,7 +5939,7 @@
 {"text":"GOODFELLAS - DREI JAHRZEHNTE DER MAFIA"}
 {"text":"GORGONÀ"}
 {"text":"GORZKIE HALLOWEEN: Cruising + Quiz Filmowy","pl,uk,de,us,es":{"query":"GORZKIE HALLOWEEN: Cruising"}}
-{"text":"GORZKIE ŚWIĘTA – Kino bez barier"}
+{"text":"GORZKIE ŚWIĘTA – Kino bez barier","pl,uk,de,us,es":{"query":"GORZKIE ŚWIĘTA"}}
 {"text":"GRAF VON BOTHMER: NOSFERATU - mit Chor"}
 {"text":"GRAF VON BOTHMER: NOSFERATU  mit Chor"}
 {"text":"GREASE"}
@@ -6173,7 +6173,7 @@
 {"text":"Godzilla Minus Zero - Event Projekt","pl,uk,de,us,es":{"query":"Godzilla Minus Zero"}}
 {"text":"Godzilla Minus Zero IMAX (specjalny przedpremierowy pokaz nocny) - Event Projekt","pl,uk,de,us,es":{"query":"Godzilla Minus Zero IMAX"}}
 {"text":"Godzilla Minus Zero PREVIEW","pl,uk,de,us,es":{"query":"Godzilla Minus Zero"}}
-{"text":"Godzilla Minus Zero | Kino Azji (Godzilla Day)","pl,uk,de,us,es":{"venue":{"bok":"Godzilla Minus Zero: Kino Azji (Godzilla Day)"}}}
+{"text":"Godzilla Minus Zero | Kino Azji (Godzilla Day)","pl,uk,de,us,es":{"query":"Godzilla Minus Zero","venue":{"bok":"Godzilla Minus Zero: Kino Azji (Godzilla Day)"}}}
 {"text":"Godzilla Minus Zero | Przedpremiera","pl,uk,de,us,es":{"query":"Godzilla Minus Zero","venue":{"bok":"Godzilla Minus Zero: Przedpremiera"}}}
 {"text":"Godzilla Minus Zero: Godzilla Day Early Access"}
 {"text":"Godzilla Mystery Movie Marathon"}
@@ -6272,10 +6272,10 @@
 {"text":"Grindhouse"}
 {"text":"Grizzly Man"}
 {"text":"Grosse Pointe Blank"}
-{"text":"Grosses Kino: Der Pate - Teil I"}
-{"text":"Grosses Kino: Der Pate - Teil II"}
-{"text":"Grosses Kino: Die Verurteilten"}
-{"text":"Grosses Kino: Uhrwerk Orange"}
+{"text":"Grosses Kino: Der Pate - Teil I","pl,uk,de,us,es":{"query":"Der Pate - Teil I","programme":"Grosses Kino: ","bannerEnd":14}}
+{"text":"Grosses Kino: Der Pate - Teil II","pl,uk,de,us,es":{"query":"Der Pate - Teil II","programme":"Grosses Kino: ","bannerEnd":14}}
+{"text":"Grosses Kino: Die Verurteilten","pl,uk,de,us,es":{"query":"Die Verurteilten","programme":"Grosses Kino: ","bannerEnd":14}}
+{"text":"Grosses Kino: Uhrwerk Orange","pl,uk,de,us,es":{"query":"Uhrwerk Orange","programme":"Grosses Kino: ","bannerEnd":14}}
 {"text":"Ground Zero"}
 {"text":"Groundswell"}
 {"text":"Grown Ups"}
@@ -6285,8 +6285,8 @@
 {"text":"Grzechy i cnoty. od Giotta do Papieża Franciszka"}
 {"text":"Grzesznicy nie zaznają spokoju | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Grzesznicy nie zaznają spokoju: Splat!FilmFest"}}}
 {"text":"Grünau 50 - Gebaut für viele"}
-{"text":"Guardian & Baby Screening: Sense and Sensibility","pl":{"key":"Guardian i Baby Screening: Sense and Sensibility","display":"Guardian i Baby Screening: Sense and Sensibility"}}
-{"text":"Guardian & Baby Screening: The Craft","pl":{"key":"Guardian i Baby Screening: The Craft","display":"Guardian i Baby Screening: The Craft"}}
+{"text":"Guardian & Baby Screening: Sense and Sensibility","pl":{"query":"Sense and Sensibility","key":"Guardian i Baby Screening: Sense and Sensibility","display":"Guardian i Baby Screening: Sense and Sensibility","programme":"Guardian & Baby Screening: ","bannerEnd":27},"uk,de,us,es":{"query":"Sense and Sensibility","programme":"Guardian & Baby Screening: ","bannerEnd":27}}
+{"text":"Guardian & Baby Screening: The Craft","pl":{"query":"The Craft","key":"Guardian i Baby Screening: The Craft","display":"Guardian i Baby Screening: The Craft","programme":"Guardian & Baby Screening: ","bannerEnd":27},"uk,de,us,es":{"query":"The Craft","programme":"Guardian & Baby Screening: ","bannerEnd":27}}
 {"text":"Guardians of the Earth – Als wir entschieden, die Erde zu retten"}
 {"text":"Gude Leude? - Gude Show - ImproComedy trifft Gameshow trifft Broadway"}
 {"text":"Guess Who's Coming to Dinner"}
@@ -6342,11 +6342,11 @@
 {"text":"Głośniej! | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Głośniej!: Splat!FilmFest"}}}
 {"text":"H WIE HABICHT"}
 {"text":"H wie Habicht"}
-{"text":"HACKNEY CHILDREN'S FILM FEST: MAYA, GIVE ME A TITLE!"}
-{"text":"HACKNEY CHILDREN'S FILM FEST: Paddington & Storytime","pl":{"key":"HACKNEY CHILDREN'S FILM FEST: Paddington i Storytime","display":"HACKNEY CHILDREN'S FILM FEST: Paddington i Storytime"}}
-{"text":"HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE"}
-{"text":"HACKNEY CHILDREN'S FILM FEST: THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY"}
-{"text":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES","pl":{"key":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD i TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES","display":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD i TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES"}}
+{"text":"HACKNEY CHILDREN'S FILM FEST: MAYA, GIVE ME A TITLE!","pl,uk,de,us,es":{"query":"MAYA, GIVE ME A TITLE!","programme":"HACKNEY CHILDREN'S FILM FEST: ","bannerEnd":30}}
+{"text":"HACKNEY CHILDREN'S FILM FEST: Paddington & Storytime","pl":{"query":"Paddington & Storytime","key":"HACKNEY CHILDREN'S FILM FEST: Paddington i Storytime","display":"HACKNEY CHILDREN'S FILM FEST: Paddington i Storytime","programme":"HACKNEY CHILDREN'S FILM FEST: ","bannerEnd":30},"uk,de,us,es":{"query":"Paddington & Storytime","programme":"HACKNEY CHILDREN'S FILM FEST: ","bannerEnd":30}}
+{"text":"HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE","pl,uk,de,us,es":{"query":"THE LITTLE VAMPIRE","programme":"HACKNEY CHILDREN'S FILM FEST: ","bannerEnd":30}}
+{"text":"HACKNEY CHILDREN'S FILM FEST: THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY","pl,uk,de,us,es":{"query":"THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY","programme":"HACKNEY CHILDREN'S FILM FEST: ","bannerEnd":30}}
+{"text":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES","pl":{"query":"BIG STORIES FOR LITTLE ONES","key":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD i TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES","display":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD i TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES","programme":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: ","bannerEnd":63},"uk,de,us,es":{"query":"BIG STORIES FOR LITTLE ONES","programme":"HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: ","bannerEnd":63}}
 {"text":"HAIKU"}
 {"text":"HALLO BETTY"}
 {"text":"HALLOWEEN - MARATON GROZY"}
@@ -6437,10 +6437,10 @@
 {"text":"Ha-Chan, Shake Your Booty!"}
 {"text":"Hacer Mucho con Poco - Do More With Less"}
 {"text":"Hackers"}
-{"text":"Hackney Children's Film Fest: FILM AFRICA: CROCODILE"}
-{"text":"Hackney Children's Film Fest: PENGUIN HIGHWAY"}
+{"text":"Hackney Children's Film Fest: FILM AFRICA: CROCODILE","pl,uk,de,us,es":{"query":"FILM AFRICA: CROCODILE","programme":"Hackney Children's Film Fest: ","bannerEnd":30}}
+{"text":"Hackney Children's Film Fest: PENGUIN HIGHWAY","pl,uk,de,us,es":{"query":"PENGUIN HIGHWAY","programme":"Hackney Children's Film Fest: ","bannerEnd":30}}
 {"text":"Hackney Children's Film Fest: Young Neurospicy: Family Shorts"}
-{"text":"Hackney Children’s Film Fest: THE WILD ROBOT"}
+{"text":"Hackney Children’s Film Fest: THE WILD ROBOT","pl,uk,de,us,es":{"query":"THE WILD ROBOT","programme":"Hackney Children’s Film Fest: ","bannerEnd":30}}
 {"text":"Hadestown"}
 {"text":"Hadestown - The Musical (PG)","pl,uk,de,us,es":{"query":"Hadestown - The Musical"}}
 {"text":"Hadestown The Musical"}
@@ -6500,10 +6500,10 @@
 {"text":"Halloween w KNH: Co się zdarzyło Baby Jane?"}
 {"text":"Halloween w Rialcie - Inni"}
 {"text":"Halloween w Rialcie - Lśnienie"}
-{"text":"Halloween w kinie na starówce: clayface i witajcie w hope"}
-{"text":"Halloween w kinie: Harry Angel"}
-{"text":"Halloween w kinie: Noc żywych trupów"}
-{"text":"Halloween w kinie: Straszydła"}
+{"text":"Halloween w kinie na starówce: clayface i witajcie w hope","pl,uk,de,us,es":{"query":"clayface i witajcie w hope","programme":"Halloween w kinie na starówce: ","bannerEnd":31}}
+{"text":"Halloween w kinie: Harry Angel","pl,uk,de,us,es":{"query":"Harry Angel","programme":"Halloween w kinie: ","bannerEnd":19}}
+{"text":"Halloween w kinie: Noc żywych trupów","pl,uk,de,us,es":{"query":"Noc żywych trupów","programme":"Halloween w kinie: ","bannerEnd":19}}
+{"text":"Halloween w kinie: Straszydła","pl,uk,de,us,es":{"query":"Straszydła","programme":"Halloween w kinie: ","bannerEnd":19}}
 {"text":"Halloween with Wine"}
 {"text":"Halloween-Special-Screening von MONSTER MIA"}
 {"text":"Halloween-Special: Scream - Schrei!"}
@@ -7247,13 +7247,13 @@
 {"text":"Ireland The Show"}
 {"text":"Irena's Vow"}
 {"text":"Irgendwas bleibt immer"}
-{"text":"Iris Prize LGBTQ+ Film Festival 2026: Best of Iris","pl,uk,de,us,es":{"query":"Best of Iris","bannerEnd":38}}
-{"text":"Iris Prize LGBTQ+ Film Festival 2026: I Am Going To Miss You","pl,uk,de,us,es":{"query":"I Am Going To Miss You","bannerEnd":38}}
-{"text":"Iris Prize LGBTQ+ Film Festival 2026: Out of the Woods","pl,uk,de,us,es":{"query":"Out of the Woods","bannerEnd":38}}
+{"text":"Iris Prize LGBTQ+ Film Festival 2026: Best of Iris","pl,uk,de,us,es":{"query":"Best of Iris","programme":"Iris Prize LGBTQ+ Film Festival 2026: ","bannerEnd":38}}
+{"text":"Iris Prize LGBTQ+ Film Festival 2026: I Am Going To Miss You","pl,uk,de,us,es":{"query":"I Am Going To Miss You","programme":"Iris Prize LGBTQ+ Film Festival 2026: ","bannerEnd":38}}
+{"text":"Iris Prize LGBTQ+ Film Festival 2026: Out of the Woods","pl,uk,de,us,es":{"query":"Out of the Woods","programme":"Iris Prize LGBTQ+ Film Festival 2026: ","bannerEnd":38}}
 {"text":"Irish Christmas – Bob Bales & Friends","pl":{"key":"Irish Christmas – Bob Bales i Friends","display":"Irish Christmas – Bob Bales i Friends"}}
-{"text":"Irish Film Festival: Báite","pl,uk,de,us,es":{"query":"Báite","bannerEnd":21}}
-{"text":"Irish Film Festival: Hokum","pl,uk,de,us,es":{"query":"Hokum","bannerEnd":21}}
-{"text":"Irish Film Festival: Horseshoe","pl,uk,de,us,es":{"query":"Horseshoe","bannerEnd":21}}
+{"text":"Irish Film Festival: Báite","pl,uk,de,us,es":{"query":"Báite","programme":"Irish Film Festival: ","bannerEnd":21}}
+{"text":"Irish Film Festival: Hokum","pl,uk,de,us,es":{"query":"Hokum","programme":"Irish Film Festival: ","bannerEnd":21}}
+{"text":"Irish Film Festival: Horseshoe","pl,uk,de,us,es":{"query":"Horseshoe","programme":"Irish Film Festival: ","bannerEnd":21}}
 {"text":"Irland - Die grüne Insel im Atlantik"}
 {"text":"Irma la Douce"}
 {"text":"Iron Boy"}
@@ -7338,9 +7338,9 @@
 {"text":"JAMES BOND 007 - LIZENZ ZUM TÖTEN"}
 {"text":"JAMES BOND 007 - STIRB AN EINEM ANDEREN TAG (2002)","pl,uk,de,us,es":{"key":"JAMES BOND 007 - STIRB AN EINEM ANDEREN TAG","venue":{"kino-kinematograf":"JAMES BOND 007 - STIRB AN EINEM ANDEREN TAG"}}}
 {"text":"JANE EYRE"}
-{"text":"JAPANESE FILM CLUB: TOKYO SONATA"}
-{"text":"JAPANESE FILM CLUB: WEATHERING WITH YOU"}
-{"text":"JAPANESE FILM CLUB: YOUR NAME"}
+{"text":"JAPANESE FILM CLUB: TOKYO SONATA","pl,uk,de,us,es":{"query":"TOKYO SONATA","programme":"JAPANESE FILM CLUB: ","bannerEnd":20}}
+{"text":"JAPANESE FILM CLUB: WEATHERING WITH YOU","pl,uk,de,us,es":{"query":"WEATHERING WITH YOU","programme":"JAPANESE FILM CLUB: ","bannerEnd":20}}
+{"text":"JAPANESE FILM CLUB: YOUR NAME","pl,uk,de,us,es":{"query":"YOUR NAME","programme":"JAPANESE FILM CLUB: ","bannerEnd":20}}
 {"text":"JAZZ am Donnerstag – Alex Hitchcock Quintet"}
 {"text":"JAZZ am Donnerstag – Allgäu Jazzquintett"}
 {"text":"JAZZ am Donnerstag – Aso Ensemble"}
@@ -7449,8 +7449,8 @@
 {"text":"Janoschs Komm, wir finden einen Schatz!"}
 {"text":"Janosik z Duszą: Mistyczka"}
 {"text":"Japanese Film Club"}
-{"text":"Japanese Film Club: Linda Linda Linda"}
-{"text":"Japanese Film Club: Ringu"}
+{"text":"Japanese Film Club: Linda Linda Linda","pl,uk,de,us,es":{"query":"Linda Linda Linda","programme":"Japanese Film Club: ","bannerEnd":20}}
+{"text":"Japanese Film Club: Ringu","pl,uk,de,us,es":{"query":"Ringu","programme":"Japanese Film Club: ","bannerEnd":20}}
 {"text":"Jarhead"}
 {"text":"Jaripero"}
 {"text":"Jason Byrne: 30 Years Byrning"}
@@ -7618,7 +7618,7 @@
 {"text":"KARLCHEN - DER KINOFILM - OSTERZAUBER VORSTELLUNG"}
 {"text":"KASPERS WINTERREISE ZUM MOND"}
 {"text":"KASZPIROWSKI"}
-{"text":"KATHARINA THALBACH zu Gast im Beluga Kino: Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir"}
+{"text":"KATHARINA THALBACH zu Gast im Beluga Kino: Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir","pl,uk,de,us,es":{"query":"Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir","programme":"KATHARINA THALBACH zu Gast im Beluga Kino: ","bannerEnd":43}}
 {"text":"KENDAL MOUNTAIN FESTIVAL LIVE TOUR 2027"}
 {"text":"KEVIN ALLEIN ZU HAUS"}
 {"text":"KEVIN BLOODY WILSON: FAIR DINKUM FUNNY"}
@@ -7626,9 +7626,9 @@
 {"text":"KF Ambasada: Faust z muzyką na żywo | 200. spotkanie klubu & 100. rocznica filmu","pl":{"query":"Faust z muzyką na żywo | 200. spotkanie klubu & 100. rocznica filmu","key":"KF Ambasada: Faust z muzyką na żywo | 200. spotkanie klubu i","display":"KF Ambasada: Faust z muzyką na żywo | 200. spotkanie klubu i 100. rocznica filmu","programme":"KF Ambasada: ","bannerEnd":13,"venue":{"bok":"KF Ambasada: Faust z muzyką na żywo: 200. spotkanie klubu & 100. rocznica filmu"}},"uk,de,us,es":{"query":"Faust z muzyką na żywo | 200. spotkanie klubu & 100. rocznica filmu","key":"KF Ambasada: Faust z muzyką na żywo | 200. spotkanie klubu &","programme":"KF Ambasada: ","bannerEnd":13,"venue":{"bok":"KF Ambasada: Faust z muzyką na żywo: 200. spotkanie klubu & 100. rocznica filmu"}}}
 {"text":"KF Ambasada: Hannah i jej siostry","pl,uk,de,us,es":{"query":"Hannah i jej siostry","programme":"KF Ambasada: ","bannerEnd":13}}
 {"text":"KF Ambasada: Trzy kolory: Czerwony","pl,uk,de,us,es":{"query":"Trzy kolory: Czerwony","programme":"KF Ambasada: ","bannerEnd":13}}
-{"text":"KF: Beyond Words"}
-{"text":"KF: Generation Silent bis Alpha"}
-{"text":"KF: Out of the Box"}
+{"text":"KF: Beyond Words","pl,uk,de,us,es":{"query":"Beyond Words","programme":"KF: ","bannerEnd":4}}
+{"text":"KF: Generation Silent bis Alpha","pl,uk,de,us,es":{"query":"Generation Silent bis Alpha","programme":"KF: ","bannerEnd":4}}
+{"text":"KF: Out of the Box","pl,uk,de,us,es":{"query":"Out of the Box","programme":"KF: ","bannerEnd":4}}
 {"text":"KFC Presents: Blue Heron"}
 {"text":"KFC Presents: Cotton Queen"}
 {"text":"KFC Presents: Dear You"}
@@ -7651,13 +7651,13 @@
 {"text":"KING ARTHUR: LEGEND OF THE SWORD"}
 {"text":"KINO KOBIET: Przepis na święta","pl,uk,de,us,es":{"query":"Przepis na święta","programme":"KINO KOBIET: ","bannerEnd":13}}
 {"text":"KINO KOBIET: Violetta Villas","pl,uk,de,us,es":{"query":"Violetta Villas","programme":"KINO KOBIET: ","bannerEnd":13}}
-{"text":"KINO KONESERA + „KINO, KTÓRE MÓWI” - BEZ KOŃCA","pl,uk,de,us,es":{"query":"KINO KONESERA + \"KINO, KTÓRE MÓWI\" - BEZ KOŃCA","venue":{"kino-alternatywy":"KINO KONESERA + KINO, KTÓRE MÓWI - BEZ KOŃCA"}}}
-{"text":"KINO KONESERA - POWIEDZ MI, CO CZUJESZ","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"KINO KONESERA - POWIEDZ MI"}}}
-{"text":"KINO KONESERA - PRIMETIME"}
-{"text":"KINO MOCNE: „NASZE MIEJSCE NA ZIEMI”","pl,uk,de,us,es":{"query":"KINO MOCNE: \"NASZE MIEJSCE NA ZIEMI\"","venue":{"kino-alternatywy":"KINO MOCNE: NASZE MIEJSCE NA ZIEMI"}}}
-{"text":"KINO MOCNE: „ŚLEDZĄC”","pl,uk,de,us,es":{"query":"KINO MOCNE: \"ŚLEDZĄC\"","venue":{"kino-alternatywy":"KINO MOCNE: ŚLEDZĄC"}}}
-{"text":"KINO NA KOZETCE: 500 mil - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"KINO NA KOZETCE: 500 mil"}}
-{"text":"KINO NA KOZETCE: Pejzaż w kolorze sepii"}
+{"text":"KINO KONESERA + „KINO, KTÓRE MÓWI” - BEZ KOŃCA","pl,uk,de,us,es":{"query":"BEZ KOŃCA","programme":"KINO KONESERA + „KINO, KTÓRE MÓWI” - ","bannerEnd":37,"venue":{"kino-alternatywy":"KINO KONESERA + KINO, KTÓRE MÓWI - BEZ KOŃCA"}}}
+{"text":"KINO KONESERA - POWIEDZ MI, CO CZUJESZ","pl,uk,de,us,es":{"query":"POWIEDZ MI, CO CZUJESZ","programme":"KINO KONESERA - ","bannerEnd":16,"venue":{"kino-kinematograf":"KINO KONESERA - POWIEDZ MI"}}}
+{"text":"KINO KONESERA - PRIMETIME","pl,uk,de,us,es":{"query":"PRIMETIME","programme":"KINO KONESERA - ","bannerEnd":16}}
+{"text":"KINO MOCNE: „NASZE MIEJSCE NA ZIEMI”","pl,uk,de,us,es":{"query":"\"NASZE MIEJSCE NA ZIEMI\"","programme":"KINO MOCNE: ","bannerEnd":12,"venue":{"kino-alternatywy":"KINO MOCNE: NASZE MIEJSCE NA ZIEMI"}}}
+{"text":"KINO MOCNE: „ŚLEDZĄC”","pl,uk,de,us,es":{"query":"\"ŚLEDZĄC\"","programme":"KINO MOCNE: ","bannerEnd":12,"venue":{"kino-alternatywy":"KINO MOCNE: ŚLEDZĄC"}}}
+{"text":"KINO NA KOZETCE: 500 mil - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"500 mil","programme":"KINO NA KOZETCE: ","bannerEnd":17}}
+{"text":"KINO NA KOZETCE: Pejzaż w kolorze sepii","pl,uk,de,us,es":{"query":"Pejzaż w kolorze sepii","programme":"KINO NA KOZETCE: ","bannerEnd":17}}
 {"text":"KINO NIECZYNNE"}
 {"text":"KINO SENIORA | Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","programme":"KINO SENIORA | ","bannerEnd":15,"venue":{"bok":"KINO SENIORA: Czas, który nie nadszedł"}}}
 {"text":"KINO SENIORA | Ojczyzna","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"KINO SENIORA | ","bannerEnd":15,"venue":{"bok":"KINO SENIORA: Ojczyzna"}}}
@@ -7665,14 +7665,14 @@
 {"text":"KINO SENIORA | Savage House","pl,uk,de,us,es":{"query":"Savage House","programme":"KINO SENIORA | ","bannerEnd":15,"venue":{"bok":"KINO SENIORA: Savage House"}}}
 {"text":"KINO SENIORA | Takie jest życie","pl,uk,de,us,es":{"query":"Takie jest życie","programme":"KINO SENIORA | ","bannerEnd":15,"venue":{"bok":"KINO SENIORA: Takie jest życie"}}}
 {"text":"KINO SENIORA: Nasza rewolucja","pl,uk,de,us,es":{"query":"Nasza rewolucja","programme":"KINO SENIORA: ","bannerEnd":14}}
-{"text":"KINO-Extra in der Gedenkstätte: Das Ungesagt"}
+{"text":"KINO-Extra in der Gedenkstätte: Das Ungesagt","pl,uk,de,us,es":{"query":"Das Ungesagt","programme":"KINO-Extra in der Gedenkstätte: ","bannerEnd":32}}
 {"text":"KINO-SONDERVORSTELLUNG 90"}
 {"text":"KINO-VARIETÉ"}
-{"text":"KINO-WORKSHOP FÜR KINDER und FILM: DER WILDE ROBOTER"}
-{"text":"KINO: Adams Acht"}
-{"text":"KINO: Gentle Monster"}
-{"text":"KINO: Spaziergang nach Syrakus"}
-{"text":"KINO: Vaterland"}
+{"text":"KINO-WORKSHOP FÜR KINDER und FILM: DER WILDE ROBOTER","pl,uk,de,us,es":{"query":"DER WILDE ROBOTER","programme":"KINO-WORKSHOP FÜR KINDER und FILM: ","bannerEnd":35}}
+{"text":"KINO: Adams Acht","pl,uk,de,us,es":{"query":"Adams Acht","programme":"KINO: ","bannerEnd":6}}
+{"text":"KINO: Gentle Monster","pl,uk,de,us,es":{"query":"Gentle Monster","programme":"KINO: ","bannerEnd":6}}
+{"text":"KINO: Spaziergang nach Syrakus","pl,uk,de,us,es":{"query":"Spaziergang nach Syrakus","programme":"KINO: ","bannerEnd":6}}
+{"text":"KINO: Vaterland","pl,uk,de,us,es":{"query":"Vaterland","programme":"KINO: ","bannerEnd":6}}
 {"text":"KINOGOLD: Der verlorene Mann"}
 {"text":"KINOGOLD: Steckerlfischfiasko"}
 {"text":"KINOKRÄNZCHEN"}
@@ -7702,9 +7702,9 @@
 {"text":"KLARA I SŁOŃCE"}
 {"text":"KLARA I SŁOŃCE 2 D"}
 {"text":"KLARA UND DIE SONNE"}
-{"text":"KLASYKA KINA: DIABŁY (1971) Rekonstrukcja 4K","pl,uk,de,us,es":{"query":"DIABŁY (1971) Rekonstrukcja","bannerEnd":14}}
-{"text":"KLASYKA KINA: LABIRYNT FAUNA","pl,uk,de,us,es":{"query":"LABIRYNT FAUNA","bannerEnd":14}}
-{"text":"KLASYKA KINA: ORLANDO","pl,uk,de,us,es":{"query":"ORLANDO","bannerEnd":14}}
+{"text":"KLASYKA KINA: DIABŁY (1971) Rekonstrukcja 4K","pl,uk,de,us,es":{"query":"DIABŁY (1971) Rekonstrukcja","programme":"KLASYKA KINA: ","bannerEnd":14}}
+{"text":"KLASYKA KINA: LABIRYNT FAUNA","pl,uk,de,us,es":{"query":"LABIRYNT FAUNA","programme":"KLASYKA KINA: ","bannerEnd":14}}
+{"text":"KLASYKA KINA: ORLANDO","pl,uk,de,us,es":{"query":"ORLANDO","programme":"KLASYKA KINA: ","bannerEnd":14}}
 {"text":"KLEIDERBAR"}
 {"text":"KLEINER DODO"}
 {"text":"KLUB FILMOWY REPLAY! : Happiness","pl,uk,de,us,es":{"query":"Happiness","programme":"KLUB FILMOWY REPLAY! : ","bannerEnd":23}}
@@ -7734,7 +7734,7 @@
 {"text":"KOPNIĘCI W CZASIE"}
 {"text":"KORCZAK"}
 {"text":"KOSCHKA"}
-{"text":"KOSMICZNY PORANEK | Dawid | warsztaty magiczne","pl,uk,de,us,es":{"venue":{"bok":"KOSMICZNY PORANEK: Dawid: warsztaty magiczne"}}}
+{"text":"KOSMICZNY PORANEK | Dawid | warsztaty magiczne","pl,uk,de,us,es":{"query":"Dawid | warsztaty magiczne","programme":"KOSMICZNY PORANEK | ","bannerEnd":20,"venue":{"bok":"KOSMICZNY PORANEK: Dawid: warsztaty magiczne"}}}
 {"text":"KOSO Filmfestival 2026"}
 {"text":"KOSZMAREK"}
 {"text":"KOT PROT"}
@@ -7763,7 +7763,7 @@
 {"text":"KULT-SPECIAL: 2 Fast 2 Furious"}
 {"text":"KULTOWE HORRORY - Martwe zło 2 (1987)","pl,uk,de,us,es":{"key":"KULTOWE HORRORY - Martwe zło 2","venue":{"kino-kinematograf":"KULTOWE HORRORY - Martwe zło 2"}}}
 {"text":"KULTOWE HORRORY od Najlepsze z Najgorszych - Kupiłem motocykl, który jest wampirem (1990)","pl,uk,de,us,es":{"key":"KULTOWE HORRORY od Najlepsze z Najgorszych - Kupiłem motocykl, który jest wampirem","venue":{"kino-kinematograf":"KULTOWE HORRORY od Najlepsze z Najgorszych - Kupiłem motocykl, który jest wampirem"}}}
-{"text":"KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu (1959)","pl,uk,de,us,es":{"key":"KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu","venue":{"kino-kinematograf":"KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu"}}}
+{"text":"KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu (1959)","pl,uk,de,us,es":{"query":"Dom na przeklętym wzgórzu (1959)","key":"KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu","programme":"KULTOWE HORRORY od Splat!FilmFest - ","bannerEnd":36,"venue":{"kino-kinematograf":"KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu"}}}
 {"text":"KUMOTRY"}
 {"text":"KUMOTRY - DKF","pl,uk,de,us,es":{"query":"KUMOTRY"}}
 {"text":"KURA"}
@@ -7798,7 +7798,7 @@
 {"text":"Kaffee Klatsch: Meine Frau, unsere Schwiegertochter und ich"}
 {"text":"Kaffee Klatsch: Sinn und Sinnlichkeit"}
 {"text":"Kaffee und Kuchen - Der Perfekte Urlaub"}
-{"text":"Kaffee-Kino: HIDDENSEE"}
+{"text":"Kaffee-Kino: HIDDENSEE","pl,uk,de,us,es":{"query":"HIDDENSEE","programme":"Kaffee-Kino: ","bannerEnd":13}}
 {"text":"Kaffee-Klatsch: Adams Acht"}
 {"text":"Kaffee-Klatsch: Das gewisse Etwas"}
 {"text":"Kaffee-Klatsch: Lügen über meine Mutter"}
@@ -7826,7 +7826,7 @@
 {"text":"Kandydaci Śmierci"}
 {"text":"Kandydaci śmierci"}
 {"text":"Kandydaci śmierci czwartek konesera","pl,uk,de,us,es":{"query":"Kandydaci śmierci"}}
-{"text":"Kandydaci śmierci | Kino Dostępne","pl,uk,de,us,es":{"venue":{"bok":"Kandydaci śmierci: Kino Dostępne"}}}
+{"text":"Kandydaci śmierci | Kino Dostępne","pl,uk,de,us,es":{"query":"Kandydaci śmierci","venue":{"bok":"Kandydaci śmierci: Kino Dostępne"}}}
 {"text":"Kandydaci śmierci: Kadr Non-Fiction (16+)","pl,uk,de,us,es":{"query":"Kandydaci śmierci"}}
 {"text":"Kang Bo A Loti"}
 {"text":"Kangaroo: Una aventura en Australia"}
@@ -7840,7 +7840,7 @@
 {"text":"Kardes Türküler ile 30 yil (GLOBALE)"}
 {"text":"Karla"}
 {"text":"Karla (Filmclub)"}
-{"text":"Karla klub Kurbelkiste: Kirchen & Kino","pl":{"key":"Karla klub Kurbelkiste: Kirchen i Kino","display":"Karla klub Kurbelkiste: Kirchen i Kino"}}
+{"text":"Karla klub Kurbelkiste: Kirchen & Kino","pl":{"query":"Kirchen & Kino","key":"Karla klub Kurbelkiste: Kirchen i Kino","display":"Karla klub Kurbelkiste: Kirchen i Kino","programme":"Karla klub Kurbelkiste: ","bannerEnd":24},"uk,de,us,es":{"query":"Kirchen & Kino","programme":"Karla klub Kurbelkiste: ","bannerEnd":24}}
 {"text":"Karlchen - Das große Geburtstagsabenteuer"}
 {"text":"Karnet na jasmaty (adamczewski i przybysz)"}
 {"text":"Karnet studio xxiii festiwal duchów „inni” „opowieść o dwóch siostrach”","pl,uk,de,us,es":{"query":"Karnet studio xxiii festiwal duchów \"inni\" \"opowieść o dwóch siostrach\"","venue":{"kino-alternatywy":"Karnet studio xxiii festiwal duchów inni opowieść o dwóch siostrach"}}}
@@ -7918,7 +7918,7 @@
 {"text":"KidsPreview: Asterix und das Königreich Nubien","pl,uk,de,us,es":{"query":"Asterix und das Königreich Nubien","bannerEnd":13}}
 {"text":"KidsPreview: Der Regenbogenfisch","pl,uk,de,us,es":{"query":"Der Regenbogenfisch","bannerEnd":13}}
 {"text":"Kiedy Harry poznaďż˝ Sally"}
-{"text":"Kiez Kino: Billy Elliot - I Will Dance"}
+{"text":"Kiez Kino: Billy Elliot - I Will Dance","pl,uk,de,us,es":{"query":"Billy Elliot - I Will Dance","programme":"Kiez Kino: ","bannerEnd":11}}
 {"text":"Kiki"}
 {"text":"Kiki's Delivery Service"}
 {"text":"Kiki's Delivery Service (1989)","pl,uk,de,us,es":{"key":"Kiki's Delivery Service","venue":{"kino-kinematograf":"Kiki's Delivery Service"}}}
@@ -7955,31 +7955,31 @@
 {"text":"King Rocker Expanded + Q&A","pl,uk,de,us,es":{"query":"King Rocker Expanded"}}
 {"text":"Kingdom of Heaven"}
 {"text":"Kinky Boots"}
-{"text":"Kino & Cake: A Nightmare on Elm Street","pl":{"key":"Kino i Cake: A Nightmare on Elm Street","display":"Kino i Cake: A Nightmare on Elm Street"}}
+{"text":"Kino & Cake: A Nightmare on Elm Street","pl":{"query":"A Nightmare on Elm Street","key":"Kino i Cake: A Nightmare on Elm Street","display":"Kino i Cake: A Nightmare on Elm Street","programme":"Kino & Cake: ","bannerEnd":13},"uk,de,us,es":{"query":"A Nightmare on Elm Street","programme":"Kino & Cake: ","bannerEnd":13}}
 {"text":"Kino & Kaffee im Kiez","pl":{"key":"Kino i Kaffee im Kiez","display":"Kino i Kaffee im Kiez"}}
 {"text":"Kino & Vino: Ein gutes Jahr (Preis inkl. Wein & Panini)","pl":{"key":"Kino i Vino: Ein gutes Jahr (Preis inkl. Wein i Panini)","display":"Kino i Vino: Ein gutes Jahr (Preis inkl. Wein i Panini)"}}
-{"text":"Kino Azji: Nikt nie wie + prelekcja","pl,uk,de,us,es":{"query":"Kino Azji: Nikt nie wie"}}
+{"text":"Kino Azji: Nikt nie wie + prelekcja","pl,uk,de,us,es":{"query":"Nikt nie wie","programme":"Kino Azji: ","bannerEnd":11}}
 {"text":"Kino Dostępne: Hot Spot","pl,uk,de,us,es":{"query":"Hot Spot","programme":"Kino Dostępne: ","bannerEnd":15}}
 {"text":"Kino Dostępne: Lalka","pl,uk,de,us,es":{"query":"Lalka","programme":"Kino Dostępne: ","bannerEnd":15}}
 {"text":"Kino Dostępne: Róża","pl,uk,de,us,es":{"query":"Róża","programme":"Kino Dostępne: ","bannerEnd":15}}
-{"text":"Kino Egzystencjalne: Ojczyzna - seans z dyskusją","pl,uk,de,us,es":{"query":"Kino Egzystencjalne: Ojczyzna"}}
-{"text":"Kino Ery VHS: Nagi instynkt | 2D | Napisy","pl,uk,de,us,es":{"venue":{"bok":"Kino Ery VHS: Nagi instynkt: 2D: Napisy"}}}
-{"text":"Kino Grozy: Nie patrz w dół 2"}
-{"text":"Kino KILN: Almost Famous"}
-{"text":"Kino KILN: Born in Flames"}
-{"text":"Kino KILN: Portrait of a Lady on Fire"}
-{"text":"Kino Kaarst: Adams Acht"}
-{"text":"Kino Kaarst: Das gewisse Etwas"}
-{"text":"Kino Kaarst: Die Camino Therapie – Finde deinen Weg"}
-{"text":"Kino Kaarst: Eine Krankheit wie ein Gedicht"}
-{"text":"Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"Kino Kobiet - KLAPS! Jak żyć żeby nie zwariować"}}}
+{"text":"Kino Egzystencjalne: Ojczyzna - seans z dyskusją","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"Kino Egzystencjalne: ","bannerEnd":21}}
+{"text":"Kino Ery VHS: Nagi instynkt | 2D | Napisy","pl,uk,de,us,es":{"query":"Nagi instynkt | 2D | Napisy","programme":"Kino Ery VHS: ","bannerEnd":14,"venue":{"bok":"Kino Ery VHS: Nagi instynkt: 2D: Napisy"}}}
+{"text":"Kino Grozy: Nie patrz w dół 2","pl,uk,de,us,es":{"query":"Nie patrz w dół 2","programme":"Kino Grozy: ","bannerEnd":12}}
+{"text":"Kino KILN: Almost Famous","pl,uk,de,us,es":{"query":"Almost Famous","programme":"Kino KILN: ","bannerEnd":11}}
+{"text":"Kino KILN: Born in Flames","pl,uk,de,us,es":{"query":"Born in Flames","programme":"Kino KILN: ","bannerEnd":11}}
+{"text":"Kino KILN: Portrait of a Lady on Fire","pl,uk,de,us,es":{"query":"Portrait of a Lady on Fire","programme":"Kino KILN: ","bannerEnd":11}}
+{"text":"Kino Kaarst: Adams Acht","pl,uk,de,us,es":{"query":"Adams Acht","programme":"Kino Kaarst: ","bannerEnd":13}}
+{"text":"Kino Kaarst: Das gewisse Etwas","pl,uk,de,us,es":{"query":"Das gewisse Etwas","programme":"Kino Kaarst: ","bannerEnd":13}}
+{"text":"Kino Kaarst: Die Camino Therapie – Finde deinen Weg","pl,uk,de,us,es":{"query":"Die Camino Therapie – Finde deinen Weg","programme":"Kino Kaarst: ","bannerEnd":13}}
+{"text":"Kino Kaarst: Eine Krankheit wie ein Gedicht","pl,uk,de,us,es":{"query":"Eine Krankheit wie ein Gedicht","programme":"Kino Kaarst: ","bannerEnd":13}}
+{"text":"Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"","pl,uk,de,us,es":{"query":"KLAPS! \"Jak żyć żeby nie zwariować\"","programme":"Kino Kobiet - ","bannerEnd":14,"venue":{"kino-alternatywy":"Kino Kobiet - KLAPS! Jak żyć żeby nie zwariować"}}}
 {"text":"Kino Kobiet CZAS,KTÓRY NIE NADSZEDŁ"}
 {"text":"Kino Kobiet: Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Kino Kobiet: ","bannerEnd":13}}
-{"text":"Kino Konesera - Vivaldi i ja"}
+{"text":"Kino Konesera - Vivaldi i ja","pl,uk,de,us,es":{"query":"Vivaldi i ja","programme":"Kino Konesera - ","bannerEnd":16}}
 {"text":"Kino Konesera: Drugie życie","pl,uk,de,us,es":{"query":"Drugie życie","programme":"Kino Konesera: ","bannerEnd":15}}
 {"text":"Kino Konesera: Takie jest życie","pl,uk,de,us,es":{"query":"Takie jest życie","programme":"Kino Konesera: ","bannerEnd":15}}
 {"text":"Kino Konesera: W tym kraju nie ma dobrych mężczyzn","pl,uk,de,us,es":{"query":"W tym kraju nie ma dobrych mężczyzn","programme":"Kino Konesera: ","bannerEnd":15}}
-{"text":"Kino Maluszka: 3 bajeczki"}
+{"text":"Kino Maluszka: 3 bajeczki","pl,uk,de,us,es":{"query":"3 bajeczki","programme":"Kino Maluszka: ","bannerEnd":15}}
 {"text":"Kino Muranów"}
 {"text":"Kino Muranów- pokaz z udziałem Romana Gutka","pl,uk,de,us,es":{"query":"Kino Muranów"}}
 {"text":"Kino Przyjazne Sensorycznie: Niesamowite przygody skarpetek 4: Do roboty!","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4: Do roboty!","programme":"Kino Przyjazne Sensorycznie: ","bannerEnd":29}}
@@ -7990,16 +7990,16 @@
 {"text":"Kino Seniora: Nasza rewolucja","pl,uk,de,us,es":{"query":"Nasza rewolucja","programme":"Kino Seniora: ","bannerEnd":14}}
 {"text":"Kino Seniora: Przepis na święta","pl,uk,de,us,es":{"query":"Przepis na święta","programme":"Kino Seniora: ","bannerEnd":14}}
 {"text":"Kino Vino"}
-{"text":"Kino Workshop für Kinder + Film: Der wilde Roboter","pl,uk,de,us,es":{"query":"Kino Workshop für Kinder"}}
-{"text":"Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing","pl,uk,de,us,es":{"venue":{"bok":"Kino Zmysłów: Vincent. Legenda oceanu: 2D: Dubbing"}}}
+{"text":"Kino Workshop für Kinder + Film: Der wilde Roboter","pl,uk,de,us,es":{"query":"Kino Workshop für Kinder","programme":"Kino Workshop für Kinder + Film: ","bannerEnd":33}}
+{"text":"Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing","pl,uk,de,us,es":{"query":"Vincent. Legenda oceanu | 2D | Dubbing","programme":"Kino Zmysłów: ","bannerEnd":14,"venue":{"bok":"Kino Zmysłów: Vincent. Legenda oceanu: 2D: Dubbing"}}}
 {"text":"Kino a psychoanaliza: Klara i słońce","pl,uk,de,us,es":{"query":"Klara i słońce","programme":"Kino a psychoanaliza: ","bannerEnd":22}}
 {"text":"Kino a psychoanaliza: Młode matki","pl,uk,de,us,es":{"query":"Młode matki","programme":"Kino a psychoanaliza: ","bannerEnd":22}}
-{"text":"Kino auf Ukrainisch: Der Weihnachtsexpress"}
-{"text":"Kino auf Ukrainisch: Forgotten Island"}
-{"text":"Kino auf Ukrainisch: Mavka - Hüterin des Waldes"}
+{"text":"Kino auf Ukrainisch: Der Weihnachtsexpress","pl,uk,de,us,es":{"query":"Der Weihnachtsexpress","programme":"Kino auf Ukrainisch: ","bannerEnd":21}}
+{"text":"Kino auf Ukrainisch: Forgotten Island","pl,uk,de,us,es":{"query":"Forgotten Island","programme":"Kino auf Ukrainisch: ","bannerEnd":21}}
+{"text":"Kino auf Ukrainisch: Mavka - Hüterin des Waldes","pl,uk,de,us,es":{"query":"Mavka - Hüterin des Waldes","programme":"Kino auf Ukrainisch: ","bannerEnd":21}}
 {"text":"Kino bambino"}
-{"text":"Kino bez barier w drodze: Kandydaci Śmierci"}
-{"text":"Kino bez barier w drodze: Kumotry"}
+{"text":"Kino bez barier w drodze: Kandydaci Śmierci","pl,uk,de,us,es":{"query":"Kandydaci Śmierci","programme":"Kino bez barier w drodze: ","bannerEnd":26}}
+{"text":"Kino bez barier w drodze: Kumotry","pl,uk,de,us,es":{"query":"Kumotry","programme":"Kino bez barier w drodze: ","bannerEnd":26}}
 {"text":"Kino bez barier: Anzu. Kot-duch (AD + CC + PJM)","pl,uk,de,us,es":{"query":"Anzu. Kot-duch","programme":"Kino bez barier: ","bannerEnd":17}}
 {"text":"Kino bez barier: Błękitny szlak (AD + CC + PJM)","pl,uk,de,us,es":{"query":"Błękitny szlak","programme":"Kino bez barier: ","bannerEnd":17}}
 {"text":"Kino bez barier: Drugie życie (AD + CC + PJM)","pl,uk,de,us,es":{"query":"Drugie życie","programme":"Kino bez barier: ","bannerEnd":17}}
@@ -8012,33 +8012,33 @@
 {"text":"Kino bez barier: Ojczyzna (AD + CC + PJM)","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"Kino bez barier: ","bannerEnd":17}}
 {"text":"Kino bez barier: Ojczyzna (AD + CC)","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"Kino bez barier: ","bannerEnd":17}}
 {"text":"Kino bez barier: Pieśni lasu (AD + CC + PJM)","pl,uk,de,us,es":{"query":"Pieśni lasu","programme":"Kino bez barier: ","bannerEnd":17}}
-{"text":"Kino dla Ducha: Mistyczka"}
-{"text":"Kino dla Ducha: Mistyczka + spotkanie z ks. Norbertem Nowotnym","pl,uk,de,us,es":{"query":"Kino dla Ducha: Mistyczka"}}
+{"text":"Kino dla Ducha: Mistyczka","pl,uk,de,us,es":{"query":"Mistyczka","programme":"Kino dla Ducha: ","bannerEnd":16}}
+{"text":"Kino dla Ducha: Mistyczka + spotkanie z ks. Norbertem Nowotnym","pl,uk,de,us,es":{"query":"Mistyczka","programme":"Kino dla Ducha: ","bannerEnd":16}}
 {"text":"Kino dla Ducha… DZIEŃ DZIECKA KSIĘDZA JANA KACZKOWSKIEGO","pl,uk,de,us,es":{"query":"DZIEŃ DZIECKA KSIĘDZA JANA KACZKOWSKIEGO","bannerEnd":16}}
-{"text":"Kino dla Pań - Jak żyć, żeby nie zwariować"}
-{"text":"Kino dla Seniora | Lalka","pl,uk,de,us,es":{"venue":{"bok":"Kino dla Seniora: Lalka"}}}
+{"text":"Kino dla Pań - Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Kino dla Pań - ","bannerEnd":15}}
+{"text":"Kino dla Seniora | Lalka","pl,uk,de,us,es":{"query":"Lalka","programme":"Kino dla Seniora | ","bannerEnd":19,"venue":{"bok":"Kino dla Seniora: Lalka"}}}
 {"text":"Kino dla Seniora: Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","programme":"Kino dla Seniora: ","bannerEnd":18}}
 {"text":"Kino dla Seniora: Najbogatsza kobieta świata","pl,uk,de,us,es":{"query":"Najbogatsza kobieta świata","programme":"Kino dla Seniora: ","bannerEnd":18}}
 {"text":"Kino dla Seniora: Tajny agent","pl,uk,de,us,es":{"query":"Tajny agent","programme":"Kino dla Seniora: ","bannerEnd":18}}
 {"text":"Kino dla kobiet- Spa Weekend","pl,uk,de,us,es":{"query":"Spa Weekend","bannerEnd":17}}
 {"text":"Kino dla seniora: Vivaldi i ja","pl,uk,de,us,es":{"query":"Vivaldi i ja","programme":"Kino dla seniora: ","bannerEnd":18}}
-{"text":"Kino für Junggebliebene: Alte Liebe"}
-{"text":"Kino für Junggebliebene: Ein Fast perfekter Antrag"}
-{"text":"Kino für Junggebliebene: Lieblingsmenschen"}
-{"text":"Kino gorzkie #3: Propozycja"}
-{"text":"Kino i historia: Nasza rewolucja"}
-{"text":"Kino im Kulturcafé: Zoomania 2"}
+{"text":"Kino für Junggebliebene: Alte Liebe","pl,uk,de,us,es":{"query":"Alte Liebe","programme":"Kino für Junggebliebene: ","bannerEnd":25}}
+{"text":"Kino für Junggebliebene: Ein Fast perfekter Antrag","pl,uk,de,us,es":{"query":"Ein Fast perfekter Antrag","programme":"Kino für Junggebliebene: ","bannerEnd":25}}
+{"text":"Kino für Junggebliebene: Lieblingsmenschen","pl,uk,de,us,es":{"query":"Lieblingsmenschen","programme":"Kino für Junggebliebene: ","bannerEnd":25}}
+{"text":"Kino gorzkie #3: Propozycja","pl,uk,de,us,es":{"query":"Propozycja","programme":"Kino gorzkie #3: ","bannerEnd":17}}
+{"text":"Kino i historia: Nasza rewolucja","pl,uk,de,us,es":{"query":"Nasza rewolucja","programme":"Kino i historia: ","bannerEnd":17}}
+{"text":"Kino im Kulturcafé: Zoomania 2","pl,uk,de,us,es":{"query":"Zoomania 2","programme":"Kino im Kulturcafé: ","bannerEnd":20}}
 {"text":"Kino na obcasach: Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Kino na obcasach: ","bannerEnd":18}}
 {"text":"Kino na obcasach: Przepis na święta","pl,uk,de,us,es":{"query":"Przepis na święta","programme":"Kino na obcasach: ","bannerEnd":18}}
-{"text":"Kino przyjazne sensorycznie - Kot Prot"}
+{"text":"Kino przyjazne sensorycznie - Kot Prot","pl,uk,de,us,es":{"query":"Kot Prot","programme":"Kino przyjazne sensorycznie - ","bannerEnd":30}}
 {"text":"Kino przyjazne sensorycznie: Baranek Shaun i kudłata bestia","pl,uk,de,us,es":{"query":"Baranek Shaun i kudłata bestia","programme":"Kino przyjazne sensorycznie: ","bannerEnd":29}}
-{"text":"Kino um's Eck - das Pölbitzer Stadtteilkino"}
-{"text":"Kino w Terminalu: Filmowe Zwierzenia: Nigdy w życiu!"}
-{"text":"Kino z Historią - Ziemia Obiecana"}
-{"text":"Kino za Rogiem - Czarnoksiężnik z OZ: Powrót Dorotki"}
-{"text":"Kino | \"Les Choristes\" (dt. Titel: \"Die Kinder des Monsieur Mathieu\")","pl,uk,de,us,es":{"venue":{"bok":"Kino: \"Les Choristes\" (dt. Titel: \"Die Kinder des Monsieur Mathieu\")","kino-alternatywy":"Kino | Les Choristes (dt. Titel: Die Kinder des Monsieur Mathieu )"}}}
+{"text":"Kino um's Eck - das Pölbitzer Stadtteilkino","pl,uk,de,us,es":{"query":"das Pölbitzer Stadtteilkino","programme":"Kino um's Eck - ","bannerEnd":16}}
+{"text":"Kino w Terminalu: Filmowe Zwierzenia: Nigdy w życiu!","pl,uk,de,us,es":{"query":"Filmowe Zwierzenia: Nigdy w życiu!","programme":"Kino w Terminalu: ","bannerEnd":18}}
+{"text":"Kino z Historią - Ziemia Obiecana","pl,uk,de,us,es":{"query":"Ziemia Obiecana","programme":"Kino z Historią - ","bannerEnd":18}}
+{"text":"Kino za Rogiem - Czarnoksiężnik z OZ: Powrót Dorotki","pl,uk,de,us,es":{"query":"Czarnoksiężnik z OZ: Powrót Dorotki","programme":"Kino za Rogiem - ","bannerEnd":17}}
+{"text":"Kino | \"Les Choristes\" (dt. Titel: \"Die Kinder des Monsieur Mathieu\")","pl,uk,de,us,es":{"query":"\"Les Choristes\" (dt. Titel: \"Die Kinder des Monsieur Mathieu\")","programme":"Kino | ","bannerEnd":7,"venue":{"bok":"Kino: \"Les Choristes\" (dt. Titel: \"Die Kinder des Monsieur Mathieu\")","kino-alternatywy":"Kino | Les Choristes (dt. Titel: Die Kinder des Monsieur Mathieu )"}}}
 {"text":"Kino-Event mit Architekt Fritz Auer und Designer Hans A. Muth"}
-{"text":"Kino-Kaffee: Ticket ins Leben"}
+{"text":"Kino-Kaffee: Ticket ins Leben","pl,uk,de,us,es":{"query":"Ticket ins Leben","programme":"Kino-Kaffee: ","bannerEnd":13}}
 {"text":"Kino4Kids: Die Schatzsuche im Blaumeisental"}
 {"text":"Kino4Kids: Lassie – Ein neues Abenteuer"}
 {"text":"KinoKiste #3"}
@@ -8050,8 +8050,8 @@
 {"text":"Kinoktopus: Zootrop"}
 {"text":"Kinopremiere WAPO Elbe"}
 {"text":"Kinowerkstatt: Nouvelle Vague + Außer Atem","pl,uk,de,us,es":{"query":"Kinowerkstatt: Nouvelle Vague"}}
-{"text":"Kinowy Poranek | Elli i ekipa straszaków","pl,uk,de,us,es":{"query":"Elli i ekipa straszaków","bannerEnd":17,"venue":{"bok":"Kinowy Poranek: Elli i ekipa straszaków"}}}
-{"text":"Kinowy Poranek | Noc w zoo","pl,uk,de,us,es":{"query":"Noc w zoo","bannerEnd":17,"venue":{"bok":"Kinowy Poranek: Noc w zoo"}}}
+{"text":"Kinowy Poranek | Elli i ekipa straszaków","pl,uk,de,us,es":{"query":"Elli i ekipa straszaków","programme":"Kinowy Poranek | ","bannerEnd":17,"venue":{"bok":"Kinowy Poranek: Elli i ekipa straszaków"}}}
+{"text":"Kinowy Poranek | Noc w zoo","pl,uk,de,us,es":{"query":"Noc w zoo","programme":"Kinowy Poranek | ","bannerEnd":17,"venue":{"bok":"Kinowy Poranek: Noc w zoo"}}}
 {"text":"Kinski 100!: Aguirre, der Zorn Gottes"}
 {"text":"Kinski 100!: Fitzcarraldo"}
 {"text":"Kinski 100!: Mein liebster Feind"}
@@ -8100,8 +8100,8 @@
 {"text":"Klasyk w kinie: Milczenie owiec","pl,uk,de,us,es":{"query":"Milczenie owiec","programme":"Klasyk w kinie: ","bannerEnd":16}}
 {"text":"Klasyk w kinie: Rozmowa","pl,uk,de,us,es":{"query":"Rozmowa","programme":"Klasyk w kinie: ","bannerEnd":16}}
 {"text":"Klasyka Bajek Polskich"}
-{"text":"Klasyka Kina: CRASH","pl,uk,de,us,es":{"query":"CRASH","bannerEnd":14}}
-{"text":"Klasyka Kina: Diabły","pl,uk,de,us,es":{"query":"Diabły","bannerEnd":14}}
+{"text":"Klasyka Kina: CRASH","pl,uk,de,us,es":{"query":"CRASH","programme":"Klasyka Kina: ","bannerEnd":14}}
+{"text":"Klasyka Kina: Diabły","pl,uk,de,us,es":{"query":"Diabły","programme":"Klasyka Kina: ","bannerEnd":14}}
 {"text":"Klasyka SFR vol.1"}
 {"text":"Klasyka SFR vol.2"}
 {"text":"Klasyka SFR vol.3"}
@@ -8123,7 +8123,7 @@
 {"text":"Kleine Dinge wie diese"}
 {"text":"Kleine Eheverbrechen - Thiele Neumann Theater"}
 {"text":"Kleine KUURHUUS Musik"}
-{"text":"Kleine Tiere, großes Kino: Das geheime Leben der Fledermäuse"}
+{"text":"Kleine Tiere, großes Kino: Das geheime Leben der Fledermäuse","pl,uk,de,us,es":{"query":"Das geheime Leben der Fledermäuse","programme":"Kleine Tiere, großes Kino: ","bannerEnd":27}}
 {"text":"Kleiner Dodo"}
 {"text":"Kleiner Markt im großen Kino 12 bis 18 Uhr"}
 {"text":"Klimakterium... i już"}
@@ -8140,7 +8140,7 @@
 {"text":"Klub Filmowy WCK \"Odlot\"","pl,uk,de,us,es":{"query":"Odlot","bannerEnd":24,"venue":{"kino-alternatywy":"Klub Filmowy WCK Odlot"}}}
 {"text":"Klub Filmowy Żółty Fotel: Chronologia wody","pl,uk,de,us,es":{"query":"Chronologia wody","programme":"Klub Filmowy Żółty Fotel: ","bannerEnd":26}}
 {"text":"Klub Filmowy Żółty Fotel: Pieśni lasu","pl,uk,de,us,es":{"query":"Pieśni lasu","programme":"Klub Filmowy Żółty Fotel: ","bannerEnd":26}}
-{"text":"Klub Filmowy: Rozważna i romantyczna | 2D | Napisy","pl,uk,de,us,es":{"venue":{"bok":"Klub Filmowy: Rozważna i romantyczna: 2D: Napisy"}}}
+{"text":"Klub Filmowy: Rozważna i romantyczna | 2D | Napisy","pl,uk,de,us,es":{"query":"Rozważna i romantyczna | 2D | Napisy","programme":"Klub Filmowy: ","bannerEnd":14,"venue":{"bok":"Klub Filmowy: Rozważna i romantyczna: 2D: Napisy"}}}
 {"text":"Klub Konesera: Homo sapiens?","pl,uk,de,us,es":{"query":"Homo sapiens?","programme":"Klub Konesera: ","bannerEnd":15}}
 {"text":"Klub Konesera: O czym wie Marielle","pl,uk,de,us,es":{"query":"O czym wie Marielle","programme":"Klub Konesera: ","bannerEnd":15}}
 {"text":"Klub Konesera: Obcy","pl,uk,de,us,es":{"query":"Obcy","programme":"Klub Konesera: ","bannerEnd":15}}
@@ -8160,8 +8160,8 @@
 {"text":"Knit & Stitch: Sense and Sensibility","pl":{"key":"Knit i Stitch: Sense and Sensibility","display":"Knit i Stitch: Sense and Sensibility"}}
 {"text":"Knives Out"}
 {"text":"Knives Out - Mord ist Familiensache"}
-{"text":"Kobiece wieczory w Kino Cafe: Moje wspaniałe życie","pl,uk,de,us,es":{"query":"Moje wspaniałe życie","bannerEnd":30}}
-{"text":"Kobiece wieczory w Kino Cafe: Powiedz mi, co czujesz","pl,uk,de,us,es":{"query":"Powiedz mi, co czujesz","bannerEnd":30}}
+{"text":"Kobiece wieczory w Kino Cafe: Moje wspaniałe życie","pl,uk,de,us,es":{"query":"Moje wspaniałe życie","programme":"Kobiece wieczory w Kino Cafe: ","bannerEnd":30}}
+{"text":"Kobiece wieczory w Kino Cafe: Powiedz mi, co czujesz","pl,uk,de,us,es":{"query":"Powiedz mi, co czujesz","programme":"Kobiece wieczory w Kino Cafe: ","bannerEnd":30}}
 {"text":"Kobiecy Dobry Wieczór ze Zwierciadłem - „Zaproszenie” - przedpremiera","pl,uk,de,us,es":{"query":"Kobiecy Dobry Wieczór ze Zwierciadłem - \"Zaproszenie\"","venue":{"kino-alternatywy":"Kobiecy Dobry Wieczór ze Zwierciadłem - Zaproszenie - przedpremiera"}}}
 {"text":"Kobiecy Świat: Violetta Villas - przedpremiera","pl,uk,de,us,es":{"query":"Violetta Villas","bannerEnd":15}}
 {"text":"Kobiecy świat: Rozważna i romantyczna","pl,uk,de,us,es":{"query":"Rozważna i romantyczna","bannerEnd":15}}
@@ -8284,7 +8284,7 @@
 {"text":"Kuhle Wampe"}
 {"text":"Kuhle Wampe oder Wem gehört die Welt?"}
 {"text":"Kuhle Wampe oder: Wem gehört die Welt?"}
-{"text":"Kulinarisches Kino: Couscous und Geheimnisse"}
+{"text":"Kulinarisches Kino: Couscous und Geheimnisse","pl,uk,de,us,es":{"query":"Couscous und Geheimnisse","programme":"Kulinarisches Kino: ","bannerEnd":20}}
 {"text":"Kult-Special: Blade Runner - The Final Cut"}
 {"text":"Kult-Special: Der mit dem Wolf tanzt (35- jähriges Jubiläum)"}
 {"text":"Kult-Special: Rocky"}
@@ -8293,7 +8293,7 @@
 {"text":"Kultfilmnachmittag for Kids: Der kleine Vampir"}
 {"text":"Kultklassiker: Der Herr der Ringe - die Gefährten (Extended Version)"}
 {"text":"Kultklassiker: Rocky"}
-{"text":"Kultowe klasyki: Drabina Jakubowa"}
+{"text":"Kultowe klasyki: Drabina Jakubowa","pl,uk,de,us,es":{"query":"Drabina Jakubowa","programme":"Kultowe klasyki: ","bannerEnd":17}}
 {"text":"Kulturkino: Go Trabi Go"}
 {"text":"Kulturkino: Pretty Woman"}
 {"text":"Kulturkosmos 1. Teil"}
@@ -8312,8 +8312,8 @@
 {"text":"Kung Fu Soccer (English Dub)"}
 {"text":"Kung Fu Soccer (Mandarin with EN/CH subtitles)"}
 {"text":"Kung Fu Soccer (Mandarin)"}
-{"text":"Kunst im Kino: Like A Complete Unknown"}
-{"text":"Kunst im Kino: Mit einem Tiger schlafen"}
+{"text":"Kunst im Kino: Like A Complete Unknown","pl,uk,de,us,es":{"query":"Like A Complete Unknown","programme":"Kunst im Kino: ","bannerEnd":15}}
+{"text":"Kunst im Kino: Mit einem Tiger schlafen","pl,uk,de,us,es":{"query":"Mit einem Tiger schlafen","programme":"Kunst im Kino: ","bannerEnd":15}}
 {"text":"KunstPunkt - Open Art Night"}
 {"text":"Kupiłem motocykl, który jest wampirem"}
 {"text":"Kupiłem motocykl, który jest wampirem (1990)","pl,uk,de,us,es":{"key":"Kupiłem motocykl, który jest wampirem","venue":{"kino-kinematograf":"Kupiłem motocykl, który jest wampirem"}}}
@@ -8561,15 +8561,15 @@
 {"text":"LS/FF Friday Night Pass"}
 {"text":"LS/FF Saturday Night Pass"}
 {"text":"LS/FF Thursday Night Pass"}
-{"text":"LT KINO 2026: ANALOGUE 16MM FILMMAKING"}
-{"text":"LT KINO 2026: CINEMA BRUNCH"}
-{"text":"LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970","pl,uk,de,us,es":{"key":"LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960"}}
+{"text":"LT KINO 2026: ANALOGUE 16MM FILMMAKING","pl,uk,de,us,es":{"query":"ANALOGUE 16MM FILMMAKING","programme":"LT KINO 2026: ","bannerEnd":14}}
+{"text":"LT KINO 2026: CINEMA BRUNCH","pl,uk,de,us,es":{"query":"CINEMA BRUNCH","programme":"LT KINO 2026: ","bannerEnd":14}}
+{"text":"LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970","pl,uk,de,us,es":{"query":"COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970","key":"LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960","programme":"LT KINO 2026: ","bannerEnd":14}}
 {"text":"LT KINO 2026: FEMALE SHORTS"}
-{"text":"LT KINO 2026: HOLY DESTRUCTORS"}
-{"text":"LT KINO 2026: HOW TO DIVORCE DURING THE WAR"}
-{"text":"LT KINO 2026: HUNGER STRIKE BREAKFAST"}
+{"text":"LT KINO 2026: HOLY DESTRUCTORS","pl,uk,de,us,es":{"query":"HOLY DESTRUCTORS","programme":"LT KINO 2026: ","bannerEnd":14}}
+{"text":"LT KINO 2026: HOW TO DIVORCE DURING THE WAR","pl,uk,de,us,es":{"query":"HOW TO DIVORCE DURING THE WAR","programme":"LT KINO 2026: ","bannerEnd":14}}
+{"text":"LT KINO 2026: HUNGER STRIKE BREAKFAST","pl,uk,de,us,es":{"query":"HUNGER STRIKE BREAKFAST","programme":"LT KINO 2026: ","bannerEnd":14}}
 {"text":"LT KINO 2026: SHORTS - COME CLOSER"}
-{"text":"LT KINO 2026: THEY CALL ME DANKA"}
+{"text":"LT KINO 2026: THEY CALL ME DANKA","pl,uk,de,us,es":{"query":"THEY CALL ME DANKA","programme":"LT KINO 2026: ","bannerEnd":14}}
 {"text":"LUCAS KURZFILMPROGRAMM 1"}
 {"text":"LUCAS KURZFILMPROGRAMM 2"}
 {"text":"LUDWIG II. - GLANZ UND ELEND EINES KÖNIGS"}
@@ -8581,8 +8581,8 @@
 {"text":"LUNA I ROZGADANA ŚWINKA 2D DUB."}
 {"text":"LUNA I ROZGADANA ŚWINKA | 2D | DUB | BO |","pl,uk,de,us,es":{"query":"LUNA I ROZGADANA ŚWINKA | 2D | DUB","venue":{"bok":"LUNA I ROZGADANA ŚWINKA: 2D: DUB: BO:"}}}
 {"text":"LUNA I ROZGADANA ŚWINKA."}
-{"text":"LUNATYCY. KINO I ROZMOWA | Ojczyzna | film","pl,uk,de,us,es":{"venue":{"bok":"LUNATYCY. KINO I ROZMOWA: Ojczyzna: film"}}}
-{"text":"LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig","pl,uk,de,us,es":{"query":"LUNATYCY. KINO I ROZMOWA | Ojczyzna | film","venue":{"bok":"LUNATYCY. KINO I ROZMOWA: Ojczyzna: film + spotkanie z Joanną Kulig"}}}
+{"text":"LUNATYCY. KINO I ROZMOWA | Ojczyzna | film","pl,uk,de,us,es":{"query":"Ojczyzna | film","programme":"LUNATYCY. KINO I ROZMOWA | ","bannerEnd":27,"venue":{"bok":"LUNATYCY. KINO I ROZMOWA: Ojczyzna: film"}}}
+{"text":"LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig","pl,uk,de,us,es":{"query":"Ojczyzna | film","programme":"LUNATYCY. KINO I ROZMOWA | ","bannerEnd":27,"venue":{"bok":"LUNATYCY. KINO I ROZMOWA: Ojczyzna: film + spotkanie z Joanną Kulig"}}}
 {"text":"LUSTIGES PETTERSSON UND FINDUS MITMACHKINO 2 (2026)","pl,uk,de,us,es":{"key":"LUSTIGES PETTERSSON UND FINDUS MITMACHKINO 2","venue":{"kino-kinematograf":"LUSTIGES PETTERSSON UND FINDUS MITMACHKINO 2"}}}
 {"text":"LYNYRDS FRYNDS"}
 {"text":"L`Espèce explosive"}
@@ -8722,12 +8722,12 @@
 {"text":"Ladies Night"}
 {"text":"Ladies Night \"Der perfekte Urlaub\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"Ladies Night Der perfekte Urlaub"}}}
 {"text":"Ladies Night - Przepis na święta","pl,uk,de,us,es":{"query":"Przepis na święta","programme":"Ladies Night - ","bannerEnd":15}}
-{"text":"Ladies Preview: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","bannerEnd":16}}
+{"text":"Ladies Preview: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","programme":"Ladies Preview: ","bannerEnd":16}}
 {"text":"Ladies first"}
-{"text":"Ladies-Night: Der perfekte Urlaub"}
-{"text":"LadiesNight: Der perfekte Urlaub"}
-{"text":"Ladiesnight: Cheri, ich komme!"}
-{"text":"Ladiesnight: Der perfekte Urlaub"}
+{"text":"Ladies-Night: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","programme":"Ladies-Night: ","bannerEnd":14}}
+{"text":"LadiesNight: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","programme":"LadiesNight: ","bannerEnd":13}}
+{"text":"Ladiesnight: Cheri, ich komme!","pl,uk,de,us,es":{"query":"Cheri, ich komme!","programme":"Ladiesnight: ","bannerEnd":13}}
+{"text":"Ladiesnight: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","programme":"Ladiesnight: ","bannerEnd":13}}
 {"text":"Lads"}
 {"text":"Lady"}
 {"text":"Lady (15)","pl,uk,de,us,es":{"query":"Lady"}}
@@ -8763,13 +8763,13 @@
 {"text":"Lalka + prelekcja","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka - 2D PL"}
 {"text":"Lalka - AF","pl,uk,de,us,es":{"venue":{"helios":"Lalka"}}}
-{"text":"Lalka - Festiwal Kultura Bez Barier"}
+{"text":"Lalka - Festiwal Kultura Bez Barier","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka - KNT","pl,uk,de,us,es":{"venue":{"helios":"Lalka"}}}
 {"text":"Lalka - Nasze Kino"}
 {"text":"Lalka - Seans Seniora","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka - The Doll (poln.)"}
 {"text":"Lalka - premiera filmowa","pl,uk,de,us,es":{"query":"Lalka","venue":{"kino-mok-miedzyrzecz":"Lalka - filmowa"}}}
-{"text":"Lalka - seans dla grupy zorg. (SDS)"}
+{"text":"Lalka - seans dla grupy zorg. (SDS)","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka / 2D polski","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka / PL","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka / film polski","pl,uk,de,us,es":{"query":"Lalka"}}
@@ -8783,7 +8783,7 @@
 {"text":"Lalka tani poniedziałek","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka | 13+ | PREMIERA!!!","pl,uk,de,us,es":{"query":"Lalka | 13+ |","venue":{"bok":"Lalka: 13+: PREMIERA!!!"}}}
 {"text":"Lalka | 2D | PL","pl,uk,de,us,es":{"venue":{"bok":"Lalka: 2D"}}}
-{"text":"Lalka | Kino Dostępne","pl,uk,de,us,es":{"venue":{"bok":"Lalka: Kino Dostępne"}}}
+{"text":"Lalka | Kino Dostępne","pl,uk,de,us,es":{"query":"Lalka","venue":{"bok":"Lalka: Kino Dostępne"}}}
 {"text":"Lalka | Kinoteka dla Rodziców","pl,uk,de,us,es":{"query":"Lalka","venue":{"bok":"Lalka: Kinoteka dla Rodziców"}}}
 {"text":"Lalka | oryginalna wersja językowa + napisy EN","pl,uk,de,us,es":{"query":"Lalka | oryginalna wersja językowa","venue":{"bok":"Lalka: oryginalna wersja językowa + napisy EN"}}}
 {"text":"Lalka | pokaz z dostępnością AD SDH","pl,uk,de,us,es":{"query":"Lalka","venue":{"bok":"Lalka: pokaz z dostępnością AD SDH"}}}
@@ -8821,12 +8821,12 @@
 {"text":"Latcho Drom"}
 {"text":"Late Fame"}
 {"text":"Late Fame (15)","pl,uk,de,us,es":{"query":"Late Fame"}}
-{"text":"Late Night Halloween Screening: Jennifer's Body"}
+{"text":"Late Night Halloween Screening: Jennifer's Body","pl,uk,de,us,es":{"query":"Jennifer's Body","programme":"Late Night Halloween Screening: ","bannerEnd":32}}
 {"text":"Lateley I've Been Dreaming in Pink and Blue: Fabienne Watzke"}
-{"text":"Latin Film Fest: Komendant Fritz"}
-{"text":"Latin Film Fest: Poeta"}
-{"text":"Latin Film Fest: Wersal"}
-{"text":"Latin Film Fest: Świetlana przyszłość"}
+{"text":"Latin Film Fest: Komendant Fritz","pl,uk,de,us,es":{"query":"Komendant Fritz","programme":"Latin Film Fest: ","bannerEnd":17}}
+{"text":"Latin Film Fest: Poeta","pl,uk,de,us,es":{"query":"Poeta","programme":"Latin Film Fest: ","bannerEnd":17}}
+{"text":"Latin Film Fest: Wersal","pl,uk,de,us,es":{"query":"Wersal","programme":"Latin Film Fest: ","bannerEnd":17}}
+{"text":"Latin Film Fest: Świetlana przyszłość","pl,uk,de,us,es":{"query":"Świetlana przyszłość","programme":"Latin Film Fest: ","bannerEnd":17}}
 {"text":"Latte Igel und der magische Wasserstein"}
 {"text":"Lauf – Begegnungen zwischen zwei Grenzen"}
 {"text":"Laundry"}
@@ -8931,12 +8931,12 @@
 {"text":"Let the Right One In (Lat den ratte komma in)"}
 {"text":"Lethal Weapon"}
 {"text":"Lethal Weapon 2 - Brennpunkt L.A."}
-{"text":"Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI"}
+{"text":"Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI","pl,uk,de,us,es":{"query":"Letnie przesilenie"}}
 {"text":"Letters from Baghdad"}
 {"text":"Letz Zep + Aerochicks","pl,uk,de,us,es":{"query":"Letz Zep"}}
 {"text":"Leverkusen singt 2027!"}
 {"text":"Leviticus"}
-{"text":"Lexi Seniors' Film Club: Educating Rita (1983)","pl,uk,de,us,es":{"key":"Lexi Seniors' Film Club: Educating Rita","venue":{"kino-kinematograf":"Lexi Seniors' Film Club: Educating Rita"}}}
+{"text":"Lexi Seniors' Film Club: Educating Rita (1983)","pl,uk,de,us,es":{"query":"Educating Rita (1983)","key":"Lexi Seniors' Film Club: Educating Rita","programme":"Lexi Seniors' Film Club: ","bannerEnd":25,"venue":{"kino-kinematograf":"Lexi Seniors' Film Club: Educating Rita"}}}
 {"text":"Licence to Kill"}
 {"text":"Lichterzauber – Familien-Event"}
 {"text":"Lichtstubenabend in Schnett"}
@@ -9058,11 +9058,11 @@
 {"text":"Lolita lesen in Teheran FILMCLUB LÜNEN"}
 {"text":"Lomu"}
 {"text":"London"}
-{"text":"London Baltic Film Festival presents: Hunger Strike Breakfast (UK premiere)"}
-{"text":"London Baltic Film Festival presents: Our Erika (UK premiere)"}
-{"text":"London Baltic Film Festival presents: Ulya (UK premiere)"}
-{"text":"London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK) + Q&A","pl,uk,de,us,es":{"query":"London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK)"}}
-{"text":"London Breeze Film Festival Shorts: UK Women of Film- Pt 2"}
+{"text":"London Baltic Film Festival presents: Hunger Strike Breakfast (UK premiere)","pl,uk,de,us,es":{"query":"Hunger Strike Breakfast (UK premiere)","programme":"London Baltic Film Festival presents: ","bannerEnd":38}}
+{"text":"London Baltic Film Festival presents: Our Erika (UK premiere)","pl,uk,de,us,es":{"query":"Our Erika (UK premiere)","programme":"London Baltic Film Festival presents: ","bannerEnd":38}}
+{"text":"London Baltic Film Festival presents: Ulya (UK premiere)","pl,uk,de,us,es":{"query":"Ulya (UK premiere)","programme":"London Baltic Film Festival presents: ","bannerEnd":38}}
+{"text":"London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK) + Q&A","pl,uk,de,us,es":{"query":"Such a Vivid Imagination (UK)","programme":"London Breeze Film Festival Gala Closing Film + Awards: ","bannerEnd":56}}
+{"text":"London Breeze Film Festival Shorts: UK Women of Film- Pt 2","pl,uk,de,us,es":{"query":"UK Women of Film- Pt 2","programme":"London Breeze Film Festival Shorts: ","bannerEnd":36}}
 {"text":"London Breeze Film Festival presents Dreamland [Dubbed]"}
 {"text":"London Breeze Film Festival: Common Threads- Documentary Shorts"}
 {"text":"London Breeze Film Festival: Oska Bright ‘Best of the Festival’ Showcase - Relaxed Screening","pl,uk,de,us,es":{"query":"London Breeze Film Festival: Oska Bright ‘Best of the Festival’ Showcase"}}
@@ -9074,8 +9074,8 @@
 {"text":"London Breeze: The Sound of Storytelling + Networking","pl,uk,de,us,es":{"query":"London Breeze: The Sound of Storytelling"}}
 {"text":"London Breeze: Women Of Film Short Documentary Pitching Competition + Networker","pl,uk,de,us,es":{"query":"London Breeze: Women Of Film Short Documentary Pitching Competition"}}
 {"text":"London Breeze: Youth Short Film Showcase"}
-{"text":"London Palestine Film Festival 2026: Clown of Gaza + One More Show","pl,uk,de,us,es":{"query":"Clown of Gaza","bannerEnd":37}}
-{"text":"London Palestine Film Festival 2026: Lovely Butterfly + For Life","pl,uk,de,us,es":{"query":"Lovely Butterfly","bannerEnd":37}}
+{"text":"London Palestine Film Festival 2026: Clown of Gaza + One More Show","pl,uk,de,us,es":{"query":"Clown of Gaza","programme":"London Palestine Film Festival 2026: ","bannerEnd":37}}
+{"text":"London Palestine Film Festival 2026: Lovely Butterfly + For Life","pl,uk,de,us,es":{"query":"Lovely Butterfly","programme":"London Palestine Film Festival 2026: ","bannerEnd":37}}
 {"text":"London Palestine Film Festival presents Gaza's Twins, Come Back to Me"}
 {"text":"London, From The Margins: After Dark (Club) Screening & Q+A Panel Talk","pl":{"key":"London, From The Margins: After Dark (Club) Screening i Q+A Panel Talk","display":"London, From The Margins: After Dark (Club) Screening i Q+A Panel Talk"}}
 {"text":"London, From The Margins: Brick by Brick (Grime) Screening & Q+A Panel Talk","pl":{"key":"London, From The Margins: Brick by Brick (Grime) Screening i Q+A Panel Talk","display":"London, From The Margins: Brick by Brick (Grime) Screening i Q+A Panel Talk"}}
@@ -9624,7 +9624,7 @@
 {"text":"Mariusz Kałamaga – Mamo! Papier się kończy!"}
 {"text":"Mark Kermode Live in 3D at the BFI"}
 {"text":"Marlene"}
-{"text":"Marlow Film Festival: A Taster + Live Q&A","pl,uk,de,us,es":{"query":"A Taster","bannerEnd":22}}
+{"text":"Marlow Film Festival: A Taster + Live Q&A","pl,uk,de,us,es":{"query":"A Taster","programme":"Marlow Film Festival: ","bannerEnd":22}}
 {"text":"Marnie"}
 {"text":"Marriage au goût d`orange"}
 {"text":"Marry Me - Verheiratet auf den ersten Blick"}
@@ -9737,7 +9737,7 @@
 {"text":"Małe miłości"}
 {"text":"Mały Kinematograf – Pucio"}
 {"text":"Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz,"}
-{"text":"Mały Kinematograf: premiera animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką","pl,uk,de,us,es":{"query":"Mały Kinematograf: premiera animacji \"Kocie obserwacje\" i spotkanie z reżyserką Aleksandrą Chrapowicką","venue":{"kino-alternatywy":"Mały Kinematograf: premiera animacji Kocie obserwacje i spotkanie z reżyserką Aleksandrą Chrapowicką","kino-mok-miedzyrzecz":"Mały Kinematograf: animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką"}}}
+{"text":"Mały Kinematograf: premiera animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką","pl,uk,de,us,es":{"query":"Mały Kinematograf","venue":{"kino-alternatywy":"Mały Kinematograf: premiera animacji Kocie obserwacje i spotkanie z reżyserką Aleksandrą Chrapowicką","kino-mok-miedzyrzecz":"Mały Kinematograf: animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką"}}}
 {"text":"Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux (2025)","pl,uk,de,us,es":{"query":"Tajemnica śpiewających ptaków reż. Antoine Lanciaux (2025)","key":"Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux","bannerEnd":43,"venue":{"kino-kinematograf":"Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux"}}}
 {"text":"Mały Książę"}
 {"text":"Mały Książę - KNT","pl,uk,de,us,es":{"venue":{"helios":"Mały Książę"}}}
@@ -9797,9 +9797,9 @@
 {"text":"Melancholia"}
 {"text":"Melt"}
 {"text":"Members' Mingle"}
-{"text":"Members' Preview: La Bola Negra"}
-{"text":"Members' Preview: Wicker"}
-{"text":"Members' Preview: Wild Horse Nine"}
+{"text":"Members' Preview: La Bola Negra","pl,uk,de,us,es":{"query":"La Bola Negra","programme":"Members' Preview: ","bannerEnd":18}}
+{"text":"Members' Preview: Wicker","pl,uk,de,us,es":{"query":"Wicker","programme":"Members' Preview: ","bannerEnd":18}}
+{"text":"Members' Preview: Wild Horse Nine","pl,uk,de,us,es":{"query":"Wild Horse Nine","programme":"Members' Preview: ","bannerEnd":18}}
 {"text":"Memento"}
 {"text":"Memories of Murder (2003)","pl,uk,de,us,es":{"key":"Memories of Murder","venue":{"kino-kinematograf":"Memories of Murder"}}}
 {"text":"Mending the Line"}
@@ -9974,15 +9974,15 @@
 {"text":"Misery"}
 {"text":"Mishima: A Life in Four Chapters"}
 {"text":"Misiek w Nowym Jorku"}
-{"text":"Misiowe Poranki: 80 MINUT DOOKOŁA ŚWIATA"}
-{"text":"Misiowe Poranki: BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!"}
-{"text":"Misiowe Poranki: MIKOŁAJKOWA PRZYGODA"}
-{"text":"Misiowe Poranki: MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA"}
-{"text":"Misiowe Poranki: TAM, GDZIE SZELESZCZĄ LIŚCIE"}
-{"text":"Misiowe Poranki: W BLASKU ANDRZEJKOWYCH WRÓŻB"}
-{"text":"Misiowe Poranki: W KRAINIE DZIADKA DO ORZECHÓW"}
-{"text":"Misiowe Poranki: WITAJCIE W NASZEJ BAJCE"}
-{"text":"Misiowe Poranki: ŚWIĄTECZNE MISIOWE PORANKI"}
+{"text":"Misiowe Poranki: 80 MINUT DOOKOŁA ŚWIATA","pl,uk,de,us,es":{"query":"80 MINUT DOOKOŁA ŚWIATA","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!","pl,uk,de,us,es":{"query":"BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: MIKOŁAJKOWA PRZYGODA","pl,uk,de,us,es":{"query":"MIKOŁAJKOWA PRZYGODA","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA","pl,uk,de,us,es":{"query":"MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: TAM, GDZIE SZELESZCZĄ LIŚCIE","pl,uk,de,us,es":{"query":"TAM, GDZIE SZELESZCZĄ LIŚCIE","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: W BLASKU ANDRZEJKOWYCH WRÓŻB","pl,uk,de,us,es":{"query":"W BLASKU ANDRZEJKOWYCH WRÓŻB","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: W KRAINIE DZIADKA DO ORZECHÓW","pl,uk,de,us,es":{"query":"W KRAINIE DZIADKA DO ORZECHÓW","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: WITAJCIE W NASZEJ BAJCE","pl,uk,de,us,es":{"query":"WITAJCIE W NASZEJ BAJCE","programme":"Misiowe Poranki: ","bannerEnd":17}}
+{"text":"Misiowe Poranki: ŚWIĄTECZNE MISIOWE PORANKI","pl,uk,de,us,es":{"query":"ŚWIĄTECZNE MISIOWE PORANKI","programme":"Misiowe Poranki: ","bannerEnd":17}}
 {"text":"Miss Carbón"}
 {"text":"Miss Disco"}
 {"text":"Miss Moxy"}
@@ -10104,7 +10104,7 @@
 {"text":"Monsters, Inc."}
 {"text":"Monstruosa Mía"}
 {"text":"Monterey Pop"}
-{"text":"Monterey Pop - seans przedpremierowy w rocznicę koncertu","pl,uk,de,us,es":{"venue":{"kino-apollo":"Monterey Pop"}}}
+{"text":"Monterey Pop - seans przedpremierowy w rocznicę koncertu","pl,uk,de,us,es":{"query":"Monterey Pop","venue":{"kino-apollo":"Monterey Pop"}}}
 {"text":"Monterey pop"}
 {"text":"Montreal, My Beautiful","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"Montreal"}}}
 {"text":"Monty Python and the Holy Grail"}
@@ -10726,7 +10726,7 @@
 {"text":"No Country For Old Men"}
 {"text":"No Good Men"}
 {"text":"No Hit Wonder"}
-{"text":"No Hit Wonder - Kino für Frauen"}
+{"text":"No Hit Wonder - Kino für Frauen","pl,uk,de,us,es":{"query":"No Hit Wonder"}}
 {"text":"No Home Movie"}
 {"text":"No Mercy - Nichts kann sie stoppen"}
 {"text":"No Nite"}
@@ -10893,7 +10893,7 @@
 {"text":"ONCE UPON A TIME IN HARLEM"}
 {"text":"ONE BATTLE AFTER ANOTHER"}
 {"text":"ONKeL fISCH „Aufregen folgt Sonnenschein“","pl,uk,de,us,es":{"query":"ONKeL fISCH \"Aufregen folgt Sonnenschein“","venue":{"kino-alternatywy":"ONKeL fISCH Aufregen folgt Sonnenschein"}}}
-{"text":"OPEN SCREENING - TESTBILD"}
+{"text":"OPEN SCREENING - TESTBILD","pl,uk,de,us,es":{"query":"TESTBILD","programme":"OPEN SCREENING - ","bannerEnd":17}}
 {"text":"OPERA 2026/2027 - DWADZIEŚCIA LAT MET: UROCZYSTY JUBILEUSZ"}
 {"text":"OPERA 2026/2027 - DZIEWCZYNA Z DZIKIEGO ZACHODU"}
 {"text":"OPERA 2026/2027 - MAKBET"}
@@ -10994,9 +10994,9 @@
 {"text":"Offenes Politgruppen-Treffen"}
 {"text":"Office Killer"}
 {"text":"Office Space"}
-{"text":"Oficjalna premiera: Lalka | 2D | PL","pl,uk,de,us,es":{"query":"Lalka | 2D | PL","bannerEnd":20,"venue":{"bok":"Oficjalna premiera: Lalka: 2D"}}}
+{"text":"Oficjalna premiera: Lalka | 2D | PL","pl,uk,de,us,es":{"query":"Lalka | 2D | PL","programme":"Oficjalna premiera: ","bannerEnd":20,"venue":{"bok":"Oficjalna premiera: Lalka: 2D"}}}
 {"text":"Ogin-sama"}
-{"text":"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności”","pl,uk,de,us,es":{"query":"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności\"","venue":{"kino-alternatywy":"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności"}}}
+{"text":"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności”","pl,uk,de,us,es":{"query":"ulubieńcy dziecięcej publiczności\"","programme":"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ","bannerEnd":51,"venue":{"kino-alternatywy":"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności"}}}
 {"text":"Oh Boy"}
 {"text":"Oh la la 2"}
 {"text":"Oh la la 2 - Neue Tests, neues Chaos"}
@@ -11351,9 +11351,9 @@
 {"text":"PODRĘCZNIK DLA SUPERBOHATERÓW"}
 {"text":"PODZIEMNY KRĄG"}
 {"text":"POETEN DES TANZES - DIE SACHAROFFS"}
-{"text":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","bannerEnd":60}}
-{"text":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Powiedz mi, co czujesz","pl,uk,de,us,es":{"query":"Powiedz mi, co czujesz","bannerEnd":60}}
-{"text":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Róża","pl,uk,de,us,es":{"query":"Róża","bannerEnd":60}}
+{"text":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","programme":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: ","bannerEnd":60}}
+{"text":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Powiedz mi, co czujesz","pl,uk,de,us,es":{"query":"Powiedz mi, co czujesz","programme":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: ","bannerEnd":60}}
+{"text":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Róża","pl,uk,de,us,es":{"query":"Róża","programme":"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: ","bannerEnd":60}}
 {"text":"POLTERGEIST"}
 {"text":"POLÍTICAS FAMILIARES"}
 {"text":"POOJA, SIR"}
@@ -11382,9 +11382,9 @@
 {"text":"PRESENTATIONS SESSION 2: AGAINST ALL ODDS, ENGAGING WITH RISK"}
 {"text":"PRESSURE"}
 {"text":"PRESSURE AIR FESTIVAL 2026"}
-{"text":"PREVIEW: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","bannerEnd":9}}
-{"text":"PREVIEW: Ghosts: The Possession of Button House","pl,uk,de,us,es":{"query":"Ghosts: The Possession of Button House","bannerEnd":9}}
-{"text":"PREVIEW: No Good Men (Europäischer Arthouse-Kinotag)","pl,uk,de,us,es":{"query":"No Good Men (Europäischer Arthouse-Kinotag)","bannerEnd":9}}
+{"text":"PREVIEW: Der perfekte Urlaub","pl,uk,de,us,es":{"query":"Der perfekte Urlaub","programme":"PREVIEW: ","bannerEnd":9}}
+{"text":"PREVIEW: Ghosts: The Possession of Button House","pl,uk,de,us,es":{"query":"Ghosts: The Possession of Button House","programme":"PREVIEW: ","bannerEnd":9}}
+{"text":"PREVIEW: No Good Men (Europäischer Arthouse-Kinotag)","pl,uk,de,us,es":{"query":"No Good Men (Europäischer Arthouse-Kinotag)","programme":"PREVIEW: ","bannerEnd":9}}
 {"text":"PRIMETIME"}
 {"text":"PRIMETIME - Klub Filmowy III wieku","pl,uk,de,us,es":{"query":"PRIMETIME"}}
 {"text":"PRIMETIME - Młodzieżowy Klub Filmowy LEŻAK","pl,uk,de,us,es":{"query":"PRIMETIME"}}
@@ -11395,11 +11395,11 @@
 {"text":"PRIVATE HIRE - 1 HOUR"}
 {"text":"PRIVATVERANSTALTUNG"}
 {"text":"PROJEKT KLAPS III: O ZDROWIU W KINIE: MA TO SENS"}
-{"text":"PRZEDPREMIERA: PRZEZ ŚCIANĘ","pl,uk,de,us,es":{"query":"PRZEZ ŚCIANĘ","bannerEnd":15}}
-{"text":"PRZEDPREMIERA: W tym kraju nie ma dobrych mężczyzn + prelekcja","pl,uk,de,us,es":{"query":"W tym kraju nie ma dobrych mężczyzn","bannerEnd":15}}
-{"text":"PRZEDPREMIERA: Wielki łuk","pl,uk,de,us,es":{"query":"Wielki łuk","bannerEnd":15}}
-{"text":"PRZEDPREMIERA: Zobaczysz wszystko","pl,uk,de,us,es":{"query":"Zobaczysz wszystko","bannerEnd":15}}
-{"text":"PRZEPIS NA SWIĘTA - Kino ze Szminką"}
+{"text":"PRZEDPREMIERA: PRZEZ ŚCIANĘ","pl,uk,de,us,es":{"query":"PRZEZ ŚCIANĘ","programme":"PRZEDPREMIERA: ","bannerEnd":15}}
+{"text":"PRZEDPREMIERA: W tym kraju nie ma dobrych mężczyzn + prelekcja","pl,uk,de,us,es":{"query":"W tym kraju nie ma dobrych mężczyzn","programme":"PRZEDPREMIERA: ","bannerEnd":15}}
+{"text":"PRZEDPREMIERA: Wielki łuk","pl,uk,de,us,es":{"query":"Wielki łuk","programme":"PRZEDPREMIERA: ","bannerEnd":15}}
+{"text":"PRZEDPREMIERA: Zobaczysz wszystko","pl,uk,de,us,es":{"query":"Zobaczysz wszystko","programme":"PRZEDPREMIERA: ","bannerEnd":15}}
+{"text":"PRZEPIS NA SWIĘTA - Kino ze Szminką","pl,uk,de,us,es":{"query":"PRZEPIS NA SWIĘTA"}}
 {"text":"PRZEPIS NA ŚWIĘTA"}
 {"text":"PRZEPIS NA ŚWIĘTA - PREMIERA","pl,uk,de,us,es":{"query":"PRZEPIS NA ŚWIĘTA","venue":{"kino-mok-miedzyrzecz":"PRZEPIS NA ŚWIĘTA -"}}}
 {"text":"PRZEZ ŚCIANĘ"}
@@ -11645,7 +11645,7 @@
 {"text":"Pieśni Lasu | PRZEDPREMIERA | EUROPEJSKI DZIEŃ SENIORA","pl,uk,de,us,es":{"query":"Pieśni Lasu","venue":{"bok":"Pieśni Lasu: PRZEDPREMIERA"}}}
 {"text":"Pieśni lasu"}
 {"text":"Pieśni lasu [ 19-20.10 Pokaz z kompozycją zapachową od Alba1913]"}
-{"text":"Pieśni lasu | KINO PRZYJAZNE RODZICOM","pl,uk,de,us,es":{"venue":{"bok":"Pieśni lasu"}}}
+{"text":"Pieśni lasu | KINO PRZYJAZNE RODZICOM","pl,uk,de,us,es":{"query":"Pieśni lasu","venue":{"bok":"Pieśni lasu"}}}
 {"text":"Pieśni lasu | Kino przy herbatce","pl,uk,de,us,es":{"query":"Pieśni lasu","venue":{"bok":"Pieśni lasu: Kino przy herbatce"}}}
 {"text":"Pieśni lasu | Pokaz z kompozycją zapachową od Alba1913","pl,uk,de,us,es":{"query":"Pieśni lasu","venue":{"bok":"Pieśni lasu: Pokaz z kompozycją zapachową od Alba1913"}}}
 {"text":"Pieśni lasu/Kino przy Okólnej"}
@@ -11747,7 +11747,7 @@
 {"text":"Pleśń: Nienarodzony | Film z lektorem na żywo","pl,uk,de,us,es":{"venue":{"bok":"Pleśń: Nienarodzony: Film z lektorem na żywo"}}}
 {"text":"Plitsch Platsch Forever!"}
 {"text":"Plitschplatsch forever!"}
-{"text":"Plough Earth Film Screening - Spring"}
+{"text":"Plough Earth Film Screening - Spring","pl,uk,de,us,es":{"query":"Spring","programme":"Plough Earth Film Screening - ","bannerEnd":30}}
 {"text":"Plug & Pray","pl":{"key":"Plug i Pray","display":"Plug i Pray"}}
 {"text":"Po co ludzie oswoili psy?"}
 {"text":"Po drugiej stronie snu. Przestrzenie astralne – od doświadczenia do horroru"}
@@ -11756,7 +11756,7 @@
 {"text":"Pocałunek Klimta"}
 {"text":"Pocałunek klimta"}
 {"text":"Pociąg Czerwona Ruta"}
-{"text":"Pociąg do kina: Mniejsze niebo"}
+{"text":"Pociąg do kina: Mniejsze niebo","pl,uk,de,us,es":{"query":"Mniejsze niebo","programme":"Pociąg do kina: ","bannerEnd":16}}
 {"text":"Pociągi  - dyskusyjny klub filmowy","pl,uk,de,us,es":{"query":"Pociągi","venue":{"bok":"Pociągi - dyskusyjny klub filmowy","kino-alternatywy":"Pociągi - dyskusyjny klub filmowy"}}}
 {"text":"Poczta gďż˝osowa"}
 {"text":"Poczta głosowa"}
@@ -11784,12 +11784,12 @@
 {"text":"Pojedynek"}
 {"text":"Pokaz przyjazny osobom z ADHD: Kandydaci śmierci","pl,uk,de,us,es":{"query":"Kandydaci śmierci","programme":"Pokaz przyjazny osobom z ADHD: ","bannerEnd":31}}
 {"text":"Pokaz sensorycznie przyjazny: Delfinek i ja 2","pl,uk,de,us,es":{"query":"Delfinek i ja 2","programme":"Pokaz sensorycznie przyjazny: ","bannerEnd":30}}
-{"text":"Pokaz specjalny - Diuna: Część trzecia","pl,uk,de,us,es":{"query":"Diuna: Część trzecia","bannerEnd":18}}
+{"text":"Pokaz specjalny - Diuna: Część trzecia","pl,uk,de,us,es":{"query":"Diuna: Część trzecia","programme":"Pokaz specjalny - ","bannerEnd":18}}
 {"text":"Pokaz specjalny Nasza rewolucja"}
-{"text":"Pokaz specjalny – Księga lata","pl,uk,de,us,es":{"query":"Księga lata","bannerEnd":18}}
-{"text":"Pokaz specjalny: DO UTRATY TCHU","pl,uk,de,us,es":{"query":"DO UTRATY TCHU","bannerEnd":17}}
-{"text":"Pokaz specjalny: Diuna: Część trzecia 2D DUBBING","pl,uk,de,us,es":{"query":"Diuna: Część trzecia 2D DUBBING","bannerEnd":17}}
-{"text":"Pokaz specjalny:Diuna: Część trzecia 2D DUBBING","pl,uk,de,us,es":{"query":"Diuna: Część trzecia 2D DUBBING","bannerEnd":16}}
+{"text":"Pokaz specjalny – Księga lata","pl,uk,de,us,es":{"query":"Księga lata","programme":"Pokaz specjalny – ","bannerEnd":18}}
+{"text":"Pokaz specjalny: DO UTRATY TCHU","pl,uk,de,us,es":{"query":"DO UTRATY TCHU","programme":"Pokaz specjalny: ","bannerEnd":17}}
+{"text":"Pokaz specjalny: Diuna: Część trzecia 2D DUBBING","pl,uk,de,us,es":{"query":"Diuna: Część trzecia 2D DUBBING","programme":"Pokaz specjalny: ","bannerEnd":17}}
+{"text":"Pokaz specjalny:Diuna: Część trzecia 2D DUBBING","pl,uk,de,us,es":{"query":"Diuna: Część trzecia 2D DUBBING","programme":"Pokaz specjalny:","bannerEnd":16}}
 {"text":"Polar Express"}
 {"text":"Polarized"}
 {"text":"Polit-Sonntag: FILM | Die Möllner Briefe","pl,uk,de,us,es":{"venue":{"bok":"Polit-Sonntag: FILM: Die Möllner Briefe"}}}
@@ -11815,8 +11815,8 @@
 {"text":"Pora dla Seniora: Ojczyzna","pl,uk,de,us,es":{"query":"Ojczyzna","programme":"Pora dla Seniora: ","bannerEnd":18}}
 {"text":"Pora dla Seniora: Rozważna i romantyczna","pl,uk,de,us,es":{"query":"Rozważna i romantyczna","programme":"Pora dla Seniora: ","bannerEnd":18}}
 {"text":"Pora dla Seniora: Savage House","pl,uk,de,us,es":{"query":"Savage House","programme":"Pora dla Seniora: ","bannerEnd":18}}
-{"text":"Poranek Rodzinny z książkami \"Myszonek. Łamigłówki\" i \"Myszonek. Księga opowieści. Jesień-zima\" | FRAJDA W MUZIE!","pl,uk,de,us,es":{"venue":{"bok":"Poranek Rodzinny z książkami \"Myszonek. Łamigłówki\" i \"Myszonek. Księga opowieści. Jesień-zima\": FRAJDA W MUZIE!","kino-alternatywy":"Poranek Rodzinny z książkami Myszonek. Łamigłówki i Myszonek. Księga opowieści. Jesień-zima | FRAJDA W MUZIE!"}}}
-{"text":"Poranek Rodzinny z książką \"Myszonek leci samolotem\" | FRAJDA W MUZIE!","pl,uk,de,us,es":{"venue":{"bok":"Poranek Rodzinny z książką \"Myszonek leci samolotem\": FRAJDA W MUZIE!","kino-alternatywy":"Poranek Rodzinny z książką Myszonek leci samolotem | FRAJDA W MUZIE!"}}}
+{"text":"Poranek Rodzinny z książkami \"Myszonek. Łamigłówki\" i \"Myszonek. Księga opowieści. Jesień-zima\" | FRAJDA W MUZIE!","pl,uk,de,us,es":{"query":"FRAJDA W MUZIE!","programme":"Poranek Rodzinny z książkami \"Myszonek. Łamigłówki\" i \"Myszonek. Księga opowieści. Jesień-zima\" | ","bannerEnd":98,"venue":{"bok":"Poranek Rodzinny z książkami \"Myszonek. Łamigłówki\" i \"Myszonek. Księga opowieści. Jesień-zima\": FRAJDA W MUZIE!","kino-alternatywy":"Poranek Rodzinny z książkami Myszonek. Łamigłówki i Myszonek. Księga opowieści. Jesień-zima | FRAJDA W MUZIE!"}}}
+{"text":"Poranek Rodzinny z książką \"Myszonek leci samolotem\" | FRAJDA W MUZIE!","pl,uk,de,us,es":{"query":"FRAJDA W MUZIE!","programme":"Poranek Rodzinny z książką \"Myszonek leci samolotem\" | ","bannerEnd":55,"venue":{"bok":"Poranek Rodzinny z książką \"Myszonek leci samolotem\": FRAJDA W MUZIE!","kino-alternatywy":"Poranek Rodzinny z książką Myszonek leci samolotem | FRAJDA W MUZIE!"}}}
 {"text":"Poranek dla dzieci: Niesamowite przygody skarpetek 4. Do roboty!","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4. Do roboty!","programme":"Poranek dla dzieci: ","bannerEnd":20}}
 {"text":"Poranek dla dzieci: Pucio kocha zwierzaki","pl,uk,de,us,es":{"query":"Pucio kocha zwierzaki","programme":"Poranek dla dzieci: ","bannerEnd":20}}
 {"text":"Poranek dla dzieci: Tajemnica śpiewających ptaków | Przedpremiera","pl,uk,de,us,es":{"query":"Tajemnica śpiewających ptaków","programme":"Poranek dla dzieci: ","bannerEnd":20,"venue":{"bok":"Poranek dla dzieci: Tajemnica śpiewających ptaków: Przedpremiera"}}}
@@ -11981,15 +11981,15 @@
 {"text":"Pretty Babies"}
 {"text":"Pretty Woman"}
 {"text":"Pretty in Pink"}
-{"text":"Preview: All Rivers Spill Their Stories to the Sea + director Q&A (12A)","pl,uk,de,us,es":{"query":"All Rivers Spill Their Stories to the Sea + director Q&A","bannerEnd":9}}
-{"text":"Preview: Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","bannerEnd":9}}
-{"text":"Preview: Fatherland (12A) S","pl,uk,de,us,es":{"query":"Fatherland (12A) S","bannerEnd":9}}
-{"text":"Preview: Minotaur (18) S","pl,uk,de,us,es":{"query":"Minotaur (18) S","bannerEnd":9}}
-{"text":"Preview: The Debut (15)","pl,uk,de,us,es":{"query":"The Debut","bannerEnd":9}}
-{"text":"Preview: The History of Concrete (18 CTBA) PS","pl,uk,de,us,es":{"query":"The History of Concrete (18 CTBA) PS","bannerEnd":9}}
-{"text":"Preview: The Restoration at Grayson Manor","pl,uk,de,us,es":{"query":"The Restoration at Grayson Manor","bannerEnd":9}}
-{"text":"Preview: Club Kid (15)","pl,uk,de,us,es":{"query":" Club Kid","bannerEnd":8,"venue":{"bok":"Preview: Club Kid (15)"}}}
-{"text":"Preview: Fjord (15) S","pl,uk,de,us,es":{"query":" Fjord (15) S","bannerEnd":8,"venue":{"bok":"Preview: Fjord (15) S"}}}
+{"text":"Preview: All Rivers Spill Their Stories to the Sea + director Q&A (12A)","pl,uk,de,us,es":{"query":"All Rivers Spill Their Stories to the Sea + director Q&A","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: Fatherland (12A) S","pl,uk,de,us,es":{"query":"Fatherland (12A) S","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: Minotaur (18) S","pl,uk,de,us,es":{"query":"Minotaur (18) S","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: The Debut (15)","pl,uk,de,us,es":{"query":"The Debut","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: The History of Concrete (18 CTBA) PS","pl,uk,de,us,es":{"query":"The History of Concrete (18 CTBA) PS","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: The Restoration at Grayson Manor","pl,uk,de,us,es":{"query":"The Restoration at Grayson Manor","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: Club Kid (15)","pl,uk,de,us,es":{"query":" Club Kid","programme":"Preview:","bannerEnd":8,"venue":{"bok":"Preview: Club Kid (15)"}}}
+{"text":"Preview: Fjord (15) S","pl,uk,de,us,es":{"query":" Fjord (15) S","programme":"Preview:","bannerEnd":8,"venue":{"bok":"Preview: Fjord (15) S"}}}
 {"text":"Pride"}
 {"text":"Pride & Prejudice","pl":{"key":"Pride i Prejudice","display":"Pride i Prejudice"}}
 {"text":"Pride Pictures: Everyones Sorry Nowadays"}
@@ -12044,16 +12044,16 @@
 {"text":"Prom Night - Die Nacht des Schlächters"}
 {"text":"Promised Sky"}
 {"text":"Promising Young Woman"}
-{"text":"Prosecco Preview : Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","bannerEnd":19}}
-{"text":"Prosecco Vorpremiere: Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","bannerEnd":22}}
+{"text":"Prosecco Preview : Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","programme":"Prosecco Preview : ","bannerEnd":19}}
+{"text":"Prosecco Vorpremiere: Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","programme":"Prosecco Vorpremiere: ","bannerEnd":22}}
 {"text":"Prosit Neujahr! - Neujahrsgala - Preußisches Kammerorchester"}
 {"text":"Prosit Neujahr! - Neujahrskonzert - Preußisches Kammerorchester"}
 {"text":"Prozess gegen das Schweigen - Der Fall Enrico Mattei"}
 {"text":"Przed wschodem słońca"}
-{"text":"Przedpremiera: Gradiva | Teleskop","pl,uk,de,us,es":{"query":"Gradiva","bannerEnd":15,"venue":{"bok":"Przedpremiera: Gradiva: Teleskop"}}}
-{"text":"Przedpremiera: Nagi lunch | Labirynty grozy","pl,uk,de,us,es":{"query":"Nagi lunch | Labirynty grozy","bannerEnd":15,"venue":{"bok":"Przedpremiera: Nagi lunch: Labirynty grozy"}}}
-{"text":"Przedpremiera: Naza","pl,uk,de,us,es":{"query":"Naza","bannerEnd":15}}
-{"text":"Przedpremiera: Witajcie w Hope | Kino Azji","pl,uk,de,us,es":{"query":"Witajcie w Hope | Kino Azji","bannerEnd":15,"venue":{"bok":"Przedpremiera: Witajcie w Hope: Kino Azji"}}}
+{"text":"Przedpremiera: Gradiva | Teleskop","pl,uk,de,us,es":{"query":"Gradiva","programme":"Przedpremiera: ","bannerEnd":15,"venue":{"bok":"Przedpremiera: Gradiva: Teleskop"}}}
+{"text":"Przedpremiera: Nagi lunch | Labirynty grozy","pl,uk,de,us,es":{"query":"Nagi lunch | Labirynty grozy","programme":"Przedpremiera: ","bannerEnd":15,"venue":{"bok":"Przedpremiera: Nagi lunch: Labirynty grozy"}}}
+{"text":"Przedpremiera: Naza","pl,uk,de,us,es":{"query":"Naza","programme":"Przedpremiera: ","bannerEnd":15}}
+{"text":"Przedpremiera: Witajcie w Hope | Kino Azji","pl,uk,de,us,es":{"query":"Witajcie w Hope","programme":"Przedpremiera: ","bannerEnd":15,"venue":{"bok":"Przedpremiera: Witajcie w Hope: Kino Azji"}}}
 {"text":"Przedsmaki: Witajcie w Hope | Festiwal Pięć Smaków","pl,uk,de,us,es":{"query":"Przedsmaki: Witajcie w Hope","venue":{"bok":"Przedsmaki: Witajcie w Hope: Festiwal Pięć Smaków"}}}
 {"text":"Przegląd Nowego Kina Francuskiego: Guru","pl,uk,de,us,es":{"query":"Guru","programme":"Przegląd Nowego Kina Francuskiego: ","bannerEnd":35}}
 {"text":"Przegląd Nowego Kina Francuskiego: Mi amor","pl,uk,de,us,es":{"query":"Mi amor","programme":"Przegląd Nowego Kina Francuskiego: ","bannerEnd":35}}
@@ -12137,33 +12137,33 @@
 {"text":"Punku | Peruwiańskie pożegnanie lata w Amondo","pl,uk,de,us,es":{"venue":{"bok":"Punku: Peruwiańskie pożegnanie lata w Amondo"}}}
 {"text":"Pupille Nr. 17"}
 {"text":"Puppenjungs - Der Fall Haarmann"}
-{"text":"Purbeck Film Festival - Arco (dubbed)","pl,uk,de,us,es":{"query":"Arco (dubbed)","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Dr Zhivago","pl,uk,de,us,es":{"query":"Dr Zhivago","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Exhibition on Screen: Turner & Constable","pl":{"query":"Turner & Constable","key":"Purbeck Film Festival - Exhibition on Screen: Turner i Constable","display":"Purbeck Film Festival - Exhibition on Screen: Turner i Constable","bannerEnd":24},"uk,de,us,es":{"query":"Turner & Constable","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Fargo","pl,uk,de,us,es":{"query":"Fargo","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Fatherland","pl,uk,de,us,es":{"query":"Fatherland","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Faust","pl,uk,de,us,es":{"query":"Faust","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Fjord","pl,uk,de,us,es":{"query":"Fjord","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Arco (dubbed)","pl,uk,de,us,es":{"query":"Arco (dubbed)","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Dr Zhivago","pl,uk,de,us,es":{"query":"Dr Zhivago","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Exhibition on Screen: Turner & Constable","pl":{"query":"Turner & Constable","key":"Purbeck Film Festival - Exhibition on Screen: Turner i Constable","display":"Purbeck Film Festival - Exhibition on Screen: Turner i Constable","programme":"Purbeck Film Festival - ","bannerEnd":24},"uk,de,us,es":{"query":"Turner & Constable","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Fargo","pl,uk,de,us,es":{"query":"Fargo","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Fatherland","pl,uk,de,us,es":{"query":"Fatherland","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Faust","pl,uk,de,us,es":{"query":"Faust","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Fjord","pl,uk,de,us,es":{"query":"Fjord","programme":"Purbeck Film Festival - ","bannerEnd":24}}
 {"text":"Purbeck Film Festival - Focus on Filmmaking: Cinematography Forum"}
-{"text":"Purbeck Film Festival - Hen","pl,uk,de,us,es":{"query":"Hen","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Hunt for the Wilderpeople","pl,uk,de,us,es":{"query":"Hunt for the Wilderpeople","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Just An Illusion","pl,uk,de,us,es":{"query":"Just An Illusion","bannerEnd":24}}
-{"text":"Purbeck Film Festival - La Grazia","pl,uk,de,us,es":{"query":"La Grazia","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Little Amelie","pl,uk,de,us,es":{"query":"Little Amelie","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Mr Hulot's Holiday (Fr)","pl,uk,de,us,es":{"query":"Mr Hulot's Holiday (Fr)","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Playtime (Fr)","pl,uk,de,us,es":{"query":"Playtime (Fr)","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Sense and Sensibility","pl,uk,de,us,es":{"query":"Sense and Sensibility","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Hen","pl,uk,de,us,es":{"query":"Hen","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Hunt for the Wilderpeople","pl,uk,de,us,es":{"query":"Hunt for the Wilderpeople","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Just An Illusion","pl,uk,de,us,es":{"query":"Just An Illusion","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - La Grazia","pl,uk,de,us,es":{"query":"La Grazia","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Little Amelie","pl,uk,de,us,es":{"query":"Little Amelie","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Mr Hulot's Holiday (Fr)","pl,uk,de,us,es":{"query":"Mr Hulot's Holiday (Fr)","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Playtime (Fr)","pl,uk,de,us,es":{"query":"Playtime (Fr)","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Sense and Sensibility","pl,uk,de,us,es":{"query":"Sense and Sensibility","programme":"Purbeck Film Festival - ","bannerEnd":24}}
 {"text":"Purbeck Film Festival - Shorts Social"}
 {"text":"Purbeck Film Festival - Tati talk with Prof. Matthew Beaumont"}
-{"text":"Purbeck Film Festival - The African Queen","pl,uk,de,us,es":{"query":"The African Queen","bannerEnd":24}}
-{"text":"Purbeck Film Festival - The Blue Trail","pl,uk,de,us,es":{"query":"The Blue Trail","bannerEnd":24}}
-{"text":"Purbeck Film Festival - The English Patient","pl,uk,de,us,es":{"query":"The English Patient","bannerEnd":24}}
-{"text":"Purbeck Film Festival - The Last Viking","pl,uk,de,us,es":{"query":"The Last Viking","bannerEnd":24}}
+{"text":"Purbeck Film Festival - The African Queen","pl,uk,de,us,es":{"query":"The African Queen","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - The Blue Trail","pl,uk,de,us,es":{"query":"The Blue Trail","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - The English Patient","pl,uk,de,us,es":{"query":"The English Patient","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - The Last Viking","pl,uk,de,us,es":{"query":"The Last Viking","programme":"Purbeck Film Festival - ","bannerEnd":24}}
 {"text":"Purbeck Film Festival - The Purbeck Short Film Competition"}
-{"text":"Purbeck Film Festival - The Secret Agent","pl,uk,de,us,es":{"query":"The Secret Agent","bannerEnd":24}}
-{"text":"Purbeck Film Festival - The Seven Year Itch","pl,uk,de,us,es":{"query":"The Seven Year Itch","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Wallace & Gromit: The Curse of The Were-Rabbit","pl":{"query":"Wallace & Gromit: The Curse of The Were-Rabbit","key":"Purbeck Film Festival - Wallace i Gromit: The Curse of The Were-Rabbit","display":"Purbeck Film Festival - Wallace i Gromit: The Curse of The Were-Rabbit","bannerEnd":24},"uk,de,us,es":{"query":"Wallace & Gromit: The Curse of The Were-Rabbit","bannerEnd":24}}
-{"text":"Purbeck Film Festival - Wicker","pl,uk,de,us,es":{"query":"Wicker","bannerEnd":24}}
+{"text":"Purbeck Film Festival - The Secret Agent","pl,uk,de,us,es":{"query":"The Secret Agent","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - The Seven Year Itch","pl,uk,de,us,es":{"query":"The Seven Year Itch","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Wallace & Gromit: The Curse of The Were-Rabbit","pl":{"query":"Wallace & Gromit: The Curse of The Were-Rabbit","key":"Purbeck Film Festival - Wallace i Gromit: The Curse of The Were-Rabbit","display":"Purbeck Film Festival - Wallace i Gromit: The Curse of The Were-Rabbit","programme":"Purbeck Film Festival - ","bannerEnd":24},"uk,de,us,es":{"query":"Wallace & Gromit: The Curse of The Were-Rabbit","programme":"Purbeck Film Festival - ","bannerEnd":24}}
+{"text":"Purbeck Film Festival - Wicker","pl,uk,de,us,es":{"query":"Wicker","programme":"Purbeck Film Festival - ","bannerEnd":24}}
 {"text":"Purple Rain"}
 {"text":"Purple Rising - The Deep Purple Experience"}
 {"text":"Purpose - ein neuer Kompass für unsere Welt"}
@@ -12518,7 +12518,7 @@
 {"text":"RESUNS (Echos) & CANORTA – Eine rätoromanische Reise","pl":{"key":"RESUNS (Echos) i CANORTA – Eine rätoromanische Reise","display":"RESUNS (Echos) i CANORTA – Eine rätoromanische Reise"}}
 {"text":"RETRANSMISJA ANDRE RIEU NIECH ŻYJE MAASTRICHT!"}
 {"text":"RETRANSMISJA ANDRE RIEU. NIECH ŻYJE MAASTRICHT"}
-{"text":"RETROSPEKTYWA: Tadeusz Konwicki ,,Salto\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"RETROSPEKTYWA: Tadeusz Konwicki ,,Salto"}}}
+{"text":"RETROSPEKTYWA: Tadeusz Konwicki ,,Salto\"","pl,uk,de,us,es":{"query":"Tadeusz Konwicki ,,Salto\"","programme":"RETROSPEKTYWA: ","bannerEnd":15,"venue":{"kino-alternatywy":"RETROSPEKTYWA: Tadeusz Konwicki ,,Salto"}}}
 {"text":"RETURN TO THE TATLER + VARIETY","pl,uk,de,us,es":{"query":"RETURN TO THE TATLER"}}
 {"text":"REVEILLE WITH BEVERLY"}
 {"text":"REVISION"}
@@ -12570,7 +12570,7 @@
 {"text":"ROYAL BALLET & OPERA LIVE_ SWAN LAKE","pl":{"key":"ROYAL BALLET i OPERA LIVE_ SWAN LAKE","display":"ROYAL BALLET i OPERA LIVE_ SWAN LAKE"}}
 {"text":"ROYAL BALLET & OPERA LIVE_ THE NUTCRACKER","pl":{"key":"ROYAL BALLET i OPERA LIVE_ THE NUTCRACKER","display":"ROYAL BALLET i OPERA LIVE_ THE NUTCRACKER"}}
 {"text":"ROYAL BALLET & OPERA LIVE_ TOSCA","pl":{"key":"ROYAL BALLET i OPERA LIVE_ TOSCA","display":"ROYAL BALLET i OPERA LIVE_ TOSCA"}}
-{"text":"ROZMARZONE PORANKI - NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!"}
+{"text":"ROZMARZONE PORANKI - NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!","pl,uk,de,us,es":{"query":"NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!","programme":"ROZMARZONE PORANKI - ","bannerEnd":21}}
 {"text":"ROZWAŻNA I ROMANTYCZNA"}
 {"text":"ROZWAŻNA I ROMANTYCZNA 2D NAPISY"}
 {"text":"RRR"}
@@ -12871,7 +12871,7 @@
 {"text":"Rodzina w kinie: Niesamowite przygody skarpetek 3. Ale kosmos!","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 3. Ale kosmos!","programme":"Rodzina w kinie: ","bannerEnd":17}}
 {"text":"Rodzina w kinie: Pucio kocha zwierzaki","pl,uk,de,us,es":{"query":"Pucio kocha zwierzaki","programme":"Rodzina w kinie: ","bannerEnd":17}}
 {"text":"Rodzina w kinie: Vincent. Legenda oceanu","pl,uk,de,us,es":{"query":"Vincent. Legenda oceanu","programme":"Rodzina w kinie: ","bannerEnd":17}}
-{"text":"Rodzinny Poranek Filmowy: Leśni sąsiedzi"}
+{"text":"Rodzinny Poranek Filmowy: Leśni sąsiedzi","pl,uk,de,us,es":{"query":"Leśni sąsiedzi","programme":"Rodzinny Poranek Filmowy: ","bannerEnd":26}}
 {"text":"Rodéo"}
 {"text":"Roger Corman Double Bill - A Bucket Of Blood / Little Shop Of Horrors (15)","pl,uk,de,us,es":{"query":"Roger Corman Double Bill - A Bucket Of Blood"}}
 {"text":"Roger Corman: Hollywood’s Wild Angel + Roger Corman at the NFT","pl,uk,de,us,es":{"query":"Roger Corman: Hollywood’s Wild Angel"}}
@@ -13113,7 +13113,7 @@
 {"text":"RÜCKKEHR NACH ITHAKA"}
 {"text":"RÜCKKEHR ZUM PLANET DER AFFEN"}
 {"text":"RÜCKKEHR ZUM PLANET DER AFFEN?"}
-{"text":"Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios","pl,uk,de,us,es":{"venue":{"kino-mok-miedzyrzecz":"Ród Smoka - pierwszego odcinka 3. Sezonu w kinach Helios"}}}
+{"text":"Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios","pl,uk,de,us,es":{"query":"Ród Smoka","venue":{"kino-mok-miedzyrzecz":"Ród Smoka - pierwszego odcinka 3. Sezonu w kinach Helios"}}}
 {"text":"Róża"}
 {"text":"Róża (2026)","pl,uk,de,us,es":{"key":"Róża","venue":{"kino-kinematograf":"Róża"}}}
 {"text":"Róża (2026) | seans DKF Projekcja","pl,uk,de,us,es":{"query":"Róża (2026)","venue":{"bok":"Róża (2026): seans DKF Projekcja"}}}
@@ -13207,8 +13207,8 @@
 {"text":"SHORTS ATTACK: Dem Glück ganz nah"}
 {"text":"SHORTS ATTACK: Liebe, Tanz und Leidenschaft"}
 {"text":"SHORTS ATTACK: The Kids are alright!"}
-{"text":"SHORTY SZCZECIN FILM FESTIWAL | BLOK 1","pl,uk,de,us,es":{"venue":{"bok":"SHORTY SZCZECIN FILM FESTIWAL"}}}
-{"text":"SHORTY SZCZECIN FILM FESTIWAL | BLOK 2","pl,uk,de,us,es":{"venue":{"bok":"SHORTY SZCZECIN FILM FESTIWAL"}}}
+{"text":"SHORTY SZCZECIN FILM FESTIWAL | BLOK 1","pl,uk,de,us,es":{"query":"BLOK 1","programme":"SHORTY SZCZECIN FILM FESTIWAL | ","bannerEnd":32,"venue":{"bok":"SHORTY SZCZECIN FILM FESTIWAL"}}}
+{"text":"SHORTY SZCZECIN FILM FESTIWAL | BLOK 2","pl,uk,de,us,es":{"query":"BLOK 2","programme":"SHORTY SZCZECIN FILM FESTIWAL | ","bannerEnd":32,"venue":{"bok":"SHORTY SZCZECIN FILM FESTIWAL"}}}
 {"text":"SHOWTUNE SUNDAYS: WHITE CHRISTMAS","pl,uk,de,us,es":{"query":"WHITE CHRISTMAS","programme":"SHOWTUNE SUNDAYS: ","bannerEnd":18}}
 {"text":"SHOWup!"}
 {"text":"SHREK - DER TOLLKÜHNE HELD"}
@@ -13404,7 +13404,7 @@
 {"text":"Sad Girlz"}
 {"text":"Sad Girlz (Chicas tristes)"}
 {"text":"Safe (1995)","pl,uk,de,us,es":{"key":"Safe","venue":{"kino-kinematograf":"Safe"}}}
-{"text":"Safflicks Film Festival: Amantes","pl,uk,de,us,es":{"query":"Amantes","bannerEnd":25}}
+{"text":"Safflicks Film Festival: Amantes","pl,uk,de,us,es":{"query":"Amantes","programme":"Safflicks Film Festival: ","bannerEnd":25}}
 {"text":"Safflicks Film Festival: Life is a Journey - Shorts Programme"}
 {"text":"Saffron Kingdom (Kashmiri)"}
 {"text":"Sagrado corazón"}
@@ -13563,13 +13563,13 @@
 {"text":"Scream and Scream 2 Double Bill"}
 {"text":"Screamplay"}
 {"text":"Screen Unseen (21 October)"}
-{"text":"Screening - NTL: Golden Boy (15 TBC) 180 mins TBC","pl,uk,de,us,es":{"query":"Screening - NTL: Golden Boy"}}
-{"text":"Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage (PG)","pl,uk,de,us,es":{"query":"Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage"}}
-{"text":"Screening: André Rieu's 2026 Christmas Concert – Let It Snow (Cert TBC) 165 mins","pl,uk,de,us,es":{"query":"Screening: André Rieu's 2026 Christmas Concert – Let It Snow"}}
-{"text":"Screening: Fallen Angels by Noël Coward"}
-{"text":"Screening: GIANT – The Play (15) 136 mins","pl,uk,de,us,es":{"query":"Screening: GIANT – The Play"}}
-{"text":"Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)","pl,uk,de,us,es":{"query":"Screening: NTL - Hay Fever"}}
-{"text":"Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*","pl,uk,de,us,es":{"query":"Screening: NTL - Hay Fever"}}
+{"text":"Screening - NTL: Golden Boy (15 TBC) 180 mins TBC","pl,uk,de,us,es":{"query":"NTL: Golden Boy","programme":"Screening - ","bannerEnd":12}}
+{"text":"Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage (PG)","pl,uk,de,us,es":{"query":"Andrew Lloyd Webber’s Starlight Express - Live On Stage","programme":"Screening: ","bannerEnd":11}}
+{"text":"Screening: André Rieu's 2026 Christmas Concert – Let It Snow (Cert TBC) 165 mins","pl,uk,de,us,es":{"query":"André Rieu's 2026 Christmas Concert – Let It Snow","programme":"Screening: ","bannerEnd":11}}
+{"text":"Screening: Fallen Angels by Noël Coward","pl,uk,de,us,es":{"query":"Fallen Angels by Noël Coward","programme":"Screening: ","bannerEnd":11}}
+{"text":"Screening: GIANT – The Play (15) 136 mins","pl,uk,de,us,es":{"query":"GIANT – The Play","programme":"Screening: ","bannerEnd":11}}
+{"text":"Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)","pl,uk,de,us,es":{"query":"NTL - Hay Fever","programme":"Screening: ","bannerEnd":11}}
+{"text":"Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*","pl,uk,de,us,es":{"query":"NTL - Hay Fever","programme":"Screening: ","bannerEnd":11}}
 {"text":"Screwball (15)","pl,uk,de,us,es":{"query":"Screwball"}}
 {"text":"Scrooge"}
 {"text":"Scrooge: A Christmas Carol"}
@@ -13577,7 +13577,7 @@
 {"text":"Se7en"}
 {"text":"Seabiscuit"}
 {"text":"Seans Przyjazny Sensorycznie: Chłopiec na krańcach świata","pl,uk,de,us,es":{"query":"Chłopiec na krańcach świata","programme":"Seans Przyjazny Sensorycznie: ","bannerEnd":30}}
-{"text":"Seans filmowy dla rodziców | Róża","pl,uk,de,us,es":{"venue":{"bok":"Seans filmowy dla rodziców: Róża"}}}
+{"text":"Seans filmowy dla rodziców | Róża","pl,uk,de,us,es":{"query":"Róża","programme":"Seans filmowy dla rodziców | ","bannerEnd":29,"venue":{"bok":"Seans filmowy dla rodziców: Róża"}}}
 {"text":"Seans przedpremierowy.  Sny o słoniach","pl,uk,de,us,es":{"query":"Sny o słoniach","bannerEnd":24,"venue":{"bok":"Seans przedpremierowy. Sny o słoniach","kino-alternatywy":"Seans przedpremierowy. Sny o słoniach"}}}
 {"text":"Seans przyjazny sensorycznie: Arco","pl,uk,de,us,es":{"query":"Arco","programme":"Seans przyjazny sensorycznie: ","bannerEnd":30}}
 {"text":"Seans przyjazny sensorycznie: Niesamowite przygody skarpetek 4: Do roboty!","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4: Do roboty!","programme":"Seans przyjazny sensorycznie: ","bannerEnd":30}}
@@ -13616,12 +13616,12 @@
 {"text":"Selten wache ich träumend auf"}
 {"text":"Semillas - Bis der Regen fällt"}
 {"text":"Send Me No Flowers"}
-{"text":"Senior Screening: Pressure"}
-{"text":"Senior Screening: Sense and Sensibility"}
-{"text":"Senior Screening: Shaun the Sheep: The Beast of Mossy Bottom"}
-{"text":"Senior Screening: Tenzing"}
-{"text":"Senior Screening: The Social Reckoning"}
-{"text":"Senior Screening: Verity"}
+{"text":"Senior Screening: Pressure","pl,uk,de,us,es":{"query":"Pressure","programme":"Senior Screening: ","bannerEnd":18}}
+{"text":"Senior Screening: Sense and Sensibility","pl,uk,de,us,es":{"query":"Sense and Sensibility","programme":"Senior Screening: ","bannerEnd":18}}
+{"text":"Senior Screening: Shaun the Sheep: The Beast of Mossy Bottom","pl,uk,de,us,es":{"query":"Shaun the Sheep: The Beast of Mossy Bottom","programme":"Senior Screening: ","bannerEnd":18}}
+{"text":"Senior Screening: Tenzing","pl,uk,de,us,es":{"query":"Tenzing","programme":"Senior Screening: ","bannerEnd":18}}
+{"text":"Senior Screening: The Social Reckoning","pl,uk,de,us,es":{"query":"The Social Reckoning","programme":"Senior Screening: ","bannerEnd":18}}
+{"text":"Senior Screening: Verity","pl,uk,de,us,es":{"query":"Verity","programme":"Senior Screening: ","bannerEnd":18}}
 {"text":"Senioren | 2D Ach, diese Lücke, diese entsetzliche Lücke","pl,uk,de,us,es":{"query":"Ach, diese Lücke, diese entsetzliche Lücke","bannerEnd":14,"venue":{"bok":"Senioren: 2D Ach, diese Lücke, diese entsetzliche Lücke"}}}
 {"text":"Senioren | Pressure","pl,uk,de,us,es":{"venue":{"bok":"Senioren: Pressure"}}}
 {"text":"SeniorenKino: Die Ältern"}
@@ -13792,15 +13792,15 @@
 {"text":"Silver Linings Playbook"}
 {"text":"Silver Screen: & Sons - Cert 15","pl":{"query":"& Sons","key":"Silver Screen: i Sons - Cert 15","display":"Silver Screen: i Sons - Cert 15","programme":"Silver Screen: ","bannerEnd":15},"uk,de,us,es":{"query":"& Sons","programme":"Silver Screen: ","bannerEnd":15}}
 {"text":"Silver Screen: Holy Days - Cert 12A","pl,uk,de,us,es":{"query":"Holy Days","programme":"Silver Screen: ","bannerEnd":15}}
-{"text":"Silver Screening: Everest: The Other Side"}
-{"text":"Silver Screening: Pressure - Cert 12A","pl,uk,de,us,es":{"query":"Silver Screening: Pressure"}}
-{"text":"Silver Screening: Sense and Sensibility"}
-{"text":"Silver Screening: Shaun the Sheep: The Beast of Mossy Bottom"}
-{"text":"Silver Screening: Tenzing"}
-{"text":"Silver Screening: The Lost Children of Tuam"}
-{"text":"Silver Screening: The Odyssey (2026)","pl,uk,de,us,es":{"key":"Silver Screening: The Odyssey","venue":{"kino-kinematograf":"Silver Screening: The Odyssey"}}}
-{"text":"Silver Screening: The Social Reckoning"}
-{"text":"Silver Screening: Winter of The Crow"}
+{"text":"Silver Screening: Everest: The Other Side","pl,uk,de,us,es":{"query":"Everest: The Other Side","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: Pressure - Cert 12A","pl,uk,de,us,es":{"query":"Pressure","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: Sense and Sensibility","pl,uk,de,us,es":{"query":"Sense and Sensibility","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: Shaun the Sheep: The Beast of Mossy Bottom","pl,uk,de,us,es":{"query":"Shaun the Sheep: The Beast of Mossy Bottom","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: Tenzing","pl,uk,de,us,es":{"query":"Tenzing","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: The Lost Children of Tuam","pl,uk,de,us,es":{"query":"The Lost Children of Tuam","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: The Odyssey (2026)","pl,uk,de,us,es":{"query":"The Odyssey (2026)","key":"Silver Screening: The Odyssey","programme":"Silver Screening: ","bannerEnd":18,"venue":{"kino-kinematograf":"Silver Screening: The Odyssey"}}}
+{"text":"Silver Screening: The Social Reckoning","pl,uk,de,us,es":{"query":"The Social Reckoning","programme":"Silver Screening: ","bannerEnd":18}}
+{"text":"Silver Screening: Winter of The Crow","pl,uk,de,us,es":{"query":"Winter of The Crow","programme":"Silver Screening: ","bannerEnd":18}}
 {"text":"Silvester 2027 Doublefeature"}
 {"text":"Silvesterkonzert Berliner Philharmoniker"}
 {"text":"Silvesterkonzert Berliner Philharmoniker 2026/27"}
@@ -13939,13 +13939,13 @@
 {"text":"Sold City - Wenn Wohnen zur Ware wird"}
 {"text":"Soli-Party: Widersetzen"}
 {"text":"Solo Mio"}
-{"text":"Solo Mio - Kino für Junggebliebene"}
+{"text":"Solo Mio - Kino für Junggebliebene","pl,uk,de,us,es":{"query":"Solo Mio"}}
 {"text":"Solo Sunny"}
 {"text":"Solve-Along-A-Murder-She-Wrote"}
 {"text":"Solve-Along-A-Murder-She-Wrote: A Christmas Secret"}
 {"text":"Solve-Along-A-Murder-She-Wrote: Who Killed JB Fletcher?"}
 {"text":"Somali Film Festival: A Selection of Short Films"}
-{"text":"Somali Film Festival: Lifeline","pl,uk,de,us,es":{"query":"Lifeline","bannerEnd":22}}
+{"text":"Somali Film Festival: Lifeline","pl,uk,de,us,es":{"query":"Lifeline","programme":"Somali Film Festival: ","bannerEnd":22}}
 {"text":"Sombra nómada"}
 {"text":"Some Kind of Wonderful"}
 {"text":"Some Like It Hot"}
@@ -13996,7 +13996,7 @@
 {"text":"Sounds of Paris"}
 {"text":"Soundtrack to a Coup d'Etat"}
 {"text":"Soundtrack to a Coup d'Etat (+ Interval)"}
-{"text":"Soundtracking Film Club: Wild Horse Nine"}
+{"text":"Soundtracking Film Club: Wild Horse Nine","pl,uk,de,us,es":{"query":"Wild Horse Nine","programme":"Soundtracking Film Club: ","bannerEnd":25}}
 {"text":"South Devon Big Band Christmas Bash 2026"}
 {"text":"South Park: Bigger Longer & Uncut","pl":{"key":"South Park: Bigger Longer i Uncut","display":"South Park: Bigger Longer i Uncut"}}
 {"text":"Southern Lights: Confidente"}
@@ -14031,7 +14031,7 @@
 {"text":"Spaziergang nach Syrakus FK"}
 {"text":"Spaziergang nach Syrakus."}
 {"text":"Spaztenkino: Zu Hause im Herbst"}
-{"text":"Special Screening: Eternity"}
+{"text":"Special Screening: Eternity","pl,uk,de,us,es":{"query":"Eternity","programme":"Special Screening: ","bannerEnd":19}}
 {"text":"Special: Die Tribute von Panem - The Ballad of Songbirds & Snakes","pl":{"key":"Special: Die Tribute von Panem - The Ballad of Songbirds i Snakes","display":"Special: Die Tribute von Panem - The Ballad of Songbirds i Snakes"}}
 {"text":"Special: Ein Berliner Koffer – Berlin in den 1930er Jahren"}
 {"text":"Special: Eternity"}
@@ -14074,24 +14074,24 @@
 {"text":"Spirited Away: W krainie bogów"}
 {"text":"Spirited Away: w krainie bogów reż. Hayao Miyazaki (2001)","pl,uk,de,us,es":{"key":"Spirited Away: w krainie bogów reż. Hayao Miyazaki","venue":{"kino-kinematograf":"Spirited Away: w krainie bogów reż. Hayao Miyazaki"}}}
 {"text":"Spięty powraca do Pszczyny!"}
-{"text":"Splat! FilmFest ON TOUR: Grzesznicy nie zaznają spokoju"}
-{"text":"Splat! FilmFest ON TOUR: Rola życia i śmierci"}
-{"text":"Splat! FilmFest ON TOUR: Òpi"}
-{"text":"Splat! filmfest on tour: grzesznicy nie zaznają spokoju"}
-{"text":"Splat! filmfest on tour: rola życia i śmierci"}
-{"text":"Splat! filmfest on tour: òpi"}
-{"text":"Splat!FilmFest ON TOUR | Grzesznicy nie zaznają spokoju","pl,uk,de,us,es":{"venue":{"bok":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju"}}}
-{"text":"Splat!FilmFest ON TOUR | Rola życia i śmierci","pl,uk,de,us,es":{"venue":{"bok":"Splat!FilmFest ON TOUR: Rola życia i śmierci"}}}
-{"text":"Splat!FilmFest ON TOUR | ÒPI","pl,uk,de,us,es":{"query":"Splat!FilmFest ON TOUR","key":"Splat!FilmFest ON TOUR","display":"Splat!FilmFest ON TOUR","bannerEnd":28,"venue":{"bok":"Splat!FilmFest ON TOUR: ÒPI"}}}
-{"text":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju"}
-{"text":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju"}}
-{"text":"Splat!FilmFest ON TOUR: Rola życia i śmierci"}
-{"text":"Splat!FilmFest ON TOUR: Rola życia i śmierci - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Splat!FilmFest ON TOUR: Rola życia i śmierci"}}
-{"text":"Splat!FilmFest ON TOUR: ÒPI"}
-{"text":"Splat!FilmFest ON TOUR: Òpi - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Splat!FilmFest ON TOUR: Òpi"}}
-{"text":"Splat!FilmFest: Grzesznicy nie zaznają spokoju"}
-{"text":"Splat!FilmFest: Rola życia i śmierci"}
-{"text":"Splat!FilmFest: Ópi"}
+{"text":"Splat! FilmFest ON TOUR: Grzesznicy nie zaznają spokoju","pl,uk,de,us,es":{"query":"Grzesznicy nie zaznają spokoju","programme":"Splat! FilmFest ON TOUR: ","bannerEnd":25}}
+{"text":"Splat! FilmFest ON TOUR: Rola życia i śmierci","pl,uk,de,us,es":{"query":"Rola życia i śmierci","programme":"Splat! FilmFest ON TOUR: ","bannerEnd":25}}
+{"text":"Splat! FilmFest ON TOUR: Òpi","pl,uk,de,us,es":{"query":"Òpi","programme":"Splat! FilmFest ON TOUR: ","bannerEnd":25}}
+{"text":"Splat! filmfest on tour: grzesznicy nie zaznają spokoju","pl,uk,de,us,es":{"query":"grzesznicy nie zaznają spokoju","programme":"Splat! filmfest on tour: ","bannerEnd":25}}
+{"text":"Splat! filmfest on tour: rola życia i śmierci","pl,uk,de,us,es":{"query":"rola życia i śmierci","programme":"Splat! filmfest on tour: ","bannerEnd":25}}
+{"text":"Splat! filmfest on tour: òpi","pl,uk,de,us,es":{"query":"òpi","programme":"Splat! filmfest on tour: ","bannerEnd":25}}
+{"text":"Splat!FilmFest ON TOUR | Grzesznicy nie zaznają spokoju","pl,uk,de,us,es":{"query":"Grzesznicy nie zaznają spokoju","programme":"Splat!FilmFest ON TOUR | ","bannerEnd":25,"venue":{"bok":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju"}}}
+{"text":"Splat!FilmFest ON TOUR | Rola życia i śmierci","pl,uk,de,us,es":{"query":"Rola życia i śmierci","programme":"Splat!FilmFest ON TOUR | ","bannerEnd":25,"venue":{"bok":"Splat!FilmFest ON TOUR: Rola życia i śmierci"}}}
+{"text":"Splat!FilmFest ON TOUR | ÒPI","pl,uk,de,us,es":{"query":"Splat!FilmFest ON TOUR","key":"Splat!FilmFest ON TOUR","display":"Splat!FilmFest ON TOUR","programme":"Splat!FilmFest ON TOUR | ","bannerEnd":28,"venue":{"bok":"Splat!FilmFest ON TOUR: ÒPI"}}}
+{"text":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju","pl,uk,de,us,es":{"query":"Grzesznicy nie zaznają spokoju","programme":"Splat!FilmFest ON TOUR: ","bannerEnd":24}}
+{"text":"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Grzesznicy nie zaznają spokoju","programme":"Splat!FilmFest ON TOUR: ","bannerEnd":24}}
+{"text":"Splat!FilmFest ON TOUR: Rola życia i śmierci","pl,uk,de,us,es":{"query":"Rola życia i śmierci","programme":"Splat!FilmFest ON TOUR: ","bannerEnd":24}}
+{"text":"Splat!FilmFest ON TOUR: Rola życia i śmierci - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Rola życia i śmierci","programme":"Splat!FilmFest ON TOUR: ","bannerEnd":24}}
+{"text":"Splat!FilmFest ON TOUR: ÒPI","pl,uk,de,us,es":{"query":"ÒPI","programme":"Splat!FilmFest ON TOUR: ","bannerEnd":24}}
+{"text":"Splat!FilmFest ON TOUR: Òpi - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Òpi","programme":"Splat!FilmFest ON TOUR: ","bannerEnd":24}}
+{"text":"Splat!FilmFest: Grzesznicy nie zaznają spokoju","pl,uk,de,us,es":{"query":"Grzesznicy nie zaznają spokoju","programme":"Splat!FilmFest: ","bannerEnd":16}}
+{"text":"Splat!FilmFest: Rola życia i śmierci","pl,uk,de,us,es":{"query":"Rola życia i śmierci","programme":"Splat!FilmFest: ","bannerEnd":16}}
+{"text":"Splat!FilmFest: Ópi","pl,uk,de,us,es":{"query":"Ópi","programme":"Splat!FilmFest: ","bannerEnd":16}}
 {"text":"Splendor in the Grass"}
 {"text":"Spooked: Angel's Egg (12A)","pl,uk,de,us,es":{"query":"Spooked: Angel's Egg"}}
 {"text":"Spooked: Backrooms: Everything Must Go Edition with Bonus Footage(15)","pl,uk,de,us,es":{"query":"Spooked: Backrooms: Everything Must Go Edition with Bonus Footage"}}
@@ -14325,11 +14325,11 @@
 {"text":"Street fighter. Uliczny wojownik"}
 {"text":"Streets of Fire"}
 {"text":"Streiflichter aus Hamburg"}
-{"text":"Strick-Kino: Cheri, ich komme!"}
-{"text":"Strick-Kino: Liebe braucht keine Ferien"}
-{"text":"Strick-Kino: Lügen über meine Mutter"}
+{"text":"Strick-Kino: Cheri, ich komme!","pl,uk,de,us,es":{"query":"Cheri, ich komme!","programme":"Strick-Kino: ","bannerEnd":13}}
+{"text":"Strick-Kino: Liebe braucht keine Ferien","pl,uk,de,us,es":{"query":"Liebe braucht keine Ferien","programme":"Strick-Kino: ","bannerEnd":13}}
+{"text":"Strick-Kino: Lügen über meine Mutter","pl,uk,de,us,es":{"query":"Lügen über meine Mutter","programme":"Strick-Kino: ","bannerEnd":13}}
 {"text":"Stricken im Kino"}
-{"text":"Stricken&Kino: Der Perfekte Urlaub"}
+{"text":"Stricken&Kino: Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","programme":"Stricken&Kino: ","bannerEnd":15}}
 {"text":"Strickkino im Savoy - Das gewisse Etwas"}
 {"text":"Strickkino im Savoy - Wann wird es endlich wieder so, wie es"}
 {"text":"Strickkino: Der perfekte Urlaub"}
@@ -14530,7 +14530,7 @@
 {"text":"TANZ DER VAMPIRE (1967)","pl,uk,de,us,es":{"key":"TANZ DER VAMPIRE","venue":{"kino-kinematograf":"TANZ DER VAMPIRE"}}}
 {"text":"TANZEN! goes Minis - Die Kinderdisco in der Lagerhalle"}
 {"text":"TANZFILM NACHT – KURFILMPROGRAMM"}
-{"text":"TANZRAUSCHEN im Kino: Rotzgöre / Desvelado","pl,uk,de,us,es":{"query":"TANZRAUSCHEN im Kino: Rotzgöre"}}
+{"text":"TANZRAUSCHEN im Kino: Rotzgöre / Desvelado","pl,uk,de,us,es":{"query":"Rotzgöre","programme":"TANZRAUSCHEN im Kino: ","bannerEnd":22}}
 {"text":"TATJANA MEISSNER: Schmutzige Lieder"}
 {"text":"TATORT Kiel: Unter Feinden"}
 {"text":"TAXI DRIVER"}
@@ -14870,7 +14870,7 @@
 {"text":"Tenzing (PG)","pl,uk,de,us,es":{"query":"Tenzing"}}
 {"text":"Tenzing [PG]"}
 {"text":"Teresa - Ein Leben zwischen Licht und Schatten"}
-{"text":"Teresa - Ein Leben zwischen Licht und Schatten - Kino für Frauen"}
+{"text":"Teresa - Ein Leben zwischen Licht und Schatten - Kino für Frauen","pl,uk,de,us,es":{"query":"Teresa - Ein Leben zwischen Licht und Schatten"}}
 {"text":"Teresa Reichl - Grober Unfug"}
 {"text":"Teresa Reichl ”Grober Unfug”","pl,uk,de,us,es":{"query":"Teresa Reichl \"Grober Unfug\"","venue":{"kino-alternatywy":"Teresa Reichl Grober Unfug"}}}
 {"text":"Teresa Reichl: Grober Unfug"}
@@ -16195,14 +16195,14 @@
 {"text":"Tomorrow x Together World Tour Act: Tomorrow"}
 {"text":"Tongues Untied"}
 {"text":"Toni Erdmann"}
-{"text":"Toni Filmclub: Wege in die Nacht D, ab 16"}
+{"text":"Toni Filmclub: Wege in die Nacht D, ab 16","pl,uk,de,us,es":{"query":"Wege in die Nacht D, ab 16","programme":"Toni Filmclub: ","bannerEnd":15}}
 {"text":"Tony"}
 {"text":"Tony (15)","pl,uk,de,us,es":{"query":"Tony"}}
 {"text":"Tony (napisy)","pl,uk,de,us,es":{"query":"Tony"}}
 {"text":"Tony Stockwell - Psychic Medium"}
 {"text":"Tony napisy"}
 {"text":"Tony | FKS","pl,uk,de,us,es":{"query":"Tony","key":"Tony","display":"Tony","bannerEnd":10,"venue":{"bok":"Tony"}}}
-{"text":"Tony | Kino Dostępne","pl,uk,de,us,es":{"venue":{"bok":"Tony: Kino Dostępne"}}}
+{"text":"Tony | Kino Dostępne","pl,uk,de,us,es":{"query":"Tony","venue":{"bok":"Tony: Kino Dostępne"}}}
 {"text":"Too Many Beasts"}
 {"text":"Too Many Beasts FFFL","pl,uk,de,us,es":{"query":"Too Many Beasts","bannerEnd":20}}
 {"text":"Top Gun"}
@@ -16245,9 +16245,9 @@
 {"text":"Tour du cinéma - Cinéma! Targets - Bewegliche Ziele"}
 {"text":"Tour du cinéma - Cinéma! The Last Picture Show"}
 {"text":"Tour du cinéma - Cinéma! Watermelon Woman"}
-{"text":"Towner Cine Club: Burning (15)","pl,uk,de,us,es":{"query":"Towner Cine Club: Burning"}}
-{"text":"Towner Cine Club: Eraserhead (15)","pl,uk,de,us,es":{"query":"Towner Cine Club: Eraserhead"}}
-{"text":"Towner Cine Club: Petite Maman (U)","pl,uk,de,us,es":{"query":"Towner Cine Club: Petite Maman"}}
+{"text":"Towner Cine Club: Burning (15)","pl,uk,de,us,es":{"query":"Burning","programme":"Towner Cine Club: ","bannerEnd":18}}
+{"text":"Towner Cine Club: Eraserhead (15)","pl,uk,de,us,es":{"query":"Eraserhead","programme":"Towner Cine Club: ","bannerEnd":18}}
+{"text":"Towner Cine Club: Petite Maman (U)","pl,uk,de,us,es":{"query":"Petite Maman","programme":"Towner Cine Club: ","bannerEnd":18}}
 {"text":"Toxic Harvest"}
 {"text":"Toxic: A Fairy Tale for Grown-ups"}
 {"text":"Toy Story (1995)","pl,uk,de,us,es":{"key":"Toy Story","venue":{"kino-kinematograf":"Toy Story"}}}
@@ -16423,10 +16423,10 @@
 {"text":"UFFB: Traces"}
 {"text":"UFFB: Where Everything Disappears"}
 {"text":"UHF"}
-{"text":"UK Jewish Film Festival 2026: British-Jewish Life on Film + Q&A","pl,uk,de,us,es":{"query":"British-Jewish Life on Film","bannerEnd":30}}
-{"text":"UK Jewish Film Festival 2026: The Soundman","pl,uk,de,us,es":{"query":"The Soundman","bannerEnd":30}}
-{"text":"UK Jewish Film Festival:  British-Jewish Life on Film: Nottingham + Q&A","pl,uk,de,us,es":{"query":"British-Jewish Life on Film: Nottingham","bannerEnd":26,"venue":{"bok":"UK Jewish Film Festival: British-Jewish Life on Film: Nottingham + Q&A","kino-alternatywy":"UK Jewish Film Festival: British-Jewish Life on Film: Nottingham + Q&A"}}}
-{"text":"UK Jewish Film Festival: The Soundman","pl,uk,de,us,es":{"query":"The Soundman","bannerEnd":25}}
+{"text":"UK Jewish Film Festival 2026: British-Jewish Life on Film + Q&A","pl,uk,de,us,es":{"query":"British-Jewish Life on Film","programme":"UK Jewish Film Festival 2026: ","bannerEnd":30}}
+{"text":"UK Jewish Film Festival 2026: The Soundman","pl,uk,de,us,es":{"query":"The Soundman","programme":"UK Jewish Film Festival 2026: ","bannerEnd":30}}
+{"text":"UK Jewish Film Festival:  British-Jewish Life on Film: Nottingham + Q&A","pl,uk,de,us,es":{"query":"British-Jewish Life on Film: Nottingham","programme":"UK Jewish Film Festival:  ","bannerEnd":26,"venue":{"bok":"UK Jewish Film Festival: British-Jewish Life on Film: Nottingham + Q&A","kino-alternatywy":"UK Jewish Film Festival: British-Jewish Life on Film: Nottingham + Q&A"}}}
+{"text":"UK Jewish Film Festival: The Soundman","pl,uk,de,us,es":{"query":"The Soundman","programme":"UK Jewish Film Festival: ","bannerEnd":25}}
 {"text":"UK PREMIERE For The Plasma"}
 {"text":"UKRAINIAN SHORTS II"}
 {"text":"ULI BÖTTCHER"}
@@ -16459,8 +16459,8 @@
 {"text":"Uhrwerk Orange"}
 {"text":"Ujście + spotkanie z twórcami","pl,uk,de,us,es":{"query":"Ujście"}}
 {"text":"Ukrainian Cinema: Red Rue Express"}
-{"text":"Ukrainian Film Festival Berlin: CAMOUFLAGE"}
-{"text":"Ukrainian Film Festival Berlin: TO THE VICTORY"}
+{"text":"Ukrainian Film Festival Berlin: CAMOUFLAGE","pl,uk,de,us,es":{"query":"CAMOUFLAGE","programme":"Ukrainian Film Festival Berlin: ","bannerEnd":32}}
+{"text":"Ukrainian Film Festival Berlin: TO THE VICTORY","pl,uk,de,us,es":{"query":"TO THE VICTORY","programme":"Ukrainian Film Festival Berlin: ","bannerEnd":32}}
 {"text":"Ulan & Bator: Überraschungszwei","pl":{"key":"Ulan i Bator: Überraschungszwei","display":"Ulan i Bator: Überraschungszwei"}}
 {"text":"Uli Boettcher: Ü60 – Das Leben rächt sich"}
 {"text":"Ulya"}
@@ -16580,7 +16580,7 @@
 {"text":"VON SCHAM UND GELD"}
 {"text":"VOODOO LOUNGE"}
 {"text":"VOODOO ROOM A Night of Hendrix, Clapton & Cream","pl":{"key":"VOODOO ROOM A Night of Hendrix, Clapton i Cream","display":"VOODOO ROOM A Night of Hendrix, Clapton i Cream"}}
-{"text":"VORPREMIERE: KNACKI DEUSER - HUMORINTELLIGENZ","pl,uk,de,us,es":{"query":"KNACKI DEUSER - HUMORINTELLIGENZ","bannerEnd":13}}
+{"text":"VORPREMIERE: KNACKI DEUSER - HUMORINTELLIGENZ","pl,uk,de,us,es":{"query":"KNACKI DEUSER - HUMORINTELLIGENZ","programme":"VORPREMIERE: ","bannerEnd":13}}
 {"text":"VRAZDA ING. CERTA"}
 {"text":"V_KINOABEND"}
 {"text":"Vaazha II: Biopic of a Billion Bros"}
@@ -16718,15 +16718,15 @@
 {"text":"Vincent.legenda oceanu"}
 {"text":"Vindication Swim"}
 {"text":"Vineta Kaulača – Mapping the View"}
-{"text":"Vino & Kino - X-Mas Special:Schöne Bescherung","pl":{"key":"Vino i Kino - X-Mas Special:Schöne Bescherung","display":"Vino i Kino - X-Mas Special:Schöne Bescherung"}}
-{"text":"Vino & Kino - X-mas Special: Tatsächlich ... Liebe","pl":{"key":"Vino i Kino - X-mas Special: Tatsächlich ... Liebe","display":"Vino i Kino - X-mas Special: Tatsächlich ... Liebe"}}
-{"text":"Vino & Kino: Der Klang der Stradivari","pl":{"key":"Vino i Kino: Der Klang der Stradivari","display":"Vino i Kino: Der Klang der Stradivari"}}
-{"text":"Vino & Kino: Der perfekte Urlaub","pl":{"key":"Vino i Kino: Der perfekte Urlaub","display":"Vino i Kino: Der perfekte Urlaub"}}
-{"text":"Vino & Kino: How to Rob a Bank","pl":{"key":"Vino i Kino: How to Rob a Bank","display":"Vino i Kino: How to Rob a Bank"}}
-{"text":"Vino & Kino: Meine Frau, unsere Schwiegertochter und ich","pl":{"key":"Vino i Kino: Meine Frau, unsere Schwiegertochter und ich","display":"Vino i Kino: Meine Frau, unsere Schwiegertochter und ich"}}
-{"text":"Vino & Kino: Terminator 2: Tag der Abrechnung 35th Anniversary","pl":{"query":"Vino & Kino: Terminator 2: Tag der Abrechnung","key":"Vino i Kino: Terminator 2: Tag der Abrechnung 35th Anniversary","display":"Vino i Kino: Terminator 2: Tag der Abrechnung 35th Anniversary"},"uk,de,us,es":{"query":"Vino & Kino: Terminator 2: Tag der Abrechnung"}}
-{"text":"Vino & Kino: Verity - Dunkle Geheimnisse","pl":{"key":"Vino i Kino: Verity - Dunkle Geheimnisse","display":"Vino i Kino: Verity - Dunkle Geheimnisse"}}
-{"text":"Vino-Kino: You, Me & Italy","pl":{"key":"Vino-Kino: You, Me i Italy","display":"Vino-Kino: You, Me i Italy"}}
+{"text":"Vino & Kino - X-Mas Special:Schöne Bescherung","pl":{"query":"X-Mas Special:Schöne Bescherung","key":"Vino i Kino - X-Mas Special:Schöne Bescherung","display":"Vino i Kino - X-Mas Special:Schöne Bescherung","programme":"Vino & Kino - ","bannerEnd":14},"uk,de,us,es":{"query":"X-Mas Special:Schöne Bescherung","programme":"Vino & Kino - ","bannerEnd":14}}
+{"text":"Vino & Kino - X-mas Special: Tatsächlich ... Liebe","pl":{"query":"X-mas Special: Tatsächlich ... Liebe","key":"Vino i Kino - X-mas Special: Tatsächlich ... Liebe","display":"Vino i Kino - X-mas Special: Tatsächlich ... Liebe","programme":"Vino & Kino - ","bannerEnd":14},"uk,de,us,es":{"query":"X-mas Special: Tatsächlich ... Liebe","programme":"Vino & Kino - ","bannerEnd":14}}
+{"text":"Vino & Kino: Der Klang der Stradivari","pl":{"query":"Der Klang der Stradivari","key":"Vino i Kino: Der Klang der Stradivari","display":"Vino i Kino: Der Klang der Stradivari","programme":"Vino & Kino: ","bannerEnd":13},"uk,de,us,es":{"query":"Der Klang der Stradivari","programme":"Vino & Kino: ","bannerEnd":13}}
+{"text":"Vino & Kino: Der perfekte Urlaub","pl":{"query":"Der perfekte Urlaub","key":"Vino i Kino: Der perfekte Urlaub","display":"Vino i Kino: Der perfekte Urlaub","programme":"Vino & Kino: ","bannerEnd":13},"uk,de,us,es":{"query":"Der perfekte Urlaub","programme":"Vino & Kino: ","bannerEnd":13}}
+{"text":"Vino & Kino: How to Rob a Bank","pl":{"query":"How to Rob a Bank","key":"Vino i Kino: How to Rob a Bank","display":"Vino i Kino: How to Rob a Bank","programme":"Vino & Kino: ","bannerEnd":13},"uk,de,us,es":{"query":"How to Rob a Bank","programme":"Vino & Kino: ","bannerEnd":13}}
+{"text":"Vino & Kino: Meine Frau, unsere Schwiegertochter und ich","pl":{"query":"Meine Frau, unsere Schwiegertochter und ich","key":"Vino i Kino: Meine Frau, unsere Schwiegertochter und ich","display":"Vino i Kino: Meine Frau, unsere Schwiegertochter und ich","programme":"Vino & Kino: ","bannerEnd":13},"uk,de,us,es":{"query":"Meine Frau, unsere Schwiegertochter und ich","programme":"Vino & Kino: ","bannerEnd":13}}
+{"text":"Vino & Kino: Terminator 2: Tag der Abrechnung 35th Anniversary","pl":{"query":"Terminator 2: Tag der Abrechnung","key":"Vino i Kino: Terminator 2: Tag der Abrechnung 35th Anniversary","display":"Vino i Kino: Terminator 2: Tag der Abrechnung 35th Anniversary","programme":"Vino & Kino: ","bannerEnd":13},"uk,de,us,es":{"query":"Terminator 2: Tag der Abrechnung","programme":"Vino & Kino: ","bannerEnd":13}}
+{"text":"Vino & Kino: Verity - Dunkle Geheimnisse","pl":{"query":"Verity - Dunkle Geheimnisse","key":"Vino i Kino: Verity - Dunkle Geheimnisse","display":"Vino i Kino: Verity - Dunkle Geheimnisse","programme":"Vino & Kino: ","bannerEnd":13},"uk,de,us,es":{"query":"Verity - Dunkle Geheimnisse","programme":"Vino & Kino: ","bannerEnd":13}}
+{"text":"Vino-Kino: You, Me & Italy","pl":{"query":"You, Me & Italy","key":"Vino-Kino: You, Me i Italy","display":"Vino-Kino: You, Me i Italy","programme":"Vino-Kino: ","bannerEnd":11},"uk,de,us,es":{"query":"You, Me & Italy","programme":"Vino-Kino: ","bannerEnd":11}}
 {"text":"Vinski i skarb Wikingów"}
 {"text":"Vinski i skarb wikingów"}
 {"text":"Violence Voyager"}
@@ -16776,9 +16776,9 @@
 {"text":"Von uns wird es keiner sein"}
 {"text":"Voodoo Lounge - Europes Greatest Rolling Stones Show"}
 {"text":"Voodoo Room (27)"}
-{"text":"Vorpremiere - Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","bannerEnd":14}}
-{"text":"Vorpremiere: Brunello: Der sanfte Visionär","pl,uk,de,us,es":{"query":"Brunello: Der sanfte Visionär","bannerEnd":13}}
-{"text":"Vorpremiere: Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","bannerEnd":13}}
+{"text":"Vorpremiere - Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","programme":"Vorpremiere - ","bannerEnd":14}}
+{"text":"Vorpremiere: Brunello: Der sanfte Visionär","pl,uk,de,us,es":{"query":"Brunello: Der sanfte Visionär","programme":"Vorpremiere: ","bannerEnd":13}}
+{"text":"Vorpremiere: Der Perfekte Urlaub","pl,uk,de,us,es":{"query":"Der Perfekte Urlaub","programme":"Vorpremiere: ","bannerEnd":13}}
 {"text":"Vorspiel"}
 {"text":"Vorstadtkrokodile"}
 {"text":"W SERCU DZICZY"}
@@ -16971,7 +16971,7 @@
 {"text":"Wartość sentymentalna"}
 {"text":"Wartość sentymentalna / letnie kino dla dorosłych","pl,uk,de,us,es":{"query":"Wartość sentymentalna"}}
 {"text":"Wartość sentymentalna [napisy PL + EN]","pl,uk,de,us,es":{"query":"Wartość sentymentalna [napisy PL"}}
-{"text":"Wartość sentymentalna | Kino Dostępne","pl,uk,de,us,es":{"venue":{"bok":"Wartość sentymentalna: Kino Dostępne"}}}
+{"text":"Wartość sentymentalna | Kino Dostępne","pl,uk,de,us,es":{"query":"Wartość sentymentalna","venue":{"bok":"Wartość sentymentalna: Kino Dostępne"}}}
 {"text":"Warum Ich - Wolf D. Kroll"}
 {"text":"Warum eigentlich… bringen wir den Chef nicht um?"}
 {"text":"Was Sie schon immer über Sex wissen wollten, aber nie zu fragen wagten"}
@@ -16983,7 +16983,7 @@
 {"text":"Was tun, Sybille?"}
 {"text":"Was uns verbindet"}
 {"text":"Wasserburg - Offene Stadt"}
-{"text":"Watch Africa Film Festival 2026: Pressure","pl,uk,de,us,es":{"query":"Pressure","bannerEnd":33}}
+{"text":"Watch Africa Film Festival 2026: Pressure","pl,uk,de,us,es":{"query":"Pressure","programme":"Watch Africa Film Festival 2026: ","bannerEnd":33}}
 {"text":"Watching People Watching Birds"}
 {"text":"Watching People, Watching Birds","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"Watching People"}}}
 {"text":"Water Lilies"}
@@ -17391,7 +17391,7 @@
 {"text":"Wuthering Heights + Oberon","pl,uk,de,us,es":{"query":"Wuthering Heights"}}
 {"text":"Wydarzenie kinowe wyłącznie dla kobiet z prelekcją KLAPS! - odcinek \"Onkopierwiastki: małe składniki, duże znaczenie\", losowanie nagród, prezentacje sponsorów, seans filmu \"LALKA\" (2h 42min)","pl,uk,de,us,es":{"query":"Wydarzenie kinowe wyłącznie dla kobiet","venue":{"kino-alternatywy":"Wydarzenie kinowe wyłącznie dla kobiet z prelekcją KLAPS! - odcinek Onkopierwiastki: małe składniki, duże znaczenie , losowanie nagród, prezentacje sponsorów, seans filmu LALKA (2h 42min)"}}}
 {"text":"Wymarzony"}
-{"text":"Wymiary Kina na Placu Wilsona: Witajcie w Hope - przedpremiera + spotkanie","pl,uk,de,us,es":{"query":"Witajcie w Hope","bannerEnd":31}}
+{"text":"Wymiary Kina na Placu Wilsona: Witajcie w Hope - przedpremiera + spotkanie","pl,uk,de,us,es":{"query":"Witajcie w Hope","programme":"Wymiary Kina na Placu Wilsona: ","bannerEnd":31}}
 {"text":"Wypadek fortepianowy"}
 {"text":"Wypadek fortepianowy (org. L'Accident de piano) 17. edycja Przeglądu Nowego Kina Francuskiego","pl,uk,de,us,es":{"query":"Wypadek fortepianowy"}}
 {"text":"Wypadek fortepianowy | Przegląd Nowego Kina Francuskiego","pl,uk,de,us,es":{"query":"Wypadek fortepianowy","venue":{"bok":"Wypadek fortepianowy: Przegląd Nowego Kina Francuskiego"}}}
@@ -17461,7 +17461,7 @@
 {"text":"ZADUSZKI JAZZOWE GABA JANUSZ \"NIEOBECNI\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"ZADUSZKI JAZZOWE GABA JANUSZ NIEOBECNI"}}}
 {"text":"ZADUSZKI: CUD PAMIĘCI - PIOSENKI STANISŁAWA SOJKI"}
 {"text":"ZAGUBIONA AUTOSTRADA"}
-{"text":"ZAMKNIĘCIE FESTIWALU KORELACJE: „Zaklęte rewiry” z autorską  narracją Malcolma XD + spotkanie z autorem","pl,uk,de,us,es":{"query":"Zaklęte rewiry","bannerEnd":103,"venue":{"bok":"ZAMKNIĘCIE FESTIWALU KORELACJE: „Zaklęte rewiry” z autorską narracją Malcolma XD + spotkanie z autorem","kino-alternatywy":"ZAMKNIĘCIE FESTIWALU KORELACJE: Zaklęte rewiry z autorską narracją Malcolma XD + spotkanie z autorem"}}}
+{"text":"ZAMKNIĘCIE FESTIWALU KORELACJE: „Zaklęte rewiry” z autorską  narracją Malcolma XD + spotkanie z autorem","pl,uk,de,us,es":{"query":"Zaklęte rewiry","programme":"ZAMKNIĘCIE FESTIWALU KORELACJE: ","bannerEnd":103,"venue":{"bok":"ZAMKNIĘCIE FESTIWALU KORELACJE: „Zaklęte rewiry” z autorską narracją Malcolma XD + spotkanie z autorem","kino-alternatywy":"ZAMKNIĘCIE FESTIWALU KORELACJE: Zaklęte rewiry z autorską narracją Malcolma XD + spotkanie z autorem"}}}
 {"text":"ZAPOMNIANA WYSPA"}
 {"text":"ZAPOMNIANA WYSPA 2D DUBBING"}
 {"text":"ZAPOMNIANA WYSPA DUBBING-KINO WYBRZEŻE","pl,uk,de,us,es":{"venue":{"wybrzeze":"ZAPOMNIANA WYSPA DUBBING"}}}
@@ -17679,7 +17679,7 @@
 {"text":"human, nature"}
 {"text":"im ALO Jugendzentrum Dülken"}
 {"text":"island"}
-{"text":"kino_mit_gästen: Kardes Türküler – Eine 30-jährige Geschichte"}
+{"text":"kino_mit_gästen: Kardes Türküler – Eine 30-jährige Geschichte","pl,uk,de,us,es":{"query":"Kardes Türküler – Eine 30-jährige Geschichte","programme":"kino_mit_gästen: ","bannerEnd":17}}
 {"text":"kurz & BANDig","pl":{"key":"kurz i BANDig","display":"kurz i BANDig"}}
 {"text":"local heroes „Preisverleihung“","pl,uk,de,us,es":{"query":"local heroes \"Preisverleihung“","venue":{"kino-alternatywy":"local heroes Preisverleihung"}}}
 {"text":"local heroes: Preisverleihung"}

@@ -1,0 +1,1093 @@
+# TitleRulesGoldenSpec readings the lookup query's billing parse (BillingParse.work) changed, 2026-10-22: field, countries, billing, before, after
+bannerEnd	de,es,pl,uk,us	"Local Kino Helden": Best of "Filmisches Klassenzimmer" (Bavaria)	-	21
+programme	de,es,pl,uk,us	"Local Kino Helden": Best of "Filmisches Klassenzimmer" (Bavaria)	-	"\"Local Kino Helden\": "
+query	de,es,pl,uk,us	"Local Kino Helden": Best of "Filmisches Klassenzimmer" (Bavaria)	-	"Best of \"Filmisches Klassenzimmer\" (Bavaria)"
+bannerEnd	de,es,pl,uk,us	12. Splat!FilmFest | Karnet	-	21
+programme	de,es,pl,uk,us	12. Splat!FilmFest | Karnet	-	"12. Splat!FilmFest | "
+query	de,es,pl,uk,us	12. Splat!FilmFest | Karnet	-	"Karnet"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA	-	"BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH	-	"DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ	-	"JAPONIA - DWIE DEKADY PÓŹNIEJ"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - KILIMANDŻARO - GÓRA MARZEŃ	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - KILIMANDŻARO - GÓRA MARZEŃ	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - KILIMANDŻARO - GÓRA MARZEŃ	-	"KILIMANDŻARO - GÓRA MARZEŃ"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII	-	"MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI	-	"NOWA ZELANDIA - W POSZUKIWANIU KIWI"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2	-	"O ŚCIEŻKACH I LUDZIACH W GÓRACH PAKISTANU. DOOKOŁA NANGI PARBAT I POD K2"
+bannerEnd	de,es,pl,uk,us	24. Festiwal TERRA - WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK	-	21
+programme	de,es,pl,uk,us	24. Festiwal TERRA - WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK	-	"24. Festiwal TERRA - "
+query	de,es,pl,uk,us	24. Festiwal TERRA - WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK	-	"WIŚLADA. KAJAKOWA WĘDRÓWKA KRÓLOWĄ POLSKICH RZEK"
+bannerEnd	de,es,pl,uk,us	Advents-Kino: Der Polarexpress	-	14
+programme	de,es,pl,uk,us	Advents-Kino: Der Polarexpress	-	"Advents-Kino: "
+query	de,es,pl,uk,us	Advents-Kino: Der Polarexpress	-	"Der Polarexpress"
+bannerEnd	de,es,pl,uk,us	Advents-Kino: Die Eiskönigin 2	-	14
+programme	de,es,pl,uk,us	Advents-Kino: Die Eiskönigin 2	-	"Advents-Kino: "
+query	de,es,pl,uk,us	Advents-Kino: Die Eiskönigin 2	-	"Die Eiskönigin 2"
+bannerEnd	de,es,pl,uk,us	Advents-Kino: Kevin - Allein in New York	-	14
+programme	de,es,pl,uk,us	Advents-Kino: Kevin - Allein in New York	-	"Advents-Kino: "
+query	de,es,pl,uk,us	Advents-Kino: Kevin - Allein in New York	-	"Kevin - Allein in New York"
+bannerEnd	de,es,pl,uk,us	Advents-Kino: Kevin - Allein zu Haus	-	14
+programme	de,es,pl,uk,us	Advents-Kino: Kevin - Allein zu Haus	-	"Advents-Kino: "
+query	de,es,pl,uk,us	Advents-Kino: Kevin - Allein zu Haus	-	"Kevin - Allein zu Haus"
+bannerEnd	de,es,pl,uk,us	All Out Of Bubblegum Film Club: THE SHINING	-	32
+programme	de,es,pl,uk,us	All Out Of Bubblegum Film Club: THE SHINING	-	"All Out Of Bubblegum Film Club: "
+query	de,es,pl,uk,us	All Out Of Bubblegum Film Club: THE SHINING	-	"THE SHINING"
+query	de,es,pl,uk,us	All You Need is Kill | Kino Azji	-	"All You Need is Kill"
+bannerEnd	de,es,pl,uk,us	Arbeiten für das Kino - Buchpräsentation	-	24
+programme	de,es,pl,uk,us	Arbeiten für das Kino - Buchpräsentation	-	"Arbeiten für das Kino - "
+query	de,es,pl,uk,us	Arbeiten für das Kino - Buchpräsentation	-	"Buchpräsentation"
+bannerEnd	de,es,pl,uk,us	Artist's Choice Screening: Looking for Mr. Goodbar (35mm)	-	27
+programme	de,es,pl,uk,us	Artist's Choice Screening: Looking for Mr. Goodbar (35mm)	-	"Artist's Choice Screening: "
+query	de,es,pl,uk,us	Artist's Choice Screening: Looking for Mr. Goodbar (35mm)	-	"Looking for Mr. Goodbar (35mm)"
+bannerEnd	de,es,pl,uk,us	Asian Festiwal Pięć Smaków: Pod dachem Ky Nam	-	28
+programme	de,es,pl,uk,us	Asian Festiwal Pięć Smaków: Pod dachem Ky Nam	-	"Asian Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Asian Festiwal Pięć Smaków: Pod dachem Ky Nam	-	"Pod dachem Ky Nam"
+query	de,es,pl,uk,us	Astra Dzieci: Poranki z muzyką na żywo	-	"Astra Dzieci"
+bannerEnd	de,es,pl,uk,us	Astra Seniora: Bez końca	-	15
+programme	de,es,pl,uk,us	Astra Seniora: Bez końca	-	"Astra Seniora: "
+query	de,es,pl,uk,us	Astra Seniora: Bez końca	-	"Bez końca"
+bannerEnd	de,es,pl,uk,us	Bardzo Dyskusyjny Klub Filmowy: Wielkie role Sandry Hüller: Róża	-	32
+programme	de,es,pl,uk,us	Bardzo Dyskusyjny Klub Filmowy: Wielkie role Sandry Hüller: Róża	-	"Bardzo Dyskusyjny Klub Filmowy: "
+query	de,es,pl,uk,us	Bardzo Dyskusyjny Klub Filmowy: Wielkie role Sandry Hüller: Róża	-	"Wielkie role Sandry Hüller: Róża"
+bannerEnd	de,es,pl,uk,us	Baskisches Filmfestival: Jone, Batzuetan	-	25
+programme	de,es,pl,uk,us	Baskisches Filmfestival: Jone, Batzuetan	-	"Baskisches Filmfestival: "
+query	de,es,pl,uk,us	Baskisches Filmfestival: Jone, Batzuetan	-	"Jone, Batzuetan"
+bannerEnd	de,es,pl,uk,us	Baskisches Filmfestival: Karmele	-	25
+programme	de,es,pl,uk,us	Baskisches Filmfestival: Karmele	-	"Baskisches Filmfestival: "
+query	de,es,pl,uk,us	Baskisches Filmfestival: Karmele	-	"Karmele"
+bannerEnd	de,es,pl,uk,us	Baskisches Filmfestival: Maspalomas	-	25
+programme	de,es,pl,uk,us	Baskisches Filmfestival: Maspalomas	-	"Baskisches Filmfestival: "
+query	de,es,pl,uk,us	Baskisches Filmfestival: Maspalomas	-	"Maspalomas"
+query	de,es,pl,uk,us	BEZ ZNIECZULENIA (1978) | „PRZEGLĄD WAJDA: re-wizje”	"BEZ ZNIECZULENIA (1978) | \"PRZEGLĄD WAJDA: re-wizje\""	"BEZ ZNIECZULENIA (1978)"
+bannerEnd	de,es,pl,uk,us	Bezpłatny seans - ZESTAW BAJEK - 25.10.2026	-	18
+programme	de,es,pl,uk,us	Bezpłatny seans - ZESTAW BAJEK - 25.10.2026	-	"Bezpłatny seans - "
+query	de,es,pl,uk,us	Bezpłatny seans - ZESTAW BAJEK - 25.10.2026	-	"ZESTAW BAJEK - 25.10.2026"
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: Club Kid	-	"BFI London Film Festival 2026: "
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: Fatherland	-	"BFI London Film Festival 2026: "
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: Fjord	-	"BFI London Film Festival 2026: "
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: Josephine	-	"BFI London Film Festival 2026: "
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: Making Marie Antoinette	-	"BFI London Film Festival 2026: "
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: Minotaur	-	"BFI London Film Festival 2026: "
+programme	de,es,pl,uk,us	BFI London Film Festival 2026: The Debut	-	"BFI London Film Festival 2026: "
+bannerEnd	de,es,pl,uk,us	Bluey w kinie: Kolekcja Zabawy z przyjaciółmi	-	15
+programme	de,es,pl,uk,us	Bluey w kinie: Kolekcja Zabawy z przyjaciółmi	-	"Bluey w kinie: "
+query	de,es,pl,uk,us	Bluey w kinie: Kolekcja Zabawy z przyjaciółmi	-	"Kolekcja Zabawy z przyjaciółmi"
+bannerEnd	de,es,pl,uk,us	Bristol Bad Film Club presents: Dial Code Santa Claus (18 CTBA) S	-	32
+programme	de,es,pl,uk,us	Bristol Bad Film Club presents: Dial Code Santa Claus (18 CTBA) S	-	"Bristol Bad Film Club presents: "
+query	de,es,pl,uk,us	Bristol Bad Film Club presents: Dial Code Santa Claus (18 CTBA) S	-	"Dial Code Santa Claus (18 CTBA) S"
+bannerEnd	de,es,pl,uk,us	Christmas Ladies Night: Liebe braucht keine Ferien	-	24
+programme	de,es,pl,uk,us	Christmas Ladies Night: Liebe braucht keine Ferien	-	"Christmas Ladies Night: "
+query	de,es,pl,uk,us	Christmas Ladies Night: Liebe braucht keine Ferien	-	"Liebe braucht keine Ferien"
+query	de,es,pl,uk,us	CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA I	-	"CINEMAFORUM"
+query	de,es,pl,uk,us	CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA II	-	"CINEMAFORUM"
+query	de,es,pl,uk,us	CINEMAFORUM - RETROSPEKTYWA CINEMAFORUM PROJEKCJA III	-	"CINEMAFORUM"
+programme	de,es,pl,uk,us	CINEVILLE PREVIEW: LA BOLA NEGRA	-	"CINEVILLE PREVIEW: "
+bannerEnd	de,es,pl,uk,us	CLUB KIDMonGay-Vorpremiere - engl. OmU	-	29
+programme	de,es,pl,uk,us	CLUB KIDMonGay-Vorpremiere - engl. OmU	-	"CLUB KIDMonGay-Vorpremiere - "
+query	de,es,pl,uk,us	CLUB KIDMonGay-Vorpremiere - engl. OmU	-	"engl. OmU"
+bannerEnd	de,es,pl,uk,us	Cult Film Club: Clue (PG)	-	16
+programme	de,es,pl,uk,us	Cult Film Club: Clue (PG)	-	"Cult Film Club: "
+query	de,es,pl,uk,us	Cult Film Club: Clue (PG)	"Cult Film Club: Clue"	"Clue"
+bannerEnd	de,es,pl,uk,us	Cult Film Club: Highlander (15)	-	16
+programme	de,es,pl,uk,us	Cult Film Club: Highlander (15)	-	"Cult Film Club: "
+query	de,es,pl,uk,us	Cult Film Club: Highlander (15)	"Cult Film Club: Highlander"	"Highlander"
+bannerEnd	de,es,pl,uk,us	Cult Film Club: Tenacious D In The Pick Of Destiny (15)	-	16
+programme	de,es,pl,uk,us	Cult Film Club: Tenacious D In The Pick Of Destiny (15)	-	"Cult Film Club: "
+query	de,es,pl,uk,us	Cult Film Club: Tenacious D In The Pick Of Destiny (15)	"Cult Film Club: Tenacious D In The Pick Of Destiny"	"Tenacious D In The Pick Of Destiny"
+programme	de,es,pl,uk,us	Cykl "Kultowa klasyka" - Zawieście czerwone latarnie	-	"Cykl \"Kultowa klasyka\" - "
+programme	de,es,pl,uk,us	Cykl "Kultowe Klasyki" - Windą na szafot (1958)	-	"Cykl \"Kultowe Klasyki\" - "
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - Drugie życie	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - Drugie życie	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - Drugie życie	-	"Drugie życie"
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - Father Mother Sister Brother	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - Father Mother Sister Brother	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - Father Mother Sister Brother	-	"Father Mother Sister Brother"
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - Królowa Kier	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - Królowa Kier	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - Królowa Kier	-	"Królowa Kier"
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - O czym sobie nie mówimy	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - O czym sobie nie mówimy	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - O czym sobie nie mówimy	-	"O czym sobie nie mówimy"
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - O czym wie Marielle	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - O czym wie Marielle	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - O czym wie Marielle	-	"O czym wie Marielle"
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - Wędrówka na północ	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - Wędrówka na północ	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - Wędrówka na północ	-	"Wędrówka na północ"
+bannerEnd	de,es,pl,uk,us	Cykl Ale Kino - Wolność po włosku	-	16
+programme	de,es,pl,uk,us	Cykl Ale Kino - Wolność po włosku	-	"Cykl Ale Kino - "
+query	de,es,pl,uk,us	Cykl Ale Kino - Wolność po włosku	-	"Wolność po włosku"
+programme	de,es,pl,uk,us	Cykl Klasyki Filmowe Tak było wczoraj...: Harry Angel | 2D | Napisy	-	"Cykl Klasyki Filmowe Tak było wczoraj...: "
+programme	de,es,pl,uk,us	Cykl „Wajda: re-wizje" - Bez znieczulenia / Rough Treatment (1978)	-	"Cykl „Wajda: re-wizje\" - "
+programme	de,es,pl,uk,us	Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)	-	"Cykl „Wajda: re-wizje\" - "
+programme	de,es,pl,uk,us	Cykl „Wajda: re-wizje" - Wszystko na sprzedaż / Everything for Sale (1974)	-	"Cykl „Wajda: re-wizje\" - "
+programme	de,es,pl,uk,us	Cykl „Wajda: re-wizje" - Ziemia obiecana / The Promised Land (1974)	-	"Cykl „Wajda: re-wizje\" - "
+query	de,es,pl,uk,us	Das Gewisse Etwas - Kino Kaffee	-	"Das Gewisse Etwas"
+bannerEnd	de,es,pl,uk,us	Dawno temu w kinie - Piętro wyżej	-	21
+programme	de,es,pl,uk,us	Dawno temu w kinie - Piętro wyżej	-	"Dawno temu w kinie - "
+query	de,es,pl,uk,us	Dawno temu w kinie - Piętro wyżej	-	"Piętro wyżej"
+bannerEnd	de,es,pl,uk,us	Dawno temu w kinie - Szarada	-	21
+programme	de,es,pl,uk,us	Dawno temu w kinie - Szarada	-	"Dawno temu w kinie - "
+query	de,es,pl,uk,us	Dawno temu w kinie - Szarada	-	"Szarada"
+bannerEnd	de,es,pl,uk,us	Dementia Freindly Screening | Holiday Inn	-	30
+programme	de,es,pl,uk,us	Dementia Freindly Screening | Holiday Inn	-	"Dementia Freindly Screening | "
+query	de,es,pl,uk,us	Dementia Freindly Screening | Holiday Inn	-	"Holiday Inn"
+bannerEnd	de,es,pl,uk,us	Dementia Freindly Screening | Lullaby Of Broadway	-	30
+programme	de,es,pl,uk,us	Dementia Freindly Screening | Lullaby Of Broadway	-	"Dementia Freindly Screening | "
+query	de,es,pl,uk,us	Dementia Freindly Screening | Lullaby Of Broadway	-	"Lullaby Of Broadway"
+bannerEnd	de,es,pl,uk,us	Dementia Freindly Screening | Tea For Two	-	30
+programme	de,es,pl,uk,us	Dementia Freindly Screening | Tea For Two	-	"Dementia Freindly Screening | "
+query	de,es,pl,uk,us	Dementia Freindly Screening | Tea For Two	-	"Tea For Two"
+query	de,es,pl,uk,us	Der perfekte Urlaub - Ladies Night	-	"Der perfekte Urlaub"
+query	de,es,pl,uk,us	Der Perfekte Urlaub - Ladies Night	-	"Der Perfekte Urlaub"
+query	de,es,pl,uk,us	Der Perfekte Urlaub - Ladies Night!	-	"Der Perfekte Urlaub"
+bannerEnd	de,es,pl,uk,us	Diabły + pokaz teledysków | Labirynty grozy	-	28
+programme	de,es,pl,uk,us	Diabły + pokaz teledysków | Labirynty grozy	-	"Diabły + pokaz teledysków | "
+query	de,es,pl,uk,us	Die Camino-Therapie - Finde deinen Weg - Kino für Junggebliebene	-	"Die Camino-Therapie - Finde deinen Weg"
+programme	de,es,pl,uk,us	DKF - DIABŁY	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - DŹWIĘKI MIŁOŚCI	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - GURU	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - HOMO SAPIENS?	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - KANDYDACI ŚMIERCI	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - LABIRYNT FAUNA	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - O czym wie Marielle 2D napisy	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - Obcy	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - SALTO	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - Vivaldi i ja 2D napisy	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - WAŁKONIE	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - ZIEMIA OBIECANA	-	"DKF - "
+programme	de,es,pl,uk,us	DKF - ZNIKNIĘCIE	-	"DKF - "
+bannerEnd	de,es,pl,uk,us	DKF Szpula – DRUGIE ŻYCIE	-	13
+programme	de,es,pl,uk,us	DKF Szpula – DRUGIE ŻYCIE	-	"DKF Szpula – "
+query	de,es,pl,uk,us	DKF Szpula – DRUGIE ŻYCIE	-	"DRUGIE ŻYCIE"
+query	de,es,pl,uk,us	DKF Zamek: Amelia | SEANS WYPRZEDANY	"Amelia | SEANS WYPRZEDANY"	"Amelia"
+programme	de,es,pl,uk,us	DKF: Kura	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: Naza	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: Nikt nie wie	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: OBCY	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: Pejzaż w kolorze sepii	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: Primetime	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: Róża	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: SIRÂT	-	"DKF: "
+programme	de,es,pl,uk,us	DKF: Wieloryb	-	"DKF: "
+bannerEnd	de,es,pl,uk,us	Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW	-	19
+programme	de,es,pl,uk,us	Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW	-	"Dni Kina Niemego - "
+query	de,es,pl,uk,us	Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW	-	"100 lat temu: SYMFONIA ZMYSŁÓW"
+bannerEnd	de,es,pl,uk,us	Dni Kina Niemego - Buster Keaton dla dzieci	-	19
+programme	de,es,pl,uk,us	Dni Kina Niemego - Buster Keaton dla dzieci	-	"Dni Kina Niemego - "
+query	de,es,pl,uk,us	Dni Kina Niemego - Buster Keaton dla dzieci	-	"Buster Keaton dla dzieci"
+bannerEnd	de,es,pl,uk,us	Dni Kina Niemego - Pierwsze wredne baby kina: KRÓLOWE DESTRUKCJI	-	46
+programme	de,es,pl,uk,us	Dni Kina Niemego - Pierwsze wredne baby kina: KRÓLOWE DESTRUKCJI	-	"Dni Kina Niemego - Pierwsze wredne baby kina: "
+query	de,es,pl,uk,us	Dni Kina Niemego - Pierwsze wredne baby kina: KRÓLOWE DESTRUKCJI	-	"KRÓLOWE DESTRUKCJI"
+bannerEnd	de,es,pl,uk,us	Dni Kina Niemego - Portier z Hotelu Atlantic	-	19
+programme	de,es,pl,uk,us	Dni Kina Niemego - Portier z Hotelu Atlantic	-	"Dni Kina Niemego - "
+query	de,es,pl,uk,us	Dni Kina Niemego - Portier z Hotelu Atlantic	-	"Portier z Hotelu Atlantic"
+bannerEnd	de,es,pl,uk,us	Dni Kina Niemego - Quo vadis?	-	19
+programme	de,es,pl,uk,us	Dni Kina Niemego - Quo vadis?	-	"Dni Kina Niemego - "
+query	de,es,pl,uk,us	Dni Kina Niemego - Quo vadis?	-	"Quo vadis?"
+bannerEnd	de,es,pl,uk,us	Dobrostan nauczyciela. Kino: Kwiaty Ukrainy	-	29
+programme	de,es,pl,uk,us	Dobrostan nauczyciela. Kino: Kwiaty Ukrainy	-	"Dobrostan nauczyciela. Kino: "
+query	de,es,pl,uk,us	Dobrostan nauczyciela. Kino: Kwiaty Ukrainy	-	"Kwiaty Ukrainy"
+query	de,es,pl,uk,us	Drugie życie | KINO PRZYJAZNE RODZICOM	-	"Drugie życie"
+bannerEnd	de,es,pl,uk,us	Dyskusyjny Klub Bajkowy: Tajemnica śpiewających ptaków	-	25
+programme	de,es,pl,uk,us	Dyskusyjny Klub Bajkowy: Tajemnica śpiewających ptaków	-	"Dyskusyjny Klub Bajkowy: "
+query	de,es,pl,uk,us	Dyskusyjny Klub Bajkowy: Tajemnica śpiewających ptaków	-	"Tajemnica śpiewających ptaków"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego - Przez ścianę (PL)	-	23
+programme	de,es,pl,uk,us	Dzień Kina Polskiego - Przez ścianę (PL)	-	"Dzień Kina Polskiego - "
+query	de,es,pl,uk,us	Dzień Kina Polskiego - Przez ścianę (PL)	-	"Przez ścianę (PL)"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Czas, który nie nadszedł	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Czas, który nie nadszedł	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Czas, który nie nadszedł	-	"Czas, który nie nadszedł"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Lalka	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Lalka	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Lalka	-	"Lalka"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Nie ma duchów w mieszkaniu na Dobrej	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Nie ma duchów w mieszkaniu na Dobrej	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Nie ma duchów w mieszkaniu na Dobrej	-	"Nie ma duchów w mieszkaniu na Dobrej"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Niesamowite przygody skarpetek 4. Do roboty!	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Niesamowite przygody skarpetek 4. Do roboty!	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Niesamowite przygody skarpetek 4. Do roboty!	-	"Niesamowite przygody skarpetek 4. Do roboty!"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Ojczyzna	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Ojczyzna	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Ojczyzna	-	"Ojczyzna"
+bannerEnd	de,es,pl,uk,us	DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją	-	22
+programme	de,es,pl,uk,us	DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją	-	"DZIEŃ KINA POLSKIEGO: "
+query	de,es,pl,uk,us	DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją	-	"Przepraszam, czy tu biją"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Przez ścianę | Przedpremiera	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Przez ścianę | Przedpremiera	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Przez ścianę | Przedpremiera	"Dzień Kina Polskiego: Przez ścianę"	"Przez ścianę"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Pucio kocha zwierzaki	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Pucio kocha zwierzaki	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Pucio kocha zwierzaki	-	"Pucio kocha zwierzaki"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Wiedźmin	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Wiedźmin	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Wiedźmin	-	"Wiedźmin"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu	-	"Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu"
+bannerEnd	de,es,pl,uk,us	Dzień Kina Polskiego: Znaki Pana Śliwki	-	22
+programme	de,es,pl,uk,us	Dzień Kina Polskiego: Znaki Pana Śliwki	-	"Dzień Kina Polskiego: "
+query	de,es,pl,uk,us	Dzień Kina Polskiego: Znaki Pana Śliwki	-	"Znaki Pana Śliwki"
+query	de,es,pl,uk,us	Dzień objawienia | Seans premierowy w Kosmosie	-	"Dzień objawienia"
+programme	de,es,pl,uk,us	Ealing Film Festival: Homegrown 1	-	"Ealing Film Festival: "
+programme	de,es,pl,uk,us	Ealing Film Festival: Homegrown 2	-	"Ealing Film Festival: "
+programme	de,es,pl,uk,us	Early Fan Preview - Dune: Part Three	-	"Early Fan Preview - "
+programme	de,es,pl,uk,us	Early Fan Preview | Dune: Part Three	-	"Early Fan Preview | "
+programme	de,es,pl,uk,us	Early Fan Preview: Dune: Part Three	-	"Early Fan Preview: "
+query	de,es,pl,uk,us	Ein Fast perfekter Antrag - Kino für Frauen	-	"Ein Fast perfekter Antrag"
+programme	de,es,pl,uk,us	Festiwal Korelacje: „Czarodziej z Harlemu” z autorską narracją Bartosza  Wierzbięty + spotkanie z autorem	-	"Festiwal Korelacje: "
+programme	de,es,pl,uk,us	Festiwal Korelacje: „Do widzenia, do jutra” z autorską narracją Grzegorza Uzdańskiego + spotkanie z autorem	-	"Festiwal Korelacje: "
+programme	de,es,pl,uk,us	Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze  Śląska + spotkanie z autorką	-	"Festiwal Korelacje: "
+programme	de,es,pl,uk,us	Festiwal Korelacje: „Tylko tylko Rock” z autorską narracją Doroty Masłowskiej	-	"Festiwal Korelacje: "
+programme	de,es,pl,uk,us	Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa	-	"Festiwal Korelacje: "
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: A Annie dalej swoje	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: A Annie dalej swoje	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: A Annie dalej swoje	-	"A Annie dalej swoje"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Dom na krańcu księżyca	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Dom na krańcu księżyca	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Dom na krańcu księżyca	-	"Dom na krańcu księżyca"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Funky Freaky Freaks	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Funky Freaky Freaks	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Funky Freaky Freaks	-	"Funky Freaky Freaks"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Ghost in the Cell	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Ghost in the Cell	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Ghost in the Cell	-	"Ghost in the Cell"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Idę z mnichem (1984)	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Idę z mnichem (1984)	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Idę z mnichem (1984)	-	"Idę z mnichem (1984)"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Kaczka po pekińsku	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Kaczka po pekińsku	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Kaczka po pekińsku	-	"Kaczka po pekińsku"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Kaczka po pekińsku (1986)	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Kaczka po pekińsku (1986)	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Kaczka po pekińsku (1986)	-	"Kaczka po pekińsku (1986)"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Kształt momo	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Kształt momo	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Kształt momo	-	"Kształt momo"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Lament	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Lament	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Lament	-	"Lament"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Memorizu	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Memorizu	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Memorizu	-	"Memorizu"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Międzyświat	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Międzyświat	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Międzyświat	-	"Międzyświat"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Morze żółte	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Morze żółte	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Morze żółte	-	"Morze żółte"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Odsłuch (seans z dyskusją i DJ setem w Przypadku)	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Odsłuch (seans z dyskusją i DJ setem w Przypadku)	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Odsłuch (seans z dyskusją i DJ setem w Przypadku)	"Festiwal Pięć Smaków: Odsłuch"	"Odsłuch"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Ostrze	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Ostrze	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Ostrze	-	"Ostrze"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu)	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu)	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu)	-	"Ostrze (1995) (otwarcie Festiwalu)"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat	-	"Pięć smaków Azji, 6 kolorów herbaty- prezentacja i pokaz parzenia herbat"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Po życiu	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Po życiu	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Po życiu	-	"Po życiu"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Pod dachem Ky Nam	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Pod dachem Ky Nam	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Pod dachem Ky Nam	-	"Pod dachem Ky Nam"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Riverstone	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Riverstone	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Riverstone	-	"Riverstone"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Skwar	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Skwar	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Skwar	-	"Skwar"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Słońce w tunelu	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Słońce w tunelu	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Słońce w tunelu	-	"Słońce w tunelu"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Szepty księżyca	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Szepty księżyca	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Szepty księżyca	-	"Szepty księżyca"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Urywki z macierzyństwa	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Urywki z macierzyństwa	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Urywki z macierzyństwa	-	"Urywki z macierzyństwa"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: W pogoni	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: W pogoni	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: W pogoni	-	"W pogoni"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: W sumie spoko	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: W sumie spoko	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: W sumie spoko	-	"W sumie spoko"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: W sumie spoko + spotkanie psychologiczne	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: W sumie spoko + spotkanie psychologiczne	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: W sumie spoko + spotkanie psychologiczne	"Festiwal Pięć Smaków: W sumie spoko"	"W sumie spoko"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)	-	"Wielki Budda+ (spotkanie z reżyserem)"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Wielki Budda+ | Otwarcie Repliki i spotkanie z reżyserem	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Wielki Budda+ | Otwarcie Repliki i spotkanie z reżyserem	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Wielki Budda+ | Otwarcie Repliki i spotkanie z reżyserem	"Festiwal Pięć Smaków: Wielki Budda+"	"Wielki Budda+"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Witajcie w Hope	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Witajcie w Hope	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Witajcie w Hope	-	"Witajcie w Hope"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Zmierzch w Luomu	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Zmierzch w Luomu	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Zmierzch w Luomu	-	"Zmierzch w Luomu"
+bannerEnd	de,es,pl,uk,us	Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)	-	22
+programme	de,es,pl,uk,us	Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)	-	"Festiwal Pięć Smaków: "
+query	de,es,pl,uk,us	Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)	-	"Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku)"
+bannerEnd	de,es,pl,uk,us	Film Club: East Of Eden (1955)	-	11
+programme	de,es,pl,uk,us	Film Club: East Of Eden (1955)	-	"Film Club: "
+query	de,es,pl,uk,us	Film Club: East Of Eden (1955)	-	"East Of Eden (1955)"
+bannerEnd	de,es,pl,uk,us	Film Club: Rocky (50th Anniversary)	-	11
+programme	de,es,pl,uk,us	Film Club: Rocky (50th Anniversary)	-	"Film Club: "
+query	de,es,pl,uk,us	Film Club: Rocky (50th Anniversary)	"Film Club: Rocky"	"Rocky"
+bannerEnd	de,es,pl,uk,us	Film Club: The Masque of the Red Death	-	11
+programme	de,es,pl,uk,us	Film Club: The Masque of the Red Death	-	"Film Club: "
+query	de,es,pl,uk,us	Film Club: The Masque of the Red Death	-	"The Masque of the Red Death"
+bannerEnd	de,es,pl,uk,us	Filmclub Classics: Liebe braucht keine Ferien	-	19
+programme	de,es,pl,uk,us	Filmclub Classics: Liebe braucht keine Ferien	-	"Filmclub Classics: "
+query	de,es,pl,uk,us	Filmclub Classics: Liebe braucht keine Ferien	-	"Liebe braucht keine Ferien"
+bannerEnd	de,es,pl,uk,us	Filmclub Classics: Rocky	-	19
+programme	de,es,pl,uk,us	Filmclub Classics: Rocky	-	"Filmclub Classics: "
+query	de,es,pl,uk,us	Filmclub Classics: Rocky	-	"Rocky"
+programme	de,es,pl,uk,us	FILMOTERAPIA W LUNIE | Kandydaci śmierci | seans + rozmowa Martyny Harland	-	"FILMOTERAPIA W LUNIE | "
+programme	de,es,pl,uk,us	FILMOTERAPIA W LUNIE | La Perra | seans + rozmowa Martyny Harland	-	"FILMOTERAPIA W LUNIE | "
+programme	de,es,pl,uk,us	FILMOTERAPIA W LUNIE | Ojczyzna | seans	-	"FILMOTERAPIA W LUNIE | "
+programme	de,es,pl,uk,us	FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland	-	"FILMOTERAPIA W LUNIE | "
+programme	de,es,pl,uk,us	Filmowy Klub Seniora - Drugie życie	-	"Filmowy Klub Seniora - "
+programme	de,es,pl,uk,us	Filmowy Klub Seniora - Rozważna i romantyczna	-	"Filmowy Klub Seniora - "
+bannerEnd	de,es,pl,uk,us	FILMREIHE "LACH MAL WIEDER" : OH LA LA 2 - NEUE TESTS, NEUES CHAOS	-	30
+programme	de,es,pl,uk,us	FILMREIHE "LACH MAL WIEDER" : OH LA LA 2 - NEUE TESTS, NEUES CHAOS	-	"FILMREIHE \"LACH MAL WIEDER\" : "
+query	de,es,pl,uk,us	FILMREIHE "LACH MAL WIEDER" : OH LA LA 2 - NEUE TESTS, NEUES CHAOS	-	"OH LA LA 2 - NEUE TESTS, NEUES CHAOS"
+bannerEnd	de,es,pl,uk,us	Free Remembrance Day Screening: Went the Day Well? (1942)	-	32
+programme	de,es,pl,uk,us	Free Remembrance Day Screening: Went the Day Well? (1942)	-	"Free Remembrance Day Screening: "
+query	de,es,pl,uk,us	Free Remembrance Day Screening: Went the Day Well? (1942)	-	"Went the Day Well? (1942)"
+bannerEnd	de,es,pl,uk,us	Freeride Filmfestival - FFF Tour	-	24
+programme	de,es,pl,uk,us	Freeride Filmfestival - FFF Tour	-	"Freeride Filmfestival - "
+query	de,es,pl,uk,us	Freeride Filmfestival - FFF Tour	-	"FFF Tour"
+bannerEnd	de,es,pl,uk,us	Freeride Filmfestival 2026 - Zwischen Kontrolle und Hingabe	-	29
+programme	de,es,pl,uk,us	Freeride Filmfestival 2026 - Zwischen Kontrolle und Hingabe	-	"Freeride Filmfestival 2026 - "
+query	de,es,pl,uk,us	Freeride Filmfestival 2026 - Zwischen Kontrolle und Hingabe	-	"Zwischen Kontrolle und Hingabe"
+bannerEnd	de,es,pl,uk,us	Freeride Filmfestival 2026: Zwischen Kontrolle und Hingabe	-	28
+programme	de,es,pl,uk,us	Freeride Filmfestival 2026: Zwischen Kontrolle und Hingabe	-	"Freeride Filmfestival 2026: "
+query	de,es,pl,uk,us	Freeride Filmfestival 2026: Zwischen Kontrolle und Hingabe	-	"Zwischen Kontrolle und Hingabe"
+bannerEnd	de,es,pl,uk,us	Freeride Filmfestival 2026: ZWISCHEN KONTROLLE UND HINGABE	-	28
+programme	de,es,pl,uk,us	Freeride Filmfestival 2026: ZWISCHEN KONTROLLE UND HINGABE	-	"Freeride Filmfestival 2026: "
+query	de,es,pl,uk,us	Freeride Filmfestival 2026: ZWISCHEN KONTROLLE UND HINGABE	-	"ZWISCHEN KONTROLLE UND HINGABE"
+bannerEnd	de,es,pl,uk,us	Freeride Filmfestival Cinema Edition 2026: Zwischen Kontrolle und Hingabe	-	43
+programme	de,es,pl,uk,us	Freeride Filmfestival Cinema Edition 2026: Zwischen Kontrolle und Hingabe	-	"Freeride Filmfestival Cinema Edition 2026: "
+query	de,es,pl,uk,us	Freeride Filmfestival Cinema Edition 2026: Zwischen Kontrolle und Hingabe	-	"Zwischen Kontrolle und Hingabe"
+query	de,es,pl,uk,us	Godzilla Minus Zero | Kino Azji (Godzilla Day)	-	"Godzilla Minus Zero"
+query	de,es,pl,uk,us	GORZKIE ŚWIĘTA – Kino bez barier	-	"GORZKIE ŚWIĘTA"
+bannerEnd	de,es,pl,uk,us	Grosses Kino: Der Pate - Teil I	-	14
+programme	de,es,pl,uk,us	Grosses Kino: Der Pate - Teil I	-	"Grosses Kino: "
+query	de,es,pl,uk,us	Grosses Kino: Der Pate - Teil I	-	"Der Pate - Teil I"
+bannerEnd	de,es,pl,uk,us	Grosses Kino: Der Pate - Teil II	-	14
+programme	de,es,pl,uk,us	Grosses Kino: Der Pate - Teil II	-	"Grosses Kino: "
+query	de,es,pl,uk,us	Grosses Kino: Der Pate - Teil II	-	"Der Pate - Teil II"
+bannerEnd	de,es,pl,uk,us	Grosses Kino: Die Verurteilten	-	14
+programme	de,es,pl,uk,us	Grosses Kino: Die Verurteilten	-	"Grosses Kino: "
+query	de,es,pl,uk,us	Grosses Kino: Die Verurteilten	-	"Die Verurteilten"
+bannerEnd	de,es,pl,uk,us	Grosses Kino: Uhrwerk Orange	-	14
+programme	de,es,pl,uk,us	Grosses Kino: Uhrwerk Orange	-	"Grosses Kino: "
+query	de,es,pl,uk,us	Grosses Kino: Uhrwerk Orange	-	"Uhrwerk Orange"
+bannerEnd	de,es,pl,uk,us	Guardian & Baby Screening: Sense and Sensibility	-	27
+programme	de,es,pl,uk,us	Guardian & Baby Screening: Sense and Sensibility	-	"Guardian & Baby Screening: "
+query	de,es,pl,uk,us	Guardian & Baby Screening: Sense and Sensibility	-	"Sense and Sensibility"
+bannerEnd	de,es,pl,uk,us	Guardian & Baby Screening: The Craft	-	27
+programme	de,es,pl,uk,us	Guardian & Baby Screening: The Craft	-	"Guardian & Baby Screening: "
+query	de,es,pl,uk,us	Guardian & Baby Screening: The Craft	-	"The Craft"
+bannerEnd	de,es,pl,uk,us	Hackney Children's Film Fest: FILM AFRICA: CROCODILE	-	30
+programme	de,es,pl,uk,us	Hackney Children's Film Fest: FILM AFRICA: CROCODILE	-	"Hackney Children's Film Fest: "
+query	de,es,pl,uk,us	Hackney Children's Film Fest: FILM AFRICA: CROCODILE	-	"FILM AFRICA: CROCODILE"
+bannerEnd	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: MAYA, GIVE ME A TITLE!	-	30
+programme	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: MAYA, GIVE ME A TITLE!	-	"HACKNEY CHILDREN'S FILM FEST: "
+query	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: MAYA, GIVE ME A TITLE!	-	"MAYA, GIVE ME A TITLE!"
+bannerEnd	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: Paddington & Storytime	-	30
+programme	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: Paddington & Storytime	-	"HACKNEY CHILDREN'S FILM FEST: "
+query	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: Paddington & Storytime	-	"Paddington & Storytime"
+bannerEnd	de,es,pl,uk,us	Hackney Children's Film Fest: PENGUIN HIGHWAY	-	30
+programme	de,es,pl,uk,us	Hackney Children's Film Fest: PENGUIN HIGHWAY	-	"Hackney Children's Film Fest: "
+query	de,es,pl,uk,us	Hackney Children's Film Fest: PENGUIN HIGHWAY	-	"PENGUIN HIGHWAY"
+bannerEnd	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE	-	30
+programme	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE	-	"HACKNEY CHILDREN'S FILM FEST: "
+query	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: THE LITTLE VAMPIRE	-	"THE LITTLE VAMPIRE"
+bannerEnd	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY	-	30
+programme	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY	-	"HACKNEY CHILDREN'S FILM FEST: "
+query	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY	-	"THE LURE OF PONIES: A SPELLBOUND ATTIC MYSTERY"
+bannerEnd	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES	-	63
+programme	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES	-	"HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: "
+query	de,es,pl,uk,us	HACKNEY CHILDREN'S FILM FEST: TRINIDAD & TOBAGO FILM FESTIVAL: BIG STORIES FOR LITTLE ONES	-	"BIG STORIES FOR LITTLE ONES"
+bannerEnd	de,es,pl,uk,us	Hackney Children’s Film Fest: THE WILD ROBOT	-	30
+programme	de,es,pl,uk,us	Hackney Children’s Film Fest: THE WILD ROBOT	-	"Hackney Children’s Film Fest: "
+query	de,es,pl,uk,us	Hackney Children’s Film Fest: THE WILD ROBOT	-	"THE WILD ROBOT"
+bannerEnd	de,es,pl,uk,us	Halloween w kinie na starówce: clayface i witajcie w hope	-	31
+programme	de,es,pl,uk,us	Halloween w kinie na starówce: clayface i witajcie w hope	-	"Halloween w kinie na starówce: "
+query	de,es,pl,uk,us	Halloween w kinie na starówce: clayface i witajcie w hope	-	"clayface i witajcie w hope"
+bannerEnd	de,es,pl,uk,us	Halloween w kinie: Harry Angel	-	19
+programme	de,es,pl,uk,us	Halloween w kinie: Harry Angel	-	"Halloween w kinie: "
+query	de,es,pl,uk,us	Halloween w kinie: Harry Angel	-	"Harry Angel"
+bannerEnd	de,es,pl,uk,us	Halloween w kinie: Noc żywych trupów	-	19
+programme	de,es,pl,uk,us	Halloween w kinie: Noc żywych trupów	-	"Halloween w kinie: "
+query	de,es,pl,uk,us	Halloween w kinie: Noc żywych trupów	-	"Noc żywych trupów"
+bannerEnd	de,es,pl,uk,us	Halloween w kinie: Straszydła	-	19
+programme	de,es,pl,uk,us	Halloween w kinie: Straszydła	-	"Halloween w kinie: "
+query	de,es,pl,uk,us	Halloween w kinie: Straszydła	-	"Straszydła"
+programme	de,es,pl,uk,us	Iris Prize LGBTQ+ Film Festival 2026: Best of Iris	-	"Iris Prize LGBTQ+ Film Festival 2026: "
+programme	de,es,pl,uk,us	Iris Prize LGBTQ+ Film Festival 2026: I Am Going To Miss You	-	"Iris Prize LGBTQ+ Film Festival 2026: "
+programme	de,es,pl,uk,us	Iris Prize LGBTQ+ Film Festival 2026: Out of the Woods	-	"Iris Prize LGBTQ+ Film Festival 2026: "
+programme	de,es,pl,uk,us	Irish Film Festival: Báite	-	"Irish Film Festival: "
+programme	de,es,pl,uk,us	Irish Film Festival: Hokum	-	"Irish Film Festival: "
+programme	de,es,pl,uk,us	Irish Film Festival: Horseshoe	-	"Irish Film Festival: "
+bannerEnd	de,es,pl,uk,us	Japanese Film Club: Linda Linda Linda	-	20
+programme	de,es,pl,uk,us	Japanese Film Club: Linda Linda Linda	-	"Japanese Film Club: "
+query	de,es,pl,uk,us	Japanese Film Club: Linda Linda Linda	-	"Linda Linda Linda"
+bannerEnd	de,es,pl,uk,us	Japanese Film Club: Ringu	-	20
+programme	de,es,pl,uk,us	Japanese Film Club: Ringu	-	"Japanese Film Club: "
+query	de,es,pl,uk,us	Japanese Film Club: Ringu	-	"Ringu"
+bannerEnd	de,es,pl,uk,us	JAPANESE FILM CLUB: TOKYO SONATA	-	20
+programme	de,es,pl,uk,us	JAPANESE FILM CLUB: TOKYO SONATA	-	"JAPANESE FILM CLUB: "
+query	de,es,pl,uk,us	JAPANESE FILM CLUB: TOKYO SONATA	-	"TOKYO SONATA"
+bannerEnd	de,es,pl,uk,us	JAPANESE FILM CLUB: WEATHERING WITH YOU	-	20
+programme	de,es,pl,uk,us	JAPANESE FILM CLUB: WEATHERING WITH YOU	-	"JAPANESE FILM CLUB: "
+query	de,es,pl,uk,us	JAPANESE FILM CLUB: WEATHERING WITH YOU	-	"WEATHERING WITH YOU"
+bannerEnd	de,es,pl,uk,us	JAPANESE FILM CLUB: YOUR NAME	-	20
+programme	de,es,pl,uk,us	JAPANESE FILM CLUB: YOUR NAME	-	"JAPANESE FILM CLUB: "
+query	de,es,pl,uk,us	JAPANESE FILM CLUB: YOUR NAME	-	"YOUR NAME"
+bannerEnd	de,es,pl,uk,us	Kaffee-Kino: HIDDENSEE	-	13
+programme	de,es,pl,uk,us	Kaffee-Kino: HIDDENSEE	-	"Kaffee-Kino: "
+query	de,es,pl,uk,us	Kaffee-Kino: HIDDENSEE	-	"HIDDENSEE"
+query	de,es,pl,uk,us	Kandydaci śmierci | Kino Dostępne	-	"Kandydaci śmierci"
+bannerEnd	de,es,pl,uk,us	Karla klub Kurbelkiste: Kirchen & Kino	-	24
+programme	de,es,pl,uk,us	Karla klub Kurbelkiste: Kirchen & Kino	-	"Karla klub Kurbelkiste: "
+query	de,es,pl,uk,us	Karla klub Kurbelkiste: Kirchen & Kino	-	"Kirchen & Kino"
+bannerEnd	de,es,pl,uk,us	KATHARINA THALBACH zu Gast im Beluga Kino: Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir	-	43
+programme	de,es,pl,uk,us	KATHARINA THALBACH zu Gast im Beluga Kino: Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir	-	"KATHARINA THALBACH zu Gast im Beluga Kino: "
+query	de,es,pl,uk,us	KATHARINA THALBACH zu Gast im Beluga Kino: Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir	-	"Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes und Amir"
+bannerEnd	de,es,pl,uk,us	KF: Beyond Words	-	4
+programme	de,es,pl,uk,us	KF: Beyond Words	-	"KF: "
+query	de,es,pl,uk,us	KF: Beyond Words	-	"Beyond Words"
+bannerEnd	de,es,pl,uk,us	KF: Generation Silent bis Alpha	-	4
+programme	de,es,pl,uk,us	KF: Generation Silent bis Alpha	-	"KF: "
+query	de,es,pl,uk,us	KF: Generation Silent bis Alpha	-	"Generation Silent bis Alpha"
+bannerEnd	de,es,pl,uk,us	KF: Out of the Box	-	4
+programme	de,es,pl,uk,us	KF: Out of the Box	-	"KF: "
+query	de,es,pl,uk,us	KF: Out of the Box	-	"Out of the Box"
+bannerEnd	de,es,pl,uk,us	Kiez Kino: Billy Elliot - I Will Dance	-	11
+programme	de,es,pl,uk,us	Kiez Kino: Billy Elliot - I Will Dance	-	"Kiez Kino: "
+query	de,es,pl,uk,us	Kiez Kino: Billy Elliot - I Will Dance	-	"Billy Elliot - I Will Dance"
+bannerEnd	de,es,pl,uk,us	Kino & Cake: A Nightmare on Elm Street	-	13
+programme	de,es,pl,uk,us	Kino & Cake: A Nightmare on Elm Street	-	"Kino & Cake: "
+query	de,es,pl,uk,us	Kino & Cake: A Nightmare on Elm Street	-	"A Nightmare on Elm Street"
+bannerEnd	de,es,pl,uk,us	Kino | "Les Choristes" (dt. Titel: "Die Kinder des Monsieur Mathieu")	-	7
+programme	de,es,pl,uk,us	Kino | "Les Choristes" (dt. Titel: "Die Kinder des Monsieur Mathieu")	-	"Kino | "
+query	de,es,pl,uk,us	Kino | "Les Choristes" (dt. Titel: "Die Kinder des Monsieur Mathieu")	-	"\"Les Choristes\" (dt. Titel: \"Die Kinder des Monsieur Mathieu\")"
+bannerEnd	de,es,pl,uk,us	Kino auf Ukrainisch: Der Weihnachtsexpress	-	21
+programme	de,es,pl,uk,us	Kino auf Ukrainisch: Der Weihnachtsexpress	-	"Kino auf Ukrainisch: "
+query	de,es,pl,uk,us	Kino auf Ukrainisch: Der Weihnachtsexpress	-	"Der Weihnachtsexpress"
+bannerEnd	de,es,pl,uk,us	Kino auf Ukrainisch: Forgotten Island	-	21
+programme	de,es,pl,uk,us	Kino auf Ukrainisch: Forgotten Island	-	"Kino auf Ukrainisch: "
+query	de,es,pl,uk,us	Kino auf Ukrainisch: Forgotten Island	-	"Forgotten Island"
+bannerEnd	de,es,pl,uk,us	Kino auf Ukrainisch: Mavka - Hüterin des Waldes	-	21
+programme	de,es,pl,uk,us	Kino auf Ukrainisch: Mavka - Hüterin des Waldes	-	"Kino auf Ukrainisch: "
+query	de,es,pl,uk,us	Kino auf Ukrainisch: Mavka - Hüterin des Waldes	-	"Mavka - Hüterin des Waldes"
+bannerEnd	de,es,pl,uk,us	Kino Azji: Nikt nie wie + prelekcja	-	11
+programme	de,es,pl,uk,us	Kino Azji: Nikt nie wie + prelekcja	-	"Kino Azji: "
+query	de,es,pl,uk,us	Kino Azji: Nikt nie wie + prelekcja	"Kino Azji: Nikt nie wie"	"Nikt nie wie"
+bannerEnd	de,es,pl,uk,us	Kino bez barier w drodze: Kandydaci Śmierci	-	26
+programme	de,es,pl,uk,us	Kino bez barier w drodze: Kandydaci Śmierci	-	"Kino bez barier w drodze: "
+query	de,es,pl,uk,us	Kino bez barier w drodze: Kandydaci Śmierci	-	"Kandydaci Śmierci"
+bannerEnd	de,es,pl,uk,us	Kino bez barier w drodze: Kumotry	-	26
+programme	de,es,pl,uk,us	Kino bez barier w drodze: Kumotry	-	"Kino bez barier w drodze: "
+query	de,es,pl,uk,us	Kino bez barier w drodze: Kumotry	-	"Kumotry"
+bannerEnd	de,es,pl,uk,us	Kino dla Ducha: Mistyczka	-	16
+programme	de,es,pl,uk,us	Kino dla Ducha: Mistyczka	-	"Kino dla Ducha: "
+query	de,es,pl,uk,us	Kino dla Ducha: Mistyczka	-	"Mistyczka"
+bannerEnd	de,es,pl,uk,us	Kino dla Ducha: Mistyczka + spotkanie z ks. Norbertem Nowotnym	-	16
+programme	de,es,pl,uk,us	Kino dla Ducha: Mistyczka + spotkanie z ks. Norbertem Nowotnym	-	"Kino dla Ducha: "
+query	de,es,pl,uk,us	Kino dla Ducha: Mistyczka + spotkanie z ks. Norbertem Nowotnym	"Kino dla Ducha: Mistyczka"	"Mistyczka"
+bannerEnd	de,es,pl,uk,us	Kino dla Pań - Jak żyć, żeby nie zwariować	-	15
+programme	de,es,pl,uk,us	Kino dla Pań - Jak żyć, żeby nie zwariować	-	"Kino dla Pań - "
+query	de,es,pl,uk,us	Kino dla Pań - Jak żyć, żeby nie zwariować	-	"Jak żyć, żeby nie zwariować"
+bannerEnd	de,es,pl,uk,us	Kino dla Seniora | Lalka	-	19
+programme	de,es,pl,uk,us	Kino dla Seniora | Lalka	-	"Kino dla Seniora | "
+query	de,es,pl,uk,us	Kino dla Seniora | Lalka	-	"Lalka"
+bannerEnd	de,es,pl,uk,us	Kino Egzystencjalne: Ojczyzna - seans z dyskusją	-	21
+programme	de,es,pl,uk,us	Kino Egzystencjalne: Ojczyzna - seans z dyskusją	-	"Kino Egzystencjalne: "
+query	de,es,pl,uk,us	Kino Egzystencjalne: Ojczyzna - seans z dyskusją	"Kino Egzystencjalne: Ojczyzna"	"Ojczyzna"
+bannerEnd	de,es,pl,uk,us	Kino Ery VHS: Nagi instynkt | 2D | Napisy	-	14
+programme	de,es,pl,uk,us	Kino Ery VHS: Nagi instynkt | 2D | Napisy	-	"Kino Ery VHS: "
+query	de,es,pl,uk,us	Kino Ery VHS: Nagi instynkt | 2D | Napisy	-	"Nagi instynkt | 2D | Napisy"
+bannerEnd	de,es,pl,uk,us	Kino für Junggebliebene: Alte Liebe	-	25
+programme	de,es,pl,uk,us	Kino für Junggebliebene: Alte Liebe	-	"Kino für Junggebliebene: "
+query	de,es,pl,uk,us	Kino für Junggebliebene: Alte Liebe	-	"Alte Liebe"
+bannerEnd	de,es,pl,uk,us	Kino für Junggebliebene: Ein Fast perfekter Antrag	-	25
+programme	de,es,pl,uk,us	Kino für Junggebliebene: Ein Fast perfekter Antrag	-	"Kino für Junggebliebene: "
+query	de,es,pl,uk,us	Kino für Junggebliebene: Ein Fast perfekter Antrag	-	"Ein Fast perfekter Antrag"
+bannerEnd	de,es,pl,uk,us	Kino für Junggebliebene: Lieblingsmenschen	-	25
+programme	de,es,pl,uk,us	Kino für Junggebliebene: Lieblingsmenschen	-	"Kino für Junggebliebene: "
+query	de,es,pl,uk,us	Kino für Junggebliebene: Lieblingsmenschen	-	"Lieblingsmenschen"
+bannerEnd	de,es,pl,uk,us	Kino gorzkie #3: Propozycja	-	17
+programme	de,es,pl,uk,us	Kino gorzkie #3: Propozycja	-	"Kino gorzkie #3: "
+query	de,es,pl,uk,us	Kino gorzkie #3: Propozycja	-	"Propozycja"
+bannerEnd	de,es,pl,uk,us	Kino Grozy: Nie patrz w dół 2	-	12
+programme	de,es,pl,uk,us	Kino Grozy: Nie patrz w dół 2	-	"Kino Grozy: "
+query	de,es,pl,uk,us	Kino Grozy: Nie patrz w dół 2	-	"Nie patrz w dół 2"
+bannerEnd	de,es,pl,uk,us	Kino i historia: Nasza rewolucja	-	17
+programme	de,es,pl,uk,us	Kino i historia: Nasza rewolucja	-	"Kino i historia: "
+query	de,es,pl,uk,us	Kino i historia: Nasza rewolucja	-	"Nasza rewolucja"
+bannerEnd	de,es,pl,uk,us	Kino im Kulturcafé: Zoomania 2	-	20
+programme	de,es,pl,uk,us	Kino im Kulturcafé: Zoomania 2	-	"Kino im Kulturcafé: "
+query	de,es,pl,uk,us	Kino im Kulturcafé: Zoomania 2	-	"Zoomania 2"
+bannerEnd	de,es,pl,uk,us	Kino Kaarst: Adams Acht	-	13
+programme	de,es,pl,uk,us	Kino Kaarst: Adams Acht	-	"Kino Kaarst: "
+query	de,es,pl,uk,us	Kino Kaarst: Adams Acht	-	"Adams Acht"
+bannerEnd	de,es,pl,uk,us	Kino Kaarst: Das gewisse Etwas	-	13
+programme	de,es,pl,uk,us	Kino Kaarst: Das gewisse Etwas	-	"Kino Kaarst: "
+query	de,es,pl,uk,us	Kino Kaarst: Das gewisse Etwas	-	"Das gewisse Etwas"
+bannerEnd	de,es,pl,uk,us	Kino Kaarst: Die Camino Therapie – Finde deinen Weg	-	13
+programme	de,es,pl,uk,us	Kino Kaarst: Die Camino Therapie – Finde deinen Weg	-	"Kino Kaarst: "
+query	de,es,pl,uk,us	Kino Kaarst: Die Camino Therapie – Finde deinen Weg	-	"Die Camino Therapie – Finde deinen Weg"
+bannerEnd	de,es,pl,uk,us	Kino Kaarst: Eine Krankheit wie ein Gedicht	-	13
+programme	de,es,pl,uk,us	Kino Kaarst: Eine Krankheit wie ein Gedicht	-	"Kino Kaarst: "
+query	de,es,pl,uk,us	Kino Kaarst: Eine Krankheit wie ein Gedicht	-	"Eine Krankheit wie ein Gedicht"
+bannerEnd	de,es,pl,uk,us	Kino KILN: Almost Famous	-	11
+programme	de,es,pl,uk,us	Kino KILN: Almost Famous	-	"Kino KILN: "
+query	de,es,pl,uk,us	Kino KILN: Almost Famous	-	"Almost Famous"
+bannerEnd	de,es,pl,uk,us	Kino KILN: Born in Flames	-	11
+programme	de,es,pl,uk,us	Kino KILN: Born in Flames	-	"Kino KILN: "
+query	de,es,pl,uk,us	Kino KILN: Born in Flames	-	"Born in Flames"
+bannerEnd	de,es,pl,uk,us	Kino KILN: Portrait of a Lady on Fire	-	11
+programme	de,es,pl,uk,us	Kino KILN: Portrait of a Lady on Fire	-	"Kino KILN: "
+query	de,es,pl,uk,us	Kino KILN: Portrait of a Lady on Fire	-	"Portrait of a Lady on Fire"
+bannerEnd	de,es,pl,uk,us	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	-	14
+programme	de,es,pl,uk,us	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	-	"Kino Kobiet - "
+query	de,es,pl,uk,us	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	-	"KLAPS! \"Jak żyć żeby nie zwariować\""
+bannerEnd	de,es,pl,uk,us	KINO KONESERA - POWIEDZ MI, CO CZUJESZ	-	16
+programme	de,es,pl,uk,us	KINO KONESERA - POWIEDZ MI, CO CZUJESZ	-	"KINO KONESERA - "
+query	de,es,pl,uk,us	KINO KONESERA - POWIEDZ MI, CO CZUJESZ	-	"POWIEDZ MI, CO CZUJESZ"
+bannerEnd	de,es,pl,uk,us	KINO KONESERA - PRIMETIME	-	16
+programme	de,es,pl,uk,us	KINO KONESERA - PRIMETIME	-	"KINO KONESERA - "
+query	de,es,pl,uk,us	KINO KONESERA - PRIMETIME	-	"PRIMETIME"
+bannerEnd	de,es,pl,uk,us	Kino Konesera - Vivaldi i ja	-	16
+programme	de,es,pl,uk,us	Kino Konesera - Vivaldi i ja	-	"Kino Konesera - "
+query	de,es,pl,uk,us	Kino Konesera - Vivaldi i ja	-	"Vivaldi i ja"
+bannerEnd	de,es,pl,uk,us	KINO KONESERA + „KINO, KTÓRE MÓWI” - BEZ KOŃCA	-	37
+programme	de,es,pl,uk,us	KINO KONESERA + „KINO, KTÓRE MÓWI” - BEZ KOŃCA	-	"KINO KONESERA + „KINO, KTÓRE MÓWI” - "
+query	de,es,pl,uk,us	KINO KONESERA + „KINO, KTÓRE MÓWI” - BEZ KOŃCA	"KINO KONESERA + \"KINO, KTÓRE MÓWI\" - BEZ KOŃCA"	"BEZ KOŃCA"
+bannerEnd	de,es,pl,uk,us	Kino Maluszka: 3 bajeczki	-	15
+programme	de,es,pl,uk,us	Kino Maluszka: 3 bajeczki	-	"Kino Maluszka: "
+query	de,es,pl,uk,us	Kino Maluszka: 3 bajeczki	-	"3 bajeczki"
+bannerEnd	de,es,pl,uk,us	KINO MOCNE: „NASZE MIEJSCE NA ZIEMI”	-	12
+programme	de,es,pl,uk,us	KINO MOCNE: „NASZE MIEJSCE NA ZIEMI”	-	"KINO MOCNE: "
+query	de,es,pl,uk,us	KINO MOCNE: „NASZE MIEJSCE NA ZIEMI”	"KINO MOCNE: \"NASZE MIEJSCE NA ZIEMI\""	"\"NASZE MIEJSCE NA ZIEMI\""
+bannerEnd	de,es,pl,uk,us	KINO MOCNE: „ŚLEDZĄC”	-	12
+programme	de,es,pl,uk,us	KINO MOCNE: „ŚLEDZĄC”	-	"KINO MOCNE: "
+query	de,es,pl,uk,us	KINO MOCNE: „ŚLEDZĄC”	"KINO MOCNE: \"ŚLEDZĄC\""	"\"ŚLEDZĄC\""
+bannerEnd	de,es,pl,uk,us	KINO NA KOZETCE: 500 mil - pokaz przedpremierowy	-	17
+programme	de,es,pl,uk,us	KINO NA KOZETCE: 500 mil - pokaz przedpremierowy	-	"KINO NA KOZETCE: "
+query	de,es,pl,uk,us	KINO NA KOZETCE: 500 mil - pokaz przedpremierowy	"KINO NA KOZETCE: 500 mil"	"500 mil"
+bannerEnd	de,es,pl,uk,us	KINO NA KOZETCE: Pejzaż w kolorze sepii	-	17
+programme	de,es,pl,uk,us	KINO NA KOZETCE: Pejzaż w kolorze sepii	-	"KINO NA KOZETCE: "
+query	de,es,pl,uk,us	KINO NA KOZETCE: Pejzaż w kolorze sepii	-	"Pejzaż w kolorze sepii"
+bannerEnd	de,es,pl,uk,us	Kino przyjazne sensorycznie - Kot Prot	-	30
+programme	de,es,pl,uk,us	Kino przyjazne sensorycznie - Kot Prot	-	"Kino przyjazne sensorycznie - "
+query	de,es,pl,uk,us	Kino przyjazne sensorycznie - Kot Prot	-	"Kot Prot"
+bannerEnd	de,es,pl,uk,us	Kino um's Eck - das Pölbitzer Stadtteilkino	-	16
+programme	de,es,pl,uk,us	Kino um's Eck - das Pölbitzer Stadtteilkino	-	"Kino um's Eck - "
+query	de,es,pl,uk,us	Kino um's Eck - das Pölbitzer Stadtteilkino	-	"das Pölbitzer Stadtteilkino"
+bannerEnd	de,es,pl,uk,us	Kino w Terminalu: Filmowe Zwierzenia: Nigdy w życiu!	-	18
+programme	de,es,pl,uk,us	Kino w Terminalu: Filmowe Zwierzenia: Nigdy w życiu!	-	"Kino w Terminalu: "
+query	de,es,pl,uk,us	Kino w Terminalu: Filmowe Zwierzenia: Nigdy w życiu!	-	"Filmowe Zwierzenia: Nigdy w życiu!"
+bannerEnd	de,es,pl,uk,us	Kino Workshop für Kinder + Film: Der wilde Roboter	-	33
+programme	de,es,pl,uk,us	Kino Workshop für Kinder + Film: Der wilde Roboter	-	"Kino Workshop für Kinder + Film: "
+bannerEnd	de,es,pl,uk,us	Kino z Historią - Ziemia Obiecana	-	18
+programme	de,es,pl,uk,us	Kino z Historią - Ziemia Obiecana	-	"Kino z Historią - "
+query	de,es,pl,uk,us	Kino z Historią - Ziemia Obiecana	-	"Ziemia Obiecana"
+bannerEnd	de,es,pl,uk,us	Kino za Rogiem - Czarnoksiężnik z OZ: Powrót Dorotki	-	17
+programme	de,es,pl,uk,us	Kino za Rogiem - Czarnoksiężnik z OZ: Powrót Dorotki	-	"Kino za Rogiem - "
+query	de,es,pl,uk,us	Kino za Rogiem - Czarnoksiężnik z OZ: Powrót Dorotki	-	"Czarnoksiężnik z OZ: Powrót Dorotki"
+bannerEnd	de,es,pl,uk,us	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	-	14
+programme	de,es,pl,uk,us	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	-	"Kino Zmysłów: "
+query	de,es,pl,uk,us	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	-	"Vincent. Legenda oceanu | 2D | Dubbing"
+bannerEnd	de,es,pl,uk,us	kino_mit_gästen: Kardes Türküler – Eine 30-jährige Geschichte	-	17
+programme	de,es,pl,uk,us	kino_mit_gästen: Kardes Türküler – Eine 30-jährige Geschichte	-	"kino_mit_gästen: "
+query	de,es,pl,uk,us	kino_mit_gästen: Kardes Türküler – Eine 30-jährige Geschichte	-	"Kardes Türküler – Eine 30-jährige Geschichte"
+bannerEnd	de,es,pl,uk,us	KINO-Extra in der Gedenkstätte: Das Ungesagt	-	32
+programme	de,es,pl,uk,us	KINO-Extra in der Gedenkstätte: Das Ungesagt	-	"KINO-Extra in der Gedenkstätte: "
+query	de,es,pl,uk,us	KINO-Extra in der Gedenkstätte: Das Ungesagt	-	"Das Ungesagt"
+bannerEnd	de,es,pl,uk,us	Kino-Kaffee: Ticket ins Leben	-	13
+programme	de,es,pl,uk,us	Kino-Kaffee: Ticket ins Leben	-	"Kino-Kaffee: "
+query	de,es,pl,uk,us	Kino-Kaffee: Ticket ins Leben	-	"Ticket ins Leben"
+bannerEnd	de,es,pl,uk,us	KINO-WORKSHOP FÜR KINDER und FILM: DER WILDE ROBOTER	-	35
+programme	de,es,pl,uk,us	KINO-WORKSHOP FÜR KINDER und FILM: DER WILDE ROBOTER	-	"KINO-WORKSHOP FÜR KINDER und FILM: "
+query	de,es,pl,uk,us	KINO-WORKSHOP FÜR KINDER und FILM: DER WILDE ROBOTER	-	"DER WILDE ROBOTER"
+bannerEnd	de,es,pl,uk,us	KINO: Adams Acht	-	6
+programme	de,es,pl,uk,us	KINO: Adams Acht	-	"KINO: "
+query	de,es,pl,uk,us	KINO: Adams Acht	-	"Adams Acht"
+bannerEnd	de,es,pl,uk,us	KINO: Gentle Monster	-	6
+programme	de,es,pl,uk,us	KINO: Gentle Monster	-	"KINO: "
+query	de,es,pl,uk,us	KINO: Gentle Monster	-	"Gentle Monster"
+bannerEnd	de,es,pl,uk,us	KINO: Spaziergang nach Syrakus	-	6
+programme	de,es,pl,uk,us	KINO: Spaziergang nach Syrakus	-	"KINO: "
+query	de,es,pl,uk,us	KINO: Spaziergang nach Syrakus	-	"Spaziergang nach Syrakus"
+bannerEnd	de,es,pl,uk,us	KINO: Vaterland	-	6
+programme	de,es,pl,uk,us	KINO: Vaterland	-	"KINO: "
+query	de,es,pl,uk,us	KINO: Vaterland	-	"Vaterland"
+programme	de,es,pl,uk,us	Kinowy Poranek | Elli i ekipa straszaków	-	"Kinowy Poranek | "
+programme	de,es,pl,uk,us	Kinowy Poranek | Noc w zoo	-	"Kinowy Poranek | "
+programme	de,es,pl,uk,us	Klasyka Kina: CRASH	-	"Klasyka Kina: "
+programme	de,es,pl,uk,us	Klasyka Kina: Diabły	-	"Klasyka Kina: "
+programme	de,es,pl,uk,us	KLASYKA KINA: DIABŁY (1971) Rekonstrukcja 4K	-	"KLASYKA KINA: "
+programme	de,es,pl,uk,us	KLASYKA KINA: LABIRYNT FAUNA	-	"KLASYKA KINA: "
+programme	de,es,pl,uk,us	KLASYKA KINA: ORLANDO	-	"KLASYKA KINA: "
+bannerEnd	de,es,pl,uk,us	Kleine Tiere, großes Kino: Das geheime Leben der Fledermäuse	-	27
+programme	de,es,pl,uk,us	Kleine Tiere, großes Kino: Das geheime Leben der Fledermäuse	-	"Kleine Tiere, großes Kino: "
+query	de,es,pl,uk,us	Kleine Tiere, großes Kino: Das geheime Leben der Fledermäuse	-	"Das geheime Leben der Fledermäuse"
+bannerEnd	de,es,pl,uk,us	Klub Filmowy: Rozważna i romantyczna | 2D | Napisy	-	14
+programme	de,es,pl,uk,us	Klub Filmowy: Rozważna i romantyczna | 2D | Napisy	-	"Klub Filmowy: "
+query	de,es,pl,uk,us	Klub Filmowy: Rozważna i romantyczna | 2D | Napisy	-	"Rozważna i romantyczna | 2D | Napisy"
+programme	de,es,pl,uk,us	Kobiece wieczory w Kino Cafe: Moje wspaniałe życie	-	"Kobiece wieczory w Kino Cafe: "
+programme	de,es,pl,uk,us	Kobiece wieczory w Kino Cafe: Powiedz mi, co czujesz	-	"Kobiece wieczory w Kino Cafe: "
+bannerEnd	de,es,pl,uk,us	KOSMICZNY PORANEK | Dawid | warsztaty magiczne	-	20
+programme	de,es,pl,uk,us	KOSMICZNY PORANEK | Dawid | warsztaty magiczne	-	"KOSMICZNY PORANEK | "
+query	de,es,pl,uk,us	KOSMICZNY PORANEK | Dawid | warsztaty magiczne	-	"Dawid | warsztaty magiczne"
+bannerEnd	de,es,pl,uk,us	Kulinarisches Kino: Couscous und Geheimnisse	-	20
+programme	de,es,pl,uk,us	Kulinarisches Kino: Couscous und Geheimnisse	-	"Kulinarisches Kino: "
+query	de,es,pl,uk,us	Kulinarisches Kino: Couscous und Geheimnisse	-	"Couscous und Geheimnisse"
+bannerEnd	de,es,pl,uk,us	KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu (1959)	-	36
+programme	de,es,pl,uk,us	KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu (1959)	-	"KULTOWE HORRORY od Splat!FilmFest - "
+query	de,es,pl,uk,us	KULTOWE HORRORY od Splat!FilmFest - Dom na przeklętym wzgórzu (1959)	-	"Dom na przeklętym wzgórzu (1959)"
+bannerEnd	de,es,pl,uk,us	Kultowe klasyki: Drabina Jakubowa	-	17
+programme	de,es,pl,uk,us	Kultowe klasyki: Drabina Jakubowa	-	"Kultowe klasyki: "
+query	de,es,pl,uk,us	Kultowe klasyki: Drabina Jakubowa	-	"Drabina Jakubowa"
+bannerEnd	de,es,pl,uk,us	Kunst im Kino: Like A Complete Unknown	-	15
+programme	de,es,pl,uk,us	Kunst im Kino: Like A Complete Unknown	-	"Kunst im Kino: "
+query	de,es,pl,uk,us	Kunst im Kino: Like A Complete Unknown	-	"Like A Complete Unknown"
+bannerEnd	de,es,pl,uk,us	Kunst im Kino: Mit einem Tiger schlafen	-	15
+programme	de,es,pl,uk,us	Kunst im Kino: Mit einem Tiger schlafen	-	"Kunst im Kino: "
+query	de,es,pl,uk,us	Kunst im Kino: Mit einem Tiger schlafen	-	"Mit einem Tiger schlafen"
+programme	de,es,pl,uk,us	Ladies Preview: Der perfekte Urlaub	-	"Ladies Preview: "
+bannerEnd	de,es,pl,uk,us	Ladies-Night: Der perfekte Urlaub	-	14
+programme	de,es,pl,uk,us	Ladies-Night: Der perfekte Urlaub	-	"Ladies-Night: "
+query	de,es,pl,uk,us	Ladies-Night: Der perfekte Urlaub	-	"Der perfekte Urlaub"
+bannerEnd	de,es,pl,uk,us	Ladiesnight: Cheri, ich komme!	-	13
+programme	de,es,pl,uk,us	Ladiesnight: Cheri, ich komme!	-	"Ladiesnight: "
+query	de,es,pl,uk,us	Ladiesnight: Cheri, ich komme!	-	"Cheri, ich komme!"
+bannerEnd	de,es,pl,uk,us	Ladiesnight: Der perfekte Urlaub	-	13
+programme	de,es,pl,uk,us	Ladiesnight: Der perfekte Urlaub	-	"Ladiesnight: "
+query	de,es,pl,uk,us	Ladiesnight: Der perfekte Urlaub	-	"Der perfekte Urlaub"
+bannerEnd	de,es,pl,uk,us	LadiesNight: Der perfekte Urlaub	-	13
+programme	de,es,pl,uk,us	LadiesNight: Der perfekte Urlaub	-	"LadiesNight: "
+query	de,es,pl,uk,us	LadiesNight: Der perfekte Urlaub	-	"Der perfekte Urlaub"
+query	de,es,pl,uk,us	Lalka - Festiwal Kultura Bez Barier	-	"Lalka"
+query	de,es,pl,uk,us	Lalka - seans dla grupy zorg. (SDS)	-	"Lalka"
+query	de,es,pl,uk,us	Lalka | Kino Dostępne	-	"Lalka"
+bannerEnd	de,es,pl,uk,us	Late Night Halloween Screening: Jennifer's Body	-	32
+programme	de,es,pl,uk,us	Late Night Halloween Screening: Jennifer's Body	-	"Late Night Halloween Screening: "
+query	de,es,pl,uk,us	Late Night Halloween Screening: Jennifer's Body	-	"Jennifer's Body"
+bannerEnd	de,es,pl,uk,us	Latin Film Fest: Komendant Fritz	-	17
+programme	de,es,pl,uk,us	Latin Film Fest: Komendant Fritz	-	"Latin Film Fest: "
+query	de,es,pl,uk,us	Latin Film Fest: Komendant Fritz	-	"Komendant Fritz"
+bannerEnd	de,es,pl,uk,us	Latin Film Fest: Poeta	-	17
+programme	de,es,pl,uk,us	Latin Film Fest: Poeta	-	"Latin Film Fest: "
+query	de,es,pl,uk,us	Latin Film Fest: Poeta	-	"Poeta"
+bannerEnd	de,es,pl,uk,us	Latin Film Fest: Świetlana przyszłość	-	17
+programme	de,es,pl,uk,us	Latin Film Fest: Świetlana przyszłość	-	"Latin Film Fest: "
+query	de,es,pl,uk,us	Latin Film Fest: Świetlana przyszłość	-	"Świetlana przyszłość"
+bannerEnd	de,es,pl,uk,us	Latin Film Fest: Wersal	-	17
+programme	de,es,pl,uk,us	Latin Film Fest: Wersal	-	"Latin Film Fest: "
+query	de,es,pl,uk,us	Latin Film Fest: Wersal	-	"Wersal"
+query	de,es,pl,uk,us	Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI	-	"Letnie przesilenie"
+bannerEnd	de,es,pl,uk,us	Lexi Seniors' Film Club: Educating Rita (1983)	-	25
+programme	de,es,pl,uk,us	Lexi Seniors' Film Club: Educating Rita (1983)	-	"Lexi Seniors' Film Club: "
+query	de,es,pl,uk,us	Lexi Seniors' Film Club: Educating Rita (1983)	-	"Educating Rita (1983)"
+bannerEnd	de,es,pl,uk,us	London Baltic Film Festival presents: Hunger Strike Breakfast (UK premiere)	-	38
+programme	de,es,pl,uk,us	London Baltic Film Festival presents: Hunger Strike Breakfast (UK premiere)	-	"London Baltic Film Festival presents: "
+query	de,es,pl,uk,us	London Baltic Film Festival presents: Hunger Strike Breakfast (UK premiere)	-	"Hunger Strike Breakfast (UK premiere)"
+bannerEnd	de,es,pl,uk,us	London Baltic Film Festival presents: Our Erika (UK premiere)	-	38
+programme	de,es,pl,uk,us	London Baltic Film Festival presents: Our Erika (UK premiere)	-	"London Baltic Film Festival presents: "
+query	de,es,pl,uk,us	London Baltic Film Festival presents: Our Erika (UK premiere)	-	"Our Erika (UK premiere)"
+bannerEnd	de,es,pl,uk,us	London Baltic Film Festival presents: Ulya (UK premiere)	-	38
+programme	de,es,pl,uk,us	London Baltic Film Festival presents: Ulya (UK premiere)	-	"London Baltic Film Festival presents: "
+query	de,es,pl,uk,us	London Baltic Film Festival presents: Ulya (UK premiere)	-	"Ulya (UK premiere)"
+bannerEnd	de,es,pl,uk,us	London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK) + Q&A	-	56
+programme	de,es,pl,uk,us	London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK) + Q&A	-	"London Breeze Film Festival Gala Closing Film + Awards: "
+query	de,es,pl,uk,us	London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK) + Q&A	"London Breeze Film Festival Gala Closing Film + Awards: Such a Vivid Imagination (UK)"	"Such a Vivid Imagination (UK)"
+bannerEnd	de,es,pl,uk,us	London Breeze Film Festival Shorts: UK Women of Film- Pt 2	-	36
+programme	de,es,pl,uk,us	London Breeze Film Festival Shorts: UK Women of Film- Pt 2	-	"London Breeze Film Festival Shorts: "
+query	de,es,pl,uk,us	London Breeze Film Festival Shorts: UK Women of Film- Pt 2	-	"UK Women of Film- Pt 2"
+programme	de,es,pl,uk,us	London Palestine Film Festival 2026: Clown of Gaza + One More Show	-	"London Palestine Film Festival 2026: "
+programme	de,es,pl,uk,us	London Palestine Film Festival 2026: Lovely Butterfly + For Life	-	"London Palestine Film Festival 2026: "
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: ANALOGUE 16MM FILMMAKING	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: ANALOGUE 16MM FILMMAKING	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: ANALOGUE 16MM FILMMAKING	-	"ANALOGUE 16MM FILMMAKING"
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: CINEMA BRUNCH	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: CINEMA BRUNCH	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: CINEMA BRUNCH	-	"CINEMA BRUNCH"
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970	-	"COMMON DAYS – LITHUANIAN HOME MOVIES, 1960–1970"
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: HOLY DESTRUCTORS	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: HOLY DESTRUCTORS	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: HOLY DESTRUCTORS	-	"HOLY DESTRUCTORS"
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: HOW TO DIVORCE DURING THE WAR	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: HOW TO DIVORCE DURING THE WAR	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: HOW TO DIVORCE DURING THE WAR	-	"HOW TO DIVORCE DURING THE WAR"
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: HUNGER STRIKE BREAKFAST	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: HUNGER STRIKE BREAKFAST	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: HUNGER STRIKE BREAKFAST	-	"HUNGER STRIKE BREAKFAST"
+bannerEnd	de,es,pl,uk,us	LT KINO 2026: THEY CALL ME DANKA	-	14
+programme	de,es,pl,uk,us	LT KINO 2026: THEY CALL ME DANKA	-	"LT KINO 2026: "
+query	de,es,pl,uk,us	LT KINO 2026: THEY CALL ME DANKA	-	"THEY CALL ME DANKA"
+bannerEnd	de,es,pl,uk,us	LUNATYCY. KINO I ROZMOWA | Ojczyzna | film	-	27
+programme	de,es,pl,uk,us	LUNATYCY. KINO I ROZMOWA | Ojczyzna | film	-	"LUNATYCY. KINO I ROZMOWA | "
+query	de,es,pl,uk,us	LUNATYCY. KINO I ROZMOWA | Ojczyzna | film	-	"Ojczyzna | film"
+bannerEnd	de,es,pl,uk,us	LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig	-	27
+programme	de,es,pl,uk,us	LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig	-	"LUNATYCY. KINO I ROZMOWA | "
+query	de,es,pl,uk,us	LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig	"LUNATYCY. KINO I ROZMOWA | Ojczyzna | film"	"Ojczyzna | film"
+query	de,es,pl,uk,us	Mały Kinematograf: premiera animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką	"Mały Kinematograf: premiera animacji \"Kocie obserwacje\" i spotkanie z reżyserką Aleksandrą Chrapowicką"	"Mały Kinematograf"
+programme	de,es,pl,uk,us	Marlow Film Festival: A Taster + Live Q&A	-	"Marlow Film Festival: "
+bannerEnd	de,es,pl,uk,us	Members' Preview: La Bola Negra	-	18
+programme	de,es,pl,uk,us	Members' Preview: La Bola Negra	-	"Members' Preview: "
+query	de,es,pl,uk,us	Members' Preview: La Bola Negra	-	"La Bola Negra"
+bannerEnd	de,es,pl,uk,us	Members' Preview: Wicker	-	18
+programme	de,es,pl,uk,us	Members' Preview: Wicker	-	"Members' Preview: "
+query	de,es,pl,uk,us	Members' Preview: Wicker	-	"Wicker"
+bannerEnd	de,es,pl,uk,us	Members' Preview: Wild Horse Nine	-	18
+programme	de,es,pl,uk,us	Members' Preview: Wild Horse Nine	-	"Members' Preview: "
+query	de,es,pl,uk,us	Members' Preview: Wild Horse Nine	-	"Wild Horse Nine"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: 80 MINUT DOOKOŁA ŚWIATA	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: 80 MINUT DOOKOŁA ŚWIATA	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: 80 MINUT DOOKOŁA ŚWIATA	-	"80 MINUT DOOKOŁA ŚWIATA"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!	-	"BAL HAPPY HALLOWEEN. NIE TAKIE STRACHY, JAK JE MALUJĄ!"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA	-	"MIĘDZYNARODOWY DZIEŃ PLUSZOWEGO MISIA"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: MIKOŁAJKOWA PRZYGODA	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: MIKOŁAJKOWA PRZYGODA	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: MIKOŁAJKOWA PRZYGODA	-	"MIKOŁAJKOWA PRZYGODA"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: ŚWIĄTECZNE MISIOWE PORANKI	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: ŚWIĄTECZNE MISIOWE PORANKI	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: ŚWIĄTECZNE MISIOWE PORANKI	-	"ŚWIĄTECZNE MISIOWE PORANKI"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: TAM, GDZIE SZELESZCZĄ LIŚCIE	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: TAM, GDZIE SZELESZCZĄ LIŚCIE	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: TAM, GDZIE SZELESZCZĄ LIŚCIE	-	"TAM, GDZIE SZELESZCZĄ LIŚCIE"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: W BLASKU ANDRZEJKOWYCH WRÓŻB	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: W BLASKU ANDRZEJKOWYCH WRÓŻB	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: W BLASKU ANDRZEJKOWYCH WRÓŻB	-	"W BLASKU ANDRZEJKOWYCH WRÓŻB"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: W KRAINIE DZIADKA DO ORZECHÓW	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: W KRAINIE DZIADKA DO ORZECHÓW	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: W KRAINIE DZIADKA DO ORZECHÓW	-	"W KRAINIE DZIADKA DO ORZECHÓW"
+bannerEnd	de,es,pl,uk,us	Misiowe Poranki: WITAJCIE W NASZEJ BAJCE	-	17
+programme	de,es,pl,uk,us	Misiowe Poranki: WITAJCIE W NASZEJ BAJCE	-	"Misiowe Poranki: "
+query	de,es,pl,uk,us	Misiowe Poranki: WITAJCIE W NASZEJ BAJCE	-	"WITAJCIE W NASZEJ BAJCE"
+query	de,es,pl,uk,us	Monterey Pop - seans przedpremierowy w rocznicę koncertu	-	"Monterey Pop"
+query	de,es,pl,uk,us	No Hit Wonder - Kino für Frauen	-	"No Hit Wonder"
+programme	de,es,pl,uk,us	Oficjalna premiera: Lalka | 2D | PL	-	"Oficjalna premiera: "
+bannerEnd	de,es,pl,uk,us	Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności”	-	51
+programme	de,es,pl,uk,us	Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności”	-	"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - "
+query	de,es,pl,uk,us	Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności”	"Ogólnopolski Festiwal Animacji ,,O!PLANOCKA 2026 - ulubieńcy dziecięcej publiczności\""	"ulubieńcy dziecięcej publiczności\""
+bannerEnd	de,es,pl,uk,us	OPEN SCREENING - TESTBILD	-	17
+programme	de,es,pl,uk,us	OPEN SCREENING - TESTBILD	-	"OPEN SCREENING - "
+query	de,es,pl,uk,us	OPEN SCREENING - TESTBILD	-	"TESTBILD"
+query	de,es,pl,uk,us	Pieśni lasu | KINO PRZYJAZNE RODZICOM	-	"Pieśni lasu"
+bannerEnd	de,es,pl,uk,us	Plough Earth Film Screening - Spring	-	30
+programme	de,es,pl,uk,us	Plough Earth Film Screening - Spring	-	"Plough Earth Film Screening - "
+query	de,es,pl,uk,us	Plough Earth Film Screening - Spring	-	"Spring"
+bannerEnd	de,es,pl,uk,us	Pociąg do kina: Mniejsze niebo	-	16
+programme	de,es,pl,uk,us	Pociąg do kina: Mniejsze niebo	-	"Pociąg do kina: "
+query	de,es,pl,uk,us	Pociąg do kina: Mniejsze niebo	-	"Mniejsze niebo"
+programme	de,es,pl,uk,us	Pokaz specjalny – Księga lata	-	"Pokaz specjalny – "
+programme	de,es,pl,uk,us	Pokaz specjalny - Diuna: Część trzecia	-	"Pokaz specjalny - "
+programme	de,es,pl,uk,us	POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Czas, który nie nadszedł	-	"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: "
+programme	de,es,pl,uk,us	POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Powiedz mi, co czujesz	-	"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: "
+programme	de,es,pl,uk,us	POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Róża	-	"POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: "
+programme	de,es,pl,uk,us	Pokaz specjalny: Diuna: Część trzecia 2D DUBBING	-	"Pokaz specjalny: "
+programme	de,es,pl,uk,us	Pokaz specjalny: DO UTRATY TCHU	-	"Pokaz specjalny: "
+programme	de,es,pl,uk,us	Pokaz specjalny:Diuna: Część trzecia 2D DUBBING	-	"Pokaz specjalny:"
+bannerEnd	de,es,pl,uk,us	Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE!	-	55
+programme	de,es,pl,uk,us	Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE!	-	"Poranek Rodzinny z książką \"Myszonek leci samolotem\" | "
+query	de,es,pl,uk,us	Poranek Rodzinny z książką "Myszonek leci samolotem" | FRAJDA W MUZIE!	-	"FRAJDA W MUZIE!"
+bannerEnd	de,es,pl,uk,us	Poranek Rodzinny z książkami "Myszonek. Łamigłówki" i "Myszonek. Księga opowieści. Jesień-zima" | FRAJDA W MUZIE!	-	98
+programme	de,es,pl,uk,us	Poranek Rodzinny z książkami "Myszonek. Łamigłówki" i "Myszonek. Księga opowieści. Jesień-zima" | FRAJDA W MUZIE!	-	"Poranek Rodzinny z książkami \"Myszonek. Łamigłówki\" i \"Myszonek. Księga opowieści. Jesień-zima\" | "
+query	de,es,pl,uk,us	Poranek Rodzinny z książkami "Myszonek. Łamigłówki" i "Myszonek. Księga opowieści. Jesień-zima" | FRAJDA W MUZIE!	-	"FRAJDA W MUZIE!"
+programme	de,es,pl,uk,us	Preview: All Rivers Spill Their Stories to the Sea + director Q&A (12A)	-	"Preview: "
+programme	de,es,pl,uk,us	PREVIEW: Der perfekte Urlaub	-	"PREVIEW: "
+programme	de,es,pl,uk,us	Preview: Dune: Part Three	-	"Preview: "
+programme	de,es,pl,uk,us	Preview: Fatherland (12A) S	-	"Preview: "
+programme	de,es,pl,uk,us	PREVIEW: Ghosts: The Possession of Button House	-	"PREVIEW: "
+programme	de,es,pl,uk,us	Preview: Minotaur (18) S	-	"Preview: "
+programme	de,es,pl,uk,us	PREVIEW: No Good Men (Europäischer Arthouse-Kinotag)	-	"PREVIEW: "
+programme	de,es,pl,uk,us	Preview: The Debut (15)	-	"Preview: "
+programme	de,es,pl,uk,us	Preview: The History of Concrete (18 CTBA) PS	-	"Preview: "
+programme	de,es,pl,uk,us	Preview: The Restoration at Grayson Manor	-	"Preview: "
+programme	de,es,pl,uk,us	Preview: Club Kid (15)	-	"Preview:"
+programme	de,es,pl,uk,us	Preview: Fjord (15) S	-	"Preview:"
+programme	de,es,pl,uk,us	Prosecco Preview : Der Perfekte Urlaub	-	"Prosecco Preview : "
+programme	de,es,pl,uk,us	Prosecco Vorpremiere: Der Perfekte Urlaub	-	"Prosecco Vorpremiere: "
+programme	de,es,pl,uk,us	Przedpremiera: Gradiva | Teleskop	-	"Przedpremiera: "
+programme	de,es,pl,uk,us	Przedpremiera: Nagi lunch | Labirynty grozy	-	"Przedpremiera: "
+programme	de,es,pl,uk,us	Przedpremiera: Naza	-	"Przedpremiera: "
+programme	de,es,pl,uk,us	PRZEDPREMIERA: PRZEZ ŚCIANĘ	-	"PRZEDPREMIERA: "
+programme	de,es,pl,uk,us	PRZEDPREMIERA: W tym kraju nie ma dobrych mężczyzn + prelekcja	-	"PRZEDPREMIERA: "
+programme	de,es,pl,uk,us	PRZEDPREMIERA: Wielki łuk	-	"PRZEDPREMIERA: "
+programme	de,es,pl,uk,us	Przedpremiera: Witajcie w Hope | Kino Azji	-	"Przedpremiera: "
+query	de,es,pl,uk,us	Przedpremiera: Witajcie w Hope | Kino Azji	"Witajcie w Hope | Kino Azji"	"Witajcie w Hope"
+programme	de,es,pl,uk,us	PRZEDPREMIERA: Zobaczysz wszystko	-	"PRZEDPREMIERA: "
+query	de,es,pl,uk,us	PRZEPIS NA SWIĘTA - Kino ze Szminką	-	"PRZEPIS NA SWIĘTA"
+programme	de,es,pl,uk,us	Purbeck Film Festival - Arco (dubbed)	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Dr Zhivago	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Exhibition on Screen: Turner & Constable	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Fargo	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Fatherland	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Faust	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Fjord	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Hen	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Hunt for the Wilderpeople	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Just An Illusion	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - La Grazia	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Little Amelie	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Mr Hulot's Holiday (Fr)	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Playtime (Fr)	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Sense and Sensibility	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - The African Queen	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - The Blue Trail	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - The English Patient	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - The Last Viking	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - The Secret Agent	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - The Seven Year Itch	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Wallace & Gromit: The Curse of The Were-Rabbit	-	"Purbeck Film Festival - "
+programme	de,es,pl,uk,us	Purbeck Film Festival - Wicker	-	"Purbeck Film Festival - "
+bannerEnd	de,es,pl,uk,us	RETROSPEKTYWA: Tadeusz Konwicki ,,Salto"	-	15
+programme	de,es,pl,uk,us	RETROSPEKTYWA: Tadeusz Konwicki ,,Salto"	-	"RETROSPEKTYWA: "
+query	de,es,pl,uk,us	RETROSPEKTYWA: Tadeusz Konwicki ,,Salto"	-	"Tadeusz Konwicki ,,Salto\""
+query	de,es,pl,uk,us	Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios	-	"Ród Smoka"
+bannerEnd	de,es,pl,uk,us	Rodzinny Poranek Filmowy: Leśni sąsiedzi	-	26
+programme	de,es,pl,uk,us	Rodzinny Poranek Filmowy: Leśni sąsiedzi	-	"Rodzinny Poranek Filmowy: "
+query	de,es,pl,uk,us	Rodzinny Poranek Filmowy: Leśni sąsiedzi	-	"Leśni sąsiedzi"
+bannerEnd	de,es,pl,uk,us	ROZMARZONE PORANKI - NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!	-	21
+programme	de,es,pl,uk,us	ROZMARZONE PORANKI - NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!	-	"ROZMARZONE PORANKI - "
+query	de,es,pl,uk,us	ROZMARZONE PORANKI - NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!	-	"NIESAMOWITE PRZYGODY SKARPETEK 4. DO ROBOTY!"
+programme	de,es,pl,uk,us	Safflicks Film Festival: Amantes	-	"Safflicks Film Festival: "
+bannerEnd	de,es,pl,uk,us	Screening - NTL: Golden Boy (15 TBC) 180 mins TBC	-	12
+programme	de,es,pl,uk,us	Screening - NTL: Golden Boy (15 TBC) 180 mins TBC	-	"Screening - "
+query	de,es,pl,uk,us	Screening - NTL: Golden Boy (15 TBC) 180 mins TBC	"Screening - NTL: Golden Boy"	"NTL: Golden Boy"
+bannerEnd	de,es,pl,uk,us	Screening: André Rieu's 2026 Christmas Concert – Let It Snow (Cert TBC) 165 mins	-	11
+programme	de,es,pl,uk,us	Screening: André Rieu's 2026 Christmas Concert – Let It Snow (Cert TBC) 165 mins	-	"Screening: "
+query	de,es,pl,uk,us	Screening: André Rieu's 2026 Christmas Concert – Let It Snow (Cert TBC) 165 mins	"Screening: André Rieu's 2026 Christmas Concert – Let It Snow"	"André Rieu's 2026 Christmas Concert – Let It Snow"
+bannerEnd	de,es,pl,uk,us	Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage (PG)	-	11
+programme	de,es,pl,uk,us	Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage (PG)	-	"Screening: "
+query	de,es,pl,uk,us	Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage (PG)	"Screening: Andrew Lloyd Webber’s Starlight Express - Live On Stage"	"Andrew Lloyd Webber’s Starlight Express - Live On Stage"
+bannerEnd	de,es,pl,uk,us	Screening: Fallen Angels by Noël Coward	-	11
+programme	de,es,pl,uk,us	Screening: Fallen Angels by Noël Coward	-	"Screening: "
+query	de,es,pl,uk,us	Screening: Fallen Angels by Noël Coward	-	"Fallen Angels by Noël Coward"
+bannerEnd	de,es,pl,uk,us	Screening: GIANT – The Play (15) 136 mins	-	11
+programme	de,es,pl,uk,us	Screening: GIANT – The Play (15) 136 mins	-	"Screening: "
+query	de,es,pl,uk,us	Screening: GIANT – The Play (15) 136 mins	"Screening: GIANT – The Play"	"GIANT – The Play"
+bannerEnd	de,es,pl,uk,us	Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)	-	11
+programme	de,es,pl,uk,us	Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)	-	"Screening: "
+query	de,es,pl,uk,us	Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)	"Screening: NTL - Hay Fever"	"NTL - Hay Fever"
+bannerEnd	de,es,pl,uk,us	Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*	-	11
+programme	de,es,pl,uk,us	Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*	-	"Screening: "
+query	de,es,pl,uk,us	Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*	"Screening: NTL - Hay Fever"	"NTL - Hay Fever"
+bannerEnd	de,es,pl,uk,us	Seans filmowy dla rodziców | Róża	-	29
+programme	de,es,pl,uk,us	Seans filmowy dla rodziców | Róża	-	"Seans filmowy dla rodziców | "
+query	de,es,pl,uk,us	Seans filmowy dla rodziców | Róża	-	"Róża"
+bannerEnd	de,es,pl,uk,us	Senior Screening: Pressure	-	18
+programme	de,es,pl,uk,us	Senior Screening: Pressure	-	"Senior Screening: "
+query	de,es,pl,uk,us	Senior Screening: Pressure	-	"Pressure"
+bannerEnd	de,es,pl,uk,us	Senior Screening: Sense and Sensibility	-	18
+programme	de,es,pl,uk,us	Senior Screening: Sense and Sensibility	-	"Senior Screening: "
+query	de,es,pl,uk,us	Senior Screening: Sense and Sensibility	-	"Sense and Sensibility"
+bannerEnd	de,es,pl,uk,us	Senior Screening: Shaun the Sheep: The Beast of Mossy Bottom	-	18
+programme	de,es,pl,uk,us	Senior Screening: Shaun the Sheep: The Beast of Mossy Bottom	-	"Senior Screening: "
+query	de,es,pl,uk,us	Senior Screening: Shaun the Sheep: The Beast of Mossy Bottom	-	"Shaun the Sheep: The Beast of Mossy Bottom"
+bannerEnd	de,es,pl,uk,us	Senior Screening: Tenzing	-	18
+programme	de,es,pl,uk,us	Senior Screening: Tenzing	-	"Senior Screening: "
+query	de,es,pl,uk,us	Senior Screening: Tenzing	-	"Tenzing"
+bannerEnd	de,es,pl,uk,us	Senior Screening: The Social Reckoning	-	18
+programme	de,es,pl,uk,us	Senior Screening: The Social Reckoning	-	"Senior Screening: "
+query	de,es,pl,uk,us	Senior Screening: The Social Reckoning	-	"The Social Reckoning"
+bannerEnd	de,es,pl,uk,us	Senior Screening: Verity	-	18
+programme	de,es,pl,uk,us	Senior Screening: Verity	-	"Senior Screening: "
+query	de,es,pl,uk,us	Senior Screening: Verity	-	"Verity"
+bannerEnd	de,es,pl,uk,us	SHORTY SZCZECIN FILM FESTIWAL | BLOK 1	-	32
+programme	de,es,pl,uk,us	SHORTY SZCZECIN FILM FESTIWAL | BLOK 1	-	"SHORTY SZCZECIN FILM FESTIWAL | "
+query	de,es,pl,uk,us	SHORTY SZCZECIN FILM FESTIWAL | BLOK 1	-	"BLOK 1"
+bannerEnd	de,es,pl,uk,us	SHORTY SZCZECIN FILM FESTIWAL | BLOK 2	-	32
+programme	de,es,pl,uk,us	SHORTY SZCZECIN FILM FESTIWAL | BLOK 2	-	"SHORTY SZCZECIN FILM FESTIWAL | "
+query	de,es,pl,uk,us	SHORTY SZCZECIN FILM FESTIWAL | BLOK 2	-	"BLOK 2"
+bannerEnd	de,es,pl,uk,us	Silver Screening: Everest: The Other Side	-	18
+programme	de,es,pl,uk,us	Silver Screening: Everest: The Other Side	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: Everest: The Other Side	-	"Everest: The Other Side"
+bannerEnd	de,es,pl,uk,us	Silver Screening: Pressure - Cert 12A	-	18
+programme	de,es,pl,uk,us	Silver Screening: Pressure - Cert 12A	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: Pressure - Cert 12A	"Silver Screening: Pressure"	"Pressure"
+bannerEnd	de,es,pl,uk,us	Silver Screening: Sense and Sensibility	-	18
+programme	de,es,pl,uk,us	Silver Screening: Sense and Sensibility	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: Sense and Sensibility	-	"Sense and Sensibility"
+bannerEnd	de,es,pl,uk,us	Silver Screening: Shaun the Sheep: The Beast of Mossy Bottom	-	18
+programme	de,es,pl,uk,us	Silver Screening: Shaun the Sheep: The Beast of Mossy Bottom	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: Shaun the Sheep: The Beast of Mossy Bottom	-	"Shaun the Sheep: The Beast of Mossy Bottom"
+bannerEnd	de,es,pl,uk,us	Silver Screening: Tenzing	-	18
+programme	de,es,pl,uk,us	Silver Screening: Tenzing	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: Tenzing	-	"Tenzing"
+bannerEnd	de,es,pl,uk,us	Silver Screening: The Lost Children of Tuam	-	18
+programme	de,es,pl,uk,us	Silver Screening: The Lost Children of Tuam	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: The Lost Children of Tuam	-	"The Lost Children of Tuam"
+bannerEnd	de,es,pl,uk,us	Silver Screening: The Odyssey (2026)	-	18
+programme	de,es,pl,uk,us	Silver Screening: The Odyssey (2026)	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: The Odyssey (2026)	-	"The Odyssey (2026)"
+bannerEnd	de,es,pl,uk,us	Silver Screening: The Social Reckoning	-	18
+programme	de,es,pl,uk,us	Silver Screening: The Social Reckoning	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: The Social Reckoning	-	"The Social Reckoning"
+bannerEnd	de,es,pl,uk,us	Silver Screening: Winter of The Crow	-	18
+programme	de,es,pl,uk,us	Silver Screening: Winter of The Crow	-	"Silver Screening: "
+query	de,es,pl,uk,us	Silver Screening: Winter of The Crow	-	"Winter of The Crow"
+query	de,es,pl,uk,us	Solo Mio - Kino für Junggebliebene	-	"Solo Mio"
+programme	de,es,pl,uk,us	Somali Film Festival: Lifeline	-	"Somali Film Festival: "
+bannerEnd	de,es,pl,uk,us	Soundtracking Film Club: Wild Horse Nine	-	25
+programme	de,es,pl,uk,us	Soundtracking Film Club: Wild Horse Nine	-	"Soundtracking Film Club: "
+query	de,es,pl,uk,us	Soundtracking Film Club: Wild Horse Nine	-	"Wild Horse Nine"
+bannerEnd	de,es,pl,uk,us	Special Screening: Eternity	-	19
+programme	de,es,pl,uk,us	Special Screening: Eternity	-	"Special Screening: "
+query	de,es,pl,uk,us	Special Screening: Eternity	-	"Eternity"
+bannerEnd	de,es,pl,uk,us	Splat! filmfest on tour: grzesznicy nie zaznają spokoju	-	25
+programme	de,es,pl,uk,us	Splat! filmfest on tour: grzesznicy nie zaznają spokoju	-	"Splat! filmfest on tour: "
+query	de,es,pl,uk,us	Splat! filmfest on tour: grzesznicy nie zaznają spokoju	-	"grzesznicy nie zaznają spokoju"
+bannerEnd	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	-	25
+programme	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	-	"Splat! FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	-	"Grzesznicy nie zaznają spokoju"
+bannerEnd	de,es,pl,uk,us	Splat! filmfest on tour: òpi	-	25
+programme	de,es,pl,uk,us	Splat! filmfest on tour: òpi	-	"Splat! filmfest on tour: "
+query	de,es,pl,uk,us	Splat! filmfest on tour: òpi	-	"òpi"
+bannerEnd	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Òpi	-	25
+programme	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Òpi	-	"Splat! FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Òpi	-	"Òpi"
+bannerEnd	de,es,pl,uk,us	Splat! filmfest on tour: rola życia i śmierci	-	25
+programme	de,es,pl,uk,us	Splat! filmfest on tour: rola życia i śmierci	-	"Splat! filmfest on tour: "
+query	de,es,pl,uk,us	Splat! filmfest on tour: rola życia i śmierci	-	"rola życia i śmierci"
+bannerEnd	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Rola życia i śmierci	-	25
+programme	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Rola życia i śmierci	-	"Splat! FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat! FilmFest ON TOUR: Rola życia i śmierci	-	"Rola życia i śmierci"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR | Grzesznicy nie zaznają spokoju	-	25
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR | Grzesznicy nie zaznają spokoju	-	"Splat!FilmFest ON TOUR | "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR | Grzesznicy nie zaznają spokoju	-	"Grzesznicy nie zaznają spokoju"
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR | ÒPI	-	"Splat!FilmFest ON TOUR | "
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR | Rola życia i śmierci	-	25
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR | Rola życia i śmierci	-	"Splat!FilmFest ON TOUR | "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR | Rola życia i śmierci	-	"Rola życia i śmierci"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	-	24
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	-	"Splat!FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	-	"Grzesznicy nie zaznają spokoju"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju - pokaz przedpremierowy	-	24
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju - pokaz przedpremierowy	-	"Splat!FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju - pokaz przedpremierowy	"Splat!FilmFest ON TOUR: Grzesznicy nie zaznają spokoju"	"Grzesznicy nie zaznają spokoju"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR: ÒPI	-	24
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR: ÒPI	-	"Splat!FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR: ÒPI	-	"ÒPI"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Òpi - pokaz przedpremierowy	-	24
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Òpi - pokaz przedpremierowy	-	"Splat!FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Òpi - pokaz przedpremierowy	"Splat!FilmFest ON TOUR: Òpi"	"Òpi"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Rola życia i śmierci	-	24
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Rola życia i śmierci	-	"Splat!FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Rola życia i śmierci	-	"Rola życia i śmierci"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Rola życia i śmierci - pokaz przedpremierowy	-	24
+programme	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Rola życia i śmierci - pokaz przedpremierowy	-	"Splat!FilmFest ON TOUR: "
+query	de,es,pl,uk,us	Splat!FilmFest ON TOUR: Rola życia i śmierci - pokaz przedpremierowy	"Splat!FilmFest ON TOUR: Rola życia i śmierci"	"Rola życia i śmierci"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest: Grzesznicy nie zaznają spokoju	-	16
+programme	de,es,pl,uk,us	Splat!FilmFest: Grzesznicy nie zaznają spokoju	-	"Splat!FilmFest: "
+query	de,es,pl,uk,us	Splat!FilmFest: Grzesznicy nie zaznają spokoju	-	"Grzesznicy nie zaznają spokoju"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest: Ópi	-	16
+programme	de,es,pl,uk,us	Splat!FilmFest: Ópi	-	"Splat!FilmFest: "
+query	de,es,pl,uk,us	Splat!FilmFest: Ópi	-	"Ópi"
+bannerEnd	de,es,pl,uk,us	Splat!FilmFest: Rola życia i śmierci	-	16
+programme	de,es,pl,uk,us	Splat!FilmFest: Rola życia i śmierci	-	"Splat!FilmFest: "
+query	de,es,pl,uk,us	Splat!FilmFest: Rola życia i śmierci	-	"Rola życia i śmierci"
+bannerEnd	de,es,pl,uk,us	Strick-Kino: Cheri, ich komme!	-	13
+programme	de,es,pl,uk,us	Strick-Kino: Cheri, ich komme!	-	"Strick-Kino: "
+query	de,es,pl,uk,us	Strick-Kino: Cheri, ich komme!	-	"Cheri, ich komme!"
+bannerEnd	de,es,pl,uk,us	Strick-Kino: Liebe braucht keine Ferien	-	13
+programme	de,es,pl,uk,us	Strick-Kino: Liebe braucht keine Ferien	-	"Strick-Kino: "
+query	de,es,pl,uk,us	Strick-Kino: Liebe braucht keine Ferien	-	"Liebe braucht keine Ferien"
+bannerEnd	de,es,pl,uk,us	Strick-Kino: Lügen über meine Mutter	-	13
+programme	de,es,pl,uk,us	Strick-Kino: Lügen über meine Mutter	-	"Strick-Kino: "
+query	de,es,pl,uk,us	Strick-Kino: Lügen über meine Mutter	-	"Lügen über meine Mutter"
+bannerEnd	de,es,pl,uk,us	Stricken&Kino: Der Perfekte Urlaub	-	15
+programme	de,es,pl,uk,us	Stricken&Kino: Der Perfekte Urlaub	-	"Stricken&Kino: "
+query	de,es,pl,uk,us	Stricken&Kino: Der Perfekte Urlaub	-	"Der Perfekte Urlaub"
+bannerEnd	de,es,pl,uk,us	TANZRAUSCHEN im Kino: Rotzgöre / Desvelado	-	22
+programme	de,es,pl,uk,us	TANZRAUSCHEN im Kino: Rotzgöre / Desvelado	-	"TANZRAUSCHEN im Kino: "
+query	de,es,pl,uk,us	TANZRAUSCHEN im Kino: Rotzgöre / Desvelado	"TANZRAUSCHEN im Kino: Rotzgöre"	"Rotzgöre"
+query	de,es,pl,uk,us	Teresa - Ein Leben zwischen Licht und Schatten - Kino für Frauen	-	"Teresa - Ein Leben zwischen Licht und Schatten"
+bannerEnd	de,es,pl,uk,us	Toni Filmclub: Wege in die Nacht D, ab 16	-	15
+programme	de,es,pl,uk,us	Toni Filmclub: Wege in die Nacht D, ab 16	-	"Toni Filmclub: "
+query	de,es,pl,uk,us	Toni Filmclub: Wege in die Nacht D, ab 16	-	"Wege in die Nacht D, ab 16"
+query	de,es,pl,uk,us	Tony | Kino Dostępne	-	"Tony"
+bannerEnd	de,es,pl,uk,us	Towner Cine Club: Burning (15)	-	18
+programme	de,es,pl,uk,us	Towner Cine Club: Burning (15)	-	"Towner Cine Club: "
+query	de,es,pl,uk,us	Towner Cine Club: Burning (15)	"Towner Cine Club: Burning"	"Burning"
+bannerEnd	de,es,pl,uk,us	Towner Cine Club: Eraserhead (15)	-	18
+programme	de,es,pl,uk,us	Towner Cine Club: Eraserhead (15)	-	"Towner Cine Club: "
+query	de,es,pl,uk,us	Towner Cine Club: Eraserhead (15)	"Towner Cine Club: Eraserhead"	"Eraserhead"
+bannerEnd	de,es,pl,uk,us	Towner Cine Club: Petite Maman (U)	-	18
+programme	de,es,pl,uk,us	Towner Cine Club: Petite Maman (U)	-	"Towner Cine Club: "
+query	de,es,pl,uk,us	Towner Cine Club: Petite Maman (U)	"Towner Cine Club: Petite Maman"	"Petite Maman"
+programme	de,es,pl,uk,us	UK Jewish Film Festival 2026: British-Jewish Life on Film + Q&A	-	"UK Jewish Film Festival 2026: "
+programme	de,es,pl,uk,us	UK Jewish Film Festival 2026: The Soundman	-	"UK Jewish Film Festival 2026: "
+programme	de,es,pl,uk,us	UK Jewish Film Festival:  British-Jewish Life on Film: Nottingham + Q&A	-	"UK Jewish Film Festival:  "
+programme	de,es,pl,uk,us	UK Jewish Film Festival: The Soundman	-	"UK Jewish Film Festival: "
+bannerEnd	de,es,pl,uk,us	Ukrainian Film Festival Berlin: CAMOUFLAGE	-	32
+programme	de,es,pl,uk,us	Ukrainian Film Festival Berlin: CAMOUFLAGE	-	"Ukrainian Film Festival Berlin: "
+query	de,es,pl,uk,us	Ukrainian Film Festival Berlin: CAMOUFLAGE	-	"CAMOUFLAGE"
+bannerEnd	de,es,pl,uk,us	Ukrainian Film Festival Berlin: TO THE VICTORY	-	32
+programme	de,es,pl,uk,us	Ukrainian Film Festival Berlin: TO THE VICTORY	-	"Ukrainian Film Festival Berlin: "
+query	de,es,pl,uk,us	Ukrainian Film Festival Berlin: TO THE VICTORY	-	"TO THE VICTORY"
+bannerEnd	de,es,pl,uk,us	Vino & Kino - X-mas Special: Tatsächlich ... Liebe	-	14
+programme	de,es,pl,uk,us	Vino & Kino - X-mas Special: Tatsächlich ... Liebe	-	"Vino & Kino - "
+query	de,es,pl,uk,us	Vino & Kino - X-mas Special: Tatsächlich ... Liebe	-	"X-mas Special: Tatsächlich ... Liebe"
+bannerEnd	de,es,pl,uk,us	Vino & Kino - X-Mas Special:Schöne Bescherung	-	14
+programme	de,es,pl,uk,us	Vino & Kino - X-Mas Special:Schöne Bescherung	-	"Vino & Kino - "
+query	de,es,pl,uk,us	Vino & Kino - X-Mas Special:Schöne Bescherung	-	"X-Mas Special:Schöne Bescherung"
+bannerEnd	de,es,pl,uk,us	Vino & Kino: Der Klang der Stradivari	-	13
+programme	de,es,pl,uk,us	Vino & Kino: Der Klang der Stradivari	-	"Vino & Kino: "
+query	de,es,pl,uk,us	Vino & Kino: Der Klang der Stradivari	-	"Der Klang der Stradivari"
+bannerEnd	de,es,pl,uk,us	Vino & Kino: Der perfekte Urlaub	-	13
+programme	de,es,pl,uk,us	Vino & Kino: Der perfekte Urlaub	-	"Vino & Kino: "
+query	de,es,pl,uk,us	Vino & Kino: Der perfekte Urlaub	-	"Der perfekte Urlaub"
+bannerEnd	de,es,pl,uk,us	Vino & Kino: How to Rob a Bank	-	13
+programme	de,es,pl,uk,us	Vino & Kino: How to Rob a Bank	-	"Vino & Kino: "
+query	de,es,pl,uk,us	Vino & Kino: How to Rob a Bank	-	"How to Rob a Bank"
+bannerEnd	de,es,pl,uk,us	Vino & Kino: Meine Frau, unsere Schwiegertochter und ich	-	13
+programme	de,es,pl,uk,us	Vino & Kino: Meine Frau, unsere Schwiegertochter und ich	-	"Vino & Kino: "
+query	de,es,pl,uk,us	Vino & Kino: Meine Frau, unsere Schwiegertochter und ich	-	"Meine Frau, unsere Schwiegertochter und ich"
+bannerEnd	de,es,pl,uk,us	Vino & Kino: Terminator 2: Tag der Abrechnung 35th Anniversary	-	13
+programme	de,es,pl,uk,us	Vino & Kino: Terminator 2: Tag der Abrechnung 35th Anniversary	-	"Vino & Kino: "
+query	de,es,pl,uk,us	Vino & Kino: Terminator 2: Tag der Abrechnung 35th Anniversary	"Vino & Kino: Terminator 2: Tag der Abrechnung"	"Terminator 2: Tag der Abrechnung"
+bannerEnd	de,es,pl,uk,us	Vino & Kino: Verity - Dunkle Geheimnisse	-	13
+programme	de,es,pl,uk,us	Vino & Kino: Verity - Dunkle Geheimnisse	-	"Vino & Kino: "
+query	de,es,pl,uk,us	Vino & Kino: Verity - Dunkle Geheimnisse	-	"Verity - Dunkle Geheimnisse"
+bannerEnd	de,es,pl,uk,us	Vino-Kino: You, Me & Italy	-	11
+programme	de,es,pl,uk,us	Vino-Kino: You, Me & Italy	-	"Vino-Kino: "
+query	de,es,pl,uk,us	Vino-Kino: You, Me & Italy	-	"You, Me & Italy"
+programme	de,es,pl,uk,us	Vorpremiere - Dune: Part Three	-	"Vorpremiere - "
+programme	de,es,pl,uk,us	Vorpremiere: Brunello: Der sanfte Visionär	-	"Vorpremiere: "
+programme	de,es,pl,uk,us	Vorpremiere: Der Perfekte Urlaub	-	"Vorpremiere: "
+programme	de,es,pl,uk,us	VORPREMIERE: KNACKI DEUSER - HUMORINTELLIGENZ	-	"VORPREMIERE: "
+query	de,es,pl,uk,us	Wartość sentymentalna | Kino Dostępne	-	"Wartość sentymentalna"
+programme	de,es,pl,uk,us	Watch Africa Film Festival 2026: Pressure	-	"Watch Africa Film Festival 2026: "
+programme	de,es,pl,uk,us	Wymiary Kina na Placu Wilsona: Witajcie w Hope - przedpremiera + spotkanie	-	"Wymiary Kina na Placu Wilsona: "
+programme	de,es,pl,uk,us	ZAMKNIĘCIE FESTIWALU KORELACJE: „Zaklęte rewiry” z autorską  narracją Malcolma XD + spotkanie z autorem	-	"ZAMKNIĘCIE FESTIWALU KORELACJE: "

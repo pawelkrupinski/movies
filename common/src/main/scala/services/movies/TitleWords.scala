@@ -66,6 +66,9 @@ object TitleWords {
     case DirectorCredit  extends Concept("director-credit")
     /** `TitleFacts`: an original title labelled inside a title, read into the listing's original title at intake. */
     case OriginalTitle   extends Concept("original-title")
+    /** `services.billing.BillingPieces.work`: a programme, cycle, club or screening a venue bills a work under — the
+     *  piece naming one is no part of the work the lookup query asks for. */
+    case Strand          extends Concept("strand")
   }
   object Concept {
     val byId: Map[String, Concept] = values.map(c => c.id -> c).toMap

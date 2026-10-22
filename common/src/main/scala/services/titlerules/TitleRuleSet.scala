@@ -90,6 +90,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
   private val perCinemaCache       = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[(String, String), String]()
   private val programmePrefixCache = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, Option[String]]()
   private val bannerBoundaryCache  = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, Option[Int]]()
+  private val queryCache           = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, String]()
 
   /** `apiQuery` tier — the full decoration + programme/access/event strip, then
    *  trim. Folded in rule order (former Search strips are numbered to run before
@@ -97,8 +98,19 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
   def structural(t: String): String =
     structuralCache.get(t, k => fold(structuralRules, k).trim)
 
-  /** Alias of [[structural]] for `apiQuery`/`search` call sites after the tier merge. */
+  /** Alias of [[structural]]: the lookup tier's rules alone. */
   def search(t: String): String = structural(t)
+
+  /** The LOOKUP QUERY (`TitleNormalizer.apiQuery`): the billing's work as the one billing parse reads it
+   *  ([[services.billing.BillingParse.work]]: a strand's, a programme's or a club's piece off, "Kino Konesera: Drugie
+   *  życie" → "Drugie życie"), the lookup tier's rules folding what the parse does not read (format notes, events,
+   *  accessibility tags, the banners no strand word names). The rules fold first, so a decoration they take off never
+   *  hides the work's delimiter; when the parse then cuts a piece, they fold what is left once more. */
+  def query(t: String): String = queryCache.get(t, k => {
+    val folded = structural(k)
+    val work   = services.billing.BillingParse(folded).work
+    if (work == folded) folded else structural(work)
+  })
 
   /** `canonical` fold used by `sanitize` / `preferredDisplay` — the
    *  cross-cinema spelling unifications (Gwiezdne Wojny prefix, & → i) over the
@@ -157,6 +169,11 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
         .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(k)).map(_.matched))
         .find(_.nonEmpty))
 
+  /** [[programmePrefix]], else the strand's banner the billing parse reads off the front ([[services.billing.BillingParse.workStart]]):
+   *  the programme a title bills, whether a rule or the parse knows it. */
+  def programmeBanner(title: String): Option[String] =
+    programmePrefix(title).orElse(services.billing.BillingParse(title).workStart.map(title.substring(0, _)))
+
   /** The end offset of the longest leading banner on `title` matched by ANY
    *  enabled `^`-anchored rule in the lookup tier (programme prefixes, the Cykl
    *  banner, …). Drives [[services.movies.TitleNormalizer.recase]], which splits
@@ -165,10 +182,10 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  prefix rule matches at the start. */
   def leadingBannerBoundary(title: String): Option[Int] =
     bannerBoundaryCache.get(title, k =>
-      structuralRules.iterator
+      (structuralRules.iterator
         .filter(r => r.enabled && r.isPrefixAnchored)
         .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(k)))
-        .map(_.end)
+        .map(_.end) ++ services.billing.BillingParse(k).workStart.iterator)
         .filter(_ > 0)
         .maxOption)
 

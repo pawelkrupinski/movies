@@ -64,7 +64,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("0f72666029377308"), DerivationScope.Cards),
     // A live-relay broadcast's banner comes in one spelling ("NT Live: X", "X - National Theatre Live 2026",
     // "RBO 26/27: X (Royal Ballet)" → "National Theatre Live: X", "Royal Ballet & Opera: X"): one card per production.
-    Derivation(DerivationVersion("a0adc5be65f4e421"), DerivationScope.Cards))
+    Derivation(DerivationVersion("a0adc5be65f4e421"), DerivationScope.Cards),
+    // A card's lookup title reads the billing's work (`BillingParse.work`: a strand's piece off), and its display cases a
+    // strand's banner apart from the work.
+    Derivation(DerivationVersion("cab16a08fb4b51ac"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

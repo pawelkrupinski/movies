@@ -413,3 +413,49 @@ original-title	en	original title
 original-title	de	Originaltitel
 original-title	es	título original
 
+# ── strand: a programme, cycle, club or screening a venue bills a work under — the piece of a billing naming one is no ──
+#    part of the work (services.billing.BillingPieces.work: a leading piece holding one of these, or a closing piece
+#    opening on one, is cut off the lookup query; "Kino Konesera: Drugie życie", "Tony | Kino Dostępne")
+strand	pl	kino
+strand	pl	kina
+strand	pl	kinie
+strand	pl	klub
+strand	pl	DKF
+strand	pl	KF
+strand	pl	FKS
+strand	pl	dyskusyjny
+strand	pl	cykl
+strand	pl	przegląd
+strand	pl	festiwal*
+strand	pl	seniora
+strand	pl	seniorów
+strand	pl	seniorki
+strand	pl	poranki
+strand	pl	poranek
+strand	pl	popołudnie
+strand	pl	retrospektywa
+strand	pl	klasyka
+strand	pl	klasyki
+strand	pl	klasyk
+strand	pl	filmoterapia
+strand	pl	kinoteka
+strand	pl	pokaz
+strand	pl	seans
+strand	pl	premiera
+strand	pl	przedpremiera
+strand	en	film club
+strand	en	film festival
+strand	en	film fest
+strand	en	friendly
+strand	en	screening
+strand	en	preview
+strand	en	ladies night
+strand	en	parent* & bab*
+strand	en	parent* and bab*
+strand	de	Kino
+strand	de	Filmclub
+strand	de	Filmreihe
+strand	de	Vorpremiere
+strand	es	ciclo
+strand	es	cineclub
+strand	es	cine club

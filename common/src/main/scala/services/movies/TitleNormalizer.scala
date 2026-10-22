@@ -132,7 +132,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Cross-script folding of an UNresolved orphan onto its Latin sibling is done
    *  separately, on the canonicalizer's union key — see
    *  the since-deleted `FilmCanonicalizer.groupByFilm`'s search-title edge. */
-  def apiQuery(display: String): String = seen("apiQuery", Array(display))(rules.search(display))
+  def apiQuery(display: String): String = seen("apiQuery", Array(display))(rules.query(display))
 
   /** `title` with a broadcaster's banner spelled by its proper name ([[services.titlerules.TitleRuleSet.properNamed]]):
    *  "NT Live: Hamlet" → "National Theatre Live: Hamlet". A banner billing a season is named with the season off, as
@@ -204,7 +204,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing
    *  ": " delimiter, so a caller can split the prefix from the film title and
    *  case each half on its own. None when no programme prefix is present. */
-  def programmePrefix(title: String): Option[String] = seen("programmePrefix", Array(title))(rules.programmePrefix(title))
+  def programmePrefix(title: String): Option[String] = seen("programmePrefix", Array(title))(rules.programmeBanner(title))
 
   // Cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
   // over the trimmed title. Does NOT apply `searchTitle`/structural: decoration

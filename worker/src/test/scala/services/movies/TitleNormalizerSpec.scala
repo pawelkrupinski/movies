@@ -410,9 +410,9 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Piłat i inni + spotkanie z prof. Anną Nacher") shouldBe "Piłat i inni"
     // 'Bliskie spotkania trzeciego stopnia' (Close Encounters) is a film: 'spotkania'
     // is followed by a lowercase ordinal, not a meeting tail (z / Capital / end), so
-    // the lookahead leaves it intact even when a cycle banner precedes it.
-    apiQuery("Kino cyrkularne | Bliskie spotkania trzeciego stopnia") shouldBe
-      "Kino cyrkularne | Bliskie spotkania trzeciego stopnia"
+    // the lookahead leaves it intact even when a cycle banner precedes it (which the billing parse reads off: a
+    // strand's piece, `BillingParse.work`).
+    apiQuery("Kino cyrkularne | Bliskie spotkania trzeciego stopnia") shouldBe "Bliskie spotkania trzeciego stopnia"
   }
 
   it should "strip a 'Spotkanie/Spotkania …:' meeting-cycle banner prefix" in {

@@ -1322,7 +1322,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
-    "title" : "Kino sensoryczne:willow i tajemniczy las",
+    "title" : "Kino sensoryczne:Willow i tajemniczy las",
     "originalTitle" : "Ein Mädchen namens Willow",
     "posterUrl" : "https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg",
     "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
@@ -7360,7 +7360,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "f53db2816a2e3e11",
-    "title" : "RETROSPEKTYWA: Tadeusz Konwicki ,,Salto\"",
+    "title" : "Retrospektywa: Tadeusz Konwicki ,,Salto\"",
     "posterUrl" : "https://iframe639.biletyna.pl/file/get/w/260/id/367748/filename/1c9785da1a9a70ea1d1b81647f2d9e80.png",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -7369,9 +7369,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/RETROSPEKTYWA%3A+Tadeusz+Konwicki+%2C%2CSalto%22/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=RETROSPEKTYWA%3A+Tadeusz+Konwicki+%2C%2CSalto%22",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=RETROSPEKTYWA%3A+Tadeusz+Konwicki+%2C%2CSalto%22"
+      "metacriticUrl" : "https://www.metacritic.com/search/Retrospektywa%3A+Tadeusz+Konwicki+%2C%2CSalto%22/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Retrospektywa%3A+Tadeusz+Konwicki+%2C%2CSalto%22",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Retrospektywa%3A+Tadeusz+Konwicki+%2C%2CSalto%22"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -12374,7 +12374,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "f9112bae6ec7e2f6~lunatycykinoirozmowaojczyznafilmspotkaniezjoannakulig",
-    "title" : "Lunatycy. Kino I Rozmowa | Ojczyzna | film + spotkanie z Joanną Kulig",
+    "title" : "Lunatycy. Kino i rozmowa | Ojczyzna | film + spotkanie z Joanną Kulig",
     "originalTitle" : "Fatherland",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/05/unnamed.jpg",
     "fallbackPosterUrls" : [ "https://www.kinomuza.pl/content/uploads/2026/05/8245630.10.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/ojczyzna-poster-800x0-c-default.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/ojczyzna-plakat-1779999294.jpg", "https://image.tmdb.org/t/p/w500/7VjwmvDG5mksJBXMcmK6PudqH88.jpg", "https://m.media-amazon.com/images/M/MV5BY2M5ZmVkMWMtOTNjZS00MjM3LTg3ODYtYjJmMDJjMjU0ODU5XkEyXkFqcGc@._V1_.jpg" ],
@@ -13748,7 +13748,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "f9a08d453ec9f011~rewizjeivprzegladfilmowandrzejawajdyczlowiekzmarmuru",
-    "title" : "Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru",
+    "title" : "Re- wizje iv. przegląd filmów andrzeja wajdy - Człowiek z marmuru",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
     "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
@@ -15399,6 +15399,58 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "facbe1bbd8b0abb2",
+    "title" : "Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda",
+    "originalTitle" : "FolleMente",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 97,
+    "releaseYear" : 2025,
+    "genres" : [ "Romans", "Komedia" ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Paolo Genovese" ],
+    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
+    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 6.9,
+      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
+      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
+    },
+    "weightedRating" : 7.050000000000001,
+    "synopsisByCity" : {
+      "poznan" : "Co kryje się w naszych myślach? Kto tak naprawdę mieszka w naszej głowie? Osoba szalona, romantyczna, namiętna, rozważna? A może w naszym umyśle panuje niezły tłok? O międzyludzkich relacjach oraz o tym, co w nas siedzi, w swoim nowym filmie opowiada twórca wielkiego hitu „Dobrze się kłamie w miłym towarzystwie” Paolo Genovese.\n\nBohaterami filmu są Piero i Lara. Ich pierwsza randka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby."
+    },
+    "shareCardPending" : false
+  }, {
+    "_id" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda",
+    "title" : "FolleMente. W tym szaleństwie jest metoda",
+    "originalTitle" : "FolleMente",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 97,
+    "releaseYear" : 2025,
+    "genres" : [ "Romans", "Komedia" ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Paolo Genovese" ],
+    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
+    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 6.9,
+      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
+      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
+    },
+    "weightedRating" : 7.050000000000001,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "fadcd8125df27191",
     "title" : "Danton + prelekcja Alliance française",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/danton_07_gallery.jpg",
@@ -16075,7 +16127,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "fb513165792ffb3a",
-    "title" : "Poranek Rodzinny z książką \"Myszonek leci samolotem\" | Frajda W Muzie!",
+    "title" : "Poranek Rodzinny z książką \"Myszonek leci samolotem\" | Frajda w muzie!",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/06/myszonek-leci-samolotem.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 45,
@@ -16085,9 +16137,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Poranek+Rodzinny+z+ksi%C4%85%C5%BCk%C4%85+%22Myszonek+leci+samolotem%22+%7C+Frajda+W+Muzie%21/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poranek+Rodzinny+z+ksi%C4%85%C5%BCk%C4%85+%22Myszonek+leci+samolotem%22+%7C+Frajda+W+Muzie%21",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poranek+Rodzinny+z+ksi%C4%85%C5%BCk%C4%85+%22Myszonek+leci+samolotem%22+%7C+Frajda+W+Muzie%21"
+      "metacriticUrl" : "https://www.metacritic.com/search/Poranek+Rodzinny+z+ksi%C4%85%C5%BCk%C4%85+%22Myszonek+leci+samolotem%22+%7C+Frajda+w+muzie%21/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poranek+Rodzinny+z+ksi%C4%85%C5%BCk%C4%85+%22Myszonek+leci+samolotem%22+%7C+Frajda+w+muzie%21",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poranek+Rodzinny+z+ksi%C4%85%C5%BCk%C4%85+%22Myszonek+leci+samolotem%22+%7C+Frajda+w+muzie%21"
     },
     "weightedRating" : 0,
     "synopsisByCity" : {
@@ -17492,7 +17544,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "fc170a48ccd588e1~kinonakozetce500milpokazprzedpremierowy",
-    "title" : "Kino Na Kozetce: 500 mil - pokaz przedpremierowy",
+    "title" : "Kino na kozetce: 500 mil - pokaz przedpremierowy",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/08/121_BetaCinema_500_Miles_copyright_Enda_Bowe_Finn_Productions_Ltd_Port_Pictures_Ltd-1.png",
     "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778497744.jpg", "https://bilety.ck105.koszalin.pl/MSI/ImageData.ashx?id=2645&mode=thumb", "https://www.kinomuza.pl/content/uploads/2026/05/500_MIL_wkrotce-w-kinach-1-557x800.jpg" ],
     "runtimeMinutes" : 102,
@@ -17503,9 +17555,9 @@
     "cast" : [ ],
     "trailerUrls" : [ "https://www.youtube.com/embed/hK8cw4GLHaU" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kino+Na+Kozetce%3A+500+mil+-+pokaz+przedpremierowy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+Na+Kozetce%3A+500+mil+-+pokaz+przedpremierowy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+Na+Kozetce%3A+500+mil+-+pokaz+przedpremierowy"
+      "metacriticUrl" : "https://www.metacritic.com/search/Kino+na+kozetce%3A+500+mil+-+pokaz+przedpremierowy/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+na+kozetce%3A+500+mil+-+pokaz+przedpremierowy",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+na+kozetce%3A+500+mil+-+pokaz+przedpremierowy"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -18798,58 +18850,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Sarnie+%C5%BCniwo%2C+czyli+pokusa+statuetkowego+szlaku-2006-389424"
     },
     "weightedRating" : 6.75,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fcc9d06e468004d9",
-    "title" : "Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda",
-    "originalTitle" : "FolleMente",
-    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
-    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 97,
-    "releaseYear" : 2025,
-    "genres" : [ "Romans", "Komedia" ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Paolo Genovese" ],
-    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
-    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
-      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
-      "filmweb" : 7.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
-    },
-    "weightedRating" : 7.050000000000001,
-    "synopsisByCity" : {
-      "poznan" : "Co kryje się w naszych myślach? Kto tak naprawdę mieszka w naszej głowie? Osoba szalona, romantyczna, namiętna, rozważna? A może w naszym umyśle panuje niezły tłok? O międzyludzkich relacjach oraz o tym, co w nas siedzi, w swoim nowym filmie opowiada twórca wielkiego hitu „Dobrze się kłamie w miłym towarzystwie” Paolo Genovese.\n\nBohaterami filmu są Piero i Lara. Ich pierwsza randka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby."
-    },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fcc9d06e468004d9~follementewtymszalenstwiejestmetoda",
-    "title" : "FolleMente. W tym szaleństwie jest metoda",
-    "originalTitle" : "FolleMente",
-    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
-    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 97,
-    "releaseYear" : 2025,
-    "genres" : [ "Romans", "Komedia" ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Paolo Genovese" ],
-    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
-    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
-      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
-      "filmweb" : 7.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
-    },
-    "weightedRating" : 7.050000000000001,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -20301,7 +20301,7 @@
     "posterUrl" : "https://medstore.kinoteka.pl/DrabinaJakubowaplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 115,
-    "releaseYear" : 2026,
+    "releaseYear" : 1990,
     "genres" : [ "Thriller", "Psychologiczny" ],
     "countries" : [ "USA" ],
     "directors" : [ "Adrian Lyne" ],
@@ -145931,6 +145931,34 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/niebezpieczne-zwiazki-national-theatre-live-2026/8212s2r\u0000Niebezpieczne związki - National Theatre Live 2026" ]
   }, {
+    "_id" : "facbe1bbd8b0abb2|poznan|Kino Apollo",
+    "filmId" : "facbe1bbd8b0abb2",
+    "city" : "poznan",
+    "cinema" : "Kino Apollo",
+    "filmUrl" : "https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-08T18:30:00",
+      "bookingUrl" : "https://bilety.kinoapollo.pl/event/view/id/636315",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/\u0000Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda" ]
+  }, {
+    "_id" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda|trojmiasto|Kino na Szekspirowskim",
+    "filmId" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda",
+    "city" : "trojmiasto",
+    "cinema" : "Kino na Szekspirowskim",
+    "filmUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-17T21:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-15T21:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664617#opis",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino na Szekspirowskim\u0000https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis\u0000Follemente. W tym szaleństwie jest metoda" ]
+  }, {
     "_id" : "fadcd8125df27191|lodz|Kino NCKF EC1",
     "filmId" : "fadcd8125df27191",
     "city" : "lodz",
@@ -156554,34 +156582,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Gdyńskie Centrum Filmowe\u0000Sarnie żniwo, czyli pokusa statuetkowego szlaku | NAJLEPSZE Z NAJGORSZYCH\u0000" ]
-  }, {
-    "_id" : "fcc9d06e468004d9|poznan|Kino Apollo",
-    "filmId" : "fcc9d06e468004d9",
-    "city" : "poznan",
-    "cinema" : "Kino Apollo",
-    "filmUrl" : "https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T18:30:00",
-      "bookingUrl" : "https://bilety.kinoapollo.pl/event/view/id/636315",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/\u0000Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda" ]
-  }, {
-    "_id" : "fcc9d06e468004d9~follementewtymszalenstwiejestmetoda|trojmiasto|Kino na Szekspirowskim",
-    "filmId" : "fcc9d06e468004d9~follementewtymszalenstwiejestmetoda",
-    "city" : "trojmiasto",
-    "cinema" : "Kino na Szekspirowskim",
-    "filmUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-17T21:45:00",
-      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-15T21:30:00",
-      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664617#opis",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino na Szekspirowskim\u0000https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis\u0000Follemente. W tym szaleństwie jest metoda" ]
   }, {
     "_id" : "fccb3f194ca7273f|poznan|Kino Malta Charlie Monroe",
     "filmId" : "fccb3f194ca7273f",
