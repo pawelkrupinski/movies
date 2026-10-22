@@ -108,3 +108,26 @@ tests:
             exp_annotations:
               summary: "The identity regression watch has not read the take-change log for over 30 minutes"
               description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."
+  # The nightly drift check: DE's 7 drifted listings (4 lost, 3 changed) fire after the hour's hold, the
+  # count summed over kinds and the pod's labels dropped; PL's 3 stay under the bar of 5.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_drift_listings{country="de",kind="lost",pod="worker-de-a"}'
+        values: '4x90'
+      - series: 'kinowo_worker_identity_drift_listings{country="de",kind="changed",pod="worker-de-a"}'
+        values: '3x90'
+      - series: 'kinowo_worker_identity_drift_listings{country="de",kind="gained",pod="worker-de-a"}'
+        values: '0x90'
+      - series: 'kinowo_worker_identity_drift_listings{country="pl",kind="lost",pod="worker-pl-a"}'
+        values: '3x90'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: IdentityIncrementalDrift
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: IdentityIncrementalDrift
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de }
+            exp_annotations:
+              summary: "de: 7 listings' live identity takes differ from a whole resolve of the same listings"
+              description: "The nightly drift check found 7 de listings whose live film (the incremental model and agreement state) is not what a whole resolve with nothing kept takes. Dig in: `_time:1d country:de \"identity drift:\" | stats by (kind, previous_basis, basis, tmdb_before, tmdb_after) count() n | sort by (n desc)` -- each line's `repro` replays the listing; `scripts/identity-slice de --drift` replays the incremental sequence on a recording. KINOWO_IDENTITY_DRIFT_REPAIR=true makes the check adopt the whole resolve's takes."

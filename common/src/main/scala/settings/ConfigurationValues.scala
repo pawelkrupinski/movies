@@ -119,6 +119,7 @@ final case class OrderPasses(indices: Seq[Int]) extends AnyVal
  *  calibrated identity confidence served without ratings) for a country the worker wiring does not
  *  already gate (`ReadModelWiring.RatingGateCountries`: Germany, Spain). It cannot turn the gate off. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
+final case class IdentityDriftRepair(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity model's paced live lookup fill
  *  runs a round (its own claimed window, independent of the settle). */
 final case class IdentityLookupFillInterval(value: FiniteDuration) extends AnyVal

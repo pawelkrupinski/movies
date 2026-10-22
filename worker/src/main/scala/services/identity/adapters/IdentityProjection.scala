@@ -189,6 +189,10 @@ final class IdentityProjection(
       venues.iterator.flatMap(_._2).map(projected => projected.listing.key -> projected.listing).toMap
   }
   private var scopedSinceWhole = 0
+  /** The model's resolution the last projection read, and what the agreement made of it: the live takes the drift check
+   *  compares with a whole resolve ([[IdentityDriftCheck]]). Both are shared with the model and the stage, nothing copied. */
+  @volatile private var lastTaken: Option[IdentityProjection.Projected] = None
+  def lastProjected: Option[IdentityProjection.Projected] = lastTaken
   /** The index, kept from one projection to the next and moved where its inputs moved — afresh after any projection that
    *  did not write all it planned. */
   private var live = new LiveProjectionIndex(normalizer)
@@ -302,6 +306,7 @@ final class IdentityProjection(
     // to a projection with nothing to build on, whose index is read afresh
     val republished = run.previous.map(_ => live.republished(run.byVenue))
     val resolution  = phases("agreement")(agreement(modelResolution, key => run.decided.get(key), republished))
+    lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution))
     val at          = clock.instant()
     phases("seed")(seedSlotMemo())
     if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
@@ -651,6 +656,9 @@ object IdentityProjection {
       case Changed   => false
     }
   }
+
+  /** What a projection read of the model (`model`) and took after the agreement (`taken`). */
+  final case class Projected(model: Resolution, taken: Resolution)
 
   /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
   final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil)

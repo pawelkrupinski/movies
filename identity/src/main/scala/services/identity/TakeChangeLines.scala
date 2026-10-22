@@ -91,6 +91,19 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
       "repro"                  -> repro))
   }
 
+  /** The line of a listing whose LIVE take (the incremental state's) differs from the one a whole resolve of the same
+   *  listings takes (`IdentityDriftCheck`): `identity drift:`, with every field a take change carries — `tmdb_before`
+   *  and the `previous_*` fields the live take, `tmdb_after`, `basis` and `reason_*` the whole resolve's, and `kind` what
+   *  adopting the whole resolve would do to the listing. */
+  def drift(listing: services.movies.ListingKey, live: Option[ResolverDecision], whole: Option[ResolverDecision], published: Option[Listing]): Line = {
+    val take = TakeChange(listing, "", live.flatMap(_.film), whole.flatMap(_.film))
+    val line = of(take, None, None, whole, published,
+      live.map(d => TakeChange.Prior(d.basis, d.confidence, d.explanation.lastOption, Some(DecidedBy.of(d, listing)))), Some(DriftTrigger))
+    Line(DriftPrefix + line.message.stripPrefix("identity take change:"), line.fields.filterNot(_._1 == "film_before") ++ Seq(
+      "drift"         -> true,
+      "live_fallback" -> live.flatMap(_.fallback).map(f => s"${f.source}:${f.id}")))
+  }
+
   /** The tick's summary: how many takes moved by kind and by basis (`basisOf` each listing's, none when no decision
    *  names it), and how many of them were logged a line each. */
   def summary(takes: Seq[TakeChange], basisOf: TakeChange => Option[ResolverDecision.Basis], logged: Int): Line = {
@@ -114,6 +127,10 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
 object TakeChangeLines {
   /** A log line: its text and its fields (a `None` value leaves its field out). */
   final case class Line(message: String, fields: Seq[(String, Any)])
+  /** What every drift line starts with: what the drift queries and alert grep for. */
+  val DriftPrefix = "identity drift:"
+  /** The `trigger` a drift line names: the nightly check, not a projection. */
+  val DriftTrigger = "drift-check"
 
   private def film(tmdb: Option[Int], title: Option[String]) = tmdb.fold("none")(id => s"tmdb $id") + title.fold("")(t => s" ($t)")
   private def rounded(p: Double): Double = math.round(p * 1000) / 1000.0

@@ -94,6 +94,8 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // Each country's identity projection — see IdentityProjectionGauges.
   val identityProjection: IdentityProjectionGauges = new IdentityProjectionGauges(registry)
   val identityAgreement: IdentityAgreementMetrics = new IdentityAgreementMetrics(registry)
+  // Each country's daily drift check: its live takes against a whole resolve — see IdentityDriftGauges.
+  val identityDrift: IdentityDriftGauges = new IdentityDriftGauges(registry)
 
   // Listings landed incomplete, and venues stuck incomplete — see ListingIncompleteMetrics.
   val listingIncomplete: ListingIncompleteMetrics = new ListingIncompleteMetrics(countryCodes, registry)

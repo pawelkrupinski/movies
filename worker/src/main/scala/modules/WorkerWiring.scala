@@ -496,6 +496,7 @@ class WorkerWiring(
     boot.step("identity lookup refresh")(identityLookupRefreshSchedule.start())
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("tmdb store sweep")(identityTmdbSweepSchedule.start())
+    boot.step("identity drift check")(identityDriftSchedule.start())
     boot.step("orphan film-state sweep")(orphanFilmStateSweepSchedule.start())
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
     boot.step("share cards")(shareCardReapers.foreach(_.start()))

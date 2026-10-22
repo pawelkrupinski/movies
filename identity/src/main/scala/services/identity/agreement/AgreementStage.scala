@@ -241,6 +241,16 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (now eq decision) decision else takenAsBefore(decision, now)
     }
 
+  /** Forget everything kept of the clusters `ids` names — their verdicts and corrections, stored ones too, their waits and
+   *  candidates — and every decision read: the next apply decides them as a stage with nothing kept would. What a drift
+   *  check adopting a whole resolve's takes asks (`IdentityDriftCheck.Adopt`). */
+  def forget(ids: Set[String]): Unit = synchronized {
+    val all = ids ++ ids.map(AgreementStage.correctionId)
+    stored.replace(all, Nil)
+    held --= all; checked --= all; waiting --= all; candidateFilms --= all; correctionWaits --= all
+    digested.clear(); takenAs.clear(); last = None
+  }
+
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
    *  corrections and the model's decisions — and store the verdicts `pass` moved. */
   private[agreement] def forgetGone(resolution: Resolution, pass: AgreementStage.Pass): Unit = {
