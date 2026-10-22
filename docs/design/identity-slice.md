@@ -109,8 +109,14 @@ live state (`IdentityDriftCheck`: `identity drift:` lines, `kinowo_worker_identi
 What it found first (recording 573, 2026-10-22): the agreement's stored verdict kept an agreed film as its title and year
 alone, so a stage brought up by a deploy took films its first decision had refused on the record's other facts — DE
 Museum-Lichtspiele's "… Eröffnungskonzert - Raíces" ('Roots', whose original title is the billing's last piece), taken
-by every deploy that kept the verdicts and lost by every one that outruled them. Verdicts now keep the whole record
-(`FilmBson`).
+by every deploy that kept the verdicts and lost by every one that outruled them (prod's Wawrczeck, Spieleabend and
+Rückenwind alternated the same way, deploy by deploy). Verdicts now keep the whole record (`FilmBson`). And a model
+take's correction read while TMDB had not answered the take's own record was kept as final: UK Chichester's "The Ties
+That Bind Us" stayed the model's film after the record was filed, until a deploy read it again (seed 2). Such a
+correction now waits, as a fill read blind does. Over all five countries, two seeds each, nothing else diverged; UK
+"Notre-Dame de Paris" (the 1956 Hunchback by a same-title join) and DE "Rose" (model takes flipping while a deploy's
+new questions were unanswered) did not reproduce as a settled divergence on the recording — the nightly production
+check is what watches them.
 
 ## Faithfulness, and what it does not cover
 
