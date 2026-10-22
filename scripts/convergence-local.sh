@@ -25,7 +25,7 @@
 #
 # Every collection runs on a real MongoDB replica set (change streams and the staging fold's
 # transaction both need one). MONGODB_URI if given; else the itAll mongod on :28017 if it
-# answers; else a throwaway mongo:8.3.11 container on :27117 (CONVERGENCE_LOCAL_MONGO_PORT), waited for at most
+# answers; else a throwaway mongo:8.3.13 container on :27117 (CONVERGENCE_LOCAL_MONGO_PORT), waited for at most
 # CONVERGENCE_LOCAL_MONGO_WAIT seconds (120) a step. Each run's databases are created
 # under a MONGODB_DB prefix unique to it and dropped by the suite (`ConvergenceStorage.close`).
 # CONVERGENCE_LOCAL_PAIR=<recording run | laid fixtures dir> lays a pair already on this machine instead (offline:
@@ -118,9 +118,9 @@ elif (echo >"/dev/tcp/127.0.0.1/$FALLBACK_PORT") 2>/dev/null; then
     MONGODB_URI="mongodb://127.0.0.1:$FALLBACK_PORT/?directConnection=true"
     echo "==> reusing the MongoDB already listening on :$FALLBACK_PORT"
 else
-    echo "==> starting a throwaway mongo:8.3.11 single-node replica set on :$FALLBACK_PORT"
+    echo "==> starting a throwaway mongo:8.3.13 single-node replica set on :$FALLBACK_PORT"
     docker rm -f convergence-local-mongo >/dev/null 2>&1 || true
-    docker run -d --name convergence-local-mongo -p "$FALLBACK_PORT:27017" mongo:8.3.11 --replSet rs0 --bind_ip_all >/dev/null
+    docker run -d --name convergence-local-mongo -p "$FALLBACK_PORT:27017" mongo:8.3.13 --replSet rs0 --bind_ip_all >/dev/null
     # Each wait has a deadline: a container that never comes up (an image pull refused, a crash loop) used to hold
     # this forever, printing nothing.
     until_mongo() { # <what> <command...>

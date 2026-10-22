@@ -78,7 +78,7 @@ let
   # a version and four hashes -- nothing is built. When nixpkgs catches up, drop this and go
   # back to `pkgs.mongodb-ce`. MongoServerVersionParitySpec reads this literal and holds the
   # CI/local `mongo:<tag>` containers to it.
-  mongodbVersion = "8.3.11";
+  mongodbVersion = "8.3.13";
   mongodbCe = pkgs.mongodb-ce.overrideAttrs (finalAttrs: previous: {
     version = mongodbVersion;
     __intentionallyOverridingVersion = true;
@@ -86,19 +86,19 @@ let
       sources = {
         "x86_64-linux" = pkgs.fetchurl {
           url = "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2404-${mongodbVersion}.tgz";
-          hash = "sha256-qKpPddwPKmarQhUpuxRSSFIixsmJCbBHqY2QmBw06r4=";
+          hash = "sha256-pVeA7Zu1QQrl6o6MW4gssc2TidponEF9YmWSmtKKH38=";
         };
         "aarch64-linux" = pkgs.fetchurl {
           url = "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2404-${mongodbVersion}.tgz";
-          hash = "sha256-UlQL+x3nrUFVJMalEX1DT82E8k8j49tW5xl36f7Sjy4=";
+          hash = "sha256-aLR9KiABYVcy2SDRQbFpUkvB2qporO71L2HqWr/O9F0=";
         };
         "x86_64-darwin" = pkgs.fetchurl {
           url = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-${mongodbVersion}.tgz";
-          hash = "sha256-RbSnkTwThNSzzjLIFjClwOGZPeL2EZ9RGZXsIyTexck=";
+          hash = "sha256-PYrm6TDf5eS8vrDgwuSU1le6SK13anw/nanTyEJF898=";
         };
         "aarch64-darwin" = pkgs.fetchurl {
           url = "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-${mongodbVersion}.tgz";
-          hash = "sha256-tYbDlyiA/N6pBpCm0iwizSYLCXLecXynEMC8d8ZLA54=";
+          hash = "sha256-Giqh7CXAKnFcVbirL+hgxrLdo8rTgqXboaY1xpW28Uc=";
         };
       };
     };

@@ -57,7 +57,7 @@ deadline=$((SECONDS + timeout_seconds))
 # gone between the two fails the chown, which kills the container before mongod starts. A tmpfs data
 # directory starts root-owned, so the entrypoint walks it every time (run 37586335937, Poland: "chown:
 # cannot access '/data/db/.mongodb/mongosh/am-unknown.json.lock'", never reachable).
-native_home=${MONGO_NATIVE_HOME:-/opt/mongodb/8.3.11}
+native_home=${MONGO_NATIVE_HOME:-/opt/mongodb/8.3.13}
 marker=${MONGO_NATIVE_MARKER:-/tmp/kinowo-mongo-native}
 export MONGO_NATIVE_MARKER=$marker
 log=${MONGO_NATIVE_LOG:-/tmp/mongod.log}
@@ -107,8 +107,8 @@ fi
 
 storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
-image=mirror.gcr.io/library/mongo:8.3.11
-hub_image=docker.io/library/mongo:8.3.11
+image=mirror.gcr.io/library/mongo:8.3.13
+hub_image=docker.io/library/mongo:8.3.13
 # A DOCKER HUB MIRROR OF THE DAEMON'S OWN comes first: on the Forgejo runners each job's dockerd is
 # pointed at a pull-through cache on the CI host (infra's forgejo-registry-mirror), which serves Docker
 # Hub's name from local disk instead of the 19-27 s internet pull every job made (2026-10-22). Only a
