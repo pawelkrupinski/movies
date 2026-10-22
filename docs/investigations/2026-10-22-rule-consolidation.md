@@ -30,8 +30,8 @@ input.
   every commit here.
 - **Specs**: `ProdTitlesNormalizationSpec`, `ExtraTitleRulesSpec`, `TitleNormalizerSpec`, `DedicatedCinemaTitleCleanSpec`,
   `DiscoveredDecorationsSpec`, `PolishRewriteScopingSpec`, `TitleRuleSetSpec`, `BillingParseEquivalenceSpec` (reads no
-  title rule) and `FilmScheduleEndToEndSpec`: __SPEC_RESULT__.
-- **Identity measure**: __MEASURE_RESULT__.
+  title rule) and `FilmScheduleEndToEndSpec`: green locally (common 1,704 tests, worker `services.movies.*`/`scripts.*` 523, scrapers 2,924) and `FilmScheduleEndToEndSpec` on CI (Forgejo run 1151, head 4f19c0375).
+- **Identity measure**: 0 takes moved in all five countries of the pinned pair (573), for the migration alone (run 1143, head 820f90395) and for the whole change with the merges (run 1150, head 4f19c0375), both against 045d2fcff: LANDABLE.
 
 ## Merging rows: what is byte-identical and what is not
 
