@@ -71,6 +71,8 @@ jobs:
             contents: read
             checks: write
             packages: write
+            # ci.yml's `scope` job reads the newest green Main run (gh run list) to know which rows a push can move.
+            actions: read
 
     # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `e2e (corpus)` row and this workflow's
     # `image-worker` build them from the dists ci's `e2e (corpus)` row staged, while ci's slowest rows
