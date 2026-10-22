@@ -54,7 +54,10 @@ if [ "$kind" = --outputs ]; then
     green=$(timeout 60 gh run list --workflow main.yml --branch main --status success --limit 1 \
         --json headSha --jq '.[0].headSha // empty' 2>"$work/err") || every_row "could not read Main's runs ($(head -c 200 "$work/err"))"
     [ -n "$green" ] || every_row "no green Main run to diff from"
-    git cat-file -e "$green^{commit}" 2>/dev/null ||
+    # GIT_NO_LAZY_FETCH: the checkout is a blob:none partial clone, so a plain `cat-file -e` of a commit it lacks asks
+    # the promisor remote for it, one lazy fetch spawning the next: 60-140 s of the job's ~88 s (2026-10-22). The
+    # explicit depth-1 fetch below brings the same commit in under a second.
+    GIT_NO_LAZY_FETCH=1 git cat-file -e "$green^{commit}" 2>/dev/null ||
         timeout 120 git fetch --no-tags --depth=1 --filter=blob:none origin "$green" >/dev/null 2>&1 ||
         every_row "could not fetch the newest green Main run's commit $green"
     git diff --name-only "$green" "$head" >"$work/since-green" || every_row "could not diff $green..$head"
