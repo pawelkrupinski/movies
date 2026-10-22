@@ -150,7 +150,7 @@ corpus() {
 
 unpack() {
   set -e
-  local code="$1" mode="$2" tree_status stage entry target archive available cache remembered
+  local code="$1" mode="$2" tree_status stage entry target archive available cache remembered cached
   # The enrichment tree, fetched and unpacked in the background since the top of the action
   # ("Fetch the enrichment tree in the background"). A replay leg's missing pin (exit 3) ends
   # the leg; a recording falls through to fetching live.
@@ -163,6 +163,16 @@ unpack() {
   # merged into rather than replaced.
   stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"
   mkdir -p test/resources/fixtures
+  # A tree from ci-runner's recording cache (restore-enrichment-tree.sh) is not in the stage: it is mounted here, read-only
+  # under a RAM upper layer, and the stage holds only the fills, which the loop below lays over it as over an unpacked one.
+  # An overlay that will not mount still beats unpacking: one copy out of the cache.
+  if [ -f "$RUNNER_TEMP/tree-stage.cached" ]; then
+    cached="$(cat "$RUNNER_TEMP/tree-stage.cached")/test/resources/fixtures"
+    "$repo/scripts/ci/recording-cache.sh" overlay "$cached" test/resources/fixtures "$RUNNER_TEMP/recording-upper" || {
+      echo "::warning::the recording cache's tree could not be overlaid; copying it out instead"
+      cp -a "$cached/." test/resources/fixtures/
+    }
+  fi
   for entry in "$stage"/* "$stage"/.[!.]*; do
     [ -e "$entry" ] || continue
     target="test/resources/fixtures/$(basename "$entry")"
