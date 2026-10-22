@@ -67,13 +67,25 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  the record whole? A performer billed bare is the performer's evening, not a recording of one programme: DE Filmforum
    *  Landsberg's "Helmut Schleich" (the Kabarettist live) is not "Helmut Schleich: Kauf, du Sau" (2018), UK Pavilions
    *  Teignmouth's "Patrick Monahan" not "Patrick Monahan: Live" (2011). Dated alike, Lichtburg's "Berliner Philharmoniker"
-   *  [2026] is their "Silvesterkonzert 2026". */
+   *  [2026] is their "Silvesterkonzert 2026". Only a record titled as a programme after the name ([[titledAsAProgramme]]):
+   *  PL SDK's "Left-Handed Girl" is the film TMDB titles "Left-Handed Girl. To była ręka… diabła!", a title and its
+   *  distributor's subtitle. */
   private[identity] def aNameAlone(scored: Scored): Boolean = {
     val listing = scored.listing
-    scored.category("title").contains("fragment") && services.billing.Credits.billsOnlyAName(listing.rawTitle.getOrElse(listing.title)) &&
+    val billed  = listing.rawTitle.getOrElse(listing.title)
+    scored.category("title").contains("fragment") && services.billing.Credits.billsOnlyAName(billed) &&
+      titledAsAProgramme(billed, scored.candidate.film) &&
       !scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency) &&
       !IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime) &&
       !IdentityMeasures.sameDirector(scored.measures) && !scored.category("originalTitle").contains("match")
+  }
+
+  /** Does one of the record's titles continue `name` as a programme of its: "<name>: …" or "<name> - …" ("Helmut Schleich:
+   *  Kauf, du Sau", "Patrick Monahan: Live"), case and spacing aside — not a sentence after it, a film's subtitle. */
+  private[identity] def titledAsAProgramme(name: String, film: IdentityMeasures.Film): Boolean = {
+    val words     = name.trim.split("\\s+").map(java.util.regex.Pattern.quote).mkString("\\s+")
+    val programme = ("(?iu)^" + words + """\s*(?::|\s[-–—]\s)""").r
+    (film.title +: (film.originalTitle.toSeq ++ film.alternativeTitles)).exists(title => programme.findPrefixOf(title.trim).isDefined)
   }
 
   /** How far a billed work's running time may stand from the venue's: a broadcast's interval and introduction. */

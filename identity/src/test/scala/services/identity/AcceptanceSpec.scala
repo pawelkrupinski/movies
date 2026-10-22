@@ -637,6 +637,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptedBy(ranked(Listing("Berliner Philharmoniker", year = Some(2026)), silvester), 1711927) shouldBe Some("sole-work")
   }
 
+  it should "still take a film whose distributor's subtitle follows a title of two capitalised words" in {
+    // PL Służewski Dom Kultury's "Left-Handed Girl" (108 min) is TMDB's "Left-Handed Girl. To była ręka… diabła!" (2025),
+    // the only film its search returns, carrying no running time: a film's title and its distributor's subtitle, not a
+    // name and a programme of theirs (the e2e corpus, 08-06-2026).
+    val listing = Listing("Left-Handed Girl", runtime = Some(108), directors = Seq("\u202fShih-Ching Tsou"))
+    val film    = (999075, Film("Left-Handed Girl. To była ręka… diabła!", originalTitle = Some("左撇子女孩"), year = Some(2025), popularity = Some(3.0)), Some(1))
+    acceptedBy(ranked(listing, film).map(_.copy(soleResult = true)), 999075) shouldBe Some("sole-result")
+    // A programme after the name, by a colon or a dash, is still refused.
+    val programme = (805362, Film("Helmut Schleich - Ehrlich", year = Some(2016)), Some(1))
+    taken(ranked(Listing("Helmut Schleich"), programme).map(_.copy(soleResult = true))) shouldBe None
+  }
+
   it should "still take a record its title names by its original title" in {
     // PL "Following" at Kino Amondo is Nolan's "Śledząc" (original title "Following"), not a
     // same-titled record whose title merely contains it.
