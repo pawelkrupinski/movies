@@ -103,6 +103,8 @@ object RenderSafetyLintSpec {
     "debugReadModelScreenings.scala.html" -> "/debug/readmodel/:id — DebugController.devOnly",
     "_debugRow.scala.html"                -> "rendered only into debug.scala.html",
     "review.scala.html"                   -> "/debug/review* — ReviewController.devOnly",
+    "reviewWhy.scala.html"                -> "/debug/review/why — ReviewController.devOnly",
+    "reviewListing.scala.html"            -> "/debug/review/listing — ReviewController.devOnly",
   )
 
   /** Raw `Html(…)` splices in (non-dev) templates whose text is ours. (file, argument) → why. */
