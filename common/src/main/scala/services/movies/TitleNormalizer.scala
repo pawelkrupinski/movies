@@ -90,8 +90,8 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
-  // The patterns live in the `TitleRuleSet` (`TitleRules` + `ExtraTitleRules`, in
-  // code). The tiers:
+  // The patterns live in the `TitleRuleSet` (the title-rule table, title-rules.tsv).
+  // The tiers:
   //   - `apiQuery` (GlobalStructural) — decoration strips (anniversary, restored,
   //     Cykl prefix, slash, language-version) PLUS programme prefixes /
   //     accessibility tags / "+ <event>" suffixes, for EXTERNAL LOOKUPS ONLY:

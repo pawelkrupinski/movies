@@ -80,7 +80,7 @@ object FormatTags {
   // Apples (2026)"), for the year reading and the canonical year strip. And a German re-release mark — "(WA)", "(WA:
   // 2026)", "(Wiederaufführung)", or a box office's "(WA:" cut short. Each is a card's worth of split (Lanternhouse's
   // "Digger (15)", CineStar's "Catching Fire (OV) (WA)") if it stays.
-  // The note shapes are TitleRulePlaceholders', which the search strips in ExtraTitleRules read too.
+  // The note shapes are TitleRulePlaceholders', which the title-rule table's query rows read too.
   private val NoteShape = services.titlerules.TitleRulePlaceholders.all
   private val CertificateNote =
     (s"""(?i)(?<=\\S)\\s*(?<note>${NoteShape("CERT_NOTE")})(?<year>\\s*\\(\\s*(?:19|20)\\d{2}\\s*\\))?""" +

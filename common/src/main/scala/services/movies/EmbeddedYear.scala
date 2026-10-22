@@ -29,7 +29,7 @@ package services.movies
  *  MISS, never a mis-key or mis-resolve.
  *
  *  Scans SEVERAL spellings, not one: the canonical merge key strips the
- *  annotation (`ExtraTitleRules.xtra-canonical-trailing-paren-year`), so the year
+ *  annotation (the title rule `xtra-canonical-trailing-paren-year`), so the year
  *  survives only on the raw cinema-slot titles / search candidates. */
 object EmbeddedYear {
   // Balanced brackets anywhere (groups 1–4), then a trailing separator form

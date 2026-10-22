@@ -155,7 +155,8 @@ object IdentityCapture {
    *  whose new questions a fill answers. A change elsewhere that moves a decision anyway is what `--capture` is for. */
   val DecisionInputs: Seq[String] = Seq(
     "identity/src/main/scala/services/identity/", "identity/src/main/resources/identity-", "common/src/main/scala/services/titlerules/",
-    "common/src/main/scala/services/movies/TitleNormalizer.scala", "worker/src/main/scala/services/identity/adapters/TmdbIdentityLookups.scala",
+    "common/src/main/resources/title-rules.tsv", "common/src/main/scala/services/movies/TitleNormalizer.scala",
+    "worker/src/main/scala/services/identity/adapters/TmdbIdentityLookups.scala",
     "worker/src/main/scala/services/TmdbClient.scala", "worker/src/it/scala/IdentityShadow.scala")
   val NotDecisionInputs: Seq[String] = Seq("identity/src/main/scala/services/identity/agreement/")
 

@@ -6,10 +6,9 @@ import scala.util.matching.Regex
 
 /** One editable regex-replace step in the title-normalisation pipeline.
  *
- *  The full set of these — the frozen baseline in [[TitleRules]], transcribed
- *  verbatim from the formerly-hardcoded regexes, plus every later addition in
- *  [[ExtraTitleRules]] — describes every prefix/suffix/canonicalisation the app
- *  strips. They live in code only, loaded at class-init; there is no collection.
+ *  The full set of these is one row each of the title-rule table ([[TitleRuleTable]], `title-rules.tsv`): every
+ *  prefix/suffix/canonicalisation the app strips, the frozen baseline ([[TitleRules]]) among them. Loaded from the
+ *  classpath at class-init; there is no collection.
  *
  *  `replacement` follows `scala.util.matching.Regex` replacement semantics: `""`
  *  is a pure strip, and `$1`/`$2` reference capture groups. A literal `$` or `\`
@@ -24,13 +23,8 @@ case class TitleRule(
   // replaceAllIn (true) vs replaceFirstIn (false) — matches whether the legacy
   // code used `.replaceAll` / String.replace (all) or `.replaceFirstIn` (first).
   applyAll:    Boolean,
-  // Application order within a scope. Lower runs first; ties broken by id.
+  // Application order within a scope. Lower runs first; ties broken by id. A table row's is its place in the table.
   order:       Int,
-  // When true, this rule runs AFTER every non-last rule of the same scope/cinema,
-  // regardless of `order` — `TitleRuleSet` sorts each tier by (last, order, id).
-  // Surfaced in the editor as a "last" checkbox / a separate ordered list per
-  // record. Lets a catch-all cleanup sit after the specific strips.
-  last:        Boolean        = false,
   enabled:     Boolean        = true,
   // Optional semantic label. The programme-prefix rule carries
   // tag = Some("programmePrefix") so `TitleNormalizer.programmePrefix` can find

@@ -44,9 +44,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  expansion. */
   val effectiveRules: Seq[TitleRule] = expansions.map(_._2)
 
-  // `last` rules fold after the non-last ones of the same scope/cinema:
-  // `false < true`, so the tuple sort puts them at the end of the tier.
-  private def ruleOrder(r: TitleRule): (Boolean, Int, String) = (r.last, r.order, r.id)
+  private def ruleOrder(r: TitleRule): (Int, String) = (r.order, r.id)
 
   private def tier(scope: RuleScope): Seq[TitleRule] =
     effectiveRules.iterator.filter(_.scope == scope).toSeq.sortBy(ruleOrder)

@@ -50,7 +50,7 @@ object TitleWords {
     case SecretScreening extends Concept("secret-screening")
     /** `services.billing.BillJoins`' markers. */
     case DoubleBill      extends Concept("double-bill")
-    /** `ExtraTitleRules`' screening-note strip (`BareAudience`). */
+    /** The title rules' screening-note strip (the `{{AUDIENCE}}` placeholder, `TitleRulePlaceholders`). */
     case Audience        extends Concept("audience")
     /** `StageRelays.StageHouseWords` and `ListingShape.HouseWords`. */
     case StageHouse      extends Concept("stage-house")

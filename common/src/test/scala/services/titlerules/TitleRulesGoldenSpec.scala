@@ -80,9 +80,9 @@ object TitleRulesGoldenSpec {
    *  the rules' data is checked against before the corpus is. */
   def ruleDump: Seq[String] =
     (TitleRules.all ++ ExtraTitleRules.all).zip(TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all).effectiveRules)
-      .sortBy((_, r) => (r.scope.name, r.cinemaId.getOrElse(""), r.last, r.order, r.id)).map { (raw, r) =>
+      .sortBy((_, r) => (r.scope.name, r.cinemaId.getOrElse(""), r.order, r.id)).map { (raw, r) =>
         Json.stringify(Json.obj("id" -> r.id, "scope" -> r.scope.name, "cinema" -> r.cinemaId, "order" -> r.order,
-          "last" -> r.last, "applyAll" -> r.applyAll, "enabled" -> r.enabled, "tag" -> r.tag,
+          "applyAll" -> r.applyAll, "enabled" -> r.enabled, "tag" -> r.tag,
           "countries" -> r.countries.map(_.toSeq.map(_.code).sorted), "properName" -> r.writesProperName,
           "pattern" -> r.pattern, "raw" -> raw.pattern, "replacement" -> r.replacement, "note" -> r.note))
       }
@@ -91,7 +91,6 @@ object TitleRulesGoldenSpec {
     case Seq("--rules", out) =>
       Files.write(Paths.get(out), ruleDump.asJava, UTF_8)
       println(s"wrote ${ruleDump.size} rules to $out")
-    case Seq("--placeholders", out) => Files.writeString(Paths.get(out), Json.stringify(Json.toJson(TitleRulePlaceholders.all)), UTF_8)
     case _ => writeGolden()
   }
 
