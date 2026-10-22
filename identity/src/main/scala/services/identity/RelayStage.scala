@@ -48,7 +48,7 @@ private[identity] object RelayStage {
     if (!l.billsAStageHouse) None
     else {
       val works   = unencored(l).billedStageWorks
-      val stated  = l.year.orElse(StageRelays.bannerYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
+      val stated  = l.year.orElse(StageRelays.bannerYear(l)).orElse(closingYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
       val dated   = if (billsAnEncore(l)) l.performanceYear else l.titleYear.orElse(stated)
       // an encore dating no performance airs one of its screenings' season or the season before, as a season's record is
       // encored the next season at most: US Showcase's "The Metropolitan Opera: Samson et Dalila ENCORE (2026)" (9 December
@@ -96,6 +96,15 @@ private[identity] object RelayStage {
     f.season.map(Set(_))
       .orElse(f.released.map(day => Set(if (day.getMonthValue >= ScreeningDays.SeasonOpens) day.getYear else day.getYear - 1)))
       .orElse(f.year.map(year => Set(year - 1, year))).getOrElse(Set.empty)
+
+  private val ClosingYear = """(?<![\p{N}/–—-])(20\d{2})\s*$""".r
+  /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
+   *  (1 December 2026) dates the 2026/27 relay by it. Read only where it is not before its screenings' season ([[of]]). */
+  private def closingYear(l: Listing): Option[Int] =
+    l.ownTitles.flatMap(title => ClosingYear.findFirstMatchIn(title.trim).map(_.group(1).toInt)).distinct match {
+      case Seq(one) => Some(one)
+      case _        => None
+    }
 
   private val Encore = """(?i)(?<![\p{L}])encore(?![\p{L}])""".r
   /** The listing with the ENCORE its titles bill cut out, its work read past it: "Samson et Dalila ENCORE (2026)" bills
