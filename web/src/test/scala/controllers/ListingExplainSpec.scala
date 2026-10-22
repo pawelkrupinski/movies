@@ -55,6 +55,9 @@ class ListingExplainSpec extends AnyFlatSpec with Matchers {
   it should "hand over its take history as a LogsQL query of production's take-change lines, opened in VictoriaLogs" in {
     val html  = page(sample, "uk", Some(rise.listing.venue), rise.listing.rawTitle)
     val query = TakeHistory(Country.UnitedKingdom, rise.listing).query
+    // the take-change lines' deciding stage and rule, score, runner-up and trigger are columns of the history
+    Seq("trigger", "stage", "decided_by", "score", "runner_up_tmdb", "runner_up_score", "margin", "runner_up_won", "title_rules",
+      "previous_decided_by").foreach(field => query should include(s", $field"))
     query should startWith(s"""_time:30d "identity take change" country:uk venue:="${rise.listing.venue}" listing:="Rise Fly Fishing Film Tour"""")
     for (field <- Seq("_time", "build", "kind", "tmdb_before", "tmdb_after", "basis", "rules", "runner_up")) query should include(field)
     html should include(s"""<pre class="logsql">${esc(query)}</pre>""")

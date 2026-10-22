@@ -103,9 +103,12 @@ object TakeHistory {
   /** VictoriaLogs keeps ~27 days. */
   val Window   = "30d"
   /** The columns a change shows: when, which build, what moved (before → after) and why — the decision's stage, rules,
-   *  runner-up and the take before. A field a line does not carry is an empty cell. */
-  val Fields: Seq[String] = Seq("_time", "build", "kind", "tmdb_before", "title_before", "tmdb_after", "title_after", "basis",
-    "confidence", "rules", "runner_up", "blocker", "reason_last", "previous_basis", "repro")
+   *  runner-up and the take before; what set it off (`trigger`), the stage and rule that decided it (`stage`, `decided_by`),
+   *  its score against the runner-up's (`score`, `runner_up_*`, `margin`) and the title rules its title took. A field a
+   *  line does not carry (every one logged before 2026-10-22 lacks these) is an empty cell. */
+  val Fields: Seq[String] = Seq("_time", "build", "trigger", "kind", "tmdb_before", "title_before", "tmdb_after", "title_after",
+    "basis", "confidence", "stage", "decided_by", "score", "runner_up_tmdb", "runner_up_score", "margin", "runner_up_won",
+    "rules", "title_rules", "runner_up", "blocker", "reason_last", "previous_basis", "previous_decided_by", "repro")
 
   private def uiLink(query: String): String =
     s"$LogsHost/select/vmui/#/?query=${ListingExplain.enc(query).replace("+", "%20")}&g0.range_input=$Window"
