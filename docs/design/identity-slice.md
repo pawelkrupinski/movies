@@ -82,6 +82,36 @@ changing a tool file.
 - `--faithfulness RUN`: a sample of a convergence leg's listings, each sliced alone at the run's commit and pinned
   recording, compared with the leg's own final takes (`convergence-diagnostics-<cc>-convergence/<cc>-takes`).
 
+## Incremental drift: `--drift`
+
+`--orders` and `--modes` hold one slice to order independence; `--drift` holds the WHOLE recording to the property
+production depends on: **the state kept event by event ends where a whole resolve of the same listings ends**
+(`scripts.IdentityDrift`). It replays, per seed, what a worker meets:
+
+- a boot (`IncrementalResolver.restore`) over 70% of the venues, with 15% of TMDB's searches, records and venue pages and
+  of the families' filed answers not filed yet (`Gate`, `GatedDocuments`): a deploy's new questions;
+- projections after every event — the agreement stage kept between them, with production's correction budgets — while
+  answers are filed a part at a time (each an `AnswersChanged` event, as the fill files them), new venues arrive, half the
+  venues are re-scraped (`republished`), 3% of the listings leave and come back;
+- two deploys: a new model and a new stage over the stores, every family and verdict written as its BSON document and
+  read back (`StoredAsWritten`), the second deploy under other rules (every family and verdict outruled);
+- `settled` (every answer filed, the stage applied until it asks nothing and has no backlog), then twice a re-scrape
+  tick, a deploy's first projection and the tick after it.
+
+At each checkpoint every listing's film is compared with the whole resolve's (`IdentityResolver.resolve`, a fresh stage
+asked to its fixpoint, past every partial wait). A divergence names its checkpoint kind and class (`deploy: incremental-
+only take (whole BelowThreshold, incremental Agreed)`); `test/resources/fixtures/identity-drift-allow.tsv` lists the
+intended ones with their reasons (none today). Every hermetic leg's `takes` row runs it on the pinned pair
+(`scripts/ci/identity-drift-check.sh`) and fails on a divergence; production runs the same comparison nightly against its
+live state (`IdentityDriftCheck`: `identity drift:` lines, `kinowo_worker_identity_drift_listings`, the
+`IdentityIncrementalDrift` alert).
+
+What it found first (recording 573, 2026-10-22): the agreement's stored verdict kept an agreed film as its title and year
+alone, so a stage brought up by a deploy took films its first decision had refused on the record's other facts — DE
+Museum-Lichtspiele's "… Eröffnungskonzert - Raíces" ('Roots', whose original title is the billing's last piece), taken
+by every deploy that kept the verdicts and lost by every one that outruled them. Verdicts now keep the whole record
+(`FilmBson`).
+
 ## Faithfulness, and what it does not cover
 
 The slice is faithful when its take equals the whole leg's. Where it is not, the harness says which: the leg's

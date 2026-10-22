@@ -854,6 +854,35 @@ jobs:
                   esac
                   exit "$code"
 
+            # THE INCREMENTAL = WHOLE GATE (scripts/ci/identity-drift-check.sh): production keeps its identity state event by
+            # event -- the model's families, the agreement's verdicts, across ticks and deploys -- and must end where a whole
+            # resolve of the same listings ends. Over the pinned pair this row laid, the head replays that sequence (answers
+            # filed late, new venues, re-scrapes, listings leaving and returning, two deploys through the stores' BSON) and
+            # every listing whose take at a checkpoint differs from the whole resolve's fails the row, unless
+            # identity-drift-allow.tsv names it with why. A property of one commit, not a base-vs-head move: red means this
+            # code drifts. Main's rows only, not a takes-only measurement's.
+            - name: Check that the incremental state ends where a whole resolve does
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && !inputs.takes-only }}
+              shell: bash
+              timeout-minutes: 75
+              env:
+                  HEAP: ${{ inputs.heap }}
+              run: |
+                  code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
+                  case $code in
+                      0) ;;
+                      1) echo "::error title=identity drift (${{ inputs.code }})::the incremental state ends elsewhere than a whole resolve -- see the step summary" ;;
+                      *) echo "::error title=identity drift (${{ inputs.code }})::the drift replay could not run, so nothing was judged -- see the step log" ;;
+                  esac
+                  exit "$code"
+            - uses: actions/upload-artifact@v6
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && !inputs.takes-only }}
+              with:
+                  name: identity-drift-${{ inputs.code }}
+                  path: ${{ runner.temp }}/identity-drift/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
             # THE BASE ROW of a takes-only dispatch (scripts/identity-measure): the takes check's base side -- its resolve,
             # final takes and corpus shape, each downloaded when stored, else made -- on a runner of its own, stored for the
             # `takes` row, which runs the head's meanwhile and waits for them (identity-takes-check.sh's THE BASE ROW). After

@@ -1,0 +1,5 @@
+# Divergences of production's incremental identity state from a whole resolve of the same listings that are INTENDED
+# (scripts.IdentityDrift, scripts/ci/identity-drift-check.sh): one row a listing, its reason required. Kept as small as
+# possible -- every row is state production keeps that a whole resolve would not derive. checkpoint: settled, tick,
+# deploy, after-deploy, or * for any.
+country	venue	rawTitle	checkpoint	reason

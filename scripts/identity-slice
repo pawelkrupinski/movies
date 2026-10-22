@@ -31,6 +31,13 @@
 #   --modes N     also take the slice through N CHANGED projections — the periodic one's own agreement stage again, over
 #                 EVERY listing with those at a random half of the venues republished, as tickChanged reads them (the
 #                 scraped venues re-read, every other venue's held) — and name every listing whose take a changed one flips
+#   --drift       the WHOLE recording through production's incremental sequence instead of a slice (scripts.IdentityDrift):
+#                 the model taken up with a share of the answers missing, ticks filing them, new venues' scrapes,
+#                 re-scrapes, listings leaving and returning, two deploys (one changing the rules) through the stores' own
+#                 BSON — and every listing whose take at a checkpoint differs from a whole resolve of the same listings
+#                 named, beside the judgements; exit 1 on any test/resources/fixtures/identity-drift-allow.tsv does not
+#                 name. No selector. At the first --ref (default this checkout), which must hold the tool. `--out` keeps
+#                 the divergences' TSV. CI runs it in every hermetic leg's takes row (scripts/ci/identity-drift-check.sh)
 #   --families P  prod's filed family answers, which no recording holds: an unmatched-cluster capture (default this
 #                 checkout's test/resources/fixtures/identity-unmatched/<cc>.json.gz), or `none`. Without them the
 #                 families agree on nothing — as in a hermetic leg. The slice keeps those it read, named as prod's.
@@ -109,7 +116,7 @@ self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 # A kept JVM's idle exit: as sbt-warm's kept server's (KINOWO_SBT_WARM_IDLE_MINUTES), 10 minutes, not 30 -- each holds a
 # JVM slot while idle, and every idle minute is a minute another agent's tool may queue for it
 idle_minutes=${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-10}
-threads="" fresh=0 serve=0 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
+threads="" fresh=0 serve=0 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 drift=0 fixture="" keep="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then
   need_ref "${2:?--compiles REF}"
   t=$(identity_tree "$2" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
@@ -172,6 +179,7 @@ while [ "$#" -gt 0 ]; do
     --fresh) fresh=1; shift ;;
     --serve) serve=1; shift ;;
     --explain) explain=1; shift ;;
+    --drift) drift=1; shift ;;
     --out) keep=$(path_flag "$@") || exit 2; shift 2 ;;
     --prod-mirror) mirror=on
       if [ -n "${2:-}" ] && [[ $2 =~ ^[A-Za-z]{2}$ ]]; then mirror=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift; fi; shift ;;
@@ -467,6 +475,17 @@ fi
 [ -n "$run" ] || run=$(identity_newest_recording "$cc") || exit 1
 recording=$(identity_recording "$run" "$cc")
 use_mirror
+if [ "$drift" = 1 ]; then
+  t=$(tree_of "${refs[0]:-.}") || exit 1
+  cp=$(identity_classpath "$t") || exit 1
+  jvm_slot_take identity-slice
+  rc=0
+  (cd "$t" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityDrift "$cc" --recording "$recording" --families "$families" --labels "$labels" \
+    --allow "$repo/test/resources/fixtures/identity-drift-allow.tsv" --out "$work/drift") || rc=$?
+  jvm_slot_release
+  [ -z "$keep" ] || [ ! -f "$work/drift/drift-$cc.tsv" ] || cp "$work/drift/drift-$cc.tsv" "$keep"
+  exit "$rc"
+fi
 [ -z "$batch" ] || pass+=(--batch "$batch")
 [ "${#pass[@]}" -gt 0 ] || { echo "no selector" >&2; usage >&2; exit 2; }
 
