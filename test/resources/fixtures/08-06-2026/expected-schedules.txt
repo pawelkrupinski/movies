@@ -8364,7 +8364,7 @@ cinemaScrapes:
   Kino Pałacowe / Przekleństwa niewinności / 1999
   Kino Pod Baranami / Przekleństwa niewinności / —
   Kino Zamek / Przekleństwa niewinności / —
-  Kinoteka / Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI / —
+  Kinoteka / Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI / 2026
 showings:
   2026-06-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 

@@ -1355,7 +1355,7 @@
 {"text":"BEUYS"}
 {"text":"BEZ KOŃCA 2D PL LOLO","pl,uk,de,us,es":{"query":"BEZ KOŃCA"}}
 {"text":"BEZ ZNIECZULENIA"}
-{"text":"BEZ ZNIECZULENIA (1978) | „PRZEGLĄD WAJDA: re-wizje”","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA (1978)","venue":{"bok":"BEZ ZNIECZULENIA (1978): „PRZEGLĄD WAJDA: re-wizje”","kino-alternatywy":"BEZ ZNIECZULENIA (1978) | PRZEGLĄD WAJDA: re-wizje"}}}
+{"text":"BEZ ZNIECZULENIA (1978) | „PRZEGLĄD WAJDA: re-wizje”","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA (1978) | \"PRZEGLĄD WAJDA: re-wizje\"","venue":{"bok":"BEZ ZNIECZULENIA (1978): „PRZEGLĄD WAJDA: re-wizje”","kino-alternatywy":"BEZ ZNIECZULENIA (1978) | PRZEGLĄD WAJDA: re-wizje"}}}
 {"text":"BEZ ZNIECZULENIA - DKF","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA"}}
 {"text":"BEZ ZNIECZULENIA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA","venue":{"bok":"BEZ ZNIECZULENIA: WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin"}}}
 {"text":"BEZ ZNIECZULENIA | WAJDA: re-wizje | Przegląd twórczości Andrzeja Wajdy","pl,uk,de,us,es":{"query":"BEZ ZNIECZULENIA","venue":{"bok":"BEZ ZNIECZULENIA: WAJDA: re-wizje: Przegląd twórczości Andrzeja Wajdy"}}}
@@ -4590,7 +4590,7 @@
 {"text":"Dzień objawienia"}
 {"text":"Dzień objawienia ukraiński dubbing","pl,uk,de,us,es":{"query":"Dzień objawienia"}}
 {"text":"Dzień objawienia | Kino przy herbatce","pl,uk,de,us,es":{"query":"Dzień objawienia","venue":{"bok":"Dzień objawienia: Kino przy herbatce"}}}
-{"text":"Dzień objawienia | Seans premierowy w Kosmosie","pl,uk,de,us,es":{"query":"Dzień objawienia","venue":{"bok":"Dzień objawienia: Seans premierowy w Kosmosie"}}}
+{"text":"Dzień objawienia | Seans premierowy w Kosmosie","pl,uk,de,us,es":{"venue":{"bok":"Dzień objawienia: Seans premierowy w Kosmosie"}}}
 {"text":"Dziki Koń Dziewięć"}
 {"text":"Dziki Koń Dziewięć | Kino przy herbatce","pl,uk,de,us,es":{"query":"Dziki Koń Dziewięć","venue":{"bok":"Dziki Koń Dziewięć: Kino przy herbatce"}}}
 {"text":"Dziś nie gramy, wybierz inną datę."}
@@ -8769,7 +8769,7 @@
 {"text":"Lalka - Seans Seniora","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka - The Doll (poln.)"}
 {"text":"Lalka - premiera filmowa","pl,uk,de,us,es":{"query":"Lalka","venue":{"kino-mok-miedzyrzecz":"Lalka - filmowa"}}}
-{"text":"Lalka - seans dla grupy zorg. (SDS)","pl,uk,de,us,es":{"query":"Lalka"}}
+{"text":"Lalka - seans dla grupy zorg. (SDS)"}
 {"text":"Lalka / 2D polski","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka / PL","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka / film polski","pl,uk,de,us,es":{"query":"Lalka"}}
@@ -8931,7 +8931,7 @@
 {"text":"Let the Right One In (Lat den ratte komma in)"}
 {"text":"Lethal Weapon"}
 {"text":"Lethal Weapon 2 - Brennpunkt L.A."}
-{"text":"Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI","pl,uk,de,us,es":{"query":"Letnie przesilenie"}}
+{"text":"Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI"}
 {"text":"Letters from Baghdad"}
 {"text":"Letz Zep + Aerochicks","pl,uk,de,us,es":{"query":"Letz Zep"}}
 {"text":"Leverkusen singt 2027!"}
@@ -9737,7 +9737,7 @@
 {"text":"Małe miłości"}
 {"text":"Mały Kinematograf – Pucio"}
 {"text":"Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz,"}
-{"text":"Mały Kinematograf: premiera animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką","pl,uk,de,us,es":{"query":"Mały Kinematograf","venue":{"kino-alternatywy":"Mały Kinematograf: premiera animacji Kocie obserwacje i spotkanie z reżyserką Aleksandrą Chrapowicką","kino-mok-miedzyrzecz":"Mały Kinematograf: animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką"}}}
+{"text":"Mały Kinematograf: premiera animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką","pl,uk,de,us,es":{"query":"Mały Kinematograf: premiera animacji \"Kocie obserwacje\" i spotkanie z reżyserką Aleksandrą Chrapowicką","venue":{"kino-alternatywy":"Mały Kinematograf: premiera animacji Kocie obserwacje i spotkanie z reżyserką Aleksandrą Chrapowicką","kino-mok-miedzyrzecz":"Mały Kinematograf: animacji „Kocie obserwacje” i spotkanie z reżyserką Aleksandrą Chrapowicką"}}}
 {"text":"Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux (2025)","pl,uk,de,us,es":{"query":"Tajemnica śpiewających ptaków reż. Antoine Lanciaux (2025)","key":"Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux","bannerEnd":43,"venue":{"kino-kinematograf":"Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux"}}}
 {"text":"Mały Książę"}
 {"text":"Mały Książę - KNT","pl,uk,de,us,es":{"venue":{"helios":"Mały Książę"}}}
@@ -10104,7 +10104,7 @@
 {"text":"Monsters, Inc."}
 {"text":"Monstruosa Mía"}
 {"text":"Monterey Pop"}
-{"text":"Monterey Pop - seans przedpremierowy w rocznicę koncertu","pl,uk,de,us,es":{"query":"Monterey Pop","venue":{"kino-apollo":"Monterey Pop"}}}
+{"text":"Monterey Pop - seans przedpremierowy w rocznicę koncertu","pl,uk,de,us,es":{"venue":{"kino-apollo":"Monterey Pop"}}}
 {"text":"Monterey pop"}
 {"text":"Montreal, My Beautiful","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"Montreal"}}}
 {"text":"Monty Python and the Holy Grail"}
@@ -13113,7 +13113,7 @@
 {"text":"RÜCKKEHR NACH ITHAKA"}
 {"text":"RÜCKKEHR ZUM PLANET DER AFFEN"}
 {"text":"RÜCKKEHR ZUM PLANET DER AFFEN?"}
-{"text":"Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios","pl,uk,de,us,es":{"query":"Ród Smoka","venue":{"kino-mok-miedzyrzecz":"Ród Smoka - pierwszego odcinka 3. Sezonu w kinach Helios"}}}
+{"text":"Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios","pl,uk,de,us,es":{"venue":{"kino-mok-miedzyrzecz":"Ród Smoka - pierwszego odcinka 3. Sezonu w kinach Helios"}}}
 {"text":"Róża"}
 {"text":"Róża (2026)","pl,uk,de,us,es":{"key":"Róża","venue":{"kino-kinematograf":"Róża"}}}
 {"text":"Róża (2026) | seans DKF Projekcja","pl,uk,de,us,es":{"query":"Róża (2026)","venue":{"bok":"Róża (2026): seans DKF Projekcja"}}}

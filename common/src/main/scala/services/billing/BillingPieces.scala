@@ -63,6 +63,16 @@ object BillingPieces {
   private val DateOrCount = ("""(?iu)\d{1,4}(?:st|nd|rd|th|\.)?\s+(?:jan|feb|m[aä]r|apr|ma[iy]|jun|jul|aug|sep|o[ck]t|nov|de[cz]|""" +
     """stycz|lut|kwie|czerw|lip|sierp|wrze|pa[źz]dz|listop|grud|ene|abr|ago|dic|stund|std|hour|hr|min|godz|hora)\p{L}*\.?""").r
 
+  /** Does a closing piece name the work it bills — quoted ("premiera animacji „Kocie obserwacje”"), or a screening's or a
+   *  premiere's word opening more than two words, the rest naming what is shown ("Pokaz przedpremierowy PRZEKLEŃSTW
+   *  NIEWINNOŚCI", "premiera pierwszego odcinka 3. Sezonu")? Then it is the work's piece, not a strand's: "Premiera
+   *  Krajowa", "Seans wyprzedany" are not. */
+  private def namesItsOwnWork(piece: String, raw: String): Boolean =
+    QuoteMark.pattern.matcher(piece).find() ||
+      OpensOnEvent.pattern.matcher(piece).find() && piece.trim.split("\\s+").count(_.exists(_.isLetter)) > 2
+  private val QuoteMark    = "[\"„“”«»]".r
+  private val OpensOnEvent = """(?iu)^[\s"'„“”]*(?:pokaz|seans|premiera|przedpremiera|screening|preview|vorpremiere)(?![\p{L}\p{N}])""".r
+
   /** The [[Delimiter]]s that cut the billing itself: none inside a bracket or a quotation, nor a clock's colon ("19:45"). */
   private def cuts(raw: String): IndexedSeq[(Int, Int)] = {
     val found = Delimiter.matcher(raw)
@@ -95,7 +105,8 @@ object BillingPieces {
     while (first <= last && namesAStrand(raw.substring(from, at(first)._1), StrandWord) && namesAWork(raw.substring(at(first)._2, to))) {
       from = at(first)._2; first += 1
     }
-    while (last >= first && namesAStrand(raw.substring(at(last)._2, to), OpensOnStrand) && namesAWork(raw.substring(from, at(last)._1))) {
+    while (last >= first && namesAStrand(raw.substring(at(last)._2, to), OpensOnStrand) && !namesItsOwnWork(raw.substring(at(last)._2, to), raw) &&
+           namesAWork(raw.substring(from, at(last)._1))) {
       to = at(last)._1; last -= 1
     }
     (from, to)

@@ -131,7 +131,10 @@ The 99 rows "BillingParse reads in full" could not retire while the lookup query
   club and a closing piece opening on one, each cut at the billing's own delimiter (colon, pipe, spaced dash or slash;
   none inside a bracket or a quotation, nor a clock's colon) and only while a work's title is left (a word of three
   letters, not a day or a running time, not a programme's slot or a festival's own part: "Opening Night", "Shorts
-  Social"). A strand is named by the words of the new `strand` concept in `title-words.tsv` (kino, klub, DKF, cykl,
+  Social"), and no closing piece naming what it shows: quoted ("premiera animacji „Kocie obserwacje”") or a screening's
+  or a premiere's word opening more than two words ("Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI", "premiera
+  pierwszego odcinka 3. Sezonu"; this guard came after the first push, when `SearchQueryMarkersSpec` saw those
+  allowlisted billings lose their film to the strand's name: Main #738). A strand is named by the words of the new `strand` concept in `title-words.tsv` (kino, klub, DKF, cykl,
   przegląd, festiwal*, seniora, poranki, klasyka, pokaz, seans, premiera, film club, film festival, screening,
   preview, friendly, Filmclub, Vorpremiere, ciclo, cineclub, …): grammar data, not a rule per banner. A piece holding a
   stage house's, a relay's or a house banner's word, or a season ("RBO Kino Saison 2026-27"), is the relay's and is
@@ -150,7 +153,7 @@ The 99 rows "BillingParse reads in full" could not retire while the lookup query
   nothing; as a query cut they lose the title. A credit inside the title ("reż. …") is already peeled at intake
   (`TitleFacts`). Not landed.
 
-**Golden diff** (`TitleRulesGoldenSpec`, regenerated): 355 billings, 338 queries, 307 banner boundaries, 447 programme
+**Golden diff** (`TitleRulesGoldenSpec`, regenerated): 472 billings, 331 queries, 307 banner boundaries, 447 programme
 banners, every one listed in `2026-10-22-parser-query-golden-diff.tsv`. Mostly strands no rule knew ("Kino Kaarst: Das
 gewisse Etwas", "Japanese Film Club: Linda Linda Linda", "Festiwal Pięć Smaków: Morze żółte", "Tony | Kino Dostępne",
 "Senior Screening: Tenzing"). The e2e snapshots moved with it (6 cards' casing or lookup title, one card re-keyed,

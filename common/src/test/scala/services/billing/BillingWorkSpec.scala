@@ -22,7 +22,7 @@ class BillingWorkSpec extends AnyFlatSpec with Matchers {
     // a strand's piece closing the billing, opening on the strand's word
     work("Tony | Kino Dostępne") shouldBe "Tony"
     work("Solo Mio - Kino für Junggebliebene") shouldBe "Solo Mio"
-    work("Lalka - seans dla grupy zorg. (SDS)") shouldBe "Lalka"
+    work("Lalka - seans wyprzedany") shouldBe "Lalka"
     // banners stacked one after another
     work("Kino Konesera: DKF Kropka: Lalka") shouldBe "Lalka"
   }
@@ -40,6 +40,9 @@ class BillingWorkSpec extends AnyFlatSpec with Matchers {
     work("Godzilla Minus Zero IMAX (specjalny przedpremierowy pokaz nocny) - Event Projekt") shouldBe
       "Godzilla Minus Zero IMAX (specjalny przedpremierowy pokaz nocny) - Event Projekt"
     work("Spatzenkino: Tierisches Fest") shouldBe "Spatzenkino: Tierisches Fest"
+    // a closing piece naming the work it premieres, quoted or after a screening's or a premiere's words, is the work's
+    work("Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI") shouldBe "Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI"
+    work("Mały Kinematograf: premiera animacji „Kocie obserwacje”") shouldBe "Mały Kinematograf: premiera animacji „Kocie obserwacje”"
     work("Dune: Part Three Originalversion EARLY FAN PREVIEW") shouldBe "Dune: Part Three Originalversion EARLY FAN PREVIEW"
     // a delimiter inside a bracket or a quotation, or a clock's colon, cuts nothing
     work("Lalka (seans dostępny: audiodeskrypcja)") shouldBe "Lalka (seans dostępny: audiodeskrypcja)"
