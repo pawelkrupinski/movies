@@ -120,7 +120,10 @@ private[identity] object CandidateGeneration {
    *  listing's facts and counted as a rival like any other: what IMDb's title alone may do is `Acceptance.imdbSuggested`'s
    *  titled rung. */
   final case class Reach(search: Map[Int, Int], walk: Set[Int], directed: Set[Int], soleResults: Set[Int], imdbSuggested: Seq[Int],
-                         imdbTitled: Map[Int, Set[String]]) {
+                         imdbTitled: Map[Int, Set[String]], soleQueries: Map[Int, Set[String]] = Map.empty) {
+    /** The films that were the only result of a title search other than those `excluded` names. */
+    def soleResultsBeside(excluded: String => Boolean): Set[Int] =
+      soleQueries.collect { case (id, texts) if texts.exists(text => !excluded(text)) => id }.toSet
     /** The films only IMDb's suggestions reached — no title search and no director walk. */
     lazy val imdbOnly: Set[Int] = imdbSuggested.toSet -- search.keySet -- directed
   }
@@ -132,7 +135,11 @@ private[identity] object CandidateGeneration {
         queries.filter(isTitle).flatMap(query => answer(query).toOption.map(_.map(_.tmdbId).distinct)).collect { case Seq(id) => id }.toSet,
         queries.collect { case query: CandidateQuery.Imdb => answered(query).map(_.tmdbId) }.flatten.distinct,
         queries.collect { case query @ CandidateQuery.ImdbTitled(title) => answered(query).map(_.tmdbId).filterNot(FallbackIds.isFallback).map(_ -> title) }
-          .flatten.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
+          .flatten.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap,
+        queries.collect { case query @ CandidateQuery.Title(text) => answered(query).map(_.tmdbId).distinct match {
+          case Seq(id) => Some(id -> text)
+          case _       => None
+        } }.flatten.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
     }
   }
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */

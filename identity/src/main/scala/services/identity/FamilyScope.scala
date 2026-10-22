@@ -245,10 +245,24 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
+      val soles   = soleResultsOf(evidenceOf(node).measured, reached)
       score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
         id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet).map(placedByImdb(Seq(node)))
-        .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
+        .map(scored => if (soles(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
+
+  /** The films that were the only result of one of `listing`'s title searches ([[Acceptance]]'s `sole-result`) — but for
+   *  a billing naming no house, not of a search of its work beside a season ([[StageRelays.stageWorkQueries]]): those put
+   *  the season's records in its pool for the broadcast join to tell apart by its days ([[agreement.Broadcast]]), and one
+   *  record titled with that year is no answer to which house's staging a bare work is. UK Empire Halstead's "Carmen"
+   *  [215′] and Riverside Woodbridge's "Carmen (2026)" screen the RBO 2026/27 relay on its day, 10 November 2026; "Carmen
+   *  de Bizet 2026" found only Salzburg's festival Carmen, which they took. */
+  private def soleResultsOf(listing: IdentityMeasures.Listing, reached: CandidateGeneration.Reach): Set[Int] =
+    if (RelayStage.searchedInItsSeason(listing)) reached.soleResults
+    else {
+      val seasonSearches = StageRelays.stageWorkQueries(listing).map(_.trim).toSet
+      if (seasonSearches.isEmpty) reached.soleResults else reached.soleResultsBeside(seasonSearches)
+    }
 
   /** What `node` is taken by ALONE, with the rule ([[Acceptance.aloneNamed]]) — once per node for this scope's life:
    *  every round of `Families.grow` keeping the scope asks again, and so do the decisions, each node's trace for
