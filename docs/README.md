@@ -48,6 +48,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [proposals/2026-10-21-matching-fundamentals.md](proposals/2026-10-21-matching-fundamentals.md) — where the
   identity error budget is (recall, mostly relays), what was measured and rejected (title-word event gate, hard
   runtime/date constraints), and the five approved changes; scripts in `scripts/experiments/matching-fundamentals/`.
+- [investigations/2026-10-22-rule-consolidation.md](investigations/2026-10-22-rule-consolidation.md) — the title
+  rules moved into one table (`title-rules.tsv`): the inventory by effect, prod firings and BillingParse overlap, the
+  byte-identity checks, which row merges fold alike (2) and which change stacked titles (23, for review), never-fired rows.
 - [synopsis-resolution/investigation.md](synopsis-resolution/investigation.md) — June 2026 investigation of
   synopsis-based resolution; frozen inputs in [synopsis-resolution/archive/](synopsis-resolution/archive/README.md).
 - `venue-maps/*.tsv` — venue-map data read by `data/us/scripts/generate_amc_map.py` and the UK clients (data, not prose).
