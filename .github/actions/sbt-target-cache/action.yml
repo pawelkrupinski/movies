@@ -23,6 +23,12 @@ inputs:
     description: "'true' to restore without saving (a job whose compile must not become the family's entry)."
     required: false
     default: 'false'
+  exact-hit-is-current:
+    description: >-
+      'true' where an EXACT key hit is an entry this same job saved from these very sources: the key hashes every Scala
+      source the job compiles and no other job writes the family. Such an entry needs no exporter invalidation (below).
+    required: false
+    default: 'false'
   save-only:
     description: >-
       'true' to save what this job compiled under `key` NOW, restoring nothing -- a second family from one job, beside
@@ -33,6 +39,7 @@ runs:
   using: composite
   steps:
     - if: inputs.restore-only != 'true' && inputs.save-only != 'true'
+      id: cache
       uses: actions/cache@v5
       with:
         path: |
@@ -43,6 +50,7 @@ runs:
         key: ${{ inputs.key }}
         restore-keys: ${{ inputs.restore-keys }}
     - if: inputs.restore-only == 'true' && inputs.save-only != 'true'
+      id: restore
       uses: actions/cache/restore@v5
       with:
         path: |
@@ -55,7 +63,13 @@ runs:
     # zinc misses one change in a restored build: a member added to an object another source `export X.*`s leaves the
     # exporter's class without its forwarder (Main #226, an entry from an older commit). Recompiling the few wildcard
     # exporters, seconds, keeps the incremental build correct; on every restore, since not every key hashes every source.
-    - if: inputs.save-only != 'true'
+    # EXCEPT an exact hit on a caller's `exact-hit-is-current` key: that entry was compiled from these same sources, so
+    # nothing in it is stale -- and the invalidation's own recompile (IdentityMeasures, CachingReviewSource and the two
+    # review specs, plus what zinc re-checks behind them) was the whole of every Main row's 7-26 s compile on a push
+    # that changed no Scala (runs 1216, 1244: ~150 row-seconds a run). (SharedSbtBuildSetupSpec)
+    - if: >-
+        inputs.save-only != 'true' && !(inputs.exact-hit-is-current == 'true'
+        && (steps.cache.outputs.cache-hit == 'true' || steps.restore.outputs.cache-hit == 'true'))
       shell: bash
       run: scripts/ci/sbt-invalidate-exporters.sh
     # The same path list as above, or the entry's version would differ and no restore could read it.

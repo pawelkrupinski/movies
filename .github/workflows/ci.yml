@@ -257,18 +257,28 @@ jobs:
               run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
 
             # The JDK, sbt and the build cache (.github/actions/setup-sbt-build). Warm zinc state
-            # across pushes so an unchanged push is near-instant, in the `sbt-target-` family
-            # `integration-test` shares. The exact key is scoped to the sources this job compiles
-            # (unit = every module's main + test, not the action's default it scope) and to the row:
-            # each row compiles only its own modules' tests, so a shared entry would hand one row
-            # the other's half and recompile its own. Each row falls back to its own newest entry,
-            # then to any recent sbt-target entry, to keep zinc warm on a miss.
+            # across pushes so an unchanged push is near-instant. The exact key is scoped to the sources
+            # this job compiles (unit = every module's main + test, not the action's default it scope)
+            # and to the row: each row compiles only its own modules' tests, so a shared entry would hand
+            # one row the other's half and recompile its own. Each row falls back to its own newest entry,
+            # then to integration-test's (every module's main + test + it, a superset), then to any.
+            #
+            # THE ROW BEFORE THE OS, and its own family beside the shared `sbt-target-<os>-` one, so no
+            # prefix is another's: `sbt-target-<os>-unit-worker-` also matched `-unit-worker-identity-` and
+            # `-unit-worker-scripts-`, whose rows never compile web, and `sbt-target-<os>-` (integration-
+            # test's) matched every unit row's. Whichever finished last won the fallback: `test (worker)`
+            # recompiled web's 232 sources and 214 specs (2-5 min), and both integration rows those plus
+            # 147 it sources (~1.5-2 min each), on 4 of 11 Main runs to 2026-10-22 (1192, 1194, 1308, 1322).
+            # A family only this row writes, from a key hashing all it compiles: an exact hit needs no
+            # exporter invalidation (`target-cache-exact-hit-is-current`). (SharedSbtBuildSetupSpec)
             - uses: ./.github/actions/setup-sbt-build
               with:
-                  target-cache-key: sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-key: sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
                   target-cache-restore-keys: |
-                      sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-
+                      sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-
+                      sbt-target-it-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
+                  target-cache-exact-hit-is-current: 'true'
 
             - name: The script self-tests passed
               if: matrix.shard == 'worker-identity'
@@ -518,9 +528,19 @@ jobs:
                   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
                   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-            # it scope (every module's main + test + it): the action's default `sbt-target-` key,
-            # falling back to that family's newest entry to keep zinc warm.
+            # it scope (every module's main + test + it), in a family of its own: the action's default
+            # `sbt-target-<os>-` family is also every dispatched identity workflow's, whose entries compile
+            # less, and its prefix matched the unit rows' entries too (see `test`). Falls back to the unit
+            # `worker` row's (web and worker main + test), then to any. Both rows compile the same scope,
+            # so an exact hit is this commit's compile and skips the exporter invalidation.
             - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-key: sbt-target-it-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-restore-keys: |
+                      sbt-target-it-${{ runner.os }}-
+                      sbt-target-unit-worker-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+                  target-cache-exact-hit-is-current: 'true'
 
             # scripts/identity-slice drops this checkout's tool files into every ref it slices; they must compile
             # into old code too (83b869548 broke every older ref). A real sbt compile of c2974e3aa, seeded from this
@@ -653,6 +673,8 @@ jobs:
                   target-cache-restore-keys: |
                       sbt-target-e2e-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
+                  # Only these shards write the family, from a key over every source they compile.
+                  target-cache-exact-hit-is-current: 'true'
 
             - run: sbt ${{ matrix.cmd }}
               env:

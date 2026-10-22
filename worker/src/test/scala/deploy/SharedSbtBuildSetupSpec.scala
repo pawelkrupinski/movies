@@ -51,20 +51,26 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("scripts/identity-refit") should include("-Xmx${IDENTITY_REFIT_HEAP:-12g}")
   }
 
-  /** Moving onto the action kept each job's cache entry: the shared family where the job compiled the it scope
-   *  (the action's default key), and its own key where it had one. The unit job, split into two rows since,
-   *  keys each row's entry apart inside the shared family (`-unit-<row>-`): a row compiles only its own modules'
-   *  tests, so one shared entry would hand each row the other's half. */
-  "Main's sbt jobs" should "keep the build cache keys they had before the trio was shared" in {
+  /** Each Main sbt job keys a family of its own: a row compiles only its own modules' tests, so one shared entry
+   *  would hand each row the other's half. NO FAMILY'S PREFIX IS ANOTHER'S: the unit rows once keyed
+   *  `sbt-target-<os>-unit-<row>-` and integration-test the action's default `sbt-target-<os>-`, so `-unit-worker-`
+   *  fell back to the `worker-identity`/`worker-scripts` rows' entries (no web classes) and the default prefix to any
+   *  unit row's (no it classes): 232 + 214 + 147 sources recompiled per row on 4 of 11 Main runs to 2026-10-22. */
+  "Main's sbt jobs" should "key a build-cache family each, no prefix of another's" in {
     val ci = RepoFile.read(".github/workflows/ci.yml")
     val unit = RepoFile.jobs(ci)("test")
-    unit should include("target-cache-key: sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}")
-    unit should include("sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-\n")
+    unit should include("target-cache-key: sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}")
+    unit should include("sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-\n")
     unit should include("sbt-target-${{ runner.os }}-\n")
+    unit should not include "sbt-target-${{ runner.os }}-unit-"
+    unit should include("target-cache-exact-hit-is-current: 'true'")
     val android = RepoFile.jobs(ci)("mobile-local-server")
     android should include("java-version: 21")
     android should include("target-cache-key: sbt-target-android-ls-${{ runner.os }}-")
-    RepoFile.jobs(ci)("integration-test") should not include "target-cache-key"
+    val integration = RepoFile.jobs(ci)("integration-test")
+    integration should include("target-cache-key: sbt-target-it-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}")
+    integration should include("sbt-target-it-${{ runner.os }}-\n")
+    integration should include("target-cache-exact-hit-is-current: 'true'")
     val e2e = RepoFile.jobs(ci)("e2e")
     e2e should include("target-cache-key: sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
     e2e.indexOf("id: sbt-key") should be < e2e.indexOf("uses: ./.github/actions/setup-sbt-build")
@@ -81,5 +87,17 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   "a caller's own target-cache key" should "fall back only to the prefixes it names, never the shared family" in {
     RepoFile.read(Action) should include(
       "restore-keys: ${{ inputs.target-cache-key == '' && format('sbt-target-{0}-', runner.os) || inputs.target-cache-restore-keys }}")
+  }
+
+  /** The exporter invalidation recompiles a few sources (and what zinc re-checks behind them) on every restore: 7-26 s
+   *  of each Main row on a push that changed no Scala. An exact hit skips it only where the caller vouches the entry is
+   *  this commit's own compile, never by default. */
+  "an exact build-cache hit" should "skip the exporter invalidation only where the caller opts in" in {
+    val cache = RepoFile.read(".github/actions/sbt-target-cache/action.yml")
+    cache should include("default: 'false'")
+    cache should include("inputs.exact-hit-is-current == 'true'")
+    cache should include("steps.cache.outputs.cache-hit == 'true'")
+    cache should include("run: scripts/ci/sbt-invalidate-exporters.sh")
+    RepoFile.read(Action) should include("exact-hit-is-current: ${{ inputs.target-cache-exact-hit-is-current }}")
   }
 }

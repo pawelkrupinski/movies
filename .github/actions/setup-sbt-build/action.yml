@@ -30,6 +30,12 @@ inputs:
     description: Fallback prefixes for a `target-cache-key` of the caller's own, one per line.
     required: false
     default: ''
+  target-cache-exact-hit-is-current:
+    description: >-
+      'true' where an exact hit on `target-cache-key` is an entry this job saved from these same sources, so it skips
+      the exporter invalidation (sbt-target-cache's `exact-hit-is-current`).
+    required: false
+    default: 'false'
   target-cache-restore-only:
     description: "'true' to restore the build cache without saving it."
     required: false
@@ -72,3 +78,4 @@ runs:
         key: ${{ inputs.target-cache-key != '' && inputs.target-cache-key || format('sbt-target-{0}-{1}', runner.os, hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**')) }}
         restore-keys: ${{ inputs.target-cache-key == '' && format('sbt-target-{0}-', runner.os) || inputs.target-cache-restore-keys }}
         restore-only: ${{ inputs.target-cache-restore-only }}
+        exact-hit-is-current: ${{ inputs.target-cache-exact-hit-is-current }}
