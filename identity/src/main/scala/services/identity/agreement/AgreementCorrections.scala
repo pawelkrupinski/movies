@@ -94,8 +94,17 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     val posterQs = mutable.Set.empty[AgreementStage.PosterQuestion]
     val finding  = mutable.Set.empty[String]
     val dating   = mutable.Set.empty[Int]
-    def named(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
-    def title(id: Int) = named(id).fold(s"tmdb $id")(_.titled)
+    // a search or a record TMDB has not answered yet decides nothing: the correction is read again, not kept as final —
+    // kept, a take decided while the model's own record or its candidates' searches were gaps stood uncorrected until its
+    // listings moved or a deploy read it again (UK Chichester's "The Ties That Bind Us", identity-slice --drift on 573)
+    val blindBefore = blindReads
+    def record(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
+    def named(id: Int) = {
+      val found = record(id)
+      if (found.isEmpty && tmdb.fold(venues.film(id))(_.film(id)) == Answer.Unknown) blindReads += 1
+      found
+    }
+    def title(id: Int) = record(id).fold(s"tmdb $id")(_.titled)
     // a relay screening years after its record's broadcast, months after a newer record of its title: no production
     // the take can be, whatever else is read
     def superseded(film: IdentityMeasures.Film) =
@@ -148,7 +157,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     // a record waited on is read when its read is filed ([[AgreementStage.recordReadId]])
     val read  = (reads.keysIterator ++ gaps.iterator.map { case (family, question) => s"${family.label}|$question" } ++
       posterQs.iterator.map(PosterAnswers.idOf) ++ dating.iterator.map(AgreementStage.recordReadId)).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
-    (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), scala.collection.immutable.ArraySeq.unsafeWrapArray(read), waits.isDefined), waits)
+    (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), scala.collection.immutable.ArraySeq.unsafeWrapArray(read), waits.isDefined || blindReads != blindBefore), waits)
   }
 
   /** The candidate a venue poster matches against the model's take ([[PosterEvidence.veto]]) — read first against the

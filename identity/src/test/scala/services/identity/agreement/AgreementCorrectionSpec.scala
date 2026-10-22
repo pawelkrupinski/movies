@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, ScreeningDays}
+import services.identity.{Answer, CandidateQuery, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
 /** The model's own takes on their way to the projection, read against the evidence that can contradict them
@@ -123,6 +123,39 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val second = decided(s, version = 3)
     second.basis shouldBe ResolverDecision.Basis.Corrected
     decided(s, version = 3) should be theSameInstanceAs second
+  }
+
+  it should "decide again once TMDB answers the take's record it could not read, though no family answer was filed" in {
+    // UK Chichester's "The Ties That Bind Us" (identity-slice --drift, recording 573): read while the model's own record was
+    // a gap, the correction found nothing, was kept as final and stood after the record was filed — until a deploy
+    var answered = false
+    val lookups = new ForwardingIdentityLookups(table()) {
+      override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (id == 1001 && !answered) Answer.Unknown else super.film(id)
+    }
+    val s = new AgreementStage(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(Set.empty), posters = hasPoster, tmdb = Some(lookups))
+    decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
+    answered = true
+    // the model re-resolves the family the record was filed for: a new decision object, the same take, nothing filed
+    val again = model.copy(decisions = model.decisions.map(d => d.copy()(d.trace)))
+    val taken = s.apply(again, listingOf, version = 1).decisions.head
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
+  }
+
+  it should "decide again once TMDB answers the title searches whose films a venue poster is read against" in {
+    // the same, the record answered but the searches not: no candidate to read the venue poster against, so no veto —
+    // the take stood as the model's, kept as final (the 2026-10-22 seed-2 replay of "The Ties That Bind Us")
+    var answered = false
+    val lookups = new ForwardingIdentityLookups(table()) {
+      override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = if (!answered) Answer.Unknown else super.candidates(query)
+    }
+    val s = new AgreementStage(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(Set.empty), posters = hasPoster, tmdb = Some(lookups))
+    decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
+    answered = true
+    val again = model.copy(decisions = model.decisions.map(d => d.copy()(d.trace)))
+    val taken = s.apply(again, listingOf, version = 1).decisions.head
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
   }
 
   it should "be trusted as stored after a restart, reading no answer, and read afresh only a few takes an apply" in {

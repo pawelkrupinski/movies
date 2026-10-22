@@ -10,6 +10,10 @@ import scala.collection.mutable
  *  join reads.
  *  Part of [[AgreementStage]], which mixes it in: it reads and writes the stage's own state. */
 private[agreement] trait AgreementCandidates { this: AgreementStage =>
+  /** How many reads of TMDB's answers met one not answered yet — a search, a record — since the stage was made: a
+   *  correction that met one decided on what it could read, and is read again rather than kept ([[correctionOf]]). The
+   *  stage applies on one thread at a time (`apply` is synchronized). */
+  private[agreement] var blindReads = 0L
   /** The listing as the model measures it, its venue's detail page read: what the broadcast join reads. */
   private[agreement] def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
   /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
@@ -105,11 +109,15 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   /** The TMDB films the cluster's own evidence reaches, none denied — read once per listings' digest; none, read again
    *  once something is filed (another `version`), while a TMDB question of theirs has no answer. */
   private[agreement] def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] =
-    candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying)).map(_.films).getOrElse {
+    candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying)).map { kept =>
+      if (kept.blindAt.isDefined) blindReads += 1
+      kept.films
+    }.getOrElse {
       var blind = false
       val films = tmdb.fold(Seq.empty[Int]) { lookups =>
         val found = searchedFilms(listings, lookups)
         blind = found.isEmpty
+        if (blind) blindReads += 1
         found.getOrElse(Nil)
       }
       // read blind — a search with no answer — it is kept only while nothing is filed: the digest does not move when TMDB
@@ -128,6 +136,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
       val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(Evidence.of(listing, None).measured)).distinct
         .flatMap(text => Seq(CandidateQuery.Title(text), CandidateQuery.ImdbTitled(text)))
       val found = queries.map(lookups.candidates)
+      if (found.contains(Answer.Unknown)) blindReads += 1
       if (found.contains(Answer.Unknown) && !answeredOnly) Nil
       else found.flatMap(_.toOption.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).distinct.sorted
     }
