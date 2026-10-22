@@ -1,6 +1,5 @@
 package services.identity
 
-import services.billing.Credits
 import services.movies.TitleContainment
 
 import IdentityMeasures.*
@@ -34,25 +33,13 @@ private[identity] object SearchMeasures {
   }
   private val AnniversarySuffix = """(?i)\s*[-–—:]?\s*\(?\d{1,3}(?:st|nd|rd|th)\s+anniversary\)?\s*$""".r
   private val PossessiveCredit  = """^\p{Lu}[\p{L}.-]*(?:\s+[\p{L}.-]+){1,3}['’]s\s+(?=\S)""".r
-  /** `title` without the author's credit closing it ([[Credits.authorCredited]], the billing grammar's: "Fallen Angels by
-   *  Noël Coward", "Die Physiker von Friedrich Dürrenmatt", "Wesele autorstwa Stanisława Wyspiańskiego"), when it has one
-   *  and a title is left. A name of one word, or not capitalised, is the title's own: "Stand by Me", "Death by Chocolate",
-   *  Polish "Żyć by tańczyć". A name after an accompaniment's word credits the musician, not the work's author: DE
-   *  Kinostar Arthaus Heilbronn's "THE GENERAL - Stummfilm mit Klavierbegleitung von Andreas Benz" is "The General" still.
-   *  Only a credit CLOSING the title: one a bracket follows ("On Screen: Fallen Angels by Noel Coward (15)") leaves the
-   *  title whole, as the English reader did (UK Lowther Pavilion lost its take of the capture otherwise, run 1057).
-   *  Allocates nothing on a title holding no authorship word. */
+  /** An author's credit closing a title: a lower-case "by" and a name of two to four capitalised words ("Fallen Angels by
+   *  Noël Coward", "Swan Lake by Matthew Bourne"). One word after it, or a word not capitalised, is the title's own:
+   *  "Stand by Me", "Death by Chocolate", Polish "Żyć by tańczyć". */
+  private val AuthorCredit = """\s+by\s+\p{Lu}[\p{L}.'’-]*(?:\s+\p{Lu}[\p{L}.'’-]*){1,3}\s*$""".r
+  /** `title` without the author's credit closing it, when it has one and a title is left. */
   private[identity] def creditedWork(title: String): Option[String] =
-    Credits.authorCredited(title).filter(credit => title.trim.endsWith(credit.person)).map(_.work)
-      .filter(work => work.exists(_.isLetter) && !creditsAnAccompanist(work))
-  /** Does the work end on an accompaniment's word ("Klavierbegleitung", "live music", "akompaniament"): the name after
-   *  it plays the score. */
-  private def creditsAnAccompanist(work: String): Boolean = {
-    val last = work.substring(work.lastIndexWhere(c => !c.isLetter) + 1).toLowerCase(java.util.Locale.ROOT)
-    AccompanimentWords.exists(last.endsWith)
-  }
-  private val AccompanimentWords = Seq("begleitung", "musik", "music", "accompaniment", "akompaniament", "akompaniamentem",
-    "score", "vertonung")
+    AuthorCredit.findFirstMatchIn(title).map(m => title.take(m.start).trim).filter(_.exists(_.isLetter))
 
   /** A spaced slash joining two titles of one standing ("Barwy ochronne / Camouflage"): neither piece is a banner. */
   private val SlashJoin = """\s+/{1,2}\s+""".r
