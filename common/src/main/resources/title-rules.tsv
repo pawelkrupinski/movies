@@ -25,7 +25,14 @@
 # ORDER IS MEANING: each tier (banner+query, key+name) and each venue folds its rows top to bottom, each on the last
 # one's output. A row placed above another runs first.
 
-#### GlobalStructural ####
+# ═══ The lookup tier: banner + query rows (TitleRuleSet.structural, the external search's query) ═══════════════════
+# NOT in the merge key: a decoration or programme edition keys by its own form, so the screening keeps its own row
+# ("Kino bez barier: …" stays apart from the film) while its query finds the film's ratings and poster. The seed's
+# programme, accessibility and event strips fold first, then the "+ <event>" strip, the Cykl banner, the slash and
+# decoration suffixes; every later row after them. A GlobalStructural decoration MERGE ("<film> /Kino Cafe" onto the
+# film) does not belong here — it does not change the merge key, so the stale and the base row collide on hydration —
+# it is a venue row. A generic "<anything>: <film>" banner never does either: it amputates real titles ("Rocky IV:
+# Ostateczna walka"); each banner here is anchored to its own words.
 search-programme-prefix	banner			seed	banner		(?i)^(?:Kino\s+bez\s+barier|Pokaz\s+sensorycznie\s+przyjazny|Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|Zimowe\s+Poranki(?:\s+[^:]+)?|Poranek\s+dla\s+dzieci|Filmowy\s+Klub\s+Seniora|Dyskusyjny\s+Klub\s+Filmowy|Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|Cinema\s+Italia\s+Oggi|Plenerowe\s+Pa[łl]acowe):\s+		Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki…)
 search-spotkanie-banner-prefix	query			seed	event		(?i)^(?:Filmowe\s+)?spotkani\p{L}*[^:]*:\s*		'Spotkanie/Spotkania …:' meeting-cycle banner prefix: 'SPOTKANIA FILOZOFICZNE: Wędrówka na północ', 'FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Ojczyzna'. Anchored at start so a film with its own colon (SMOK (…). Trzy kolory: Czerwony) is left alone.
 search-accessibility-tag	query			seed	audience		(?i)\s*\(\s*AD\b[^)]*\)?\s*$		Trailing accessibility tag: (AD), (AD + CC + PJM)
@@ -843,7 +850,12 @@ xtra-code-after-format-tag	query				format		(?iu)\s+[23]d\s+(?:pl|pol|dub\.?|dub
 xtra-premiera-lowercase-suffix	query				event		(?u)(?<=[\p{L}\p{N}])\s+premiera\s*$		'<film> premiera' bare lower-case premiere note (Centrum 3D Kalisz: Mity greckie i Odyseja)
 # decoration-discovery: proposals are inserted above this line
 
-#### Canonical ####
+# ═══ The merge-key tier: key + name rows (TitleRuleSet.canonical, folded into `sanitize`'s key) ══════════════════════
+# These COLLAPSE spellings of one film into one row, so they change what is stored: a lower-case "Gwiezdne wojny:"
+# prefix, the English title, a festival tag, a trailing year or language note. Only the REWRITING rows (a replacement)
+# reach the display spelling (TitleRuleSet.spellingUnified); a strip reaching it would leave a banner-only title empty.
+# A rewrite that writes words names its countries: an unscoped Polish rewrite pins a German row to a key no German
+# slot can produce.
 canonical-gwiezdne-wojny	key			seed	rename		^Gwiezdne Wojny: 		Strip the 'Gwiezdne Wojny: ' franchise prefix
 canonical-ampersand-to-i	key		pl	all,seed	rename		 & 	 i 	Unify ' & ' and ' i ' spellings — POLISH ONLY ('i' = 'and')
 # The "Federico Fellini: ciao a tutti!" retrospective decoration, stripped at
@@ -948,3 +960,133 @@ xtra-canonical-nt-live	name				relay		(?iu)^(?:(?:NT|National\s+Theatre)\s+Live|
 #    (its "LIVE VIEWING" piece finds every K-pop live viewing), and the director's filmography weighs every city's
 #    record alike: the other city's, crediting him, won. One tour, one title.
 xtra-canonical-bts-world-tour	name				relay		(?iu)^BTS\s+(['‘’][^'‘’]+['‘’])\s+IN\s+(\S.*)$	BTS WORLD TOUR $1 IN $2	'BTS '<tour>' IN <city>[: LIVE VIEWING]' — the tour's title as TMDB and the other venues bill it
+
+# ═══ The venue tier: venue rows (TitleRuleSet.perCinema, at ingest: display title and merge key) ══════════════════
+# Venue junk too narrow to be global, keyed by the venue's TitleRuleKey (a chain shares one). No implicit trim: the
+# venues whose legacy cleanTitle trimmed carry a trim row; the others (Cinema City, Multikino, Pałacowe, Apollo,
+# Helios) never did. Format tags are not venue rows: ScraperParse/FormatTags peel them for every portal.
+
+# ── bok ──
+# BoK (both venues) — normalise nbsp+whitespace, drop a trailing ALL-CAPS
+# promo tag, rewrite remaining "|" separators to ": ".
+bok-ws	venue	bok		all,seed	junk		[\s ]+	 	BoK whitespace + nbsp collapse
+bok-promo	venue	bok		seed	venue		\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$		BoK trailing ALL-CAPS promo tag
+bok-pipe-to-colon	venue	bok		all,seed	venue		\s*\|\s*	: 	BoK programme-banner '|' → ': '
+bok-trim	venue	bok		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+
+# ── cinema-city ──
+# Cinema City (chain) — "X - powrót do kin" re-release suffix. The
+# "Ladies Night - X" and "Kolekcja Mamoru Hosody: X" banners are now GLOBAL
+# GlobalStructural rules (ExtraTitleRules xtra-pp-ladies-night /
+# xtra-pp-mamoru-hosody): query-only, so the decorated screening keeps its
+# own row instead of folding into the base film.
+cc-powrot-do-kin	venue	cinema-city		seed	venue		 - powrót do kin$		Cinema City re-release suffix
+
+# ── cyfrowe-kino ──
+xtra-cyfrowe-premiera	venue	cyfrowe-kino			event		(?i)^Premiera!\s+		Cyfrowe Kino 'Premiera! <film>' prefix
+
+# ── helios ──
+helios-suffix-1	venue	helios		seed	format		 w Helios RePlay$		Helios 'w Helios RePlay' tag
+helios-suffix-2	venue	helios		seed	format		 w Helios Anime$		Helios 'w Helios Anime' tag
+helios-suffix-3	venue	helios		seed	format		 w Helios na Scenie$		Helios 'w Helios na Scenie' tag
+helios-suffix-4	venue	helios		seed	format		 w HnS$		Helios 'w HnS' tag
+helios-suffix-5	venue	helios		seed	format		 - Salon Kultury Helios$		Helios '- Salon Kultury Helios' tag
+helios-suffix-6	venue	helios		seed	format		 - KNTJ$		Helios '- KNTJ' tag
+helios-suffix-7	venue	helios		seed	format		 - KNT$		Helios '- KNT' tag
+helios-suffix-8	venue	helios		seed	format		 - Kino Konesera$		Helios '- Kino Konesera' tag
+helios-suffix-9	venue	helios		seed	format		 - seanse z konkursami HDD$		Helios '- seanse z konkursami HDD' tag
+helios-suffix-10	venue	helios		seed	format		 - Event projekt$		Helios '- Event projekt' tag
+helios-suffix-11	venue	helios		seed	format		 - dubbing$		Helios '- dubbing' tag
+helios-suffix-12	venue	helios		seed	format		 - Dubbing$		Helios '- Dubbing' tag
+helios-suffix-13	venue	helios		seed	format		 - napisy$		Helios '- napisy' tag
+helios-suffix-14	venue	helios		seed	format		 - NAP$		Helios '- NAP' tag
+helios-suffix-15	venue	helios		seed	format		 - DUB$		Helios '- DUB' tag
+helios-suffix-16	venue	helios		seed	format		 - AF$		Helios '- AF' tag
+# "<film> w Helios na Scenie" — Helios brands its own event screenings in the LISTING
+# title, a spelling no other cinema uses. Its merge key is the problem: Cinema City's
+# detail page gives the plain "GHOST: 2 Big To Rig", both spellings resolve to tmdbId
+# 1693400, and with two keys the staging fold collapsed the decorated row into the
+# clean one on EVERY scrape — 31 slots rewritten per pass, which stopped the Polish leg
+# converging once per-film detail was fetched. So it comes off at ingest, where it
+# changes the key; scoped to the chain's key (every Helios venue shares `helios`,
+# `TitleRuleKey`), not a global Canonical fold of a name only Helios bills. The seed's
+# `helios-suffix-3` takes the exact " w Helios na Scenie"; this takes any case and spacing.
+xtra-helios-na-scenie	venue	helios			venue		(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$		'<film> w Helios na Scenie' Helios event-branding suffix, any case — merge-key fold
+
+# ── kino-alternatywy ──
+# Kino Alternatywy — drop "Okładka" prefix + typographic quotes, collapse ws.
+alt-okladka	venue	kino-alternatywy		seed	junk		(?i)^okładka\s*		Kino Alternatywy 'Okładka' cover prefix
+alt-quotes	venue	kino-alternatywy		all,seed	junk		[„“”‟"]	 	Kino Alternatywy typographic quote marks → space
+alt-collapse-ws	venue	kino-alternatywy		all,seed	junk		\s+	 	Kino Alternatywy whitespace collapse
+kino-alternatywy-trim	venue	kino-alternatywy		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+
+# ── kino-apollo ──
+# Kino Apollo — pre-premiere suffix. The "DZIEŃ DZIECKA W APOLLO -" kids'-day
+# banner is now global (ExtraTitleRules xtra-pp-dzien-dziecka-w-kinie):
+# query-only, the screening keeps its own row.
+apollo-przedpremierowy	venue	kino-apollo		seed	event		 - seans przedpremierowy\b.*$		Kino Apollo pre-premiere suffix (+ any trailing words, e.g. 'w rocznicę koncertu')
+
+# ── kino-bajka ──
+xtra-bajka-sps	venue	kino-bajka			format		(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+SPS\s*$		Kino Bajka '… 2D DUB. SPS' screening-code suffix (Toy Story 5, Vaiana)
+
+# ── kino-bajka-kluczbork ──
+# Kluczbork brands its whole programme 'KLAPS / <cycle>: <film>'. Stripped HERE, in
+# the per-cinema tier, and not as a global banner rule: the seed
+# 'structural-slash-suffix' ('<film> / <decoration>') fires before anything in this
+# file — `all` stamps every extra order 100+, after the whole seed set — and on this
+# INVERTED shape it keeps the banner and throws the film away, so a global rule
+# never sees a title to strip. The per-cinema tier runs at ingest, before the
+# structural fold, so it gets there first. Leaves 'Kino Kobiet: <film>' for
+# xtra-pp-kino-kobiet-prefix above, which keeps the programme its own row.
+xtra-bajka-kluczbork-klaps	venue	kino-bajka-kluczbork			venue		(?iu)^KLAPS\s*/\s*		Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)
+
+# ── kino-farys ──
+xtra-farys-tot-story	venue	kino-farys			venue		(?i)^Tot\s+story\s+5$	Toy Story 5	Kino Farys source typo 'Tot story 5' → 'Toy Story 5'
+
+# ── kino-kijow ──
+xtra-kijow-napisy-pl	venue	kino-kijow			format		(?iu)\s+(?:UA|UKR)?\s*Napisy\s+PL\s*$		Kino Kijów '… [UA/UKR] Napisy PL' subtitle suffix (Diabeł …Prady 2, Mawka, On drive)
+
+# ── kino-kinematograf ──
+# Kinematograf Łódź — director + release-year suffixes the museum appends (a "reż. …" credit comes off at intake: TitleFacts).
+kinematograf-director	venue	kino-kinematograf		seed	venue		,\s+\p{Lu}\S+\s+\p{Lu}\S+$		Kinematograf bare ', Firstname Lastname' director suffix
+kinematograf-year	venue	kino-kinematograf		seed	venue		\s*\(\d{4}\)\s*$		Kinematograf trailing ' (YYYY)' suffix
+kino-kinematograf-trim	venue	kino-kinematograf		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+
+# ── kino-mok-miedzyrzecz ──
+xtra-mok-miedzyrzecz-premiera	venue	kino-mok-miedzyrzecz			event		(?i)\s+premiera(?=\s|$)		MOK Międzyrzecz '<film> PREMIERA [2D napisy]' premiere word (its client re-cases it) ahead of the format tag (Lalka, Witajcie w Hope)
+
+# ── kino-muza ──
+# Multikino's "Kino na obcasach: X" / "Kolekcja Mamoru Hosody: X" banners are
+# likewise global now (ExtraTitleRules xtra-pp-kino-na-obcasach /
+# xtra-pp-mamoru-hosody) — no remaining Multikino per-cinema rule.
+# Kino Muza — "X | najlepsze z najgorszych" recurring-programme suffix.
+muza-najlepsze-z-najgorszych	venue	kino-muza		seed	venue		(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$		Kino Muza 'najlepsze z najgorszych' programme suffix
+kino-muza-trim	venue	kino-muza		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+
+# ── kino-na-starowce ──
+xtra-starowce-akcja-lato	venue	kino-na-starowce			venue	jun-sep	(?i)\s*(?:[-–—]\s*)?(?:film\s+)?akcja\s+lato\s+w\s+kinie\s*$		Na Starówce '… [- film] akcja lato w kinie' campaign suffix (Toy Story 5, Vaiana)
+
+# ── kino-oskard ──
+# Shared-portal venues, cleaned via the owning client's Cinema.slug:
+#   Oskard → Bilety24Client, Stary Młyn → Bilety24OrganizerClient,
+#   Na Starówce + Farys → SystemBiletowyClient.
+xtra-oskard-kino-cafe	venue	kino-oskard			venue		(?i)\s*/\s*(?:dubbing\s*/\s*)?Kino\s+Cafe\s*$		Kino Oskard '… /Kino Cafe' (and '/dubbing/Kino Cafe') venue suffix (Following, Robin Hood, Drugie życie, Supergirl, Toy Story 5)
+
+# ── kino-palacowe ──
+# Kino Pałacowe — Wajda retrospective prefix. The "Poranek dla dzieci:" and
+# "DKF Zamek:" banners are already covered GLOBALLY (the ProgrammePrefixPattern
+# 'Poranek dla dzieci' entry above + ExtraTitleRules xtra-pp-dkf-named), so the
+# per-cinema seeds are dropped: query-only, the screening keeps its own row.
+palacowe-wajda	venue	kino-palacowe		seed	retrospective		^WAJDA: re-wizje\. 		Kino Pałacowe Wajda retrospective prefix
+
+# ── kino-stary-mlyn ──
+xtra-starymlyn-sensoryczny	venue	kino-stary-mlyn			audience		(?i)\s+sensoryczny\s*$		Kino Stary Młyn '… sensoryczny' sensory-screening suffix (Toy Story 5)
+
+# ── wybrzeze ──
+# Kino Wybrzeże (Kołobrzeg) appends its own venue name to every listing
+# ("Dzień objawienia-kino wybrzeże" / all-caps in the raw), which sanitises
+# to a different key and splits the film off its canonical row. Strip the
+# trailing "-kino wybrzeże" (any case) so it keys like every other cinema.
+# `(?iu)` not `(?i)`: Unicode case folding so the all-caps raw "…WYBRZEŻE"
+# folds (plain `(?i)` is ASCII-only and won't match Ż↔ż).
+wybrzeze-venue-suffix	venue	wybrzeze		seed	venue		(?iu)\s*-\s*kino\s+wybrzeże\s*$		Kino Wybrzeże trailing venue-name suffix

@@ -1,118 +1,13 @@
 package services.titlerules
 
-import RuleScope._
-
-/** The baseline rule set — every formerly-hardcoded `TitleNormalizer` regex,
- *  transcribed verbatim and tagged with the tier it ran in. Loaded at class-load
- *  as part of the combined `TitleRules.all ++ ExtraTitleRules.all` set.
+/** The baseline rule set — every formerly-hardcoded `TitleNormalizer` regex, transcribed verbatim: the rows of the
+ *  title-rule table ([[TitleRuleTable]]) flagged `seed`.
  *
- *  `ProdTitlesNormalizationSpec` pins this set byte-for-byte against the pre-rules
- *  code on a prod-title snapshot. New normalisation behaviour goes in `ExtraTitleRules`.
- *
- *  Per-cinema rules (the old per-client `cleanTitle`) are added in a later step;
- *  at this baseline the per-cinema tier is empty and clients still clean inline. */
+ *  `ProdTitlesNormalizationSpec` pins this set byte-for-byte against the pre-rules code on a prod-title snapshot. New
+ *  normalisation behaviour goes in new rows, never in a seed row. */
 object TitleRules {
 
-  // ── per-cinema tier — migrated from each client's `cleanTitle` ─────────────
-  // Keyed by `TitleRuleKey.of(cinema)`. A chain shares one key across its venues.
-  // As each client's inline `cleanTitle` is removed, its rules land here.
-  private val perCinema: Seq[TitleRule] = Seq(
-    // Cinema City (chain) — "X - powrót do kin" re-release suffix. The
-    // "Ladies Night - X" and "Kolekcja Mamoru Hosody: X" banners are now GLOBAL
-    // GlobalStructural rules (ExtraTitleRules xtra-pp-ladies-night /
-    // xtra-pp-mamoru-hosody): query-only, so the decorated screening keeps its
-    // own row instead of folding into the base film.
-    TitleRule("cc-powrot-do-kin", PerCinema, Some("cinema-city"),
-      " - powrót do kin$", "", applyAll = false, order = 20,
-      note = Some("Cinema City re-release suffix")),
-    // Multikino's "Kino na obcasach: X" / "Kolekcja Mamoru Hosody: X" banners are
-    // likewise global now (ExtraTitleRules xtra-pp-kino-na-obcasach /
-    // xtra-pp-mamoru-hosody) — no remaining Multikino per-cinema rule.
-    // Kino Muza — "X | najlepsze z najgorszych" recurring-programme suffix.
-    TitleRule("muza-najlepsze-z-najgorszych", PerCinema, Some("kino-muza"),
-      """(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$""", "", applyAll = false, order = 10,
-      note = Some("Kino Muza 'najlepsze z najgorszych' programme suffix")),
-    // Kino Alternatywy — drop "Okładka" prefix + typographic quotes, collapse ws.
-    TitleRule("alt-okladka", PerCinema, Some("kino-alternatywy"),
-      """(?i)^okładka\s*""", "", applyAll = false, order = 10,
-      note = Some("Kino Alternatywy 'Okładka' cover prefix")),
-    TitleRule("alt-quotes", PerCinema, Some("kino-alternatywy"),
-      """[„“”‟"]""", " ", applyAll = true, order = 20,
-      note = Some("Kino Alternatywy typographic quote marks → space")),
-    TitleRule("alt-collapse-ws", PerCinema, Some("kino-alternatywy"),
-      """\s+""", " ", applyAll = true, order = 30,
-      note = Some("Kino Alternatywy whitespace collapse")),
-    // Kino Pałacowe — Wajda retrospective prefix. The "Poranek dla dzieci:" and
-    // "DKF Zamek:" banners are already covered GLOBALLY (the ProgrammePrefixPattern
-    // 'Poranek dla dzieci' entry above + ExtraTitleRules xtra-pp-dkf-named), so the
-    // per-cinema seeds are dropped: query-only, the screening keeps its own row.
-    TitleRule("palacowe-wajda", PerCinema, Some("kino-palacowe"),
-      """^WAJDA: re-wizje\. """, "", applyAll = false, order = 30,
-      note = Some("Kino Pałacowe Wajda retrospective prefix")),
-    // Kinematograf Łódź — director + release-year suffixes the museum appends (a "reż. …" credit comes off at intake: TitleFacts).
-    TitleRule("kinematograf-director", PerCinema, Some("kino-kinematograf"),
-      """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""", "", applyAll = false, order = 20,
-      note = Some("Kinematograf bare ', Firstname Lastname' director suffix")),
-    TitleRule("kinematograf-year", PerCinema, Some("kino-kinematograf"),
-      """\s*\(\d{4}\)\s*$""", "", applyAll = false, order = 30,
-      note = Some("Kinematograf trailing ' (YYYY)' suffix")),
-    // BoK (both venues) — normalise nbsp+whitespace, drop a trailing ALL-CAPS
-    // promo tag, rewrite remaining "|" separators to ": ".
-    TitleRule("bok-ws", PerCinema, Some("bok"),
-      """[\s ]+""", " ", applyAll = true, order = 10,
-      note = Some("BoK whitespace + nbsp collapse")),
-    TitleRule("bok-promo", PerCinema, Some("bok"),
-      """\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$""", "", applyAll = false, order = 20,
-      note = Some("BoK trailing ALL-CAPS promo tag")),
-    TitleRule("bok-pipe-to-colon", PerCinema, Some("bok"),
-      """\s*\|\s*""", ": ", applyAll = true, order = 30,
-      note = Some("BoK programme-banner '|' → ': '")),
-    // Kino Apollo — pre-premiere suffix. The "DZIEŃ DZIECKA W APOLLO -" kids'-day
-    // banner is now global (ExtraTitleRules xtra-pp-dzien-dziecka-w-kinie):
-    // query-only, the screening keeps its own row.
-    TitleRule("apollo-przedpremierowy", PerCinema, Some("kino-apollo"),
-      """ - seans przedpremierowy\b.*$""", "", applyAll = false, order = 20,
-      note = Some("Kino Apollo pre-premiere suffix (+ any trailing words, e.g. 'w rocznicę koncertu')")),
-    // Kino Wybrzeże (Kołobrzeg) appends its own venue name to every listing
-    // ("Dzień objawienia-kino wybrzeże" / all-caps in the raw), which sanitises
-    // to a different key and splits the film off its canonical row. Strip the
-    // trailing "-kino wybrzeże" (any case) so it keys like every other cinema.
-    // `(?iu)` not `(?i)`: Unicode case folding so the all-caps raw "…WYBRZEŻE"
-    // folds (plain `(?i)` is ASCII-only and won't match Ż↔ż).
-    TitleRule("wybrzeze-venue-suffix", PerCinema, Some("wybrzeze"),
-      """(?iu)\s*-\s*kino\s+wybrzeże\s*$""", "", applyAll = false, order = 10,
-      note = Some("Kino Wybrzeże trailing venue-name suffix"))
-    // MSI format-tag stripping is NOT a per-cinema rule: it's a cross-client
-    // concern shared across the portal clients via FormatTags.stripFormatTags.
-  )
-
-  // Helios (chain) — ordered event/format suffix tags peeled off the end. Order
-  // matters (matches HeliosNuxt's foldLeft): the event-source tag is peeled so a
-  // preceding dubbing/napisy tag becomes the new suffix in the same pass. None of
-  // these contain regex metacharacters, so `<suffix>$` is a safe literal match.
-  // (The "- Kino Kobiet" ladies'-programme tag is now a GLOBAL query-only strip —
-  // ExtraTitleRules xtra-kino-kobiet-suffix — so it keeps its own row.)
-  private val heliosSuffixes = Seq(
-    " w Helios RePlay", " w Helios Anime", " w Helios na Scenie", " w HnS",
-    " - Salon Kultury Helios", " - KNTJ", " - KNT",
-    " - Kino Konesera", " - seanse z konkursami HDD", " - Event projekt",
-    " - dubbing", " - Dubbing", " - napisy", " - NAP", " - DUB", " - AF")
-  private val heliosRules: Seq[TitleRule] = heliosSuffixes.zipWithIndex.map { case (sfx, i) =>
-    TitleRule(s"helios-suffix-${i + 1}", PerCinema, Some("helios"),
-      sfx + "$", "", applyAll = false, order = (i + 1) * 10,
-      note = Some(s"Helios '${sfx.trim}' tag"))
-  }
-
-  // Clients whose legacy cleanTitle ended with `.trim`. The others (Cinema City,
-  // Multikino, Kino Pałacowe, Kino Apollo, Helios) deliberately did NOT trim, so
-  // they get no trim rule and trailing whitespace is preserved as before.
-  private val trimmingCinemas = Seq("kino-muza", "kino-alternatywy", "kino-kinematograf", "bok")
-  private val trimRules: Seq[TitleRule] = trimmingCinemas.map { key =>
-    TitleRule(s"$key-trim", PerCinema, Some(key), """^\s+|\s+$""", "", applyAll = true, order = 1000,
-      note = Some("Trim leading/trailing whitespace"))
-  }
-
-  val all: Seq[TitleRule] = TitleRuleTable.rows.filter(_.seed).map(_.rule) ++ perCinema ++ heliosRules ++ trimRules
+  val all: Seq[TitleRule] = TitleRuleTable.rows.filter(_.seed).map(_.rule)
 
   val ruleSet: TitleRuleSet = TitleRuleSet(all)
 }
