@@ -109,7 +109,8 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val nutcracker2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026)), Some(2))
     acceptance.byRule("relay-record")(ranked(gorleston, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
     // its venue states no year: the one its title closes on dates the relay (recording 573)
-    acceptance.byRule("relay-record")(ranked(gorleston.copy(year = None), season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
+    val gorlestonAsBilled = Listing("RBO: THE NUTCRACKER 2026", searchTitles = Seq("Royal Ballet & Opera: THE NUTCRACKER 2026"), screeningsSeason = Some(2026))
+    acceptance.byRule("relay-record")(ranked(gorlestonAsBilled, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
     // a record of its screenings' season aired on a day it screens is the broadcast, whatever older year its title dates
     // the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)" (1 December 2026, recording 573) is the 2026/27
     // relay aired 29 November -- 112 Flicks venues bill it "RBO Cinema Season 2026-27: The Nutcracker (2025)"

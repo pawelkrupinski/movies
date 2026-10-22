@@ -47,7 +47,7 @@ private[identity] object RelayStage {
     val l = camelSplit(listing)
     if (!l.billsAStageHouse) None
     else {
-      val works   = unencored(l).billedStageWorks
+      val works   = unencored(unclosed(l)).billedStageWorks
       val stated  = l.year.orElse(StageRelays.bannerYear(l)).orElse(closingYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
       val dated   = if (billsAnEncore(l)) l.performanceYear else l.titleYear.orElse(stated)
       // an encore dating no performance airs one of its screenings' season or the season before, as a season's record is
@@ -100,6 +100,12 @@ private[identity] object RelayStage {
   private val ClosingYear = """(?<![\p{N}/–—-])(20\d{2})\s*$""".r
   /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
    *  (1 December 2026) dates the 2026/27 relay by it. Read only where it is not before its screenings' season ([[of]]). */
+  /** The listing with the year its titles close on cut off, its work read before it: "THE NUTCRACKER 2026" bills "THE
+   *  NUTCRACKER". */
+  private def unclosed(l: Listing): Listing = {
+    def cut(title: String) = ClosingYear.replaceFirstIn(title.trim, "").trim
+    if (closingYear(l).isEmpty) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
+  }
   private def closingYear(l: Listing): Option[Int] =
     l.ownTitles.flatMap(title => ClosingYear.findFirstMatchIn(title.trim).map(_.group(1).toInt)).distinct match {
       case Seq(one) => Some(one)
