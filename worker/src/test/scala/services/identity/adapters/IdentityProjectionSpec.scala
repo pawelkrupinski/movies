@@ -567,6 +567,28 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.takes should have size 3
   }
 
+  "A projection whose model decides a listing on answers not known yet" should "keep the take it held until they are in (GapHold)" in {
+    // DE "Rose": a deploy's new questions unanswered, the model moved Metropol's billing to Babayan's film, and back once filed
+    var take       = Option(501)
+    var unanswered = 0
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
+        val film = if (d.members.head.rawTitle == "Lalka") take else None
+        ResolverDecision(d.members, film, 0.9, if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.BelowThreshold,
+          Seq("why"), unanswered = if (d.members.head.rawTitle == "Lalka") unanswered else 0)()
+      }))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
+    w.scrape(programme)
+    w.projection.tick()
+    take = Some(601); unanswered = 2
+    w.projection.tick()
+    w.takes shouldBe empty   // held on 501 while two of its questions are unanswered
+    unanswered = 0
+    w.projection.tick()
+    w.takes.map(t => (t.listing.rawTitle, t.before, t.after)).distinct shouldBe Seq(("Lalka", Some(501), Some(601)))   // answered: it moves
+  }
+
   /** A move the store declines is retried by the next projection: counted once, when it is written, not on every try. */
   it should "count a take change only once its film is written" in {
     var takes   = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))

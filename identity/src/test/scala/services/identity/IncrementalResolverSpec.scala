@@ -162,6 +162,26 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
       IdentityResolver.Mutation.None))
   }
 
+  it should "name the listings it decided on an answer not known yet, and none once every answer is in" in {
+    val c = GeneratedIdentityCorpus.generate(Seeds.head, normalizer, films = 12, listings = 48)
+    // every question answered (a gap read as no answer), and the films' records gaps until `answered`
+    var answered = false
+    val known = new ForwardingIdentityLookups(c.lookups) {
+      override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = super.candidates(query).orElse(Answer.Known(Nil))
+      override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+        if (answered) super.film(tmdbId).orElse(Answer.Known(None)) else Answer.Unknown
+      override def detail(listing: Listing): Answer[Option[DetailFacts]] = super.detail(listing).orElse(Answer.Known(None))
+    }
+    val model = new IncrementalResolver(known, normalizer, calibration, decorations = TitleDecorations.None)
+    model.batch(seen = c.listings)
+    model.blind should not be empty
+    // the records filed, as the fill files them: the families that read them decide again
+    answered = true
+    model.batch(answered = AnswersChanged(model.gaps.queries, model.gaps.films))
+    model.reResolve(c.listings.map(_.key))
+    model.blind shouldBe empty
+  }
+
   it should "decide as a whole resolve when a full build splits the corpus into small batches" in {
     val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
       .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily
