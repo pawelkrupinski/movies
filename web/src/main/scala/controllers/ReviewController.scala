@@ -134,8 +134,32 @@ class ReviewController(cc: ControllerComponents,
         case None             => NotFound(s"no cluster $cluster in $country")
         case Some((c, found)) =>
           Try(sources(c).traces(found.members.map(services.movies.ListingKey.serialised))) match {
-            case Success(traces) => Ok(views.html.reviewWhy(found.members.map(k => k -> traces.get(services.movies.ListingKey.serialised(k)))))
+            case Success(traces) => Ok(views.html.reviewWhy(found.members.map(k => k -> traces.get(services.movies.ListingKey.serialised(k))), Some(c)))
             case Failure(e)      => InternalServerError(s"could not read identity_traces: ${e.getMessage}")
+          }
+      }
+    }
+  }
+
+  /** One production listing explained ([[ListingExplain]]): its take, where its take history is, the latest decision
+   *  trace, its judgements and its cluster on these pages — the listings `venue` (every venue when left out) bills as
+   *  `title` exactly, else those whose title contains it to pick from. */
+  def listing(country: String, venue: Option[String], title: String): Action[AnyContent] = Action {
+    devOnly {
+      val wantedVenue = venue.map(_.trim).filter(_.nonEmpty)
+      Country.byCode(country).filter(sources.contains) match {
+        case None    => NotFound(s"no mirror holds country $country")
+        case Some(c) =>
+          Try(sources(c).decisions(unmatchedOnly = false)) match {
+            case Failure(e)         => InternalServerError(s"could not read identity_model_families: ${e.getMessage}")
+            case Success(decisions) =>
+              val keys     = if (title.isEmpty) Nil else ListingExplain.find(decisions, wantedVenue, title)
+              val labels   = readLabels()
+              val explains = keys.map(ListingExplain.build(c, _, sources(c), labels._1))
+              val near     = if (keys.isEmpty && title.nonEmpty) ListingExplain.near(decisions, wantedVenue, title) else Nil
+              val said     = Option.when(title.nonEmpty && keys.isEmpty && near.isEmpty)(s"no listing in ${c.code} is billed as “$title”")
+              Ok(views.html.reviewListing(ListingExplainView(c, wantedVenue, title, explains, near, said.toSeq ++ labels._2 ++ notices)))
+                .withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
           }
       }
     }
@@ -218,6 +242,12 @@ final case class ReviewView(page: ReviewPage, country: String, cards: Seq[Review
     val query  = base.map(_._1).flatMap(k => merged.get(k).flatten.map(v => s"$k=${java.net.URLEncoder.encode(v, "UTF-8")}"))
     ReviewView.pathOf(page) + (if (query.isEmpty) "" else query.mkString("?", "&", ""))
   }
+}
+
+/** Everything `reviewListing.scala.html` renders: the query, each listing it names explained, or the listings near it. */
+final case class ListingExplainView(countryOf: Country, venue: Option[String], title: String, explains: Seq[ListingExplain],
+                                    near: Seq[services.movies.ListingKey], notices: Seq[String]) {
+  def country: String = countryOf.code
 }
 
 object ReviewView {

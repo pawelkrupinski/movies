@@ -144,6 +144,9 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
             k -> java.net.URLDecoder.decode(v, StandardCharsets.UTF_8) }.toMap
           contentAsString(sample.why(query("country"), query("cluster"))(FakeRequest()))
+        case "/sample/listing"        =>
+          val rise = ProdReviewSample.traces("kinowo_uk").find(_.listing.rawTitle == "Rise Fly Fishing Film Tour").get.listing
+          contentAsString(sample.listing("uk", Some(rise.venue), rise.rawTitle)(FakeRequest()))
         case "/sample/review"         => contentAsString(sample.queue(Some("all"), 200, false)(FakeRequest()))
         case "/sample/review/matchable" => contentAsString(sample.matchable(Some("all"), 0.0, None, 200, false)(FakeRequest()))
         case "/sample/review/recent"    => contentAsString(sample.recent(Some("all"), 24 * 365, 200, false)(FakeRequest()))
@@ -536,6 +539,21 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString("document.querySelector('.controls').textContent") should include ("Vetoed")
       page.eval("document.querySelector('.card button[data-verdict=wrong]').click()")
       page.waitFor("document.querySelector('.card').getAttribute('data-answered') === 'wrong'")
+    }
+  }
+
+  "a listing's explain page" should "render in the review pages' design, whole at a phone's width" in {
+    onPage("/sample/listing") { page =>
+      page.evalString("getComputedStyle(document.querySelector('.card.listing')).borderRadius") shouldBe "10px"
+      page.evalString("getComputedStyle(document.querySelector('.explain h1')).fontFamily") should include("Archivo")
+      // one column: the sections stack, the title is not squeezed beside them
+      page.evalString("getComputedStyle(document.querySelector('.card.listing')).gridTemplateColumns").split(" ").length shouldBe 1
+      page.evalInt("document.querySelectorAll('.card.listing table tr').length") should be >= 3
+      page.evalString("document.querySelector('pre.logsql').textContent") should include("identity take change")
+      ReviewPageSpec.save(page, "review-listing-desktop.png")
+      page.setViewport(400, 900)
+      page.evalBool("document.documentElement.scrollWidth <= window.innerWidth") shouldBe true
+      ReviewPageSpec.save(page, "review-listing-mobile.png")
     }
   }
 }

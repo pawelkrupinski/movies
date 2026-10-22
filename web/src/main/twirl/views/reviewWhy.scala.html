@@ -1,9 +1,10 @@
 @import services.review.ListingReasons
-@(members: Seq[(services.movies.ListingKey, Option[services.identity.ListingTrace])])
-@* One card's "Why" fold-out body, fetched when it is opened: each member listing's trace, whole. *@
+@(members: Seq[(services.movies.ListingKey, Option[services.identity.ListingTrace])], explainIn: Option[models.Country] = None)
+@* One card's "Why" fold-out body, fetched when it is opened: each member listing's trace, whole — each linked to its
+   listing's explain page when `explainIn` names the country. *@
 @for((key, trace) <- members) {
   <div class="trace">
-    <div class="who">@key.venue · @key.rawTitle</div>
+    <div class="who">@key.venue · @key.rawTitle@for(c <- explainIn){ · <a class="explain" href="@services.review.ListingExplain.path(c, key)">explain</a>}</div>
     @trace match {
       case None => {<div class="s muted">no trace of this listing in identity_traces</div>}
       case Some(t) => {
