@@ -3833,7 +3833,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 72,
       "title": "Identity drift — live takes against a whole resolve, nightly",
       "description": "`kinowo_worker_identity_drift_listings{kind}`: listings whose live film the last nightly drift check (IdentityDriftCheck, 01:00-06:00 local) found a whole resolve of the same listings — the model's resolve and a fresh agreement stage, nothing kept — takes otherwise, by what adopting it would do (lost, gained, changed); 0 when incremental = whole. `kinowo_worker_identity_drift_unsettled`: listings the whole resolve left waiting on an answer, not compared. `kinowo_worker_identity_drift_checked_timestamp_seconds`: when the check last ran (drawn as hours since). Each drifted listing is an `identity drift:` line in VictoriaLogs with the take-change fields. `IdentityIncrementalDrift` alerts at 5.",
       "type": "timeseries",
@@ -3845,7 +3845,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 377
+        "y": 385
       },
       "fieldConfig": {
         "defaults": {

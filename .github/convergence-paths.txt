@@ -78,6 +78,9 @@ scripts/ci/recording_health.py
 # The identity takes check every hermetic convergence row runs after its suite: the scripts, and the judgements
 # that accept a move and that the suspect gate reads (an acceptance re-runs the lane, which turns the check green again).
 scripts/ci/identity-takes-check.sh
+# the incremental = whole gate beside it, and the allow-list it reads
+scripts/ci/identity-drift-check.sh
+test/resources/fixtures/identity-drift-allow.tsv
 scripts/ci/identity_takes_diff.py
 scripts/ci/identity_takes.py
 scripts/ci/corpus_shape_diff.py

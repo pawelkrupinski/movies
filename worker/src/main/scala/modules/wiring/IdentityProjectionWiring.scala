@@ -137,8 +137,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  a check timed from boot would never come round on a worker deployed several times a day. */
   lazy val identityDriftSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-drift-check-tick", () => {
-      if (IdentityProjectionWiring.offPeak(clock, country.zone) &&
-          scheduledRunStore.claim(s"identity-drift-check:${java.time.LocalDate.now(clock.withZone(country.zone))}")) identityDriftCheck.run()
+      val venueClock = new models.VenueClock(clock)
+      if (IdentityProjectionWiring.offPeak(venueClock, country.zone) &&
+          scheduledRunStore.claim(s"identity-drift-check:${venueClock.today(country.zone)}")) identityDriftCheck.run()
       ()
     }, IdentityProjectionWiring.DriftTick, IdentityProjectionWiring.DriftTick, scheduledRunStore, clock))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
@@ -222,8 +223,8 @@ object IdentityProjectionWiring {
   /** How often the drift check's tick asks whether tonight's check is due. */
   val DriftTick: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(1, "hour")
   /** The country's night, when the drift check runs: past the evening's scrapes, before the morning's (01:00–06:00). */
-  def offPeak(clock: java.time.Clock, zone: java.time.ZoneId): Boolean = {
-    val hour = java.time.LocalTime.now(clock.withZone(zone)).getHour
+  def offPeak(clock: models.VenueClock, zone: java.time.ZoneId): Boolean = {
+    val hour = clock.now(zone).getHour
     hour >= 1 && hour < 6
   }
   /** The countries whose titles Filmweb indexes well enough to vote (signal-combination experiment §9). */
