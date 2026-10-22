@@ -32,6 +32,12 @@ inputs:
       disk. Only for a leg whose heap leaves the room (scripts/ci/start-mongo-replset.sh).
     required: false
     default: ''
+  mongo-cache-gb:
+    description: >-
+      mongod's --wiredTigerCacheSizeGB. 2 by default; lower where its data is on a tmpfs beside a large heap, since
+      a tmpfs is already RAM and the cache only keeps decompressed pages over it.
+    required: false
+    default: '2'
   hermetic-pair:
     description: >-
       `<corpus run> <recorded at> <tree asset> [fill asset...]` — a pair a red leg already resolved, so
@@ -121,7 +127,7 @@ runs:
           MONGO_TMPFS: ${{ inputs.mongo-tmpfs }}
           DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
           DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
-      run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start mongo-start "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
+      run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start mongo-start "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB ${{ inputs.mongo-cache-gb || 2 }}'
 
     # A RECORDING leg's tunnel to prod Mongo relays through `socat`, which the runner image lacks:
     # an `apt-get update` and install that took 9-17 s of every recording's critical path inside

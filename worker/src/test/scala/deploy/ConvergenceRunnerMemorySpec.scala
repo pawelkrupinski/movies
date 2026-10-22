@@ -40,7 +40,11 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
   private def gigabytes(pattern: String, text: String): Seq[Int] =
     pattern.r.findAllMatchIn(text).map(_.group(1).toInt).toSeq
 
-  private lazy val wiredTigerGb: Seq[Int] = gigabytes("""--wiredTigerCacheSizeGB\s+(\d+)""", setup)
+  /** The cache a row names (`mongo-cache-gb`), else the setup's fallback (`--wiredTigerCacheSizeGB ${{ inputs.mongo-cache-gb || 2 }}`). */
+  private lazy val defaultCacheGb: Seq[Int] =
+    gigabytes("""--wiredTigerCacheSizeGB\s+\$\{\{\s*inputs\.mongo-cache-gb\s*\|\|\s*(\d+)\s*}}""", setup)
+  private def cacheGb(row: Map[String, String]): Int = row.get("mongo-cache-gb").map(_.toInt).getOrElse(defaultCacheGb.max)
+  private lazy val wiredTigerGb: Seq[Int] = defaultCacheGb ++ callers.flatMap(RepoFile.matrixRows).map(cacheGb)
   private lazy val heapGb: Seq[Int] = callers.flatMap(gigabytes("""heap:\s*(\d+)g""", _))
 
   "the convergence runner" should "cap mongod's WiredTiger cache rather than let it size for the whole box" in {
@@ -50,12 +54,15 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "leave the largest country's heap, the cache and the overhead inside the runner" in {
-    val heap  = heapGb.max
-    val cache = wiredTigerGb.max
-    withClue(s"heap ${heap}g + WiredTiger ${cache}g + ${OverheadGb}g overhead must fit ${RunnerGb}g; " +
-             "raise one and something else has to give:\n") {
-      heap + cache + OverheadGb should be <= RunnerGb
+  it should "leave each country's heap, its cache and the overhead inside the runner" in {
+    heapGb should not be empty
+    callers.flatMap(RepoFile.matrixRows).foreach { row =>
+      val heap  = row("heap").stripSuffix("g").toInt
+      val cache = cacheGb(row)
+      withClue(s"${row("country")}: heap ${heap}g + WiredTiger ${cache}g + ${OverheadGb}g overhead must fit ${RunnerGb}g; " +
+               "raise one and something else has to give:\n") {
+        heap + cache + OverheadGb should be <= RunnerGb
+      }
     }
   }
 
@@ -74,8 +81,8 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
     held.foreach { row =>
       val heap  = row("heap").stripSuffix("g").toInt
       val tmpfs = row("mongo-tmpfs").stripSuffix("g").toInt
-      withClue(s"${row("country")}: heap ${heap}g + tmpfs ${tmpfs}g + WiredTiger ${wiredTigerGb.max}g + ${OverheadGb}g overhead must fit ${RunnerGb}g:\n") {
-        heap + tmpfs + wiredTigerGb.max + OverheadGb should be <= RunnerGb
+      withClue(s"${row("country")}: heap ${heap}g + tmpfs ${tmpfs}g + WiredTiger ${cacheGb(row)}g + ${OverheadGb}g overhead must fit ${RunnerGb}g:\n") {
+        heap + tmpfs + cacheGb(row) + OverheadGb should be <= RunnerGb
       }
     }
   }

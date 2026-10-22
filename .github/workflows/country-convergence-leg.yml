@@ -213,6 +213,12 @@ on:
                 required: false
                 type: string
                 default: ''
+            # mongod's WiredTiger cache: see `convergence-setup`'s input of the same name.
+            mongo-cache-gb:
+                description: mongod's --wiredTigerCacheSizeGB.
+                required: false
+                type: string
+                default: '2'
             # The runner label the leg runs on: how a hand-dispatched run tries another machine (an arm64
             # runner's 4 vCPUs are 4 cores, an x64 one's 2 hyperthreaded) on the lane it would ship to.
             runner:
@@ -353,6 +359,11 @@ jobs:
             statuses: write
         steps:
             - uses: actions/checkout@v5
+            # The job's memory and disk writes from its own cgroup, reported in the row's last step (cgroup-sampler.sh):
+            # what decides whether a country's Mongo fits on a tmpfs beside its heap.
+            - name: Sample the job's memory
+              shell: bash
+              run: scripts/ci/cgroup-sampler.sh start 5
             # Each row resolves the pinned pair here, once, and its suite and
             # any bisect it requests all replay that one (`steps.setup.outputs.hermetic-pair`)
             # even if the recorder pins a new pair while this row is running.
@@ -369,6 +380,7 @@ jobs:
                   # recording leg there replayed "the newest" corpus, never named its own and never pinned (run 408).
                   corpus-run:    ${{ inputs.corpus-run || (inputs.mode == 'record' && github.run_id || '') }}
                   mongo-tmpfs:   ${{ inputs.mongo-tmpfs }}
+                  mongo-cache-gb: ${{ inputs.mongo-cache-gb }}
                   takes:         ${{ startsWith(matrix.phase, 'takes') }}
 
             # A RECORDING leg records its own country's corpus FIRST, in this job — the shape specs
@@ -949,6 +961,11 @@ jobs:
               run: |
                   echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table on the summary"
                   exit 1
+
+            - name: Report the job's memory and disk writes
+              if: always()
+              shell: bash
+              run: scripts/ci/cgroup-sampler.sh report || true
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
             - uses: ./.github/actions/leg-verdict
