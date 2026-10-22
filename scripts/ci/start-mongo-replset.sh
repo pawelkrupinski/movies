@@ -70,9 +70,17 @@ is_primary() { mongosh_eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
 storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
 image=mirror.gcr.io/library/mongo:8.3.11
-if ! docker pull -q "$image"; then
+hub_image=docker.io/library/mongo:8.3.11
+# A DOCKER HUB MIRROR OF THE DAEMON'S OWN comes first: on the Forgejo runners each job's dockerd is
+# pointed at a pull-through cache on the CI host (infra's forgejo-registry-mirror), which serves Docker
+# Hub's name from local disk instead of the 19-27 s internet pull every job made (2026-10-22). Only a
+# Docker Hub name goes through a daemon's mirror; GitHub's runners have none and skip this.
+if [ -n "$(docker info --format '{{range .RegistryConfig.Mirrors}}{{.}} {{end}}' 2>/dev/null)" ] &&
+    docker pull -q "$hub_image"; then
+    image="$hub_image"
+elif ! docker pull -q "$image"; then
     echo "::warning::$image refused the pull; falling back to Docker Hub"
-    image=docker.io/library/mongo:8.3.11
+    image="$hub_image"
     if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
         printf '%s' "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin || true
     fi

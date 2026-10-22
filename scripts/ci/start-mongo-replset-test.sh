@@ -11,13 +11,15 @@ stub_dir="$(mktemp -d)"
 trap 'rm -rf "$stub_dir"' EXIT
 # STUB_MONGO: `healthy` answers ping and reports PRIMARY after rs.initiate; `down` never answers
 # a ping; `secondary` answers but never becomes PRIMARY. STUB_MIRROR=down refuses every pull from
-# mirror.gcr.io. A `login` records what it read on stdin in $STUB_LOGIN.
+# mirror.gcr.io. STUB_DAEMON_MIRROR is the daemon's own Docker Hub mirror (`docker info`), none when
+# empty. A `login` records what it read on stdin in $STUB_LOGIN.
 cat > "$stub_dir/docker" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
 case "$1" in
   run|logs) exit 0 ;;
   pull) [ "${STUB_MIRROR:-up}" = down ] && [[ "$*" == *mirror.gcr.io* ]] && exit 1; exit 0 ;;
+  info) [ -n "${STUB_DAEMON_MIRROR:-}" ] && echo "$STUB_DAEMON_MIRROR"; exit 0 ;;
   login) cat > "$STUB_LOGIN"; exit 0 ;;
 esac
 eval_arg="${*: -1}"
@@ -60,6 +62,10 @@ check "...the token handed over on stdin" "s3cret" "$(cat "$STUB_LOGIN")"
 check "...and never on a command line" "0" "$(grep -c s3cret "$STUB_LOG")"
 check "with no Docker Hub token the fallback still pulls, anonymously" "0" "$(STUB_MIRROR=down start healthy)"
 check "...without a login" "0" "$(grep -c '^login' "$STUB_LOG")"
+check "a daemon with a Docker Hub mirror of its own pulls Docker Hub's name, through that mirror" "1" \
+  "$(STUB_DAEMON_MIRROR=http://forgejo.internal:3012/ start healthy >/dev/null; grep -c -- '^run .* docker.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
+check "...trying no other registry first" "pull -q docker.io/library/mongo:8.3.11" "$(grep '^pull' "$STUB_LOG" | head -1)"
+check "...without logging in to Docker Hub" "0" "$(grep -c '^login' "$STUB_LOG")"
 check "the data directory is on disk by default" "0" "$(start healthy >/dev/null; grep -c -- '--tmpfs' "$STUB_LOG")"
 check "...and on a RAM-backed tmpfs of the size asked for" "1" \
   "$(MONGO_TMPFS=6g start healthy >/dev/null; grep -c -- '^run -d --name mongo --network host --tmpfs /data/db:rw,size=6g mirror.gcr.io/library/mongo:' "$STUB_LOG")"

@@ -42,9 +42,30 @@ runs:
         distribution: temurin
         java-version: ${{ inputs.java-version }}
         cache: sbt
+    # setup-sbt installs the runner; ITS sbt-2 disk cache is off, and restored below under a key of our
+    # own. setup-sbt keys it on the first line of `java -version`, which is the JVM's "Picked up
+    # JAVA_TOOL_OPTIONS: ..." banner wherever that variable is set (every Forgejo container job), so
+    # the key carried it (2026-10-22). Its key also hashed `**/*.sbt`, a walk of every file in the
+    # workspace (~9 s a job). NOTE the build is still sbt 1.x, which writes nothing to ~/.cache/sbt, so
+    # nothing is saved under any key until it moves to sbt 2; the restore is then a cheap miss.
     - uses: sbt/setup-sbt@v1
       with:
-        disk-cache: ${{ inputs.sbt-disk-cache }}
+        disk-cache: 'false'
+    - name: Key the sbt disk cache
+      id: sbt-disk-cache
+      if: inputs.sbt-disk-cache == 'true'
+      shell: bash
+      run: |
+        # The JDK's own version from its release file: no JVM start, no banner.
+        java_version=$(sed -n 's/^JAVA_VERSION="\(.*\)"$/\1/p' "$JAVA_HOME/release")
+        echo "prefix=$RUNNER_OS-$RUNNER_ARCH-java$java_version-sbt-diskcache-" >> "$GITHUB_OUTPUT"
+        echo "monday=$(date -d 'last Monday' +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+    - if: inputs.sbt-disk-cache == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/sbt
+        key: ${{ steps.sbt-disk-cache.outputs.prefix }}${{ steps.sbt-disk-cache.outputs.monday }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties') }}
+        restore-keys: ${{ steps.sbt-disk-cache.outputs.prefix }}
     - if: inputs.target-cache == 'true'
       uses: ./.github/actions/sbt-target-cache
       with:
