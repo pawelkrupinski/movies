@@ -964,7 +964,7 @@ xtra-canonical-bts-world-tour	name				relay		(?iu)^BTS\s+(['‘’][^'‘’]+['
 # ═══ The venue tier: venue rows (TitleRuleSet.perCinema, at ingest: display title and merge key) ══════════════════
 # Venue junk too narrow to be global, keyed by the venue's TitleRuleKey (a chain shares one). No implicit trim: the
 # venues whose legacy cleanTitle trimmed carry a trim row; the others (Cinema City, Multikino, Pałacowe, Apollo,
-# Helios) never did. Format tags are not venue rows: ScraperParse/FormatTags peel them for every portal.
+# Helios) never did. Format tags are not venue rows: FormatTags peels them for every portal.
 
 # ── bok ──
 # BoK (both venues) — normalise nbsp+whitespace, drop a trailing ALL-CAPS
