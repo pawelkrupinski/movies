@@ -108,6 +108,16 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val gorleston  = Listing("RBO: THE NUTCRACKER", rawTitle = Some("RBO: THE NUTCRACKER 2026"), year = Some(2026), screeningsSeason = Some(2026))
     val nutcracker2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026)), Some(2))
     acceptance.byRule("relay-record")(ranked(gorleston, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
+    // a record of its screenings' season aired on a day it screens is the broadcast, whatever older year its title dates
+    // the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)" (1 December 2026, recording 573) is the 2026/27
+    // relay aired 29 November -- 112 Flicks venues bill it "RBO Cinema Season 2026-27: The Nutcracker (2025)"
+    def ilkley(day: Int, month: Int) = Listing("The Royal Ballet: The Nutcracker (2025)", screeningsSeason = Some(2026),
+      airDays = Seq(java.time.LocalDate.of(2026, month, day)))
+    val aired2025 = (1483678, Film("Royal Ballet & Opera 2025/26: The Nutcracker", year = Some(2025), released = Some(java.time.LocalDate.of(2025, 12, 10))), Some(1))
+    val aired2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026), released = Some(java.time.LocalDate.of(2026, 11, 29))), Some(2))
+    acceptance.byRule("relay-record")(ranked(ilkley(1, 12), aired2025, aired2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
+    // a screening on no air day keeps its title's year: an encore of the staging it dates
+    acceptance.byRule("relay-record")(ranked(ilkley(21, 11), aired2025, aired2026)).map(_._1.candidate.tmdbId) shouldBe Some(1483678)
     // an encore dates no performance: it airs its screenings' season's record, or the season before's; and a director it
     // credits off its house's record of ANOTHER work is a copied credit, no other production — US Showcase's "The
     // Metropolitan Opera: Samson et Dalila ENCORE (2026)" {Louisa Proske} (9 December 2026, recording 573) is the Met's

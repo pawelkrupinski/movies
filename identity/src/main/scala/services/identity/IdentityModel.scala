@@ -124,7 +124,17 @@ final case class Listing(
    *  record's air day ([[StageRelays.screenedSeasonRecord]]) — the Met's 2014 "Macbeth" revival relayed on 17 October
    *  2026 — and an encore of an old capture, on no air day, keeps its year. Empty for every other listing. */
   lazy val airDays: Seq[java.time.LocalDate] =
-    screenedSeason.filter(season => year.exists(stated => season - stated > Listing.StagingPredatesSeason)).fold(Seq.empty[java.time.LocalDate])(_ => screenings.days)
+    screenedSeason.filter(season => year.exists(stated => season - stated > Listing.StagingPredatesSeason)).orElse(titleDatesItsStaging)
+      .fold(Seq.empty[java.time.LocalDate])(_ => screenings.days)
+  /** The season it screens in, when it states no year and its title brackets one before it beside a stage work: that year
+   *  may date the staging, not the broadcast (UK Ilkley's "The Royal Ballet: The Nutcracker (2025)", screening on the
+   *  2026/27 relay's air day), or the performance an old capture screens ("MetOpera: Carmen (2009)") — its days tell
+   *  ([[RelayStage.Billed.airedOn]]). */
+  private def titleDatesItsStaging: Option[Int] = {
+    val titles = Seq(title, rawTitle)
+    screenings.season.filter(season => year.isEmpty && IdentityMeasures.titleYearOf(titles).exists(_ < season) &&
+      StageRelays.stageWorksBilled(titles, seasonNamed = false).nonEmpty)
+  }
 
   override def equals(other: Any): Boolean = other match {
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&

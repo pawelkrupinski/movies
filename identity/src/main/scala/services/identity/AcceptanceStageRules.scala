@@ -49,9 +49,14 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
       any    <- firstCandidate(ranked)
       relay  <- any.listing.relayBilled.toRight(Refused("it bills no house's relay of a work in a season"))
       // a year's two seasons each holding a record of it: the one dated that very year (UK Gorleston's "RBO: THE NUTCRACKER
-      // 2026" is the 2026/27 record, not the 2025/26 one; Ilkley's "The Royal Ballet: The Nutcracker (2025)" the 2025/26)
+      // 2026" is the 2026/27 record, not the 2025/26 one)
       records = eligibleOf(ranked).filter(scored => RelayStage.recordOf(relay, scored.candidate.film))
-      record <- one(Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records),
+      // a record of its screenings' season airing on a day it screens is the broadcast it screens, whatever older year its
+      // title dates the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)", screening 1 December 2026, is the
+      // 2026/27 relay aired 29 November, which 112 Flicks venues bill "RBO Cinema Season 2026-27: The Nutcracker (2025)"
+      aired   = records.filter(scored => relay.airedOn(scored.candidate.film))
+      record <- one(if (aired.nonEmpty) aired
+                    else Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records),
                   "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
                   s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
       _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency), "a published year contradicts it", record, contradiction(record))

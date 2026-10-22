@@ -23,9 +23,15 @@ private[identity] object RelayStage {
   /** A relay as its billing reads: the houses it names in particular (none: a banner of the art form alone, "OPERA-
    *  PARSIFAL"), its stage works, the seasons its performance can fall in (a season by the year it opens), which records
    *  name its house ([[StageRelays.bannerNamesItsHouse]]), and the year it dates them by, when no season. */
-  final case class Billed(houses: Seq[Seq[String]], works: Set[String], seasons: Set[Int], itsHouse: Film => Boolean, year: Option[Int]) {
+  final case class Billed(houses: Seq[Seq[String]], works: Set[String], seasons: Set[Int], itsHouse: Film => Boolean, year: Option[Int],
+                          screeningsSeason: Option[Int] = None, airDays: Seq[java.time.LocalDate] = Nil) {
     /** Does it name a house in particular — what lifts the learned vetoes off its record? */
     def particular: Boolean = houses.nonEmpty
+    /** Is `f` a record of the season its screenings fall in that airs on one of its days ([[Listing.airDays]], within
+     *  [[StageRelays.AirDayWindow]]): the broadcast it screens, whatever older year its title dates the staging by? */
+    def airedOn(f: Film): Boolean =
+      airDays.nonEmpty && screeningsSeason.exists(seasonsOf(f)) && f.released.exists(aired =>
+        airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= StageRelays.AirDayWindow))
   }
 
   /** The relay `l` bills, when it names a stage house, a stage work and a season:
@@ -51,7 +57,7 @@ private[identity] object RelayStage {
       val seasons = l.seasonYear.map(Set(_)).orElse(dated.orElse(encored).map(year => Set(year - 1, year))).getOrElse(Set.empty)
       Option.when(works.nonEmpty && seasons.nonEmpty)(
         Billed(l.relay.houses.filter(StageRelays.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l),
-          dated.filter(_ => l.seasonYear.isEmpty)))
+          dated.filter(_ => l.seasonYear.isEmpty), l.screeningsSeason, l.airDays))
     }
   }
 
@@ -80,13 +86,13 @@ private[identity] object RelayStage {
   def particularRecordOf(l: Listing, f: Film): Boolean = l.relayBilled.exists(relay => relay.particular && recordOf(relay, f))
   /** Is `f` the relay's record: its titles name the relay's house ([[StageRelays.bannerNamesItsHouse]]) and its work, and
    *  it is dated in one of the relay's seasons — the season its title names, else the season its air day falls in, else
-   *  either season its year is in? */
+   *  either season its year is in — or it airs on a day the relay screens ([[Billed.airedOn]])? */
   def recordOf(relay: Billed, f: Film): Boolean =
-    f.stageWorkIds.exists(relay.works) && relay.itsHouse(f) && seasonsOf(f).exists(relay.seasons)
+    f.stageWorkIds.exists(relay.works) && relay.itsHouse(f) && (seasonsOf(f).exists(relay.seasons) || relay.airedOn(f))
 
   /** The seasons a record can be of: the one its title names, else the one its air day falls in, else either its year is
    *  in. */
-  private def seasonsOf(f: Film): Set[Int] =
+  private[identity] def seasonsOf(f: Film): Set[Int] =
     f.season.map(Set(_))
       .orElse(f.released.map(day => Set(if (day.getMonthValue >= ScreeningDays.SeasonOpens) day.getYear else day.getYear - 1)))
       .orElse(f.year.map(year => Set(year - 1, year))).getOrElse(Set.empty)
