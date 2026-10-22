@@ -437,7 +437,7 @@ jobs:
             # and this step paid for recompiling them — 13 to 80 sources most nights, all 744
             # (~2 minutes) on two of the seven recordings to 2026-10-03. The fixtures are
             # compiled, and cached, by every leg. (RecordCorpusInLegWiringSpec)
-            - name: Record ${{ inputs.country }}'s corpus
+            - name: Record the country's corpus
               if: inputs.mode == 'record' && matrix.phase == 'convergence'
               timeout-minutes: 10
               shell: bash
@@ -461,7 +461,7 @@ jobs:
             # convergence band compares this run's coverage of the corpus against what prod had
             # achieved on that same repertoire, so a corpus arriving beside a staler baseline
             # would be comparing two different days.
-            - name: Pack ${{ inputs.country }}'s corpus
+            - name: Pack the country's corpus
               if: inputs.mode == 'record' && matrix.phase == 'convergence'
               shell: bash
               run: |
@@ -648,7 +648,7 @@ jobs:
             # explicitly, because the default shell is `bash -e` without it and the
             # pipeline would otherwise report `tee`'s exit status and pass a failing
             # suite.
-            - name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite
+            - name: Run the suite
               id: suite
               if: "!startsWith(matrix.phase, 'takes')"
               shell: bash

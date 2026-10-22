@@ -23,10 +23,10 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val setup       = RepoFile.read(".github/actions/convergence-setup/action.yml")
 
   private val Tunnel  = "Tunnel to prod Mongo"
-  private val Record  = "Record ${{ inputs.country }}'s corpus"
+  private val Record  = "Record the country's corpus"
   private val Close   = "Close the tunnel to prod Mongo"
-  private val Pack    = "Pack ${{ inputs.country }}'s corpus"
-  private val Suite   = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
+  private val Pack    = "Pack the country's corpus"
+  private val Suite   = "Run the suite"
   private val Restore = "Restore the corpus the convergence row records"
   private val InRecordingRow = "inputs.mode == 'record' && matrix.phase == 'convergence'"
 

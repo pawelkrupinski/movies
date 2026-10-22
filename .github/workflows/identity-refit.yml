@@ -94,7 +94,7 @@ jobs:
 
             - uses: ./.github/actions/setup-sbt-build
 
-            - name: Measure round 1, shard ${{ matrix.shard }} of 4
+            - name: Measure round 1 on this shard
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   RELEARN: ${{ github.event.inputs.relearn }}

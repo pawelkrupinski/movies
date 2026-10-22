@@ -290,7 +290,8 @@ jobs:
             # this step's wall-clock once staging ingest went always-on, and this is
             # the deploy-gating job, so keep it off the critical path. See the
             # `testUnitWorker` / `testUnitRest` aliases in build.sbt.
-            - run: sbt ${{ matrix.cmd }}
+            - name: Run sbt
+              run: sbt ${{ matrix.cmd }}
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
 
@@ -676,7 +677,8 @@ jobs:
                   # Only these shards write the family, from a key over every source they compile.
                   target-cache-exact-hit-is-current: 'true'
 
-            - run: sbt ${{ matrix.cmd }}
+            - name: Run sbt
+              run: sbt ${{ matrix.cmd }}
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
 
