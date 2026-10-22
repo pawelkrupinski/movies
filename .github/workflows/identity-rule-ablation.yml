@@ -93,8 +93,11 @@ jobs:
                   RESUME: ${{ inputs.resume-run }}
               run: |
                   set -euo pipefail
-                  gh run download "$RESUME" -R "$GITHUB_REPOSITORY" --name identity-rule-ablation --dir ablation
-                  test -f ablation/state.json
+                  # the row's own artifact (one row since d40b133ce), not `collect`'s: a resumed run need not wait for the
+                  # earlier run's collect job to find a free slot
+                  gh run download "$RESUME" -R "$GITHUB_REPOSITORY" --name identity-rule-ablation-shard-0 --dir "$RUNNER_TEMP/resume"
+                  mkdir -p ablation
+                  cp "$RUNNER_TEMP/resume/ablation/state.json" ablation/state.json
                   python3 -c 'import json; s=json.load(open("ablation/state.json")); print("resuming round", s["round"], "with", len(s["pending"] or []), "configurations")'
 
             - uses: ./.github/actions/setup-sbt-build
