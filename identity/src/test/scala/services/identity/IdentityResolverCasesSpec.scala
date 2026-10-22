@@ -2857,6 +2857,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "stand where the title names the linked film whole and the others' film only as one of its pieces" in {
+    // DE Metropolis Kino's "KIRSCHBLÜTEN - HANAMI" [121′] ("Cherry Blossoms"), prod 2026-10-22: Cineamo links Dörrie's 2008
+    // film (6461m), its whole title; the title-segment join set it beside venues billing Denise Fernandes's "Hanami", and
+    // their backing of the film its piece "HANAMI" names overruled the link — it took the 2025 "Hanami"
+    val films = Seq(F(6461, "Kirschblüten - Hanami", 2008, "Doris Dörrie", 121, 3.1, alternatives = Seq("Cherry Blossoms")),
+      F(1315405, "Hanami", 2025, "Denise Fernandes", 100, 1.2))
+    val linked = fed(listing(KinoMikro, "KIRSCHBLÜTEN - HANAMI", runtime = Some(121)).copy(originalTitle = Some("Cherry Blossoms")), "cineamo", "6461m")
+    val others = Seq(KinoMuza, Helios, Multikino).map(v => listing(v, "Hanami", Some(2024), Some("Denise Fernandes"), Some(100)))
+    val r = shipped(linked +: others, films)
+    withClue((linked +: others).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(linked.key).film shouldBe Some(6461)
+      r.decisionOf(linked.key).explanation.exists(_.contains("overruled")) shouldBe false
+      others.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1315405))
+    }
+  }
+
   it should "be overruled though its copied year agrees with the film it links at every venue the feed lists" in {
     // DE "Momo": Cineamo's 2265m at four venues copies the 1986 film's year — four copies of one claim, which back
     // nothing beside it; Filmstarts' 314264 and kinoheld's page state Ditter's 2025 film.

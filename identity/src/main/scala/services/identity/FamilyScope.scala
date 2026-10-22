@@ -208,8 +208,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // "ATMOS: Michael", which Cineamo links to Dreyer's 1924 film, is the "Michael" sixteen venues credit to Antoine Fuqua
     def sources(candidate: Candidate) = backing.sources((groups ++ IdentityMeasures.searchGroups(listing, candidate.film) ++
       listing.shapeKeys.filter(candidate.film.titleKeys)).distinct, candidate.film, own)
+    // a rival the title names only as one of its pieces overrules no link to a film it names whole: DE Metropolis's
+    // "KIRSCHBLÜTEN - HANAMI", linked to Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes
+    val namedWhole = pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
+    val overruling = if (namedWhole) IdentityMeasures.Rivalling else IdentityMeasures.TitlesItsOwn
     if (pool.exists(candidate => candidate.tmdbId == film && sources(candidate) > 0)) None
-    else pool.filter(candidate => candidate.tmdbId != film && IdentityMeasures.TitlesItsOwn(titleRelation(listing, candidate).value))
+    else pool.filter(candidate => candidate.tmdbId != film && overruling(titleRelation(listing, candidate).value))
       .map(candidate => candidate.tmdbId -> sources(candidate)).filter(_._2 >= FeedLink.OverrulingSources)
       .sortBy { case (rival, count) => (-count, rival) }.headOption
       .map { case (rival, count) => FeedLink(id, film, rival, count) }

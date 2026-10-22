@@ -21,6 +21,18 @@ holds the clusters the model left unmatched when it was recorded. A take the hea
 reaches that replay: a final-stage 0 there means not seen, not refilled. Variants B–D below were first misread as
 "moving nothing served" for this reason. Count model-stage losses as candidate served losses.
 
+## 2026-10-22 — an AC/DC tribute band billed as "THE JAILBREAKERS" — PARKED, no rule built (prod 6032747)
+
+- **Take:** DE Casablanca Zwickau's "THE JAILBREAKERS - The early years of AC" (its "/DC" cut off) and KAP-Torgau's bare
+  "THE JAILBREAKERS" — a tribute band's concert — take TMDB 299535 "The Jailbreakers" (1960): KAP-Torgau by
+  favoured-calibrated on the exact title alone (41.2%), Casablanca by segment-top-hit on its first piece. Casablanca took
+  1265202 ("Memories of CS:GO - The Early Years") until 10-22 while kinoheld's page copied that record's original title and
+  director onto it; the page left the listing and the piece's namesake took over — a data change, not a code one.
+- **Why parked:** the billing carries no event or music word and no fact; a factless title that is an obscure film's exact
+  title is the bare pooled class above (not built), and a "Work - Subtitle" billing kept off the film titled "Work" is the
+  own-subtitle experiment below (far past 100:1). Known-wrong rows (`served`) for both billings.
+- **Next angle:** the venue's other programme as a prior (KAP-Torgau bills concerts), as for "Auf Augenhöhe".
+
 ## 2026-10-22 — the parked known-wrong takes re-checked after WS2 and WS4 (base `873b00e50`, pinned 573 and 528, all five countries)
 
 Main's own takes read off the takes store (pinned 573, code identical to `873b00e50`: `takes-decisions-<cc>` of run 1207
