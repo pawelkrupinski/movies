@@ -616,6 +616,27 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(listing, buenosAires, encore, busan)) shouldBe None
   }
 
+  it should "not take a performer's recorded programme for a billing of the performer's name alone, no fact agreeing" in {
+    // DE Filmforum Landsberg's "Helmut Schleich" (the Kabarettist live, 2026-11-19) is not TMDB's first hit "Helmut
+    // Schleich: Kauf, du Sau" (2018), the recording of an old programme; UK Pavilions Teignmouth's "Patrick Monahan" (a
+    // stand-up's one night) is not "Patrick Monahan: Live" (2011). A name billed bare names the performer, not one work.
+    val schleich = (805361, Film("Helmut Schleich: Kauf, du Sau", year = Some(2018), runtime = Some(95)), Some(1))
+    taken(ranked(Listing("Helmut Schleich"), schleich)) shouldBe None
+    taken(ranked(Listing("HELMUT SCHLEICH"), schleich)) shouldBe None
+    // whichever rule found it: TMDB's first hit (sole-work), its only one (sole-result)
+    val only = ranked(Listing("Helmut Schleich"), schleich).map(_.copy(soleResult = true))
+    acceptance.refusals(only).filter(_.why.startsWith("its billing is a name alone")).map(_.rule) should contain allOf ("sole-work", "sole-result")
+    taken(only) shouldBe None
+    val monahan = (398527, Film("Patrick Monahan: Live", year = Some(2011), runtime = Some(76)), Some(1))
+    taken(ranked(Listing("Patrick Monahan"), monahan)) shouldBe None
+    // A fact of the record's the venue states makes it the screening of that recording: its year, its running time.
+    acceptedBy(ranked(Listing("Patrick Monahan", year = Some(2011)), monahan), 398527) shouldBe Some("sole-work")
+    acceptedBy(ranked(Listing("Patrick Monahan", runtime = Some(80)), monahan), 398527) shouldBe Some("sole-work")
+    // DE Lichtburg Dinslaken's "Berliner Philharmoniker" [2026] is their Silvesterkonzert 2026, dated alike.
+    val silvester = (1711927, Film("Berliner Philharmoniker: Silvesterkonzert 2026", year = Some(2026)), Some(1))
+    acceptedBy(ranked(Listing("Berliner Philharmoniker", year = Some(2026)), silvester), 1711927) shouldBe Some("sole-work")
+  }
+
   it should "still take a record its title names by its original title" in {
     // PL "Following" at Kino Amondo is Nolan's "Śledząc" (original title "Following"), not a
     // same-titled record whose title merely contains it.

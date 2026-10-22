@@ -25,7 +25,8 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  another film of its director the title names, or the listing's year dates as closely ([[anotherOfItsDirector]]). */
   private[identity] final case class Rule(name: String, why: Seq[Scored] => Verdict) {
     def accepts(ranked: Seq[Scored]): Verdict =
-      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside).flatMap(notAnAuthorsNamesake) match {
+      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside).flatMap(notAnAuthorsNamesake)
+        .flatMap(notANameAlone) match {
         case Right(accepted) if readsAsNoFilm(accepted._1) => Left(refusedAsNoFilm(accepted._1))
         case verdict                                       => verdict
       }
@@ -51,6 +52,15 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     if (performed.isEmpty || film.titles.exists(NonMovieEventClassifier.isPerformance(_))) Right(accepted)
     else Left(Acceptance.Refused("another piece of its billing is a performance the film is not", Some(scored.candidate.tmdbId),
       s"${Acceptance.named(scored)} beside: ${performed.mkString(", ")}"))
+  }
+  /** Refuses a record whose longer title a billing of a NAME alone merely leads, no fact the venue states agreeing
+   *  ([[aNameAlone]]): a performer billed bare is the performer's evening, not a recording of one programme, whichever
+   *  rule found it — sole-work as TMDB's first hit, sole-result as its only one. */
+  private[identity] def notANameAlone(accepted: Accepted): Verdict = {
+    val scored = accepted._1
+    if (!aNameAlone(scored)) Right(accepted)
+    else Left(Acceptance.Refused("its billing is a name alone, which the record's longer title only leads, and no fact agrees",
+      Some(scored.candidate.tmdbId), Acceptance.named(scored)))
   }
   /** Refuses the older namesake of a work a billing credits to its author ([[ListingShape.creditDenies]]): DE Cineplex's
    *  "Fallen Angels by Noël Coward", the 2026 capture of Coward's play, is not Wong Kar-wai's 1995 "Fallen Angels". A

@@ -62,6 +62,20 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
     } yield atOwn(work)
   }
 
+  /** Does the listing bill a NAME alone ([[services.billing.Credits.billsOnlyAName]]) that the record's longer title merely
+   *  leads, with no fact the venue states agreeing — its year, its running time, its director, an original title naming
+   *  the record whole? A performer billed bare is the performer's evening, not a recording of one programme: DE Filmforum
+   *  Landsberg's "Helmut Schleich" (the Kabarettist live) is not "Helmut Schleich: Kauf, du Sau" (2018), UK Pavilions
+   *  Teignmouth's "Patrick Monahan" not "Patrick Monahan: Live" (2011). Dated alike, Lichtburg's "Berliner Philharmoniker"
+   *  [2026] is their "Silvesterkonzert 2026". */
+  private[identity] def aNameAlone(scored: Scored): Boolean = {
+    val listing = scored.listing
+    scored.category("title").contains("fragment") && services.billing.Credits.billsOnlyAName(listing.rawTitle.getOrElse(listing.title)) &&
+      !scored.number("year.distance").exists(_ <= YearWindow.PublishedAdjacency) &&
+      !IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime) &&
+      !IdentityMeasures.sameDirector(scored.measures) && !scored.category("originalTitle").contains("match")
+  }
+
   /** How far a billed work's running time may stand from the venue's: a broadcast's interval and introduction. */
   private[identity] val BilledRuntime = 15
   /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by

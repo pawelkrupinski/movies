@@ -26,6 +26,17 @@ object Credits {
     case _                                        => None
   }
 
+  private val BareName = """^\p{L}[\p{L}.'’-]*(?:\s+\p{L}[\p{L}.'’-]*){1,3}$""".r
+
+  /** Is `title` a name and nothing else — two to four words of letters, each capitalised or a name's particle, none a
+   *  note's, an event's or an edition's word: a performer, a comedian, a band billed bare ("Helmut Schleich", "Patrick
+   *  Monahan"), naming no one work of theirs. The shape alone: an orchestra's name or a two-word title of capitalised words
+   *  reads alike, so a caller asks it only of a billing a record's longer title merely leads. */
+  def billsOnlyAName(title: String): Boolean = {
+    val trimmed = title.trim
+    BareName.matches(trimmed) && namesAPerson(trimmed)
+  }
+
   /** Could the bracket's words be a person's name — none a note's word, each capitalised or a name's particle? */
   private def namesAPerson(name: String): Boolean = {
     val words = name.split("\\s+").toSeq
