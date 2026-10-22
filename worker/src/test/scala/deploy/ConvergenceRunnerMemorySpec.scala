@@ -33,19 +33,36 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
 
   /** What the box owes everything that is neither the JVM heap nor the WiredTiger
    *  cache: the JVM's own metaspace, code cache, thread stacks and direct buffers,
-   *  mongod outside its cache, the sbt launcher, the checkout and the OS. Deliberately
-   *  generous — the cost of being wrong here is a five-hour run that dies at the end. */
-  private val OverheadGb = 3
+   *  mongod outside its cache, the sbt launcher, the checkout and the OS. MEASURED, not guessed
+   *  (scripts/ci/cgroup-sampler.sh in every row, US runs 1258/1259/1276, 2026-10-22): the 10g JVM's RSS
+   *  peaked at 12.15 GB (1.4 GB beyond its heap), mongod at 0.7-0.8 GB beyond its cache, and nothing
+   *  else in the job's cgroup held more than ~0.1 GB -- 2.2 GB, so 2.5 of margin. It was 3 when it was a guess. */
+  private val OverheadGb = 2.5
 
-  private def gigabytes(pattern: String, text: String): Seq[Int] =
-    pattern.r.findAllMatchIn(text).map(_.group(1).toInt).toSeq
+  /** Each caller's matrix rows, with their values as written (quotes dropped): `0.5` and `'false'` included,
+   *  which RepoFile.matrixRows' word-only values cut short. */
+  private lazy val rows: Seq[Map[String, String]] = callers.flatMap { yaml =>
+    """-\s*\{\s*country:([^}]*)}""".r.findAllMatchIn(yaml).map { row =>
+      ("country:" + row.group(1)).split(",").toSeq.flatMap { field =>
+        field.split(":", 2) match {
+          case Array(k, v) => Some(k.trim -> v.trim.stripPrefix("'").stripSuffix("'"))
+          case _           => None
+        }
+      }.toMap
+    }
+  }
 
-  /** The cache a row names (`mongo-cache-gb`), else the setup's fallback (`--wiredTigerCacheSizeGB ${{ inputs.mongo-cache-gb || 2 }}`). */
-  private lazy val defaultCacheGb: Seq[Int] =
-    gigabytes("""--wiredTigerCacheSizeGB\s+\$\{\{\s*inputs\.mongo-cache-gb\s*\|\|\s*(\d+)\s*}}""", setup)
-  private def cacheGb(row: Map[String, String]): Int = row.get("mongo-cache-gb").map(_.toInt).getOrElse(defaultCacheGb.max)
-  private lazy val wiredTigerGb: Seq[Int] = defaultCacheGb ++ callers.flatMap(RepoFile.matrixRows).map(cacheGb)
-  private lazy val heapGb: Seq[Int] = callers.flatMap(gigabytes("""heap:\s*(\d+)g""", _))
+  /** The setup's fallback cache (`--wiredTigerCacheSizeGB ${{ inputs.mongo-cache-gb || 2 }}`). */
+  private lazy val defaultCacheGb: Seq[Double] =
+    """--wiredTigerCacheSizeGB\s+\$\{\{\s*inputs\.mongo-cache-gb\s*\|\|\s*([\d.]+)\s*}}""".r
+      .findAllMatchIn(setup).map(_.group(1).toDouble).toSeq
+  private def gb(value: String): Double = value.stripSuffix("g").toDouble
+  /** A row's cache where its Mongo is on a tmpfs, and on disk: an order row kept on disk (`mongo-tmpfs-order: 'false'`)
+   *  takes the setup's fallback, as country-convergence-leg.yml hands it. */
+  private def tmpfsCacheGb(row: Map[String, String]): Double = row.get("mongo-cache-gb").map(gb).getOrElse(defaultCacheGb.max)
+  private def diskCacheGb(row: Map[String, String]): Double =
+    if (row.get("mongo-tmpfs-order").contains("false")) tmpfsCacheGb(row) max defaultCacheGb.max else tmpfsCacheGb(row)
+  private lazy val wiredTigerGb: Seq[Double] = defaultCacheGb ++ rows.map(tmpfsCacheGb)
 
   "the convergence runner" should "cap mongod's WiredTiger cache rather than let it size for the whole box" in {
     withClue("`docker run … mongo` in convergence-setup must name --wiredTigerCacheSizeGB; " +
@@ -55,13 +72,13 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave each country's heap, its cache and the overhead inside the runner" in {
-    heapGb should not be empty
-    callers.flatMap(RepoFile.matrixRows).foreach { row =>
-      val heap  = row("heap").stripSuffix("g").toInt
-      val cache = cacheGb(row)
+    rows should not be empty
+    rows.foreach { row =>
+      val heap  = gb(row("heap"))
+      val cache = diskCacheGb(row)
       withClue(s"${row("country")}: heap ${heap}g + WiredTiger ${cache}g + ${OverheadGb}g overhead must fit ${RunnerGb}g; " +
                "raise one and something else has to give:\n") {
-        heap + cache + OverheadGb should be <= RunnerGb
+        heap + cache + OverheadGb should be <= RunnerGb.toDouble
       }
     }
   }
@@ -75,15 +92,21 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
 
   it should "fit each row's RAM-backed Mongo beside its own heap, the cache and the overhead" in {
     // tmpfs pages are memory, so a row that holds Mongo's data in RAM spends its size from the same 16g.
-    val rows = callers.flatMap(RepoFile.matrixRows)
-    val held = rows.filter(_.contains("mongo-tmpfs"))
+    val held = rows.filter(_.get("mongo-tmpfs").exists(_.nonEmpty))
     held should not be empty
     held.foreach { row =>
-      val heap  = row("heap").stripSuffix("g").toInt
-      val tmpfs = row("mongo-tmpfs").stripSuffix("g").toInt
-      withClue(s"${row("country")}: heap ${heap}g + tmpfs ${tmpfs}g + WiredTiger ${cacheGb(row)}g + ${OverheadGb}g overhead must fit ${RunnerGb}g:\n") {
-        heap + tmpfs + cacheGb(row) + OverheadGb should be <= RunnerGb
+      val heap  = gb(row("heap"))
+      val tmpfs = gb(row("mongo-tmpfs"))
+      val cache = tmpfsCacheGb(row)
+      withClue(s"${row("country")}: heap ${heap}g + tmpfs ${tmpfs}g + WiredTiger ${cache}g + ${OverheadGb}g overhead must fit ${RunnerGb}g:\n") {
+        heap + tmpfs + cache + OverheadGb should be <= RunnerGb.toDouble
       }
     }
+  }
+
+  it should "keep an order row on disk when its country says so" in {
+    // The United States' order rows: on a tmpfs they left 1.6 GB of the cap free, on disk 2.2 (runs 1276, 1258).
+    rows.find(_("country") == "united-states").flatMap(_.get("mongo-tmpfs-order")) shouldBe Some("false")
+    leg should include ("inputs.mongo-tmpfs-order != 'false' || !startsWith(matrix.phase, 'order-independence')")
   }
 }

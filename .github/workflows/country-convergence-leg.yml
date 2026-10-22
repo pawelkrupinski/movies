@@ -219,6 +219,14 @@ on:
                 required: false
                 type: string
                 default: '2'
+            # 'false' keeps an order-independence row's Mongo on disk with the default 2 GB cache whatever `mongo-tmpfs` says:
+            # the United States' order rows hold the most beside their 10g heap (a 9.1 GB live set, 2.0 GB of data), and on a
+            # tmpfs they kept 1.6 GB of the 17.2 GB cap free against 2.2 on disk (runs 1258, 1276, cgroup-sampler.sh).
+            mongo-tmpfs-order:
+                description: "'false' keeps the order-independence rows' Mongo on disk (default cache) whatever mongo-tmpfs says."
+                required: false
+                type: string
+                default: 'true'
             # The runner label the leg runs on: how a hand-dispatched run tries another machine (an arm64
             # runner's 4 vCPUs are 4 cores, an x64 one's 2 hyperthreaded) on the lane it would ship to.
             runner:
@@ -379,8 +387,8 @@ jobs:
                   # GitHub suspension) expands a reusable call's `with:` before its run has an id, so every
                   # recording leg there replayed "the newest" corpus, never named its own and never pinned (run 408).
                   corpus-run:    ${{ inputs.corpus-run || (inputs.mode == 'record' && github.run_id || '') }}
-                  mongo-tmpfs:   ${{ inputs.mongo-tmpfs }}
-                  mongo-cache-gb: ${{ inputs.mongo-cache-gb }}
+                  mongo-tmpfs:   ${{ (inputs.mongo-tmpfs-order != 'false' || !startsWith(matrix.phase, 'order-independence')) && inputs.mongo-tmpfs || '' }}
+                  mongo-cache-gb: ${{ (inputs.mongo-tmpfs-order != 'false' || !startsWith(matrix.phase, 'order-independence')) && inputs.mongo-cache-gb || '2' }}
                   takes:         ${{ startsWith(matrix.phase, 'takes') }}
 
             # A RECORDING leg records its own country's corpus FIRST, in this job — the shape specs
