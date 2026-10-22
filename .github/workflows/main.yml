@@ -36,10 +36,14 @@ env:
 # Pipeline shape:
 #
 #   ci (reusable workflow — lint, test, integration, ──┬─► publish-web
-#       ios/android local-server, page-tests)           │
-#   gates (t=0: which tiers changed since their   ──────┴─► publish-worker
-#          last deploy; both publishes read it) ──► image-worker ──┘
-#     └──► kick-convergence (seconds after the push, whether gates passed or not)
+#       ios/android local-server, page-tests)           ├─► image-worker ──► publish-worker
+#   gates (t=0: which tiers changed since their   ──────┤
+#          last deploy; both publishes read it)         └─► kick-convergence
+#
+# NOTHING AFTER A RED ci (2026-10-22): every job here but `gates` and `timings` needs BOTH `ci` and `gates`
+# and runs only when both passed. A failed test row skips the worker image, both publishes and the
+# convergence dispatch instead of letting them take runners after the run is already lost.
+# (MainAfterRedCiSpec)
 #
 # ONE WORKFLOW, because there used to be three: this file plus
 # `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
@@ -74,9 +78,10 @@ jobs:
             # ci.yml's `scope` job reads the newest green Main run (gh run list) to know which rows a push can move.
             actions: read
 
-    # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `e2e (corpus)` row and this workflow's
-    # `image-worker` build them from the dists ci's `e2e (corpus)` row staged, while ci's slowest rows
-    # still run, and push them under the commit SHA alone — a tag nothing deploys. `publish-web` /
+    # The web image is BUILT WHILE ci RUNS and only PUBLISHED here: ci's `e2e (corpus)` row builds it from the
+    # dist it staged, while ci's slowest rows still run, and pushes it under the commit SHA alone — a tag
+    # nothing deploys. The worker's (`image-worker`) is built from the dist that row staged once ci is green
+    # (it used to start beside ci too, and kept building after a red row). `publish-web` /
     # `publish-worker` below `needs: ci` (the worker's also `needs: image-worker`),
     # and for a tier whose paths changed give those bytes the tags that ship: a registry manifest copy
     # of seconds where they used to restage (~2 min of cold `sbt stage`) and build (~1.7 min) on the
@@ -190,14 +195,13 @@ jobs:
                       .github/actions/changed-paths/**
 
 
-    # Kick the convergence suite off AT THE PUSH, behind only `gates` (seconds), never
-    # behind `ci`. Convergence builds and judges the commit itself; Main's tests add
-    # nothing to its answer. Hung off `ci`, a push whose Main run was cancelled by the
-    # next push, or went red on an unrelated spec, never dispatched at all: on 2026-10-15
-    # the Arsenal client's push (f58b71add, 09:29 UTC) got its first convergence run at
-    # 11:08, after three cancelled and two red Main runs, while a landing waited on it.
-    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `gates`
-    # alone (CiRunnerBudgetSpec): this job takes the slot gates has just given back.
+    # Kick the convergence suite off ONCE ci IS GREEN (2026-10-22, the user's call). It used to
+    # start at the push, behind only `gates`, because convergence builds and judges the commit
+    # itself and a red or cancelled Main run then never dispatched (2026-10-15: the Arsenal
+    # client's push, f58b71add, waited 1 h 40 min for its first convergence run). Now that Main
+    # runs are never cancelled in flight, and a red run should stop taking runners, it waits:
+    # a red push's commits stay inside the next green run's interval, whose dispatch (diffed
+    # from each suite's own newest run, below) covers them. (MainAfterRedCiSpec)
     #
     # Two shapes this deliberately is not:
     #
@@ -224,9 +228,7 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        needs: gates
-        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
-        if: ${{ !cancelled() }}
+        needs: [ci, gates]
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
@@ -382,18 +384,18 @@ jobs:
                   sha: ${{ github.sha }}
                   commit-message: ${{ github.event.head_commit.message }}
 
-    # THE WORKER IMAGE, BUILT AND AOT-TRAINED WHILE ci RUNS — and OUTSIDE ci, so `publish-web` (which
-    # `needs: ci`) never waits for the ~5 min training: only `publish-worker` needs this job. It takes
-    # the slot `gates` gives back seconds in (CiRunnerBudgetSpec counts only jobs without `needs`),
-    # then waits for the dist ci's `e2e (corpus)` row uploads to this same run — `needs: ci` would
-    # also wait for every other ci row. SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
+    # THE WORKER IMAGE, BUILT AND AOT-TRAINED ONCE ci IS GREEN — and OUTSIDE ci, so `publish-web` (which
+    # `needs: ci`) never waits for the ~5 min training: only `publish-worker` needs this job. Until
+    # 2026-10-22 it started beside ci and waited for the dist ci's `e2e (corpus)` row uploads, so a red
+    # test row still built (and on the one-runner Forgejo `main-lane` queued) a worker image for nobody;
+    # now it needs `ci` and a red run skips it (MainAfterRedCiSpec). SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
     # a SHA tag; `publish-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
     # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
     # Only when the worker's paths changed: `publish-worker` publishes nothing otherwise, and an image
     # built for nobody held a runner for its wait and ~5 min build on every web-only push. Skipped
     # here, `publish-worker` skips with it — nothing ships, as before.
     image-worker:
-        needs: gates
+        needs: [ci, gates]
         if: needs.gates.outputs.worker-changed == 'true'
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 30
@@ -406,6 +408,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
+            # Already uploaded once ci is green; kept as the check that it is there.
             - name: Wait for the worker distribution ci's e2e corpus row stages
               env:
                   GH_TOKEN: ${{ github.token }}

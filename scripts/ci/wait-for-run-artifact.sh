@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Wait until THIS workflow run has uploaded artifact <name>, from a job that cannot `needs:` its
-# producer — main.yml's `image-worker` waits on the `stage-worker` dist ci's e2e corpus row stages,
-# because `needs: ci` would also make it wait for every other ci row.
+# Wait until THIS workflow run has uploaded artifact <name>, produced by another job of the run —
+# main.yml's `image-worker` checks for the `stage-worker` dist ci's e2e corpus row stages (since
+# 2026-10-22 it `needs: ci`, so the artifact is already there and this returns at once).
 #
 #   wait-for-run-artifact.sh <artifact name> <producing job name fragment> <timeout seconds>
 #

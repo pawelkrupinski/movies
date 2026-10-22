@@ -22,8 +22,8 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val ciYml       = RepoFile.read(".github/workflows/ci.yml")
 
   /** Where each tier's image is built: the web's at the end of ci's `e2e (corpus)` row, which staged its dist;
-   *  the worker's in main.yml's `image-worker` — outside ci, so `publish-web`, which `needs: ci`, never waits for
-   *  the worker's AOT training. */
+   *  the worker's in main.yml's `image-worker` — after and outside ci, so `publish-web`, which `needs: ci`, never
+   *  waits for the worker's AOT training. */
   private def imageJob(tier: String): String =
     if (tier == "web") RepoFile.block(ciYml, "e2e") else RepoFile.block(mainYml, "image-worker")
 
@@ -166,11 +166,13 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S IMAGE: it is built beside ci, not inside it, so
-   *  `ci` — and `publish-web`, which `needs: ci` — closes on the tests alone. */
+  /** THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S IMAGE: it is built after ci, not inside it, so
+   *  `ci` — and `publish-web`, which `needs: ci` — closes on the tests alone. Since 2026-10-22 the
+   *  worker's image waits for a green ci, so a red run builds nothing (MainAfterRedCiSpec). */
   it should "keep the worker's image build out of everything the web deploy waits for" in {
     ciYml should not include "\n    image-worker:"
     publishWeb should include("needs: [ci, gates]")
-    imageJob("worker") should include("needs: gates")
+    imageJob("worker") should include("needs: [ci, gates]")
+    publishWeb should not include "image-worker"
   }
 }
