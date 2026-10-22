@@ -1,0 +1,493 @@
+#!/usr/bin/env python3
+"""Find upgrades to the fleet flake's Nix dependencies and write them as ONE change for a pull request.
+
+WHY THIS EXISTS. Nothing upgraded the NixOS side of this repository: Renovate is scoped to Gradle,
+scala-steward to sbt, and nixpkgs (infra/flake.lock) moved only when somebody remembered -- as did
+the one hand-pinned package, mongod (infra/nix/modules/roles/mongodb.nix), which is pinned ahead of
+nixpkgs precisely so that it gets patch releases nixpkgs does not ship.
+
+WHAT IT DOES, AND WHAT IT DOES NOT. It proposes; it never merges, pushes or deploys. It applies
+every upgrade it finds to this tree -- the pinned packages (PINNED below) and every flake input --
+and writes ONE patch plus a title and a body into --out (ported from bitcashier/infra's
+bin/nix-update, operator decision 2026-10-22: "one PR for all nix dep updates").
+.github/workflows/nix-update.yml turns them into a pull request with infra/bin/nix-update-propose.
+A merge to main IS a deploy of the fleet -- nix-stage-closures.yml stages every host's closure and
+`fleet.autoApply` activates what it may -- so the person merging is the gate, and the body exists to
+give them what they need.
+
+  infra/bin/nix-update --old DIR --out DIR   # upgrade THIS tree; DIR/infra is the same tree, untouched
+  infra/bin/nix-update --self-test           # offline: version choice, file rewriting, every pin's shape
+
+It builds EVERY host's closure from the old tree and from the new one and puts the union of
+`nix store diff-closures` in the body: a nixpkgs bump is unreviewable as a lock diff (two hashes)
+and reviewable as "openssl 3.5.1 -> 3.5.2 on all 3 hosts". It also proves the new tree BUILDS,
+which the pull request's own CI does not -- nix-stage-closures.yml's `evaluate` instantiates, it
+does not build.
+
+Pinned packages take the newest release WITHIN THE CURRENT MAJOR only; a newer major is listed in
+the body and left alone (a mongod major has its own upgrade path: featureCompatibilityVersion, one
+major at a time). mongod's version is also held to the CI and local `mongo:<tag>` containers by
+MongoServerVersionParitySpec, so a bump rewrites those tags too -- and is not proposed until Docker
+Hub publishes the tag. The hashes are computed from the downloaded bytes and checked against
+MongoDB's published sha256; a mismatch leaves the package out and fails the run.
+
+Exit 0 done (a change written, or nothing to upgrade), 1 part of it failed (what did work is still
+written to --out), 2 it could not look at all. Python 3.9 (scripts/run-script-tests' floor).
+"""
+
+import argparse
+import base64
+import datetime
+import hashlib
+import json
+import pathlib
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+REPO = pathlib.Path(__file__).resolve().parents[1]  # infra/, the flake root
+ROOT = REPO.parent  # the git checkout
+USER_AGENT = "kinowo-infra-nix-update"
+# Forgejo rejects a pull request body much past 64 KiB; a nixpkgs bump's diff-closures can be longer.
+BODY_LIMIT = 60000
+
+
+def request(url):
+    return urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+
+
+def fetch(url):
+    with urllib.request.urlopen(request(url), timeout=300) as response:
+        return response.read()
+
+
+def sha256_of(url):
+    """The sha256 of url's bytes, streamed: a mongod tarball is a few hundred MB."""
+    digest = hashlib.sha256()
+    with urllib.request.urlopen(request(url), timeout=300) as response:
+        for chunk in iter(lambda: response.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def run(argv, cwd):
+    result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True)
+    return result.returncode, result.stdout, result.stderr
+
+
+def version_key(v):
+    return tuple(int(p) for p in v.split("."))
+
+
+def is_release(v):
+    return re.fullmatch(r"\d+(\.\d+)*", v) is not None
+
+
+def choose(current, available):
+    """([every release in current's major newer than it, newest first], newest of a later major or None)."""
+    releases = sorted({v for v in available if is_release(v)}, key=version_key, reverse=True)
+    major = version_key(current)[0]
+    same = [v for v in releases if version_key(v)[0] == major and version_key(v) > version_key(current)]
+    later = [v for v in releases if version_key(v)[0] > major]
+    return same, (later[0] if later else None)
+
+
+# ---- the pinned package: mongod ---------------------------------------------------------------
+#
+# roles/mongodb.nix names the release once (`mongodbVersion = "x.y.z";`) and four tarballs, one
+# `url = "...${mongodbVersion}...";` + `hash = "sha256-...";` pair per platform. Every url is the
+# file's own template with the new version put in, so the file and this script cannot disagree
+# about where the bytes come from.
+
+MONGODB_FILE = "nix/modules/roles/mongodb.nix"
+# The containers MongoServerVersionParitySpec holds to the same release (paths from the checkout).
+MONGODB_TAG_FILES = ("scripts/ci/start-mongo-replset.sh", "scripts/convergence-local.sh")
+
+MONGODB_VERSION_LINE = re.compile(r'^(\s*mongodbVersion = ")([^"]+)(";)', re.M)
+URL_HASH = re.compile(r'(url = ")([^"]+)(";\s*\n\s*hash = ")(sha256-[A-Za-z0-9+/=]+)(";)')
+
+
+def mongo_tag(version):
+    # The spec's own pattern: bare or registry-qualified `mongo:<tag>`.
+    return re.compile(r"(?<![\w.-])((?:[\w.-]+/)*mongo:)" + re.escape(version) + r"(?![\w.])")
+
+
+def mongodb_shape(text):
+    """(current version, [(url template, hash)]). Refuses any other shape."""
+    versions = MONGODB_VERSION_LINE.findall(text)
+    if len(versions) != 1:
+        raise ValueError(f"expected exactly one `mongodbVersion = \"...\";` line, found {len(versions)}")
+    pairs = [(m.group(2), m.group(4)) for m in URL_HASH.finditer(text)]
+    if len(pairs) != 4 or any("${mongodbVersion}" not in url for url, _ in pairs):
+        raise ValueError("expected four `url = \"...${mongodbVersion}...\"; hash = \"sha256-...\";` pairs")
+    return versions[0][1], pairs
+
+
+def rewrite_mongodb(text, version, hashes):
+    """The file with its version and each url's hash replaced; hashes is {url template: sri}."""
+    mongodb_shape(text)
+    text = MONGODB_VERSION_LINE.sub(lambda m: m.group(1) + version + m.group(3), text)
+    return URL_HASH.sub(lambda m: m.group(1) + m.group(2) + m.group(3) + hashes[m.group(2)] + m.group(5), text)
+
+
+def rewrite_tags(text, current, version):
+    """Every `mongo:<current>` made `mongo:<version>`. Refuses a file that names none."""
+    pattern = mongo_tag(current)
+    if not pattern.search(text):
+        raise ValueError(f"names no mongo:{current}")
+    return pattern.sub(lambda m: m.group(1) + version, text)
+
+
+def mongodb_releases():
+    """{version: {archive url: published sha256}} for every production release."""
+    listing = json.loads(fetch("https://downloads.mongodb.org/full.json"))
+    out = {}
+    for release in listing["versions"]:
+        if not release.get("production_release"):
+            continue
+        out[release["version"]] = {d["archive"]["url"]: d["archive"].get("sha256")
+                                   for d in release.get("downloads", []) if "archive" in d}
+    return out
+
+
+def docker_hub_has(version):
+    try:
+        with urllib.request.urlopen(request(
+                f"https://hub.docker.com/v2/repositories/library/mongo/tags/{version}"), timeout=60):
+            return True
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return False
+        raise
+
+
+def header_comment(text, line_pattern):
+    """The comment block right above the pinned line: why it is pinned."""
+    lines = text[:line_pattern.search(text).start()].rstrip("\n").splitlines()
+    out = []
+    for line in reversed(lines):
+        if not line.strip().startswith("#"):
+            break
+        out.append(line.strip().lstrip("#").strip())
+    return " ".join(reversed(out))
+
+
+class Refused(Exception):
+    """A pinned package's new bytes did not match upstream's checksum."""
+
+
+def bump_mongodb():
+    """Bump mongod in place when its major has a newer release Docker Hub also has."""
+    text = (REPO / MONGODB_FILE).read_text()
+    current, pairs = mongodb_shape(text)
+    releases = mongodb_releases()
+    if not releases:
+        raise ValueError("upstream listed no releases at all, which is not the same as none being newer")
+    newer, later = choose(current, releases)
+    found = {"name": "mongodb", "path": f"infra/{MONGODB_FILE}", "current": current, "take": None,
+             "later": later, "header": header_comment(text, MONGODB_VERSION_LINE), "notes": []}
+    for v in newer:
+        if docker_hub_has(v):
+            found["take"] = v
+            break
+        found["notes"].append(f"mongodb {v}: Docker Hub has no `mongo:{v}` yet, and CI's mongod must run "
+                              "the same release (MongoServerVersionParitySpec) -- not proposed")
+    if not found["take"]:
+        return found
+    take = found["take"]
+    hashes = {}
+    for template, _ in pairs:
+        url = template.replace("${mongodbVersion}", take)
+        want = releases[take].get(url)
+        if not want:
+            raise Refused(f"MongoDB's listing for {take} has no {url} (the file's url template no longer matches upstream)")
+        digest = sha256_of(url)
+        if digest != want:
+            raise Refused(f"downloaded {url} hashes to {digest} but MongoDB's listing says {want}")
+        hashes[template] = "sha256-" + base64.b64encode(bytes.fromhex(digest)).decode()
+    tag_files = {p: (ROOT / p).read_text() for p in MONGODB_TAG_FILES}
+    rewritten = {p: rewrite_tags(t, current, take) for p, t in tag_files.items()}
+    (REPO / MONGODB_FILE).write_text(rewrite_mongodb(text, take, hashes))
+    for p, t in rewritten.items():
+        (ROOT / p).write_text(t)
+    found["checked"] = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
+        ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + " moved with it"
+    return found
+
+
+# ---- flake.lock -------------------------------------------------------------------------------
+
+def locked_inputs(lock):
+    return {name: node["locked"] for name, node in lock["nodes"].items() if "locked" in node}
+
+
+def compare_link(old, new):
+    if new.get("type") == "github" and old.get("rev") != new.get("rev"):
+        return f"https://github.com/{new['owner']}/{new['repo']}/compare/{old.get('rev', '')[:12]}...{new['rev'][:12]}"
+    return ""
+
+
+def date(locked):
+    t = locked.get("lastModified")
+    return datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%d") if t else "?"
+
+
+def hosts(tree):
+    code, out, err = run(["nix", "eval", "--json", ".#nixosConfigurations", "--apply", "builtins.attrNames"], tree)
+    if code != 0:
+        raise RuntimeError(err.strip()[-2000:])
+    return json.loads(out)
+
+
+def instantiate(tree, names):
+    """{host: .drv} from evaluation alone, and {host: error} for those that would not evaluate."""
+    drvs, errors = {}, {}
+    for name in names:
+        code, out, err = run(["nix", "eval", "--raw",
+                              f".#nixosConfigurations.{name}.config.system.build.toplevel.drvPath"], tree)
+        if code != 0:
+            errors[name] = err.strip()[-1500:]
+        else:
+            drvs[name] = out.strip()
+    return drvs, errors
+
+
+def build(drvs):
+    """Build every .drv in ONE nix process (shared dependencies built once), then ask per host --
+    each host's own error comes from its own retry, not the shared run's tail."""
+    if not drvs:
+        return {}
+    run(["nix", "build", "--keep-going", "--no-link", "--max-jobs", "auto"] + [f"{d}^*" for d in drvs.values()], REPO)
+    built = {}
+    for name, drv in drvs.items():
+        code, out, err = run(["nix", "build", "--no-link", "--print-out-paths", f"{drv}^*"], REPO)
+        built[name] = (out.strip(), None) if code == 0 else (None, err.strip()[-1500:])
+    return built
+
+
+DIFF_LINE = re.compile(r"^(?P<pkg>[^:]+): (?P<change>.*→.*?)(?:, [+-][\d.]+ [KMG]?i?B)?$")
+
+
+def update(old_tree, out):
+    status = 0
+    summary = []
+
+    # 1. The pinned package, within its major.
+    bumped, held, pin_failures, pin_notes = [], [], [], []
+    try:
+        found = bump_mongodb()
+        if found["take"]:
+            bumped.append(found)
+        if found["later"]:
+            held.append(found)
+        pin_notes += found["notes"]
+    except Refused as e:
+        pin_failures.append(f"**mongodb**: REFUSED -- {e}")
+        status = 1
+    except Exception as e:  # network or format: "could not look", never "up to date"
+        pin_failures.append(f"**mongodb**: could not check upstream -- {e}")
+        status = 1
+    for f in bumped:
+        summary.append(f"{f['name']} {f['current']} -> {f['take']}")
+    for f in held:
+        summary.append(f"{f['name']} {f['later']} is a newer major, not proposed")
+    summary += pin_notes
+
+    # 2. flake.lock.
+    old_lock = json.loads((old_tree / "flake.lock").read_text())
+    code, _, err = run(["nix", "flake", "update"], REPO)
+    if code != 0:
+        print(f"nix flake update failed:\n{err}", file=sys.stderr)
+        return 2
+    new_lock = json.loads((REPO / "flake.lock").read_text())
+    old_in, new_in = locked_inputs(old_lock), locked_inputs(new_lock)
+    moved = sorted(n for n in new_in if old_in.get(n, {}).get("narHash") != new_in[n].get("narHash"))
+    if moved:
+        summary.append(f"flake inputs moved: {', '.join(moved)}")
+
+    if not bumped and not moved:
+        (out / "summary.md").write_text("Nothing to upgrade.\n" + "".join(f"- {s}\n" for s in summary + pin_failures))
+        print("nothing to upgrade")
+        for line in summary + pin_failures:
+            print(line, file=sys.stderr)
+        return status
+
+    # 3. Every host, before and after: proves the new tree BUILDS (the PR's own CI only evaluates)
+    # and says what actually changes on the machines.
+    try:
+        names = hosts(REPO)
+    except RuntimeError as e:
+        print(f"could not list the hosts: {e}", file=sys.stderr)
+        return 2
+    old_drvs, _ = instantiate(old_tree, names)
+    new_drvs, new_eval_errors = instantiate(REPO, names)
+    old_built = build(old_drvs)
+    new_built = build(new_drvs)
+
+    changes, failed = {}, {}
+    for name in names:
+        if name in new_eval_errors:
+            failed[name] = "does not evaluate:\n" + new_eval_errors[name]
+            continue
+        new_path, error = new_built[name]
+        if error:
+            failed[name] = "does not build:\n" + error
+            continue
+        old_path = (old_built.get(name) or (None, None))[0]
+        if not old_path:
+            continue  # broken BEFORE this change as well: nothing to compare against
+        _, diff, _ = run(["nix", "store", "diff-closures", old_path, new_path], REPO)
+        for line in diff.splitlines():
+            m = DIFF_LINE.match(line.strip())
+            if m:
+                changes.setdefault(f"{m['pkg']}: {m['change']}", []).append(name)
+    if failed:
+        summary.append(f"{len(failed)} host(s) do not build: {', '.join(sorted(failed))}")
+
+    # When nixpkgs catches up with the pin, mongodb.nix says to drop the override.
+    caught_up = ""
+    if names and "mongo-1" in names:
+        code, nixpkgs_mongo, _ = run(["nix", "eval", "--raw", ".#nixosConfigurations.mongo-1.pkgs.mongodb-ce.version"], REPO)
+        pinned = (bumped[0]["take"] if bumped else None) or MONGODB_VERSION_LINE.search(
+            (REPO / MONGODB_FILE).read_text()).group(2)
+        if code == 0 and is_release(nixpkgs_mongo.strip()) and version_key(nixpkgs_mongo.strip()) >= version_key(pinned):
+            caught_up = (f"- nixpkgs' `mongodb-ce` is now **{nixpkgs_mongo.strip()}**, not behind the pin ({pinned}): "
+                         f"the override in `infra/{MONGODB_FILE}` can go (its comment says so).\n")
+
+    # 4. The pull request.
+    def where(hs):
+        return f"all {len(names)} hosts" if len(hs) == len(names) else f"{len(hs)}: {', '.join(sorted(hs))}"
+    lines = sorted(changes.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    package_rows = [f"- `{change}` ({where(hs)})" for change, hs in lines]
+    pin_rows = [f"| `{f['path']}` | {f['current']} | **{f['take']}** | {f['checked']} |" for f in bumped]
+    pin_why = "".join(f"\n<details><summary>Why <code>{f['name']}</code> is pinned (the file's comment)</summary>\n\n"
+                      f"> {f['header']}\n</details>\n" for f in bumped)
+    input_rows = []
+    for n in moved:
+        o, w = old_in.get(n, {}), new_in[n]
+        link = compare_link(o, w)
+        input_rows.append(f"| `{n}` | {o.get('rev', 'new')[:12]} ({date(o)}) | {w.get('rev', '?')[:12]} ({date(w)}) | "
+                          + (f"[compare]({link})" if link else "") + " |")
+    failures = "".join(f"\n<details><summary><b>{n}</b></summary>\n\n```\n{e}\n```\n</details>\n"
+                       for n, e in sorted(failed.items()))
+
+    body = f"""\
+Weekly `infra/bin/nix-update` (`.github/workflows/nix-update.yml`): every Nix dependency upgrade, in one pull request.
+
+**Merging this deploys it.** `nix-stage-closures.yml` stages the new closures on every host, and
+`fleet.autoApply` activates them wherever every restart is one the host declared acceptable
+(`neverDisturbUnits`: sshd, mongod and k3s are left for a person). To leave something out, push a
+commit to this branch reverting it -- the weekly run will not overwrite a branch with commits by
+anyone but ci-bot.
+
+## Pinned packages ({len(bumped)})
+Newest release within each package's current major; a newer major is only listed.
+
+""" + ("| file | from | to | hash |\n|---|---|---|---|\n" + "\n".join(pin_rows) + "\n" + pin_why
+       + "\nA mongod bump restarts mongod on mongo-1, which auto-apply never does: deploy it by hand "
+         "(`colmena apply --on @database`).\n"
+       if bumped else "None.\n") + "".join(
+        f"- **{f['name']} {f['later']}** is a newer major than {f['current']} -- not proposed.\n" for f in held) + "".join(
+        f"- {line}\n" for line in pin_notes + pin_failures) + caught_up + f"""
+## flake.lock ({len(moved)})
+""" + ("| input | from | to | |\n|---|---|---|---|\n" + "\n".join(input_rows) + "\n" if moved else "No input moved.\n") + f"""
+## Hosts that do not build ({len(failed)})
+{failures or "None: every host evaluated and built."}
+
+## Package version changes, union over {len(names)} hosts ({len(lines)})
+From `nix store diff-closures` of each host's closure before and after; size-only changes are left out.
+
+{chr(10).join(package_rows) or "None."}
+"""
+    if len(body) > BODY_LIMIT:
+        body = body[:BODY_LIMIT] + "\n\n... cut at the pull request size limit; the job log has the rest.\n"
+    print("\n".join(package_rows))
+
+    code, diff, err = run(["git", "diff"], ROOT)
+    if code != 0 or not diff:
+        print(f"git diff failed or was empty: {err}", file=sys.stderr)
+        return 1
+    parts = [f"{f['name']} {f['take']}" for f in bumped] + (["flake.lock: " + ", ".join(moved)] if moved else [])
+    (out / "changes.patch").write_text(diff)
+    (out / "title").write_text(f"nix: weekly update ({'; '.join(parts)})\n")
+    (out / "body.md").write_text(body)
+    (out / "summary.md").write_text("".join(f"- {s}\n" for s in summary + pin_failures))
+    print("\n".join(summary + pin_failures))
+    return status
+
+
+# ---- self-test --------------------------------------------------------------------------------
+
+def self_test():
+    failures = []
+
+    def check(what, got, want):
+        if got != want:
+            failures.append(f"{what}: got {got!r}, want {want!r}")
+
+    check("same major only", choose("8.3.11", ["8.2.9", "8.3.11", "8.3.13", "8.3.12", "8.4.0", "9.0.4", "9.0.2"]),
+          (["8.4.0", "8.3.13", "8.3.12"], "9.0.4"))
+    check("nothing newer", choose("8.3.11", ["8.3.11", "8.2.9"]), ([], None))
+    check("prereleases ignored", choose("8.3.11", ["8.3.12-rc0", "8.3.12"]), (["8.3.12"], None))
+    check("major only newer", choose("8.3.13", ["8.3.13", "9.0.0"]), ([], "9.0.0"))
+
+    sample = ('  # Pinned ahead of nixpkgs.\n  mongodbVersion = "8.3.11";\n  x = {\n'
+              + "".join(f'    "{p}" = pkgs.fetchurl {{\n      url = "https://h/{p}-${{mongodbVersion}}.tgz";\n'
+                        f'      hash = "sha256-{p}=";\n    }};\n' for p in ("a", "b", "c", "d")) + "  };\n")
+    check("shape", mongodb_shape(sample)[0], "8.3.11")
+    new = rewrite_mongodb(sample, "8.3.13", {f"https://h/{p}-${{mongodbVersion}}.tgz": f"sha256-N{p}=" for p in "abcd"})
+    check("rewrite", new, sample.replace('"8.3.11"', '"8.3.13"').replace("sha256-a=", "sha256-Na=")
+          .replace("sha256-b=", "sha256-Nb=").replace("sha256-c=", "sha256-Nc=").replace("sha256-d=", "sha256-Nd="))
+    for broken, why in ((sample.replace("  mongodbVersion", "  # mongodbVersion"), "no version line"),
+                        (sample.replace("${mongodbVersion}.tgz\";\n      hash = \"sha256-d=", "8.3.11.tgz\";\n      hash = \"sha256-d="),
+                         "a url not built from the version")):
+        try:
+            mongodb_shape(broken)
+            failures.append(f"mongodb_shape accepted a file with {why}")
+        except ValueError:
+            pass
+    check("header", header_comment("x\n  # Why one,\n  # why two.\n  mongodbVersion = \"1\";\n", MONGODB_VERSION_LINE),
+          "Why one, why two.")
+    check("tags", rewrite_tags("image=mirror.gcr.io/library/mongo:8.3.11\nrun mongo:8.3.11 --x\nmongo:8.3.111\n",
+                               "8.3.11", "8.3.13"),
+          "image=mirror.gcr.io/library/mongo:8.3.13\nrun mongo:8.3.13 --x\nmongo:8.3.111\n")
+    check("diff line", DIFF_LINE.match("openssl: 3.5.1 → 3.5.2, +4.1 KiB")["change"], "3.5.1 → 3.5.2")
+    check("size-only line ignored", DIFF_LINE.match("openssl: +4.1 KiB"), None)
+
+    # The real files keep the shape the weekly run rewrites, so a file reshaped by hand fails here (on
+    # every push, via scripts/run-script-tests) rather than on next Monday's run.
+    try:
+        current, _ = mongodb_shape((REPO / MONGODB_FILE).read_text())
+        header_comment((REPO / MONGODB_FILE).read_text(), MONGODB_VERSION_LINE)
+        for p in MONGODB_TAG_FILES:
+            try:
+                rewrite_tags((ROOT / p).read_text(), current, "0.0.0")
+            except ValueError as e:
+                failures.append(f"{p}: {e}")
+    except ValueError as e:
+        failures.append(f"infra/{MONGODB_FILE}: {e}")
+
+    for f in failures:
+        print(f"FAIL {f}")
+    print(f"{'FAILED' if failures else 'ok'}: self-test, {len(failures)} failure(s)")
+    return 1 if failures else 0
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--old", type=pathlib.Path, help="the flake root (infra/) of the same tree, not upgraded")
+    ap.add_argument("--out", type=pathlib.Path, help="where changes.patch, title, body.md, summary.md go")
+    args = ap.parse_args()
+    if args.self_test:
+        return self_test()
+    if not args.old or not args.out:
+        ap.error("--old and --out are required")
+    args.out.mkdir(parents=True, exist_ok=True)
+    return update(args.old.resolve(), args.out)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

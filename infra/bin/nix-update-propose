@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Turn infra/bin/nix-update's output into ONE pull request: branch nix-update/all, opened or updated.
+#
+#   NIX_UPDATE_TOKEN=... infra/bin/nix-update-propose <out dir>
+#
+# Runs from the checkout's root, in the checkout of main .github/workflows/nix-update.yml made,
+# after infra/bin/nix-update wrote <out>/changes.patch, title and body.md. Needs git, curl and jq.
+#
+# AS ci-bot, NOT AS THE JOB: Forgejo fires no `pull_request` workflows for a PR the job token opens,
+# so the checks a reviewer needs would never run. The token is SCALA_STEWARD_TOKEN, the one
+# scala-steward.yml opens its PRs with (ci-bot, minted by bitcashier/infra's bin/forgejo-bootstrap;
+# write on this repository only, through team pawelkrupinski/steward).
+#
+# THE BRANCH IS REBUILT FROM main EVERY WEEK AND FORCE-PUSHED, so an open PR always shows this
+# week's upgrades against today's main -- UNLESS someone else has pushed to it (to drop an upgrade,
+# fix a host). Then it is left alone and the run says so: a weekly job silently discarding a
+# person's commits is the one thing this must never do.
+set -euo pipefail
+
+out="${1:?usage: nix-update-propose <out dir>}"
+: "${NIX_UPDATE_TOKEN:?NIX_UPDATE_TOKEN is not set (secrets.SCALA_STEWARD_TOKEN, the ci-bot token)}"
+server="${GITHUB_SERVER_URL:?}"
+repo="${GITHUB_REPOSITORY:?}"
+branch="nix-update/all"
+bot_email="ci-bot@forgejo.internal"
+summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+if [ ! -s "${out}/changes.patch" ]; then
+  echo "nothing to propose"
+  exit 0
+fi
+
+# THE TOKEN NEVER GOES ON ARGV: curl reads the header from a config on a pipe, git from its
+# GIT_CONFIG_* environment.
+auth_curl() { curl -K <(printf 'header = "Authorization: token %s"\n' "${NIX_UPDATE_TOKEN}") "$@"; }
+auth_git() {
+  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: token ${NIX_UPDATE_TOKEN}" \
+    git "$@"
+}
+remote="${server}/${repo}.git"
+api="${server}/api/v1/repos/${repo}"
+
+# ls-remote first, so "no such branch" (the first week, or after a merge) is told apart from a
+# failed read, which must stop the run rather than read as "nothing to protect".
+if [ -n "$(auth_git ls-remote --heads "${remote}" "refs/heads/${branch}")" ]; then
+  auth_git fetch -q "${remote}" "+refs/heads/${branch}:refs/remotes/nix-update/existing"
+  others="$(git log --format='%ae %h %s' HEAD..nix-update/existing | grep -v "^${bot_email} " || true)"
+  if [ -n "${others}" ]; then
+    {
+      echo "**${branch} has commits by someone other than ci-bot, so this week's run left it alone:**"
+      echo '```'
+      echo "${others}"
+      echo '```'
+      echo "Merge or close its PR (or delete the branch) and the next run proposes afresh."
+    } | tee -a "${summary}"
+    exit 0
+  fi
+fi
+
+# nix-update upgraded THIS checkout in place, and the patch is its record: start from a clean main,
+# so the branch is exactly the patch. Never anywhere but a CI job, where the checkout is the job's own.
+if ! git diff --quiet HEAD; then
+  if [ "${GITHUB_ACTIONS:-}" != "true" ]; then
+    echo "the checkout has uncommitted changes; outside CI this will not discard them" >&2
+    exit 1
+  fi
+  git reset -q --hard HEAD
+fi
+git checkout -q -B "${branch}"
+git apply --index "${out}/changes.patch"
+git -c user.name=ci-bot -c user.email="${bot_email}" commit -q -F - <<EOF
+$(cat "${out}/title")
+
+Weekly infra/bin/nix-update (.github/workflows/nix-update.yml, run ${GITHUB_RUN_ID:-?}).
+EOF
+auth_git push -q --force "${remote}" "HEAD:refs/heads/${branch}"
+echo "pushed ${branch} ($(git rev-parse --short HEAD))"
+
+title="$(head -n1 "${out}/title")"
+body_json="$(jq -n --arg title "${title}" --rawfile body "${out}/body.md" '{title: $title, body: $body}')"
+number="$(auth_curl -fsS "${api}/pulls?state=open&limit=50" |
+  jq -r --arg b "${branch}" 'map(select(.head.ref == $b)) | first | .number // empty')"
+if [ -n "${number}" ]; then
+  auth_curl -fsS -o /dev/null -X PATCH -H 'Content-Type: application/json' \
+    --data-binary @- "${api}/pulls/${number}" <<<"${body_json}"
+  echo "updated PR #${number}: ${title}" | tee -a "${summary}"
+else
+  number="$(jq --arg h "${branch}" '. + {head: $h, base: "main"}' <<<"${body_json}" |
+    auth_curl -fsS -X POST -H 'Content-Type: application/json' --data-binary @- "${api}/pulls" | jq -r .number)"
+  echo "opened PR #${number}: ${title}" | tee -a "${summary}"
+fi
+echo "${server}/${repo}/pulls/${number}" | tee -a "${summary}"
