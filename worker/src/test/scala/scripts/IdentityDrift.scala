@@ -82,7 +82,10 @@ object IdentityDrift {
     /** The checkpoint's kind: `settled`, `tick`, `deploy` or `after-deploy` (the run's number dropped). */
     def kind: String = checkpoint.takeWhile(c => !c.isDigit).stripSuffix("-")
     /** The class it falls in: which side took a film, and on which basis. */
-    def cls: String = {
+    def cls: String = if (kind == "gap") {
+      val moved = if (incremental.film == "none") "a take lost" else if (whole.film == "none") "a take made" else "another film taken"
+      s"gap: $moved while answers were missing, reversed by the fill (settled ${whole.basis}, gap state ${incremental.basis})"
+    } else {
       val side = (whole.film, incremental.film) match {
         case ("none", _) => "incremental-only take"
         case (_, "none") => "incremental loss"
@@ -224,7 +227,8 @@ object IdentityDrift {
           s"${stage.wantedCatalogue.size} catalogue question(s) open, backlog ${stage.backlog}")
         answers.answer(stage, release); clock.advance(Duration.ofMinutes(1)); now = apply()
       }
-      clock.advance(Duration.ofMillis(AgreementStage.PartialAfter.toMillis).plusMinutes(1))
+      // past every partial wait, and every gap hold: a gap the recording never answers holds no take for ever
+      clock.advance(Duration.ofMillis(math.max(AgreementStage.PartialAfter.toMillis, GapHold.Limit.toMillis)).plusMinutes(1))
       now = apply()
     }
     if (!quiet) System.err.println(s"[identity-drift] the stage did not settle in $rounds rounds: ${(stage.wanted -- answers.unreachable).size} question(s), " +
@@ -237,7 +241,8 @@ object IdentityDrift {
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
   final class Worker(reads: Reads, all: Seq[Listing], seed: Long, gatePercent: Int, val clock: MutableClock) {
     private val share    = new Share(seed, gatePercent)
-    val gate             = new Gate(memo(reads), share)
+    private val recorded = memo(reads)
+    var gate             = new Gate(recorded, share)
     val docs             = new GatedDocuments(new tools.FiledAnswers.Noting(reads.filed), share)
     val answers          = new Answers(reads, docs, clock)
     private val families = new StoredAsWritten.Families
@@ -250,6 +255,15 @@ object IdentityDrift {
     var held: Map[ListingKey, Listing] = Map.empty
     /** Nothing built on yet: the next projection reads every cluster again (its `republished` is `None`). */
     private var fresh = true
+    /** The last projection's takes, and — a worker just deployed — what its stored films show (their TMDB films alone),
+     *  as the projection's [[GapHold]] reads them. */
+    private var taken: Option[Resolution] = None
+    private var gapHold = new GapHold(clock)
+    private var stored: Map[ListingKey, GapHold.Prior] = Map.empty
+    private def priorTakes: ListingKey => Option[GapHold.Prior] = taken match {
+      case Some(last) => key => last.decisionOf.get(key).map(GapHold.Prior.of)
+      case None       => stored.get
+    }
     private var projections = 0
 
     def releaseFamily(id: String): Boolean = docs.held(id) && { docs.release(id); answers.store.noteFiled(id); true }
@@ -258,7 +272,9 @@ object IdentityDrift {
     def project(republished: Iterable[ListingKey] = Nil): Resolution = {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
-      val r = stage.apply(UnmatchedClusters.resolutionOf(model.decisions), held.get, answers.store.version, if (fresh) None else Some(republished))
+      val holding = gapHold(UnmatchedClusters.resolutionOf(model.decisions), priorTakes, model.blind)
+      val r = stage.apply(holding, held.get, answers.store.version, if (fresh) None else Some(republished))
+      taken = Some(r)
       fresh = false
       projections += 1
       System.err.println(f"[identity-drift] seed $seed projection $projections: ${held.size} listings, " +
@@ -273,10 +289,24 @@ object IdentityDrift {
     /** A deploy: the model and the stage made anew from their stores; `outrule` — a deploy changing the rules. */
     def deploy(outrule: Boolean): Unit = {
       if (outrule) { rules = s"$rules+"; verdicts.outrule() }
+      // what the stored films show: a TMDB film, a fallback film by its source and id, or none (GapHold.Prior.stored)
+      stored = taken.fold(Map.empty[ListingKey, GapHold.Prior])(_.decisions.flatMap(d => d.members.map(_ -> GapHold.Prior(d.film,
+        d.fallback.filter(_ => d.film.isEmpty).map(f => f.copy(probability = 1.0)),
+        if (d.film.isDefined) ResolverDecision.Basis.OwnMatch else if (d.fallback.isDefined) ResolverDecision.Basis.Agreed else ResolverDecision.Basis.NoCandidate,
+        1.0))).toMap)
+      taken = None
+      gapHold = new GapHold(clock)
       model = newModel()
       model.restore(held.values.toSeq.sorted)
       stage = answers.stage(gate, verdicts, budgets = true)
       fresh = true
+    }
+    /** A deploy whose code asks what was never filed: another [[Share]] of TMDB's searches, records and venue pages a
+     *  gap again (a new `Gate`), and every family and verdict outruled — the window right after such a deploy, the
+     *  "gap states" in which a take can be made on evidence nothing can deny yet. */
+    def regap(salt: Long, percent: Int): Unit = {
+      gate = new Gate(recorded, new Share(salt, percent))
+      deploy(outrule = true)
     }
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
@@ -314,6 +344,15 @@ object IdentityDrift {
     w.filled(0.5, rng); w.project()
     w.scraped(of(arrivals(2))); w.project()
     checkpoints += "settled" -> w.settled()
+    // GAP STATES: a deploy bringing new questions, projected while they are gaps, half filed, all filed — every take a
+    // gap state makes that the settled state after it reverses is drift ([[gapReversals]])
+    w.regap(seed * 7919 + 1, gatePercent)
+    checkpoints += "gap-1" -> w.project()
+    w.filled(0.5, rng)
+    checkpoints += "gap-2" -> w.project()
+    w.answered()
+    checkpoints += "gap-3" -> w.project()
+    checkpoints += "regapped" -> w.settled()
     for (run <- 1 to 2) {
       checkpoints += s"tick-$run" -> rescrape()
       w.deploy(outrule = run == 2)
@@ -344,9 +383,11 @@ object IdentityDrift {
       val reference  = takesOf(whole(readsAt(wholeClock), listings, wholeClock))
       println(s"[${country.code} seed $seed] the whole resolve's takes by basis: " +
         reference.values.groupMapReduce(_.basis)(_ => 1)(_ + _).toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", "))
+      val named = checkpoints.toMap
       checkpoints.flatMap { case (name, resolution) =>
         val now = takesOf(resolution)
-        listings.map(_.key).flatMap { key =>
+        if (name.startsWith(GapPrefix)) gapReversals(country.code, seed.toLong, name, listings.map(_.key), takesOf(named("settled")), now, takesOf(named("regapped")))
+        else listings.map(_.key).flatMap { key =>
           val (a, b) = (reference.getOrElse(key, Take("none", "absent", "")), now.getOrElse(key, Take("none", "absent", "")))
           Option.when(a.film != b.film)(Divergence(country.code, seed.toLong, name, key, a, b))
         }
@@ -365,6 +406,20 @@ object IdentityDrift {
       }
     }
     if (open.nonEmpty) sys.exit(1)
+  }
+
+  val GapPrefix = "gap-"
+
+  /** The listings a GAP STATE moves off their settled take that the settled state after the gaps' answers moves back:
+   *  a take made, or one lost, on evidence a later fill reverses (`whole` is the take before the gaps, `incremental` the
+   *  gap state's). */
+  def gapReversals(country: String, seed: Long, checkpoint: String, keys: Seq[ListingKey], before: Map[ListingKey, Take],
+                   gapped: Map[ListingKey, Take], after: Map[ListingKey, Take]): Seq[Divergence] = {
+    val absent = Take("none", "absent", "")
+    keys.flatMap { key =>
+      val (was, mid, now) = (before.getOrElse(key, absent), gapped.getOrElse(key, absent), after.getOrElse(key, absent))
+      Option.when(mid.film != was.film && now.film == was.film)(Divergence(country, seed, checkpoint, key, was, mid))
+    }
   }
 
   /** What the judgements say of the two sides' films, where they judge the listing. */
