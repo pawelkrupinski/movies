@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Production match regressions, read from the identity take-change log and published as metrics.
+
+WHY THIS EXISTS. Two regressions went unnoticed for one to two days in 2026-10: DE "Der kleine Prinz"
+(16 listings lost, builds 0836455/627fa94, 2026-10-20) and PL Cinema City "Swiateczna zabawa z Peppa"
+(123 listings lost, build 96fb23c, 2026-10-21 11:30Z). Both were below identity-matching.rules'
+country-wide shares (0.15% of a country's listings in an hour) and both were plain to see in
+VictoriaLogs, one `identity take change` line per listing. This turns those lines into three
+per-film / per-build / per-listing-pair gauges that identity-regressions.rules alerts on.
+
+WHAT IT READS. Every worker logs `identity take change: <kind> ...` with fields country, kind
+(lost / changed / gained), build, venue, listing, tmdb_before/tmdb_after, title_before/title_after
+(see .claude/skills/identity-investigation). This fetches the last 24h of them every few minutes
+(1-3k lines on an ordinary day) and computes:
+
+  kinowo_identity_film_net_lost{country,tmdb,title,build}
+      listings that held the film at the start of the last 6h and hold NO film now, minus listings
+      that held no film then and hold this one now. "No matching gain elsewhere": a listing that
+      moved to ANOTHER film (kind changed, net) is not a loss, and a film losing listings under one
+      key while gaining them under another nets out. Only values >= PUBLISH_FLOOR are written.
+  kinowo_identity_build_net_lost{country,build,tmdb,title}
+      per build, over the last 24h: listings it unmatched (lost) minus listings it matched (gained).
+      `tmdb`/`title` name the film that lost most under it.
+  kinowo_identity_listing_flips{country,tmdb_a,tmdb_b,title,build,venue}
+      the most times one listing moved between the same two films (kind changed, either direction)
+      in the last 24h, per film pair; `venue` is one listing doing it, `build` the latest flip's.
+  kinowo_identity_regressions_last_success_timestamp_seconds / _lines
+      when a run last read the log, and how many lines it read.
+
+THE BACKTEST. `backtest` replays the same functions over a past stretch (default 14 days, every 5
+minutes) with the alert thresholds of identity-regressions.rules, and prints every episode that would
+have fired. The thresholds are duplicated in THRESHOLDS below for that purpose only; the rules file is
+what alerts, and test_identity_regressions.py fails if the two disagree.
+
+Usage:
+  identity-regressions.py publish --url http://10.20.0.11:9428 --out /etc/node-exporter/textfile.d/identity-regressions.prom
+  identity-regressions.py backtest --url http://10.20.0.11:9428 [--days 14] [--step 300]
+  identity-regressions.py backtest --lines dump.jsonl     (the LogsQL query's JSON lines, saved)
+"""
+
+import argparse
+import collections
+import datetime
+import json
+import os
+import tempfile
+import urllib.parse
+import urllib.request
+
+FILM_WINDOW = 6 * 3600
+BUILD_WINDOW = 24 * 3600
+FLIP_WINDOW = 24 * 3600
+FETCH_WINDOW = "24h"
+PUBLISH_FLOOR = 5  # film_net_lost below this is not written: it alerts at 10, and the file stays small
+FLIP_FLOOR = 2
+
+FIELDS = ("_time", "country", "kind", "build", "venue", "listing",
+          "tmdb_before", "tmdb_after", "title_before", "title_after")
+
+# Mirrors identity-regressions.rules (pinned by test_identity_regressions.py). Build thresholds are per
+# country; any country not named uses "*".
+THRESHOLDS = {
+    "film_net_lost": 10,
+    "film_for_seconds": 900,
+    "build_net_lost": {"de": 65, "uk": 25, "*": 10},
+    "build_for_seconds": 900,
+    "listing_flips": 3,
+}
+
+
+def parse_time(s):
+    # 2026-10-20T21:13:41.080249024Z -> epoch seconds; Python's fromisoformat takes 6 fraction digits.
+    head, _, frac = s.rstrip("Z").partition(".")
+    t = datetime.datetime.fromisoformat(head).replace(tzinfo=datetime.timezone.utc).timestamp()
+    return t + (float("0." + frac) if frac else 0.0)
+
+
+def parse(lines):
+    out = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        r = json.loads(line)
+        if r.get("kind") not in ("lost", "changed", "gained"):
+            continue
+        r["t"] = parse_time(r["_time"])
+        out.append(r)
+    out.sort(key=lambda r: r["t"])
+    return out
+
+
+def _key(r):
+    return (r.get("country", ""), r.get("venue", ""), r.get("listing", ""))
+
+
+def film_net_lost(records, now, window=FILM_WINDOW):
+    """{(country, tmdb): {"count", "title", "build"}} for films with a positive net loss."""
+    first, last = {}, {}
+    for r in records:
+        if now - window < r["t"] <= now:
+            k = _key(r)
+            first.setdefault(k, r)
+            last[k] = r
+    net = collections.Counter()
+    builds = collections.defaultdict(collections.Counter)
+    titles = {}
+    for k, f in first.items():
+        before, after = f.get("tmdb_before"), last[k].get("tmdb_after")
+        if before and not after:
+            net[(k[0], before)] += 1
+            builds[(k[0], before)][last[k].get("build", "")] += 1
+            titles.setdefault((k[0], before), f.get("title_before") or k[2])
+        elif after and not before:
+            net[(k[0], after)] -= 1
+    return {fk: {"count": n, "title": titles[fk], "build": builds[fk].most_common(1)[0][0]}
+            for fk, n in net.items() if n > 0}
+
+
+def build_net_lost(records, now, window=BUILD_WINDOW):
+    """{(country, build): {"count", "tmdb", "title"}} for builds that unmatched more than they matched."""
+    lost, gained = collections.defaultdict(set), collections.defaultdict(set)
+    films = collections.defaultdict(collections.Counter)
+    titles = {}
+    for r in records:
+        if not (now - window < r["t"] <= now):
+            continue
+        bk = (r.get("country", ""), r.get("build", ""))
+        if r["kind"] == "lost":
+            lost[bk].add(_key(r))
+            films[bk][r.get("tmdb_before", "")] += 1
+            titles.setdefault((bk, r.get("tmdb_before", "")), r.get("title_before") or r.get("listing", ""))
+        elif r["kind"] == "gained":
+            gained[bk].add(_key(r))
+    out = {}
+    for bk in lost:
+        n = len(lost[bk]) - len(gained.get(bk, ()))
+        if n > 0:
+            tmdb = films[bk].most_common(1)[0][0]
+            out[bk] = {"count": n, "tmdb": tmdb, "title": titles[(bk, tmdb)]}
+    return out
+
+
+def listing_flips(records, now, window=FLIP_WINDOW):
+    """{(country, tmdb_a, tmdb_b): {"count", "title", "build", "venue"}}: the most changes one listing
+    made between the two films (either direction) inside the window."""
+    per = collections.Counter()
+    latest = {}
+    for r in records:
+        if r["kind"] != "changed" or not (now - window < r["t"] <= now):
+            continue
+        a, b = sorted((r.get("tmdb_before", ""), r.get("tmdb_after", "")))
+        k = _key(r) + (a, b)
+        per[k] += 1
+        latest[k] = r
+    out = {}
+    for k, n in per.items():
+        pk = (k[0], k[3], k[4])
+        if pk not in out or n > out[pk]["count"]:
+            r = latest[k]
+            out[pk] = {"count": n, "title": r.get("title_after") or r.get("title_before") or k[2],
+                       "build": r.get("build", ""), "venue": k[1]}
+    return out
+
+
+def _escape(v):
+    return str(v).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+
+
+def _labels(**kv):
+    return "{" + ",".join(f'{k}="{_escape(v)}"' for k, v in kv.items()) + "}"
+
+
+def render(records, now):
+    """The textfile, `# TYPE` headers and all."""
+    out = []
+    out.append("# HELP kinowo_identity_film_net_lost Listings that held the film 6h ago and hold no film now, net of listings newly matched to it.")
+    out.append("# TYPE kinowo_identity_film_net_lost gauge")
+    for (cc, tmdb), v in sorted(film_net_lost(records, now).items()):
+        if v["count"] >= PUBLISH_FLOOR:
+            out.append(f"kinowo_identity_film_net_lost{_labels(country=cc, tmdb=tmdb, title=v['title'], build=v['build'])} {v['count']}")
+    out.append("# HELP kinowo_identity_build_net_lost Listings a build unmatched minus listings it matched, over its last 24h of take changes.")
+    out.append("# TYPE kinowo_identity_build_net_lost gauge")
+    for (cc, build), v in sorted(build_net_lost(records, now).items()):
+        out.append(f"kinowo_identity_build_net_lost{_labels(country=cc, build=build, tmdb=v['tmdb'], title=v['title'])} {v['count']}")
+    out.append("# HELP kinowo_identity_listing_flips Most moves one listing made between the same two films in 24h.")
+    out.append("# TYPE kinowo_identity_listing_flips gauge")
+    for (cc, a, b), v in sorted(listing_flips(records, now).items()):
+        if v["count"] >= FLIP_FLOOR:
+            out.append(f"kinowo_identity_listing_flips{_labels(country=cc, tmdb_a=a, tmdb_b=b, title=v['title'], build=v['build'], venue=v['venue'])} {v['count']}")
+    out.append("# HELP kinowo_identity_regressions_lines Take-change lines the last successful run read (24h).")
+    out.append("# TYPE kinowo_identity_regressions_lines gauge")
+    out.append(f"kinowo_identity_regressions_lines {len(records)}")
+    out.append("# HELP kinowo_identity_regressions_last_success_timestamp_seconds When the take-change log was last read and published.")
+    out.append("# TYPE kinowo_identity_regressions_last_success_timestamp_seconds gauge")
+    out.append(f"kinowo_identity_regressions_last_success_timestamp_seconds {int(now)}")
+    return "\n".join(out) + "\n"
+
+
+def fetch(url, window):
+    query = f"_time:{window} kind:* | fields " + ", ".join(FIELDS)
+    data = urllib.parse.urlencode({"query": query}).encode()
+    with urllib.request.urlopen(url.rstrip("/") + "/select/logsql/query", data=data, timeout=120) as resp:
+        return resp.read().decode("utf-8").splitlines()
+
+
+def publish(args):
+    records = parse(fetch(args.url, FETCH_WINDOW))
+    text = render(records, datetime.datetime.now(datetime.timezone.utc).timestamp())
+    # ATOMIC: node_exporter must never read half a file (a torn line fails the whole file's parse).
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(args.out), prefix=".identity-regressions.")
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, args.out)
+
+
+# ── backtest ──────────────────────────────────────────────────────────────────────────────────────
+
+def build_threshold(country):
+    t = THRESHOLDS["build_net_lost"]
+    return t.get(country, t["*"])
+
+
+def episodes(series_by_step, hold):
+    """series_by_step: [(t, {key: info})] where every key present is over its threshold at t.
+    Returns [(key, start, end, peak_info)] for runs held at least `hold` seconds (the rule's `for:`)."""
+    open_, done = {}, []
+    for t, firing in series_by_step:
+        for k, info in firing.items():
+            if k not in open_:
+                open_[k] = [t, t, info]
+            else:
+                open_[k][1] = t
+                if info["count"] > open_[k][2]["count"]:
+                    open_[k][2] = info
+        for k in [k for k in open_ if k not in firing]:
+            done.append((k,) + tuple(open_.pop(k)))
+    done.extend((k,) + tuple(v) for k, v in open_.items())
+    return sorted([e for e in done if e[2] - e[1] >= hold], key=lambda e: e[1])
+
+
+def backtest(records, start, end, step):
+    a, b, c = [], [], []
+    t = start
+    while t <= end:
+        a.append((t, {k: v for k, v in film_net_lost(records, t).items() if v["count"] >= THRESHOLDS["film_net_lost"]}))
+        b.append((t, {k: v for k, v in build_net_lost(records, t).items() if v["count"] > build_threshold(k[0])}))
+        c.append((t, {k: v for k, v in listing_flips(records, t).items() if v["count"] >= THRESHOLDS["listing_flips"]}))
+        t += step
+    return {
+        "IdentityFilmListingsLost": episodes(a, THRESHOLDS["film_for_seconds"]),
+        "IdentityBuildNetLosses": episodes(b, THRESHOLDS["build_for_seconds"]),
+        "IdentityListingFlipFlop": episodes(c, 0),
+    }
+
+
+def _fmt(t):
+    return datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+
+def run_backtest(args):
+    if args.lines:
+        with open(args.lines) as f:
+            records = parse(f)
+    else:
+        records = parse(fetch(args.url, f"{args.days}d"))
+    if not records:
+        print("no take-change lines")
+        return
+    end = records[-1]["t"] + args.step
+    start = max(records[0]["t"], end - args.days * 86400)
+    print(f"{len(records)} lines, {_fmt(records[0]['t'])} .. {_fmt(records[-1]['t'])}; replayed every {args.step}s")
+    for alert, eps in backtest(records, start, end, args.step).items():
+        print(f"\n{alert}: {len(eps)} episode(s)")
+        for key, s, e, info in eps:
+            print(f"  {_fmt(s)} {((e - s) / 3600):5.1f}h  {' '.join(key)}  n={info['count']}  "
+                  f"{info.get('title', '')!r}  build={info.get('build', key[1] if alert == 'IdentityBuildNetLosses' else '')[:9]}")
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    sub = p.add_subparsers(dest="cmd", required=True)
+    pp = sub.add_parser("publish")
+    pp.add_argument("--url", required=True)
+    pp.add_argument("--out", required=True)
+    pb = sub.add_parser("backtest")
+    pb.add_argument("--url")
+    pb.add_argument("--lines")
+    pb.add_argument("--days", type=int, default=14)
+    pb.add_argument("--step", type=int, default=300)
+    args = p.parse_args(argv)
+    if args.cmd == "publish":
+        publish(args)
+    else:
+        if not (args.url or args.lines):
+            p.error("backtest needs --url or --lines")
+        run_backtest(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -192,6 +192,10 @@ let
     # film the identity projection lost or changed -- the live half of the identity takes check CI
     # runs on code. Alphabetically after host-health and before jvm-heap.
     "identity-matching"
+    # THE SAME QUESTION, PER FILM, PER BUILD AND PER LISTING, below identity-matching's country-wide
+    # shares: gauges roles/identity-regressions.nix publishes from the take-change log. Added after DE
+    # "Der kleine Prinz" (16) and PL Peppa (123) went unnoticed for a day each in 2026-10.
+    "identity-regressions"
     # IS ANY JVM ABOUT TO RUN OUT OF HEAP. Added after web-us OOMed on 2026-09-03 while a merged,
     # green, `deployed-web`-tagged heap raise sat unapplied: the CI deploy rolls images only, so a
     # JAVA_OPTS change never reaches the cluster on its own and nothing anywhere went red.

@@ -238,6 +238,11 @@ route_is telegram alertname=ChangeStreamApplyLagging severity=warning country=pl
 route_is telegram alertname=IdentityTakeChangesBurst severity=warning country=pl
 route_is telegram alertname=IdentityTakesLost severity=warning country=uk
 route_is telegram alertname=IdentitySuspectTakesRising severity=warning country=de
+# ...and their per-film / per-build / per-listing half (identity-regressions.rules), the same receiver.
+route_is telegram alertname=IdentityFilmListingsLost severity=warning country=pl
+route_is telegram alertname=IdentityBuildNetLosses severity=warning country=de
+route_is telegram alertname=IdentityListingFlipFlop severity=warning country=uk
+route_is telegram alertname=IdentityRegressionWatchStale severity=warning
 route_is telegram alertname=RetiredVenueRowsLingering severity=warning country=pl
 route_is telegram alertname=DuplicateVenueListing severity=warning country=uk
 route_is telegram alertname=CinemaScrapeFailureShareHigh severity=warning country=uk

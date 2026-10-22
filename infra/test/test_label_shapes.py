@@ -78,6 +78,12 @@ EVENT_ONLY_VALUES = {
     ("kinowo_web_films_by_poster_host", "poster_host", "none"),
     ("country_poster_host:web_films:share", "poster_host", "none"),
     ("country_poster_host:web_films:share", "poster_host", "other"),
+    # NOT PUBLISHED YET (2026-10-22): the identity regression gauges are new with
+    # identity-regressions.rules (roles/identity-regressions.nix writes them on monitoring-1), so the
+    # fleet has no series to snapshot. `country` is the take-change lines' own field. Re-snapshot once
+    # the timer has run, then drop these.
+    ("kinowo_identity_build_net_lost", "country", "de"),
+    ("kinowo_identity_build_net_lost", "country", "uk"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

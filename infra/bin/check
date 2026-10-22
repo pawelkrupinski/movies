@@ -149,6 +149,17 @@ else
   failed=1
 fi
 
+step "identity regression watch"
+# nix/files/identity-regressions.py decides what a film's net loss, a build's net loss and a flip
+# are from the take-change log; identity-regressions.rules alerts on what it publishes. Pinned on
+# the PL Peppa and DE Prinz incidents, and its backtest thresholds kept equal to the rule file's.
+if out="$(python3 test/test_identity_regressions.py 2>&1)"; then
+  echo "  ok  $(printf '%s' "$out" | grep -c '\.\.\. ok$') test(s)"
+else
+  echo "$out" | tail -25 | sed 's/^/  /'
+  failed=1
+fi
+
 step "alertmanager routing"
 # THE RULES DECIDE WHETHER AN ALERT FIRES; THIS DECIDES WHETHER ANYBODY HEARS IT. `route.routes` is
 # first-match-wins, so a route added below one that already matches is dead the moment it is

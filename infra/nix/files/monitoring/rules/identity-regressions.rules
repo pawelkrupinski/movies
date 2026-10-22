@@ -1,0 +1,120 @@
+---
+# ONE FILM, ONE BUILD, ONE LISTING: production match regressions too small for identity-matching.rules.
+#
+# identity-matching.rules asks whether a visible SHARE of a country's listings moved within an hour
+# (0.15% lost, 0.5% changed). Two regressions in 2026-10 sat far below that and went unnoticed for one
+# to two days, each plain in VictoriaLogs as one `identity take change` line per listing:
+#
+#   DE "Der kleine Prinz"   16 listings: 334199 -> 309809 at 16:43Z on 2026-10-20 (build 0836455), then
+#                           lost altogether at 21:13Z (627fa94); re-taken 05:16Z 10-21 and lost again 05:24Z.
+#   PL Cinema City Peppa    123 listings of "Swiateczna zabawa z Peppa" (tmdb 1778515) lost at 11:30Z on
+#                           2026-10-21 by build 96fb23c, still unmatched a day later.
+#
+# THE INPUTS are not the worker's counters but the log lines themselves, turned into gauges every five
+# minutes by `identity-regressions` on monitoring-1 (nix/files/identity-regressions.py, the
+# roles/identity-regressions.nix timer), into node_exporter's textfile directory:
+#
+#   kinowo_identity_film_net_lost{country,tmdb,title,build}           6h window, per film
+#   kinowo_identity_build_net_lost{country,build,tmdb,title}          24h window, per build
+#   kinowo_identity_listing_flips{country,tmdb_a,tmdb_b,title,build,venue}  24h window, per film pair
+#
+# BACKTEST (2026-10-13 23:06Z .. 2026-10-22 13:31Z, all the field-carrying lines VictoriaLogs has; replayed
+# every 5 minutes with `identity-regressions.py backtest`): IdentityFilmListingsLost 27 episodes,
+# IdentityBuildNetLosses 11, IdentityListingFlipFlop 3. Both incidents above fire (Prinz at 21:16Z
+# 10-20 as tmdb 334199 and again as 309809; Peppa at 11:31Z 10-21 in both of the first two alerts).
+# Of the 27 film episodes, 15 lost listings that later took the SAME film back -- the loss was wrong --
+# and 12 were still unmatched at the end of the data (PL Peppa, UK CBeebies Panto twice, among them);
+# none was a listing moving to another film. Re-run it after changing a threshold:
+#   ssh monitoring-1 identity-regressions backtest --url http://10.20.0.11:9428 --days 14
+groups:
+  - name: identity-regressions
+    rules:
+      # ONE FILM LOST TEN OR MORE OF A COUNTRY'S LISTINGS WITHIN 6 HOURS, AND NOTHING GAINED THEM.
+      #
+      # "Net": a listing counts when it held the film at the start of the 6h and holds NO film now; a
+      # listing re-matched to another film (kind changed) is not a loss, and a listing newly matched to
+      # this film is subtracted. 10 is the brief's figure; the smallest real case is Prinz's 16.
+      # `for: 15m` (three exporter runs) drops the losses a projection undoes within minutes: on
+      # 2026-10-20 07:06Z UK's Carmen (13), Swan Lake (23) and Fanciulla (28) were lost and re-taken
+      # within one 5-minute step and would otherwise have paged (31 episodes without the hold, 27 with).
+      - alert: IdentityFilmListingsLost
+        expr: kinowo_identity_film_net_lost >= 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: '{{ $labels.title }}' (tmdb {{ $labels.tmdb }}) lost {{ $value }} listings in 6h, build {{ $labels.build }}"
+          description: >-
+            {{ $value }} {{ $labels.country }} listings held '{{ $labels.title }}' (tmdb {{ $labels.tmdb }})
+            six hours ago and now show no film (no rating, poster or synopsis), net of listings newly
+            matched to it; most were unmatched by build {{ $labels.build }}. Dig in (logs.kinowo.net):
+            `_time:6h country:{{ $labels.country }} kind:* (tmdb_before:={{ $labels.tmdb }} or tmdb_after:={{ $labels.tmdb }}) | stats by (kind, build, basis, venue) count() n | sort by (n desc)`
+            -- each line's `repro` reproduces one listing at the build; `scripts/listing-history {{ $labels.country }} --title '...'`
+            gives the per-deploy history.
+
+      # ONE BUILD UNMATCHED MORE LISTINGS THAN IT MATCHED, PAST WHAT ITS COUNTRY'S CHURN EVER REACHES.
+      #
+      # Per build over its last 24h of take changes: listings it lost minus listings it gained. The
+      # threshold is per country, from every build with a take change 2026-10-13..22 (the fields' whole history):
+      # each build's net losses OUTSIDE any one film that lost 10+ under it -- the diffuse churn a
+      # deploy brings -- peaked at DE 52 (2900ea1, 2026-10-15), UK 19, PL 2, US 2, ES 0. The bar is
+      # 1.2x that peak, rounded up to 5, floor 10: DE 65, UK 25, PL/US/ES 10. Over those days it fires
+      # 11 times: UK 9c8170f (213, the CBeebies loss identity-matching.rules was written for), US
+      # 8b75b70 (360 Peppa listings, re-taken 4 days later), PL 96fb23c (123 Peppa), DE 2ef867e and
+      # aa334f3 (Lord of the Rings), and six more single-film losses. Prinz (16, under DE's 65) is the
+      # film alert's. `for: 15m` as above.
+      - alert: IdentityBuildNetLosses
+        expr: |
+          kinowo_identity_build_net_lost{country="de"} > 65
+          or
+          kinowo_identity_build_net_lost{country="uk"} > 25
+          or
+          kinowo_identity_build_net_lost{country!~"de|uk"} > 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: build {{ $labels.build }} unmatched {{ $value }} more listings than it matched (most: '{{ $labels.title }}')"
+          description: >-
+            Over its last 24h in {{ $labels.country }}, build {{ $labels.build }} took the film away from
+            {{ $value }} more listings than it gave one to -- above the country's normal deploy churn
+            (DE 65, UK 25, elsewhere 10). The film that lost most: '{{ $labels.title }}' (tmdb
+            {{ $labels.tmdb }}). Dig in: `_time:24h country:{{ $labels.country }} build:={{ $labels.build }} kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)`
+            then the listings' `repro` lines. If the build is still deployed, CI's identity takes check
+            for it should have listed these takes.
+
+      # ONE LISTING MOVED BETWEEN THE SAME TWO FILMS THREE OR MORE TIMES IN 24 HOURS.
+      #
+      # The "Rose" / "Ties That Bind Us" pattern: two rules taking a listing from each other. Counted
+      # per listing (kind changed, either direction) and reported per film pair, so nine venues of one
+      # billing flipping together are one alert. IdentityBillingTakeOscillating counts reversal HOURS
+      # from the worker's counter; this counts the moves themselves, two films named. Backtest: UK Ties
+      # That Bind Us (12 moves, 2026-10-14), DE Fallen Angels (3, 10-20), PL Ktos calkiem obcy (4,
+      # 10-21). DE "Rose" moved 2 times per venue on 2026-10-22 (11:09Z and 11:10Z), one short of it.
+      - alert: IdentityListingFlipFlop
+        expr: kinowo_identity_listing_flips >= 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: '{{ $labels.title }}' flipped {{ $value }} times in 24h between tmdb {{ $labels.tmdb_a }} and {{ $labels.tmdb_b }} (build {{ $labels.build }})"
+          description: >-
+            A {{ $labels.country }} listing (e.g. at {{ $labels.venue }}) moved between films {{ $labels.tmdb_a }}
+            and {{ $labels.tmdb_b }} {{ $value }} times in the last 24h, the latest under build {{ $labels.build }}:
+            two rules undoing each other. Dig in: `_time:24h country:{{ $labels.country }} kind:changed (tmdb_before:={{ $labels.tmdb_a }} or tmdb_before:={{ $labels.tmdb_b }}) | fields _time, venue, listing, tmdb_before, tmdb_after, basis, projection_mode, build, repro`
+
+      # THE WATCH ITSELF STOPPED. The three gauges above are a file node_exporter keeps serving whatever
+      # its age: a dead timer would freeze them, firing or silent, forever.
+      - alert: IdentityRegressionWatchStale
+        expr: |
+          time() - kinowo_identity_regressions_last_success_timestamp_seconds > 1800
+          or
+          absent(kinowo_identity_regressions_last_success_timestamp_seconds)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The identity regression watch has not read the take-change log for over 30 minutes"
+          description: >-
+            identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every
+            5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them.
+            `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error).

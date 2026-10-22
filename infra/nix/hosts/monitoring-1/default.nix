@@ -28,6 +28,7 @@ in
     ../../modules/roles/grafana.nix
     ../../modules/roles/k3s-server.nix
     ../../modules/roles/victoria-logs.nix
+    ../../modules/roles/identity-regressions.nix
 
     # THE SHIPPER, IMPORTED PER HOST -- WHICH IS THE WRONG PLACE FOR IT, AND IS SAID OUT LOUD HERE
     # RATHER THAN LEFT TO BE DISCOVERED. It lives under modules/fleet/ because it is true of every
@@ -373,6 +374,11 @@ in
   # roles/victoria-logs.nix for the arithmetic that lets three things share a 40GB disk, and for why
   # its bound is 10GiB rather than "whatever is left".
   fleet.victoriaLogs.enable = true;
+
+  # PRODUCTION MATCH REGRESSIONS, READ FROM THAT STORE: per-film / per-build / flip-flop gauges from the
+  # identity take-change lines, every 5 minutes, for rules/identity-regressions.rules. See
+  # roles/identity-regressions.nix.
+  fleet.identityRegressions.enable = true;
 
   # AND IT SHIPS ITS OWN JOURNAL TO ITSELF. Not redundant: without this, the one host whose logs
   # would explain a monitoring outage is the one host missing from the store, and every query that

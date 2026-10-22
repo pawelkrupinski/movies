@@ -1,0 +1,110 @@
+# UNIT TESTS FOR THE IDENTITY REGRESSION ALERTS (identity-regressions.rules).
+#
+# The gauges are what nix/files/identity-regressions.py publishes from the take-change log every 5
+# minutes, scraped through node_exporter on monitoring-1. Cases are the two incidents the file was
+# written for -- PL Peppa (123, build 96fb23c) and DE "Der kleine Prinz" (16) -- plus the quiet cases
+# beside them: a 9-listing loss, a loss undone inside the 15-minute hold, a DE build at its churn bar,
+# a listing that moved only twice ("Rose", 2026-10-22), and the watch going stale.
+rule_files:
+  - ../../nix/files/monitoring/rules/identity-regressions.rules
+
+evaluation_interval: 1m
+
+tests:
+  # PL Peppa: 123 listings lost by 96fb23c. The film alert holds 15 minutes, then fires naming the film,
+  # count and build; the build alert (PL's bar is 10) fires beside it. DE Prinz's 16 fires too; DE's
+  # 9-listing loss and a 40-listing loss undone after 10 minutes do not.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_identity_film_net_lost{country="pl",tmdb="1778515",title="Świąteczna zabawa z Peppą",build="96fb23c6c38a",host="monitoring-1"}'
+        values: '_x5 123x30'
+      - series: 'kinowo_identity_film_net_lost{country="de",tmdb="309809",title="Der kleine Prinz",build="627fa9416268",host="monitoring-1"}'
+        values: '_x5 16x30'
+      - series: 'kinowo_identity_film_net_lost{country="de",tmdb="1499673",title="Rental Family",build="aa334f31db4c",host="monitoring-1"}'
+        values: '_x5 9x30'
+      - series: 'kinowo_identity_film_net_lost{country="uk",tmdb="1151422",title="Royal Opera House: Carmen",build="aa334f31db4c",host="monitoring-1"}'
+        values: '_x5 40x10 _x20'
+      - series: 'kinowo_identity_build_net_lost{country="pl",build="96fb23c6c38a",tmdb="1778515",title="Świąteczna zabawa z Peppą",host="monitoring-1"}'
+        values: '_x5 123x30'
+      - series: 'kinowo_identity_build_net_lost{country="de",build="627fa9416268",tmdb="309809",title="Der kleine Prinz",host="monitoring-1"}'
+        values: '_x5 65x30'
+      - series: 'kinowo_identity_regressions_last_success_timestamp_seconds{host="monitoring-1"}'
+        values: '0+60x35'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: IdentityFilmListingsLost
+        exp_alerts: []
+      # Still inside the hold; and DE's 65 is at its bar, not over it, for the whole run.
+      - eval_time: 15m
+        alertname: IdentityBuildNetLosses
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: IdentityFilmListingsLost
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl, tmdb: "1778515", title: "Świąteczna zabawa z Peppą", build: "96fb23c6c38a", host: monitoring-1 }
+            exp_annotations:
+              summary: "pl: 'Świąteczna zabawa z Peppą' (tmdb 1778515) lost 123 listings in 6h, build 96fb23c6c38a"
+              description: "123 pl listings held 'Świąteczna zabawa z Peppą' (tmdb 1778515) six hours ago and now show no film (no rating, poster or synopsis), net of listings newly matched to it; most were unmatched by build 96fb23c6c38a. Dig in (logs.kinowo.net): `_time:6h country:pl kind:* (tmdb_before:=1778515 or tmdb_after:=1778515) | stats by (kind, build, basis, venue) count() n | sort by (n desc)` -- each line's `repro` reproduces one listing at the build; `scripts/listing-history pl --title '...'` gives the per-deploy history."
+          - exp_labels: { severity: warning, country: de, tmdb: "309809", title: "Der kleine Prinz", build: "627fa9416268", host: monitoring-1 }
+            exp_annotations:
+              summary: "de: 'Der kleine Prinz' (tmdb 309809) lost 16 listings in 6h, build 627fa9416268"
+              description: "16 de listings held 'Der kleine Prinz' (tmdb 309809) six hours ago and now show no film (no rating, poster or synopsis), net of listings newly matched to it; most were unmatched by build 627fa9416268. Dig in (logs.kinowo.net): `_time:6h country:de kind:* (tmdb_before:=309809 or tmdb_after:=309809) | stats by (kind, build, basis, venue) count() n | sort by (n desc)` -- each line's `repro` reproduces one listing at the build; `scripts/listing-history de --title '...'` gives the per-deploy history."
+      - eval_time: 25m
+        alertname: IdentityBuildNetLosses
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl, build: "96fb23c6c38a", tmdb: "1778515", title: "Świąteczna zabawa z Peppą", host: monitoring-1 }
+            exp_annotations:
+              summary: "pl: build 96fb23c6c38a unmatched 123 more listings than it matched (most: 'Świąteczna zabawa z Peppą')"
+              description: "Over its last 24h in pl, build 96fb23c6c38a took the film away from 123 more listings than it gave one to -- above the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most: 'Świąteczna zabawa z Peppą' (tmdb 1778515). Dig in: `_time:24h country:pl build:=96fb23c6c38a kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)` then the listings' `repro` lines. If the build is still deployed, CI's identity takes check for it should have listed these takes."
+      - eval_time: 25m
+        alertname: IdentityRegressionWatchStale
+        exp_alerts: []
+
+  # A listing moving between two films three times in a day fires at once; "Rose" at two does not.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_identity_listing_flips{country="uk",tmdb_a="1096642",tmdb_b="1460982",title="The Ties That Bind Us",build="afa874093",venue="Chichester Cinema at New Park",host="monitoring-1"}'
+        values: '2x5 3x10'
+      - series: 'kinowo_identity_listing_flips{country="de",tmdb_a="1176962",tmdb_b="1712584",title="Rose",build="6032747",venue="Eschborn K",host="monitoring-1"}'
+        values: '2x15'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: IdentityListingFlipFlop
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: IdentityListingFlipFlop
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, tmdb_a: "1096642", tmdb_b: "1460982", title: "The Ties That Bind Us", build: afa874093, venue: "Chichester Cinema at New Park", host: monitoring-1 }
+            exp_annotations:
+              summary: "uk: 'The Ties That Bind Us' flipped 3 times in 24h between tmdb 1096642 and 1460982 (build afa874093)"
+              description: "A uk listing (e.g. at Chichester Cinema at New Park) moved between films 1096642 and 1460982 3 times in the last 24h, the latest under build afa874093: two rules undoing each other. Dig in: `_time:24h country:uk kind:changed (tmdb_before:=1096642 or tmdb_before:=1460982) | fields _time, venue, listing, tmdb_before, tmdb_after, basis, projection_mode, build, repro`"
+
+  # The watch stops: its timestamp ages past 30 minutes, held 15 more. And a host that never published
+  # at all (absent) is the same alert.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_identity_regressions_last_success_timestamp_seconds{host="monitoring-1"}'
+        values: '0x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: IdentityRegressionWatchStale
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: IdentityRegressionWatchStale
+        exp_alerts:
+          - exp_labels: { severity: warning, host: monitoring-1 }
+            exp_annotations:
+              summary: "The identity regression watch has not read the take-change log for over 30 minutes"
+              description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",host="monitoring-1"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IdentityRegressionWatchStale
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "The identity regression watch has not read the take-change log for over 30 minutes"
+              description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."

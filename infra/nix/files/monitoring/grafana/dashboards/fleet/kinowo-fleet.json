@@ -2137,6 +2137,143 @@
           }
         }
       ]
+    },
+    {
+      "id": 39,
+      "type": "timeseries",
+      "title": "Identity regressions — listings one film lost (6h, net) and one build lost (24h, net)",
+      "description": "kinowo_identity_film_net_lost: listings that held the film 6h ago and hold no film now, net of listings newly matched to it (alert: IdentityFilmListingsLost at 10, held 15m). kinowo_identity_build_net_lost: listings a build unmatched minus listings it matched over its last 24h (alert: IdentityBuildNetLosses over DE 65, UK 25, elsewhere 10). Published every 5 min by identity-regressions.timer on monitoring-1 from the VictoriaLogs take-change lines; the alert's annotation carries the LogsQL to dig in.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 86
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_identity_film_net_lost",
+          "legendFormat": "{{country}} {{title}} ({{tmdb}}) by {{build}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_identity_build_net_lost",
+          "legendFormat": "{{country}} build {{build}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "type": "timeseries",
+      "title": "Identity regressions — listing flip-flops (24h) and the watch's age",
+      "description": "kinowo_identity_listing_flips: the most times one listing moved between the same two films in 24h (alert: IdentityListingFlipFlop at 3). Minutes since kinowo_identity_regressions_last_success_timestamp_seconds (alert: IdentityRegressionWatchStale at 30), and kinowo_identity_regressions_lines, the take-change lines its last run read.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 86
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_identity_listing_flips",
+          "legendFormat": "{{country}} {{title}} {{tmdb_a}}<->{{tmdb_b}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "(time() - kinowo_identity_regressions_last_success_timestamp_seconds) / 60",
+          "legendFormat": "minutes since the last run",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "kinowo_identity_regressions_lines",
+          "legendFormat": "lines read (24h)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }
