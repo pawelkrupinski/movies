@@ -301,7 +301,6 @@ xtra-dkf-suffix	query				banner		(?i)(?:\s*[|_]\s*DKF\b.*$|\s*[-–—]\s*DKF\b.
 xtra-venue-non-fiction-suffix	query				venue		(?iu)\s*:\s*{{VENUE}}\s+Non-?Fiction\b.*$		'<film>: <venue> Non-Fiction (16+)' documentary-strand suffix, any venue's name (Kino w Kadrze's 'Kadr Non-Fiction')
 xtra-premiera-bracketed	query				event		(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$		'(PREMIERA)' bracketed premiere tag
 xtra-kino-sensoryczne-suffix	query				audience		(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$		'- Kino sensoryczne' sensory-friendly screening suffix
-xtra-dyskusyjny-suffix	query				banner		(?i)\s*[-–—]\s*dyskusyjny\s+klub\s+filmowy\s*$		'- dyskusyjny klub filmowy' suffix
 xtra-przedpremiera-suffix	query				event		(?i){{SEP}}(?:przedpremiera|przedpremierowo|zobacz\s+przedpremierowo|seans\s+przedpremierowy|przepdremiera)\s*!*\s*$		przedpremiera suffix (incl. the 'przepdremiera' data-entry transposition)
 xtra-przedpremiera-prefix	query				event		(?i)^(?:przedpremiera|seans\s+przedpremierowy)\s*[.|:]\s*		przedpremiera prefix
 xtra-accessibility-star-ad	query				audience		(?i)\s*\*\s*AD\b\s*$		'*AD' audio-description tag
@@ -317,9 +316,7 @@ xtra-fellini-suffix	query				retrospective		{{FELLINI_SUFFIX}}		'… | / – prz
 # that SUFFIX the film (the screening keeps its decorated row, the query
 # resolves the bare film). All cross-cinema or otherwise specific enough that
 # no real film title collides.
-xtra-10-10-klasyka	query				banner		(?i)\s*\|\s*10/10\s+Klasyka\s+filmowa\s*$		'| 10/10 Klasyka filmowa' classics-suffix (Piast, Apollo Wałbrzych, Lot)
 xtra-wajda-rewizje-suffix	query				retrospective		(?i)\s*[|\\]\s*[„"]?\s*WAJDA:\s*re-?\s*wizje.*$		'… | / \ WAJDA: re-wizje …' retrospective suffix
-xtra-pnkf-suffix-pipe	query				festival		(?i)\s*\|\s*Przegląd\s+Nowego\s+Kina\s+Francuskiego\s*$		'… | Przegląd Nowego Kina Francuskiego' festival suffix
 xtra-pnkf-suffix-edycja	query				festival		(?i)\s*\(org\.[^)]*\)\s*\d+\.\s*edycja\s+Przeglądu\s+Nowego\s+Kina\s+Francuskiego\s*$		'(org. …) 17. edycja Przeglądu Nowego Kina Francuskiego' suffix
 # `(?iu)` (not `(?i)`): the Kino Zamek raw is ALL-CAPS ("– AMERYKAŃSKA KLASYKA",
 # "| ŻUŁAWSKI. KINO EKSTAZY"), so Unicode case folding is needed to fold Ż/Ł/Ń —
@@ -459,7 +456,6 @@ xtra-wajda-rewizje-bare-year	query				retrospective		(?iu)^Wajda\s+Re[-\s]?wizje
 xtra-senior-w-kinie-suffix	query				audience		(?iu)\s*[-–—]\s*["„“”]?Senior\s+w\s+kinie\b.*$		'<film> - "SENIOR W KINIE" Cykl filmowy dla widzów 60+' senior-strand suffix (Kino Gwiazda Kętrzyn: Eleonora Wspaniała); the screening keeps its own card
 xtra-kino-konesera-suffix	query				banner		(?iu)\s*[-–—]\s*Kino\s+Konesera\s*$		'<film> - KINO KONESERA' connoisseur-cycle suffix outside Helios (Kino Gwiazda Kętrzyn: Gorzkie święta); Helios's own per-cinema tag strips it before this runs
 xtra-fks-suffix	query				banner		(?iu)\s*[|_]\s*FKS\s*$		'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)
-xtra-pokazy-specjalne-suffix	query				event		(?i)\s*[-–—|]\s*pokazy\s+specjalne\s*$		'<film> - pokazy specjalne' suffix (the xtra-pokaz-suffix rule's pokaz\b can't match the 'pokazy' plural) (Milczenie owiec)
 xtra-wakacje-z-dokumentem-suffix	query				banner	jun-sep	(?i)\s*\|\s*Wakacje\s+z\s+dokumentem\s*$		'<film> | Wakacje z dokumentem' documentary-strand suffix (Silver)
 # Fifth-wave (2026-06-20) audit of the TMDB-no-match corpus.
 # A Ukrainian-language screening is a DISTINCT version (separate audience), so
@@ -503,7 +499,6 @@ xtra-rerelease-suffix	query				edition		(?iu)\s*[-–—|.]\s*(?:ponownie\s+na\s
 xtra-wong-kar-wai-suffix	query				retrospective		(?iu)\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$		'<film> - Wong Kar Wai 4K' restoration-print suffix (Chungking Express → TMDB 11104)
 # Eighth-wave (2026-06-20) audit of the rating-less corpus: pipe/paren decoration
 # suffixes whose film stays its own decorated row (query-only strip).
-xtra-kino-przy-herbatce	query				audience		(?iu)\s*\|\s*Kino\s+przy\s+herbatce\s*$		'<film> | Kino przy herbatce' cosy-screening suffix (Drugie życie, Dzień objawienia, Wolność po włosku)
 xtra-teleskop-suffix	query				venue		(?iu)\s*\|\s*Teleskop\s*$		'<film> | Teleskop' cine-club suffix (Following (Śledząc), Frances Ha, Sny o pociągach)
 xtra-lato-robin-williams	query				retrospective	jun-sep	(?iu)\s*\|\s*Lato\s+z\s+Robinem\s+Williamsem\b.*$		'<film> | Lato z Robinem Williamsem [+ …]' actor-cycle suffix (Fisher King, Klatka dla ptaków, Stowarzyszenie umarłych poetów)
 xtra-pipe-dla-rodzica	query				audience		(?iu)\s*\|\s*{{VENUE}}\s+dla\s+rodzic\S*\s*$		'<film> | <venue> dla rodziców/rodzica' parents'-screening suffix, any venue's name (Kinoteka: Erupcja, Projekt Hail Mary, Zaproszenie)
@@ -734,8 +729,6 @@ xtra-przedpremiera-bare-space-suffix	query				event		(?i)\s+przedpremiera\s*$		'
 #  - Zacisze's 'Kino dla Ducha…' (Cinema for the Spirit) strand prefix, ellipsis
 #    included.
 xtra-kino-dla-ducha-prefix	query				audience		(?iu)^Kino\s+dla\s+Ducha\s*[…\.]{1,3}\s*		'Kino dla Ducha… <film>' Zacisze spiritual-cinema strand prefix (Mistyczka)
-#  - Kino Spektrum's weekly classics strand, pipe-suffixed.
-xtra-klasyczne-srody-suffix	query				banner		(?iu)\s*\|\s*Klasyczne\s+Środy\s*$		'<film> | Klasyczne Środy' Kino Spektrum weekly-classics suffix (Ghost in the Shell)
 #  - 'SMOK (Spotkania Młodych Odkrywców Kina): <film>' youth-film-discovery
 #    strand — the parenthesised expansion means the generic colon-prefix rules
 #    (which stop at the first separator) can't reach past it.
