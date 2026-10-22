@@ -30,6 +30,7 @@ rows BillingParse reads in full where the parser provably covers them. Three com
 | `title rules: remove the 6 rows that fire on nothing …` | 363 → 357 | never-fired rows that fire nowhere |
 | `title rules: retire 6 of the 106 rows BillingParse reads in full …` | 357 → 351 | covered rows whose removal no consumer sees |
 | `title rules: merge 152 rows into 24 alternations …` | 351 → 223 | the candidate merges |
+| `title rules: retire 8 rows the billing parse's work reads …` (below) | 223 → 215 | rows the lookup query's billing parse now reads |
 
 Each: `TitleRulesGoldenSpec` unchanged (no golden diff), the title-rule specs green (common `services.titlerules.*`,
 `services.movies.*`, `services.billing.*` 602 tests; worker `services.movies.*`, `scripts.*`, `TitleTraceSpec`,
@@ -121,6 +122,78 @@ no corpus or spec title changes; the differences are synthetic stacks only.
 What a stack does now: "Filmowe popołudnie dla dzieci: SKOCZ Z BAJTLEM DO KINA: Lalka" lost both banners when the
 two rows folded one after the other; the one alternation takes the first and leaves "SKOCZ Z BAJTLEM DO KINA: Lalka"
 (SearchTitles' after-colon candidate still searches "Lalka").
+
+## The lookup query reads the billing parse (2026-10-22, WS2's next phase)
+
+The 99 rows "BillingParse reads in full" could not retire while the lookup query was the rules' fold alone. Now it is not:
+
+- **`BillingParse.work`** (`BillingPieces.workSpan`): the billing less a leading piece naming a strand, a programme or a
+  club and a closing piece opening on one, each cut at the billing's own delimiter (colon, pipe, spaced dash or slash;
+  none inside a bracket or a quotation, nor a clock's colon) and only while a work's title is left (a word of three
+  letters, not a day or a running time, not a programme's slot or a festival's own part: "Opening Night", "Shorts
+  Social"). A strand is named by the words of the new `strand` concept in `title-words.tsv` (kino, klub, DKF, cykl,
+  przegląd, festiwal*, seniora, poranki, klasyka, pokaz, seans, premiera, film club, film festival, screening,
+  preview, friendly, Filmclub, Vorpremiere, ciclo, cineclub, …): grammar data, not a rule per banner. A piece holding a
+  stage house's, a relay's or a house banner's word, or a season ("RBO Kino Saison 2026-27"), is the relay's and is
+  never cut.
+- **The query** (`TitleRuleSet.query`, read by `TitleNormalizer.apiQuery`): the rules fold, the parse cuts the work out
+  of what they leave, and when it cut something the rules fold the work once more. The rules are the fallback for what
+  the parse does not read (format notes, events, accessibility tags, banners no strand word names).
+- **The display** finds the parse's banner boundary too (`leadingBannerBoundary`), so "KINO KAARST: DAS GEWISSE
+  ETWAS" cases as "Kino kaarst: Das gewisse etwas"; `TitleNormalizer.programmePrefix` reads the parse's banner after
+  the rules' (`programmeBanner`; `TitleRuleSet.programmePrefix` stays the rules' alone, which
+  `ProdTitlesNormalizationSpec` pins against the frozen legacy normaliser).
+- **Credits are not cut.** Tried: `Credits.bracketedName` and `Credits.authorCredited` off the work. 256 golden
+  queries moved and most were amputations: "Call Me By Your Name" → "Call Me", "Der Glöckner von Notre Dame" → "Der
+  Glöckner", "Hanging By A Wire" → "Hanging", "Lalka (The Doll)" → "Lalka", "Tosca (Royal Opera)" → "Tosca". Those
+  shapes are read by the identity against a candidate (`TitleCredit`, `ListingShape`), where a wrong reading costs
+  nothing; as a query cut they lose the title. A credit inside the title ("reż. …") is already peeled at intake
+  (`TitleFacts`). Not landed.
+
+**Golden diff** (`TitleRulesGoldenSpec`, regenerated): 355 billings, 338 queries, 307 banner boundaries, 447 programme
+banners, every one listed in `2026-10-22-parser-query-golden-diff.tsv`. Mostly strands no rule knew ("Kino Kaarst: Das
+gewisse Etwas", "Japanese Film Club: Linda Linda Linda", "Festiwal Pięć Smaków: Morze żółte", "Tony | Kino Dostępne",
+"Senior Screening: Tenzing"). The e2e snapshots moved with it (6 cards' casing or lookup title, one card re-keyed,
+Kinoteka's premiere heading no longer read as the release year; a new Cards derivation `cab16a08fb4b51ac`).
+
+**Measured** (CI identity-measure, base `53a5f632e`, all five countries):
+
+| head | recording | run | moved | cure | R-lost | R→W | new-W | gained right | unjudged |
+|---|---|---|---|---|---|---|---|---|---|
+| the query reads the work | 573 | 1539 | UK model 3 | 0 | 0 | 0 | 0 | 3 (Kino KILN: Portrait of a Lady on Fire; Electric Palace Bridport's "Screening: NTL - Hay Fever" ×2 → 1791571, agent-judged right) | 0 |
+| + 8 rows retired | 573 | 1541 | the same 3 | 0 | 0 | 0 | 0 | 3 | 0 |
+| the query reads the work | 528 | 1542 | UK model 3 (the same billings) | 0 | 0 | 0 | 0 | 3 | 0 |
+| + 8 rows retired | 528 | 1543 | the same 3 | 0 | 0 | 0 | 0 | 3 | 0 |
+
+PL, DE, US and ES moved no take on either recording; nothing moved at the final stage. LANDABLE.
+
+**Rows retired: 8 (223 → 215).** `xtra-pp-senior-banners`, `xtra-pp-psychology-banners`, `xtra-film-festival-prefix`,
+`xtra-filmowy-klub-seniora-dash`, `xtra-film-club-suffix`, `xtra-kino-sensoryczne-suffix`, `xtra-kino-dyskomfortu-suffix`,
+`xtra-poranki-dzieciece-suffix`. Each fires on corpus billings only as a strand's piece the parse now cuts; together
+they leave `TitleRulesGoldenSpec` unchanged. Over the fixtures' and specs' 1.8M strings (`rf-strings-fixtures`), the
+lookup query, the recased query, `searchQuery`, the recasing and the programme banner differ only on judgement-TSV lines
+read as one string, an empty "KINO SENIORA |", and "Old Film Festival: Spotkanie z Wojciechem Smarzowskim. Projekcja
+spektaklu „Kuracja”" (a talk: the meeting tail now leaves the festival's name). None of the 8 was covered by
+another row before (the earlier follow-up retired those).
+
+**Why not more of the 99.** Most "read in full" rows are alternations since the merges: a row retires only when the
+parse reads every member. What keeps them:
+
+- banners no strand word names: "Janosik Dzieciom", "KADR JUNIOR", "Rok z Marilyn Monroe", "50 na 51", "KMW", "TNKF",
+  "Mikrofeminizacje", "Art Beats", "Classy Monday", "WTF Fest" (`xtra-pp-family-banners`, `-retrospective-`,
+  `-cycle-`, `-festival-`, `-women-`, `xtra-art-strand-prefix`, `xtra-strand-prefix`, `xtra-festival-prefix`);
+- banners joined without a delimiter or with an underscore ("Takie jest życie_FKS", "KidsPreview:", "Hosoda. Belle");
+- closing pieces whose strand word is not the first ("Danton | Polityczny Klub Filmowy", "Erupcja | Muza dla
+  rodziców"): a closing piece is cut only when it opens on the word, since "Dune: Part Three … EARLY FAN PREVIEW" and
+  "Spatzenkino: TIERISCHES FEST" are films;
+- seasonal rows (summer, Dzień Dziecka) whose June fixture banners no strand word names ("Bezpieczne Wakacje", "Filmowe
+  Lato", "LATO w LUNIE");
+- the parse cuts after the rules fold, so where another row has already taken the delimiter or the work, the row that
+  cut first stays (`xtra-named-cycle-prefix` on "Cykl „Wajda: re-wizje” – …", `xtra-pokaz-specjalny-prefix` on
+  "Pokaz specjalny: U2", whose work is two letters).
+
+Adding a banner's own words to the `strand` concept moves the queries of every billing holding them, so each such word
+is a behaviour change of its own, to measure like this one.
 
 ## Byte-identity, as checked
 
