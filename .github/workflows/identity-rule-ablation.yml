@@ -129,6 +129,7 @@ jobs:
                   path: |
                       ablation/state.json
                       ablation/report.md
+                      ablation/round-*/*/*/moves-*.jsonl
                       ablation/sbt-*.log
                       ablation.out
                   retention-days: 14
