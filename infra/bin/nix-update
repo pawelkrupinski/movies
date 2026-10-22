@@ -268,6 +268,8 @@ def build(drvs):
 
 
 DIFF_LINE = re.compile(r"^(?P<pkg>[^:]+): (?P<change>.*→.*?)(?:, [+-][\d.]+ [KMG]?i?B)?$")
+# diff-closures colours the size even when its output is not a terminal.
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def update(old_tree, out):
@@ -340,7 +342,7 @@ def update(old_tree, out):
             continue  # broken BEFORE this change as well: nothing to compare against
         _, diff, _ = run(["nix", "store", "diff-closures", old_path, new_path], REPO)
         for line in diff.splitlines():
-            m = DIFF_LINE.match(line.strip())
+            m = DIFF_LINE.match(ANSI.sub("", line).strip())
             if m:
                 changes.setdefault(f"{m['pkg']}: {m['change']}", []).append(name)
     if failed:
@@ -454,6 +456,8 @@ def self_test():
                                "8.3.11", "8.3.13"),
           "image=mirror.gcr.io/library/mongo:8.3.13\nrun mongo:8.3.13 --x\nmongo:8.3.111\n")
     check("diff line", DIFF_LINE.match("openssl: 3.5.1 → 3.5.2, +4.1 KiB")["change"], "3.5.1 → 3.5.2")
+    check("coloured size dropped", DIFF_LINE.match(ANSI.sub("", "libgcrypt: 1.12.2 → 1.12.4, \x1b[31;1m+9.6 KiB\x1b[0m"))["change"],
+          "1.12.2 → 1.12.4")
     check("size-only line ignored", DIFF_LINE.match("openssl: +4.1 KiB"), None)
 
     # The real files keep the shape the weekly run rewrites, so a file reshaped by hand fails here (on
