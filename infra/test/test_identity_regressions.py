@@ -89,6 +89,40 @@ class FilmNetLost(unittest.TestCase):
         self.assertEqual(ir.film_net_lost(recs, now=6 * H + 1), {})
 
 
+class Cures(unittest.TestCase):
+    """A loss of a take judged wrong is the fix: DE "Iconic Movie" lost tmdb 1217647 at 31 listings on 2026-10-22."""
+
+    def judged(self):
+        return ir.load_judgements(os.path.join(HERE, "identity-regressions-judgements.tsv"))
+
+    def raw(self, venue, listing, tmdb, kind="lost", build="6450294"):
+        return json.dumps({"_time": "2026-10-22T15:00:00Z", "country": "de", "kind": kind, "build": build,
+                           "venue": venue, "listing": listing, "tmdb_before": tmdb, "title_before": listing})
+
+    def test_loads_rows_keyed_as_the_gates_key_them(self):
+        j = self.judged()
+        self.assertEqual(ir.verdict(j, "de", "CinemaxX Augsburg", "Iconic  Movie ", "1217647"), "wrong")
+        self.assertIsNone(ir.verdict(j, "de", "CinemaxX Augsburg", "ICONIC MOVIE", "1217647"))  # case is kept
+        # A venue's row overrides "*"'s.
+        self.assertEqual(ir.verdict(j, "de", "Cinecitta", "Über Unterbiberger - Vom Woid in die Welt", "1559083"), "wrong")
+        self.assertEqual(ir.verdict(j, "de", "Kinopolis Freiberg", "Über Unterbiberger - Vom Woid in die Welt", "1559083"), "right")
+
+    def test_a_cure_counts_in_neither_loss_and_is_published_apart(self):
+        lines = [self.raw(f"v{i}", "Iconic Movie", "1217647") for i in range(31)]
+        lines += [self.raw(f"w{i}", "Über Unterbiberger - Vom Woid in die Welt", "1559083", build="045d2fc") for i in range(14)]
+        recs = ir.parse(lines, self.judged())
+        now = recs[-1]["t"] + 1
+        self.assertEqual(set(ir.film_net_lost(recs, now)), {("de", "1559083")})
+        self.assertEqual(set(ir.build_net_lost(recs, now)), {("de", "045d2fc")})
+        self.assertEqual(ir.cures(recs, now)[("de", "1217647")]["count"], 31)
+        self.assertIn('kinowo_identity_cures{country="de",tmdb="1217647",title="Iconic Movie",build="6450294"} 31',
+                      ir.render(recs, now))
+
+    def test_without_judgements_nothing_is_a_cure(self):
+        recs = ir.parse([self.raw("v", "Iconic Movie", "1217647")])
+        self.assertFalse(recs[0]["cure"])
+
+
 class BuildNetLost(unittest.TestCase):
     def test_a_build_owes_what_it_lost_minus_what_it_gained(self):
         recs = [line(10, "lost", f"v{i}", "Peppa", before="1778515", country="pl", build="96fb23c") for i in range(126)]

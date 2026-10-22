@@ -10,6 +10,7 @@
 #   # TYPE kinowo_identity_film_net_lost gauge
 #   # TYPE kinowo_identity_build_net_lost gauge
 #   # TYPE kinowo_identity_listing_flips gauge
+#   # TYPE kinowo_identity_cures gauge
 #   # TYPE kinowo_identity_regressions_lines gauge
 #   # TYPE kinowo_identity_regressions_last_success_timestamp_seconds gauge
 #
@@ -58,6 +59,10 @@ in
           "${script}/bin/identity-regressions" "publish"
           "--url" cfg.victoriaLogsUrl
           "--out" "${textfileDir}/identity-regressions.prom"
+          # A LOSS OF A TAKE JUDGED WRONG IS THE CURE, NOT A REGRESSION: DE "Iconic Movie" (31 listings) and
+          # "Spieleabend" paged as losses on the first run, 2026-10-22. The file is copied into the closure, so
+          # a judgement edit reaches the watch with the next staged closure (an existing oneshot: auto-apply).
+          "--judgements" "${../../../../test/resources/fixtures/identity-judgements.tsv}"
         ];
         TimeoutStartSec = "4min";
         NoNewPrivileges = true;

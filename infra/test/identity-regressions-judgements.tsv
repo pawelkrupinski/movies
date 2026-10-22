@@ -1,0 +1,5 @@
+# A slice in test/resources/fixtures/identity-judgements.tsv's shape, for test_identity_regressions.py.
+country	venue	rawTitle	film	verdict	state	scope	filmTitle	reason	judged	evidence
+de	*	Iconic Movie	tmdb:1217647	wrong	open					review page: wrong
+de	*	Über Unterbiberger - Vom Woid in die Welt	tmdb:1559083	right	open				2026-10-14	the 2026 documentary
+de	Cinecitta	Über Unterbiberger - Vom Woid in die Welt	tmdb:1559083	wrong	open				2026-10-14	a made-up venue override, for the test

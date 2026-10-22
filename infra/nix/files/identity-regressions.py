@@ -43,6 +43,7 @@ import collections
 import datetime
 import json
 import os
+import re
 import tempfile
 import urllib.parse
 import urllib.request
@@ -75,7 +76,44 @@ def parse_time(s):
     return t + (float("0." + frac) if frac else 0.0)
 
 
-def parse(lines):
+# Keyed exactly as scripts/ci/identity_judgements.py keys a billing: runs of Unicode whitespace one space, none at
+# the ends, case kept (its rows spell "ICONIC MOVIE" and "Iconic Movie" apart).
+_WHITESPACE = "\t\n\x0b\x0c\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000"
+_RUNS = re.compile(f"[{_WHITESPACE}]+")
+
+
+def normalise(text):
+    return _RUNS.sub(" ", text or "").strip(" ")
+
+
+def load_judgements(path):
+    """{(country, venue or "*", normalised raw title, "tmdb:<id>"): verdict} from identity-judgements.tsv."""
+    out = {}
+    if not path:
+        return out
+    with open(path, encoding="utf-8") as f:
+        for n, raw in enumerate(f):
+            if raw.startswith("#") or n == 0 and raw.startswith("country\t"):
+                continue
+            cols = raw.rstrip("\n").split("\t")
+            if len(cols) < 5 or cols[0] == "country":
+                continue
+            out[(cols[0], normalise(cols[1]) if cols[1] != "*" else "*", normalise(cols[2]), cols[3])] = cols[4]
+    return out
+
+
+def verdict(judgements, country, venue, listing, tmdb):
+    """A venue's row overrides "*"'s, as in the judgements file."""
+    if not tmdb:
+        return None
+    title, film = normalise(listing), "tmdb:" + tmdb
+    return judgements.get((country, normalise(venue), title, film)) or judgements.get((country, "*", title, film))
+
+
+def parse(lines, judgements=None):
+    """Take-change lines, oldest first. A lost or changed take whose film was judged WRONG for that billing is
+    marked `cure`: losing it is the fix, never a regression (DE "Iconic Movie", 31 listings, 2026-10-22)."""
+    judgements = judgements or {}
     out = []
     for line in lines:
         line = line.strip()
@@ -85,6 +123,8 @@ def parse(lines):
         if r.get("kind") not in ("lost", "changed", "gained"):
             continue
         r["t"] = parse_time(r["_time"])
+        r["cure"] = r["kind"] != "gained" and verdict(
+            judgements, r.get("country", ""), r.get("venue", ""), r.get("listing", ""), r.get("tmdb_before")) == "wrong"
         out.append(r)
     out.sort(key=lambda r: r["t"])
     return out
@@ -108,6 +148,8 @@ def film_net_lost(records, now, window=FILM_WINDOW):
     for k, f in first.items():
         before, after = f.get("tmdb_before"), last[k].get("tmdb_after")
         if before and not after:
+            if f.get("cure"):
+                continue
             net[(k[0], before)] += 1
             builds[(k[0], before)][last[k].get("build", "")] += 1
             titles.setdefault((k[0], before), f.get("title_before") or k[2])
@@ -127,6 +169,8 @@ def build_net_lost(records, now, window=BUILD_WINDOW):
             continue
         bk = (r.get("country", ""), r.get("build", ""))
         if r["kind"] == "lost":
+            if r.get("cure"):
+                continue
             lost[bk].add(_key(r))
             films[bk][r.get("tmdb_before", "")] += 1
             titles.setdefault((bk, r.get("tmdb_before", "")), r.get("title_before") or r.get("listing", ""))
@@ -139,6 +183,20 @@ def build_net_lost(records, now, window=BUILD_WINDOW):
             tmdb = films[bk].most_common(1)[0][0]
             out[bk] = {"count": n, "tmdb": tmdb, "title": titles[(bk, tmdb)]}
     return out
+
+
+def cures(records, now, window=BUILD_WINDOW):
+    """{(country, tmdb): {"count", "title", "build"}}: listings that lost a take judged wrong in the window."""
+    keys = collections.defaultdict(set)
+    builds = collections.defaultdict(collections.Counter)
+    titles = {}
+    for r in records:
+        if r.get("cure") and now - window < r["t"] <= now:
+            fk = (r.get("country", ""), r.get("tmdb_before", ""))
+            keys[fk].add(_key(r))
+            builds[fk][r.get("build", "")] += 1
+            titles.setdefault(fk, r.get("title_before") or r.get("listing", ""))
+    return {fk: {"count": len(v), "title": titles[fk], "build": builds[fk].most_common(1)[0][0]} for fk, v in keys.items()}
 
 
 def listing_flips(records, now, window=FLIP_WINDOW):
@@ -188,6 +246,10 @@ def render(records, now):
     for (cc, a, b), v in sorted(listing_flips(records, now).items()):
         if v["count"] >= FLIP_FLOOR:
             out.append(f"kinowo_identity_listing_flips{_labels(country=cc, tmdb_a=a, tmdb_b=b, title=v['title'], build=v['build'], venue=v['venue'])} {v['count']}")
+    out.append("# HELP kinowo_identity_cures Listings that lost, in 24h, a take judged wrong in identity-judgements.tsv (a fix; never alerted).")
+    out.append("# TYPE kinowo_identity_cures gauge")
+    for (cc, tmdb), v in sorted(cures(records, now).items()):
+        out.append(f"kinowo_identity_cures{_labels(country=cc, tmdb=tmdb, title=v['title'], build=v['build'])} {v['count']}")
     out.append("# HELP kinowo_identity_regressions_lines Take-change lines the last successful run read (24h).")
     out.append("# TYPE kinowo_identity_regressions_lines gauge")
     out.append(f"kinowo_identity_regressions_lines {len(records)}")
@@ -205,7 +267,7 @@ def fetch(url, window):
 
 
 def publish(args):
-    records = parse(fetch(args.url, FETCH_WINDOW))
+    records = parse(fetch(args.url, FETCH_WINDOW), load_judgements(args.judgements))
     text = render(records, datetime.datetime.now(datetime.timezone.utc).timestamp())
     # ATOMIC: node_exporter must never read half a file (a torn line fails the whole file's parse).
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(args.out), prefix=".identity-regressions.")
@@ -262,9 +324,9 @@ def _fmt(t):
 def run_backtest(args):
     if args.lines:
         with open(args.lines) as f:
-            records = parse(f)
+            records = parse(f, load_judgements(args.judgements))
     else:
-        records = parse(fetch(args.url, f"{args.days}d"))
+        records = parse(fetch(args.url, f"{args.days}d"), load_judgements(args.judgements))
     if not records:
         print("no take-change lines")
         return
@@ -284,9 +346,11 @@ def main(argv=None):
     pp = sub.add_parser("publish")
     pp.add_argument("--url", required=True)
     pp.add_argument("--out", required=True)
+    pp.add_argument("--judgements", help="identity-judgements.tsv: losses of takes judged wrong are cures, not regressions")
     pb = sub.add_parser("backtest")
     pb.add_argument("--url")
     pb.add_argument("--lines")
+    pb.add_argument("--judgements")
     pb.add_argument("--days", type=int, default=14)
     pb.add_argument("--step", type=int, default=300)
     args = p.parse_args(argv)

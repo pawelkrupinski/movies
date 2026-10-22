@@ -18,14 +18,18 @@
 #   kinowo_identity_build_net_lost{country,build,tmdb,title}          24h window, per build
 #   kinowo_identity_listing_flips{country,tmdb_a,tmdb_b,title,build,venue}  24h window, per film pair
 #
-# BACKTEST (2026-10-13 23:06Z .. 2026-10-22 13:31Z, all the field-carrying lines VictoriaLogs has; replayed
-# every 5 minutes with `identity-regressions.py backtest`): IdentityFilmListingsLost 27 episodes,
-# IdentityBuildNetLosses 11, IdentityListingFlipFlop 3. Both incidents above fire (Prinz at 21:16Z
-# 10-20 as tmdb 334199 and again as 309809; Peppa at 11:31Z 10-21 in both of the first two alerts).
-# Of the 27 film episodes, 15 lost listings that later took the SAME film back -- the loss was wrong --
-# and 12 were still unmatched at the end of the data (PL Peppa, UK CBeebies Panto twice, among them);
-# none was a listing moving to another film. Re-run it after changing a threshold:
-#   ssh monitoring-1 identity-regressions backtest --url http://10.20.0.11:9428 --days 14
+# A LOSS OF A TAKE JUDGED WRONG (test/resources/fixtures/identity-judgements.tsv, matched by country, venue or *,
+# billing and film as the gates match it) is the CURE and counts in neither gauge; it is published apart as
+# kinowo_identity_cures, never alerted. The first live run (2026-10-22) would otherwise have paged for DE "Iconic
+# Movie" (31) and "Spieleabend", both judged wrong.
+#
+# BACKTEST (2026-10-13 23:06Z .. 2026-10-22 ~18Z, all the field-carrying lines VictoriaLogs has; replayed every 5
+# minutes with `identity-regressions.py backtest --judgements ...`): IdentityFilmListingsLost 19 episodes (28 without
+# the judgements), IdentityBuildNetLosses 7 (11), IdentityListingFlipFlop 3. Both incidents above fire (Prinz at
+# 21:16Z 10-20 as tmdb 334199 and again as 309809; Peppa at 11:31Z 10-21 in both of the first two alerts). The nine
+# film episodes the judgements drop are cures: UK CBeebies Panto x3 and Bear Hunt, DE FreerideFilmFestival, League of
+# Legends, Herr der Ringe 2 (Extended), The Killer, Iconic Movie. Re-run it after changing a threshold:
+#   ssh monitoring-1 identity-regressions backtest --url http://10.20.0.11:9428 --days 14 --judgements <the tsv>
 groups:
   - name: identity-regressions
     rules:

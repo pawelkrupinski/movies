@@ -2142,7 +2142,7 @@
       "id": 39,
       "type": "timeseries",
       "title": "Identity regressions — listings one film lost (6h, net) and one build lost (24h, net)",
-      "description": "kinowo_identity_film_net_lost: listings that held the film 6h ago and hold no film now, net of listings newly matched to it (alert: IdentityFilmListingsLost at 10, held 15m). kinowo_identity_build_net_lost: listings a build unmatched minus listings it matched over its last 24h (alert: IdentityBuildNetLosses over DE 65, UK 25, elsewhere 10). Published every 5 min by identity-regressions.timer on monitoring-1 from the VictoriaLogs take-change lines; the alert's annotation carries the LogsQL to dig in.",
+      "description": "kinowo_identity_film_net_lost: listings that held the film 6h ago and hold no film now, net of listings newly matched to it (alert: IdentityFilmListingsLost at 10, held 15m). kinowo_identity_build_net_lost: listings a build unmatched minus listings it matched over its last 24h (alert: IdentityBuildNetLosses over DE 65, UK 25, elsewhere 10). Published every 5 min by identity-regressions.timer on monitoring-1 from the VictoriaLogs take-change lines; the alert's annotation carries the LogsQL to dig in. kinowo_identity_cures: listings that lost, in 24h, a take judged WRONG in identity-judgements.tsv -- a fix, excluded from both counts above and never alerted.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -2195,6 +2195,15 @@
           "refId": "B",
           "expr": "kinowo_identity_build_net_lost",
           "legendFormat": "{{country}} build {{build}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "kinowo_identity_cures",
+          "legendFormat": "cured: {{country}} {{title}} ({{tmdb}}) by {{build}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
