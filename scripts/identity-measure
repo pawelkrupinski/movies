@@ -15,6 +15,7 @@
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
 #                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait] [--full] [--fresh] [--json]
 #                                 [--timeout <minutes>] [--all-countries] [--all-recordings | --one-recording] [--plan]
+#                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]]
 #        scripts/identity-measure --sweep
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
@@ -30,6 +31,11 @@
 #   --no-store     the takes check resolves both sides afresh, reusing and storing nothing (implies --fresh): the
 #                  control that proves a stored base changes no verdict
 #   --plan         print the footprint and the (recording, countries) runs it would dispatch, and exit
+#   --footprint    a TITLE-RULE change measured on the laptop in minutes, no dispatch, when it can be proved to move no take
+#                  (THE FOOTPRINT MEASURE below); otherwise says why and measures in full, as without it
+#   --footprint-only  the same, but exit 3 where --footprint would measure in full (nothing dispatched)
+#   --traces DIR   the base's traces from DIR (<cc>.jsonl.gz: a resolve's and a ratchet's --trace files, concatenated)
+#                  in place of the release's: a base no takes check stored one for, traced by scripts/identity-ci-run
 #   --keep-branch  leave the temporary branch on the remote (on Forgejo the run drops it anyway, below)
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
@@ -45,6 +51,24 @@
 # changed title-words.tsv row reaches its language's countries (pl, de, es; en: uk and us; any other: all); any other
 # take-moving file -- the resolver, the shared rules -- reaches every country. A change touching none measures all, as
 # before (the takes rows then say "nothing can have moved" in seconds).
+#
+# THE FOOTPRINT MEASURE (--footprint, 2026-10-22). A change to the title rules alone -- title-rules.tsv, the
+# services/titlerules/ code (not TitleRulePlaceholders.scala, which FormatTags reads directly) and TitleNormalizer.scala:
+# the code the resolver reads titles through and nothing else does -- changes what the resolve READS, never how it
+# decides. Every takes check stores, beside the base it resolved and each main head, every title reading its resolve and
+# its ratchet made (scripts/ci/identity-takes-check.sh's THE NORMALIZER TRACE: `takes-trace-<cc>-<identity code>-<p|n><run>`
+# on the release). This replays the base's under the head's rules (services.movies.NormalizerTraceCheck, compiled in the
+# head's tree: ~1-3 minutes, no runner). When every reading of every footprint country reads alike, the head's resolve
+# would make exactly the base's readings in the same order and decide exactly as it did: NO TAKE CAN MOVE, printed as
+# the measure's table (`measure: footprint`) and LANDABLE, exit 0. That is sound for the recording the trace is over (the
+# newest pinned pair's, or --recording's named one), its fills aside. Anything else falls back to the full measure, said
+# first, its table `measure: full`:
+#   - a changed take-moving file outside the title rules (matcher, scoring, a capture, BillingParse, title-words.tsv: no
+#     trace says what they decide);
+#   - no stored trace of the base's identity code over the recording (a base main stored none for yet);
+#   - a reading that reads otherwise -- takes may move, and which only a resolve can say (they are listed, up to 20 a
+#     country) -- or one the head cannot make again (a method gone, a venue renamed).
+# The full measure stays the gate a change LANDS on: a footprint 0 is for iterating, and its own measure states so.
 #
 # THE RECORDINGS (2026-10-22). One recording by default: the pinned pair (or --recording), over the footprint's
 # countries. It is also the cheap pre-diff for the rest: when it is LANDABLE and the change moved takes in two or more
@@ -95,7 +119,7 @@
 # concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
 # (by hand) is dispatched again until the deadline.
 #
-# Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made.
+# Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made, 3 --footprint-only could not answer.
 set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -103,7 +127,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
 ref="" base="" recording="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
-all_countries="" recordings=auto plan="" no_store=""
+all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -120,6 +144,9 @@ while [ "$#" -gt 0 ]; do
     --all-recordings) recordings=all ;;
     --one-recording) recordings=one ;;
     --plan) plan=1 ;;
+    --footprint) footprint_measure=1 ;;
+    --footprint-only) footprint_measure=only ;;
+    --traces) footprint_traces=$2; shift ;;
     --no-store) no_store=1 fresh=1 ;;
     --sweep) sweep=1 ;;
     --json) json=1 ;;
@@ -247,7 +274,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
     git show "$remote/main:test/resources/fixtures/identity-judgements.tsv" > "$judgements" || die "no judgements to classify with"
   fi
   python3 -I "$here/identity_measure.py" "$dl" --judgements "$judgements" --countries "$countries" --rows "$rows" \
-    --run-url "$url" ${json:+--json} --moved-out "$cache/moved"
+    --run-url "$url" ${json:+--json} --moved-out "$cache/moved" --kind full
   local verdict=$?
   timings "$id" "$dl"
   return $verdict
@@ -539,6 +566,142 @@ if [ -n "$plan" ]; then
   fi
   exit 0
 fi
+# ── the footprint measure (THE FOOTPRINT MEASURE above) ───────────────────────────────────────────
+# footprint_rule_path <path>: whether the resolve reads a change there only through the title normaliser's readings
+footprint_rule_path() {
+  case $1 in
+    common/src/main/scala/services/titlerules/TitleRulePlaceholders.scala) return 1 ;; # FormatTags reads it directly
+    common/src/main/resources/title-rules.tsv|common/src/main/scala/services/titlerules/*.scala) return 0 ;;
+    common/src/main/scala/services/movies/TitleNormalizer.scala) return 0 ;;
+  esac
+  return 1
+}
+sha256() { if command -v sha256sum > /dev/null; then sha256sum; else shasum -a 256; fi; }
+# The takes check's identity paths (its own list, read as scripts/identity-measure-test.sh reads it), and its code_of:
+# the key a side's trace is stored under.
+footprint_code() { # <sha>
+  local paths
+  read -ra paths <<< "$(sed -n '/^identity_paths=(/,/)/p' "$here/ci/identity-takes-check.sh" | sed -e 's/^identity_paths=(//' -e 's/)$//' | tr '\n' ' ')"
+  [ "${#paths[@]}" -gt 0 ] || return 1
+  git ls-tree -r "$1" -- "${paths[@]}" | sha256 | cut -c1-24
+}
+# footprint_classpath <tree> -> testkit's runtime classpath in the tree, compiled once (sbt only when a source is newer)
+footprint_classpath() {
+  local tree=$1 cp=$1/target/identity-tools/testkit-classpath log=$1/target/identity-tools/testkit-sbt.log
+  if [ -s "$cp" ] && [ -z "$(find "$tree/geodata/src" "$tree/common/src" "$tree/identity/src" "$tree/testkit/src" "$tree/build.sbt" -newer "$cp" -name '*.s*' -print -quit 2> /dev/null)" ]; then
+    cat "$cp"; return 0
+  fi
+  mkdir -p "$(dirname "$cp")"
+  say "footprint: compiling the head's title rules in $tree"
+  jvm_slot_take identity-measure
+  # shellcheck disable=SC2046 # jvm_cpu_options: none, or one option
+  if ! (cd "$tree" && sbt $(jvm_cpu_options | sed 's/^/-J/') -batch "testkit/compile" "export testkit/Runtime/fullClasspath") > "$log" 2>&1; then
+    jvm_slot_release; tail -20 "$log" >&2; say "footprint: the head's compile failed ($log)"; return 1
+  fi
+  jvm_slot_release
+  grep -E '^/[^ ]*testkit/target/' "$log" | tail -n 1 > "$cp"
+  [ -s "$cp" ] || { rm -f "$cp"; say "footprint: no classpath in sbt's output ($log)"; return 1; }
+  cat "$cp"
+}
+# footprint_measure -> 0 and the table when no take can move; 10 (said why) when the full measure must decide
+footprint_measure() {
+  local f code names cc asset size trace tree cp dir rc moved="" started=$SECONDS out
+  # 1. a title-rule change, and nothing else that can move a take
+  local patterns; patterns=$(convergence_patterns "$commit")
+  [ -n "$patterns" ] || { say "footprint: $commit has no .github/convergence-paths.txt -- the full measure"; return 10; }
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ "$(printf '%s\n' "$f" | in_convergence_paths "$patterns")" = true ] || continue
+    footprint_rule_path "$f" && continue
+    rm -f "$patterns"
+    say "footprint: $f can move a take outside the title rules -- no trace says what it decides: the full measure"
+    return 10
+  done < <(git diff --name-only --no-renames "$base" "$commit")
+  rm -f "$patterns"
+  # 2. the base's traces, one a footprint country, over the recording
+  local traces=() ccs=()
+  if [ -n "$footprint_traces" ]; then
+    for cc in ${countries//,/ }; do
+      [ -s "$footprint_traces/$cc.jsonl.gz" ] || { say "footprint: no $footprint_traces/$cc.jsonl.gz -- the full measure"; return 10; }
+      say "footprint: $cc's base readings: $footprint_traces/$cc.jsonl.gz (--traces: you vouch they are ${base:0:9}'s)"
+      traces+=("$footprint_traces/$cc.jsonl.gz"); ccs+=("$cc")
+    done
+  fi
+  code=$(footprint_code "$base") || { say "footprint: no identity paths in the takes check -- the full measure"; return 10; }
+  [ -n "$footprint_traces" ] || names=$(identity_gh "$DISPATCH_GH_TIMEOUT" release view "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" --json assets \
+      --jq '.assets | sort_by(.createdAt) | reverse | .[] | "\(.name) \(.size)"') \
+    || { say "footprint: could not list the release's traces -- the full measure"; return 10; }
+  dir=$KINOWO_IDENTITY_CACHE/footprint
+  mkdir -p "$dir"
+  [ -n "$footprint_traces" ] || for cc in ${countries//,/ }; do
+    read -r asset size <<< "$(grep -E "^takes-trace-$cc-$code-${recording:+n$recording}${recording:-p[0-9]+}\.gz " <<< "$names" | head -1)"
+    [ -n "${asset:-}" ] || { say "footprint: no trace of $cc at the base's identity code ($code, ${base:0:9}) over ${recording:+recording $recording}${recording:-the pinned pair} -- the full measure"; return 10; }
+    trace=$dir/${asset%.gz}.$size.jsonl.gz
+    # (kept by its name and size: the newest trace of a code over a recording replaces an older one under the same name)
+    if [ ! -s "$trace" ]; then
+      if ! { identity_gh 1800 release download "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" -p "$asset" -O "$trace.part.gz" --clobber > /dev/null \
+             && gunzip -c "$trace.part.gz" > "$trace.part"; }; then
+        rm -f "$trace.part" "$trace.part.gz"; say "footprint: could not download $asset -- the full measure"; return 10
+      fi
+      rm -f "$trace.part.gz"; mv -f "$trace.part" "$trace"
+    fi
+    say "footprint: $cc's base readings: $asset"
+    traces+=("$trace"); ccs+=("$cc")
+  done
+  # 3. each read again under the head's rules (IDENTITY_MEASURE_TRACE_CHECK: the self-test's stand-in, no tree or JVM)
+  local check=()
+  if [ -n "${IDENTITY_MEASURE_TRACE_CHECK:-}" ]; then check=("$IDENTITY_MEASURE_TRACE_CHECK")
+  else
+    tree=$(identity_tree "$commit" testkit/src/main/scala/services/movies/NormalizerTraceCheck.scala) || { say "footprint: could not lay out ${commit:0:9} -- the full measure"; return 10; }
+    cp=$(footprint_classpath "$tree") || return 10
+    check=("${IDENTITY_JAVA[@]}" -cp "$cp" services.movies.NormalizerTraceCheck)
+  fi
+  out=$(mktemp -d) || return 10
+  local i
+  for i in "${!ccs[@]}"; do
+    cc=${ccs[$i]}
+    "${check[@]}" --out "$out/differ-$cc.tsv" "${traces[$i]}" > "$out/check-$cc.txt" 2>&1
+    rc=$?
+    say "footprint: $cc: $(grep '^\[normalizer-trace\]' "$out/check-$cc.txt" | tail -1 | sed 's/^\[normalizer-trace\] //')"
+    case $rc in
+      0) ;;
+      1) moved+="${moved:+,}$cc"
+         say "footprint: $cc reads titles otherwise -- takes may move (the first of them: country, method, arguments, base, head):"
+         head -20 "$out/differ-$cc.tsv" | sed 's/^/    /' >&2 ;;
+      3) say "footprint: $cc: some readings cannot be made again (above; $out/differ-$cc.tsv) -- no proof either way"; moved+="${moved:+,}$cc" ;;
+      *) cat "$out/check-$cc.txt" >&2; say "footprint: $cc's readings could not be checked -- the full measure"; return 10 ;;
+    esac
+  done
+  if [ -n "$moved" ]; then
+    say "footprint: $moved can move -- the full measure decides ($((SECONDS - started))s spent)"
+    return 10
+  fi
+  # 4. no take can move: the measure's own table, every footprint country unmoved
+  for cc in "${ccs[@]}"; do
+    mkdir -p "$out/identity-takes-$cc"
+    echo "$base" > "$out/identity-takes-$cc/base.txt"
+    echo "identity takes ($cc): footprint -- every one of the base's title readings reads alike under the head's rules: no take can have moved" \
+      > "$out/identity-takes-$cc/verdict.txt"
+  done
+  local judgements=$out/identity-judgements.tsv
+  git show "$commit:test/resources/fixtures/identity-judgements.tsv" > "$judgements" 2> /dev/null \
+    || git show "$remote/main:test/resources/fixtures/identity-judgements.tsv" > "$judgements"
+  say "footprint: proved in $((SECONDS - started))s"
+  say "commit $(git log --oneline -1 "$commit")"
+  say "base   $(git log --oneline -1 "$base")"
+  printf '{%s}\n' "$(for cc in "${ccs[@]}"; do printf '"%s": "footprint",' "$cc"; done | sed 's/,$//')" > "$out/rows.json"
+  python3 -I "$here/identity_measure.py" "$out" --judgements "$judgements" --countries "$countries" --rows "$out/rows.json" \
+    ${json:+--json} --kind footprint
+  rc=$?
+  rm -rf "$out"
+  return "$rc"
+}
+if [ -n "$footprint_measure" ]; then
+  footprint_measure; rc=$?
+  [ "$rc" = 10 ] || exit "$rc"
+  [ "$footprint_measure" != only ] || { say "--footprint-only: not measured in full (run without it to dispatch the full measure)"; exit 3; }
+  say "measuring in full (measure: full)"
+fi
+
 if [ "$recordings" = all ] && [ -z "$nowait" ]; then
   fan_out "$countries" "$(printf '%s %s\n' "${recording:-pinned}" "$countries"; other_recordings)"
   exit $?

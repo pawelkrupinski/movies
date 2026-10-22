@@ -29,7 +29,19 @@ import java.util.concurrent.ConcurrentHashMap
  * that no country can disagree about.
  */
 class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.MemoEntries,
-                      val facts: TitleFacts.Rules = TitleFacts.Rules.none) {
+                      val facts: TitleFacts.Rules = TitleFacts.Rules.none,
+                      /** The country [[TitleNormalizer.forCountry]] built it for: what a [[TitleNormalizer.Reader]] names its
+                       *  readings by. Empty for one built any other way. */
+                      val country: String = "") {
+
+  // Each public reading tells the reader set on the companion, when one is (a measurement's: never in a served process),
+  // what it read: one volatile read a call otherwise.
+  private inline def seen[A](inline method: String, inline args: Array[String])(inline read: A): A = {
+    val out = read
+    val reader = TitleNormalizer.reader
+    if (reader ne null) reader.read(country, method, args, String.valueOf(out))
+    out
+  }
 
   // The memos behind [[cinemaClean]] and [[listingTitle]], one entry per distinct title: BOUNDED,
   // because a worker runs for days and the titles it lists turn over weekly — unbounded, every title
@@ -44,11 +56,11 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  shared tidy-up every scraped title needs (see [[TitleText.tidy]]) and the facts the country's venues bill in a
    *  title taken off it ([[TitleFacts]], [[titleFacts]]). */
   def cinemaClean(cinemaId: String, raw: String): String =
-    rules.perCinema(cinemaId, peeledFacts(raw).title)
+    seen("cinemaClean", Array(cinemaId, raw))(rules.perCinema(cinemaId, peeledFacts(raw).title))
 
   /** `raw` tidied ([[TitleText.tidy]]) and its billed facts taken off ([[TitleFacts]]): the title before the venue's rules —
    *  what the identity model reads a listing's title as. */
-  def factFree(raw: String): String = peeledFacts(raw).title
+  def factFree(raw: String): String = seen("factFree", Array(raw))(peeledFacts(raw).title)
 
   private def peeledFacts(raw: String): TitleFacts.Peeled = factsPeeled.get(raw, r => facts.peel(tidied.get(r, TitleText.tidy(_))))
 
@@ -61,11 +73,13 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  it depends on — the tidy-up and the format strip on the TITLE (a venue without rules of its
    *  own folds nothing, `TitleRuleSet.perCinema`), the rule key on the venue's name — never on the
    *  (venue, title) pair, which would hold an entry per listing. */
-  def listingTitle(cinema: Cinema, raw: String): (String, List[String]) = { val p = formatPeel(cinema, raw); (p.title, p.tokens) }
+  def listingTitle(cinema: Cinema, raw: String): (String, List[String]) =
+    seen("listingTitle", Array(cinema.displayName, raw)) { val p = formatPeel(cinema, raw); (p.title, p.tokens) }
 
   /** The facts a venue's `raw` title bills, as this country reads them ([[TitleFacts.of]]): what its own words credit
    *  before the venue's rules, and the certificate and running time the format peel takes off after them. */
-  def titleFacts(cinema: Cinema, raw: String): TitleFacts.Facts = TitleFacts.of(facts, peeledFacts(raw).facts, formatPeel(cinema, raw))
+  def titleFacts(cinema: Cinema, raw: String): TitleFacts.Facts =
+    seen("titleFacts", Array(cinema.displayName, raw))(TitleFacts.of(facts, peeledFacts(raw).facts, formatPeel(cinema, raw)))
 
   private def formatPeel(cinema: Cinema, raw: String): FormatTags.Peeled =
     formatPeeled.get(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw), services.billing.BillingParse(_).peeled)
@@ -78,12 +92,13 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
   /** [[firedRules]], each cleaned title's canonical and search tiers read once into `byClean`: those see only the
    *  cleaned title, which the venues listing one film share, while a batch of traces asked them per listing (half the
    *  trace writer's CPU in a us re-resolve, JFR 2026-10-03). The venue's own cleanup stays per listing. */
-  def firedRules(cinema: Cinema, raw: String, byClean: scala.collection.mutable.Map[String, Seq[String]]): Seq[String] = {
-    val key             = TitleRuleKey.of(cinema.displayName)
-    val (clean, formats) = listingTitle(cinema, raw)
-    val tiers           = byClean.getOrElseUpdate(clean, rules.firedCanonical(clean) ++ rules.firedSearch(recase(clean)))
-    (rules.firedPerCinema(key, peeledFacts(raw).title) ++ tiers).map("title:" + _).distinct ++ formats.map("format:" + _)
-  }
+  def firedRules(cinema: Cinema, raw: String, byClean: scala.collection.mutable.Map[String, Seq[String]]): Seq[String] =
+    seen("firedRules", Array(cinema.displayName, raw)) {
+      val key             = TitleRuleKey.of(cinema.displayName)
+      val (clean, formats) = listingTitle(cinema, raw)
+      val tiers           = byClean.getOrElseUpdate(clean, rules.firedCanonical(clean) ++ rules.firedSearch(recase(clean)))
+      (rules.firedPerCinema(key, peeledFacts(raw).title) ++ tiers).map("title:" + _).distinct ++ formats.map("format:" + _)
+    }
 
   /** How many titles [[listingTitle]] holds cleaned: one per distinct title, however many venues list it. */
   private[movies] def listingTitlesCached: Long = { formatPeeled.cleanUp(); formatPeeled.estimatedSize() }
@@ -117,14 +132,14 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Cross-script folding of an UNresolved orphan onto its Latin sibling is done
    *  separately, on the canonicalizer's union key — see
    *  the since-deleted `FilmCanonicalizer.groupByFilm`'s search-title edge. */
-  def apiQuery(display: String): String = rules.search(display)
+  def apiQuery(display: String): String = seen("apiQuery", Array(display))(rules.search(display))
 
   /** `title` with a broadcaster's banner spelled by its proper name ([[services.titlerules.TitleRuleSet.properNamed]]):
    *  "NT Live: Hamlet" → "National Theatre Live: Hamlet". A banner billing a season is named with the season off, as
    *  the canonical tier peels it first (`xtra-canonical-broadcast-season`): "RBO 26/27: Romeo & Juliet" → "Royal Ballet
    *  & Opera: Romeo & Juliet", which the proper-name rules alone never reach. Itself when no such banner opens or
    *  closes it. */
-  def properNamed(title: String): String = {
+  def properNamed(title: String): String = seen("properNamed", Array(title)) {
     val named = rules.properNamed(title)
     if (named != title.trim) named
     else seasonPeel.map(_(title.trim)).filter(_ != title.trim)
@@ -149,7 +164,8 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Lives here rather than on `MovieService` because it composes two of THIS
    *  instance's rules; a caller holding the normalizer should not have to route
    *  through the enrichment service to combine them. */
-  def searchQuery(title: String): String = services.billing.BillingParse(apiQuery(recase(title))).formatless
+  def searchQuery(title: String): String =
+    seen("searchQuery", Array(title))(services.billing.BillingParse(apiQuery(recase(title))).formatless)
 
   /** Display-side casing applied to EVERY scraper's title at the scrape choke
    *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading
@@ -170,7 +186,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  a different key, scattering the row's merge and spinning the staging fold. So
    *  the re-cased form is only adopted when it sanitizes to the SAME key; otherwise
    *  the original casing is kept (the franchise-prefixed shout stays as scraped). */
-  def recase(title: String): String = {
+  def recase(title: String): String = seen("recase", Array(title)) {
     val recased = rules.leadingBannerBoundary(title) match {
       case Some(n) => TitleText.caseSegment(title.substring(0, n)) +
                       TitleText.caseSegment(title.substring(n))
@@ -188,7 +204,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing
    *  ": " delimiter, so a caller can split the prefix from the film title and
    *  case each half on its own. None when no programme prefix is present. */
-  def programmePrefix(title: String): Option[String] = rules.programmePrefix(title)
+  def programmePrefix(title: String): Option[String] = seen("programmePrefix", Array(title))(rules.programmePrefix(title))
 
   // Cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
   // over the trimmed title. Does NOT apply `searchTitle`/structural: decoration
@@ -241,7 +257,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  Per-script titles still get distinct keys (Latin vs Cyrillic translations
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
-  def sanitize(title: String): String = sanitizeCache.get(title, computeSanitize)
+  def sanitize(title: String): String = seen("sanitize", Array(title))(sanitizeCache.get(title, computeSanitize))
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
@@ -256,6 +272,12 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
   // (e.g. Rialto's sentence-case "Top gun | 40 rocznica" alongside Helios's
   // "Top Gun 40th Anniversary") don't prevent a merge.
   def mergeKeyLookup(allTitles: Iterable[String]): String => String = {
+    val lookup = mergeKeyIndex(allTitles)
+    if (TitleNormalizer.reader eq null) lookup
+    else { val all = allTitles.toArray; title => seen("mergeKey", title +: all)(lookup(title)) }
+  }
+
+  private def mergeKeyIndex(allTitles: Iterable[String]): String => String = {
     val romanized = allTitles.iterator.map(TitleText.normalize).toSet
     val canonicalCounts: Map[String, Int] =
       romanized.iterator.map(t => canonical(t).toLowerCase(Locale.ROOT)).toSeq
@@ -303,7 +325,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
   // So: rewrites always, strips only for a genuine merge (the ladder branch below, which
   // is what a merged group has always done). Neither may empty a title outright, which the
   // banner strips do to a listing that is nothing BUT a banner.
-  def preferredDisplay(titles: Iterable[String]): Option[String] = {
+  def preferredDisplay(titles: Iterable[String]): Option[String] = seen("preferredDisplay", titles.toArray) {
     val seq = titles.iterator.toSeq.distinct
     if (seq.sizeIs <= 1) seq.headOption.map(unifySpelling)
     else {
@@ -359,7 +381,8 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
     // back ("The Ballad of Songbirds and Snakes (2023) (2023)"); a different year is the venue's
     // own information and stays.
     val withoutYear = (t: String) => TitleNormalizer.withoutTrailingYear(t, shownYear)
-    displayLadder(perCinemaTitles.map(withoutYear), withoutYear(fallback), tmdbTitle.map(withoutYear))
+    seen("chooseDisplay", Array(fallback, tmdbTitle.getOrElse(""), tmdbTitle.fold("")(_ => "+"), shownYear.fold("")(_.toString)) ++ perCinemaTitles)(
+      displayLadder(perCinemaTitles.map(withoutYear), withoutYear(fallback), tmdbTitle.map(withoutYear)))
   }
 
   private def displayLadder(perCinemaTitles: Seq[String], fallback: String, tmdbTitle: Option[String]): String = {
@@ -413,5 +436,19 @@ object TitleNormalizer {
    *  here: a process-wide memo would be one set of caches every wiring and every
    *  spec in the JVM shares. */
   def forCountry(country: Country): TitleNormalizer =
-    new TitleNormalizer(TitleRuleSet.forCountry(country), facts = country.titleFacts)
+    new TitleNormalizer(TitleRuleSet.forCountry(country), facts = country.titleFacts, country = country.code)
+
+  /** What a measurement learns of every title reading a process makes: the normaliser's country (empty unless
+   *  [[forCountry]] built it), the public method read, its arguments (a venue by its display name) and what it read,
+   *  rendered. `scripts/identity-measure --footprint` replays them under another commit's rules
+   *  (`services.movies.NormalizerTrace`): a reading none of them changes moves no take. Called on the reading's thread. */
+  trait Reader { def read(country: String, method: String, args: Array[String], out: String): Unit }
+  @volatile private[movies] var reader: Reader = null
+
+  /** `body` with every normaliser's readings told to `r` — the process's, not one instance's: a tool sets it around a
+   *  whole resolve, so a normaliser the code under it builds is heard too. One at a time. */
+  def reading[A](r: Reader)(body: => A): A = {
+    synchronized { require(reader eq null, "a title reader is already set"); reader = r }
+    try body finally reader = null
+  }
 }

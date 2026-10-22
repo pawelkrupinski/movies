@@ -98,8 +98,9 @@ for n in 4 5; do
   mkdir -p "$work/src/common/src/main" && echo "$n" > "$work/src/common/src/main/Identity.scala"
   if [ "$n" = 5 ]; then
     mkdir -p "$work/src/worker/src/it/scala" "$work/src/worker/src/test/scala/scripts"
-    echo 'object IdentityResolveDump' > "$work/src/worker/src/it/scala/IdentityResolveDump.scala"
-    echo 'object UnmatchedClustersRatchet' > "$work/src/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala"
+    # (tools that take --trace: the takes check asks them for the normalizer trace)
+    echo 'object IdentityResolveDump // "trace"' > "$work/src/worker/src/it/scala/IdentityResolveDump.scala"
+    echo 'object UnmatchedClustersRatchet // "trace"' > "$work/src/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala"
     scratch_git "$work/src" add worker
   fi
   scratch_git "$work/src" add common && scratch_git "$work/src" commit -q -m "c$n"
@@ -130,14 +131,15 @@ takes() { # <gaps read as unknown: 1 or empty>
   fi
   printf 'country\tvenue\trawTitle\tstatus\tfilm\ttitle\tbasis\npl\tv\tt\tRIGHT\ttmdb:1\tF\tb\n' > target/identity-unmatched/ratchet-takes.tsv
 }
+traced() { local t; t=$(flag --trace); [ -z "$t" ] || echo "{\"tool\":\"$1\"}" | gzip > "$t"; }
 run_one() {
 case "$command" in
   *"runMain integration.IdentityResolveDump "*)
-    called dump-tool; decisions "$(flag --out)" "$(flag --full)"; [ -z "${STUB_DUMP_EXIT:-}" ] || exit "$STUB_DUMP_EXIT" ;;
+    called dump-tool; traced dump; decisions "$(flag --out)" "$(flag --full)"; [ -z "${STUB_DUMP_EXIT:-}" ] || exit "$STUB_DUMP_EXIT" ;;
   *IdentityResolveDumpIntegrationSpec*)
     called dump-spec; decisions "$KINOWO_IDENTITY_DUMP" "$KINOWO_IDENTITY_FULL" ;;
   *"runMain scripts.UnmatchedClustersRatchet "*)
-    called ratchet-tool; [ "$(flag --out)" = target/identity-unmatched ] || exit 2
+    called ratchet-tool; traced ratchet; [ "$(flag --out)" = target/identity-unmatched ] || exit 2
     takes "$([ -n "$(flag --measure)" ] && echo 1)"; [ -z "${STUB_RATCHET_EXIT:-}" ] || exit "$STUB_RATCHET_EXIT" ;;
   *UnmatchedClustersRatchetSpec*)
     called ratchet-spec; takes "${KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN:-}" ;;
@@ -184,7 +186,10 @@ rm -rf "$work/release"
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" 2 "$(base_calls)"
 check "...and the check passes on the same takes" 0 "$code"
-check "...and the head's decisions and final takes, and the base's it resolved, are stored" 4 "$(ls "$work/release" | wc -l | tr -d ' ')"
+check "...and the head's decisions, final takes and normalizer trace, and the base's it resolved, are stored" 5 "$(ls "$work/release" | wc -l | tr -d ' ')"
+check "...the trace under the head's identity code and the pinned recording, both tools' readings in one" \
+  "1 dump ratchet" "$(find "$work/release" -name 'takes-trace-pl-*-p42.gz' | grep -cE 'takes-trace-pl-[0-9a-f]{24}-p42\.gz$') $(
+    gunzip -c "$work"/release/takes-trace-pl-*-p42.gz | gunzip -c | sed 's/.*"tool":"\([a-z]*\)".*/\1/' | sort | xargs)"
 check "...each phase timed, saying which it resolved" "phase:how head-final:replayed head-resolve:resolved base-final:replayed base-resolve:resolved " \
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"

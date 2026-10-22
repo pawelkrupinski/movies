@@ -39,10 +39,19 @@ object IdentityResolveDump {
     CommandLine.Value("out", "dir", "where decisions-<cc>.jsonl is written (required)"),
     CommandLine.Value("full", "codes", "the countries whose recorded corpora are resolved, comma-separated (required)"),
     CommandLine.Value("corpus-dir", "dir", "the directory holding cinema-scrapes-<cc>.json.gz (required)"),
-    CommandLine.Value("fixtures", "dir", "the directory holding enrichment-<cc>/ (default: KINOWO_FIXTURE_ROOT, else the repository's)"))
+    CommandLine.Value("fixtures", "dir", "the directory holding enrichment-<cc>/ (default: KINOWO_FIXTURE_ROOT, else the repository's)"),
+    CommandLine.Value("trace", "file", "also write every title reading the resolve made there (services.movies.NormalizerTrace): what " +
+      "scripts/identity-measure --footprint replays under a title-rule change"))
 
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
+    // the whole run inside the trace, the corpora's opening and seeding too: a reading made before it could feed the resolve
+    val failed = services.movies.NormalizerTrace.recording(arguments.path("trace"))(run(arguments))
+    if (failed) sys.exit(1)
+  }
+
+  /** Every country named resolved and written; whether any could not be. */
+  private def run(arguments: CommandLine.Arguments): Boolean = {
     val countries = arguments.required("full").split(",").toSeq.map(_.trim).filter(_.nonEmpty).map(code =>
       Country.byCode(code).getOrElse(arguments.fail(s"--full: no country $code (one of ${Country.all.map(_.code).mkString(", ")})")))
     val out       = arguments.requiredPath("out")
@@ -59,7 +68,7 @@ object IdentityResolveDump {
       Try(dump(configuration, target, root, c, out, storages)).fold({ e =>
         System.err.println(s"[${c.label}] FAILED: $e"); e.printStackTrace(); false }, _ => true)
     } finally storages.foreach(s => Try(s.close()))
-    if (missing.nonEmpty || failed.nonEmpty) sys.exit(1)
+    missing.nonEmpty || failed.nonEmpty
   }
 
   /** Every listing of `c` resolved and its decision written to `<out>/decisions-<cc>.jsonl` (and the rest, above). */

@@ -22,12 +22,17 @@ The moves are the check's: identity_takes_diff.py pairs the listings and names e
   accepted        an accepted loss in the judgements accepts the move
   unjudged        neither film judged (a loss, a change, a wrong->unjudged)
 
+THE KIND of measure, printed first (`measure: full` / `measure: footprint`): `full` is the takes rows' resolve of the whole
+recording at base and head; `footprint` is scripts/identity-measure --footprint's proof, on the laptop, that a title-rule
+change reads every title the base's resolve read alike and so moves no take (its countries' takes are then unmoved,
+"no take can have moved"). A footprint never stands for the full measure a change lands on.
+
 LANDABLE only when, over every country and both stages, right-lost, right->wrong and new-wrong are 0 and every
 country's check produced its moves (a row that could not run, or left no artifact, is no measurement); every unjudged
 move is then listed in full, to judge before landing.
 
 usage: identity_measure.py <download dir> --judgements F [--countries pl,uk,...] [--rows rows.json] [--run-url U]
-                           [--json] [--examples N] [--moved-out FILE]
+                           [--json] [--examples N] [--moved-out FILE] [--kind full|footprint]
   <download dir>/identity-takes-<cc>/   the row's artifact, as `gh run download` lays it out
   rows.json                             {cc: "success" | "failure" | ...}: each takes row's own conclusion
 Exit 0 LANDABLE, 1 NOT LANDABLE, 2 unreadable input.
@@ -46,6 +51,10 @@ COUNTRIES = ("pl", "uk", "de", "us", "es")
 BUCKETS = ("cure", "right-lost", "right->wrong", "wrong->wrong", "new-wrong", "gained-right", "gained-unjudged",
            "to-right", "right->right", "accepted", "unjudged")
 BLOCKING = ("right-lost", "right->wrong", "new-wrong")
+KINDS = ("full", "footprint")
+KIND_LINE = {"full": "measure: full -- every take of the recording resolved at the base and the head",
+             "footprint": "measure: footprint -- the base's title readings read again under the head's rules (scripts/identity-measure "
+                          "--footprint); the full measure is still the gate a change lands on"}
 STAGES = (("model", "decisions-{cc}.jsonl"), ("final", "ratchet-takes.tsv"))
 
 
@@ -207,6 +216,7 @@ def main(argv=None):
     p.add_argument("--json", action="store_true")
     p.add_argument("--examples", type=int, default=3)
     p.add_argument("--moved-out", help="write the countries whose takes moved (comma-separated) to this file")
+    p.add_argument("--kind", choices=KINDS, default="full", help="the kind of measure the takes come from (THE KIND)")
     a = p.parse_args(argv)
     try:
         rows = read(a.judgements)
@@ -223,14 +233,19 @@ def main(argv=None):
         with open(a.moved_out, "w", encoding="utf-8") as f:
             f.write(",".join(moved(countries)) + "\n")
     if a.json:
-        print(json.dumps({"run": a.run_url, "landable": ok, "reasons": reasons,
+        print(json.dumps({"measure": a.kind, "run": a.run_url, "landable": ok, "reasons": reasons,
                           "countries": {cc: dict(c, row=conclusions.get(cc)) for cc, c in countries.items()}},
                          ensure_ascii=False, indent=1))
     else:
+        print(KIND_LINE[a.kind])
         if a.run_url:
-            print(f"run {a.run_url}\n")
+            print(f"run {a.run_url}")
+        print()
         print(render(countries, conclusions, a.examples))
-        print("\n" + ("LANDABLE: no right take lost or turned wrong, no new wrong take" if ok else
+        landable_line = "LANDABLE: no right take lost or turned wrong, no new wrong take"
+        if a.kind == "footprint":
+            landable_line = "LANDABLE (footprint): no take can move -- before landing, the full measure: scripts/identity-measure without --footprint"
+        print("\n" + (landable_line if ok else
                       "NOT LANDABLE:\n" + "\n".join(f"  - {r}" for r in reasons)))
     return 0 if ok else 1
 

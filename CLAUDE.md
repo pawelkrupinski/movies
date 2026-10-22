@@ -250,6 +250,13 @@ wrapper; say so in the report.
 - **Don't re-measure after an unrelated rebase:** a rebase onto a main that moved only outside the take paths
   (`--take-paths`) is answered by the earlier run (REUSED, no dispatch). Never `--fresh` for that.
 - **Batch pushes** (below): each push to main is a ~20-minute run on the same runners the measurements wait for.
+- **A title-rule change: `--footprint` first** (run it under heavy-run: it compiles the head's title rules). When the
+  change touches only `title-rules.tsv`, `services/titlerules/` (not `TitleRulePlaceholders.scala`) or
+  `TitleNormalizer.scala`, it replays every title reading the base's stored resolve made under your rules, in ~1
+  minute and no dispatch: all alike is `measure: footprint` LANDABLE, no take can move (a rule refactor, a merge of
+  rows that fold alike). Rely on it while iterating, never to land: **landing needs the full measure** (no
+  `--footprint`). Anything else -- a matcher, scoring or BillingParse change, no stored trace, a reading that reads
+  otherwise (listed: takes may move) -- falls back to the full measure by itself, saying why.
 
 - Read `docs/identity-experiments.md` before a resolver change; add an entry for every experiment you drop or park,
   its code kept as an `experiment/<name>` tag, not a stray branch.

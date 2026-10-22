@@ -165,6 +165,19 @@ class MeasureTest(unittest.TestCase):
         with open(moved, encoding="utf-8") as f:
             self.assertEqual("pl", f.read().strip())
 
+    def test_the_measure_says_its_kind_and_a_footprint_landable_still_asks_for_the_full_one(self):
+        self.artifact("pl", BASE[:1], BASE[:1], self.final_none(), self.final_none())
+        _, full = self.run_measure("--countries", "pl")
+        self.assertTrue(full.startswith("measure: full"))
+        self.artifact("uk", None, None, verdict="identity takes (uk): footprint -- every one of the base's title readings reads alike "
+                                                "under the head's rules: no take can have moved")
+        code, out = self.run_measure("--countries", "uk", "--kind", "footprint")
+        self.assertEqual(0, code)
+        self.assertTrue(out.startswith("measure: footprint"))
+        self.assertIn("LANDABLE (footprint): no take can move -- before landing, the full measure", out)
+        _, as_json = self.run_measure("--countries", "uk", "--kind", "footprint", "--json")
+        self.assertEqual("footprint", json.loads(as_json)["measure"])
+
 
 if __name__ == "__main__":
     unittest.main()

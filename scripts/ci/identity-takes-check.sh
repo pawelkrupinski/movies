@@ -126,13 +126,23 @@ pick_base() {
   echo "$head_parent" # never judged in the last 2,000 commits: the check's first run
 }
 
+# THE NORMALIZER TRACE (scripts/identity-measure --footprint): every title reading a side's resolve and its ratchet made
+# (services.movies.NormalizerTrace), stored per side's identity code and recording (trace_asset): a title-rule change
+# reading every one of them alike moves no take, which the footprint measure proves on the laptop in minutes instead of
+# dispatching this check. Asked only of a tool that takes --trace: a base, or a measured commit, from before it does not.
+traces="$RUNNER_TEMP/identity-trace"
+traced() { # <tool's source> <trace file> -> " --trace <file>" when the tool takes one and a file is named
+  [ -n "$2" ] && grep -q '"trace"' "$1" 2> /dev/null && printf ' --trace %s' "$2"
+  return 0
+}
+
 # The resolve of one checkout over the recording: its exit and its decisions both say it ran. A checkout from before the
 # resolve was a tool (a base, often) runs it as the spec it was, configured by its environment.
-dump() { # <checkout> <out dir>
+dump() { # <checkout> <out dir> [trace file]
   local corpus="$here/test/resources/fixtures/corpus" fixtures="$here/test/resources/fixtures" status
   if [ -f "$1/worker/src/it/scala/IdentityResolveDump.scala" ]; then
     ( cd "$1" && "${IDENTITY_SBT[@]}" -J-Xmx"$heap" \
-        "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $2 --full $cc --corpus-dir $corpus --fixtures $fixtures" 2>&1 \
+        "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $2 --full $cc --corpus-dir $corpus --fixtures $fixtures$(traced "$1/worker/src/it/scala/IdentityResolveDump.scala" "${3:-}")" 2>&1 \
         | tee "$2.log" | grep -E '\[full-|error|Total time'; exit "${PIPESTATUS[0]}" )
   else
     ( cd "$1" && KINOWO_IDENTITY_DUMP="$2" KINOWO_IDENTITY_FULL="$cc" KINOWO_IDENTITY_CORPUS_DIR="$corpus" KINOWO_FIXTURE_ROOT="$fixtures" \
@@ -265,6 +275,18 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
 # <decisions|final|shape> <key>: none for a result over the recording when no recording is pinned -- its key would name
 # no data, and match another unpinned run's over other data. The final takes read only the checked-in capture.
 asset() { [ "$1" = final ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
+# <sha>: a side's normalizer trace (THE NORMALIZER TRACE), named so the laptop can find it without this row's inputs: the
+# identity code (code_of) and the recording -- p<run> the pinned pair, n<run> a named one (the bare pair) -- and not its
+# fills, which add answers but never take one away: the newest trace of a code over a recording stands for it.
+trace_asset() {
+  if [ -n "${KINOWO_CONVERGENCE_NAMED_RECORDING:-}" ]; then echo "takes-trace-$cc-$(code_of "$1")-n$KINOWO_CONVERGENCE_NAMED_RECORDING.gz"
+  elif [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ]; then echo "takes-trace-$cc-$(code_of "$1")-p$KINOWO_CONVERGENCE_PIN_CORPUS_RUN.gz"; fi
+}
+keep_trace() { # <side> <sha> [base]: both of the side's traces, as one, stored -- one alone proves nothing
+  [ -s "$traces/$1-model.jsonl.gz" ] && [ -s "$traces/$1-final.jsonl.gz" ] || return 0
+  cat "$traces/$1-model.jsonl.gz" "$traces/$1-final.jsonl.gz" > "$traces/$1.jsonl.gz" # gzip members concatenated: one stream
+  keep "$traces/$1.jsonl.gz" "$(trace_asset "$2")" ${3:+"$3"}
+}
 
 tree="$RUNNER_TEMP/identity-takes-base"
 # The base's final takes replay beside its resolve when no head session runs (the base row, or a takes row resolving the
@@ -291,7 +313,8 @@ ratchet_heap=${TAKES_RATCHET_HEAP:-3g}
 timing() { printf '%s\t%s\t%s\n' "$1" "$SECONDS" "$2" >> "$out/timings.tsv"; }
 # An earlier run that ended before removing its base checkouts left them registered: their directories go, and so
 # does their registration (a missing but registered worktree refuses the next `git worktree add`).
-rm -rf "$tree" "$final_tree"
+rm -rf "$tree" "$final_tree" "$traces"
+mkdir -p "$traces"
 git worktree prune
 : > "$out/verdict.txt"
 printf 'phase\tseconds\thow\n' > "$out/timings.tsv"
@@ -314,11 +337,12 @@ ratchet_out() { # <checkout> <out file>: what a ratchet run in <checkout> wrote,
 }
 # A BASE's ratchet, in the base's checkout: one from before the ratchet was a tool runs it as the spec it was, whose
 # exit was its own verdict -- there the takes file alone says it ran; one from before --countries replays every capture.
-ratchet() { # <checkout> <out file>
+ratchet() { # <checkout> <out file> [trace file]
   rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
   mkdir -p "$(dirname "$2")"
   local tool="$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" scope=""
   grep -q '"countries"' "$tool" 2>/dev/null && scope=" --countries $cc"
+  scope+=$(traced "$tool" "${3:-}")
   if [ -f "$tool" ]; then
     # Unforked, whatever the base's build says: a base from 82de60cf0 until project/ForkedTests.scala kept `run` in the
     # server forked its tools in worker/, where the repo-relative identity-judgements.tsv is missing (Forgejo run 195, every row).
@@ -365,7 +389,7 @@ base_final_start() { # the base's final takes, replayed in the background (base_
   cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
      "$final_tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
   base_started=$(date +%s)
-  ratchet "$final_tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
+  ratchet "$final_tree" "$out/base/ratchet-takes.tsv" "$traces/base-final.jsonl.gz" > "$out/base-final.out" 2>&1 &
   base_final_pid=$! # on_exit stops it should the check end before base_final_finish waits for it
 }
 base_final_finish() {
@@ -378,7 +402,7 @@ base_final_finish() {
 }
 base_resolve() {
   base_tree || exit 2
-  dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
+  dump "$tree" "$out/base" "$traces/base-model.jsonl.gz" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
   echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
   timing base-resolve resolved
   keep "$out/base/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$base")")" base
@@ -417,6 +441,7 @@ if [ "$side" = base ]; then
       timing base-resolve reused
     else base_resolve; fi
     base_final_finish
+    keep_trace base "$base" base
   fi
   if [ -n "$shape_moves" ]; then
     SECONDS=0
@@ -445,8 +470,10 @@ fi
 # what says it ran: the ratchet first (seconds, and the resolve is no verdict without it), the corpus shape last (its
 # specs FAIL on a finding, which is no failure here).
 head_commands=()
-[ -n "$takes_moves" ] && head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc"
-  "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures")
+[ -n "$takes_moves" ] && head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc$(
+    traced "$here/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" "$traces/head-final.jsonl.gz")"
+  "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures$(
+    traced "$here/worker/src/it/scala/IdentityResolveDump.scala" "$traces/head-model.jsonl.gz")")
 [ -n "$shape_moves" ] && head_commands+=("$shape_command")
 if [ "${#head_commands[@]}" -gt 0 ]; then
   rm -f "$here/target/identity-unmatched/ratchet-takes.tsv" "$here/target/identity-unmatched/capture-gaps.tsv" \
@@ -473,6 +500,7 @@ if [ -n "$takes_moves" ]; then
   if [ "${#took[@]}" -ge 2 ] && [ -s "$out/head/decisions-$cc.jsonl" ]; then
     SECONDS=${took[1]}; timing head-resolve resolved
     keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
+    keep_trace head "$head"
   else
     echo "::warning::identity takes ($cc): the resolve exited $session (its log: $out/head.log)"; exit 2
   fi
@@ -493,6 +521,7 @@ if [ -n "$takes_moves" ]; then
     base_resolve
   fi
   base_final_finish
+  keep_trace base "$base" base
   gaps_of head; gaps_of base
 else
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"

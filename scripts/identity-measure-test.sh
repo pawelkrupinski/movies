@@ -108,6 +108,10 @@ JSON
   "run download") [ -n "${DOWNLOAD_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
                   [ -n "${DOWNLOAD_BLIPS:-}" ] && [ ! -f "$STUB/download-blipped" ] && { touch "$STUB/download-blipped"; echo "HTTP 500" >&2; exit 1; }
                   while [ "$#" -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done; cp -R "$ARTIFACT/." "$dir/" ;;
+  # the footprint measure's traces: the release's assets as its --jq prints them ("<name> <size>"), and one downloaded
+  "release view") [ -n "${FOOTPRINT_ASSETS:-}" ] || exit 1; printf '%s\n' "$FOOTPRINT_ASSETS" ;;
+  "release download") o=""; prev=""; for a in "$@"; do [ "$prev" = -O ] && o=$a; prev=$a; done
+                      echo '{"m":"sanitize"}' | gzip | gzip > "$o" ;;
   "run cancel") echo cancelled > "$STUB/cancelled"
                 # A second signal while the script cleans up (a second Ctrl-C): gh's parent is `timeout`, its parent the script.
                 [ -z "${SIGNAL_ON_CANCEL:-}" ] || kill -TERM "$(ps -o ppid= -p "$PPID" | tr -d ' ')" ;;
@@ -361,6 +365,45 @@ check "--all-countries ignores it" "footprint pl,de,uk,us,es" "$(plan --head "$d
 docs=$(fp_commit docs/notes.md "x")
 check "a change no take-moving path holds measures every country, as before" "footprint pl,de,uk,us,es" "$(plan --head "$docs" --base "$main_tip" | head -1)"
 scratch_git "$repo" checkout -q main
+
+# THE FOOTPRINT MEASURE: a title-rule change whose every traced reading reads alike is answered on the laptop, no dispatch;
+# anything else says why and measures in full.
+mkdir -p "$repo/common/src/main/resources"
+echo "rule a" > "$repo/common/src/main/resources/title-rules.tsv"
+scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "rules before"
+rules_base=$(scratch_git "$repo" rev-parse HEAD)
+echo "rule b" > "$repo/common/src/main/resources/title-rules.tsv"
+scratch_git "$repo" commit -qam "a title-rule change"
+rules_head=$(scratch_git "$repo" rev-parse HEAD)
+read -ra id_paths <<< "$(sed -n '/^identity_paths=(/,/)/p' "$takes_check" | sed -e 's/^identity_paths=(//' -e 's/)$//' | tr '\n' ' ')"
+code=$(scratch_git "$repo" ls-tree -r "$rules_base" -- "${id_paths[@]}" | { if command -v sha256sum > /dev/null; then sha256sum; else shasum -a 256; fi; } | cut -c1-24)
+cat > "$work/bin/trace-check" <<'CHECK'
+#!/usr/bin/env bash
+echo "[normalizer-trace] 12 reading(s) made again: ${TRACE_DIFFER:-0} read otherwise, 0 could not be made again"
+[ "${TRACE_DIFFER:-0}" = 0 ] && exit 0
+printf 'pl\tsanitize\tFestive Fun with Peppa: Cinema Experience\tfestivefunwithpeppacinemaexperience\tfestivefunwithpeppa\n' > "$2"; exit 1
+CHECK
+chmod +x "$work/bin/trace-check"
+# shellcheck disable=SC2120 # flags of a case, when it needs any
+footprint() { FOOTPRINT_ASSETS=${ASSETS-"takes-trace-pl-$code-p573.gz 99"} IDENTITY_MEASURE_TRACE_CHECK="$work/bin/trace-check" \
+  measure landable --head "$rules_head" --base "$rules_base" --countries pl --footprint "$@"; }
+check "--footprint: a title-rule change reading every traced title alike is LANDABLE without a dispatch" "0" "$(footprint)"
+check "...measured as a footprint" "true" "$(grep -q '^measure: footprint' "$work/out" && echo true || echo false)"
+check "...naming the trace it replayed" "true" "$(grep -q "footprint: pl's base readings: takes-trace-pl-$code-p573.gz" "$work/out" && echo true || echo false)"
+check "...and saying the full measure is still the gate it lands on" "true" \
+  "$(grep -q '^LANDABLE (footprint): no take can move -- before landing, the full measure' "$work/out" && echo true || echo false)"
+check "...dispatching nothing" "false" "$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+check "--footprint: a title read otherwise is listed, and the full measure decides" "0" "$(TRACE_DIFFER=1 footprint)"
+check "...listing the reading" "true" "$(grep -q 'Festive Fun with Peppa: Cinema Experience' "$work/out" && echo true || echo false)"
+check "...then measuring in full" "true|true" \
+  "$(grep -q '^measure: full' "$work/out" && echo true || echo false)|$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+check "--footprint: no trace of the base's identity code over the recording measures in full" "true|true" \
+  "$(ASSETS="takes-trace-pl-000000000000000000000000-p573.gz 99" footprint > /dev/null; grep -q 'no trace of pl at the base' "$work/out" && echo true || echo false)|$(
+     grep -q '^measure: full' "$work/out" && echo true || echo false)"
+check "--footprint: a change outside the title rules says so and measures in full" "true|true" \
+  "$(FOOTPRINT_ASSETS="takes-trace-pl-$code-p573.gz 99" IDENTITY_MEASURE_TRACE_CHECK="$work/bin/trace-check" measure landable --head "$tip" --countries pl --footprint > /dev/null
+     grep -q 'footprint: rule.txt can move a take outside the title rules' "$work/out" && echo true || echo false)|$(
+     grep -q '^measure: full' "$work/out" && echo true || echo false)"
 
 # THE SWEEP: orphaned measure/ branches (a SIGKILLed measurement leaves one) are deleted by --sweep alone; a measurement never sweeps.
 rm -rf "$work/stub"; mkdir -p "$work/stub" "$work/sweep"; export SWEEP_DIR="$work/sweep"

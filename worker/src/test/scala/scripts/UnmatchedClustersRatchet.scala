@@ -39,7 +39,9 @@ object UnmatchedClustersRatchet {
     CommandLine.Value("out", "dir", "where ratchet-takes.tsv, capture-gaps.tsv and a moved expected-matches.tsv go",
       default = Some(UnmatchedClusters.FindingsPath.getParent.toString)),
     CommandLine.Value("countries", "codes", "replay only these countries' captures, comma-separated (default: every capture)"),
-    CommandLine.Flag("measure", "read a capture's gaps as unknown, list them, and exit 0 once the takes are written"))
+    CommandLine.Flag("measure", "read a capture's gaps as unknown, list them, and exit 0 once the takes are written"),
+    CommandLine.Value("trace", "file", "also write every title reading the replay made there (services.movies.NormalizerTrace): what " +
+      "scripts/identity-measure --footprint replays under a title-rule change"))
 
   /** The countries whose captures the fixture holds. */
   val Countries: Set[String] = Set("pl", "uk", "de", "es", "us")
@@ -143,8 +145,13 @@ object UnmatchedClustersRatchet {
     val measure   = arguments.flag("measure")
     val countries = arguments.get("countries").fold(Countries)(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
     countries.diff(Countries).foreach(code => arguments.fail(s"--countries: no capture of $code (one of ${Countries.toSeq.sorted.mkString(", ")})"))
-    val run       = new Run(arguments.requiredPath("fixtures"), arguments.requiredPath("judgements"), arguments.requiredPath("out"), measure, countries)
-    val checks    = run.checks
+    // the captures' reading and replay inside the trace: every check reads the takes they made, and is computed here
+    val (run, checks) = services.movies.NormalizerTrace.recording(arguments.path("trace")) {
+      val run = new Run(arguments.requiredPath("fixtures"), arguments.requiredPath("judgements"), arguments.requiredPath("out"), measure, countries)
+      val checks = run.checks
+      checks.foreach(_.failure)
+      (run, checks)
+    }
     run.rightSummary.foreach(println)
     checks.foreach { c => println(s"[ratchet] ${if (c.failure.isEmpty) "ok" else "FAILED"} — ${c.name}"); c.failure.foreach(println) }
     val failed = checks.count(_.failure.nonEmpty)

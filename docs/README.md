@@ -51,6 +51,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [investigations/2026-10-22-rule-consolidation.md](investigations/2026-10-22-rule-consolidation.md) — the title
   rules moved into one table (`title-rules.tsv`): the inventory by effect, prod firings and BillingParse overlap, the
   byte-identity checks, which row merges fold alike (2) and which change stacked titles (23, for review), never-fired rows.
+- [investigations/2026-10-22-footprint-measure.md](investigations/2026-10-22-footprint-measure.md) — the footprint
+  measure (`identity-measure --footprint`): why a title-rule change can be proved to move no take by replaying the base's
+  title readings, the ideas rejected as unsound, and its validation against eight full measures.
 - [synopsis-resolution/investigation.md](synopsis-resolution/investigation.md) — June 2026 investigation of
   synopsis-based resolution; frozen inputs in [synopsis-resolution/archive/](synopsis-resolution/archive/README.md).
 - `venue-maps/*.tsv` — venue-map data read by `data/us/scripts/generate_amc_map.py` and the UK clients (data, not prose).
