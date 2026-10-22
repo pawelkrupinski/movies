@@ -63,7 +63,7 @@ jobs:
     # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
     # green, and every other job skips on the output (.github/actions/supersede-check). Seconds, at t=0.
     supersede:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -85,6 +85,9 @@ jobs:
         needs: supersede
         if: needs.supersede.outputs.superseded != 'true'
         uses: ./.github/workflows/ci.yml
+        # Off github.com, on the production lane (MainLaneSpec).
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'main-lane' || '' }}
         secrets: inherit
         # ci.yml's jobs post JUnit check-runs, and its `image-*` jobs push this commit's SHA-tagged
         # images; a called workflow can only narrow its caller's token, never widen it.
@@ -122,7 +125,7 @@ jobs:
     gates:
         needs: supersede
         if: needs.supersede.outputs.superseded != 'true'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 5
         # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci, so both
         # builds start the moment ci is green. A marker that moves between t=0 and ci's end can only
@@ -249,7 +252,7 @@ jobs:
         # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway. A superseded
         # run dispatches nothing: the newer run behind it dispatches for a superset of its commits.
         if: ${{ !cancelled() && needs.supersede.outputs.superseded != 'true' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
         timeout-minutes: 40
@@ -308,7 +311,7 @@ jobs:
     publish-web:
         needs: [ci, gates]
         if: needs.gates.outputs.web-changed == 'true'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 10
 
         permissions:
@@ -417,7 +420,7 @@ jobs:
     image-worker:
         needs: gates
         if: needs.gates.outputs.worker-changed == 'true'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 30
         permissions:
             contents: read
@@ -471,7 +474,7 @@ jobs:
     publish-worker:
         needs: [ci, gates, image-worker]
         if: needs.gates.outputs.worker-changed == 'true'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 10
 
         permissions:
@@ -575,6 +578,8 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'main-lane' || '' }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

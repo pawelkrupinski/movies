@@ -65,7 +65,8 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
   private val SetupSwiftUbuntus = Set("20.04", "22.04", "24.04")
 
   "every job installing Swift via setup-swift" should "run on an Ubuntu setup-swift supports" in {
-    val RunsOn = """runs-on:\s*ubuntu-(\d\d\.\d\d)\s""".r
+    // `ubuntu-24.04`, or ci.yml's `${{ inputs.lane || 'ubuntu-24.04' }}`, whose lane is Forgejo-only (MainLaneSpec).
+    val RunsOn = """runs-on:\s*(?:\$\{\{ inputs\.lane \|\| ')?ubuntu-(\d\d\.\d\d)[\s']""".r
     val unsupported = for {
       file        <- RepoFile.workflows()
       (name, job) <- RepoFile.jobs(RepoFile.read(file.getPath))

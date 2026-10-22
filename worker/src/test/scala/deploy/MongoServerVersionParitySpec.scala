@@ -50,7 +50,9 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
    *  known incompatibility", SERVER-121912), and the ubuntu-26.04 runner boots 7.0 — its first Main run
    *  (38781236870) died there. Until production's release starts on that kernel, every job that starts
    *  the pinned mongod stays on ubuntu-24.04 (kernel 6.17): its own `runs-on:`, or, for a job running on
-   *  `${{ inputs.runner }}`, that input's default and every caller's fallback. */
+   *  `${{ inputs.runner }}`, that input's default and every caller's fallback. A ci.yml job on
+   *  `${{ inputs.lane || 'ubuntu-24.04' }}` passes too: `lane` is set only off github.com, where every
+   *  ubuntu-* label and `main-lane` are one job image on ci-runner's kernel (MainLaneSpec). */
   private val MongoStarts  = Seq("scripts/ci/start-mongo-replset.sh", "./.github/actions/convergence-setup")
   private val MongoRunner  = "ubuntu-24.04"
 
@@ -63,7 +65,7 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
       if MongoStarts.exists(job.contains)
       runner       = job match { case RunsOn(r) => r.trim; case _ => "<none>" }
       ok           = if (runner.contains("inputs.runner")) RepoFile.block(yml, "runner").contains(s"default: $MongoRunner")
-                     else runner == MongoRunner
+                     else runner == MongoRunner || runner == s"$${{ inputs.lane || '$MongoRunner' }}"
       if !ok
     } yield s"${file.getName}: $name ($runner)"
 

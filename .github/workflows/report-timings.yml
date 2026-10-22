@@ -8,6 +8,15 @@ name: Report run timings
 # `workflow_call.secrets` block, which made this file invalid there on every event.
 on:
     workflow_call:
+        # THE PRODUCTION LANE (infra docs/forgejo-actions.md, "Lanes"): Main passes `main-lane` off github.com
+        # so its jobs never queue behind dispatched experiments on the shared ubuntu runner. Empty (every
+        # other caller, and github.com) keeps the ubuntu-* label each job names below. MainLaneSpec.
+        inputs:
+            lane:
+                description: The runner label for every job here; empty for the job's own ubuntu-* label.
+                required: false
+                type: string
+                default: ''
 
 permissions:
     actions: read
@@ -18,7 +27,7 @@ jobs:
     # so beside a workflow's own scheduled-run `report` this row read `report-1`.
     report:
         name: report (timings)
-        runs-on: ubuntu-26.04
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5

@@ -140,7 +140,7 @@ jobs:
   # starts with a newer run of its group already waiting is the one github.com would have dropped: it ends here,
   # green, and every other job skips on the output (.github/actions/supersede-check).
   supersede:
-    runs-on: ubuntu-26.04
+    runs-on: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || 'ubuntu-26.04' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -169,7 +169,7 @@ jobs:
     needs: supersede
     if: needs.supersede.outputs.superseded != 'true'
     name: nix-evaluate
-    runs-on: ubuntu-26.04
+    runs-on: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || 'ubuntu-26.04' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -313,7 +313,7 @@ jobs:
 
   stage:
     name: nix-stage
-    runs-on: ubuntu-26.04
+    runs-on: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || 'ubuntu-26.04' }}
     # NEVER FROM A PULL REQUEST, AND NEVER FROM A BRANCH, and this needs a guard of its own rather
     # than relying on the trigger list. On a host running fleet.autoApply, STAGING IS THE TRIGGER:
     # writing the pin starts the applier within about a second. So a PR that staged would be a PR
@@ -428,6 +428,8 @@ jobs:
       actions: read
       contents: read
     uses: ./.github/workflows/report-timings.yml
+    with:
+      lane: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || '' }}
     # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
     # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
     # every event). `inherit` reads the same on github.com and declares nothing.

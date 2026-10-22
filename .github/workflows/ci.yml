@@ -14,6 +14,15 @@ name: CI
 # which `needs: ci`.
 on:
     workflow_call:
+        # THE PRODUCTION LANE (infra docs/forgejo-actions.md, "Lanes"): Main passes `main-lane` off github.com
+        # so its jobs never queue behind dispatched experiments on the shared ubuntu runner. Empty (every
+        # other caller, and github.com) keeps the ubuntu-* label each job names below. MainLaneSpec.
+        inputs:
+            lane:
+                description: The runner label for every job here; empty for the job's own ubuntu-* label.
+                required: false
+                type: string
+                default: ''
 
 # WHERE IMAGES GO, chosen by repository VARIABLES that exist only on the self-hosted Forgejo (set
 # 2026-10, after the GitHub suspension): IMAGE_REPO=registry.kinowo.net, REGISTRY_HOST=
@@ -105,7 +114,7 @@ jobs:
                     - { shard: worker-identity, cmd: testUnitWorker, suites: identity }
                     - { shard: worker,          cmd: testUnitWorkerAndWeb, suites: rest }
                     - { shard: rest,            cmd: testUnitRest }
-        runs-on: ubuntu-26.04
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
         env:
             WORKER_ROW: ${{ matrix.suites }}
@@ -271,7 +280,7 @@ jobs:
     # 5.10 build for it (actions/runner-images#14748). Moving off means a Swift 6 toolchain here AND in
     # ios.yml's `swift:5.10` container together. Locked by ActionPinningSpec.
     mobile-local-server:
-        runs-on: ubuntu-24.04
+        runs-on: ${{ inputs.lane || 'ubuntu-24.04' }}
         permissions:
             contents: read
             checks: write
@@ -431,7 +440,7 @@ jobs:
                 include:
                     - { row: identity }
                     - { row: rest }
-        runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ${{ inputs.lane || 'ubuntu-24.04' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         # Every sbt step of the row sees the same filter.
         env:
             IT_ROW: ${{ matrix.row }}
@@ -570,7 +579,7 @@ jobs:
                 include:
                     - { shard: corpus,   cmd: e2eCorpus }
                     - { shard: rest,     cmd: e2eRest }
-        runs-on: ubuntu-26.04
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         permissions:
             contents: read
             checks: write
@@ -811,7 +820,7 @@ jobs:
                       runs: |
                           chromium-galaxy-s10 ; @agnostic ; axe-core ;
                           chrome-desktop ; ; axe-core|@agnostic ;
-        runs-on: ubuntu-26.04
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         permissions:
             contents: read
             checks: write
@@ -878,7 +887,7 @@ jobs:
                       browsers: webkit
                       label: webkit-behaviour
                       runs: 'webkit-iphone-13 ; @agnostic ; axe-core ;'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         permissions:
             contents: read
             checks: write
