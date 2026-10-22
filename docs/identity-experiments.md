@@ -30,7 +30,9 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
   director onto it; the page left the listing and the piece's namesake took over — a data change, not a code one.
 - **Why parked:** the billing carries no event or music word and no fact; a factless title that is an obscure film's exact
   title is the bare pooled class above (not built), and a "Work - Subtitle" billing kept off the film titled "Work" is the
-  own-subtitle experiment below (far past 100:1). Known-wrong rows (`served`) for both billings.
+  own-subtitle experiment below (far past 100:1). Known-wrong rows (`served`) for both billings; `served,rows` for the two
+  takes the checked-in rows still make (KAP-Torgau → 299535, Casablanca → 1265202, its recorded page still copying the
+  CS:GO record's facts), which turned Main #674 (run 1409) red in MatchedTakesLabelSpec.
 - **Next angle:** the venue's other programme as a prior (KAP-Torgau bills concerts), as for "Auf Augenhöhe".
 
 ## 2026-10-22 — the parked known-wrong takes re-checked after WS2 and WS4 (base `873b00e50`, pinned 573 and 528, all five countries)
