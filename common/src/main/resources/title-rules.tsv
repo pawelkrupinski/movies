@@ -75,7 +75,6 @@ structural-wersja-suffix	query			seed	edition		(?i)\s*[-–—.]\s+wersja\s+\p{L
 # · xtra-pp-kino-seniora-colon: 'Kino seniora:' colon variant of the existing pipe form (Takie jest życie)
 # · xtra-pp-kino-seniora-dash: 'Kino Seniora -' dash variant of the existing pipe/colon forms — found live in prod (Klaps cinema's '500 Mil' senior screening), where the un-stripped banner reached the TMDB query and the row never resolved
 # · xtra-pp-fregata-seniorow: 'Fregata dla Seniorów:' senior strand (Ojczyzna)
-xtra-pp-senior-banners	banner				audience		(?iu)^(?:Pora\s+dla\s+Seniora:\s+|Wtorki\s+dla\s+Seniora:\s+|Kino\s+dla\s+Seniora:\s+|Filmowe\s+spotkania\s+seniora:\s+|Filmowy\s+Klub\s+Seniora\s+i\s+Seniorki:\s+|KINO\s+SENIORA\s*\|\s*|Kino\s+seniora:\s+|Kino\s+Seniora\s*[-–—]\s+|Fregata\s+dla\s+Seniorów:\s+)		Seniors' strands: '<strand>: <film>' (Pora / Wtorki / Kino dla Seniora, Filmowe spotkania seniora, Filmowy Klub Seniora i Seniorki, Kino Seniora : | –, Fregata dla Seniorów) — was xtra-pp-pora-dla-seniora, xtra-pp-wtorki-seniora, xtra-pp-kino-dla-seniora, xtra-pp-spotkania-seniora, xtra-pp-fks-seniorki, xtra-pp-kino-seniora-pipe, xtra-pp-kino-seniora-colon, xtra-pp-kino-seniora-dash, xtra-pp-fregata-seniorow
 # Sensory-friendly and toddler screenings: an audience programme, never the film (2026-10 corpus audit).
 # Any audience a screening is billed as friendly to: sensory ("Kino przyjazne sensorycznie:", "Seans Przyjazny
 # Sensorycznie:"), or named after "osobom" / "dla" ("Pokaz przyjazny osobom z ADHD:").
@@ -122,7 +121,6 @@ xtra-swieto-kina-suffix	query				banner		(?iu)(?<=\S)\s+(?:święto\s+kina|czas\
 xtra-edukacja-mh-suffix	query				banner		(?iu)(?<=\S)\s+Edukacja\s+Młod[ae]\s+Horyzonty\b.*$		'<film> Edukacja Młode Horyzonty[, cykl "…", <town>]' education strand tail with no separator (Terminal Kultury Gocław: Lydia i Władca Burz, Drogi Panie Dyktatorze, Sonia)
 # · xtra-pp-psychoanaliza: Kino a/i psychoanaliza
 # · xtra-pp-filmoterapia: Filmoterapia z Inspirą
-xtra-pp-psychology-banners	banner				banner		(?i)^(?:Kino\s+[ai]\s+psychoanaliz[ae]:\s+|Filmoterapia\s+z\s+Inspirą:\s+)		Psychology strands: Kino a/i psychoanaliza, Filmowe spotkania z psychologią, Filmoterapia z Inspirą — was xtra-pp-psychoanaliza, xtra-pp-filmoterapia
 # Programme banners beyond the seed's alternation, each anchored at ^ and ending in its delimiter so the display
 # can split it off; a [^:]+ absorbs a cycle's sub-name (DKF Kropka, Klub Filmowy Urania…) in one row.
 # · xtra-pp-konesera: Klub/Kino Konesera cycle
@@ -312,7 +310,6 @@ xtra-dkf-suffix	query				banner		(?i)(?:\s*[|_]\s*DKF\b.*$|\s*[-–—]\s*DKF\b.
 # is no part of it. (A director credit after the title, "… reż. Antoine Lanciaux", comes off at intake: TitleFacts.)
 xtra-venue-non-fiction-suffix	query				venue		(?iu)\s*:\s*{{VENUE}}\s+Non-?Fiction\b.*$		'<film>: <venue> Non-Fiction (16+)' documentary-strand suffix, any venue's name (Kino w Kadrze's 'Kadr Non-Fiction')
 xtra-premiera-bracketed	query				event		(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$		'(PREMIERA)' bracketed premiere tag
-xtra-kino-sensoryczne-suffix	query				audience		(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$		'- Kino sensoryczne' sensory-friendly screening suffix
 xtra-przedpremiera-suffix	query				event		(?i){{SEP}}(?:przedpremiera|przedpremierowo|zobacz\s+przedpremierowo|seans\s+przedpremierowy|przepdremiera)\s*!*\s*$		przedpremiera suffix (incl. the 'przepdremiera' data-entry transposition)
 # · xtra-przedpremiera-prefix: przedpremiera prefix
 # · xtra-pokaz-przedpremierowy-prefix: 'Pokaz przedpremierowy: <film>' premiere prefix
@@ -441,9 +438,7 @@ xtra-introduction-clause-tail	query				event		(?iu)(?:\s+[-–—|]\s+(?:(?:with
 # written in mixed case), a film club after it, and a certificate with the year's last two digits ("(15) 26").
 # …unless what follows is the festival's own event, which a bare search would match to a film of its name
 # ("Unrestricted View Horror Film Festival 2026: Opening Night" is no Cassavetes)
-xtra-film-festival-prefix	query				festival		(?iu)^(?:[\p{L}\p{N}'’&+.]+\s+){1,5}Film\s+Festival(?:\s+(?:19|20)\d{2})?\s*[:–—-]\s+(?=\S)(?!(?:opening|closing)\s+night|.*(?<![\p{L}\p{N}])(?:shorts?|competition|programmes?|programs?|showcase|forum|talk|edition|selection|\p{L}*preis|awards?)(?![\p{L}\p{N}]))		'<Name> Film Festival - <film>' / '<Name> Film Festival 2026: <film>' festival banner ahead of the film (UK 2026-10-13: Mowlem Theatre's Purbeck Film Festival, ICA)
 xtra-festival-acronym-suffix	query				festival		(?u)^(?=.*\p{Ll})(.*?\S)\s+(?:[-–—]\s+)?[A-Z]{0,2}FF[A-Z]{1,2}\s*$	$1	'<film> FFFL' / '<film> - FFFL' festival acronym after a mixed-case title (UK 2026-10-13: Ciné Lumière's French Film Festival)
-xtra-film-club-suffix	query				banner		(?iu)(?<=\S)\s*[-–—|]\s*Film\s+Club\s*$		'<film> - Film Club' club screening after the film (UK 2026-10-13: Pontardawe Arts Centre: Fatherland, Kokuho, The Last Viking)
 xtra-certificate-year-suffix	query				format		(?iu)\s*{{CERT_NOTE}}\s+\d{2}\s*$		'<film> (15) 26' certificate and the year's last two digits (UK 2026-10-13: Hippodrome Bo'ness)
 # A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
 # and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
@@ -520,7 +515,6 @@ xtra-ukrainski-lang-suffix	query				format		(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|uk
 # closed up ("DKF:Orły Republiki"), which a `\s+` tail left unstripped and
 # therefore unresolvable on TMDB.
 xtra-dkf-bare-prefix	query				banner		(?iu)^DKF\s*[-–—:]\s*		'DKF - / DKF: <film>' clubless film-club prefix, with or without a space after the separator (Drugie życie, Czytając Lolitę w Teheranie, DKF:Orły Republiki)
-xtra-filmowy-klub-seniora-dash	query				audience		(?iu)^Filmowy\s+Klub\s+Seniora\s*[-–—]\s+		'Filmowy Klub Seniora - <film>' dash variant of the seed senior-club banner (Drugie życie)
 # Sixth-wave (2026-06-20) audit. Only rules whose stripped query was VERIFIED
 # to resolve unambiguously on TMDB are kept — most residual no-match titles
 # either don't decode to a TMDB film (yearless titles that map to two films,
@@ -645,9 +639,7 @@ xtra-format-pl-suffix	query				format		(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|n
 # Multikino Stary Browar 2026-08-28 duplicate class, same shape as the Harry
 # Potter "rocznica premiery" gap.
 xtra-najlepsze-suffix	query				banner		(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*(?:\[seans\s+bez\s+reklam\])?\s*$		'<film> | Najlepsze z Najgorszych [seans bez reklam]' bad-movie-night SUFFIX form, with its optional no-ads tag (Brudny Henryk, Kupiłem motocykl który jest wampirem)
-xtra-kino-dyskomfortu-suffix	query				banner		(?iu){{SEP}}Kino\s+dyskomfortu\s*(?:\[seans\s+bez\s+reklam\])?\s*$		'<film> | Kino dyskomfortu [seans bez reklam]' discomfort-cinema strand SUFFIX, with its optional no-ads tag (Kinoteka: Pianistka, Kieł)
 xtra-exhibition-on-screen	query				relay		(?iu)^Exhibition\s+On\s+Screen:\s*		'Exhibition On Screen: <film>' art-doc series (David Hockney. Pejzaże, portrety i martwe natury)
-xtra-poranki-dzieciece-suffix	query				audience		(?iu){{SEP}}Poranki\s+dziecięce\s*$		'<film> - Poranki dziecięce' kids-morning suffix (Minionki i straszydła)
 xtra-pipe-cycle-banner	query				banner		(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|FKS|Retrospektywa|Klasyk[ai]|Klasyczne|Klub\s+Filmowy|Poniedziałki\s+ze?|Wtorki\s+ze?|Młode\s+Horyzonty|Kinoteka|Filmowy\s+Wałbrzych|Pokaz\s+przedpremierowy|Przedpremiera|Kino\s+przy\s+herbatce|Kino\s+dyskomfortu|Tylko\s+sztuka|Eko-Kino|10/10)\b.*$		'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii, FEDERICO FELLINI: ciao a tutti! | GŁOS Z KSIĘŻYCA stay intact). The keyword list is the whole rule: a 2026-09-05 audit found 56 PL films known ONLY by a pipe-suffixed strand, 32 of them (57%, against a ~26% corpus baseline) with no TMDB id because the strand went into the search query — 'Młode Horyzonty' alone accounted for 52. Widening the guard is how this rule grows; loosening it is how it eats a film. ONE MEASURED SIDE EFFECT, traced end to end 2026-09-05: a decorated row stops INHERITING the base film's release year. The Kinoteka listing of "90. urodziny Pavarottiego" has its own detail page, and that page states no year at all (only a 95-minute runtime); the 2026 it used to carry came from the BARE row, whose detail does state it. Stripping the strand keeps the two apart, so `MovieCache.venueSlotYear` finds no year on the venue's slot and the row is never promoted from a yearless key onto 2026. That is the rule working — a decorated edition is not the base film — and the row keeps the year its own source actually gives, which is none. It costs that card its year pill, against 52 films whose TMDB query this fixes and a fixture row ("Kolor purpury | Kinoteka jest Kobietą") that goes from a 2026 key with no synopsis to Spielberg's 1985 film. Worth knowing because it means a search-tier keyword CAN move a stored key year, by way of what the row is allowed to be merged with
 # Sixteenth-wave (2026-07-06) audit of the TMDB-no-match corpus (prod mirror,
 # 220 rating-less rows): decoration that PREFIXES or SUFFIXES a real,

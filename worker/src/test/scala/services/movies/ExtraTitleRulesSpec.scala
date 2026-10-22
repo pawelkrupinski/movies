@@ -186,13 +186,13 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
     programmeCases.foreach { case (in, (banner, _)) =>
-      withClue(s"programmePrefix('$in'): ")(withExtras.programmePrefix(in) shouldBe Some(banner))
+      withClue(s"programmePrefix('$in'): ")(withExtras.programmeBanner(in) shouldBe Some(banner))
     }
   }
 
   it should "strip the banner for the external-API query" in {
     programmeCases.foreach { case (in, (_, query)) =>
-      withClue(s"search('$in'): ")(withExtras.search(in) shouldBe query)
+      withClue(s"search('$in'): ")(withExtras.query(in) shouldBe query)
     }
   }
 
@@ -612,7 +612,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
     searchStripCases.foreach { case (in, query) =>
-      withClue(s"search('$in'): ")(withExtras.search(in) shouldBe query)
+      withClue(s"search('$in'): ")(withExtras.query(in) shouldBe query)
     }
   }
 
@@ -677,7 +677,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // The real corpus 'Banner | Film' inverse shapes stay intact (handled as PREFIXES,
     // never eaten as a suffix): the segment after the pipe is the film, not a banner.
     withClue("KINO SENIORA prefix-extracted, not amputated: ")(
-      withExtras.search("KINO SENIORA | Ojczyzna") shouldBe "Ojczyzna")
+      withExtras.query("KINO SENIORA | Ojczyzna") shouldBe "Ojczyzna")
     withClue("LATO w LUNIE prefix-extracted, not amputated: ")(
       withExtras.search("LATO w LUNIE | Drzewo magii") shouldBe "Drzewo magii")
     // And it DOES fire when a cycle word is the first token after the pipe.
