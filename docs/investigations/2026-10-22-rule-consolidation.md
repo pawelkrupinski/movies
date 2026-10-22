@@ -198,6 +198,39 @@ parse reads every member. What keeps them:
 Adding a banner's own words to the `strand` concept moves the queries of every billing holding them, so each such word
 is a behaviour change of its own, to measure like this one.
 
+## Examples and the mutation check (2026-10-22)
+
+Every row of `title-rules.tsv` now carries its `examples` (the column is required: `TitleRuleTable.parse` refuses a row
+without one, so the decoration discovery's rows and every hand-added row bring theirs). An example is a billing and what
+the row's tier makes of it under the rules of the first country holding the row: the lookup query (`banner`, `query`),
+the merge-key fold (`key`), the proper name (`name`), the venue's cleanup (`venue`). `TitleRuleExamples` mined them:
+for each row, the shortest golden-corpus billings on which it fires inside its tier's fold, those its removal changes
+first; then the fixtures' and specs' strings.
+
+- **Coverage:** 215 of 215 rows. 159 from the golden corpus (the recordings and the prod titles), 33 from the fixtures
+  and specs, 23 written by hand where the mined string was no billing (a judgement-TSV line, a URL, a JSON line) or none
+  was found (`canonical-ampersand-to-i`, `xtra-canonical-mandalorian-grogu-en`, `xtra-canonical-skarpetek-3`,
+  `helios-suffix-15`, the four venue trims). Each hand example's billing occurs in the repository's strings, save two
+  written from the pattern alone, flagged: `structural-restored-suffix` ("Amadeusz 4K restored": the corpus bills "4K
+  Restored" only after a dash or a bracket, which other rows take first) and `helios-suffix-15` ("Vaiana - DUB": no
+  Helios title bills "- DUB" today).
+- **`TitleRuleExamplesSpec`** holds every row to its examples; **`TitleRuleMutationSpec`** removes each row in turn and
+  asks that one of its examples read otherwise (the row is load-bearing). Both run in ~3 s (215 rule sets).
+- **Mutation survivors: 5**, fully covered and listed in `TitleRuleMutationSpec.Covered` (the list must stay exact).
+  Merge or removal candidates, not removed:
+
+  | row | covered by |
+  |---|---|
+  | `canonical-gwiezdne-wojny` | `xtra-canonical-gwiezdne-wojny-ci` (every casing); kept as the seed's, which `ProdTitlesNormalizationSpec` pins |
+  | `helios-suffix-3` | `xtra-helios-na-scenie` (" w Helios na Scenie" in any case) |
+  | `xtra-paren-pokaz-seans` | `xtra-paren-screening-event` (a bracket naming a pokaz or a seans) |
+  | `xtra-filmoterapia-w-kinie` | the billing parse: "FILMOTERAPIA W LUNIE \| <film> \| seans" is a strand's piece |
+  | `xtra-pokaz-colon-suffix` | the billing parse: "<film>: pokaz z prelekcją …" closes on a piece opening on "pokaz" |
+
+  The last two fire, on the fixtures' strings, also where the parse cuts nothing (a JSON line, "(seans w ASP)"), which is
+  why the retirement above kept them; on billings the parse reads them alike. (`xtra-preview-pipe-tail` was a sixth
+  until the closing-piece guard of Main #738: "Minotaurus | Preview Osteuropäische Filmtage 2026" is its own again.)
+
 ## Byte-identity, as checked
 
 - **Rule level** (batches 1–3, one per tier): every rule compiles to the same pattern, replacement, flags, countries

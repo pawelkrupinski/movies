@@ -13,7 +13,8 @@ object ExtraTitleRules {
   final case class Discovered(rule: TitleRule, examples: Seq[(String, String)])
 
   /** The discovery bot's accepted proposals: the table's rows carrying the examples they were measured on. */
-  val discovered: Seq[Discovered] = TitleRuleTable.rows.collect { case row if row.examples.nonEmpty => Discovered(row.rule, row.examples) }
+  val discovered: Seq[Discovered] =
+    TitleRuleTable.rows.collect { case row if row.rule.id.startsWith("xtra-discovered-") => Discovered(row.rule, row.examples) }
 
   val all: Seq[TitleRule] = TitleRuleTable.rows.filterNot(_.seed).map(_.rule)
 }

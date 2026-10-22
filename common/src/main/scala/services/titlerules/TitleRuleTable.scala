@@ -26,13 +26,15 @@ object TitleRuleTable {
 
   private val Season = """[a-z]{3}(?:-[a-z]{3})?""".r
 
-  /** One row: its rule, what it takes off, the months its billing comes back in, and — for a rule the decoration
-   *  discovery proposed — the venue titles it was measured on with the query each gives. */
+  /** One row: its rule, what it takes off, the months its billing comes back in, and its examples — billings with what
+   *  the row's tier makes of each (the lookup query, the merge-key fold, the proper name, the venue's cleanup;
+   *  `TitleRuleExamplesSpec`, `TitleRuleMutationSpec`). */
   final case class Row(rule: TitleRule, effect: String, season: Option[String], seed: Boolean, examples: Seq[(String, String)])
 
-  /** Lines `id kind cinema countries flags effect season pattern [replacement [note [examples]]]`, tab-separated; `#`
+  /** Lines `id kind cinema countries flags effect season pattern replacement note examples`, tab-separated; `#`
    *  comments and blank lines skipped. Flags: `all` (replace every match, not the first), `seed` (the frozen baseline
-   *  [[TitleRules]] names). Anything malformed fails loudly: a typo must not drop a rule silently. */
+   *  [[TitleRules]] names). Anything malformed fails loudly: a typo must not drop a rule silently, and a row without an
+   *  example is refused — what a row does is shown by one, and the mutation spec reads it. */
   def parse(lines: Iterator[String]): Seq[Row] =
     lines.zipWithIndex.filter { case (line, _) => line.trim.nonEmpty && !line.startsWith("#") }.zipWithIndex.map {
       case ((line, lineNo), position) =>
@@ -57,10 +59,12 @@ object TitleRuleTable {
         val rule = TitleRule(id, scope, Option.when(cinema.nonEmpty)(cinema), pattern, replacement, applyAll = flagSet("all"),
           order = position, tag = Option.when(kind == "banner")("programmePrefix"), note = Option.when(note.nonEmpty)(note),
           countries = countrySet, writesProperName = kind == "name")
-        val pairs = if (examples.isEmpty) Seq.empty else Json.parse(examples).as[Seq[Seq[String]]].map {
+        if (examples.isEmpty) fail("no examples: a row needs at least one [billing, reading] pair")
+        val pairs = scala.util.Try(Json.parse(examples).as[Seq[Seq[String]]]).getOrElse(fail("examples are not a JSON list of pairs")).map {
           case Seq(title, query) => title -> query
-          case other             => fail(s"an example is a [title, query] pair, not $other")
+          case other             => fail(s"an example is a [billing, reading] pair, not $other")
         }
+        if (pairs.isEmpty) fail("no examples: a row needs at least one [billing, reading] pair")
         Row(rule, effect, Option.when(season.nonEmpty)(season), flagSet("seed"), pairs)
     }.toSeq
 

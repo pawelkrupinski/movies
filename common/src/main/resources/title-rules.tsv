@@ -2,7 +2,7 @@
 # (services.titlerules.TitleRuleTable reads it; TitleRuleSet folds it). Data, not code: a new banner is a new row.
 # Inventory, firing counts and the merges behind it: docs/investigations/2026-10-22-rule-consolidation.md.
 #
-# id<TAB>kind<TAB>cinema<TAB>countries<TAB>flags<TAB>effect<TAB>season<TAB>pattern<TAB>replacement<TAB>note[<TAB>examples]
+# id<TAB>kind<TAB>cinema<TAB>countries<TAB>flags<TAB>effect<TAB>season<TAB>pattern<TAB>replacement<TAB>note<TAB>examples
 #   kind:      the mechanism that applies the row —
 #                banner  a programme banner off the front of the LOOKUP query; the display finds it too, to case the
 #                        banner and the film apart ("Klub Konesera: Ojczyzna" searches as "Ojczyzna")
@@ -19,8 +19,12 @@
 #   season:    the months its billing comes back in (jun-sep, dec-feb, oct…). Descriptive only: a seasonal row stays in
 #              force all year, so next summer's banner is stripped the day it is billed.
 #   pattern:   a Java regex; {{NAME}} placeholders expand from TitleRulePlaceholders first.
-#   replacement: Regex replacement ("" = strip; $1 = a group). examples: the decoration discovery's measured
-#              [title, query] pairs (DiscoveredDecorationsSpec holds the row to them).
+#   replacement: Regex replacement ("" = strip; $1 = a group).
+#   examples:  REQUIRED, a JSON list of [billing, reading] pairs: what the row's tier makes of the billing under the
+#              rules of the first country holding it — the lookup query (banner, query), the merge-key fold (key), the
+#              proper name (name), the venue's cleanup (venue). TitleRuleExamplesSpec holds every row to its examples;
+#              TitleRuleMutationSpec removes each row and asks that one of them change (the row is load-bearing), save
+#              the rows it lists as covered by another row or the billing parse. A row without one fails to load.
 #
 # ORDER IS MEANING: each tier (banner+query, key+name) and each venue folds its rows top to bottom, each on the last
 # one's output. A row placed above another runs first.
@@ -33,37 +37,37 @@
 # film) does not belong here — it does not change the merge key, so the stale and the base row collide on hydration —
 # it is a venue row. A generic "<anything>: <film>" banner never does either: it amputates real titles ("Rocky IV:
 # Ostateczna walka"); each banner here is anchored to its own words.
-search-programme-prefix	banner			seed	banner		(?i)^(?:Kino\s+bez\s+barier|Pokaz\s+sensorycznie\s+przyjazny|Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|Zimowe\s+Poranki(?:\s+[^:]+)?|Poranek\s+dla\s+dzieci|Filmowy\s+Klub\s+Seniora|Dyskusyjny\s+Klub\s+Filmowy|Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|Cinema\s+Italia\s+Oggi|Plenerowe\s+Pa[łl]acowe):\s+		Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki…)
-search-spotkanie-banner-prefix	query			seed	event		(?i)^(?:Filmowe\s+)?spotkani\p{L}*[^:]*:\s*		'Spotkanie/Spotkania …:' meeting-cycle banner prefix: 'SPOTKANIA FILOZOFICZNE: Wędrówka na północ', 'FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Ojczyzna'. Anchored at start so a film with its own colon (SMOK (…). Trzy kolory: Czerwony) is left alone.
-search-accessibility-tag	query			seed	audience		(?i)\s*\(\s*AD\b[^)]*\)?\s*$		Trailing accessibility tag: (AD), (AD + CC + PJM)
+search-programme-prefix	banner			seed	banner		(?i)^(?:Kino\s+bez\s+barier|Pokaz\s+sensorycznie\s+przyjazny|Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|Zimowe\s+Poranki(?:\s+[^:]+)?|Poranek\s+dla\s+dzieci|Filmowy\s+Klub\s+Seniora|Dyskusyjny\s+Klub\s+Filmowy|Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|Cinema\s+Italia\s+Oggi|Plenerowe\s+Pa[łl]acowe):\s+		Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki…)	[["Plenerowe Pałacowe: Amelia","Amelia"],["Plenerowe Pałacowe: Bałtyk","Bałtyk"]]
+search-spotkanie-banner-prefix	query			seed	event		(?i)^(?:Filmowe\s+)?spotkani\p{L}*[^:]*:\s*		'Spotkanie/Spotkania …:' meeting-cycle banner prefix: 'SPOTKANIA FILOZOFICZNE: Wędrówka na północ', 'FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Ojczyzna'. Anchored at start so a film with its own colon (SMOK (…). Trzy kolory: Czerwony) is left alone.	[["FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Służący","Służący"],["FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: Ojczyzna","Ojczyzna"]]
+search-accessibility-tag	query			seed	audience		(?i)\s*\(\s*AD\b[^)]*\)?\s*$		Trailing accessibility tag: (AD), (AD + CC + PJM)	[["Róża (AD)","Róża"],["Lalka (AD)","Lalka"]]
 # Before the seed's '+ <event>' strip, which drops everything after a ' + ': a film announced after the plus
 # ("Spotkanie z Kamilą Urzędowską + pokaz filmu "Lalka"") went with it, and the search asked for the meeting.
 # The film after "pokaz filmu" is quoted or capitalised; "– pokaz filmu z prelekcją" names what the screening
 # comes WITH, and replacing the title with that searched for nothing. Case-insensitivity is scoped to the
 # keyword, since a global (?i) makes \p{Lu} match lowercase too. After a quoted film, whatever is glued to the
 # closing quote (Kino w Ratuszu's ".FMZ") or a parenthesised note ("(REŻYSERA „IDY”…)") is the billing's, not the film's.
-xtra-pokaz-filmu	query				event		(?u)^.*?\b(?i:(?:pokaz(?:\s+specjalny)?|(?:przed)?premiera)\s+filmu)\s*:?\s+(?:["„“]([^"„“”]+?)["”](?:[^\s"„“”]*|\s*\([^()]*\)|(?i:\s+i\s+(?:rozmowa|spotkanie|dyskusja)\b.*))|(\p{Lu}[^"„“”]*?))\s*$	$1$2	'… pokaz [specjalny] / [przed]premiera filmu[:] <film> [i rozmowa … / (note) / a glued '.FMZ' code]' screening of a film, the film quoted (straight, „…” or “…”) or capitalised
+xtra-pokaz-filmu	query				event		(?u)^.*?\b(?i:(?:pokaz(?:\s+specjalny)?|(?:przed)?premiera)\s+filmu)\s*:?\s+(?:["„“]([^"„“”]+?)["”](?:[^\s"„“”]*|\s*\([^()]*\)|(?i:\s+i\s+(?:rozmowa|spotkanie|dyskusja)\b.*))|(\p{Lu}[^"„“”]*?))\s*$	$1$2	'… pokaz [specjalny] / [przed]premiera filmu[:] <film> [i rozmowa … / (note) / a glued '.FMZ' code]' screening of a film, the film quoted (straight, „…” or “…”) or capitalised	[["Łódzka premiera filmu \"Kaszpirowski\"","Kaszpirowski"],["Projekt TATO. Pokaz specjalny filmu “Kandydaci śmierci”","Kandydaci śmierci"]]
 # A Q&A clause from its connector on: after a spaced dash ("- with Q&A and optional Ely Walking Tour"), as a
 # screening "and Q&A" ("…: Film Screening and Q&A Panel", "…Screening & Q&A"), or after an ampersand naming the
 # guest ("& Paul Greengrass Q&A" — a two-word name, so "Romeo & Juliet Q&A" keeps its film). Before the seed's
 # "+ <event>" strip, which took only the "+ Q&A" of "… PART 2 screenings + Q&A" once the "(18)" that stopped it
 # came off at ingest, and searched "… PART 2 screenings".
-xtra-qa-clause-tail	query				event		(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&)\s+)?(?:(?:live|in[-\s]person)\s+)?|(?:\s*:\s*|(?<=\S)\s*)(?:Film\s+)?Screenings?\s*(?:and|&|\+|with)\s*(?:live\s+)?|\s+&\s+(?-i:\p{Lu})[\p{L}'’.-]+\s+(?-i:\p{Lu})[\p{L}'’-]+\s+)Q\s*&\s*A(?![\p{L}\p{N}]).*$		'<film> - with Q&A and …' / '<film>: Film Screening and Q&A Panel' / '<film>...Screening & Q&A' / '<film> & <Guest Name> Q&A' (UK 2026-10-13: Palace Cinema Ely, Midlands Arts Centre, Rio, Curzon)
-search-plus-event-suffix	query			seed	event		\s+\+\s+\p{L}[^)]*$		'+ <event>' suffix: '+ spotkanie z producentką'
+xtra-qa-clause-tail	query				event		(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&)\s+)?(?:(?:live|in[-\s]person)\s+)?|(?:\s*:\s*|(?<=\S)\s*)(?:Film\s+)?Screenings?\s*(?:and|&|\+|with)\s*(?:live\s+)?|\s+&\s+(?-i:\p{Lu})[\p{L}'’.-]+\s+(?-i:\p{Lu})[\p{L}'’-]+\s+)Q\s*&\s*A(?![\p{L}\p{N}]).*$		'<film> - with Q&A and …' / '<film>: Film Screening and Q&A Panel' / '<film>...Screening & Q&A' / '<film> & <Guest Name> Q&A' (UK 2026-10-13: Palace Cinema Ely, Midlands Arts Centre, Rio, Curzon)	[["The Uprising & Paul Greengrass Q&A","The Uprising"],["The Comic Strip Presents...Screening & Q&A","The Comic Strip Presents..."]]
+search-plus-event-suffix	query			seed	event		\s+\+\s+\p{L}[^)]*$		'+ <event>' suffix: '+ spotkanie z producentką'	[["Romeo + Juliet","Romeo"],["Guts + Her Wave","Guts"]]
 # Case-insensitivity is scoped to the words ((?i:…)) — NOT global — because a
 # global (?i) makes Java's \p{Lu} also match lowercase, which would let the
 # lookahead accept 'spotkania trzeciego' and amputate 'Bliskie spotkania
 # trzeciego stopnia'. \p{Lu} must stay case-sensitive.
-search-meeting-suffix	query			seed	event		\s*[-–—|+]\s*(?:[^|]*?\s)?(?i:spotkani)\p{L}*(?=\s+(?i:z|ze|po|przed)\b|\s*[|+]|\s+\p{Lu}|\s*$).*$		'<sep> … spotkanie <…>' meeting suffix introduced by a separator (+ | – —): '… | spotkanie z reżyserem', 'Carmilla – pokaz … + spotkanie z X'. Lookahead (meeting tail = z/ze/po/przed, a pipe/plus, a Capitalised name, or end) keeps a real film whose title contains 'spotkania' intact (Bliskie spotkania trzeciego stopnia).
-search-with-event-suffix	query			seed	event		(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$		'z <event>' screening suffix: 'z autorską narracją Łony', 'z prelekcją'
-structural-cykl-prefix	query			seed	banner		^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+		Festival cycle banner: Cykl "…" – 
+search-meeting-suffix	query			seed	event		\s*[-–—|+]\s*(?:[^|]*?\s)?(?i:spotkani)\p{L}*(?=\s+(?i:z|ze|po|przed)\b|\s*[|+]|\s+\p{Lu}|\s*$).*$		'<sep> … spotkanie <…>' meeting suffix introduced by a separator (+ | – —): '… | spotkanie z reżyserem', 'Carmilla – pokaz … + spotkanie z X'. Lookahead (meeting tail = z/ze/po/przed, a pipe/plus, a Capitalised name, or end) keeps a real film whose title contains 'spotkania' intact (Bliskie spotkania trzeciego stopnia).	[["Kamila Urzędowska - spotkanie","Kamila Urzędowska"],["Jak żyć, żeby nie zwariować - spotkanie","Jak żyć, żeby nie zwariować"]]
+search-with-event-suffix	query			seed	event		(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$		'z <event>' screening suffix: 'z autorską narracją Łony', 'z prelekcją'	[["Indeks (z prelekcją)","Indeks"],["\"Monterey Pop\" z prelekcją Piotra Metza","\"Monterey Pop\""]]
+structural-cykl-prefix	query			seed	banner		^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+		Festival cycle banner: Cykl "…" – 	[["Cykl „Wajda: re-wizje\" - Bez znieczulenia / Rough Treatment (1978)","Bez znieczulenia"],["Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)","Człowiek z marmuru"]]
 # Before the seed's slash strip, which keeps the part before a ' / ' and drops the rest — right for
 # "Top Gun / 40th Anniversary", but on a banner typed IN FRONT of a slash it keeps the banner and throws the film away.
-xtra-pp-wajda-rewizje-slash	banner				retrospective		(?iu)^[„"“]\s*WAJDA:\s*re-?\s*wizje\s*[”"“]\s*(?:(?:19|20)\d{2}\s*)?/\s*		'„WAJDA: re-wizje” 2026 / <film> (<year>) reż. Andrzej Wajda' quoted retrospective banner before a slash (Kino Sokolnia Kępno: Krajobraz po bitwie); the director tail comes off at intake (TitleFacts)
-structural-slash-suffix	query			seed	junk		\s+/\s+.+$		Slash postfix: 'Top Gun / 40th Anniversary'
-structural-anniversary-suffix	query			seed	edition		(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$		Anniversary rerelease suffix
-structural-restored-suffix	query			seed	edition		(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$		Restored / remastered suffix (4K restored)
-structural-wersja-suffix	query			seed	edition		(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$		Polish language-version suffix: '- wersja polska'
+xtra-pp-wajda-rewizje-slash	banner				retrospective		(?iu)^[„"“]\s*WAJDA:\s*re-?\s*wizje\s*[”"“]\s*(?:(?:19|20)\d{2}\s*)?/\s*		'„WAJDA: re-wizje” 2026 / <film> (<year>) reż. Andrzej Wajda' quoted retrospective banner before a slash (Kino Sokolnia Kępno: Krajobraz po bitwie); the director tail comes off at intake (TitleFacts)	[["„WAJDA: re-wizje” 2026 / \"BEZ ZNIECZULENIA\" (1985) reż. Andrzej Wajda","\"BEZ ZNIECZULENIA\" (1985) reż. Andrzej Wajda"]]
+structural-slash-suffix	query			seed	junk		\s+/\s+.+$		Slash postfix: 'Top Gun / 40th Anniversary'	[["ÒPI / OPI","ÒPI"],["Lalka / PL","Lalka"]]
+structural-anniversary-suffix	query			seed	edition		(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$		Anniversary rerelease suffix	[["Crash 30. rocznica","Crash"],["Rocky 50. rocznica","Rocky"]]
+structural-restored-suffix	query			seed	edition		(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$		Restored / remastered suffix (4K restored)	[["Amadeusz 4K restored","Amadeusz"]]
+structural-wersja-suffix	query			seed	edition		(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$		Polish language-version suffix: '- wersja polska'	[["Donnie Darko - wersja reżyserska","Donnie Darko"],["Romeo i Julia – wersja oryginalna","Romeo i Julia"]]
 # Fourth-wave (2026-06-20) audit of the rating-less corpus: club / audience
 # programme banners that prefix the film (own display row, query stripped).
 # · xtra-pp-pora-dla-seniora: Pora dla Seniora cycle
@@ -85,7 +89,7 @@ structural-wersja-suffix	query			seed	edition		(?i)\s*[-–—.]\s+wersja\s+\p{L
 # · xtra-pp-kino-dostepne: Kino Dostępne accessibility cycle
 # · xtra-pp-relaxed-screening: 'Relaxed Screening: <film>' Everyman sensory-friendly strand (Forgotten Island)
 # · xtra-pp-audience-strand: 'Parent & Baby Screening: <film>' / 'Dementia Friendly: <film>' / 'BABY FRIENDLY: <film>' / 'SEND: <film>' special-audience strand (Lighthouse Poole: Sense & Sensibility, White Christmas, Holy Days; The Maltings Berwick, The Cinema Campus West)
-xtra-pp-audience-banners	banner				audience		(?i)^(?:(?:Pokaz|Seans|Kino)\s+przyjazn[ye](?:\s+sensorycznie)?(?:\s+(?:osobom|dla)\s+[^:]{1,60})?:\s+|Toddler\s+Club:\s+|Kino\s+Dostępne:\s+|Relaxed\s+Screening\s*[:|–—-]\s*|{{AUDIENCE_STRAND}}(?:\s+(?:Screening|Club))?\s*[:|–—-]\s*)		Special-audience screenings: Pokaz / Seans / Kino przyjazny [sensorycznie] [osobom …], Toddler Club, Kino Dostępne, Relaxed Screening, '<who> Friendly' / Parent & Baby / Silver Screen / SEND — was xtra-pp-przyjazny-audience, xtra-pp-toddler-club, xtra-pp-kino-dostepne, xtra-pp-relaxed-screening, xtra-pp-audience-strand
+xtra-pp-audience-banners	banner				audience		(?i)^(?:(?:Pokaz|Seans|Kino)\s+przyjazn[ye](?:\s+sensorycznie)?(?:\s+(?:osobom|dla)\s+[^:]{1,60})?:\s+|Toddler\s+Club:\s+|Kino\s+Dostępne:\s+|Relaxed\s+Screening\s*[:|–—-]\s*|{{AUDIENCE_STRAND}}(?:\s+(?:Screening|Club))?\s*[:|–—-]\s*)		Special-audience screenings: Pokaz / Seans / Kino przyjazny [sensorycznie] [osobom …], Toddler Club, Kino Dostępne, Relaxed Screening, '<who> Friendly' / Parent & Baby / Silver Screen / SEND — was xtra-pp-przyjazny-audience, xtra-pp-toddler-club, xtra-pp-kino-dostepne, xtra-pp-relaxed-screening, xtra-pp-audience-strand	[["SEND: Wicker","Wicker"],["SEND: Wild Horse Nine","Wild Horse Nine"]]
 # "Lato w/z <venue or partner>" — one shape covering Lunie / Rafael Film / Mieście
 # 2026 / Młodymi Horyzontami. Bounded to ~30 chars and no inner colon so it cannot
 # run past the banner into the film.
@@ -102,7 +106,7 @@ xtra-pp-audience-banners	banner				audience		(?i)^(?:(?:Pokaz|Seans|Kino)\s+przy
 # · xtra-pp-kino-plenerowe: Kino plenerowe open-air cycle
 # · xtra-pp-bezpieczne-wakacje: 'Bezpieczne wakacje:' kids-summer strand (Fleak, Hitpig, Tom i Jerry, …)
 # · xtra-pp-kino-letnie: 'KINO LETNIE 2026:' summer-cinema strand (Amadeusz, Requiem dla snu, Rambo, Norymberga, Dom Dobry, Przekleństwa niewinności, Jedna bitwa po drugiej)
-xtra-pp-summer-banners	banner				banner	jun-sep	(?iu)^(?:Lato\s+(?:w|z|we)\s+[^:]{2,30}:\s+|Wakacyjn\p{L}+\s+[^:]{2,30}:\s+|Wakacje\s+(?:w|z|we)\s+[^:]{2,30}:\s+|Kino\s+plenerowe:\s+|Bezpieczne\s+wakacje:\s+|KINO\s+LETNIE\s+\d{4}:\s+)		Summer and holiday cycles: 'Lato w/z <cycle>:', 'Wakacyjne <cycle>:', 'Wakacje w/z <cycle>:', 'Kino plenerowe:', 'Bezpieczne wakacje:', 'KINO LETNIE 2026:' — was xtra-pp-lato-cycle, xtra-pp-wakacyjne-cycle, xtra-pp-wakacje-cycle, xtra-pp-kino-plenerowe, xtra-pp-bezpieczne-wakacje, xtra-pp-kino-letnie
+xtra-pp-summer-banners	banner				banner	jun-sep	(?iu)^(?:Lato\s+(?:w|z|we)\s+[^:]{2,30}:\s+|Wakacyjn\p{L}+\s+[^:]{2,30}:\s+|Wakacje\s+(?:w|z|we)\s+[^:]{2,30}:\s+|Kino\s+plenerowe:\s+|Bezpieczne\s+wakacje:\s+|KINO\s+LETNIE\s+\d{4}:\s+)		Summer and holiday cycles: 'Lato w/z <cycle>:', 'Wakacyjne <cycle>:', 'Wakacje w/z <cycle>:', 'Kino plenerowe:', 'Bezpieczne wakacje:', 'KINO LETNIE 2026:' — was xtra-pp-lato-cycle, xtra-pp-wakacyjne-cycle, xtra-pp-wakacje-cycle, xtra-pp-kino-plenerowe, xtra-pp-bezpieczne-wakacje, xtra-pp-kino-letnie	[["Wakacje z klasyką: Rejs","Rejs"],["Lato z Rafael Film: Amadeusz","Amadeusz"]]
 # · xtra-pp-filmowe-popoludnie: Filmowe popołudnie (dla dzieci) cycle — 'Filmowe popołudnie dla dzieci: <film>' (Indianie i kowboje, Złoto)
 # · xtra-pp-bajkowe-poranki: Bajkowe poranki children's cycle
 # · xtra-pp-rodzina-w-kinie: Rodzina w kinie family cycle (Belle, Chłopiec na krańcach świata, Kicia Kocia, K-popowe łowczynie demonów, Niesamowite przygody skarpetek 3)
@@ -111,14 +115,14 @@ xtra-pp-summer-banners	banner				banner	jun-sep	(?iu)^(?:Lato\s+(?:w|z|we)\s+[^:
 # · xtra-pp-janosik-kids: 'Janosik Dzieciom/Szkrabom:' kids strands (Minionki i straszydła)
 # · xtra-pp-seans-dla-rodzicow: 'Seans filmowy dla rodziców:' parents'-screening prefix
 # · xtra-pp-venue-junior: '<venue> JUNIOR: <film>' children's strand, any venue's name (Kino w Kadrze's 'KADR JUNIOR: Toy Story 5')
-xtra-pp-family-banners	banner				audience		(?iu)^(?:Filmowe\s+popo[łl]udnie(?:\s+[^:]{1,30})?:\s+|Bajkowe\s+poranki:\s+|Rodzina\s+w\s+kinie:\s+|(?-u:Ba[łl]tycki\s+Deser[^:]{0,30}:\s+)|Skocz\s+z\s+Bajtlem\s+do\s+kina:\s+|Janosik\s+(?:Dzieciom|Szkrabom):\s+|(?-u:Seans\s+filmowy\s+dla\s+rodziców:\s+)|{{VENUE}}\s+Junior:\s+)		Children's and family cycles: Filmowe popołudnie [dla dzieci], Bajkowe poranki, Rodzina w kinie, Bałtycki Deser, Skocz z Bajtlem do kina, Janosik Dzieciom/Szkrabom, Seans filmowy dla rodziców, <Venue> Junior — was xtra-pp-filmowe-popoludnie, xtra-pp-bajkowe-poranki, xtra-pp-rodzina-w-kinie, xtra-pp-baltycki-deser, xtra-pp-skocz-z-bajtlem, xtra-pp-janosik-kids, xtra-pp-seans-dla-rodzicow, xtra-pp-venue-junior
+xtra-pp-family-banners	banner				audience		(?iu)^(?:Filmowe\s+popo[łl]udnie(?:\s+[^:]{1,30})?:\s+|Bajkowe\s+poranki:\s+|Rodzina\s+w\s+kinie:\s+|(?-u:Ba[łl]tycki\s+Deser[^:]{0,30}:\s+)|Skocz\s+z\s+Bajtlem\s+do\s+kina:\s+|Janosik\s+(?:Dzieciom|Szkrabom):\s+|(?-u:Seans\s+filmowy\s+dla\s+rodziców:\s+)|{{VENUE}}\s+Junior:\s+)		Children's and family cycles: Filmowe popołudnie [dla dzieci], Bajkowe poranki, Rodzina w kinie, Bałtycki Deser, Skocz z Bajtlem do kina, Janosik Dzieciom/Szkrabom, Seans filmowy dla rodziców, <Venue> Junior — was xtra-pp-filmowe-popoludnie, xtra-pp-bajkowe-poranki, xtra-pp-rodzina-w-kinie, xtra-pp-baltycki-deser, xtra-pp-skocz-z-bajtlem, xtra-pp-janosik-kids, xtra-pp-seans-dla-rodzicow, xtra-pp-venue-junior	[["Janosik Dzieciom: Vaiana","Vaiana"],["KADR JUNIOR: Toy Story 5","Toy Story 5"]]
 # The same club banner with no colon, its film quoted ("Klub Filmowy Perspektywy film „Oczy szeroko zamknięte”",
 # "Klub Filmowy WCK "Odlot""): the quotes are the film, the closing one the end of the billing.
-xtra-klub-filmowy-quoted	query				junk		(?iu)^Klub\s+Filmowy\s+[^:„“"]+?\s+(?:film\s+)?[„“"]([^„“”"]+)[”"]\s*$	$1	'Klub Filmowy <name> [film] „<film>”' club banner with no colon (CK Nowy Pafawag, Wawerska Strefa Kultury)
+xtra-klub-filmowy-quoted	query				junk		(?iu)^Klub\s+Filmowy\s+[^:„“"]+?\s+(?:film\s+)?[„“"]([^„“”"]+)[”"]\s*$	$1	'Klub Filmowy <name> [film] „<film>”' club banner with no colon (CK Nowy Pafawag, Wawerska Strefa Kultury)	[["Klub Filmowy WCK \"Odlot\"","Odlot"],["Klub Filmowy Perspektywy film „Hardkor Disko”","Hardkor Disko"]]
 # CK Nowy Pafawag's narrated screenings, the opening and closing nights alike: the quoted film, never the narrator.
-xtra-korelacje-quoted	query				junk		(?iu)^(?:Zamknięcie\s+|Otwarcie\s+)?Festiwal(?:u)?\s+Korelacje:\s*[„“"]([^„“”"]+)[”"].*$	$1	'[ZAMKNIĘCIE] FESTIWAL[U] KORELACJE: „<film>” z autorską narracją <name> + spotkanie' narrated-screening festival (CK Nowy Pafawag: Zemsta, Zaklęte rewiry)
-xtra-swieto-kina-suffix	query				banner		(?iu)(?<=\S)\s+(?:święto\s+kina|czas\s+kobiet)\s*$		'<film> święto kina' / '<film> czas kobiet' strand tail with no separator (Na Starówce: Lalka, Primetime, Supermocni)
-xtra-edukacja-mh-suffix	query				banner		(?iu)(?<=\S)\s+Edukacja\s+Młod[ae]\s+Horyzonty\b.*$		'<film> Edukacja Młode Horyzonty[, cykl "…", <town>]' education strand tail with no separator (Terminal Kultury Gocław: Lydia i Władca Burz, Drogi Panie Dyktatorze, Sonia)
+xtra-korelacje-quoted	query				junk		(?iu)^(?:Zamknięcie\s+|Otwarcie\s+)?Festiwal(?:u)?\s+Korelacje:\s*[„“"]([^„“”"]+)[”"].*$	$1	'[ZAMKNIĘCIE] FESTIWAL[U] KORELACJE: „<film>” z autorską narracją <name> + spotkanie' narrated-screening festival (CK Nowy Pafawag: Zemsta, Zaklęte rewiry)	[["Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa","Zemsta"],["Festiwal Korelacje: „Tylko tylko Rock” z autorską narracją Doroty Masłowskiej","Tylko tylko Rock"]]
+xtra-swieto-kina-suffix	query				banner		(?iu)(?<=\S)\s+(?:święto\s+kina|czas\s+kobiet)\s*$		'<film> święto kina' / '<film> czas kobiet' strand tail with no separator (Na Starówce: Lalka, Primetime, Supermocni)	[["Lalka święto kina","Lalka"],["Primetime święto kina","Primetime"]]
+xtra-edukacja-mh-suffix	query				banner		(?iu)(?<=\S)\s+Edukacja\s+Młod[ae]\s+Horyzonty\b.*$		'<film> Edukacja Młode Horyzonty[, cykl "…", <town>]' education strand tail with no separator (Terminal Kultury Gocław: Lydia i Władca Burz, Drogi Panie Dyktatorze, Sonia)	[["Binti Edukacja Młode Horyzonty","Binti"],["Block 5 Edukacja Młode Horyzonty","Block 5"]]
 # · xtra-pp-psychoanaliza: Kino a/i psychoanaliza
 # · xtra-pp-filmoterapia: Filmoterapia z Inspirą
 # Programme banners beyond the seed's alternation, each anchored at ^ and ending in its delimiter so the display
@@ -129,8 +133,8 @@ xtra-edukacja-mh-suffix	query				banner		(?iu)(?<=\S)\s+Edukacja\s+Młod[ae]\s+H
 # · xtra-pp-kf-klub: 'KF <klub>:' film-club prefix (KF Ambasada: Hannah i jej siostry)
 # · xtra-pp-modowy-klub: Modowy klub filmowy
 # · xtra-pp-klub-dlr: Klub DLR
-xtra-pp-club-banners	banner				banner		(?i)^(?:(?:Klub|Kino)\s+Konesera:\s+|DKF\s+[^:]+:\s+|Klub\s+Filmowy\s+[^:]+:\s+|KF\s+[^:]+:\s+|Modowy\s+klub\s+filmowy:\s+|Klub\s+DLR:\s+)		Film clubs: Klub/Kino Konesera, DKF <name>, Klub Filmowy <name>, KF <name>, Modowy klub filmowy, Klub DLR — was xtra-pp-konesera, xtra-pp-dkf-named, xtra-pp-klub-filmowy, xtra-pp-kf-klub, xtra-pp-modowy-klub, xtra-pp-klub-dlr
-xtra-pp-dzien-dziecka-w-kinie	banner				audience	may-jun	(?iu)^DZIEŃ\s+DZIECKA\s+W\s+{{VENUE}}{{SEP}}		'DZIEŃ DZIECKA W <venue> - <film>' Children's-Day banner, any venue's name (Kino Apollo's 'DZIEŃ DZIECKA W APOLLO - ')
+xtra-pp-club-banners	banner				banner		(?i)^(?:(?:Klub|Kino)\s+Konesera:\s+|DKF\s+[^:]+:\s+|Klub\s+Filmowy\s+[^:]+:\s+|KF\s+[^:]+:\s+|Modowy\s+klub\s+filmowy:\s+|Klub\s+DLR:\s+)		Film clubs: Klub/Kino Konesera, DKF <name>, Klub Filmowy <name>, KF <name>, Modowy klub filmowy, Klub DLR — was xtra-pp-konesera, xtra-pp-dkf-named, xtra-pp-klub-filmowy, xtra-pp-kf-klub, xtra-pp-modowy-klub, xtra-pp-klub-dlr	[["DKF - Oasis: Don’t Look Back in Anger","Don’t Look Back in Anger"]]
+xtra-pp-dzien-dziecka-w-kinie	banner				audience	may-jun	(?iu)^DZIEŃ\s+DZIECKA\s+W\s+{{VENUE}}{{SEP}}		'DZIEŃ DZIECKA W <venue> - <film>' Children's-Day banner, any venue's name (Kino Apollo's 'DZIEŃ DZIECKA W APOLLO - ')	[["DZIEŃ DZIECKA W APOLLO - Drzewo magii","Drzewo magii"]]
 # Polish summer/holiday and family cycles. Every one of these was found on a row
 # that reached TMDB with the banner still attached and therefore matched nothing —
 # "Big Festivalowski: …" alone accounted for 22 unresolved rows in the real corpus.
@@ -179,7 +183,7 @@ xtra-pp-dzien-dziecka-w-kinie	banner				audience	may-jun	(?iu)^DZIEŃ\s+DZIECKA\
 # · xtra-pp-replika: 'Replika KFF: / Replika Młodzi i Film: <film>' festival-replay prefix (KFF = Krakowski Festiwal Filmowy, 'Młodzi i Film' = Koszalin) — Igrając z diabłem 2026 resolves; siblings (Capo, La petite mort, Magic Hour, Zero) are too generic to resolve year-less but the banner is still non-title decoration
 # · xtra-pp-tnkf: 'TNKF: <film>' = Tydzień Nowego Kina Francuskiego abbreviation (~11 French titles: Guru, Mi Amor, Obcy, Nowa fala, Wielki Łuk, Windą na szafot, Wypadek fortepianowy, …) — sibling of the numbered 'xtra-pp-pnkf-prefix'
 # · xtra-pp-kmw: 'KMW:' Kino Małego Widza kids-strand prefix
-xtra-pp-festival-banners	banner				festival		(?iu)^(?:Big\s+Festivalowski:\s+|(?-u:\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*)|\d+\.\s*{{NSEP}}*Festiwal\s+{{NSEP}}*:\s+|Przegląd\s+Nowego\s+Kina\s+Francuskiego:\s+|FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+|Avant\s+Art\.?\s+Festi[vw]al\s+\d{4}\s*:\s+|Replika\s+(?:KFF|Młodzi\s+i\s+Film):\s+|(?-iu:TNKF:\s+)|KMW:\s+)		Festivals billed ahead of the film: Big Festivalowski, (17.) Przegląd Nowego Kina Francuskiego, <n>. <name> Festiwal <name>, FIESTA KINA HISZPAŃSKIEGO, Avant Art Festival <year>, Replika KFF / Młodzi i Film, TNKF, KMW — was xtra-pp-big-festivalowski, xtra-pp-pnkf-prefix, xtra-pp-numbered-festival, xtra-pp-pnkf-bare, xtra-pp-fiesta-hiszpanskiego, xtra-pp-avant-art-festival, xtra-pp-replika, xtra-pp-tnkf, xtra-pp-kmw
+xtra-pp-festival-banners	banner				festival		(?iu)^(?:Big\s+Festivalowski:\s+|(?-u:\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*)|\d+\.\s*{{NSEP}}*Festiwal\s+{{NSEP}}*:\s+|Przegląd\s+Nowego\s+Kina\s+Francuskiego:\s+|FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+|Avant\s+Art\.?\s+Festi[vw]al\s+\d{4}\s*:\s+|Replika\s+(?:KFF|Młodzi\s+i\s+Film):\s+|(?-iu:TNKF:\s+)|KMW:\s+)		Festivals billed ahead of the film: Big Festivalowski, (17.) Przegląd Nowego Kina Francuskiego, <n>. <name> Festiwal <name>, FIESTA KINA HISZPAŃSKIEGO, Avant Art Festival <year>, Replika KFF / Młodzi i Film, TNKF, KMW — was xtra-pp-big-festivalowski, xtra-pp-pnkf-prefix, xtra-pp-numbered-festival, xtra-pp-pnkf-bare, xtra-pp-fiesta-hiszpanskiego, xtra-pp-avant-art-festival, xtra-pp-replika, xtra-pp-tnkf, xtra-pp-kmw	[["TNKF: Guru","Guru"],["TNKF: Obcy","Obcy"]]
 #  - 'Kino Kobiet: <film>'. The ladies'-programme tag already has a strip, but only
 #    in its Helios SUFFIX form ('<film> - Kino Kobiet'); Kino Bajka Kluczbork
 #    prefixes it. Its listings arrive as 'KLAPS / Kino Kobiet: <film>', and the
@@ -204,7 +208,7 @@ xtra-pp-festival-banners	banner				festival		(?iu)^(?:Big\s+Festivalowski:\s+|(?
 # · xtra-pp-czule-kino: 'czułe kino: <film>' Kino Orzeł discussion strand — the inner banner the seed 'Spotkania …:' rule leaves behind on 'Spotkania O! złości: czułe kino: <film>' (W głowie się nie mieści 2 → TMDB 1022789)
 # · xtra-pp-kino-na-obcasach: 'Kino na obcasach: <film>' Multikino ladies'-programme banner (Zaproszenie, Diabeł ubiera się u Prady 2, Drugie życie)
 # · xtra-pp-ladies-night: 'Ladies Night - <film>' Cinema City ladies'-programme banner
-xtra-pp-women-banners	banner				audience		(?iu)^(?:Portret\s+Kobiety:\s+|Kobieta\s+Pełna\s+Życia:\s+|Kino\s+Kobiet\s*:\s+|Mikrofeminizacje:\s+|czułe\s+kino\s*:\s+|Kino\s+na\s+obcasach{{SEP}}|Ladies\s+Night{{SEP}})		Women's strands: Portret Kobiety, Kobieta Pełna Życia, Kino Kobiet, Mikrofeminizacje, czułe kino, Kino na obcasach, Ladies Night — was xtra-pp-portret-kobiety, xtra-pp-kobieta-pelna-zycia, xtra-pp-kino-kobiet-prefix, xtra-pp-mikrofeminizacje, xtra-pp-czule-kino, xtra-pp-kino-na-obcasach, xtra-pp-ladies-night
+xtra-pp-women-banners	banner				audience		(?iu)^(?:Portret\s+Kobiety:\s+|Kobieta\s+Pełna\s+Życia:\s+|Kino\s+Kobiet\s*:\s+|Mikrofeminizacje:\s+|czułe\s+kino\s*:\s+|Kino\s+na\s+obcasach{{SEP}}|Ladies\s+Night{{SEP}})		Women's strands: Portret Kobiety, Kobieta Pełna Życia, Kino Kobiet, Mikrofeminizacje, czułe kino, Kino na obcasach, Ladies Night — was xtra-pp-portret-kobiety, xtra-pp-kobieta-pelna-zycia, xtra-pp-kino-kobiet-prefix, xtra-pp-mikrofeminizacje, xtra-pp-czule-kino, xtra-pp-kino-na-obcasach, xtra-pp-ladies-night	[["Portret Kobiety: Takie jest życie","Takie jest życie"],["Portret Kobiety: Jak żyć, żeby nie zwariować","Jak żyć, żeby nie zwariować"]]
 # Strands billed with no separator at all, so the generic splits never see them
 # (docs/investigations/2026-10-20-pl-unmatched-real-films.md): Kino Studyjne Centrum's "Debiut <film>", a capital
 # after it — the bare word stays a title; Na Starówce's "<film> święto kina" / "<film> czas kobiet"; Terminal Kultury
@@ -231,7 +235,7 @@ xtra-pp-women-banners	banner				audience		(?iu)^(?:Portret\s+Kobiety:\s+|Kobieta
 # · xtra-pp-akademia-kina-polskiego: 'Akademia Kina Polskiego: <film> (YYYY) [4K]' Polish-cinema-academy retrospective prefix — 12 rows, 8 verified year-scoped-unique on TMDB (Człowiek z żelaza 225, Dzieje grzechu 156627, Fucha 42134, Krzyżacy 66030, Pałac 439339, Potop 36627, Psy 18575, Sala samobójców 72478); the trailing '(YYYY)' stays for `EmbeddedYear` and the '4K' peels via xtra-4k-suffix
 # · xtra-pp-50-na-51: '50 na 51: <film>' Polish-cinema anniversary strand — all 3 resolve after the strip (Darmozjad polski 142029, Farba 553196, Spis cudzołożnic 424702)
 # · xtra-pp-akademia-kina-swiatowego: 'Akademia Kina Światowego: <film>' world-cinema-academy retrospective — sibling of xtra-pp-akademia-kina-polskiego (Kino NCKF EC1)
-xtra-pp-cycle-banners	banner				banner		(?iu)^(?:(?-u:Ciekawi\s+[ŚS]wiata:\s+)|(?-u:Filmy\s+g[óo]rskie:\s+)|(?-i:Debiut\s+(?=\p{Lu}))|Najlepsze\s+z\s+najgorszych:\s+|Człowiek\s+na\s+pierwszym\s+planie:\s+|Męskie\s+Kino[^:]*:\s+|Tani\s+wtorek:\s+|Akademia\s+Kina\s+Polskiego:\s+|50\s+na\s+51:\s+|Akademia\s+Kina\s+Światowego:\s+)		Other Polish programme cycles: Ciekawi Świata, Filmy górskie, Akademia Kina Polskiego / Światowego, 50 na 51, Tani wtorek, Męskie Kino, Człowiek na pierwszym planie, Najlepsze z najgorszych, Debiut <Film> — was xtra-pp-ciekawi-swiata, xtra-pp-filmy-gorskie, xtra-pp-debiut, xtra-pp-najlepsze-z-najgorszych, xtra-pp-czlowiek-na-planie, xtra-pp-meskie-kino, xtra-pp-tani-wtorek, xtra-pp-akademia-kina-polskiego, xtra-pp-50-na-51, xtra-pp-akademia-kina-swiatowego
+xtra-pp-cycle-banners	banner				banner		(?iu)^(?:(?-u:Ciekawi\s+[ŚS]wiata:\s+)|(?-u:Filmy\s+g[óo]rskie:\s+)|(?-i:Debiut\s+(?=\p{Lu}))|Najlepsze\s+z\s+najgorszych:\s+|Człowiek\s+na\s+pierwszym\s+planie:\s+|Męskie\s+Kino[^:]*:\s+|Tani\s+wtorek:\s+|Akademia\s+Kina\s+Polskiego:\s+|50\s+na\s+51:\s+|Akademia\s+Kina\s+Światowego:\s+)		Other Polish programme cycles: Ciekawi Świata, Filmy górskie, Akademia Kina Polskiego / Światowego, 50 na 51, Tani wtorek, Męskie Kino, Człowiek na pierwszym planie, Najlepsze z najgorszych, Debiut <Film> — was xtra-pp-ciekawi-swiata, xtra-pp-filmy-gorskie, xtra-pp-debiut, xtra-pp-najlepsze-z-najgorszych, xtra-pp-czlowiek-na-planie, xtra-pp-meskie-kino, xtra-pp-tani-wtorek, xtra-pp-akademia-kina-polskiego, xtra-pp-50-na-51, xtra-pp-akademia-kina-swiatowego	[["Debiut Mroki","Mroki"],["Debiut Psoty","Psoty"]]
 # Retrospective banner ending in '!' rather than ':' — "Buñuel: niech żyją kajdany!
 # Viridiana". The colon sits INSIDE the banner, so a ':'-anchored rule stops in the
 # wrong place and leaves "niech żyją kajdany! Viridiana".
@@ -264,7 +268,7 @@ xtra-pp-cycle-banners	banner				banner		(?iu)^(?:(?-u:Ciekawi\s+[ŚS]wiata:\s+)|
 # · xtra-pp-rok-z-marilyn: 'Rok z Marilyn Monroe: <film>' retrospective (Książę i aktoreczka, Przystanek autobusowy, Pół żartem pół serio, Skłóceni z życiem, Słomiany wdowiec)
 # · xtra-pp-radu-jude-retro: 'Radu Jude. Retrospektywa: <film> (YYYY)' director-retrospective prefix — 5 films, each year-scoped-unique on TMDB (Aferim! 2015, Nie obchodzi mnie… 2018, Niefortunny numerek lub szalone porno 2021, Nie obiecujcie sobie… 2023, Dracula 2025)
 # · xtra-3-wieczory-kieslowski: '3 Wieczory: KIEŚLOWSKI. <film>' Kino za Rogiem retrospective prefix
-xtra-pp-retrospective-banners	banner				retrospective		(?iu)^(?:(?-u:Bu[ñn]uel:\s+niech\s+[^!]{2,40}!\s+)|(?:Cykl\s+[„"]?\s*)?WAJDA:\s*re-?\s*wizje[^:]*:\s*|WAJDA\s+re-?\s*wizje:\s*|Kolekcja\s+Mamoru\s+Hosody{{SEP}}|Rok\s+z\s+Marilyn\s+Monroe:\s+|Radu\s+Jude\.\s+Retrospektywa:\s+|3\s+Wieczory:\s+Kie[śs]lowski\.\s+)		Retrospectives billed ahead of the film: Buñuel: niech … !, WAJDA: re-wizje, Kolekcja Mamoru Hosody, Rok z Marilyn Monroe, Radu Jude. Retrospektywa, 3 Wieczory: Kieślowski. — was xtra-pp-bunuel-retro, xtra-pp-wajda-rewizje, xtra-pp-wajda-rewizje-bare, xtra-pp-mamoru-hosody, xtra-pp-rok-z-marilyn, xtra-pp-radu-jude-retro, xtra-3-wieczory-kieslowski
+xtra-pp-retrospective-banners	banner				retrospective		(?iu)^(?:(?-u:Bu[ñn]uel:\s+niech\s+[^!]{2,40}!\s+)|(?:Cykl\s+[„"]?\s*)?WAJDA:\s*re-?\s*wizje[^:]*:\s*|WAJDA\s+re-?\s*wizje:\s*|Kolekcja\s+Mamoru\s+Hosody{{SEP}}|Rok\s+z\s+Marilyn\s+Monroe:\s+|Radu\s+Jude\.\s+Retrospektywa:\s+|3\s+Wieczory:\s+Kie[śs]lowski\.\s+)		Retrospectives billed ahead of the film: Buñuel: niech … !, WAJDA: re-wizje, Kolekcja Mamoru Hosody, Rok z Marilyn Monroe, Radu Jude. Retrospektywa, 3 Wieczory: Kieślowski. — was xtra-pp-bunuel-retro, xtra-pp-wajda-rewizje, xtra-pp-wajda-rewizje-bare, xtra-pp-mamoru-hosody, xtra-pp-rok-z-marilyn, xtra-pp-radu-jude-retro, xtra-3-wieczory-kieslowski	[["WAJDA: re-wizje: Brzezina","Brzezina"],["Wajda Rewizje:BEZ ZNIECZULENIA","BEZ ZNIECZULENIA"]]
 # Twenty-sixth wave (2026-09-27): venues that moved off Filmweb onto their own
 # box offices type their school / classics strands into the title.
 # · xtra-pp-klasyka-cycle: 'Klasyka na topie/fali' classics cycle
@@ -273,7 +277,7 @@ xtra-pp-retrospective-banners	banner				retrospective		(?iu)^(?:(?-u:Bu[ñn]uel:
 # · xtra-pp-klasyk-w-kinie: 'Klasyk w kinie: / . <film>' classics strand — colon AND dot separators (Milczenie owiec, Rozmowa, Przekleństwa niewinności)
 # · xtra-pp-wtorek-z-klasyka: 'Wtorek z klasyką: <film>' classics strand (Kino Starówka: Asterix i Obelix: Misja Kleopatra, Generał)
 # · xtra-pp-z-klasa-do-kina: 'Z klasą do kina: <film>' school-screening strand (Wielicka Mediateka: Lalka)
-xtra-pp-classics-banners	banner				banner		(?iu)^(?:Klasyka\s+na\s+(?:topie|fali):\s+|Klasyka\s+na\s+TOPie(?:\s+na\s+[^:]+)?:\s*|Klasyka\s+w\s+kinie(?:\s+{{VENUE}})?:\s*|Klasyk\s+w\s+kinie[.:]\s+|Wtorek\s+z\s+klasyką:\s+|Z\s+klasą\s+do\s+kina:\s+)		Classics strands: Klasyka na topie / fali / TOPie [na …], Klasyka w kinie [<venue>], Klasyk w kinie, Wtorek z klasyką, Z klasą do kina — was xtra-pp-klasyka-cycle, xtra-pp-klasyka-na-topie, xtra-pp-klasyka-w-kinie, xtra-pp-klasyk-w-kinie, xtra-pp-wtorek-z-klasyka, xtra-pp-z-klasa-do-kina
+xtra-pp-classics-banners	banner				banner		(?iu)^(?:Klasyka\s+na\s+(?:topie|fali):\s+|Klasyka\s+na\s+TOPie(?:\s+na\s+[^:]+)?:\s*|Klasyka\s+w\s+kinie(?:\s+{{VENUE}})?:\s*|Klasyk\s+w\s+kinie[.:]\s+|Wtorek\s+z\s+klasyką:\s+|Z\s+klasą\s+do\s+kina:\s+)		Classics strands: Klasyka na topie / fali / TOPie [na …], Klasyka w kinie [<venue>], Klasyk w kinie, Wtorek z klasyką, Z klasą do kina — was xtra-pp-klasyka-cycle, xtra-pp-klasyka-na-topie, xtra-pp-klasyka-w-kinie, xtra-pp-klasyk-w-kinie, xtra-pp-wtorek-z-klasyka, xtra-pp-z-klasa-do-kina	[["Wtorek z klasyką: GENERAŁ","GENERAŁ"],["Wtorek z klasyką: Milczenie owiec","Milczenie owiec"]]
 #  - US Alamo Drafthouse recurring house strands — 'TERROR TUESDAY:',
 #    'SPECIAL EVENT:', 'SHOWTUNE SUNDAYS:' — each a real classic underneath
 #    (The Thing, House of 1000 Corpses, Cabaret, …), all-caps so `caseSegment`
@@ -286,38 +290,38 @@ xtra-pp-classics-banners	banner				banner		(?iu)^(?:Klasyka\s+na\s+(?:topie|fali
 # · xtra-pp-showtune-sundays: 'SHOWTUNE SUNDAYS: <film>' Alamo Drafthouse musicals strand
 # · xtra-pp-4dx-rewind: '(4DX Rewind) <film>' Cineworld 4DX re-release strand (Shrek, Twisters, Toy Story — ~34 venues each)
 # · xtra-pp-horror-season: 'Horror Season 2026 <film>' Cineworld seasonal strand, no separator (Dracula)
-xtra-pp-us-uk-strands	banner				banner		(?i)^(?:Best\s+Film\s+on\s+Tour\s*[:|]\s*|TERROR\s+TUESDAY:\s+|SPECIAL\s+EVENT:\s+|SHOWTUNE\s+SUNDAYS:\s+|\(4DX\s+Rewind\)\s*|Horror\s+Season\s+\d{4}\s+)		UK and US venue strands: Best Film on Tour, TERROR TUESDAY, SPECIAL EVENT, SHOWTUNE SUNDAYS, (4DX Rewind), Horror Season 2026 — was xtra-pp-best-film-on-tour, xtra-pp-terror-tuesday, xtra-pp-special-event-alamo, xtra-pp-showtune-sundays, xtra-pp-4dx-rewind, xtra-pp-horror-season
+xtra-pp-us-uk-strands	banner				banner		(?i)^(?:Best\s+Film\s+on\s+Tour\s*[:|]\s*|TERROR\s+TUESDAY:\s+|SPECIAL\s+EVENT:\s+|SHOWTUNE\s+SUNDAYS:\s+|\(4DX\s+Rewind\)\s*|Horror\s+Season\s+\d{4}\s+)		UK and US venue strands: Best Film on Tour, TERROR TUESDAY, SPECIAL EVENT, SHOWTUNE SUNDAYS, (4DX Rewind), Horror Season 2026 — was xtra-pp-best-film-on-tour, xtra-pp-terror-tuesday, xtra-pp-special-event-alamo, xtra-pp-showtune-sundays, xtra-pp-4dx-rewind, xtra-pp-horror-season	[["(4DX Rewind) Shrek","Shrek"],["(4DX Rewind) Twisters","Twisters"]]
 # Strips that fix enrichment without merging the row away: a premiere or a DKF screening keeps its own
 # line, it just resolves ratings now.
-xtra-napisy-dla-nieslyszacych	query				audience		(?iu)\s*[-–(]?\s*napisy\s+dla\s+(?:osób\s+)?nie(?:\(do\)|do)?słysząc\p{L}*(?:\s+(?:i|\+)\s+PJM)?\s*\)?\s*$		'Lalka-napisy dla niesłyszących' accessibility subtitles, joined with or without a spaced hyphen; the 'nie(do)słyszących' / 'niedosłyszących' spellings and an 'i PJM' sign-language tail with them (Kino Sokół: Lalka)
-xtra-unclosed-bracket-tail	query				junk		\s*\([^()]*$		'Lalka (+ ENG' — a bracket a truncated title never closes
+xtra-napisy-dla-nieslyszacych	query				audience		(?iu)\s*[-–(]?\s*napisy\s+dla\s+(?:osób\s+)?nie(?:\(do\)|do)?słysząc\p{L}*(?:\s+(?:i|\+)\s+PJM)?\s*\)?\s*$		'Lalka-napisy dla niesłyszących' accessibility subtitles, joined with or without a spaced hyphen; the 'nie(do)słyszących' / 'niedosłyszących' spellings and an 'i PJM' sign-language tail with them (Kino Sokół: Lalka)	[["LALKA - napisy dla osób nie(do)słyszących i PJM","LALKA"]]
+xtra-unclosed-bracket-tail	query				junk		\s*\([^()]*$		'Lalka (+ ENG' — a bracket a truncated title never closes	[["Royal Opera: Tosca (2026","Royal Opera: Tosca"],["Royal Ballet: Manon (2026","Royal Ballet: Manon"]]
 # "<film>. Amerykańska klasyka od Warner Bros." — a distributor's re-release strapline
 # appended after a full stop, seen on Bullitt and Co się zdarzyło Baby Jane. Stripped
 # for the query only: the row stays its own screening, as with every other banner.
-xtra-ss-amerykanska-klasyka	query				banner		(?i)\s*[.,]?\s*Ameryka[ńn]ska\s+klasyka\s+od\s+[^.]{2,30}\.?\s*$		'… Amerykańska klasyka od <distributor>' re-release strapline
+xtra-ss-amerykanska-klasyka	query				banner		(?i)\s*[.,]?\s*Ameryka[ńn]ska\s+klasyka\s+od\s+[^.]{2,30}\.?\s*$		'… Amerykańska klasyka od <distributor>' re-release strapline	[["Bullitt. Amerykańska klasyka od Warner Bros.","Bullitt"],["Przeminęło z wiatrem. Amerykańska klasyka od Warner Bros.","Przeminęło z wiatrem"]]
 # Normalise Polish typographic quotes to plain ASCII (GlobalStructural,
 # replaceAll so every quote in the title is folded).
-search-quote-right	query			all	junk		”	"	Polish right double quote ” → plain ASCII "
-search-quote-low9	query			all	junk		„	"	Polish low-9 double quote „ → plain ASCII "
+search-quote-right	query			all	junk		”	"	Polish right double quote ” → plain ASCII "	[["„Supernova”","\"Supernova\""],["Okładka „Ida”","Okładka \"Ida\""]]
+search-quote-low9	query			all	junk		„	"	Polish low-9 double quote „ → plain ASCII "	[["„Supernova”","\"Supernova\""],["Okładka „Ida”","Okładka \"Ida\""]]
 # · xtra-dkf-suffix-pipe-underscore: '| DKF' / '_DKF' suffix
 # · xtra-dkf-suffix-dash: '- DKF KOT' / '- DKF III W' suffix
 # · xtra-dkf-suffix-period: 'Róża. DKF' full-stop DKF suffix
-xtra-dkf-suffix	query				banner		(?i)(?:\s*[|_]\s*DKF\b.*$|\s*[-–—]\s*DKF\b.*$|\.\s*DKF\b.*$)		'<film> | DKF …' / '_ DKF' / '- DKF …' / '. DKF …' film-club tail, cut from the first DKF on — was xtra-dkf-suffix-pipe-underscore, xtra-dkf-suffix-dash, xtra-dkf-suffix-period
+xtra-dkf-suffix	query				banner		(?i)(?:\s*[|_]\s*DKF\b.*$|\s*[-–—]\s*DKF\b.*$|\.\s*DKF\b.*$)		'<film> | DKF …' / '_ DKF' / '- DKF …' / '. DKF …' film-club tail, cut from the first DKF on — was xtra-dkf-suffix-pipe-underscore, xtra-dkf-suffix-dash, xtra-dkf-suffix-period	[["Róża. DKF","Róża"],["Chemik - DKF : \"WAJDA: re-wizje\" Bez znieczulenia","Chemik"]]
 # A premiere is an event of the screening, bracketed "(PREMIERA)" (separated ones: the announcement strip
 # below). Never the whole title, and never after a bare space: "Ostatnia Premiera" is a title.
 # A screening billed as a film's showing ("Sytuacje Relacje. Pokaz filmu Hamnet", "Spotkanie z aktorką
 # Kamilą Urzędowską. Pokaz filmu "Lalka"") is looked up as that film; Kino w Kadrze's ": Kadr Non-Fiction (16+)"
 # is no part of it. (A director credit after the title, "… reż. Antoine Lanciaux", comes off at intake: TitleFacts.)
-xtra-venue-non-fiction-suffix	query				venue		(?iu)\s*:\s*{{VENUE}}\s+Non-?Fiction\b.*$		'<film>: <venue> Non-Fiction (16+)' documentary-strand suffix, any venue's name (Kino w Kadrze's 'Kadr Non-Fiction')
-xtra-premiera-bracketed	query				event		(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$		'(PREMIERA)' bracketed premiere tag
-xtra-przedpremiera-suffix	query				event		(?i){{SEP}}(?:przedpremiera|przedpremierowo|zobacz\s+przedpremierowo|seans\s+przedpremierowy|przepdremiera)\s*!*\s*$		przedpremiera suffix (incl. the 'przepdremiera' data-entry transposition)
+xtra-venue-non-fiction-suffix	query				venue		(?iu)\s*:\s*{{VENUE}}\s+Non-?Fiction\b.*$		'<film>: <venue> Non-Fiction (16+)' documentary-strand suffix, any venue's name (Kino w Kadrze's 'Kadr Non-Fiction')	[["Kandydaci śmierci: Kadr Non-Fiction (16+)","Kandydaci śmierci"]]
+xtra-premiera-bracketed	query				event		(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$		'(PREMIERA)' bracketed premiere tag	[["BARANEK SHAUN I KUDŁATA BESTIA (DUBBING) (PREMIERA)","BARANEK SHAUN I KUDŁATA BESTIA"]]
+xtra-przedpremiera-suffix	query				event		(?i){{SEP}}(?:przedpremiera|przedpremierowo|zobacz\s+przedpremierowo|seans\s+przedpremierowy|przepdremiera)\s*!*\s*$		przedpremiera suffix (incl. the 'przepdremiera' data-entry transposition)	[["Naza - przedpremiera","Naza"],["Ojczyzna | przedpremierowo","Ojczyzna"]]
 # · xtra-przedpremiera-prefix: przedpremiera prefix
 # · xtra-pokaz-przedpremierowy-prefix: 'Pokaz przedpremierowy: <film>' premiere prefix
 # · xtra-oficjalna-premiera-prefix: 'Oficjalna premiera: <film>' release-night prefix (Wielicka Mediateka: Lalka)
 # · xtra-premiera-prefix: 'Premiera: <film>' / 'PREMIERA!!! <film>' release-announcement prefix (Kumotry, Straszny film) — distinct from the existing przedpremiera prefix
 # · xtra-vorpremiere-prefix: 'Vorpremiere: <film>' / 'Prosecco Vorpremiere: <film>' / 'Vorpremiere - <film>' German pre-premiere banner (DE 2026-10-12: Burg-Theater Uetersen, Casino Aschaffenburg)
-xtra-premiere-prefix	query				event		(?iu)^(?:(?:przedpremiera|seans\s+przedpremierowy)\s*[.|:]\s*|Pokaz\s+przedpremierowy:\s*|Oficjalna\s+premiera:\s+|Premiera\s*[:!]+\s*|(?:\p{L}+\s+)?vorpremiere\s*[:–—-]\s*(?=\S))		Premieres ahead of the film: przedpremiera / seans przedpremierowy [.|:], Pokaz przedpremierowy:, Oficjalna premiera:, Premiera[:!], [<word>] Vorpremiere: — was xtra-przedpremiera-prefix, xtra-pokaz-przedpremierowy-prefix, xtra-oficjalna-premiera-prefix, xtra-premiera-prefix, xtra-vorpremiere-prefix
-xtra-accessibility-star-ad	query				audience		(?i)\s*\*\s*AD\b\s*$		'*AD' audio-description tag
+xtra-premiere-prefix	query				event		(?iu)^(?:(?:przedpremiera|seans\s+przedpremierowy)\s*[.|:]\s*|Pokaz\s+przedpremierowy:\s*|Oficjalna\s+premiera:\s+|Premiera\s*[:!]+\s*|(?:\p{L}+\s+)?vorpremiere\s*[:–—-]\s*(?=\S))		Premieres ahead of the film: przedpremiera / seans przedpremierowy [.|:], Pokaz przedpremierowy:, Oficjalna premiera:, Premiera[:!], [<word>] Vorpremiere: — was xtra-przedpremiera-prefix, xtra-pokaz-przedpremierowy-prefix, xtra-oficjalna-premiera-prefix, xtra-premiera-prefix, xtra-vorpremiere-prefix	[["Seans przedpremierowy.  Sny o słoniach","Sny o słoniach"]]
+xtra-accessibility-star-ad	query				audience		(?i)\s*\*\s*AD\b\s*$		'*AD' audio-description tag	[["Młode matki *AD","Młode matki"],["Milcząca przyjaciółka *AD","Milcząca przyjaciółka"]]
 # Festival / retrospective banners that pipe-wrap the film (Kinoteka) or
 # brand it with the touring "Federico Fellini: ciao a tutti!" cycle (~12
 # cinemas, inconsistent shapes). Query-only strips so each screening keeps
@@ -336,20 +340,20 @@ xtra-accessibility-star-ad	query				audience		(?i)\s*\*\s*AD\b\s*$		'*AD' audio-
 # · xtra-bkf-prefix: 'BKF #53 <film>' film-club numbered prefix (Chronologia wody)
 # · xtra-pp-ffs-festival: '26 FFS <film>' film-festival edition prefix (Być kochaną, Ostatni wiking, Wartość sentymentalna, Świat po pracy, Wiking i magiczny miecz)
 # · xtra-konkurs-pelnometrazowych: 'MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH - <film>' festival full-length competition (Allah Is Not Obliged, Space Cadet → Nowa w kosmosie, The Square); the KRÓTKOMETRAŻOWYCH short-film SETS are left alone (they don't resolve to one film)
-xtra-festival-prefix	query				festival		(?iu)^(?:WTF\s+Fest\s*\|\s*|BKF\s*#?\s*\d+\s+|\d+\s*FFS\s+|MIĘDZYNARODOWY\s+KONKURS\s+FILMÓW\s+PEŁNOMETRAŻOWYCH{{SEP}})		Festivals ahead of the film: WTF Fest |, BKF #<n>, <n> FFS, MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH — was xtra-wtf-fest-prefix, xtra-bkf-prefix, xtra-pp-ffs-festival, xtra-konkurs-pelnometrazowych
-xtra-pipe-festival-suffix	query				festival		(?i)\s*\|\s*(?:6\s+razy\s+Pedro|Kino\s+cyrkularne)\b.*$		'<film> | 6 razy Pedro / Kino cyrkularne …' (film before the pipe)
-xtra-fellini-prefix	query				retrospective		{{FELLINI_PREFIX}}		'Federico Fellini: ciao a tutti! …' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix (also folded in the canonical tier — see FelliniPrefix)
-xtra-fellini-suffix	query				retrospective		{{FELLINI_SUFFIX}}		'… | / – przegląd FEDERICO FELLINI …' retrospective suffix
+xtra-festival-prefix	query				festival		(?iu)^(?:WTF\s+Fest\s*\|\s*|BKF\s*#?\s*\d+\s+|\d+\s*FFS\s+|MIĘDZYNARODOWY\s+KONKURS\s+FILMÓW\s+PEŁNOMETRAŻOWYCH{{SEP}})		Festivals ahead of the film: WTF Fest |, BKF #<n>, <n> FFS, MIĘDZYNARODOWY KONKURS FILMÓW PEŁNOMETRAŻOWYCH — was xtra-wtf-fest-prefix, xtra-bkf-prefix, xtra-pp-ffs-festival, xtra-konkurs-pelnometrazowych	[["WTF Fest | Crash","Crash"],["WTF Fest | Monos","Monos"]]
+xtra-pipe-festival-suffix	query				festival		(?i)\s*\|\s*(?:6\s+razy\s+Pedro|Kino\s+cyrkularne)\b.*$		'<film> | 6 razy Pedro / Kino cyrkularne …' (film before the pipe)	[["Ból i blask | 6 razy Pedro","Ból i blask"],["W pokoju obok | 6 razy Pedro","W pokoju obok"]]
+xtra-fellini-prefix	query				retrospective		{{FELLINI_PREFIX}}		'Federico Fellini: ciao a tutti! …' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix (also folded in the canonical tier — see FelliniPrefix)	[["Fellini. Słodkie życie","Słodkie życie"],["Fellini. Głos z księżyca","Głos z księżyca"]]
+xtra-fellini-suffix	query				retrospective		{{FELLINI_SUFFIX}}		'… | / – przegląd FEDERICO FELLINI …' retrospective suffix	[["Wałkonie | FEDERICO FELLINI: ciao a tutti!","Wałkonie"],["Osiem i pół | FEDERICO FELLINI: ciao a tutti!","Osiem i pół"]]
 # Second-wave (2026-06-18) audit: classics / retrospective / cycle banners
 # that SUFFIX the film (the screening keeps its decorated row, the query
 # resolves the bare film). All cross-cinema or otherwise specific enough that
 # no real film title collides.
-xtra-wajda-rewizje-suffix	query				retrospective		(?i)\s*[|\\]\s*[„"]?\s*WAJDA:\s*re-?\s*wizje.*$		'… | / \ WAJDA: re-wizje …' retrospective suffix
-xtra-pnkf-suffix-edycja	query				festival		(?i)\s*\(org\.[^)]*\)\s*\d+\.\s*edycja\s+Przeglądu\s+Nowego\s+Kina\s+Francuskiego\s*$		'(org. …) 17. edycja Przeglądu Nowego Kina Francuskiego' suffix
+xtra-wajda-rewizje-suffix	query				retrospective		(?i)\s*[|\\]\s*[„"]?\s*WAJDA:\s*re-?\s*wizje.*$		'… | / \ WAJDA: re-wizje …' retrospective suffix	[["BEZ ZNIECZULENIA | WAJDA: re-wizje | Przegląd twórczości Andrzeja Wajdy","BEZ ZNIECZULENIA"],["BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin","BRZEZINA"]]
+xtra-pnkf-suffix-edycja	query				festival		(?i)\s*\(org\.[^)]*\)\s*\d+\.\s*edycja\s+Przeglądu\s+Nowego\s+Kina\s+Francuskiego\s*$		'(org. …) 17. edycja Przeglądu Nowego Kina Francuskiego' suffix	[["Guru (org. Gourou) 17. edycja Przeglądu Nowego Kina Francuskiego","Guru"],["Mi Amor (org. Mi amor) 17. edycja Przeglądu Nowego Kina Francuskiego","Mi Amor"]]
 # `(?iu)` (not `(?i)`): the Kino Zamek raw is ALL-CAPS ("– AMERYKAŃSKA KLASYKA",
 # "| ŻUŁAWSKI. KINO EKSTAZY"), so Unicode case folding is needed to fold Ż/Ł/Ń —
 # plain `(?i)` is ASCII-only and won't match them (same gotcha as wybrzeze).
-xtra-amerykanska-klasyka	query				banner		(?iu)\s*[–—-]\s*amerykańska\s+klasyka(?:\s*/.*)?\s*$		'– amerykańska klasyka [/ N. rocznica]' suffix (Kino Zamek)
+xtra-amerykanska-klasyka	query				banner		(?iu)\s*[–—-]\s*amerykańska\s+klasyka(?:\s*/.*)?\s*$		'– amerykańska klasyka [/ N. rocznica]' suffix (Kino Zamek)	[["Casablanca – amerykańska klasyka","Casablanca"],["Donnie darko – amerykańska klasyka","Donnie darko"]]
 # The seed 'structural-anniversary-suffix' anchors right after 'rocznica' —
 # 'Harry Potter i Kamień Filozoficzny - 25. rocznica' strips, but Multikino's
 # '… 25. rocznica premiery' phrasing (a trailing 'premiery' word) doesn't, so
@@ -358,20 +362,20 @@ xtra-amerykanska-klasyka	query				banner		(?iu)\s*[–—-]\s*amerykańska\s+kla
 # one TMDB-resolved card (rating 7.4, age 12) and one unresolved stray
 # (rating 0.0, missing cast). Query-only strip; the row keeps its own
 # decorated display title.
-xtra-rocznica-premiery-suffix	query				event		(?iu)\s*[-–—|.]?\s*\d+\.?\s*rocznic[aeę]\s+premiery\s*$		'<film> N. rocznica premiery' anniversary-premiere suffix (Harry Potter i Kamień Filozoficzny, Multikino)
-xtra-zulawski-kino-ekstazy	query				retrospective		(?iu)\s*[|–—-]\s*żuławski\.?\s*kino\s+ekstazy\s*$		'… | / – żuławski. Kino ekstazy' retrospective suffix (Kino Zamek)
-xtra-jim-jarmusch-suffix	query				retrospective		(?i)\s*//\s*jim\s+jarmusch\s*$		'// jim jarmusch' director-cycle suffix (Kino za Rogiem)
+xtra-rocznica-premiery-suffix	query				event		(?iu)\s*[-–—|.]?\s*\d+\.?\s*rocznic[aeę]\s+premiery\s*$		'<film> N. rocznica premiery' anniversary-premiere suffix (Harry Potter i Kamień Filozoficzny, Multikino)	[["Auta 20. rocznica premiery","Auta"],["Skrzypek na dachu - 55. rocznica premiery","Skrzypek na dachu"]]
+xtra-zulawski-kino-ekstazy	query				retrospective		(?iu)\s*[|–—-]\s*żuławski\.?\s*kino\s+ekstazy\s*$		'… | / – żuławski. Kino ekstazy' retrospective suffix (Kino Zamek)	[["Narwana miłość – żuławski. Kino ekstazy","Narwana miłość"],["Najważniejsze to kochać – żuławski. Kino ekstazy","Najważniejsze to kochać"]]
+xtra-jim-jarmusch-suffix	query				retrospective		(?i)\s*//\s*jim\s+jarmusch\s*$		'// jim jarmusch' director-cycle suffix (Kino za Rogiem)	[["Truposz // JIM JARMUSCH","Truposz"],["Truposz // jim jarmusch","Truposz"]]
 # Third-wave (2026-06-19) audit of the rating-less corpus.
 # Retrospective / art-on-screen series whose film follows the banner
 # ('<cycle>: ' or '<cycle> - '); query-only strip keeps the decorated row.
 # · xtra-pedro-almodovar-kolory: 'Pedro Almodóvar: Kolory emocji - <film>' retrospective (Matador, Matki równoległe, …)
 # · xtra-wajda-dziedzictwo: 'Andrzej Wajda. Dziedzictwo Mistrza: <film>' Wajda retrospective (Popiół i diament)
-xtra-retrospective-prefix	query				retrospective		(?i)^(?:Pedro\s+Almodóvar:\s+Kolory\s+emocji\s*[-–—]\s*|Andrzej\s+Wajda\.\s+Dziedzictwo\s+Mistrza{{SEP}})		Retrospectives ahead of the film: Pedro Almodóvar: Kolory emocji –, Andrzej Wajda. Dziedzictwo Mistrza — was xtra-pedro-almodovar-kolory, xtra-wajda-dziedzictwo
+xtra-retrospective-prefix	query				retrospective		(?i)^(?:Pedro\s+Almodóvar:\s+Kolory\s+emocji\s*[-–—]\s*|Andrzej\s+Wajda\.\s+Dziedzictwo\s+Mistrza{{SEP}})		Retrospectives ahead of the film: Pedro Almodóvar: Kolory emocji –, Andrzej Wajda. Dziedzictwo Mistrza — was xtra-pedro-almodovar-kolory, xtra-wajda-dziedzictwo	[["Andrzej Wajda. Dziedzictwo Mistrza: Panny z Wilka","Panny z Wilka"],["Andrzej Wajda. Dziedzictwo Mistrza: Człowiek z marmuru","Człowiek z marmuru"]]
 # · xtra-wielka-sztuka-w-kinoteatrze: 'Wielka Sztuka w Kinoteatrze <venue> - <film>' art-doc series (Kinoteatr Rialto, ~10 titles)
 # · xtra-sztuka-w-centrum: 'SZTUKA W CENTRUM. NOWOŚCI 2026 | <film>' art-doc series
 # · xtra-sztuka-na-ekranie: 'Sztuka na ekranie - <film>' art-doc strand (Caravaggio. Arcydzieła niepokornego geniusza) — sibling of Wielka Sztuka w Kinoteatrze Rialto
 # · xtra-art-beats: 'Art Beats: <film>' art-doc series (Rafael, Święty Piotr, …)
-xtra-art-strand-prefix	query				banner		(?iu)^(?:Wielka\s+Sztuka\s+w\s+Kinoteatrze(?:\s+{{VENUE}})?\s*[-–—]\s*|SZTUKA\s+W\s+CENTRUM\.\s*NOWOŚCI\s+\d{4}\s*\|\s*|Sztuka\s+na\s+ekranie\s*[-–—]\s*|Art\s+Beats:\s+)		Art-on-screen strands ahead of the film: Wielka Sztuka w Kinoteatrze [<Venue>] –, SZTUKA W CENTRUM. NOWOŚCI <year> |, Sztuka na ekranie –, Art Beats: — was xtra-wielka-sztuka-w-kinoteatrze, xtra-sztuka-w-centrum, xtra-sztuka-na-ekranie, xtra-art-beats
+xtra-art-strand-prefix	query				banner		(?iu)^(?:Wielka\s+Sztuka\s+w\s+Kinoteatrze(?:\s+{{VENUE}})?\s*[-–—]\s*|SZTUKA\s+W\s+CENTRUM\.\s*NOWOŚCI\s+\d{4}\s*\|\s*|Sztuka\s+na\s+ekranie\s*[-–—]\s*|Art\s+Beats:\s+)		Art-on-screen strands ahead of the film: Wielka Sztuka w Kinoteatrze [<Venue>] –, SZTUKA W CENTRUM. NOWOŚCI <year> |, Sztuka na ekranie –, Art Beats: — was xtra-wielka-sztuka-w-kinoteatrze, xtra-sztuka-w-centrum, xtra-sztuka-na-ekranie, xtra-art-beats	[["Art Beats: Rafael. Młody geniusz","Rafael. Młody geniusz"],["SZTUKA NA EKRANIE - TURNER & CONSTABLE","TURNER & CONSTABLE"]]
 # Fourth-wave (2026-06-20) audit of the rating-less corpus.
 # Director-retrospective DOT prefixes ('<Director>. <film>'), siblings of the
 # existing 'Wajda.' / 'Konwicki:' rules; each merges into an already-RATED row.
@@ -380,9 +384,9 @@ xtra-art-strand-prefix	query				banner		(?iu)^(?:Wielka\s+Sztuka\s+w\s+Kinoteatr
 # · xtra-konwicki-prefix: 'Konwicki: <film>' director-retrospective prefix (Dolina Issy, Lawa, Salto)
 # · xtra-hosoda-dot-prefix: 'Hosoda. <film>' Mamoru Hosoda retrospective prefix (Wilcze dzieci rated; Summer Wars, Belle, Scarlet)
 # · xtra-konwicki-dot-prefix: 'Konwicki. <film>' DOT variant of the existing colon prefix (Ostatni dzień lata, Salto, Lawa)
-xtra-director-dot-prefix	query				retrospective		(?iu)^(?:Wajda\.\s+|Konwicki:\s+|Hosoda\.\s+|Konwicki\.\s+)		'Wajda. <film>' / 'Konwicki: <film>' / 'Konwicki. <film>' / 'Hosoda. <film>' director-retrospective prefix — was xtra-wajda-dot-prefix, xtra-konwicki-prefix, xtra-hosoda-dot-prefix, xtra-konwicki-dot-prefix
+xtra-director-dot-prefix	query				retrospective		(?iu)^(?:Wajda\.\s+|Konwicki:\s+|Hosoda\.\s+|Konwicki\.\s+)		'Wajda. <film>' / 'Konwicki: <film>' / 'Konwicki. <film>' / 'Hosoda. <film>' director-retrospective prefix — was xtra-wajda-dot-prefix, xtra-konwicki-prefix, xtra-hosoda-dot-prefix, xtra-konwicki-dot-prefix	[["Konwicki. Lawa","Lawa"],["Hosoda. Scarlet","Scarlet"]]
 # Decoration suffixes (banner after the film); query-only strip keeps the row.
-xtra-jarocinski-festiwal-suffix	query				festival		(?iu)\s*[.:\s]*II\s+Jarociński\s+Festiwal\s+Filmowy\s+dla\s+Dzieci\s+i\s+Młodzieży\s*$		'<film>: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży' suffix (~6 films)
+xtra-jarocinski-festiwal-suffix	query				festival		(?iu)\s*[.:\s]*II\s+Jarociński\s+Festiwal\s+Filmowy\s+dla\s+Dzieci\s+i\s+Młodzieży\s*$		'<film>: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży' suffix (~6 films)	[["Światłoczuła: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży","Światłoczuła"],["STRAŻNICZKA SMOKÓW: II Jarociński Festiwal Filmowy dla Dzieci i Młodzieży","STRAŻNICZKA SMOKÓW"]]
 #  - Kino za Rogiem Cafe's dash-suffixed 'poster tour' promo banner — the prefix
 #    form ('Plakatowa trasa: "<film>"') already folds by containment, but the
 #    suffix form doesn't (the base title is a PREFIX of the whole, not a token
@@ -405,45 +409,45 @@ xtra-jarocinski-festiwal-suffix	query				festival		(?iu)\s*[.:\s]*II\s+Jarocińs
 # · xtra-wong-kar-wai-suffix: '<film> - Wong Kar Wai 4K' restoration-print suffix (Chungking Express → TMDB 11104)
 # · xtra-premiera-ksiazki-suffix: '<film> - premiera książki, pokaz filmu + dyskusja' book-launch suffix (Kino Kultura: Pasażerka)
 # · xtra-przeglad-filmow-suffix: '<film> - przegląd filmów <reżyser>' suffix (Ida, Zimna wojna)
-xtra-dash-strand-suffix	query				banner		(?iu)(?:(?-u:\s*[-–—]\s*kino\s+dla\s+(?:seniora|seniorów|kobiet|dzieci)\s*$)|\s*[-–—]\s*Kino\s+Kobiet\s*$|\s*[-–—]\s*KNTJ\s*$|\s*[-–—]\s*Kino\s+Konesera\s*$|\s*[-–—]\s*Koncert\s*$|\s*[-–—]\s*PLAKATOWA\s+TRASA\s*$|\s*[-–—]\s*ON\s+35MM\s*$|\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$|\s*[-–—]\s*tadeusz\s+konwicki\b.*$|\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$|\s*[-–—]\s*premiera\s+książki\b.*$|(?-u:\s*[-–—]\s*przegląd\s+filmów\s+.*$))		'<film> – <strand>' venue strands after a dash: kino dla seniora/kobiet/dzieci, Kino Kobiet, KNTJ, Kino Konesera, dyskusyjny klub filmowy, Koncert, PLAKATOWA TRASA, ON 35MM, Andrzej Wajda o filmie, Tadeusz Konwicki …, Wong Kar Wai …, premiera książki …, przegląd filmów … — was xtra-kino-dla-suffix, xtra-kino-kobiet-suffix, xtra-kntj-suffix, xtra-kino-konesera-suffix, xtra-koncert-suffix, xtra-plakatowa-trasa-suffix, xtra-on-35mm-suffix, xtra-wajda-o-filmie-suffix, xtra-tadeusz-konwicki-suffix, xtra-wong-kar-wai-suffix, xtra-premiera-ksiazki-suffix, xtra-przeglad-filmow-suffix
-xtra-pokaz-suffix	query				event		(?i)\s*[-–—|]\s*(?:(?:uroczysty|jubileuszowy|galowy)\s+)?pokazy?\b.*$		'<film> - / | [uroczysty|jubileuszowy|galowy] pokaz[y] <specjalny|przedpremierowy|z okazji…|+ dyskusja…|odrestaurowanego filmu>' event suffix (Kino Kosmos: Człowiek znikąd)
-xtra-pokaz-colon-suffix	query				event		(?i)\s*:\s*pokaz(?:\s+z\s.*)?$		'<film>: pokaz [z prelekcją…]' event suffix after a colon (Kino na Boku)
-xtra-seans-suffix	query				event		(?i)(?:(?:\s*[–—|]\s*|\s+-\s*|-\s+)seans(?:\s+(?:z\s.*|seniora|psychologiczny|filmu|specjalny\b.*|przyjazny\s+sensorycznie|DKF\b.*))?|-seans\s+(?:z\s.*|seniora|psychologiczny|filmu|specjalny\b.*|przyjazny\s+sensorycznie|DKF\b.*))$		'<film> - seans [z prelekcją / Seniora / psychologiczny / filmu / specjalny … / przyjazny sensorycznie / DKF …]' event suffix (NCKF, Kino Iskra, Stary Młyn, Rejs, Kadr, GCF, Światowid). A hyphen needs a space on one side ('Anty-seans' is a title) unless a named qualifier follows ('nadszedł-seans psychologiczny'); only named qualifiers: 'Pan Li - Seans Spirytustyczny' is a title
+xtra-dash-strand-suffix	query				banner		(?iu)(?:(?-u:\s*[-–—]\s*kino\s+dla\s+(?:seniora|seniorów|kobiet|dzieci)\s*$)|\s*[-–—]\s*Kino\s+Kobiet\s*$|\s*[-–—]\s*KNTJ\s*$|\s*[-–—]\s*Kino\s+Konesera\s*$|\s*[-–—]\s*Koncert\s*$|\s*[-–—]\s*PLAKATOWA\s+TRASA\s*$|\s*[-–—]\s*ON\s+35MM\s*$|\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$|\s*[-–—]\s*tadeusz\s+konwicki\b.*$|\s*[-–—]\s*Wong\s+Kar[\s-]?Wai\b.*$|\s*[-–—]\s*premiera\s+książki\b.*$|(?-u:\s*[-–—]\s*przegląd\s+filmów\s+.*$))		'<film> – <strand>' venue strands after a dash: kino dla seniora/kobiet/dzieci, Kino Kobiet, KNTJ, Kino Konesera, dyskusyjny klub filmowy, Koncert, PLAKATOWA TRASA, ON 35MM, Andrzej Wajda o filmie, Tadeusz Konwicki …, Wong Kar Wai …, premiera książki …, przegląd filmów … — was xtra-kino-dla-suffix, xtra-kino-kobiet-suffix, xtra-kntj-suffix, xtra-kino-konesera-suffix, xtra-koncert-suffix, xtra-plakatowa-trasa-suffix, xtra-on-35mm-suffix, xtra-wajda-o-filmie-suffix, xtra-tadeusz-konwicki-suffix, xtra-wong-kar-wai-suffix, xtra-premiera-ksiazki-suffix, xtra-przeglad-filmow-suffix	[["Północ - KNTJ","Północ"],["Księga pustyni - KNTJ","Księga pustyni"]]
+xtra-pokaz-suffix	query				event		(?i)\s*[-–—|]\s*(?:(?:uroczysty|jubileuszowy|galowy)\s+)?pokazy?\b.*$		'<film> - / | [uroczysty|jubileuszowy|galowy] pokaz[y] <specjalny|przedpremierowy|z okazji…|+ dyskusja…|odrestaurowanego filmu>' event suffix (Kino Kosmos: Człowiek znikąd)	[["\"Naza\" - pokaz specjalny z gośćmi","\"Naza\""],["\"Spotkać Buddę\" - pokaz specjalny","\"Spotkać Buddę\""]]
+xtra-pokaz-colon-suffix	query				event		(?i)\s*:\s*pokaz(?:\s+z\s.*)?$		'<film>: pokaz [z prelekcją…]' event suffix after a colon (Kino na Boku)	[["Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor","Człowiek z marmuru"]]
+xtra-seans-suffix	query				event		(?i)(?:(?:\s*[–—|]\s*|\s+-\s*|-\s+)seans(?:\s+(?:z\s.*|seniora|psychologiczny|filmu|specjalny\b.*|przyjazny\s+sensorycznie|DKF\b.*))?|-seans\s+(?:z\s.*|seniora|psychologiczny|filmu|specjalny\b.*|przyjazny\s+sensorycznie|DKF\b.*))$		'<film> - seans [z prelekcją / Seniora / psychologiczny / filmu / specjalny … / przyjazny sensorycznie / DKF …]' event suffix (NCKF, Kino Iskra, Stary Młyn, Rejs, Kadr, GCF, Światowid). A hyphen needs a space on one side ('Anty-seans' is a title) unless a named qualifier follows ('nadszedł-seans psychologiczny'); only named qualifiers: 'Pan Li - Seans Spirytustyczny' is a title	[["Czas, który nie nadszedł-seans psychologiczny","Czas, który nie nadszedł"]]
 # Found by SearchQueryMarkersSpec over the recorded PL corpus (2026-10-04).
-xtra-pokaz-z-muzyka-suffix	query				event		(?iu)\s*[-–—|.]\s*Pokaz\s+z\s+muzyką\s+na\s+żywo\s*$		'<film>. Pokaz z muzyką na żywo' live-score screening suffix after a dot (Kino Śnieżka: Nosferatu)
-xtra-przedpremierowy-bullet	query				event		(?iu)^.*?(?<!\p{L})(?:pokaz|seans)\s+przedpremierowy\s*[•:|]\s*		'<strand>[:.] Pokaz/seans przedpremierowy • / : <film>' pre-premiere banner, the strand before it included (Kinematograf: Nikt nie wie, Tajemnica śpiewających ptaków)
-xtra-przedpremierowo-paren	query				event		(?iu)\s*\(\s*przedpremierow\w*\s*\)\s*$		'<film> (przedpremierowo)' parenthesised pre-premiere tag (Kino Mikro: Róża)
-xtra-premiera-exclaimed-suffix	query				event		(?iu)(?<=\S)\s+premiera\s*!+\s*$		'<film> premiera!' bare exclaimed premiere tail — the '!' tells it from a title ending 'Premiera' (Kino Kuźnica: Lalka)
-xtra-premiera-comma-suffix	query				event		(?iu)\s*,\s*premiera\s*$		'<film>, PREMIERA' comma-separated premiere tail (Kino Apollo: Big Shark)
-xtra-wstep-wolny-suffix	query				event		(?iu)\s*[-–—|]\s*wstęp\s+wolny\s*$		'<film> - LEKTOR - WSTĘP WOLNY' free-entry tail, the version tag before it re-peeled by searchQuery (Kino Bajka Kluczbork)
-xtra-letnie-kino-dzieciom-suffix	query				audience	jun-sep	(?iu)\s*[-–—|]\s*Letnie\s+Kino\s+Dzieciom\s*$		'<film> - 2D Dubbing - Letnie Kino Dzieciom' children's-summer strand tail (Kino Hel)
-xtra-rekonstrukcja-pipe-suffix	query				edition		(?iu)\s*\|\s*Rekonstrukcja\s+4K\b.*$		'<film> | Rekonstrukcja 4K | PRELEKCJA PRZED SEANSEM' restoration + talk pipe tail (GCF: Do utraty tchu)
-xtra-audiodeskrypcja-suffix	query				audience		(?iu)\s*[-–—]\s*(?:z\s+)?audiodeskrypcj\p{L}*.*$		'<film> - audiodeskrypcją (na słuchawki), napisy dla osób nie(do)słyszących i PJM' accessible-screening suffix (Kino Sokół: Lalka)
-xtra-film-pl-suffix	query				banner		(?u)(?<=\S)\s+(?i:film)\s+PL\s*$		'<film> Film PL' venue tail (Kino CKiF: Lalka, Mistyczka, Czas, który nie nadszedł)
+xtra-pokaz-z-muzyka-suffix	query				event		(?iu)\s*[-–—|.]\s*Pokaz\s+z\s+muzyką\s+na\s+żywo\s*$		'<film>. Pokaz z muzyką na żywo' live-score screening suffix after a dot (Kino Śnieżka: Nosferatu)	[["NOSFERATU - SYMFONIA GROZY. Pokaz z muzyką na żywo","NOSFERATU - SYMFONIA GROZY"]]
+xtra-przedpremierowy-bullet	query				event		(?iu)^.*?(?<!\p{L})(?:pokaz|seans)\s+przedpremierowy\s*[•:|]\s*		'<strand>[:.] Pokaz/seans przedpremierowy • / : <film>' pre-premiere banner, the strand before it included (Kinematograf: Nikt nie wie, Tajemnica śpiewających ptaków)	[["Klasyk w kinie. Pokaz przedpremierowy • Nikt nie wie reż. Hirokazu Koreeda (2004)","Nikt nie wie reż. Hirokazu Koreeda (2004)"],["Mały Kinematograf: seans przedpremierowy • Tajemnica śpiewających ptaków reż. Antoine Lanciaux (2025)","Tajemnica śpiewających ptaków reż. Antoine Lanciaux (2025)"]]
+xtra-przedpremierowo-paren	query				event		(?iu)\s*\(\s*przedpremierow\w*\s*\)\s*$		'<film> (przedpremierowo)' parenthesised pre-premiere tag (Kino Mikro: Róża)	[["Róża (przedpremierowo)","Róża"]]
+xtra-premiera-exclaimed-suffix	query				event		(?iu)(?<=\S)\s+premiera\s*!+\s*$		'<film> premiera!' bare exclaimed premiere tail — the '!' tells it from a title ending 'Premiera' (Kino Kuźnica: Lalka)	[["Lalka premiera!","Lalka"],["Lalka | 13+ | PREMIERA!!!","Lalka | 13+ |"]]
+xtra-premiera-comma-suffix	query				event		(?iu)\s*,\s*premiera\s*$		'<film>, PREMIERA' comma-separated premiere tail (Kino Apollo: Big Shark)	[["Big Shark, PREMIERA","Big Shark"]]
+xtra-wstep-wolny-suffix	query				event		(?iu)\s*[-–—|]\s*wstęp\s+wolny\s*$		'<film> - LEKTOR - WSTĘP WOLNY' free-entry tail, the version tag before it re-peeled by searchQuery (Kino Bajka Kluczbork)	[["I TAK CIĘ KOCHAM - LEKTOR - WSTĘP WOLNY","I TAK CIĘ KOCHAM - LEKTOR"]]
+xtra-letnie-kino-dzieciom-suffix	query				audience	jun-sep	(?iu)\s*[-–—|]\s*Letnie\s+Kino\s+Dzieciom\s*$		'<film> - 2D Dubbing - Letnie Kino Dzieciom' children's-summer strand tail (Kino Hel)	[["KUROZAJĄC i ZAGADKA CHOMIKA CIEMNOŚCI - 2D Dubbing - Letnie Kino Dzieciom","KUROZAJĄC i ZAGADKA CHOMIKA CIEMNOŚCI - 2D Dubbing"]]
+xtra-rekonstrukcja-pipe-suffix	query				edition		(?iu)\s*\|\s*Rekonstrukcja\s+4K\b.*$		'<film> | Rekonstrukcja 4K | PRELEKCJA PRZED SEANSEM' restoration + talk pipe tail (GCF: Do utraty tchu)	[["Do utraty tchu | Rekonstrukcja 4K","Do utraty tchu"],["Do utraty tchu | Rekonstrukcja 4K | PRELEKCJA PRZED SEANSEM","Do utraty tchu"]]
+xtra-audiodeskrypcja-suffix	query				audience		(?iu)\s*[-–—]\s*(?:z\s+)?audiodeskrypcj\p{L}*.*$		'<film> - audiodeskrypcją (na słuchawki), napisy dla osób nie(do)słyszących i PJM' accessible-screening suffix (Kino Sokół: Lalka)	[["LALKA - audiodeskrypcją (na słuchawki), napisy dla osób nie(do)słyszących i PJM","LALKA"]]
+xtra-film-pl-suffix	query				banner		(?u)(?<=\S)\s+(?i:film)\s+PL\s*$		'<film> Film PL' venue tail (Kino CKiF: Lalka, Mistyczka, Czas, który nie nadszedł)	[["Lalka Film PL","Lalka"],["Mistyczka Film PL","Mistyczka"]]
 # Each night's recording bills the same few screening notes in new spellings (the 2026-10-13 one, run
 # 38326582997: "(Relaxed Screening)", "(Dementia Friendly Screenng)", ": Autism Friendly", "(PG) PARENT & BABY",
 # "(English Dub, 4K Restoration)"), so these hold the SHAPE: a trailing segment — bracketed, after a separator, or
 # after a certificate — made of nothing but a screening note's words and naming at least one note outright. A
 # film's own words are never all note words, and a segment without a separator is taken only when it opens on a
 # special audience. First, so a certificate the note sat behind is trailing for the certificate rule below.
-xtra-screening-note-segment	query				format		(?iu)(?:\s*\({{CERT}}\))?(?:\s*\(\s*(?={{NOTE_SEGMENT}}\s*\)){{NOTE_SEGMENT}}\s*\)|\s*[-–—|:]\s*(?={{NOTE_SEGMENT}}\s*$){{NOTE_SEGMENT}}|(?<=\S)\s+(?={{AUDIENCE}}){{NOTE_SEGMENT}})\s*$		'<film> (Relaxed Screening)' / '<film>: Autism Friendly' / '<film> (PG) PARENT & BABY' / '<film> (English Dub, 4K Restoration)' screening note made of nothing but note words (UK 2026-10-13: Electric Palace Hastings, Showcase, Phoenix, DCA)
+xtra-screening-note-segment	query				format		(?iu)(?:\s*\({{CERT}}\))?(?:\s*\(\s*(?={{NOTE_SEGMENT}}\s*\)){{NOTE_SEGMENT}}\s*\)|\s*[-–—|:]\s*(?={{NOTE_SEGMENT}}\s*$){{NOTE_SEGMENT}}|(?<=\S)\s+(?={{AUDIENCE}}){{NOTE_SEGMENT}})\s*$		'<film> (Relaxed Screening)' / '<film>: Autism Friendly' / '<film> (PG) PARENT & BABY' / '<film> (English Dub, 4K Restoration)' screening note made of nothing but note words (UK 2026-10-13: Electric Palace Hastings, Showcase, Phoenix, DCA)	[["Dracula: 4K Restoration","Dracula"],["Matilda (Dementia Friendly)","Matilda"]]
 # An introduction clause from its connector on — "with", "plus", "and", "&", "+" or a spaced dash, then an
 # introduction (recorded, live, special) or a pre-/post-screening Q&A, and who gives it — and everything billed
 # after it: "<film> with Introduction by <name> AND post-screening Q&A with <names>" leaves whole. The connector
 # and the giver are both required, so "An Introduction to Love" or "Introduction by Fire" keep their titles.
-xtra-introduction-clause-tail	query				event		(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&|\+)\s+)?|\s*\+\s*|\s+(?:with|plus|and|&)\s+)(?:an?\s+)?(?:(?:recorded|live|special|director'?s?)\s+)?(?:(?:pre|post)[-\s]?(?:screening|film|show)\s+)?(?:intro(?:duction)?|q\s*&\s*a)\s+(?:by|from|with)\s+\S.*$		'<film> with Introduction by <name> AND post-screening Q&A with <names>' / '<film> - Introduction with <name>' / '<film> & post-screening Q&A with <name>' introduction clause and all after it (US 2026-10-13: ACME Screening Room Lambertville; UK: Spooked)
+xtra-introduction-clause-tail	query				event		(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&|\+)\s+)?|\s*\+\s*|\s+(?:with|plus|and|&)\s+)(?:an?\s+)?(?:(?:recorded|live|special|director'?s?)\s+)?(?:(?:pre|post)[-\s]?(?:screening|film|show)\s+)?(?:intro(?:duction)?|q\s*&\s*a)\s+(?:by|from|with)\s+\S.*$		'<film> with Introduction by <name> AND post-screening Q&A with <names>' / '<film> - Introduction with <name>' / '<film> & post-screening Q&A with <name>' introduction clause and all after it (US 2026-10-13: ACME Screening Room Lambertville; UK: Spooked)	[["Spooked: Videodrome (18) - Introduction with Johnathan Ilott","Spooked: Videodrome"],["2026 LHFF Spotlight on Cinema: “Revenge” with Introduction by Dylan Mayer","Spotlight on Cinema: “Revenge\""]]
 # A venue's decoration production saw past and the replay did not (recording 38350852334, the UK leg's per-film
 # diff): a festival named ahead of the film ("Purbeck Film Festival - Fargo", "BFI London Film Festival 2026:
 # Fjord"), a festival's acronym after it ("… FFFL": a capitalised tag carrying "FF", the film festival, on a title
 # written in mixed case), a film club after it, and a certificate with the year's last two digits ("(15) 26").
 # …unless what follows is the festival's own event, which a bare search would match to a film of its name
 # ("Unrestricted View Horror Film Festival 2026: Opening Night" is no Cassavetes)
-xtra-festival-acronym-suffix	query				festival		(?u)^(?=.*\p{Ll})(.*?\S)\s+(?:[-–—]\s+)?[A-Z]{0,2}FF[A-Z]{1,2}\s*$	$1	'<film> FFFL' / '<film> - FFFL' festival acronym after a mixed-case title (UK 2026-10-13: Ciné Lumière's French Film Festival)
-xtra-certificate-year-suffix	query				format		(?iu)\s*{{CERT_NOTE}}\s+\d{2}\s*$		'<film> (15) 26' certificate and the year's last two digits (UK 2026-10-13: Hippodrome Bo'ness)
+xtra-festival-acronym-suffix	query				festival		(?u)^(?=.*\p{Ll})(.*?\S)\s+(?:[-–—]\s+)?[A-Z]{0,2}FF[A-Z]{1,2}\s*$	$1	'<film> FFFL' / '<film> - FFFL' festival acronym after a mixed-case title (UK 2026-10-13: Ciné Lumière's French Film Festival)	[["Milo FFFL","Milo"],["Fjord FFFL","Fjord"]]
+xtra-certificate-year-suffix	query				format		(?iu)\s*{{CERT_NOTE}}\s+\d{2}\s*$		'<film> (15) 26' certificate and the year's last two digits (UK 2026-10-13: Hippodrome Bo'ness)	[["Elf (2003) (PG) 26","Elf (2003)"],["The Holdovers (15) 26","The Holdovers"]]
 # A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
 # and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
-xtra-print-strand-tail	query				edition		(?iu)(?:\s*\[\s*(?:16|35|70)mm\s*\]|\s+(?:4K|(?:16|35|70)mm))\s+[-–—]\s+\S.*$		'<film> [35mm] - <strand>' / '<film> 4K - <festival>' print tag and the strand behind it (UK 2026-10-13: Dirt in the Gate Movies, Ciné Lumière's FFFL)
-xtra-print-prefix	query				edition		(?iu)^(?:4K|(?:16|35|70)mm)(?:\s+(?:Film|Restoration|Print|Screening))?\s*[:|–—]\s*(?=\S)		'4K Film: <film>' print billed ahead of the film (UK 2026-10-13: Ken Russell's The Devils, Dracula)
+xtra-print-strand-tail	query				edition		(?iu)(?:\s*\[\s*(?:16|35|70)mm\s*\]|\s+(?:4K|(?:16|35|70)mm))\s+[-–—]\s+\S.*$		'<film> [35mm] - <strand>' / '<film> 4K - <festival>' print tag and the strand behind it (UK 2026-10-13: Dirt in the Gate Movies, Ciné Lumière's FFFL)	[["The Odyssey (2026) [35mm] - Dirt in the Gate Movies","The Odyssey (2026)"],["Black Christmas (1974) [35mm] - Dirt in the Gate Movies","Black Christmas (1974)"]]
+xtra-print-prefix	query				edition		(?iu)^(?:4K|(?:16|35|70)mm)(?:\s+(?:Film|Restoration|Print|Screening))?\s*[:|–—]\s*(?=\S)		'4K Film: <film>' print billed ahead of the film (UK 2026-10-13: Ken Russell's The Devils, Dracula)	[["4K Film: Ken Russell's The Devils","Ken Russell's The Devils"],["4K Film: Dracula: The Cut They Tried To Bury","Dracula: The Cut They Tried To Bury"]]
 # Found by SearchQueryMarkersSpec over the UK recording of 2026-10-12 (run 38251516862). A screening note billed
 # after the film — a special audience, a Q&A, a matinee — and a box office's own certificate and running time.
 # Each reads FormatTags' own shape of its note (TitleRulePlaceholders' ASTERISK_NOTE, RUNTIME_MINS, CERT_NOTE) —
@@ -452,46 +456,46 @@ xtra-print-prefix	query				edition		(?iu)^(?:4K|(?:16|35|70)mm)(?:\s+(?:Film|Res
 # The note in asterisks first, then the running time, then the certificate, each exposing the next at the end;
 # all before the 4K rules, so a print tag a certificate sat behind ("Dracula (1958) 4K Restoration - Cert 12A")
 # is trailing for them.
-xtra-asterisk-note-suffix	query				format		(?<=\S)\s+{{ASTERISK_NOTE}}\s*$		'<film> … *SUBTITLED MATINEE*' screening note in asterisks (Electric Palace Bridport: Pressure, Sense and Sensibility)
-xtra-runtime-suffix	query				format		(?iu)\s*\(?\s*(?<![\p{L}\p{N}]){{RUNTIME_MINS}}\s*\)?(?:\s+TBC)?\s*$		'<film> (15) (2026) 100 mins' / '(160 mins TBC)' box-office running time (Electric Palace Bridport)
-xtra-certificate-suffix	query				format		(?iu)\s*{{CERT_NOTE}}(?=\s*(?:\(\d{4}\)\s*)?$)		'<film> - Cert 12A' / '<film> (15 TBC) (2026)' / '<film> (Cert TBC)' BBFC certificate the box office bills in the title (Lighthouse Poole, Electric Palace Bridport); a '(YYYY)' after it stays
+xtra-asterisk-note-suffix	query				format		(?<=\S)\s+{{ASTERISK_NOTE}}\s*$		'<film> … *SUBTITLED MATINEE*' screening note in asterisks (Electric Palace Bridport: Pressure, Sense and Sensibility)	[["Wicker (15) 105 mins *MATINEE*","Wicker"],["The Yellow Tie (15) 145 mins *MATINEE*","The Yellow Tie"]]
+xtra-runtime-suffix	query				format		(?iu)\s*\(?\s*(?<![\p{L}\p{N}]){{RUNTIME_MINS}}\s*\)?(?:\s+TBC)?\s*$		'<film> (15) (2026) 100 mins' / '(160 mins TBC)' box-office running time (Electric Palace Bridport)	[["Digger (15) 129 mins","Digger"],["Wicker (15) 105 mins","Wicker"]]
+xtra-certificate-suffix	query				format		(?iu)\s*{{CERT_NOTE}}(?=\s*(?:\(\d{4}\)\s*)?$)		'<film> - Cert 12A' / '<film> (15 TBC) (2026)' / '<film> (Cert TBC)' BBFC certificate the box office bills in the title (Lighthouse Poole, Electric Palace Bridport); a '(YYYY)' after it stays	[["Hen (15)","Hen"],["Clue (PG)","Clue"]]
 # A Q&A after a plus, glued or spaced ("+Q&A with Graham Fellows", "Records+ Q&A", "plus live Q&A") and whatever
 # follows it, where the seed's spaced "+ <event>" strip stops at a bracket ("+ Q&A (18)") — but only when the
 # brackets after it balance, so a Q&A inside a festival's note is the bracketed rule's.
-xtra-qa-paren-note	query				event		(?iu)(?<=\S)\s*\([^()]*(?<![\p{L}\p{N}])Q\s*&\s*A(?![\p{L}\p{N}])[^()]*\)\s*$		'<film> (London Breeze Film Festival UK Premiere + Q&A)' bracketed festival note naming a Q&A (Riverside Studios: Delupi, Man Baby, Synthesized)
-xtra-qa-plus-tail	query				event		(?iu)\s*(?:\+|(?<![\p{L}\p{N}])plus(?=\s))\s*(?:(?:live|in[-\s]person|recorded)\s+)?Q\s*&\s*A(?![\p{L}\p{N}])[^()]*(?:\([^()]*\)[^()]*)*$		'<film> +Q&A' / '<film> plus live Q&A' / '<film>+ Q&A' / '<film> + Q&A (zoom)' Q&A-night tail (Brewery Arts Centre Kendal, ARC Stockton, Rio Dalston, ICA, Electric Palace Bridport)
-xtra-audience-suffix	query				audience		(?iu)\s*[-–—|]\s*(?:Relaxed|{{AUDIENCE_STRAND}})(?:\s+(?:Screening|Club))?\s*$		'<film> - Relaxed Screening' / '<film> - Parent & Baby' / '<film> - Sensory Friendly Screening' special-audience screening after the film (Broadway Nottingham: Wildwood, Arrietty, Ghosts; Picture House Uckfield)
+xtra-qa-paren-note	query				event		(?iu)(?<=\S)\s*\([^()]*(?<![\p{L}\p{N}])Q\s*&\s*A(?![\p{L}\p{N}])[^()]*\)\s*$		'<film> (London Breeze Film Festival UK Premiere + Q&A)' bracketed festival note naming a Q&A (Riverside Studios: Delupi, Man Baby, Synthesized)	[["Delupi (London Breeze Film Festival UK Premiere + Q&A)","Delupi"],["Synthesized (London Breeze Film Festival Preview + Q&A)","Synthesized"]]
+xtra-qa-plus-tail	query				event		(?iu)\s*(?:\+|(?<![\p{L}\p{N}])plus(?=\s))\s*(?:(?:live|in[-\s]person|recorded)\s+)?Q\s*&\s*A(?![\p{L}\p{N}])[^()]*(?:\([^()]*\)[^()]*)*$		'<film> +Q&A' / '<film> plus live Q&A' / '<film>+ Q&A' / '<film> + Q&A (zoom)' Q&A-night tail (Brewery Arts Centre Kendal, ARC Stockton, Rio Dalston, ICA, Electric Palace Bridport)	[["3000 Feet +Live Q&A","3000 Feet"],["This Is Pete plus live Q&A","This Is Pete"]]
+xtra-audience-suffix	query				audience		(?iu)\s*[-–—|]\s*(?:Relaxed|{{AUDIENCE_STRAND}})(?:\s+(?:Screening|Club))?\s*$		'<film> - Relaxed Screening' / '<film> - Parent & Baby' / '<film> - Sensory Friendly Screening' special-audience screening after the film (Broadway Nottingham: Wildwood, Arrietty, Ghosts; Picture House Uckfield)	[["LALKA - english friendly","LALKA"],["Pressure - Baby Friendly","Pressure"]]
 # Found by SearchQueryMarkersSpec over the recorded UK / US / DE / ES corpora (2026-10-04).
 # A parenthesised anniversary note, whatever else it bills ("(25th Anniversary)", "(30th Anniversary, 4K
 # Restoration)", "(50th Anniversary 4K Restoration)"): the seed anniversary suffix takes only a bare one. The
 # note goes whole, its ordinal with it — the "25th" is the re-release's, never the film's year. Before the 4K
 # rules, so the print tag a note sat behind ("Donnie Darko 4K (25th Anniversary)") is trailing for them.
-xtra-paren-anniversary-note	query				edition		(?iu)(?<=\S)\s*\(\s*\d+(?:st|nd|rd|th)\s+Anniversary\b[^()]*\)\s*$		'<film> [4K] (25th Anniversary)' / '<film> (30th Anniversary, 4K Restoration)' parenthesised anniversary re-release note (Showcase: Donnie Darko, Scream; Cineworld: Rocky)
-xtra-4k-restoration-suffix	query				edition		(?iu)\s*(?:\(\s*4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|]\s*|\s+)4K\s+(?:(?:Restoration|Remaster(?:ed)?)(?:\s*[-–—]\s*Director['’]?s\s+Cut)?|Director['’]?s\s+Cut))\s*$		'<film> (4K Restoration)' / '<film> [-] 4K RESTORATION' / '<film> 4K Director's Cut' / '<film> 4K Restoration - Directors Cut' print tag (Cineworld: Arrietty, Dracula; Alamo: Cemetery Man; US: Cabin Fever; Windmill Littlehampton: Dracula)
-xtra-imax-experience-suffix	query				format		(?iu)\s*[-–—:]\s*(?:The\s+IMAX\s+Experience|Ein\s+IMAX(?:\s+3D)?[-\s]Erlebnis)\s*$		'<film> - The IMAX Experience' / '<film> - Ein IMAX 3D-Erlebnis' format billing (Cineworld: Dune: Part Three; ES: La Odisea; DE: A Beautiful Planet)
-xtra-fan-event-suffix	query				event		(?iu)\s+(?:RealD\s+)?(?:3D\s+)?Fan\s+Event\s*$		'<film> RealD 3D Fan Event' early-screening event tail (US: Avengers: Doomsday)
+xtra-paren-anniversary-note	query				edition		(?iu)(?<=\S)\s*\(\s*\d+(?:st|nd|rd|th)\s+Anniversary\b[^()]*\)\s*$		'<film> [4K] (25th Anniversary)' / '<film> (30th Anniversary, 4K Restoration)' parenthesised anniversary re-release note (Showcase: Donnie Darko, Scream; Cineworld: Rocky)	[["Rocky (50th Anniversary)","Rocky"],["Rocky (50th anniversary)","Rocky"]]
+xtra-4k-restoration-suffix	query				edition		(?iu)\s*(?:\(\s*4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|]\s*|\s+)4K\s+(?:(?:Restoration|Remaster(?:ed)?)(?:\s*[-–—]\s*Director['’]?s\s+Cut)?|Director['’]?s\s+Cut))\s*$		'<film> (4K Restoration)' / '<film> [-] 4K RESTORATION' / '<film> 4K Director's Cut' / '<film> 4K Restoration - Directors Cut' print tag (Cineworld: Arrietty, Dracula; Alamo: Cemetery Man; US: Cabin Fever; Windmill Littlehampton: Dracula)	[["Dracula 4K Restoration","Dracula"],["STAB: Dracula 4K Restoration","STAB: Dracula"]]
+xtra-imax-experience-suffix	query				format		(?iu)\s*[-–—:]\s*(?:The\s+IMAX\s+Experience|Ein\s+IMAX(?:\s+3D)?[-\s]Erlebnis)\s*$		'<film> - The IMAX Experience' / '<film> - Ein IMAX 3D-Erlebnis' format billing (Cineworld: Dune: Part Three; ES: La Odisea; DE: A Beautiful Planet)	[["La Odisea: The IMAX Experience","La Odisea"],["The Odyssey: The IMAX Experience","The Odyssey"]]
+xtra-fan-event-suffix	query				event		(?iu)\s+(?:RealD\s+)?(?:3D\s+)?Fan\s+Event\s*$		'<film> RealD 3D Fan Event' early-screening event tail (US: Avengers: Doomsday)	[["Avengers: Doomsday RealD 3D Fan Event","Avengers: Doomsday"],["Street Fighter: Bonus Round Fan Event","Street Fighter: Bonus Round"]]
 # A children's-TV cinema event billed with "Cinema Experience" after its name, no separator before it: TMDB holds
 # the event bare ("Festive Fun with Peppa", 1778515), and searching the suffix weighed only older Peppa films, each
 # refused (UK 350 / US 366 venues, 2026-10). Its misspelling ("Experince", Savoy Boston) too.
-xtra-cinema-experience-suffix	query				format		(?iu)(?<=\S)\s*(?:[-–—:|]\s*)?(?:The\s+)?Cinema\s+Experie?nce\s*$		'<event> Cinema Experience' cinema-event tail (Cineworld / Odeon / Vue: Festive Fun with Peppa Cinema Experience)
+xtra-cinema-experience-suffix	query				format		(?iu)(?<=\S)\s*(?:[-–—:|]\s*)?(?:The\s+)?Cinema\s+Experie?nce\s*$		'<event> Cinema Experience' cinema-event tail (Cineworld / Odeon / Vue: Festive Fun with Peppa Cinema Experience)	[["ELVIS MEETS CASH - THE CINEMA EXPERIENCE","ELVIS MEETS CASH"],["Festive Fun with Peppa Cinema Experience","Festive Fun with Peppa"]]
 # Found by SearchQueryMarkersSpec over the recorded US / UK corpora (2026-10-05).
-xtra-live-qa-prefix	query				event		(?i)^Live\s+Q\s*&\s*A\s*:\s*		'Live Q&A: <film>' event-night prefix (Alamo Drafthouse Winchester: Mourning Dove, It's Just Business)
-xtra-with-live-qa-suffix	query				event		(?i)\s+with\s+(?:a\s+)?Live\s+Q\s*&\s*A\s*$		'<film> with Live Q&A' event-night tail (Cineworld: NAZA)
-xtra-pokaz-specjalny-prefix	query				event		(?i)^(?:[^.]+\.\s+)?Pokaz\s+specjalny(?:\s+z\s+okazji[^:]*(?=:))?\s*[-–—:|]\s*		'[<occasion>.] Pokaz specjalny [z okazji <occasion>] – <film>' event prefix (Kinematograf's 'Dzień Tove Jansson.' occasion; Kino Bajka Kluczbork's 'z okazji 10 - lecia reaktywacji kina bajka:')
-xtra-pokazy-specjalne-prefix	query				event		(?iu)^Pokazy\s+specjalne\.\s*(?:\d+\s+lat\s+od\s+premiery!?\s*)?		'Pokazy specjalne. [35 lat od premiery!] <film>' anniversary-screening prefix (Zacisze: Terminator 2)
+xtra-live-qa-prefix	query				event		(?i)^Live\s+Q\s*&\s*A\s*:\s*		'Live Q&A: <film>' event-night prefix (Alamo Drafthouse Winchester: Mourning Dove, It's Just Business)	[["Live Q&A: Mourning Dove","Mourning Dove"],["Live Q&A: It's Just Business","It's Just Business"]]
+xtra-with-live-qa-suffix	query				event		(?i)\s+with\s+(?:a\s+)?Live\s+Q\s*&\s*A\s*$		'<film> with Live Q&A' event-night tail (Cineworld: NAZA)	[["NAZA with Live Q&A","NAZA"]]
+xtra-pokaz-specjalny-prefix	query				event		(?i)^(?:[^.]+\.\s+)?Pokaz\s+specjalny(?:\s+z\s+okazji[^:]*(?=:))?\s*[-–—:|]\s*		'[<occasion>.] Pokaz specjalny [z okazji <occasion>] – <film>' event prefix (Kinematograf's 'Dzień Tove Jansson.' occasion; Kino Bajka Kluczbork's 'z okazji 10 - lecia reaktywacji kina bajka:')	[["Pokaz specjalny: U2","U2"]]
+xtra-pokazy-specjalne-prefix	query				event		(?iu)^Pokazy\s+specjalne\.\s*(?:\d+\s+lat\s+od\s+premiery!?\s*)?		'Pokazy specjalne. [35 lat od premiery!] <film>' anniversary-screening prefix (Zacisze: Terminator 2)	[["Pokazy specjalne. 35 lat od premiery! TERMINATOR 2: DZIEŃ SĄDU","TERMINATOR 2: DZIEŃ SĄDU"],["Pokazy specjalne. 35 lat od premiery! Terminator 2: Dzień Sądu","Terminator 2: Dzień Sądu"]]
 # Kino w Kadrze (Warszawa, biletyna) glues its strand onto the film after a
 # colon — '<film>: 14 Festiwal Kultury bez Barier. Kino dostępne w Kadrze',
 # '<film>: Kino Kadr (15+)', '<film>: Premiera w Kadrze'. The colon's LEFT side
 # is the film, the opposite of every programme prefix, so SearchTitles' own
 # post-colon candidate can't reach it.
-xtra-venue-colon-strand-suffix	query				venue		(?iu)\s*:\s*(?:(?:\d+\.?\s*Festiwal\s+Kultury\s+bez\s+Barier|(?:Oscarowe\s+)?Kino\s+dostępne\s+w\s+{{VENUE}}|Premiera\s+w\s+{{VENUE}})\b.*|(?:Oscarowe\s+)?Kino\s+{{VENUE}}\s*(?:\(\d+\+\))?\s*)$		'<film>: 14 Festiwal Kultury bez Barier. …' / '<film>: Kino <venue> (15+)' / '<film>: Premiera w <venue>' strand suffix behind a colon, any venue's name (Kino w Kadrze: Chłopiec na krańcach świata, Ojczyzna, Obcy, Lalka) — the bare 'Kino <venue>' only as the whole tail (its age rating, if any, is a title fact peeled before this tier)
+xtra-venue-colon-strand-suffix	query				venue		(?iu)\s*:\s*(?:(?:\d+\.?\s*Festiwal\s+Kultury\s+bez\s+Barier|(?:Oscarowe\s+)?Kino\s+dostępne\s+w\s+{{VENUE}}|Premiera\s+w\s+{{VENUE}})\b.*|(?:Oscarowe\s+)?Kino\s+{{VENUE}}\s*(?:\(\d+\+\))?\s*)$		'<film>: 14 Festiwal Kultury bez Barier. …' / '<film>: Kino <venue> (15+)' / '<film>: Premiera w <venue>' strand suffix behind a colon, any venue's name (Kino w Kadrze: Chłopiec na krańcach świata, Ojczyzna, Obcy, Lalka) — the bare 'Kino <venue>' only as the whole tail (its age rating, if any, is a title fact peeled before this tier)	[["Ojczyzna: 14 Festiwal Kultury bez Barier. Oscarowe Kino dostępne w Kadrze (16+)","Ojczyzna"],["Chłopiec na krańcach świata: 14 Festiwal Kultury bez Barier. Kino dostępne w Kadrze","Chłopiec na krańcach świata"]]
 # Kino Fenix (systembiletowy) types the Wajda retrospective with no separator
 # at all and the film's year bare at the end: 'Wajda Re wizje Kronika wypadków
 # miłosnych 1985'. The banner goes, and the year is parenthesised so the query
 # reads as '<film> (1985)' — which SearchTitles also tries without the paren.
-xtra-wajda-rewizje-bare-year	query				retrospective		(?iu)^Wajda\s+Re[-\s]?wizje\s+(\S.*?)\s+((?:19|20)\d{2})\s*$	$1 ($2)	'Wajda Re wizje <film> <year>' separator-less retrospective banner with a bare trailing year (Kino Fenix: Kronika wypadków miłosnych)
-xtra-senior-w-kinie-suffix	query				audience		(?iu)\s*[-–—]\s*["„“”]?Senior\s+w\s+kinie\b.*$		'<film> - "SENIOR W KINIE" Cykl filmowy dla widzów 60+' senior-strand suffix (Kino Gwiazda Kętrzyn: Eleonora Wspaniała); the screening keeps its own card
-xtra-fks-suffix	query				banner		(?iu)\s*[|_]\s*FKS\s*$		'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)
+xtra-wajda-rewizje-bare-year	query				retrospective		(?iu)^Wajda\s+Re[-\s]?wizje\s+(\S.*?)\s+((?:19|20)\d{2})\s*$	$1 ($2)	'Wajda Re wizje <film> <year>' separator-less retrospective banner with a bare trailing year (Kino Fenix: Kronika wypadków miłosnych)	[["Wajda Re wizje Kronika wypadków miłosnych 1985","Kronika wypadków miłosnych (1985)"]]
+xtra-senior-w-kinie-suffix	query				audience		(?iu)\s*[-–—]\s*["„“”]?Senior\s+w\s+kinie\b.*$		'<film> - "SENIOR W KINIE" Cykl filmowy dla widzów 60+' senior-strand suffix (Kino Gwiazda Kętrzyn: Eleonora Wspaniała); the screening keeps its own card	[["MISTYCZKA - \"SENIOR W KINIE\" Cykl filmowy dla widzów 60+","MISTYCZKA"]]
+xtra-fks-suffix	query				banner		(?iu)\s*[|_]\s*FKS\s*$		'<film>_FKS' / '<film> | FKS' Filmowy Klub Seniora suffix (Takie jest życie, 500 Mil, Posłani)	[["Violetta Villas_FKS","Violetta Villas"],["Takie jest życie | FKS","Takie jest życie"]]
 # Fifth-wave (2026-06-20) audit of the TMDB-no-match corpus.
 # A Ukrainian-language screening is a DISTINCT version (separate audience), so
 # — exactly like the canonical UA exclusion below — it must KEEP its own row
@@ -504,9 +508,9 @@ xtra-fks-suffix	query				banner		(?iu)\s*[|_]\s*FKS\s*$		'<film>_FKS' / '<film> 
 # A version billed after the title as a screen and its audio language (UK Savoy Grantham's "Ramayana: Rise of a
 # Legend 2D - Hindi"), or Spain's original-version mark ("… 18-19 VOSE", Cine Imf Ondara): query-only, so the
 # language version keeps its own card.
-xtra-screen-language-suffix	query				format		(?iu)\s+[23]D\s*[-–—]\s*\p{L}+\s*$		'<film> 2D - Hindi' screen-and-language version suffix
-xtra-version-original-suffix	query				format		(?iu)\s+(?:V\.?O\.?S\.?E\.?|VOSI|VOS|VO)\s*$		'<film> VOSE' / 'VOS' / 'VO' Spanish original-version suffix
-xtra-ukrainski-lang-suffix	query				format		(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|ukrainian)\s+(?:dubbing|napisy|lektor)\s*\)?\s*$		'<film> [.( ]ukraiński/ukrainian dubbing/napisy/lektor' UA-version marker — query-only strip so the row stays its own (matching the canonical UA exclusion) but resolves the base film
+xtra-screen-language-suffix	query				format		(?iu)\s+[23]D\s*[-–—]\s*\p{L}+\s*$		'<film> 2D - Hindi' screen-and-language version suffix	[["Ramayana: Rise of a Legend 2D - Hindi","Ramayana: Rise of a Legend"]]
+xtra-version-original-suffix	query				format		(?iu)\s+(?:V\.?O\.?S\.?E\.?|VOSI|VOS|VO)\s*$		'<film> VOSE' / 'VOS' / 'VO' Spanish original-version suffix	[["El Elixir De Amor - ÓPERA PREG. MET CAN 18-19 VOSE","El Elixir De Amor - ÓPERA PREG. MET CAN 18-19"]]
+xtra-ukrainski-lang-suffix	query				format		(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|ukrainian)\s+(?:dubbing|napisy|lektor)\s*\)?\s*$		'<film> [.( ]ukraiński/ukrainian dubbing/napisy/lektor' UA-version marker — query-only strip so the row stays its own (matching the canonical UA exclusion) but resolves the base film	[["Digger ukraiński dubbing","Digger"],["Clayface ukraiński dubbing","Clayface"]]
 # Bare 'DKF - ' / 'DKF: ' film-club prefix (no club name) — the existing
 # 'xtra-pp-dkf-named' only matches 'DKF <name>: ', so a clubless 'DKF: <film>'
 # / 'DKF - <film>' never stripped. Query-only (Drugie życie, Czytając Lolitę
@@ -514,7 +518,7 @@ xtra-ukrainski-lang-suffix	query				format		(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|uk
 # The space after the separator is optional: MOK Kędzierzyn types the banner
 # closed up ("DKF:Orły Republiki"), which a `\s+` tail left unstripped and
 # therefore unresolvable on TMDB.
-xtra-dkf-bare-prefix	query				banner		(?iu)^DKF\s*[-–—:]\s*		'DKF - / DKF: <film>' clubless film-club prefix, with or without a space after the separator (Drugie życie, Czytając Lolitę w Teheranie, DKF:Orły Republiki)
+xtra-dkf-bare-prefix	query				banner		(?iu)^DKF\s*[-–—:]\s*		'DKF - / DKF: <film>' clubless film-club prefix, with or without a space after the separator (Drugie życie, Czytając Lolitę w Teheranie, DKF:Orły Republiki)	[["DKF-DIABŁY","DIABŁY"],["DKF-ABSOLWENT","ABSOLWENT"]]
 # Sixth-wave (2026-06-20) audit. Only rules whose stripped query was VERIFIED
 # to resolve unambiguously on TMDB are kept — most residual no-match titles
 # either don't decode to a TMDB film (yearless titles that map to two films,
@@ -523,9 +527,9 @@ xtra-dkf-bare-prefix	query				banner		(?iu)^DKF\s*[-–—:]\s*		'DKF - / DKF: <
 # 'Żywot Briana Grupy Monty Pythona. Wersja zremasterowana' (~30 Multikino
 # rows) — strip the studio attribution + remaster tail so the query is the
 # bare 'Żywot Briana', which is the UNIQUE TMDB result (583, Life of Brian).
-xtra-zywot-briana-monty-suffix	query				retrospective		(?iu)\s+Grupy\s+Monty\s+Pythona\b.*$		'Żywot Briana Grupy Monty Pythona. Wersja zremasterowana' (~30 Multikino rows) → 'Żywot Briana' (TMDB 583, unique)
-xtra-pipe-dla-rodzica	query				audience		(?iu)\s*\|\s*{{VENUE}}\s+dla\s+rodzic\S*\s*$		'<film> | <venue> dla rodziców/rodzica' parents'-screening suffix, any venue's name (Kinoteka: Erupcja, Projekt Hail Mary, Zaproszenie)
-xtra-fiesta-hiszpanskiego-suffix	query				banner		(?iu)\s*[|–—-]\s*fiesta\s+kina\s+hiszpańskiego\b.*$		'<film> | / – Fiesta Kina Hiszpańskiego[: almodóvar/banderas]' Spanish-cinema suffix (Matador, Prawo pożądania, Kobiety na skraju załamania nerwowego); prefix form is xtra-pp-fiesta-hiszpanskiego
+xtra-zywot-briana-monty-suffix	query				retrospective		(?iu)\s+Grupy\s+Monty\s+Pythona\b.*$		'Żywot Briana Grupy Monty Pythona. Wersja zremasterowana' (~30 Multikino rows) → 'Żywot Briana' (TMDB 583, unique)	[["Żywot Briana Grupy Monty Pythona","Żywot Briana"],["Żywot Briana Grupy Monty Pythona. Wersja zremasterowana","Żywot Briana"]]
+xtra-pipe-dla-rodzica	query				audience		(?iu)\s*\|\s*{{VENUE}}\s+dla\s+rodzic\S*\s*$		'<film> | <venue> dla rodziców/rodzica' parents'-screening suffix, any venue's name (Kinoteka: Erupcja, Projekt Hail Mary, Zaproszenie)	[["Erupcja | Muza dla rodziców","Erupcja"]]
+xtra-fiesta-hiszpanskiego-suffix	query				banner		(?iu)\s*[|–—-]\s*fiesta\s+kina\s+hiszpańskiego\b.*$		'<film> | / – Fiesta Kina Hiszpańskiego[: almodóvar/banderas]' Spanish-cinema suffix (Matador, Prawo pożądania, Kobiety na skraju załamania nerwowego); prefix form is xtra-pp-fiesta-hiszpanskiego	[["Matador | Fiesta Kina Hiszpańskiego","Matador"],["Prawo pożądania | Fiesta Kina Hiszpańskiego","Prawo pożądania"]]
 # Eighth-wave (2026-06-20) audit of the rating-less corpus: pipe/paren decoration
 # suffixes whose film stays its own decorated row (query-only strip).
 # Cross-cinema decoration suffixes (banner after the film); query-only strip.
@@ -538,11 +542,11 @@ xtra-fiesta-hiszpanskiego-suffix	query				banner		(?iu)\s*[|–—-]\s*fiesta\s+
 # · xtra-poniedzialki-konwicki: '… | Poniedziałki z Konwickim …' cycle suffix (Kino Spektrum)
 # · xtra-lato-robin-williams: '<film> | Lato z Robinem Williamsem [+ …]' actor-cycle suffix (Fisher King, Klatka dla ptaków, Stowarzyszenie umarłych poetów)
 # · xtra-age-bo-pipe-suffix: '<film> | 2D | DUB | BO |' trailing 'BO' (bez ograniczeń) age tag behind the format pipes, which searchQuery then re-peels (Kino Milenium)
-xtra-pipe-strand-suffix	query				banner		(?i)(?:\s*\|\s*Wtorek\s+Seniora\s*$|\s*\|\s*Teleskop\s*$|\s*\|\s*AMONDO\s+GRINDHOUSE\s*$|\s*\|\s*Wakacje\s+z\s+dokumentem\s*$|\s*\|\s*KF\s+\S.*$|\s*\|\s*Poniedziałki\s+z\s+Konwickim\b.*$|\s*\|\s*Lato\s+z\s+Robinem\s+Williamsem\b.*$|\s*\|\s*BO\s*\|?\s*$)		'<film> | <strand>' venue strands after a pipe: 10/10 Klasyka filmowa, Przegląd Nowego Kina Francuskiego, Wtorek Seniora, Kino przy herbatce, Teleskop, AMONDO GRINDHOUSE, Klasyczne Środy, Wakacje z dokumentem, KF <name>, Poniedziałki z Konwickim, Lato z Robinem Williamsem, BO — was xtra-wtorek-seniora-suffix, xtra-teleskop-suffix, xtra-amondo-grindhouse, xtra-wakacje-z-dokumentem-suffix, xtra-kf-klub-suffix, xtra-poniedzialki-konwicki, xtra-lato-robin-williams, xtra-age-bo-pipe-suffix
+xtra-pipe-strand-suffix	query				banner		(?i)(?:\s*\|\s*Wtorek\s+Seniora\s*$|\s*\|\s*Teleskop\s*$|\s*\|\s*AMONDO\s+GRINDHOUSE\s*$|\s*\|\s*Wakacje\s+z\s+dokumentem\s*$|\s*\|\s*KF\s+\S.*$|\s*\|\s*Poniedziałki\s+z\s+Konwickim\b.*$|\s*\|\s*Lato\s+z\s+Robinem\s+Williamsem\b.*$|\s*\|\s*BO\s*\|?\s*$)		'<film> | <strand>' venue strands after a pipe: 10/10 Klasyka filmowa, Przegląd Nowego Kina Francuskiego, Wtorek Seniora, Kino przy herbatce, Teleskop, AMONDO GRINDHOUSE, Klasyczne Środy, Wakacje z dokumentem, KF <name>, Poniedziałki z Konwickim, Lato z Robinem Williamsem, BO — was xtra-wtorek-seniora-suffix, xtra-teleskop-suffix, xtra-amondo-grindhouse, xtra-wakacje-z-dokumentem-suffix, xtra-kf-klub-suffix, xtra-poniedzialki-konwicki, xtra-lato-robin-williams, xtra-age-bo-pipe-suffix	[["Frances Ha | Teleskop","Frances Ha"],["Sny o pociągach | Teleskop","Sny o pociągach"]]
 # Trailing PARENTHESISED '(pokaz …)' / '(seans …)' event note — the seed pokaz/
 # przedpremiera strips only catch a dash/pipe separator, not a paren. Strips from
 # the open paren to end, so the truncated '(seans' forms fold too.
-xtra-paren-pokaz-seans	query				event		(?iu)\s*\(\s*(?:pokaz|seans)\b.*$		'<film> (pokaz jednorazowy/przedpremierowy)' / '(seans z prelekcją)' paren event-note suffix (Erupcja, Ojczyzna, Zawieście czerwone latarnie, Młode matki, Ostatni dzień lata)
+xtra-paren-pokaz-seans	query				event		(?iu)\s*\(\s*(?:pokaz|seans)\b.*$		'<film> (pokaz jednorazowy/przedpremierowy)' / '(seans z prelekcją)' paren event-note suffix (Erupcja, Ojczyzna, Zawieście czerwone latarnie, Młode matki, Ostatni dzień lata)	[["Lalka (seans z prelekcją)","Lalka"]]
 # QUOTED film whose tail is a banner ('"<film>" - UROCZYSTA POLSKA PREMIERA',
 # '"<film>" | specjalny pokaz …', '"<film>" pokaz przedpremierowy w ramach …').
 # The closing quote + a banner keyword (premiera/gala/pokaz/seans/specjalny/
@@ -550,7 +554,7 @@ xtra-paren-pokaz-seans	query				event		(?iu)\s*\(\s*(?:pokaz|seans)\b.*$		'<film
 # bare title can't match. Runs BEFORE the cycle-dash + w-ramach rules below so it
 # wins on this inverse shape (quoted part = film, not cycle). Open quote optional:
 # a seed rule strips a leading „ before this runs, leaving '<film>" - …'.
-xtra-quoted-film-banner-tail	query				junk		(?iu)^[„"]?\s*([^„""]+?)\s*[„""]\s+(?:[|–—-]\s*)?(?:premiera|prapremiera|gala|pokaz|seans|specjaln|uroczysta|w\s+ramach).*$	$1	'"<film>" - UROCZYSTA POLSKA PREMIERA' / '"<film>" | specjalny pokaz …' inverse of xtra-quoted-cycle-dash: quoted part is the FILM, banner tail dropped (Backrooms. Bez wyjścia, Drugie życie, Wędrówka na północ)
+xtra-quoted-film-banner-tail	query				junk		(?iu)^[„"]?\s*([^„""]+?)\s*[„""]\s+(?:[|–—-]\s*)?(?:premiera|prapremiera|gala|pokaz|seans|specjaln|uroczysta|w\s+ramach).*$	$1	'"<film>" - UROCZYSTA POLSKA PREMIERA' / '"<film>" | specjalny pokaz …' inverse of xtra-quoted-cycle-dash: quoted part is the FILM, banner tail dropped (Backrooms. Bez wyjścia, Drugie życie, Wędrówka na północ)	[["\"Zobaczysz wszystko\" specjalny pokaz przedpremierowy filmu","Zobaczysz wszystko"],["\"Egon Schiele. Poza tabu\" pokaz specjalny i spotkanie z Karoliną Greś (Jasny Obraz)","Egon Schiele. Poza tabu"]]
 # Seventh-wave (2026-06-20) audit: QUOTED cycle/series banners. Both keep their
 # own decorated display row (query-only strip), but resolve the bare film.
 # Two opposite shapes, disjoint patterns (one keys on a dash after the closing
@@ -567,13 +571,13 @@ xtra-quoted-film-banner-tail	query				junk		(?iu)^[„"]?\s*([^„""]+?)\s*[„"
 # pokaz/seans word follows the dash (within ~2 tokens), this is NOT a cycle
 # banner, so DON'T strip the film. The xtra-quoted-film-banner-tail rule above
 # extracts the film from that inverse shape instead.
-xtra-quoted-cycle-dash	query				junk		(?iu)^[„"][^„""]+[„""]\s*[-–—]\s+(?!(?:\S+\s+){0,2}(?:premiera|prapremiera|gala|pokaz|seans)\b)		'"<cycle>" - <film>' quoted cycle/series banner prefix ('"Kultowe Wakacje" - Amelia (2001)', '"Kultowe Wakacje" - Milczenie Owiec')
+xtra-quoted-cycle-dash	query				junk		(?iu)^[„"][^„""]+[„""]\s*[-–—]\s+(?!(?:\S+\s+){0,2}(?:premiera|prapremiera|gala|pokaz|seans)\b)		'"<cycle>" - <film>' quoted cycle/series banner prefix ('"Kultowe Wakacje" - Amelia (2001)', '"Kultowe Wakacje" - Milczenie Owiec')	[["\"WUTHERING HEIGHTS\" - STURMHÖHE","STURMHÖHE"],["\"Wuthering Heights\" - Sturmhöhe","Sturmhöhe"]]
 # (b) '"<film>" w ramach cyklu <cycle>' — the OPPOSITE: the quoted part is the
 #     FILM and 'w ramach cyklu <cycle> …' is the descriptor tail. Keep the
 #     captured film ($1) and drop the wrapping quotes + the whole tail, so it
 #     resolves as the bare film. The closing quote / literal 'w ramach cyklu'
 #     anchor the lazy capture, so a film whose own title contains 'w …' is safe.
-xtra-quoted-film-w-ramach-cyklu	query				junk		(?iu)^[„"]?\s*(.+?)\s*[„""]?\s+w\s+ramach\s+cyklu\b.*$	$1	'"<film>" w ramach cyklu <cycle>' — quoted film + cycle descriptor tail kept its own row, resolves the bare film ('"Drugie życie" w ramach cyklu SWPS — 2025' → 'Drugie życie')
+xtra-quoted-film-w-ramach-cyklu	query				junk		(?iu)^[„"]?\s*(.+?)\s*[„""]?\s+w\s+ramach\s+cyklu\b.*$	$1	'"<film>" w ramach cyklu <cycle>' — quoted film + cycle descriptor tail kept its own row, resolves the bare film ('"Drugie życie" w ramach cyklu SWPS — 2025' → 'Drugie życie')	[["Sny o słoniach - w ramach cyklu Kino Międzygatunkowe","Sny o słoniach -"],["Znaki Pana Śliwki - w ramach cyklu Twarda Sztuka x Paradox","Znaki Pana Śliwki -"]]
 # Ninth-wave (2026-06-21) audit. The Kino Luna 'Filmoterapia w Lunie' therapy
 # series pipe-WRAPS the film between its banner and an event tail
 # ('Filmoterapia W Lunie | <film> | seans + rozmowa Martyny Harland'), so the
@@ -581,7 +585,7 @@ xtra-quoted-film-w-ramach-cyklu	query				junk		(?iu)^[„"]?\s*(.+?)\s*[„""]?\
 # isolates it. Capture the first pipe-delimited segment and drop the banner +
 # tail; query-only, so the therapy screening keeps its own decorated row but
 # resolves the bare film. Sibling of the 'Filmoterapia z Inspirą:' prog prefix.
-xtra-filmoterapia-w-kinie	query				banner		(?iu)^Filmoterapia\s+w\s+{{VENUE}}\s*\|\s*(.+?)\s*(?:\|.*)?$	$1	'Filmoterapia w <venue> | <film> | seans + rozmowa …' film-therapy series, any venue's name — film pipe-wrapped in the middle (Kino Luna's 'Filmoterapia W Lunie | O czym sobie nie mówmy' → TMDB 1473635)
+xtra-filmoterapia-w-kinie	query				banner		(?iu)^Filmoterapia\s+w\s+{{VENUE}}\s*\|\s*(.+?)\s*(?:\|.*)?$	$1	'Filmoterapia w <venue> | <film> | seans + rozmowa …' film-therapy series, any venue's name — film pipe-wrapped in the middle (Kino Luna's 'Filmoterapia W Lunie | O czym sobie nie mówmy' → TMDB 1473635)	[["FILMOTERAPIA W LUNIE | Ojczyzna | seans","Ojczyzna"]]
 # Tenth-wave (2026-06-23) audit of the rating-less prod corpus (402 / 1141 rows
 # carry no ratings, 334 of them also TMDB-no-match — their SEARCH title still
 # wears a cinema banner the normaliser doesn't strip). Programme/cycle banners
@@ -599,8 +603,8 @@ xtra-filmoterapia-w-kinie	query				banner		(?iu)^Filmoterapia\s+w\s+{{VENUE}}\s*
 # · xtra-filmowe-lato: 'Filmowe lato: <film>' summer strand (Toy Story 5)
 # · xtra-wakacje-w-kinie: 'Wakacje w Kinie Orzeł: / Wakacje w kinie: <film>' kids-summer strand (Drzewo magii, Chłopiec na krańcach świata, Anzu. Kot-duch, Mała Amelia, Yuku i magiczny kwiat) — sibling of 'Wakacje dla dzieci:'
 # · xtra-filmowe-lato-named: 'Filmowe Lato <name>: <film>' named summer strand — the bare 'Filmowe lato:' rule needs the colon right after 'lato' (Filmowe Lato w Kinie:)
-xtra-summer-prefix	query				banner	jun-sep	(?iu)^(?:LATO\s*['’‘`]?\s*\d{2,4}\.?\s*Wakacje\s+z\s+Klasyką\s+Kina{{SEP}}|Wakacje\s+dla\s+dzieci{{SEP}}|LATO\s+w\s+{{VENUE}}{{SEP}}|Filmowe\s+wakacje\s+za\s+Rogiem{{SEP}}|Filmowe\s+lato{{SEP}}|Wakacje\s+w\s+[Kk]inie(?:\s+Orzeł)?{{SEP}}|Filmowe\s+lato\s+{{NSEP}}+:\s+)		Summer cycles ahead of the film, any separator: LATO '26 Wakacje z Klasyką Kina, Wakacje dla dzieci, LATO w <Venue>, Filmowe wakacje za Rogiem, Filmowe lato [<name>], Wakacje w kinie [Orzeł], Wakacje z klasyką [<name>] — was xtra-lato-wakacje-klasyka, xtra-wakacje-dla-dzieci, xtra-lato-w-kinie, xtra-filmowe-wakacje-za-rogiem, xtra-filmowe-lato, xtra-wakacje-w-kinie, xtra-filmowe-lato-named
-xtra-kobiece-strands	query				audience		(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory(?:\s+w\s+Kino\s+{{VENUE}})?|Wieczory\s+filmowe\s+na\s+boku){{SEP}}		ladies'-night strands (Kino dla Kobiet / TOMI dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)
+xtra-summer-prefix	query				banner	jun-sep	(?iu)^(?:LATO\s*['’‘`]?\s*\d{2,4}\.?\s*Wakacje\s+z\s+Klasyką\s+Kina{{SEP}}|Wakacje\s+dla\s+dzieci{{SEP}}|LATO\s+w\s+{{VENUE}}{{SEP}}|Filmowe\s+wakacje\s+za\s+Rogiem{{SEP}}|Filmowe\s+lato{{SEP}}|Wakacje\s+w\s+[Kk]inie(?:\s+Orzeł)?{{SEP}}|Filmowe\s+lato\s+{{NSEP}}+:\s+)		Summer cycles ahead of the film, any separator: LATO '26 Wakacje z Klasyką Kina, Wakacje dla dzieci, LATO w <Venue>, Filmowe wakacje za Rogiem, Filmowe lato [<name>], Wakacje w kinie [Orzeł], Wakacje z klasyką [<name>] — was xtra-lato-wakacje-klasyka, xtra-wakacje-dla-dzieci, xtra-lato-w-kinie, xtra-filmowe-wakacje-za-rogiem, xtra-filmowe-lato, xtra-wakacje-w-kinie, xtra-filmowe-lato-named	[["LATO W LUNIE | Elio","Elio"]]
+xtra-kobiece-strands	query				audience		(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory(?:\s+w\s+Kino\s+{{VENUE}})?|Wieczory\s+filmowe\s+na\s+boku){{SEP}}		ladies'-night strands (Kino dla Kobiet / TOMI dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)	[["Kobiecy świat: Zaproszenie","Zaproszenie"],["Kino dla kobiet- Spa Weekend","Spa Weekend"]]
 # Twelfth-wave (2026-06-25) audit of the TMDB-no-match corpus: programme/series
 # banners that prefix the film and weren't yet covered. Query-only strips (own
 # display row kept); each target verified to resolve on TMDB after the strip.
@@ -611,24 +615,24 @@ xtra-kobiece-strands	query				audience		(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Ba
 # · xtra-przeglad-filmow-prefix: 'Przegląd filmów <reżyser> - <film>' retrospective PREFIX — sibling of the existing '<film> - przegląd filmów <reż>' SUFFIX rule; the {{NSEP}} guard eats the director name and stops at the banner separator (Ziemia obiecana, Powidoki, Brzezina, Człowiek z marmuru)
 # · xtra-klasyka-cycles: 'Klasyka Kina / Klasyka na fali / Klasyka w <venue>: <film>' classics strands, any venue's name (Kino Kultura's 'Klasyka w Kulturze', NCKF's 'Klasyka w NCKF') (Milczenie owiec, Lot nad kukułczym gniazdem, La Strada, Przekleństwa niewinności) — siblings of the existing 'Klasyk w kinie:' rule
 # · xtra-nlecie-org-prefix: '70-lecie Wydawnictwa Poznańskiego: <film>' anniversary-of-an-organisation prefix; the name guard is {{NSEP}} so it stops at the banner separator (Wędrówka na północ)
-xtra-named-cycle-prefix	query				banner		(?iu)^(?:Cykl\s+{{NSEP}}+:\s+|Przegląd\s+{{NSEP}}+:\s+|Przegląd\s+filmów\s+{{NSEP}}+{{SEP}}|Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+{{VENUE}}){{SEP}}|\d+[-–]lecie\s+{{NSEP}}{2,40}{{SEP}})		A named cycle ahead of the film: Cykl <name>:, Przegląd <name>:, Przegląd filmów <name> <sep>, Klasyka w kinie:, Klasyka/Klasyki Kina / na fali / w <Venue> <sep>, <n>-lecie <name> <sep> — was xtra-cykl-prefix, xtra-przeglad-colon-prefix, xtra-przeglad-filmow-prefix, xtra-klasyka-cycles, xtra-nlecie-org-prefix
+xtra-named-cycle-prefix	query				banner		(?iu)^(?:Cykl\s+{{NSEP}}+:\s+|Przegląd\s+{{NSEP}}+:\s+|Przegląd\s+filmów\s+{{NSEP}}+{{SEP}}|Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+{{VENUE}}){{SEP}}|\d+[-–]lecie\s+{{NSEP}}{2,40}{{SEP}})		A named cycle ahead of the film: Cykl <name>:, Przegląd <name>:, Przegląd filmów <name> <sep>, Klasyka w kinie:, Klasyka/Klasyki Kina / na fali / w <Venue> <sep>, <n>-lecie <name> <sep> — was xtra-cykl-prefix, xtra-przeglad-colon-prefix, xtra-przeglad-filmow-prefix, xtra-klasyka-cycles, xtra-nlecie-org-prefix	[["70-lecie Wydawnictwa Poznańskiego: Wędrówka na północ","Wędrówka na północ"]]
 # Decoration suffixes (banner after the film); query-only strip keeps the row.
-xtra-tani-dzien-suffix	query				format		(?iu)\s+tani\s+(?:poniedziałek|wtorek)\s*$		'<film> tani poniedziałek/wtorek' cheap-day suffix (Supergirl, Toy Story 5) — sibling of the 'Tani wtorek:' prefix
-xtra-bare-format-suffix	query				format		(?iu)\s+(?:2D|3D)\s*$		'<film> 2D/3D' bare screen-format suffix the seed/canonical format strips miss (they require a dub/napisy word or parens) — Supergirl 2D
-xtra-spotkania-filmowe-banner	query				event		(?iu)^(?:\p{L}+\s+)?Spotkania\s+Filmowe\b[^:|]*[:|]\s*		'[<adj>] Spotkania Filmowe [„<cycle>”] : / | <film>' film-meeting banner — the pipe form + a leading-adjective form the seed 'spotkani…:' prefix (anchored, colon-only) misses (Spotkania Filmowe | Ojczyzna; Psychoanalityczne Spotkania Filmowe „W głębi”: Czytając Lolitę w Teheranie)
-xtra-festival-tag-prefix	query				festival		(?u){{FESTIVAL_TAG_NUMBERED}}(?=\S)		'11. UFF - <film>' / '19. FGA: <film>' numbered festival-acronym prefix, generic in the acronym (Demony, Za zwycięstwo, Szepty lasu) — see NumberedFestivalTag
-xtra-festival-year-tag-prefix	query				festival		(?u){{FESTIVAL_TAG_YEAR}}		'2026 LHFF <film>' year-numbered festival-acronym prefix, generic in the acronym (Scream, Night of the Living Dead) — see YearFestivalTag
-xtra-festival-tag-suffix	query				festival		(?u)^(.*\p{Ll}.*?){{FESTIVAL_TAG_AFTER_PIPE}}	$1	'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe (Atlantyda, Frances Ha, Kumotry) — see FestivalTagAfterPipe
+xtra-tani-dzien-suffix	query				format		(?iu)\s+tani\s+(?:poniedziałek|wtorek)\s*$		'<film> tani poniedziałek/wtorek' cheap-day suffix (Supergirl, Toy Story 5) — sibling of the 'Tani wtorek:' prefix	[["Lalka tani poniedziałek","Lalka"],["Primetime tani poniedziałek","Primetime"]]
+xtra-bare-format-suffix	query				format		(?iu)\s+(?:2D|3D)\s*$		'<film> 2D/3D' bare screen-format suffix the seed/canonical format strips miss (they require a dub/napisy word or parens) — Supergirl 2D	[["Digger 2D","Digger"],["Hubble 3D","Hubble"]]
+xtra-spotkania-filmowe-banner	query				event		(?iu)^(?:\p{L}+\s+)?Spotkania\s+Filmowe\b[^:|]*[:|]\s*		'[<adj>] Spotkania Filmowe [„<cycle>”] : / | <film>' film-meeting banner — the pipe form + a leading-adjective form the seed 'spotkani…:' prefix (anchored, colon-only) misses (Spotkania Filmowe | Ojczyzna; Psychoanalityczne Spotkania Filmowe „W głębi”: Czytając Lolitę w Teheranie)	[["Spotkania Filmowe | Primetime","Primetime"]]
+xtra-festival-tag-prefix	query				festival		(?u){{FESTIVAL_TAG_NUMBERED}}(?=\S)		'11. UFF - <film>' / '19. FGA: <film>' numbered festival-acronym prefix, generic in the acronym (Demony, Za zwycięstwo, Szepty lasu) — see NumberedFestivalTag	[["11. UFF - DIVIA","DIVIA"],["11. UFF - Kuźma","Kuźma"]]
+xtra-festival-year-tag-prefix	query				festival		(?u){{FESTIVAL_TAG_YEAR}}		'2026 LHFF <film>' year-numbered festival-acronym prefix, generic in the acronym (Scream, Night of the Living Dead) — see YearFestivalTag	[["2026 LHFF Scream (1996)","Scream (1996)"],["2026 LHFF Vincent Price: What Keeps Us Alive","Vincent Price: What Keeps Us Alive"]]
+xtra-festival-tag-suffix	query				festival		(?u)^(.*\p{Ll}.*?){{FESTIVAL_TAG_AFTER_PIPE}}	$1	'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe (Atlantyda, Frances Ha, Kumotry) — see FestivalTagAfterPipe	[["Alim | UFF","Alim"],["Odblask | UFF","Odblask"]]
 # Decoration suffixes (banner after the film).
-xtra-klub-filmowy-suffix	query				banner		(?iu){{SEP}}(?:\p{L}+\s+){0,3}Klub\s+Filmowy\b.*$		'<film> <sep> <name> Klub Filmowy <…>' film-club suffix (Backrooms. Bez wyjścia - Młodzieżowy Klub Filmowy Leżak; Tajny agent | Filozoficzny Klub Filmowy) — subsumes the former 'xtra-filozoficzny-klub-suffix'
-xtra-capital-i-format-wrapper	query				format		\s+I\s+(?i:2D|3D|DUB(?:BING)?|NAP(?:ISY)?|LEKTOR|ATMOS|IMAX|4DX)\s+I\s*$		'<film> I 2D I' — a cinema that wraps the screen-format tag in literal capital-'I' separators instead of pipes (Backrooms. Bez wyjścia I 2D I). The 'I's are case-SENSITIVE so the Polish conjunction ' i ' can't trigger it
-xtra-ostatni-seans-suffix	query				event		(?iu){{SEPD}}Ostatni\s+seans\s*$		'<film>. Ostatni seans' last-screening suffix (Rozmowa. Ostatni seans)
-xtra-czwartek-konesera-suffix	query				banner		(?iu)\s+czwartek\s+konesera\s*$		'<film> czwartek konesera' connoisseur-Thursday suffix (Werdykt czwartek konesera)
+xtra-klub-filmowy-suffix	query				banner		(?iu){{SEP}}(?:\p{L}+\s+){0,3}Klub\s+Filmowy\b.*$		'<film> <sep> <name> Klub Filmowy <…>' film-club suffix (Backrooms. Bez wyjścia - Młodzieżowy Klub Filmowy Leżak; Tajny agent | Filozoficzny Klub Filmowy) — subsumes the former 'xtra-filozoficzny-klub-suffix'	[["Danton | Polityczny Klub Filmowy","Danton"],["PRIMETIME - Młodzieżowy Klub Filmowy LEŻAK","PRIMETIME"]]
+xtra-capital-i-format-wrapper	query				format		\s+I\s+(?i:2D|3D|DUB(?:BING)?|NAP(?:ISY)?|LEKTOR|ATMOS|IMAX|4DX)\s+I\s*$		'<film> I 2D I' — a cinema that wraps the screen-format tag in literal capital-'I' separators instead of pipes (Backrooms. Bez wyjścia I 2D I). The 'I's are case-SENSITIVE so the Polish conjunction ' i ' can't trigger it	[["Backrooms. Bez wyjścia I 2D I","Backrooms. Bez wyjścia"]]
+xtra-ostatni-seans-suffix	query				event		(?iu){{SEPD}}Ostatni\s+seans\s*$		'<film>. Ostatni seans' last-screening suffix (Rozmowa. Ostatni seans)	[["Rozmowa. Ostatni seans","Rozmowa"]]
+xtra-czwartek-konesera-suffix	query				banner		(?iu)\s+czwartek\s+konesera\s*$		'<film> czwartek konesera' connoisseur-Thursday suffix (Werdykt czwartek konesera)	[["Obcy czwartek konesera","Obcy"],["500 MIL Czwartek Konesera","500 MIL"]]
 # · xtra-przed-filmem-suffix: '<film> - przed filmem wykład prof. …' / '<film> | przed filmem …' what-happens-before-the-screening suffix (a lecture, a talk): TMDB's search missed the film behind it, and director + year landed on another of the director's films (EROICA - przed filmem wykład prof. Marka Hendrykowskiego → Człowiek na torze, 2026-09)
 # · xtra-dot-spotkanie-suffix: '<film>. Spotkanie z <person>' meeting suffix introduced by a PERIOD (or any separator) — the seed meeting-suffix only fires after a dash/pipe/plus (Człowiek z marmuru. Spotkanie z Michałem Tarkowskim)
-xtra-meeting-tail	query				event		(?iu)(?:{{SEPD}}przed\s+filmem\b.*$|{{SEPD}}Spotkani\p{L}*\s+z\b.*$)		'<film>. przed filmem …' / '<film> - Spotkanie z …' what comes with the screening, cut from the first such note on — was xtra-przed-filmem-suffix, xtra-dot-spotkanie-suffix
-xtra-filmoteka-dojrzalego	query				banner		(?iu){{SEP}}Filmoteka\s+Dojrzałego\s+Człowieka\s*$		'<film> - Filmoteka Dojrzałego Człowieka' mature-viewers'-strand suffix (Sprawiedliwość owiec)
-xtra-format-pl-suffix	query				format		(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$		'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)
+xtra-meeting-tail	query				event		(?iu)(?:{{SEPD}}przed\s+filmem\b.*$|{{SEPD}}Spotkani\p{L}*\s+z\b.*$)		'<film>. przed filmem …' / '<film> - Spotkanie z …' what comes with the screening, cut from the first such note on — was xtra-przed-filmem-suffix, xtra-dot-spotkanie-suffix	[["PASAŻERKA - przed filmem wykład prof. Marka Hendrykowskiego","PASAŻERKA"],["PIĘKNOŚĆ DNIA - przed filmem wykład prof. Marka Hendrykowskiego","PIĘKNOŚĆ DNIA"]]
+xtra-filmoteka-dojrzalego	query				banner		(?iu){{SEP}}Filmoteka\s+Dojrzałego\s+Człowieka\s*$		'<film> - Filmoteka Dojrzałego Człowieka' mature-viewers'-strand suffix (Sprawiedliwość owiec)	[["Sprawiedliwość owiec - Filmoteka Dojrzałego Człowieka","Sprawiedliwość owiec"]]
+xtra-format-pl-suffix	query				format		(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$		'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)	[["Straszny film 2D NAPISY PL","Straszny film"]]
 # The optional trailing '[seans bez reklam]' (no-ads-screening) tag is folded
 # into this rule rather than stripped separately: `TitleRuleSet.structural`
 # is a single ordered pass, not a fixpoint — a standalone tag-strip
@@ -638,9 +642,9 @@ xtra-format-pl-suffix	query				format		(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|n
 # resolved "Kupiłem motocykl, który jest wampirem" (tmdbId 41153) row —
 # Multikino Stary Browar 2026-08-28 duplicate class, same shape as the Harry
 # Potter "rocznica premiery" gap.
-xtra-najlepsze-suffix	query				banner		(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*(?:\[seans\s+bez\s+reklam\])?\s*$		'<film> | Najlepsze z Najgorszych [seans bez reklam]' bad-movie-night SUFFIX form, with its optional no-ads tag (Brudny Henryk, Kupiłem motocykl który jest wampirem)
-xtra-exhibition-on-screen	query				relay		(?iu)^Exhibition\s+On\s+Screen:\s*		'Exhibition On Screen: <film>' art-doc series (David Hockney. Pejzaże, portrety i martwe natury)
-xtra-pipe-cycle-banner	query				banner		(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|FKS|Retrospektywa|Klasyk[ai]|Klasyczne|Klub\s+Filmowy|Poniedziałki\s+ze?|Wtorki\s+ze?|Młode\s+Horyzonty|Kinoteka|Filmowy\s+Wałbrzych|Pokaz\s+przedpremierowy|Przedpremiera|Kino\s+przy\s+herbatce|Kino\s+dyskomfortu|Tylko\s+sztuka|Eko-Kino|10/10)\b.*$		'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii, FEDERICO FELLINI: ciao a tutti! | GŁOS Z KSIĘŻYCA stay intact). The keyword list is the whole rule: a 2026-09-05 audit found 56 PL films known ONLY by a pipe-suffixed strand, 32 of them (57%, against a ~26% corpus baseline) with no TMDB id because the strand went into the search query — 'Młode Horyzonty' alone accounted for 52. Widening the guard is how this rule grows; loosening it is how it eats a film. ONE MEASURED SIDE EFFECT, traced end to end 2026-09-05: a decorated row stops INHERITING the base film's release year. The Kinoteka listing of "90. urodziny Pavarottiego" has its own detail page, and that page states no year at all (only a 95-minute runtime); the 2026 it used to carry came from the BARE row, whose detail does state it. Stripping the strand keeps the two apart, so `MovieCache.venueSlotYear` finds no year on the venue's slot and the row is never promoted from a yearless key onto 2026. That is the rule working — a decorated edition is not the base film — and the row keeps the year its own source actually gives, which is none. It costs that card its year pill, against 52 films whose TMDB query this fixes and a fixture row ("Kolor purpury | Kinoteka jest Kobietą") that goes from a 2026 key with no synopsis to Spielberg's 1985 film. Worth knowing because it means a search-tier keyword CAN move a stored key year, by way of what the row is allowed to be merged with
+xtra-najlepsze-suffix	query				banner		(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*(?:\[seans\s+bez\s+reklam\])?\s*$		'<film> | Najlepsze z Najgorszych [seans bez reklam]' bad-movie-night SUFFIX form, with its optional no-ads tag (Brudny Henryk, Kupiłem motocykl który jest wampirem)	[["THE ROOM RETURNS | Najlepsze z najgorszych","THE ROOM RETURNS"],["The Room Returns | NAJLEPSZE Z NAJGORSZYCH","The Room Returns"]]
+xtra-exhibition-on-screen	query				relay		(?iu)^Exhibition\s+On\s+Screen:\s*		'Exhibition On Screen: <film>' art-doc series (David Hockney. Pejzaże, portrety i martwe natury)	[["EXHIBITION ON SCREEN: MONET","MONET"],["Exhibition On Screen: Monet","Monet"]]
+xtra-pipe-cycle-banner	query				banner		(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|FKS|Retrospektywa|Klasyk[ai]|Klasyczne|Klub\s+Filmowy|Poniedziałki\s+ze?|Wtorki\s+ze?|Młode\s+Horyzonty|Kinoteka|Filmowy\s+Wałbrzych|Pokaz\s+przedpremierowy|Przedpremiera|Kino\s+przy\s+herbatce|Kino\s+dyskomfortu|Tylko\s+sztuka|Eko-Kino|10/10)\b.*$		'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii, FEDERICO FELLINI: ciao a tutti! | GŁOS Z KSIĘŻYCA stay intact). The keyword list is the whole rule: a 2026-09-05 audit found 56 PL films known ONLY by a pipe-suffixed strand, 32 of them (57%, against a ~26% corpus baseline) with no TMDB id because the strand went into the search query — 'Młode Horyzonty' alone accounted for 52. Widening the guard is how this rule grows; loosening it is how it eats a film. ONE MEASURED SIDE EFFECT, traced end to end 2026-09-05: a decorated row stops INHERITING the base film's release year. The Kinoteka listing of "90. urodziny Pavarottiego" has its own detail page, and that page states no year at all (only a 95-minute runtime); the 2026 it used to carry came from the BARE row, whose detail does state it. Stripping the strand keeps the two apart, so `MovieCache.venueSlotYear` finds no year on the venue's slot and the row is never promoted from a yearless key onto 2026. That is the rule working — a decorated edition is not the base film — and the row keeps the year its own source actually gives, which is none. It costs that card its year pill, against 52 films whose TMDB query this fixes and a fixture row ("Kolor purpury | Kinoteka jest Kobietą") that goes from a 2026 key with no synopsis to Spielberg's 1985 film. Worth knowing because it means a search-tier keyword CAN move a stored key year, by way of what the row is allowed to be merged with	[["Crash | KLASYCZNE ŚRODY","Crash"],["Fargo | 10/10 Klasyka filmowa","Fargo"]]
 # Sixteenth-wave (2026-07-06) audit of the TMDB-no-match corpus (prod mirror,
 # 220 rating-less rows): decoration that PREFIXES or SUFFIXES a real,
 # TMDB-resolvable film. Query-only strips — the screening keeps its own
@@ -650,7 +654,7 @@ xtra-pipe-cycle-banner	query				banner		(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|
 # split the title, and `caseSegment` then sentence-cases the isolated all-caps
 # 'WSP' banner to 'Wsp:' — a display regression the 3 rows it helped don't
 # justify. An acronym cycle needs a recase carve-out before it can be stripped.)
-xtra-4k-suffix	query				edition		(?iu)\s*(?:\s+4K\b|\(\s*4K\s*\))\s*$		'<film> (YYYY) 4K' / '<film> (4K)' trailing restoration-resolution tag, bare or parenthesised — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323, 'Do utraty tchu (4K)' → base film)
+xtra-4k-suffix	query				edition		(?iu)\s*(?:\s+4K\b|\(\s*4K\s*\))\s*$		'<film> (YYYY) 4K' / '<film> (4K)' trailing restoration-resolution tag, bare or parenthesised — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323, 'Do utraty tchu (4K)' → base film)	[["Animal Farm 4K","Animal Farm"],["Queen Budapest in 4K","Queen Budapest in"]]
 # Re-release / restoration banner appended to a classic ('… - PONOWNIE NA
 # WIELKIM EKRANIE', '… Wersja zremasterowana/odrestaurowana'); query-only
 # strip resolves the bare film (Żywot Briana at Kinoteatr Rialto).
@@ -669,9 +673,9 @@ xtra-4k-suffix	query				edition		(?iu)\s*(?:\s+4K\b|\(\s*4K\s*\))\s*$		'<film> (
 #  - '(re-release)'. Purely a re-issue marker; the film is the same film.
 # · xtra-rerelease-suffix: '<film> - PONOWNIE NA WIELKIM EKRANIE / Wersja zremasterowana' re-release/restoration suffix (Żywot Briana)
 # · xtra-restored-adjective-first-suffix: '<film> - odrestaurowana wersja [4K]' restoration suffix with the ADJECTIVE first — the mirror of 'xtra-rerelease-suffix', which only spells 'wersja odrestaurowana' (DKF: Absolwent → TMDB 1443)
-xtra-restored-version-suffix	query				edition		(?iu)(?:\s*[-–—|.]\s*(?:ponownie\s+na\s+wielkim\s+ekranie|wersja\s+(?:zremasterowan\w*|odrestaurowan\w*|zrekonstruowan\w*))\s*$|\s*[-–—|.]\s*(?:odrestaurowan\w*|zremasterowan\w*|zrekonstruowan\w*)\s+wersj\w*\s*$)		'<film> - ponownie na wielkim ekranie' / '- wersja zremasterowana' / '- odrestaurowana wersja' re-release tail — was xtra-rerelease-suffix, xtra-restored-adjective-first-suffix
-xtra-subtitle-paren-tag	query				format		(?iu)\s*\((?:napisy|dubbing|lektor)(?:\s+\p{L}{2,})?\)\s*$		'<film> (napisy PL)' / '(dubbing)' / '(lektor)' parenthesised language tag left on a title that reached the resolver — FormatTags peels these at ingest, this catches the ones that get through (Andy Warhol. Amerykański sen → TMDB 1108437)
-xtra-rerelease-paren-suffix	query				edition		(?iu)\s*\(re\s*[-\s]?\s*release\)\s*$		'<film> (re-release)' / '(re- release)' re-issue marker — the same film (Auta (re-release) → Auta; Kino Światowid: Halloween '26: Inni (re- release))
+xtra-restored-version-suffix	query				edition		(?iu)(?:\s*[-–—|.]\s*(?:ponownie\s+na\s+wielkim\s+ekranie|wersja\s+(?:zremasterowan\w*|odrestaurowan\w*|zrekonstruowan\w*))\s*$|\s*[-–—|.]\s*(?:odrestaurowan\w*|zremasterowan\w*|zrekonstruowan\w*)\s+wersj\w*\s*$)		'<film> - ponownie na wielkim ekranie' / '- wersja zremasterowana' / '- odrestaurowana wersja' re-release tail — was xtra-rerelease-suffix, xtra-restored-adjective-first-suffix	[["Rejs - zremasterowana wersja","Rejs"],["Podziemny krąg - zrekonstruowana wersja","Podziemny krąg"]]
+xtra-subtitle-paren-tag	query				format		(?iu)\s*\((?:napisy|dubbing|lektor)(?:\s+\p{L}{2,})?\)\s*$		'<film> (napisy PL)' / '(dubbing)' / '(lektor)' parenthesised language tag left on a title that reached the resolver — FormatTags peels these at ingest, this catches the ones that get through (Andy Warhol. Amerykański sen → TMDB 1108437)	[["Tony (napisy)","Tony"],["Digger (napisy)","Digger"]]
+xtra-rerelease-paren-suffix	query				edition		(?iu)\s*\(re\s*[-\s]?\s*release\)\s*$		'<film> (re-release)' / '(re- release)' re-issue marker — the same film (Auta (re-release) → Auta; Kino Światowid: Halloween '26: Inni (re- release))	[["Auta (re-release)","Auta"],["Halloween '26: Inni (re- release)","Halloween '26: Inni"]]
 # Eighteenth-wave (2026-07-09) audit of the TMDB-no-match corpus (prod mirror,
 # 200 rating-less rows). An English-subtitled screening is a DISTINCT version
 # (separate audience), so — exactly like the Ukrainian-language rule above — it
@@ -686,7 +690,7 @@ xtra-rerelease-paren-suffix	query				edition		(?iu)\s*\(re\s*[-\s]?\s*release\)\
 # treatment: own row, query stripped to the base film.
 # · xtra-english-subtitles-suffix: '<film> - english subtitles' / '<film> [eng subtitles only]' / '<film> (deutsch with English subs)' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)
 # · xtra-angielskie-napisy-suffix: '<film> (z angielskimi napisami)' Polish spelling of the English-subtitled-screening marker — sibling of xtra-english-subtitles-suffix (Kino TOMI: Lalka)
-xtra-english-subtitles-suffix	query				format		(?iu)(?:\s*[-–—\[(]\s*\+?\s*(?:(?<=[\[(])\p{L}+\s+with\s+)?eng(?:lish)?\s+sub(?:s|titles)?(?:\s+only)?\s*[\])]?\s*$|\s*[-–—\[(]\s*z\s+angielskimi\s+napisami\s*[\])]?\s*$)		'<film> - English subtitles' / '[ENG SUBS]' / '(z angielskimi napisami)' subtitle note — was xtra-english-subtitles-suffix, xtra-angielskie-napisy-suffix
+xtra-english-subtitles-suffix	query				format		(?iu)(?:\s*[-–—\[(]\s*\+?\s*(?:(?<=[\[(])\p{L}+\s+with\s+)?eng(?:lish)?\s+sub(?:s|titles)?(?:\s+only)?\s*[\])]?\s*$|\s*[-–—\[(]\s*z\s+angielskimi\s+napisami\s*[\])]?\s*$)		'<film> - English subtitles' / '[ENG SUBS]' / '(z angielskimi napisami)' subtitle note — was xtra-english-subtitles-suffix, xtra-angielskie-napisy-suffix	[["Lalka (+ ENG sub)","Lalka"],["The Crush - english subtitles","The Crush"]]
 # Twenty-second wave (2026-08-28) audit of the prod TMDB-no-match corpus, this
 # time corpus-wide rather than Kinoteka-only (the class of bug the
 # '25. rocznica premiery' / 'seans bez reklam' fixes closed for Kinoteka). Each
@@ -699,16 +703,16 @@ xtra-english-subtitles-suffix	query				format		(?iu)(?:\s*[-–—\[(]\s*\+?\s*(
 #    guest name attached. Capture the film between the two colons; anchored on
 #    a trailing 'Firstname Lastname' so a title with its own colon-subtitle
 #    can't be amputated (Odzyskany, Kino Millenium).
-xtra-glm-guest-prefix	query				banner		(?iu)^GŁM:\s*(.+?):\s*(?-i:\p{Lu})\S+\s+(?-i:\p{Lu})\S+\s*$	$1	'GŁM:<film>:<Guest Name>' Kino Millenium director/guest Q&A banner (GŁM:ODZYSKANY:MARCIN KWAŚNY → Odzyskany)
+xtra-glm-guest-prefix	query				banner		(?iu)^GŁM:\s*(.+?):\s*(?-i:\p{Lu})\S+\s+(?-i:\p{Lu})\S+\s*$	$1	'GŁM:<film>:<Guest Name>' Kino Millenium director/guest Q&A banner (GŁM:ODZYSKANY:MARCIN KWAŚNY → Odzyskany)	[["GŁM:ODZYSKANY:MARCIN KWAŚNY","ODZYSKANY"]]
 #  - 'Sztuka na ekranie - <film>' already strips (xtra-sztuka-na-ekranie), but
 #    the André Rieu summer-concert listing also carries a re-broadcast note
 #    the base row never got.
-xtra-koncert-z-rok-suffix	query				event		(?iu)\s*\(\s*koncert\s+z\s+\d{4}\s*\)\s*$		'<film> (koncert z YYYY)' concert-recording-year note (André Rieu. Niech żyje Maastricht!)
+xtra-koncert-z-rok-suffix	query				event		(?iu)\s*\(\s*koncert\s+z\s+\d{4}\s*\)\s*$		'<film> (koncert z YYYY)' concert-recording-year note (André Rieu. Niech żyje Maastricht!)	[["SZTUKA NA EKRANIE - André Rieu Niech żyje Maastricht! (koncert z 2026)","André Rieu Niech żyje Maastricht!"]]
 #  - The seed przedpremiera-suffix rule requires {{SEP}} (a real separator
 #    character) before 'przedpremiera'; Kino Kijów's listing separates with a
 #    bare space, so it never matched. Anchored on the exact word so a real
 #    title can't be amputated.
-xtra-przedpremiera-bare-space-suffix	query				event		(?i)\s+przedpremiera\s*$		'<film> PRZEDPREMIERA' bare-space pre-premiere suffix (no separator character) — sibling of the seed {{SEP}}-anchored rule (Mistyczka PRZEDPREMIERA, Kino Kijów)
+xtra-przedpremiera-bare-space-suffix	query				event		(?i)\s+przedpremiera\s*$		'<film> PRZEDPREMIERA' bare-space pre-premiere suffix (no separator character) — sibling of the seed {{SEP}}-anchored rule (Mistyczka PRZEDPREMIERA, Kino Kijów)	[["Mistyczka PRZEDPREMIERA","Mistyczka"]]
 # Fourteenth-wave (2026-06-25) audit of the TMDB-no-match corpus via the
 # resolve-by-synopsis report: programme-cycle banners that PREFIX a real,
 # TMDB-resolvable film and weren't yet covered. Query-only strips (the
@@ -764,7 +768,7 @@ xtra-przedpremiera-bare-space-suffix	query				event		(?i)\s+przedpremiera\s*$		'
 # · xtra-smok-prefix: 'SMOK (Spotkania Młodych Odkrywców Kina): <film>' youth-discovery strand prefix (Przekleństwa niewinności)
 # · xtra-wymiary-kina-na-prefix: 'Wymiary Kina na <place>: <film>' preview-series prefix, spelled-out form, any venue's place (Kino Wisła's 'Wymiary Kina na Placu Wilsona: Miłość, śmierć i dojrzewanie w Camp Miasma')
 # · xtra-poniedzialki-konwicki-prefix: 'Poniedziałki z Konwickim: <film>' Mondays-with-<author> cycle PREFIX — the existing 'xtra-poniedzialki-konwicki' only caught the '| Poniedziałki z Konwickim' SUFFIX (Lawa, Salto, Dolina Issy)
-xtra-strand-prefix	query				banner		(?iu)^(?:FILMY\s+Z\s+LEKTOREM{{SEP}}|ŚMIECH\s+PRZEZ\s+ŁZY{{SEP}}|Niedziela\s+z\s+Dokumentem{{SEP}}|Kinowy\s+Poranek{{SEP}}|Przybliżenia\s+[-–—]\s+okiem\s+psychoanalizy{{SEP}}|Kino\s+bez\s+barier\s+dla\s+dzieci{{SEP}}|Classy\s+Monday{{SEP}}|Maraton{{SEP}}|Dialog\s+przez\s+Film:\s*|Mistrzowska\s+Kreska:\s*|Lekcje\s+Filmowe\s*[-–—]\s*|Najlepsze\s+z\s+Najgorszych\s*[-–—]\s*|Kino\s+dla\s+Ducha\s*[…\.]{1,3}\s*|SMOK\s*\(Spotkania\s+Młodych\s+Odkrywców\s+Kina\)\s*:\s*|Wymiary\s+Kina\s+na\s+{{VENUE}}(?:\s+{{VENUE}})?\s*:\s*|Poniedziałki\s+z\s+{{NSEP}}+:\s+)		Polish programme strands ahead of the film: FILMY Z LEKTOREM, ŚMIECH PRZEZ ŁZY, Niedziela z Dokumentem, Kinowy Poranek, Przybliżenia – okiem psychoanalizy, Kino bez barier dla dzieci, Classy Monday, Maraton, Dialog przez Film, Mistrzowska Kreska, Lekcje Filmowe, Najlepsze z Najgorszych –, Kino dla Ducha…, SMOK (…), Wymiary Kina na <Place>, Poniedziałki z <name> — was xtra-filmy-z-lektorem, xtra-smiech-przez-lzy, xtra-niedziela-z-dokumentem, xtra-kinowy-poranek, xtra-przyblizenia-psychoanaliza, xtra-kino-bez-barier-dzieci, xtra-classy-monday-prefix, xtra-maraton-prefix, xtra-dialog-przez-film, xtra-mistrzowska-kreska, xtra-lekcje-filmowe, xtra-najlepsze-dash-prefix, xtra-kino-dla-ducha-prefix, xtra-smok-prefix, xtra-wymiary-kina-na-prefix, xtra-poniedzialki-konwicki-prefix
+xtra-strand-prefix	query				banner		(?iu)^(?:FILMY\s+Z\s+LEKTOREM{{SEP}}|ŚMIECH\s+PRZEZ\s+ŁZY{{SEP}}|Niedziela\s+z\s+Dokumentem{{SEP}}|Kinowy\s+Poranek{{SEP}}|Przybliżenia\s+[-–—]\s+okiem\s+psychoanalizy{{SEP}}|Kino\s+bez\s+barier\s+dla\s+dzieci{{SEP}}|Classy\s+Monday{{SEP}}|Maraton{{SEP}}|Dialog\s+przez\s+Film:\s*|Mistrzowska\s+Kreska:\s*|Lekcje\s+Filmowe\s*[-–—]\s*|Najlepsze\s+z\s+Najgorszych\s*[-–—]\s*|Kino\s+dla\s+Ducha\s*[…\.]{1,3}\s*|SMOK\s*\(Spotkania\s+Młodych\s+Odkrywców\s+Kina\)\s*:\s*|Wymiary\s+Kina\s+na\s+{{VENUE}}(?:\s+{{VENUE}})?\s*:\s*|Poniedziałki\s+z\s+{{NSEP}}+:\s+)		Polish programme strands ahead of the film: FILMY Z LEKTOREM, ŚMIECH PRZEZ ŁZY, Niedziela z Dokumentem, Kinowy Poranek, Przybliżenia – okiem psychoanalizy, Kino bez barier dla dzieci, Classy Monday, Maraton, Dialog przez Film, Mistrzowska Kreska, Lekcje Filmowe, Najlepsze z Najgorszych –, Kino dla Ducha…, SMOK (…), Wymiary Kina na <Place>, Poniedziałki z <name> — was xtra-filmy-z-lektorem, xtra-smiech-przez-lzy, xtra-niedziela-z-dokumentem, xtra-kinowy-poranek, xtra-przyblizenia-psychoanaliza, xtra-kino-bez-barier-dzieci, xtra-classy-monday-prefix, xtra-maraton-prefix, xtra-dialog-przez-film, xtra-mistrzowska-kreska, xtra-lekcje-filmowe, xtra-najlepsze-dash-prefix, xtra-kino-dla-ducha-prefix, xtra-smok-prefix, xtra-wymiary-kina-na-prefix, xtra-poniedzialki-konwicki-prefix	[["Lekcje Filmowe - Nić widmo","Nić widmo"],["Mistrzowska Kreska: Proces","Proces"]]
 # Twenty-third wave, continued (see the prog block above for why). Kino Sokół
 # Sokółka's holiday-mornings strand puts the banner FIRST and the film in quotes
 # after it, with no colon between them — so the colon-anchored
@@ -774,7 +778,7 @@ xtra-strand-prefix	query				banner		(?iu)^(?:FILMY\s+Z\s+LEKTOREM{{SEP}}|ŚMIECH
 # LEFT curly “ this cinema opens with has no such rule and arrives verbatim.
 # 'Film\p{L}*' because the same listing spells the banner 'FILMOWE' three times
 # and 'FILMWE' once.
-xtra-wakacyjne-poranki-quoted	query				junk	jun-sep	(?iu)^Wakacyjne\s+Poranki\s+Film\p{L}*\s*[“„"]\s*(.+?)\s*[”"]\s*$	$1	'WAKACYJNE PORANKI FILMOWE “<film>”' Kino Sokół Sokółka holiday-mornings strand — banner first, film QUOTED after it with no colon, so the colon-anchored xtra-pp-wakacyjne-cycle cannot reach it (Jutro będę odważny → TMDB 1470499, Psoty → 1584452, Miss Moxy. Kocia ekipa → 587357)
+xtra-wakacyjne-poranki-quoted	query				junk	jun-sep	(?iu)^Wakacyjne\s+Poranki\s+Film\p{L}*\s*[“„"]\s*(.+?)\s*[”"]\s*$	$1	'WAKACYJNE PORANKI FILMOWE “<film>”' Kino Sokół Sokółka holiday-mornings strand — banner first, film QUOTED after it with no colon, so the colon-anchored xtra-pp-wakacyjne-cycle cannot reach it (Jutro będę odważny → TMDB 1470499, Psoty → 1584452, Miss Moxy. Kocia ekipa → 587357)	[["WAKACYJNE PORANKI FILMWE “DAVID”","DAVID"],["WAKACYJNE PORANKI FILMWE “PSOTY”","PSOTY"]]
 # Last of the strips: the quoted-film rules above read the premiere tail as their banner.
 # Trailing '– Premiera' release-announcement suffix, in every separator/case
 # shape ('– Premiera', '- Wielka Premiera', '| Polska Premiera', ': śląska
@@ -798,62 +802,62 @@ xtra-wakacyjne-poranki-quoted	query				junk	jun-sep	(?iu)^Wakacyjne\s+Poranki\s+
 # base without turning canonical into a general format stripper (that stays
 # FormatTags' job). Ordered before the trailing year/format strips so
 # 'Film (2025) – Premiera' still folds its year.
-xtra-premiera-announcement-suffix	query				event		(?iu)(?:{{SEP}}(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$		'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — stripped for the LOOKUP only: a premiere screening keeps its own title and row (user, 2026-10-01)
+xtra-premiera-announcement-suffix	query				event		(?iu)(?:{{SEP}}(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$		'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — stripped for the LOOKUP only: a premiere screening keeps its own title and row (user, 2026-10-01)	[["Ojczyzna | ŚLĄSKA PREMIERA","Ojczyzna"],["RUNNER - 2D napisy - PREMIERA KRAJOWA","RUNNER"]]
 # An encore is a repeat showing of a broadcast, never part of its title: US "The Metropolitan Opera: Così fan
 # tutte ENCORE (2026)" ×7 found nothing on TMDB until the word came off. Never the whole title ("Encore").
-xtra-encore-suffix	query				relay		(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)		'<broadcast> ENCORE (2026)' encore-screening tag
+xtra-encore-suffix	query				relay		(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)		'<broadcast> ENCORE (2026)' encore-screening tag	[["Avengers Endgame: Encore","Avengers Endgame:"],["Avengers: Endgame Encore","Avengers: Endgame"]]
 # A preview billed with its film, in German and English programmes alike: the DE recording of 2026-10-12 searched
 # "Preview: Dune: Part Three" ×23, "Der perfekte Urlaub - CineLady Preview" ×25 and a dozen other spellings, and
 # found nothing. A preview with NO film ("Sneak Preview") is the clients' to drop (NonMovieEventClassifier).
 # In front: up to two words and the "preview" closed by a separator. Behind: after a separator, or in brackets,
 # up to three qualifier words; bare, only the "early fan" / "all inclusive" qualifiers or a "…preview" compound,
 # so a film's own last words are never taken for a qualifier — and never a bare "Sneak Preview", which names none.
-xtra-preview-prefix	query				event		(?iu)^(?:[\p{L}\p{N}]+[\s-]+){0,2}\p{L}*preview\s*[:|–—-]\s*(?=\S)		'Preview: <film>' / 'IMAX-Preview: <film>' / 'Early Fan Preview - <film>' / 'Early Fan Preview | <film>' / 'CINEVILLE PREVIEW: <film>' (DE 2026-10-12: CineStar, Astor, IL KINO, Filmwelt Lippe)
-xtra-preview-suffix	query				event		(?iu)(?:\s*[-–—|]\s*(?:[\p{L}\p{N}]+\s+){0,3}|\s*\(\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*\)\s*$)|\s*"\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*"\s*$)|(?<=\S)(?<!sneak)\s+(?:(?:early\s+)?fan\s+|all\s+inclusive\s+)?)\p{L}*preview\s*[)"]?\s*$		'<film> - CineLady Preview' / '<film> (auch Early Fan Preview)' / '<film> "Early Fan Preview"' / '<film> EARLY FAN PREVIEW' / '<film> Mitternachtspreview' (DE 2026-10-12: CineStar, Studio Bielefeld, Das Lumen, CineCenter, Beluga Kino)
+xtra-preview-prefix	query				event		(?iu)^(?:[\p{L}\p{N}]+[\s-]+){0,2}\p{L}*preview\s*[:|–—-]\s*(?=\S)		'Preview: <film>' / 'IMAX-Preview: <film>' / 'Early Fan Preview - <film>' / 'Early Fan Preview | <film>' / 'CINEVILLE PREVIEW: <film>' (DE 2026-10-12: CineStar, Astor, IL KINO, Filmwelt Lippe)	[["KidsPreview: Der Regenbogenfisch","Der Regenbogenfisch"],["KidsPreview: Asterix und das Königreich Nubien","Asterix und das Königreich Nubien"]]
+xtra-preview-suffix	query				event		(?iu)(?:\s*[-–—|]\s*(?:[\p{L}\p{N}]+\s+){0,3}|\s*\(\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*\)\s*$)|\s*"\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*"\s*$)|(?<=\S)(?<!sneak)\s+(?:(?:early\s+)?fan\s+|all\s+inclusive\s+)?)\p{L}*preview\s*[)"]?\s*$		'<film> - CineLady Preview' / '<film> (auch Early Fan Preview)' / '<film> "Early Fan Preview"' / '<film> EARLY FAN PREVIEW' / '<film> Mitternachtspreview' (DE 2026-10-12: CineStar, Studio Bielefeld, Das Lumen, CineCenter, Beluga Kino)	[["Clayface (Preview)","Clayface"],["La Bola Negra Preview","La Bola Negra"]]
 # A festival's preview named after a pipe: the preview and the festival it previews go together.
-xtra-preview-pipe-tail	query				event		(?iu)(?<=\S)\s*\|\s*\p{L}*preview(?![\p{L}\p{N}]).*$		'<film> | Preview Osteuropäische Filmtage 2026' festival-preview tail (DE 2026-10-12: Zentralkino Dresden Minotaurus)
+xtra-preview-pipe-tail	query				event		(?iu)(?<=\S)\s*\|\s*\p{L}*preview(?![\p{L}\p{N}]).*$		'<film> | Preview Osteuropäische Filmtage 2026' festival-preview tail (DE 2026-10-12: Zentralkino Dresden Minotaurus)	[["Minotaurus | Preview Osteuropäische Filmtage 2026","Minotaurus"]]
 # A preview or Vorpremiere billed with its date and time — after a comma, a dash or in brackets: "…, Preview am
 # 25.10. um 15 Uhr" searched whole while its "… - Preview" sibling resolved. Only date and time words may follow
 # the marker, a digit among them (and a German weekday's abbreviation: "Preview am Mi. 18.11."), so a preview naming
 # anything else is the rules' above.
-xtra-preview-dated-tail	query				event		(?iu)(?<=\S)\s*(?:[,|–—-]\s*|\(\s*)(?:[\p{L}\p{N}]+\s+){0,2}?\p{L}*(?:preview|vorpremiere)(?=[^()]*\d)(?:[\s,]+(?:am|um|ab|on|at|uhr|h|(?:mo|di|mi|do|fr|sa|so)\.|\d{1,2}(?:[.:/]\d{1,2}){0,2}\.?(?:\d{2,4})?)(?![\p{L}\p{N}]))+\s*\)?\s*$		'<film>, Preview am 25.10. um 15 Uhr' / '<film> - Vorpremiere am 25.10.2026' / '<film> (Preview 25.10. 20:00 Uhr)' dated preview tail (DE 2026-10-13: FilmRaum's Das Geheimnis der gestohlenen Maske)
+xtra-preview-dated-tail	query				event		(?iu)(?<=\S)\s*(?:[,|–—-]\s*|\(\s*)(?:[\p{L}\p{N}]+\s+){0,2}?\p{L}*(?:preview|vorpremiere)(?=[^()]*\d)(?:[\s,]+(?:am|um|ab|on|at|uhr|h|(?:mo|di|mi|do|fr|sa|so)\.|\d{1,2}(?:[.:/]\d{1,2}){0,2}\.?(?:\d{2,4})?)(?![\p{L}\p{N}]))+\s*\)?\s*$		'<film>, Preview am 25.10. um 15 Uhr' / '<film> - Vorpremiere am 25.10.2026' / '<film> (Preview 25.10. 20:00 Uhr)' dated preview tail (DE 2026-10-13: FilmRaum's Das Geheimnis der gestohlenen Maske)	[["La bola negra , Preview am Mi. 18.11. um 20 Uhr","La bola negra"],["Das Geheimnis der gestohlenen Maske, Preview am 25.10. um 15 Uhr","Das Geheimnis der gestohlenen Maske"]]
 # A subtitle note in brackets naming the languages ("(Mandarin with engl.Sub)", "(koreanisch mit engl.UT)",
 # "(deutsch with English subs)" — six in the DE recording of 2026-10-13): FormatTags' bracket peel takes
 # "(subtitled)", not an abbreviated "Sub" or "UT" inside a sentence.
-xtra-subtitle-note-bracket	query				format		(?iu)(?<=\S)\s*\([^()]*(?<![\p{L}\p{N}])(?:with|mit|w/)\s+(?:engl?\.?|english|dt\.?|deutschen?)\s*(?:sub(?:s|titles?)?|ut|untertiteln?)(?![\p{L}\p{N}])[^()]*\)\s*$		'<film> (Mandarin with engl.Sub)' / '<film> (koreanisch mit engl.UT)' bracketed subtitle note (DE 2026-10-13: Universum-City Karlsruhe and five more)
-xtra-vorpremiere-suffix	query				event		(?iu)(?<=\S)\s*(?:[-–—]\s*|\(\s*)?vorpremiere\s*\)?\s*$		'<film> Vorpremiere' / '<film>-Vorpremiere' / '<film> (VORPREMIERE)' German pre-premiere tag (DE 2026-10-12: Multiplex Gelsenkirchen, Schauburg, Apollo Hannover, Movieland)
+xtra-subtitle-note-bracket	query				format		(?iu)(?<=\S)\s*\([^()]*(?<![\p{L}\p{N}])(?:with|mit|w/)\s+(?:engl?\.?|english|dt\.?|deutschen?)\s*(?:sub(?:s|titles?)?|ut|untertiteln?)(?![\p{L}\p{N}])[^()]*\)\s*$		'<film> (Mandarin with engl.Sub)' / '<film> (koreanisch mit engl.UT)' bracketed subtitle note (DE 2026-10-13: Universum-City Karlsruhe and five more)	[["Jailer 2 (Tamil mit engl. UT)","Jailer 2"],["Possible Love (koreanisch mit engl.UT)","Possible Love"]]
+xtra-vorpremiere-suffix	query				event		(?iu)(?<=\S)\s*(?:[-–—]\s*|\(\s*)?vorpremiere\s*\)?\s*$		'<film> Vorpremiere' / '<film>-Vorpremiere' / '<film> (VORPREMIERE)' German pre-premiere tag (DE 2026-10-12: Multiplex Gelsenkirchen, Schauburg, Apollo Hannover, Movieland)	[["Clayface Vorpremiere","Clayface"],["CLUB KIDMonGay-Vorpremiere","CLUB KIDMonGay"]]
 # A German language version written INSIDE the title, where FormatTags' end-anchored peel cannot reach: a bracketed
 # tag before a strand, an alternate title or a second bracket ("Rascal Does Not Dream of a Dear Friend (OmU) -
 # CineAnime", "Shining (OmU) (Extended Cut)"), or a bare tag between a film's words, with the screen and language
 # words billed beside it ("Spiderman - 2D engl OV Brand New Day"). In their own casing only: re-cased, a shouted
 # title's "OV" is lower-case, and "OVO" or "Love" never match a whole word.
-xtra-inner-version-bracket	query				format		(?u)\s*[(\[]\s*(?:OmeU|OmdU|OmU|OV)\s*[)\]](?=\s*\S)		'<film> (OmU) - <strand>' / '<film> (OmU) (Extended Cut)' bracketed version inside the title (DE 2026-10-12: CineStar CineAnime, Türkische Filmtage, Club Manufaktur)
-xtra-inner-version-word	query				format		(?u)(?:\s+(?:[23]D|engl\.?|dt\.?))*\s+(?:OmeU|OmdU|OmU|OV)(?=\s+\p{L})		'<film> 2D engl OV <rest>' bare version between a film's words (DE 2026-10-12: Luxor Heidelberg Spiderman, Cineplex Herr der Ringe Ext. OV Trilogie)
+xtra-inner-version-bracket	query				format		(?u)\s*[(\[]\s*(?:OmeU|OmdU|OmU|OV)\s*[)\]](?=\s*\S)		'<film> (OmU) - <strand>' / '<film> (OmU) (Extended Cut)' bracketed version inside the title (DE 2026-10-12: CineStar CineAnime, Türkische Filmtage, Club Manufaktur)	[["Halloween - Special: Shining (OmU) (Extended Cut)","Halloween - Special: Shining (Extended Cut)"]]
+xtra-inner-version-word	query				format		(?u)(?:\s+(?:[23]D|engl\.?|dt\.?))*\s+(?:OmeU|OmdU|OmU|OV)(?=\s+\p{L})		'<film> 2D engl OV <rest>' bare version between a film's words (DE 2026-10-12: Luxor Heidelberg Spiderman, Cineplex Herr der Ringe Ext. OV Trilogie)	[["Herr der Ringe Ext. OV Trilogie","Herr der Ringe Ext. Trilogie"],["Spiderman - 2D engl OV Brand New Day","Spiderman - Brand New Day"]]
 # A subtitled version run into a strand behind the film, often glued to its last word — the venue's own box-office
 # name, served so by kinoheld ("BUGONIAOmU-Nachtstudio-engl.OmU", "HARD BOILED -chin./engl.OmU-Nachtstudio-"). The
 # hyphen joining the version to a word is the tell; a film's title never holds "OmU-".
-xtra-version-strand-tail	query				format		(?u)\s*(?:-\s*)?(?:\p{L}{2,6}\.\s*/?\s*)*(?:OmeU|OmdU|OmU)-\p{L}.*$		'<film>[ -chin./engl.]OmU-<strand>…' subtitled version and strand run onto the film (DE 2026-10-12: Apollo Hannover's Nachtstudio)
+xtra-version-strand-tail	query				format		(?u)\s*(?:-\s*)?(?:\p{L}{2,6}\.\s*/?\s*)*(?:OmeU|OmdU|OmU)-\p{L}.*$		'<film>[ -chin./engl.]OmU-<strand>…' subtitled version and strand run onto the film (DE 2026-10-12: Apollo Hannover's Nachtstudio)	[["FARGOOmU-Nachtstudio","FARGO"],["DIGGEROmU-Nachtstudio ","DIGGER"]]
 # A strand before a pipe and the screen format IN FRONT of the film after it ("Frauenfilmfestival | 2D Fassaden",
 # "Senioren | 2D Ach, diese Lücke…"): the format word marks what follows as the film, so strand and format go
 # together. Never a version word after the format — "Lalka | 2D DUBBING" is the film and its tag, FormatTags' to peel.
-xtra-strand-pipe-screen-prefix	query				format		(?u)^[^|]{2,40}\|\s*(?i:[23]D)\s+(?=\p{Lu})(?!(?i:dub|dubb|dubbing|nap|napisy|lek|lektor|pl|eng|ov|omu|omeu|df|sub|subs)(?![\p{L}\p{N}]))		'<strand> | 2D <film>' strand and screen format ahead of the film (DE 2026-10-12: Scala Tuttlingen's Frauenfilmfestival, Rittergarten, Senioren)
-xtra-leading-bare-screen	query				format		(?iu)^[23]d\s+(?=\p{L})		'3D <film>' screen format in front with no separator (any case: searchQuery's re-casing may lower it) (DE 2026-10-12: CineCenter Cloppenburg 3D Avengers: Doomsday)
+xtra-strand-pipe-screen-prefix	query				format		(?u)^[^|]{2,40}\|\s*(?i:[23]D)\s+(?=\p{Lu})(?!(?i:dub|dubb|dubbing|nap|napisy|lek|lektor|pl|eng|ov|omu|omeu|df|sub|subs)(?![\p{L}\p{N}]))		'<strand> | 2D <film>' strand and screen format ahead of the film (DE 2026-10-12: Scala Tuttlingen's Frauenfilmfestival, Rittergarten, Senioren)	[["Matinee | 2D David","David"],["Rittergarten | 2D Vaterland","Vaterland"]]
+xtra-leading-bare-screen	query				format		(?iu)^[23]d\s+(?=\p{L})		'3D <film>' screen format in front with no separator (any case: searchQuery's re-casing may lower it) (DE 2026-10-12: CineCenter Cloppenburg 3D Avengers: Doomsday)	[["3D Avengers: Doomsday Mitternachtspreview","Avengers: Doomsday"],["2D Stop-Motion Workshop - The Creepy Castle","Stop-Motion Workshop - The Creepy Castle"]]
 # The four below run last, after every separated premiere / pokaz / format strip has taken its whole spelling.
 # A chain's event-programme label after the film ("Godzilla Minus Zero (IMAX) - Event Projekt", every
 # Helios venue), then a parenthesised screening-event note ("(specjalny przedpremierowy pokaz nocny)")
 # the label stripped first exposes. Both before the format peel, which then takes the IMAX they hid.
-xtra-event-projekt-suffix	query				event		(?iu)\s*[-–—|]\s*Event\s+Projekt\s*$		'<film> - Event Projekt' chain event-programme label (Helios: Godzilla Minus Zero)
-xtra-paren-screening-event	query				event		(?iu)(?<=\S)\s*\((?=[^()]*(?<!\p{L})(?:pokaz|seans)(?!\p{L}))[^()]*\)\s*$		'<film> (specjalny przedpremierowy pokaz nocny)' parenthesised screening-event note naming a pokaz / seans (Helios: Godzilla Minus Zero IMAX)
+xtra-event-projekt-suffix	query				event		(?iu)\s*[-–—|]\s*Event\s+Projekt\s*$		'<film> - Event Projekt' chain event-programme label (Helios: Godzilla Minus Zero)	[["Godzilla Minus One - Event Projekt","Godzilla Minus One"],["Godzilla Minus Zero - Event Projekt","Godzilla Minus Zero"]]
+xtra-paren-screening-event	query				event		(?iu)(?<=\S)\s*\((?=[^()]*(?<!\p{L})(?:pokaz|seans)(?!\p{L}))[^()]*\)\s*$		'<film> (specjalny przedpremierowy pokaz nocny)' parenthesised screening-event note naming a pokaz / seans (Helios: Godzilla Minus Zero IMAX)	[["Godzilla Minus Zero IMAX (specjalny przedpremierowy pokaz nocny)","Godzilla Minus Zero IMAX"]]
 # A venue code behind a format and version tag ("BEZ KOŃCA 2D PL LOLO", Kino Bajka Darłowo; "TOY STORY 5
 # 2D DUB. SPS" at several venues): the end-anchored format peel stops at the code, so the tag stayed in the
 # query. The tag goes with the code. Only one short word that is not itself a version word, and only behind
 # a 2D/3D + version pair, which no title ends with.
-xtra-code-after-format-tag	query				format		(?iu)\s+[23]d\s+(?:pl|pol|dub\.?|dubbing|nap\.?|napisy|lektor|lek\.?)\s+(?!(?:pl|pol|dub|dubb|nap|lek|lektor|napisy)\.?\s*$)\p{L}{2,5}\.?\s*$		'<film> 2D PL LOLO' / '<film> 2D DUB. SPS' venue code behind the format tag (Kino Bajka Darłowo: Bez końca; Toy Story 5, Vaiana)
+xtra-code-after-format-tag	query				format		(?iu)\s+[23]d\s+(?:pl|pol|dub\.?|dubbing|nap\.?|napisy|lektor|lek\.?)\s+(?!(?:pl|pol|dub|dubb|nap|lek|lektor|napisy)\.?\s*$)\p{L}{2,5}\.?\s*$		'<film> 2D PL LOLO' / '<film> 2D DUB. SPS' venue code behind the format tag (Kino Bajka Darłowo: Bez końca; Toy Story 5, Vaiana)	[["BEZ KOŃCA 2D PL LOLO","BEZ KOŃCA"],["SUPERMOCNI 2D Dub. SPS","SUPERMOCNI"]]
 # A lower-case "premiera" after the film is the venue's premiere note ("Mity greckie i Odyseja premiera",
 # Centrum 3D Kalisz, beside its "… na bis"); searchQuery re-cases a shouted title first, so an all-caps
 # "LALKA PREMIERA" arrives here as "Lalka premiera" too. Case-sensitive: "Ostatnia Premiera" is a title;
 # a separated ": premiera" is the separator rules' to take whole.
-xtra-premiera-lowercase-suffix	query				event		(?u)(?<=[\p{L}\p{N}])\s+premiera\s*$		'<film> premiera' bare lower-case premiere note (Centrum 3D Kalisz: Mity greckie i Odyseja)
+xtra-premiera-lowercase-suffix	query				event		(?u)(?<=[\p{L}\p{N}])\s+premiera\s*$		'<film> premiera' bare lower-case premiere note (Centrum 3D Kalisz: Mity greckie i Odyseja)	[["Mity greckie i Odyseja premiera","Mity greckie i Odyseja"]]
 # decoration-discovery: proposals are inserted above this line
 
 # ═══ The merge-key tier: key + name rows (TitleRuleSet.canonical, folded into `sanitize`'s key) ══════════════════════
@@ -862,8 +866,8 @@ xtra-premiera-lowercase-suffix	query				event		(?u)(?<=[\p{L}\p{N}])\s+premiera\
 # reach the display spelling (TitleRuleSet.spellingUnified); a strip reaching it would leave a banner-only title empty.
 # A rewrite that writes words names its countries: an unscoped Polish rewrite pins a German row to a key no German
 # slot can produce.
-canonical-gwiezdne-wojny	key			seed	rename		^Gwiezdne Wojny: 		Strip the 'Gwiezdne Wojny: ' franchise prefix
-canonical-ampersand-to-i	key		pl	all,seed	rename		 & 	 i 	Unify ' & ' and ' i ' spellings — POLISH ONLY ('i' = 'and')
+canonical-gwiezdne-wojny	key			seed	rename		^Gwiezdne Wojny: 		Strip the 'Gwiezdne Wojny: ' franchise prefix	[["Gwiezdne Wojny: Mandalorian i Grogu","Mandalorian i Grogu"]]
+canonical-ampersand-to-i	key		pl	all,seed	rename		 & 	 i 	Unify ' & ' and ' i ' spellings — POLISH ONLY ('i' = 'and')	[["Mandalorian & Grogu","Mandalorian i Grogu"]]
 # The "Federico Fellini: ciao a tutti!" retrospective decoration, stripped at
 # the MERGE-KEY level (not just the query level above). Without these the
 # scraped "Federico Fellini: Noce Cabirii" keyed apart from the bare "Noce
@@ -878,17 +882,17 @@ canonical-ampersand-to-i	key		pl	all,seed	rename		 & 	 i 	Unify ' & ' and ' i ' 
 # banner ("Noce Cabirii (1957) | FEDERICO FELLINI …"), where the year is
 # mid-string until the banner is gone, so the `$`-anchored trailing-paren-year
 # strip can only catch it once the banner strip has exposed it at the end.
-xtra-canonical-fellini-prefix	key				retrospective		{{FELLINI_PREFIX}}		'Federico Fellini: [ciao a tutti!] <film>' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix — merge-key fold (Noce Cabirii, Słodkie życie, Wałkonie, Giulietta i duchy, Osiem i pół)
-xtra-canonical-fellini-suffix	key				retrospective		{{FELLINI_SUFFIX}}		'<film> [(year)] | / – przegląd Federico Fellini …' retrospective suffix — merge-key fold; runs before the year strip so a '(1957)' glued in before the banner still folds (Noce Cabirii, Wałkonie, Słodkie życie)
-xtra-canonical-festival-tag-prefix	key				festival		(?u){{FESTIVAL_TAG_NUMBERED}}(\S.*)$	$1	'11. UFF - <film>' / '19. FGA: <film>' numbered festival-acronym prefix — CANONICAL rewrite to the film's title (display + merge key); see NumberedFestivalTag
-xtra-canonical-festival-year-tag-prefix	key				festival		(?u){{FESTIVAL_TAG_YEAR}}(\S.*)$	$1	'2026 LHFF <film>' year-numbered festival-acronym prefix — CANONICAL rewrite to the film's title (display + merge key); runs before the trailing-year strips; see YearFestivalTag
-xtra-canonical-festival-tag-suffix	key				festival		(?u)^(.*\p{Ll}.*?){{FESTIVAL_TAG_AFTER_PIPE}}	$1	'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe — CANONICAL rewrite to the film's title; runs before the trailing-year strips so a year it hid is exposed; see FestivalTagAfterPipe
+xtra-canonical-fellini-prefix	key				retrospective		{{FELLINI_PREFIX}}		'Federico Fellini: [ciao a tutti!] <film>' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix — merge-key fold (Noce Cabirii, Słodkie życie, Wałkonie, Giulietta i duchy, Osiem i pół)	[["Fellini. Słodkie życie","Słodkie życie"],["Fellini. Głos z księżyca","Głos z księżyca"]]
+xtra-canonical-fellini-suffix	key				retrospective		{{FELLINI_SUFFIX}}		'<film> [(year)] | / – przegląd Federico Fellini …' retrospective suffix — merge-key fold; runs before the year strip so a '(1957)' glued in before the banner still folds (Noce Cabirii, Wałkonie, Słodkie życie)	[["Wałkonie | FEDERICO FELLINI: ciao a tutti!","Wałkonie"],["Osiem i pół | FEDERICO FELLINI: ciao a tutti!","Osiem i pół"]]
+xtra-canonical-festival-tag-prefix	key				festival		(?u){{FESTIVAL_TAG_NUMBERED}}(\S.*)$	$1	'11. UFF - <film>' / '19. FGA: <film>' numbered festival-acronym prefix — CANONICAL rewrite to the film's title (display + merge key); see NumberedFestivalTag	[["11. UFF - DIVIA","DIVIA"],["11. UFF - Kuźma","Kuźma"]]
+xtra-canonical-festival-year-tag-prefix	key				festival		(?u){{FESTIVAL_TAG_YEAR}}(\S.*)$	$1	'2026 LHFF <film>' year-numbered festival-acronym prefix — CANONICAL rewrite to the film's title (display + merge key); runs before the trailing-year strips; see YearFestivalTag	[["2026 LHFF Scream (1996)","Scream"],["2026 LHFF Vincent Price: What Keeps Us Alive","Vincent Price: What Keeps Us Alive"]]
+xtra-canonical-festival-tag-suffix	key				festival		(?u)^(.*\p{Ll}.*?){{FESTIVAL_TAG_AFTER_PIPE}}	$1	'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe — CANONICAL rewrite to the film's title; runs before the trailing-year strips so a year it hid is exposed; see FestivalTagAfterPipe	[["Róża |DKF","Róża"],["Alim | UFF","Alim"]]
 # A Polish distributor's ". Film" suffix ("Rolling Loud. Film" for "Rolling Loud: The Movie", Jaworzyna's
 # "Rolling Loud. Film 2026"): the film's own title, shown and merged without it. The full stop right
 # before it is required — "Straszny film" ends in the word and keeps it.
 # A REWRITE (it keeps the title before the suffix, `$1`), so a card every venue bills alike shows it too.
-xtra-canonical-kropka-film-suffix	key				junk		(?iu)^(.*\S)\.\s*Film(?:\s+\d{4})?\s*$	$1	'<film>. Film [2026]' distributor suffix — CANONICAL rewrite to the film's title
-xtra-canonical-gwiezdne-wojny-ci	key				rename		(?iu)^Gwiezdne\s+wojny\s*:\s*		Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged.
+xtra-canonical-kropka-film-suffix	key				junk		(?iu)^(.*\S)\.\s*Film(?:\s+\d{4})?\s*$	$1	'<film>. Film [2026]' distributor suffix — CANONICAL rewrite to the film's title	[["ROLLING LOUD. FILM","ROLLING LOUD"],["Rolling Loud. Film","Rolling Loud"]]
+xtra-canonical-gwiezdne-wojny-ci	key				rename		(?iu)^Gwiezdne\s+wojny\s*:\s*		Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged.	[["GWIEZDNE WOJNY: MANDALORIAN i GROGU","MANDALORIAN i GROGU"],["Gwiezdne wojny: Mandalorian i Grogu","Mandalorian i Grogu"]]
 # The seed's 'structural-anniversary-suffix' and the extras'
 # 'xtra-rocznica-premiery-suffix' are both GlobalStructural — they shape the
 # TMDB query but leave the decorated title as the row's display AND its merge
@@ -904,7 +908,7 @@ xtra-canonical-gwiezdne-wojny-ci	key				rename		(?iu)^Gwiezdne\s+wojny\s*:\s*		C
 # digits keep the 2025 Polish film literally titled "Rocznica" whole. `\b`
 # before the digits is what makes that lookbehind honest: without it the match
 # simply restarts one character in, so the banner above stripped to "1".
-xtra-canonical-rocznica-suffix	key				edition		(?iu)(?<=\S)\s*(?:{{SEPD}})?\b\d{1,3}\s*\.?\s*rocznica\b.*$		'<film> [-|.] N. Rocznica [premiery/urodzin …]' anniversary-rerelease suffix — CANONICAL fold onto the base film (display + merge key), not just the query: 'Terminator 2: dzień sądu - 35. Rocznica', 'Kosmiczny Mecz 30. Rocznica', 'Kosmiczny mecz. 30 rocznica', 'Salto | 100. rocznica urodzin Tadeusza Konwickiego'. Nominative only, and requires both a preceding film and a number — see the note above.
+xtra-canonical-rocznica-suffix	key				edition		(?iu)(?<=\S)\s*(?:{{SEPD}})?\b\d{1,3}\s*\.?\s*rocznica\b.*$		'<film> [-|.] N. Rocznica [premiery/urodzin …]' anniversary-rerelease suffix — CANONICAL fold onto the base film (display + merge key), not just the query: 'Terminator 2: dzień sądu - 35. Rocznica', 'Kosmiczny Mecz 30. Rocznica', 'Kosmiczny mecz. 30 rocznica', 'Salto | 100. rocznica urodzin Tadeusza Konwickiego'. Nominative only, and requires both a preceding film and a number — see the note above.	[["Crash 30. rocznica","Crash"],["Rocky 50. rocznica","Rocky"]]
 # The trailing screen-format/language rules — 2D/3D/dub/napisy/lektor in the
 # space·dash·slash·bracket shapes, plus the "(Dolby Atmos)"/"[2D]"/"(IMAX)"
 # sound-tag — moved to the shared `services.movies.FormatTags` and are applied
@@ -913,10 +917,10 @@ xtra-canonical-rocznica-suffix	key				edition		(?iu)(?<=\S)\s*(?:{{SEPD}})?\b\d{
 # guard moved there too. (The parenthesised "(wersja oryginalna)" row that stayed
 # behind fired on no title of any fixture, recording or spec and was removed
 # 2026-10-22; the separator-led form below still fires.)
-xtra-canonical-trailing-org-wersja	key				edition		(?iu)\s*[/|.,–—-]\s*(?:wersja\s+oryginalna|org)\s*$		Trailing 'wersja oryginalna' / 'ORG' (original-language, no-dub) marker after a separator ('Toy Story 5 - wersja oryginalna', 'Toy Story 5 - ORG'). Requires a separator so a film that merely ends in those letters isn't eaten.
-xtra-canonical-trailing-paren-year	key				junk		(?iu)\s*[\[({<]\s*(?:19|20)\d{2}\s*[\])}>]\s*$		Trailing BRACKETED release year — parens, square, curly or angle ('(1991)', '[1976]', '{1963}', '<1999>') glued into the title by a scraper — never part of the film's identity, so 'Milczenie owiec (1991)' merges into 'Milczenie owiec'. Only a BRACKETED form, so a bare year that IS the title ('1917', '2046') survives. Matches `EmbeddedYear`'s delimited shapes (which reads the year), minus the separator form below.
-xtra-canonical-trailing-sep-year	key				junk		(?iu)\s*[,–—-]\s*(?:19|20)\d{2}\s*$		Trailing release year after a SEPARATOR ('Film - 1989', 'Film, 2001') — the non-bracketed delimited form `EmbeddedYear` also reads. Requires a comma / hyphen / en- or em-dash so a bare year that IS the title ('1917', '2049') is left alone.
-xtra-canonical-mandalorian-grogu-en	key		pl		rename		(?iu)^The\s+Mandalorian\s+and\s+Grogu$	Mandalorian i Grogu	Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first. POLAND ONLY — German cinemas list this film as 'The Mandalorian And Grogu', which matched this rule and pinned the Berlin row to the Polish key `mandalorianigrogu`, so showtimes-de displayed 'Mandalorian i Grogu'. The UK escaped only because its cinemas spell it with '&'.
+xtra-canonical-trailing-org-wersja	key				edition		(?iu)\s*[/|.,–—-]\s*(?:wersja\s+oryginalna|org)\s*$		Trailing 'wersja oryginalna' / 'ORG' (original-language, no-dub) marker after a separator ('Toy Story 5 - wersja oryginalna', 'Toy Story 5 - ORG'). Requires a separator so a film that merely ends in those letters isn't eaten.	[["Romeo i Julia – wersja oryginalna","Romeo i Julia"]]
+xtra-canonical-trailing-paren-year	key				junk		(?iu)\s*[\[({<]\s*(?:19|20)\d{2}\s*[\])}>]\s*$		Trailing BRACKETED release year — parens, square, curly or angle ('(1991)', '[1976]', '{1963}', '<1999>') glued into the title by a scraper — never part of the film's identity, so 'Milczenie owiec (1991)' merges into 'Milczenie owiec'. Only a BRACKETED form, so a bare year that IS the title ('1917', '2046') survives. Matches `EmbeddedYear`'s delimited shapes (which reads the year), minus the separator form below.	[["Go (1999)","Go"],["It (1990)","It"]]
+xtra-canonical-trailing-sep-year	key				junk		(?iu)\s*[,–—-]\s*(?:19|20)\d{2}\s*$		Trailing release year after a SEPARATOR ('Film - 1989', 'Film, 2001') — the non-bracketed delimited form `EmbeddedYear` also reads. Requires a comma / hyphen / en- or em-dash so a bare year that IS the title ('1917', '2049') is left alone.	[["Die Seilschaft - Ungefiltert - 2027","Die Seilschaft - Ungefiltert"],["BOFF Outdoor Film Festival 2026-2027","BOFF Outdoor Film Festival 2026"]]
+xtra-canonical-mandalorian-grogu-en	key		pl		rename		(?iu)^The\s+Mandalorian\s+and\s+Grogu$	Mandalorian i Grogu	Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first. POLAND ONLY — German cinemas list this film as 'The Mandalorian And Grogu', which matched this rule and pinned the Berlin row to the Polish key `mandalorianigrogu`, so showtimes-de displayed 'Mandalorian i Grogu'. The UK escaped only because its cinemas spell it with '&'.	[["The Mandalorian and Grogu","Mandalorian i Grogu"]]
 # "Niesamowite przygody skarpetek 3. Ale kosmos!" is a TMDB-no-match kids'
 # film that fragments across cinemas at the SUBTITLE level: Helios romanises
 # the sequel number (III), Cinema City ships a source-truncated
@@ -929,7 +933,7 @@ xtra-canonical-mandalorian-grogu-en	key		pl		rename		(?iu)^The\s+Mandalorian\s+a
 # ("…skarpetek 2. Skarpetki górą!"), which the `3`/`III` requirement leaves
 # untouched. Anything after the sequel number (a partial/truncated/decorated
 # subtitle) collapses onto the canonical full title.
-xtra-canonical-skarpetek-3	key		pl		rename		(?iu)^Niesamowite\s+przygody\s+skarpetek\s+(?:III|3)\b.*$	Niesamowite przygody skarpetek 3. Ale kosmos!	Collapse every spelling of the TMDB-no-match 'Niesamowite przygody skarpetek 3. Ale kosmos!' (Roman III, the Cinema-City source-truncated 'Ale ko', the subtitle-less '…skarpetek 3', the format-tagged variants) onto one canonical title. The '3'/'III' requirement keeps films 1 (no number) and 2 (…skarpetek 2.) as their own rows. POLAND ONLY: the replacement writes Polish words, so it must not reach another country's corpus even though the pattern is unlikely to match there.
+xtra-canonical-skarpetek-3	key		pl		rename		(?iu)^Niesamowite\s+przygody\s+skarpetek\s+(?:III|3)\b.*$	Niesamowite przygody skarpetek 3. Ale kosmos!	Collapse every spelling of the TMDB-no-match 'Niesamowite przygody skarpetek 3. Ale kosmos!' (Roman III, the Cinema-City source-truncated 'Ale ko', the subtitle-less '…skarpetek 3', the format-tagged variants) onto one canonical title. The '3'/'III' requirement keeps films 1 (no number) and 2 (…skarpetek 2.) as their own rows. POLAND ONLY: the replacement writes Polish words, so it must not reach another country's corpus even though the pattern is unlikely to match there.	[["Niesamowite przygody skarpetek III. Ale ko","Niesamowite przygody skarpetek 3. Ale kosmos!"]]
 # Live-relay broadcasts: one production, billed under its house's banner in as many spellings as there are
 # ticketing systems — Germany alone lists Romeo und Julia as "RBO 26/27: … (Royal Ballet) (Aufz.)", "RBO
 # 2026/27: … (The Royal Ballet)" and "RBO Live 2026/27: …", and Poland lists one NT Live play three ways
@@ -944,27 +948,27 @@ xtra-canonical-skarpetek-3	key		pl		rename		(?iu)^Niesamowite\s+przygody\s+skarp
 #    Kinowy 2026-27:", "Met Opera 2026-27:"), generic in the house: one production carries one season, and
 #    half the venues leave it out ("Met Opera: Manon", "Royal Ballet and Opera: Tosca"). Needs the colon, so a
 #    banner that IS the listing ("The Metropolitan Opera 2026-27 Live in HD Series") keeps its season.
-xtra-canonical-broadcast-season	key				relay		(?iu)^(\p{L}[\p{L}\p{N}&'.+ ]{0,60}?)\s+(?:(?:Live|Cinema\s+Season|Sezon\s+Kinowy|Kinosaison|Season|Saison|Spielzeit|Temporada)\s+)?(?:19|20)?\d{2}\s*[-/–]\s*(?:19|20)?\d{2}\s*:\s*	$1: 	'<house> [Live | Cinema Season | Sezon Kinowy …] 2026/27: <work>' live-relay season token — dropped from the banner so every season spelling (26/27, 2026/27, 2026-27) and the season-less form share one title
+xtra-canonical-broadcast-season	key				relay		(?iu)^(\p{L}[\p{L}\p{N}&'.+ ]{0,60}?)\s+(?:(?:Live|Cinema\s+Season|Sezon\s+Kinowy|Kinosaison|Season|Saison|Spielzeit|Temporada)\s+)?(?:19|20)?\d{2}\s*[-/–]\s*(?:19|20)?\d{2}\s*:\s*	$1: 	'<house> [Live | Cinema Season | Sezon Kinowy …] 2026/27: <work>' live-relay season token — dropped from the banner so every season spelling (26/27, 2026/27, 2026-27) and the season-less form share one title	[["RB&O 26/27: Manon","RB&O: Manon"],["RB&O 26/27: Tosca","RB&O: Tosca"]]
 # 2. Royal Ballet & Opera under its acronym, its 'and'/'i'/'+' spellings, or one of its two companies (the
 #    "The Royal Ballet: Manon" banner, the German "(The Royal Ballet)" credit after the work), plus the German
 #    "(Aufz.)" recording tag — an encore-like note on the showing, never part of the production's name.
-xtra-canonical-royal-ballet-opera	name				relay		(?iu)^(?:RBO|Royal\s+Ballet\s*(?:&|\+|and|und|i|y)\s*Opera|The\s+Royal\s+(?:Ballet|Opera))\s*(?::|\s[-–—]|-)\s*(\S.*?)(?:\s*\((?:The\s+)?Royal\s+(?:Ballet|Opera)\))?(?:\s*\(Aufz(?:\.|eichnung)\))?\s*$	Royal Ballet & Opera: $1	'RBO: <work> (The Royal Ballet) (Aufz.)' / 'Royal Ballet and Opera: <work>' / 'The Royal Opera: <work>' — one house banner
+xtra-canonical-royal-ballet-opera	name				relay		(?iu)^(?:RBO|Royal\s+Ballet\s*(?:&|\+|and|und|i|y)\s*Opera|The\s+Royal\s+(?:Ballet|Opera))\s*(?::|\s[-–—]|-)\s*(\S.*?)(?:\s*\((?:The\s+)?Royal\s+(?:Ballet|Opera)\))?(?:\s*\(Aufz(?:\.|eichnung)\))?\s*$	Royal Ballet & Opera: $1	'RBO: <work> (The Royal Ballet) (Aufz.)' / 'Royal Ballet and Opera: <work>' / 'The Royal Opera: <work>' — one house banner	[["RBO: MANON","Royal Ballet & Opera: MANON"],["RBO: Manon","Royal Ballet & Opera: Manon"]]
 # 3. The Met, prefixed ("Met Opera:", "The MET Opera:") or — Kino 1410's shape — after the work
 #    ("CARMEN | Metropolitan Opera: Live in HD 2026/27").
-xtra-canonical-met-opera-suffix	name				relay		(?iu)^(\S.*?)\s*\|\s*(?:The\s+)?Metropolitan\s+Opera(?::\s*Live\s+in\s+HD)?(?:\s+(?:19|20)\d{2}\s*[-/]\s*\d{2,4})?\s*$	The Metropolitan Opera: $1	'<work> | Metropolitan Opera: Live in HD 2026/27' — the Met's banner after the work, moved to the front
-xtra-canonical-met-opera	name				relay		(?iu)^(?:The\s+)?(?:Met|Metropolitan)\s+Opera\s*:\s*(\S.*)$	The Metropolitan Opera: $1	'Met Opera: <work>' / 'The MET Opera: <work>' — one house banner
+xtra-canonical-met-opera-suffix	name				relay		(?iu)^(\S.*?)\s*\|\s*(?:The\s+)?Metropolitan\s+Opera(?::\s*Live\s+in\s+HD)?(?:\s+(?:19|20)\d{2}\s*[-/]\s*\d{2,4})?\s*$	The Metropolitan Opera: $1	'<work> | Metropolitan Opera: Live in HD 2026/27' — the Met's banner after the work, moved to the front	[["Carmen | metropolitan opera: live in hd 2026/27","The Metropolitan Opera: Carmen"],["Makbet | metropolitan opera: live in hd 2026/27","The Metropolitan Opera: Makbet"]]
+xtra-canonical-met-opera	name				relay		(?iu)^(?:The\s+)?(?:Met|Metropolitan)\s+Opera\s*:\s*(\S.*)$	The Metropolitan Opera: $1	'Met Opera: <work>' / 'The MET Opera: <work>' — one house banner	[["MET Opera: Manon","The Metropolitan Opera: Manon"],["Met Opera: Manon","The Metropolitan Opera: Manon"]]
 # 4. National Theatre Live, prefixed ("NT Live: <play>", "NT Live <play>", its own "NTL: <play>", "NTL Live: <play>")
 #    or after the play — Cinema City's "<play> - National Theatre Live 2026" and Gdynia's "<play> | TEATR W KINIE |
 #    National Theatre Live". UK The Beehive's "NTL: Hay Fever" reached its siblings only through a bare "Hay Fever"
 #    [120′], which their running times keep apart.
-xtra-canonical-nt-live-suffix	name				relay		(?iu)^(\S.*?)\s*(?:\|\s*Teatr\s+w\s+kinie\s*)?(?:\||\s[-–—])\s*(?:NT|National\s+Theatre)\s+Live(?:\s+(?:19|20)\d{2})?\s*$	National Theatre Live: $1	'<play> - National Theatre Live 2026' / '<play> | TEATR W KINIE | National Theatre Live' — the banner after the play, moved to the front
-xtra-canonical-nt-live	name				relay		(?iu)^(?:(?:NT|National\s+Theatre)\s+Live|NTL(?:\s+Live)?)\s*(?::\s*|\s)(\S.*)$	National Theatre Live: $1	'NT Live: <play>' / 'NT Live <play>' / 'NTL: <play>' — one house banner
+xtra-canonical-nt-live-suffix	name				relay		(?iu)^(\S.*?)\s*(?:\|\s*Teatr\s+w\s+kinie\s*)?(?:\||\s[-–—])\s*(?:NT|National\s+Theatre)\s+Live(?:\s+(?:19|20)\d{2})?\s*$	National Theatre Live: $1	'<play> - National Theatre Live 2026' / '<play> | TEATR W KINIE | National Theatre Live' — the banner after the play, moved to the front	[["Audiencja - National Theatre Live 2026","National Theatre Live: Audiencja"],["Audiencja | TEATR W KINIE | National Theatre Live","National Theatre Live: Audiencja"]]
+xtra-canonical-nt-live	name				relay		(?iu)^(?:(?:NT|National\s+Theatre)\s+Live|NTL(?:\s+Live)?)\s*(?::\s*|\s)(\S.*)$	National Theatre Live: $1	'NT Live: <play>' / 'NT Live <play>' / 'NTL: <play>' — one house banner	[["NTL Golden Boy","National Theatre Live: Golden Boy"],["NTL: Hay Fever","National Theatre Live: Hay Fever"]]
 # 5. A concert tour's live viewing billed without the tour's own name: UK Odeon's "BTS 'ARIRANG' IN BUENOS AIRES: LIVE
 #    VIEWING" ×68 (and São Paulo ×68, recording 573) is TMDB's "BTS WORLD TOUR [ARIRANG] in Buenos Aires" (1770237),
 #    which Cineworld and Flicks bill as "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES". Searched as billed it finds nothing
 #    (its "LIVE VIEWING" piece finds every K-pop live viewing), and the director's filmography weighs every city's
 #    record alike: the other city's, crediting him, won. One tour, one title.
-xtra-canonical-bts-world-tour	name				relay		(?iu)^BTS\s+(['‘’][^'‘’]+['‘’])\s+IN\s+(\S.*)$	BTS WORLD TOUR $1 IN $2	'BTS '<tour>' IN <city>[: LIVE VIEWING]' — the tour's title as TMDB and the other venues bill it
+xtra-canonical-bts-world-tour	name				relay		(?iu)^BTS\s+(['‘’][^'‘’]+['‘’])\s+IN\s+(\S.*)$	BTS WORLD TOUR $1 IN $2	'BTS '<tour>' IN <city>[: LIVE VIEWING]' — the tour's title as TMDB and the other venues bill it	[["BTS 'ARIRANG' IN SÃO PAULO: LIVE VIEWING","BTS WORLD TOUR 'ARIRANG' IN SÃO PAULO: LIVE VIEWING"],["BTS 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING","BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING"]]
 
 # ═══ The venue tier: venue rows (TitleRuleSet.perCinema, at ingest: display title and merge key) ══════════════════
 # Venue junk too narrow to be global, keyed by the venue's TitleRuleKey (a chain shares one). No implicit trim: the
@@ -974,36 +978,36 @@ xtra-canonical-bts-world-tour	name				relay		(?iu)^BTS\s+(['‘’][^'‘’]+['
 # ── bok ──
 # BoK (both venues) — normalise nbsp+whitespace, drop a trailing ALL-CAPS
 # promo tag, rewrite remaining "|" separators to ": ".
-bok-ws	venue	bok		all,seed	junk		[\s ]+	 	BoK whitespace + nbsp collapse
-bok-promo	venue	bok		seed	venue		\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$		BoK trailing ALL-CAPS promo tag
-bok-pipe-to-colon	venue	bok		all,seed	venue		\s*\|\s*	: 	BoK programme-banner '|' → ': '
-bok-trim	venue	bok		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+bok-ws	venue	bok		all,seed	junk		[\s ]+	 	BoK whitespace + nbsp collapse	[["Preview: Fjord (15) S","Preview: Fjord (15) S"],["Kicia Kocia  w podróży","Kicia Kocia w podróży"]]
+bok-promo	venue	bok		seed	venue		\s*\|\s*[A-ZĄĆĘŁŃÓŚŹŻ0-9 ]{3,}\s*$		BoK trailing ALL-CAPS promo tag	[["Róża |DKF","Róża"],["Alim | UFF","Alim"]]
+bok-pipe-to-colon	venue	bok		all,seed	venue		\s*\|\s*	: 	BoK programme-banner '|' → ': '	[["EMIKA | Live","EMIKA: Live"],["Lalka | 2D | PL","Lalka: 2D"]]
+bok-trim	venue	bok		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace	[["Lalka ","Lalka"]]
 
 # ── cinema-city ──
 # Cinema City (chain) — "X - powrót do kin" re-release suffix. The
 # "Ladies Night - X" and "Kolekcja Mamoru Hosody: X" banners are now GLOBAL
 # banner rows (xtra-pp-ladies-night / xtra-pp-mamoru-hosody): query-only, so the decorated screening keeps its
 # own row instead of folding into the base film.
-cc-powrot-do-kin	venue	cinema-city		seed	venue		 - powrót do kin$		Cinema City re-release suffix
+cc-powrot-do-kin	venue	cinema-city		seed	venue		 - powrót do kin$		Cinema City re-release suffix	[["Top Gun - powrót do kin","Top Gun"],["Podziemny krąg - powrót do kin","Podziemny krąg"]]
 
 # ── cyfrowe-kino ──
-xtra-cyfrowe-premiera	venue	cyfrowe-kino			event		(?i)^Premiera!\s+		Cyfrowe Kino 'Premiera! <film>' prefix
+xtra-cyfrowe-premiera	venue	cyfrowe-kino			event		(?i)^Premiera!\s+		Cyfrowe Kino 'Premiera! <film>' prefix	[["Premiera! toy story 5","toy story 5"],["PREMIERA! Spektakl w języku angielskim, bez tłumaczenia","Spektakl w języku angielskim, bez tłumaczenia"]]
 
 # ── helios ──
-helios-suffix-1	venue	helios		seed	format		 w Helios RePlay$		Helios 'w Helios RePlay' tag
-helios-suffix-2	venue	helios		seed	format		 w Helios Anime$		Helios 'w Helios Anime' tag
-helios-suffix-3	venue	helios		seed	format		 w Helios na Scenie$		Helios 'w Helios na Scenie' tag
-helios-suffix-4	venue	helios		seed	format		 w HnS$		Helios 'w HnS' tag
-helios-suffix-5	venue	helios		seed	format		 - Salon Kultury Helios$		Helios '- Salon Kultury Helios' tag
-helios-suffix-6	venue	helios		seed	format		 - KNTJ$		Helios '- KNTJ' tag
-helios-suffix-7	venue	helios		seed	format		 - KNT$		Helios '- KNT' tag
-helios-suffix-8	venue	helios		seed	format		 - Kino Konesera$		Helios '- Kino Konesera' tag
-helios-suffix-9	venue	helios		seed	format		 - seanse z konkursami HDD$		Helios '- seanse z konkursami HDD' tag
-helios-suffix-10	venue	helios		seed	format		 - Event projekt$		Helios '- Event projekt' tag
-helios-suffix-11	venue	helios		seed	format		 - dubbing$		Helios '- dubbing' tag
-helios-suffix-13	venue	helios		seed	format		 - napisy$		Helios '- napisy' tag
-helios-suffix-15	venue	helios		seed	format		 - DUB$		Helios '- DUB' tag
-helios-suffix-16	venue	helios		seed	format		 - AF$		Helios '- AF' tag
+helios-suffix-1	venue	helios		seed	format		 w Helios RePlay$		Helios 'w Helios RePlay' tag	[["Diabły w Helios RePlay","Diabły"],["Donnie Darko w Helios RePlay","Donnie Darko"]]
+helios-suffix-2	venue	helios		seed	format		 w Helios Anime$		Helios 'w Helios Anime' tag	[["Ghost in the Shell w Helios Anime","Ghost in the Shell"]]
+helios-suffix-3	venue	helios		seed	format		 w Helios na Scenie$		Helios 'w Helios na Scenie' tag	[["Always Lalisa w Helios na Scenie","Always Lalisa"]]
+helios-suffix-4	venue	helios		seed	format		 w HnS$		Helios 'w HnS' tag	[["Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS","Billie Eilish - Hit Me Hard and Soft: The Tour Live"],["Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS","Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D"]]
+helios-suffix-5	venue	helios		seed	format		 - Salon Kultury Helios$		Helios '- Salon Kultury Helios' tag	[["Nasza rewolucja - Salon Kultury Helios","Nasza rewolucja"]]
+helios-suffix-6	venue	helios		seed	format		 - KNTJ$		Helios '- KNTJ' tag	[["Północ - KNTJ","Północ"],["Księga pustyni - KNTJ","Księga pustyni"]]
+helios-suffix-7	venue	helios		seed	format		 - KNT$		Helios '- KNT' tag	[["Róża - KNT","Róża"],["Lalka - KNT","Lalka"]]
+helios-suffix-8	venue	helios		seed	format		 - Kino Konesera$		Helios '- Kino Konesera' tag	[["Hot Spot - Kino Konesera","Hot Spot"],["Vivaldi i ja - Kino Konesera","Vivaldi i ja"]]
+helios-suffix-9	venue	helios		seed	format		 - seanse z konkursami HDD$		Helios '- seanse z konkursami HDD' tag	[["Drzewo magii - seanse z konkursami HDD","Drzewo magii"],["Mandalorian & Grogu - seanse z konkursami HDD","Mandalorian & Grogu"]]
+helios-suffix-10	venue	helios		seed	format		 - Event projekt$		Helios '- Event projekt' tag	[["The Amazing Digital Circus: The Last Act - napisy - Event projekt","The Amazing Digital Circus: The Last Act"],["The Amazing Digital Circus: The Last Act - dubbing - Event projekt","The Amazing Digital Circus: The Last Act"]]
+helios-suffix-11	venue	helios		seed	format		 - dubbing$		Helios '- dubbing' tag	[["David - dubbing","David"],["Vaiana - dubbing","Vaiana"]]
+helios-suffix-13	venue	helios		seed	format		 - napisy$		Helios '- napisy' tag	[["Drama - napisy","Drama"],["Digger - napisy","Digger"]]
+helios-suffix-15	venue	helios		seed	format		 - DUB$		Helios '- DUB' tag	[["Vaiana - DUB","Vaiana"]]
+helios-suffix-16	venue	helios		seed	format		 - AF$		Helios '- AF' tag	[["Lalka - AF","Lalka"],["500 mil - AF","500 mil"]]
 # "<film> w Helios na Scenie" — Helios brands its own event screenings in the LISTING
 # title, a spelling no other cinema uses. Its merge key is the problem: Cinema City's
 # detail page gives the plain "GHOST: 2 Big To Rig", both spellings resolve to tmdbId
@@ -1013,23 +1017,23 @@ helios-suffix-16	venue	helios		seed	format		 - AF$		Helios '- AF' tag
 # changes the key; scoped to the chain's key (every Helios venue shares `helios`,
 # `TitleRuleKey`), not a global Canonical fold of a name only Helios bills. The seed's
 # `helios-suffix-3` takes the exact " w Helios na Scenie"; this takes any case and spacing.
-xtra-helios-na-scenie	venue	helios			venue		(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$		'<film> w Helios na Scenie' Helios event-branding suffix, any case — merge-key fold
+xtra-helios-na-scenie	venue	helios			venue		(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$		'<film> w Helios na Scenie' Helios event-branding suffix, any case — merge-key fold	[["GHOST: 2 Big To Rig W HELIOS NA SCENIE","GHOST: 2 Big To Rig"]]
 
 # ── kino-alternatywy ──
 # Kino Alternatywy — drop "Okładka" prefix + typographic quotes, collapse ws.
-alt-okladka	venue	kino-alternatywy		seed	junk		(?i)^okładka\s*		Kino Alternatywy 'Okładka' cover prefix
-alt-quotes	venue	kino-alternatywy		all,seed	junk		[„“”‟"]	 	Kino Alternatywy typographic quote marks → space
-alt-collapse-ws	venue	kino-alternatywy		all,seed	junk		\s+	 	Kino Alternatywy whitespace collapse
-kino-alternatywy-trim	venue	kino-alternatywy		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+alt-okladka	venue	kino-alternatywy		seed	junk		(?i)^okładka\s*		Kino Alternatywy 'Okładka' cover prefix	[["Okładka „Ida”","Ida"],["Okładka „Danton”","Danton"]]
+alt-quotes	venue	kino-alternatywy		all,seed	junk		[„“”‟"]	 	Kino Alternatywy typographic quote marks → space	[["\"LALKA\"","LALKA"],["„Supernova”","Supernova"]]
+alt-collapse-ws	venue	kino-alternatywy		all,seed	junk		\s+	 	Kino Alternatywy whitespace collapse	[["Kicia Kocia  w podróży","Kicia Kocia w podróży"],["American Doctor  (18) PS","American Doctor (18) PS"]]
+kino-alternatywy-trim	venue	kino-alternatywy		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace	[["Lalka ","Lalka"]]
 
 # ── kino-apollo ──
 # Kino Apollo — pre-premiere suffix. The "DZIEŃ DZIECKA W APOLLO -" kids'-day
 # banner is now global (the banner row xtra-pp-dzien-dziecka-w-kinie):
 # query-only, the screening keeps its own row.
-apollo-przedpremierowy	venue	kino-apollo		seed	event		 - seans przedpremierowy\b.*$		Kino Apollo pre-premiere suffix (+ any trailing words, e.g. 'w rocznicę koncertu')
+apollo-przedpremierowy	venue	kino-apollo		seed	event		 - seans przedpremierowy\b.*$		Kino Apollo pre-premiere suffix (+ any trailing words, e.g. 'w rocznicę koncertu')	[["Òpi - seans przedpremierowy","Òpi"],["Monterey Pop - seans przedpremierowy w rocznicę koncertu","Monterey Pop"]]
 
 # ── kino-bajka ──
-xtra-bajka-sps	venue	kino-bajka			format		(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+SPS\s*$		Kino Bajka '… 2D DUB. SPS' screening-code suffix (Toy Story 5, Vaiana)
+xtra-bajka-sps	venue	kino-bajka			format		(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+SPS\s*$		Kino Bajka '… 2D DUB. SPS' screening-code suffix (Toy Story 5, Vaiana)	[["SUPERMOCNI 2D Dub. SPS","SUPERMOCNI"],["TEDI I MAGICZNA LAMPA 2D DUB. SPS","TEDI I MAGICZNA LAMPA"]]
 
 # ── kino-bajka-kluczbork ──
 # Kluczbork brands its whole programme 'KLAPS / <cycle>: <film>'. Stripped HERE, in
@@ -1039,46 +1043,46 @@ xtra-bajka-sps	venue	kino-bajka			format		(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+S
 # never sees a title to strip. The per-cinema tier runs at ingest, before the
 # structural fold, so it gets there first. Leaves 'Kino Kobiet: <film>' for
 # xtra-pp-kino-kobiet-prefix above, which keeps the programme its own row.
-xtra-bajka-kluczbork-klaps	venue	kino-bajka-kluczbork			venue		(?iu)^KLAPS\s*/\s*		Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)
+xtra-bajka-kluczbork-klaps	venue	kino-bajka-kluczbork			venue		(?iu)^KLAPS\s*/\s*		Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)	[["KLAPS / Drugie życie","Drugie życie"]]
 
 # ── kino-farys ──
-xtra-farys-tot-story	venue	kino-farys			venue		(?i)^Tot\s+story\s+5$	Toy Story 5	Kino Farys source typo 'Tot story 5' → 'Toy Story 5'
+xtra-farys-tot-story	venue	kino-farys			venue		(?i)^Tot\s+story\s+5$	Toy Story 5	Kino Farys source typo 'Tot story 5' → 'Toy Story 5'	[["Tot story 5","Toy Story 5"]]
 
 # ── kino-kijow ──
-xtra-kijow-napisy-pl	venue	kino-kijow			format		(?iu)\s+(?:UA|UKR)?\s*Napisy\s+PL\s*$		Kino Kijów '… [UA/UKR] Napisy PL' subtitle suffix (Diabeł …Prady 2, Mawka, On drive)
+xtra-kijow-napisy-pl	venue	kino-kijow			format		(?iu)\s+(?:UA|UKR)?\s*Napisy\s+PL\s*$		Kino Kijów '… [UA/UKR] Napisy PL' subtitle suffix (Diabeł …Prady 2, Mawka, On drive)	[["Straszny film 2D NAPISY PL","Straszny film 2D"],["Mawka: Prawdziwy mit UA Napisy PL","Mawka: Prawdziwy mit"]]
 
 # ── kino-kinematograf ──
 # Kinematograf Łódź — director + release-year suffixes the museum appends (a "reż. …" credit comes off at intake: TitleFacts).
-kinematograf-director	venue	kino-kinematograf		seed	venue		,\s+\p{Lu}\S+\s+\p{Lu}\S+$		Kinematograf bare ', Firstname Lastname' director suffix
-kinematograf-year	venue	kino-kinematograf		seed	venue		\s*\(\d{4}\)\s*$		Kinematograf trailing ' (YYYY)' suffix
-kino-kinematograf-trim	venue	kino-kinematograf		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+kinematograf-director	venue	kino-kinematograf		seed	venue		,\s+\p{Lu}\S+\s+\p{Lu}\S+$		Kinematograf bare ', Firstname Lastname' director suffix	[["We, The Hated","We"],["WIR, DIE WOLFS","WIR"]]
+kinematograf-year	venue	kino-kinematograf		seed	venue		\s*\(\d{4}\)\s*$		Kinematograf trailing ' (YYYY)' suffix	[["Go (1999)","Go"],["It (1990)","It"]]
+kino-kinematograf-trim	venue	kino-kinematograf		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace	[["Lalka ","Lalka"]]
 
 # ── kino-mok-miedzyrzecz ──
-xtra-mok-miedzyrzecz-premiera	venue	kino-mok-miedzyrzecz			event		(?i)\s+premiera(?=\s|$)		MOK Międzyrzecz '<film> PREMIERA [2D napisy]' premiere word (its client re-cases it) ahead of the format tag (Lalka, Witajcie w Hope)
+xtra-mok-miedzyrzecz-premiera	venue	kino-mok-miedzyrzecz			event		(?i)\s+premiera(?=\s|$)		MOK Międzyrzecz '<film> PREMIERA [2D napisy]' premiere word (its client re-cases it) ahead of the format tag (Lalka, Witajcie w Hope)	[["Lalka PREMIERA","Lalka"],["LALKA - premiera","LALKA -"]]
 
 # ── kino-muza ──
 # Kino Muza — "X | najlepsze z najgorszych" recurring-programme suffix.
-muza-najlepsze-z-najgorszych	venue	kino-muza		seed	venue		(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$		Kino Muza 'najlepsze z najgorszych' programme suffix
-kino-muza-trim	venue	kino-muza		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace
+muza-najlepsze-z-najgorszych	venue	kino-muza		seed	venue		(?i)\s*\|\s*najlepsze\s+z\s+najgorszych\s*$		Kino Muza 'najlepsze z najgorszych' programme suffix	[["THE ROOM RETURNS | Najlepsze z najgorszych","THE ROOM RETURNS"],["The Room Returns | NAJLEPSZE Z NAJGORSZYCH","The Room Returns"]]
+kino-muza-trim	venue	kino-muza		all,seed	junk		^\s+|\s+$		Trim leading/trailing whitespace	[["Lalka ","Lalka"]]
 
 # ── kino-na-starowce ──
-xtra-starowce-akcja-lato	venue	kino-na-starowce			venue	jun-sep	(?i)\s*(?:[-–—]\s*)?(?:film\s+)?akcja\s+lato\s+w\s+kinie\s*$		Na Starówce '… [- film] akcja lato w kinie' campaign suffix (Toy Story 5, Vaiana)
+xtra-starowce-akcja-lato	venue	kino-na-starowce			venue	jun-sep	(?i)\s*(?:[-–—]\s*)?(?:film\s+)?akcja\s+lato\s+w\s+kinie\s*$		Na Starówce '… [- film] akcja lato w kinie' campaign suffix (Toy Story 5, Vaiana)	[["Toy story 5 akcja lato w kinie","Toy story 5"],["Vaiana - film akcja lato w kinie","Vaiana"]]
 
 # ── kino-oskard ──
 # Shared-portal venues, cleaned via the owning client's Cinema.slug:
 #   Oskard → Bilety24Client, Stary Młyn → Bilety24OrganizerClient,
 #   Na Starówce + Farys → SystemBiletowyClient.
-xtra-oskard-kino-cafe	venue	kino-oskard			venue		(?i)\s*/\s*(?:dubbing\s*/\s*)?Kino\s+Cafe\s*$		Kino Oskard '… /Kino Cafe' (and '/dubbing/Kino Cafe') venue suffix (Following, Robin Hood, Drugie życie, Supergirl, Toy Story 5)
+xtra-oskard-kino-cafe	venue	kino-oskard			venue		(?i)\s*/\s*(?:dubbing\s*/\s*)?Kino\s+Cafe\s*$		Kino Oskard '… /Kino Cafe' (and '/dubbing/Kino Cafe') venue suffix (Following, Robin Hood, Drugie życie, Supergirl, Toy Story 5)	[["Ojczyzna/Kino Cafe","Ojczyzna"],["ZAWODOWCY/Kino Cafe","ZAWODOWCY"]]
 
 # ── kino-palacowe ──
 # Kino Pałacowe — Wajda retrospective prefix. The "Poranek dla dzieci:" and
 # "DKF Zamek:" banners are already covered GLOBALLY (search-programme-prefix's
 # 'Poranek dla dzieci' + the banner row xtra-pp-dkf-named), so the
 # per-cinema seeds are dropped: query-only, the screening keeps its own row.
-palacowe-wajda	venue	kino-palacowe		seed	retrospective		^WAJDA: re-wizje\. 		Kino Pałacowe Wajda retrospective prefix
+palacowe-wajda	venue	kino-palacowe		seed	retrospective		^WAJDA: re-wizje\. 		Kino Pałacowe Wajda retrospective prefix	[["WAJDA: re-wizje. Brzezina","Brzezina"],["WAJDA: re-wizje. Spot przeglądu","Spot przeglądu"]]
 
 # ── kino-stary-mlyn ──
-xtra-starymlyn-sensoryczny	venue	kino-stary-mlyn			audience		(?i)\s+sensoryczny\s*$		Kino Stary Młyn '… sensoryczny' sensory-screening suffix (Toy Story 5)
+xtra-starymlyn-sensoryczny	venue	kino-stary-mlyn			audience		(?i)\s+sensoryczny\s*$		Kino Stary Młyn '… sensoryczny' sensory-screening suffix (Toy Story 5)	[["Toy Story 5 sensoryczny","Toy Story 5"],["Film: Toy Story 5 sensoryczny","Film: Toy Story 5"]]
 
 # ── wybrzeze ──
 # Kino Wybrzeże (Kołobrzeg) appends its own venue name to every listing
@@ -1087,4 +1091,4 @@ xtra-starymlyn-sensoryczny	venue	kino-stary-mlyn			audience		(?i)\s+sensoryczny\
 # trailing "-kino wybrzeże" (any case) so it keys like every other cinema.
 # `(?iu)` not `(?i)`: Unicode case folding so the all-caps raw "…WYBRZEŻE"
 # folds (plain `(?i)` is ASCII-only and won't match Ż↔ż).
-wybrzeze-venue-suffix	venue	wybrzeze		seed	venue		(?iu)\s*-\s*kino\s+wybrzeże\s*$		Kino Wybrzeże trailing venue-name suffix
+wybrzeze-venue-suffix	venue	wybrzeze		seed	venue		(?iu)\s*-\s*kino\s+wybrzeże\s*$		Kino Wybrzeże trailing venue-name suffix	[["LALKA POL.-KINO WYBRZEŻE","LALKA POL."],["SUPERMOCNI DUBBING-KINO WYBRZEŻE","SUPERMOCNI DUBBING"]]
