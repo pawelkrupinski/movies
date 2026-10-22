@@ -82,12 +82,17 @@ permissions:
     contents: read
 
 jobs:
-    # Seconds, first: the secret the legs read is set, so a missing one fails here rather than hours into a leg
-    # (scripts/ci/preflight.sh). The ONLY job in front of the legs: one runner wait, not two (a second one cost
-    # measure run 968 12.6 minutes of queue on 2026-10-22). (IdentityModelConvergenceWiringSpec)
+    # Seconds, first: the secret the legs read is set, and the pair every leg replays exists, so a missing one fails
+    # here rather than minutes into each of ten legs (scripts/ci/preflight.sh, scripts/ci/convergence-preflight.sh:
+    # ~5 of 13.4 failed job-hours on 2026-10-20..22 were a recording this forge never held, a pinned tree the release
+    # had dropped, or a country with no pin). The ONLY job in front of the legs: one runner wait, not two (a second one
+    # cost measure run 968 12.6 minutes of queue on 2026-10-22). (IdentityModelConvergenceWiringSpec)
     preflight:
         runs-on: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || 'ubuntu-26.04' }}
         timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
         steps:
             - uses: actions/checkout@v5
               with:
@@ -97,6 +102,15 @@ jobs:
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh TMDB_API_KEY
+            - name: Every leg's recorded pair is there
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  # The legs this run starts: a takes-only measurement's countries, else all five.
+                  CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
+                  RECORDING: ${{ inputs.recording || '' }}
+              run: scripts/ci/convergence-preflight.sh "$CODES" "$RECORDING"
 
     # One row per country; `fail-fast: false`, so every country reports on its own. A hermetic row
     # runs no sample — it replays a slice of the corpus the suite replays, so it only failed sooner, for
@@ -113,6 +127,10 @@ jobs:
     # auto-bisect replays, and `shape` the sample's corpus-shape specs each convergence row runs ahead of its
     # suite. `heap` is the sbt JVM's `-Xmx`: the US holds its
     # whole corpus resident (it died at 8g on a 114-116k-document read model).
+    # CEILINGS FROM THE ROWS' OWN TIMES (2026-10-22): 7 days of green hermetic rows ran p95 <= 19.3 and at most 24.2
+    # minutes (takes, the United Kingdom), the US included -- the 155/350-minute ceilings were sized for cold recording
+    # legs (record-scrape-fixtures.yml keeps its own). Every row now stops at 55 (its suite at 30), so a hung JVM holds a
+    # runner for 55 minutes, not 2.5-6 hours.
     leg:
         needs: [ preflight ]
         # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`: Forgejo shows this caller as a row of
@@ -127,11 +145,11 @@ jobs:
                 # value: Forgejo (CI since the GitHub suspension) evaluates a reusable call's `with:` strictly
                 # and refuses `matrix.<key>` a row lacks -- github.com reads it as null. Same values either way.
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: '', order-job: 155, order-suite: 120, order-split: false, next-day: '' }
-                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, order: convergenceGermanyOrder, order-job: 155, order-suite: 120, order-split: true, next-day: '' }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 155, suite: 120, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: convergenceUkOrder, order-job: 155, order-suite: 120, order-split: true, next-day: '' }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: '', order-job: 155, order-suite: 120, order-split: false, next-day: '' }
-                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 350, suite: 315, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 350, order-suite: 315, order-split: true, mongo-tmpfs: '' }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: convergenceUkOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: '' }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -148,8 +166,8 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-suite-timeout-minutes:  ${{ matrix.sample-suite }}
             order-command:                 ${{ matrix.order }}
-            order-job-timeout-minutes:     ${{ matrix.order-job || 155 }}
-            order-suite-timeout-minutes:   ${{ matrix.order-suite || 120 }}
+            order-job-timeout-minutes:     ${{ matrix.order-job || 55 }}
+            order-suite-timeout-minutes:   ${{ matrix.order-suite || 30 }}
             order-split:                   ${{ matrix.order-split == true }}
             next-day-command:              ${{ matrix.next-day || '' }}
             heap:                          ${{ matrix.heap }}

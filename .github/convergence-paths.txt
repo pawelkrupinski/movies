@@ -57,6 +57,7 @@ scripts/ci/leg-verdict.sh
 scripts/ci/gh-release.sh
 scripts/ci/gh-optional.sh
 scripts/ci/preflight.sh
+scripts/ci/convergence-preflight.sh
 scripts/ci/start-mongo-replset.sh
 scripts/ci/in-background.sh
 scripts/ci/cpu-sampler.sh

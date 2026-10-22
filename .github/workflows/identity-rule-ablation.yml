@@ -13,7 +13,8 @@ on:
             recordings:
                 description: The `Record scrape fixtures` runs to replay, comma-separated.
                 required: false
-                default: '38713274617,573,528'
+                # 573 and 528: the recordings this forge holds (38713274617 is github.com-era; Forgejo never had it).
+                default: '573,528'
                 type: string
             kinds:
                 description: Which rules, comma-separated (title, accept, veto, join, apart).
@@ -69,21 +70,46 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            - name: Lay out the recordings
+            # SECONDS, BEFORE THE 14 GB LAYOUT AND THE BUILD: every input this row cannot run without. Runs 850 and 1015
+            # died 112-167 minutes in on runner/Docker kills (exit 137, a daemon restart), which the 30-minute resumable
+            # rows now bound; what CAN be known at t=0 fails here instead -- a kind that is no rule kind, a rounds that is
+            # no number, an `only` rule of another kind, a recording this forge does not hold, a resume-run without the
+            # row's state (that one is the next step, moved ahead of the layout for the same reason).
+            - name: Preflight the inputs
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RECORDINGS: ${{ inputs.recordings }}
-                  KINOWO_REPO: ${{ github.repository }}
+                  KINDS: ${{ inputs.kinds }}
+                  ROUNDS: ${{ inputs.rounds }}
+                  ONLY: ${{ inputs.only }}
               run: |
-                  set -euo pipefail
-                  cache="$RUNNER_TEMP/kinowo-identity"
-                  echo "KINOWO_IDENTITY_CACHE=$cache" >> "$GITHUB_ENV"
+                  set -uo pipefail
+                  bad=0
+                  err() { echo "::error::$*"; bad=1; }
+                  IFS=, read -r -a kinds <<< "$KINDS"
+                  for k in "${kinds[@]}"; do
+                      case "$k" in title|accept|veto|join|apart) ;; *) err "kinds: '$k' is not one of title, accept, veto, join, apart" ;; esac
+                  done
+                  [[ "$ROUNDS" =~ ^[0-9]+$ ]] || err "rounds: '$ROUNDS' is not a whole number"
+                  IFS=, read -r -a only <<< "$ONLY"
+                  for r in "${only[@]+"${only[@]}"}"; do
+                      # identity rules are `<kind>:<name>`; a title rule has no colon and needs `title` in kinds
+                      kind=title; [[ "$r" != *:* ]] || kind=${r%%:*}
+                      [[ ",$KINDS," == *",$kind,"* ]] || err "only: '$r' is a $kind rule, and kinds is '$KINDS' -- it would never be ablated"
+                  done
                   IFS=, read -r -a runs <<< "$RECORDINGS"
                   for run in "${runs[@]}"; do
-                      scripts/identity-fetch-recording.sh --no-overlay "$run" "$cache/recordings/$run"
-                      rm -rf "$cache/recordings/$run/archive"
+                      if names=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100" \
+                              --jq '.artifacts[] | select(.expired != true) | .name' 2>"$RUNNER_TEMP/err"); then
+                          grep -q '^scrape-fixtures-' <<< "$names" || err "recording $run holds no scrape-fixtures-* corpus (expired or deleted)"
+                      elif grep -q 'HTTP 404' "$RUNNER_TEMP/err"; then
+                          err "recording $run is not on this forge (a github.com-era run?) -- name one it holds, e.g. 573,528"
+                      else
+                          echo "::warning::could not list recording $run's artifacts ($(head -c 200 "$RUNNER_TEMP/err")) -- not checked"
+                      fi
                   done
+                  exit "$bad"
 
             - name: Carry on from the earlier run's state
               if: ${{ inputs.resume-run != '' }}
@@ -99,6 +125,22 @@ jobs:
                   mkdir -p ablation
                   cp "$RUNNER_TEMP/resume/ablation/state.json" ablation/state.json
                   python3 -c 'import json; s=json.load(open("ablation/state.json")); print("resuming round", s["round"], "with", len(s["pending"] or []), "configurations")'
+
+            - name: Lay out the recordings
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RECORDINGS: ${{ inputs.recordings }}
+                  KINOWO_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  cache="$RUNNER_TEMP/kinowo-identity"
+                  echo "KINOWO_IDENTITY_CACHE=$cache" >> "$GITHUB_ENV"
+                  IFS=, read -r -a runs <<< "$RECORDINGS"
+                  for run in "${runs[@]}"; do
+                      scripts/identity-fetch-recording.sh --no-overlay "$run" "$cache/recordings/$run"
+                      rm -rf "$cache/recordings/$run/archive"
+                  done
 
             - uses: ./.github/actions/setup-sbt-build
 
