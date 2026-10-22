@@ -95,6 +95,21 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Stadt der verlorenen Seelen"), praunheim) shouldBe true
   }
 
+  it should "name the newer of two namesakes no fact tells apart, never the older the ranking prefers" in {
+    // DE Pornfilmfestival Berlin (recording 573): "The Dating Game" took Netflix's 2024 "Woman of the Hour" (TMDB's German
+    // alternative title "The Dating Game") at 50.7% beside Violet Du Feng's 2025 documentary of that title
+    def billed(raw: String, year: Option[Int] = None) =
+      IdentityMeasures.Listing(raw.split(": ").last, Some(raw), year = year, screeningsSeason = Some(2026))
+    val hour   = IdentityMeasures.Film("Woman of the Hour", year = Some(2024), directors = Some(Seq("Anna Kendrick")))
+    val dating = IdentityMeasures.Film("The Dating Game", year = Some(2025), directors = Some(Seq("Violet Du Feng")))
+    ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game"), hour, dating) shouldBe true
+    ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game"), dating, hour) shouldBe false
+    // an undated namesake is no newer film; a stated year, or a banner naming no film festival, decides by the facts
+    ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game"), hour, dating.copy(year = None)) shouldBe false
+    ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game", year = Some(2024)), hour, dating) shouldBe false
+    ListingShape.festivalsOlderNamesake(billed("Kino Seniora: The Dating Game"), hour, dating) shouldBe false
+  }
+
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
     def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
       IdentityMeasures.Film(title, original, directors = Some(directors))

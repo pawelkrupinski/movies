@@ -297,7 +297,14 @@ object ListingShape {
    *  it by the title alone: DE Pornfilmfestival Berlin's "The more the merrier" (a shorts programme) is not Stevens' 1943
    *  comedy, its "No Mercy" (Willinger's 2026 documentary) not Pearce's 1986 thriller — beside "Cyberfuck", the 2026 film
    *  at the same 39.1% on the same bare title. */
-  def festivalsCatalogueNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+  def festivalsCatalogueNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean =
+    film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && festivalsBareBilling(listing, film)
+
+  /** Is the listing a bare billing under a FILM FESTIVAL's banner that names none of `film`'s directors — no year,
+   *  director or running time stated, the banner a colon or a pipe closes naming a film festival? Its title names the
+   *  programme's entry, which no fact singles out among its namesakes ([[festivalsCatalogueNamesake]],
+   *  [[festivalsOlderNamesake]]). */
+  def festivalsBareBilling(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
     val raw = listing.rawTitle.getOrElse(listing.title)
     // a programme naming the film's director is the festival's homage to them: "Hommage Rosa von Praunheim 2: Stadt der
     // verlorenen Seelen" is his 1983 film
@@ -305,9 +312,18 @@ object ListingShape {
       val billed = TitleContainment.tokens(raw).toSet
       film.directors.getOrElse(Nil).flatMap(TitleContainment.tokens).exists(name => name.length >= DirectorStem && billed(name))
     }
-    listing.year.isEmpty && listing.directors.isEmpty && listing.runtime.isEmpty &&
-      film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && BillingPieces.underAFilmFestival(raw) && !creditsIt
+    listing.year.isEmpty && listing.directors.isEmpty && listing.runtime.isEmpty && BillingPieces.underAFilmFestival(raw) && !creditsIt
   }
+
+  /** Is `film` OLDER than `newer`, a film the same bare billing under a film festival's banner names alike
+   *  ([[festivalsBareBilling]])? A festival screens its year's entries: of two namesakes no fact tells apart, the newer
+   *  is its programme's, and the older only the database's popularity ranking picks — DE Pornfilmfestival Berlin's
+   *  "The Dating Game" took Netflix's 2024 "Woman of the Hour" (TMDB's German alternative title "The Dating Game") at
+   *  50.7% beside Violet Du Feng's 2025 documentary "The Dating Game". The catalogue rule's years
+   *  ([[FestivalCatalogueYears]]) deny an old namesake outright; this one only keeps the pooled vote from taking the
+   *  older on its ranking. */
+  def festivalsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
+    festivalsBareBilling(listing, film) && film.year.exists(year => newer.year.exists(_ > year))
 
   /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */
   val FestivalCatalogueYears = 10

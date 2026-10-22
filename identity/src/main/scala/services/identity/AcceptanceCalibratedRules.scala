@@ -95,13 +95,20 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       best   = taken._1
       _     <- noneOf(closerThan(best, eligible), "its title sits inside a closer record", best)
       _     <- noneOf(eligible.find(rival => (rival ne best) && {
-                 val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
-                 val alike  = pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
-                 val apart  = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
-                 (alike && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
+                 val apart = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
+                 (namedAlike(best, rival) && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
                }), "a film the title names alike fits its facts better", best)
+      _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
+                 ListingShape.festivalsOlderNamesake(best.listing, best.candidate.film, rival.candidate.film)),
+                 "a festival's bare billing names a newer film alike", best)
       _     <- noneOf(Option.when(namedWithinAnother(best, eligible))(best), "the title names it only within another candidate's longer title", best)
     } yield taken
+  }
+
+  /** Does the billing name `rival` by the very pieces it names `best` by ([[IdentityMeasures.namingPieces]])? */
+  private def namedAlike(best: Scored, rival: Scored): Boolean = {
+    val pieces = IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)
+    pieces.nonEmpty && pieces == IdentityMeasures.namingPieces(best.listing, best.candidate.film)
   }
 
   /** Does the venue's billing name `best` only WITHIN another eligible candidate's longer title — the agreement's same
