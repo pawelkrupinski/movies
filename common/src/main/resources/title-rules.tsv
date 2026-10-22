@@ -290,9 +290,10 @@ xtra-ss-amerykanska-klasyka	query				banner		(?i)\s*[.,]?\s*Ameryka[ńn]ska\s+kl
 # replaceAll so every quote in the title is folded).
 search-quote-right	query			all	junk		”	"	Polish right double quote ” → plain ASCII "
 search-quote-low9	query			all	junk		„	"	Polish low-9 double quote „ → plain ASCII "
-xtra-dkf-suffix-pipe-underscore	query				banner		(?i)\s*[|_]\s*DKF\b.*$		'| DKF' / '_DKF' suffix
-xtra-dkf-suffix-dash	query				banner		(?i)\s*[-–—]\s*DKF\b.*$		'- DKF KOT' / '- DKF III W' suffix
-xtra-dkf-suffix-period	query				banner		(?i)\.\s*DKF\b.*$		'Róża. DKF' full-stop DKF suffix
+# · xtra-dkf-suffix-pipe-underscore: '| DKF' / '_DKF' suffix
+# · xtra-dkf-suffix-dash: '- DKF KOT' / '- DKF III W' suffix
+# · xtra-dkf-suffix-period: 'Róża. DKF' full-stop DKF suffix
+xtra-dkf-suffix	query				banner		(?i)(?:\s*[|_]\s*DKF\b.*$|\s*[-–—]\s*DKF\b.*$|\.\s*DKF\b.*$)		'<film> | DKF …' / '_ DKF' / '- DKF …' / '. DKF …' film-club tail, cut from the first DKF on — was xtra-dkf-suffix-pipe-underscore, xtra-dkf-suffix-dash, xtra-dkf-suffix-period
 # A premiere is an event of the screening, bracketed "(PREMIERA)" (separated ones: the announcement strip
 # below). Never the whole title, and never after a bare space: "Ostatnia Premiera" is a title.
 # A screening billed as a film's showing ("Sytuacje Relacje. Pokaz filmu Hamnet", "Spotkanie z aktorką
@@ -595,8 +596,9 @@ xtra-klub-filmowy-suffix	query				banner		(?iu){{SEP}}(?:\p{L}+\s+){0,3}Klub\s+F
 xtra-capital-i-format-wrapper	query				format		\s+I\s+(?i:2D|3D|DUB(?:BING)?|NAP(?:ISY)?|LEKTOR|ATMOS|IMAX|4DX)\s+I\s*$		'<film> I 2D I' — a cinema that wraps the screen-format tag in literal capital-'I' separators instead of pipes (Backrooms. Bez wyjścia I 2D I). The 'I's are case-SENSITIVE so the Polish conjunction ' i ' can't trigger it
 xtra-ostatni-seans-suffix	query				event		(?iu){{SEPD}}Ostatni\s+seans\s*$		'<film>. Ostatni seans' last-screening suffix (Rozmowa. Ostatni seans)
 xtra-czwartek-konesera-suffix	query				banner		(?iu)\s+czwartek\s+konesera\s*$		'<film> czwartek konesera' connoisseur-Thursday suffix (Werdykt czwartek konesera)
-xtra-przed-filmem-suffix	query				event		(?iu){{SEPD}}przed\s+filmem\b.*$		'<film> - przed filmem wykład prof. …' / '<film> | przed filmem …' what-happens-before-the-screening suffix (a lecture, a talk): TMDB's search missed the film behind it, and director + year landed on another of the director's films (EROICA - przed filmem wykład prof. Marka Hendrykowskiego → Człowiek na torze, 2026-09)
-xtra-dot-spotkanie-suffix	query				event		(?iu){{SEPD}}Spotkani\p{L}*\s+z\b.*$		'<film>. Spotkanie z <person>' meeting suffix introduced by a PERIOD (or any separator) — the seed meeting-suffix only fires after a dash/pipe/plus (Człowiek z marmuru. Spotkanie z Michałem Tarkowskim)
+# · xtra-przed-filmem-suffix: '<film> - przed filmem wykład prof. …' / '<film> | przed filmem …' what-happens-before-the-screening suffix (a lecture, a talk): TMDB's search missed the film behind it, and director + year landed on another of the director's films (EROICA - przed filmem wykład prof. Marka Hendrykowskiego → Człowiek na torze, 2026-09)
+# · xtra-dot-spotkanie-suffix: '<film>. Spotkanie z <person>' meeting suffix introduced by a PERIOD (or any separator) — the seed meeting-suffix only fires after a dash/pipe/plus (Człowiek z marmuru. Spotkanie z Michałem Tarkowskim)
+xtra-meeting-tail	query				event		(?iu)(?:{{SEPD}}przed\s+filmem\b.*$|{{SEPD}}Spotkani\p{L}*\s+z\b.*$)		'<film>. przed filmem …' / '<film> - Spotkanie z …' what comes with the screening, cut from the first such note on — was xtra-przed-filmem-suffix, xtra-dot-spotkanie-suffix
 xtra-filmoteka-dojrzalego	query				banner		(?iu){{SEP}}Filmoteka\s+Dojrzałego\s+Człowieka\s*$		'<film> - Filmoteka Dojrzałego Człowieka' mature-viewers'-strand suffix (Sprawiedliwość owiec)
 xtra-format-pl-suffix	query				format		(?iu)(?:{{SEP}})?(?:2D|3D)\s+(?:dubbing|napisy|lektor)\s+PL\s*$		'<film>- 2D Dubbing PL' screen-format + dub/napisy + PL suffix (the canonical format strips stop before the trailing ' PL') (Toy Story 5)
 # Twelfth-wave (2026-06-25) audit of the TMDB-no-match corpus: programme/series
