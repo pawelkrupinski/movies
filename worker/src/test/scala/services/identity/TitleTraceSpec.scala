@@ -24,7 +24,7 @@ class TitleTraceSpec extends AnyFlatSpec with Matchers {
   "a sensory-friendly strand banner" should "be stripped from the search by its named rule, never from the slot" in {
     val t = trace("Pokaz przyjazny osobom z ADHD: Kandydaci śmierci", Country.Poland)
     line(t, "= slot title") shouldBe "= slot title 'Pokaz przyjazny osobom z ADHD: Kandydaci śmierci'"
-    line(t, "xtra-pp-przyjazny-audience") should endWith("→ 'Kandydaci śmierci'")
+    line(t, "xtra-pp-audience-banners") should endWith("→ 'Kandydaci śmierci'")
     line(t, "= search query") shouldBe "= search query 'Kandydaci śmierci'"
   }
 
