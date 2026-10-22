@@ -7,6 +7,8 @@ import services.movies.{ListingKey, TitleContainment, TitleNormalizer}
 import services.titlerules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
 import tools.{CommandLine, UnmatchedClusters}
 
+import play.api.libs.json.Json
+
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
@@ -56,9 +58,10 @@ object DecorationDiscovery {
 
   val Right = "right"; val Wrong = "wrong"; val Switched = "switched"; val Lost = "lost"; val Unjudged = "unjudged"
 
-  /** The marker line in `ExtraTitleRules.scala` the kept proposals are inserted above. */
-  val Marker = "// decoration-discovery: proposals are inserted above this line"
-  val RulesSource: Path = Path.of("common", "src", "main", "scala", "services", "titlerules", "ExtraTitleRules.scala")
+  /** The marker line in the title-rule table (`title-rules.tsv`) the kept proposals are inserted above: the end of
+   *  the lookup tier. */
+  val Marker = "# decoration-discovery: proposals are inserted above this line"
+  val RulesSource: Path = Path.of("common", "src", "main", "resources", services.titlerules.TitleRuleTable.Resource)
 
   // ── mining ────────────────────────────────────────────────────────────────────────────────
 
@@ -208,28 +211,20 @@ object DecorationDiscovery {
 
   // ── writing ───────────────────────────────────────────────────────────────────────────────
 
-  private def scalaString(s: String): String = {
-    val escaped = s.flatMap {
-      case '\\' => "\\\\"; case '"' => "\\\""; case '\n' => "\\n"
-      case c if c < ' ' => f"\\u${c.toInt}%04x"
-      case c => c.toString
-    }
-    "\"" + escaped + "\""
-  }
+  private def flat(s: String): String = s.replaceAll("[\\t\\n\\r]", " ")
 
-  /** `source` (ExtraTitleRules.scala) with `kept` inserted above [[Marker]], each beside the titles it was measured on. */
+  /** `source` (the title-rule table) with `kept` inserted above [[Marker]] as query rows, each carrying the titles it
+   *  was measured on. */
   def splice(source: String, kept: Seq[Proposal]): String = {
     val at = source.indexOf(Marker)
-    require(at >= 0, s"no '$Marker' line in the rules source")
+    require(at >= 0, s"no '$Marker' line in the rules table")
     val lineStart = source.lastIndexOf('\n', at) + 1
-    val indent    = source.substring(lineStart, at)
-    val entries   = kept.map { p =>
-      val r = p.rule
-      val examples = p.examples.map { case (a, b) => s"${scalaString(a)} -> ${scalaString(b)}" }.mkString(", ")
-      s"${indent}Discovered(TitleRule(${scalaString(r.id)}, GlobalStructural, None, ${scalaString(r.pattern)}, \"\", applyAll = false, order = 0,\n" +
-        s"$indent  note = Some(${scalaString(r.note.getOrElse(""))})),\n$indent  Seq($examples)),\n"
+    val rows      = kept.map { p =>
+      val r        = p.rule
+      val examples = Json.stringify(Json.toJson(p.examples.map { case (a, b) => Seq(a, b) }))
+      Seq(r.id, "query", "", "", "", "banner", "", r.pattern, "", flat(r.note.getOrElse("")), examples).mkString("\t") + "\n"
     }.mkString
-    source.substring(0, lineStart) + entries + source.substring(lineStart)
+    source.substring(0, lineStart) + rows + source.substring(lineStart)
   }
 
   private def cell(s: String) = s.replace("|", "\\|").replace("\n", " ")
@@ -253,7 +248,7 @@ object DecorationDiscovery {
   }
 
   val commandLine: CommandLine = CommandLine("DecorationDiscovery", "Mines title decorations from the unmatched captures and measures each as a rule.",
-    CommandLine.Flag("apply", "write the kept proposals into ExtraTitleRules.scala"),
+    CommandLine.Flag("apply", "write the kept proposals into the title-rule table"),
     CommandLine.Value("report", "file.md", "where the evidence table goes"),
     CommandLine.Value("limit", "n", "the most mined candidates measured", default = Some("60")),
     CommandLine.Value("min-remainders", "n", "the fewest distinct remainders a candidate needs",

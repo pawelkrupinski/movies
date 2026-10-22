@@ -91,6 +91,7 @@ object TitleRulesGoldenSpec {
     case Seq("--rules", out) =>
       Files.write(Paths.get(out), ruleDump.asJava, UTF_8)
       println(s"wrote ${ruleDump.size} rules to $out")
+    case Seq("--placeholders", out) => Files.writeString(Paths.get(out), Json.stringify(Json.toJson(TitleRulePlaceholders.all)), UTF_8)
     case _ => writeGolden()
   }
 

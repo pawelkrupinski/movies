@@ -14,75 +14,6 @@ import models.Country
  *  at this baseline the per-cinema tier is empty and clients still clean inline. */
 object TitleRules {
 
-  // ── apiQuery tier (merged GlobalStructural) — programme/access/event strips
-  //    fold FIRST (orders 10–14), then the decoration strips (orders 20–60),
-  //    reproducing the legacy `structural(searchRules(t))` composition
-  //    byte-for-byte. NOT in the merge key — a decoration/programme edition keys
-  //    by its own form; whether it then lands on its film's row is
-  //    `TitleContainment`'s call, and it keeps its own slot title either way. ──
-  private val ProgrammePrefixPattern =
-    """(?i)^(?:Kino\s+bez\s+barier|""" +
-    """Pokaz\s+sensorycznie\s+przyjazny|""" +
-    """Filmow[ey]\s+Poran(?:ki|ek)(?:\s+[^:]+)?|""" +
-    """Zimowe\s+Poranki(?:\s+[^:]+)?|""" +
-    """Poranek\s+dla\s+dzieci|""" +
-    """Filmowy\s+Klub\s+Seniora|""" +
-    """Dyskusyjny\s+Klub\s+Filmowy|""" +
-    """Filmowe\s+spotkania\s+z\s+psychoanaliz[ąa]|""" +
-    """Cinema\s+Italia\s+Oggi|""" +
-    """Plenerowe\s+Pa[łl]acowe):\s+"""
-
-  private val structural: Seq[TitleRule] = Seq(
-    TitleRule("search-programme-prefix", GlobalStructural, None,
-      ProgrammePrefixPattern, "", applyAll = false, order = 10,
-      tag = Some("programmePrefix"),
-      note = Some("Cinema programme banners (Kino bez barier, DKF, Filmowe Poranki…)")),
-    TitleRule("search-accessibility-tag", GlobalStructural, None,
-      """(?i)\s*\(\s*AD\b[^)]*\)?\s*$""", "", applyAll = false, order = 12,
-      note = Some("Trailing accessibility tag: (AD), (AD + CC + PJM)")),
-    TitleRule("search-plus-event-suffix", GlobalStructural, None,
-      """\s+\+\s+\p{L}[^)]*$""", "", applyAll = false, order = 14,
-      note = Some("'+ <event>' suffix: '+ spotkanie z producentką'")),
-    // Case-insensitivity is scoped to the words ((?i:…)) — NOT global — because a
-    // global (?i) makes Java's \p{Lu} also match lowercase, which would let the
-    // lookahead accept 'spotkania trzeciego' and amputate 'Bliskie spotkania
-    // trzeciego stopnia'. \p{Lu} must stay case-sensitive.
-    TitleRule("search-meeting-suffix", GlobalStructural, None,
-      """\s*[-–—|+]\s*(?:[^|]*?\s)?(?i:spotkani)\p{L}*""" +
-        """(?=\s+(?i:z|ze|po|przed)\b|\s*[|+]|\s+\p{Lu}|\s*$).*$""",
-      "", applyAll = false, order = 15,
-      note = Some("'<sep> … spotkanie <…>' meeting suffix introduced by a separator " +
-        "(+ | – —): '… | spotkanie z reżyserem', 'Carmilla – pokaz … + spotkanie z X'. " +
-        "Lookahead (meeting tail = z/ze/po/przed, a pipe/plus, a Capitalised name, or " +
-        "end) keeps a real film whose title contains 'spotkania' intact " +
-        "(Bliskie spotkania trzeciego stopnia).")),
-    TitleRule("search-spotkanie-banner-prefix", GlobalStructural, None,
-      """(?i)^(?:Filmowe\s+)?spotkani\p{L}*[^:]*:\s*""", "", applyAll = false, order = 11,
-      note = Some("'Spotkanie/Spotkania …:' meeting-cycle banner prefix: " +
-        "'SPOTKANIA FILOZOFICZNE: Wędrówka na północ', 'FILMOWE SPOTKANIA Z PSYCHOLOGIĄ: " +
-        "Ojczyzna'. Anchored at start so a film with its own colon " +
-        "(SMOK (…). Trzy kolory: Czerwony) is left alone.")),
-    TitleRule("search-with-event-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—]?\s*z\s+(?:autorską\s+narracją|prelekcj[ąae]|wprowadzeniem|udziałem)\S*.*$""",
-      "", applyAll = false, order = 16,
-      note = Some("'z <event>' screening suffix: 'z autorską narracją Łony', 'z prelekcją'")),
-    TitleRule("structural-cykl-prefix", GlobalStructural, None,
-      """^Cykl\s+[„"][^„""]*[„""]?\s+[-–—]\s+""", "", applyAll = false, order = 20,
-      note = Some("Festival cycle banner: Cykl \"…\" – ")),
-    TitleRule("structural-slash-suffix", GlobalStructural, None,
-      """\s+/\s+.+$""", "", applyAll = false, order = 30,
-      note = Some("Slash postfix: 'Top Gun / 40th Anniversary'")),
-    TitleRule("structural-anniversary-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—|.]?\s*\d+(?:st|nd|rd|th)?\.?\s*(?:anniversary|rocznica)\s*$""", "",
-      applyAll = false, order = 40, note = Some("Anniversary rerelease suffix")),
-    TitleRule("structural-restored-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""", "",
-      applyAll = false, order = 50, note = Some("Restored / remastered suffix (4K restored)")),
-    TitleRule("structural-wersja-suffix", GlobalStructural, None,
-      """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""", "", applyAll = false, order = 60,
-      note = Some("Polish language-version suffix: '- wersja polska'"))
-  )
-
   // ── canonical tier — cross-cinema spelling unifications (sanitize) ─────────
   private val canonical: Seq[TitleRule] = Seq(
     TitleRule("canonical-gwiezdne-wojny", Canonical, None,
@@ -193,7 +124,7 @@ object TitleRules {
       note = Some("Trim leading/trailing whitespace"))
   }
 
-  val all: Seq[TitleRule] = structural ++ canonical ++ perCinema ++ heliosRules ++ trimRules
+  val all: Seq[TitleRule] = TitleRuleTable.rows.filter(_.seed).map(_.rule) ++ canonical ++ perCinema ++ heliosRules ++ trimRules
 
   val ruleSet: TitleRuleSet = TitleRuleSet(all)
 }

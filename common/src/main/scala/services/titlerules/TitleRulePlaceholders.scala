@@ -28,6 +28,54 @@ object TitleRulePlaceholders {
   private val RuntimeMinutes = """\d{2,3}\s*mins?\.?(?:\s+TBC)?"""
   private val AsteriskNote   = """\*\s*\p{L}[\p{L}\s'&-]*\*"""
 
+  /** A special audience a screening is billed for, as a venue words it — each one no film's title ends on, so it
+   *  is a note even with no separator before it: the word table's audiences ([[services.movies.TitleWords]]), in every
+   *  language a country bills in ("Relaxed Screening", "Sesión relajada", "Kinderwagenkino"). */
+  private val BareAudience = services.movies.TitleWords.rawPattern(services.movies.TitleWords.Concept.Audience)
+  /** A special audience a strand bills ahead of or after the film: any "<who> friendly" (dementia, autism, baby, sensory,
+   *  family, dog…), a parent-and-baby or seniors' strand, and SEND (special educational needs) as a banner, a colon after
+   *  it — never the word "send" a title opens on ("Send Help"). */
+  private val AudienceStrand = """(?:Parents?\s*(?:&|and)\s*Bab(?:y|ies)|\p{L}+[-\s]Friendly|Silver\s+Screen|send(?=\s*:))"""
+  /** What names a screening note outright: an audience (the seniors' "Silver Screen" too, a film's title only once
+   *  set off), a Q&A, a restored print. */
+  private val NoteMarker = s"""(?:$BareAudience|silver\\s+screen|q\\s*&\\s*a|4k\\s+(?:restoration|remaster(?:ed)?))"""
+  /** Every word a screening note is made of — its markers (an audience whole, in any language) and the words a venue
+   *  strings them together with. */
+  private val NoteWord =
+    s"""(?:$BareAudience|""" + """relaxed|dementia|autism|friendly|parents?|bab(?:y|ies)|toddlers?|silver|screen\p{L}*|club|q\s*&\s*a|""" +
+      """intro(?:duction)?|panel|live|subtitled|dubbed|dub|subs?|english|captioned|captions?|4k|35mm|70mm|""" +
+      """restoration|remaster(?:ed)?|with|and|plus|&|\+)"""
+  /** A run of nothing but note words that names at least one note. */
+  private val NoteSegment = s"""(?=(?:$NoteWord[\\s,/]*)*?$NoteMarker)$NoteWord(?:[\\s,/]+$NoteWord)*(?![\\p{L}\\p{N}])"""
+
+  /** The touring "Federico Fellini: ciao a tutti!" retrospective (~12 cinemas) brands its films in many shapes — a
+   *  "Federico Fellini:" or bare "Fellini." prefix, an optional "ciao a tutti!" / "Ciao a tutti:" subtitle, and a
+   *  "| / – przegląd Federico Fellini …" suffix. The bare colon form ("Fellini: …") is deliberately NOT matched (only
+   *  "Federico Fellini:" or the dot "Fellini."), so a real film whose title merely starts "Fellini:" survives. The
+   *  separator-less "Federico Fellini <FILM>" form (KinoMuza's "Federico Fellini SŁODKIE ŻYCIE") is matched too, but
+   *  only with a `(?=\s+\S)` look-ahead so a bare "Federico Fellini" (the standalone documentary) is left intact, not
+   *  amputated to an empty key. */
+  private val FelliniPrefix =
+    """(?iu)^(?:Federico\s+Fellini\s*:|Federico\s+Fellini(?=\s+\S)|Fellini\s*\.)\s*(?:ciao\s+a?\s*tutti\s*!?)?\s*[:\-–—]?\s*"""
+  private val FelliniSuffix =
+    """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$"""
+
+  /** A festival or film club's ACRONYM tag on its screening of an ordinary film, generic in the acronym. What keeps
+   *  each one honest:
+   *   - prefix: an edition ORDINAL, then 2–6 CAPITALS (case-sensitive) and a separator straight after them, so "1. FC
+   *     Köln - Der Film" (the name runs on) and "32. MFSP A PART - Trixie" stay whole;
+   *   - year prefix: an edition YEAR in place of the ordinal and no separator ("2026 LHFF Scream (1996)"), so the
+   *     acronym must be 2–6 CAPITALS standing alone and a lower-case letter must follow — "2001 A Space Odyssey" (one
+   *     letter), "2001 Maniacs" (a word), "2001 MANIACS" (seven capitals) and an all-capitals listing like "1776 THE
+   *     MUSICAL" (nothing says a title follows) stay whole;
+   *   - suffix: 3–6 CAPITALS ending the title after a pipe, with a lower-case letter BEFORE the pipe — in "KINO SENIORA
+   *     | LALKA" the capitals after the pipe are the film — and never a signed, subtitled or language-version tag (PJM,
+   *     SDH, ENG, UKR, ORG): that screening is its own audience's card. Screen-format tags ("| IMAX", "| DUB") are
+   *     `FormatTags`' and are peeled at ingest before the rules see the title. */
+  private val NumberedFestivalTag  = """^\d{1,3}\.\s*\p{Lu}{2,6}\s*[-–—:]\s*"""
+  private val YearFestivalTag      = """^(?:19|20)\d{2}\s+\p{Lu}{2,6}\s+(?=.*\p{Ll})"""
+  private val FestivalTagAfterPipe = """\s*\|\s*(?!(?:PJM|SDH|ENG|UKR|ORG)\s*$)\p{Lu}{3,6}\s*$"""
+
   /** A placeholder: the `name` referenced as `{{name}}`, its regex `expansion`,
    *  and a human `doc` line shown in the admin editor's reference panel. */
   final case class Placeholder(name: String, expansion: String, doc: String)
@@ -68,7 +116,25 @@ object TitleRulePlaceholders {
       "peels only a bracketed one (or one behind a certificate), the search strip a bare one too."),
     Placeholder("ASTERISK_NOTE", AsteriskNote,
       "A showing's note between asterisks — '*MATINEE*', '*SUBTITLED MATINEE*': letters only, so a title's own " +
-      "asterisks ('M*A*S*H', 'Monet*', 'B****') never read as one. The shape FormatTags' asterisk peel reads.")
+      "asterisks ('M*A*S*H', 'Monet*', 'B****') never read as one. The shape FormatTags' asterisk peel reads."),
+    Placeholder("AUDIENCE", BareAudience,
+      "A special audience a screening is billed for, in every language a country bills in — the word table's " +
+      "audience phrases (title-words.tsv), each one no film's title ends on."),
+    Placeholder("AUDIENCE_STRAND", AudienceStrand,
+      "A special-audience strand billed beside the film: '<who> Friendly', 'Parent & Baby', 'Silver Screen', 'SEND:'."),
+    Placeholder("NOTE_SEGMENT", NoteSegment,
+      "A run of nothing but screening-note words (audiences, Q&A, intro, subtitled, 4K, 35mm…) naming at least one note."),
+    Placeholder("FELLINI_PREFIX", FelliniPrefix,
+      "The touring 'Federico Fellini: ciao a tutti!' retrospective's prefix ('Federico Fellini:', 'Fellini.', a bare " +
+      "'Federico Fellini <FILM>'), whole: a rule pattern of its own, in the lookup and merge-key tiers alike."),
+    Placeholder("FELLINI_SUFFIX", FelliniSuffix,
+      "The Fellini retrospective's suffix ('| Federico Fellini …', '– przegląd Federico Fellini …'), whole."),
+    Placeholder("FESTIVAL_TAG_NUMBERED", NumberedFestivalTag,
+      "A numbered festival or club acronym before the film ('11. UFF - ', '19. FGA: '), from the start."),
+    Placeholder("FESTIVAL_TAG_YEAR", YearFestivalTag,
+      "A year-numbered festival acronym before the film ('2026 LHFF '), from the start, a lower-case letter after it."),
+    Placeholder("FESTIVAL_TAG_AFTER_PIPE", FestivalTagAfterPipe,
+      "A festival or club acronym after a pipe closing the title ('| UFF', '| DKF'), never PJM/SDH/ENG/UKR/ORG.")
   )
 
   /** name → expansion, consumed by [[PlaceholderExpander]] / [[TitleRuleSet]]. */

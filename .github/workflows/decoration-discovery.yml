@@ -2,7 +2,7 @@ name: Decoration discovery
 
 # Weekly discovery of the DECORATIONS venues wrap film titles in — a programme banner
 # ("Edukacja Młode Horyzonty", "Kino Konesera: …"), a format or premiere tag — proposed as
-# search-strip title rules (`ExtraTitleRules.discovered`) for a human to review in ONE PR.
+# search-strip title rules (rows of common/src/main/resources/title-rules.tsv) for a human to review in ONE PR.
 #
 # `scripts.DecorationDiscovery` (worker/src/test/scala/scripts) mines the unmatched clusters'
 # fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz — a fresh capture needs the
@@ -11,7 +11,7 @@ name: Decoration discovery
 # against the fixture's replay — TMDB searches the capture lacks asked live with TMDB_API_KEY —
 # and keeps one only when it takes at least one listing right by identity-judgements.tsv, none wrong, switches
 # no existing take, and strips nothing a known film title starts (prefix) or ends (suffix) with.
-# A lost take is reported, not refused. The kept rules are written into ExtraTitleRules.scala;
+# A lost take is reported, not refused. The kept rules are written into the title-rule table;
 # the job then runs the checks a title-rule change needs — the rule specs, the unmatched-cluster
 # ratchet, and the whole-corpus snapshots, regenerated so the PR shows which films moved — and
 # a red one opens no PR. Nothing kept ⇒ no diff ⇒ no PR (the measure still lands in the summary).
@@ -84,7 +84,7 @@ jobs:
             - name: Check for kept rules
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/services/titlerules/ExtraTitleRules.scala; then
+                  if git diff --quiet -- common/src/main/resources/title-rules.tsv; then
                       echo "kept=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "kept=true" >> "$GITHUB_OUTPUT"
@@ -94,7 +94,8 @@ jobs:
             - name: Rule specs and the unmatched-cluster ratchet
               if: steps.changed.outputs.kept == 'true'
               run: |
-                  sbt "common/testOnly services.titlerules.*" \
+                  # a kept row is MEANT to change what the corpus folds to: its golden is regenerated and shown in the PR
+                  sbt "common/Test/runMain services.titlerules.TitleRulesGoldenSpec" "common/testOnly services.titlerules.*" \
                       "worker/testOnly services.movies.ExtraTitleRulesSpec services.identity.UnmatchedClustersRatchetSpec"
 
             # A search strip can move the whole corpus's films: regenerate the whole-corpus
@@ -159,7 +160,8 @@ jobs:
                   branch: chore/decoration-discovery
                   delete-branch: true
                   add-paths: |
-                      common/src/main/scala/services/titlerules/ExtraTitleRules.scala
+                      common/src/main/resources/title-rules.tsv
+                      test/resources/fixtures/title-rules/golden.jsonl
                       test/resources/fixtures/08-06-2026/*
                   commit-message: 'Strip the venue decorations the weekly discovery measured: a right take each, none wrong or switched'
                   title: 'Decoration discovery: new search-strip title rules'
