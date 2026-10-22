@@ -38,7 +38,7 @@ import scala.util.control.NonFatal
  * (`test/resources/fixtures/identity-drift-allow.tsv`: cc, venue or `*`, raw title, checkpoint or `*`, reason) names it.
  *
  * {{{
- *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]
+ *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]
  * }}}
  * Exit: 0 no divergence beyond the allow-list, 1 divergences, 2 usage.
  */
@@ -46,13 +46,16 @@ object IdentityDrift {
   import IdentitySlice.{Reads, Recording, filmOf}
 
   final case class Options(country: String = "", recording: Option[Path] = None, families: Option[Path] = None, seeds: Int = 2,
-                           gate: Int = 15, out: Path = Path.of("target/identity-drift"), allow: Option[Path] = None, labels: Option[Path] = None)
+                           gate: Int = 15, out: Path = Path.of("target/identity-drift"), allow: Option[Path] = None, labels: Option[Path] = None,
+                           /** `--seed S`: that seed alone, to replay one divergence. */
+                           only: Option[Int] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                            => o
     case "--recording" :: v :: rest     => parse(rest, o.copy(recording = Some(Path.of(v))))
     case "--families" :: v :: rest      => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
     case "--seeds" :: v :: rest         => parse(rest, o.copy(seeds = v.toInt))
+    case "--seed" :: v :: rest          => parse(rest, o.copy(only = Some(v.toInt)))
     case "--gate" :: v :: rest          => parse(rest, o.copy(gate = v.toInt))
     case "--out" :: v :: rest           => parse(rest, o.copy(out = Path.of(v)))
     case "--allow" :: v :: rest         => parse(rest, o.copy(allow = Some(Path.of(v))))
@@ -62,7 +65,7 @@ object IdentityDrift {
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]")
+    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]")
     sys.exit(2)
   }
 
@@ -332,7 +335,7 @@ object IdentityDrift {
     val allowed = o.allow.fold(Seq.empty[Allowed])(allowList).filter(_.country == country.code)
     val started = tools.Stopwatch.start()
     System.err.println(s"[identity-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
-    val divergences = (1 to o.seeds).flatMap { seed =>
+    val divergences = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)).flatMap { seed =>
       val clock = new MutableClock(recording.recordedAt)
       def readsAt(c: java.time.Clock) = new Reads(country, opened.fetch, opened.gaps, c, filed)
       val checkpoints = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
@@ -352,7 +355,7 @@ object IdentityDrift {
     val (kept, open) = divergences.partition(d => allowed.exists(_.covers(d)))
     Files.createDirectories(o.out)
     Files.writeString(o.out.resolve(s"drift-${country.code}.tsv"), (Header +: divergences.map(_.tsv)).mkString("", "\n", "\n"))
-    println(f"## ${country.code}: ${listings.size} listings, ${o.seeds} seed(s), ${divergences.size} divergence(s) " +
+    println(f"## ${country.code}: ${listings.size} listings, ${o.only.fold(o.seeds)(_ => 1)} seed(s), ${divergences.size} divergence(s) " +
       f"(${divergences.map(_.key).distinct.size} listings), ${kept.size} allow-listed, in ${started.seconds}%.0fs")
     open.groupBy(_.cls).toSeq.sortBy(-_._2.size).foreach { case (cls, ds) =>
       println(s"  ${ds.map(_.key).distinct.size} listing(s)  $cls")
