@@ -221,6 +221,14 @@ The work is done when the area is at least as clean as you found it and nothing 
   its own commit (a one-line dead import rides along; a 200-line rename does not). Skip only when it would balloon a
   commit beyond review with no clean split — then say what you saw and didn't do.
 
+## Deploying a NixOS host: `infra/bin/deploy <host>`
+
+Never hand-craft `nix-env --set` / `switch-to-configuration` lines. `infra/bin/deploy <host>`
+previews (refuses a checkout behind forgejo main, uses the `monitoring-1`-style ssh alias, shows
+units started/stopped/restarted and whether a reboot is owed); `--apply` switches and verifies.
+Agents run the preview only and hand the user the `--apply` command. Details, and the auto-apply
+new/routine-unit rules: docs/deploying-nixos-hosts.md.
+
 ## Scripts that hit external services
 
 Run per-row work in parallel — a fixed pool of 5–10 workers, halve concurrency on any 429/503, print throughput at

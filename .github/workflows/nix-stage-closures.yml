@@ -210,6 +210,12 @@ jobs:
         working-directory: infra
         run: python3 test/test_auto_apply_classify.py
 
+      # bin/deploy's pure logic: the stale-tree refusal, the ssh-alias choice (monitoring-1's bare
+      # IP is a restricted key), the dry-activate preview parsing and the post-switch verdict.
+      - name: bin/deploy refuses a stale tree and parses its preview
+        working-directory: infra
+        run: python3 test/test_deploy.py
+
       # SAME SHAPE AS THE CLASSIFIER ABOVE -- pure stdlib Python, no nix eval, no network -- so it
       # belongs here rather than staying something only bin/check ran. Driven against a fake
       # flake (no real nix eval), so it stays instant: see bin/fleet-ssh and fleet_hosts.py for

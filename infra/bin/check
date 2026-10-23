@@ -262,6 +262,14 @@ else
   failed=1
 fi
 
+step "bin/deploy preview and stale-tree logic"
+if out="$(python3 test/test_deploy.py 2>&1)"; then
+  echo "  [spec] deploy logic passes"
+else
+  echo "$out"
+  failed=1
+fi
+
 step "fleet-ssh address resolution"
 # `bin/fleet-ssh` and `bin/fleet_hosts.py` are what stands between a person and the same wrong
 # turn `bin/stage-nixos-closures` was ported to avoid: a jump host that resolves and gives a
