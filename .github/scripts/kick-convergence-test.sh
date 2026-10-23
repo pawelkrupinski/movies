@@ -44,7 +44,7 @@ pipeline=$(scratch_git "$repo" rev-parse HEAD)
 kick() { # <head> [matcher] -> the suites dispatched, one line; the exit status in $work/status
   rm -f "$work/dispatched"
   (cd "$repo" && spec_bounded env STUB="$work" PATH="$work/bin:$PATH" CONVERGENCE_PATHS_FILE="$work/paths" DISPATCH_RETRY_SECONDS=0 \
-     KICK_CONVERGENCE_GH_TIMEOUT=1 ${2:+"CHANGED_PATHS_MATCHER=$2"} \
+     KICK_CONVERGENCE_GH_TIMEOUT="${GH_BOUND:-30}" ${2:+"CHANGED_PATHS_MATCHER=$2"} \
      bash "$REPO_ROOT/.github/scripts/kick-convergence.sh" "$1" main "Country convergence" > "$work/out" 2>&1)
   echo $? > "$work/status"
   tr '\n' ' ' 2>/dev/null < "$work/dispatched" | sed 's/ $//'
@@ -61,10 +61,12 @@ echo 0123456789abcdef0123456789abcdef01234567 > "$work/last"
 check "a base this checkout does not hold is dispatched" "Country convergence" "$(kick "$docs")"
 
 echo "$base" > "$work/last"
+# The read's bound is 30 s in every other case: at 1 s, the stub answering a loaded machine (the pre-push hook's
+# eight script tests at once under /bin/bash 3.2) was cut off and the push "dispatched" (2026-10-23).
 # The stub never answers, so the gate gets past it only by the read's bound (1 s here) cutting it off: its own exit and
 # no gh left running prove that, never elapsed time (shell-spec.sh's HUNG STUBS).
 : > "$work/hang"
-check "a hung read of the last run is no base: dispatched" "Country convergence" "$(kick "$docs")"
+check "a hung read of the last run is no base: dispatched" "Country convergence" "$(GH_BOUND=1 kick "$docs")"
 check "...once the read's bound cuts it off: the gate exits 0, no gh left running" "0 0" \
   "$(cat "$work/status") $(spec_still_running "$work/hang")"
 rm -f "$work/hang"
