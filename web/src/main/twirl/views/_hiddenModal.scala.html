@@ -10,12 +10,15 @@
    - Clicking a film in the list restores it BUT keeps the modal open
      (browse-and-toggle interaction).
    - "Wyczyść" restores every hidden film AND closes the modal.
-   - The `×` close button and a click on the backdrop both close the
+   - The `×` close button, a click on the backdrop and Escape all close the
      modal without changing the hidden set.
+
+   A native modal `<dialog>` (shared.js `openDialog`): top layer, focus moved in
+   and back, the page behind inert, Escape via the dialog's own `cancel`.
 *@
 @()(implicit messages: play.api.i18n.Messages)
-<div class="hidden-modal-backdrop" id="hidden-modal-backdrop" onclick="closeHiddenModal()">
-  <div class="hidden-modal" onclick="event.stopPropagation()">
+<dialog class="modal-dialog" id="hidden-dialog" onclick="closeDialogOnBackdrop(event)">
+  <div class="hidden-modal">
     <button type="button" class="login-modal-close" onclick="closeHiddenModal()" aria-label="@messages("auth.close")" data-i18n-attr="aria-label:auth.close">&times;</button>
     <div class="login-modal-title" data-i18n="hidden.title">@messages("hidden.title")</div>
     @* Pinned above the scrollable list (flex-column layout, only the
@@ -28,4 +31,4 @@
       <button onclick="showAllFilms()" class="btn refresh-btn btn-sm w-100" data-i18n="nav.clear">@messages("nav.clear")</button>
     </div>
   </div>
-</div>
+</dialog>

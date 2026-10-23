@@ -38,19 +38,11 @@
       border-radius: 12px;
       cursor: zoom-in;
     }
-    /* Full-screen poster: the image fits the viewport whole (contain), on
-       a dim backdrop that — like the ✕ — closes it on click. */
-    .poster-lightbox {
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      background: rgba(0, 0, 0, .92);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: zoom-out;
-    }
-    .poster-lightbox[hidden] { display: none; }
+    /* Full-screen poster: a `.modal-dialog` (`_sharedStyles`) whose image
+       fits the viewport whole (contain), on a darker backdrop that — like
+       the ✕ — closes it on click. */
+    .poster-lightbox { cursor: zoom-out; }
+    .modal-dialog.poster-lightbox::backdrop { background: rgba(0, 0, 0, .92); }
     .poster-lightbox img {
       max-width: 100%;
       max-height: 100%;
@@ -198,19 +190,11 @@
     .other-cities-trigger:hover { color: #aad4ff; background: rgba(255,255,255,.12); }
 
     /* Popup listing this same film's page in every other city currently
-       showing it — same backdrop/card shape as `.login-modal-backdrop`/
-       `.login-modal` (reuses `.login-modal-close`/`.login-modal-title`), its
-       own class only because the body is a scrollable link list rather than
-       the login buttons. The links themselves are always in the markup
-       (see `_filmDetailContent`); only this visibility toggles. */
-    .other-cities-modal-backdrop {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.6);
-      display: none;
-      align-items: center; justify-content: center;
-      z-index: 200;
-    }
-    .other-cities-modal-backdrop.open { display: flex; }
+       showing it — the same `.modal-dialog` as the login modal, its card
+       reusing `.login-modal-close`/`.login-modal-title`, its own class only
+       because the body is a scrollable link list rather than the login
+       buttons. The links themselves are always in the markup (see
+       `_filmDetailContent`); only this visibility toggles. */
     .other-cities-modal {
       background: #1a1a2e;
       border: 1px solid #3a3a6e;

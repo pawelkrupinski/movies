@@ -125,6 +125,58 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     await expect(lightbox).toBeHidden();
   });
 
+  test('the full-screen poster is modal: focus moves into it, the page behind is inert, Escape closes it', async ({ page }) => {
+    await gotoFirstFilm(page);
+
+    const poster   = page.locator('.poster-img');
+    const lightbox = page.locator('#poster-lightbox');
+    if (await poster.count() === 0) {
+      test.info().annotations.push({ type: 'note', description: 'No poster on this film' });
+      return;
+    }
+    const focusIsInside = () => page.evaluate(() => !!document.activeElement?.closest('#poster-lightbox'));
+
+    await poster.click();
+    await expect(lightbox).toBeVisible();
+    expect(await focusIsInside()).toBe(true);
+    await page.evaluate(() => (document.querySelector('a.back-link') as HTMLElement).focus());
+    expect(await focusIsInside()).toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(lightbox).toBeHidden();
+  });
+
+  test('the other-cities popup is modal: focus moves in, returns to its trigger on close, Escape and the backdrop close it', async ({ page }) => {
+    // The fixture server's film page with two sibling-city links (only Poznań
+    // carries a corpus, so no corpus film shows anywhere else).
+    await page.goto('/poznan/movie-other-cities', { waitUntil: 'domcontentloaded' });
+
+    const trigger = page.locator('.other-cities-trigger');
+    const card    = page.locator('.other-cities-modal');
+    const focusIsInside = () => page.evaluate(() => !!document.activeElement?.closest('.other-cities-modal'));
+    await expect(card).toBeHidden();
+
+    // Opened from the keyboard: focus can only go back to a trigger that had
+    // it, and WebKit (Safari) never focuses a button on a mouse click.
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(card).toBeVisible();
+    expect(await focusIsInside()).toBe(true);
+    await page.evaluate(() => (document.querySelector('a.back-link') as HTMLElement).focus());
+    expect(await focusIsInside()).toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(card).toBeHidden();
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await expect(card).toBeVisible();
+    await card.locator('.login-modal-title').click();
+    await expect(card).toBeVisible();
+    await page.mouse.click(5, 5);
+    await expect(card).toBeHidden();
+  });
+
   test('the ← back link navigates to the page the user came from', async ({ page }) => {
     await gotoFirstFilm(page);
     await page.locator('a.back-link').click();

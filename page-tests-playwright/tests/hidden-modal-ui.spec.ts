@@ -1,20 +1,26 @@
 import { test, expect, type Page } from '@playwright/test';
-import { gotoAndWaitForCards, reload } from './helpers';
+import { gotoAndWaitForCards } from './helpers';
 
-// Whether the hidden-films modal is currently open, read from the
-// `.open` class on `#hidden-modal-backdrop`. Returns `null` if the
-// backdrop element isn't present at all.
-const isModalOpen = (page: Page): Promise<boolean | null> =>
+// The modal's card (`.hidden-modal`) — visible exactly while the modal is open.
+const modalCard = (page: Page) => page.locator('.hidden-modal');
+
+const openHiddenModal = (page: Page) =>
   page.evaluate(() =>
-    document.getElementById('hidden-modal-backdrop')?.classList.contains('open') ?? null,
+    (globalThis as { openHiddenModal?: (e?: Event) => void }).openHiddenModal?.()
   );
+
+// Whether keyboard focus currently sits inside the modal's card.
+const focusIsInsideModal = (page: Page): Promise<boolean> =>
+  page.evaluate(() => !!document.activeElement?.closest('.hidden-modal'));
 
 // Hidden-films modal open/close via UI:
 //   - The `#hidden-row-count` badge (inside the Filtry button area)
 //     opens the modal when there's at least one hidden film. Its
 //     count reflects the number of hidden titles.
-//   - The modal's ✕ button (`.login-modal-close`) closes it.
-//   - Clicking the backdrop (`#hidden-modal-backdrop`) closes it.
+//   - The modal's ✕ button (`.login-modal-close`), Escape and a click on the
+//     backdrop close it; a click on the card itself does not.
+//   - While open it is modal: focus moves into it and the page behind can't
+//     take focus.
 
 test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
 
@@ -36,35 +42,54 @@ test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
     await page.locator('#format-filter-btn').click();
     await expect(page.locator('#hidden-row-count')).toHaveText(/2/);
 
-    // Modal hidden at rest (`.open` not on the backdrop).
-    expect(await isModalOpen(page)).toBe(false);
+    await expect(modalCard(page)).toBeHidden();
 
     // Click the whole hidden-row — its onclick is `openHiddenModal`.
     await page.locator('#hidden-row').click();
 
-    expect(await isModalOpen(page)).toBe(true);
+    await expect(modalCard(page)).toBeVisible();
   });
 
   test('the ✕ close button hides the modal again', async ({ page }) => {
-    await page.evaluate(() =>
-      (globalThis as { openHiddenModal?: (e?: Event) => void }).openHiddenModal?.()
-    );
-    await expect(page.locator('#hidden-modal-backdrop')).toHaveClass(/open/);
+    await openHiddenModal(page);
+    await expect(modalCard(page)).toBeVisible();
 
     await page.locator('.hidden-modal .login-modal-close').click();
-    expect(await isModalOpen(page)).toBe(false);
+    await expect(modalCard(page)).toBeHidden();
   });
 
-  test('clicking the backdrop dismisses the modal', async ({ page }) => {
-    await page.evaluate(() =>
-      (globalThis as { openHiddenModal?: (e?: Event) => void }).openHiddenModal?.()
-    );
-    await expect(page.locator('#hidden-modal-backdrop')).toHaveClass(/open/);
+  test('clicking the backdrop dismisses the modal; clicking the card does not', async ({ page }) => {
+    await openHiddenModal(page);
+    await expect(modalCard(page)).toBeVisible();
 
-    // Click the backdrop itself (NOT the inner modal). Use a fixed
-    // top-left coordinate well outside the modal's content box.
-    await page.locator('#hidden-modal-backdrop').click({ position: { x: 5, y: 5 } });
+    // A click on the card's own title keeps it open.
+    await page.locator('.hidden-modal .login-modal-title').click();
+    await expect(modalCard(page)).toBeVisible();
 
-    expect(await isModalOpen(page)).toBe(false);
+    // Click the backdrop (NOT the inner card): a fixed top-left viewport
+    // coordinate well outside the card's content box.
+    await page.mouse.click(5, 5);
+    await expect(modalCard(page)).toBeHidden();
+  });
+
+  test('Escape closes the modal', async ({ page }) => {
+    await openHiddenModal(page);
+    await expect(modalCard(page)).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(modalCard(page)).toBeHidden();
+  });
+
+  test('opening moves focus into the modal and the page behind it cannot take focus', async ({ page }) => {
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#hidden-row').click();
+    await expect(modalCard(page)).toBeVisible();
+
+    expect(await focusIsInsideModal(page)).toBe(true);
+
+    // The page behind is inert: focusing one of its controls is refused and
+    // focus stays in the modal.
+    await page.evaluate(() => (document.getElementById('format-filter-btn') as HTMLElement).focus());
+    expect(await focusIsInsideModal(page)).toBe(true);
   });
 });

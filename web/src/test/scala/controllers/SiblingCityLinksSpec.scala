@@ -60,7 +60,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
     // button, the modal's id) that must be absent for a film with nowhere
     // else to link to.
     html should not include """class="other-cities-trigger""""
-    html should not include """id="other-cities-modal-backdrop""""
+    html should not include """id="other-cities-dialog""""
   }
 
   "MovieControllerService.citiesShowing" should "exclude a city whose only showings of the film have already ended" in {

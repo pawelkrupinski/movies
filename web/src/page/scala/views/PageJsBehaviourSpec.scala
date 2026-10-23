@@ -174,10 +174,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val otherCitiesHtml: String = views.html.film(
         schedules.head, "http://test.local/movie-other-cities",
         ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
-        otherCities = Seq(
-          models.Wroclaw -> "/wroclaw/movie/example-slug",
-          models.Warszawa -> "/warszawa/movie/example-slug",
-        )).body
+        otherCities = tools.OtherCitiesFixture.links).body
       // The listing re-seated with 10,500 synthetic showtimes on one film —
       // crosses `MovieControllerService.LargeCityShowtimeThreshold` so the
       // day carousel's instant-swap path (shared.js `usesInstantDayChange`)
@@ -1920,7 +1917,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "reset the search box on close so reopening shows the full list" in {
+  it should "reset the search box so reopening shows the full list" in {
     onPath("/") { page =>
       val seeded = """["Avatar","Cars"]"""
       page.eval(s"localStorage.setItem('hiddenFilms:pl', ${jsString(seeded)})")
@@ -1928,9 +1925,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("openHiddenModal()")
       page.eval("document.getElementById('hidden-modal-search').value = 'avat'; filterHiddenModal()")
       page.eval("closeHiddenModal()")
-      page.evalString("document.getElementById('hidden-modal-search').value") shouldBe ""
 
       page.eval("openHiddenModal()")
+      page.evalString("document.getElementById('hidden-modal-search').value") shouldBe ""
       page.evalInt(
         "[...document.querySelectorAll('#hidden-modal-list .panel-item')].filter(i => i.style.display !== 'none').length"
       ) shouldBe 2
@@ -2356,8 +2353,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the /movie other-cities popup" should "keep its sibling links in the DOM but hidden before any click" in {
     onFilmOtherCities { page =>
       page.evalInt("document.querySelectorAll('.other-cities-link').length") shouldBe 2
-      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe false
-      // Hidden via the backdrop's own display:none, not absent — offsetParent
+      page.evalBool("document.querySelector('.other-cities-modal').checkVisibility()") shouldBe false
+      // Hidden via the closed dialog's own display:none, not absent — offsetParent
       // is null for a display:none ancestor.
       page.evalBool("document.querySelector('.other-cities-link').offsetParent === null") shouldBe true
     }
@@ -2366,7 +2363,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "reveal the sibling links when the trigger is clicked" in {
     onFilmOtherCities { page =>
       page.eval("document.querySelector('.other-cities-trigger').click()")
-      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe true
+      page.evalBool("document.querySelector('.other-cities-modal').checkVisibility()") shouldBe true
       page.evalBool("document.querySelector('.other-cities-link').offsetParent !== null") shouldBe true
       page.eval(
         "[...document.querySelectorAll('.other-cities-link')].map(a => a.getAttribute('href'))"
@@ -2379,11 +2376,28 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onFilmOtherCities { page =>
       page.eval("document.querySelector('.other-cities-trigger').click()")
       page.eval("document.querySelector('.other-cities-modal .login-modal-close').click()")
-      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe false
+      page.evalBool("document.querySelector('.other-cities-modal').checkVisibility()") shouldBe false
 
       page.eval("document.querySelector('.other-cities-trigger').click()")
-      page.eval("document.getElementById('other-cities-modal-backdrop').click()")
-      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe false
+      page.eval("document.querySelector('.other-cities-modal .login-modal-title').click()")
+      page.evalBool("document.querySelector('.other-cities-modal').checkVisibility()") shouldBe true
+      page.eval("document.elementFromPoint(5, 5).click()")
+      page.evalBool("document.querySelector('.other-cities-modal').checkVisibility()") shouldBe false
+    }
+  }
+
+  it should "be modal: focus moves in, the page behind is inert, Escape closes it and focus returns to the trigger" in {
+    onFilmOtherCities { page =>
+      val focusInside = "!!document.activeElement.closest('.other-cities-modal')"
+      page.eval("document.querySelector('.other-cities-trigger').focus(); document.querySelector('.other-cities-trigger').click()")
+      page.evalBool("document.querySelector('.other-cities-modal').checkVisibility()") shouldBe true
+      page.evalBool(focusInside) shouldBe true
+      page.eval("document.querySelector('a.back-link').focus()")
+      page.evalBool(focusInside) shouldBe true
+
+      pressEscape(page)
+      page.waitFor("!document.querySelector('.other-cities-modal').checkVisibility()")
+      page.evalBool("document.activeElement === document.querySelector('.other-cities-trigger')") shouldBe true
     }
   }
 
@@ -2435,7 +2449,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // anywhere on the overlay, and Escape each close it again.
   "the /movie poster" should "open full-screen on click and close on ✕, backdrop click, or Escape" in {
     onPath(filmTarget) { page =>
-      val open = "!document.getElementById('poster-lightbox').hidden"
+      val open = "document.getElementById('poster-lightbox').checkVisibility()"
       def openIt(): Unit = {
         page.eval("document.querySelector('.poster-img').click()")
         page.evalBool(open) shouldBe true
@@ -2446,19 +2460,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("__film.lightboxFillsScreen()") shouldBe true
       page.evalString("document.querySelector('#poster-lightbox img').src") shouldBe
         page.evalString("document.querySelector('.poster-img').currentSrc")
-      page.evalString("document.documentElement.style.overflow") shouldBe "hidden"
+      page.evalString("getComputedStyle(document.documentElement).overflow") shouldBe "hidden"
+      page.evalBool("!!document.activeElement.closest('#poster-lightbox')") shouldBe true
 
       page.eval("document.querySelector('.poster-lightbox-close').click()")
       page.evalBool(open) shouldBe false
-      page.evalString("document.documentElement.style.overflow") shouldBe ""
+      page.evalString("getComputedStyle(document.documentElement).overflow") should not be "hidden"
 
       openIt()
       page.eval("document.getElementById('poster-lightbox').click()")
       page.evalBool(open) shouldBe false
 
       openIt()
-      page.eval("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
-      page.evalBool(open) shouldBe false
+      pressEscape(page)
+      page.waitFor(s"!($open)")
     }
   }
 
@@ -4273,6 +4288,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "hold focus while up, and on Escape go away for this visit without remembering a choice" in {
+    onAreaPicker { page =>
+      page.evalBool("!!document.activeElement.closest('#area-picker-overlay')") shouldBe true
+      page.eval("document.getElementById('format-filter-btn').focus()")
+      page.evalBool("!!document.activeElement.closest('#area-picker-overlay')") shouldBe true
+
+      pressEscape(page)
+      page.waitFor("!document.getElementById('area-picker-overlay')")
+      page.evalBool("localStorage.getItem('areasChosen:' + CURRENT_CITY) === null") shouldBe true
+      page.evalString("localStorage.getItem('disabledCinemas')") shouldBe "[]"
+    }
+  }
+
   // The master row above the areas — the picker's counterpart of the Filtry
   // panel's `#cinema-all`. Deselect-all is the one that earns it: a metro with
   // five or eighteen areas is faster cleared and re-ticked than unticked one
@@ -5451,6 +5479,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   /** Quote a string for embedding inside a JS expression. Round-trips
    *  Polish diacritics + apostrophes via `JSON.stringify`-compatible
    *  escaping. */
+  /** A real Escape key press through CDP's input pipeline, so a modal `<dialog>`
+   *  gets its native `cancel` — a synthetic `KeyboardEvent` never triggers it. */
+  private def pressEscape(page: CdpPage): Unit =
+    Seq("keyDown", "keyUp").foreach { kind =>
+      page.send("Input.dispatchKeyEvent", play.api.libs.json.Json.obj(
+        "type" -> kind, "key" -> "Escape", "code" -> "Escape", "windowsVirtualKeyCode" -> 27, "nativeVirtualKeyCode" -> 27))
+    }
+
   private def jsString(s: String): String =
     play.api.libs.json.JsString(s).toString
 
@@ -5797,7 +5833,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("getComputedStyle(document.getElementById('auth-login')).display") should not be "none"
       // And it is the real control, not a lookalike: clicking it opens the modal.
       page.eval("document.getElementById('auth-login').click()")
-      page.evalBool("document.getElementById('login-modal-backdrop').classList.contains('open')") shouldBe true
+      page.evalBool("document.querySelector('.login-modal').checkVisibility()") shouldBe true
 
       page.eval("sessionStorage.removeItem('signedOut')")
     }

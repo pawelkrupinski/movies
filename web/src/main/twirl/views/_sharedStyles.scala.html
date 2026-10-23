@@ -98,8 +98,7 @@
      through a long film grid (200+ cards on /). Was `position:
      relative` — scrolling past the first viewport hid the navbar
      and the only way back to the date / search controls was to
-     scroll all the way up. `z-index: 10` keeps it above film cards
-     and modal backdrops. */
+     scroll all the way up. `z-index: 10` keeps it above film cards. */
   /* The navbar owns its own flex layout (rather than relying solely on the
      `.navbar .d-flex .align-items-center` classes on the element). Historically
      this guarded against Bootstrap loading late (cold load / slow link) leaving
@@ -542,17 +541,31 @@
   }
   .auth-logout-btn:hover { background: #3a3a6e; color: #fff; }
 
-  /* Login modal — full-viewport dimmed backdrop, centred card. The backdrop
-     is the click-outside-to-close handler; the card has stopPropagation on
-     its own click so the bubbling doesn't fire-close. */
-  .login-modal-backdrop {
+  /* Every modal (login, hidden films, other cities, the full-screen poster, the
+     area picker) is a native `<dialog class="modal-dialog">` opened with
+     `showModal()`: it sits in the top layer above everything (no z-index), and
+     the browser moves focus in, makes the page behind inert and closes it on
+     Escape. The dialog itself is a transparent full-viewport layer that centres
+     its card — the UA margin/padding/border/size limits reset — and the dim is
+     its `::backdrop`, so a click on the dialog element itself landed outside
+     the card (shared.js `closeDialogOnBackdrop`). */
+  dialog.modal-dialog {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,.6);
-    display: none;
+    width: auto; height: auto; max-width: none; max-height: none;
+    margin: 0; padding: 0; border: 0;
+    background: transparent; color: inherit;
     align-items: center; justify-content: center;
-    z-index: 200;
   }
-  .login-modal-backdrop.open { display: flex; }
+  dialog.modal-dialog[open] { display: flex; }
+  dialog.modal-dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog.modal-dialog:focus { outline: none; }
+  /* A modal dialog doesn't stop the page scrolling under it (a swipe on a phone
+     still moves it), so the root stops scrolling while one is open. */
+  html:has(dialog.modal-dialog[open]) { overflow: hidden; }
+  /* The city-entry area picker (shared.js `showAreaPicker`) keeps its navy dim. */
+  #area-picker-overlay::backdrop { background: rgba(5,5,20,.72); }
+
+  /* Login modal card. */
   .login-modal {
     background: #1a1a2e;
     border: 1px solid #3a3a6e;
@@ -577,18 +590,10 @@
   .login-modal-close:hover { color: #fff; }
   .login-modal-buttons { display: flex; flex-direction: column; gap: .55rem; }
 
-  /* Hidden-films modal — same backdrop/card structure as login, but the
-     body is a scrollable list of titles. Reuses `.login-modal-close`
-     and `.login-modal-title`; the card-level styling needs its own
-     class because the layout adds a list container + a footer button. */
-  .hidden-modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.6);
-    display: none;
-    align-items: center; justify-content: center;
-    z-index: 200;
-  }
-  .hidden-modal-backdrop.open { display: flex; }
+  /* Hidden-films modal card — same dialog as login, but the body is a
+     scrollable list of titles. Reuses `.login-modal-close` and
+     `.login-modal-title`; the card-level styling needs its own class
+     because the layout adds a list container + a footer button. */
   .hidden-modal {
     background: #1a1a2e;
     border: 1px solid #3a3a6e;

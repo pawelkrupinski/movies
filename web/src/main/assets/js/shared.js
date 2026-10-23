@@ -907,14 +907,37 @@
   window.truncateAllShowings = truncateAllShowings;
 
 
+  // ── Modal dialogs ─────────────────────────────────────────────────────────
+  //
+  // Every modal is a `<dialog class="modal-dialog">` opened with `showModal()`:
+  // the browser puts it in the top layer, moves focus into it, makes the page
+  // behind it inert, closes it on Escape (its `cancel`) and hands focus back to
+  // the opener on close. The dialog fills the viewport and centres its card, so
+  // a click whose target is the dialog element itself landed outside the card.
+
+  function openDialog(id) {
+    const dialog = document.getElementById(id);
+    if (dialog && !dialog.open) dialog.showModal();
+  }
+  function closeDialog(id) {
+    const dialog = document.getElementById(id);
+    if (dialog && dialog.open) dialog.close();
+  }
+  // The dialogs' inline `onclick`: a direct handler, not a delegated one, so iOS
+  // Safari dispatches the tap on the (non-interactive) backdrop at all.
+  function closeDialogOnBackdrop(event) {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  }
+  window.closeDialogOnBackdrop = closeDialogOnBackdrop;
+
   // ── Hidden-films UI ───────────────────────────────────────────────────────
   //
   // The trigger lives as a row inside the Filtry dropdown
-  // (`#hidden-row`). Tapping it opens `#hidden-modal-backdrop` — a
+  // (`#hidden-row`). Tapping it opens `#hidden-dialog` — a
   // centred modal whose body lists every hidden title. Clicking a
   // title restores it but leaves the modal open (browse-and-toggle);
-  // `Wyczyść` clears the whole set and closes the modal. `×` and a
-  // backdrop click close without changing the set.
+  // `Wyczyść` clears the whole set and closes the modal. `×`, a
+  // backdrop click and Escape close without changing the set.
 
   function updateNavbar() {
     const hidden = getHidden();
@@ -966,15 +989,14 @@
     // get closed too — same idiom as `closeOtherPanels` for opening any
     // dropdown.
     closeOtherPanels(null);
-    const modal = document.getElementById('hidden-modal-backdrop');
-    if (modal) modal.classList.add('open');
-  }
-  function closeHiddenModal() {
-    const modal = document.getElementById('hidden-modal-backdrop');
-    if (modal) modal.classList.remove('open');
-    // Reset the search on close so the next open shows the full list.
+    // Reset the search so every open shows the full list, however the last one
+    // was closed (✕, backdrop, Escape, `Wyczyść`).
     const searchInput = document.getElementById('hidden-modal-search');
     if (searchInput) { searchInput.value = ''; filterHiddenModal(); }
+    openDialog('hidden-dialog');
+  }
+  function closeHiddenModal() {
+    closeDialog('hidden-dialog');
   }
 
   function clampPanel(panel) {
@@ -985,9 +1007,9 @@
 
   // ── Auth dropdown + login modal ──────────────────────────────────────────
   //
-  // Both surfaces stop event propagation so the document-level "click
-  // outside → close" handler defined below doesn't fire-close them on
-  // the same click that opens them.
+  // The dropdown stops event propagation so the document-level "click
+  // outside → close" handler defined below doesn't fire-close it on
+  // the same click that opens it.
 
   function toggleAuthMenu(event) {
     event.stopPropagation();
@@ -1000,26 +1022,22 @@
   }
 
   function openLoginModal() {
-    const modal = document.getElementById('login-modal-backdrop');
-    if (modal) modal.classList.add('open');
+    openDialog('login-dialog');
   }
   function closeLoginModal() {
-    const modal = document.getElementById('login-modal-backdrop');
-    if (modal) modal.classList.remove('open');
+    closeDialog('login-dialog');
   }
 
   // ── Film page: "other cities" popup ──────────────────────────────────────
   //
   // The sibling-city links themselves are server-rendered and already in the
   // DOM (`_filmDetailContent`) — this only toggles whether a visitor SEES
-  // them. Same backdrop/card shape as the login modal.
+  // them. The same modal dialog as the login modal.
   function openOtherCitiesModal() {
-    const modal = document.getElementById('other-cities-modal-backdrop');
-    if (modal) modal.classList.add('open');
+    openDialog('other-cities-dialog');
   }
   function closeOtherCitiesModal() {
-    const modal = document.getElementById('other-cities-modal-backdrop');
-    if (modal) modal.classList.remove('open');
+    closeDialog('other-cities-dialog');
   }
   // shared.js runs inside an IIFE, so these are NOT globals by default; the
   // navbar / login-modal partials call them from inline `onclick=` handlers,
@@ -1264,14 +1282,12 @@
   window.beginSignOut         = beginSignOut;
   window.signedOutPageIsStale = signedOutPageIsStale;
   window.settleSignOut        = settleSignOut;
-  // ESC closes any open dropdown / modal / menu — same UX every other
-  // modal in the world has. `closeOtherPanels(null)` collapses every
-  // `.dropdown-panel` (Filtry today; any future dropdown automatically)
-  // so this stays correct as the UI grows.
+  // ESC closes any open dropdown / menu (a modal `<dialog>` closes itself).
+  // `closeOtherPanels(null)` collapses every `.dropdown-panel` (Filtry
+  // today; any future dropdown automatically) so this stays correct as
+  // the UI grows.
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeLoginModal();
-      closeHiddenModal();
       closeAuthMenu();
       closeOtherPanels(null);
     }
@@ -1593,10 +1609,14 @@
       all: window.t('areaPicker.all'), confirm: window.t('areaPicker.confirm'),
     };
 
-    const overlay = document.createElement('div');
+    // A `.modal-dialog` (`_sharedStyles`): focus held in it, the page behind
+    // inert. Escape closes it for this visit without remembering a choice, so
+    // it asks again on the next one.
+    const overlay = document.createElement('dialog');
     overlay.id = 'area-picker-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(5,5,20,.72);' +
-      'display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.className = 'modal-dialog';
+    overlay.style.padding = '20px';
+    overlay.addEventListener('close', () => overlay.remove());
     const modal = document.createElement('div');
     modal.style.cssText = 'width:100%;max-width:420px;max-height:85vh;overflow:auto;background:#14142e;' +
       'border:1px solid #2a2a5e;border-radius:14px;padding:20px;';
@@ -1673,7 +1693,7 @@
       boxes.forEach(({ cb, area }) => { if (!cb.checked) disable.push(...area.cinemas); });
       setDisabledCinemas(disabledCinemasElsewhere().concat(disable));
       try { localStorage.setItem(areaPickerKey(), '1'); } catch (e) {}
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      overlay.remove();
       buildCinemaPanel();
       updateFormatBtn();
       applyFilters();
@@ -1681,6 +1701,7 @@
     modal.appendChild(btn);
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
+    overlay.showModal();
   }
 
   // ── Room tooltip ──────────────────────────────────────────────────────────
@@ -2821,36 +2842,23 @@
   // ── Full-screen poster (detail page) ──────────────────────────────────────
   //
   // A click on the detail-page poster opens `#poster-lightbox`
-  // (`_filmDetailContent`); a click anywhere on it — the ✕ or the backdrop or
-  // the image itself — and Escape close it. Delegated, so it needs no boot
-  // hook. The shown URL is the poster's `currentSrc`: the one that actually
-  // loaded, fallback included. Page scroll is locked while it is open so a
-  // swipe on a phone doesn't scroll the page underneath.
+  // (`_filmDetailContent`), a modal dialog: a click anywhere on it — the ✕ or
+  // the backdrop or the image itself — and Escape close it. Delegated, so it
+  // needs no boot hook. The shown URL is the poster's `currentSrc`: the one
+  // that actually loaded, fallback included.
 
   function openPosterLightbox(poster) {
     const box = document.getElementById('poster-lightbox');
     if (!box) return;
     box.querySelector('img').src = poster.currentSrc || poster.src;
-    box.hidden = false;
-    document.documentElement.style.overflow = 'hidden';
-    box.querySelector('.poster-lightbox-close').focus();
-  }
-
-  function closePosterLightbox() {
-    const box = document.getElementById('poster-lightbox');
-    if (!box || box.hidden) return;
-    box.hidden = true;
-    document.documentElement.style.overflow = '';
+    openDialog('poster-lightbox');
   }
 
   document.addEventListener('click', e => {
     if (!(e.target instanceof Element)) return;
-    if (e.target.closest('#poster-lightbox')) { closePosterLightbox(); return; }
+    if (e.target.closest('#poster-lightbox')) { closeDialog('poster-lightbox'); return; }
     const poster = e.target.closest('.poster-img');
     if (poster) openPosterLightbox(poster);
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closePosterLightbox();
   });
 
   // ── Init ──────────────────────────────────────────────────────────────────

@@ -299,11 +299,11 @@ test.describe('app banner', () => {
   });
 
   // Regression: `#app-banner` used to sit at z-index 1000, ABOVE the
-  // full-viewport `.hidden-modal-backdrop` (z-index 200) — so while the
-  // banner was visible, a click meant for the backdrop's top-left corner hit
-  // the banner instead and never reached the modal. Broke
-  // hidden-modal-ui.spec.ts's "clicking the backdrop dismisses the modal" in
-  // CI, since a fresh browser context always shows the banner on first load.
+  // hidden-films modal's full-viewport backdrop — so while the banner was
+  // visible, a click meant for the backdrop's top-left corner hit the banner
+  // instead and never reached the modal. The modals are now `<dialog>`s in the
+  // top layer, above any z-index; this pins that the banner still can't
+  // intercept the click (a fresh browser context always shows it on first load).
   test('does not intercept clicks meant for a modal backdrop underneath it', { tag: '@agnostic' }, async ({ page }) => {
     await visit(page);
     await expect(banner(page)).toBeVisible();   // the overlap only exists while it's up
@@ -311,13 +311,13 @@ test.describe('app banner', () => {
     await page.evaluate(() =>
       (globalThis as { openHiddenModal?: (e?: Event) => void }).openHiddenModal?.(),
     );
-    const backdrop = page.locator('#hidden-modal-backdrop');
-    await expect(backdrop).toHaveClass(/open/);
+    const card = page.locator('.hidden-modal');
+    await expect(card).toBeVisible();
 
     // Same coordinate hidden-modal-ui.spec.ts uses — inside the banner's own
     // box while it's visible, so this only proves the fix if the banner is
     // still up (asserted above) and the click still lands on the backdrop.
-    await backdrop.click({ position: { x: 5, y: 5 } });
-    await expect(backdrop).not.toHaveClass(/open/);
+    await page.mouse.click(5, 5);
+    await expect(card).toBeHidden();
   });
 });

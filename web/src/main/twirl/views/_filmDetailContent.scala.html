@@ -18,14 +18,15 @@
         @_moviePoster(film.movie, film.posterHref, film.fallbackPosterHrefs, aboveTheFold = true)
       </div>
       @* Full-screen view of the poster, opened by a click on it and closed
-         by the ✕ or a click anywhere (shared.js `openPosterLightbox`). The
+         by the ✕, a click anywhere or Escape — a native modal `<dialog>`
+         (shared.js `openPosterLightbox`). The
          `<img>` src is filled on open from whichever URL the poster actually
          loaded, so a fallback that rescued it is the one shown here too. *@
       @if(film.posterHref.nonEmpty) {
-        <div id="poster-lightbox" class="poster-lightbox" hidden>
+        <dialog id="poster-lightbox" class="modal-dialog poster-lightbox">
           <button type="button" class="poster-lightbox-close" aria-label="@messages("poster.close")" data-i18n-attr="aria-label:poster.close">&#10005;</button>
           <img alt="@film.movie.title">
-        </div>
+        </dialog>
       }
     </div>
 
@@ -83,8 +84,8 @@
         <div class="other-cities-row">
           <button type="button" class="other-cities-trigger" onclick="openOtherCitiesModal()" data-i18n="detail.otherCities">@messages("detail.otherCities")</button>
         </div>
-        <div class="other-cities-modal-backdrop" id="other-cities-modal-backdrop" onclick="closeOtherCitiesModal()">
-          <div class="other-cities-modal" onclick="event.stopPropagation()">
+        <dialog class="modal-dialog" id="other-cities-dialog" onclick="closeDialogOnBackdrop(event)">
+          <div class="other-cities-modal">
             <button type="button" class="login-modal-close" onclick="closeOtherCitiesModal()" aria-label="@messages("auth.close")" data-i18n-attr="aria-label:auth.close">&times;</button>
             <div class="login-modal-title" data-i18n="detail.otherCitiesTitle" data-i18n-arg0="@film.movie.title">@messages("detail.otherCitiesTitle", film.movie.title)</div>
             <div class="other-cities-list">
@@ -93,7 +94,7 @@
               }
             </div>
           </div>
-        </div>
+        </dialog>
       }
 
       @film.synopsis match {

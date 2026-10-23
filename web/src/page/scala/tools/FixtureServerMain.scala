@@ -117,13 +117,18 @@ object FixtureServerMain {
     // date so the Playwright suite can drive /movie's cinema fold. No corpus
     // film reaches the ten-cinema threshold on its own. `/{city}/movie-no-poster`
     // is the same page with no poster at all, which no corpus film lacks either.
-    def manyCinemaFilmPageFor(c: City, path: String, shape: controllers.FilmSchedule => controllers.FilmSchedule): String = {
+    // `/{city}/movie-other-cities` is the first film's page with two sibling-city
+    // links, so the suite can drive the "other cities" popup: only Poznań
+    // carries a corpus here, so no film is ever showing anywhere else.
+    def shapedFilmPageFor(c: City, path: String, shape: controllers.FilmSchedule => controllers.FilmSchedule,
+                          otherCities: Seq[(City, String)] = Nil): String = {
       implicit val ci: City = c
       // Only Poznań carries a corpus in this harness; the other cities render
       // the same empty-handed page a real unpopulated city would.
       schedulesFor(c).headOption match {
         case Some(base) => views.html.film(shape(base),
-          s"http://test.local/${c.slug}$path", ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday).body
+          s"http://test.local/${c.slug}$path", ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+          otherCities = otherCities).body
         case None       => "<html><body>Film not found</body></html>"
       }
     }
@@ -207,8 +212,9 @@ object FixtureServerMain {
       case s if s.startsWith("/movies?") &&
                  (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => Some(browsePageFor(c))
       case s if s.startsWith("/movies?")                => Some(indexPageFor(c))
-      case "/movie-many"                                => Some(manyCinemaFilmPageFor(c, "/movie-many", ManyCinemaFilm(_)))
-      case "/movie-no-poster"                           => Some(manyCinemaFilmPageFor(c, "/movie-no-poster", ManyCinemaFilm.withoutPoster))
+      case "/movie-many"                                => Some(shapedFilmPageFor(c, "/movie-many", ManyCinemaFilm(_)))
+      case "/movie-no-poster"                           => Some(shapedFilmPageFor(c, "/movie-no-poster", ManyCinemaFilm.withoutPoster))
+      case "/movie-other-cities"                        => Some(shapedFilmPageFor(c, "/movie-other-cities", identity, OtherCitiesFixture.links))
       case "/many-showtimes"                             => Some(manyShowtimesPageFor(c))
       case "/us-clock"                                  => Some(usClockPageFor(c))
       case s if s.startsWith("/movie/")                 => Some(filmPageFor(c, s.stripPrefix("/movie/")))

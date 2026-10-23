@@ -1,7 +1,7 @@
 @(oauthProviders: Set[String])(implicit messages: play.api.i18n.Messages)
 @*
-   Login modal — rendered once per page. Hidden by default; the "Zaloguj się"
-   pill in `_navbar` flips its display:none. Two large buttons (Google,
+   Login modal — rendered once per page, a native modal `<dialog>` the "Zaloguj
+   się" pill in `_navbar` opens (shared.js `openLoginModal`). Two large buttons (Google,
    Facebook) link to the `/auth/<provider>/start` route which 302s to the
    provider's consent page. Only providers wired in `Wiring.oauthProviders`
    (i.e. with both env vars set) render here.
@@ -15,8 +15,8 @@
   <span data-i18n="login.nag" data-i18n-html>@Html(messages("login.nag"))</span>
 </div>
 
-<div class="login-modal-backdrop" id="login-modal-backdrop" onclick="closeLoginModal()">
-  <div class="login-modal" onclick="event.stopPropagation()">
+<dialog class="modal-dialog" id="login-dialog" onclick="closeDialogOnBackdrop(event)">
+  <div class="login-modal">
     <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="@messages("auth.close")" data-i18n-attr="aria-label:auth.close">&times;</button>
     <div class="login-modal-title" data-i18n="login.title">@messages("login.title")</div>
     <div class="login-modal-sub" data-i18n="login.sub">@messages("login.sub")</div>
@@ -35,5 +35,5 @@
       }
     </div>
   </div>
-</div>
+</dialog>
 }
