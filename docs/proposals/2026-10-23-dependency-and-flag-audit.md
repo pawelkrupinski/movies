@@ -182,16 +182,26 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 ## iOS
 
 Baseline: deployment target 16.0, `SWIFT_VERSION = 5.0`, no strict concurrency, built with Xcode 27.1.
+**Since 2026-10-23:** complete concurrency checking with zero diagnostics (b3c47caa1), then the Swift 6 language mode
+for the app, its XCUITests and the SwiftPM package (tools 6.0, `swiftLanguageModes: [.v6]`); the Linux lanes moved
+from swift 5.10 to 6.2, whose corelibs Foundation no longer marks URL / DispatchQueue / Calendar / URLSession
+non-Sendable (the package builds and its 400 tests pass on Linux 6.2 and 6.4 with zero diagnostics).
+`scripts/ios-compile-check.sh` fails on any concurrency diagnostic on all three builds.
 
 1. **`@Observable` (iOS 17)** instead of 9 `ObservableObject` classes and about 22 `@Published` properties.
    `UserPreferences` (`Storage/UserPreferences.swift:34-88`) re-renders every observer on any change. The Combine
    pipelines in `StateSyncService.swift:99,449,460-470` become `Observations` or a cancellable `Task`. The largest
    code deletion. Needs the iOS 17 bump and test rewrites in `KinowoAuthTests`.
-2. **Swift 6.2 approachable concurrency + default MainActor isolation** (no target bump). Deletes most of the 41
-   manual `@MainActor` annotations and the `MainActor.assumeIsolated` workaround (`StateSyncService.swift:466`).
-   First set `SWIFT_STRICT_CONCURRENCY = complete` in Swift 5 mode and fix the warnings; the
-   `@unchecked Sendable`/`nonisolated(unsafe)` sites are `PosterStore.swift:36`,
-   `LocationCityResolver.swift:393,400` and `AuthService.swift:67`.
+2. **Swift 6.2 approachable concurrency + default MainActor isolation**: **measured and skipped
+   (2026-10-23).** The app sources carry 28 `@MainActor`s, 18 of them in files the SwiftPM package also compiles
+   (`StateSyncService`, `LocationCityResolver`, the `Networking/` stores), where the package has no MainActor default
+   (KinowoCore is Foundation-only and runs on Linux), so they stay; at most 10 app-only ones could go. Building the
+   app with `SWIFT_APPROACHABLE_CONCURRENCY = YES` + `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` fails with 14 errors
+   in the first pass (models' conformances become main-actor-isolated, `DetailsStore`/`RepertoireClient`/`PosterStore`
+   call into them off the main actor), so it costs more `nonisolated` than the `@MainActor`s it deletes, and
+   `NonisolatedNonsendingByDefault` moves where nonisolated async functions run (a behaviour change). Default MainActor
+   isolation for the XCUITest target alone (29 class-level annotations) fails too: XCTestCase's inherited initializers
+   become main-actor-isolated against their nonisolated overrides (374 errors).
 3. **Actors and `Task.sleep(for:)`** instead of queue-plus-continuation code (`ConditionalPayloadCache.swift:55-61,140`,
    `PosterStore.swift:181`), `asyncAfter` (`ShowtimeTuningScreen.swift:199`, `FilmDetailView.swift:441`) and
    `Task.sleep(nanoseconds:)` (5 sites).
@@ -199,13 +209,14 @@ Baseline: deployment target 16.0, `SWIFT_VERSION = 5.0`, no strict concurrency, 
    `ContentView.swift:153-157`, `FiltersBar.swift:227`): fewer views per showtime pill in a lazy grid. Whether it
    back-deploys to iOS 16 is unverified.
 5. **`@Entry`** for the 7 `EnvironmentKey` structs (back-deploys): about 30 lines deleted.
-6. Optional: Swift Testing for new tests (needs `Package.swift` tools-version 6.0); `glassEffect` for the iOS 26
+6. Optional: Swift Testing for new tests (`Package.swift` is tools 6.0 now); `glassEffect` for the iOS 26
    look behind `#available`.
 7. Keep: `PosterStore`/`CachedAsyncImage` (`AsyncImage` has no cache control). Skip: SwiftData, `Span`/`InlineArray`.
 
 **Build settings:** `COMPILATION_CACHE_ENABLE_CACHING = YES` (Xcode 26+, absent) for faster warm rebuilds; it helps
-CI only if the cache persists between runs. `Package.swift` has no `swiftSettings`; move it to tools 6.x with
-`.swiftLanguageMode` and upcoming features alongside item 2.
+CI only if the cache persists between runs. `Package.swift` is on tools 6.0 / Swift 6 mode (done 2026-10-23); its
+Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-actions/setup-swift@v2` installs
+(ci.yml's LocalServer job), and ios.yml's container stays in step.
 
 ## Web, page tests, tooling
 
