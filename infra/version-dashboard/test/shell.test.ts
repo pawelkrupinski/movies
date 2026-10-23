@@ -23,4 +23,10 @@ describe("the page shell", () => {
     expect(markup).toContain("\\u003c/script>");
     expect(markup).toContain('<script type=module src="/assets/fleet.js">');
   });
+
+  it("links a page's own stylesheet when it has one", () => {
+    expect(markup).not.toContain("/assets/fleet.css");
+    const styled = { ...fleet, stylesheet: "/somewhere/fleet.css" };
+    expect(shell(styled, [styled, mobile])).toContain('<link rel=stylesheet href="/assets/styles.css"><link rel=stylesheet href="/assets/fleet.css">');
+  });
 });

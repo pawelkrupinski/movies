@@ -2,16 +2,17 @@
  * `npm run once`: read the fleet once, print it as text, exit. It never serves, so nothing can post
  * to it, and it starts no action of its own -- safe to run from a script or a cron job.
  */
-import { INFRA_DIR } from "./config.js";
-import { FleetLive, realSources } from "./fleet/live.js";
-import { shortClosure } from "./fleet/read.js";
+import { FleetLive } from "fleetkit/fleet/live";
+import { kinowoFleet } from "./fleet.js";
 
-// It exits once it has printed, so a roster re-read is waited for rather than cut off by the exit.
-const live = new FleetLive((onRosterChange) => realSources(INFRA_DIR, onRosterChange, true));
+const live = new FleetLive(kinowoFleet());
 await live.boot();
 const { state } = live.store.get();
-for (const error of state.errors) console.log(`error: ${error}`);
-for (const row of state.rows) {
-  console.log(`${row.name.padEnd(14)} ${row.severity.padEnd(6)} ${row.state.padEnd(28)} closure=${shortClosure(row.closure).padEnd(14)} rev=${row.revisionShort} nixpkgs=${row.nixpkgs}`);
+for (const error of [state.buildError, state.rosterError, state.promError, state.forgeError, state.checkout.error]) {
+  if (error) console.log(`error: ${error}`);
+}
+for (const row of state.machines) {
+  const what = !row.reporting ? "not reporting" : row.stagedPending ? "staged, not activated" : row.rebootRequired ? "reboot owed" : "current";
+  console.log(`${row.name.padEnd(14)} ${row.severity.padEnd(6)} ${what.padEnd(28)} closure=${(row.storeHash ?? "").slice(0, 12).padEnd(14)} rev=${(row.revisionCommit ?? "").slice(0, 8)} nixpkgs=${row.nixpkgs ?? ""}`);
 }
 process.exit(0);

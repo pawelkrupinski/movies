@@ -1,3 +1,5 @@
+import { setExecutor as setFleetExecutor } from "fleetkit/exec";
+import { setHttpClient as setFleetHttpClient } from "fleetkit/http";
 import { setExecutor } from "../src/exec.js";
 import { setHttpClient } from "../src/http.js";
 import { isolateGitEnvironment } from "./git-isolation.js";
@@ -13,5 +15,12 @@ setExecutor(async (argv) => {
   throw new Error(`test tried to run a real command: ${argv.join(" ")}`);
 });
 setHttpClient(async (url) => {
+  throw new Error(`test tried to reach the network: ${url}`);
+});
+// The fleet page (fleetkit) runs its ssh, git and nix through its own executor: refused the same.
+setFleetExecutor(async (argv) => {
+  throw new Error(`test tried to run a real command: ${argv.join(" ")}`);
+});
+setFleetHttpClient(async (url) => {
   throw new Error(`test tried to reach the network: ${url}`);
 });

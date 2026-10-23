@@ -1,4 +1,4 @@
-import { createFleetPage } from "./fleet/page.js";
+import { createFleetPage } from "./fleet.js";
 import { createMobilePage } from "./mobile/page.js";
 import type { Page } from "./page.js";
 import { WakeDetector } from "./wake.js";

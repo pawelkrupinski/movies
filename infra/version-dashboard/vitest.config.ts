@@ -10,5 +10,7 @@ export default defineConfig({
     // Every external reach goes through src/exec.ts and src/http.ts; setup makes both refuse, so
     // no test can ssh to a host, dispatch a deploy or read a live cluster by accident.
     setupFiles: ["test/setup.ts"],
+    // fleetkit ships TypeScript source, so it is transformed like ours rather than loaded by Node.
+    server: { deps: { inline: ["fleetkit"] } },
   },
 });

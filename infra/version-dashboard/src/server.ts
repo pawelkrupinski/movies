@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Autodeploy } from "./autodeploy.js";
 import { AUTODEPLOY, HOST, PORT, ROOT } from "./config.js";
+import { killRunningCommands as killFleetCommands } from "fleetkit/exec";
 import { killRunningCommands } from "./exec.js";
 import { drain, isDraining, runningWork } from "./lifecycle.js";
 import { isLocalHost, isOwnOriginWrite } from "./local-host.js";
@@ -13,9 +14,10 @@ import { shell } from "./shell.js";
 
 const HEARTBEAT_MS = 15_000;
 
-async function bundle(name: string): Promise<string> {
+/** A page's script is its own (fleetkit's fleet page names one) or `web/<name>.ts`. */
+async function bundle(page: Page<unknown>): Promise<string> {
   const result = await build({
-    entryPoints: [join(ROOT, "web", `${name}.ts`)],
+    entryPoints: [page.script ?? join(ROOT, "web", `${page.name}.ts`)],
     bundle: true,
     format: "esm",
     target: "es2022",
@@ -60,7 +62,10 @@ async function main(): Promise<void> {
 
   const assets = new Map<string, { type: string; body: string }>();
   assets.set("styles.css", { type: "text/css", body: await readFile(join(ROOT, "web", "styles.css"), "utf8") });
-  for (const page of pages) assets.set(`${page.name}.js`, { type: "text/javascript", body: await bundle(page.name) });
+  for (const page of pages) {
+    assets.set(`${page.name}.js`, { type: "text/javascript", body: await bundle(page) });
+    if (page.stylesheet) assets.set(`${page.name}.css`, { type: "text/css", body: await readFile(page.stylesheet, "utf8") });
+  }
   app.get<{ Params: { file: string } }>("/assets/:file", async (request, reply) => {
     const asset = assets.get(request.params.file);
     if (!asset) return reply.code(404).send("not found");
@@ -101,7 +106,8 @@ async function main(): Promise<void> {
     pages.forEach((page) => page.stop());
     // What is left running is background reading (a roster eval, an ssh probe) nothing waits on:
     // ended here, or each restart leaves one behind beside the next process's own.
-    const killed = killRunningCommands();
+    // The fleet page's commands run through fleetkit's executor, the rest through this one.
+    const killed = killRunningCommands() + killFleetCommands();
     if (killed) console.log(`${signal}: killed ${killed} background command(s) still running`);
     await app.close();
     process.exit(0);

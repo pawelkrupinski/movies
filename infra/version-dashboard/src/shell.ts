@@ -14,7 +14,7 @@ export function shell(page: Page<unknown>, pages: readonly Page<unknown>[]): str
   const initial = JSON.stringify(snapshot).replaceAll("<", "\\u003c");
   return `<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>kinowo — ${escapeHtml(page.title)}</title><link rel=stylesheet href="/assets/styles.css"></head>
+<title>kinowo — ${escapeHtml(page.title)}</title><link rel=stylesheet href="/assets/styles.css">${page.stylesheet ? `<link rel=stylesheet href="/assets/${page.name}.css">` : ""}</head>
 <body data-page="${page.name}"><nav class=pages>${nav}<span id=live class=live></span></nav>
 <main id=app>${page.renderBody(snapshot)}</main>
 <script id=initial type="application/json">${initial}</script>
