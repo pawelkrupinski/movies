@@ -476,6 +476,8 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: fixture-server-log-mobile
                   path: /tmp/fixture-server/log
                   if-no-files-found: ignore
@@ -774,6 +776,8 @@ jobs:
               if: matrix.shard == 'corpus' && !github.event.pull_request
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: stage-worker
                   path: worker/target/universal/stage
                   compression-level: 0

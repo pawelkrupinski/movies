@@ -108,6 +108,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: always()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-run
                   path: ${{ runner.temp }}/identity-run/
                   retention-days: 14

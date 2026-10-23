@@ -334,6 +334,8 @@ runs:
       if: failure() && inputs.kind == 'playwright'
       uses: actions/upload-artifact@v4
       with:
+        # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+        overwrite: true
         name: playwright-${{ inputs.label }}
         path: |
           page-tests-playwright/reports

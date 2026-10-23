@@ -141,6 +141,8 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: android-order-independence-report
                   path: android/app/build/reports/tests/testDebugUnitTest
                   if-no-files-found: ignore
@@ -228,6 +230,8 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: android-instrumented-order-independence-report
                   # One directory per failing class (devtest-shuffled.sh keeps them): the
                   # Gradle report paths hold only the LAST class's run.
@@ -355,6 +359,8 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: ios-alone-results
                   path: build/alone
                   if-no-files-found: ignore

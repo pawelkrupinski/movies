@@ -54,6 +54,8 @@ runs:
               echo "Full lists: artifact \`convergence-diagnostics-${{ inputs.name }}\`." >> "$GITHUB_STEP_SUMMARY"
         - uses: actions/upload-artifact@v6
           with:
+              # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+              overwrite: true
               name: convergence-diagnostics-${{ inputs.name }}
               path: target/convergence-diagnostics/
               if-no-files-found: ignore

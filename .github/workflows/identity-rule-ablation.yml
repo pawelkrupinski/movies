@@ -170,6 +170,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: always()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-rule-ablation-shard-${{ matrix.shard }}
                   path: |
                       ablation/state.json
@@ -206,6 +208,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: always()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-rule-ablation
                   path: merged/
                   retention-days: 30

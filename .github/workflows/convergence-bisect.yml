@@ -247,6 +247,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: steps.bisect.outputs.first-bad != ''
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: first-bad-${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   path: first-bad/
                   retention-days: 3

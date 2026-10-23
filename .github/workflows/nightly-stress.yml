@@ -70,6 +70,8 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: stress-races
                   path: target/stress-races
                   if-no-files-found: ignore

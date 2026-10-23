@@ -261,6 +261,8 @@ jobs:
               uses: actions/upload-artifact@v6
               if: success()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: kinowo-debug-apk
                   path: android/app/build/outputs/apk/debug/app-debug.apk
                   if-no-files-found: error
@@ -298,6 +300,8 @@ jobs:
               uses: actions/upload-artifact@v6
               if: success()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: kinowo-release-apk
                   # Glob catches both the signed `app-release.apk` and the
                   # unsigned-fallback `app-release-unsigned.apk` (no secrets).
@@ -308,6 +312,8 @@ jobs:
               uses: actions/upload-artifact@v6
               if: success()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: kinowo-release-aab
                   path: android/app/build/outputs/bundle/release/app-release.aab
                   if-no-files-found: error
@@ -316,6 +322,8 @@ jobs:
               uses: actions/upload-artifact@v6
               if: success()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: kinowo-tune-apk
                   # Signed, minified build that exposes the tweak screen (the
                   # "Kinowo Tune" launcher icon). Glob catches the unsigned
@@ -389,6 +397,8 @@ jobs:
               uses: actions/upload-artifact@v6
               if: failure()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: unit-test-report
                   path: android/app/build/reports/tests/testDebugUnitTest
                   if-no-files-found: ignore
@@ -505,6 +515,8 @@ jobs:
               uses: actions/upload-artifact@v6
               if: failure()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: instrumented-test-report
                   path: |
                       android/app/build/reports/androidTests/connected

@@ -103,6 +103,8 @@ jobs:
 
             - uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-refit-shard-${{ matrix.shard }}
                   path: shards/shard-${{ matrix.shard }}.json
                   retention-days: 3
@@ -193,6 +195,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: always()
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-refit
                   path: |
                       identity-refit-report.md

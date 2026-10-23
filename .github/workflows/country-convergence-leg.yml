@@ -771,6 +771,8 @@ jobs:
               if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: convergence-profile-${{ inputs.code }}-${{ matrix.phase }}
                   path: convergence.jfr
                   if-no-files-found: warn
@@ -886,6 +888,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && !inputs.takes-only }}
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-drift-${{ inputs.code }}
                   path: ${{ runner.temp }}/identity-drift/
                   if-no-files-found: ignore
@@ -936,6 +940,8 @@ jobs:
             - uses: actions/upload-artifact@v6
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: identity-takes-${{ inputs.code }}
                   path: ${{ runner.temp }}/identity-takes/
                   if-no-files-found: ignore

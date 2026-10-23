@@ -62,6 +62,8 @@ jobs:
               if: always()
               uses: actions/upload-artifact@v6
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: filmweb-diff-${{ steps.stamp.outputs.date }}
                   path: |
                       filmweb-diff.txt
