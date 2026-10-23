@@ -310,9 +310,28 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
 - **Playwright config:** `trace: 'retain-on-failure'` with `retries: 0` records a trace for every test. Turning it
   off speeds up the WebKit rows (CI's long pole) at the cost of traces on failure. `fullyParallel` is absent, so
   check for shared-state flakes first.
-- **Day-swipe slide** (`shared.js:3173-3200,3269-3294`): `requestAnimationFrame` + `transitionend` + a timeout
-  fallback. The View Transitions API (Safari 18+) could replace the state machine; finger tracking likely stays
-  custom. Medium risk to the day-swipe specs.
+- **Day-swipe slide: evaluated, keep the hand-built track; do not adopt View Transitions.** How it works now
+  (`shared.js` "Day carousel"): on axis lock, a coarse-pointer drag arms `#day-track` with clones of both
+  neighbouring days (`buildDayColumn`, `.day-track--armed`, parked at -100vw). The track follows the finger 1:1, and
+  the pill previews the day a release would land on. On release past 40% of the width, or after a flick,
+  `slideArmedTo` carries on from the finger's offset to ±100vw. `transitionend`, with a `setTimeout(ms+60)`
+  fallback armed in the same frame as the slide, then runs `commitDay`, which sets `#date-filter`, re-renders,
+  scrolls to the top, unmounts the clones and runs a queued follow-on slide. A shorter drag eases back to 0 and
+  unmounts, leaving the scroll position alone. Pills, arrows, keys and the dropdown use `animateToDay`: it lights
+  the pill first, takes the shorter way round the day ring, mounts only the target side and queues presses made
+  mid-slide. Reduced motion and large cities on touch commit instantly. Why a view transition doesn't pay:
+  (1) The drag needs the clones and the armed track. A released swipe settles from a half-translated track, so the
+  clones, `slideArmedTo`, `snapBack` and its `transitionend` + timeout pair all stay. At most a VT could take
+  over pill and keyboard changes, which removes about 10 lines (the one-sided `armTrack` in `runSlide` and
+  `spacerColumn`). (2) Every browser without the API still needs today's path: iOS below 18 (its share is
+  unmeasured here) and older Firefox. So a VT is a second code path plus `::view-transition-*` CSS, not a
+  replacement. (3) The feel would regress or drift. A VT freezes rendering and routes input to the pseudo-tree
+  for the whole animation, which runs 550 ms on desktop. The snapshot is a static image clipped to the viewport.
+  The incoming day would appear already scrolled to the top, where the clone today lines up at the current
+  scroll position. The navbar and pills would cross-fade unless they got their own `view-transition-name`, which
+  means template edits. A second VT skips the running one, so the mid-slide queue would behave differently on
+  each path. Look again only if iOS 17 traffic is negligible AND the swipe moves to native scroll-snap (no
+  finger-tracking JS). Then the whole track could go, not a tenth of it.
 - **A hand-rolled modal** (hidden films): `<dialog>.showModal()` (Safari 15.4+) gives focus trap, Esc and the top
   layer [modal code unread].
 - Optional: speculation rules (Chromium only, so Android/Chrome traffic) for film-page prefetch.
