@@ -20,15 +20,17 @@ test.describe('axe-core WCAG audit', () => {
   // overrides and surfaces a `color-contrast` violation that Chromium
   // / WebKit don't see. Gate to one engine — the audit's signal is
   // about content + CSS, not about JS-engine behaviour.
-  // `browserName !== 'chromium'` would let this run on chromium-pixel7,
-  // chromium-desktop, AND msedge-desktop (msedge is a chromium channel).
-  // Pin to one project. The describe-level `test.skip(callback)` form
+  // `browserName !== 'chromium'` would let this run on every chromium-* phone
+  // AND chrome-desktop (chrome is a chromium channel). Pin to one project —
+  // the one CI's informational axe step runs (`--project chrome-desktop`).
+  // The pin once named a `chromium-desktop` that no longer exists, so the
+  // audit silently skipped everywhere. The describe-level `test.skip(callback)` form
   // only receives fixtures, not TestInfo, so this lives in a
   // beforeEach where TestInfo is the 2nd arg.
   test.beforeEach(({}, testInfo) => {
     test.skip(
-      testInfo.project.name !== 'chromium-desktop',
-      'axe checks the DOM, not the engine — chromium-desktop is enough',
+      testInfo.project.name !== 'chrome-desktop',
+      'axe checks the DOM, not the engine — chrome-desktop is enough',
     );
   });
 

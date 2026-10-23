@@ -124,7 +124,7 @@ runs:
     - uses: actions/setup-node@v4
       if: inputs.kind == 'playwright'
       with:
-        node-version: '20'
+        node-version: '22'
         cache: npm
         cache-dependency-path: page-tests-playwright/package-lock.json
 
