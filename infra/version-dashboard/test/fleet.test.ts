@@ -1,11 +1,18 @@
 import { build } from "esbuild";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CACHE_DIR, INFRA_DIR } from "../src/config.js";
-import { createFleetPage, kinowoFleet, MONGO_WARNING } from "../src/fleet.js";
+import { createFleetPage, kinowoFleet, MONGO_WARNING, STAGED_PATHS } from "../src/fleet.js";
 
 /** What makes fleetkit's page kinowo's: the page itself is tested in fleetkit. */
 describe("kinowo's fleet configuration", () => {
+  it("names the staging workflow's own push paths", () => {
+    const workflow = readFileSync(join(INFRA_DIR, "..", ".github", "workflows", "nix-stage-closures.yml"), "utf8");
+    const push = workflow.slice(workflow.indexOf("  push:"), workflow.indexOf("  workflow_dispatch:"));
+    expect([...push.matchAll(/^\s+- '([^']+)'/gm)].map((match) => match[1])).toEqual(["infra/**", ".github/workflows/nix-stage-closures.yml"]);
+  });
+
   it("is root at each host's public address, no jump, Prometheus through monitoring-1, mongo typed, no reboot", () => {
     const config = kinowoFleet({});
     expect(config.infraDir).toBe(INFRA_DIR);
@@ -19,6 +26,7 @@ describe("kinowo's fleet configuration", () => {
     expect(config.confirmRoles).toEqual([{ role: "mongo", warning: MONGO_WARNING }]);
     expect(config.reboot).toBeNull();
     expect(config.forges.map((forge) => [forge.remote, "stagingRuns" in forge])).toEqual([["forgejo", false]]);
+    expect(STAGED_PATHS).toEqual([".", "../.github/workflows/nix-stage-closures.yml"]);
     expect(kinowoFleet({ KINOWO_FLEET_SSH_USER: "ops" }).ssh.user).toBe("ops");
   });
 

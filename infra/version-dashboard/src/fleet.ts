@@ -13,12 +13,17 @@ export const MONGO_WARNING = "This is the PRODUCTION DATABASE. Activating can re
   + "streams stop with it — a dropped change stream does not reconnect by itself, so the site would serve stale "
   + "showtimes until the app is restarted.";
 
+/** nix-stage-closures.yml's push `paths`, relative to infra/. */
+export const STAGED_PATHS = [".", "../.github/workflows/nix-stage-closures.yml"] as const;
+
 export function kinowoFleet(env: NodeJS.ProcessEnv = process.env, infraDir = INFRA_DIR): FleetConfig {
   return {
     infraDir,
     // NO FORGE TOKEN HERE (this page runs outside the vault), so the checkout is the forge: main is
-    // its cached forgejo/main, never fetched. It cannot say how CI staged a closure.
-    forges: [localGitForge(infraDir, { remote: "forgejo" })],
+    // its cached forgejo/main, never fetched. It cannot say how CI staged a closure. ONLY THE
+    // COMMITS nix-stage-closures builds for count (its push paths): the rest are application
+    // commits no closure is built for, and counting them read a current fleet as "33 behind".
+    forges: [localGitForge(infraDir, { remote: "forgejo", paths: STAGED_PATHS })],
     // ROOT, at the PUBLIC address: this fleet has no VPN and no jump host, and root ssh is the only
     // access there is (bitcashier's hosts are the other way round: an admin over sudo, via a jump).
     ssh: { user: env.KINOWO_FLEET_SSH_USER ?? "root" },
