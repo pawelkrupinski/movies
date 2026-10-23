@@ -37,8 +37,7 @@ final class RotationColumnsUITests: XCTestCase {
     func testGridStaysWithinScreenWidthAfterRotatingLandscapeAndBack() throws {
         // Land in landscape, settle, then rotate back to portrait — the
         // sequence the bug was reported under.
-        XCUIDevice.shared.orientation = .landscapeLeft
-        Thread.sleep(forTimeInterval: 1.5)
+        try rotateToLandscape()
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 1.5)
 
@@ -94,8 +93,7 @@ final class RotationColumnsUITests: XCTestCase {
                       "Film detail never opened after tapping a card")
 
         // The reported sequence: rotate to landscape and back to portrait.
-        XCUIDevice.shared.orientation = .landscapeLeft
-        Thread.sleep(forTimeInterval: 1.5)
+        try rotateToLandscape()
         XCUIDevice.shared.orientation = .portrait
         Thread.sleep(forTimeInterval: 1.5)
 
@@ -125,8 +123,7 @@ final class RotationColumnsUITests: XCTestCase {
         XCTAssertTrue(poster.waitForExistence(timeout: 10),
                       "Film detail never opened after tapping a card")
 
-        XCUIDevice.shared.orientation = .landscapeLeft
-        Thread.sleep(forTimeInterval: 1.5)
+        try rotateToLandscape()
         XCTAssertTrue(poster.waitForExistence(timeout: 5),
                       "Detail poster vanished after rotating to landscape")
 
@@ -147,6 +144,16 @@ final class RotationColumnsUITests: XCTestCase {
     }
 
     // MARK: - helpers
+
+    /// Rotates to landscape and lets the layout settle — or skips the test on a
+    /// device type that does not rotate (the dual-screen "iPhone Duo" simulator
+    /// keeps every app's window portrait after `.landscapeLeft`), where none of
+    /// these rotation regressions can be exercised. CI pins iPhone 17, which rotates.
+    private func rotateToLandscape() throws {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1.5)
+        try XCTSkipUnless(app.frame.width > app.frame.height, "this device type does not rotate")
+    }
 
     private func cellFrames() -> [CGRect] {
         app.descendants(matching: .any)
