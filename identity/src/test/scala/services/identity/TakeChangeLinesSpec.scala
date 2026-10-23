@@ -30,7 +30,7 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "name the stage and rule that decided it, the score and runner-up, the trigger and the title rules, as ids" in {
-    val withRules = new TakeChangeLines(Country.Poland, CommitSha("0e41a4812"), listing => Seq("title:search-programme-prefix", "format:3d"))
+    val withRules = new TakeChangeLines(Country.Poland, CommitSha("0e41a4812"), _ => Seq("title:search-programme-prefix", "format:3d"))
     val trace = DecisionTrace(None, None, Map(muza -> DecisionTrace.Node(accepted = Some("sole-work"), joins = Nil, apart = Nil,
       candidate = Some(238), score = Some(0.8123), runnerUp = Some(DecisionTrace.Rival(240, 0.1)))))
     val decision = ResolverDecision(Seq(muza), Some(238), 0.9, ResolverDecision.Basis.OwnMatch, Seq("why"))(trace)

@@ -133,7 +133,8 @@ object IdentityDraftBench {
     def youngCollections(): Long = beans.map(_.getCollectionCount).sum
     val tenured = java.lang.management.ManagementFactory.getMemoryPoolMXBeans.asScala.find(_.getName == "Tenured Gen").orNull
     var tenuredBefore = Option(tenured).fold(0L)(_.getUsage.getUsed)
-    var sink: Array[Byte] = null
+    // Written, never read: the allocations escape into it, so the JIT cannot elide them and young collections happen.
+    @scala.annotation.unused var sink: Array[Byte] = null
     // The heap, unreachable objects included, before any collection: what the ticks since the last full collection
     // promoted and left to die in the old generation is the difference of two of these, by class.
     def heapNow(name: String): Unit = options.histograms.foreach { dir =>

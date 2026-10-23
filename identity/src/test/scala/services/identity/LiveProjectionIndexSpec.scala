@@ -51,8 +51,6 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
       var decisions = Map.empty[Int, ResolverDecision]                    // by group: replaced only when the group moved
       var unheld    = Set.empty[ListingKey]
       var stored    = Map.empty[String, StoredMovieRecord]
-      def listings(venue: String): Seq[ProjectedListing] =
-        objects.getOrElse(venue, Nil)
       (1 to 20).foreach { step =>
         // The world moves.
         rng.nextInt(7) match {

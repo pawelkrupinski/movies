@@ -90,7 +90,7 @@ private[identity] object TitleRelationMeasures {
    *  season production, or a billing naming the works of two of its titles), asked only when no shape matches. ONE definition for the title and the
    *  original-title relations. */
   private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false,
-                          shapeWords: Seq[Seq[String]] = Nil, undecorated: Seq[Seq[String]] = Nil): Option[Category] = {
+                          shapeWords: Seq[Seq[String]] = Nil, undecorated: Seq[Seq[String]]): Option[Category] = {
     val otherKeys = others.map(_.key).filter(_.nonEmpty).toSet
     // a title closing on an author's credit is read without it: the author's name is no edge a film's title decorates
     val ow = own.map(form => creditedWork(form.text).fold(form.words)(words)).filter(_.nonEmpty)

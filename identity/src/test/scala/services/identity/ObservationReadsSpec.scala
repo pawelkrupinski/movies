@@ -16,7 +16,7 @@ class ObservationReadsSpec extends AnyFlatSpec with Matchers {
     val reads = new ObservationReads
     asked(reads, earlier)()
     var change = Option.empty[ObservationReads.Change]
-    asked(reads, filer) { change = Some(reads.changed("k")) }
+    asked(reads, filer) { change = Some(reads.changed()) }
     asked(reads, later)()
     reads.changedBy(Map("k" -> change.get)).queries shouldBe Set(earlier)
   }
@@ -24,15 +24,15 @@ class ObservationReadsSpec extends AnyFlatSpec with Matchers {
   it should "wake two filers of one key neither, merged" in {
     val reads = new ObservationReads
     var first, second = Option.empty[ObservationReads.Change]
-    asked(reads, earlier) { first = Some(reads.changed("k")) }
-    asked(reads, filer) { second = Some(reads.changed("k")) }
+    asked(reads, earlier) { first = Some(reads.changed()) }
+    asked(reads, filer) { second = Some(reads.changed()) }
     reads.changedBy(Map("k" -> first.get.merge(second.get))).queries shouldBe empty
   }
 
   "a change no question filed" should "wake every question that reads the key" in {
     val reads = new ObservationReads
     asked(reads, earlier)()
-    val change = reads.changed("k")
+    val change = reads.changed()
     asked(reads, later)()
     reads.changedBy(Map("k" -> change)).queries shouldBe Set(earlier, later)
     reads.changedBy(Seq("k")).queries shouldBe Set(earlier, later)

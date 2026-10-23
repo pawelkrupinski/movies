@@ -94,12 +94,12 @@ final class IdentityModelService(
 
   /** New content was filed under `key` (the venue page index, the proposal index): every question that reads it is
    *  asked again. */
-  def observed(key: String): Unit = queue(key, reads.announced(key))
+  def observed(key: String): Unit = queue(key, reads.announced())
   /** New content was filed under `key` in the TMDB store, by whichever question's ask fetched it, if one did: that
    *  question has read what it filed, and the questions asked since read it too, so only those asked before it are
    *  asked again ([[ObservationReads.changedBy]]). A take-up over an empty store files every answer it asks for, and
    *  each woke its own question: its first drain resolved every family a second time (Germany sample, 2026-10-14). */
-  def filed(key: String): Unit = queue(key, reads.changed(key))
+  def filed(key: String): Unit = queue(key, reads.changed())
   private def queue(key: String, change: ObservationReads.Change): Unit = { observations.merge(key, change, (held, now) => held.merge(now)); wake() }
 
   /** Drain soon: `quiet` after the last event of a burst, never more than `settle` after its first — so a burst several

@@ -44,10 +44,11 @@ class ObservationReads {
     keysOf.remove(question).foreach(_.keys.foreach(key => readers.updateWith(key)(_.map(_ - question).filter(_.nonEmpty))))
   }
 
-  /** New content was filed under `key`, now: by the question this thread is asking, if it is asking one. */
-  def changed(key: String): Change = Change(ticks.incrementAndGet(), asking.get.toSet, filed = asking.get.isDefined)
-  /** New content under `key`, now, filed by no question's ask: a venue page read, a sweep's re-fetch. */
-  def announced(key: String): Change = Change(ticks.incrementAndGet(), Set.empty, filed = false)
+  /** New content was filed (under the key the caller pairs it with), now: by the question this thread is asking, if it
+   *  is asking one. */
+  def changed(): Change = Change(ticks.incrementAndGet(), asking.get.toSet, filed = asking.get.isDefined)
+  /** New content, now, filed by no question's ask: a venue page read, a sweep's re-fetch. */
+  def announced(): Change = Change(ticks.incrementAndGet(), Set.empty, filed = false)
 
   /** The questions whose answers new content under `keys` can change: every question that reads one. */
   def changedBy(keys: Iterable[String]): AnswersChanged = synchronized(answersOf(keys.flatMap(readers.getOrElse(_, Set.empty)).toSet))

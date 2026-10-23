@@ -280,7 +280,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       billed.foreach { key =>
         billingsOf.remove(key).foreach(_.map(_.listingHouse).distinct.foreach { banner =>
           banners += banner; byBanner.removeEntry(banner, key) })
-        nodes.get(key).foreach { live =>
+        nodes.get(key).foreach { _ =>
           val byFilm   = billedBy.getOrElse(key, Map.empty)
           val billings = billedOn.getOrElse(key, Nil).flatMap(byFilm.getOrElse(_, Nil))
           if (billings.nonEmpty) {

@@ -9,6 +9,7 @@ import services.identity.SourceReliability
 import services.identity.SourceReliability.{Fact, Trust}
 import services.movies.{TitleContainment, TitleNormalizer}
 
+import scala.annotation.unused
 import scala.collection.mutable
 
 /**
@@ -63,7 +64,7 @@ trait FamilyAnswers {
   def record(id: String): Answer[Option[SourceRecord]]
   /** The films the family's site lists a venue screening ([[VenueListings]]): its own programme of the venue, else its
    *  town's; `Known(Nil)` for a family that lists no programmes. */
-  def showing(venue: String): Answer[Seq[Showing]] = Answer.Known(Nil)
+  def showing(@unused venue: String): Answer[Seq[Showing]] = Answer.Known(Nil)
   /** Is there an answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`, `showing|<venue>`), and is it
    *  still fresh? A stale one is read all the same, and asked again; a missing one is a gap. */
   def fresh(question: String): Boolean = true

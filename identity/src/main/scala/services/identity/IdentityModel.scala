@@ -3,6 +3,8 @@ package services.identity
 import models.{Cinema, CinemaMovie}
 import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleSeason}
 
+import scala.annotation.unused
+
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
  * is a value: a listing as its venue published it, the evidence it carries once its own detail page
@@ -642,9 +644,9 @@ trait IdentityLookups {
    *  ([[CastEvidence]]), never the model. Read apart from its record ([[film]]), as the release day is: every candidate
    *  of every family holds a record, and only an unmatched cluster's fill reads a cast. `Known(None)` where the source
    *  does not know it — a record filed before records kept the cast — which the evidence reads as nothing to go on. */
-  def cast(tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(None)
+  def cast(@unused tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(None)
   /** The words a film's TMDB descriptions capitalise — its localized and English overviews ([[TmdbFilmRecord.overview]]):
    *  what the synopsis evidence reads ([[agreement.SynopsisEvidence]]), never the model. Read apart from its record, as
    *  the cast is. `Known(None)` where the source does not know it — a record filed before records kept the overview. */
-  def overview(tmdbId: Int): Answer[Option[ProseWords]] = Answer.Known(None)
+  def overview(@unused tmdbId: Int): Answer[Option[ProseWords]] = Answer.Known(None)
 }

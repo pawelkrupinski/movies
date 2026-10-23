@@ -255,6 +255,7 @@ lazy val identityTestDoubles = Def.setting(Seq("InMemoryIdentityTraceStore", "In
 // common — its models, titles, Mongo — and nothing in common builds on it (it cannot: common does not depend on it); the
 // worker runs it, the web app reads its traces and pins.
 lazy val identity = (project in file("identity"))
+  .settings(unusedAll)
   .dependsOn(common)
   .settings(
     name := "identity",

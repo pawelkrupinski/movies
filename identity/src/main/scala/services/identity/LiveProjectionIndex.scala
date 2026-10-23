@@ -267,7 +267,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     val current = new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean](resolved.size * 2)
     resolved.foreach(d => current.put(d, java.lang.Boolean.TRUE))
     val gone    = mutable.ArrayBuffer.empty[ResolverDecision]
-    decisions.forEach((d, id) => if (!current.containsKey(d)) gone += d)
+    decisions.forEach((d, _) => if (!current.containsKey(d)) gone += d)
     gone.foreach { d =>
       val id = decisions.remove(d)
       touched += id
