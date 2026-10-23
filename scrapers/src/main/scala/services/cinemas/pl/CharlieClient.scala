@@ -68,6 +68,10 @@ object CharlieClient {
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
+    // Anything but the homepage (its PHP answers 200 with a bare "Blad polaczenia z baza
+    // danych" when its database is down) is a failed read, not a day with nothing on.
+    if (!document.title.toUpperCase(java.util.Locale.ROOT).contains("CHARLIE"))
+      throw new IllegalStateException(s"$PageUrl is not the Kino Charlie homepage: ${html.take(120)}")
     val slots = JsonLdBlocks.scripts(document)
       .flatMap(block => parseEvent(block).map(slot => slot -> block))
       .map { case (slot, block) =>
