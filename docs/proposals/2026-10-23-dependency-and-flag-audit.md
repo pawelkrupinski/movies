@@ -15,7 +15,7 @@ that must be confirmed before acting. Measure before landing any performance ite
 2. **JVM:** retire `infra/jvm/jdk25-parity.options`, starting with compact object headers (done: file retired 2026-10-24); canary on one worker.
 3. **Android:** a Baseline Profile; posters on the app's shared OkHttp client; `AsyncImage` over
    `SubcomposeAsyncImage` in the grid.
-4. **Hosts:** zram swap and kubelet memory reserves on the 4 GB nodes.
+4. **Hosts:** zram swap and kubelet memory reserves on every host (implemented, deploy owed: see Hosts).
 5. **iOS:** `@Observable` with a deployment-target bump to iOS 17.
 6. **Page tests:** replace the remaining `waitForTimeout` sleeps.
 
@@ -380,9 +380,18 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
 
 ## Hosts, k3s, edge
 
-- **No swap and no kubelet reserves on 4 GB nodes** [checked: no `swapDevices`/`zramSwap`, no `--kubelet-arg`].
-  Add `zramSwap.enable` + `vm.swappiness=10`, plus `system-reserved`/`kube-reserved` and
-  `eviction-hard=memory.available<300Mi`. Check overlap with `modules/fleet/container-image-gc.nix`.
+- **Swap and kubelet reserves: done, deploy owed** (branch `hosts-memory-safety`, `modules/fleet/host-memory.nix`,
+  numbers in `infra/nix/files/host-memory.json`). Before: no swap on any host, no kubelet reserves, and k3s's
+  default `evictionHard` (imagefs/nodefs only) left `memory.available` with NO threshold, so k3s-worker-1's
+  allocatable equalled its 15616Mi capacity. Now: zram (zstd) 50% on mongo-1 and monitoring-1, 25% on
+  k3s-worker-1; `vm.swappiness` 1 on mongo-1 (MongoDB's production notes: swap present, swappiness 1) and 10 on
+  the k3s nodes; pods pinned to `swapBehavior: NoSwap`, so fixed-heap JVMs never page. Kubelet (via
+  `extraKubeletConfig`, not `--kubelet-arg` in ExecStart, where systemd eats the `%` in `nodefs.available<5%`):
+  k3s-worker-1 system 512Mi + kube 384Mi + evict 256Mi (allocatable 14464Mi; NodeMemoryBudgetSpec still fits
+  the surge, 448Mi spare); monitoring-1 1536Mi + 768Mi + 256Mi (only CoreDNS/local-path run there). Nodefs/imagefs
+  eviction stays at k3s's 5%, so no overlap with `container-image-gc.nix`. Asserted per host by
+  `infra/test/test_host_memory.sh`. No host-level OOM was on record; the sizes are not from measured
+  daemon RSS (none recorded for k3s, caddy, Prometheus) and should be checked against `node_memory_*` after rollout.
 - **CPU throttling:** pods don't set `-XX:ActiveProcessorCount`, so the JVM sizes itself to the node's cores. Audit
   with `container_cpu_cfs_throttled_periods_total`, and pin it to the pod's CPU request where limits throttle.
 - **Prometheus `scrape_interval`: rejected, no payoff** [checked 2026-10-24 against monitoring-1's own Prometheus].

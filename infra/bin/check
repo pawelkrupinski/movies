@@ -233,6 +233,21 @@ else
   failed=1
 fi
 
+step "host memory safety"
+# zram, vm.swappiness and the k3s kubelet's reserves, read back out of each host's evaluated config.
+# The toplevel eval below proves nix/modules/fleet/host-memory.nix evaluates; it cannot notice a host
+# left without swap or a kubelet config that lost its memory threshold. See test_host_memory.sh.
+if [ -f test/test_host_memory.sh ]; then
+  if out="$(bash test/test_host_memory.sh 2>&1)"; then
+    echo "$out" | tail -1 | sed 's/^/  /'
+  else
+    echo "$out" | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_host_memory.sh is missing"
+  failed=1
+fi
 for host in "${hosts[@]}"; do
   step "nix eval $host"
   if out="$(nix "${nix_flags[@]}" eval ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath" 2>&1)"; then

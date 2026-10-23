@@ -1,0 +1,24 @@
+{
+  "mongo-1": {
+    "zramMemoryPercent": 50,
+    "swappiness": 1
+  },
+  "monitoring-1": {
+    "zramMemoryPercent": 50,
+    "swappiness": 10,
+    "kubelet": {
+      "systemReservedMi": 1536,
+      "kubeReservedMi": 768,
+      "evictionHardMi": 256
+    }
+  },
+  "k3s-worker-1": {
+    "zramMemoryPercent": 25,
+    "swappiness": 10,
+    "kubelet": {
+      "systemReservedMi": 512,
+      "kubeReservedMi": 384,
+      "evictionHardMi": 256
+    }
+  }
+}

@@ -243,6 +243,13 @@ jobs:
         working-directory: infra
         run: bash test/test_heap_dumps.sh
 
+      # zram, vm.swappiness and the k3s kubelet's memory reserves, read back from each host's
+      # evaluated config: the eval below proves host-memory.nix evaluates, not that a host still
+      # has swap or that the kubelet kept its memory eviction threshold.
+      - name: Every host has zram, a low swappiness and (on k3s) kubelet memory reserves
+        working-directory: infra
+        run: bash test/test_host_memory.sh
+
       # The dashboard's own suite: the fleet and mobile views, the check/switch jobs and their
       # server-side guards, the roster cache, and the bulk-run queue driven in a DOM (jsdom) --
       # whether it really stops taking new machines after a failure, and whether the production

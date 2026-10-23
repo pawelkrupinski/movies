@@ -2,6 +2,7 @@ package deploy
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.Json
 
 /**
  * The memory half of the ledger [[NodeCpuBudgetSpec]] keeps for CPU, and the one
@@ -12,8 +13,9 @@ import org.scalatest.matchers.should.Matchers
  * `pekko.jvm-exit-on-fatal-error` makes the JVM exit rather than limp. The
  * obvious remedy is to give it a bigger heap and a bigger limit, and on this node
  * that remedy is a TRAP: `k3s-worker-1` is the only schedulable node
- * (`monitoring-1` carries the control-plane taint), its allocatable memory is
- * 15616Mi, and the kinowo pods already ask for 12800Mi of it. The scheduler
+ * (`monitoring-1` carries the control-plane taint), its memory is 15616Mi less
+ * what the kubelet reserves for itself and the host (`host-memory.json`), and the
+ * kinowo pods already ask for 12800Mi of it. The scheduler
  * admits on REQUESTS, never on usage, and the web tier deploys `maxSurge: 1,
  * maxUnavailable: 0` — so a rollout must place the new pod BEFORE retiring the
  * old one. Raise web-us from 2Gi to 3Gi and the sum still "fits", but the surge
@@ -46,10 +48,26 @@ import org.scalatest.matchers.should.Matchers
  */
 class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
-  /** `k3s-worker-1`'s `allocatable.memory`, in mebibytes:
-   *  `kubectl get node k3s-worker-1 -o jsonpath='{.status.allocatable.memory}'`
-   *  reports 15990952Ki. */
-  private val NodeAllocatableMib = 15616
+  /** `k3s-worker-1`'s `capacity.memory`, in mebibytes. Until the kubelet had reserves (2026-10-23)
+   *  its `allocatable.memory` read 15990952Ki, and that WAS the capacity: k3s's default kubelet
+   *  config gives `evictionHard` no `memory.available` key, so nothing was subtracted at all. */
+  private val NodeCapacityMib = 15616
+
+  /** What the kubelet holds back from pods on k3s-worker-1 -- systemReserved + kubeReserved + the
+   *  hard memory eviction threshold -- read from the file `infra/nix/modules/fleet/host-memory.nix`
+   *  renders the node's kubelet config from, so this ledger and the node cannot disagree. */
+  private lazy val KubeletReserveMib: Int = {
+    val kubelet = Json.parse(RepoFile.read("infra/nix/files/host-memory.json")) \ "k3s-worker-1" \ "kubelet"
+    Seq("systemReservedMi", "kubeReservedMi", "evictionHardMi").map { key =>
+      withClue(s"infra/nix/files/host-memory.json declares no k3s-worker-1 kubelet $key: ") {
+        (kubelet \ key).asOpt[Int] should not be empty
+      }
+      (kubelet \ key).as[Int]
+    }.sum
+  }
+
+  /** `allocatable.memory` as the kubelet computes it: capacity less its reserves. */
+  private lazy val NodeAllocatableMib = NodeCapacityMib - KubeletReserveMib
 
   /** Left for everything on the node that is NOT a kinowo pod. The node's own
    *  ledger shows 12864Mi requested against the 12800Mi these overlays declare,
@@ -101,7 +119,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
     withClue(
       s"kinowo + other workloads (${others}Mi) request ${total}Mi + a ${surge}Mi surge pod = ${total + surge}Mi against a ${ceiling}Mi " +
-      s"ceiling (${NodeAllocatableMib}Mi allocatable - ${SystemReserveMib}Mi for system pods). " +
+      s"ceiling (${NodeCapacityMib}Mi capacity - ${KubeletReserveMib}Mi kubelet reserves = ${NodeAllocatableMib}Mi " +
+      s"allocatable, - ${SystemReserveMib}Mi for system pods). " +
       "Over it, a web rollout hangs Pending forever with maxUnavailable: 0 rather than failing. " +
       "Giving a country a bigger heap means taking the memory from another pod or adding a node: ") {
       (total + surge) should be <= ceiling

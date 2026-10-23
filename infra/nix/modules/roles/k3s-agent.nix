@@ -144,6 +144,10 @@ in
       # workload is meant to land, and a job that must not run twice is exactly the kind of thing
       # an ungraceful eviction plus a rescheduled replacement can overlap.
       gracefulNodeShutdown.enable = true;
+
+      # NO KUBELET MEMORY RESERVES HERE: modules/fleet/host-memory.nix sets systemReserved,
+      # kubeReserved and the memory eviction threshold through `extraKubeletConfig`, from the same
+      # host-memory.json NodeMemoryBudgetSpec reads them out of.
     };
 
     # FORWARDING, which no CNI works without: a DNATed packet has to traverse FORWARD, and with

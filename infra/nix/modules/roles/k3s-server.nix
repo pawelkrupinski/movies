@@ -228,6 +228,10 @@ in
       # like a node that stopped answering, and its pods are evicted on the node-monitor timeout
       # rather than drained.
       gracefulNodeShutdown.enable = true;
+
+      # NO KUBELET MEMORY RESERVES HERE: modules/fleet/host-memory.nix sets systemReserved,
+      # kubeReserved and the memory eviction threshold through `extraKubeletConfig`, from the same
+      # host-memory.json NodeMemoryBudgetSpec reads them out of.
     };
 
     # FORWARDING, WHICH NO CNI WORKS WITHOUT. A packet to a pod is DNATed and then has to traverse
