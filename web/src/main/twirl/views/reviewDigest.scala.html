@@ -72,8 +72,8 @@
               }
               <div class="t">
                 <b class="film-title">@item.filmTitle.getOrElse(item.film.render)</b>
-                <div class="s">@item.film.url match {
-                  case Some(url) => {<a href="@url" target="_blank" rel="noopener">@item.film.render</a>}
+                <div class="s">@item.film.url.flatMap(controllers.WebHref.of) match {
+                  case Some(href) => {<a href="@href" target="_blank" rel="noopener">@item.film.render</a>}
                   case None      => {@item.film.render}
                 }</div>
               </div>
