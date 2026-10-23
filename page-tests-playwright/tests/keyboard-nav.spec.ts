@@ -8,8 +8,10 @@ import { gotoAndWaitForCards, setDateFilter, waitForCards } from './helpers';
 
 test.describe('keyboard arrow date navigation', { tag: '@agnostic' }, () => {
 
+  // Toruń's listing (0.37 MB, a third of Poznań's): the search-input case below steps out and back as its control,
+  // and on Poznań that plus the load took the 30s at ci-runner load (page-test-repeat run 1968: a 13s load).
   test.beforeEach(async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/');
+    await gotoAndWaitForCards(page, '/torun/');
     // Land on a known starting value so the cycle is deterministic.
     await setDateFilter(page, 'today');
   });
