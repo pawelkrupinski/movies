@@ -3,3 +3,4 @@
 # possible -- every row is state production keeps that a whole resolve would not derive. checkpoint: settled, tick,
 # deploy, after-deploy, or * for any.
 country	venue	rawTitle	checkpoint	reason
+uk	Chichester Cinema at New Park	The Ties That Bind Us	*	TEMPORARY: reopened by the GapHold revert ca20416a8; remove when GapHold returns
