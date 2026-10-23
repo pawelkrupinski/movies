@@ -8,8 +8,8 @@ import scala.jdk.CollectionConverters.*
 
 /** Every pod's JAVA_OPTS must let the image's AOT cache map (Dockerfile, `tools.ClassArchiveTraining`).
  *  The cache is trained through the launcher under the options baked into it (infra/jvm/<tier>.options),
- *  so the options must stay the launcher's alone: an overlay naming another collector or
- *  type-speculation setting puts the pod under options the cache was not trained under, and a cache
+ *  so the options must stay the launcher's alone: an overlay naming another collector,
+ *  type-speculation setting or object-header mode (a cache stores objects in one header layout) puts the pod under options the cache was not trained under, and a cache
  *  that does not map fails silently: every class back in metaspace, where worker-pl died at its 128m
  *  cap. The launcher's options come AFTER the overlay's JAVA_OPTS on the java command line (a
  *  worker-us JVM's arguments, 2026-10-03), so for a flag both name the launcher's value is the one
@@ -19,6 +19,7 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
 
   private val Collector   = """-XX:\+Use\w*GC""".r
   private val Speculation = """-XX:[+-]UseTypeSpeculation""".r
+  private val HeaderMode  = """-XX:[+-]UseCompactObjectHeaders""".r
   private val CdsArchive  = """-XX:(SharedArchiveFile=\S*|\+AutoCreateSharedArchive)|-Xshare:\w+""".r
 
   private def baked(tier: String): Set[String] =
@@ -34,11 +35,11 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
   }
 
   Seq("web", "worker").foreach { tier =>
-    s"the $tier tier's JAVA_OPTS" should "name no collector or type speculation other than its launcher's" in {
+    s"the $tier tier's JAVA_OPTS" should "name no collector, type speculation or object-header mode other than its launcher's" in {
       val manifests = javaOpts(tier)
       manifests should not be empty
       manifests.foreach { case (path, opts) =>
-        val overridden = (Collector.findAllIn(opts) ++ Speculation.findAllIn(opts)).toSet -- baked(tier)
+        val overridden = (Collector.findAllIn(opts) ++ Speculation.findAllIn(opts) ++ HeaderMode.findAllIn(opts)).toSet -- baked(tier)
         withClue(s"$path overrides infra/jvm/$tier.options, which the AOT cache is trained under: ")(overridden shouldBe empty)
       }
     }

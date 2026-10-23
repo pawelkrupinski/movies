@@ -56,8 +56,6 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
 
   /** What JDK 25.0.4.1 ran with, for every tier, under these JAVA_OPTS. */
   private val Jdk25Common = Map(
-    "UseCompactObjectHeaders"                      -> "false",
-    "UseObjectMonitorTable"                        -> "false",
     "FastLockingSpins"                             -> "13",
     "UseDilithiumIntrinsics"                       -> "false",
     "ShortRunningLongLoop"                         -> "false",
@@ -85,6 +83,16 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
       withClue(s"under $tier's JAVA_OPTS + ${files.mkString(" + ")}: ") {
         expected.map { case (flag, _) => flag -> flags.getOrElse(flag, "<absent>") } shouldBe expected
       }
+    }
+
+    // The JDK 27 default given back on purpose (2026-10-23): JEP 534's compact object headers,
+    // 8 bytes off every object header -- heap the identity model's many small objects get back --
+    // and the monitor side table they require (27 ignores -XX:-UseObjectMonitorTable beside them).
+    // The AOT cache is trained under the same launcher options, so it maps under the same mode.
+    it should "run JDK 27's compact object headers" in {
+      val flags = finalFlags(productionOptions(manifest) ++ files.flatMap(options))
+      Seq("UseCompactObjectHeaders", "UseObjectMonitorTable").map(flag => flag -> flags.get(flag)) shouldBe
+        Seq("UseCompactObjectHeaders" -> Some("true"), "UseObjectMonitorTable" -> Some("true"))
     }
   }
 

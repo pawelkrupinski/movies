@@ -84,11 +84,13 @@ from the JDK 25 prod ran before, and `JdkParityOptionsSpec` holds it there. Now 
 gives those defaults back. Do it in this order, measuring a worker's first 10 boot minutes (CPU, RSS, live set)
 each time:
 
-1. **`-XX:-UseCompactObjectHeaders` (`:17`) [checked].** JEP 534 made compact headers the default in 27. Expect
-   ~5–20 % less heap on object-heavy workloads such as the identity model [unverified for us]. The AOT cache is
-   trained through the same launcher (`Dockerfile:85-87`), so it stays consistent. Update `JdkParityOptionsSpec`
-   and `AotCacheOptionsSpec`.
-2. `-XX:-UseObjectMonitorTable`, `FastLockingSpins=13`: 27's locking defaults.
+1. **`-XX:-UseCompactObjectHeaders` [done 2026-10-23].** JEP 534 made compact headers the default in 27. They
+   require the monitor side table, so `-XX:-UseObjectMonitorTable` went with them (27 ignores it beside them, with a
+   boot warning). Measured: `UnmatchedClustersRatchetSpec` under the worker's options on local JDK 27, peak live heap
+   (`GC.class_histogram` totals every 3 s, two runs each) 600 / 583 MB without, 528 / 531 MB with -- about 10 %.
+   The AOT cache is trained through the same launcher, so it shares the mode; `AotCacheOptionsSpec` keeps overlays
+   from naming it. Still owed: a worker's first 10 boot minutes in prod (CPU, RSS, live set).
+2. `FastLockingSpins=13`: 27's locking default.
 3. `-ShortRunningLongLoop`, `-UseAutoVectorization*`: newer C2 loop and vectorization optimizations.
 4. `AllocatePrefetchDistance/Lines`: pinned to one Skylake's ergonomics.
 

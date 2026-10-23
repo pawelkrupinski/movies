@@ -12,14 +12,16 @@
 # interference-graph bailout (IFGEdgesLimit). New 27 flags whose default already IS 25's behaviour
 # (LoopPeeling=1, DelayAfterInliningCutoff, HotCodeHeap, NMethodRelocation, AOT*) need no line.
 # The G1CPUUsage*/G1ShrinkByPercentOfAvailable resizing flags are inert: every pod runs Xms == Xmx.
-
-# JEP 534 (27): compact object headers became the default.
--XX:-UseCompactObjectHeaders
+#
+# Given back on purpose (2026-10-23), so no longer a line here: JEP 534's compact object headers,
+# 27's default. 8 bytes off every object header is heap returned, measured on the worker's options
+# (docs/proposals/2026-10-23-dependency-and-flag-audit.md); JdkParityOptionsSpec now holds both
+# tiers to 27's value. The AOT cache is trained through the same launcher, so it shares the mode.
+# Compact headers require the side table for inflated monitors, so 27's UseObjectMonitorTable went
+# with them: the JVM ignores -XX:-UseObjectMonitorTable beside them, with a warning at every boot.
 
 # Diagnostic flags below need unlocking; the worker's JAVA_OPTS unlock them too, web's do not.
 -XX:+UnlockDiagnosticVMOptions
-# 27 turned on the side table for inflated monitors.
--XX:-UseObjectMonitorTable
 # Renamed from LightweightFastLockingSpins (25: 13) with a new default of 8.
 -XX:FastLockingSpins=13
 # 27 enables the ML-DSA (Dilithium) intrinsics on this CPU; 25 did not.
