@@ -7,8 +7,8 @@
     "lint": "node --test eslint-rules/*.test.js page-tests-playwright/lint-flake-patterns.test.mjs && node page-tests-playwright/lint-flake-patterns.mjs && eslint 'web/src/main/assets/js/**/*.js' 'web/src/page/resources/**/*.js'"
   },
   "devDependencies": {
-    "@eslint/js": "^9.17.0",
-    "eslint": "^9.17.0",
-    "globals": "^15.14.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0"
   }
 }

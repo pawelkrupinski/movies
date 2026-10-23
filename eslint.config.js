@@ -1,4 +1,4 @@
-// ESLint 9 flat config. Lints `web/src/main/assets/js/**/*.js` — the production
+// ESLint flat config. Lints `web/src/main/assets/js/**/*.js` — the production
 // browser code that ships to users — and `web/src/page/resources/**/*.js`, the
 // page specs' in-page helpers (CDP fetch stubs, harness APIs; see
 // `tools.PageScripts`). The Playwright suite under `page-tests-playwright/tests/`
@@ -33,12 +33,15 @@ module.exports = [
   js.configs.recommended,
   {
     // A disable directive that no longer suppresses anything hides nothing but
-    // the next real problem on that line — fail lint on it (ESLint 9 only warns).
+    // the next real problem on that line — fail lint on it (ESLint's default only warns).
     linterOptions: { reportUnusedDisableDirectives: 'error' },
   },
   {
     files: ['web/src/main/assets/js/**/*.js'],
     languageOptions: {
+      // A syntax ceiling, deliberately not 'latest': this code ships unbundled and
+      // untranspiled, so newer syntax (ES2024's regex `v` flag, ES2025's regex
+      // modifiers) would be a parse error for every visitor on an older iOS Safari.
       ecmaVersion: 2022,
       sourceType: 'script',
       globals: {
