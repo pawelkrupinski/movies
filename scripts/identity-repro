@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+#
+# Turn a PRODUCTION listing — one a regression alert, a drift-check line or the user names — into a slice case on the
+# freshest recording, or say exactly why it cannot be one.
+#
+#   scripts/identity-repro <cc> <venue> <title> [--recording RUN|prod-latest] [--ref REF] [--no-mirror] [--no-emit]
+#
+#   <venue> <title>  substrings, case and accents aside (as identity-slice's --venue/--title); the listing must be one
+#                  venue's one raw title in the recording, else every candidate is listed and nothing is sliced
+#   --recording    default `prod-latest`: the freshest complete nightly "Record scrape fixtures" recording — the corpus
+#                  prod had scraped that night and the TMDB/IMDb answers recorded live over it (prod-latest-<cc>.txt on
+#                  the convergence-fixtures release). The hermetic pair (573) and 528 are weeks behind prod's listings.
+#   --ref          decide under that ref's code (default: this checkout's)
+#   --no-mirror    do not read the local prod mirror (scripts/local-mirror, :28017): by default, when it answers, the
+#                  slice reads prod's filed state beside the recording (identity-slice --prod-mirror), and a listing the
+#                  recording lacks is looked up there to say whether prod scraped it after the recording
+#   --no-emit      slice and explain only; do not pin the case (identity-slice --emit-case)
+#
+# Verdicts, one line on stdout, and the exit status:
+#   REPRODUCIBLE  (0)  sliced, every question the slice asked was answered by the recording, case emitted (or --no-emit)
+#   NEEDS-JUDGEMENT (4) sliced, but identity-judgements.tsv does not judge the listing: --emit-case refused. Judge it
+#                      (review page / scripts/label-lookup), then run this again
+#   NEEDS-ANSWERS (5)  sliced, but the recording left questions unanswered (listed): the slice reads them as unknown, as
+#                      a hermetic leg does, so its take may differ from prod's for want of answers, not code. The next
+#                      nightly recording records them (its identity lookups ask every listing's questions)
+#   NOT-IN-RECORDING (3) the recording holds no such venue or title; says whether the prod mirror has it now (scraped
+#                      after the recording: tonight's prod-latest will) or not at all (gone from prod, or misnamed)
+#   AMBIGUOUS (2)      several venues or titles match: listed, nothing sliced — narrow the substrings
+#   (1) a recording, a download or the slice failed — the message says which
+#
+# Every download and compile is identity-slice's, shared through $KINOWO_IDENTITY_CACHE. Run it on the laptop under
+# the heavy-build throttle like any slice (it starts one JVM).
+set -uo pipefail
+
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+IDENTITY_TOOL=identity-repro
+usage() { sed -n '3,/^set -uo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+[ "$#" -ge 3 ] || { usage >&2; exit 2; }
+cc=$1 venue=$2 title=$3
+shift 3
+recording=prod-latest ref='' mirror=1 emit=1
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --recording) recording=${2:?--recording needs a run or prod-latest}; shift 2 ;;
+    --ref) ref=${2:?--ref needs a ref}; shift 2 ;;
+    --no-mirror) mirror=0; shift ;;
+    --no-emit) emit=0; shift ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+case "$cc" in pl|de|uk|us|es) ;; *) echo "unknown country $cc (pl de uk us es)" >&2; exit 2 ;; esac
+
+verdict() { echo "$1: $cc | $venue | $title — $2"; exit "$3"; }
+
+run=$(identity_recording_run "$recording" "$cc") || verdict FAILED "no $recording recording for $cc (above)" 1
+fixtures=$(identity_recording "$run" "$cc") || verdict FAILED "could not lay out recording $run ($cc)" 1
+corpus="$fixtures/corpus/cinema-scrapes-$cc.json.gz"
+
+# The listing in the recording's corpus: venue (_id) and raw title, matched as identity-slice's selectors match.
+matches=$(python3 -I - "$corpus" "$venue" "$title" <<'PY'
+import gzip, json, sys, unicodedata
+def fold(s): return ''.join(c for c in unicodedata.normalize('NFKD', s or '') if not unicodedata.combining(c)).casefold()
+corpus, venue, title = sys.argv[1], fold(sys.argv[2]), fold(sys.argv[3])
+scrapes = json.load(gzip.open(corpus))
+venues = [s for s in scrapes if venue in fold(s.get('_id'))]
+for s in venues:
+    titles = sorted({f['movie']['title'] for f in s.get('films', []) if title in fold(f['movie']['title'])})
+    print('V\t%s\t%s\t%d' % (s['_id'], s.get('scrapedAt', '?'), len(titles)))
+    for t in titles: print('T\t%s\t%s' % (s['_id'], t))
+PY
+) || verdict FAILED "could not read $corpus" 1
+recorded_at=$(python3 -I -c 'import json,sys
+try: print(json.load(open(sys.argv[1])).get("recordedAt",""))
+except Exception: print("")' "$fixtures/corpus/prod-coverage-$cc.json" 2>/dev/null)
+identity_log "recording $run ($cc, recorded ${recorded_at:-at an unknown time})"
+nvenues=$(grep -c '^V' <<< "$matches" || true)
+ntitles=$(grep -c '^T' <<< "$matches" || true)
+
+# prod's own scrape of the venue NOW, from the local prod mirror — never prod itself
+mirror_db() { [ "$cc" = pl ] && echo kinowo_prod_mirror || echo "kinowo_${cc}_prod_mirror"; }
+mirror_has() {
+  [ "$mirror" = 1 ] && command -v mongosh >/dev/null || return 1
+  # shellcheck disable=SC2016 # JavaScript, its template literals mongosh's
+  mongosh --quiet "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/$(mirror_db)" --eval '
+    const fold = s => (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    const v = fold(process.env.REPRO_VENUE), t = fold(process.env.REPRO_TITLE);
+    db.cinema_scrapes.find({}, {_id: 1, scrapedAt: 1, "films.movie.title": 1}).forEach(s => {
+      if (!fold(s._id).includes(v)) return;
+      const ts = (s.films || []).map(f => f.movie.title).filter(x => fold(x).includes(t));
+      print(`${s._id}\t${s.scrapedAt && s.scrapedAt.toISOString ? s.scrapedAt.toISOString() : s.scrapedAt}\t${[...new Set(ts)].join(" / ")}`);
+    })' 2>/dev/null
+}
+
+if [ "$nvenues" = 0 ] || [ "$ntitles" = 0 ]; then
+  if [ "$nvenues" = 0 ]; then why="recording $run holds no $cc venue matching \"$venue\""
+  else why="recording $run's venue(s) $(grep '^V' <<< "$matches" | cut -f2,3 | sed 's/\t/ scraped /' | paste -sd ';' -) list no title matching \"$title\""; fi
+  if prod=$(REPRO_VENUE=$venue REPRO_TITLE=$title mirror_has); then
+    if [ -z "$prod" ]; then why="$why; the prod mirror has no such venue either (misnamed?)"
+    elif ! cut -f3 <<< "$prod" | grep -q .; then why="$why; the prod mirror lists no such title there now either (gone from prod, or misnamed): $(cut -f1,2 <<< "$prod" | sed 's/\t/ scraped /' | paste -sd ';' -)"
+    else why="$why; prod HAS it now — $(sed 's/\t/ scraped /; s/\t/: /' <<< "$prod" | paste -sd ';' -) — scraped after the recording: tonight's prod-latest records it (or dispatch \"Record scrape fixtures\")"; fi
+  else why="$why (prod mirror not consulted)"; fi
+  verdict NOT-IN-RECORDING "$why" 3
+fi
+if [ "$ntitles" -gt 1 ]; then
+  echo "several listings match; narrow the substrings:" >&2
+  grep '^T' <<< "$matches" | cut -f2,3 | sed 's/\t/ | /' >&2
+  verdict AMBIGUOUS "$ntitles listings in recording $run" 2
+fi
+key=$(grep '^T' <<< "$matches" | cut -f2,3 | sed 's/\t/|/')
+identity_log "listing in recording $run: $key"
+
+args=("$cc" --key "$key" --recording "$run")
+[ -z "$ref" ] || args+=(--ref "$ref")
+if [ "$mirror" = 1 ] && command -v mongosh >/dev/null &&
+   mongosh --quiet "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/$(mirror_db)" --eval 'db.runCommand({ping: 1}).ok' >/dev/null 2>&1; then
+  args+=(--prod-mirror "$cc")
+fi
+[ "$emit" = 0 ] || args+=(--emit-case)
+out=$(mktemp); trap 'rm -f "$out"' EXIT
+"${IDENTITY_REPRO_SLICE:-$IDENTITY_REPO/scripts/identity-slice}" "${args[@]}" 2>&1 | tee "$out" >&2
+rc=${PIPESTATUS[0]}
+[ "$rc" = 0 ] || verdict FAILED "identity-slice ${args[*]} exited $rc (above)" 1
+
+gaps=$(grep -m1 '^UNANSWERED by the recording' "$out" | sed 's/^UNANSWERED by the recording[^:]*: //')
+# Beside prod's stored take (--prod-mirror): whether the slice takes what prod serves. A slice that takes otherwise on
+# every answer prod's code had is prod's INCREMENTAL state (an order, a split), which no recording replays.
+if grep -q '^PROD TAKES OTHERWISE' "$out"; then
+  prod="; PROD TAKES OTHERWISE ($(grep -m1 '^PROD TAKES OTHERWISE' "$out" | sed 's/^.*: //')): prod's incremental state, not this recording's answers, unless the gaps below explain it"
+elif grep -q '^-- prod.s stored state' "$out"; then prod="; the slice takes what prod serves"
+else prod="; prod's take not compared (no mirror)"; fi
+if grep -q -- '--emit-case REFUSED' "$out"; then
+  verdict NEEDS-JUDGEMENT "sliced on recording $run$prod, but identity-judgements.tsv does not judge \"$key\": judge it, then run again${gaps:+ (also unanswered: $gaps)}" 4
+fi
+[ -z "$gaps" ] || verdict NEEDS-ANSWERS "sliced on recording $run$prod; unanswered: $gaps" 5
+verdict REPRODUCIBLE "sliced on recording $run$prod$([ "$emit" = 1 ] && echo "; case emitted under test/resources/fixtures/identity-slices/")" 0
