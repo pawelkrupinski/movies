@@ -251,7 +251,7 @@ jobs:
             # runs here the moment it exists; one tagged `# script-test: <tag>` runs where its toolchain is.
             # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores (~22 s) they share
             # nothing with: run first in the foreground they held the unit run back by their own
-            # ~21-25 s (run 37121131703). Waited for, and failing as they would have, just before it.
+            # ~21-25 s (run 37121131703). Waited for, and failing as they would have, after it (below).
             - name: Script self-tests, in the background
               if: matrix.shard == 'worker-identity'
               run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
@@ -280,10 +280,6 @@ jobs:
                       sbt-target-${{ runner.os }}-
                   target-cache-exact-hit-is-current: 'true'
 
-            - name: The script self-tests passed
-              if: matrix.shard == 'worker-identity'
-              run: scripts/ci/in-background.sh wait script-tests 600
-
             # This row's modules' unit tests in one sbt run; `all` keeps going so a
             # failure in one module still runs the rest. The `e2e` module (the
             # whole-corpus staging specs) has its own sharded job below — it doubled
@@ -293,6 +289,13 @@ jobs:
             - run: sbt ${{ matrix.cmd }}
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+
+            # The script self-tests, started in the background above, collected AFTER the unit run (2026-10-23): waited
+            # for before it, they held it back ~63 s on every run (they outlast the JDK, sbt and cache restores). On a red
+            # unit run too, so a broken script still says so.
+            - name: The script self-tests passed
+              if: ${{ !cancelled() && matrix.shard == 'worker-identity' }}
+              run: scripts/ci/in-background.sh wait script-tests 600
 
             # The snapshot guards in this run (CatalogSeedSpec's app seeds among them) write
             # what they expected; a committed file they rewrote is a stale snapshot, whether
@@ -519,8 +522,10 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
+            # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores below, which it shares nothing with
+            # (~20 s of every row's start, 2026-10-23), and waited for just before itAll ("Wait for MongoDB").
             - name: Start MongoDB (single-node replica set, for change streams)
-              run: scripts/ci/start-mongo-replset.sh
+              run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
               # A majority write acknowledged once applied, not once synced to the journal: every
               # write the app makes is `w: majority`, and on a database that dies with the runner a
               # disk sync per write (~7 ms against ~0.2 ms) buys nothing. Same as the convergence
@@ -603,6 +608,9 @@ jobs:
             # `e2e` module runs in its own parallel job (below) — combining it here
             # made this the deploy gate; with a runner freed by merging the mobile
             # jobs there's now a slot to parallelise e2e off the critical path.
+            - name: Wait for MongoDB, started in the background above
+              run: scripts/ci/in-background.sh wait mongo-start 240
+
             - run: sbt itAll
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
@@ -678,27 +686,9 @@ jobs:
                   # Only these shards write the family, from a key over every source they compile.
                   target-cache-exact-hit-is-current: 'true'
 
-            - run: sbt ${{ matrix.cmd }}
-              env:
-                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-
-            # FilmScheduleEndToEndSpec's expected-schedules.txt / read-model-snapshot.json,
-            # held the same way as the unit run's snapshots (scripts/ci/tree-unchanged.sh).
-            - name: The e2e run left every checked-in file unchanged
-              run: scripts/ci/tree-unchanged.sh "sbt ${{ matrix.cmd }}"
-
-            - name: Publish e2e test report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: e2e tests (${{ matrix.shard }})
-                  detailed_summary: true
-                  include_passed: false
-
             # Prove BOTH apps' universal-stage distributions still link — on the
-            # STAGING row only, the lightest e2e shard, which has compiled the apps
-            # already. (This used to close the `test` job, Main's longest ci row,
+            # STAGING row only, the lightest e2e shard, which compiles the apps
+            # anyway — before its e2e run, so the web image builds beside that run. (This used to close the `test` job, Main's longest ci row,
             # whose tail it lengthened by ~1 min of staging + uploads + lint.) On a
             # push to main the web dist then becomes its image right here, and the
             # worker's is handed to main.yml's `image-worker` (the upload below), which
@@ -751,22 +741,45 @@ jobs:
             - if: matrix.shard == 'corpus' && !github.event.pull_request
               uses: ./.github/actions/setup-buildx
 
+            # IN THE BACKGROUND, beside the e2e run below, which shares nothing with it (2026-10-23: the build and push
+            # were ~62 s after that run, on this row's end). The same build build-push-action ran -- buildx's CLI, the
+            # builder setup-buildx made the default -- and its verdict is collected after the run ("The web image was
+            # built and pushed"), failing the row as the step did.
             - name: Build and push the web image under this commit's SHA tag only
               if: matrix.shard == 'corpus' && !github.event.pull_request
-              uses: docker/build-push-action@v6
+              env:
+                  # amd64 ONLY: the cluster is Hetzner x86_64. INLINE cache, restored from the image last shipped: the
+                  # layers worth reusing (base OS, JRE) are all in `latest`, and inline metadata rides the push itself.
+                  IMAGE: ${{ env.IMAGE_REPO }}/movies-web
+              run: |
+                  scripts/ci/in-background.sh start web-image docker buildx build --platform linux/amd64 --push \
+                      --build-arg BIN=web --build-arg COMMIT_SHA=${{ github.sha }} \
+                      --tag ${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }} \
+                      --cache-from type=registry,ref=${{ env.IMAGE_REPO }}/movies-web:latest --cache-to type=inline .
+
+
+            - run: sbt ${{ matrix.cmd }}
+              env:
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+
+            # FilmScheduleEndToEndSpec's expected-schedules.txt / read-model-snapshot.json,
+            # held the same way as the unit run's snapshots (scripts/ci/tree-unchanged.sh).
+            - name: The e2e run left every checked-in file unchanged
+              run: scripts/ci/tree-unchanged.sh "sbt ${{ matrix.cmd }}"
+
+            - name: Publish e2e test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
               with:
-                  context: .
-                  # amd64 ONLY: the cluster is Hetzner x86_64.
-                  platforms: linux/amd64
-                  push: true
-                  build-args: |
-                      BIN=web
-                      COMMIT_SHA=${{ github.sha }}
-                  tags: ${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }}
-                  # INLINE cache, restored from the image last shipped: the layers worth reusing (base
-                  # OS, JRE) are all in `latest`, and inline metadata rides the push itself.
-                  cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/movies-web:latest
-                  cache-to: type=inline
+                  report_paths: 'target/test-reports/unit/**/*.xml'
+                  check_name: e2e tests (${{ matrix.shard }})
+                  detailed_summary: true
+                  include_passed: false
+
+            # The web image's build and push, started before the e2e run (above): its log, and its exit as the row's.
+            - name: The web image was built and pushed
+              if: ${{ !cancelled() && matrix.shard == 'corpus' && !github.event.pull_request }}
+              run: scripts/ci/in-background.sh wait web-image 900
 
             - name: Hand the staged worker dist to main.yml's image build
               # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;

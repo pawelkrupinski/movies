@@ -126,7 +126,10 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
         if (tier == "web") {
           ciYml should not include "name: stage-web"
           RepoFile.positionOf(image, """sbt "web/stage"""") should be < RepoFile.positionOf(image, "cp -R web/target/universal/stage stage")
-          RepoFile.positionOf(image, "cp -R web/target/universal/stage stage") should be < RepoFile.positionOf(image, "build-push-action")
+          RepoFile.positionOf(image, "cp -R web/target/universal/stage stage") should be < RepoFile.positionOf(image, "in-background.sh start web-image docker buildx build")
+          // built BESIDE the e2e run (2026-10-23), its verdict collected after it, failing the row
+          RepoFile.positionOf(image, "in-background.sh start web-image") should be < RepoFile.positionOf(image, "run: sbt ${{ matrix.cmd }}")
+          RepoFile.positionOf(image, "run: sbt ${{ matrix.cmd }}") should be < RepoFile.positionOf(image, "in-background.sh wait web-image")
         } else {
           ciYml should include("name: stage-worker")
           image should include("actions/download-artifact")
@@ -153,12 +156,18 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
         val image = imageJob(tier)
-        val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
+        // the web's is buildx's CLI, in the background (`--tag`); the worker's build-push-action (`tags:`)
+        val tags =
+          if (tier == "web") """(?m)--tag (.+?)\s*\\?$""".r.findAllMatchIn(RepoFile.withoutComments(image)).map(m => s"tags: ${m.group(1)}").toSeq
+          else image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
         tags shouldBe Seq(s"tags: $${{ env.IMAGE_REPO }}/movies-$tier:$${{ github.sha }}")
         image should not include "steps.tag.outputs.value"
         // The web's build sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
-        if (tier == "web") RepoFile.step(ciYml, "Build and push the web image under this commit's SHA tag only") should include(
-          "if: matrix.shard == 'corpus' && !github.event.pull_request")
+        if (tier == "web") {
+          RepoFile.step(ciYml, "Build and push the web image under this commit's SHA tag only") should include(
+            "if: matrix.shard == 'corpus' && !github.event.pull_request")
+          RepoFile.step(ciYml, "The web image was built and pushed") should include("!github.event.pull_request")
+        }
         publish should include(if (tier == "web") "needs: [ci, gates]" else "needs: [ci, gates, image-worker]")
         publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:latest")
