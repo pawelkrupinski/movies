@@ -41,10 +41,15 @@ test.describe('keyboard arrow date navigation', { tag: '@agnostic' }, () => {
 
     await search.focus();
     const before = await page.locator('#date-filter').inputValue();
+    await page.keyboard.press('ArrowRight');   // inside the field: must not step
+
+    // No sleep-then-compare (a 400ms beat was too short on a loaded host and wasted on an idle one). A step queues
+    // from the day the carousel is HEADING to (`stepDate`), so one press outside the field and one back must land on
+    // `before` exactly; had the press in the field stepped, they land a day past it.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press('ArrowRight');
-    // Give any (erroneous) slide a beat to commit, then assert no change.
-    await page.waitForTimeout(400);
-    const after = await page.locator('#date-filter').inputValue();
-    expect(after).toBe(before);
+    await expect.poll(() => page.locator('#date-filter').inputValue()).not.toBe(before);
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(() => page.locator('#date-filter').inputValue()).toBe(before);
   });
 });

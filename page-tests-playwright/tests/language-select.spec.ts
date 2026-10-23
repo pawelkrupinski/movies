@@ -42,15 +42,19 @@ test.describe('Filtry → Język picker', { tag: '@agnostic' }, () => {
     expect(sawLangRequest).toBe(false);
   });
 
+  // Read back with no interaction at all: the boot block's `applyLanguage` sets the (closed) panel's select, and
+  // `toHaveValue` needs no visibility. Opening Filtry again only spent the 30s budget: at ci-runner load 100–180 each
+  // click took 2–3s and each load of Poznań's 1.1 MB listing 5–7s, and this timed out on WebKit in three runs (Main
+  // 1851). Toruń's listing (0.37 MB) carries the same picker at a third of the parse.
   test('a stored pick survives a reload with no second interaction', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/');
+    await gotoAndWaitForCards(page, '/torun/');
     await page.locator('#format-filter-btn').click();
     await page.selectOption('#language-select', 'de');
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+    expect(await page.evaluate(() => localStorage.getItem('kinowo_lang'))).toBe('de');
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-    await page.locator('#format-filter-btn').click();
     await expect(page.locator('#language-select')).toHaveValue('de');
   });
 });

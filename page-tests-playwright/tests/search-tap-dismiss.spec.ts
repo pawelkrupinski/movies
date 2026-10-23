@@ -35,13 +35,18 @@ test.describe('search-pill tap-away on mobile portrait', () => {
 
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();
+    // Whether the tap's click was cancelled, read once its dispatch is over: a capture listener on `window` runs
+    // before shared.js's on `document` (which stops propagation), and its timeout after every listener.
+    await page.evaluate(() => window.addEventListener('click', (e) => {
+      setTimeout(() => { (window as unknown as { tapPrevented: boolean }).tapPrevented = e.defaultPrevented; });
+    }, { capture: true, once: true }));
     await image.tap();
 
-    // The tap must be swallowed: the field blurs (its keyboard drops with it)
-    // and we stay on the listing. Settle first so an async navigation commit —
-    // which is what we're asserting did NOT happen — has time to land before we
-    // read the URL, rather than racing it.
-    await page.waitForTimeout(300);
+    // The tap must be swallowed: its click cancelled (so the link never navigates), the field blurred (its
+    // keyboard drops with it), and we stay on the listing. Waiting on the cancellation itself replaces a 300ms
+    // sleep that stood in for "long enough for a navigation to have started".
+    await expect.poll(() => page.evaluate(() =>
+      (window as unknown as { tapPrevented?: boolean }).tapPrevented)).toBe(true);
     expect(new URL(page.url()).pathname).toBe('/poznan/');
     expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('search-input');
   });

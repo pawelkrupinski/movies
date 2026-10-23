@@ -4,7 +4,7 @@
   "private": true,
   "description": "Top-level package.json — exists only to host ESLint for the production JS under web/src/main/assets/js/ and the page specs' JS under web/src/page/resources/. The Playwright suite has its own package.json under page-tests-playwright/.",
   "scripts": {
-    "lint": "node --test eslint-rules/*.test.js && eslint 'web/src/main/assets/js/**/*.js' 'web/src/page/resources/**/*.js'"
+    "lint": "node --test eslint-rules/*.test.js page-tests-playwright/lint-flake-patterns.test.mjs && node page-tests-playwright/lint-flake-patterns.mjs && eslint 'web/src/main/assets/js/**/*.js' 'web/src/page/resources/**/*.js'"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

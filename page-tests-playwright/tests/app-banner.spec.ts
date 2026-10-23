@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { clearLocalStorage, reload, settleLayout } from './helpers';
+import { reload, settleLayout } from './helpers';
 
 // The app-promo top banner: nudges EVERY visitor (not just phones, unlike the
 // swipe hint) toward the native app, picking the store badge that matches the
@@ -29,12 +29,19 @@ test.describe('app banner', () => {
   test.beforeEach(async ({ page }) => {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(new Date());
     await page.clock.setFixedTime(new Date(`${today}T10:00:00Z`));
-    await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });
   });
 
+  // The first visit. Every test gets a fresh browser context, so this load IS a first visit with nothing stored:
+  // no clear-and-reload first. Each test sets up what it watches (init scripts, routes, console listeners) BEFORE
+  // calling it, so it needs no second load to see the first. A load of this listing took 6–13s at ci-runner load
+  // 100–180 (Main run 1851), and the old beforeEach-load + clear + reload spent two of the test's 30s on that alone:
+  // eight of these tests timed out that way between 2026-10-20 and 10-23.
+  // Toruń: the banner is the same on every listing, and its 0.37 MB page parses in a third of Poznań's 1.1 MB.
+  const visit = (page: Page, query = '') =>
+    page.goto(`/torun/?date=anytime${query}`, { waitUntil: 'domcontentloaded' });
+
   test('shows on a fresh visit, with the Polish headline', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
     await expect(banner(page)).toContainText('Kinowo — aplikacja mobilna');
   });
@@ -73,8 +80,7 @@ test.describe('app banner', () => {
         }
       }).observe(document, { subtree: true, attributes: true, attributeFilter: ['class'] });
     });
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect.poll(() => page.evaluate(() =>
       (window as unknown as { bannerVisibilityOnShow?: string }).bannerVisibilityOnShow)).toBe('visible');
   });
@@ -101,8 +107,7 @@ test.describe('app banner', () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await route.continue();
     });
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
     await page.waitForLoadState('load');
     // `load` is past the (deferred) shared.js the route holds back 500ms; a few more
@@ -116,8 +121,7 @@ test.describe('app banner', () => {
   });
 
   test('does not show a second time the same day', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();   // first visit today
     await reload(page);
     await expect(banner(page)).toBeHidden();    // same-day reload → suppressed
@@ -147,8 +151,7 @@ test.describe('app banner', () => {
   // (The fixture server renders a pinned June-2026 day, so every page here
   // is such a stale page.)
   test('stamps the visitor\'s real day in the city, not the page\'s render day', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
     const [stamped, cityToday] = await page.evaluate(() => [
       localStorage.getItem('kinowoAppBannerDay'),
@@ -157,12 +160,9 @@ test.describe('app banner', () => {
     expect(stamped).toBe(cityToday);
   });
 
-  // No clear-and-reload first, unlike its neighbours: every test gets a fresh context, so
-  // `beforeEach`'s load already IS the first visit, with nothing stored. The extra load cost
-  // this test its 30s on a starved host: nightly-stress run 414's WebKit phones took ~10s to
-  // reach domcontentloaded at load average 130+, and three loads (four on desktop) did not fit.
   test('a touch device sees it again after 1 day; a mouse/trackpad device needs 10', async ({ page }) => {
-    await expect(banner(page)).toBeVisible();   // first visit today: beforeEach's load
+    await visit(page);
+    await expect(banner(page)).toBeVisible();   // first visit today
     const isMobile = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
 
     await backdateShownDayAndReload(page, 1);
@@ -180,8 +180,7 @@ test.describe('app banner', () => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
     });
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeHidden();
   });
 
@@ -210,8 +209,7 @@ test.describe('app banner', () => {
         }
       }).observe(document, { subtree: true, attributes: true, attributeOldValue: true, attributeFilter: ['class'] });
     });
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect.poll(() => page.evaluate(() =>
       (window as unknown as { bannerVisibilityOnHide?: string }).bannerVisibilityOnHide)).toBe('hidden');
   });
@@ -221,8 +219,7 @@ test.describe('app banner', () => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [];
     });
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
   });
 
@@ -231,14 +228,12 @@ test.describe('app banner', () => {
       (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
         .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
     });
-    await clearLocalStorage(page);
-    await page.goto('/poznan/?date=anytime&forceAppBanner=1', { waitUntil: 'domcontentloaded' });
+    await visit(page, '&forceAppBanner=1');
     await expect(banner(page)).toBeVisible();
   });
 
   test('picks the store badge matching the detected OS, both when it cannot tell', async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
     const ua = await page.evaluate(() => navigator.userAgent);
     const isIOS     = /iPhone|iPad|iPod/.test(ua);
@@ -256,16 +251,14 @@ test.describe('app banner', () => {
   });
 
   test('the ✕ hides it and survives a per-day reset (24h snooze)', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
     await page.locator('.app-banner-close').click();
-    // The default 5s expect timeout has flaked here on a contended CI runner
-    // (`webkit-iphone-13-zoomed`, 2026-09-14, reran green): the click's synchronous
-    // `dismissAppBanner()` handler races main-thread starvation from the other
-    // WebKit phone variants sharing the runner — same contention class documented
-    // in helpers.ts's `firstVisibleCard`. Widened rather than just re-running.
-    await expect(banner(page)).toBeHidden({ timeout: 15_000 });
+    // The dismissal itself: `dismissAppBanner()` drops `.visible` synchronously in the click. `toBeHidden()` here
+    // waited instead on the .25s `visibility` fade, which only advances on rendered frames: on a starved runner
+    // that outlasted a 5s expect (`webkit-iphone-13-zoomed`, 2026-09-14) and was papered over with a 15s one. The
+    // reload below asserts the hidden state where no fade is involved.
+    await expect(banner(page)).not.toHaveClass(/\bvisible\b/);
     // Even after clearing the once-a-day marker, the snooze keeps it away.
     await page.evaluate(() => localStorage.removeItem('kinowoAppBannerDay'));
     await reload(page);
@@ -273,15 +266,13 @@ test.describe('app banner', () => {
   });
 
   test('store badges link to the real App Store / Play Store listings', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(iosBadge(page)).toHaveAttribute('href', 'https://apps.apple.com/app/id6792566321');
     await expect(androidBadge(page))
       .toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=net.pawel.kinowo');
   });
 
   test('logs its gate state to the console on every visit', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
     // `console.log('[app-banner]', {…})` — the second arg is a JSHandle, not
     // text, so read it back via jsonValue() rather than ConsoleMessage.text().
     const states: Array<Record<string, unknown>> = [];
@@ -290,21 +281,20 @@ test.describe('app banner', () => {
         void msg.args()[1].jsonValue().then((v) => states.push(v as Record<string, unknown>));
       }
     });
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();
     await expect.poll(() => states.length).toBe(1);
     expect(states[0]).toMatchObject({ willShow: true, dueByInterval: true, snoozed: false });
   });
 
   test('?forceAppBanner=1 bypasses both the daily cap and the dismiss snooze', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();          // first visit today
     await page.locator('.app-banner-close').click();   // dismiss → snoozed 24h
-    // See the widened timeout's comment above — same click-then-hidden shape.
-    await expect(banner(page)).toBeHidden({ timeout: 15_000 });
+    // The dismissal, not its frame-paced fade — see the ✕ test above.
+    await expect(banner(page)).not.toHaveClass(/\bvisible\b/);
 
-    await page.goto('/poznan/?date=anytime&forceAppBanner=1', { waitUntil: 'domcontentloaded' });
+    await visit(page, '&forceAppBanner=1');
     await expect(banner(page)).toBeVisible();           // forced past BOTH gates
   });
 
@@ -315,8 +305,7 @@ test.describe('app banner', () => {
   // hidden-modal-ui.spec.ts's "clicking the backdrop dismisses the modal" in
   // CI, since a fresh browser context always shows the banner on first load.
   test('does not intercept clicks meant for a modal backdrop underneath it', { tag: '@agnostic' }, async ({ page }) => {
-    await clearLocalStorage(page);
-    await reload(page);
+    await visit(page);
     await expect(banner(page)).toBeVisible();   // the overlap only exists while it's up
 
     await page.evaluate(() =>
