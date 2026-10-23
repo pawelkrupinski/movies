@@ -100,6 +100,7 @@
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
 		DD00000000000000000044 /* SwipeHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000044 /* SwipeHint.swift */; };
 		DD00000000000000000080 /* TopBarLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000080 /* TopBarLayout.swift */; };
+		DD0000000000000000A5E1 /* ListingSafeArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5E1 /* ListingSafeArea.swift */; };
 		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
 		DD00000000000000000050 /* PosterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000050 /* PosterStore.swift */; };
 		DD00000000000000000051 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000051 /* CachedAsyncImage.swift */; };
@@ -218,6 +219,7 @@
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
 		CC00000000000000000080 /* TopBarLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBarLayout.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5E1 /* ListingSafeArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListingSafeArea.swift; sourceTree = "<group>"; };
 		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000050 /* PosterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000051 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
@@ -324,6 +326,7 @@
 				CC00000000000000000022 /* RetryBackoff.swift */,
 				CC00000000000000000044 /* SwipeHint.swift */,
 				CC00000000000000000080 /* TopBarLayout.swift */,
+				CC0000000000000000A5E1 /* ListingSafeArea.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -582,6 +585,7 @@
 				DD00000000000000000022 /* RetryBackoff.swift in Sources */,
 				DD00000000000000000044 /* SwipeHint.swift in Sources */,
 				DD00000000000000000080 /* TopBarLayout.swift in Sources */,
+				DD0000000000000000A5E1 /* ListingSafeArea.swift in Sources */,
 				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
 				DD00000000000000000050 /* PosterStore.swift in Sources */,
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,

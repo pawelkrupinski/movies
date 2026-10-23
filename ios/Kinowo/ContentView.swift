@@ -51,10 +51,13 @@ struct ContentView: View {
     /// Live viewport width, tracked by `onGeometryChange` so the
     /// search placement re-evaluates on rotation / iPad split-view resize.
     @State private var viewportWidth: CGFloat = UIScreen.main.bounds.width
-    /// Live window width, published to the grid cards, the detail poster and
-    /// the top bar as `listingViewportWidth`. See the NavigationStack's
-    /// width measurement for why it isn't `viewportWidth`.
-    @State private var windowWidth: CGFloat = UIScreen.main.bounds.width
+    /// The window's safe-area width and horizontal insets, from which follow
+    /// the listing's width (published to the grid cards, the detail poster and
+    /// the top bar as `listingViewportWidth`) and whether the bar and grid run
+    /// under the horizontal insets. See the NavigationStack's measurement for
+    /// why it isn't `viewportWidth`, and `ListingSafeArea` for when they do.
+    @State private var listingSafeArea = ListingSafeArea(
+        safeWidth: UIScreen.main.bounds.width, leading: 0, trailing: 0)
     /// Wide screens host search inline on the top bar; narrow ones keep it
     /// as the floating bottom pill. See `TopBarLayout`.
     private var searchInline: Bool { TopBarLayout.searchInline(width: viewportWidth) }
@@ -132,7 +135,7 @@ struct ContentView: View {
                         .onTapGesture { searchFocused = false }
                         .allowsHitTesting(searchFocused)
                 )
-                .ignoresSafeArea(edges: [.bottom, .horizontal])
+                .ignoresSafeArea(edges: listingSafeArea.ignoredEdges)
                 .toolbar(.hidden, for: .navigationBar)
                 // No under-bar treatment: the grid meets the opaque app-background
                 // bar with a hard edge — no frost, no separate strip, no gradient
@@ -195,15 +198,19 @@ struct ContentView: View {
         // Card widths, the detail poster and the top bar's scale all derive
         // from the live window width rather than `UIScreen` at launch, so they
         // follow rotation and iPhone Duo fold / unfold.
-        .environment(\.listingViewportWidth, windowWidth)
+        .environment(\.listingViewportWidth, listingSafeArea.listingWidth)
         // Measured on the NavigationStack, which takes the window's size, not
         // on its content: the top bar scales with this width, so a content
         // measurement feeds back — a bar still at landscape scale after
         // rotating to portrait overflows the screen and keeps the width wide.
-        // The grid ignores the horizontal safe area, so add those insets back.
-        .onGeometryChange(for: CGFloat.self, of: { geo in
-            geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing
-        }) { windowWidth = $0 }
+        // The grid bleeds into symmetric horizontal insets (a landscape
+        // phone's) but not a one-sided system column (the iPhone Duo's status
+        // bar); see `ListingSafeArea`.
+        .onGeometryChange(for: ListingSafeArea.self, of: { geo in
+            ListingSafeArea(safeWidth: geo.size.width,
+                            leading: geo.safeAreaInsets.leading,
+                            trailing: geo.safeAreaInsets.trailing)
+        }) { listingSafeArea = $0 }
         // Overlay on the NavigationStack so the label aligns to the
         // device's screen centre, not the safe-area-inset content area.
         // The hint takes precedence over the momentary day label so the two
@@ -475,11 +482,12 @@ struct ContentView: View {
             // `.page(indexDisplayMode: .never)` gives the horizontal swipe with
             // no dot indicator — the date-pill row is the "which day" affordance.
             .tabViewStyle(.page(indexDisplayMode: .never))
-            // Ignore only bottom/horizontal — NOT the top: the TabView sits below
+            // Ignore only bottom (and symmetric horizontal insets, see
+            // `ignoredEdges`) — NOT the top: the TabView sits below
             // the bar in the VStack, so its paged scroll view (and pan gesture)
             // starts at the bar's bottom edge and never reaches up under the pill
             // row to steal the day-pill taps. See ContentView's VStack comment.
-            .ignoresSafeArea(edges: [.bottom, .horizontal])
+            .ignoresSafeArea(edges: listingSafeArea.ignoredEdges)
             // Resolve NavigationLink(value: Film) from the grids to the per-film
             // detail screen — the container owns the destination so the push
             // survives a page change.
@@ -626,4 +634,13 @@ extension EnvironmentValues {
     /// default (iPhone 17) is only seen by views hosted outside `ContentView`
     /// (previews, the tuning screen).
     @Entry var listingViewportWidth: CGFloat = 393
+}
+
+private extension ListingSafeArea {
+    /// The safe-area edges the bar-and-grid stack and the paged grid ignore:
+    /// always the bottom (the grid scrolls under the home indicator), the
+    /// horizontal ones only when the listing bleeds into them.
+    var ignoredEdges: Edge.Set {
+        bleedsIntoHorizontalInsets ? [.bottom, .horizontal] : .bottom
+    }
 }

@@ -49,6 +49,30 @@ final class WindowFillsScreenUITests: XCTestCase {
                        "a \(Int(window.width))pt-wide grid should hold \(expectedColumns) columns")
     }
 
+    /// The iPhone Duo keeps its status bar in an 84 pt column down the screen's
+    /// right edge — a one-sided trailing safe-area inset, in portrait, that no
+    /// other iPhone has. The grid used to bleed under it as under a landscape
+    /// phone's sensor-housing insets, and the top bar scaled itself for that
+    /// bled width, overflowed its safe-area slot and dragged the grid 57 pt off
+    /// the left edge. In portrait the bar and the grid share the safe-area
+    /// width: the grid starts inside the screen and ends where the bar does
+    /// (Filtry's right edge, a couple of points apart), neither in the column.
+    func testGridStaysWithinTheTopBarInPortrait() throws {
+        let filtry = app.buttons[A11y.TopBar.filtryButton]
+        XCTAssertTrue(filtry.waitForExistence(timeout: 10), "Filtry button never appeared")
+        let barRight = filtry.frame.maxX
+        let frames = cells().allElementsBoundByIndex
+            .map { $0.frame }
+            .filter { $0.width > 1 && $0.height > 1 }
+        XCTAssertFalse(frames.isEmpty, "Grid is empty")
+        let gridLeft = frames.map { $0.minX }.min() ?? 0
+        let gridRight = frames.map { $0.maxX }.max() ?? 0
+        XCTAssertGreaterThanOrEqual(gridLeft, app.frame.minX,
+                                    "the grid starts at x=\(Int(gridLeft)), off the screen's left edge")
+        XCTAssertEqual(gridRight, barRight, accuracy: 6,
+                       "the grid ends at x=\(Int(gridRight)) but the top bar at \(Int(barRight)) — one of them runs under a side system bar")
+    }
+
     private func cells() -> XCUIElementQuery {
         app.descendants(matching: .any).matching(identifier: A11y.FilmGrid.cell)
     }
