@@ -64,6 +64,10 @@ ThisBuild / scalacOptions ++= Seq(
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 
+// `-Wunused:all` (unused locals, privates, parameters, implicits, pattern variables), enabled per module while each
+// is cleaned up; it replaces `-Wunused:imports` in ThisBuild once every module is.
+lazy val unusedAll = Seq(scalacOptions += "-Wunused:all")
+
 // Nobody reads this build's Scaladoc — there is no published API and no docs
 // site — but `stage` built it anyway: Play's dist ships `share/doc/api`, and
 // native-packager pulls the same for worker, so a deploy generated docs for
@@ -307,6 +311,7 @@ lazy val identity = (project in file("identity"))
 // the compile classpath because Eventually returns an `org.scalatest.Assertion`.
 lazy val testkit = (project in file("testkit"))
   .dependsOn(common, identity)
+  .settings(unusedAll)
   .settings(testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
   .settings(

@@ -81,7 +81,7 @@ object ObjectGraph {
       .flatMap(_.getDeclaredFields.iterator)
       .flatMap(f => LazyField.findFirstMatchIn(f.getName).map(m => f -> m.group(1)))
       .filter { case (f, _) => Try { f.setAccessible(true); f.get(obj) == null }.getOrElse(false) }
-      .flatMap { case (f, name) =>
+      .flatMap { case (_, name) =>
         accessor(obj.getClass, name).fold(Option(name -> (new NoSuchMethodException(s"no accessor for lazy val $name"): Throwable))) { m =>
           Try(m.invoke(obj)).failed.toOption.map(e => name -> Option(e.getCause).getOrElse(e))
         }

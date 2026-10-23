@@ -75,14 +75,6 @@ class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear
   private def fileFor(url: String, body: Option[String] = None): File =
     new File(s"$fixtureRoot/${RecordingHttpFetch.fixtureKey(url, body, foldYear)}")
 
-  /** Hash the query string with rotating auth parameters (`api_key`,
-   *  `access_token`, …) stripped, so the same query produces the same
-   *  fingerprint regardless of who recorded it. Without this, every
-   *  developer's TMDB key would produce a different hash and fixtures
-   *  recorded with one key wouldn't be findable by another. */
-  private def stableQueryFingerprint(rawQuery: String): String =
-    RecordingHttpFetch.stableQueryFingerprint(rawQuery)
-
   /** Write the recorded body to disk, resolving filesystem-path conflicts
    *  between URLs where one is a prefix of the other. Two TMDB endpoints
    *  illustrate the case:
@@ -161,7 +153,8 @@ object RecordingHttpFetch {
   /** Hash the meaningful (non-ignored) parts of a raw query string.
    *  Shared between `RecordingHttpFetch` (write side) and
    *  `FakeHttpFetch` (read side) so writer and reader agree on which
-   *  file to look up. */
+   *  file to look up. Rotating auth parameters (`api_key`, `access_token`, …) are
+   *  stripped, so fixtures recorded with one developer's key are found with another's. */
   def stableQueryFingerprint(rawQuery: String): String = stableQueryFingerprint(rawQuery, foldYear = true)
 
   /**
