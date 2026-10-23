@@ -200,6 +200,7 @@ lazy val geodata = (project in file("geodata"))
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
+  .settings(unusedAll)
   .dependsOn(geodata)
   .settings(
     name := "common",

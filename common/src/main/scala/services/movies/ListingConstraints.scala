@@ -80,7 +80,7 @@ object ListingConstraints {
   /** Does the listing's own original title make it a second film on `row`? The landing's
    *  "every same-titled row is a different film" divert reads this rule alone. */
   def originalTitleNamesAnotherFilm(listing: ListingEvidence, row: MovieRecord,
-                                    normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
+                                    normalizer: TitleNormalizer): Option[CannotLink] =
     Option.when(MixedFilmDetector.wouldAddASecondFilm(row, listing.originalTitle, listing.runtime, listing.year,
       listing.director, normalizer))(CannotLink.OriginalTitleNamesAnotherFilm)
 

@@ -43,7 +43,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
       repository.upsert("Foo", Some(2024), record(rating, screened))
       val row = repository.findAll().head
       projector.onMovieUpsert(row)
-      ReadModelProjection.filmId(row, titleNormalizer)
+      ReadModelProjection.filmId(row)
     }
     def published(id: String): Option[ResolvedMovie] = readModel.findAllMovies().find(_._id == id)
   }
@@ -180,7 +180,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     val projector  = new ReadModelProjector(repository, failing, failing, shareCards = ledger, clock = tools.SpecClock.Pinned)
     repository.upsert("Foo", Some(2024), record(7.5))
     val row = repository.findAll().head
-    val id  = ReadModelProjection.filmId(row, titleNormalizer)
+    val id  = ReadModelProjection.filmId(row)
     ledger.cards = Map(id -> "card.jpg?v=0")
     projector.onMovieUpsert(row)
     failing.findAllScreenings() should not be empty

@@ -41,9 +41,6 @@ object ReadModelCodecs extends PersistedCodecs {
     directors = Seq.empty, cast = Seq.empty, synopsis = None, trailerUrls = Seq.empty,
     ratings = emptyRatings, weightedRating = 0.0)
 
-  private val emptyScreening = CityScreening(
-    _id = "", filmId = "", city = "", cinema = "", filmUrl = None, showtimes = Seq.empty)
-
   /**
    * `ResolvedRatings` defaulted FIRST, and the top-level codecs re-derived against a
    * registry that already contains it.

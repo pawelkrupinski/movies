@@ -84,7 +84,7 @@ object MongoTtlIndex extends Logging {
         rebuild(collection, field, index, wantedSeconds, label, mismatches)
 
       case Success(None) =>
-        create(collection, field, wantedSeconds, label).map { _ =>
+        create(collection, field, wantedSeconds).map { _ =>
           // SYMMETRY, so a namespace cannot stay counted after it is healthy again. Every
           // branch that ends with the index correct clears the entry; every branch that ends
           // with it wrong records one. There is no path to this today — `reconcile` runs once
@@ -130,7 +130,7 @@ object MongoTtlIndex extends Logging {
         logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — " +
           "leaving it to the process that owns this collection, which rebuilds it and reports if it cannot.")
       case Success(None) =>
-        create(collection, field, wantedSeconds, label).recover { case exception =>
+        create(collection, field, wantedSeconds).recover { case exception =>
           // Not this process's to fix either, so it is a note rather than a mismatch: on a
           // cold collection the owner creates the index on its own next construction.
           logger.warn(s"$label: $name TTL index on `$field` could not be created here: ${exception.getMessage}")
@@ -142,7 +142,7 @@ object MongoTtlIndex extends Logging {
   /** Build the TTL index, reporting nothing: the two callers read a failure differently and
    *  each says so itself. Shared because they differ only in what they do when an index is
    *  already there and disagrees. */
-  private def create(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String): Try[Unit] =
+  private def create(collection: MongoCollection[Document], field: String, wantedSeconds: Long): Try[Unit] =
     Try {
       Await.result(collection.createIndex(
         Indexes.ascending(field),

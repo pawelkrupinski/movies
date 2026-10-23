@@ -8,6 +8,7 @@ import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, 
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.{CompletableFuture, CountDownLatch, ExecutionException, TimeUnit, TimeoutException}
+import scala.annotation.unused
 import scala.concurrent.duration.FiniteDuration
 
 class RealHttpFetch(
@@ -310,7 +311,7 @@ class RealHttpFetch(
     decorateBuilder(builder, url).build()
   }
 
-  protected def decorateBuilder(builder: HttpRequest.Builder, url: String): HttpRequest.Builder = builder
+  protected def decorateBuilder(builder: HttpRequest.Builder, @unused url: String): HttpRequest.Builder = builder
 }
 
 /** A page body and the URL it was finally served from, after redirects. */

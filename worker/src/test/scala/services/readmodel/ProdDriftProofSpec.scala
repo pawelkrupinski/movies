@@ -30,9 +30,9 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(652), imdbId = Some("tt0332452"),
       data = Map[Source, SourceData](
         PrinceCharlesLondon -> SourceData(title = Some("Troy"), runtimeMinutes = Some(163),
-          showtimes = Seq(at("2026-11-14T11:45:00"))))), services.movies.SingleCountryNormalizer.titleNormalizer)
+          showtimes = Seq(at("2026-11-14T11:45:00"))))), titleNormalizer)
 
-    val rows = ReadModelProjection.screenings(stored, titleNormalizer)
+    val rows = ReadModelProjection.screenings(stored)
 
     withClue(s"computed rows: $rows: ") {
       rows.map(_._id) shouldBe Seq("troy|2004|london|Prince Charles London")
@@ -50,9 +50,9 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(844), imdbId = Some("tt0212712"),
       data = Map[Source, SourceData](
         PrinceCharlesLondon -> SourceData(title = Some("2046"), runtimeMinutes = Some(128),
-          showtimes = Seq(at("2026-11-29T14:35:00"))))), services.movies.SingleCountryNormalizer.titleNormalizer)
+          showtimes = Seq(at("2026-11-29T14:35:00"))))), titleNormalizer)
 
-    val rows = ReadModelProjection.screenings(stored, titleNormalizer)
+    val rows = ReadModelProjection.screenings(stored)
 
     rows.map(_._id) shouldBe Seq("2046|2004|london|Prince Charles London")
     rows.head.showtimes.map(_.dateTime.toString) shouldBe Seq("2026-11-29T14:35")
@@ -66,9 +66,9 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(53871), imdbId = Some("tt0464022"),
       data = Map[Source, SourceData](
         SouthseaCinemaArtsCentre -> SourceData(title = Some("Glastonbury"), runtimeMinutes = Some(138),
-          showtimes = Seq(at("2026-09-23T19:00:00"))))), services.movies.SingleCountryNormalizer.titleNormalizer)
+          showtimes = Seq(at("2026-09-23T19:00:00"))))), titleNormalizer)
 
-    val rows = ReadModelProjection.screenings(stored, titleNormalizer)
+    val rows = ReadModelProjection.screenings(stored)
 
     rows.map(_._id) shouldBe Seq("glastonbury|2006|portsmouth|Southsea Cinema & Arts Centre")
     rows.head.showtimes.map(_.dateTime.toString) shouldBe Seq("2026-09-23T19:00")

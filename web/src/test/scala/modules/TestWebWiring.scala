@@ -34,7 +34,7 @@ class TestWebWiring(
     seed.foreach { case (title, year, record) =>
       val stored = StoredMovieRecord.synthesised(title, year, record, services.movies.SingleCountryNormalizer.titleNormalizer)
       store.upsertMovie(ReadModelProjection.resolve(stored, titleNormalizer))
-      ReadModelProjection.screenings(stored, titleNormalizer).foreach(store.upsertScreening)
+      ReadModelProjection.screenings(stored).foreach(store.upsertScreening)
     }
     store
   }

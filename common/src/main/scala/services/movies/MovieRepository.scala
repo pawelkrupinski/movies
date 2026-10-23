@@ -2,6 +2,7 @@ package services.movies
 
 import models.{MovieRecord, Source, SourceData}
 
+import scala.annotation.unused
 import scala.concurrent.duration._
 
 /**
@@ -207,7 +208,7 @@ trait MovieRepository {
    *  cursor did deliver has `updatedAt` before that stamp and is not read again. Same
    *  completeness contract as [[foreachRecord]]. Default: every row — a store that keeps no
    *  timestamp can only over-approximate "changed since", never under. */
-  def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome = foreachRecord(f)
+  def foreachRecordUpdatedSince(@unused since: java.time.Instant)(f: StoredMovieRecord => Unit): tools.ScanOutcome = foreachRecord(f)
 
   /** Remove the film stored under this id, with its side-collection rows. Never
    *  throws: a failure is logged, counted and reported as [[WriteOutcome.Failed]]. */
@@ -278,14 +279,14 @@ trait MovieRepository {
   def watchChangesWithVenues(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: FilmId => Unit,
-    onVenues: VenueSlots => VenueVerdict
+    @unused onVenues: VenueSlots => VenueVerdict
   ): Option[AutoCloseable] = watchChanges(onUpsert, onDelete)
 
   /** [[watchChangesWithVenues]] fenced as [[watchChangesFenced]] is. */
   def watchChangesFencedWithVenues(
     onUpsert: (StoredMovieRecord, Long) => Unit,
     onDelete: FilmId => Unit,
-    onVenues: (VenueSlots, Long) => VenueVerdict
+    @unused onVenues: (VenueSlots, Long) => VenueVerdict
   ): Option[AutoCloseable] = watchChangesFenced(onUpsert, onDelete)
 
   /** [[watchChangesWithVenues]] attached WITHOUT opening the stream: the consumer is dispatched

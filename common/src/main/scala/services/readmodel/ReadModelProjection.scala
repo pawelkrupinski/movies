@@ -36,7 +36,7 @@ object ReadModelProjection {
    *  a retitle now re-projects the same documents with a new title. (The resolved-year
    *  trick that collapsed a not-yet-settled `kumotry|2025` + `kumotry|2026` pair onto
    *  one card is not needed any more — a row that concludes its year keeps its id.) */
-  def filmId(stored: StoredMovieRecord, normalizer: TitleNormalizer): String = stored.id.value
+  def filmId(stored: StoredMovieRecord): String = stored.id.value
 
   /** A cheap content hash over EXACTLY the inputs the projected METADATA depends on —
    *  everything the row carries EXCEPT `SourceData.showtimes`. The metadata half of a
@@ -67,7 +67,7 @@ object ReadModelProjection {
     val r     = stored.record
     val title = r.displayTitle(stored.title, normalizer)
     ResolvedMovie(
-      _id                = filmId(stored, normalizer),
+      _id                = filmId(stored),
       title              = title,
       originalTitle      = r.distinctOriginalTitle(title),
       posterUrl          = r.posterUrl,
@@ -123,8 +123,8 @@ object ReadModelProjection {
    *  showtimes surface. Showtimes are sorted into a canonical order so the document
    *  is a pure function of the showtime *set*, not of upstream scrape order —
    *  reordering upstream can't churn the diff. */
-  def screenings(stored: StoredMovieRecord, normalizer: TitleNormalizer): Seq[CityScreening] =
-    screeningsFor(stored.record.cinemaShowings, filmId(stored, normalizer))
+  def screenings(stored: StoredMovieRecord): Seq[CityScreening] =
+    screeningsFor(stored.record.cinemaShowings, filmId(stored))
 
   /** One `CityScreening` per (city, cinema) for the given cinema slots, keyed
    *  under `fid`. Shared by [[screenings]] (all of a row's cinema slots) and the
@@ -257,8 +257,8 @@ object ReadModelProjection {
     /** Every read-model film id the row projects to — one per display-title variant.
      *  The read-model reconcile uses this to know which `web_movies` ids are still
      *  live for a row, so a split-off variant card isn't pruned as an orphan. */
-    def filmIds(using LatestTitleYear): Seq[String] =
-      if (split.isEmpty) Seq(filmId(stored, normalizer)) else split.map(_.filmId)
+    def filmIds: Seq[String] =
+      if (split.isEmpty) Seq(filmId(stored)) else split.map(_.filmId)
 
     /** Every `web_screenings` id the row's cinema slots could project to, one per
      *  (variant card, city, cinema) — the ids [[screeningsFor]] would emit if each slot
@@ -267,10 +267,10 @@ object ReadModelProjection {
      *  last projection stayed invisible while nothing else touched the row (Palace
      *  Cinema Kent, 2026-09-07). A slot that turns out to carry no showtimes projects
      *  nothing, so over-asking costs one idempotent re-projection, never a wrong row. */
-    def screeningIds(using LatestTitleYear): Seq[String] = {
+    def screeningIds: Seq[String] = {
       def idsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[String] =
         showings.flatMap { case (cinema, _) => City.forCinema(cinema).map(screeningId(fid, _, cinema)) }
-      if (split.isEmpty) idsFor(stored.record.cinemaShowings, filmId(stored, normalizer))
+      if (split.isEmpty) idsFor(stored.record.cinemaShowings, filmId(stored))
       else split.flatMap(variant => idsFor(variant.scoped.cinemaShowings, variant.filmId))
     }
 
@@ -295,12 +295,12 @@ object ReadModelProjection {
      *  `projectAll.map(_._2)`, but skips the costly `resolve` / [[synopsisByCity]] /
      *  ratings work per row, for callers that only need the per-(city,cinema) showtime
      *  buckets. */
-    def screeningsAll(using LatestTitleYear): Seq[Seq[CityScreening]] = venuesAll.map(_.map(_.screening))
+    def screeningsAll: Seq[Seq[CityScreening]] = venuesAll.map(_.map(_.screening))
 
     /** [[screeningsAll]] with each row's inputs gathered but the row not yet built — so a
      *  caller that already wrote a venue's row from the same inputs can skip building it. */
     def venuesAll: Seq[Seq[VenueScreening]] =
-      if (split.isEmpty) Seq(venuesFor(stored.record.cinemaShowings, filmId(stored, normalizer)))
+      if (split.isEmpty) Seq(venuesFor(stored.record.cinemaShowings, filmId(stored)))
       else split.map(variant => venuesFor(variant.scoped.cinemaShowings, variant.filmId))
   }
 
@@ -325,7 +325,7 @@ object ReadModelProjection {
     // composition uses (`|` joins city and cinema onto a screening id).
     def cardId(title: String): String = {
       val variant = normalizer.sanitize(title)
-      if (variant == anchorKey) filmId(stored, normalizer) else s"${filmId(stored, normalizer)}~$variant"
+      if (variant == anchorKey) filmId(stored) else s"${filmId(stored)}~$variant"
     }
     val split =
       if (groups.sizeIs <= 1) Nil
@@ -335,7 +335,7 @@ object ReadModelProjection {
         Variant(sources, scoped, title, cardId(title))
       }
     val cardByGroup =
-      if (split.isEmpty) groups.map(_._1 -> filmId(stored, normalizer)).toMap
+      if (split.isEmpty) groups.map(_._1 -> filmId(stored)).toMap
       else groups.map(_._1).zip(split.map(_.filmId)).toMap
     new Partition(stored, normalizer, split, anchorKey, cardByGroup)
   }
@@ -388,5 +388,5 @@ object ReadModelProjection {
    *  serves from; this stays the building block for the common single-title row
    *  and for callers that materialise one card (the `/debug` table, view specs). */
   def project(stored: StoredMovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): (ResolvedMovie, Seq[CityScreening]) =
-    (resolve(stored, normalizer), screenings(stored, normalizer))
+    (resolve(stored, normalizer), screenings(stored))
 }

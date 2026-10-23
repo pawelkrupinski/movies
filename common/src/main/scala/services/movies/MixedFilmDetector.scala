@@ -114,7 +114,7 @@ object MixedFilmDetector {
     year:          Option[Int],
     director:      Seq[String],
     normalizer:    TitleNormalizer
-  )(using LatestTitleYear): Boolean = {
+  ): Boolean = {
     val incomingTitle     = titleWords(originalTitle, normalizer)
     val incomingDirectors = directorKeys(director, normalizer)
     incomingTitle.nonEmpty && publishedIdentity(record, normalizer).exists { main =>
@@ -173,7 +173,7 @@ object MixedFilmDetector {
    *  tmdbId group's main row with every sibling, and every imdbId-sharing pair of
    *  groups row by row) reads it once and asks the [[describeDifferentFilms]]
    *  overload on the result. */
-  def publishedIdentity(record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Option[Group] =
+  def publishedIdentity(record: MovieRecord, normalizer: TitleNormalizer): Option[Group] =
     identityGroups(record, normalizer).headOption
 
   /** Do these two identities describe DIFFERENT films? */

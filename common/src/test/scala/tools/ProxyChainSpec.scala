@@ -19,7 +19,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
     override def get(url: String): String = { calls.incrementAndGet(); throw fail(url) }
   }
 
-  private def tunnelFailed(url: String) = new java.io.IOException("Tunnel failed, got: 503")
+  private val tunnelFailed: String => java.io.IOException = _ => new java.io.IOException("Tunnel failed, got: 503")
 
   "breakerGuarded" should "let the first few failures reach the delegate, then stop calling it" in {
     val deadProxy = new CountingFailingFetch(tunnelFailed)

@@ -267,7 +267,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
 
   it should "drop cinema slots with no showtimes" in {
     val noShows = record.copy(data = record.data + (Rialto -> SourceData(showtimes = Seq.empty)))
-    val s = ReadModelProjection.screenings(StoredMovieRecord.fromStorage(id, noShows, titleNormalizer), titleNormalizer)
+    val s = ReadModelProjection.screenings(StoredMovieRecord.fromStorage(id, noShows, titleNormalizer))
     s.map(_.cinema) should not contain "Kino Rialto"
   }
 
@@ -301,7 +301,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     m.releaseYear shouldBe Some(2026)
     ss.map(_.filmId).distinct shouldBe Seq("f0123456789abcdef")
     // A row created before ids existed carries its old key as its id — still opaque here.
-    ReadModelProjection.filmId(StoredMovieRecord.fromStorage("kumotry|2025", record, titleNormalizer), titleNormalizer) shouldBe "kumotry|2025"
+    ReadModelProjection.filmId(StoredMovieRecord.fromStorage("kumotry|2025", record, titleNormalizer)) shouldBe "kumotry|2025"
   }
 
   // One film, one stored record (one tmdbId), screened under two different shown
@@ -400,18 +400,13 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     byTitle("Iwan Groźny").map(_.cinema)   shouldBe Seq("Multikino Stary Browar")
     byTitle("Иван Грозный").map(_.cinema)  shouldBe Seq("Helios Magnolia Park")
   }
-  /** The projected `_id` is the read model's identity, and it is a `sanitize` of the
-   *  title — so it belongs to a country, not to the process. Before the projection
-   *  took its normalizer as a parameter it folded with whatever was global, which on
-   *  a multi-country worker meant Poland's rules for every country's read model. */
-  "filmId" should "not depend on any country's title rules — it is the row's id" in {
+  /** The projected `_id` is the read model's identity. It was once a `sanitize` of the title, folded with whatever
+   *  rules were global (Poland's, on a multi-country worker); it is the row's id now, read with no title rules. */
+  "filmId" should "be the row's id" in {
     val stored = StoredMovieRecord.synthesised("Minions & Monster", Some(2026),
       MovieRecord(data = Map[models.Source, models.SourceData](
         models.Multikino -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026)))), services.movies.SingleCountryNormalizer.titleNormalizer)
-    val pl = ReadModelProjection.filmId(stored, TitleNormalizer.forCountry(models.Country.Poland))
-    val de = ReadModelProjection.filmId(stored, TitleNormalizer.forCountry(models.Country.Germany))
-    pl shouldBe stored.id.value
-    de shouldBe stored.id.value
+    ReadModelProjection.filmId(stored) shouldBe stored.id.value
   }
 
   it should "fold a VARIANT's suffix with the country whose rules are passed, not a global" in {

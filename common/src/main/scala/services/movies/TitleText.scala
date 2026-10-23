@@ -143,7 +143,7 @@ object TitleText {
     val shouting  = capsWords.sliding(2).exists { case Seq(a, b) => b - a == 2; case _ => false }
     if (!shouting) s
     else tokens.zipWithIndex.map {
-      case (t, i) if isAllCapsWord(t) && RomanNumeral.findFirstIn(t.filter(_.isLetter)).isEmpty =>
+      case (t, _) if isAllCapsWord(t) && RomanNumeral.findFirstIn(t.filter(_.isLetter)).isEmpty =>
         tools.TextNormalization.titleCaseIfAllCaps(t)
       case (t, _) => t
     }.mkString

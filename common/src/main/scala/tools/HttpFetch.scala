@@ -1,6 +1,7 @@
 package tools
 
 import java.util.concurrent.CompletableFuture
+import scala.annotation.unused
 
 /**
  * Generic HTTP fetch surface used by every external-API client in the
@@ -39,7 +40,7 @@ trait HttpFetch {
    *  about headers. Production callers that need per-call auth (e.g.
    *  TMDB v4 Bearer) use this overload; `RealHttpFetch` overrides it to
    *  pass headers through. */
-  def get(url: String, headers: Map[String, String]): String = get(url)
+  def get(url: String, @unused headers: Map[String, String]): String = get(url)
 
   def getAsync(url: String): CompletableFuture[String] =
     CompletableFuture.supplyAsync(() => get(url))

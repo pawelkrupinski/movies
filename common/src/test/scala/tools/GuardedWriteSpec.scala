@@ -45,7 +45,7 @@ class GuardedWriteSpec extends AnyFlatSpec with Matchers {
       val read = (row.version, row.value)
       row.writeOver(row.version, "busy")
       read
-    }(s => Some("mine"))((s, next) => row.writeOver(s._1, next))
+    }(_ => Some("mine"))((s, next) => row.writeOver(s._1, next))
     outcome shouldBe GuardedWrite.ChangedUnderYou(3)
     row.value shouldBe "busy"
   }

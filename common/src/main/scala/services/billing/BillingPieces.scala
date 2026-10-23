@@ -67,7 +67,7 @@ object BillingPieces {
    *  premiere's word opening more than two words, the rest naming what is shown ("Pokaz przedpremierowy PRZEKLEŃSTW
    *  NIEWINNOŚCI", "premiera pierwszego odcinka 3. Sezonu")? Then it is the work's piece, not a strand's: "Premiera
    *  Krajowa", "Seans wyprzedany" are not. */
-  private def namesItsOwnWork(piece: String, raw: String): Boolean =
+  private def namesItsOwnWork(piece: String): Boolean =
     QuoteMark.pattern.matcher(piece).find() ||
       OpensOnEvent.pattern.matcher(piece).find() && piece.trim.split("\\s+").count(_.exists(_.isLetter)) > 2
   private val QuoteMark    = "[\"„“”«»]".r
@@ -105,7 +105,7 @@ object BillingPieces {
     while (first <= last && namesAStrand(raw.substring(from, at(first)._1), StrandWord) && namesAWork(raw.substring(at(first)._2, to))) {
       from = at(first)._2; first += 1
     }
-    while (last >= first && namesAStrand(raw.substring(at(last)._2, to), OpensOnStrand) && !namesItsOwnWork(raw.substring(at(last)._2, to), raw) &&
+    while (last >= first && namesAStrand(raw.substring(at(last)._2, to), OpensOnStrand) && !namesItsOwnWork(raw.substring(at(last)._2, to)) &&
            namesAWork(raw.substring(from, at(last)._1))) {
       to = at(last)._1; last -= 1
     }
