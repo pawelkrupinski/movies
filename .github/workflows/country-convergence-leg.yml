@@ -139,6 +139,13 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # ONE OF THE SPLIT ROWS, p01 (passes 0 and 1), off main when the change touches no order code
+            # (scripts/ci/order-phases.sh, which says what that trades). Main, and any ref it cannot clear, runs both.
+            order-one-phase:
+                description: Run only the split's first order row (passes 0,1) -- a ref off main whose change touches no order code.
+                required: false
+                type: boolean
+                default: false
             order-job-timeout-minutes:
                 description: Ceiling for the whole order-independence row, including setup.
                 required: false
@@ -348,7 +355,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
+                phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,

@@ -93,15 +93,29 @@ jobs:
         permissions:
             contents: read
             actions: read
+        outputs:
+            order-phases: ${{ steps.order.outputs.phases || 'both' }}
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/order-independence-paths.txt
                   sparse-checkout-cone-mode: false
             - name: Secrets present
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh TMDB_API_KEY
+            # How many split order rows each leg runs (scripts/ci/order-phases.sh): both on main; off main one (p01) only
+            # when the ref's change is known and touches no order code (.github/order-independence-paths.txt). Anything
+            # it cannot tell, and this step failing, is both (the job output's fallback).
+            - name: Which order-independence rows can this ref move?
+              id: order
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: echo "phases=$(scripts/ci/order-phases.sh "$GITHUB_REF" "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
             - name: Every leg's recorded pair is there
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -123,6 +137,9 @@ jobs:
     # States -- and those rows split in two (`order-split`: passes 0,1 and 1,2), since three passes on one 4-core runner
     # ran 12.9-13.5m. Poland and Spain, under 10 minutes, keep theirs beside the boot (run 38548739769). The United
     # States' convergence row, 11.4m with no replays at all, runs its next-day test on a boot of its own (`next-day`).
+    # OFF MAIN, ONE SPLIT ROW: a ref whose change from main touches no order code (scripts/ci/order-phases.sh, via the
+    # preflight's `order-phases`) runs p01 alone -- two arrival orders compared instead of three. Main runs both on every
+    # push, and so does any ref whose change could move the order or that the check cannot clear.
     # No row runs the ~100-film sample (country-convergence-leg.yml's header); `sample` names the alias a red leg's
     # auto-bisect replays, and `shape` the sample's corpus-shape specs each convergence row runs ahead of its
     # suite. `heap` is the sbt JVM's `-Xmx`: the US holds its
@@ -169,6 +186,8 @@ jobs:
             order-job-timeout-minutes:     ${{ matrix.order-job || 55 }}
             order-suite-timeout-minutes:   ${{ matrix.order-suite || 30 }}
             order-split:                   ${{ matrix.order-split == true }}
+            # Off main, a ref whose change touches no order code runs the split's p01 row alone (preflight's order step).
+            order-one-phase:               ${{ needs.preflight.outputs.order-phases == 'one' }}
             next-day-command:              ${{ matrix.next-day || '' }}
             heap:                          ${{ matrix.heap }}
             # RAM-backed Mongo where the heap leaves the room: 4g + mongod's 2g cache + at most 6g of data

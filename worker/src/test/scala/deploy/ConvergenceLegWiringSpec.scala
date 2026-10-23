@@ -439,8 +439,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
-        """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
+        """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
+  }
+
+  /** OFF MAIN, ONE SPLIT ORDER ROW (scripts/ci/order-phases.sh, 2026-10-23): only when the preflight positively says
+   *  `one` -- main, any order code changed, any read it cannot make, and the step failing outright all leave both rows. */
+  "the split order rows" should "drop p12 only when the preflight clears the ref, both everywhere else" in {
+    val suite = RepoFile.read(".github/workflows/identity-model-convergence.yml")
+    RepoFile.block(leg, "order-one-phase") should include("default: false")
+    suite should include("order-one-phase:               ${{ needs.preflight.outputs.order-phases == 'one' }}")
+    suite should include("order-phases: ${{ steps.order.outputs.phases || 'both' }}")
+    RepoFile.step(suite, "Which order-independence rows can this ref move?") should include(
+      """scripts/ci/order-phases.sh "$GITHUB_REF" "$GITHUB_SHA"""")
+    RepoFile.read("scripts/ci/order-phases.sh") should include("""[ "$ref" = refs/heads/main ] && both""")
   }
 
   /** scripts/identity-measure's whole-corpus measurement: a takes-only dispatch expands every leg to its `takes` row and

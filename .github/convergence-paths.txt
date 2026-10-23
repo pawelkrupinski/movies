@@ -60,6 +60,8 @@ scripts/ci/preflight.sh
 scripts/ci/convergence-preflight.sh
 scripts/ci/start-mongo-replset.sh
 scripts/ci/mongo-exec.sh
+scripts/ci/order-phases.sh
+.github/order-independence-paths.txt
 scripts/ci/in-background.sh
 scripts/ci/recording-cache.sh
 scripts/ci/cgroup-sampler.sh

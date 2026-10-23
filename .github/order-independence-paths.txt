@@ -1,0 +1,21 @@
+# WHAT CAN MAKE THE FILMS DEPEND ON THE ORDER THE CORPUS ARRIVES IN (scripts/ci/order-phases.sh): a ref off main whose
+# change touches none of these runs ONE of the split order-independence rows (p01: passes 0 and 1), not both. Prefixes,
+# one a line. Every module's main code (the resolver, the pipeline, the stores), the convergence specs that replay the
+# orders, the build, and the wiring that runs them -- this file and its script included.
+identity/src/main/
+common/src/main/
+worker/src/main/
+scrapers/src/main/
+geodata/src/main/
+testkit/src/main/
+web/src/main/
+e2e/src/
+worker/src/fixtures/
+build.sbt
+project/
+.github/workflows/identity-model-convergence.yml
+.github/workflows/country-convergence-leg.yml
+.github/actions/convergence-setup/
+.github/scripts/convergence-setup.sh
+.github/order-independence-paths.txt
+scripts/ci/order-phases.sh
