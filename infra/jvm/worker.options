@@ -24,6 +24,9 @@
 # at 15% of the 64m cache every ~10 MB of new code forced a SerialOld FULL collection — 7 in a boot,
 # then one every ~90 s. Boots with nothing to re-resolve (2026-10-03, pl/us): pl ~25% less CPU over a
 # boot's first 5 and 10 minutes at the same 64m cache, us 5-7%, the JIT and GC each ~15% less on us.
+# Re-measured on JDK 27 (2026-10-23), where the sweeper is gone but this still sets when code-cache
+# growth asks for a collection: one fixture boot under PL's options ran 6 "CodeCache GC Threshold"
+# collections and 9 full GCs at 27's default 15, 1 and 5 at 50 (full-GC pause time halved).
 -XX:SweeperThreshold=50
 # Compile a method only after three times the default invocations: the JIT was half of a boot's CPU, much
 # of it on code a boot runs a few thousand times and never again. At 2 (2026-10-03), us boots: JIT -18% and

@@ -16,8 +16,8 @@ import scala.sys.process.Process
  * JDK 27 fails every row below; a later JDK that renames or reinterprets one fails it too, which
  * is the point -- that is a behaviour change the next upgrade must look at, not inherit.
  *
- * Only CPU-independent values are asserted: the prefetch ergonomics differ between CI's runners
- * and k3s-worker-1, and the options file pins those to what 25 chose on the node.
+ * Only CPU-independent values are asserted. The flags 27 changed and the apps take as 27 ships them
+ * (Jdk27Own) are asserted by origin instead: no option names them, whatever this CPU's value.
  */
 class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
 
@@ -45,26 +45,29 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
     out.toString
   }
 
-  private def finalFlags(args: Seq[String]): Map[String, String] =
+  /** Each flag's final value and where it came from (`default`, `ergonomic`, `command line`). */
+  private def flagsWithOrigin(args: Seq[String]): Map[String, (String, String)] =
     run(args ++ Seq("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintFlagsFinal", "-version")).linesIterator
       .flatMap(FlagLine.findFirstMatchIn)
-      .map(m => m.group(1) -> m.group(2))
+      .map(m => m.group(1) -> (m.group(2), m.group(3)))
       .toMap
 
-  /** `     bool UseCompactObjectHeaders   = false   {product} {command line}` */
-  private val FlagLine = """^\s*\S+\s+(\w+)\s+:?=\s+(\S*)\s+\{""".r
+  private def finalFlags(args: Seq[String]): Map[String, String] = flagsWithOrigin(args).view.mapValues(_._1).toMap
 
-  /** What JDK 25.0.4.1 ran with, for every tier, under these JAVA_OPTS. */
-  private val Jdk25Common = Map(
-    "FastLockingSpins"                             -> "13",
-    "UseDilithiumIntrinsics"                       -> "false",
-    "ShortRunningLongLoop"                         -> "false",
-    "UseAutoVectorizationPredicate"                -> "false",
-    "UseAutoVectorizationSpeculativeAliasingChecks" -> "false",
-    "InitialRAMPercentage"                         -> "1.562500",
+  /** `     bool UseCompactObjectHeaders   = false   {product} {command line}` */
+  private val FlagLine = """^\s*\S+\s+(\w+)\s+:?=\s+(\S*)\s+\{[^}]*\}\s+\{([^}]*)\}""".r
+
+  /** JDK 27 behaviour given back on purpose (2026-10-23): no launcher or overlay names these, so the
+   *  JVM runs its own value -- 27's locking spin count, its C2 loop and vectorization optimizations,
+   *  its ML-DSA intrinsics and its own CPU's allocation-prefetch ergonomics. Measured on the worker's
+   *  fixture boot (docs/proposals/2026-10-23-dependency-and-flag-audit.md). */
+  private val Jdk27Own = Seq(
+    "FastLockingSpins", "UseDilithiumIntrinsics", "ShortRunningLongLoop", "UseAutoVectorizationPredicate",
+    "UseAutoVectorizationSpeculativeAliasingChecks", "InitialRAMPercentage", "AllocatePrefetchDistance",
+    "AllocatePrefetchLines",
   )
 
-  /** And the G1 ergonomics that apply to the web tier only. */
+  /** What JDK 25.0.4.1 ran with, the G1 ergonomics of the web tier: the one tier still held there. */
   private val Jdk25G1 = Map(
     "UseCondCardMark"  -> "false",
     "GCTimeRatio"      -> "12",
@@ -73,16 +76,21 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
   )
 
   private val tiers = Seq(
-    ("web",    "infra/kubernetes/web/base/all.yaml",             Seq("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"), Jdk25Common ++ Jdk25G1),
-    ("worker", "infra/kubernetes/worker/overlays/pl/patch.yaml", Seq("jdk25-parity.options", "worker.options"),          Jdk25Common),
+    ("web",    "infra/kubernetes/web/base/all.yaml",             Seq("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"), Jdk25G1),
+    ("worker", "infra/kubernetes/worker/overlays/pl/patch.yaml", Seq("jdk25-parity.options", "worker.options"),          Map.empty[String, String]),
   )
 
   tiers.foreach { case (tier, manifest, files, expected) =>
-    s"the $tier JVM" should "run every flag JDK 27 changed at JDK 25's value" in {
+    if (expected.nonEmpty) s"the $tier JVM" should "run every flag JDK 27 changed at JDK 25's value" in {
       val flags = finalFlags(productionOptions(manifest) ++ files.flatMap(options))
       withClue(s"under $tier's JAVA_OPTS + ${files.mkString(" + ")}: ") {
         expected.map { case (flag, _) => flag -> flags.getOrElse(flag, "<absent>") } shouldBe expected
       }
+    }
+
+    s"the $tier JVM" should "run JDK 27's own locking, C2 loop/vectorization, intrinsic and prefetch values" in {
+      val origins = flagsWithOrigin(productionOptions(manifest) ++ files.flatMap(options)).view.mapValues(_._2).toMap
+      Jdk27Own.map(flag => flag -> origins.get(flag).map(_ != "command line")) shouldBe Jdk27Own.map(_ -> Some(true))
     }
 
     // The JDK 27 default given back on purpose (2026-10-23): JEP 534's compact object headers,

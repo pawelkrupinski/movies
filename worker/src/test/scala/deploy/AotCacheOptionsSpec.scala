@@ -109,6 +109,7 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
 
     // At the default SweeperThreshold (15% of the 64m code cache) every ~10 MB of new code asked
     // SerialGC for a FULL collection to unload cold code: 7 in a worker boot, then one every ~90 s.
+    // Still so on JDK 27 (2026-10-23): 6 code-cache collections and 9 full GCs in a fixture boot at 15, 1 and 5 at 50.
     if (tier == "worker") it should "let the code cache grow by half before a full GC unloads it" in {
       launcher(tier) should contain ("-XX:SweeperThreshold=50")
     }

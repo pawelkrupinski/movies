@@ -115,9 +115,24 @@ each time:
    (`GC.class_histogram` totals every 3 s, two runs each) 600 / 583 MB without, 528 / 531 MB with -- about 10 %.
    The AOT cache is trained through the same launcher, so it shares the mode; `AotCacheOptionsSpec` keeps overlays
    from naming it. Still owed: a worker's first 10 boot minutes in prod (CPU, RSS, live set).
-2. `FastLockingSpins=13`: 27's locking default.
-3. `-ShortRunningLongLoop`, `-UseAutoVectorization*`: newer C2 loop and vectorization optimizations.
-4. `AllocatePrefetchDistance/Lines`: pinned to one Skylake's ergonomics.
+2. **`FastLockingSpins=13`, `-UseDilithiumIntrinsics`, `-ShortRunningLongLoop`, `-UseAutoVectorization*`,
+   `AllocatePrefetchDistance/Lines`, `InitialRAMPercentage` [done 2026-10-23].** Measured on the hermetic worker
+   workload (`FixtureTestWiring("08-06-2026").bootStartup()` from jarred classes, a class-load AOT cache trained per
+   variant as the image does) under the worker's launcher options plus PL's JAVA_OPTS, local JDK 27+35, 10 interleaved
+   runs each at load average 50-1000 (other agents' runs; paired per-round medians are the robust figure):
+
+   | | user CPU | workload | `CITime` | peak RSS | live heap after full GC |
+   |---|---|---|---|---|---|
+   | A: parity as it was | 80.5 s | 78 s | 70 s | 671 MB | 61 MB |
+   | B: without these lines | 82.3 s | 73 s | 63 s | 714 MB | 61 MB |
+   | B vs A, paired median | -0.7 % | -1.9 % | -1.7 % | +8.6 % | 0 |
+
+   All within noise (user CPU paired spread -11..+17 %). The peak-RSS median is macOS's `maximum resident` under
+   memory pressure, not a mechanism: compiled code is the same (C2 nmethods ~9.0 MB, C1 ~42 MB, ~25.4k methods in
+   six more runs each) and the live set identical. The prefetch values were one Skylake's; each CPU now uses its own
+   ergonomics (this Mac's arm64 picks 384, so locally B also moved that). `JdkParityOptionsSpec` now asserts no option
+   names these flags. Still owed, as for 1: a worker's first 10 boot minutes in prod.
+3. **The TLS named groups** (JEP 527: `X25519MLKEM768` first, ffdhe6144/8192 gone): see below.
 
 Other runtime items:
 
@@ -137,8 +152,10 @@ Other runtime items:
   without fixtures. The header mode and collector need no extra care: the training runs through the same launcher.
 - **`web.options` uses G1 on a ~384 MB heap.** SerialGC is likely cheaper there, as on the workers; it needs a
   canary for pause times. Not ZGC or Shenandoah at these heap sizes.
-- `worker.options` `SweeperThreshold=50`: the sweeper is gone, but its comment records a measured effect on 25.
-  Re-measure on 27 before deleting.
+- **`worker.options` `SweeperThreshold=50` [re-measured 2026-10-23, kept].** The sweeper is gone in 27, but the flag
+  still sets how much code-cache growth asks for a collection. One fixture boot under the worker's options: 6 `CodeCache
+  GC Threshold` collections and 9 full GCs at 27's default 15, 1 and 5 at 50, full-GC pause time about halved. Over 10
+  interleaved runs without it, `CITime` (paired median) +29 % and the workload +15 %, user CPU +0.7 % (noise).
 - Not worth doing: `AutoCreateSharedArchive` (conflicts with the AOT cache), `TieredStopAtLevel=1` in prod,
   always-on JFR.
 
