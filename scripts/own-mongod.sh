@@ -19,6 +19,14 @@
 # A replica set because change streams and the staging fold's transactions need one; a 1 GB cache so several agents'
 # servers fit in memory side by side. $IT_LOCAL_START_SECONDS (default 60) bounds each of the two waits: for the server
 # to answer, then to become PRIMARY.
+#
+# writeConcernMajorityJournalDefault: false — a majority write is acknowledged once applied, not once the journal is
+# synced, exactly as CI's throwaway set (scripts/ci/start-mongo-replset.sh, MONGO_MAJORITY_JOURNAL). On a single node
+# "majority" is otherwise "this node's journal fsync'd", and macOS syncs with F_FULLFSYNC, a whole-drive cache flush
+# every agent's mongod and build queues behind: on 2026-10-23, at load 300-700, a suite's `dropDatabase` — which
+# ALWAYS waits for majority, w:majority/wtimeout 10 min hard-coded in the server, whatever the client asks — failed
+# with "waiting for replication timed out" (MovieRepositoryIntegrationSpec). Durability buys nothing here: the data
+# directory is deleted when the run ends.
 
 OWN_MONGOD_PID="" OWN_MONGOD_DATA="" OWN_MONGOD_PORT="" OWN_MONGOD_URI=""
 
@@ -51,7 +59,7 @@ own_mongod_start() {
         sleep 1
     done
     [ -n "$ours" ] || { echo "no mongod of this run's own answered on :$OWN_MONGOD_PORT within ${start_seconds}s (another server holds the port?)" >&2; return 1; }
-    "$mongosh" --quiet "$OWN_MONGOD_URI" --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '127.0.0.1:$OWN_MONGOD_PORT'}]})" >/dev/null
+    "$mongosh" --quiet "$OWN_MONGOD_URI" --eval "rs.initiate({_id: 'rs0', writeConcernMajorityJournalDefault: false, members: [{_id: 0, host: '127.0.0.1:$OWN_MONGOD_PORT'}]})" >/dev/null
     for _ in $(seq 1 "$start_seconds"); do
         [ "$("$mongosh" --quiet "$OWN_MONGOD_URI" --eval 'rs.status().myState' 2>/dev/null)" = "1" ] && { primary=1; break; }
         sleep 1

@@ -25,6 +25,7 @@ cat > "$FAKE/mongosh" <<'STUB'
 case "$*" in
   *serverCmdLineOpts*) if [ -n "${STUB_FOREIGN:-}" ]; then echo /elsewhere/another-runs-data; else cat "$STUB_LOG.dbpath" 2>/dev/null; fi ;;
   *myState*) if [ -n "${STUB_NEVER_PRIMARY:-}" ]; then echo 2; else echo 1; fi ;;
+  *rs.initiate*) echo "$*" > "$STUB_LOG.initiate"; echo ok ;;
   *) echo ok ;;
 esac
 STUB
@@ -43,6 +44,10 @@ run; code=$?
 check "runs the suites against its own server's port, on kinowo_it" "0 yes" \
   "$code $(grep -qE '^URI=mongodb://127\.0\.0\.1:[0-9]+/\?directConnection=true DB=kinowo_it ARGS=worker/It/testOnly X$' "$STUB_LOG.sbt" && echo yes || echo no)"
 check "...and stops that server and removes its data afterwards" "stopped removed" "$(mongod_state) $(data_state)"
+# A dropDatabase always waits for majority (server-side, 10 min); with the journal default on, a single node's majority
+# is its journal fsync, which a loaded Mac starved past that wait (MovieRepositoryIntegrationSpec, 2026-10-23).
+check "...a replica set acknowledging majority on apply, not on a journal sync" "1" \
+  "$(grep -c 'writeConcernMajorityJournalDefault: false' "$STUB_LOG.initiate" 2>/dev/null || echo 0)"
 
 run STUB_FOREIGN=1; code=$?
 check "another server answering on the picked port: refused, no suite run against it" "1 no" \
