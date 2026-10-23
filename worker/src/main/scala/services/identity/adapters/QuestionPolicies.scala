@@ -27,8 +27,9 @@ object QuestionPolicies {
 
   /** What a source giving no answer leaves behind. */
   enum NonAnswer {
-    /** An `unanswered|` marker ([[TmdbGapMemory]]): an empty answer held back `empty`, a failure `firstFailure` doubling
-     *  to `maxFailure`; markers go [[TmdbStoreSweep.MarkerGrace]] after their wait. */
+    /** An `unanswered|` marker ([[TmdbGapMemory]], `identity_question_markers`), written by the fill and the model's live
+     *  asks alike: an empty answer held back `empty`, a failure `firstFailure` doubling to `maxFailure`; markers go
+     *  [[TmdbStoreSweep.MarkerGrace]] after their wait. */
     case Marker(empty: FiniteDuration, firstFailure: FiniteDuration, maxFailure: FiniteDuration)
     /** An empty answer is filed as one ("no film"); a failure files nothing and is asked again on the task queue's backoff. */
     case EmptyFiled

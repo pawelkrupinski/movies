@@ -23,6 +23,21 @@ class TmdbGapMemorySpec extends AnyFlatSpec with Matchers {
     memory.due(gaps) shouldBe gaps
   }
 
+  // Markers live in their own collection since 2026-10-24; one left in tmdb_queries from before still holds its question
+  // back until the sweep's grace deletes it, so the move asks nothing again early.
+  it should "keep its markers apart from the answers, and still honour one kept with them before the move" in {
+    val clock  = new MutableClock(Instant.parse("2026-09-28T12:00:00Z"))
+    val docs   = new InMemoryTmdbDocuments
+    val memory = new TmdbGapMemory(docs, "pl-PL", clock)
+    val (lalka, rosa) = (CandidateQuery.Title("Lalka"), CandidateQuery.Title("Róża"))
+    memory.unanswered(Seq(lalka), Nil)
+    docs.size(TmdbKind.Marker) shouldBe 1
+    docs.size(TmdbKind.Query) shouldBe 0
+    val old = docs.get(TmdbKind.Marker, docs.fetchedBefore(TmdbKind.Marker, Long.MaxValue).map(_._1)).head._2
+    docs.put(TmdbKind.Query, Seq(s"${TmdbGapMemory.Prefix}${TmdbStore.questionId("pl-PL", rosa)}" -> old))
+    memory.due(AnswersChanged(Set(lalka, rosa), Set.empty)) shouldBe AnswersChanged.Empty
+  }
+
   // A question that FAILED (5xx, timeout, 429) learned nothing about the film: it waited the same
   // day as one TMDB answered "nothing here", so a ten-minute TMDB outage held a round's worth of
   // the model's questions back for 24 hours. A failure is asked again in minutes, doubling, capped.

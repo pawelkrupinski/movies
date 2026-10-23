@@ -187,9 +187,17 @@ class WorkerWiring(
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
-  def cutoverLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
+  def cutoverLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups = {
+    val counted = new services.identity.adapters.LiveAsks.Counted(identityLookupFetch)
     new services.identity.adapters.StoredFirstLookups(storedLookups(reads),
-      new services.identity.adapters.TmdbIdentityLookups(tmdbClientOver(identityLookupFetch), new services.enrichment.ImdbClient(identityLookupFetch), Nil))
+      new services.identity.adapters.TmdbIdentityLookups(tmdbClientOver(counted), new services.enrichment.ImdbClient(counted), Nil),
+      services.identity.adapters.LiveAsks.remembered(identityGapMemory))
+  }
+
+  /** What was asked of TMDB and left unanswered, and when it is due again: one memory for the fill and the model's
+   *  live asks ([[services.identity.adapters.TmdbGapMemory]]). */
+  lazy val identityGapMemory: services.identity.adapters.TmdbGapMemory =
+    new services.identity.adapters.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)
 
   /** `venue_pages`: every venue detail page read, written once by page (`VenuePageReader`). */
   lazy val venuePageStore: services.venuepages.VenuePageStore = newVenuePageStore
@@ -255,7 +263,7 @@ class WorkerWiring(
       tmdb        = tmdbClientOver,
       liveFetch   = enrichmentFetch,
       normalizer  = identityTmdbNormalizer,
-      gapMemory   = new services.identity.adapters.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock),
+      gapMemory   = identityGapMemory,
       refreshes   = () => identityModel.peek(WorkerWiring.IdentityModelPeek)
         .fold(Seq.empty[services.identity.CandidateQuery])(snapshot => identityTmdbRefreshes.due(snapshot.questions)),
       rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),

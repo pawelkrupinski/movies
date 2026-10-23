@@ -68,6 +68,7 @@ object CollectionRetention {
     "tmdb_films"              -> Sweep("TmdbStoreSweep"),
     "tmdb_people"             -> Sweep("TmdbStoreSweep"),
     "tmdb_queries"            -> Sweep("TmdbStoreSweep"),
+    "identity_question_markers" -> Sweep("TmdbStoreSweep"),
     "env_overrides"           -> KeptForever("one per overridden setting, deleted on unset"),
     "env_registry"            -> KeptForever("the fixed set of settings, republished whole"),
     "authExchangeCodes"       -> Ttl("issuedAt"),

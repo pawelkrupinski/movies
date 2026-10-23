@@ -51,12 +51,12 @@ final class TmdbStoreSweep(
     val doomed  = scanned.map { case (kind, stamped) =>
       kind -> stamped.filter { case (id, at) =>
         if (kind == TmdbKind.Family) at < familyCutoff
-        else if (id.startsWith(TmdbGapMemory.Prefix)) at < markerCutoff
+        else if (kind == TmdbKind.Marker || id.startsWith(TmdbGapMemory.Prefix)) at < markerCutoff
         else at < answerCutoff && live.exists(keys => !keys.contains(TmdbStore.keyOf(kind, id)))
       }
     }
     val swept = Swept(
-      markers = doomed.flatMap(_._2).count(_._1.startsWith(TmdbGapMemory.Prefix)),
+      markers = doomed.flatMap { case (kind, ids) => ids.filter(i => kind == TmdbKind.Marker || i._1.startsWith(TmdbGapMemory.Prefix)) }.size,
       deleted = doomed.map { case (kind, stamped) => documents.deleteIfStill(kind, stamped) }.sum,
       modelUp = live.isDefined)
     logger.info(s"TMDB store sweep: ${swept.deleted} deleted (${swept.markers} of them gap markers past ${markerGrace.toDays}d)" +

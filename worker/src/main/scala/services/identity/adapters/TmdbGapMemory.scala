@@ -13,8 +13,9 @@ import scala.concurrent.duration._
  * "no film"): only the fill's asking backs off. What the raw capture's stored failure did, before
  * TMDB's answers stopped being kept raw.
  *
- * A marker beside the answers (`tmdb_queries`, `unanswered|…`), never on one: a real answer that
- * arrives later is read as it is, and the gap is gone. A marker past the store sweep's grace is
+ * A marker apart from the answers (`identity_question_markers`, `unanswered|…`), never on one: a real answer that
+ * arrives later is read as it is, and the gap is gone. Markers were kept in `tmdb_queries` until 2026-10-24: one
+ * there is still read until the sweep's grace deletes it, so the move asks nothing again early. A marker past the store sweep's grace is
  * deleted by it: long past [[RetryAfter]], it holds nothing back, and a question the corpus stopped
  * asking would otherwise keep its marker for good.
  *
@@ -32,11 +33,11 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock) {
   def due(gaps: AnswersChanged): AnswersChanged = {
     val ids   = gaps.queries.map(q => q -> queryMarker(q)).toMap
     val films = gaps.films.map(id => id -> filmMarker(id)).toMap
-    val held  = docs.get(TmdbKind.Query, (ids.values ++ films.values).toSeq)
+    val held  = markers((ids.values ++ films.values).toSeq)
     val now   = clock.millis()
     // A failure marked before TMDB recovered from an outage is due at once: its backoff was the
     // outage's, and TMDB answers again.
-    val recovered = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).flatMap(doc => BsonFields.int64(doc.get(RecoveredAt)))
+    val recovered = markers(Seq(HealthMarker)).get(HealthMarker).flatMap(doc => BsonFields.int64(doc.get(RecoveredAt)))
     def recent(marker: String) = held.get(marker).exists(doc =>
       TmdbStore.fetchedAt(doc).exists(at => at > now - waitOf(doc) &&
         !(failureWaitOf(doc).isDefined && recovered.exists(at <= _))))
@@ -51,9 +52,9 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock) {
   def failed(queries: Iterable[CandidateQuery], films: Iterable[Int]): Unit = {
     val markers = queries.map(queryMarker).toSeq ++ films.map(filmMarker).toSeq
     if (markers.nonEmpty) {
-      val held = docs.get(TmdbKind.Query, markers)
+      val held = this.markers(markers)
       val now  = clock.millis()
-      docs.put(TmdbKind.Query, markers.map { marker =>
+      docs.put(TmdbKind.Marker, markers.map { marker =>
         // A marker without a failure wait is a durable one (or none): the backoff starts over.
         val previous = held.get(marker).flatMap(failureWaitOf)
         val wait     = previous.fold(FirstFailureRetry.toMillis)(p => (p * 2).min(MaxFailureRetry.toMillis))
@@ -72,18 +73,25 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock) {
    *  round. A read counts once it was wanted — failed, or deferred behind the host's back-off (an
    *  outage fails ONE read, then the budget defers the rest to that host). */
   def roundEnded(answered: Int, failed: Int, deferred: Int): Unit = {
-    lazy val inOutage = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).exists(doc => BsonFields.int64(doc.get(OutageSince)).isDefined)
+    lazy val inOutage = markers(Seq(HealthMarker)).get(HealthMarker).exists(doc => BsonFields.int64(doc.get(OutageSince)).isDefined)
     val now = clock.millis()
     if (failed > 0 && answered == 0 && failed + deferred >= MinOutageReads)
-      docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
+      docs.put(TmdbKind.Marker, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
     else if (failed == 0 && answered > 0 && inOutage)
-      docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
+      docs.put(TmdbKind.Marker, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
   }
 
   // Stamped as a fetch, so the store sweep ages markers out like answers (`TmdbStoreSweep`).
   private def mark(queries: Iterable[CandidateQuery], films: Iterable[Int])(doc: String => BsonDocument): Unit = {
     val markers = queries.map(queryMarker).toSeq ++ films.map(filmMarker).toSeq
-    if (markers.nonEmpty) docs.put(TmdbKind.Query, markers.map(marker => marker -> doc(marker)))
+    if (markers.nonEmpty) docs.put(TmdbKind.Marker, markers.map(marker => marker -> doc(marker)))
+  }
+
+  /** These markers as held: the markers' own collection's, else one still in `tmdb_queries` from before the move. */
+  private def markers(ids: Seq[String]): Map[String, BsonDocument] = {
+    val held = docs.get(TmdbKind.Marker, ids)
+    val left = ids.filterNot(held.contains)
+    if (left.isEmpty) held else docs.get(TmdbKind.Query, left) ++ held
   }
 
   private def failureWaitOf(doc: BsonDocument): Option[Long] = BsonFields.int64(doc.get(FailureWait))

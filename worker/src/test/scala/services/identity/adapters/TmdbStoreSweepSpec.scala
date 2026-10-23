@@ -48,6 +48,13 @@ class TmdbStoreSweepSpec extends AnyFlatSpec with Matchers {
     d.get(TmdbKind.Family, Seq("imdb|record|tt1", "imdb|record|tt2")).keySet shouldBe Set("imdb|record|tt1")
   }
 
+  it should "age the markers' own collection out by their grace, read by the model or not" in {
+    val d = new InMemoryTmdbDocuments
+    d.put(TmdbKind.Marker, Seq("unanswered|film|1" -> doc(daysAgo(10)), "unanswered|film|2" -> doc(daysAgo(2))))
+    new TmdbStoreSweep(d, () => Some(Set.empty), clock).sweep() shouldBe TmdbStoreSweep.Swept(markers = 1, deleted = 1, modelUp = true)
+    d.get(TmdbKind.Marker, Seq("unanswered|film|1", "unanswered|film|2")).keySet shouldBe Set("unanswered|film|2")
+  }
+
   it should "delete no answer while no model is taken up, but still age markers out" in {
     val d = store()
     new TmdbStoreSweep(d, () => None, clock).sweep() shouldBe TmdbStoreSweep.Swept(markers = 1, deleted = 1, modelUp = false)

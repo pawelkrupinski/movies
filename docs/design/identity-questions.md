@@ -21,6 +21,13 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    across the day; a non-answer remembered for every kind; an age backstop for what the changes feed misses. It
    builds on the `path` label of `kinowo_worker_http_total` (`tools.HttpPath`) and the paced changes sweep
    (`tmdb-changes-sweep`, in flight 2026-10-23, identity-resolver.md §19.3 once landed).
+   Done so far (2026-10-24): the model's live asks are hybrid (`LiveAsks` in `StoredFirstLookups`). A question
+   never asked is asked live at once, as before; one asked and left unanswered waits out its backoff, the fill's to
+   ask then, instead of being asked live again on every drain. The fill and the live asks share one memory
+   (`WorkerWiring.identityGapMemory`), and every non-answer marker lives in its own collection,
+   `identity_question_markers` (`TmdbKind.Marker`; the answers stay where they are). A marker written to
+   `tmdb_queries` before the move is still read until the sweep's 7-day grace deletes it. Next: a cluster with a
+   newly scraped listing has its families asked inline in the projection, under a 5 s deadline (the owner's choice).
 4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
    family's own open questions, until answered or the deadline passes. This is GapHold v4.
 
@@ -58,7 +65,7 @@ live at take-up (`StoredFirstLookups`).
 
 | kind | store | asked again | non-answer | swept | a take waits |
 |---|---|---|---|---|---|
-| Title, Director, Imdb, ImdbTitled, TitleCredit | tmdb_queries | 1 d below 0.9 confidence, 7 d settled (`TmdbRefreshes`) | fill only: marker, empty 1 d, failure 5 min doubling to 6 h (`TmdbGapMemory`) | unread 30 d | on fill rounds |
+| Title, Director, Imdb, ImdbTitled, TitleCredit | tmdb_queries | 1 d below 0.9 confidence, 7 d settled (`TmdbRefreshes`) | marker (fill and live asks), empty 1 d, failure 5 min doubling to 6 h (`TmdbGapMemory`) | unread 30 d | on fill rounds |
 | FilmRecord | tmdb_films | changes feed only | as above | unread 30 d | on fill rounds |
 | VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich) | gone (404/410) filed; failure nothing | never | on fill rounds |
 | FamilySearch | identity_family_answers | 90 d | empty filed; failure on queue backoff | 400 d since fetched | 10 min* |
@@ -80,8 +87,8 @@ until one is.
   `ResolverDecision.unanswered > 0`, the resolver's unanswered candidate queries. An agreement unknown is not counted.
 - **Three stop-waiting rules**: fill rounds, GapHold's 2 h (reverted), `PartialAfter`'s 10 min with its
   at-least-one-answer condition.
-- **Non-answer memory is partial**: only the fill writes `TmdbGapMemory` markers. A live miss at take-up, the
-  agreement's TMDB find and record re-read, and a venue page read that fails leave none.
+- **Non-answer memory is partial**: until step 3 only the fill wrote `TmdbGapMemory` markers. The model's live asks
+  write them now; the agreement's TMDB find and record re-read, and a venue page read that fails, still leave none.
 - **Records and people refresh only from the changes feed**; a missed window leaves them stale. The paced sweep in
   flight (`tmdb-changes-sweep`) persists its window and cursor so a missed window resumes; an age backstop is still
   step 3's.
