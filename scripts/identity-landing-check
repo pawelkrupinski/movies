@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# WILL THIS LAND GREEN? One command for an identity change before it is pushed to main: the measure AND the
+# identity-relevant specs Main runs, one verdict.
+#
+# Why: on 2026-10-22 at least six Main reds came from changes `identity-measure` had called LANDABLE. The measure
+# answers "did a take move", over the recording; Main's rows also hold the change to specs the measure never runs:
+# MatchedTakesLabelSpec (edc0614db "Patrick Monahan", the 0089ce67e..2034c8a25 Cineamo/Jailbreakers judgements),
+# IdentitySliceCasesSpec (3eee813cb's relay slice cases), UnmatchedClustersRatchetSpec, SearchQueryMarkersSpec, the
+# title-rule golden/examples/mutation specs, the hard-cluster convergence (its outage recovery), FilmScheduleEndToEnd,
+# IdentityCutoverEndToEnd and DocCommentPlacementSpec.
+#
+# usage: scripts/identity-landing-check [<commit> | --head REF] [--base SHA] [--full | --footprint-only] [--local]
+#                                       [--no-measure | --no-specs] [--no-cache]
+#   <commit>         default HEAD (committed only: uncommitted changes are neither measured nor tested)
+#   --base           default the commit's merge-base with <remote>/main (identity-measure's)
+#   (no mode flag)   the measure: `identity-measure --footprint` -- the footprint measure when the change is title rules
+#                    alone and provably moves no take, otherwise the full measure (identity-measure falls back itself)
+#   --full           the full measure, never the footprint (what a change LANDS on: the footprint is for iterating)
+#   --footprint-only the footprint measure or nothing (no dispatch): a measure it cannot answer is BLOCKED, said so
+#   --local          the specs on the laptop (scripts/sbt-warm; the hard-cluster convergence through scripts/it-local.sh),
+#                    one group after another -- run the whole command under the heavy-run slot wrapper. Default: on CI,
+#                    each group its own `scripts/identity-ci-run` (identity-run.yml) at the commit, all at once
+#   --no-measure     the specs only;  --no-specs  the measure only
+#   --no-cache       passed to identity-measure: measure even when its result cache holds the verdict
+#
+# THE SPECS: exactly the identity-relevant suites of Main's rows (ci.yml), each group as its row runs it:
+#   unit        `test (worker-identity)` + `test (worker-scripts)` + the identity/common parts of `test (rest)` + the
+#               worker lint and ratchet specs: every services.identity.* (worker and identity modules), services.titlerules.*
+#               (the golden, examples and mutation specs), scripts.* (the capture re-resolves), DocCommentPlacementSpec,
+#               HardClusterRatchetSpec
+#   it          `integration-test (identity)`: HardClusterConvergenceIntegrationSpec (the hard clusters, outage recovery)
+#   e2e-corpus  `e2e (corpus)`: FilmScheduleEndToEndSpec        } only when Main's scope would run the e2e rows for
+#   e2e-rest    `e2e (rest)`'s identity specs: SearchQueryMarkers,  } this change (scripts/ci/ci-row-scope.sh e2e):
+#               IdentityCutoverEndToEnd                          } judgements and identity tests alone do not
+#
+# THE VERDICT, last on stdout: `LANDABLE`, or `BLOCKED` with each failing spec, the test, and a hint for its usual cause
+# (e.g. MatchedTakesLabelSpec's "known-wrong in scope rows": judgement rows stale -> known-wrong scope rows). Every
+# group's sbt log and the measure's output stay under target/identity-landing-check/<sha>/.
+# Exit: 0 LANDABLE, 1 BLOCKED, 2 could not check (a group or the measure could not run: no verdict).
+set -uo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/tool-conventions.sh"
+DIE_STATUS=2
+ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --head) flag_value "$@"; ref=$2; shift 2 ;;
+    --base) flag_value "$@"; base=$2; shift 2 ;;
+    --full) mode=full; shift ;;
+    --footprint-only) mode=footprint-only; shift ;;
+    --local) local=1; shift ;;
+    --no-measure) measure=""; shift ;;
+    --no-specs) specs=""; shift ;;
+    --no-cache) no_cache=1; shift ;;
+    -h|--help) usage_from_header; exit 0 ;;
+    -*) usage_error "unknown option $1" ;;
+    *) ref=$1; shift ;;
+  esac
+done
+[ -n "$measure$specs" ] || usage_error "--no-measure and --no-specs leave nothing to check"
+say() { echo "identity-landing-check: $*" >&2; }
+remote=${IDENTITY_MEASURE_REMOTE:-}
+[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+commit=$(git rev-parse --verify -q "$ref^{commit}") || die "no commit $ref"
+[ "$ref" = HEAD ] && [ -n "$(git status --porcelain --untracked-files=no)" ] && say "WARNING: uncommitted changes are not checked -- only ${commit:0:9}"
+if [ -z "$base" ]; then
+  bounded 120 git fetch -q "$remote" main || say "could not fetch $remote main: the base is its last fetched state"
+  base=$(git merge-base "$commit" "$remote/main") || die "no merge-base of $commit and $remote/main"
+  [ "$base" = "$commit" ] && base=$(git rev-parse "$commit^")
+fi
+base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
+out=${IDENTITY_LANDING_OUT:-$(git rev-parse --show-toplevel)/target/identity-landing-check/${commit:0:12}}
+rm -rf "$out"; mkdir -p "$out"
+say "commit $(git log --oneline -1 "$commit" | cut -c1-100)"
+say "base   $(git log --oneline -1 "$base" | cut -c1-100)"
+
+# ── the groups ─────────────────────────────────────────────────────────────────────────────────
+# name <TAB> sbt command (a root testOnly runs in every aggregated module, so one command covers worker, identity and common)
+groups=$'unit\ttestOnly services.identity.* services.titlerules.* scripts.* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec'
+groups+=$'\nit\tworker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec'
+e2e=$(git diff --name-only --no-renames "$base" "$commit" | "$here/ci/ci-row-scope.sh" e2e 2> /dev/null) || e2e=true
+if [ "$e2e" = true ]; then
+  groups+=$'\ne2e-corpus\te2e/testOnly services.movies.FilmScheduleEndToEndSpec'
+  groups+=$'\ne2e-rest\te2e/testOnly services.movies.SearchQueryMarkersSpec services.movies.IdentityCutoverEndToEndSpec'
+else
+  say "e2e rows: Main's scope skips them for this change (scripts/ci/ci-row-scope.sh e2e) -- not run"
+fi
+
+# run_group <name> <command>: its sbt output in $out/<name>/sbt.log, its exit in $out/<name>/exit (0 passed, 1 failed, 2 not run)
+run_group() {
+  local name=$1 command=$2 dir=$out/$1 rc
+  mkdir -p "$dir"
+  if [ -n "$local" ]; then
+    if [ "$name" = it ]; then (cd "$(git rev-parse --show-toplevel)" && "$here/it-local.sh" "$command") > "$dir/sbt.log" 2>&1
+    else "$here/sbt-warm" "$command" > "$dir/sbt.log" 2>&1; fi
+    rc=$?; [ "$rc" -le 1 ] || rc=1
+  else
+    "${IDENTITY_LANDING_CI_RUN:-$here/identity-ci-run}" --head "$commit" --out "$dir/run" -- "$command" > "$dir/ci-run.log" 2>&1
+    rc=$?
+    # the artifact's sbt.log (identity-run.yml tees it); a run that never made one is no answer
+    if [ -f "$dir/run/sbt.log" ]; then cp "$dir/run/sbt.log" "$dir/sbt.log"; elif [ "$rc" != 2 ]; then rc=2; fi
+  fi
+  echo "$rc" > "$dir/exit"
+}
+# the commit's tree, for --local: sbt-warm and it-local.sh test the working tree
+if [ -n "$local" ] && [ -n "$specs" ] && [ "$(git rev-parse HEAD)" != "$commit" ]; then
+  die "--local tests the working tree: check out ${commit:0:9} first (or run on CI, without --local)"
+fi
+
+pids=()
+if [ -n "$specs" ]; then
+  if [ -n "$local" ]; then
+    say "specs: on the laptop, one group after another ($(cut -f1 <<< "$groups" | tr '\n' ' '))"
+    ( while IFS=$'\t' read -r name command; do run_group "$name" "$command"; done <<< "$groups" ) &
+    pids+=($!)
+  else
+    say "specs: on CI, one identity-run per group, all at once ($(cut -f1 <<< "$groups" | tr '\n' ' '))"
+    while IFS=$'\t' read -r name command; do run_group "$name" "$command" & pids+=($!); done <<< "$groups"
+  fi
+fi
+if [ -n "$measure" ]; then
+  flags=(--head "$commit" --base "$base")
+  case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; esac
+  [ -z "$no_cache" ] || flags+=(--no-cache)
+  say "measure: identity-measure ${flags[*]:4}"
+  "${IDENTITY_LANDING_MEASURE:-$here/identity-measure}" "${flags[@]}" > "$out/measure.txt" 2> "$out/measure.log" &
+  measure_pid=$!
+fi
+[ "${#pids[@]}" -eq 0 ] || wait "${pids[@]}"
+measure_rc=""
+if [ -n "$measure" ]; then wait "$measure_pid"; measure_rc=$?; fi
+
+# ── reading the failures ───────────────────────────────────────────────────────────────────────
+# failures <sbt.log> -> "<Spec><TAB><test>" per failed test; a suite that failed with no test named (aborted, an
+# error before its tests) as "<Spec><TAB>(the suite failed: …)"; a compile error as "compile<TAB><its first error>"
+failures() {
+  sed -E 's/\x1b\[[0-9;]*m//g' "$1" | awk '
+    /\[error\] .*Compilation failed/ { compile = 1 }
+    /\[error\] [^ ]+\.scala:[0-9]+:[0-9]+:/ && !first_error { first_error = $0; sub(/^.*\[error\] /, "", first_error) }
+    match($0, /\[info\] [A-Z][A-Za-z0-9_$]*:$/) { spec = substr($0, RSTART + 7, RLENGTH - 8) }
+    /\*\*\* FAILED \*\*\*/ { t = $0; sub(/^.*\[info\] +- /, "", t); sub(/ \*\*\* FAILED \*\*\*.*$/, "", t); print spec "\t" t; named[spec] = 1 }
+    /\*\*\* ABORTED \*\*\*/ { t = $0; sub(/^.*\[info\] +/, "", t); print spec "\t(aborted) " t; named[spec] = 1 }
+    /\[error\] (Failed tests|Error during tests):/ { summary = 1; next }
+    summary && /\[error\][ \t]+[a-z][A-Za-z0-9_.$]*$/ { s = $NF; n = split(s, p, "."); if (!(p[n] in named)) print p[n] "\t(the suite failed: see the log)"; named[p[n]] = 1; next }
+    summary { summary = 0 }
+    END { if (compile) print "compile\t" (first_error ? first_error : "Compilation failed") }'
+}
+# hint <spec> <test> -> what usually makes it fail, and the way out
+hint() {
+  case "$1	$2" in
+    MatchedTakesLabelSpec*known-wrong*)
+      echo "judgement rows stale -> known-wrong scope rows: a judgement now denies a take the unified rows (IdentityUnifiedFit.Takes) hold; add it to identity-judgements.tsv as known-wrong in scope \`rows\` with why, or re-emit the rows (scripts/identity-calibrate.sh --takes)" ;;
+    MatchedTakesLabelSpec*)
+      echo "the unified rows' takes against the judgements: re-emit the rows (scripts/identity-calibrate.sh --takes) or fix the judgement rows the spec names" ;;
+    IdentitySliceCasesSpec*unpinned*|IdentitySliceCasesSpec*not\ pinned*|IdentitySliceCasesSpec*no\ answer*)
+      echo "slice case asks unpinned questions -> re-pin from the recording: scripts/identity-slice --emit-case over the case's listings" ;;
+    IdentitySliceCasesSpec*)
+      echo "a pinned slice case no longer takes its right film: the change regresses that listing (scripts/identity-slice --explain), or the case's expected.tsv is stale / asks unpinned questions -> re-pin from the recording (scripts/identity-slice --emit-case)" ;;
+    UnmatchedClustersRatchetSpec*)
+      echo "the capture ratchet: a new right take -> copy target/identity-unmatched/expected-matches.tsv over the checked-in one; a wrong one -> fix it, or known-wrong in scope \`capture\` with why (scripts/identity-ratchet-report)" ;;
+    TitleRule*|PlaceholderExpanderSpec*|RuleScopeSpec*|SearchOnlyAffixesSpec*|PolishRewriteScopingSpec*|ProdTitlesNormalizationSpec*|FestivalTagSpec*|DiscoveredDecorationsSpec*)
+      echo "title rules: the golden/examples/mutation tables hold every rule's readings -- a reading changed on purpose -> regenerate the golden/examples the spec names; otherwise the rule change reaches titles it should not" ;;
+    SearchQueryMarkersSpec*)
+      echo "a screening marker survives into a listing's title search: a title rule misses that spelling (add it to title-rules.tsv), or the marker vocabulary needs the word" ;;
+    HardCluster*)
+      echo "the hard clusters: a cluster's outage recovery or convergence lost its film -- fix it; an exemption (HardClusterExemptions) only with the user's OK, they only shrink" ;;
+    FilmScheduleEndToEndSpec*|IdentityCutoverEndToEndSpec*)
+      echo "end to end over the fixture corpus: the change moves a film the e2e corpus pins -- read the spec's diff in the log" ;;
+    DocCommentPlacementSpec*)
+      echo "a Scaladoc no longer sits directly on the member it documents (a blank line, a statement or a second doc between): move it" ;;
+    compile*) echo "the commit does not compile at its tree" ;;
+    *) echo "read its failure in the log" ;;
+  esac
+}
+
+# ── the verdict ────────────────────────────────────────────────────────────────────────────────
+blocked=() unknown=()
+echo "identity landing check: ${commit:0:12} over ${base:0:12}"
+if [ -n "$measure" ]; then
+  verdict_line=$(grep -E '^(LANDABLE|NOT LANDABLE)' "$out/measure.txt" | head -1)
+  case $measure_rc in
+    0) echo "  measure     ${verdict_line:-LANDABLE}" ;;
+    1) echo "  measure     NOT LANDABLE"; blocked+=("measure	NOT LANDABLE: $(sed -n '/^NOT LANDABLE/,$p' "$out/measure.txt" | sed -n '2,4p' | sed 's/^ *- //' | paste -sd';' -)	a take moved wrong or a right one was lost: the measure's table, $out/measure.txt (scripts/identity-slice --explain its listings)") ;;
+    3) echo "  measure     not answered by the footprint (--footprint-only)"; blocked+=("measure	--footprint-only could not answer	run without --footprint-only for the full measure") ;;
+    *) echo "  measure     could not measure ($out/measure.log)"; unknown+=(measure) ;;
+  esac
+fi
+if [ -n "$specs" ]; then
+  while IFS=$'\t' read -r name _; do
+    rc=$(cat "$out/$name/exit" 2> /dev/null || echo 2)
+    found=""; [ ! -f "$out/$name/sbt.log" ] || found=$(failures "$out/$name/sbt.log")
+    if [ "$rc" = 0 ] && [ -z "$found" ]; then echo "  $(printf '%-11s' "$name") passed"
+    elif [ "$rc" = 2 ] && [ -z "$found" ]; then echo "  $(printf '%-11s' "$name") could not run ($out/$name/)"; unknown+=("$name")
+    else
+      [ -n "$found" ] || found="$name	(sbt failed, no test named)"
+      echo "  $(printf '%-11s' "$name") FAILED ($out/$name/sbt.log)"
+      while IFS=$'\t' read -r spec test; do blocked+=("$spec	$test	$(hint "$spec" "$test")"); done <<< "$found"
+    fi
+  done <<< "$groups"
+fi
+echo
+if [ "${#blocked[@]}" -gt 0 ]; then
+  echo "BLOCKED"
+  for b in "${blocked[@]}"; do
+    IFS=$'\t' read -r spec test why <<< "$b"
+    echo "  - $spec: $test"
+    echo "    hint: $why"
+  done
+  [ "${#unknown[@]}" -eq 0 ] || echo "  (and could not check: ${unknown[*]})"
+  exit 1
+fi
+if [ "${#unknown[@]}" -gt 0 ]; then
+  echo "NO VERDICT: could not check ${unknown[*]} -- see $out"
+  exit 2
+fi
+echo "LANDABLE"
+exit 0

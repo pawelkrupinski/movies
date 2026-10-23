@@ -504,6 +504,14 @@ check "...naming only the production commit" "1 0" \
   "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err") $(grep -c "${tools:0:9} carries no Fixes-Red" "$gate/err")"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
+# An identity change is pointed at scripts/identity-landing-check (advice: the hook never runs it), a web change is not.
+before_idc="$(scratch_git "$grepo" rev-parse HEAD)"
+idc="$(commit_paths "a judgement" -- test/resources/fixtures/identity-judgements.tsv)"
+check "an identity change is pointed at identity-landing-check, which the hook does not run" "0 1" \
+  "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$before_idc..$idc") $(grep -c 'did scripts/identity-landing-check say LANDABLE' "$gate/err")"
+check "...a change outside identity is not" "0 0" \
+  "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain") $(grep -c 'identity-landing-check' "$gate/err")"
+scratch_git "$grepo" reset -q --hard "$before_idc"
 check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
 # gh hanging: the stub never ends on its own, so the hook gets past it only by its own bound cutting gh off. That
 # mechanism is the proof -- each workflow's gh cut off (bounded's 124) and said so, no stub left running -- never

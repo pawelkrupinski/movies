@@ -835,6 +835,11 @@ fi
 failed=""
 started=$SECONDS
 log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
+# ADVICE ONLY, never run here (it dispatches CI runs): an identity change passes these checks and still reddens Main on
+# specs neither they nor identity-measure run -- six Main reds on 2026-10-22 had been measured LANDABLE.
+if printf '%s\n' "$changed" | grep -qE '^(identity/|worker/src/main/scala/services/identity/|common/src/main/(resources/title-(rules|words)\.tsv|scala/services/titlerules/)|test/resources/fixtures/identity-)'; then
+    log "identity change: did scripts/identity-landing-check say LANDABLE for ${head_sha:0:9}? It runs the measure AND the identity specs Main runs (MatchedTakesLabel, IdentitySliceCases, the ratchets, title rules, hard clusters, e2e) -- this hook runs neither" >&2
+fi
 for check in $checks; do
     if skipped "$check"; then warn "$check SKIPPED (PREPUSH_SKIP)"; continue; fi
     t0=$SECONDS

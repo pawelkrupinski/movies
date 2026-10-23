@@ -239,6 +239,16 @@ heavy sbt command over a cached recording (a resolve dump, an ablation, a simula
 local heavy runs are a fallback only, for what the CI route cannot do yet, and only under the shared 3-slot heavy-run
 wrapper; say so in the report.
 
+**Will it land green? `scripts/identity-landing-check`** before pushing any identity change (resolver, title rules,
+judgements, slice cases, captures): ONE verdict, `LANDABLE` or `BLOCKED` with the failing spec, its test and a hint. It
+runs the measure (`identity-measure --footprint`, falling back to the full measure; `--full` for the landing gate,
+`--footprint-only` while iterating) AND, in parallel on CI (one `identity-ci-run` per group; `--local` = sbt-warm under
+heavy-run), exactly the identity specs Main's rows run and the measure never does: every `services.identity.*`
+(MatchedTakesLabel, UnmatchedClustersRatchet, IdentitySliceCases), the title-rule golden/examples/mutation specs, the
+worker `scripts.*` re-resolves, DocCommentPlacement, the hard-cluster ratchet and convergence, and -- when Main's scope
+runs the e2e rows -- FilmScheduleEndToEnd, SearchQueryMarkers, IdentityCutoverEndToEnd. On 2026-10-22 at least six Main
+reds were changes `identity-measure` alone had called LANDABLE. The pre-push hook only points at it; it never runs it.
+
 **Measuring cheaply** (2026-10-22: measurements averaged 37 min queued + 66 min wall for ~12 min of compute):
 - **Let the footprint pick:** without `--countries`, identity-measure measures only the countries the change can move
   (a `services/cinemas/<cc>/` file, a `<cc>` capture, a title-words row's language; shared resolver code reaches all),
