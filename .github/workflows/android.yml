@@ -238,8 +238,14 @@ jobs:
                   android/scripts/devtest-shuffled-test.sh
                   scripts/ci/order-seed-test.sh
 
+            # The three Gradle steps of this job share one daemon (no
+            # `--no-daemon`): the second and third reuse the warm JVM instead of
+            # each paying JVM start, JIT warm-up and the configuration-cache load
+            # again (~6-7 s of a ~20 s cache-hit sequence locally). The daemon
+            # dies with the job's container; Gradle hands each call its own
+            # environment, so the release step's signing variables still reach it.
             - name: Unit tests
-              run: ./gradlew --no-daemon testDebugUnitTest
+              run: ./gradlew testDebugUnitTest
 
             # Surface the Gradle JUnit XML as a check-run + summary. The
             # HTML report is still uploaded on failure below for the full
@@ -255,7 +261,7 @@ jobs:
                   include_passed: false
 
             - name: Assemble debug APK
-              run: ./gradlew --no-daemon assembleDebug
+              run: ./gradlew assembleDebug
 
             - name: Upload debug APK
               uses: actions/upload-artifact@v6
@@ -294,7 +300,7 @@ jobs:
                   # tasks downstream of the merged manifest (R8, lint-vital, resource
                   # linking, bundling) come from the build cache. Store releases set
                   # their own epoch-second code locally (scripts/mobile-ship.sh).
-              run: ./gradlew --no-daemon assembleRelease bundleRelease assembleTuneRelease
+              run: ./gradlew assembleRelease bundleRelease assembleTuneRelease
 
             - name: Upload release APK
               uses: actions/upload-artifact@v6
