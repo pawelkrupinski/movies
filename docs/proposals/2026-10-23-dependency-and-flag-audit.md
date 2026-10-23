@@ -212,11 +212,14 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
   common 35/28/23/31/24 s default vs 50/37/64/51 s fast (C1-only is slower on its 1,713 CPU-bound specs);
   scrapers 19/11/10/11/12 vs 11/11/12/38; testkit 3–4 vs 2–4. SerialGC alone: common 37 s (and one 364 s run
   under a load spike), scrapers 11/13 s — no gain either. Startup is not where these forks spend their time.
-- **scalac:** `-Wunused:all` (matches the dead-code rule; land module by module because of `-Werror`),
-  `-Wsafe-init`, `-Wshadow:all`. **`-deprecation` for the whole build: landed 2026-10-23** — the build was
-  already warning-clean under it (0 fixes). Before, a deprecated use outside web still failed `-Werror`, but only
-  as "there was 1 deprecation warning; re-run with -deprecation" with no location. `-unchecked` not tried. Not
-  `-Yexplicit-nulls`.
+- **scalac `-Wunused:all`: done (2026-10-23)**, in ThisBuild in place of `-Wunused:imports`. ~118 warnings across
+  six modules (worker 52, web 22 plus Play's generated router, common 18, identity 11, scrapers 7, testkit 2; geodata
+  and e2e none), fixed module by module: dead privates, locals, parameters and givens deleted with their callers'
+  arguments; trait defaults meant to be overridden take `@unused`.
+- **`-deprecation` for the whole build: landed 2026-10-23** — the build was already warning-clean under it (0 fixes).
+  Before, a deprecated use outside web still failed `-Werror`, but only as "there was 1 deprecation warning; re-run
+  with -deprecation" with no location.
+- **scalac, still open:** `-Wsafe-init`, `-Wshadow:all`, `-unchecked`. Not `-Yexplicit-nulls`.
 - No `.scalafmt.conf` exists although sbt-scalafmt is installed. Either add one (`runner.dialect = scala3`) or drop
   the plugin.
 
