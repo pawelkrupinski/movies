@@ -23,7 +23,8 @@ both() { echo "order-phases: both -- $*" >&2; echo both; exit 0; }
 
 [ "$ref" = refs/heads/main ] && both "main runs every order row"
 [ -n "$sha" ] && [ -n "${GH_REPO:-}" ] || both "no ref, commit or repository to compare"
-mapfile -t prefixes < <(grep -v '^\s*#' "$paths_file" 2>/dev/null | sed '/^\s*$/d')
+prefixes=()
+while IFS= read -r line; do prefixes+=("$line"); done < <(grep -v '^[[:space:]]*#' "$paths_file" 2>/dev/null | sed '/^[[:space:]]*$/d')
 [ "${#prefixes[@]}" -gt 0 ] || both "no order paths readable at $paths_file"
 
 # allow-silenced: a read that fails is never "nothing changed" -- it runs both rows (the `|| both` below).
