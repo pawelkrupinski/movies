@@ -96,10 +96,20 @@ each time:
 
 Other runtime items:
 
-- **The AOT cache carries almost no profiles.** The training main (`tools.ClassArchiveTraining`) only loads
-  classes. Training on a representative workload (a fixture resolve; a few web requests) lets JEP 515 (25+) store
-  method profiles, which cuts JIT CPU at boot. Image builds get slower, and the `CompileThresholdScaling` tuning
-  needs re-measuring. Check what is stored with `-Xlog:aot`.
+- **The AOT cache carries almost no profiles [measured 2026-10-23, not adopted].** The training main
+  (`tools.ClassArchiveTraining`) only loads classes. On local JDK 27+35 under the worker's launcher options plus PL's
+  JAVA_OPTS, its cache holds 12,818 classes and 731 MethodTrainingData / 3,661 MethodCounters (`-Xlog:aot`), 125.5 MB.
+  Training the same class list and then the fixture pipeline (`FixtureTestWiring("08-06-2026").bootStartup()`, ~20 s)
+  stores 15,100 classes and 23,395 MethodTrainingData, 170 MB. It needs `MaxMetaspaceSize` above 128m while training;
+  at 128m the training run died of `OutOfMemoryError: Metaspace`. Measured on that same workload, the best case for a
+  trained cache, 10 interleaved runs each at load average 17-50:
+  user CPU median 58.9 -> 53.1 s (-10 %), workload 22.5 -> 19.7 s, `CITime` total 23.1 -> 21.0 s, peak RSS the same
+  (~846 MB). Tier-3 compiles drop 15k -> 2.2k because replayed profiles skip the profiling tier.
+  The same trained cache with `-XX:-AOTReplayTraining` was worse than today's (user ~68 s), so the extra classes alone
+  do not help; the replayed profiles do. Not adopted: the gain is an upper bound (training and measuring on one
+  workload, while prod boots against Mongo). The image would also need to carry the fixture corpus and the test-side
+  wiring to train hermetically, plus ~30 s of build. Revisit if a production-shaped workload can run from `src/main`
+  without fixtures. The header mode and collector need no extra care: the training runs through the same launcher.
 - **`web.options` uses G1 on a ~384 MB heap.** SerialGC is likely cheaper there, as on the workers; it needs a
   canary for pause times. Not ZGC or Shenandoah at these heap sizes.
 - `worker.options` `SweeperThreshold=50`: the sweeper is gone, but its comment records a measured effect on 25.
