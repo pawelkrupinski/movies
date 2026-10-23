@@ -272,6 +272,78 @@ def unit_forgiven(unit: str, patterns, never=()) -> bool:
     return any(fnmatch.fnmatchcase(unit, pattern) for pattern in patterns)
 
 
+# -------------------------------------------------------------------------------------------------
+# Leniency -- NEW units, and a short ROUTINE list, without a per-host `restartable = '*'`
+# -------------------------------------------------------------------------------------------------
+#
+# ADDED 2026-10-23. A host with a narrow `restartableUnits` refused every closure that ADDED a unit
+# (a new timer, a new exporter) or touched a timer or this applier's own unit, as
+# `units_would_change` -- and the person then ran nix-env + switch-to-configuration by hand, which is
+# the exact hand step this module exists to end. Neither kind of change restarts anything that
+# holds state:
+#
+#   NEW UNITS (`--start-new-units`). A unit absent from the RUNNING unit tree has no process to
+#   disturb; starting it is the whole of its effect. It is named in the candidate's tree and not the
+#   running one -- by unit, not by path, so a new drop-in for an EXISTING unit is not "new". Its
+#   `.wants`/`.requires` link is forgiven with it, and so is a NEW `.wants` directory whose every
+#   entry is forgiven. Mounts and swaps are excluded: mounting something changes what an existing
+#   process sees at a path.
+#
+#   ROUTINE UNITS (`--routine`, globs). Units whose stop/start/restart -- and changed-but-skipped,
+#   which is how this applier's own unit (`restartIfChanged = false`) arrives -- disturbs nothing
+#   anybody depends on: timers, exporters, the applier itself. A routine timer also covers its
+#   same-named `.service`, STRUCTURALLY ONLY: a changed oneshot between firings is inert, but if
+#   dry-activate says it would restart (it is running now -- a backup mid-flight), that is refused
+#   on both sides.
+#
+# NEITHER CAN REACH A STATEFUL SERVICE. `never` outranks both, as it outranks every allow-list, and
+# STATEFUL_UNITS is a floor under these two rules that no host setting can widen -- so `routine =
+# [ "*" ]` written by mistake still cannot restart postgres. `restartable` is NOT fenced by it: that
+# list is a host's own explicit, reviewed decision (monitoring-1 names prometheus.service in it).
+#
+# PORTED FROM bitcashier's applier on the same day, rules and floor unchanged; bitcashier's prover
+# drives the same functions, test/test_auto_apply_classify.py drives them here.
+STATEFUL_UNITS = (
+    "postgresql*", "pgbouncer*", "mongod.service", "mongodb.service", "bitcoind*", "vault*",
+    "consul*", "nomad*", "k3s*", "containerd*", "docker*", "podman*", "redis*", "etcd*", "sshd*",
+    "haproxy*", "forgejo*", "gitea-runner-*", "prometheus.service", "alertmanager.service",
+    "victorialogs*", "loki*", "borg*", "*.mount", "*.automount", "*.swap",
+)
+NEW_UNIT_EXCLUDED = ("*.mount", "*.automount", "*.swap")
+ENABLE_DIRECTORY_SUFFIXES = (".wants", ".requires", ".upholds")
+
+
+class Leniency(typing.NamedTuple):
+    new_units: frozenset = frozenset()       # units the running tree does not have at all
+    routine: tuple = ()                      # glob patterns: routine units
+    timer_services: frozenset = frozenset()  # `.service` of a routine timer; structural only
+
+    def forgives(self, unit: str, never=(), structural: bool = False) -> bool:
+        if any(fnmatch.fnmatchcase(unit, pattern) for pattern in tuple(never) + STATEFUL_UNITS):
+            return False
+        if unit in self.new_units:
+            return True
+        if any(fnmatch.fnmatchcase(unit, pattern) for pattern in self.routine):
+            return True
+        return structural and unit in self.timer_services
+
+
+def units_named(tree) -> set[str]:
+    return {unit for unit in (unit_named_by(path) for path in tree) if unit is not None}
+
+
+def leniency_for(running_tree, candidate_tree, start_new_units: bool, routine=()) -> Leniency:
+    """Which units the two lenient rules cover for THIS pair of trees. Pure, so it is provable."""
+    before, after = units_named(running_tree), units_named(candidate_tree)
+    new = frozenset(
+        unit for unit in after - before
+        if start_new_units and not any(fnmatch.fnmatchcase(unit, p) for p in NEW_UNIT_EXCLUDED))
+    timer_services = frozenset(
+        unit[:-len(".timer")] + ".service" for unit in after
+        if unit.endswith(".timer") and any(fnmatch.fnmatchcase(unit, p) for p in routine))
+    return Leniency(new, tuple(routine), timer_services)
+
+
 class Undetermined(Exception):
     """Something could not be measured. Never the same as finding nothing wrong."""
 
@@ -395,7 +467,7 @@ class UnitChanges(typing.NamedTuple):
 
 
 def unit_changes(running: pathlib.Path, candidate: pathlib.Path,
-                 restartable=(), never=()) -> UnitChanges:
+                 restartable=(), never=(), leniency: Leniency = Leniency()) -> UnitChanges:
     """Every difference in the unit tree, split by whether this host has declared it acceptable.
 
     THE FORGIVEN HALF IS KEPT RATHER THAN DISCARDED. A switch that restarts six units is not the
@@ -405,8 +477,7 @@ def unit_changes(running: pathlib.Path, candidate: pathlib.Path,
     question the journal can answer afterwards.
     """
     before, after = unit_tree(running), unit_tree(candidate)
-    blocked: list[str] = []
-    forgiven: list[str] = []
+    decided: dict[str, tuple[str, bool]] = {}
     for name in sorted(set(before) | set(after)):
         if before.get(name) == after.get(name):
             continue
@@ -417,10 +488,20 @@ def unit_changes(running: pathlib.Path, candidate: pathlib.Path,
         else:
             description = name
         unit = unit_named_by(name)
-        if unit is not None and unit_forgiven(unit, restartable, never):
-            forgiven.append(description)
-        else:
-            blocked.append(description)
+        decided[name] = (description, unit is not None and (
+            unit_forgiven(unit, restartable, never)
+            or leniency.forgives(unit, never, structural=True)))
+    # A NEW `.wants`/`.requires` directory names no unit and is otherwise never forgiven. It is
+    # forgiven here only when it is new and EVERYTHING inside it was forgiven -- i.e. it exists
+    # only to enable units the rules above already accepted.
+    for name, (description, ok) in list(decided.items()):
+        if ok or name in before or not name.endswith(ENABLE_DIRECTORY_SUFFIXES):
+            continue
+        inside = [ok_ for other, (_, ok_) in decided.items() if other.startswith(name + "/")]
+        if inside and all(inside):
+            decided[name] = (description, True)
+    blocked = [description for description, ok in decided.values() if not ok]
+    forgiven = [description for description, ok in decided.values() if ok]
     return UnitChanges(blocked, forgiven)
 
 
@@ -462,6 +543,10 @@ class DryActivate(typing.NamedTuple):
     reloads: list[str]           # unit names that would merely be reloaded
     unrecognised: list[str]      # lines no rule matched -- each one blocks
     forgiven: tuple = ()         # disturbances a host declared acceptable; reported, never decisive
+    # Every SYSTEM unit this classifier refused, as bare names. Only routine timers' services are
+    # fed back to the structural test (see classify_and_apply), so a running timer-driven job is
+    # refused by both halves instead of being forgiven structurally and raising a disagreement.
+    refused: tuple = ()
 
 
 def pid1_reexec_is_inert(candidate: pathlib.Path, pid1_exe="/proc/1/exe",
@@ -490,7 +575,8 @@ def pid1_reexec_is_inert(candidate: pathlib.Path, pid1_exe="/proc/1/exe",
         return False
 
 
-def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=()) -> DryActivate:
+def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=(),
+                 leniency: Leniency = Leniency()) -> DryActivate:
     """Run the dry activation and classify EVERY line it prints.
 
     Output goes to stderr and the exit code is 0 whatever it finds, so neither of those is the
@@ -511,10 +597,11 @@ def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=()
             raise LockContended(f"dry-activate exited {completed.returncode}: {output[:400]}")
         raise Undetermined(f"dry-activate exited {completed.returncode}: {output[:400]}")
     return classify_output(completed.stderr + "\n" + completed.stdout, restartable, never,
-                           pid1_unchanged=pid1_reexec_is_inert(candidate))
+                           pid1_unchanged=pid1_reexec_is_inert(candidate), leniency=leniency)
 
 
-def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False) -> DryActivate:
+def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False,
+                    leniency: Leniency = Leniency()) -> DryActivate:
     """Sort every line into disturbs-something, merely-reloads, or not-recognised.
 
     SPLIT OUT FROM THE SUBPROCESS ON PURPOSE, so that bin/prove-nixos-auto-apply can drive it with
@@ -531,6 +618,7 @@ def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False) -
     reloads: list[str] = []
     unrecognised: list[str] = []
     forgiven: list[str] = []
+    refused: list[str] = []
 
     for raw in text.splitlines():
         line = raw.strip()
@@ -550,18 +638,27 @@ def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False) -
                 match = pattern.match(line)
                 if match:
                     units = [unit.strip() for unit in match.group(1).split(",") if unit.strip()]
+                    # The lenient rules read the SYSTEM unit tree, so they say nothing about a
+                    # user unit of the same name.
+                    system_scope = "user units" not in pattern.pattern
                     if kind == "reload":
                         reloads.extend(units)
                     else:
                         for unit in units:
                             forgivable = (kind in FORGIVABLE_KINDS
                                           and unit_forgiven(unit, restartable, never))
+                            # changed-but-skipped is forgiven ONLY by the lenient rules (a routine
+                            # unit such as this applier's own, or a new one), never by restartable.
+                            if system_scope and kind in FORGIVABLE_KINDS + ("changed-but-skipped",):
+                                forgivable = forgivable or leniency.forgives(unit, never)
+                            if not forgivable and system_scope:
+                                refused.append(unit)
                             (forgiven if forgivable else disruptive).append(f"{kind} {unit}")
                     break
             else:
                 unrecognised.append(line)
 
-    return DryActivate(disruptive, reloads, unrecognised, tuple(forgiven))
+    return DryActivate(disruptive, reloads, unrecognised, tuple(forgiven), tuple(sorted(set(refused))))
 
 
 # -------------------------------------------------------------------------------------------------
@@ -784,6 +881,18 @@ class Verdict(typing.NamedTuple):
     forgiven: tuple = ()
 
 
+def structural_changes(running: pathlib.Path, candidate: pathlib.Path, dry: DryActivate,
+                       restartable=(), reload_forgiven=(), never=(),
+                       leniency: Leniency = Leniency()) -> UnitChanges:
+    """The unit-tree test, given what dry-activate refused. A routine timer's service that
+    dry-activate would RESTART (it is running now) is denied here too, so both halves refuse it
+    together instead of disagreeing. Split out so test/test_auto_apply_classify.py drives the code
+    that ships rather than a copy of it."""
+    refused_timer_services = tuple(unit for unit in dry.refused if unit in leniency.timer_services)
+    return unit_changes(running, candidate, set(restartable) | set(reload_forgiven),
+                        tuple(never) + refused_timer_services, leniency)
+
+
 def classify_and_apply(args, metrics: Metrics) -> Verdict:
     running = pathlib.Path("/run/current-system").resolve()
     booted = pathlib.Path("/run/booted-system").resolve()
@@ -823,11 +932,13 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
     # THE REDUNDANCY SURVIVES, which is the point of doing it this way rather than widening the
     # structural test: a changed unit that dry-activate mentions NOWHERE is still blocked and still
     # disagrees, and that is the dangerous case -- a change systemd did not tell us about.
-    dry = dry_activate(candidate, args.dry_activate_timeout, args.restartable, args.never)
+    leniency = leniency_for(unit_tree(running), unit_tree(candidate),
+                            args.start_new_units, tuple(sorted(args.routine)))
+    dry = dry_activate(candidate, args.dry_activate_timeout, args.restartable, args.never, leniency)
     reload_forgiven = {unit for unit in dry.reloads
                        if unit_forgiven(unit, args.reloadable, args.never)}
-    changes = unit_changes(running, candidate,
-                           set(args.restartable) | reload_forgiven, args.never)
+    changes = structural_changes(running, candidate, dry, args.restartable, reload_forgiven,
+                                 args.never, leniency)
     units = changes.blocked
     forgiven = tuple(sorted(set(changes.forgiven) | set(dry.forgiven)))
 
@@ -888,7 +999,7 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
     # metrics file is rewritten from scratch by the next pass.
     detail = ("restarted " + ", ".join(forgiven[:8])
               + (f" and {len(forgiven) - 8} more" if len(forgiven) > 8 else "")
-              + " (declared restartable on this host)") if forgiven else ""
+              + " (declared restartable, new or routine on this host)") if forgiven else ""
     return Verdict("applied", "", detail, revision, str(candidate), False, activation_changed,
                    (), forgiven)
 
@@ -908,6 +1019,13 @@ def main() -> int:
                              "stopped, started or restarted by an unattended switch")
     parser.add_argument("--never-disturb", dest="never", default="",
                         help="comma-separated glob patterns naming units NO allow-list may forgive")
+    parser.add_argument("--start-new-units", action="store_true",
+                        help="forgive units the running system does not have at all (never "
+                             "mounts/swaps, never STATEFUL_UNITS, never --never-disturb)")
+    parser.add_argument("--routine", default="",
+                        help="comma-separated glob patterns naming units whose restart or "
+                             "changed-but-skipped state disturbs nothing (timers, exporters, this "
+                             "applier); fenced by STATEFUL_UNITS and --never-disturb")
     parser.add_argument("--dry-activate-timeout", type=int, default=600)
     parser.add_argument("--no-rollback-on-failure", dest="rollback_on_failure",
                         action="store_false", default=True)
@@ -917,6 +1035,7 @@ def main() -> int:
     args.reloadable = {p.strip() for p in args.reloadable.split(",") if p.strip()}
     args.restartable = {p.strip() for p in args.restartable.split(",") if p.strip()}
     args.never = {p.strip() for p in args.never.split(",") if p.strip()}
+    args.routine = {p.strip() for p in args.routine.split(",") if p.strip()}
 
     metrics = Metrics(pathlib.Path(args.metrics_file), args.host)
     started = int(time.time())

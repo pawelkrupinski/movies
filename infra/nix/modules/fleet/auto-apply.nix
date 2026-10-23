@@ -217,6 +217,40 @@ in
       '';
     };
 
+    startNewUnits = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Activate a closure whose only unit changes are units the RUNNING system does not have at
+        all (and the links that enable them), even when no allow-list names them. A new unit has
+        no process to disturb; starting it is its whole effect. Mounts, swaps, the applier's
+        STATEFUL_UNITS floor and `neverDisturbUnits` are never covered. Added 2026-10-23: refusing
+        new timers as `units_would_change` sent people to hand-run nix-env + switch.
+      '';
+    };
+
+    routineUnits = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "*.timer"
+        "*-exporter.service"
+        "nixos-auto-apply.service"
+        "nixos-auto-apply.path"
+      ];
+      description = ''
+        Glob patterns naming units whose stop/start/restart -- or changed-but-skipped state, which
+        is how this applier's own `restartIfChanged = false` unit arrives -- disturbs nothing
+        anybody depends on. A routine timer also covers its same-named `.service` while that
+        service is idle (dry-activate naming it as a restart is still refused).
+
+        FENCED, unlike `restartableUnits`: `neverDisturbUnits` and the applier's built-in
+        STATEFUL_UNITS floor (mongodb, k3s, sshd, prometheus, alertmanager, mounts, ...)
+        outrank it, so `[ "*" ]` here still cannot restart a database. Naming
+        `nixos-auto-apply.service` is what lets a change to `fleet.autoApply.*` roll itself out;
+        drop it to restore the old "the applier never applies itself" rule on a host.
+      '';
+    };
+
     dryRun = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -343,6 +377,9 @@ in
             "--restartable ${lib.escapeShellArg (lib.concatStringsSep "," cfg.restartableUnits)}"
           ++ lib.optional (cfg.neverDisturbUnits != [ ])
             "--never-disturb ${lib.escapeShellArg (lib.concatStringsSep "," cfg.neverDisturbUnits)}"
+          ++ lib.optional cfg.startNewUnits "--start-new-units"
+          ++ lib.optional (cfg.routineUnits != [ ])
+            "--routine ${lib.escapeShellArg (lib.concatStringsSep "," cfg.routineUnits)}"
           ++ lib.optional cfg.dryRun "--dry-run"
           ++ lib.optional (!cfg.rollbackOnFailure) "--no-rollback-on-failure");
 

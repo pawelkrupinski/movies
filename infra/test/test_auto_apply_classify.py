@@ -287,5 +287,118 @@ class SystemdReexecAfterStoreOptimise(unittest.TestCase):
         self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1.parent / "absent", conf))
 
 
+
+class Leniency(unittest.TestCase):
+    """NEW units and ROUTINE units (timers, exporters, the applier itself), added 2026-10-23.
+
+    monitoring-1 refused a closure that only ADDED units as `units_would_change`, and the person ran
+    nix-env + switch-to-configuration by hand. These drive the shipped chain -- `leniency_for` ->
+    `classify_output` -> `structural_changes` -- with NO restartable list, and require BOTH halves to
+    agree: equal answers are the only ones that are not `classifier_disagreement`.
+    """
+
+    ROUTINE = ("*.timer", "prometheus-*-exporter.service", "nixos-auto-apply.service")
+    RUNNING = {"sshd.service": "/nix/store/s", "multi-user.target.wants/sshd.service": "/nix/store/s",
+               "mongodump.timer": "/nix/store/t1", "mongodump.service": "/nix/store/d1",
+               "nixos-auto-apply.service": "/nix/store/a1", "mongodb.service": "/nix/store/m1"}
+
+    def setUp(self):
+        self.base = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.base)
+        self.running = self._tree("running", {})
+
+    def _tree(self, name, changes):
+        units = dict(self.RUNNING)
+        for key, value in changes.items():
+            if value is None:
+                units.pop(key, None)
+            else:
+                units[key] = value
+        unit_dir = self.base / name / "etc" / "systemd" / "system"
+        unit_dir.mkdir(parents=True)
+        for unit, target in units.items():
+            (unit_dir / unit).parent.mkdir(parents=True, exist_ok=True)
+            (unit_dir / unit).symlink_to(target)
+        return self.base / name
+
+    def _both(self, changes, text, start_new=True, routine=(), never=()):
+        """(structural_noop, dry_noop), each computed by the code that ships."""
+        candidate = self._tree(f"c{len(list(self.base.iterdir()))}", changes)
+        leniency = applier.leniency_for(applier.unit_tree(self.running),
+                                        applier.unit_tree(candidate), start_new, tuple(routine))
+        dry = applier.classify_output(text, (), never, leniency=leniency)
+        changed = applier.structural_changes(self.running, candidate, dry, (), (), never, leniency)
+        return not changed.blocked, not dry.disruptive and not dry.unrecognised
+
+    def test_a_new_timer_applies(self):
+        changes = {"gc.timer": "/nix/store/g", "gc.service": "/nix/store/gs",
+                   "timers.target.wants/gc.timer": "/nix/store/g"}
+        self.assertEqual(self._both(changes, "would start the following units: gc.timer"),
+                         (True, True))
+        self.assertEqual(self._both(changes, "would start the following units: gc.timer",
+                                    start_new=False), (False, False))
+
+    def test_a_new_wants_directory_needs_every_entry_new(self):
+        only_new = {"exporter.service": "/nix/store/e",
+                    "metrics.target.wants/exporter.service": "/nix/store/e"}
+        self.assertEqual(self._both(only_new, "would start the following units: exporter.service"),
+                         (True, True))
+        with_existing = dict(only_new, **{"metrics.target.wants/sshd.service": "/nix/store/s"})
+        self.assertEqual(
+            self._both(with_existing, "would start the following units: exporter.service")[0], False)
+
+    def test_new_stateful_units_and_mounts_are_still_refused(self):
+        self.assertEqual(self._both({"mongod.service": "/nix/store/x"},
+                                    "would start the following units: mongod.service"),
+                         (False, False))
+        self.assertEqual(self._both({"mnt-data.mount": "/nix/store/x"},
+                                    "would start the following units: mnt-data.mount"),
+                         (False, False))
+
+    def test_a_new_drop_in_for_an_existing_unit_is_not_new(self):
+        self.assertEqual(self._both({"sshd.service.d/override.conf": "/nix/store/o"},
+                                    "would restart the following units: sshd.service"),
+                         (False, False))
+
+    def test_a_routine_timer_and_its_idle_service_apply(self):
+        changes = {"mongodump.timer": "/nix/store/t2", "mongodump.service": "/nix/store/d2"}
+        line = "would restart the following units: mongodump.timer"
+        self.assertEqual(self._both(changes, line, routine=self.ROUTINE), (True, True))
+        self.assertEqual(self._both(changes, line), (False, False))
+
+    def test_a_routine_timers_running_service_is_refused_by_both(self):
+        changes = {"mongodump.timer": "/nix/store/t2", "mongodump.service": "/nix/store/d2"}
+        line = "would restart the following units: mongodump.service, mongodump.timer"
+        self.assertEqual(self._both(changes, line, routine=self.ROUTINE), (False, False))
+
+    def test_the_applier_applies_itself_only_when_routine_names_it(self):
+        changes = {"nixos-auto-apply.service": "/nix/store/a2"}
+        line = "would NOT restart the following changed units: nixos-auto-apply.service"
+        self.assertEqual(self._both(changes, line, routine=self.ROUTINE), (True, True))
+        self.assertEqual(self._both(changes, "", routine=self.ROUTINE), (True, True),
+                         "a direct invocation, where dry-activate is silent about the unit")
+        self.assertEqual(self._both(changes, line, routine=("*.timer",)), (False, False))
+
+    def test_routine_star_cannot_restart_a_database(self):
+        self.assertEqual(self._both({"mongodb.service": "/nix/store/m2"},
+                                    "would restart the following units: mongodb.service",
+                                    routine=("*",)), (False, False))
+
+    def test_never_disturb_outranks_routine(self):
+        changes = {"mongodump.timer": "/nix/store/t2"}
+        self.assertEqual(self._both(changes, "would restart the following units: mongodump.timer",
+                                    routine=self.ROUTINE, never=("mongodump.*",)), (False, False))
+
+    def test_a_removed_unit_is_not_new(self):
+        self.assertEqual(self._both({"mongodump.timer": None, "mongodump.service": None},
+                                    "would stop the following units: mongodump.timer"),
+                         (False, False))
+
+    def test_user_units_are_never_lenient(self):
+        got = applier.classify_output(
+            "would restart the following user units: gc.timer",
+            leniency=applier.Leniency(routine=("*.timer",)))
+        self.assertTrue(got.disruptive)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
