@@ -1,12 +1,13 @@
 import XCTest
 
+@MainActor
 final class FilterSheetUITests: XCTestCase {
     var app: XCUIApplication!
 
     /// Deliberately does NOT launch: two of the tests below need a launch of
     /// their own (one with the Filtry hook set, one without), and relaunching an
     /// already-launched app just to change its environment doubles every run.
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
     }
@@ -19,7 +20,7 @@ final class FilterSheetUITests: XCTestCase {
                       "Grid never appeared", file: file, line: line)
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

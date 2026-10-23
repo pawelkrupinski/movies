@@ -14,6 +14,7 @@ import XCTest
 /// The fixture (`KINOWO_UITEST_ROOM_SHOWTIMES`) gives each pill its own room,
 /// so a bubble is matched to its pill by text; `KINOWO_UITEST_PIN_ROOM_TOOLTIPS`
 /// starts every pill held, because XCUITest queries only after a press ends.
+@MainActor
 final class RoomTooltipUITests: XCTestCase {
     var app: XCUIApplication!
 
@@ -25,7 +26,7 @@ final class RoomTooltipUITests: XCTestCase {
         ("23:59", "Sala 4"),
     ]
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app, environment: [
@@ -40,7 +41,7 @@ final class RoomTooltipUITests: XCTestCase {
         XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testRoomTooltipsSitOverTheirPillsWithinTheCard() throws {
         let card = firstFilmCard()

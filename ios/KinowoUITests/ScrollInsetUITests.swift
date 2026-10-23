@@ -12,10 +12,11 @@ import XCTest
 /// report) and assert the top-left card's resting position neither jumps up
 /// nor ends up behind the bar. The Filtry button (bottom-right of the bar)
 /// stands in for the bar's bottom edge.
+@MainActor
 final class ScrollInsetUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
@@ -24,7 +25,7 @@ final class ScrollInsetUITests: XCTestCase {
                       "Grid never appeared")
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

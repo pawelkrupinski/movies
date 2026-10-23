@@ -23,6 +23,7 @@ import XCTest
 /// below is the one that actually pins the decoupling: a country/language
 /// combination (UK + German) that was impossible to express before this
 /// change, and a language that survives an in-app country switch.
+@MainActor
 final class LocalizationUITests: XCTestCase {
 
     private var app: XCUIApplication!
@@ -39,7 +40,7 @@ final class LocalizationUITests: XCTestCase {
     /// language. Left alone, this hands whichever test runs first in the next
     /// suite a mis-localized app. One throwaway Polish launch here closes that
     /// window.
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
         let reset = XCUIApplication()
         reset.launchArguments += [

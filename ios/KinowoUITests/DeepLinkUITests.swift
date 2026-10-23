@@ -9,10 +9,11 @@ import XCTest
 /// Exercises the cold-launch deferral path specifically: the link fires before
 /// the repertoire loads, so the film push waits for `pendingDeepLink` to be
 /// replayed once the fixture films land.
+@MainActor
 final class DeepLinkUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.pinCountryAndLanguage(app)
@@ -20,7 +21,7 @@ final class DeepLinkUITests: XCTestCase {
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

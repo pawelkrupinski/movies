@@ -10,6 +10,7 @@ import XCTest
 /// simulator. Forcing the city — and serving the offline fixture repertoire, so
 /// nothing rides on live network timing or on the listing being non-empty late
 /// at night — is what makes them reproducible.
+@MainActor
 enum FixtureLaunch {
 
     /// Launch `app` on `city`'s fixture listing (the caller waits for the grid).

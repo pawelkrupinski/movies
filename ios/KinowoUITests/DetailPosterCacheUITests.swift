@@ -18,10 +18,11 @@ import XCTest
 /// screen reading the cache shows the poster and a screen re-downloading
 /// can only show the placeholder. Before the fix this suite fails on the
 /// detail screen and passes on the grid; after it, both pass.
+@MainActor
 final class DetailPosterCacheUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(
@@ -33,7 +34,7 @@ final class DetailPosterCacheUITests: XCTestCase {
                       "Grid never appeared")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testGridCardRendersTheCachedPoster() throws {
         // The control leg: the card was already disk-first, so this passes

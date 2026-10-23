@@ -9,7 +9,7 @@ import Foundation
 #endif
 
 /// What one `ConditionalListEndpoint.fetch` came back with.
-enum ConditionalFetchOutcome<Payload> {
+enum ConditionalFetchOutcome<Payload: Sendable>: Sendable {
     /// A 2xx body, already written to the disk cache.
     case fresh([Payload])
     /// 304: the cached body is current. Carries that body when the caller
@@ -28,7 +28,7 @@ enum ConditionalFetchOutcome<Payload> {
 /// lands after a switch re-pointed it. The stores keep only their own
 /// published state and what they do with a payload.
 @MainActor
-final class ConditionalListEndpoint<Payload: Codable> {
+final class ConditionalListEndpoint<Payload: Codable & Sendable> {
     private(set) var base: URL
     private(set) var citySlug: String
     private(set) var url: URL

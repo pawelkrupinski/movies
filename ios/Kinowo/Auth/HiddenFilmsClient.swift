@@ -28,7 +28,7 @@ enum HiddenFilmsFetchResult: Equatable {
 /// hiddenFilms an older build still PUTs there. `disabledCinemas` never appears here at all —
 /// it stopped being a server-synced field before this client existed (see
 /// `UserPreferences.setDisabledCinemas`).
-protocol HiddenFilmsClient: AnyObject {
+protocol HiddenFilmsClient: AnyObject, Sendable {
     func fetch(country: String, etag: String?, lastModified: String?) async throws -> HiddenFilmsFetchResult
     func hide(country: String, title: String) async throws -> HiddenFilmsResult
     func unhide(country: String, title: String) async throws -> HiddenFilmsResult

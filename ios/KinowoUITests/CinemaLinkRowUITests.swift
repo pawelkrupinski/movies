@@ -13,16 +13,17 @@ import XCTest
 /// behind it share; a cinema with its own URL keeps its own name. Driven by
 /// the `KINOWO_UITEST_SHARED_CINEMA_URL` fixture, whose day carries Multikino
 /// Alfa + Multikino Beta behind one URL and Kino Solo behind its own.
+@MainActor
 final class CinemaLinkRowUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_SHARED_CINEMA_URL": "1"])
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testSharedCinemaURLCollapsesToOneChainLink() throws {
         let card = FixtureLaunch.firstFilmCard(app)

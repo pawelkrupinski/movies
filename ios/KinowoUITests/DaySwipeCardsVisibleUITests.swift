@@ -14,16 +14,17 @@ import XCTest
 ///
 /// Driven warm (`KINOWO_UITEST_FIXTURE`) with a today+tomorrow fixture so both
 /// the start day and the swiped-to day carry cards.
+@MainActor
 final class DaySwipeCardsVisibleUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

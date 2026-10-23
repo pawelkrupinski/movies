@@ -18,16 +18,17 @@ import XCTest
 ///
 /// Driven warm (`KINOWO_UITEST_FIXTURE=1`) so a synthetic fixture mounts a dense
 /// grid at first paint regardless of the live repertoire / hour.
+@MainActor
 final class CardsVisibleUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

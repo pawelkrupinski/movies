@@ -1,11 +1,14 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Intercepts every request on a session configured with it and answers from
 /// `handler`, so a store or HTTP client can be driven against canned HTTP
 /// responses without touching the network. Shared by every test target
 /// through `KinowoTestSupport`.
 public final class URLProtocolStub: URLProtocol {
-    public struct Response {
+    public struct Response: Sendable {
         public let statusCode: Int
         public let headers: [String: String]
         public let body: Data
@@ -21,10 +24,17 @@ public final class URLProtocolStub: URLProtocol {
         }
     }
 
-    public static var handler: ((URLRequest) -> Response)? {
-        didSet { requestLog.withLock { $0 = [] } }
+    /// Set by a test, read on URLSession's loading threads — so `@Sendable`,
+    /// and kept behind a lock.
+    public static var handler: (@Sendable (URLRequest) -> Response)? {
+        get { installedHandler.withLock { $0 } }
+        set {
+            installedHandler.withLock { $0 = newValue }
+            requestLog.withLock { $0 = [] }
+        }
     }
 
+    private static let installedHandler = LockedValue<(@Sendable (URLRequest) -> Response)?>(nil)
     private static let requestLog = LockedValue<[URL]>([])
 
     /// Every URL requested since `handler` was last set — lets a test wait
@@ -48,10 +58,10 @@ public final class URLProtocolStub: URLProtocol {
         }
         Self.requestLog.withLock { $0.append(url) }
         let response = handler(request)
-        let httpResponse = HTTPURLResponse(
-            url: url, statusCode: response.statusCode,
-            httpVersion: "HTTP/1.1", headerFields: response.headers)!
-        let deliver = {
+        let deliver: @Sendable () -> Void = {
+            let httpResponse = HTTPURLResponse(
+                url: url, statusCode: response.statusCode,
+                httpVersion: "HTTP/1.1", headerFields: response.headers)!
             self.client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
             self.client?.urlProtocol(self, didLoad: response.body)
             self.client?.urlProtocolDidFinishLoading(self)
@@ -66,15 +76,7 @@ public final class URLProtocolStub: URLProtocol {
     override public func stopLoading() {}
 }
 
-/// A value behind a lock: the stub's request log (and anything a test's
-/// `handler` records) is written on URLSession's loading threads and read from
-/// the test's.
-public final class LockedValue<Value>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value: Value
-    public init(_ value: Value) { self.value = value }
-    public func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
-        lock.lock(); defer { lock.unlock() }
-        return body(&value)
-    }
-}
+/// A delayed answer is delivered from another thread. Safe: the stub keeps no
+/// state of its own (the shared handler and log sit behind locks), and the
+/// `request` / `client` it reads are fixed when URLSession creates it.
+extension URLProtocolStub: @unchecked Sendable {}

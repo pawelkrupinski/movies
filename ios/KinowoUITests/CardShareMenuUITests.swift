@@ -8,10 +8,11 @@ import XCTest
 /// a hold anywhere — including on a pill — popped the share menu over the room.
 ///
 /// Mirrors the Android `FilmCardShareMenuTest`.
+@MainActor
 final class CardShareMenuUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_SEED_POSTER": "1"])
@@ -24,7 +25,7 @@ final class CardShareMenuUITests: XCTestCase {
         XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testLongPressPosterOpensShareMenu() throws {
         // The poster is the top of the card (dy 0.18), the same spot

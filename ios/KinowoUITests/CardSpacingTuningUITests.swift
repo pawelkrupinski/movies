@@ -24,10 +24,11 @@ import XCTest
 /// real-view element (a cinema section header / the detail title). Those
 /// sliders + the `CinemaHeaderStyle` / `FilmDetailStyle` wiring didn't exist
 /// before — fail before, pass after.
+@MainActor
 final class CardSpacingTuningUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.pinCountryAndLanguage(app)
@@ -35,7 +36,7 @@ final class CardSpacingTuningUITests: XCTestCase {
         app.launch()
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testSectionSpacingSliderWidensTitleToMetaGap() throws {
         let card = firstCard()

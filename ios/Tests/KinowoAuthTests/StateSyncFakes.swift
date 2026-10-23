@@ -198,6 +198,8 @@ final class ManualDebounceScheduler: DebounceScheduler {
         nextID += 1
         let id = nextID
         scheduled.append((id, action))
+        // Only StateSyncService cancels or releases the token, on the main actor; the (checked)
+        // assumption traps rather than races if that ever changes.
         return AnyCancellable { [weak self] in MainActor.assumeIsolated { self?.scheduled.removeAll { $0.id == id } } }
     }
 

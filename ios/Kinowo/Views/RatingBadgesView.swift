@@ -86,6 +86,7 @@ struct RatingBadgesView: View {
     }
 }
 
+@MainActor
 private enum Badge {
     /// Two-tab pill: colored label on the left, dark value on the
     /// right. `clipShape(RoundedRectangle)` is what gives the outer

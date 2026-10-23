@@ -6,10 +6,11 @@ import XCTest
 /// phone-sized window inside a black surround — and so would still show two
 /// columns on a screen that holds three. On a regular iPhone in portrait both
 /// checks hold trivially; run it on the "iPhone Duo" simulator to cover the fold.
+@MainActor
 final class WindowFillsScreenUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
@@ -23,7 +24,7 @@ final class WindowFillsScreenUITests: XCTestCase {
                       "Grid never filled after switching to Wszystkie")
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

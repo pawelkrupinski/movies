@@ -14,24 +14,24 @@ final class CountrySwitchTests: XCTestCase {
     private var defaults: UserDefaults!
     private let directory = ConditionalPayloadCache<Film>.scratchDirectory()
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: "CountrySwitchTests")
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: "CountrySwitchTests")
         ConditionalPayloadCache<Film>.discardScratchDirectory(directory)
         URLProtocolStub.handler = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testCitySelectedAfterACountrySwitchIsFetchedFromTheNewDeployment() async throws {
         let poland = Country.all.first { $0.code == "pl" }!
         let unitedKingdom = Country.all.first { $0.code == "uk" }!
-        let requestedHosts = LockedHosts()
+        let requestedHosts = LockedValue<[String]>([])
         URLProtocolStub.handler = { request in
-            requestedHosts.append(request.url!.host!)
+            requestedHosts.withLock { $0.append(request.url!.host!) }
             return .init(statusCode: 404, headers: [:], body: Data())
         }
         let session = URLProtocolStub.session()
@@ -48,14 +48,7 @@ final class CountrySwitchTests: XCTestCase {
         XCTAssertTrue(fetched)
 
         XCTAssertEqual(prefs.selectedCountry, unitedKingdom)
-        XCTAssertFalse(requestedHosts.all.isEmpty)
-        XCTAssertEqual(Set(requestedHosts.all), [unitedKingdom.baseURL.host!])
+        XCTAssertFalse(requestedHosts.withLock { $0 }.isEmpty)
+        XCTAssertEqual(Set(requestedHosts.withLock { $0 }), [unitedKingdom.baseURL.host!])
     }
-}
-
-private final class LockedHosts: @unchecked Sendable {
-    private let lock = NSLock()
-    private var hosts: [String] = []
-    func append(_ host: String) { lock.lock(); hosts.append(host); lock.unlock() }
-    var all: [String] { lock.lock(); defer { lock.unlock() }; return hosts }
 }

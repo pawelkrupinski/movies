@@ -6,13 +6,14 @@ import XCTest
 /// regions". A place no county splits off (Builth Wells) stays a direct row
 /// on the same second-step list. This runs against the bundled seed, so the
 /// names it taps must still be what the seed says.
+@MainActor
 final class CountySubregionPickerUITests: XCTestCase {
     var app: XCUIApplication!
 
     /// The one Welsh place the seed files under no county.
     private static let directCity = "Builth Wells area"
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments += ["-UITests", "1"]
@@ -54,7 +55,7 @@ final class CountySubregionPickerUITests: XCTestCase {
         wales.tap()
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testGlamorganOpensItsOwnCitiesAndTheOtherCountiesStayFlat() throws {
         // "Builth Wells area" (in no county group, reading as a direct row)

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import XCTest
 
 /// Every `http:NNN` row of `source` in the retry-classification table, answered

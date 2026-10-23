@@ -64,7 +64,7 @@ final class AuthService: NSObject, ObservableObject {
 
     // MARK: - Apple Sign-In
 
-    private nonisolated(unsafe) var appleSignInContinuation: CheckedContinuation<ASAuthorization, Error>?
+    private var appleSignInContinuation: CheckedContinuation<ASAuthorization, Error>?
 
     func signInWithApple() async {
         // The Apple sheet briefly backgrounds the app; skip the nearer-city
@@ -158,14 +158,16 @@ extension AuthService: ASWebAuthenticationPresentationContextProviding {
 }
 
 // MARK: - ASAuthorizationControllerDelegate
+// The SDK declares the delegate main-actor (NS_SWIFT_UI_ACTOR), so its callbacks
+// share `AuthService`'s isolation and touch the continuation directly.
 
 extension AuthService: ASAuthorizationControllerDelegate {
-    nonisolated func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         appleSignInContinuation?.resume(returning: authorization)
         appleSignInContinuation = nil
     }
 
-    nonisolated func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         appleSignInContinuation?.resume(throwing: error)
         appleSignInContinuation = nil
     }

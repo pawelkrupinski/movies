@@ -18,14 +18,14 @@ final class ClientSupportStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    private func check(appVersion: String, respond: ((URLRequest) -> URLProtocolStub.Response)?) async -> ClientSupportStore {
+    private func check(appVersion: String, respond: (@Sendable (URLRequest) -> URLProtocolStub.Response)?) async -> ClientSupportStore {
         URLProtocolStub.handler = respond
         let store = ClientSupportStore(session: URLProtocolStub.session(), appVersion: appVersion)
         await store.check(baseURL: deployment)
         return store
     }
 
-    private func ok(_ body: String) -> (URLRequest) -> URLProtocolStub.Response {
+    private func ok(_ body: String) -> @Sendable (URLRequest) -> URLProtocolStub.Response {
         { _ in .init(statusCode: 200, headers: ["Content-Type": "application/json"], body: Data(body.utf8)) }
     }
 
@@ -47,7 +47,8 @@ final class ClientSupportStoreTests: XCTestCase {
     }
 
     func testAServerErrorDoesNotRaiseTheGate() async {
-        let store = await check(appVersion: "0.1") { _ in .init(statusCode: 503, headers: [:], body: Data(self.liveBody.utf8)) }
+        let body = Data(liveBody.utf8)
+        let store = await check(appVersion: "0.1") { _ in .init(statusCode: 503, headers: [:], body: body) }
         XCTAssertNil(store.requiredUpdate)
     }
 

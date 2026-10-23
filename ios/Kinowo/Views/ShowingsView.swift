@@ -225,7 +225,7 @@ private struct ShowtimeBadge: View {
     @State private var pillMidX: CGFloat = 0
 
     /// Named coordinate space `ShowingsView` pins to the card's content box.
-    static let cardCoordinateSpace = "kinowoFilmCardShowings"
+    nonisolated static let cardCoordinateSpace = "kinowoFilmCardShowings"
 
     @Environment(\.listingViewportWidth) private var viewportWidth
 

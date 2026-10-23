@@ -16,10 +16,11 @@ import XCTest
 /// in the top-bar region must NOT scroll the grid — i.e. the grid's pan
 /// gesture must not reach up under the bar. With the bug the drag scrolls the
 /// grid; with the bar's region clear of the scroll gesture it doesn't.
+@MainActor
 final class DayPillTapUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
@@ -33,7 +34,7 @@ final class DayPillTapUITests: XCTestCase {
         XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

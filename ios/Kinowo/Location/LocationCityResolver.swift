@@ -8,17 +8,16 @@ import Foundation
 import CoreLocation
 import os
 
-/// The two CoreLocation commands the city gate issues. Behind a seam so a test
-/// can drive the resolver's timing — a slow permission grant, a fix that never
-/// lands — without a device, a dialog, or a real fix. `CLLocationManager` is
-/// the production implementation; it already has all three members.
+/// The two CoreLocation commands the city gate issues, and the authorization
+/// status. Behind a seam so a test can drive the resolver's timing — a slow
+/// permission grant, a fix that never lands — without a device, a dialog, or a
+/// real fix. `CLLocationManager` is the production implementation; it already
+/// has all three members. The fix
+/// CoreLocation already holds is NOT read through this seam but through the
+/// resolver's `readHeldFix`, which runs off the main thread and so must be
+/// `@Sendable` — this seam is main-actor-only and need not be.
 protocol LocationRequesting: AnyObject {
     var authorizationStatus: CLAuthorizationStatus { get }
-    /// The most recent fix CoreLocation already holds, if any. Usually answers
-    /// outright — see `requestFix()` — but reading it is a synchronous round
-    /// trip to locationd, so never on the main thread (see `heldFix()`).
-    /// Production reads it from a separate manager (see the convenience init).
-    var location: CLLocation? { get }
     func requestWhenInUseAuthorization()
     func requestLocation()
 }
@@ -113,13 +112,15 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
-    /// `readHeldFix` defaults to reading `requester.location` (off the main thread).
-    init(requester: LocationRequesting, readHeldFix: (@Sendable () -> CLLocation?)? = nil,
+    /// `readHeldFix` answers the most recent fix CoreLocation already holds, if
+    /// any. Usually it answers outright — see `requestFix()` — but it is a
+    /// synchronous round trip to locationd, so it is only ever called off the
+    /// main thread (see `heldFix()`).
+    init(requester: LocationRequesting, readHeldFix: @escaping @Sendable () -> CLLocation?,
          authorizationTimeout: TimeInterval = 60, fixTimeout: TimeInterval = 8,
          staleFixReadTimeout: TimeInterval = 2) {
         self.requester = requester
-        let boxed = UncheckedRequester(requester)
-        self.readHeldFix = readHeldFix ?? { boxed.value.location }
+        self.readHeldFix = readHeldFix
         self.authorizationTimeout = authorizationTimeout
         self.fixTimeout = fixTimeout
         self.staleFixReadTimeout = staleFixReadTimeout
@@ -388,25 +389,19 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         }
     }
 }
-/// Carries a test's requester onto the detached task that reads its held fix.
-/// The recording fake is not `Sendable`; its `location` is a plain read.
-private struct UncheckedRequester: @unchecked Sendable {
-    let value: LocationRequesting
-    init(_ value: LocationRequesting) { self.value = value }
-}
-
 /// Resumes a continuation with whichever answer arrives first — the held-fix
 /// read or its deadline — and drops the other.
-private final class FirstAnswer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<CLLocation?, Never>?
-    init(_ continuation: CheckedContinuation<CLLocation?, Never>) { self.continuation = continuation }
+private final class FirstAnswer: Sendable {
+    private let continuation: OSAllocatedUnfairLock<CheckedContinuation<CLLocation?, Never>?>
+    init(_ continuation: CheckedContinuation<CLLocation?, Never>) {
+        self.continuation = OSAllocatedUnfairLock(initialState: continuation)
+    }
 
     func resume(_ answer: CLLocation?) {
-        lock.lock()
-        let pending = continuation
-        continuation = nil
-        lock.unlock()
+        let pending = continuation.withLock { pending in
+            defer { pending = nil }
+            return pending
+        }
         pending?.resume(returning: answer)
     }
 }

@@ -14,16 +14,17 @@ import XCTest
 /// Driven warm (`KINOWO_UITEST_FIXTURE`) with a today+tomorrow fixture: every
 /// fixture film plays today AND tomorrow, so tapping from the Dziś page and
 /// then seeing tomorrow's day block is the proof the prune was undone.
+@MainActor
 final class DetailShowsAllDaysUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testOpeningFilmFromTodayPageShowsAllItsDays() throws {
         // Pin the listing to the single "Dziś" page so the grid hands the detail

@@ -113,10 +113,11 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
         let oldCityFilm = film(date: date, time: time, title: "Old City Film")
         let newCityFilm = film(date: date, time: time, title: "New City Film")
 
+        let city = city
         URLProtocolStub.handler = { request in
             let path = request.url!.path
             if path.hasSuffix("/cinemas") { return .init(statusCode: 404, headers: [:], body: Data()) }
-            if path.contains("/\(self.city)/") {
+            if path.contains("/\(city)/") {
                 var slow = jsonResponse([oldCityFilm])
                 slow.delay = 0.15
                 return slow

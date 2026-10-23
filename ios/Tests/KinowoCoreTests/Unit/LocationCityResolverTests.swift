@@ -5,6 +5,7 @@
 // directly, so nothing here can raise a permission dialog.
 #if canImport(CoreLocation)
 import CoreLocation
+import os
 import XCTest
 @testable import KinowoCore
 
@@ -12,28 +13,50 @@ import XCTest
 /// them, so a test can assert both WHAT it asked for and WHEN.
 final class RecordingLocationRequester: LocationRequesting {
     var authorizationStatus: CLAuthorizationStatus
-    /// The fix CoreLocation is holding, as `CLLocationManager.location` would
-    /// report it. `nil` is a manager that has never had one.
-    private let heldFix: CLLocation?
-    /// How many times `location` was read ON THE MAIN THREAD. The real getter
-    /// is a synchronous XPC round trip to locationd, which can stall for most
-    /// of a minute (a freshly booted device), so any read there freezes the UI.
-    private(set) var mainThreadLocationReads = 0
+    /// The fix CoreLocation is holding — what the resolver's `readHeldFix` reads.
+    let heldFix: HeldFix
     private(set) var authorizationRequests = 0
     private(set) var locationRequests = 0
 
-    var location: CLLocation? {
-        if Thread.isMainThread { mainThreadLocationReads += 1 }
-        return heldFix
-    }
+    var mainThreadLocationReads: Int { heldFix.mainThreadReads }
 
     init(status: CLAuthorizationStatus, location: CLLocation? = nil) {
         authorizationStatus = status
-        heldFix = location
+        heldFix = HeldFix(location)
     }
 
     func requestWhenInUseAuthorization() { authorizationRequests += 1 }
     func requestLocation() { locationRequests += 1 }
+}
+
+/// The fix CoreLocation is holding, as `CLLocationManager.location` would
+/// report it (`nil` is a manager that has never had one), read off the main
+/// thread by the resolver — so `Sendable`, its read count behind a lock.
+final class HeldFix: Sendable {
+    private let fix: CLLocation?
+    /// How many reads happened ON THE MAIN THREAD. The real getter is a
+    /// synchronous XPC round trip to locationd, which can stall for most of a
+    /// minute (a freshly booted device), so any read there freezes the UI.
+    private let mainThreadReadCount = OSAllocatedUnfairLock(initialState: 0)
+
+    init(_ fix: CLLocation?) { self.fix = fix }
+
+    var mainThreadReads: Int { mainThreadReadCount.withLock { $0 } }
+
+    func read() -> CLLocation? {
+        if Thread.isMainThread { mainThreadReadCount.withLock { $0 += 1 } }
+        return fix
+    }
+}
+
+extension LocationCityResolver {
+    /// A resolver over `requester` that reads the fix it holds.
+    convenience init(requester: RecordingLocationRequester, authorizationTimeout: TimeInterval,
+                     fixTimeout: TimeInterval) {
+        let heldFix = requester.heldFix
+        self.init(requester: requester, readHeldFix: { heldFix.read() },
+                  authorizationTimeout: authorizationTimeout, fixTimeout: fixTimeout)
+    }
 }
 
 /// The "user granted when-in-use" status. `.authorizedWhenInUse` doesn't exist
@@ -44,6 +67,13 @@ private let granted = CLAuthorizationStatus.authorizedWhenInUse
 #else
 private let granted = CLAuthorizationStatus.authorizedAlways
 #endif
+
+/// A file-scope constant rather than a test property: `async let` hands it to a
+/// child task, which a main-actor-isolated property can't be.
+private let cities = [
+    City(slug: "poznan", name: "Poznań", lat: 52.4064, lon: 16.9252, country: "pl"),
+    City(slug: "warszawa", name: "Warszawa", lat: 52.2297, lon: 21.0122, country: "pl"),
+]
 
 @MainActor
 final class LocationCityResolverTests: XCTestCase {
@@ -68,11 +98,6 @@ final class LocationCityResolverTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(2))
         }
     }
-
-    private let cities = [
-        City(slug: "poznan", name: "Poznań", lat: 52.4064, lon: 16.9252, country: "pl"),
-        City(slug: "warszawa", name: "Warszawa", lat: 52.2297, lon: 21.0122, country: "pl"),
-    ]
 
     /// The first-launch permission dialog is the USER reading a system alert —
     /// the time they spend there must not burn the deadline for the fix. It

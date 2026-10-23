@@ -14,10 +14,11 @@ import XCTest
 /// alongside `KINOWO_FORCE_DETECTED_CITY` without disturbing how the picker
 /// was reached) or the same `KINOWO_FORCE_DETECTED_CITY` for a hit — no
 /// CoreLocation dialog, no fix timeout, in either case.
+@MainActor
 final class CityChoiceLocateUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testLocateButtonHitNavigatesToConfirmScreen() throws {
         app = XCUIApplication()

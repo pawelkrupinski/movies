@@ -14,17 +14,18 @@ import XCTest
 /// day snaps the grid back to row one. We read the TOP **on-screen** card
 /// (never `firstMatch` — the pager keeps the neighbour day's page mounted
 /// off-screen, so `firstMatch` can grab a card that isn't visible).
+@MainActor
 final class DayChangeScrollResetUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
         XCTAssertTrue(anyCard().waitForExistence(timeout: 30), "Grid never mounted")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testSelectingDifferentDayScrollsBackToTop() throws {
         // Fixture lays out "Film 1" first, so the top of the list is Film 1.
@@ -45,21 +46,19 @@ final class DayChangeScrollResetUITests: XCTestCase {
         // Pick a different day. The list must jump back to Film 1 at the top.
         app.buttons[A11y.TopBar.datePillAnytime].tap()
 
-        let backAtTop = expectation(description: "top on-screen card is Film 1 again")
-        let poll = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { t in
-            if self.topOnScreenCardLabel()?.contains("Film 1") == true {
-                t.invalidate()
-                backAtTop.fulfill()
-            }
-        }
-        defer { poll.invalidate() }
         // 20 s, not 5: each poll reads the frame of every card, which on a slow CI runner takes
         // seconds per pass — run 36994701138 timed out with Film 1 already back on top. A grid
         // that never resets never shows Film 1 there, so the budget doesn't soften the check.
-        XCTAssertEqual(
-            XCTWaiter.wait(for: [backAtTop], timeout: 20), .completed,
+        let deadline = Date().addingTimeInterval(20)
+        var top = topOnScreenCardLabel()
+        while top?.contains("Film 1") != true, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.25)
+            top = topOnScreenCardLabel()
+        }
+        XCTAssertTrue(
+            top?.contains("Film 1") == true,
             "After choosing a different day the grid stayed scrolled (top on-screen "
-            + "film was '\(topOnScreenCardLabel() ?? "nil")') instead of resetting to Film 1")
+            + "film was '\(top ?? "nil")') instead of resetting to Film 1")
     }
 
     // MARK: - Helpers

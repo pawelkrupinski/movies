@@ -1,4 +1,5 @@
 import XCTest
+import KinowoTestSupport
 @testable import KinowoCore
 
 #if canImport(FoundationNetworking)
@@ -78,19 +79,20 @@ class LocalServerTestCase: XCTestCase {
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let semaphore = DispatchSemaphore(value: 0)
-        var captured: Result<(data: Data?, response: HTTPURLResponse), Error> = .failure(URLError(.badServerResponse))
+        let captured = LockedValue<Result<(data: Data?, response: HTTPURLResponse), Error>>(
+            .failure(URLError(.badServerResponse)))
         URLSession.shared.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
             if let error = error {
-                captured = .failure(error)
+                captured.withLock { $0 = .failure(error) }
                 return
             }
             guard let http = response as? HTTPURLResponse else { return }
-            captured = .success((data, http))
+            captured.withLock { $0 = .success((data, http)) }
         }.resume()
         // Localhost over loopback; 30s is generous for any real fail mode.
         _ = semaphore.wait(timeout: .now() + .seconds(30))
-        return try captured.get()
+        return try captured.withLock { try $0.get() }
     }
 
     /// Fetch `/{city}/api/{endpoint}` — the exact URL `City.apiURL` builds

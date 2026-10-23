@@ -8,15 +8,16 @@ import XCTest
 /// routes around), from which "choose another city" reaches the manual
 /// `CityChoiceView` — the same picker shown when the app doesn't yet have a
 /// city — instead of offering separate country/city dropdowns inside Filtry.
+@MainActor
 final class PickAnotherCityUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testTappingPickAnotherCityReArmsTheGateAndReachesTheManualPicker() throws {
         FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_OPEN_FILTERS": "1"])

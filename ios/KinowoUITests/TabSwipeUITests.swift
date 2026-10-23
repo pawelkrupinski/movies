@@ -8,10 +8,11 @@ import XCTest
 /// Native paging does NOT wrap: swiping past the last day stays on the last day
 /// (the old hand-rolled carousel wrapped Wszystkie → Dziś — that's gone now,
 /// guarded by `testSwipeLeftAtLastDayDoesNotWrap`).
+@MainActor
 final class DaySwipeUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app)
@@ -26,7 +27,7 @@ final class DaySwipeUITests: XCTestCase {
         XCTAssertTrue(firstFilmCard(app).waitForExistence(timeout: 30), "Grid never appeared")
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

@@ -8,10 +8,11 @@ import XCTest
 /// .closeButton`) rather than the backdrop — a `Button` is always an
 /// accessibility element, whereas a decorative `Color` backdrop may not surface
 /// to XCUITest.
+@MainActor
 final class PosterFullScreenUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_SEED_POSTER": "1"])
@@ -24,7 +25,7 @@ final class PosterFullScreenUITests: XCTestCase {
         XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30), "Grid never appeared")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testTappingPosterPresentsAndDismissesFullScreenCover() throws {
         let poster = openFirstFilmAndFindPoster()

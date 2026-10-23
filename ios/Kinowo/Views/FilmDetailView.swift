@@ -310,6 +310,7 @@ struct FilmDetailView: View {
 /// wrapper struct — the walk, the on-disk cache and the backoff retry all
 /// live in `PosterChainImage`, shared with the listing card.
 @ViewBuilder
+@MainActor
 private func detailPoster<NoPoster: View>(
     primary: URL,
     fallbacks: [URL],

@@ -1,6 +1,19 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
+// Complete Swift concurrency checking for every target, in language mode 5: data races the
+// checker can see are diagnosed at compile time without the Swift 6 mode switch (tools 5.9
+// spells it as an experimental feature). Apple platforms only: swift-corelibs-foundation 5.10
+// (the Linux CI image) declares URL, DispatchQueue, Calendar and URLSession non-Sendable, so
+// there it reports Foundation's missing annotations rather than races; the macOS build checks
+// the same sources against Apple's annotated Foundation. `scripts/ios-compile-check.sh` fails
+// on any concurrency diagnostic, so the count stays at zero.
+#if os(Linux)
+let strictConcurrency: [SwiftSetting] = []
+#else
+let strictConcurrency: [SwiftSetting] = [.enableExperimentalFeature("StrictConcurrency")]
+#endif
+
 // SPM view of the Kinowo iOS app. The Xcode app (`Kinowo.xcodeproj`)
 // remains the production build for the .ipa; this manifest gives us a
 // second view of the same files so we can run XCTest cases via
@@ -24,7 +37,7 @@ import PackageDescription
 //   with a captured production `/api/details` JSON fixture.
 // - `KinowoAuthTests` — sync-service tests (Combine; macOS/iOS only).
 // - `KinowoTestSupport` — test doubles shared across test targets
-//   (`URLProtocolStub`); macOS/iOS only, alongside its two users.
+//   (`URLProtocolStub`, `LockedValue`).
 #if canImport(Combine)
 let authTargets: [Target] = [
     .target(
@@ -50,18 +63,14 @@ let authTargets: [Target] = [
             // resolves/persists `selectedLanguage` through it, same reasoning
             // as `CountrySelection` above.
             "Storage/LanguageSelection.swift",
-        ]
+        ],
+        swiftSettings: strictConcurrency
     ),
     .testTarget(
         name: "KinowoAuthTests",
         dependencies: ["KinowoAuth", "KinowoTestSupport"],
-        path: "Tests/KinowoAuthTests"
-    ),
-    // Test doubles more than one test target needs (the canned-HTTP
-    // `URLProtocolStub`). A plain target, so its API is `public`.
-    .target(
-        name: "KinowoTestSupport",
-        path: "Tests/KinowoTestSupport"
+        path: "Tests/KinowoAuthTests",
+        swiftSettings: strictConcurrency
     ),
 ]
 #else
@@ -96,12 +105,14 @@ let networkingTargets: [Target] = [
             "Networking/CountrySwitch.swift",
             "Networking/ConditionalListEndpoint.swift",
             "Networking/ClientSupportStore.swift",
-        ]
+        ],
+        swiftSettings: strictConcurrency
     ),
     .testTarget(
         name: "KinowoNetworkingTests",
         dependencies: ["KinowoCore", "KinowoNetworking", "KinowoTestSupport"],
-        path: "Tests/KinowoNetworkingTests"
+        path: "Tests/KinowoNetworkingTests",
+        swiftSettings: strictConcurrency
     ),
 ]
 #else
@@ -180,11 +191,12 @@ let package = Package(
                 // it, and SPM forbids one file in two targets. Tested in
                 // `KinowoAuthTests`. (The Xcode app compiles it once via pbxproj.)
                 "Models/Country.swift",
-            ]
+            ],
+            swiftSettings: strictConcurrency
         ),
         .testTarget(
             name: "KinowoCoreTests",
-            dependencies: ["KinowoCore"],
+            dependencies: ["KinowoCore", "KinowoTestSupport"],
             path: "Tests/KinowoCoreTests",
             resources: [
                 // Captured production HTML, replayed by the parser
@@ -192,7 +204,16 @@ let package = Package(
                 // file lives at `Tests/KinowoCoreTests/Fixtures/<x>.html`
                 // and is loaded via `Bundle.module.url(forResource:…)`.
                 .copy("Fixtures"),
-            ]
+            ],
+            swiftSettings: strictConcurrency
+        ),
+        // Test doubles more than one test target needs (the canned-HTTP
+        // `URLProtocolStub`, the `LockedValue` box). A plain target, so its API
+        // is `public`; on Linux too, for `KinowoCoreTests`.
+        .target(
+            name: "KinowoTestSupport",
+            path: "Tests/KinowoTestSupport",
+            swiftSettings: strictConcurrency
         ),
     ] + authTargets + networkingTargets
 )

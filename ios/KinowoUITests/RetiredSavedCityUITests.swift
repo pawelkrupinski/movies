@@ -4,15 +4,16 @@ import XCTest
 /// of `biala-podlaska` — is adopted under the slug it answers at. Its listing
 /// kept arriving through the server's 301, but the Filtry sheet found no city
 /// by the old slug and labelled the list with the raw slug instead.
+@MainActor
 final class RetiredSavedCityUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testASavedRetiredCityIsShownAsTheCityThatHoldsItNow() throws {
         FixtureLaunch.intoGrid(app, city: "miedzyrzec-podlaski", environment: [

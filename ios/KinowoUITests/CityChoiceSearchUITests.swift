@@ -9,10 +9,11 @@ import XCTest
 /// `KINOWO_FORCE_DETECTED_CITY` injects a detected city (no CoreLocation
 /// dialog) so the confirm screen appears, then we tap "choose another city"
 /// to drop into the manual list.
+@MainActor
 final class CityChoiceSearchUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.pinCountryAndLanguage(app)
@@ -26,7 +27,7 @@ final class CityChoiceSearchUITests: XCTestCase {
         chooseOther.tap()
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testTypingNarrowsTheCityListDiacriticInsensitively() throws {
         // Poland is grouped by voivodeship, "Dolnośląskie" leading the

@@ -12,8 +12,8 @@ final class StateSyncServiceTests: XCTestCase {
     private var languageClient: FakeLanguageClient!
     private var userSubject: CurrentValueSubject<UserProfile?, Never>!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: "StateSyncServiceTests")
         prefs = UserPreferences(store: defaults)
         client = FakeHiddenFilmsClient()
@@ -21,9 +21,9 @@ final class StateSyncServiceTests: XCTestCase {
         userSubject = CurrentValueSubject(nil)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: "StateSyncServiceTests")
-        super.tearDown()
+        try await super.tearDown()
     }
 
     /// The language push's debounce, advanced by hand (`debounce.fireAll()`),

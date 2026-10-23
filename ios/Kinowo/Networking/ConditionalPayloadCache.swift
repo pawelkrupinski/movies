@@ -46,7 +46,7 @@ import Foundation
 /// user's caches), a test a fresh directory of its own. It has no default, so
 /// no test can reach the real caches — and the entry a concurrent run, or the
 /// developer's own simulator session, keeps there — by leaving it out.
-struct ConditionalPayloadCache<Payload: Codable> {
+struct ConditionalPayloadCache<Payload: Codable & Sendable> {
     private let directory: URL
     private let file: String
     private let legacyFiles: [String]

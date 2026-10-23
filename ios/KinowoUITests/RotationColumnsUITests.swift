@@ -11,10 +11,11 @@ import XCTest
 /// grid laid out wider than the (portrait) window — cards run off the right edge
 /// and the first column clips off the left. We rotate, return to portrait, and
 /// assert no card escapes the screen horizontally.
+@MainActor
 final class RotationColumnsUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
@@ -28,7 +29,7 @@ final class RotationColumnsUITests: XCTestCase {
                       "Grid never filled after switching to Wszystkie")
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         XCUIDevice.shared.orientation = .portrait
         app = nil
     }

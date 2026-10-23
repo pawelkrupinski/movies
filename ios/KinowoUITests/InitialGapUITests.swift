@@ -21,16 +21,17 @@ import XCTest
 /// Driven warm (`KINOWO_UITEST_FIXTURE=1`): a synthetic fixture is delivered
 /// synchronously so the grid mounts at first paint, like a warm cache — no
 /// dependence on the live repertoire (which is empty late at night).
+@MainActor
 final class InitialGapUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.intoGrid(app) // warm: grid at first paint
     }
 
-    override func tearDownWithError() throws {
+    override func tearDown() async throws {
         app = nil
     }
 

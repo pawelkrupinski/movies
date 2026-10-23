@@ -45,8 +45,9 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
         defer { released.signal() }
 
         let answered = expectation(description: "a read on this cache answers while the other's queue is held")
+        let cache = cache, deployment = deployment
         DispatchQueue.global().async {
-            _ = self.cache.load(deployment: self.deployment, city: "poznan")
+            _ = cache.load(deployment: deployment, city: "poznan")
             answered.fulfill()
         }
         wait(for: [answered], timeout: 2)

@@ -13,10 +13,11 @@ import XCTest
 /// Measures the rendered button height: a `.large` bordered button clears ~48pt,
 /// comfortably above the ~34pt compact default the screen had before — so the
 /// assertion fails before the size change and passes after.
+@MainActor
 final class CityGateButtonSizeUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         FixtureLaunch.pinCountryAndLanguage(app)
@@ -25,7 +26,7 @@ final class CityGateButtonSizeUITests: XCTestCase {
         app.launch()
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testConfirmButtonIsLarge() throws {
         let button = app.buttons[A11y.CityGate.confirmButton]

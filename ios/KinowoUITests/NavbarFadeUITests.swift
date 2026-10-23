@@ -21,10 +21,11 @@ import XCTest
 /// dark mode alike (the scrim flattens toward whichever background colour).
 /// Empirically the two states sit at ~300 vs ~3700+; the 1500 threshold
 /// splits them. FAILS while the gradient exists, PASSES once it's gone.
+@MainActor
 final class NavbarFadeUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
@@ -38,7 +39,7 @@ final class NavbarFadeUITests: XCTestCase {
                       "Grid never filled after switching to Wszystkie")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testNoFadeScrimUnderNavbar() throws {
         let grid = app.scrollViews.firstMatch

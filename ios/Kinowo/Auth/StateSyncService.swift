@@ -462,11 +462,14 @@ protocol DebounceScheduler {
     @MainActor func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable
 }
 
-/// The production clock — the main queue's.
+/// The production clock: a main-actor task that sleeps out the delay.
 struct MainQueueDebounceScheduler: DebounceScheduler {
     @MainActor func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable {
-        let item = DispatchWorkItem { MainActor.assumeIsolated { action() } }
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
-        return AnyCancellable { item.cancel() }
+        let task = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            action()
+        }
+        return AnyCancellable { task.cancel() }
     }
 }

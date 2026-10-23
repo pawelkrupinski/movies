@@ -9,7 +9,7 @@ import Foundation
 /// there's no granular endpoint for a single scalar pick, only for the two
 /// sets that used to share this document with it. Mirrors Android's
 /// equivalent split.
-protocol LanguageClient: AnyObject {
+protocol LanguageClient: AnyObject, Sendable {
     /// The account's current pick, or nil if it hasn't made one.
     func fetch() async throws -> String?
 

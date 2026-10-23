@@ -12,18 +12,18 @@ final class PosterStoreInjectionTests: XCTestCase {
 
     private var directory: URL!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("PosterStoreInjectionTests-\(UUID().uuidString)", isDirectory: true)
         UserDefaults.standard.removeObject(forKey: "posterPurgeLastDay")
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         try? FileManager.default.removeItem(at: directory)
         UserDefaults.standard.removeObject(forKey: "posterPurgeLastDay")
         URLProtocolStub.handler = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testTheDailyPurgeRunsAgainstTheInjectedStore() async throws {

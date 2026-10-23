@@ -13,10 +13,11 @@ import XCTest
 /// (they sit side by side) but must NEVER share BOTH a y-range and an
 /// x-range — a 2D frame intersection means one card is painting on top of
 /// another. We scroll a dense grid and assert no two cells ever intersect.
+@MainActor
 final class PosterOverlapUITests: XCTestCase {
     var app: XCUIApplication!
 
-    override func setUpWithError() throws {
+    override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
         // The live repertoire, not the fixture: the overlap needs real, oddly shaped posters.
@@ -28,7 +29,7 @@ final class PosterOverlapUITests: XCTestCase {
                       "App never launched (no date pills)")
     }
 
-    override func tearDownWithError() throws { app = nil }
+    override func tearDown() async throws { app = nil }
 
     func testFilmCardsNeverOverlapWhileScrolling() throws {
         // "Wszystkie" (all dates) guarantees a dense, multi-row grid — the
