@@ -542,13 +542,22 @@ if [ "${1:-}" = "--range" ]; then
     ranges+=("${2:?--range A..B}")
     to_main=1   # a dry run is judged as a push to main
 else
+    pushed=""
     while read -r _local_ref local_sha remote_ref remote_sha; do
+        pushed+="$_local_ref $local_sha $remote_ref $remote_sha"$'\n'
         [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
         case "$remote_ref" in refs/heads/measure/*) measure_only=1; continue ;; *) other=1 ;; esac
         base="$(base_for "$local_sha" "$remote_sha")"
         [ -n "$base" ] && ranges+=("$base..$local_sha")
         [ "$remote_ref" = refs/heads/main ] && to_main=1
     done
+    # THE SQUASH GUARD (2026-10-22): a commit built by `git reset --soft` onto a main that had moved since the worktree
+    # was cut silently reverts everyone else's work in between -- one would have reverted 71 files (the red gate
+    # caught it by luck). agentctl refuses a push that returns files to an older main. Where agentctl is not installed
+    # (CI, another machine), nothing changes.
+    if [ "$to_main" = 1 ] && [ -x "$HOME/bin/agentctl" ]; then
+        printf '%s' "$pushed" | "$HOME/bin/agentctl" prepush-check --hook "${1:-forgejo}" "${2:-}" || exit 1
+    fi
 fi
 if [ "${#ranges[@]}" -eq 0 ]; then
     [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ branch: a measurement's run ref, never landed -- nothing to check"
