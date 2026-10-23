@@ -121,11 +121,17 @@ class WorkerWiring(
       services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock))
   lazy val identityTmdbStore: services.identity.adapters.TmdbStore = identityTmdbLayer.store
   lazy val identityTmdbNormalizer: services.identity.adapters.TmdbNormalizer = new services.identity.adapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
-  /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
-   *  round, whenever the last complete sweep is from before today. */
+  /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`): each day's edits checked at a
+   *  pace spread over the day, from the country's own hashed phase, through the lookup chain (`enrichmentFetch`). */
   lazy val identityTmdbChanges: services.identity.adapters.TmdbChangesSweep =
     new services.identity.adapters.TmdbChangesSweep(identityTmdbStore, identityTmdbDocuments,
-      tmdbClientOver(new services.identity.adapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer)), country.language.toLanguageTag, clock)
+      new services.identity.adapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer), tmdbClientOver,
+      country.language.toLanguageTag, services.identity.adapters.TmdbChangesSweep.Schedule.forCountry(country.code), clock)
+  /** The sweep's minute ticks, each spending a minute's allowance. */
+  lazy val identityTmdbChangesSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
+    new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => { identityTmdbChanges.tick(); () },
+      services.identity.adapters.TmdbChangesSweep.TickInterval,
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock))
   /** The model's questions due to be asked again (`TmdbRefreshes`). */
   lazy val identityTmdbRefreshes: services.identity.adapters.TmdbRefreshes =
     new services.identity.adapters.TmdbRefreshes(identityTmdbStore, country.language.toLanguageTag, clock)
@@ -239,8 +245,8 @@ class WorkerWiring(
 
   // The model's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19), on its own claimed
   // schedule (`identityLookupRefreshSchedule`): the model asks live only what its store lacks, so an
-  // answer the store holds is renewed only here — a search that found nothing before TMDB had the film
-  // (`TmdbRefreshes`), a record TMDB changed since (`TmdbChangesSweep`) — and any question still open.
+  // answer the store holds is renewed here — a search that found nothing before TMDB had the film
+  // (`TmdbRefreshes`) — and any question still open; a record TMDB changed since is `identityTmdbChanges`'.
   // Through the lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
   lazy val lookupFill: services.identity.adapters.LookupFill =
@@ -249,7 +255,6 @@ class WorkerWiring(
       tmdb        = tmdbClientOver,
       liveFetch   = enrichmentFetch,
       normalizer  = identityTmdbNormalizer,
-      beforeRound = () => if (identityTmdbChanges.behind) { identityTmdbChanges.sweep(); () },
       gapMemory   = new services.identity.adapters.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock),
       refreshes   = () => identityModel.peek(WorkerWiring.IdentityModelPeek)
         .fold(Seq.empty[services.identity.CandidateQuery])(snapshot => identityTmdbRefreshes.due(snapshot.questions)),
@@ -261,7 +266,7 @@ class WorkerWiring(
       clock       = clock)
 
   /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
-   *  due, TMDB's changes, gaps remembered as unanswered). A round asks what the rate allows since the last. */
+   *  due, gaps remembered as unanswered). A round asks what the rate allows since the last. */
   lazy val identityFillTrigger: services.identity.EventTrigger =
     new services.identity.EventTrigger(() => { lookupFill.start(); true }, services.movies.MovieChangeStream.Debounce.Worker,
       identityProjectionTriggerScheduler, clock)
@@ -494,6 +499,7 @@ class WorkerWiring(
     boot.step("detail reaper")(detailReaper.start())
     boot.step("settle reaper")(settleReaper.start())
     boot.step("identity lookup refresh")(identityLookupRefreshSchedule.start())
+    boot.step("tmdb changes sweep")(identityTmdbChangesSchedule.start())
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("tmdb store sweep")(identityTmdbSweepSchedule.start())
     boot.step("identity drift check")(identityDriftSchedule.start())

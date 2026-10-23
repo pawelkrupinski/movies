@@ -46,12 +46,12 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
 
   private def fill(store: TmdbStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
                    rounds: mutable.Buffer[LookupFillRound] = mutable.Buffer.empty,
-                   beforeRound: () => Unit = () => (), refreshes: () => Seq[CandidateQuery] = () => Nil,
+                   refreshes: () => Seq[CandidateQuery] = () => Nil,
                    gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None,
                    fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
     new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes,
+      DaemonExecutors.directExecutor(), sleeps += _, refreshes,
       // a memory of its own unless the test shares one: nothing remembered, every gap due
       gapMemory.getOrElse(new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock)
 
@@ -66,15 +66,13 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
   private def store() = new TmdbStore(new InMemoryTmdbDocuments, Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC))
   private def gapsOf(s: TmdbStore): Int = { val g = modelGaps(s); g.queries.size + g.films.size }
 
-  "a fill round beside a normalized store" should "sweep TMDB's changes first, then ask aged questions live, within what its allowance has left" in {
+  "a fill round beside a normalized store" should "ask aged questions live, within what its allowance has left" in {
     val tmdb    = store()
     val service = new Service
-    var swept   = 0
     val aged    = (1 to 1000).map(i => CandidateQuery.Title(s"Aged film $i"))
     val round = fill(tmdb, service, rate = 60,
-      beforeRound = () => { service.requests.size shouldBe 0; swept += 1 }, refreshes = () => aged,
+      refreshes = () => aged,
       gaps = _ => AnswersChanged.Empty).round()
-    swept shouldBe 1
     service.requests.map(u => java.net.URLDecoder.decode(u, "UTF-8")).count(_.contains("query=Aged film")) shouldBe round.asked
     round.asked should (be > 0 and be <= IdentityLookupFillRate(60).allowanceOver(IdentityLookupFillInterval(30.minutes).value))
   }
@@ -187,7 +185,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     var interrupt = true
     val rounds    = mutable.Buffer.empty[LookupFillRound]
     val shadow    = fill(store(), new Service, rounds = rounds,
-      beforeRound = () => if (interrupt) throw new InterruptedException("sleep interrupted"))
+      gaps = s => if (interrupt) throw new InterruptedException("sleep interrupted") else modelGaps(s))
     noException should be thrownBy shadow.start()
     Thread.interrupted() shouldBe true // re-asserted for the executor, and cleared for this test's thread
     rounds shouldBe empty
@@ -196,10 +194,9 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     rounds should have size 1
   }
 
-  it should "log a failed sweep or round WITH its stack: the catch-all's cause is unknown, and its message alone rarely names it" in {
+  it should "log a failed round WITH its stack: the catch-all's cause is unknown, and its message alone rarely names it" in {
     val warned = (shadow: LookupFill) => tools.LogCapture.thisThread(classOf[LookupFill].getName)(shadow.start())
       .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(e => Option(e.getThrowableProxy).map(_.getMessage))
-    warned(fill(store(), new Service, beforeRound = () => throw new IllegalStateException("sweep down"))) shouldBe Seq(Some("sweep down"))
     warned(fill(store(), new Service, gaps = _ => throw new IllegalStateException("store down"))) shouldBe Seq(Some("store down"))
   }
 

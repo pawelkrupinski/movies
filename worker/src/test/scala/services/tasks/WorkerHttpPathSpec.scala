@@ -50,17 +50,16 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     }.toSet
   }
 
-  private def lookupFill(wire: Wire, gaps: AnswersChanged = AnswersChanged.Empty, refreshes: Seq[CandidateQuery] = Nil,
-                         beforeRound: () => Unit = () => ()) = {
+  private def lookupFill(wire: Wire, gaps: AnswersChanged = AnswersChanged.Empty, refreshes: Seq[CandidateQuery] = Nil) = {
     val store = new TmdbStore(new InMemoryTmdbDocuments, clock)
     new LookupFill(() => gaps, wire.tmdbOver, wire.fetch, new TmdbNormalizer(store), IdentityLookupFillRate(600),
-      IdentityLookupFillInterval(30.minutes), _ => (), DaemonExecutors.directExecutor(), _ => (), beforeRound, () => refreshes,
+      IdentityLookupFillInterval(30.minutes), _ => (), DaemonExecutors.directExecutor(), _ => (), () => refreshes,
       new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock)
   }
 
   private def sweep(wire: Wire) = {
     val docs = new InMemoryTmdbDocuments
-    new TmdbChangesSweep(new TmdbStore(docs, clock), docs, wire.tmdb, "pl-PL", clock)
+    new TmdbChangesSweep(new TmdbStore(docs, clock), docs, wire.fetch, wire.tmdbOver, "pl-PL", TmdbChangesSweep.Schedule(0.hours), clock)
   }
 
   /** `handler`'s task claimed and run by the task worker, as the worker's pool runs it. */
@@ -87,14 +86,10 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     wire.paths shouldBe Set(HttpPath.Refresh)
   }
 
-  "TMDB's changes sweep" should "fetch on the `sweep` path, also when a fill round sets it off" in {
+  "TMDB's changes sweep" should "fetch on the `sweep` path, on its own minute tick" in {
     val wire = new Wire
-    sweep(wire).sweep()
+    sweep(wire).tick().asked should be > 0
     wire.paths shouldBe Set(HttpPath.Sweep)
-    val inRound = new Wire
-    val changes = sweep(inRound)
-    lookupFill(inRound, beforeRound = () => { changes.sweep(); () }).round()
-    inRound.paths shouldBe Set(HttpPath.Sweep)
   }
 
   "The identity model's stored-first lookups" should "ask what the store lacks on the `live` path" in {

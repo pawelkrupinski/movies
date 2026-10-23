@@ -132,7 +132,6 @@ final class LookupFill(
   metrics:     LookupFillMetrics,
   executor:    ExecutorService,
   sleep:       Long => Unit,
-  beforeRound: () => Unit,
   refreshes:   () => Seq[CandidateQuery],
   gapMemory:   TmdbGapMemory,
   clock:       java.time.Clock
@@ -163,9 +162,6 @@ final class LookupFill(
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
-    // TMDB's edits first (`TmdbChangesSweep`, when one is due): what changed is fetched again
-    // before the model's gaps and refreshes are chosen.
-    try beforeRound() catch { case NonFatal(e) => logger.warn("identity lookup fill: TMDB changes not swept, this round", e) }
     val asked = gapMemory.due(questions())
     // Asked and still unanswered — not deferred for want of budget — is remembered (`TmdbGapMemory`):
     // a durable non-answer is asked again a day later, one whose read failed on a short backoff.

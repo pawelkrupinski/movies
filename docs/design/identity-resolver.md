@@ -2450,6 +2450,36 @@ hint → id, the film rows keep parsed TMDB slots; only `detailCache-*` keeps ra
 pipeline's own detail refresh re-observes those within a cycle. Seeding TMDB observations from
 parsed slots would file bodies no service sent. The fill is what closes the gap.
 
+### 19.3 TMDB's change lists, paced across the day (`TmdbChangesSweep`)
+
+What the store holds is renewed from TMDB's change lists: a held film whose edits touch its record, and a held
+person credited anew on any film, are fetched again (through `enrichmentFetch`: its 429 gate, breaker and
+`HostPolicies`). Until 2026-10-23 the whole day's list was swept in one go by the first fill round after 00:00 UTC:
+every changed film's `/movie/{id}/changes`, one after another, unpaced. Each of the five country workers ran at
+~520 TMDB requests a minute for 15-65 minutes, all at once (`kinowo_worker_http_total{service="tmdb"}`, nights of
+2026-10-20 to 2026-10-23), against 10-50 a minute the rest of the day.
+
+The schedule now (`tmdb-changes-sweep`, a claimed task ticking once a minute, no longer part of the fill):
+
+- **Phase:** each country's day starts at its own offset past 00:00 UTC, hashed from its code
+  (`Schedule.forCountry`, `DueBoundary.hashedPhaseMillis`, as the scrape and share-card phases are). From then, the
+  complete UTC days since the last one swept are the next window: one day normally, at most TMDB's 14 a query
+  after downtime.
+- **Pace:** a tick spends one minute's allowance: the window's change-list pages at 20 a minute, then its films at
+  the window's rate, its films over 20 hours (`Schedule.spread`), at least 2 and at most 60 requests a minute. A
+  day of ~5,000-6,000 edited films is ~5 requests a minute per country (~25 across the five), with the four hours
+  left as slack before the next day's window opens.
+- **Restarts and failures:** the window, its films and a cursor are persisted (`meta|changes-sweep-window`,
+  `meta|changes-sweep-cursor` in `tmdb_queries`), the cursor after every film; a restart resumes at the next one.
+  A refused request (429, 5xx, open breaker, network) ends the tick with the cursor on that film. The watermark
+  (`meta|changes-swept-through`, the last day swept to its end) moves only once a window's last film is done, so no
+  day is skipped and none is swept twice.
+- **Catch-up:** a tick never spends more than a minute's allowance, whatever the downtime before it: a backlog is
+  swept at its (higher, capped) rate for longer, never in a burst.
+- **Freshness:** a day's edits are read from the day after, starting at the country's phase, and done within 20
+  hours: at most ~2.8 days after the edit (it was ~1 day). TMDB's edits to a record are rare and slow-moving;
+  a brand-new film, the staleness that matters, is the fill's refreshes' (`TmdbRefreshes`), unchanged.
+
 ## 20. The unified evidence model (phase 1, 2026-10-05: inventory, dataset, fit, measure)
 
 Goal: every signal the resolver's model and the agreement stage after it read becomes a FEATURE of one learned model,
