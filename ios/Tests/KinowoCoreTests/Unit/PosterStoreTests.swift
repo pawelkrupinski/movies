@@ -39,7 +39,7 @@ final class PosterStoreTests: XCTestCase {
     /// what the macOS/Linux toolchain `swift test` runs on today, but would
     /// silently fail every one of them the moment these run against an iOS
     /// destination.
-    private let anyBytesAreArtwork: (Data) -> Bool = { !$0.isEmpty }
+    private let anyBytesAreArtwork: @Sendable (Data) -> Bool = { !$0.isEmpty }
 
     func testDownloadsOnceThenServesFromDisk() async {
         let counter = CallCounter()

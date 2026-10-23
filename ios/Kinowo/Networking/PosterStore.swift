@@ -33,10 +33,10 @@ import FoundationNetworking
 /// The app builds exactly one, in `KinowoApp` (the composition root), and
 /// hands it down: to `RepertoireStore` for the daily purge and, through the
 /// SwiftUI environment (`\.posterStore`), to every `CachedAsyncImage`.
-final class PosterStore: @unchecked Sendable {
+final class PosterStore: Sendable {
     private let directory: URL
-    private let fetch: (URL) async -> Data?
-    private let isImage: (Data) -> Bool
+    private let fetch: @Sendable (URL) async -> Data?
+    private let isImage: @Sendable (Data) -> Bool
 
     /// - Parameters:
     ///   - directory: where poster files live. Defaults to
@@ -55,8 +55,8 @@ final class PosterStore: @unchecked Sendable {
     ///     repertoire).
     init(
         directory: URL = PosterStore.defaultDirectory,
-        fetch: @escaping (URL) async -> Data? = PosterStore.networkFetch(through: PosterStore.cacheBypassingSession()),
-        isImage: @escaping (Data) -> Bool = PosterStore.decodesAsImage
+        fetch: @escaping @Sendable (URL) async -> Data? = PosterStore.networkFetch(through: PosterStore.cacheBypassingSession()),
+        isImage: @escaping @Sendable (Data) -> Bool = { PosterStore.decodesAsImage($0) }
     ) {
         self.directory = directory
         self.fetch = fetch
@@ -167,7 +167,7 @@ final class PosterStore: @unchecked Sendable {
     }
 
     /// Downloads through `session`: the bytes of a non-empty 2xx, else nil.
-    static func networkFetch(through session: URLSession) -> (URL) async -> Data? {
+    static func networkFetch(through session: URLSession) -> @Sendable (URL) async -> Data? {
         { url in await download(url, through: session) }
     }
 
