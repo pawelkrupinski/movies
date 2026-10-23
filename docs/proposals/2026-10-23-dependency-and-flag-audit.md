@@ -35,7 +35,7 @@ dependencies are currently unwatched.
 | Scala | 3.9.0 | 3.10.1-RC1 | see JDK target below |
 | sbt | 1.13.0 | sbt 2.x status unverified | migration high effort |
 | MongoDB server | **8.3.11** (ahead of nixpkgs' 8.2.11) | no 8.4/9.0 found [unverified] | see below |
-| Playwright / axe-core | 1.63 / 4.13 | 1.64.1 / 4.14.0 | one-line bump |
+| Playwright / axe-core | 1.64.1 / 4.14.0 | — | **done 2026-10-23** (06f310215) |
 | ESLint / globals | 9.17 / 15 | 10.13.0 / 17.13.0 | low payoff |
 | Coil (Android) | **3.6.3** (was 2.7.0) | — | done 2026-10-23, see Android |
 | Haze (Android) | 1.7.3 (deprecated API names) | 2.0 beta | see Android |
@@ -307,9 +307,18 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
 - **Fixed sleeps:** `waitForTimeout` in `search-tap-dismiss.spec.ts:44` and `keyboard-nav.spec.ts:46` should become
   web-first assertions or `expect.toPass`. `history-restore.spec.ts:32,56` `waitForFunction` becomes `toBeAttached()`.
   `day-swipe.spec.ts` repeats `expect.poll(() => settled(page))` about 10 times; share the helper (`helpers.ts:217-245`).
-- **Playwright config:** `trace: 'retain-on-failure'` with `retries: 0` records a trace for every test. Turning it
-  off speeds up the WebKit rows (CI's long pole) at the cost of traces on failure. `fullyParallel` is absent, so
-  check for shared-state flakes first.
+- **Playwright config: done 2026-10-23.** Measured on a shared laptop, 5 workers, interleaved runs, webkit-iphone-13
+  (full suite): the full `retain-on-failure` trace cost ~40% of wall time (65-90 s vs 37-56 s with tracing off);
+  `retain-on-first-failure` is the same mode when nothing retries. Almost all of it is DOM snapshots: the trace
+  without snapshots or screencast runs as fast as no trace (46-53 s), so a failure keeps its trace (actions with
+  timings, source, error, attachments) beside the failure screenshot and `error-context.md`. The CI WebKit phone row
+  (shard 1/2) went 74/79 s → 59/63 s. `fullyParallel: true` took the one-project `webkit-behaviour` row 44-51 s →
+  30-34 s (the multi-project phone rows ~5%); three `--repeat-each 3` sweeps under it found no shared-state flake.
+  Guarded by `PlaywrightRunCostSpec`. Found on the way, open: `twelve-hour-clock.spec.ts` "a pill fits on one line"
+  (`@agnostic`, so CI runs it only on webkit-iphone-13 / chromium-galaxy-s10) fails every time on
+  `webkit-iphone-se-zoomed[-landscape]` (250 px wide: a "4:40 PM" pill wraps, 33 px vs 22 px), so it is not
+  viewport-agnostic; and `keyboard-nav.spec.ts:39` (search-input case) failed once on chromium-pixel-9 at load ~155 on
+  14 cores, the date never stepping within 5 s, and did not recur in 120 repeats at load 800+ (trace lost).
 - **Day-swipe slide: evaluated, keep the hand-built track; do not adopt View Transitions.** How it works now
   (`shared.js` "Day carousel"): on axis lock, a coarse-pointer drag arms `#day-track` with clones of both
   neighbouring days (`buildDayColumn`, `.day-track--armed`, parked at -100vw). The track follows the finger 1:1, and
