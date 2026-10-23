@@ -232,8 +232,11 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 - **scalac `-unchecked`: nothing to enable.** Scala 3 reports unchecked type patterns by default (verified: a
   `case _: List[Int]` over `Any` warns without the flag), and the build has none.
 - **scalac, not planned:** `-Yexplicit-nulls`.
-- No `.scalafmt.conf` exists although sbt-scalafmt is installed. Either add one (`runner.dialect = scala3`) or drop
-  the plugin.
+- **sbt-scalafmt: dropped 2026-10-24.** It had no `.scalafmt.conf`, so it never ran, and nothing (CI, hooks,
+  scripts, docs) invoked it. A candidate config (scalafmt 3.9.4, `runner.dialect = scala3`) would reformat nearly
+  everything: `maxColumn = 120` touches 2,670 of 2,794 Scala/sbt files (+248,197 / −129,045 lines), `maxColumn = 160`
+  2,652 files (+179,179 / −121,613); the code has 25,290 lines over 120 columns (p99 164). No config reproduces the
+  hand-kept style, so adopting one is a one-off whole-repo reformat — a separate team decision.
 
 ## Android
 
