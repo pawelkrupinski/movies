@@ -16,7 +16,7 @@ struct ContentView: View {
     /// correct even when the layout cache goes stale after a rotation. Keying
     /// the root view's `.id` on it forces a full re-layout against the real
     /// window size — without it, a landscape⇄portrait flip can leave the whole
-    /// hierarchy (TopBar, grids, every GeometryReader) stuck reporting the old
+    /// hierarchy (TopBar, grids, every geometry measurement) stuck reporting the old
     /// orientation's width, so the grid overflows the portrait screen.
     @Environment(\.verticalSizeClass) private var vSizeClass
 
@@ -48,12 +48,12 @@ struct ContentView: View {
     /// hadn't loaded. Re-applied the moment the first repertoire load lands.
     @State private var pendingDeepLink: DeepLink?
 
-    /// Live viewport width, tracked by a backing GeometryReader so the
+    /// Live viewport width, tracked by `onGeometryChange` so the
     /// search placement re-evaluates on rotation / iPad split-view resize.
     @State private var viewportWidth: CGFloat = UIScreen.main.bounds.width
     /// Live window width, published to the grid cards, the detail poster and
     /// the top bar as `listingViewportWidth`. See the NavigationStack's
-    /// measuring background for why it isn't `viewportWidth`.
+    /// width measurement for why it isn't `viewportWidth`.
     @State private var windowWidth: CGFloat = UIScreen.main.bounds.width
     /// Wide screens host search inline on the top bar; narrow ones keep it
     /// as the floating bottom pill. See `TopBarLayout`.
@@ -148,14 +148,8 @@ struct ContentView: View {
                     }
                 }
                 // Track the live width so `searchInline` follows rotation
-                // and resize. A clear backing layer — no layout effect.
-                .background(
-                    GeometryReader { geo in
-                        Color.clear
-                            .onAppear { viewportWidth = geo.size.width }
-                            .onChange(of: geo.size.width) { viewportWidth = $0 }
-                    }
-                )
+                // and resize. Fires with the initial width too — no layout effect.
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { viewportWidth = $0 }
                 .sheet(isPresented: $showFilters) {
                     FiltersSheet(
                         sortOption: $sortOption,
@@ -196,7 +190,7 @@ struct ContentView: View {
         // rotation the SwiftUI hierarchy can stay stuck reporting the previous
         // orientation's width (the grid then overflows the portrait screen,
         // "zoomed-in"); rebuilding on the trait-derived size class re-resolves
-        // every GeometryReader against the real window. See `vSizeClass`.
+        // every geometry measurement against the real window. See `vSizeClass`.
         .id(vSizeClass)
         // Card widths, the detail poster and the top bar's scale all derive
         // from the live window width rather than `UIScreen` at launch, so they
@@ -207,14 +201,9 @@ struct ContentView: View {
         // measurement feeds back — a bar still at landscape scale after
         // rotating to portrait overflows the screen and keeps the width wide.
         // The grid ignores the horizontal safe area, so add those insets back.
-        .background(
-            GeometryReader { geo in
-                let width = geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing
-                Color.clear
-                    .onAppear { windowWidth = width }
-                    .onChange(of: width) { windowWidth = $0 }
-            }
-        )
+        .onGeometryChange(for: CGFloat.self, of: { geo in
+            geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing
+        }) { windowWidth = $0 }
         // Overlay on the NavigationStack so the label aligns to the
         // device's screen centre, not the safe-area-inset content area.
         // The hint takes precedence over the momentary day label so the two

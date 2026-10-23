@@ -211,7 +211,12 @@ private struct ShowtimeBadge: View {
     /// True while a long-press is held down — drives the room tooltip.
     /// Set when the long-press succeeds (≥0.3s) and cleared on release, so
     /// a quick tap never flashes the tooltip.
-    @State private var holding = false
+    ///
+    /// `KINOWO_UITEST_PIN_ROOM_TOOLTIPS=1` starts every pill held, so a UI test
+    /// can read the tooltips' frames: XCUITest only queries after a press ends,
+    /// and the tooltip goes with it. Only this gesture state is stood in for;
+    /// the measuring and clamping are the production path.
+    @State private var holding = ProcessInfo.processInfo.environment["KINOWO_UITEST_PIN_ROOM_TOOLTIPS"] == "1"
 
     /// This pill's horizontal centre within the card's content box (the
     /// `cardCoordinateSpace` set on `ShowingsView`). Measured continuously so
@@ -265,14 +270,9 @@ private struct ShowtimeBadge: View {
         .padding(.horizontal, style.horizontalInset)
         .padding(.vertical, style.verticalInset)
         .background(holding ? Self.pressedFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
-        .background(
-            GeometryReader { geo in
-                Color.clear.preference(
-                    key: PillMidXKey.self,
-                    value: geo.frame(in: .named(Self.cardCoordinateSpace)).midX)
-            }
-        )
-        .onPreferenceChange(PillMidXKey.self) { pillMidX = $0 }
+        .onGeometryChange(for: CGFloat.self, of: {
+            $0.frame(in: .named(Self.cardCoordinateSpace)).midX
+        }) { pillMidX = $0 }
         .overlay(alignment: .top) {
             if holding, let room {
                 roomTooltip(room)
@@ -326,6 +326,7 @@ private struct ShowtimeBadge: View {
                     .stroke(Color(red: 0.23, green: 0.23, blue: 0.43), lineWidth: 1)
             )
             .fixedSize()
+            .accessibilityIdentifier(A11y.FilmCard.roomTooltip)
             .offset(x: horizontalOffset, y: -52)
             .transition(.opacity)
             .allowsHitTesting(false)
@@ -339,14 +340,5 @@ private struct ShowtimeBadge: View {
         let font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         let textWidth = (room as NSString).size(withAttributes: [.font: font]).width
         return ceil(textWidth) + 2 * 14
-    }
-}
-
-/// Carries each showtime pill's centre-x (in the card coordinate space) up to
-/// its `ShowtimeBadge`, which reads it to clamp the room tooltip inside the card.
-private struct PillMidXKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }

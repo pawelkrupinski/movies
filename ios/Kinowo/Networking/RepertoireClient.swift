@@ -294,6 +294,16 @@ extension RepertoireStore {
         }
     }
 
+    /// The `KINOWO_UITEST_ROOM_SHOWTIMES` slots as (time, room): late enough to
+    /// survive `pruneStaleShowings`, rooms short enough that each bubble fits
+    /// the card, so only the left-edge pills' bubbles have to be shifted.
+    private static let uiTestRoomShowtimes: [(time: String, room: String)] = [
+        ("23:56", "Sala 1"),
+        ("23:57", "Sala 2"),
+        ("23:58", "Sala 3"),
+        ("23:59", "Sala 4"),
+    ]
+
     /// One fixture day, `offsetDays` from now, carrying a single late slot so it
     /// survives `pruneStaleShowings`.
     private static func fixtureDay(offsetDays: Int, label: String) -> DayShowings {
@@ -311,9 +321,20 @@ extension RepertoireStore {
     /// has and this one didn't: two venues of one chain behind a SINGLE
     /// per-film URL, plus a cinema with a URL of its own.
     /// CinemaLinkRowUITests drives the detail screen's link row with it.
+    ///
+    /// `KINOWO_UITEST_ROOM_SHOWTIMES=1` gives that cinema a row of format-less
+    /// slots, each with its own room, so the pills span the card edge to edge
+    /// and each room tooltip is told apart by its text (RoomTooltipUITests).
     private static var fixtureCinemas: [CinemaShowings] {
+        let environment = ProcessInfo.processInfo.environment
+        if environment["KINOWO_UITEST_ROOM_SHOWTIMES"] == "1" {
+            let slots = uiTestRoomShowtimes.map { time, room in
+                Showtime(time: time, format: "", room: room, bookingURL: nil)
+            }
+            return [CinemaShowings(cinema: "Kino", cinemaURL: nil, showtimes: slots)]
+        }
         let slot = [Showtime(time: "23:59", format: "2D", room: nil, bookingURL: nil)]
-        guard ProcessInfo.processInfo.environment["KINOWO_UITEST_SHARED_CINEMA_URL"] == "1" else {
+        guard environment["KINOWO_UITEST_SHARED_CINEMA_URL"] == "1" else {
             return [CinemaShowings(cinema: "Kino", cinemaURL: nil, showtimes: slot)]
         }
         let chain = URL(string: "https://www.multikino.example/filmy/fixture")

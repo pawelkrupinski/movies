@@ -35,6 +35,8 @@ enum A11y {
         /// The age-rating certificate badge, present only for a film the
         /// server sent an `ageRating` for.
         static let ageRating = "filmcard.ageRating"
+        /// The room bubble a showtime pill shows while held.
+        static let roomTooltip = "filmcard.roomTooltip"
     }
 
     /// A poster rendered by `PosterChainImage` — the listing card, the

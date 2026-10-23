@@ -87,6 +87,7 @@
 		DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000203 /* DayChangeScrollResetUITests.swift */; };
 		DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000204 /* PosterFullScreenUITests.swift */; };
 		DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000205 /* CardShareMenuUITests.swift */; };
+		DD00000000000000000290 /* RoomTooltipUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000290 /* RoomTooltipUITests.swift */; };
 		DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000305 /* RotationColumnsUITests.swift */; };
 		DD00000000000000000404 /* WindowFillsScreenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000404 /* WindowFillsScreenUITests.swift */; };
 		DD00000000000000000306 /* NavbarFadeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000306 /* NavbarFadeUITests.swift */; };
@@ -205,6 +206,7 @@
 		CC00000000000000000203 /* DayChangeScrollResetUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayChangeScrollResetUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000204 /* PosterFullScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterFullScreenUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000205 /* CardShareMenuUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardShareMenuUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000290 /* RoomTooltipUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomTooltipUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000305 /* RotationColumnsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotationColumnsUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000404 /* WindowFillsScreenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFillsScreenUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000306 /* NavbarFadeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavbarFadeUITests.swift; sourceTree = "<group>"; };
@@ -416,6 +418,7 @@
 				CC00000000000000000203 /* DayChangeScrollResetUITests.swift */,
 				CC00000000000000000204 /* PosterFullScreenUITests.swift */,
 				CC00000000000000000205 /* CardShareMenuUITests.swift */,
+				CC00000000000000000290 /* RoomTooltipUITests.swift */,
 				CC00000000000000000305 /* RotationColumnsUITests.swift */,
 				CC00000000000000000404 /* WindowFillsScreenUITests.swift */,
 				CC00000000000000000306 /* NavbarFadeUITests.swift */,
@@ -622,6 +625,7 @@
 				DD00000000000000000203 /* DayChangeScrollResetUITests.swift in Sources */,
 				DD00000000000000000204 /* PosterFullScreenUITests.swift in Sources */,
 				DD00000000000000000205 /* CardShareMenuUITests.swift in Sources */,
+				DD00000000000000000290 /* RoomTooltipUITests.swift in Sources */,
 				DD00000000000000000305 /* RotationColumnsUITests.swift in Sources */,
 				DD00000000000000000404 /* WindowFillsScreenUITests.swift in Sources */,
 				DD00000000000000000306 /* NavbarFadeUITests.swift in Sources */,

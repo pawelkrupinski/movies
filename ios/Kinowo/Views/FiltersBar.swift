@@ -223,13 +223,7 @@ struct DatePillsRow: View {
         // Fill the offered width so the measurement reflects the space the row
         // is given, not the width the pills happen to occupy.
         .frame(maxWidth: .infinity)
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { availableWidth = geo.size.width }
-                    .onChange(of: geo.size.width) { availableWidth = $0 }
-            }
-        )
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { availableWidth = $0 }
     }
 
     private func pill(_ f: DateFilter) -> some View {
