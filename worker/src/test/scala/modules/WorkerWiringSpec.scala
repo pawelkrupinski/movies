@@ -254,10 +254,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     val text = PrometheusExposition.render(wiring.workerMetrics.registry)
     val scrape = WorkerHttpMetrics.Phase.Scrape
     val enrich = WorkerHttpMetrics.Phase.Enrich
-    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape",service="cinema"} 1""")
-    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$enrich",service="tmdb"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",path="other",phase="$scrape",service="cinema"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",path="other",phase="$enrich",service="tmdb"} 1""")
     // Not double-counted onto the other phase.
-    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape",service="cinema"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",path="other",phase="$scrape",service="cinema"} 1""")
     wiring.stop()
   }
 

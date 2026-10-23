@@ -68,6 +68,7 @@ object DaemonExecutors {
     case promise: scala.concurrent.Promise[?]   =>
       promise.tryFailure(new java.util.concurrent.CancellationException("never run: its executor was shut down")); ()
     case gated: PermitGated                     => cancelUnrun(gated.command)
+    case carried: HttpPath.Carried              => cancelUnrun(carried.command)
     case _                                      => ()
   }
 
@@ -106,7 +107,14 @@ object DaemonExecutors {
   }
 
   private[tools] def virtualThreadExecutor(name: String): ExecutorService =
-    Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(s"$name-", 0L).factory())
+    carryingHttpPath(Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(s"$name-", 0L).factory()))
+
+  /** Wrap `es` so each task runs under the [[HttpPath]] of the thread that submitted it: a request a pool thread makes
+   *  is counted for the caller that handed the work over, not as `other`. */
+  private def carryingHttpPath(es: ExecutorService): ExecutorService =
+    new DelegatingExecutorService(es) {
+      override def execute(command: Runnable): Unit = es.execute(HttpPath.carried(command))
+    }
 
   /** A caller-runs `ExecutorService`: every submitted task executes INLINE on
    *  the calling thread during `execute`, so a `submit(...).get(...)` round-trip
@@ -153,8 +161,8 @@ object DaemonExecutors {
   def boundedPool(name: String, threads: Int, queueCapacity: Int, whenFull: WhenFull, virtual: Boolean = false): ExecutorService = {
     require(threads > 0 && queueCapacity > 0, s"$name: threads ($threads) and queue capacity ($queueCapacity) must be positive")
     val factory: ThreadFactory = if (virtual) Thread.ofVirtual().name(s"$name-", 0L).factory() else daemonPlatform(name)
-    dropRejectedAfterShutdown(new ThreadPoolExecutor(threads, threads, 0L, TimeUnit.MILLISECONDS,
-      new LinkedBlockingQueue[Runnable](queueCapacity), factory, whenFull.handler))
+    dropRejectedAfterShutdown(carryingHttpPath(new ThreadPoolExecutor(threads, threads, 0L, TimeUnit.MILLISECONDS,
+      new LinkedBlockingQueue[Runnable](queueCapacity), factory, whenFull.handler)))
   }
 
   private def daemonPlatform(name: String): ThreadFactory = { r =>

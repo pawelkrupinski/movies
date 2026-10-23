@@ -133,4 +133,19 @@ class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
       "https://b.example/2" -> HttpOutcome.Success,
       "https://c.example/3" -> HttpOutcome.Success)
   }
+
+  it should "record each attempt for the path its caller named, an async one's included, `other` when none" in {
+    val seen = mutable.ListBuffer.empty[(String, String)]
+    def recorder(path: String): HttpOutcomeRecorder = new HttpOutcomeRecorder {
+      def record(outcome: String): Unit = { seen += (path -> outcome); () }
+      override def forPath(asked: String): HttpOutcomeRecorder = recorder(asked)
+    }
+    val fetch = new CountingHttpFetch(new StubFetch(ok), recorder("unset"))
+    HttpPath.within(HttpPath.Fill)(fetch.get("https://a.example/1"))
+    // completed on another thread, after the scope has closed
+    HttpPath.within(HttpPath.Live)(fetch.getAsync("https://b.example/2")).join()
+    fetch.get("https://c.example/3")
+    seen.toList shouldBe List(HttpPath.Fill -> HttpOutcome.Success, HttpPath.Live -> HttpOutcome.Success,
+      HttpPath.Other -> HttpOutcome.Success)
+  }
 }

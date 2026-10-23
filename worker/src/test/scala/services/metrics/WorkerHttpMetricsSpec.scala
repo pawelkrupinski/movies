@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{ExternalService, HttpOutcome}
+import tools.{ExternalService, HttpOutcome, HttpPath}
 
 class WorkerHttpMetricsSpec extends AnyFlatSpec with Matchers {
 
@@ -12,13 +12,38 @@ class WorkerHttpMetricsSpec extends AnyFlatSpec with Matchers {
   private val Scrape = WorkerHttpMetrics.Phase.Scrape
   private val Enrich = WorkerHttpMetrics.Phase.Enrich
 
-  "WorkerHttpMetrics" should "seed every country × phase × service × outcome at 0 so no Grafana line starts absent" in {
+  "WorkerHttpMetrics" should "seed every country × phase × service × path × outcome at 0 so no Grafana line starts absent" in {
     val registry = new PrometheusRegistry()
     val _ = new WorkerHttpMetrics(Seq("de", "pl"), registry)
     val text = render(registry)
-    // Every outcome exists for every country AND every (phase, service) pair from boot.
-    for (o <- HttpOutcome.all; (p, s) <- WorkerHttpMetrics.Service.grid; c <- Seq("de", "pl"))
-      text should include (s"""kinowo_worker_http_total{country="$c",outcome="$o",phase="$p",service="$s"} 0""")
+    // Every outcome exists for every country, every (phase, service) pair AND every path from boot.
+    for (o <- HttpOutcome.all; (p, s) <- WorkerHttpMetrics.Service.grid; path <- HttpPath.all; c <- Seq("de", "pl"))
+      text should include (s"""kinowo_worker_http_total{country="$c",outcome="$o",path="$path",phase="$p",service="$s"} 0""")
+  }
+
+  it should "register one counter whose help names every label, `path` and its values among them" in {
+    val registry = new PrometheusRegistry()
+    val _ = new WorkerHttpMetrics(Seq("de"), registry)
+    val text = render(registry)
+    text should include ("# TYPE kinowo_worker_http_total counter")
+    val help = text.linesIterator.find(_.startsWith("# HELP kinowo_worker_http_total ")).getOrElse(fail("no help line"))
+    for (label <- Seq("country", "phase", "service", "path", "outcome")) help should include (label)
+    for (path <- HttpPath.all) help should include (path)
+    help should include ("path (who asked")
+  }
+
+  it should "label an attempt with the path its caller asked it for, `other` when none was named" in {
+    val registry = new PrometheusRegistry()
+    val enrich   = new WorkerHttpMetrics(Seq("de"), registry).recorderFor("de", Enrich)
+    enrich.forRequest("https://api.themoviedb.org/3/movie/1").forPath(HttpPath.Fill).record(HttpOutcome.Success)
+    enrich.forPath(HttpPath.Live).forRequest("https://api.themoviedb.org/3/movie/2").record(HttpOutcome.Http429)
+    enrich.forRequest("https://api.themoviedb.org/3/movie/3").record(HttpOutcome.Success)
+
+    val text = render(registry)
+    text should include ("""kinowo_worker_http_total{country="de",outcome="success",path="fill",phase="enrich",service="tmdb"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_429",path="live",phase="enrich",service="tmdb"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="success",path="other",phase="enrich",service="tmdb"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="success",path="live",phase="enrich",service="tmdb"} 0""")
   }
 
   it should "seed a bounded grid: the cinema sites and Telegram on scrape, each API and `other` on enrich" in {
@@ -37,10 +62,10 @@ class WorkerHttpMetricsSpec extends AnyFlatSpec with Matchers {
     deScrape.record(HttpOutcome.Success)
 
     val text = render(registry)
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_429",phase="scrape",service="cinema"} 2""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="success",phase="scrape",service="cinema"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_429",path="other",phase="scrape",service="cinema"} 2""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="success",path="other",phase="scrape",service="cinema"} 1""")
     // pl untouched — the recorder is bound to its own country's slice.
-    text should include ("""kinowo_worker_http_total{country="pl",outcome="http_429",phase="scrape",service="cinema"} 0""")
+    text should include ("""kinowo_worker_http_total{country="pl",outcome="http_429",path="other",phase="scrape",service="cinema"} 0""")
   }
 
   it should "keep scrape and enrich attempts on separate phase series" in {
@@ -52,10 +77,10 @@ class WorkerHttpMetricsSpec extends AnyFlatSpec with Matchers {
     val text = render(registry)
     // The whole point of the phase label: a cinema-site 403 and a metadata-API 404
     // land on different series so a per-phase Grafana panel can read each alone.
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_403",phase="scrape",service="cinema"} 1""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_404",phase="enrich",service="other"} 1""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_403",phase="enrich",service="other"} 0""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_404",phase="scrape",service="cinema"} 0""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_403",path="other",phase="scrape",service="cinema"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_404",path="other",phase="enrich",service="other"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_403",path="other",phase="enrich",service="other"} 0""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_404",path="other",phase="scrape",service="cinema"} 0""")
   }
 
   it should "label an enrich attempt with the external service its URL reaches" in {
@@ -67,10 +92,10 @@ class WorkerHttpMetricsSpec extends AnyFlatSpec with Matchers {
     enrich.forRequest("https://unlisted.example/x").record(HttpOutcome.Success)
 
     val text = render(registry)
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_401",phase="enrich",service="omdb"} 1""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_429",phase="enrich",service="tmdb"} 1""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="success",phase="enrich",service="other"} 1""")
-    text should include ("""kinowo_worker_http_total{country="de",outcome="http_401",phase="enrich",service="tmdb"} 0""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_401",path="other",phase="enrich",service="omdb"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_429",path="other",phase="enrich",service="tmdb"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="success",path="other",phase="enrich",service="other"} 1""")
+    text should include ("""kinowo_worker_http_total{country="de",outcome="http_401",path="other",phase="enrich",service="tmdb"} 0""")
   }
 
   it should "label every scrape attempt `cinema` — Filmweb's showtimes scraper included — except Telegram" in {
@@ -81,8 +106,8 @@ class WorkerHttpMetricsSpec extends AnyFlatSpec with Matchers {
     scrape.forRequest("https://api.telegram.org/bot1/sendMessage").record(HttpOutcome.Http401)
 
     val text = render(registry)
-    text should include ("""kinowo_worker_http_total{country="pl",outcome="success",phase="scrape",service="cinema"} 2""")
-    text should include ("""kinowo_worker_http_total{country="pl",outcome="http_401",phase="scrape",service="telegram"} 1""")
+    text should include ("""kinowo_worker_http_total{country="pl",outcome="success",path="other",phase="scrape",service="cinema"} 2""")
+    text should include ("""kinowo_worker_http_total{country="pl",outcome="http_401",path="other",phase="scrape",service="telegram"} 1""")
     text should not include ("""service="filmweb"} 1""")
   }
 }

@@ -90,6 +90,16 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     an[java.util.concurrent.CancellationException] should be thrownBy queued.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
+  it should "cancel a drained task its submitter handed over under an HTTP path" in {
+    val pool    = DaemonExecutors.singleThreadExecutor("drained-carried", queueCapacity = 1)
+    val started = new CountDownLatch(1)
+    pool.execute(() => { started.countDown(); try new CountDownLatch(1).await() catch { case _: InterruptedException => () } })
+    started.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
+    val queued = HttpPath.within(HttpPath.Scrape)(pool.submit(() => 1))
+    pool.shutdownNow()
+    an[java.util.concurrent.CancellationException] should be thrownBy queued.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
+  }
+
   // A producer waiting for room got it from `shutdownNow` draining the queue — after the pool had
   // stopped taking from it — and put its task where nothing would ever run it, its future forever
   // incomplete. A task that lands in the queue of a pool shut down meanwhile is taken back, cancelled.
@@ -137,6 +147,19 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     Eventually.eventually(permit.hasQueuedThreads shouldBe true, pollMs = 5)
     pool.shutdownNow()
     an[java.util.concurrent.CancellationException] should be thrownBy scala.concurrent.Await.result(parked, SpecTimeouts.Io)
+  }
+
+  // `kinowo_worker_http_total`'s `path`: a request made on a pool thread is counted for the caller that handed the work
+  // over -- a scrape's detail fetches, the identity model's prefetch -- not as `other`.
+  "a pool DaemonExecutors builds" should "run each task under the HTTP path of the thread that submitted it" in {
+    val bounded = DaemonExecutors.boundedPool("carries-path", threads = 1, queueCapacity = 4, WhenFull.WaitForRoom, virtual = true)
+    val virtual = DaemonExecutors.virtualThreadEC("carries-path-ec")
+    try for (pool <- Seq(bounded, virtual)) {
+      HttpPath.within(HttpPath.Fill)(pool.submit(() => HttpPath.current)).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe
+        HttpPath.Fill
+      pool.submit(() => HttpPath.current).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe HttpPath.Other
+    }
+    finally { bounded.shutdown(); virtual.shutdown() }
   }
 
   "boundedEC" should "cap concurrency for a single EC" in {

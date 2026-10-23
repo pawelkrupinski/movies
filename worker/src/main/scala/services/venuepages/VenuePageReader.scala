@@ -22,7 +22,7 @@ import java.time.Clock
 final class VenuePageReader(store: VenuePageStore, freshness: FreshnessStore, announce: VenueDetailRead => Unit, clock: Clock) {
 
   def read(enricher: DetailEnricher, page: String): VenuePageRead = {
-    val outcome = enricher.fetchDetail(page)
+    val outcome = tools.HttpPath.within(tools.HttpPath.VenuePage)(enricher.fetchDetail(page))
     val key     = VenuePageKey(enricher.detailGroup, page)
     val now     = clock.instant()
     val filed = outcome match {

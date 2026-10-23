@@ -267,7 +267,7 @@ class MovieService(
    *  builder a resolution writes with, ratings and cinemas carried forward. `None` when TMDB could
    *  not answer. What the identity projection (phase 5) fills a film the resolver named with. */
   def withFilmDetails(existing: MovieRecord, tmdbId: Int): Option[MovieRecord] =
-    detailsOf(tmdbId, existing).map(_(existing))
+    tools.HttpPath.within(tools.HttpPath.Enrich)(detailsOf(tmdbId, existing).map(_(existing)))
 
   /** The resolution builder applied with `tmdbId`'s fetched details, the cross-reference ids falling
    *  back to `row`'s when TMDB answers that it has none. When TMDB does not answer at all (an outage,

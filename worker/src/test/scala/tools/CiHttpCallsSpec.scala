@@ -13,10 +13,10 @@ class CiHttpCallsSpec extends AnyFlatSpec with Matchers {
       .record(HttpOutcome.Http429)
     val cells = metrics.snapshot().getDataPoints.toArray.toSeq.collect {
       case p: io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot =>
-        (p.getLabels.get("phase"), p.getLabels.get("service"), p.getLabels.get("outcome")) -> p.getValue
+        (p.getLabels.get("phase"), p.getLabels.get("service"), p.getLabels.get("path"), p.getLabels.get("outcome")) -> p.getValue
     }.toMap
-    cells(("enrich", ExternalService.Tmdb, HttpOutcome.Http429)) shouldBe 1.0
-    cells(("scrape", ExternalService.Cinema, HttpOutcome.Success)) shouldBe 0.0
+    cells(("enrich", ExternalService.Tmdb, HttpPath.Other, HttpOutcome.Http429)) shouldBe 1.0
+    cells(("scrape", ExternalService.Cinema, HttpPath.Other, HttpOutcome.Success)) shouldBe 0.0
   }
 
   "CiHttpCalls" should "sum every tracked wiring's live calls and keep only the cells that were asked" in {
@@ -31,7 +31,7 @@ class CiHttpCallsSpec extends AnyFlatSpec with Matchers {
     CiHttpCalls.track(second)
     val ours = CiHttpCalls.totals().filter(_._1.contains("country" -> "de"))
     ours shouldBe Map(
-      Seq("country" -> "de", "outcome" -> HttpOutcome.Success, "phase" -> "enrich", "service" -> ExternalService.Omdb) -> 5.0)
+      Seq("country" -> "de", "outcome" -> HttpOutcome.Success, "path" -> HttpPath.Other, "phase" -> "enrich", "service" -> ExternalService.Omdb) -> 5.0)
   }
 
   it should "write the cells as a TSV: a header of label names then count, a row per cell" in {

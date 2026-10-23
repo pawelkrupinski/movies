@@ -17,31 +17,38 @@ import java.util.concurrent.CompletableFuture
  * correctly NOT counted as a wire attempt.
  *
  * Every synchronous member is counted through the one [[ForwardingHttpFetch]] hook, into the
- * recorder [[HttpOutcomeRecorder.forRequest]] picks for the attempt's URL.
+ * recorder [[HttpOutcomeRecorder.forRequest]] picks for the attempt's URL and
+ * [[HttpOutcomeRecorder.forPath]] for the [[HttpPath]] its caller asked it for — read as the
+ * attempt starts, on the caller's thread, so an async attempt completing elsewhere keeps it.
  */
 class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) extends ForwardingHttpFetch {
 
-  protected def around[T](url: String)(call: HttpFetch => T): T =
+  protected def around[T](url: String)(call: HttpFetch => T): T = {
+    val attempt = recorderFor(url)
     try {
       val result = call(delegate)
-      recorder.forRequest(url).record(HttpOutcome.Success)
+      attempt.record(HttpOutcome.Success)
       result
     } catch {
       case t: Throwable =>
-        recorder.forRequest(url).record(HttpOutcome.classify(t))
+        attempt.record(HttpOutcome.classify(t))
         throw t
     }
+  }
 
   /** The async fan-out records on completion. A `CompletableFuture` reports its
    *  failure wrapped in a `CompletionException`, so unwrap the cause before
    *  classifying; `whenComplete` is pass-through (it returns the same result /
    *  re-raises the same error). */
-  override def getAsync(url: String): CompletableFuture[String] =
+  override def getAsync(url: String): CompletableFuture[String] = {
+    val attempt = recorderFor(url)
     delegate.getAsync(url).whenComplete { (_, err) =>
-      val forUrl = recorder.forRequest(url)
-      if (err == null) forUrl.record(HttpOutcome.Success)
-      else forUrl.record(HttpOutcome.classify(unwrap(err)))
+      if (err == null) attempt.record(HttpOutcome.Success)
+      else attempt.record(HttpOutcome.classify(unwrap(err)))
     }
+  }
+
+  private def recorderFor(url: String): HttpOutcomeRecorder = recorder.forRequest(url).forPath(HttpPath.current)
 
   private def unwrap(t: Throwable): Throwable = t match {
     case _: java.util.concurrent.CompletionException | _: java.util.concurrent.ExecutionException

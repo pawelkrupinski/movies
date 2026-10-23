@@ -229,7 +229,7 @@ class ImdbIdResolver(
   }
 
 
-  private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = {
+  private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = tools.HttpPath.within(tools.HttpPath.Enrich) {
     val key = cache.keyOf(title, year)
     // Only a TMDB film TMDB gave no IMDb id: a film TMDB has no record of takes its IMDb id from the identity
     // resolver's fallback source (`ResolverDecision.fallback`), on every fact it publishes, never from a title search.

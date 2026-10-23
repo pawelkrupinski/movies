@@ -23,7 +23,7 @@ final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageI
  * venues' enriched details), and only a TMDB or IMDb question the store has no answer to asked `live`
  * — through the fetch that files its answer into the store (`NormalizingHttpFetch`), then read back from
  * there. So a take-up reads the store in batches instead of asking every question again; venue details
- * are never fetched here, only waited for.
+ * are never fetched here, only waited for. A live ask is the `live` path of `kinowo_worker_http_total`.
  */
 final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends ForwardingIdentityLookups(stored) {
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = storedFirst(stored.candidates(query), live.candidates(query))
@@ -41,5 +41,5 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) e
    *  answers as the store holds it (popularity to its bucket), as every later ask of it will: answered as TMDB stated
    *  it, a take-up decided on one input and its next drain on another. The live answer only when the store took none. */
   private def storedFirst[A](fromStore: => Answer[A], asked: => Answer[A]): Answer[A] =
-    fromStore.orElse { val answer = asked; fromStore.orElse(answer) }
+    fromStore.orElse { val answer = tools.HttpPath.within(tools.HttpPath.Live)(asked); fromStore.orElse(answer) }
 }

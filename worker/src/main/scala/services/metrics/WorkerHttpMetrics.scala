@@ -2,11 +2,11 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import tools.{ExternalService, HttpOutcome, HttpOutcomeRecorder}
+import tools.{ExternalService, HttpOutcome, HttpOutcomeRecorder, HttpPath}
 
 /**
  * `kinowo_worker_http_total` — one counter incremented per OUTBOUND HTTP attempt
- * the worker makes, labelled by `country`, `phase` and `outcome` ([[HttpOutcome]]:
+ * the worker makes, labelled by `country`, `phase`, `service`, `path` and `outcome` ([[HttpOutcome]]:
  * success / http_429 / http_4xx / http_5xx / timeout / connection_error / other).
  *
  * Fed by [[tools.CountingHttpFetch]] wired innermost in each country's fetch
@@ -32,9 +32,18 @@ import tools.{ExternalService, HttpOutcome, HttpOutcomeRecorder}
  * a cinema source there — or `telegram` for the alerting bot that shares that
  * chain. It is what tells an OMDb quota 401 from a TMDB key problem.
  *
+ * The `path` label ([[tools.HttpPath]]) names WHO ASKED: `fill` (the identity model's lookup
+ * fill), `live` (its live asks at take-up), `agreement` (the agreement stage's questions), `sweep`
+ * (TMDB's change lists), `refresh` (aged questions asked again), `venue_page` (a venue detail page
+ * read into venue_pages), `enrich` (the pipeline's ratings, IMDb-id resolution and projected films'
+ * details), `scrape` (the scraping pipeline), or `other` for a request no caller named. The caller
+ * scopes it around its work; the counter reads it on the requesting thread, so no signature carries
+ * it. Per-path rate per country:
+ * `sum by (country, path) (rate(kinowo_worker_http_total[5m]))`.
+ *
  * Registered ONCE on the shared [[WorkerMetrics]] registry with a leading
  * `country` label (like every other `kinowo_worker_*` series), and seeded to 0
- * for the full country × (phase, service) × outcome grid so no Grafana line
+ * for the full country × (phase, service) × path × outcome grid so no Grafana line
  * starts with a gap. The grid is bounded: [[WorkerHttpMetrics.Service.grid]]
  * pairs each phase only with the services it can reach.
  */
@@ -47,31 +56,34 @@ class WorkerHttpMetrics(countryCodes: Seq[String], registry: PrometheusRegistry)
       "(scrape = cinema-site scraping incl. chunk & per-film detail; enrich = third-party " +
       "metadata/rating/resolution APIs), service (the external service called: cinema / telegram " +
       "on scrape; omdb / tmdb / imdb / rottentomatoes / metacritic / filmweb / letterboxd / wikidata / " +
-      "cinemeta / other on enrich) and outcome (success / http_429 / http_4xx / http_5xx / " +
+      "cinemeta / other on enrich), path (who asked: fill / live / agreement / sweep / refresh / venue_page / " +
+      "enrich / scrape / other) and outcome (success / http_429 / http_4xx / http_5xx / " +
       "timeout / connection_error / other). Every retry is a separate attempt.")
-    .labelNames("country", "phase", "outcome", "service")
+    .labelNames("country", "phase", "outcome", "service", "path")
     .register(registry)
 
   seed()
 
-  /** Materialize every (country, phase, service, outcome) at 0 so each Grafana line
+  /** Materialize every (country, phase, service, path, outcome) at 0 so each Grafana line
    *  exists from boot rather than popping in when a category first fires. */
   private def seed(): Unit =
-    for (c <- countryCodes; (p, s) <- WorkerHttpMetrics.Service.grid; o <- HttpOutcome.all)
-      requests.labelValues(c, p, o, s)
+    for (c <- countryCodes; (p, s) <- WorkerHttpMetrics.Service.grid; path <- HttpPath.all; o <- HttpOutcome.all)
+      requests.labelValues(c, p, o, s, path)
 
   /** A recorder bound to one country and call [[WorkerHttpMetrics.Phase]] — what a
    *  [[modules.WorkerWiring]] injects into that phase's [[tools.CountingHttpFetch]].
    *  The counter asks it [[HttpOutcomeRecorder.forRequest]] per attempt, which binds
-   *  the `service` label; a bare `record` (no URL known) is the phase's default. */
+   *  the `service` label, and [[HttpOutcomeRecorder.forPath]], which binds `path`; a bare
+   *  `record` (no URL known, no path named) is the phase's default service and `other`. */
   def recorderFor(country: String, phase: String): HttpOutcomeRecorder =
-    serviceRecorder(country, phase, WorkerHttpMetrics.Service.default(phase))
+    labelled(country, phase, WorkerHttpMetrics.Service.default(phase), HttpPath.Other)
 
-  private def serviceRecorder(country: String, phase: String, service: String): HttpOutcomeRecorder =
+  private def labelled(country: String, phase: String, service: String, path: String): HttpOutcomeRecorder =
     new HttpOutcomeRecorder {
-      def record(outcome: String): Unit = requests.labelValues(country, phase, outcome, service).inc()
+      def record(outcome: String): Unit = requests.labelValues(country, phase, outcome, service, path).inc()
       override def forRequest(url: String): HttpOutcomeRecorder =
-        serviceRecorder(country, phase, WorkerHttpMetrics.Service.of(phase, url))
+        labelled(country, phase, WorkerHttpMetrics.Service.of(phase, url), path)
+      override def forPath(asked: String): HttpOutcomeRecorder = labelled(country, phase, service, asked)
     }
 
   /** Every cell's count now, whatever labels the family carries — what a CI recording leg dumps

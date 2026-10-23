@@ -231,7 +231,7 @@ class TaskWorker(
       observer.onFinished(task, Outcome.NoHandler, 0L)
       PollResult.Returned
     case Some(h) =>
-      val handled = tools.Stopwatch.timed(Try(h.handle(task)))
+      val handled = tools.Stopwatch.timed(Try(tools.HttpPath.within(TaskWorker.httpPathOf(task.taskType))(h.handle(task))))
       val (outcome, millis) = (handled.value, handled.millis)
       outcome match {
         case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
@@ -343,6 +343,22 @@ class TaskWorker(
 }
 
 object TaskWorker {
+
+  /** Who a task's outbound requests are asked for ([[tools.HttpPath]], the `path` label of `kinowo_worker_http_total`):
+   *  the scrapes the scraping pipeline's, the ratings and IMDb-id resolution the pipeline's enrichment, a venue page read
+   *  `venue_page` (also what a film row's `EnrichDetails` reads, through `VenuePageReader`), the agreement's questions
+   *  `agreement`. The rest send none of their own. */
+  def httpPathOf(taskType: TaskType): String = taskType match {
+    case TaskType.ScrapeCinema | TaskType.ScrapeChunk | TaskType.ScrapeChunkReduce => tools.HttpPath.Scrape
+    case TaskType.EnrichDetails | TaskType.ResolveImdbId | TaskType.ImdbRating | TaskType.FilmwebRating |
+        TaskType.RtRating | TaskType.McRating | TaskType.RefreshAllImdb | TaskType.RefreshAllFilmweb |
+        TaskType.RefreshAllMetacritic | TaskType.RefreshAllRt | TaskType.RefreshAllOmdb => tools.HttpPath.Enrich
+    case TaskType.ReadVenuePage => tools.HttpPath.VenuePage
+    case TaskType.AgreementQuestion | TaskType.AgreementFind | TaskType.AgreementPoster | TaskType.AgreementCatalogue =>
+      tools.HttpPath.Agreement
+    case TaskType.SettleNow | TaskType.RenderShareCard | TaskType.PruneShareCards | TaskType.ReleaseShareCardHold |
+        TaskType.RenderCityCard | TaskType.AuditReadModelContent | TaskType.AuditShareCards => tools.HttpPath.Other
+  }
 
   /** How long a stopping worker waits for its in-flight handlers before handing their tasks back itself — well inside
    *  the pod's 30 s termination grace, which the rest of the shutdown shares. */

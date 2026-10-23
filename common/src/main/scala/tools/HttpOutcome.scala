@@ -85,6 +85,10 @@ trait HttpOutcomeRecorder {
    *  request went (the worker's `service` label, see [[ExternalService]]). [[CountingHttpFetch]]
    *  asks it for every attempt. */
   def forRequest(url: String): HttpOutcomeRecorder = this
+
+  /** The recorder for a request asked for `path` ([[HttpPath]]) — this one, unless the sink labels outcomes by who
+   *  asked (the worker's `path` label). [[CountingHttpFetch]] asks it for every attempt, with the path its caller named. */
+  def forPath(path: String): HttpOutcomeRecorder = this
 }
 
 object HttpOutcomeRecorder {

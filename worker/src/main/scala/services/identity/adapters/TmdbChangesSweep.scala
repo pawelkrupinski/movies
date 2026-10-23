@@ -38,7 +38,7 @@ final class TmdbChangesSweep(store: TmdbStore, docs: TmdbDocuments, client: Tmdb
   def behind: Boolean = watermark.forall(_.isBefore(today))
 
   /** Sweep what TMDB edited since the last complete sweep; the films and people fetched again. */
-  def sweep(): SweepResult = synchronized {
+  def sweep(): SweepResult = synchronized(tools.HttpPath.within(tools.HttpPath.Sweep) {
     val end   = today
     val start = watermark.fold(end.minusDays(1))(_.minusDays(1))
     val windows = Iterator.iterate(start)(_.plusDays(MaxWindowDays)).takeWhile(!_.isAfter(end))
@@ -49,7 +49,7 @@ final class TmdbChangesSweep(store: TmdbStore, docs: TmdbDocuments, client: Tmdb
     logger.info(s"identity store: TMDB changes $start..$end — ${total.changed} films edited, ${total.films} held films and " +
       s"${total.people} held people fetched again")
     total
-  }
+  })
 
   private def sweepWindow(from: LocalDate, to: LocalDate): SweepResult = {
     val first            = client.changedMovies(from, to, 1)
