@@ -6,26 +6,20 @@ import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import play.api.libs.json.{JsArray, Json}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 
 /**
  * Kino Remus (Kościerzyna), the Kościerski Dom Kultury's cinema. Its programme
  * lives on two sites, and each holds what the other lacks:
  *
- *   - The "Ticket Manager" booking site (`remus.hostingasp.pl`, ASP.NET MVC)
- *     renders its calendar in the browser, but the jQuery `eventCalendar`
- *     widget feeds from `/Repertuar/Kalendarz1JsonDane` — a JSON array with one
- *     object per screening, weeks ahead. Each object's `date` is the day
- *     stamped `23:59:00`; the real time, the title and the booking link sit in
- *     the object's `title`, an HTML fragment: `p.event-title` (`„Lalka” 2D`,
- *     `„Zapomniana wyspa” 2D dubbing`), `p.event-hour` (`czwartek, godz.17:00`)
- *     and `a.bt` (`/Bilety/Sala/<id>`). Its poster is one generic
+ *   - The "Ticket Manager" booking site (`remus.hostingasp.pl`, [[TicketManagerFeed]])
+ *     carries every screening, weeks ahead, billed with quotes and a version
+ *     (`„Lalka” 2D`, `„Zapomniana wyspa” 2D dubbing`). Its poster is one generic
  *     "zapraszamy" placeholder for every event, so none is taken from it.
  *   - The KDK WordPress page `/kino-remus/` lists the current films, undated,
  *     each linking to its own page (`/lalka/`) — and those pages carry the
@@ -70,14 +64,12 @@ class KinoRemusClient(http: HttpFetch, override val cinema: Cinema) extends Cine
 object KinoRemusClient {
 
   val TicketManagerUrl = "https://www.remus.hostingasp.pl/"
-  val FeedUrl          = s"${TicketManagerUrl}Repertuar/Kalendarz1JsonDane?filter=$TicketManagerUrl"
+  val FeedUrl          = TicketManagerFeed.feedUrl(TicketManagerUrl)
   val FilmListUrl      = "https://kdkkoscierzyna.pl/kino-remus/"
 
   /** Every quotation mark either site wraps a title in — both mix Polish
    *  „…” with straight and English quotes, sometimes within one title. */
   private val Quotes = "[„”“\"]".r
-
-  private val ScreeningHour = raw"""godz\.\s*(${ScraperParse.ClockTextDotted})""".r
 
   /** The film page's header line, `„Lalka”/dramat, romans/13+/2D`: genres and
    *  age rating are the two slash-separated fields before the version. */
@@ -87,11 +79,9 @@ object KinoRemusClient {
 
   private[pl] def parse(feed: String, filmList: String, cinema: Cinema): Seq[CinemaMovie] = {
     val pages = filmPages(filmList)
-    val slots = Json.parse(feed).as[JsArray].value.toSeq.flatMap { event =>
-      for {
-        day   <- (event \ "date").asOpt[String].flatMap(ScraperParse.parseDate)
-        slot  <- screening((event \ "title").asOpt[String].getOrElse(""), day)
-      } yield slot
+    val slots = TicketManagerFeed.screenings(feed, TicketManagerUrl).flatMap { screening =>
+      val (bare, format) = FormatTags.extractFormatTags(screening.billedTitle)
+      Option(unquoted(bare)).filter(_.nonEmpty).map(RawSlot(_, screening.dateTime, screening.bookingUrl, format))
     }
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, _, showtimes) =>
       CinemaMovie(
@@ -105,20 +95,6 @@ object KinoRemusClient {
         showtimes = showtimes
       )
     }
-  }
-
-  /** One screening from an event's HTML fragment, or None when it lacks a
-   *  title or a `godz.` time. */
-  private def screening(fragment: String, day: LocalDate): Option[RawSlot] = {
-    val html = Jsoup.parseBodyFragment(fragment, TicketManagerUrl)
-    for {
-      billed <- Option(html.selectFirst("p.event-title")).map(_.text)
-      (bare, format) = FormatTags.extractFormatTags(billed)
-      title  = unquoted(bare) if title.nonEmpty
-      hour   <- Option(html.selectFirst("p.event-hour")).flatMap(p => ScreeningHour.findFirstMatchIn(p.text))
-      time   <- ScraperParse.parseHHmm(hour.group(1).replace('.', ':'))
-    } yield RawSlot(title, LocalDateTime.of(day, time),
-      Option(html.selectFirst("a.bt[href]")).map(_.attr("abs:href")).filter(_.nonEmpty), format)
   }
 
   /** The KDK film list's `title → page` links, keyed by [[titleKey]]. */

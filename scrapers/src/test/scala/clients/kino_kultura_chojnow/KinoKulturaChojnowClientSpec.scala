@@ -9,37 +9,39 @@ import services.cinemas.pl.KinoKulturaChojnowClient
 
 import java.time.LocalDateTime
 
-/** Replays the recorded `kino.chojnow.eu/repertuar,m15,s1500.html` card grid
- *  (MOKSiR Chojnów's "Kursorek" CMS) through the client.
+/** Replays a 2026-10-23 capture of MOKSiR Chojnów's Ticket Manager feed,
+ *  `bilety.chojnow.eu/Repertuar/Kalendarz1JsonDane?filter=https://bilety.chojnow.eu/`:
+ *  9 screenings, 23–26 Oct.
  *
- *  2026-09-23 nearby-towns sweep, assigned to Legnica's catchment. The page
- *  carries only two programmed items at fetch time: an André Rieu concert
- *  broadcast spanning a multi-week date range (`Rozpoczęcie:` bare-dated, no
- *  time — the true per-date times are buried in free-text prose the client
- *  deliberately does not parse) and a single dated film screening. */
+ *  That day the `kino.chojnow.eu` card grid the client used to read carried all
+ *  three of the weekend's films (Róża, Marsupilami, Mistyczka) with a bare-date
+ *  `Rozpoczęcie:` and their times only in prose, so it parsed to nothing and
+ *  the venue sat white. The feed carries every screening with its time. */
 class KinoKulturaChojnowClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val movies = new KinoKulturaChojnowClient(new FakeHttpFetch("kino-kultura-chojnow")).fetch()
 
-  "KinoKulturaChojnowClient" should "return a non-empty, single-cinema film list" in {
-    movies should not be empty
+  private def film(title: String) = movies.find(_.movie.title == title).value
+
+  "KinoKulturaChojnowClient" should "read every screening of the Ticket Manager feed" in {
+    movies.flatMap(_.showtimes) should have size 9
+    movies.map(_.movie.title) should contain theSameElementsAs Seq(
+      "Kicia Kocia na pikniku", "Marsupilami", "Mira", "Mistyczka", "Róża")
     movies.map(_.cinema).toSet shouldBe Set(KinoKulturaChojnow)
-    all(movies.map(_.showtimes)) should not be empty
   }
 
-  it should "pin the single dated screening read off the structured Rozpoczęcie field" in {
-    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("vivaldi")).value
-    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 12, 30))
+  it should "take each time from the event's 'godz.' line, not the feed's 23:59 date stamp" in {
+    film("Róża").showtimes.map(_.dateTime) shouldBe Seq(
+      LocalDateTime.of(2026, 10, 23, 12, 30), LocalDateTime.of(2026, 10, 24, 18, 0), LocalDateTime.of(2026, 10, 25, 18, 0))
   }
 
-  it should "drop the multi-date event whose Rozpoczęcie carries no time" in {
-    // The André Rieu card's Rozpoczęcie is a bare "2026-09-13" (no HH:MM) — it
-    // spans multiple screening dates only described in free-text prose, so the
-    // card yields no showtime rather than a guessed one.
-    movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("rieu")) shouldBe false
+  it should "link each screening sold online to its seat map, and leave the box-office-only one unlinked" in {
+    val roza = film("Róża").showtimes.map(s => s.dateTime.toLocalDate.getDayOfMonth -> s.bookingUrl).toMap
+    roza(24).value shouldBe "https://bilety.chojnow.eu/Bilety/Sala/1639"
+    roza(23) shouldBe None
   }
 
-  it should "carry no booking link (ticketing is off-site, with no per-event URL on this page)" in {
-    all(movies.flatMap(_.showtimes).map(_.bookingUrl)) shouldBe None
+  it should "take the poster the box office shows for the film" in {
+    film("Mistyczka").posterUrl.value should startWith("http://www.bilety.chojnow.eu/obrazki/")
   }
 }

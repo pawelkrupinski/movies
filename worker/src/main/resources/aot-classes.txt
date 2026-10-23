@@ -9204,6 +9204,8 @@ services.cinemas.pl.KinoKulturaChojnowClient
 services.cinemas.pl.KinoKulturaChojnowClient$
 services.cinemas.pl.KinoKulturaChojnowClient$RawSlot
 services.cinemas.pl.KinoKulturaChojnowClient$RawSlot$
+services.cinemas.pl.KinoKulturaChojnowClient$Slot
+services.cinemas.pl.KinoKulturaChojnowClient$Slot$
 services.cinemas.pl.KinoKulturaClient
 services.cinemas.pl.KinoKulturaClient$RawSlot
 services.cinemas.pl.KinoKulturaClient$RawSlot$
@@ -9509,6 +9511,10 @@ services.cinemas.pl.SystemBiletowyClient$Identity$
 services.cinemas.pl.SystemBiletowyClient$RawSlot
 services.cinemas.pl.SystemBiletowyClient$RawSlot$
 services.cinemas.pl.TeatrZiemiRybnickiejClient
+services.cinemas.pl.TicketManagerFeed
+services.cinemas.pl.TicketManagerFeed$
+services.cinemas.pl.TicketManagerFeed$Screening
+services.cinemas.pl.TicketManagerFeed$Screening$
 services.cinemas.pl.UjazdowskiClient
 services.cinemas.pl.UjazdowskiClient$
 services.cinemas.pl.UjazdowskiClient$$anon$1
