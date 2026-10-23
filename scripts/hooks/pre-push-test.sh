@@ -785,6 +785,31 @@ HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only" >/dev/
 mutated="$(commit_paths "a tree the mutant has not seen" -- scripts/z.sh)"
 check "...and it reuses a changed tree, which the check above refuses" "0 12" \
   "$(HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$mutated")"
+# CHECK FIRST: git opens the push's connection before the hook runs, and a long hook outlives it (the Forgejo tunnel
+# restarting under load, 2026-10-23). A dry run of `<remote>/main..HEAD` reads that remote's runs, as the push to it
+# will, so the push that follows reuses its pass and holds the connection for seconds.
+scratch_git "$grepo" remote add fj "$fjremote"
+scratch_git "$grepo" update-ref refs/remotes/fj/main "$rbase"
+checkfirst="$(commit_paths "a change checked before its push" -- scripts/z.sh)"
+fjgreens() { GH_FAILS=1 SECRETS_STATE=unlocked FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" FJ_REC="[$fjgreen]" "$@"; }
+check "a dry run of fj/main..HEAD runs the checks, reading Forgejo's runs, not gh's" "0 13 0" \
+  "$(fjgreens reuse_push "fj/main..$checkfirst") $(grep -c 'HTTP 502' "$gate/err")"
+out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$checkfirst" "$rbase" \
+        | fjgreens env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/scripttests/}" \
+          STUB_RUNS="$reuse/runs" PREPUSH_FLOOR_BASH="$gate/no-such-bash" bash "$REPO_ROOT/scripts/hooks/pre-push" fj "$fjremote" 2>&1)"; code=$?
+check "...and the push to fj that follows reuses that pass: nothing runs again" "0 13 1" \
+  "$code $(cat "$reuse/runs" | wc -l | tr -d ' ') $(printf '%s\n' "$out" | grep -c 'reused, not run again')"
+# A hook that ran long says the connection git opened before it may be gone, and how to re-push cheaply; a quick one,
+# and a dry run (no connection), do not.
+long_push() { # <threshold seconds> <local sha> -> the warning's count
+  (cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$2" "$rbase" \
+    | fjgreens env PREPUSH_LONG_SECONDS="$1" PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNS="$reuse/runs" \
+      PREPUSH_FLOOR_BASH="$gate/no-such-bash" bash "$REPO_ROOT/scripts/hooks/pre-push" fj "$fjremote" 2>&1) \
+    | grep -c 'with the push.s connection open .*run the same git push again.*scripts/hooks/pre-push --range fj/main..HEAD'; }
+check "a push whose hook ran past PREPUSH_LONG_SECONDS says to re-push, and to check first next time" "1" "$(long_push 0 "$checkfirst")"
+check "...a quick one does not" "0" "$(long_push 3600 "$checkfirst")"
+check "...nor does a dry run, which holds no connection" "0 0" \
+  "$(fjgreens reuse_push "fj/main..$checkfirst" PREPUSH_NO_REUSE=1 PREPUSH_LONG_SECONDS=0 | cut -d' ' -f1) $(grep -c 'run the same git push again' "$gate/err")"
 rm -rf "$gate"
 
 spec_summary

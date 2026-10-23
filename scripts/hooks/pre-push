@@ -376,10 +376,17 @@ GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 
 # Where the push goes decides whose runs are read (GitHub suspended the account on 2026-10-19; main's CI runs on Forgejo
 # since): a Forgejo remote (ssh://forgejo-git/…, a forgejo.* host) reads Forgejo's actions API, anything else GitHub's
-# through gh. git hands the hook the push URL as $2; a --range dry run takes $PREPUSH_REMOTE_URL (GitHub when unset).
+# through gh. git hands the hook the push URL as $2; a --range dry run takes $PREPUSH_REMOTE_URL, else the push URL of
+# the remote its base names (`forgejo/main..HEAD` reads Forgejo, as `git push forgejo` will), else GitHub. So a dry run
+# of `<remote>/main..HEAD` is keyed like the push that follows it, which then REUSES its pass (CHECK FIRST, below).
 remote_url=""
 case "${1:-}" in
-    --range) remote_url="${PREPUSH_REMOTE_URL:-}" ;;
+    --range)
+        remote_url="${PREPUSH_REMOTE_URL:-}"
+        range_base="${2:-}"; range_base="${range_base%%..*}"
+        case "$range_base" in
+            */*) [ -z "$remote_url" ] && remote_url="$(git remote get-url --push "${range_base%%/*}" 2>/dev/null || true)" ;;
+        esac ;;
     *)       remote_url="${2:-}" ;;
 esac
 is_forgejo_url() { # <url>
@@ -910,3 +917,13 @@ if [ -n "$reuse_key" ] && mkdir -p "$reuse_dir" 2>/dev/null; then
     find "$reuse_dir" -type f -mtime +14 -delete 2>/dev/null
 fi
 log "all clear ($((SECONDS - started))s)"
+# CHECK FIRST: git opens the push's ssh connection BEFORE it runs this hook and sends the pack only after it, so a long
+# hook holds that connection idle. To Forgejo it rides the laptop's launchd ssh tunnel (net.bitcashier.forgejo-tunnel,
+# `ssh -N forgejo-tunnel`); when the tunnel drops (its own keepalives missed under a load of 100+, a network change) and
+# launchd restarts it, every connection forwarded through it dies with it: on 2026-10-23 pushes whose hook ran 20-76 min printed "all clear"
+# and then "Connection to localhost closed by remote host" / "Broken pipe" / "unexpected disconnect while reading
+# sideband packet". Nothing here can keep that connection; the re-push can be fast instead: this pass is stored (THE
+# REUSE), so the same push again skips the checks.
+if [ "${1:-}" != --range ] && [ "$SECONDS" -ge "${PREPUSH_LONG_SECONDS:-300}" ]; then
+    warn "this hook ran ${SECONDS}s with the push's connection open (git connects first): if the push now dies with \"closed by remote host\" / \"Broken pipe\" / \"unexpected disconnect\", run the same git push again -- this pass is stored and is reused in seconds. Next time check first: scripts/hooks/pre-push --range ${1:-<remote>}/main..HEAD, then git push"
+fi
