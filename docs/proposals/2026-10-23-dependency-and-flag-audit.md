@@ -21,8 +21,11 @@ that must be confirmed before acting. Measure before landing any performance ite
 
 ## Versions: mostly already current
 
-Scala Steward (`scala-steward.yml`), the weekly `nix-update.yml` and Renovate (Gradle/Android only) keep most
-versions fresh.
+Scala Steward (`scala-steward.yml`) and the weekly `nix-update.yml` keep most versions fresh; since 2026-10-23 the
+nix-update PR also carries the container image pins (`infra/bin/image_pins.py`). Renovate (Gradle/Android only) has
+not run since the move to Forgejo: `renovate.yml` still mints a GitHub App token and drives the github platform, so
+on Forgejo it would fail at its first step (as Scala Steward did before its Forgejo adaptation); Android
+dependencies are currently unwatched.
 
 | Area | Current | Newer | Note |
 |---|---|---|---|
@@ -38,7 +41,14 @@ versions fresh.
 | Haze (Android) | 1.7.3 (deprecated API names) | 2.0 beta | see Android |
 | ML script (numpy, scikit-learn) | pinned by the Python 3.9 floor (`scripts/run-script-tests:42`) | — | raise the floor only if another script wants it |
 | Nix-managed infra (k3s 1.35.8, Grafana 13.0.9, Prometheus 3.12, VictoriaLogs 1.52, Forgejo 16.0.5, Caddy 2.11.4) | current with nixpkgs | — | |
-| Flux 1.9.4, Headlamp 0.45.0, Reloader 1.0.28, kube-state-metrics 2.14.0, base-image tags | not auto-bumped | not compared upstream | candidate for Renovate |
+| Flux (distribution; controllers source/kustomize 1.9.4, image 1.2.4) | v2.9.4 | v2.9.6 | movies-gitops; listed weekly by `infra/bin/image_pins.py`, bump by hand (`flux install --export`) |
+| kube-state-metrics | v2.14.0 | v2.20.0 | movies-gitops; listed weekly; check `k3s.rules`' series names first |
+| Reloader | v1.0.28 | v1.4.22 | movies-gitops; listed weekly, bump by hand |
+| Headlamp | v0.45.0 | v0.46.0 | movies-gitops; listed weekly, bump by hand |
+| `eclipse-temurin:27-jdk@sha256` (Dockerfile) | 2026-10-17 digest | same | digest refreshed weekly in the nix-update PR |
+| `ubuntu:26.04` (Dockerfile, script-test container) | 26.04 LTS | 26.10 (interim, not taken) | newer LTS listed weekly |
+| `moby/buildkit` (setup-buildx) | v0.33.1 | v0.34.1 | bumped weekly in the nix-update PR (within major) |
+| `swift` CI container (ios.yml) | 5.10 | 5.10.1 / 6.4.1 | listed weekly; moves with the Xcode/Swift pins by hand |
 
 ## MongoDB
 
