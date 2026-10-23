@@ -273,7 +273,7 @@ private struct ShowtimeBadge: View {
         .onGeometryChange(for: CGFloat.self, of: {
             $0.frame(in: .named(Self.cardCoordinateSpace)).midX
         }) { pillMidX = $0 }
-        .overlay(alignment: .top) {
+        .overlay(alignment: Alignment(horizontal: .center, vertical: .roomTooltipBase)) {
             if holding, let room {
                 roomTooltip(room)
             }
@@ -304,21 +304,25 @@ private struct ShowtimeBadge: View {
         }
     }
 
-    // Lifted ~52 pt above the pill (the finger is parked right on it during the
-    // press-and-hold) and clamped horizontally: the bubble is centred over the
-    // pill but shifted back inside the card when a pill near a column edge would
-    // otherwise push it past the card's edge. See `clampedTooltipOffsetX`.
+    // Sits 15 pt above the pill (the finger is parked right on it during the
+    // press-and-hold), centred over it but kept inside the card: shifted back
+    // when a pill near a column edge would push it past the card's edge, and
+    // wrapped onto more lines when the room is wider than the card. See
+    // `ShowtimePillMetrics.roomTooltipPlacement`.
     @ViewBuilder
     private func roomTooltip(_ room: String) -> some View {
-        let horizontalOffset = ShowtimePillMetrics.clampedTooltipOffsetX(
+        let placement = ShowtimePillMetrics.roomTooltipPlacement(
             pillMidX: pillMidX,
-            tooltipWidth: Self.tooltipWidth(for: room),
+            naturalWidth: Self.naturalTooltipWidth(for: room),
             cardWidth: cardWidth,
             padding: Self.tooltipEdgePadding)
         Text(room)
-            .font(.system(size: 16, weight: .semibold))
+            .font(Self.tooltipFont)
             .foregroundColor(Color(white: 0.92))
-            .padding(.horizontal, 14)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: placement.width - 2 * Self.tooltipHorizontalPadding)
+            .padding(.horizontal, Self.tooltipHorizontalPadding)
             .padding(.vertical, 9)
             .background(Color(red: 0.055, green: 0.055, blue: 0.118), in: RoundedRectangle(cornerRadius: 8))
             .overlay(
@@ -327,18 +331,33 @@ private struct ShowtimeBadge: View {
             )
             .fixedSize()
             .accessibilityIdentifier(A11y.FilmCard.roomTooltip)
-            .offset(x: horizontalOffset, y: -52)
+            // Bottom edge 15 pt above the pill's top, however many lines the
+            // room wraps onto: a taller bubble grows upwards, never over the pill.
+            .alignmentGuide(.roomTooltipBase) { $0[.bottom] + 15 }
+            .offset(x: placement.offsetX)
             .transition(.opacity)
             .allowsHitTesting(false)
             .zIndex(1)
     }
 
-    /// Rendered width of the tooltip bubble: the room text at its 16 pt semibold
-    /// font plus the 14 pt horizontal padding on each side. Used to decide how
-    /// far the bubble has to shift to stay inside the card.
-    private static func tooltipWidth(for room: String) -> CGFloat {
+    private static let tooltipFont = Font.system(size: 16, weight: .semibold)
+    private static let tooltipHorizontalPadding: CGFloat = 14
+
+    /// Width of the tooltip bubble with the room on one line: the text at its
+    /// 16 pt semibold font plus the horizontal padding on each side.
+    private static func naturalTooltipWidth(for room: String) -> CGFloat {
         let font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         let textWidth = (room as NSString).size(withAttributes: [.font: font]).width
-        return ceil(textWidth) + 2 * 14
+        return ceil(textWidth) + 2 * tooltipHorizontalPadding
     }
+}
+
+private extension VerticalAlignment {
+    /// The line a held pill's room tooltip hangs from: the pill's top edge
+    /// (the default), matched to a point 15 pt below the bubble's bottom edge.
+    enum RoomTooltipBase: AlignmentID {
+        static func defaultValue(in context: ViewDimensions) -> CGFloat { context[.top] }
+    }
+
+    static let roomTooltipBase = VerticalAlignment(RoomTooltipBase.self)
 }

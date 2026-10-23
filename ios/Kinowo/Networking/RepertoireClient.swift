@@ -295,13 +295,14 @@ extension RepertoireStore {
     }
 
     /// The `KINOWO_UITEST_ROOM_SHOWTIMES` slots as (time, room): late enough to
-    /// survive `pruneStaleShowings`, rooms short enough that each bubble fits
-    /// the card, so only the left-edge pills' bubbles have to be shifted.
+    /// survive `pruneStaleShowings`. The short rooms' bubbles fit the card, so
+    /// only the left-edge pills' bubbles have to be shifted; the last room is
+    /// wider on one line than any phone's card, so its bubble has to wrap.
     private static let uiTestRoomShowtimes: [(time: String, room: String)] = [
         ("23:56", "Sala 1"),
         ("23:57", "Sala 2"),
         ("23:58", "Sala 3"),
-        ("23:59", "Sala 4"),
+        ("23:59", "Sala 4 – Dolby Atmos IMAX Laser"),
     ]
 
     /// One fixture day, `offsetDays` from now, carrying a single late slot so it

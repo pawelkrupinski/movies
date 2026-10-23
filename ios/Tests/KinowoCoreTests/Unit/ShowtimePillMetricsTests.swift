@@ -96,23 +96,25 @@ final class ShowtimePillMetricsTests: XCTestCase {
 
     // MARK: – room tooltip clamping
 
-    /// A bubble whose pill sits comfortably mid-card needs no horizontal shift.
+    /// A bubble whose pill sits comfortably mid-card keeps its width and needs
+    /// no horizontal shift.
     func testTooltipOverACentredPillIsNotShifted() {
-        let dx = ShowtimePillMetrics.clampedTooltipOffsetX(
-            pillMidX: 80, tooltipWidth: 60, cardWidth: 160, padding: 4)
-        XCTAssertEqual(dx, 0, accuracy: 0.001, "a centred pill's tooltip shouldn't move")
+        let placement = ShowtimePillMetrics.roomTooltipPlacement(
+            pillMidX: 80, naturalWidth: 60, cardWidth: 160, padding: 4)
+        XCTAssertEqual(placement.width, 60, accuracy: 0.001, "a bubble that fits keeps its width")
+        XCTAssertEqual(placement.offsetX, 0, accuracy: 0.001, "a centred pill's tooltip shouldn't move")
     }
 
     /// A pill near the right edge would push the bubble past the card; the
-    /// returned offset is negative and pulls its right edge back inside the
+    /// offset is negative and pulls its right edge back inside the
     /// `padding`-inset bound.
     func testTooltipNearRightEdgeIsPulledIn() {
-        let cardWidth: CGFloat = 160, tooltipWidth: CGFloat = 80, pad: CGFloat = 4
+        let cardWidth: CGFloat = 160, pad: CGFloat = 4
         let pillMidX: CGFloat = 150 // far right column
-        let dx = ShowtimePillMetrics.clampedTooltipOffsetX(
-            pillMidX: pillMidX, tooltipWidth: tooltipWidth, cardWidth: cardWidth, padding: pad)
-        XCTAssertLessThan(dx, 0, "an edge pill's tooltip must shift left")
-        let rightEdge = pillMidX + dx + tooltipWidth / 2
+        let placement = ShowtimePillMetrics.roomTooltipPlacement(
+            pillMidX: pillMidX, naturalWidth: 80, cardWidth: cardWidth, padding: pad)
+        XCTAssertLessThan(placement.offsetX, 0, "an edge pill's tooltip must shift left")
+        let rightEdge = pillMidX + placement.offsetX + placement.width / 2
         XCTAssertLessThanOrEqual(rightEdge, cardWidth - pad + 0.001,
             "tooltip right edge must stay inside the card with padding")
     }
@@ -120,25 +122,29 @@ final class ShowtimePillMetricsTests: XCTestCase {
     /// Symmetrically, a pill near the left edge pushes the bubble right so its
     /// left edge clears the `padding` margin.
     func testTooltipNearLeftEdgeIsPushedIn() {
-        let cardWidth: CGFloat = 160, tooltipWidth: CGFloat = 80, pad: CGFloat = 4
+        let pad: CGFloat = 4
         let pillMidX: CGFloat = 10
-        let dx = ShowtimePillMetrics.clampedTooltipOffsetX(
-            pillMidX: pillMidX, tooltipWidth: tooltipWidth, cardWidth: cardWidth, padding: pad)
-        XCTAssertGreaterThan(dx, 0, "an edge pill's tooltip must shift right")
-        let leftEdge = pillMidX + dx - tooltipWidth / 2
+        let placement = ShowtimePillMetrics.roomTooltipPlacement(
+            pillMidX: pillMidX, naturalWidth: 80, cardWidth: 160, padding: pad)
+        XCTAssertGreaterThan(placement.offsetX, 0, "an edge pill's tooltip must shift right")
+        let leftEdge = pillMidX + placement.offsetX - placement.width / 2
         XCTAssertGreaterThanOrEqual(leftEdge, pad - 0.001,
             "tooltip left edge must stay inside the card with padding")
     }
 
-    /// A bubble wider than the `padding`-inset band can't satisfy both edges, so
-    /// it's centred in the card (the least-bad symmetric overflow).
-    func testOverwideTooltipIsCentredInCard() {
+    /// A room wider on one line than the card is capped to the
+    /// `padding`-inset band (the bubble wraps it onto more lines) and centred
+    /// in the card, so neither edge spills past the card — wherever its pill is.
+    func testOverwideTooltipIsCappedToTheCardAndCentred() {
         let cardWidth: CGFloat = 160, pad: CGFloat = 4
-        let tooltipWidth: CGFloat = 200 // wider than the card itself
-        let dx = ShowtimePillMetrics.clampedTooltipOffsetX(
-            pillMidX: 150, tooltipWidth: tooltipWidth, cardWidth: cardWidth, padding: pad)
-        XCTAssertEqual(150 + dx, cardWidth / 2, accuracy: 0.001,
-            "an over-wide tooltip should centre in the card")
+        for pillMidX: CGFloat in [10, 80, 150] {
+            let placement = ShowtimePillMetrics.roomTooltipPlacement(
+                pillMidX: pillMidX, naturalWidth: 280, cardWidth: cardWidth, padding: pad)
+            XCTAssertEqual(placement.width, cardWidth - 2 * pad, accuracy: 0.001,
+                "an over-wide tooltip is capped to the card's inset band")
+            XCTAssertEqual(pillMidX + placement.offsetX, cardWidth / 2, accuracy: 0.001,
+                "an over-wide tooltip should centre in the card")
+        }
     }
 
     /// Portrait phones hold two columns, so the card is the familiar

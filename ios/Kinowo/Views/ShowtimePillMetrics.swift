@@ -120,28 +120,26 @@ enum ShowtimePillMetrics {
         cardWidth(viewportWidth: screenWidth) - 24
     }
 
-    /// Horizontal correction that keeps a room tooltip — laid out centred over
-    /// its showtime pill — from spilling past the movie card's edges. The pill
-    /// sits at `pillMidX` (its centre in the card's coordinate space, where x
-    /// runs 0…`cardWidth`); the bubble is `tooltipWidth` wide. This returns the
-    /// x-offset to apply so the bubble's nearer edge stays `padding` inside the
-    /// card: a pill comfortably mid-card needs no shift (0), one near the right
-    /// edge gets pulled left (negative), one near the left edge pushed right
-    /// (positive). A bubble too wide for the `padding`-inset band is centred in
-    /// the card instead — the best it can do without clipping unevenly.
-    static func clampedTooltipOffsetX(
+    /// Where a room tooltip goes: centred over its showtime pill, but kept
+    /// inside the movie card. The pill sits at `pillMidX` (its centre in the
+    /// card's coordinate space, where x runs 0…`cardWidth`); the room on one
+    /// line makes a bubble `naturalWidth` wide. The bubble is capped to the
+    /// `padding`-inset band of the card — a room wider than that wraps onto more
+    /// lines rather than running past the card's edges — and `offsetX` is the
+    /// shift that keeps its nearer edge `padding` inside the card: none for a
+    /// pill comfortably mid-card, negative (pulled left) near the right edge,
+    /// positive (pushed right) near the left one. A capped bubble fills the
+    /// band, so it's centred in the card.
+    static func roomTooltipPlacement(
         pillMidX: CGFloat,
-        tooltipWidth: CGFloat,
+        naturalWidth: CGFloat,
         cardWidth: CGFloat,
         padding: CGFloat
-    ) -> CGFloat {
-        let half = tooltipWidth / 2
-        let minCentre = padding + half
-        let maxCentre = cardWidth - padding - half
-        let targetCentre = minCentre <= maxCentre
-            ? min(max(pillMidX, minCentre), maxCentre)
-            : cardWidth / 2
-        return targetCentre - pillMidX
+    ) -> (width: CGFloat, offsetX: CGFloat) {
+        let width = min(naturalWidth, cardWidth - 2 * padding)
+        let half = width / 2
+        let centre = min(max(pillMidX, padding + half), cardWidth - padding - half)
+        return (width, centre - pillMidX)
     }
 
     /// Typographic width of `s` in the system font at `size`/`weight`.
