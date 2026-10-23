@@ -438,7 +438,8 @@ private struct FullScreenPosterView: View {
         withAnimation(.easeOut(duration: Self.flyOffDuration)) {
             dismissOffset = CGSize(width: 0, height: up ? -travel : travel)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flyOffDuration) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.flyOffDuration))
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) { onClose() }

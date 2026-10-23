@@ -196,7 +196,10 @@ struct ShowtimeTuningScreen: View {
             Button {
                 UIPasteboard.general.string = valuesText
                 copied = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(1200))
+                    copied = false
+                }
             } label: {
                 Label(copied ? "Skopiowano" : "Kopiuj", systemImage: copied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 13, weight: .medium))

@@ -233,7 +233,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
             let first = FirstAnswer(cont)
             Task.detached { first.resume(read()) }
             Task.detached {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                try? await Task.sleep(for: .seconds(seconds))
                 first.resume(nil)
             }
         }
@@ -335,7 +335,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         timeoutTask?.cancel()
         fixDeadline = Date().addingTimeInterval(seconds)
         timeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled else { return }
             self?.deliverNoFix()
         }

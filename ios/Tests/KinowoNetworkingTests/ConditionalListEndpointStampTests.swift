@@ -31,7 +31,7 @@ final class ConditionalListEndpointStampTests: XCTestCase {
 
         let started = Date()
         let fetch = Task { try await endpoint.fetch(now: Date(), callerIsEmpty: { true }) }
-        try await Task.sleep(nanoseconds: 50_000_000)
+        try await Task.sleep(for: .milliseconds(50))
         let mainActorFreeAfter = Date().timeIntervalSince(started)
         released.signal()
         _ = try await fetch.value

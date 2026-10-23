@@ -603,7 +603,7 @@ struct ContentView: View {
         dayLabelTask?.cancel()
         withAnimation(.easeInOut(duration: 0.1)) { dayLabel = text }
         dayLabelTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 700_000_000)
+            try? await Task.sleep(for: .milliseconds(700))
             if Task.isCancelled { return }
             withAnimation(.easeInOut(duration: 0.2)) { dayLabel = nil }
         }
@@ -625,7 +625,7 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.2)) { showSwipeHint = true }
         swipeHintTask?.cancel()
         swipeHintTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            try? await Task.sleep(for: .milliseconds(2500))
             if Task.isCancelled { return }
             withAnimation(.easeInOut(duration: 0.3)) { showSwipeHint = false }
         }

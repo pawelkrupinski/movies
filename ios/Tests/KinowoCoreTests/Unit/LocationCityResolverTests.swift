@@ -65,7 +65,7 @@ final class LocationCityResolverTests: XCTestCase {
         let deadline = Date().addingTimeInterval(5)
         while !condition() {
             guard Date() < deadline else { return XCTFail("resolver never reached the awaited state", file: file, line: line) }
-            try? await Task.sleep(nanoseconds: 2_000_000)
+            try? await Task.sleep(for: .milliseconds(2))
         }
     }
 
@@ -88,7 +88,7 @@ final class LocationCityResolverTests: XCTestCase {
         await waitUntil { requester.authorizationRequests == 1 }
 
         // The user takes longer than the fix deadline to answer the dialog.
-        try? await Task.sleep(nanoseconds: 250_000_000)
+        try? await Task.sleep(for: .milliseconds(250))
         XCTAssertEqual(requester.authorizationRequests, 1)
         XCTAssertEqual(requester.locationRequests, 0, "no fix is asked for until the user has answered")
 

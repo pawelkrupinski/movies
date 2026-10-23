@@ -110,7 +110,7 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
         guard retryTask == nil else { return }
         let delaySeconds = RetryBackoff.seconds(forAttempt: cycleAttempt)
         retryTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: UInt64(delaySeconds) * 1_000_000_000)
+            try? await Task.sleep(for: .seconds(delaySeconds))
             if Task.isCancelled { return }
             cycleAttempt += 1
             restartFromPrimary(cancelPendingRetry: false)

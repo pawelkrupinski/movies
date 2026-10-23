@@ -10,7 +10,7 @@ public func pollUntil(timeout: TimeInterval = 5, _ condition: @MainActor () -> B
     let deadline = Date().addingTimeInterval(timeout)
     while !condition() {
         if Date() >= deadline { return false }
-        try? await Task.sleep(nanoseconds: 5_000_000)
+        try? await Task.sleep(for: .milliseconds(5))
     }
     return true
 }
