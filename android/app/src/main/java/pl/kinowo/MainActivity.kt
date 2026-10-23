@@ -43,13 +43,11 @@ import pl.kinowo.ui.LocaleWrapper
 import pl.kinowo.ui.dev.ShowtimeTuningScreen
 import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.KinowoTheme
-import java.util.concurrent.TimeUnit
 
 /**
  * Single-activity entry point. Manual dependency wiring (this app's
- * composition root — no DI framework needed at this size): one shared
- * OkHttp client (with a disk-backed cookie jar so the signed-in session
- * survives restarts), the [KinowoApi], a file cache, the repository,
+ * composition root — no DI framework needed at this size): the process's
+ * shared OkHttp client from [KinowoApplication], the [KinowoApi], a file cache, the repository,
  * DataStore prefs, and the auth + state-sync collaborators — all handed to
  * the [KinowoViewModel].
  */
@@ -63,8 +61,7 @@ class MainActivity : ComponentActivity() {
     private val country: Country by lazy { Country.byCode(UserPreferences(applicationContext).blockingCountryCode()) }
 
     private val viewModel: KinowoViewModel by viewModels {
-        (application as? KinowoGraphProvider)?.viewModelFactory(country)
-            ?: kinowoViewModelFactory(applicationContext, country)
+        (application as KinowoGraphProvider).viewModelFactory(country)
     }
 
     // Force the user's selected UI language regardless of the device locale and
@@ -178,28 +175,26 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * An Application that supplies the ViewModel graph itself — how an
- * activity-level test swaps in an offline one. The real app has no custom
- * Application, so [MainActivity] falls back to [kinowoViewModelFactory].
+ * The Application supplies the ViewModel graph: the real app's is
+ * [KinowoApplication]; an activity-level test swaps in an offline one.
  */
 interface KinowoGraphProvider {
     fun viewModelFactory(country: Country): ViewModelProvider.Factory
 }
 
 /**
- * The composition root's object graph for [country]'s deployment. One OkHttp
- * client is shared by every caller so the session cookie set at
- * `/auth/exchange` is carried on `/api/me`, `/api/me/{country}/hidden-films`,
+ * The composition root's object graph for [country]'s deployment, over the
+ * process's one [httpClient] (see [KinowoApplication]) so the session cookie set
+ * at `/auth/exchange` is carried on `/api/me`, `/api/me/{country}/hidden-films`,
  * etc. — which only works if every one of them, auth included, talks to the
  * SAME host.
  */
-internal fun kinowoViewModelFactory(context: Context, country: Country): KinowoViewModel.Factory {
-    val cookieJar = PersistentCookieJar(context)
-    val httpClient = OkHttpClient.Builder()
-        .cookieJar(cookieJar)
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .build()
+internal fun kinowoViewModelFactory(
+    context: Context,
+    country: Country,
+    httpClient: OkHttpClient,
+    cookieJar: PersistentCookieJar,
+): KinowoViewModel.Factory {
     val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient)
     val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
     val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))

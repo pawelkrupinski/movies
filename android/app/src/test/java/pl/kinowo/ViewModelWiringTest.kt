@@ -26,7 +26,7 @@ class ViewModelWiringTest {
     fun authAndSyncClientsAllTalkToTheSelectedCountrysDeployment() {
         val uk = Country.byCode("uk")
 
-        val factory = kinowoViewModelFactory(ApplicationProvider.getApplicationContext(), uk)
+        val factory = ApplicationProvider.getApplicationContext<KinowoApplication>().viewModelFactory(uk)
 
         assertEquals(uk.baseUrl, factory.authRepository.baseUrl)
         assertEquals(uk.baseUrl, (factory.hiddenFilmsClient as HttpHiddenFilmsClient).baseUrl)

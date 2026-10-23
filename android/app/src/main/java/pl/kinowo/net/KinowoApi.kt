@@ -48,8 +48,8 @@ fun interface ClientSupportApi {
  * a `KinowoAndroid/1.0` User-Agent, conditional GET via `If-Modified-Since`,
  * and no on-disk URLCache.
  *
- * [client] is the composition root's (`kinowoViewModelFactory`): the one
- * OkHttp client every caller shares, so its cookie jar, pools and timeouts
+ * [client] is the composition root's (`KinowoApplication`): the one
+ * OkHttp client every caller (posters included) shares, so its cookie jar, pools and timeouts
  * are configured once rather than a process-wide default built here.
  */
 class KinowoApi(
