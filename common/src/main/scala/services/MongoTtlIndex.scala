@@ -1,5 +1,6 @@
 package services
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Indexes
@@ -144,7 +145,7 @@ object MongoTtlIndex extends Logging {
    *  already there and disagrees. */
   private def create(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String): Try[Unit] =
     Try {
-      Await.result(collection.createIndex(
+      Await.result(collection.withoutOperationTimeout.createIndex(
         Indexes.ascending(field),
         new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)
       ).toFuture(), 10.seconds)
@@ -199,7 +200,7 @@ object MongoTtlIndex extends Logging {
       // By the name read: the read accepts any single-field index on `field`, and one whose key spec
       // is not the ascending one (descending, say) is "not found" when dropped by that spec.
       Await.result(collection.dropIndex(index).toFuture(), 10.seconds)
-      Await.result(collection.createIndex(
+      Await.result(collection.withoutOperationTimeout.createIndex(
         Indexes.ascending(field),
         new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)
       ).toFuture(), 10.seconds)

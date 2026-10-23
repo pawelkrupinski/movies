@@ -1,5 +1,6 @@
 package services
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.MongoCommandException
 import org.bson.conversions.Bson
 import org.bson.{BsonArray, BsonDocument, BsonInt64, BsonNumber, BsonValue}
@@ -67,7 +68,7 @@ object MongoIndex extends Logging {
    *  `label` names the caller in the log lines. Never throws. */
   def ensure(database: MongoDatabase, collection: String, keys: Bson, options: IndexOptions, label: String): Outcome = {
     val ns = s"${database.name}.$collection"
-    Try(Await.result(database.getCollection[Document](collection).createIndex(keys, options).toFuture(), Timeout)) match {
+    Try(Await.result(database.getCollection[Document](collection).withoutOperationTimeout.createIndex(keys, options).toFuture(), Timeout)) match {
       case Success(_) => Outcome.Present
       case Failure(conflict: MongoCommandException)
           if conflict.getErrorCode == IndexKeySpecsConflict || conflict.getErrorCode == IndexOptionsConflict =>

@@ -1,5 +1,6 @@
 package services.movies
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
@@ -207,7 +208,7 @@ object SlotKeyed {
    *  store without one still answers, by a collection scan. */
   def ensureIndexes[T](c: MongoCollection[T]): Unit =
     Seq("filmId", ListingKeyField).foreach(field =>
-      Try(Await.result(c.createIndex(org.mongodb.scala.model.Indexes.ascending(field)).toFuture(), 10.seconds)))
+      Try(Await.result(c.withoutOperationTimeout.createIndex(org.mongodb.scala.model.Indexes.ascending(field)).toFuture(), 10.seconds)))
 
   /** [[SlotKeyedRows.rowWrittenAtChecked]] for a Mongo side collection: `_id` + `updatedAt`
    *  projected server-side. A row with no `updatedAt` (none is written without one) reads as

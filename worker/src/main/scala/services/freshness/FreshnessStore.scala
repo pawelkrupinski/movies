@@ -1,5 +1,6 @@
 package services.freshness
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.conversions.Bson
@@ -200,7 +201,7 @@ class MongoFreshnessStore(
     // `_id`-range keyset + sort. Best-effort: a create failure just leaves the
     // slow path, never blocks the hydrate.
     Try(Await.result(
-      c.createIndex(Indexes.compoundIndex(Indexes.ascending("kind"), Indexes.ascending("_id"))).toFuture(),
+      c.withoutOperationTimeout.createIndex(Indexes.compoundIndex(Indexes.ascending("kind"), Indexes.ascending("_id"))).toFuture(),
       10.seconds
     )).recover { case exception => logger.warn(s"Freshness index create failed: ${exception.getMessage}") }
     val scrapeLabel = FreshnessKind.CinemaScrape.label

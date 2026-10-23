@@ -1,5 +1,6 @@
 package services
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.client.model.UpdateOptions
 import java.util.concurrent.TimeUnit
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
@@ -117,7 +118,7 @@ class UptimeMonitor(
     else             MongoTtlIndex.ensure(c, "bucket", BucketTtlSeconds, "UptimeMonitor (read tier)")
 
     Try {
-      Await.result(c.createIndex(
+      Await.result(c.withoutOperationTimeout.createIndex(
         Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
       ).toFuture(), 10.seconds)
     }.recover { case exception => logger.warn(s"Uptime compound index creation failed: ${exception.getMessage}") }

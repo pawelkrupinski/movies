@@ -1,5 +1,6 @@
 package services.identity
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}
@@ -137,7 +138,7 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   def written: Long = documentsWritten.get
   private lazy val collection: MongoCollection[Document] = {
     val c = db.getCollection[Document](Collection)
-    Await.result(c.createIndexes(Seq(IndexModel(Indexes.ascending("rules")), IndexModel(Indexes.ascending("film")),
+    Await.result(c.withoutOperationTimeout.createIndexes(Seq(IndexModel(Indexes.ascending("rules")), IndexModel(Indexes.ascending("film")),
       IndexModel(Indexes.ascending("family")),
       IndexModel(Indexes.ascending("blocker"), org.mongodb.scala.model.IndexOptions().sparse(true)))).toFuture(), Timeout)
     c

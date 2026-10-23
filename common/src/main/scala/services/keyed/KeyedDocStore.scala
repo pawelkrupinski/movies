@@ -1,5 +1,6 @@
 package services.keyed
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, ReplaceOptions, Sorts}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
@@ -117,7 +118,7 @@ final class MongoKeyedDocStore[T](collection: MongoCollection[Document], codec: 
 
   expireAfter.foreach { ttl =>
     val field = codec.stampField.getOrElse(throw new IllegalArgumentException(s"$name: a TTL needs the codec's stamp field"))
-    val init = new Thread(() => Try(Await.result(collection.createIndex(Indexes.ascending(field),
+    val init = new Thread(() => Try(Await.result(collection.withoutOperationTimeout.createIndex(Indexes.ascending(field),
       IndexOptions().expireAfter(ttl.toSeconds, TimeUnit.SECONDS)).toFuture(), Timeout))
       .failed.foreach(e => logger.warn(s"$name TTL index not created: ${e.getMessage}")), s"$name-init")
     init.setDaemon(true); init.start()

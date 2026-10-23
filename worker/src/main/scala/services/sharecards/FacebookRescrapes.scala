@@ -1,5 +1,6 @@
 package services.sharecards
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, UpdateOptions}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
@@ -110,7 +111,7 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
       // the `notBefore` range — that way the index walk is already in claim order and stops at the
       // first due key. With the range first (the index's first shape), every due entry was fetched
       // and sorted in memory on every claim.
-      Try(Await.result(collection.createIndex(
+      Try(Await.result(collection.withoutOperationTimeout.createIndex(
         Indexes.ascending("country", "kind", "enqueuedAt", "notBefore")).toFuture(), Timeout))
         .fold(e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}"),
               // The range-first order it replaced, kept by nothing: dropped only once the claim order is there.

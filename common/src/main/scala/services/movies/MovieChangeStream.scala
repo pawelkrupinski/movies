@@ -1,5 +1,6 @@
 package services.movies
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import org.bson.BsonDocument
 import org.mongodb.scala.{Document, MongoCollection, Observer, Subscription}
@@ -712,7 +713,8 @@ object MovieChangeStream {
     /** Production: the collection's own change stream, with post-images looked up. */
     def ofCollection(c: MongoCollection[StoredMovieDto]): Source = new Source {
       override def open(resumeAfter: Option[BsonDocument], observer: Observer[ChangeStreamDocument[BsonDocument]]): Unit = {
-        val base = c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
+        // Never under the client's operation timeout: an idle stream would die once it ran out.
+        val base = c.withoutOperationTimeout.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
         resumeAfter.fold(base)(t => base.resumeAfter(Document(t))).subscribe(observer)
       }
     }

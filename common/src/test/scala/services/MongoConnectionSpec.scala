@@ -240,6 +240,23 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
       .getApplicationName shouldBe "mongosh"
   }
 
+  // An `Await` that runs out abandons only its caller; the operation timeout is what makes mongod stop the
+  // operation too (MongoOperationTimeoutIntegrationSpec). The long-lived tiers get it; a one-off tool, whose
+  // bulk passes budget minutes for one write, does not.
+  "MongoConnection.clientSettings" should "give the long-lived tiers' clients the default operation timeout, and a tool's none" in {
+    def timeout(tier: settings.ProcessTier): Option[Long] =
+      Option(MongoConnection.clientSettings(ValidUri, operationTimeout = tuning(tier).operationTimeout)
+        .getTimeout(java.util.concurrent.TimeUnit.MILLISECONDS)).map(_.longValue)
+    timeout(settings.ProcessTier.Web)    shouldBe Some(MongoConnection.DefaultOperationTimeout.toMillis)
+    timeout(settings.ProcessTier.Worker) shouldBe Some(MongoConnection.DefaultOperationTimeout.toMillis)
+    timeout(settings.ProcessTier.Tool)   shouldBe None
+  }
+
+  it should "let a URI that names its own timeoutMS win" in {
+    MongoConnection.clientSettings(ValidUri + "&timeoutMS=2500", operationTimeout = tuning(settings.ProcessTier.Web).operationTimeout)
+      .getTimeout(java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe 2500L
+  }
+
   // The driver refuses an applicationName over 128 UTF-8 bytes, which would fail the boot.
   "MongoApplicationName" should "cut a name to the driver's 128-byte limit without splitting a character" in {
     settings.MongoApplicationName.of("kinowo-worker-" + "pl-" * 60).value.getBytes("UTF-8").length shouldBe 128

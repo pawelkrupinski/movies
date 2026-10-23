@@ -70,9 +70,15 @@ as a single-node replica set `rs0` (2 vCPU, 4 GB, WiredTiger cache 1 GB, oplog 4
 
 - **`appName` per tier and country** — done: `kinowo-<tier>-<countries>`, e.g. `kinowo-web-pl`, `kinowo-worker-pl-uk`. Makes slow-op logs and `currentOp` attributable. Cheapest,
   highest-value diagnostic item.
-- **Client-side operation timeout (`timeout`, driver 5.2+ [unverified]).** About 35
-  `Await.result(..., 10.seconds)` budgets in `MongoTaskQueue`, `MongoChunkScrapeStore` and `MongoMovieRepository`.
-  With it the driver cancels server work instead of abandoning it. Medium effort.
+- **Client-side operation timeout (CSOT)** — done: web and worker clients carry a 60 s `timeoutMS`
+  (`MongoConnection.DefaultOperationTimeout`). Tools get none. 60 s is the longest budget an ordinary call site already
+  awaits, so it never cuts an operation short. Before, an `Await` that ran out left the operation running in mongod;
+  now mongod stops it (`maxTimeMS`). Change streams and index builds opt out (`OperationTimeoutOptOut`). Without the
+  opt-out, a change stream dies with `MongoOperationTimeoutException` after idling for the timeout, and our watchers
+  then reopen it on a backoff. `MongoOperationTimeoutIntegrationSpec` covers both. The API is still
+  `@Alpha(Reason.CLIENT)` in driver 5.13, with no compatibility guarantee, so we use only the one setting plus
+  `withTimeout`. Follow-up: give the hot 10 s stores (`MongoTaskQueue`, `MongoChunkScrapeStore`, the
+  `MongoMovieRepository` point ops) their own 10 s `withTimeout`, so mongod stops their work when their caller gives up.
 - Leave as they are: pool of 25, `w:1`, and compression (zlib on loopback only).
 
 ## JVM backend

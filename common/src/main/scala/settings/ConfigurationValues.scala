@@ -46,6 +46,10 @@ final case class MirrorMongoUri(value: String) extends AnyVal {
 }
 /** `MONGODB_PROBE_TIMEOUT_SECONDS` — how long a boot waits for Mongo to answer. */
 final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
+/** The driver's client-side operation timeout (CSOT, `timeoutMS`): the most time one Mongo operation may take,
+ *  server-selection and pool wait included, before the driver gives up AND the server stops it (it is sent as
+ *  `maxTimeMS`). Compiled in per process tier ([[services.MongoTuning.from]]), not read from the environment. */
+final case class MongoOperationTimeout(value: FiniteDuration) extends AnyVal
 /** `KINOWO_MONGO_MAX_POOL_SIZE` — connections per MongoClient. */
 final case class MongoMaxPoolSize(value: Int) extends AnyVal
 /** The `appName` a MongoClient sends at its handshake, which mongod's slow-op log lines and

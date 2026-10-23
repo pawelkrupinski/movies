@@ -1,5 +1,6 @@
 package services.tasks
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
@@ -40,11 +41,11 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   }
 
   private def createIndexes(r: MongoCollection[Document], ch: Option[MongoCollection[Document]]): Unit = Try {
-    Await.result(r.createIndex(Indexes.ascending("createdAt"),
+    Await.result(r.withoutOperationTimeout.createIndex(Indexes.ascending("createdAt"),
       new JIndexOptions().expireAfter(TtlHours, TimeUnit.HOURS)).toFuture(), 10.seconds)
     ch.foreach { c =>
-      Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("cinema"), Indexes.ascending("runId"))).toFuture(), 10.seconds)
-      Await.result(c.createIndex(Indexes.ascending("storedAt"),
+      Await.result(c.withoutOperationTimeout.createIndex(Indexes.compoundIndex(Indexes.ascending("cinema"), Indexes.ascending("runId"))).toFuture(), 10.seconds)
+      Await.result(c.withoutOperationTimeout.createIndex(Indexes.ascending("storedAt"),
         new JIndexOptions().expireAfter(TtlHours, TimeUnit.HOURS)).toFuture(), 10.seconds)
     }
   }.recover { case e => logger.warn(s"scrape-run index creation failed: ${e.getMessage}") }

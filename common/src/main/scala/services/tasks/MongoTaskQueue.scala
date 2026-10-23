@@ -7,6 +7,7 @@ import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
 
 import play.api.Logging
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import services.movies.ChangeStreamReopen
 
 import java.time.Instant
@@ -72,8 +73,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   private def createIndexes(database: MongoDatabase, c: MongoCollection[Document]): Unit = Try {
     services.MongoIndex.ensure(database, collectionName, Indexes.ascending("dedupKey"),
       new JIndexOptions().unique(true).partialFilterExpression(Filters.eq("active", true)), "Task queue")
-    Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("submittedAt"))).toFuture(), 10.seconds)
-    Await.result(c.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("leaseExpiresAt"))).toFuture(), 10.seconds)
+    Await.result(c.withoutOperationTimeout.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("submittedAt"))).toFuture(), 10.seconds)
+    Await.result(c.withoutOperationTimeout.createIndex(Indexes.compoundIndex(Indexes.ascending("state"), Indexes.ascending("leaseExpiresAt"))).toFuture(), 10.seconds)
   }.recover { case exception => logger.warn(s"Task queue index creation failed: ${exception.getMessage}") }
 
   override def enqueue(
@@ -345,7 +346,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
    *  workers woken across a Mongo blip — lives in [[TaskInsertStream]]. */
   override def watchWaiting(onWaiting: Option[Instant] => Unit): Option[AutoCloseable] = coll.map { c =>
     val stream = new TaskInsertStream(
-      open      = c.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(_),
+      // Never under the client's operation timeout: an idle stream would die once it ran out.
+      open      = c.withoutOperationTimeout.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(_),
       onWaiting = onWaiting,
       schedule  = ChangeStreamReopen.daemonSchedule("MongoTaskQueue"))
     stream.start()

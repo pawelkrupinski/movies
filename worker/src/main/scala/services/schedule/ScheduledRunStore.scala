@@ -1,5 +1,6 @@
 package services.schedule
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.MongoWriteException
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
@@ -59,7 +60,7 @@ class MongoScheduledRunStore(coll: MongoCollection[Document], clock: java.time.C
   locally {
     val thread = new Thread(() => {
       Try {
-        Await.result(coll.createIndex(
+        Await.result(coll.withoutOperationTimeout.createIndex(
           Indexes.ascending("claimedAt"),
           new JIndexOptions().expireAfter(MongoScheduledRunStore.TtlHours, TimeUnit.HOURS)
         ).toFuture(), 10.seconds)

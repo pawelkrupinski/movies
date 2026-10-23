@@ -1,5 +1,6 @@
 package services.auth
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.mongodb.scala.model.{Filters, Indexes}
@@ -84,7 +85,7 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDurat
    *  one deleted early would be indistinguishable from a code that never existed. */
   private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
     Try {
-      Await.result(c.createIndex(
+      Await.result(c.withoutOperationTimeout.createIndex(
         Indexes.ascending("issuedAt"),
         new JIndexOptions().expireAfter(AuthExchangeCodes.Ttl.getSeconds + 60, TimeUnit.SECONDS)
       ).toFuture(), 10.seconds)

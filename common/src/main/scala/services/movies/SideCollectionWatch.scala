@@ -1,5 +1,6 @@
 package services.movies
 
+import services.OperationTimeoutOptOut.withoutOperationTimeout
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
 import org.mongodb.scala.{Document, MongoCollection, Observer, Subscription}
@@ -85,7 +86,8 @@ final class SideCollectionWatch[Dto: ClassTag](
       // A reply of at most `EventsPerReply` events: a row's event carries the whole row (a presale venue's showtimes run
       // to ~65 KB), and a reply of a demand window's worth of them — the hourly reconcile's, a wide film's writes — was
       // 4-16 MB, each a buffer the driver's pool made again a minute later and promoted (worker-us heap dump 2026-10-05).
-      val base     = collection.watch[BsonDocument]().batchSize(SideCollectionWatch.EventsPerReply)
+      // Never under the client's operation timeout: an idle stream would die once it ran out.
+      val base     = collection.withoutOperationTimeout.watch[BsonDocument]().batchSize(SideCollectionWatch.EventsPerReply)
       position match {
         // The saved position could not be read: retried on the backoff, never opened past it at now.
         case ChangeStreamResumeToken.Position.Deferred => reopen.failed()

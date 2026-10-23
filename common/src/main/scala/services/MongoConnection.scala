@@ -3,7 +3,7 @@ package services
 import com.mongodb.{ConnectionString, MongoCompressor}
 import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-import settings.{MirrorMongoUri, MongoApplicationName, MongoDatabaseName, MongoMaxPoolSize, MongoProbeTimeout, MongoUri, ProcessConfiguration, ProcessTier}
+import settings.{MirrorMongoUri, MongoApplicationName, MongoDatabaseName, MongoMaxPoolSize, MongoOperationTimeout, MongoProbeTimeout, MongoUri, ProcessConfiguration, ProcessTier}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -80,7 +80,10 @@ class MongoConnection(
     // borrows `sharedClient`) — see [[MongoTuning]].
     maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(MongoConnection.DefaultMaxPoolSize),
     // The `appName` that pool introduces itself to mongod by (unused when it borrows `sharedClient`).
-    applicationName: MongoApplicationName = MongoApplicationName.Default) extends DatabaseBinding with Logging {
+    applicationName: MongoApplicationName = MongoApplicationName.Default,
+    // The client-side operation timeout of the client it builds (unused when it borrows `sharedClient`)
+    // — see [[MongoConnection.DefaultOperationTimeout]].
+    operationTimeout: Option[MongoOperationTimeout] = MongoTuning.Default.operationTimeout) extends DatabaseBinding with Logging {
 
   private val connectionRequired = required == MongoRequirement.Required
 
@@ -138,7 +141,7 @@ class MongoConnection(
    *  "connected" — a probe that actually round-tripped, not a constructed client. */
   private def connect(connectionString: String): Try[(MongoClient, MongoDatabase)] = Try {
     val client = sharedClient.getOrElse(
-      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout, maxPoolSize.value, applicationName)))
+      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout, maxPoolSize.value, applicationName, operationTimeout)))
     val db     = client.getDatabase(dbName.value)
     // Touch the database to surface connectivity errors at boot
     // (same `countDocuments`-against-a-known-collection probe the
@@ -316,7 +319,7 @@ object MongoConnection extends Logging {
   def forDatabase(uri: Option[MongoUri], database: MongoDatabaseName, required: MongoRequirement, tuning: MongoTuning,
       sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(uri, database, required, tuning.probeTimeout, sharedClient = sharedClient, maxPoolSize = tuning.maxPoolSize,
-      applicationName = tuning.applicationName)
+      applicationName = tuning.applicationName, operationTimeout = tuning.operationTimeout)
 
   /** [[forDatabase]] for a process that WRITES `country`'s corpus — the worker and every
    *  `worker/Test/runMain scripts.*` tool that writes — at `country`'s database on
@@ -330,7 +333,7 @@ object MongoConnection extends Logging {
       sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(address.uri, address.databaseFor(country), required, tuning.probeTimeout,
       sharedClient = sharedClient, onConnected = claimFor(country), maxPoolSize = tuning.maxPoolSize,
-      applicationName = tuning.applicationName)
+      applicationName = tuning.applicationName, operationTimeout = tuning.operationTimeout)
 
   /** The [[MongoConnection]] `onConnected` hook of a writer of `country`'s corpus. */
   def claimFor(country: models.Country): MongoDatabase => Unit = new DatabaseOwner(_).claim(country)
@@ -341,15 +344,16 @@ object MongoConnection extends Logging {
    *  connection then degrades on its own. The caller OWNS `close()`-ing the returned
    *  client, after every connection that borrowed it is closed. */
   def sharedClientAt(address: MongoAddress, tuning: MongoTuning): Option[MongoClient] =
-    address.uri.map(sharedClientFor(_, None, tuning.maxPoolSize, tuning.applicationName))
+    address.uri.map(sharedClientFor(_, None, tuning.maxPoolSize, tuning.applicationName, tuning.operationTimeout))
 
   /** Like [[sharedClientAt]] but against an EXPLICIT URI — the `/debug`
    *  read-mirror, whose several per-country database views share one pool the
    *  same way the prod per-country connections do. The caller OWNS `close()`. */
   def sharedClientFor(uri: MongoUri, serverSelectionTimeout: Option[ServerSelectionTimeout] = None,
       maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(DefaultMaxPoolSize),
-      applicationName: MongoApplicationName = MongoApplicationName.Default): MongoClient = {
-    val client = MongoClient(clientSettings(uri.value, serverSelectionTimeout, maxPoolSize.value, applicationName))
+      applicationName: MongoApplicationName = MongoApplicationName.Default,
+      operationTimeout: Option[MongoOperationTimeout] = None): MongoClient = {
+    val client = MongoClient(clientSettings(uri.value, serverSelectionTimeout, maxPoolSize.value, applicationName, operationTimeout))
     authenticateOnce(client)
     client
   }
@@ -419,7 +423,8 @@ object MongoConnection extends Logging {
       probeTimeout.getOrElse(tuning.probeTimeout),
       serverSelectionTimeout,
       maxPoolSize = tuning.maxPoolSize,
-      applicationName = tuning.applicationName)
+      applicationName = tuning.applicationName,
+      operationTimeout = tuning.operationTimeout)
 
   /** Database name for an explicit-URI connection: the URI's own path (e.g.
    *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
@@ -442,6 +447,29 @@ object MongoConnection extends Logging {
    *  [[MongoTuning]]). */
   val DefaultMaxPoolSize: Int = 25
 
+  /** The driver's client-side operation timeout (CSOT, `timeoutMS`, driver 5.2+) for every operation of a
+   *  long-lived process's client. A blocking call site bounds its WAIT with `Await.result(…, budget)`, but
+   *  the wait running out abandoned only the caller: the operation ran on in mongod for as long as it took
+   *  (`currentOp` kept it; under the overloads that make operations slow, abandoned ones piled up). With a
+   *  timeout the driver sends the remaining budget as `maxTimeMS`, mongod stops the operation when it runs
+   *  out, and the caller gets a `MongoOperationTimeoutException` (a `MongoTimeoutException`, so
+   *  [[isTransient]]). The time spent selecting a server and waiting for a pooled connection counts too.
+   *
+   *  Sixty seconds is the longest budget an ordinary call site already awaits (a keyset page, a slot
+   *  `bulkWrite`, an identity store's rewrite), so the timeout never cuts an operation shorter than its
+   *  caller would have waited: the `Await` budgets stay the caller's bound, and this one is the server's.
+   *
+   *  What legitimately outlives it opts out on its own collection view with
+   *  [[OperationTimeoutOptOut.withoutOperationTimeout]]: every change stream (under a timeout one dies
+   *  with `MongoOperationTimeoutException` once it has been idle that long, its empty getMores included)
+   *  and every index build (abandoned by its caller's wait, a build used to finish in the background; a
+   *  timeout would abort it and every boot would start it again).
+   *
+   *  The API is `@Alpha(Reason.CLIENT)` in driver 5.13 (`MongoClientSettings.Builder.timeout`,
+   *  `withTimeout`, `MongoOperationTimeoutException`): exempt from compatibility guarantees. Kept to
+   *  this one setting plus the opt-outs, so an incompatible driver release costs a small edit. */
+  val DefaultOperationTimeout: FiniteDuration = 60.seconds
+
   /** Driver settings for a connection string. Wire compression (zlib — built into
    *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow
    *  links are the local ssh tunnel to the prod Mongo host and a loopback read-mirror, where
@@ -455,12 +483,16 @@ object MongoConnection extends Logging {
    *  uncompressed. A URI that names its own `compressors=` always wins either way.
    *
    *  `applicationName` is the `appName` the handshake sends, so mongod's slow-op log lines and
-   *  `currentOp` name the tier and country behind a query; a URI's own `appName=` wins. */
+   *  `currentOp` name the tier and country behind a query; a URI's own `appName=` wins.
+   *
+   *  `operationTimeout` is the client's operation timeout (see [[DefaultOperationTimeout]]); a URI's own
+   *  `timeoutMS=` wins. */
   private[services] def clientSettings(
       connectionString: String,
       serverSelectionTimeout: Option[MongoConnection.ServerSelectionTimeout] = None,
       maxPoolSize: Int = DefaultMaxPoolSize,
-      applicationName: MongoApplicationName = MongoApplicationName.Default): MongoClientSettings = {
+      applicationName: MongoApplicationName = MongoApplicationName.Default,
+      operationTimeout: Option[MongoOperationTimeout] = None): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
     // Socket I/O uses the driver's DEFAULT transport (JDK NIO2). We briefly routed it
@@ -483,6 +515,7 @@ object MongoConnection extends Logging {
     if (cs.getMaxConnectionPoolSize == null)
       builder.applyToConnectionPoolSettings { b => b.maxSize(maxPoolSize); () }
     if (cs.getApplicationName == null) builder.applicationName(applicationName.value)
+    if (cs.getTimeout == null) operationTimeout.foreach(timeout => builder.timeout(timeout.value.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
     serverSelectionTimeout.foreach { timeout =>
       builder.applyToClusterSettings { b =>
         b.serverSelectionTimeout(timeout.value.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); ()
