@@ -142,6 +142,11 @@ final class LookupFill(
   @volatile private var lastRound: Option[java.time.Instant] = None
 
   private val running = new AtomicBoolean(false)
+  @volatile private var complete = 0L
+  /** How many rounds have ended COMPLETE — every question due asked, none deferred for want of budget, none failed, no
+   *  back-off: after such a round a gap still open is one TMDB does not answer, which [[services.identity.GapHold]] waits
+   *  for no longer. */
+  def completeRounds: Long = complete
   @volatile private var current: Option[IdentityLookupFillRate] = None
 
   /** The rate the next round runs at: the configured one, less any back-off still in force. */
@@ -190,6 +195,7 @@ final class LookupFill(
     val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)
     metrics.round(r)
+    if (r.deferred == 0 && r.failed == 0 && !r.backedOff) complete += 1
     logger.info(s"identity lookup fill: asked ${r.asked} (${r.answered} answered, ${r.failed} failed), deferred ${r.deferred} " +
       s"at ${at.perMinute}/min${if (r.backedOff) s" — backed off ${budget.overloadedHosts.toSeq.sorted.mkString(", ")}" else ""}")
     r
