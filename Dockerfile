@@ -81,7 +81,7 @@ RUN chmod +x bin/*
 # (loading the worker's 31k classes: 157 MB metaspace + 37 MB class space without it, 0.6 MB with
 # it; worker-pl died of `OutOfMemoryError: Metaspace` at its 128m cap before it). The training
 # (tools.ClassArchiveTraining) runs through the app's own launcher so the classpath and the baked
-# options (conf/application.ini: collector, JIT shape, JDK-25 parity) are the ones it starts with --
+# options (conf/application.ini: collector, JIT shape) are the ones it starts with --
 # a cache trained under others does not map. -Xmx512m keeps the training heap in the same
 # compressed-pointer range as every pod's. `test -s` fails the build rather than ship without it.
 RUN JAVA_OPTS="-Xmx512m -XX:AOTCacheOutput=/app/classes.aot" bin/$BIN -main tools.ClassArchiveTraining /app/lib 2>&1 \

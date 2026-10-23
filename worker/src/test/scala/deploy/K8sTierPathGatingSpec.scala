@@ -154,10 +154,7 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
     matches(workerFilter, Seq("infra/jvm/worker.options")) shouldBe true
     matches(webFilter, Seq("infra/jvm/worker.options")) shouldBe false
     matches(webFilter, Seq("infra/jvm/web.options")) shouldBe true
-    matches(webFilter, Seq("infra/jvm/jdk25-parity-g1.options")) shouldBe true
     matches(workerFilter, Seq("infra/jvm/web.options")) shouldBe false
-    matches(workerFilter, Seq("infra/jvm/jdk25-parity.options")) shouldBe true
-    matches(webFilter, Seq("infra/jvm/jdk25-parity.options")) shouldBe true
   }
 
   /**

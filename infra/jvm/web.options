@@ -4,7 +4,9 @@
 -XX:+UseG1GC
 # Map the AOT cache at its own base instead of a random one: relocating it patches every pointer and
 # dirties every page, so the whole archive became private memory (worker image, PL options: 741 MB
-# anonymous RSS relocated, 638 MB in place). Diagnostic: jdk25-parity.options unlocks it first.
+# anonymous RSS relocated, 638 MB in place). Diagnostic, so unlocked first: web's JAVA_OPTS do not
+# unlock diagnostics, and AotCacheOptionsSpec starts a JVM under these options alone.
+-XX:+UnlockDiagnosticVMOptions
 -XX:ArchiveRelocationMode=0
 # Cap the temporary direct buffers NIO caches per thread: a socket read into a heap buffer goes
 # through a direct one of the same size, kept per thread and unbounded by default. NMT's "Other" held
@@ -13,3 +15,11 @@
 # Share the byte arrays of equal Strings the collector keeps: 57.9 MB of worker-pl's heap was
 # duplicate contents ("US", "2D", titles, JSON values); 11 MB off the live old generation measured.
 -XX:+UseStringDeduplication
+# G1's heap-sizing ergonomics as JDK 25 ran them (JDK 27's G1Arguments overrides each when left at its
+# default: UseCondCardMark on, GCTimeRatio 24, Min/MaxHeapFreeRatio 0/100). Kept from the JDK 25 parity
+# file when the rest of it was given back (2026-10-23): the web tier's G1 under 27's values is
+# unmeasured. Inert for resizing while Xms == Xmx; LauncherJvmFlagsSpec holds the web JVM to them.
+-XX:-UseCondCardMark
+-XX:GCTimeRatio=12
+-XX:MinHeapFreeRatio=40
+-XX:MaxHeapFreeRatio=70

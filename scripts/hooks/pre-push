@@ -303,11 +303,11 @@ compile_plan() {
 #   needs the GitOps manifests, which live in another repository (CI checks them out; the sbt check runs
 #   infra/bin/fetch-gitops first, and with PREPUSH_GITOPS=1 -- the manifests in place -- these run too):
 #       NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec
-#       WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec
+#       WorkerRolloutStaggerSpec FluxImageAutomationSpec LauncherJvmFlagsSpec AotCacheOptionsSpec K8sTierPathGatingSpec
 #       PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec
 #   boots a fixture server (not a file lint): FixtureServerBootSpec FixtureServerBootOverlapSpec
 # Skip just these with PREPUSH_SKIP=lintspecs (the standing five still run under `sbt`).
-LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
+LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec LauncherJvmFlagsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
 LintSpecsBootingServers="FixtureServerBootSpec FixtureServerBootOverlapSpec"
 # The lints every sbt check runs, whatever the push touches.
 StandingLintSpecs="worker:tools.NoWallClockInTestsSpec scrapers:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"

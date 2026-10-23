@@ -101,9 +101,9 @@ lazy val heapDumpScript = Seq(
 )
 
 // JVM options baked into each dist's conf/application.ini. The start script puts them AFTER the
-// overlay's JAVA_OPTS on the java command line, so for a flag both name these win: JDK 27 held to JDK 25's behaviour (jdk25-parity*.options, which
-// JdkParityOptionsSpec holds to 25's values) and each tier's collector and JIT shape
-// (worker.options, web.options), which the image's AOT cache is trained under.
+// overlay's JAVA_OPTS on the java command line, so for a flag both name these win: each tier's
+// collector and JIT shape (worker.options, web.options), which the image's AOT cache is trained under.
+// LauncherJvmFlagsSpec reads back the flags a JVM runs under them.
 def launcherOptions(files: String*) = Seq(
   Universal / javaOptions ++= files.flatMap { name =>
     IO.readLines((LocalRootProject / baseDirectory).value / "infra" / "jvm" / name)
@@ -424,7 +424,7 @@ lazy val worker = (project in file("worker"))
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
-  .settings(launcherOptions("jdk25-parity.options", "worker.options"))
+  .settings(launcherOptions("worker.options"))
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -508,7 +508,7 @@ lazy val web = (project in file("web"))
   .settings(itReportSettings, itRowSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
-  .settings(launcherOptions("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"))
+  .settings(launcherOptions("web.options"))
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
 //

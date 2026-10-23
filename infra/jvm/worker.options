@@ -7,7 +7,9 @@
 -XX:-UseTypeSpeculation
 # Map the AOT cache at its own base instead of a random one: relocating it patches every pointer and
 # dirties every page, so the whole archive became private memory (worker image, PL options: 741 MB
-# anonymous RSS relocated, 638 MB in place). Diagnostic: jdk25-parity.options unlocks it first.
+# anonymous RSS relocated, 638 MB in place). Diagnostic, so unlocked first: the launcher must start on
+# its own options (AotCacheOptionsSpec), whatever an overlay's JAVA_OPTS unlock.
+-XX:+UnlockDiagnosticVMOptions
 -XX:ArchiveRelocationMode=0
 # Cap the temporary direct buffers NIO caches per thread: a socket read into a heap buffer goes
 # through a direct one of the same size, kept per thread and unbounded by default. NMT's "Other" held
