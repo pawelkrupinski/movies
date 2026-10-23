@@ -71,6 +71,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private var corpusFilmCount: Int = 0
   // The first fixture film's title — the one the og:image cases open.
   private var firstFixtureTitle: String = ""
+  // Every path Chrome fetched as a speculative prefetch (`Sec-Purpose: prefetch`), in arrival order —
+  // what the speculation-rules test reads. Written on the server's handler thread, read on the test's.
+  private val prefetchedPaths = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+  private def recordPrefetch(exchange: HttpExchange): Unit =
+    if (Option(exchange.getRequestHeaders.getFirst("Sec-Purpose")).exists(_.contains("prefetch")))
+      prefetchedPaths.add(exchange.getRequestURI.getRawPath)
+
   // `/api/me/state`'s served body — an `AtomicReference`, not a plain var: the
   // language reconcile tests below mutate it from the test thread while
   // `TestHttpServer`'s own handler thread reads it for the reload that test
@@ -384,7 +391,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
               .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String], latestYear = tools.SpecClock.latestTitleYear, now = tools.SpecClock.Pinned.instant()).body)
               .getOrElse("")
         },
-        dynamicRoute = hiddenFilmsDynamicRoute
+        dynamicRoute = exchange => { recordPrefetch(exchange); hiddenFilmsDynamicRoute(exchange) }
       )
     }
   }
@@ -2665,6 +2672,28 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.waitFor(s"location.pathname === '$cityPrefix/movie/$slug'")
       // The whole point of the slug: the address carries no query string at all.
       page.evalString("location.search") shouldBe ""
+    }
+  }
+
+  // The speculation rules (`_resourceHints`) let Chromium fetch a film page while the pointer
+  // rests on its link (`moderate`: ~200 ms hover, or pointerdown on touch), so the tap that
+  // follows lands on a page already in memory.
+  "the speculation rules" should "prefetch a film page while its card's title link is hovered" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.evalBool("HTMLScriptElement.supports('speculationrules')") shouldBe true
+      val slug = page.evalString("__grid.firstPosterLink().closest('[data-title]').dataset.slug")
+      slug should not be empty
+      val titleLink = "__grid.firstPosterLink().closest('.card').querySelector('.card-title a')"
+      page.eval(s"$titleLink.scrollIntoView({block: 'center'})")
+      val x = page.evalInt(s"(r => Math.round(r.left + r.width / 2))($titleLink.getBoundingClientRect())")
+      val y = page.evalInt(s"(r => Math.round(r.top + r.height / 2))($titleLink.getBoundingClientRect())")
+      page.send("Input.dispatchMouseEvent", Json.obj("type" -> "mouseMoved", "x" -> x, "y" -> y))
+      val film = s"$cityPrefix/movie/$slug"
+      val prefetched = tools.Eventually.poll()(prefetchedPaths.contains(film))
+      withClue(s"prefetched: ${prefetchedPaths.toArray.mkString(", ")}") { prefetched shouldBe true }
+      // Still on the listing: a prefetch fetches, it does not navigate.
+      page.evalString("location.pathname") shouldBe s"$cityPrefix/"
     }
   }
 

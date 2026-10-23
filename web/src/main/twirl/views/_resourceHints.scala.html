@@ -3,6 +3,12 @@
    to it eagerly takes the first poster's connection setup off the critical path
    — a measurable LCP / Core-Web-Vitals win on poster-heavy pages. dns-prefetch
    is the fallback for browsers that ignore preconnect. Included in the <head>
-   of every poster-bearing page (not the landing city-picker, which has none). *@
+   of every poster-bearing page (not the landing city-picker, which has none).
+
+   The speculation rules prefetch the city's film pages on hover / pointerdown
+   (Chromium only); why that set and that eagerness: controllers.SpeculationRules.
+   The CSP's `'unsafe-inline'` script-src admits the inline rule set. *@
+@()(implicit city: models.City)
 <link rel="preconnect" href="https://images.weserv.nl" crossorigin>
 <link rel="dns-prefetch" href="https://images.weserv.nl">
+<script type="speculationrules">@controllers.ScriptJson.embed(controllers.SpeculationRules.forCity(city))</script>

@@ -365,7 +365,14 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
   finger-tracking JS). Then the whole track could go, not a tenth of it.
 - **A hand-rolled modal** (hidden films): `<dialog>.showModal()` (Safari 15.4+) gives focus trap, Esc and the top
   layer [modal code unread].
-- Optional: speculation rules (Chromium only, so Android/Chrome traffic) for film-page prefetch.
+- **Speculation rules (done 2026-10-24):** `_resourceHints` carries a `prefetch` rule (built by
+  `controllers.SpeculationRules`) for the page's own city's `/{city}/movie/*` links, `moderate` eagerness (hover
+  ~200 ms on desktop, pointerdown on touch). Prefetch, not prerender: no off-screen render, no analytics for unopened
+  films. Film pages are pure GETs (the only server-side hook, `FacebookFetchRecorder`, counts Facebook's crawler
+  only), but they are `private, no-cache`, so every prefetch reaches Play, not Cloudflare: one extra request per link
+  hovered or touched, at most two in flight. Other cities' film links are excluded because the film page sets the
+  `city` cookie the landing redirect reads. The CSP's `'unsafe-inline'` admits the inline block; Safari and Firefox
+  ignore it. Pinned by `PageJsBehaviourSpec` ("the speculation rules") and `SpeculationRulesSpec`.
 - Already modern: `content-visibility`, `loading=lazy`, `fetchpriority`.
 - **ESLint:** `linterOptions.reportUnusedDisableDirectives: 'error'`, `ecmaVersion: 'latest'` with the ESLint 10 bump.
 - **version-dashboard:** current (Node 24, TS 7); only lockfile refreshes.
