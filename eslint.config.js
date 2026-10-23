@@ -32,6 +32,11 @@ const storageAccessInTry = require('./eslint-rules/storage-access-in-try');
 module.exports = [
   js.configs.recommended,
   {
+    // A disable directive that no longer suppresses anything hides nothing but
+    // the next real problem on that line — fail lint on it (ESLint 9 only warns).
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+  {
     files: ['web/src/main/assets/js/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
