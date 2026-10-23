@@ -18,7 +18,13 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    builds on the `path` label of `kinowo_worker_http_total` (`tools.HttpPath`) and the paced changes sweep
    (`tmdb-changes-sweep`, in flight 2026-10-23, identity-resolver.md §19.3 once landed).
 4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
-   family's own open questions, until answered or the kind's deadline passes. This is GapHold v4.
+   family's own open questions, until answered or the deadline passes. This is GapHold v4.
+
+Decided by the owner (2026-10-23): one deadline for every kind, **30 minutes**, after which the take settles on what it
+has while the questions not yet reached keep being asked; and a new film's questions are asked **straight away**,
+inline, with no budget of their own beyond the rate-limit protections every request already goes through (the 429
+gate, breakers, `HostPolicies`). A new answer can always move a take: settling only ends the wait, never the
+take's readiness to change when an answer arrives or changes, before the deadline or after.
 
 ## The questions
 
