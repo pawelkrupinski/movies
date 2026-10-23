@@ -130,8 +130,9 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     val pool = DaemonExecutors.boundedEC("detail-fetch", 2)
     try runTask(TaskType.ScrapeCinema) { _ =>
       wire.fetch.get("https://kinoapollo.pl/repertuar")
-      Await.result(Future.traverse(Seq("a", "b"))(page => Future(wire.fetch.get(s"https://kinoapollo.pl/film/$page"))(using pool))(
-        using implicitly, pool), 10.seconds)
+      val details = Future.traverse(Seq("a", "b"))(page => Future(wire.fetch.get(s"https://kinoapollo.pl/film/$page"))(using pool))(
+        using implicitly, pool)
+      Await.result(details, tools.SpecTimeouts.Io)
       HandlerOutcome.Done
     }
     finally pool.shutdown()
