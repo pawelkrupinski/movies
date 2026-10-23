@@ -169,9 +169,13 @@ lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -
 
 // The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split by
 // package into rows of roughly equal suite time: the identity tooling's capture re-resolves (`scripts`), the
-// resolver's corpus specs (`identity`), and `rest`, which CI runs beside the web module's unit tests.
+// resolver's corpus specs (`identity`), and `rest`, which CI runs beside the web module's unit tests. `refit` is the
+// one suite that was ~250 s of `scripts`' 337 (IdentityRefitMeasureAllSpec's whole-vs-sharded refit over two
+// captures, 2026-10-23), on a row of its own beside it: it still runs on every push the unit rows run on.
+lazy val RefitRowSuites = Set("scripts.IdentityRefitMeasureAllSpec")
 lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
-  "scripts"  -> (_.startsWith("scripts.")),
+  "refit"    -> RefitRowSuites,
+  "scripts"  -> (suite => suite.startsWith("scripts.") && !RefitRowSuites(suite)),
   "identity" -> (_.startsWith("services.identity."))))
 
 lazy val itReportSettings = Seq(
