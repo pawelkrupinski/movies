@@ -21,8 +21,8 @@
 # 2 when it could not be made.
 set -uo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=scripts/tool-conventions.sh
-. "$here/tool-conventions.sh"
+# shellcheck source=scripts/identity-tools.sh
+. "$here/identity-tools.sh" # identity_push_measure_branch; tool-conventions.sh's bounded, die, flag_value
 DIE_STATUS=2
 . "$here/ci/dispatch.sh"
 export DISPATCH_GH=$KINOWO_GH DISPATCH_GH_TIMEOUT=${IDENTITY_CI_RUN_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_CI_RUN_POLL:-30}
@@ -74,7 +74,8 @@ branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-$(od -An -N3 
 dispatched=""
 # Before the dispatch the branch is ours to delete; after it, the run's (Forgejo cannot cancel a run through its API).
 trap '[ -n "$dispatched" ] || bounded 120 git push -q "$remote" --delete "refs/heads/$branch" 2> /dev/null || true' EXIT
-bounded 300 git push -q "$remote" "$push:refs/heads/$branch" || die "could not push $branch"
+# One measure/ push at a time on this machine (identity-landing-check runs one of these per group, at once)
+identity_push_measure_branch "$remote" "$push" "$branch" || die "could not push $branch: $MEASURE_PUSH_ERROR"
 say "pushed $branch"
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 dispatch_workflow "$workflow" "$branch" -f recording="$recording" -f countries="$countries" -f command="$command" -f heap="$heap" \

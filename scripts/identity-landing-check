@@ -214,6 +214,13 @@ hint() {
   esac
 }
 
+# why_not <log> <tool> -> ": <the tool's last word on why it stopped>" (e.g. identity-ci-run's "could not push
+# measure/…: remote rejected (unable to migrate objects to permanent storage)"), or nothing when the log has none
+why_not() {
+  local last
+  last=$(grep -E "^$2: " "$1" 2> /dev/null | tail -1)
+  [ -z "$last" ] || echo ": ${last#"$2": }"
+}
 # ── the verdict ────────────────────────────────────────────────────────────────────────────────
 blocked=() unknown=()
 echo "identity landing check: ${commit:0:12} over ${base:0:12}"
@@ -223,7 +230,7 @@ if [ -n "$measure" ]; then
     0) echo "  measure     ${verdict_line:-LANDABLE}" ;;
     1) echo "  measure     NOT LANDABLE"; blocked+=("measure	NOT LANDABLE: $(sed -n '/^NOT LANDABLE/,$p' "$out/measure.txt" | sed -n '2,4p' | sed 's/^ *- //' | paste -sd';' -)	a take moved wrong or a right one was lost: the measure's table, $out/measure.txt (scripts/identity-slice --explain its listings)") ;;
     3) echo "  measure     not answered by the footprint (--footprint-only)"; blocked+=("measure	--footprint-only could not answer	run without --footprint-only for the full measure") ;;
-    *) echo "  measure     could not measure ($out/measure.log)"; unknown+=(measure) ;;
+    *) echo "  measure     could not measure$(why_not "$out/measure.log" identity-measure) ($out/measure.log)"; unknown+=(measure) ;;
   esac
 fi
 if [ -n "$specs" ]; then
@@ -231,7 +238,8 @@ if [ -n "$specs" ]; then
     rc=$(cat "$out/$name/exit" 2> /dev/null || echo 2)
     found=""; [ ! -f "$out/$name/sbt.log" ] || found=$(failures "$out/$name/sbt.log")
     if [ "$rc" = 0 ] && [ -z "$found" ]; then echo "  $(printf '%-11s' "$name") passed"
-    elif [ "$rc" = 2 ] && [ -z "$found" ]; then echo "  $(printf '%-11s' "$name") could not run ($out/$name/)"; unknown+=("$name")
+    elif [ "$rc" = 2 ] && [ -z "$found" ]; then
+      echo "  $(printf '%-11s' "$name") could not run$(why_not "$out/$name/ci-run.log" identity-ci-run) ($out/$name/)"; unknown+=("$name")
     else
       [ -n "$found" ] || found="$name	(sbt failed, no test named)"
       echo "  $(printf '%-11s' "$name") FAILED ($out/$name/sbt.log)"

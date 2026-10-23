@@ -13,6 +13,8 @@
 #   identity_judgements <dir>       -> the judgements that judge the capture in <dir>: its own, else this checkout's
 #   identity_tree <ref> <file>...   -> the ref's sources laid out once under the cache, the named files this checkout's
 #   identity_classpath <tree>       -> prints the tree's worker test classpath, sbt run only when a source is newer
+#   identity_push_measure_branch <remote> <commit> <branch> -> the commit pushed as refs/heads/<branch>, one such push
+#        at a time on this machine; on a failure MEASURE_PUSH_ERROR says why, in the remote's words
 #
 # Each fails (non-zero, said on stderr) when what it needs cannot be read — gh unreachable, a download cut short — and
 # never hands back a stale or partial copy instead. Every gh call is bounded (tool-conventions.sh's `bounded`); a wait for another agent's
@@ -57,6 +59,28 @@ identity_locked() {
     "$@"; rc=$?
     lock_give 8 "$lock"
     exit "$rc" )
+}
+
+# identity_push_measure_branch <remote> <commit> <branch> -> <commit> pushed as refs/heads/<branch> (bounded), while no
+# other measure/ push of this machine is under way (identity_locked measure-push), git's output passed through. Fails
+# with MEASURE_PUSH_ERROR set to the remote's reason ("remote rejected (unable to migrate objects to permanent storage)").
+# ONE AT A TIME (2026-10-23): identity-landing-check pushes one commit to a measure/ branch per spec group and one for
+# its identity-measure, all at once. Concurrent receive-packs of the same new objects (100+, so kept as a pack) on
+# Forgejo each write pack-<hash>.keep with their own pid in it; the second to move its quarantine in finds the first's
+# .keep "differs in contents" and rejects the push. A push after the first finds the commit there and sends no objects.
+identity_push_measure_branch() {
+  local remote=$1 commit=$2 branch=$3 err rc
+  MEASURE_PUSH_ERROR=""
+  err=$(mktemp)
+  identity_locked measure-push bounded 300 git push -q "$remote" "$commit:refs/heads/$branch" 2> "$err"; rc=$?
+  cat "$err" >&2
+  if [ "$rc" -ne 0 ]; then
+    MEASURE_PUSH_ERROR=$(sed -nE 's/^ ! \[(remote rejected|rejected)\] .* \((.*)\)$/\1 (\2)/p' "$err" | head -1)
+    [ -n "$MEASURE_PUSH_ERROR" ] || MEASURE_PUSH_ERROR=$(grep -E '^(fatal|error):' "$err" | tail -1)
+    [ -n "$MEASURE_PUSH_ERROR" ] || MEASURE_PUSH_ERROR="git push exited $rc"
+  fi
+  rm -f "$err"
+  return "$rc"
 }
 
 identity_capture() {

@@ -34,7 +34,7 @@ out="" cmd=""
 while [ "$#" -gt 0 ]; do case "$1" in --out) out=$2; shift 2 ;; --) shift; cmd="$*"; break ;; *) shift ;; esac; done
 echo "$cmd" >> "$LOGS/commands"
 case "$cmd" in testOnly*) g=unit ;; worker/IntegrationTest*) g=it ;; *FilmSchedule*) g=e2e-corpus ;; *) g=e2e-rest ;; esac
-[ -f "$LOGS/$g.unreachable" ] && exit 2
+[ -f "$LOGS/$g.unreachable" ] && { cat "$LOGS/$g.unreachable" >&2; exit 2; }
 mkdir -p "$out"
 if [ -f "$LOGS/$g.log" ]; then cp "$LOGS/$g.log" "$out/sbt.log"; exit 1; fi
 printf '[info] All tests passed.\n[success] Total time: 3 s\n' > "$out/sbt.log"
@@ -128,9 +128,13 @@ check "a measure the footprint could not answer under --footprint-only is BLOCKE
   "$(MEASURE=3 landing --head "$code" --base "$base" --footprint-only)"
 check "a measure that could not be made is no verdict" "2 true" \
   "$(MEASURE=2 landing --head "$code" --base "$base") $(has 'NO VERDICT: could not check measure')"
-touch "$work/logs/e2e-corpus.unreachable"
+check "...saying why, in identity-measure's words" "true" "$(has 'measure     could not measure: could not fetch')"
+echo "identity-ci-run: could not push measure/u/abc-1: remote rejected (unable to migrate objects to permanent storage)" \
+  > "$work/logs/e2e-corpus.unreachable"
 check "a group that could not run is no verdict either" "2 true" \
   "$(landing --head "$code" --base "$base") $(has 'could not check e2e-corpus')"
+check "...saying why, in identity-ci-run's words" "true" \
+  "$(has 'e2e-corpus  could not run: could not push measure/u/abc-1: remote rejected (unable to migrate objects to permanent storage)')"
 rm -f "$work/logs/e2e-corpus.unreachable"
 check "--no-measure and --no-specs together is a usage error" "2" "$(landing --no-measure --no-specs)"
 

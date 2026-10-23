@@ -860,7 +860,8 @@ branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-$(od -An -N3 
 say "commit $(git log --oneline -1 "$commit")"
 say "base   $(git log --oneline -1 "$base")"
 # A push that fails -- or times out -- may still have made the branch: the clean-up deletes it either way.
-bounded 300 git push -q "$remote" "$push:refs/heads/$branch" || die "could not push the measure branch"
+# One measure/ push at a time on this machine: identity-landing-check pushes the same commit for its spec groups at once
+identity_push_measure_branch "$remote" "$push" "$branch" || die "could not push the measure branch $branch: $MEASURE_PUSH_ERROR"
 say "pushed $branch"
 
 # One deadline for the whole measurement: every (re-)dispatch and the run.
