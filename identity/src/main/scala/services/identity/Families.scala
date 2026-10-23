@@ -54,7 +54,12 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  Metropolitan Opera: Macbeth" ×6 from the Met's 2026/27 record, and its Fanciulla billing (the original title Vue's
    *  feed carries) withdrew Vue's "MET Opera 2026-27: La Fanciulla Del West" ×81 from the Met's 2026/27 Fanciulla. */
   def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
-                      takenAlone: String => Boolean): Option[(EvidenceNode, String)] = {
+                      takenAlone: String => Boolean): Option[(EvidenceNode, String)] =
+    siblingDenying(node, members, scope, best, takenAlone).map { case (sibling, other) => sibling -> other.denial.fold("denied")(_.why) }
+
+  /** [[deniedBySibling]]'s sibling and its own scoring of the film, which holds the denial. */
+  def siblingDenying(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
+                     takenAlone: String => Boolean): Option[(EvidenceNode, Scored)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
     val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film) ||
       RelayStage.particularRecordOf(best.listing, best.candidate.film)
@@ -64,7 +69,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     if (ownProduction) None
     else members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
       .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied && withdraws(other))
-        .map(other => sibling -> other.denial.fold("denied")(_.why)))
+        .map(other => sibling -> other))
       .nextOption()
   }
 

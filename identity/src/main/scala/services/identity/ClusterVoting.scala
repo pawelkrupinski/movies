@@ -25,9 +25,44 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  Niebieski" is not "Czerwony"), or that the calibration cannot tell apart. */
   private def votedFor(cluster: Seq[EvidenceNode], ranked: Seq[Scored]): Option[Accepted] =
     acceptance.pooled(ranked).filter { case (winner, _) =>
-      cluster.exists(titleNames(_, winner.candidate)) ||
-        ranked.filterNot(rival => rival.denied || (rival eq winner)).forall(rival => rival.probability < winner.probability && weights.own(rival) <= weights.own(winner))
+      !onlyWithdrawn(cluster, winner.candidate.tmdbId) && (cluster.exists(titleNames(_, winner.candidate)) ||
+        ranked.filterNot(rival => rival.denied || (rival eq winner)).forall(rival => rival.probability < winner.probability && weights.own(rival) <= weights.own(winner)))
     }
+
+  /** Is `film` one EVERY member's own match was WITHDRAWN from ([[Families.deniedBySibling]]) by a sibling's denial that
+   *  it is not the WORK billed ([[Denial.Kind.NotTheWork]]: a short beside the sibling's feed link to a feature of the
+   *  title; a screen namesake of the work the sibling's stage house bills, unless the member credits the film's director,
+   *  as that rule spares its own listing — UK "These Violent Delights" {Christopher Hampson} ×10 keeps Scottish Ballet's
+   *  record, recording 573)? The withdrawn node goes to the group vote so
+   *  that the sibling's denial holds there; but the solver may split the denying sibling off, and a cluster of such
+   *  withdrawn nodes alone would then vote the film straight back on their own evidence, the very match the denial
+   *  withdrew. Such a cluster votes no film it was withdrawn from. A denial by the sibling's own facts or billing (another
+   *  year, the director its title names) says only that the sibling is another film: DE "Glaube" ×7 (withdrawn from the
+   *  2025 film by 'Glaube' [1998]) and "ES - Kapitel 1" (by 'ES (ULRICH SCHAMONI)') still vote theirs — every withdrawal
+   *  read so lost 242 DE takes on prod-latest 1622 (run 1777). Nor a cluster holding a member that took nothing alone: its
+   *  pooled evidence is its own. Nor a node whose own feed links the film (a TMDB-keyed feed's id names it): DE Bali-Kino's
+   *  and PUSCHKINO's "Nosferatu", Cineamo-linked to Eggers' 2024 film, beside the "Eine Symphonie des Grauens – Ballett
+   *  Extra" billing that denies it as a screen namesake. Prod-latest 1622: UK Magic Lantern Tywyn's and Riverside Woodbridge's "Notre-Dame de
+   *  Paris" (the Paris Opera Ballet's relay) re-took the 1956 Hunchback, a screen namesake of the ballet billings' work,
+   *  and DE Mal seh'n Kino's "THE THING WITH FEATHERS" re-took Oelofse's 24-minute short (kinoheld's copied credit) beside
+   *  the Cineamo link of "Das Ding mit den Federn" to Southern's feature. */
+  private def onlyWithdrawn(cluster: Seq[EvidenceNode], film: Int): Boolean = !keptByASibling(cluster, film) && cluster.forall { node =>
+    val scope = families.scopeOf(node)
+    !families.bestOf.contains(node.id) && !FeedLink.linked(node.listings).exists(_._2 == film) && scope.takenAlone(node).exists { case ((best, _), _) =>
+      best.candidate.tmdbId == film && families.siblingDenying(node, scope.members, scope, best,
+        id => scope.takenAlone(scoring.generation.nodeById(id)).isDefined).exists { case (_, denial) =>
+        denial.denial.exists(_.kind match {
+          case Denial.Kind.NotTheWork(creditOverrules) => !(creditOverrules && IdentityMeasures.sameDirector(best.measures))
+          case _                                       => false
+        }) }
+    }
+  }
+
+  /** Does a member of the cluster's family keep `film` by its own match ([[Families.bestOf]])? Its own evidence then says
+   *  the family's work is screened as that film, which a sibling's denial does not withdraw from the rest: UK recording
+   *  573's uncredited Savoy "These Violent Delights" billings beside the credited ones that take Scottish Ballet's record. */
+  private def keptByASibling(cluster: Seq[EvidenceNode], film: Int): Boolean =
+    cluster.headOption.exists(node => families.scopeOf(node).members.exists(member => families.bestOf.get(member.id).exists(_._1.candidate.tmdbId == film)))
 
   /** The GROUP VOTE of a cluster no member matched alone: each voting member → the film and its
    *  confidence. The pooled scoring marks a film denied when ANY member's own evidence denies it

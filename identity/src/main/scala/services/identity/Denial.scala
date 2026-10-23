@@ -10,6 +10,13 @@ private[identity] object Denial {
   enum Kind {
     /** The listing's own evidence, a pin, or a family's rule. */
     case Evidence
+    /** The film is not the WORK the listing's billing or feed names, by its kind: a short beside a feed's link to a
+     *  feature of the title ([[FamilyScope]]'s copied-title denial), a screen namesake of the work a stage house's banner
+     *  bills ([[CandidateScoring.evidenceDenial]]). Unlike a denial by the listing's own facts (another year, another
+     *  director: the listing is another film), it holds for every billing of that work ([[ClusterVoting]]) — but one
+     *  `creditOverrules` lets a billing whose credited director is the film's keep it, as the screen-namesake rule does its
+     *  own listing: a credit the venue publishes names its staging's record whatever TMDB titles it. */
+    case NotTheWork(creditOverrules: Boolean)
     /** The calibration's probability cut alone ([[LearnedCannotLinks]]): the weakest denial. */
     case ProbabilityCut
     /** A season production its listing's banner is not the house of ([[CandidateScoring.evidenceDenial]]). */

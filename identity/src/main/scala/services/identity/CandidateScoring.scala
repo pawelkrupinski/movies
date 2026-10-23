@@ -44,7 +44,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
         Denial(CandidateScoring.AnotherHousesSeason, Denial.Kind.AnotherHousesSeason)))
       // a credit the venue publishes names its staging's record whatever TMDB titles it
       .orElse(Option.when(StageRelays.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
-        Denial("a screen namesake of the work its stage house's billing names")))
+        Denial("a screen namesake of the work its stage house's billing names", Denial.Kind.NotTheWork(creditOverrules = true))))
       // a credit or a running time never holds a record of another work: a screen director films many
       .orElse(Option.when(StageRelays.namesAnotherWork(listing, film))(
         Denial("a record of another work than its stage house's billing names")))

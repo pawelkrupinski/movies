@@ -309,7 +309,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  billing ([[IdentityMeasures.Listing.originalSharesNothingBilled]]): DE Cinecitta's "Über Unterbiberger - Vom Woid in
    *  die Welt" links kinoheld's page of another event, which copied Eisenstein's "Октябрь", his credit and its 142
    *  minutes, and took "Oktober 1917" at 61.9% while thirteen venues billed Ditscherlein's 2025 documentary. */
-  private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[String] =
+  private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[Denial] =
     copyingLink(node).map { case (id, linked) => (s"${id.source} ${id.id}", Some(linked)) }
       // a page feed's copy, which names no film: on a node no TMDB-keyed feed links — whose link, where this resolve's
       // films are a family's own numbers, is read as nothing, its copied title the linked film's own (DE "Der Film 444
@@ -337,7 +337,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       // Unfall", Panahi's 2025 film beside a 2025 short). Only where the feed copied a title the venue does not bill
       // ([[FeedLink.copiesAnotherTitle]]): a short the venue's own original title is, is its namesake
       if (linked.isDefined && FeedLink.copiesAnotherTitle(listing) && ShortFilms.isShort(candidate.film))
-        Some(s"a short, its feed ($feed) linking ${linked.fold("")(_.toString)}")
+        Some(Denial(s"a short, its feed ($feed) linking ${linked.fold("")(_.toString)}", Denial.Kind.NotTheWork(creditOverrules = false)))
       else Option.when(listing.originalTitle.nonEmpty && !sameYear && !billsItsWords &&
         IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && {
           // the billed titles — without the copied original, nor a search title that is only it again — against the
@@ -352,17 +352,17 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
           val pieces = IdentityMeasures.namingPieces(billed, record)
           def byOneWordOnly = pieces.nonEmpty && pieces.forall(_.sizeIs == 1) && !billed.shapeKeys.exists(key => record.forms.exists(_.key == key))
           !IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record) || byOneWordOnly
-        })(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film"))
+        })(Denial(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film")))
     }
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a feed link's copied title
    *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
    *  slot, a title billing a film festival alone, or a billing as a silent film of a sound-era film. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] =
-    (Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
-      .orElse(overruled(node).filter(_.film == id).map(_.denial))
+    Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
+      .orElse(overruled(node).filter(_.film == id).map(_.denial)).map(Denial(_))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
-      .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
+      .orElse((Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
       .orElse(Option.when(billingOf(node).festival)("its title bills a film festival by its name alone: the programme, no film"))
@@ -372,7 +372,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         "it bills a silent film, and this one is of the sound era"))
       // the venues' own cast fields name none of its cast, and none of their facts agrees with it
       .orElse(CastEvidence.mismatch(node.listings, candidateById(id).film, node.country.flatMap(TitleRelationMeasures.languageOf),
-        billingOf(node).castIsTheFilms))).map(Denial(_))
+        billingOf(node).castIsTheFilms)).map(Denial(_)))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
    *  festival billed by its name alone ([[services.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
