@@ -203,8 +203,12 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 4. **JSON:** `KinowoApi.kt:87,102,122,141` buffer the body into a String before `decodeFromString`.
    `decodeFromStream(body.byteStream())` lowers peak memory. Also extract the four separate
    `Json { ignoreUnknownKeys = true }` instances into one shared instance.
-5. Type-safe navigation routes (`KinowoApp.kt:307-320`, navigation-compose 2.8+); shared-element list→detail
-   transition (needs a stable film id rather than the title as the key).
+5. Type-safe navigation routes: **done (2026-10-23)**, `@Serializable` `FilmList` / `FilmDetail(title)` with
+   `composable<…>` and `toRoute` in `KinowoApp.kt`. Deep links never used `navDeepLink` (the ViewModel parses them and
+   navigates), so nothing else moved. `FilmDetailNavigationTest` drives a title with `/`, `?`, `%`, `#`, `&`, spaces
+   and Polish diacritics through the deep-link path to the detail screen; it passed on the old `Uri.encode` string
+   route too, and fails when the route is left unencoded. Still open: a shared-element list→detail transition (needs a
+   stable film id rather than the title as the key).
 6. `material-icons-extended` for 12 icons: R8 strips the rest, so the gain is build time, not APK size. Replace
    with vector drawables if it's convenient.
 

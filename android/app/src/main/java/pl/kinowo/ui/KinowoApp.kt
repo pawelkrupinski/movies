@@ -23,12 +23,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import pl.kinowo.R
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Catalog
@@ -294,6 +294,15 @@ internal fun CityGate(
     }
 }
 
+/** The repertoire list: the nav graph's start. */
+@Serializable
+internal data object FilmList
+
+/** One film's detail screen. Typed routes encode [title] themselves, so a `/`,
+ *  `?`, `%` or diacritic arrives exactly (FilmDetailNavigationTest). */
+@Serializable
+internal data class FilmDetail(val title: String)
+
 // `internal` (not `private`) so the on-device deep-link test can mount the real
 // nav graph directly, without going through the CityGate's location flow.
 @Composable
@@ -304,18 +313,15 @@ internal fun Repertoire(viewModel: KinowoViewModel) {
     val pendingFilm = viewModel.pendingFilmNav
     LaunchedEffect(pendingFilm) {
         val title = pendingFilm ?: return@LaunchedEffect
-        nav.navigate("detail/${Uri.encode(title)}")
+        nav.navigate(FilmDetail(title))
         viewModel.clearPendingFilmNav()
     }
-    NavHost(navController = nav, startDestination = "list") {
-        composable("list") {
-            ListScreen(viewModel = viewModel, onOpenFilm = { title -> nav.navigate("detail/${Uri.encode(title)}") })
+    NavHost(navController = nav, startDestination = FilmList) {
+        composable<FilmList> {
+            ListScreen(viewModel = viewModel, onOpenFilm = { title -> nav.navigate(FilmDetail(title)) })
         }
-        composable(
-            route = "detail/{title}",
-            arguments = listOf(navArgument("title") { type = NavType.StringType }),
-        ) { entry ->
-            val title = entry.arguments?.getString("title").orEmpty()
+        composable<FilmDetail> { entry ->
+            val title = entry.toRoute<FilmDetail>().title
             // Observe both maps so the screen fills in synopsis/trailers when
             // the parallel /api/details fetch lands after navigation.
             val films by viewModel.films.collectAsState()
