@@ -26,7 +26,7 @@ class ReadModelDerivationCorpusSpec extends AnyFlatSpec with Matchers {
 
   private val n = titleNormalizer
 
-  private def record(title: String, tmdbId: Int, poster: String = "https://mk/poster.jpg"): MovieRecord =
+  private def record(title: String, tmdbId: Int, poster: String): MovieRecord =
     MovieRecord(imdbRating = Some(7.0), tmdbId = Some(tmdbId), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some(title), releaseYear = Some(2024), filmUrl = Some(s"https://mk/$tmdbId"),
         posterUrl = Some(poster + s"?$tmdbId"),

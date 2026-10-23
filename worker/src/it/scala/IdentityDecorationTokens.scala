@@ -96,7 +96,7 @@ object IdentityDecorationTokens {
       val tokenProposals = proposals((_, x) => DecorationTokens.words(x.rawTitle).map(ws => model.inner(ws, spread)))
 
       // ── the SEGMENT model: delimiters, every signal group, and an ablation per group ──
-      val segKeys = byKey.toSeq.map { case (k @ (cc, _), x) => (k, x, DecorationSegments.segments(x.rawTitle)) }
+      val segKeys = byKey.toSeq.map { case (k, x) => (k, x, DecorationSegments.segments(x.rawTitle)) }
       val segVenues = mutable.HashMap.empty[String, mutable.Set[String]]
       val segFilms  = mutable.HashMap.empty[String, mutable.Set[(String, Int)]]
       val segChains = mutable.HashMap.empty[String, mutable.Set[String]]

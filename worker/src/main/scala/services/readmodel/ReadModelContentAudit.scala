@@ -47,7 +47,7 @@ object ReadModelContentAudit {
 
   /** Pure: what differs between the projected card and the stored one, as `field` for the
    *  document and `screenings[<id>].field` / `screenings[<id>] missing|unexpected` for its rows. */
-  def differences(expected: (ResolvedMovie, Seq[CityScreening]), stored: (ResolvedMovie, Seq[CityScreening]))(using LatestTitleYear): Seq[String] = {
+  def differences(expected: (ResolvedMovie, Seq[CityScreening]), stored: (ResolvedMovie, Seq[CityScreening])): Seq[String] = {
     def comparable(m: ResolvedMovie) = m.copy(shareCard = None, shareCardPending = false)
     val (expectedMovie, expectedRows) = expected
     val (storedMovie, storedRows)     = stored

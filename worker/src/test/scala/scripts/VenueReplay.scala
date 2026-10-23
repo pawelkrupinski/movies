@@ -3,7 +3,7 @@ package scripts
 import models.{Cinema, CinemaMovie, Country, SourceData, VenueClock}
 import services.cinemas.CinemaScraperCatalog
 import services.cinemas.common.{CinemaScraper, DetailEnricher}
-import services.movies.{CinemaSlotBuilder, LatestTitleYear, ScrapeListing, ScreeningTokens, StringPool, TitleNormalizer}
+import services.movies.{CinemaSlotBuilder, ScrapeListing, ScreeningTokens, StringPool, TitleNormalizer}
 import services.scrapes.ArchivedScrape
 import tools.{CinemaSlotInvariants, CorpusFixture, FallbackHttpFetch, HttpFetch, RecordedCorpus, SearchQueryMarkers}
 
@@ -264,7 +264,6 @@ object VenueReplay {
     val day    = a.date.orElse(row0.flatMap(_.contentAt).map(i => LocalDate.ofInstant(i, ZoneOffset.UTC)))
       .getOrElse(sys.error(pickVenue(a.venue, rows.map(_.cinema.displayName)).fold(e => s"the recording: $e", _ => "") +
         " — no recorded row names the scrape's day: give --date to scrape a venue the recording does not hold"))
-    given LatestTitleYear = LatestTitleYear(Clock.fixed(day.atStartOfDay().toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
     val scrapers = catalog(http, day, a.country).all
     val venue  = pickVenue(a.venue, rows.map(_.cinema.displayName) ++ scrapers.map(_.cinema.displayName)).fold(e => sys.error(e), identity)
     val scraper = scrapers.find(_.cinema.displayName == venue)
@@ -294,8 +293,7 @@ object VenueReplay {
   /** The venue's CURRENT prod state, from the local mirror's export (`scripts/venue-replay-prod.js`): its cinema_scrapes
    *  row read by this code and held to the same rules, each listing's venue_pages read, and whether identity_listings
    *  carries the same listings. Nothing is fetched for it. */
-  def prodSection(json: String, venue: String, a: Args, cinema: Cinema, selected: Seq[CinemaMovie] => Seq[CinemaMovie])
-                 (using LatestTitleYear): String = {
+  def prodSection(json: String, venue: String, a: Args, cinema: Cinema, selected: Seq[CinemaMovie] => Seq[CinemaMovie]): String = {
     import play.api.libs.json.{JsObject, Json}
     val parsed = Json.parse(json)
     def rows(coll: String) = CorpusFixture.parse((parsed \ coll).toOption.fold("[]")(_.toString)).filter(_.cinema.displayName == venue)

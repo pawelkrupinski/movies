@@ -94,7 +94,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
     measured._1
   }
 
-  private def measure(corpus: Corpus, suffix: String = ""): IdentityQueryCoverage.Coverage = reported(coverageOf(corpus, suffix))
+  private def measure(corpus: Corpus, suffix: String): IdentityQueryCoverage.Coverage = reported(coverageOf(corpus, suffix))
 
   /** Measured side by side: each corpus has its own storage, recording and title rules, and measured one after
    *  another they were this layer's long pole (202 s of a 231 s run at 4 cores, 2026-10-15). The bound is a

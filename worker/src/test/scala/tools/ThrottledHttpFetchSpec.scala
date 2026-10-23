@@ -191,7 +191,7 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "use the default pause when the server sends no Retry-After" in {
-    val (delegate, throttle, slept) = fixture()
+    val (delegate, _, slept) = fixture()
     val t = new ThrottledHttpFetch(delegate, defaultPause = 7.seconds,
       jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH), sleep = ms => { slept += ms; () })
     delegate.queue(Tmdb, http429(None), () => "ok")

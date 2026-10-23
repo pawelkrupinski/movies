@@ -267,7 +267,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     // the rest phase, so until they land the reaper must NOT read the empty mirror
     // as "every detail stale" and re-enqueue the whole deferred-detail corpus — the
     // recurring per-deploy spike. It wins the claim yet holds until ready.
-    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    val queue = new InMemoryTaskQueue
     val hydrating = new InMemoryFreshnessStore {
       override def whenReady(kind: FreshnessKind): scala.concurrent.Future[Unit] = scala.concurrent.Promise[Unit]().future
     }

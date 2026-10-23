@@ -213,7 +213,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
     }
   }
 
-  private def runMode(mode: String, corpus: Seq[StoredMovieRecord], out: String, cap: Option[Int], emitAll: Boolean = false): Unit = {
+  private def runMode(mode: String, corpus: Seq[StoredMovieRecord], out: String, cap: Option[Int], emitAll: Boolean): Unit = {
     val src = srcFor(mode)
     var films = buildFilms(mode, corpus)
     cap.foreach(c => films = films.take(c))

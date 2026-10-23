@@ -85,7 +85,7 @@ class FilmwebClient(http: HttpFetch) {
   // throttle or 5xx propagates so the caller retries instead of persisting the
   // miss (these link caches use UnresolvedPolicy.Remember, which would otherwise
   // store "no page for this film" for 24h off the back of an outage).
-  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String], aliases: Seq[String] = Nil): Option[FilmwebInfo] = {
+  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String], aliases: Seq[String]): Option[FilmwebInfo] = {
       val hits = search(query).take(MaxCandidates)
       // Step 1 (cheap): /info per candidate → title acceptance bar.
       val infoCandidates = hits.flatMap(h =>

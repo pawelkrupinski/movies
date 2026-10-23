@@ -122,7 +122,7 @@ object IdentityResolveDump {
       }
       Files.writeString(dir.resolve(s"focus-${c.country.code}.txt"), trace.mkString("", "\n", "\n"))
     }
-    configuration.identityAgreementCache.foreach(cache => agreed(configuration, c, w, lookups, listings, resolution, cache, dir))
+    configuration.identityAgreementCache.foreach(cache => agreed(configuration, c, lookups, listings, resolution, cache, dir))
     println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
       f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
   }
@@ -130,7 +130,7 @@ object IdentityResolveDump {
   /** The agreement stage over the resolution's no-matches, the families answered from the experiment's cache, else live —
    *  asked until nothing is open — and every cluster it takes (agreed, by a poster, a broadcast day or a fill rule) written
    *  to `agreed-<cc>.jsonl`. */
-  private def agreed(configuration: settings.ProcessConfiguration, c: Corpus, w: ArchiveReplayWiring, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
+  private def agreed(configuration: settings.ProcessConfiguration, c: Corpus, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
                      cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
     import services.identity.agreement.{AgreementStage, VoterFamily}
     val fetch    = new ExperimentCacheFetch(cache.value)

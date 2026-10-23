@@ -1145,7 +1145,6 @@ object IdentityCalibrate {
 
     // ── contradicted production filings (for healing) ──
     val contradictedTsv = new StringBuilder("country\tvenue\ttitle\tlisting year\tlisting directors\tprod film\ttmdbId\ttmdb title\ttmdb year\ttmdb directors\tdenials\tagreements\n")
-    val prodFilmsAll = data.flatMap(_.prodFilms).toMap
     val detailsOf: Map[String, Int => Option[Details]] = data.map(d => d.code -> d.details).toMap
     contradicted.toSeq.sortBy(e => (obsAll(e._1).country, obsAll(e._1).listing.title)).foreach { case (i, ev) =>
       val o = obsAll(i); val d = detailsOf(o.country)(ev.tmdbId)

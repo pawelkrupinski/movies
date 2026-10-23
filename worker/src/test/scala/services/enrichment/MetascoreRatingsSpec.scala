@@ -42,8 +42,8 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   private def mkEnrichment(
     imdbId:        String,
-    mcUrl:         Option[String] = None,
-    metascore:     Option[Int]    = None
+    mcUrl:         Option[String],
+    metascore:     Option[Int]
   ): MovieRecord =
     MovieRecord(
       imdbId        = Some(imdbId), metascore = metascore,
@@ -252,7 +252,6 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     ("The Sting", Some(2025), MovieRecord(tmdbId = Some(99)))
   ), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
   private val TheSting = "https://www.metacritic.com/movie/the-sting"
-  private val Sting    = "https://www.metacritic.com/movie/sting"
   private def stingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
     new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = {

@@ -4,11 +4,9 @@ import clients.{TmdbClient, TmdbResponses}
 import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{GetOnlyHttpFetch, RealHttpFetch}
+import tools.GetOnlyHttpFetch
 
 class TmdbClientSpec extends AnyFlatSpec with Matchers {
-
-  private val client = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
 
   "TmdbResponses.popularFirst" should "extract id, title, year, popularity from a TMDB search response" in {
     val json =
@@ -370,28 +368,6 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     ps.head.voteAverage shouldBe 7.5 +- 0.001
   }
 
-  // ── synopsis tie-break among same-year same-title hits ────────────────────
-  //
-  // "Niedźwiedzica" (2026) is BOTH a nature documentary and an unrelated
-  // thriller released the same year. Title is exact for both and year-distance
-  // ties at 0, so the legacy picker falls to popularity — which here favours the
-  // thriller. The cinema's own Polish blurb is about the she-bear documentary,
-  // so passing it as the reference must flip the pick to the doc.
-
-  private val niedzwiedzicaSameYear =
-    """{"results":[
-      |  {"id":100,"title":"Niedźwiedzica","original_title":"Niedźwiedzica",
-      |   "release_date":"2026-03-01","popularity":80.0,
-      |   "overview":"Trzymający w napięciu thriller o napadzie na bank, w którym grupa złodziei zostaje uwięziona przez policję w centrum wielkiego miasta."},
-      |  {"id":200,"title":"Niedźwiedzica","original_title":"Niedźwiedzica",
-      |   "release_date":"2026-09-01","popularity":20.0,
-      |   "overview":"Przyrodniczy dokument śledzący niedźwiedzicę i jej młode w Tatrach przez cały rok, gdy uczą się przetrwać w dzikich górach."}
-      |]}""".stripMargin
-
-  private val bearDocCinemaBlurb =
-    "Dokument o matczynej niedźwiedzicy, która w Tatrach prowadzi swoje młode " +
-      "przez pierwszy rok życia, ucząc je przetrwania w dzikich górach."
-
   "TmdbResponses.popularFirst" should "carry the Polish overview onto each SearchResult" in {
     val json =
       """{"results":[
@@ -409,8 +385,6 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // "Zaproszenie" (tmdb 830788, no period). Cinemas report "Zaproszenie".
   private val Invite2026      = TmdbClient.SearchResult(950028, "Zaproszenie.", Some("The Invite"),     Some(2026), 40.0)
   private val Invitation2022  = TmdbClient.SearchResult(830788, "Zaproszenie",  Some("The Invitation"), Some(2022), 30.0)
-  private val Invitation2016  = TmdbClient.SearchResult(306947, "Zaproszenie",  Some("The Invitation"), Some(2016),  5.0)
-  private val Zaproszenie1986 = TmdbClient.SearchResult(572997, "Zaproszenie",  Some("Zaproszenie"),    Some(1986),  2.0)
 
   "isExactTitleMatch" should "match a TMDB title that differs from the query only by a trailing period" in {
     // The bug: "Zaproszenie." (the 2026 Olivia Wilde film) was excluded from the

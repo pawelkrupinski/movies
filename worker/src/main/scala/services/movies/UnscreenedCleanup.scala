@@ -73,8 +73,6 @@ class UnscreenedCleanup(
   repository: MovieRepository,
   scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("unscreened-cleanup")
 )(using LatestTitleYear) extends Stoppable with Logging {
-  // Fold titles with the rules the corpus was keyed under, not a process default.
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   // Keys a write nominated that no drain has judged yet, and whether a drain is queued for them.
   private val nominated   = ConcurrentHashMap.newKeySet[CacheKey]()

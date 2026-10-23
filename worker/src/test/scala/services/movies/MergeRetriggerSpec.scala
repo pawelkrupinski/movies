@@ -12,7 +12,7 @@ import services.movies.RetriggerKind._
 class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
 
   private def rec(
-    tmdbId:      Option[Int]    = None,
+    tmdbId:      Option[Int],
     imdbId:      Option[String] = None,
     searchTitle: Option[String] = None,
     tmdbAttempt: Option[services.resolution.TmdbAttempt] = None,

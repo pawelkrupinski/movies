@@ -71,8 +71,6 @@ class ImdbIdResolver(
   // The wiring's monotonic clock: how long a `drain` has waited on the resolver's pool.
   stopwatch: tools.Stopwatch
 )(using LatestTitleYear) extends Drainable with Logging {
-  // Fold titles with the rules the corpus was keyed under, not a process default.
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   /**
    * Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match

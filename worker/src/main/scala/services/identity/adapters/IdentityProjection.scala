@@ -444,7 +444,7 @@ final class IdentityProjection(
 
   private def write(resolution: Resolution, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
                     films: Int, started: tools.Stopwatch.Started,
-                    phases: ProjectionPhases, patch: Boolean, movedElsewhere: Set[String] = Set.empty): ProjectionTick = {
+                    phases: ProjectionPhases, patch: Boolean, movedElsewhere: Set[String]): ProjectionTick = {
     val before    = stored.map(r => r.id -> r).toMap
     // A film another writer moved since this projection last wrote it may differ anywhere: compared and written whole. So
     // is every film of a store holding showtimes in the record: an untouched slot drafted lean is not the one it holds.

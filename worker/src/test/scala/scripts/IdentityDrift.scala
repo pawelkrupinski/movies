@@ -235,7 +235,7 @@ object IdentityDrift {
   // ── the incremental sequence ─────────────────────────────────────────────────────────────
 
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
-  final class Worker(reads: Reads, all: Seq[Listing], seed: Long, gatePercent: Int, val clock: MutableClock) {
+  final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock) {
     private val share    = new Share(seed, gatePercent)
     val gate             = new Gate(memo(reads), share)
     val docs             = new GatedDocuments(new tools.FiledAnswers.Noting(reads.filed), share)
@@ -297,7 +297,7 @@ object IdentityDrift {
     val initial  = of(first)
     val leaving  = initial.filter(_ => rng.nextDouble() < 0.03)
     def half     = rng.shuffle(venues).take(venues.size / 2).toSet
-    val w = new Worker(reads, listings, seed, gatePercent, clock)
+    val w = new Worker(reads, seed, gatePercent, clock)
     val checkpoints = Seq.newBuilder[(String, Resolution)]
     def rescrape(): Resolution = { val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key)) }
     w.boot(initial); w.project()

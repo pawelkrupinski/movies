@@ -81,7 +81,7 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
         partial.foreach(p => store.filmPartial(id.toInt, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(bodies.parse(b)))))
       case ("api.themoviedb.org", Seq("3", "find", imdbId), Some(Right(b))) if params.get("external_source").contains("imdb_id") =>
         store.question(TmdbStore.findId(imdbId), TmdbResponses.findMovieResults(b).map(TmdbIdentityLookups.hitOf))
-      case (host, _, Some(answer)) if url.startsWith(ImdbClient.SuggestionBase) =>
+      case (_, _, Some(answer)) if url.startsWith(ImdbClient.SuggestionBase) =>
         store.suggestions(TmdbStore.suggestionsId(url), answer.fold(_ => ImdbClient.Suggested(Nil, Nil), b => ImdbClient.suggestedIn(Json.parse(b))))
       case _ => ()
     }

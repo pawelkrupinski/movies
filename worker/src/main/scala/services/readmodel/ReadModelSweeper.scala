@@ -1,7 +1,7 @@
 package services.readmodel
 
 import play.api.Logging
-import services.movies.{ChangeStreamLiveness, LatestTitleYear, MovieRepository, StoredMovieRecord}
+import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
 import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -51,8 +51,6 @@ class ReadModelSweeper(
   private val reader          = projection.reader
   private val metrics         = projection.metrics
   private val clock           = projection.clock
-  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
-  private given LatestTitleYear = LatestTitleYear(clock)
 
   // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
   // drops must clear within a tick). The expensive full re-projection is no longer

@@ -1075,7 +1075,6 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
 
   "start" should "project a row one of whose venues has no screenings row" in {
     val (projector, repository, rm, row, ids) = screenedInTwoCities()
-    val sweeper = new ReadModelSweeper(projector.projection)
     projector.onMovieUpsert(row); projector.stop()
     val partial = new InMemoryReadModelRepository()
     rm.findAllMovies().foreach(partial.upsertMovie)

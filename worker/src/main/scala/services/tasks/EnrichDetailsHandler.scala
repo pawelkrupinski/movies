@@ -105,8 +105,6 @@ class EnrichDetailsHandler(
 
   private val reader = new services.venuepages.VenuePageReader(pages, freshness, event => bus.publish(event), clock)
 
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
-
   /** A detail page's fields as a cinema slot holds them (`FilmDetail.landed`). */
   private def landed(detail: FilmDetail): FilmDetail = detail.landed(enrichmentLanguage)
   import HandlerOutcome._

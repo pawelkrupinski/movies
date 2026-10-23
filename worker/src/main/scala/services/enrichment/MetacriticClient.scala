@@ -303,7 +303,7 @@ object MetacriticClient {
    *  "PT2M17S" for Dune's 2 h 17 min, "PT58S" for Look Back's 58 min (every one of 4,922 recorded pages, 2026-10-04) —
    *  so with no hours field its minutes are hours and its seconds minutes. A well-formed "PT2H17M" reads as written. */
   def runtimeOf(duration: String): Option[Int] = duration match {
-    case MetacriticDuration(h, m, sec) if h != null => Some(h.toInt * 60 + Option(m).fold(0)(_.toInt)).filter(_ > 0)
+    case MetacriticDuration(h, m, _) if h != null => Some(h.toInt * 60 + Option(m).fold(0)(_.toInt)).filter(_ > 0)
     case MetacriticDuration(null, m, sec) if m != null || sec != null =>
       Some(Option(m).fold(0)(_.toInt) * 60 + Option(sec).fold(0)(_.toInt)).filter(_ > 0)
     case _ => None

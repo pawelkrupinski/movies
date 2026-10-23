@@ -186,8 +186,8 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
   // ── pickBest: title acceptance bar ──────────────────────────────────────────
 
   private def candidate(
-    id:            Int    = 1,
-    title:         String = "",
+    id:            Int,
+    title:         String,
     originalTitle: Option[String] = None,
     year:          Option[Int]    = Some(2024),
     directors:     Set[String]    = Set.empty,

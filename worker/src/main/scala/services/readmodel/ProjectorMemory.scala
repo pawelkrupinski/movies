@@ -1,7 +1,6 @@
 package services.readmodel
 
 import models.{CityScreening, ResolvedMovie}
-import services.movies.LatestTitleYear
 
 // What the projector remembers between projections, and the working state of one of
 // [[ReadModelSweeper]]'s passes — the value types both keep under the projector's lock.
@@ -47,7 +46,7 @@ private[readmodel] final case class Lesson(anchorKey: String, cardByGroup: Map[S
 private[readmodel] object Lesson {
   final case class Venue(id: String, output: Int, input: Int)
 
-  def of(partition: ReadModelProjection.Partition)(using LatestTitleYear): Lesson = {
+  def of(partition: ReadModelProjection.Partition): Lesson = {
     val cards = partition.filmIds.zip(partition.venuesAll)
     Lesson(partition.anchorKey, partition.cardByGroup,
       cards.map { case (card, venues) => card -> venues.map(venue => Venue(venue._id, venue.screening.##, venue.inputHash)) },
@@ -74,7 +73,7 @@ private[readmodel] final case class CardHash(parts: Map[String, Int]) {
 
 private[readmodel] object CardHash {
   import ReadModelProjectionMetrics.CardPart
-  def of(m: ResolvedMovie)(using LatestTitleYear): CardHash = CardHash(Map(
+  def of(m: ResolvedMovie): CardHash = CardHash(Map(
     CardPart.Title          -> (m.title, m.originalTitle).##,
     CardPart.Poster         -> (m.posterUrl, m.fallbackPosterUrls).##,
     CardPart.Facts          -> (m.runtimeMinutes, m.releaseYear, m.genres, m.countries, m.directors, m.cast).##,

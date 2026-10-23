@@ -334,8 +334,6 @@ object IdentityCapture {
     }
     private def sh(args: String*): Unit =
       if (new ProcessBuilder(args*).directory(repo.toFile).inheritIO().start().waitFor() != 0) sys.error(s"${args.mkString(" ")} failed")
-    private def sizeOf(dir: Path): Long =
-      if (!Files.exists(dir)) 0L else Using(Files.walk(dir))(_.iterator.asScala.filter(Files.isRegularFile(_)).map(Files.size).sum)
 
     def newestRecording(): Option[String] = env.get(NewestRecordingVariable).map(_.trim).filter(_.nonEmpty)
 

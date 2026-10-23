@@ -29,7 +29,7 @@ class ReadModelProjectorShareCardSpec extends AnyFlatSpec with Matchers {
     def onRetired(filmId: String): Unit                    = retired += filmId
   }
 
-  private def slot(screened: Boolean = true) = SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"),
+  private def slot(screened: Boolean) = SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"),
     showtimes = if (screened) Seq(Showtime(LocalDateTime.parse("2026-06-02T18:00"), None)) else Nil)
   private def record(rating: Double, screened: Boolean = true) =
     MovieRecord(imdbRating = Some(rating), tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> slot(screened)))

@@ -61,7 +61,7 @@ trait FreshnessStore {
    *  so a slow boot hydrate doesn't make every unit of work look stale and enqueue
    *  it all at once — the boot storm (see [[services.tasks.ScrapeReaper]]). Stores
    *  with nothing to load (in-memory, Mongo-less dev) are ready immediately. */
-  def whenReady(kind: FreshnessKind): Future[Unit] = Future.unit
+  def whenReady(@scala.annotation.unused kind: FreshnessKind): Future[Unit] = Future.unit
 
   /** Non-blocking form of [[whenReady]]: are `kind`'s stamps loaded into the
    *  mirror yet? A periodic reaper gates each scheduled tick on this so it never

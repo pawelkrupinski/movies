@@ -111,11 +111,6 @@ class WriteThroughResolutionCache(
   unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry,
   maxEntries: Long = WriteThroughResolutionCache.MaxEntries) extends ResolutionCache {
 
-  // Take the rules from the store rather than accepting a second copy: the
-  // in-memory cache and the durable store hold the SAME hint keys, so folding
-  // them differently would make an invalidation miss the row it meant to clear.
-  private val normalizer: services.movies.TitleNormalizer = store.normalizer
-
   private val cache: Cache[String, String] =
     tools.BoundedCache.ofSize(maxEntries).expireAfterWrite(ResolutionStore.Ttl.toMillis, TimeUnit.MILLISECONDS).build()
 

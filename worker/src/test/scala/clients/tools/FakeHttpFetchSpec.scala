@@ -14,7 +14,7 @@ class FakeHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   private def tree(): (Path, Path) = {
     val base = Files.createTempDirectory("fake-http-fetch")
-    val real = Files.createDirectories(base.resolve("real/enrichment-xx/api.example.com/3/search"))
+    Files.createDirectories(base.resolve("real/enrichment-xx/api.example.com/3/search"))
     val key  = RecordingHttpFetch.fixtureKey("https://api.example.com/3/search/person?query=Ridley+Scott", foldYear = false)
     Files.writeString(base.resolve("real/enrichment-xx").resolve(key), """{"results":[]}""", StandardCharsets.UTF_8)
     val link = Files.createSymbolicLink(base.resolve("link"), base.resolve("real"))

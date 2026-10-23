@@ -80,7 +80,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
       """<html><head><script type="application/ld+json">{"@type":"Movie","name":"The Virgin Suicides","dateCreated":"1999-05-19",
         |"director":[{"@type":"Person","name":"Sofia Coppola"}]}</script></head>
         |<body><rt-text slot="criticsScore">77%</rt-text><script>{"releaseYear":"1999"}</script></body></html>""".stripMargin
-    val (cache, key, row) = unmatched("Przekleństwa niewinności", Some(2026), Seq("Sofia Coppola"))
+    val (cache, key, _) = unmatched("Przekleństwa niewinności", Some(2026), Seq("Sofia Coppola"))
     cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
     val rt = new RottenTomatoesClient(new GetOnlyHttpFetch { def get(u: String): String = if (u == url) page else UpstreamNotFound(u) })
     new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rt).refreshOneSync(key)

@@ -550,7 +550,6 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   // ── onImdbIdMissing callback ─────────────────────────────────────────────────
 
   "refreshOneSync (url discovered, no imdbId)" should "fire the callback so Wikidata resolution is triggered" in {
-    val url        = "https://www.filmweb.pl/film/Popiół+i+diament-1958-1118"
     val repository = new InMemoryMovieRepository(Seq(
       ("Popiół i diament", Some(1958),
         MovieRecord(tmdbId = Some(1), data = Map(Tmdb -> SourceData(originalTitle = Some("Ashes and Diamonds")))))

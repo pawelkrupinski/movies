@@ -354,6 +354,11 @@ lazy val scrapers = (project in file("scrapers"))
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
 lazy val worker = (project in file("worker"))
+  .settings(unusedAll)
+  // The identity-slice tool files (`OlderRefsPackage`) import the identity adapters from both packages a ref may keep
+  // them in, under `@nowarn("msg=unused import")`. At this ref neither import is unused, so that `@nowarn` suppresses
+  // nothing here — which -Wunused:all reports — while an older ref still needs it.
+  .settings(scalacOptions += "-Wconf:msg=@nowarn annotation does not suppress any warnings&src=.*/worker/src/(fixtures|test)/.*:silent")
   // `it` too: the integration specs need the same shared doubles the unit specs do —
   // notably the repositories that report an INCOMPLETE read, which is the only way to
   // test that a caller honours a completeness flag.

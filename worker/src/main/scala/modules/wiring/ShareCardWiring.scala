@@ -137,7 +137,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] = managedResources.stoppingEach(
     if (!shareCardsEnabled) Nil
     else {
-      def enqueue(taskType: TaskType, key: String, payload: Map[String, String] = Map.empty): () => Unit =
+      def enqueue(taskType: TaskType, key: String, payload: Map[String, String]): () => Unit =
         () => { taskQueue.enqueue(taskType, key, payload, submittedAt = clock.instant()); () }
       Seq(
         new ClaimedEnqueueReaper("share-card-budget",

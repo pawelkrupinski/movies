@@ -11,7 +11,7 @@ import services.identity.SuspectTakes.Take
  *  for any more is named for striking, never a failure. */
 class SuspectTakesAuditSpec extends AnyFlatSpec with Matchers {
 
-  private def listing(title: String, venue: models.Cinema = KinoMuza) =
+  private def listing(title: String, venue: models.Cinema) =
     Listing(venue, services.movies.ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
   private def take(title: String, film: String, year: Int, tmdb: Int, venue: models.Cinema = KinoMuza) =
     Take(listing(title, venue), s"tmdb:$tmdb", Some(tmdb), IdentityMeasures.Film(film, year = Some(year)),

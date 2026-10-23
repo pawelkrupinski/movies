@@ -56,7 +56,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     def stop(): Unit = projector.stop()
   }
 
-  private def plain(showtime: String, rating: Option[Double] = Some(7.0)) =
+  private def plain(showtime: String) =
     Multikino -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime)))
   private def decorated(showtime: String) =
     KinoMuranow -> SourceData(title = Some("Kino Kobiet: Foo"), showtimes = Seq(at(showtime)))
