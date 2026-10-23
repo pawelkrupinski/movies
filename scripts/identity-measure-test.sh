@@ -110,7 +110,11 @@ JSON
                   while [ "$#" -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done; cp -R "$ARTIFACT/." "$dir/" ;;
   # the footprint measure's traces: the release's assets as its --jq prints them ("<name> <size>"), and one downloaded
   "release view") [ -n "${FOOTPRINT_ASSETS:-}" ] || exit 1; printf '%s\n' "$FOOTPRINT_ASSETS" ;;
-  "release download") o=""; prev=""; for a in "$@"; do [ "$prev" = -O ] && o=$a; prev=$a; done
+  # THE RESULT CACHE's assets: kept in $RELEASE_DIR when a case names one, else no release takes or holds them
+  "release upload") [ -n "${RELEASE_DIR:-}" ] || exit 1; cp "$4" "$RELEASE_DIR/" ;;
+  "release download") o=""; p=""; prev=""; for a in "$@"; do [ "$prev" = -O ] && o=$a; [ "$prev" = -p ] && p=$a; prev=$a; done
+                      if [[ "$p" == measure-result-* ]]; then [ -n "${RELEASE_DIR:-}" ] && [ -f "$RELEASE_DIR/$p" ] || exit 1
+                        cp "$RELEASE_DIR/$p" "$o"; exit 0; fi
                       echo '{"m":"sanitize"}' | gzip | gzip > "$o" ;;
   "run cancel") echo cancelled > "$STUB/cancelled"
                 # A second signal while the script cleans up (a second Ctrl-C): gh's parent is `timeout`, its parent the script.
@@ -428,6 +432,22 @@ check "a measurement never sweeps: it deletes remote branches, so only --sweep d
 check "...leaving every branch" "measure/fresh-finished measure/live-running measure/runless " "$(sweep_remaining)"
 for b in runless fresh-finished live-running; do scratch_git "$origin" update-ref -d "refs/heads/measure/$b"; done
 rm -rf "$work/sweep"
+
+# THE RESULT CACHE: a verdict stored on the release answers the same request again, from any clone, in seconds.
+export RELEASE_DIR="$work/release"; mkdir -p "$RELEASE_DIR"
+dispatched() { [ -f "$work/stub/dispatch" ] && echo true || echo false; }
+first=$(measure lost --base "$parent" --countries pl); grep -E '^(LANDABLE|NOT LANDABLE)' "$work/out" > "$work/first-verdict"
+check "a measurement stores its verdict in the result cache" "1" "$(find "$RELEASE_DIR" -name 'measure-result-*.json' | wc -l | tr -d ' ')"
+check "...and the same request again answers from it: the same verdict, no dispatch" "$first false" \
+  "$(measure lost --base "$parent" --countries pl) $(dispatched)"
+check "...saying so, with the stored table" "true" \
+  "$(grep -q 'CACHED verdict of run 777' "$work/out" && grep -qxF "$(cat "$work/first-verdict")" "$work/out" && echo true || echo false)"
+check "--no-cache measures again" "$first true" "$(measure lost --base "$parent" --countries pl --no-cache) $(dispatched)"
+check "another set of countries is another key" "true" "$(measure lost --base "$parent" --countries pl,de > /dev/null; dispatched)"
+check "a pinned-pair verdict past IDENTITY_MEASURE_CACHE_HOURS is measured again" "true" \
+  "$(IDENTITY_MEASURE_CACHE_HOURS=-1 measure lost --base "$parent" --countries pl > /dev/null; dispatched)"
+check "--json neither reads nor stores it" "true" "$(measure lost --base "$parent" --countries pl --json > /dev/null; dispatched)"
+unset RELEASE_DIR
 
 # SIGTERM (Ctrl-C alike) while waiting on the run: the run is cancelled and the branch deleted.
 rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"

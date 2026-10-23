@@ -107,9 +107,25 @@ class Fake(BaseHTTPRequestHandler):
 
     posted = []
 
+    def do_DELETE(self):  # noqa: N802
+        if self.headers.get("Authorization") != f"token {TOKEN}":
+            return self.send(401, {"message": "unauthorized"})
+        prefix = "/api/v1/repos/o/movies/releases/2/assets/"
+        if self.path.startswith(prefix):
+            ids = {str(i): n for i, n in enumerate(Fake.assets)}
+            Fake.assets.pop(ids[self.path[len(prefix):]], None)
+            return self.send(204)
+        return self.send(404, {"message": "no route"})
+
     def do_POST(self):  # noqa: N802
         if self.headers.get("Authorization") != f"token {TOKEN}":
             return self.send(401, {"message": "unauthorized"})
+        if self.path.startswith("/api/v1/repos/o/movies/releases/2/assets?name="):
+            raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            name = self.path.split("name=", 1)[1]
+            # the multipart body's one part: its content between the blank line and the closing boundary
+            Fake.assets[name] = raw.split(b"\r\n\r\n", 1)[1].rsplit(b"\r\n--", 1)[0]
+            return self.send(201, {"name": name})
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
         Fake.posted.append((self.path, body))
         if self.path == "/api/v1/repos/o/movies/actions/workflows/identity-model-convergence.yml/dispatches":
@@ -207,6 +223,25 @@ class ForgeGhTest(unittest.TestCase):
         self.assertEqual((1, "no assets match the file pattern\n"), (done.returncode, done.stderr))
         done = self.gh("release", "download", "nope", "--pattern", "x")
         self.assertEqual((1, "release not found\n"), (done.returncode, done.stderr))
+
+    def test_a_release_asset_uploaded_reads_back(self):
+        path = f"{self.work}/measure-result-abc.json"
+        with open(path, "w") as f:
+            f.write('{"verdict": 0}')
+        done = self.gh("release", "upload", "convergence-fixtures", path)
+        self.assertEqual(0, done.returncode, done.stderr)
+        done = self.gh("release", "download", "convergence-fixtures", "--pattern", "measure-result-abc.json", "-O", "-")
+        self.assertEqual((0, '{"verdict": 0}'), (done.returncode, done.stdout), done.stderr)
+        done = self.gh("release", "upload", "convergence-fixtures", path)
+        self.assertEqual((1, "asset under the same name already exists: [measure-result-abc.json]\n"),
+                         (done.returncode, done.stderr))
+        with open(path, "w") as f:
+            f.write('{"verdict": 1}')
+        done = self.gh("release", "upload", "convergence-fixtures", path, "--clobber")
+        self.assertEqual(0, done.returncode, done.stderr)
+        done = self.gh("release", "download", "convergence-fixtures", "--pattern", "measure-result-abc.json", "-O", "-")
+        self.assertEqual('{"verdict": 1}', done.stdout)
+        Fake.assets.pop("measure-result-abc.json", None)
 
     def test_an_existing_file_is_kept_without_clobber(self):
         with open(f"{self.work}/hermetic-de.txt", "w") as f:

@@ -15,7 +15,7 @@
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
 #                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait] [--full] [--fresh] [--json]
 #                                 [--timeout <minutes>] [--all-countries] [--all-recordings | --one-recording] [--plan]
-#                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]]
+#                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]] [--no-cache]
 #        scripts/identity-measure --sweep
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
@@ -39,7 +39,8 @@
 #   --keep-branch  leave the temporary branch on the remote (on Forgejo the run drops it anyway, below)
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
-#   --fresh        dispatch even when an earlier measurement of the same change answers it (below)
+#   --fresh        dispatch even when an earlier measurement of the same change answers it (below; the result cache too)
+#   --no-cache     neither answer from THE RESULT CACHE (below) nor store in it: measure afresh
 #   --sweep        delete the orphaned measure/ branches on origin (below) and exit; opt-in only, never run by a measurement
 #   --take-paths   print the paths a reuse treats as able to move a take (matches.sh dialect) and exit
 #   --json         machine output (scripts/identity_measure.py --json)
@@ -107,6 +108,20 @@
 # only for a run whose takes artifacts are downloaded in the cache -- by a measurement or a --run.
 # `--take-paths` prints the take-moving patterns (at HEAD) and exits.
 #
+# THE RESULT CACHE (2026-10-23). Every verdict a measurement prints (LANDABLE or NOT LANDABLE, its table, the countries
+# whose takes moved) is stored as an asset of the takes store's release (FIXTURE_RELEASE_TAG, convergence-fixtures, where
+# the takes check stores its resolves): `measure-result-<key>.json`, the key a hash of the head and base shas, the
+# recording (`pinned` or the run), the countries measured, the measure mode (takes, full, footprint) and THE TOOLING HASH
+# -- the blobs of this script, identity_measure.py, the takes check and the workflows that run it, in this checkout. A
+# repeat request with the same key prints the stored verdict in seconds (`CACHED verdict of run <id>`, exit as stored):
+# no push, no dispatch, no download, from any clone. A pinned-pair verdict is answered for IDENTITY_MEASURE_CACHE_HOURS
+# (default 24, as REUSE: the pinned pair is renewed), a named recording's for good. --no-cache, --fresh and --no-store
+# never read it (only --no-store stores nothing either); --json neither reads nor stores (the cache holds the table).
+# A --no-wait dispatch leaves its key beside the run's cache (<cache>/measure/<run>/result-key), so its --run stores
+# the verdict -- when the checkout classifies with the head's own judgements. A cache that cannot be read or written
+# is said and skipped, never a failed measurement. The head's judgements are part of the head, so a judgement made
+# since is a new head and a new key.
+#
 # THE SWEEP. A SIGKILLed run (no trap runs) leaves its branch on origin. `--sweep` alone (opt-in: no measurement runs
 # it, as it deletes remote branches and has not met the real origin yet) deletes every
 # origin `measure/*` branch whose newest run of the workflow is COMPLETED more than IDENTITY_MEASURE_SWEEP_HOURS
@@ -127,7 +142,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
 ref="" base="" recording="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
-all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces=""
+all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -148,6 +163,7 @@ while [ "$#" -gt 0 ]; do
     --footprint-only) footprint_measure=only ;;
     --traces) footprint_traces=$2; shift ;;
     --no-store) no_store=1 fresh=1 ;;
+    --no-cache) no_cache=1 ;;
     --sweep) sweep=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
@@ -279,8 +295,9 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
     git show "$remote/main:test/resources/fixtures/identity-judgements.tsv" > "$judgements" || die "no judgements to classify with"
   fi
   python3 -I "$here/identity_measure.py" "$dl" --judgements "$judgements" --countries "$countries" --rows "$rows" \
-    --run-url "$url" ${json:+--json} --moved-out "$cache/moved" --kind full
-  local verdict=$?
+    --run-url "$url" ${json:+--json} --moved-out "$cache/moved" --kind full | tee "$scratch/table.txt"
+  local verdict=${PIPESTATUS[0]}
+  collected_table=$scratch/table.txt collected_judgements=$judgements
   timings "$id" "$dl"
   return $verdict
 }
@@ -306,6 +323,63 @@ timings() { # <run id> <artifacts dir>
     say "  $cc phases: $(awk -F'\t' 'NR > 1 { printf "%s%s %ss (%s)", sep, $1, $2, $3; sep = ", " }' "$file")"
   done
 }
+
+sha256() { if command -v sha256sum > /dev/null; then sha256sum; else shasum -a 256; fi; }
+# ── THE RESULT CACHE (above) ───────────────────────────────────────────────────────────────────────────────
+result_release=${FIXTURE_RELEASE_TAG:-convergence-fixtures}
+tooling_hash() { # the blobs of the measure's own tooling, in this checkout: a change to how it measures is a new key
+  local root=$here/.. f
+  for f in scripts/identity-measure scripts/identity_measure.py scripts/identity-tools.sh scripts/tool-conventions.sh \
+           scripts/ci/dispatch.sh scripts/ci/identity-takes-check.sh scripts/ci/identity_takes.py scripts/ci/identity_takes_diff.py \
+           .github/workflows/identity-model-convergence.yml .github/workflows/country-convergence-leg.yml; do
+    [ -f "$root/$f" ] && printf '%s %s\n' "$f" "$(git hash-object "$root/$f")"
+  done | sha256 | cut -c1-16
+}
+result_key() { # <mode> -> the asset name a verdict of this head, base, recording, countries and mode is stored under
+  printf 'head=%s base=%s recording=%s countries=%s mode=%s tooling=%s' "$commit" "$base" "${recording:-pinned}" \
+    "$countries" "$1" "$(tooling_hash)" | sha256 | cut -c1-32 | sed 's/^/measure-result-/; s/$/.json/'
+}
+# result_lookup <mode>: prints a stored verdict's table and returns its verdict (0 or 1); 10 when none answers
+result_lookup() {
+  local name file stored now max verdict run
+  [ -z "$no_cache$fresh$json" ] || return 10
+  name=$(result_key "$1") file=$(mktemp)
+  if ! identity_gh "$DISPATCH_GH_TIMEOUT" release download "$result_release" -p "$name" -O "$file" --clobber > /dev/null 2>&1 \
+      || ! verdict=$(jq -er '.verdict | select(. == 0 or . == 1)' "$file" 2> /dev/null); then
+    rm -f "$file"; return 10
+  fi
+  stored=$(jq -r '.stored_at // 0' "$file") run=$(jq -r '.run // "?"' "$file") now=$(date +%s)
+  max=$(( ${IDENTITY_MEASURE_CACHE_HOURS:-24} * 3600 ))
+  if [ -z "$recording" ] && [ $((now - stored)) -gt "$max" ]; then
+    say "cache: $name is $(( (now - stored) / 3600 ))h old, older than the pinned pair's ${IDENTITY_MEASURE_CACHE_HOURS:-24}h -- measuring"
+    rm -f "$file"; return 10
+  fi
+  say "CACHED verdict of run $run ($1, ${recording:-pinned} $countries, stored $(date -u -r "$stored" +%Y-%m-%dT%H:%MZ 2> /dev/null || date -u -d "@$stored" +%Y-%m-%dT%H:%MZ)) -- --no-cache to measure again"
+  say "commit $(git log --oneline -1 "$commit")"
+  say "base   $(git log --oneline -1 "$base")"
+  jq -j '.table' "$file"
+  # the cross-country follow-up reads the countries that moved beside the run, as after a measurement
+  mkdir -p "$KINOWO_IDENTITY_CACHE/measure/cached-$run" && jq -r '.moved // ""' "$file" > "$KINOWO_IDENTITY_CACHE/measure/cached-$run/moved"
+  cached_run=cached-$run
+  rm -f "$file"
+  return "$verdict"
+}
+# result_store_as <asset name> <verdict> <run> <table file> [moved file]: best effort, said when it fails
+result_store_as() {
+  local name=$1 verdict=$2 dir file
+  [ -z "$no_cache$no_store$json" ] && [ "$verdict" -le 1 ] && [ -s "$4" ] || return 0
+  dir=$(mktemp -d) file=$dir/$name
+  jq -n --arg head "$commit" --arg base "$base" --arg recording "${recording:-pinned}" --arg countries "$countries" \
+     --arg key "$name" --argjson verdict "$verdict" --arg run "$3" --argjson at "$(date +%s)" --rawfile table "$4" \
+     --arg moved "$(cat "${5:-/dev/null}" 2> /dev/null)" \
+     '{key: $key, head: $head, base: $base, recording: $recording, countries: $countries, verdict: $verdict, run: $run,
+       stored_at: $at, moved: $moved, table: $table}' > "$file" \
+    && identity_gh 300 release upload "$result_release" "$file" --clobber > /dev/null 2>&1 \
+    && say "cache: stored as $name on release $result_release" \
+    || say "cache: could not store $name on release $result_release (the next request measures again)"
+  rm -rf "$dir"
+}
+result_store() { result_store_as "$(result_key "$1")" "${@:2}"; } # <mode> <verdict> <run> <table> [moved]
 
 # ── reuse: an earlier measurement of the same change, main moved only outside the paths that move a take ─────────────────
 reuse_root=$KINOWO_IDENTITY_CACHE/measure/reuse
@@ -444,6 +518,14 @@ if [ -n "$run" ]; then
     created=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json createdAt --jq .createdAt) \
       && created=$(python3 -I -c 'import sys, datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00")).timestamp()))' "$created") \
       && store_measurement "$run_base" "$run_sha" "$run" "$created"
+  fi
+  # a --no-wait dispatch's verdict, stored under its request's key -- when classified with the head's own judgements
+  if [ -s "$KINOWO_IDENTITY_CACHE/measure/$run/result-key" ] && [ -n "${collected_judgements:-}" ]; then
+    IFS=$'\t' read -r key commit base rk_recording countries < "$KINOWO_IDENTITY_CACHE/measure/$run/result-key"
+    [ "$rk_recording" = pinned ] && recording="" || recording=$rk_recording
+    if [ "$(git hash-object "$collected_judgements")" = "$(git rev-parse -q --verify "$commit:test/resources/fixtures/identity-judgements.tsv" 2> /dev/null)" ]; then
+      result_store_as "$key" "$verdict" "$run" "$collected_table" "$KINOWO_IDENTITY_CACHE/measure/$run/moved"
+    else say "cache: not stored -- classified with this checkout's judgements, not ${commit:0:9}'s"; fi
   fi
   moved=$(cat "$KINOWO_IDENTITY_CACHE/measure/$run/moved" 2> /dev/null)
   if [ "$verdict" = 0 ] && [[ "$moved" == *,* ]]; then
@@ -585,7 +667,6 @@ footprint_rule_path() {
   esac
   return 1
 }
-sha256() { if command -v sha256sum > /dev/null; then sha256sum; else shasum -a 256; fi; }
 # The takes check's identity paths (its own list, read as scripts/identity-measure-test.sh reads it), and its code_of:
 # the key a side's trace is stored under.
 footprint_code() { # <sha>
@@ -699,11 +780,24 @@ footprint_measure() {
   say "base   $(git log --oneline -1 "$base")"
   printf '{%s}\n' "$(for cc in "${ccs[@]}"; do printf '"%s": "footprint",' "$cc"; done | sed 's/,$//')" > "$out/rows.json"
   python3 -I "$here/identity_measure.py" "$out" --judgements "$judgements" --countries "$countries" --rows "$out/rows.json" \
-    ${json:+--json} --kind footprint
-  rc=$?
+    ${json:+--json} --kind footprint | tee "$out/table.txt"
+  rc=${PIPESTATUS[0]}
+  result_store footprint "$rc" footprint "$out/table.txt"
   rm -rf "$out"
   return "$rc"
 }
+# The result cache: the full measure's verdict answers a footprint request too (it is the stronger), then a footprint's.
+cached_run=""
+measure_mode=takes; [ -z "$full" ] || measure_mode=full
+if [ "$recordings" != all ] || [ -n "$nowait" ]; then
+  for mode in $measure_mode ${footprint_measure:+footprint}; do
+    result_lookup "$mode"; rc=$?
+    [ "$rc" = 10 ] && continue
+    [ "$mode" = footprint ] && exit "$rc"
+    then_cross_country "$rc" "$cached_run"
+    exit $?
+  done
+fi
 if [ -n "$footprint_measure" ]; then
   footprint_measure; rc=$?
   [ "$rc" = 10 ] || exit "$rc"
@@ -723,7 +817,9 @@ if [ -z "$fresh$full$recording" ] && found=$(find_measurement "$base" "$commit")
   say "commit $(git log --oneline -1 "$commit")"
   say "base   $(git log --oneline -1 "$base")"
   collect "$reused_run" "$commit"
-  then_cross_country $? "$reused_run"
+  verdict=$?
+  result_store "$measure_mode" "$verdict" "$reused_run" "$collected_table" "$KINOWO_IDENTITY_CACHE/measure/$reused_run/moved"
+  then_cross_country "$verdict" "$reused_run"
   exit $?
 fi
 
@@ -776,6 +872,10 @@ attempts=1
 dispatch
 if [ -n "$nowait" ]; then
   keep=1 finished=1
+  # its --run stores the verdict under this request's key (THE RESULT CACHE), classified with the head's judgements
+  [ -n "$no_cache$no_store$json" ] || { mkdir -p "$KINOWO_IDENTITY_CACHE/measure/$measured_run" \
+    && printf '%s\t%s\t%s\t%s\t%s\n' "$(result_key "$measure_mode")" "$commit" "$base" "${recording:-pinned}" "$countries" \
+       > "$KINOWO_IDENTITY_CACHE/measure/$measured_run/result-key"; }
   say "not waiting: collect with  scripts/identity-measure --run $measured_run   (it deletes $branch)"
   exit 0
 fi
@@ -800,5 +900,6 @@ else say "run $measured_run: $conclusion"; fi
 collect "$measured_run" "$commit"
 verdict=$?
 [ "$verdict" -gt 1 ] || [ -n "$full$recording$no_store" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
+[ "$conclusion" = cancelled ] || result_store "$measure_mode" "$verdict" "$measured_run" "$collected_table" "$KINOWO_IDENTITY_CACHE/measure/$measured_run/moved"
 then_cross_country "$verdict" "$measured_run"
 exit $?

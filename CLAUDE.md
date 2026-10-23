@@ -257,6 +257,11 @@ reds were changes `identity-measure` alone had called LANDABLE. The pre-push hoo
   it would run. Don't hand-run three recordings by default.
 - **Dispatch and keep working:** `--no-wait`, then `--run <id>` later; it collects as soon as the takes rows end, not
   the run's tail. Never sit idle on a measurement.
+- **A repeat request answers from the result cache:** every verdict is stored on the `convergence-fixtures` release
+  (`measure-result-<key>.json`, key = head, base, recording, countries, measure mode and the measure tooling's hash),
+  so asking the same measurement again -- from any agent or clone -- prints `CACHED verdict of run <id>` in seconds,
+  no dispatch (a pinned-pair verdict for 24 h). `--no-cache` forces a run. A `--no-wait` measurement is stored when
+  its `--run` collects it.
 - **Don't re-measure after an unrelated rebase:** a rebase onto a main that moved only outside the take paths
   (`--take-paths`) is answered by the earlier run (REUSED, no dispatch). Never `--fresh` for that.
 - **Batch pushes** (below): each push to main is a ~20-minute run on the same runners the measurements wait for.

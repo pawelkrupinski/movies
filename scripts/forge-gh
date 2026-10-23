@@ -22,6 +22,10 @@ when that vault is already unlocked (never a Touch ID prompt; the repository is 
   release download <tag> [-R repo] [-p/--pattern P]... [-D/--dir D] [-O/--output F|-] [--clobber]
         each matching asset's file, from its API attachment record's download URL, read with the token
   release view <tag> [-R repo] --json assets,tagName [-q/--jq EXPR]
+  release upload <tag> <file>... [-R repo] [--clobber]
+        each file as an asset named by its basename (POST .../releases/{id}/assets, multipart `attachment`); an asset
+        of that name already there is an error, as gh's, unless --clobber, which deletes it first. identity-measure's
+        result cache (THE RESULT CACHE) writes through it
   run view <run> [-R repo] --json FIELDS [-q/--jq EXPR]       run list [-R repo] [-w/--workflow W] [-s/--status S]
         [-b/--branch B] [-c/--commit SHA] [-L/--limit N] --json FIELDS [-q/--jq EXPR]
         GitHub's run fields (databaseId, number, headSha, headBranch, status, conclusion, createdAt, startedAt,
@@ -140,6 +144,24 @@ class Forgejo:
         url = f"{self.base}/api/v1/{path.lstrip('/')}"
         req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Authorization": f"token {self._token}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=float(self.env.get("KINOWO_FORGEJO_READ_TIMEOUT", "120"))) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")[:300]
+            raise Fail(f"HTTP {e.code}: {e.reason} ({url}) {detail}".rstrip())
+        except (urllib.error.URLError, OSError) as e:
+            raise Fail(f"could not reach Forgejo at {self.base} (the laptop tunnel?): {getattr(e, 'reason', e)}")
+
+    def request(self, method: str, path: str, data: bytes = None, ctype: str = None) -> bytes:
+        """Any other write (a release asset's upload or delete): the answer's bytes."""
+        if self._token is None:
+            self._token = token(self.env)
+        url = f"{self.base}/api/v1/{path.lstrip('/')}"
+        headers = {"Authorization": f"token {self._token}"}
+        if ctype:
+            headers["Content-Type"] = ctype
+        req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=float(self.env.get("KINOWO_FORGEJO_READ_TIMEOUT", "120"))) as r:
                 return r.read()
@@ -382,6 +404,26 @@ def release_download(fj: Forgejo, opts, pos):
         fj.save(url, path)
 
 
+def release_upload(fj: Forgejo, opts, pos):
+    if len(pos) < 2:
+        raise Fail("gh (forgejo): release upload needs a tag and a file")
+    rel = fj.release(pos[0])
+    have = {a["name"]: a["id"] for a in rel.get("assets") or []}
+    for path in pos[1:]:
+        name = os.path.basename(path)
+        if name in have:
+            if not opts.get("clobber"):
+                raise Fail(f"asset under the same name already exists: [{name}]")
+            fj.request("DELETE", f"repos/{fj.repo}/releases/{rel['id']}/assets/{have[name]}")
+        boundary = "forge-gh-" + os.urandom(12).hex()
+        with open(path, "rb") as f:
+            content = f.read()
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"{name}\"\r\n"
+                f"Content-Type: application/octet-stream\r\n\r\n").encode() + content + f"\r\n--{boundary}--\r\n".encode()
+        fj.request("POST", f"repos/{fj.repo}/releases/{rel['id']}/assets?name={urllib.parse.quote(name)}", body,
+                   f"multipart/form-data; boundary={boundary}")
+
+
 def release_view(fj: Forgejo, opts, pos):
     rel = fj.release(pos[0])
     shaped = {"tagName": rel.get("tag_name"), "name": rel.get("name"), "id": rel.get("id"),
@@ -457,7 +499,8 @@ def workflow_run(fj: Forgejo, opts, pos):
 
 
 COMMANDS = {("workflow", "run"): workflow_run, ("run", "download"): run_download, ("run", "view"): run_view, ("run", "list"): run_list,
-            ("release", "download"): release_download, ("release", "view"): release_view}
+            ("release", "download"): release_download, ("release", "view"): release_view,
+            ("release", "upload"): release_upload}
 
 
 def forgejo_main(argv) -> None:
