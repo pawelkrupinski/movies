@@ -132,7 +132,21 @@ each time:
    six more runs each) and the live set identical. The prefetch values were one Skylake's; each CPU now uses its own
    ergonomics (this Mac's arm64 picks 384, so locally B also moved that). `JdkParityOptionsSpec` now asserts no option
    names these flags. Still owed, as for 1: a worker's first 10 boot minutes in prod.
-3. **The TLS named groups** (JEP 527: `X25519MLKEM768` first, ffdhe6144/8192 gone): see below.
+3. **`-Djdk.tls.namedGroups` (25's list) [done 2026-10-23].** JEP 527 put the post-quantum hybrid `X25519MLKEM768`
+   first in 27's TLS 1.3 key shares and dropped ffdhe6144/8192. The risk is a server or middlebox that chokes on the
+   larger (~1.2 KB more, two-packet) ClientHello. A handshake under 27's default list against every outbound host
+   the `src/main` sources name (349 resolvable, plus Sentry ingest and our own edge): none failed; 103 chose
+   `X25519MLKEM768`, 197 x25519, 1 secp384r1, 48 TLS 1.2 (ECDHE, never ffdhe). The 8 non-handshakes were the same
+   under 25's list (6 placeholder hosts, 2 timeouts). TMDB, IMDb, OMDb, Cinemeta, Filmweb, Metacritic, RT and Zyte
+   all handshake; TMDB and Sentry pick the hybrid. Decodo is a CONNECT tunnel, so the target sees the same
+   ClientHello. Probed from the laptop, not k3s egress; Hetzner does no TLS inspection. A host that does break
+   would fail its scrape loudly, and the 25 list is one line to put back.
+
+   That leaves `jdk25-parity.options` holding only `-XX:+UnlockDiagnosticVMOptions` (for the launchers'
+   diagnostic `ArchiveRelocationMode`). Retiring the file means moving that unlock into `worker.options` and
+   `web.options` and dropping it from `build.sbt`'s `launcherOptions`, `main.yml`'s path filters,
+   `K8sTierPathGatingSpec` and `JdkParityOptionsSpec`'s file lists; not done here. The web tier's G1 parity
+   (`jdk25-parity-g1.options`) is unmeasured.
 
 Other runtime items:
 

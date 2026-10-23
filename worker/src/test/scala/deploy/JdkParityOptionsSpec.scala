@@ -113,11 +113,14 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
     finalFlags(Seq("jdk25-parity.options", "worker.options").flatMap(options)).get("AlwaysPreTouch") shouldBe Some("true")
   }
 
-  "the TLS client" should "offer JDK 25's key-exchange groups, without the post-quantum hybrid in front" in {
+  // JEP 527, given back on purpose (2026-10-23): 27's own key-exchange groups, the post-quantum hybrid
+  // X25519MLKEM768 first. Every outbound host the sources name handshook under it (103 of 349 chose the
+  // hybrid, the rest x25519 or a TLS 1.2 curve, none failed); see the dependency-and-flag audit.
+  "the TLS client" should "offer JDK 27's key-exchange groups, the post-quantum hybrid in front" in {
     val tls = run(options("jdk25-parity.options") ++ Seq("-XshowSettings:security:tls", "-version"))
     val groups = tls.linesIterator.dropWhile(!_.contains("Enabled Named Groups")).drop(1)
       .takeWhile(_.startsWith("        ")).map(_.trim).toSeq
-    groups shouldBe Seq("x25519", "secp256r1", "secp384r1", "secp521r1", "x448",
-                        "ffdhe2048", "ffdhe3072", "ffdhe4096", "ffdhe6144", "ffdhe8192")
+    groups shouldBe Seq("X25519MLKEM768", "x25519", "secp256r1", "secp384r1", "secp521r1", "x448",
+                        "ffdhe2048", "ffdhe3072", "ffdhe4096")
   }
 }
