@@ -42,7 +42,9 @@ ThisBuild / scalacOptions ++= Seq(
   // web still failed -Werror, but only as "there was 1 deprecation warning; re-run with
   // -deprecation for details" -- no file, no line. With it the error names the call site.
   "-deprecation",
-  "-Wunused:imports",
+  // Unused imports, locals, privates, parameters, implicits and pattern variables: dead code fails the build. An
+  // intentionally unread parameter (a trait default meant to be overridden, a hook) is `@unused`.
+  "-Wunused:all",
   // Warnings are errors: a warning must be fixed (or explicitly silenced via a
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
   "-Werror",
@@ -66,10 +68,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wconf:msg=(?s)^(?!.*\\b(ScanOutcome|ReadOutcome|GuardedWrite)\\b).*(unused value|[dD]iscarded non-Unit value).*:silent"
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
-
-// `-Wunused:all` (unused locals, privates, parameters, implicits, pattern variables), enabled per module while each
-// is cleaned up; it replaces `-Wunused:imports` in ThisBuild once every module is.
-lazy val unusedAll = Seq(scalacOptions += "-Wunused:all")
 
 // Nobody reads this build's Scaladoc — there is no published API and no docs
 // site — but `stage` built it anyway: Play's dist ships `share/doc/api`, and
@@ -203,7 +201,6 @@ lazy val geodata = (project in file("geodata"))
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
-  .settings(unusedAll)
   .dependsOn(geodata)
   .settings(
     name := "common",
@@ -259,7 +256,6 @@ lazy val identityTestDoubles = Def.setting(Seq("InMemoryIdentityTraceStore", "In
 // common — its models, titles, Mongo — and nothing in common builds on it (it cannot: common does not depend on it); the
 // worker runs it, the web app reads its traces and pins.
 lazy val identity = (project in file("identity"))
-  .settings(unusedAll)
   .dependsOn(common)
   .settings(
     name := "identity",
@@ -316,7 +312,6 @@ lazy val identity = (project in file("identity"))
 // the compile classpath because Eventually returns an `org.scalatest.Assertion`.
 lazy val testkit = (project in file("testkit"))
   .dependsOn(common, identity)
-  .settings(unusedAll)
   .settings(testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
   .settings(
@@ -334,7 +329,6 @@ lazy val testkit = (project in file("testkit"))
 // recompiles the scrapers, not the rest of the worker. Built on common and identity; the worker depends on it.
 lazy val scrapers = (project in file("scrapers"))
   .dependsOn(common, identity, testkit % Test)
-  .settings(unusedAll)
   .settings(
     name := "scrapers",
     libraryDependencies ++= Seq(scalatestPlay % Test, scalatestScalaCheck % Test),
@@ -354,7 +348,6 @@ lazy val scrapers = (project in file("scrapers"))
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
 lazy val worker = (project in file("worker"))
-  .settings(unusedAll)
   // The identity-slice tool files (`OlderRefsPackage`) import the identity adapters from both packages a ref may keep
   // them in, under `@nowarn("msg=unused import")`. At this ref neither import is unused, so that `@nowarn` suppresses
   // nothing here — which -Wunused:all reports — while an older ref still needs it.
@@ -432,7 +425,6 @@ lazy val worker = (project in file("worker"))
 // ── Web app (content serving) ────────────────────────────────────────────────
 
 lazy val web = (project in file("web"))
-  .settings(unusedAll)
   .enablePlugins(PlayScala, SbtWeb)
   // Disable Play's app/ + conf/ + public/ layout so it falls back to the
   // standard sbt layout — src/main/scala, src/main/resources (routes +
