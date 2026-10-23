@@ -34,12 +34,26 @@ if ! gh release view "$tag" --json assets --jq '.assets[].name' >"$work/assets" 
     warn "could not read release $tag ($(head -c 200 "$work/err")) -- its pins and trees are not checked here"
     assets_known=false
 fi
+# The ARCHIVE release keeps the landing recordings (528, 573) past the rolling release's five and their artifacts:
+# trees under the same name, corpora as scrapes-<code>-<run>.tar.* -- legs read both back from it (restore-enrichment-
+# tree.sh, convergence-setup.sh `corpus`). Unreadable or absent, it holds nothing here.
+archive=${RECORDING_ARCHIVE_TAG:-identity-recordings}
+# allow-silenced: an unreadable archive only means the rolling release and the artifacts are checked alone.
+gh release view "$archive" --json assets --jq '.assets[].name' >"$work/archived" 2>/dev/null || : >"$work/archived"
 has_asset() { # <glob>
     local name
     while IFS= read -r name; do
         # shellcheck disable=SC2053 # the pin names its tree as a glob (`enrichment-de-573.tar.*`)
         [[ $name == $1 ]] && return 0
-    done <"$work/assets"
+    done < <(cat "$work/assets" "$work/archived")
+    return 1
+}
+archived() { # <glob>
+    local name
+    while IFS= read -r name; do
+        # shellcheck disable=SC2053 # a glob, as has_asset's
+        [[ $name == $1 ]] && return 0
+    done <"$work/archived"
     return 1
 }
 
@@ -59,6 +73,7 @@ artifacts() {
 
 # corpus_present <run> <code> <what the pair is>
 corpus_present() {
+    archived "scrapes-$2-$1.tar.*" && return 0
     artifacts "$1"
     case $? in
         0) grep -qxF "scrape-fixtures-$2" "$work/artifacts-$1" ||

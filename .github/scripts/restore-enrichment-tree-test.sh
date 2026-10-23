@@ -23,6 +23,8 @@ if [ "$1 $2" = "release download" ]; then
   [ -z "${STUB_UNREACHABLE:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
   [ ! -f "${STUB_BLIP:-/nonexistent}" ] || { rm -f "$STUB_BLIP"; echo "HTTP 500: Internal Server Error" >&2; exit 1; }
   [ -n "${STUB_ASSET:-}" ] || { echo "no assets match the file pattern" >&2; exit 1; }
+  # STUB_ARCHIVE_ONLY: only the archive release (identity-recordings) holds it, as for a landing recording aged out
+  [ -z "${STUB_ARCHIVE_ONLY:-}" ] || [ "$3" = identity-recordings ] || { echo "no assets match the file pattern" >&2; exit 1; }
   while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --pattern) pattern="$2" ;; esac; shift; done
   case "$pattern" in fill-*) cp "$STUB_FILL" "$dir/$pattern"; exit 0 ;; esac
   cp "$STUB_ASSET" "$dir/"
@@ -42,6 +44,10 @@ restore() {
 }
 
 check "a release holding the tree stages it" "0" "$(restore pinned hermetic "$work/enrichment-uk.tar.zst")"
+check "a replay's tree the rolling release no longer holds comes from the archive release" "0|yes" \
+  "$(STUB_ARCHIVE_ONLY=1 restore archived hermetic "$work/enrichment-uk.tar.zst")|$(grep -q 'from release identity-recordings' "$work/out-archived" && echo yes)"
+check "...but a recording's working tree never does" "0|no" \
+  "$(STUB_ARCHIVE_ONLY=1 restore archived-record record "$work/enrichment-uk.tar.zst")|$(grep -q 'identity-recordings' "$work/out-archived-record" && echo yes || echo no)"
 check "...unpacked under its own paths, outside the workspace" "recorded" \
   "$(cat "$work/stage-pinned/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
 # A fill earlier legs published over the pair: one page the pinned tree lacks.

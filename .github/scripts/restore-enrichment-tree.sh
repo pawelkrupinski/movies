@@ -59,6 +59,14 @@ fi
 # used to fail the leg's setup.
 gh_download "${RESTORE_TREE_DOWNLOAD_TIMEOUT:-1200}" release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber
 download_status=$?
+# A replay's pinned tree the rolling release no longer holds (it keeps the newest five): the ARCHIVE release
+# (RECORDING_ARCHIVE_TAG, default identity-recordings) keeps the landing recordings' trees (528, 573) under the same name.
+if [ "$download_status" -eq 3 ] && [ "$mode" != "record" ]; then
+    ARCHIVE_TAG="${RECORDING_ARCHIVE_TAG:-identity-recordings}"
+    gh_download "${RESTORE_TREE_DOWNLOAD_TIMEOUT:-1200}" release download "$ARCHIVE_TAG" --pattern "$ASSET" --dir "$archives" --clobber
+    download_status=$?
+    [ "$download_status" -ne 0 ] || TAG="$ARCHIVE_TAG"
+fi
 if [ "$download_status" -eq 0 ]; then
     # Both spellings of the working tree only in the moment between a first zstd publish and its
     # deleting the gzip it replaced: the zstd one is the newer.

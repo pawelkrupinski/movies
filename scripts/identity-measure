@@ -488,6 +488,10 @@ repo_slug() { git remote get-url "$remote" | sed -E 's#\.git$##; s#^.*[:/]([^/:]
 holds_of() {
   local names cc out=""
   names=$(identity_gh "$DISPATCH_GH_TIMEOUT" api "repos/$(repo_slug)/actions/runs/$1/artifacts" --jq '.artifacts[]?.name') || return 1
+  # ...or archived: the identity-recordings release keeps the landing recordings' corpora past their artifacts
+  # (scrapes-<cc>-<run>.tar.*; .github/scripts/convergence-setup.sh `corpus` reads them back). Absent release: none.
+  names+=$'\n'$(identity_gh "$DISPATCH_GH_TIMEOUT" api "repos/$(repo_slug)/releases/tags/${RECORDING_ARCHIVE_TAG:-identity-recordings}" \
+    --jq '.assets[]?.name' 2>/dev/null | sed -nE "s/^scrapes-([a-z]+)-$1\\.tar\\.(gz|zst)$/scrape-fixtures-\\1/p" || true)
   for cc in "${KINOWO_COUNTRIES[@]}"; do grep -qx "scrape-fixtures-$cc" <<< "$names" && out+="${out:+,}$cc"; done
   echo "$out"
 }

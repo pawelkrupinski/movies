@@ -1,0 +1,58 @@
+#
+# Archive a "Record scrape fixtures" recording into the PERMANENT `identity-recordings` release: every country's
+# enrichment tree (enrichment-<cc>-<run>.tar.*, from the rolling convergence-fixtures release, which keeps only the
+# newest five) and scrape corpus (scrapes-<cc>-<run>.tar.*, from the run's scrape-fixtures-<cc> artifact).
+#
+# For the LANDING recordings every identity measure is judged on (528 and 573, 2026-10-20): once archived, a leg,
+# identity-measure and identity-slice replay them from the archive alone when the rolling release or the artifact is
+# gone -- restore-enrichment-tree.sh, convergence-setup.sh `corpus`, convergence-preflight.sh and
+# scripts/identity-fetch-recording.sh all fall back to it. On ci-runner, beside Forgejo: the ~1 GB a recording weighs
+# never crosses the laptop's tunnel (an upload from the laptop broke it, 2026-10-23).
+#
+# Idempotent: an asset the archive already holds at the source's size is left alone, so a re-run finishes a partial one.
+name: Archive recording
+
+on:
+    workflow_dispatch:
+        inputs:
+            runs:
+                description: Space-separated "Record scrape fixtures" run ids to archive (e.g. "528 573").
+                required: true
+                type: string
+
+concurrency:
+    group: archive-recording
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    archive:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 90
+        permissions:
+            contents: write
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts
+                      .github/scripts
+                  sparse-checkout-cone-mode: false
+            - name: Archive the recordings
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RUNS: ${{ inputs.runs }}
+              run: scripts/ci/archive-recording.sh $RUNS
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml).
+    timings:
+        needs: [ archive ]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        secrets: inherit

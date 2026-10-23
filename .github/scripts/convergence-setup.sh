@@ -124,6 +124,22 @@ corpus() {
       echo "::error::could not download recording run $pinned's corpus (scrape-fixtures-$code) — a failed read (gh's error above), not an expired pair; re-run the failed job once GitHub answers"
       exit 1
     }
+    # Absent as an artifact: the ARCHIVE release (RECORDING_ARCHIVE_TAG, default identity-recordings) keeps the landing
+    # recordings' corpora (528, 573) as scrapes-<code>-<run>.tar.*, for when their artifacts are gone -- the same
+    # fallback scripts/identity-fetch-recording.sh reads on the laptop.
+    if [ "$present" != present ]; then
+      present=$("$gh_optional" release download "${RECORDING_ARCHIVE_TAG:-identity-recordings}" \
+                  --pattern "scrapes-$code-$pinned.tar.*" --dir scrape-archive/from-archive --clobber) || {
+        echo "::error::could not read release ${RECORDING_ARCHIVE_TAG:-identity-recordings} for recording run $pinned's corpus (gh's error above)"
+        exit 1
+      }
+      if [ "$present" = present ]; then
+        # unpack reads scrapes-<code>.tar.gz and unpacks by the archive's magic, whichever compressor packed it
+        mv "$(compgen -G "scrape-archive/from-archive/scrapes-$code-$pinned.tar.*" | head -1)" "scrape-archive/scrapes-$code.tar.gz"
+        rm -rf scrape-archive/from-archive
+        echo "recording run $pinned's corpus from the archive release ${RECORDING_ARCHIVE_TAG:-identity-recordings}"
+      fi
+    fi
     if [ "$present" = present ]; then
       # allow-silenced: the recording date only labels the log line and the provenance env.
       recorded=$("$KINOWO_GH" run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)

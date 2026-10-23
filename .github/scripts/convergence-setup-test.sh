@@ -117,6 +117,12 @@ KINOWO_CONVERGENCE_PIN_CORPUS_RUN=41 step corpus de
 check "an expired pinned corpus ends the leg, sending the reader to re-record" "1|yes" \
   "$status|$(logged "::error::recording run 41's corpus is no longer downloadable.*re-run Record scrape fixtures")"
 rm -f "$runs/throttled"
+# A landing recording whose artifact is gone is read back from the archive release (one stub release serves both).
+echo archived > "$release/scrapes-de-40.tar.zst"
+KINOWO_CONVERGENCE_PIN_CORPUS_RUN=40 step corpus de
+check "an artifact gone, the archive release's corpus is taken, under the name unpack reads" "0|archived|yes|KINOWO_CONVERGENCE_CORPUS_RUN=40" \
+  "$status|$(cat "$work/ws/scrape-archive/scrapes-de.tar.gz" 2>/dev/null)|$(logged "recording run 40's corpus from the archive release identity-recordings")|$(grep CORPUS_RUN= "$work/env")"
+rm -f "$release/scrapes-de-40.tar.zst"
 STUB_THROTTLED=2 KINOWO_CONVERGENCE_PIN_CORPUS_RUN=42 step corpus de
 check "a throttled artifact storage (503 Egress is over the account limit) is asked again, and the corpus comes" "0|pinned" \
   "$status|$(cat "$work/ws/scrape-archive/scrapes-de.tar.gz" 2>/dev/null)"
