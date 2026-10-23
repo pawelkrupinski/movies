@@ -27,9 +27,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import android.content.Context
-import coil.annotation.ExperimentalCoilApi
-import coil.imageLoader
-import coil.memory.MemoryCache
+import coil3.imageLoader
+import coil3.memory.MemoryCache
 import pl.kinowo.auth.AuthRepository
 import pl.kinowo.data.PosterCachePurge
 import pl.kinowo.auth.StateSync
@@ -438,7 +437,6 @@ class KinowoViewModel(
      * `RepertoireStore.reconcilePostersIfNeeded`. Guarded on a non-empty list
      * so a failed cold load can't wipe the cache.
      */
-    @OptIn(ExperimentalCoilApi::class) // ImageLoader.diskCache / memoryCache accessors
     fun purgePostersIfNeeded(context: Context, today: String) = viewModelScope.launch {
         val current = films.value
         if (current.isEmpty()) return@launch

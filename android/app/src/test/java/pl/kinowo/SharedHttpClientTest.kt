@@ -2,7 +2,7 @@ package pl.kinowo
 
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
-import coil.request.ImageRequest
+import coil3.request.ImageRequest
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import org.junit.Assert.assertEquals
@@ -63,7 +63,7 @@ class SharedHttpClientTest {
     // which a runBlocking test body would be parking. The main looper is
     // idled until the load (any outcome) settles.
     private fun loadPoster() {
-        val load = app.newImageLoader().enqueue(ImageRequest.Builder(app).data("${mock.baseUrl}/poster.jpg").build())
+        val load = app.newImageLoader(app).enqueue(ImageRequest.Builder(app).data("${mock.baseUrl}/poster.jpg").build())
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
         while (!load.job.isCompleted && System.nanoTime() < deadline) {
             shadowOf(Looper.getMainLooper()).idle()

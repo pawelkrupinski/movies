@@ -338,7 +338,13 @@ dependencies {
         }
     }
 
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    // Posters. Coil 3 splits networking out: coil-network-okhttp runs fetches
+    // on the app's shared OkHttp client (KinowoApplication), and
+    // coil-network-cache-control keeps Coil 2's default of honouring the CDNs'
+    // Cache-Control headers (Coil 3's own default ignores them).
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
+    implementation("io.coil-kt.coil3:coil-network-cache-control:3.6.3")
 
     // Backdrop blur for the floating search pill — real frosted-glass that
     // distorts the grid scrolling under it (RenderEffect on API 32+, graceful

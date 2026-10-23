@@ -1,8 +1,12 @@
 package pl.kinowo
 
 import android.app.Application
-import coil.ImageLoader
-import coil.ImageLoaderFactory
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.annotation.ExperimentalCoilApi
+import coil3.network.cachecontrol.CacheControlCacheStrategy
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import okhttp3.CookieJar
 import okhttp3.OkHttpClient
 import pl.kinowo.model.Country
@@ -16,7 +20,7 @@ import java.util.concurrent.TimeUnit
  * connection pool and dispatcher instead of Coil building a second client of
  * its own. Per-country wiring stays in [kinowoViewModelFactory].
  */
-open class KinowoApplication : Application(), KinowoGraphProvider, ImageLoaderFactory {
+open class KinowoApplication : Application(), KinowoGraphProvider, SingletonImageLoader.Factory {
 
     // A disk-backed jar so the signed-in session cookie survives restarts.
     private val cookieJar by lazy { PersistentCookieJar(this) }
@@ -36,8 +40,18 @@ open class KinowoApplication : Application(), KinowoGraphProvider, ImageLoaderFa
     // `newBuilder()` keeps the shared pool and dispatcher; only the cookie jar
     // differs: poster requests go to cinema CDNs, whose cookies have no place in
     // the persisted session jar. Coil's disk and memory caches keep their
-    // defaults (PosterPrefetch and the poster purge rely on them).
-    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
-        .okHttpClient { httpClient.newBuilder().cookieJar(CookieJar.NO_COOKIES).build() }
+    // defaults (PosterPrefetch and the poster purge rely on them). The
+    // Cache-Control strategy keeps Coil 2's behaviour of honouring the CDNs'
+    // caching headers, which Coil 3 otherwise ignores.
+    @OptIn(ExperimentalCoilApi::class) // CacheControlCacheStrategy
+    override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
+        .components {
+            add(
+                OkHttpNetworkFetcherFactory(
+                    callFactory = { httpClient.newBuilder().cookieJar(CookieJar.NO_COOKIES).build() },
+                    cacheStrategy = { CacheControlCacheStrategy() },
+                )
+            )
+        }
         .build()
 }

@@ -4,9 +4,9 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import coil.imageLoader
-import coil.request.CachePolicy
-import coil.request.ImageRequest
+import coil3.imageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import kotlin.math.abs
 
 /**

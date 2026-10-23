@@ -10,9 +10,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import coil.Coil
-import coil.ImageLoader
-import coil.annotation.ExperimentalCoilApi
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.annotation.DelicateCoilApi
 import okhttp3.mockwebserver.MockResponse
 import okio.Buffer
 import org.junit.After
@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit
  * and the poster's description stays on the node throughout, so a screen
  * reader names the card before its bytes arrive.
  */
-@OptIn(ExperimentalCoilApi::class)
+@OptIn(DelicateCoilApi::class) // SingletonImageLoader.setUnsafe / reset
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -50,11 +50,11 @@ class PosterImageTest {
     @Before
     fun cacheFreeLoader() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        Coil.setImageLoader(ImageLoader.Builder(context).memoryCache(null).diskCache(null).build())
+        SingletonImageLoader.setUnsafe(ImageLoader.Builder(context).memoryCache(null).diskCache(null).build())
     }
 
     @After
-    fun resetLoader() = Coil.reset()
+    fun resetLoader() = SingletonImageLoader.reset()
 
     private fun show(vararg paths: String) = compose.setContent {
         PosterImage(chain = paths.map { "${mock.baseUrl}$it" }, contentDescription = "Poster", modifier = Modifier.size(90.dp, 135.dp))
