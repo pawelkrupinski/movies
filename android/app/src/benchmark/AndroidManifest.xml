@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into the Baseline Profile / Macrobenchmark build types only
+     (nonMinified* and benchmark*, created by the androidx.baselineprofile
+     plugin; wired in app/build.gradle.kts). Swaps in BenchmarkApplication,
+     which sends every request to the :baselineprofile module's on-device
+     fixture server over plain HTTP on loopback — hence cleartext. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:name="pl.kinowo.BenchmarkApplication"
+        android:usesCleartextTraffic="true"
+        tools:replace="android:name,android:usesCleartextTraffic" />
+</manifest>

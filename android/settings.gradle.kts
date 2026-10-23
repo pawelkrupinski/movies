@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Kinowo"
 include(":app")
+include(":baselineprofile")

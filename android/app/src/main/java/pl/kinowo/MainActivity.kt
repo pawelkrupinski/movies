@@ -12,6 +12,8 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -136,7 +138,9 @@ class MainActivity : ComponentActivity() {
         val tuning = TUNING_ENABLED && intent.getBooleanExtra("kinowo_tuning", false)
         setContent {
             KinowoTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = Background) {
+                // testTagsAsResourceId: the :baselineprofile journey (UiAutomator)
+                // finds the poster grid and detail screen by their testTags.
+                Surface(modifier = Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }, color = Background) {
                     if (tuning) ShowtimeTuningScreen() else KinowoApp(viewModel)
                 }
             }

@@ -8,6 +8,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.github.triplet.play")
+    // Consumes the :baselineprofile module's generated profile (see the
+    // `baselineProfile` block) and adds the nonMinified*/benchmark* build types
+    // that module profiles and measures.
+    id("androidx.baselineprofile")
 }
 
 // Release signing comes ONLY from the Touch ID vault, as env vars — never a
@@ -189,6 +193,17 @@ android {
         // The builds without the tweak screen get `TUNING_ENABLED = false`.
         getByName("release") { kotlin.directories.add("src/noTuning/java") }
         getByName("releaseFast") { kotlin.directories.add("src/noTuning/java") }
+        // The androidx.baselineprofile plugin's build types — nonMinified<X> (the
+        // profile generator's target) and benchmark<X> (the Macrobenchmark's),
+        // copied from each release-like build type — get no tuning and the
+        // fixture-server Application (src/benchmark/BenchmarkApplication.kt).
+        configureEach {
+            if (name.startsWith("nonMinified") || name.startsWith("benchmark")) {
+                kotlin.directories.add("src/noTuning/java")
+                kotlin.directories.add("src/benchmark/java")
+                manifest.srcFile("src/benchmark/AndroidManifest.xml")
+            }
+        }
     }
 
     compileOptions {
@@ -249,6 +264,26 @@ play {
     // the manual-deploy behaviour we already had. Promote onward deliberately.
     track.set("internal")
     releaseStatus.set(ReleaseStatus.COMPLETED)
+}
+
+// The Baseline Profile `./gradlew :app:generateBaselineProfile` writes (from the
+// :baselineprofile module's generator, on a connected device or emulator) lands in
+// src/main/generated/baselineProfiles/ — merged into `main`, so release,
+// tuneRelease and releaseFast all ship it as assets/dexopt/baseline.prof
+// (BaselineProfileShippedTest). Never generated during an ordinary build.
+baselineProfile {
+    mergeIntoMain = true
+    automaticGenerationDuringBuild = false
+    // Profiled from `release` only; merged into `main`, so tuneRelease and
+    // releaseFast ship the same profile without a generator of their own.
+    variants {
+        create("release") { from(project(":baselineprofile")) }
+    }
+}
+// BaselineProfileTest reads that file from disk: declare it, so regenerating
+// (or losing) the profile reruns the unit tests instead of leaving them up to date.
+tasks.withType<Test>().configureEach {
+    inputs.files("src/main/generated/baselineProfiles/baseline-prof.txt").withPropertyName("baselineProfile")
 }
 
 // AGP 9 removed the `android.kotlinOptions` DSL; Kotlin compiler settings now
@@ -316,6 +351,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     implementation("androidx.datastore:datastore-preferences:1.2.1")
+    // Installs the bundled Baseline Profile on sideloaded / non-Play installs
+    // (Play does it itself) and lets Macrobenchmark install it for measuring.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")

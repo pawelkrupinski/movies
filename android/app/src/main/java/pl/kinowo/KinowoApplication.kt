@@ -16,18 +16,20 @@ import java.util.concurrent.TimeUnit
  * connection pool and dispatcher instead of Coil building a second client of
  * its own. Per-country wiring stays in [kinowoViewModelFactory].
  */
-class KinowoApplication : Application(), KinowoGraphProvider, ImageLoaderFactory {
+open class KinowoApplication : Application(), KinowoGraphProvider, ImageLoaderFactory {
 
     // A disk-backed jar so the signed-in session cookie survives restarts.
     private val cookieJar by lazy { PersistentCookieJar(this) }
 
-    internal val httpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .cookieJar(cookieJar)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .build()
-    }
+    internal val httpClient: OkHttpClient by lazy { httpClientBuilder().build() }
+
+    /** The shared client's configuration. Open for the Baseline Profile /
+     *  Macrobenchmark builds only (`src/benchmark`'s BenchmarkApplication), which
+     *  add an interceptor pointing every request at the on-device fixture server. */
+    protected open fun httpClientBuilder(): OkHttpClient.Builder = OkHttpClient.Builder()
+        .cookieJar(cookieJar)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
 
     override fun viewModelFactory(country: Country) = kinowoViewModelFactory(this, country, httpClient, cookieJar)
 
