@@ -101,11 +101,14 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val stage  = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), stored,
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
     val byKey = listings.map(l => l.key -> l).toMap
-    stage.apply(model, byKey.get, version = 1).decisions.head.basis shouldBe ResolverDecision.Basis.BelowThreshold
+    val blind = stage.apply(model, byKey.get, version = 1).decisions.head
+    blind.basis shouldBe ResolverDecision.Basis.BelowThreshold
     stored.all().filter(_.filled.isEmpty) shouldBe empty   // nothing kept that a blind fill decided
+    stage.waitingOn(blind).onTmdb shouldBe true            // waiting on TMDB, not settled
     answered = true
     val filled = stage.apply(model, byKey.get, version = 2).decisions.head
     (filled.basis, filled.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
+    stage.waitingOn(filled).settled shouldBe true
     stored.all().flatMap(_.filled).map(_.imdb) shouldBe Seq(Some("tt46658626"))
   }
 
@@ -640,7 +643,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "stay as the model left it while a family has not answered, and name the question" in {
     val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
-    stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
+    val decision = stage.apply(resolution, listingOf, version = 1).decisions.head
+    decision shouldBe resolution.decisions.head
     stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
+    // what the drift check counts unsettled: the model's take waits on no gap of its own, yet on the family's question
+    val waits = stage.waitingOn(decision)
+    (waits.modelGaps, waits.settled) shouldBe ((0, false))
+    waits.questions should contain (services.identity.Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
   }
 }

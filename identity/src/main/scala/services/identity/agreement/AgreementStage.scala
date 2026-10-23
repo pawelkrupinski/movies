@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueQuestion, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
+  IdentityMeasures, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision, StoredFamily, WaitingOn}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.concurrent.TrieMap
@@ -87,6 +87,23 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The TMDB records a cluster's broadcast take waits on to read again — filed before records kept the whole release
    *  day ([[IdentityLookups.releaseDay]]) — as the last [[apply]] met them. */
   def wantedRecords: Set[Int] = wantedNow.records
+
+  /** What `decision`'s take waits on, as the last [[apply]] left it: the model's gaps, and the stage's own — its cluster's
+   *  family questions or its fill's TMDB answers ([[waiting]]), and its take's correction's questions ([[correctionWaits]]).
+   *  Read off the kept waits: a decision the stage does not wait on allocates nothing past its own. */
+  def waitingOn(decision: ResolverDecision): WaitingOn =
+    if (decision.members.isEmpty) WaitingOn.model(decision)
+    else {
+      val id         = StoredFamily.idOf(decision.members)
+      val cluster    = waiting.get(id)
+      val correction = correctionWaits.get(AgreementStage.correctionId(id))
+      if (cluster.isEmpty && correction.isEmpty) WaitingOn.model(decision)
+      else WaitingOn(
+        decision.unanswered,
+        cluster.fold(Set.empty[Question])(_.gaps.map(Question.Family(_, _))) ++
+          correction.fold(Set.empty[Question])(c => Question.ofOpen(AgreementStage.Open(c.questions, c.finds, c.posters, records = c.records))),
+        onTmdb = cluster.exists(_.blindAt.isDefined))
+    }
 
   /** The families in their order: the order their verdicts and searches are read in. */
   private[agreement] val familiesInOrder: Seq[(VoterFamily, FamilyAnswers)] = families.toSeq.sortBy(_._1.ordinal)

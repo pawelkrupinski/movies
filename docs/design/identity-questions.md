@@ -11,8 +11,12 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
 1. **One question type and policy table** (this note; no behaviour change). `services.identity.Question` names every
    question, `QuestionKind` its kind and the `HttpPath`s that ask it, `QuestionPolicies` (worker) what each kind is held
    to today, read from the very constants the code acts on. `QuestionPoliciesSpec` pins the table below.
-2. **One "waiting on" view**: model gaps ∪ agreement unknowns per listing and family, on the explain page and counted as
-   unsettled by the drift check.
+2. **One "waiting on" view**: model gaps ∪ agreement unknowns per listing and family, counted as unsettled by the drift
+   check. Done 2026-10-24: `services.identity.WaitingOn`, read off the stage's kept waits by
+   `AgreementStage.waitingOn` (a cluster's family questions, its fill's TMDB answers, its take's correction's questions);
+   `IdentityDriftCheck` counts a listing waiting on any of them unsettled, and logs how many waited on the agreement
+   alone (`waitingOnAgreement`). The explain page reads the production mirror, which holds no agreement wait: showing it
+   there needs the waits stored, left for when step 4 stores them.
 3. **One asker with priorities**: new film (inline, small per-tick budget) > agreement > refresh and sweep, spread
    across the day; a non-answer remembered for every kind; an age backstop for what the changes feed misses. It
    builds on the `path` label of `kinowo_worker_http_total` (`tools.HttpPath`) and the paced changes sweep

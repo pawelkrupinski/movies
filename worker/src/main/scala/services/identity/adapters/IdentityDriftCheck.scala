@@ -12,10 +12,11 @@ import services.movies.ListingKey
  * ([[TakeChangeLines.drift]]) and counted (`kinowo_worker_identity_drift_listings{country,kind}`), and handed to the
  * [[IdentityDriftCheck.Response]] the composition root picked: report only, or adopt the whole resolve's takes.
  *
- * A listing whose whole decision still waits on an answer (`unanswered`) is no evidence either way: counted as
- * unsettled, never as drift. `scripts/identity-slice <cc> --drift` is the same comparison on a recording.
+ * A listing whose whole take still waits on an answer — the model's or the agreement's ([[WaitingOn]]: a family's
+ * search, a TMDB answer its fill reads, its correction's questions) — is no evidence either way: counted as unsettled,
+ * never as drift. `scripts/identity-slice <cc> --drift` is the same comparison on a recording.
  */
-final class IdentityDriftCheck(live: () => Option[IdentityDriftCheck.Live], whole: IdentityDriftCheck.Live => Resolution,
+final class IdentityDriftCheck(live: () => Option[IdentityDriftCheck.Live], whole: IdentityDriftCheck.Live => IdentityDriftCheck.Whole,
                                lines: TakeChangeLines, metrics: IdentityDriftCheck.Metrics, response: IdentityDriftCheck.Response,
                                /** Is the heap near its limit? A whole resolve is a take-up's worth of work: put off then. */
                                pressed: () => Boolean, stopwatch: tools.Stopwatch) extends Logging {
@@ -32,8 +33,8 @@ final class IdentityDriftCheck(live: () => Option[IdentityDriftCheck.Live], whol
       metrics.checked(report)
       tools.LogFields.info(logger.underlyingLogger,
         f"identity drift check: ${report.drifted.size} of ${report.listings} listings drifted from a whole resolve " +
-          f"(${report.unsettled} unsettled; ${report.byKind.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")}) in ${started.seconds}%.1fs",
-        Seq("drifted" -> report.drifted.size, "listings" -> report.listings, "unsettled" -> report.unsettled, "logged" -> logged.size,
+          f"(${report.unsettled} unsettled, ${report.waitingOnAgreement} on the agreement's questions; ${report.byKind.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")}) in ${started.seconds}%.1fs",
+        Seq("drifted" -> report.drifted.size, "listings" -> report.listings, "unsettled" -> report.unsettled, "waitingOnAgreement" -> report.waitingOnAgreement, "logged" -> logged.size,
           "seconds" -> math.round(started.seconds * 10) / 10.0))
       if (report.drifted.nonEmpty) response.respond(report.drifted)
       report
@@ -48,6 +49,13 @@ object IdentityDriftCheck {
    *  compared, a listing a scrape or an answer moved since being no drift. */
   final case class Live(taken: Resolution, listings: Map[ListingKey, Listing], unchanged: ListingKey => Boolean)
 
+  /** The whole resolve: its takes, and what each still waits on ([[agreement.AgreementStage.waitingOn]] of its stage). */
+  final case class Whole(resolution: Resolution, waitingOn: ResolverDecision => WaitingOn)
+  object Whole {
+    /** A whole resolve with no stage of its own: its decisions wait on the model's gaps alone. */
+    def model(resolution: Resolution): Whole = Whole(resolution, WaitingOn.model)
+  }
+
   /** A listing whose live take differs from the whole resolve's. */
   final case class Drift(listing: ListingKey, live: Option[ResolverDecision], whole: Option[ResolverDecision]) {
     /** What adopting the whole resolve would do: `lost`, `gained` or `changed` (a TMDB film or a fallback). */
@@ -58,7 +66,8 @@ object IdentityDriftCheck {
     }
   }
 
-  final case class Report(listings: Int, drifted: Seq[Drift], unsettled: Int) {
+  /** `waitingOnAgreement`: of the `unsettled`, those the model's gaps alone would have compared. */
+  final case class Report(listings: Int, drifted: Seq[Drift], unsettled: Int, waitingOnAgreement: Int = 0) {
     def byKind: Map[String, Int] = drifted.groupMapReduce(_.kind)(_ => 1)(_ + _)
   }
 
@@ -69,29 +78,30 @@ object IdentityDriftCheck {
   /** A decision's film: its TMDB id, else its fallback's, else none. */
   def filmOf(d: ResolverDecision): Option[String] = d.film.map(id => s"tmdb:$id").orElse(d.fallback.map(f => s"${f.source}:${f.id}"))
 
-  /** Every listing of `live` whose film the `whole` resolve takes otherwise, by listing — a listing the whole decision
-   *  leaves waiting on an answer counted unsettled instead. */
-  def compare(live: Live, whole: Resolution): Report = {
+  /** Every listing of `live` whose film the `whole` resolve takes otherwise, by listing — a listing the whole take leaves
+   *  waiting on an answer, the model's or the agreement's, counted unsettled instead. */
+  def compare(live: Live, whole: Whole): Report = {
     val keys     = live.listings.keys.filter(k => live.unchanged(k) && live.taken.decisionOf.contains(k)).toSeq.sorted(using ListingKey.ordering)
-    val (open, settled) = keys.partition(k => whole.decisionOf.get(k).exists(_.unanswered > 0))
+    val waits    = keys.flatMap(k => whole.resolution.decisionOf.get(k).map(k -> whole.waitingOn(_))).filterNot(_._2.settled).toMap
+    val settled  = keys.filterNot(waits.contains)
     val drifted  = settled.flatMap { k =>
-      val (was, now) = (live.taken.decisionOf.get(k), whole.decisionOf.get(k))
+      val (was, now) = (live.taken.decisionOf.get(k), whole.resolution.decisionOf.get(k))
       Option.when(was.flatMap(filmOf) != now.flatMap(filmOf))(Drift(k, was, now))
     }
-    Report(keys.size, drifted, open.size)
+    Report(keys.size, drifted, waits.size, waits.count(_._2.modelGaps == 0))
   }
 
   /** The whole resolve of `live`'s listings, as a worker with nothing kept takes them: the model's resolve over `lookups`
    *  with `pins`, then a fresh stage (`stage`, over a clock of its own) applied once, and again past every partial wait
    *  ([[agreement.AgreementStage.PartialAfter]]) — it asks nothing, so what the families have not answered stays open. */
   def wholeResolve(live: Live, lookups: IdentityLookups, normalizer: services.movies.TitleNormalizer, pins: PinConstraints,
-                   stage: java.time.Clock => agreement.AgreementStage, version: Long, clock: java.time.Clock): Resolution = {
+                   stage: java.time.Clock => agreement.AgreementStage, version: Long, clock: java.time.Clock): Whole = {
     val model   = IdentityResolver.resolve(live.listings.values, lookups, normalizer, IdentityCalibration.resolver, pins)
     val shifted = new ShiftedClock(clock)
     val fresh   = stage(shifted)
     fresh.apply(model, live.listings.get, version, None)
     shifted.shift(java.time.Duration.ofMillis(agreement.AgreementStage.PartialAfter.toMillis).plusMinutes(1))
-    fresh.apply(model, live.listings.get, version, None)
+    Whole(fresh.apply(model, live.listings.get, version, None), fresh.waitingOn)
   }
 
   /** `base`, moved on by what [[shift]] adds: the whole resolve's stage reads its partial waits as over. */

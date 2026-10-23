@@ -16,6 +16,7 @@ class IdentityDriftCheckSpec extends AnyFlatSpec with Matchers {
   private val helios = key("Helios", "Rose")
   private val waits  = key("Rialto", "Nowy film")
   private val moved  = key("Kino Pod Baranami", "Kos")
+  private val asks   = key("Kino Kijów", "Klondike")
   private def decision(keys: Seq[ListingKey], film: Option[Int], basis: ResolverDecision.Basis, unanswered: Int = 0) =
     ResolverDecision(keys, film, 0.5, basis, Seq(s"$basis why"), unanswered = unanswered)()
   private def resolution(ds: ResolverDecision*) =
@@ -27,19 +28,26 @@ class IdentityDriftCheckSpec extends AnyFlatSpec with Matchers {
     decision(Seq(muza), Some(238), ResolverDecision.Basis.OwnMatch),
     decision(Seq(helios), Some(1176962), ResolverDecision.Basis.OwnMatch),
     decision(Seq(waits), Some(5), ResolverDecision.Basis.Agreed),
-    decision(Seq(moved), Some(9), ResolverDecision.Basis.OwnMatch))
-  private val whole = resolution(
+    decision(Seq(moved), Some(9), ResolverDecision.Basis.OwnMatch),
+    decision(Seq(asks), Some(7), ResolverDecision.Basis.Agreed))
+  private val wholeResolution = resolution(
     decision(Seq(raices), None, ResolverDecision.Basis.BelowThreshold),
     decision(Seq(muza), Some(238), ResolverDecision.Basis.OwnMatch),
     decision(Seq(helios), Some(1712584), ResolverDecision.Basis.OwnMatch),
     decision(Seq(waits), None, ResolverDecision.Basis.BelowThreshold, unanswered = 2),
-    decision(Seq(moved), None, ResolverDecision.Basis.NoCandidate))
-  private val now = IdentityDriftCheck.Live(live, Seq(raices, muza, helios, waits, moved).map(k => k -> listing(k)).toMap, _ != moved)
+    decision(Seq(moved), None, ResolverDecision.Basis.NoCandidate),
+    decision(Seq(asks), None, ResolverDecision.Basis.BelowThreshold))
+  // the agreement's stage still waits on a family's question for the cluster of `asks`, which the model answered in full
+  private val whole = IdentityDriftCheck.Whole(wholeResolution, d =>
+    if (d.members.contains(asks)) WaitingOn(0, Set(Question.Family(agreement.VoterFamily.RottenTomatoes, "title|Klondike")), onTmdb = false)
+    else WaitingOn.model(d))
+  private val now = IdentityDriftCheck.Live(live, Seq(raices, muza, helios, waits, moved, asks).map(k => k -> listing(k)).toMap, _ != moved)
 
   "A drift check" should "name each listing the whole resolve takes otherwise, by what adopting it would do" in {
     val report = IdentityDriftCheck.compare(now, whole)
     report.drifted.map(d => d.listing -> d.kind) shouldBe Seq(helios -> "changed", raices -> "lost")
-    (report.listings, report.unsettled) shouldBe ((4, 1))   // the moved listing is not compared; the waiting one is unsettled
+    // the moved listing is not compared; the one waiting on the model and the one waiting on the agreement are unsettled
+    (report.listings, report.unsettled, report.waitingOnAgreement) shouldBe ((5, 2, 1))
     report.byKind shouldBe Map("changed" -> 1, "lost" -> 1)
   }
 
