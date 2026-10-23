@@ -1,0 +1,64 @@
+name: Page test repeat
+
+# Proves a page-test fix under the CI host's REAL load: runs the named specs `repeat-each` times in an ordinary
+# page-test row, on whatever ref it is dispatched on. A flake fix lands with a green run of this on its branch (and,
+# for contrast, a red one on the code before it), instead of a laptop pinned under CPU burners.
+#
+#   forgejo-gh workflow run page-test-repeat.yml --ref <branch> \
+#       -f specs='tests/app-banner.spec.ts tests/language-select.spec.ts' -f projects='webkit-iphone-13,chrome-desktop'
+on:
+    workflow_dispatch:
+        inputs:
+            specs:
+                description: 'Spec files (or file:line), space-separated, relative to page-tests-playwright/'
+                required: true
+            projects:
+                description: 'Playwright projects, comma-separated (globs allowed)'
+                required: false
+                default: 'webkit-iphone-13,chrome-desktop'
+            browsers:
+                description: 'Engines to install (chromium chrome firefox webkit)'
+                required: false
+                default: 'webkit chrome'
+            repeat-each:
+                description: 'How many times to run each test'
+                required: false
+                default: '20'
+
+# One lane per branch: a baseline and its fix, dispatched side by side, run at the same time; a second dispatch on
+# the same branch queues.
+concurrency:
+    group: page-test-repeat-${{ github.ref }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    repeat:
+        name: page tests x${{ inputs.repeat-each }} (${{ inputs.projects }})
+        runs-on: ubuntu-26.04
+        timeout-minutes: 90
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/run-page-test
+              with:
+                  kind:       playwright
+                  browsers:   ${{ inputs.browsers }}
+                  label:      page-test-repeat
+                  runs:       '${{ inputs.projects }} ; ; ;'
+                  extra-args: --repeat-each ${{ inputs.repeat-each }} ${{ inputs.specs }}
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
+    timings:
+        needs: [ repeat ]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
+        secrets: inherit
