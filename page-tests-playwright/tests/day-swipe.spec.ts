@@ -28,28 +28,28 @@ test.describe('day-swipe', { tag: '@agnostic' }, () => {
     page.evaluate(() => (document.getElementById('date-filter') as HTMLSelectElement).selectedIndex);
   const dayCount = (page: Page) =>
     page.evaluate(() => (document.getElementById('date-filter') as HTMLSelectElement).options.length);
-  // The slide settles once `#day-track`'s clones are gone and its inline
+  // The slide has settled once `#day-track`'s clones are gone and its inline
   // transform is cleared (back to the single-column resting layout).
-  const settled = (page: Page) =>
-    page.evaluate(() => {
+  const expectSlideSettled = (page: Page) =>
+    expect.poll(() => page.evaluate(() => {
       const track = document.getElementById('day-track')!;
       const clones = track.querySelectorAll(':scope > .day-col').length;
       const t = getComputedStyle(track).transform;
       return clones === 0 && (t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)');
-    });
+    })).toBe(true);
 
   async function startOn(page: Page, value: string): Promise<void> {
     // `#date-filter` is visually-hidden, so drive it through the same evaluate
     // path the pills use rather than a (visibility-gated) selectOption.
     await setDateFilter(page, value);
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
   }
 
   test('swipe left advances to the next day; swipe right goes back', async ({ page }) => {
     await startOn(page, 'today');               // selectedIndex 0
     await cdpSwipe(page, 'left');                   // next day
     await expect.poll(() => dayIndex(page)).toBe(1);
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
     await cdpSwipe(page, 'right');                  // previous day
     await expect.poll(() => dayIndex(page)).toBe(0);
   });
@@ -94,7 +94,7 @@ test.describe('day-swipe', { tag: '@agnostic' }, () => {
     }
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await client.detach();
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
     expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(300);
 
     // A committed swipe (past threshold) scrolls to top. Swipe at a FIXED
@@ -116,7 +116,7 @@ test.describe('day-swipe', { tag: '@agnostic' }, () => {
     // anytime (last index) + swipe-left wraps to today (index 0): the day
     // actually committed, which is what triggers the scroll-to-top.
     await expect.poll(() => dayIndex(page)).toBe(0);
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
     expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(0);
   });
 
@@ -133,15 +133,15 @@ test.describe('day-swipe', { tag: '@agnostic' }, () => {
     await startOn(page, 'today');
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => dayIndex(page)).toBe(1);
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
     await page.keyboard.press('ArrowLeft');
     await expect.poll(() => dayIndex(page)).toBe(0);
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
 
     // Tapping a pill jumps straight to that day and reflects it in the URL.
     await startOn(page, 'today');
     await page.locator('.day-pill[data-day="anytime"]').click();
-    await expect.poll(() => settled(page)).toBe(true);
+    await expectSlideSettled(page);
     await expect
       .poll(() => page.evaluate(() => new URL(location.href).searchParams.get('date')))
       .toBe('anytime');

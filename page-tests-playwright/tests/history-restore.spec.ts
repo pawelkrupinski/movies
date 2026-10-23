@@ -29,7 +29,7 @@ test.describe('returning to the listing through history', { tag: '@agnostic' }, 
     // Away and back, the way a visitor does it.
     await gotoAndWaitForCards(page, '/poznan/');
     await page.goBack({ waitUntil: 'load' });
-    await page.waitForFunction(() => document.getElementById('film-grid') !== null);
+    await expect(page.locator('#film-grid')).toBeAttached();
 
     await expect(page.locator('#date-filter')).toHaveValue('tomorrow');
     // No filter the visitor never set, and the same films as before.
@@ -53,7 +53,7 @@ test.describe('returning to the listing through history', { tag: '@agnostic' }, 
 
     await gotoAndWaitForCards(page, '/poznan/?date=anytime');
     await page.goBack({ waitUntil: 'load' });
-    await page.waitForFunction(() => document.getElementById('film-grid') !== null);
+    await expect(page.locator('#film-grid')).toBeAttached();
 
     await expect(page.locator('#search-input')).toHaveValue(term);
     await expect(page.locator('#format-imax')).not.toBeChecked();
