@@ -41,7 +41,11 @@
     -webkit-touch-callout: none;
   }
   a.badge-time:hover { background: #5a5a9e; color: #fff; }
-  .badge-fmt { font-size: var(--showtime-fmt-font, .62rem); opacity: .7; margin-left: 2px; }
+  /* The format tag is one unbreakable box. A column narrower than the whole pill (the 250 px
+     zoomed phones: "11:30 AM IMAX 3D DUB" needs ~119 px of a ~94 px column) then drops the tag
+     whole under the time, rather than splitting it at a space ("11:30 AM IMAX 3D" / "DUB"). As an
+     atomic inline it also gives the line a break opportunity right after the time. */
+  .badge-fmt { font-size: var(--showtime-fmt-font, .62rem); opacity: .7; margin-left: 2px; display: inline-block; white-space: nowrap; }
 
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
