@@ -296,10 +296,19 @@ trace_asset() {
   if [ -n "${KINOWO_CONVERGENCE_NAMED_RECORDING:-}" ]; then echo "takes-trace-$cc-$(code_of "$1")-n$KINOWO_CONVERGENCE_NAMED_RECORDING.gz"
   elif [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ]; then echo "takes-trace-$cc-$(code_of "$1")-p$KINOWO_CONVERGENCE_PIN_CORPUS_RUN.gz"; fi
 }
+# <sha>: the same trace under the side's EXACT inputs -- its decisions' key (identity code, recording, tree, fills, the fill
+# laid) and its final takes' (the capture) -- for THE SKIP GATE below, whose proof stands only for the readings a resolve
+# over these very inputs made: a fill since adds answers, and readings no trace holds. None without a pinned recording.
+exact_trace_asset() {
+  local decisions; decisions=$(asset decisions "$(decisions_key "$1")")
+  [ -n "$decisions" ] || return 0
+  echo "takes-tracex-$cc-$(printf '%s\n' "$decisions" "$(capture_key "$1")" | sha256sum | cut -c1-24).gz"
+}
 keep_trace() { # <side> <sha> [base]: both of the side's traces, as one, stored -- one alone proves nothing
   [ -s "$traces/$1-model.jsonl.gz" ] && [ -s "$traces/$1-final.jsonl.gz" ] || return 0
   cat "$traces/$1-model.jsonl.gz" "$traces/$1-final.jsonl.gz" > "$traces/$1.jsonl.gz" # gzip members concatenated: one stream
   keep "$traces/$1.jsonl.gz" "$(trace_asset "$2")" ${3:+"$3"}
+  keep "$traces/$1.jsonl.gz" "$(exact_trace_asset "$2")" ${3:+"$3"}
 }
 
 tree="$RUNNER_TEMP/identity-takes-base"
@@ -467,6 +476,56 @@ if [ "$side" = base ]; then
   exit 0
 fi
 
+# THE DAILY FULL ROW: every full takes diff on main refreshes `takes-full-<cc>.txt` on the store's release; enforce honours
+# a SKIP only while that marker is under 24 hours old, so a gate that proved wrongly is found within a day whatever the
+# lane did with the scheduled full run (convergence-daily.yml). Its age in seconds; nothing when it cannot be read.
+full_marker_age() {
+  [ -n "${TAKES_STORE:-}" ] || return 1
+  local created
+  # allow-silenced: a marker that cannot be read is no marker -- the takes then run in full (fail-closed)
+  created=$(bounded "$gh_read" gh release view "$TAKES_STORE" --json assets \
+      --jq ".assets[] | select(.name == \"takes-full-$cc.txt\") | .createdAt" 2> /dev/null | head -1) || return 1
+  [ -n "$created" ] || return 1
+  python3 -c 'import sys, datetime as d; print(int((d.datetime.now(d.timezone.utc) - d.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00"))).total_seconds()))' "$created"
+}
+refresh_full_marker() {
+  [ -n "${TAKES_STORE:-}" ] && [ "${GITHUB_REF:-}" = refs/heads/main ] || return 0
+  printf '%s %s\n' "$head" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$RUNNER_TEMP/takes-full-$cc.txt"
+  # allow-silenced: a marker not refreshed only makes the next enforce run a full one
+  "$here/scripts/ci/gh-release.sh" upload "$TAKES_STORE" "$RUNNER_TEMP/takes-full-$cc.txt" --clobber > /dev/null 2>&1 || true
+}
+
+# THE SKIP GATE (scripts/ci/takes-skip-gate.sh; TAKES_SKIP_MODE off, shadow or enforce): whether this commit PROVABLY
+# moves no take -- a title-rule change alone, the base's every title reading (its trace under its exact inputs) read
+# alike under the head's rules. Fail-closed: anything it cannot prove is RUN. SHADOW (the default on CI): the takes run
+# as ever, and the gate's answer is held against them after (THE SHADOW, below). ENFORCE: a SKIP leaves out the takes
+# diff -- the corpus shape and the drift check still run -- except on every TAKES_SKIP_SAMPLE_EVERY-th such commit (by its
+# name, default 10), which runs in full and is held against the gate as in shadow. Never on the base row.
+skip_mode=${TAKES_SKIP_MODE:-off} gate=RUN gate_line="" takes_skipped=""
+case $skip_mode in shadow|enforce) [ -n "$takes_moves" ] && gate_asked=1 || gate_asked="" ;; *) gate_asked="" ;; esac
+if [ -n "$gate_asked" ]; then
+  mkdir -p "$out/gate"
+  exact=$(exact_trace_asset "$base")
+  if [ -z "$exact" ] || ! fetch_stored "$exact" "$out/gate/base-trace.jsonl.gz"; then rm -f "$out/gate/base-trace.jsonl.gz"; fi
+  # (TAKES_SKIP_GATE_CMD: the self-test's stand-in for the gate)
+  gate_out=$(TAKES_SKIP_MODE=$skip_mode bounded "${TAKES_SKIP_GATE_TIMEOUT:-1200}" "${TAKES_SKIP_GATE_CMD:-$here/scripts/ci/takes-skip-gate.sh}" "$base" "$head" \
+      "$out/gate/base-trace.jsonl.gz" -- "$here/scripts/ci/takes-skip-proof.sh" 2> "$out/gate/reasons.txt")
+  [ "$(head -1 <<< "$gate_out")" = SKIP ] && gate=SKIP gate_line=$(sed -n 2p <<< "$gate_out")
+  echo "identity takes ($cc): skip gate ($skip_mode): $gate -- $(grep '^takes-skip-gate:' "$out/gate/reasons.txt" | tail -1 | sed 's/^takes-skip-gate: [A-Z]* -- //')"
+  if [ "$gate" = SKIP ] && [ "$skip_mode" = enforce ]; then
+    every=${TAKES_SKIP_SAMPLE_EVERY:-10}
+    full_age=$(full_marker_age) || full_age=""
+    if [ -z "$full_age" ] || ! [ "$full_age" -lt 86400 ] 2> /dev/null; then
+      echo "identity takes ($cc): no full takes row of $cc on main in the last 24 hours (${full_age:-no marker}${full_age:+ s ago}): the takes run in full, held against the gate"
+    elif [ "$every" -gt 0 ] 2> /dev/null && [ $(( 0x${head:0:8} % every )) != 0 ]; then
+      takes_skipped=1 takes_moves=""
+      echo "identity takes ($cc): the takes diff skipped -- $gate_line under the head's rules: no take can have moved" | tee -a "$out/verdict.txt"
+    else
+      echo "identity takes ($cc): a sampled commit (1 in $every): the takes run in full, held against the gate"
+    fi
+  fi
+fi
+
 if [ -n "$takes_moves" ]; then
   mkdir -p "$out/head" "$out/base"
   # Beside a base row, its final takes are that row's (awaited after the session).
@@ -573,7 +632,7 @@ if [ -n "$takes_moves" ]; then
   base_final_finish
   keep_trace base "$base" base
   gaps_of head; gaps_of base
-else
+elif [ -z "$takes_skipped" ]; then
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi
 
@@ -618,6 +677,7 @@ verdict="$out/verdict.txt.part"
 if [ -n "$takes_moves" ]; then
   diff_takes "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" | tee -a "$verdict"
   model=${PIPESTATUS[0]}
+  refresh_full_marker
   if [ "$final" = 0 ]; then
     diff_takes "$out/base/ratchet-takes.tsv" "$out/head/ratchet-takes.tsv" --final | tee -a "$verdict"
     final=${PIPESTATUS[0]}
@@ -636,6 +696,41 @@ if [ -n "$shape_moves" ]; then
   fi
 fi
 cat "$out/verdict.txt" >> "$verdict" && mv "$verdict" "$out/verdict.txt"
+
+# THE SHADOW: the gate's answer held against the takes it was asked about, when they ran -- `moved` when the model's or
+# the final takes differ between base and head at all (lost, changed or gained), `unknown` when a side could not be read.
+# A gate that said SKIP where a take moved is the one thing it must never do: said as an error, posted, and the row fails.
+# Every answer is posted as the commit status `takes skip gate (<cc>)` and logged as one `takes-skip-shadow` line, which
+# scripts/ci/takes-skip-shadow-report.sh counts before skipping is enabled (and while it is, on the sampled commits).
+if [ -n "$gate_asked" ] && [ -z "$takes_skipped" ]; then
+  actual=$(python3 - "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" "$out/base/ratchet-takes.tsv" "$out/head/ratchet-takes.tsv" <<'PY' 2> /dev/null || echo unknown
+import csv, json, sys
+def model(path):
+    with open(path) as f:
+        return {d["key"]: d.get("film") for d in map(json.loads, filter(str.strip, f))}
+def final(path):
+    with open(path) as f:
+        return {(r["country"], r["venue"], r["rawTitle"]): (r.get("status"), r.get("film")) for r in csv.DictReader(f, delimiter="\t")}
+b, h, bf, hf = sys.argv[1:]
+print("moved" if model(b) != model(h) or final(bf) != final(hf) else "unmoved")
+PY
+)
+  if [ "$model" = 2 ] || [ "$final" = 2 ]; then actual=unknown; fi
+  agree=yes; [ "$gate" = SKIP ] && [ "$actual" != unmoved ] && agree=no
+  line="takes-skip-shadow ($cc): mode=$skip_mode gate=$gate actual=$actual agree=$agree base=${base:0:9} head=${head:0:9}"
+  echo "$line" | tee -a "$out/verdict.txt" ${GITHUB_STEP_SUMMARY:+"$GITHUB_STEP_SUMMARY"}
+  if [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "${GITHUB_SHA:-}" ]; then
+    # allow-silenced: the status reports the comparison; a disagreement fails the row below whatever the post did
+    bounded "$gh_read" gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$([ "$agree" = yes ] && echo success || echo failure)" \
+      -f context="takes skip gate ($cc)" -f description="$skip_mode: gate $gate, takes $actual -- $([ "$agree" = yes ] && echo agree || echo DISAGREE)" \
+      > /dev/null 2>&1 || true
+  fi
+  if [ "$agree" = no ]; then
+    echo "::error title=takes skip gate ($cc)::the gate said SKIP but the takes were $actual -- the gate is unsound; see $out/gate/reasons.txt" \
+      | tee -a "$out/verdict.txt"
+    exit 1
+  fi
+fi
 # A move or a new finding anywhere fails; failing that, a half that could not run is no verdict (2), never a pass.
 if [ "$model" = 1 ] || [ "$final" = 1 ] || [ "$shape" = 1 ]; then exit 1; fi
 if [ "$model" != 0 ] || [ "$final" != 0 ] || [ "$shape" != 0 ]; then exit 2; fi

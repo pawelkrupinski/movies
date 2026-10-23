@@ -272,6 +272,17 @@ reds were changes `identity-measure` alone had called LANDABLE. The pre-push hoo
   rows that fold alike). Rely on it while iterating, never to land: **landing needs the full measure** (no
   `--footprint`). Anything else -- a matcher, scoring or BillingParse change, no stored trace, a reading that reads
   otherwise (listed: takes may move) -- falls back to the full measure by itself, saying why.
+- **The convergence `takes` rows' skip gate** (`scripts/ci/takes-skip-gate.sh`, CI's side of the same proof): a takes row
+  may leave out its takes diff only when ALL hold -- every changed file a title-rule file (as above) or inert (docs/,
+  .claude/, Markdown); no identity/matcher/resolver/projection path; the trace tooling unchanged; the base's trace stored
+  under its EXACT inputs (code, recording, tree, fills, capture: `takes-tracex-<cc>-<key>`); and the proof ending
+  `0 read otherwise, 0 could not be made again`. Anything else -- an error, a timeout, a missing trace, an unknown file
+  -- is RUN. It is in **SHADOW** (`takes-skip: shadow`, the default): every row still runs in full, and the gate's answer
+  is posted as the status `takes skip gate (<cc>)`; a SKIP where a take moved fails the row as unsound. Enforce
+  (`takes-skip: enforce`) only once `scripts/ci/takes-skip-shadow-report.sh` says READY (>= 20 SKIPs, 0 disagreeing);
+  even then the shape and drift checks run, 1 in 10 SKIPs is sampled in full, a row whose country had no full takes row
+  on main for 24 h runs in full, and `convergence-daily.yml` dispatches a full run every day. Changing the gate:
+  `takes-skip-gate-test.sh` and its mutation test (`takes-skip-gate-mutation-test.sh`: every check's removal must fail it).
 
 - Read `docs/identity-experiments.md` before a resolver change; add an entry for every experiment you drop or park,
   its code kept as an `experiment/<name>` tag, not a stray branch.

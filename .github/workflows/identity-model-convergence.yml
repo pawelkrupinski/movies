@@ -64,6 +64,11 @@ on:
                 required: false
                 type: boolean
                 default: false
+            takes-skip:
+                description: The takes skip gate (scripts/ci/takes-skip-gate.sh) -- off, shadow or enforce. The daily full run passes shadow.
+                required: false
+                type: string
+                default: shadow
 
 # Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. Every
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
@@ -208,6 +213,9 @@ jobs:
             takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
             takes-countries:               ${{ inputs.takes-countries || '' }}
             takes-no-store:                ${{ inputs.takes-no-store == true || inputs.takes-no-store == 'true' }}
+            # The skip gate's mode (a push's kick dispatches with none: shadow). The daily full run (convergence-daily.yml)
+            # always passes shadow, so whatever main's pushes do, one run a day takes every take in full.
+            takes-skip:                    ${{ inputs.takes-skip || 'shadow' }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
             corpus-run:                    ${{ inputs.recording || '' }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the

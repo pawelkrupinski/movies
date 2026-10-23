@@ -61,6 +61,8 @@ scripts/ci/convergence-preflight.sh
 scripts/ci/start-mongo-replset.sh
 scripts/ci/mongo-exec.sh
 scripts/ci/order-phases.sh
+scripts/ci/takes-skip-gate.sh
+scripts/ci/takes-skip-proof.sh
 .github/order-independence-paths.txt
 scripts/ci/in-background.sh
 scripts/ci/recording-cache.sh

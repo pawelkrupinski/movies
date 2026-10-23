@@ -120,7 +120,9 @@ flag() { local i; for i in "${!words[@]}"; do [ "${words[$i]}" = "$1" ] && { ech
 called() { echo "$(pwd -P) $1" >> "$SBT_CALLS"; }
 decisions() { # <dir> <cc>
   mkdir -p "$1"
-  echo '{"key":"k","venue":"v","rawTitle":"t","film":1,"filmTitle":"F","basis":"b","explanation":[],"blocker":null}' > "$1/decisions-$2.jsonl"
+  # STUB_HEAD_FILM: the head's take of the one listing, where the base's is film 1 -- a take the code moved
+  local film=1; case "$(pwd -P)" in *identity-takes-base*) ;; *) film=${STUB_HEAD_FILM:-1} ;; esac
+  echo '{"key":"k","venue":"v","rawTitle":"t","film":'"$film"',"filmTitle":"F","basis":"b","explanation":[],"blocker":null}' > "$1/decisions-$2.jsonl"
 }
 takes() { # <gaps read as unknown: 1 or empty>
   mkdir -p target/identity-unmatched
@@ -162,7 +164,11 @@ case "\$1 \$2" in
   "release download") [ -f "$work/release/\$5" ] && cp "$work/release/\$5" "\$7" ;;
   "release upload")   [ -n "\${UPLOAD_RACES:-}" ] && { mkdir -p "$work/release" && cp "\$4" "$work/release/"; exit 1; }
                       mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
-  "release view")     for f in "$work"/release/*; do [ -f "\$f" ] && basename "\$f"; done ;;
+  "release view")     case "\$*" in
+                        *takes-full-*) f=\$(ls "$work"/release/takes-full-*.txt 2> /dev/null | head -1)
+                                       [ -n "\$f" ] && python3 -c 'import os, sys, datetime as d; print(d.datetime.fromtimestamp(os.path.getmtime(sys.argv[1]), d.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))' "\$f" ;;
+                        *) for f in "$work"/release/*; do [ -f "\$f" ] && basename "\$f"; done ;;
+                      esac ;;
   "api repos/o/r/actions/runs/7/jobs"*)
     [ -d "$work/pending" ] && mkdir -p "$work/release" && mv "$work"/pending/* "$work/release/" 2> /dev/null && rmdir "$work/pending"
     cat "$work/base-row" 2> /dev/null || true ;;
@@ -186,7 +192,8 @@ rm -rf "$work/release"
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" 2 "$(base_calls)"
 check "...and the check passes on the same takes" 0 "$code"
-check "...and the head's decisions, final takes and normalizer trace, and the base's it resolved, are stored" 5 "$(ls "$work/release" | wc -l | tr -d ' ')"
+check "...and the head's decisions, final takes and normalizer trace (by its code, and by its exact inputs), the base's it resolved, and the daily full row's marker, are stored" 7 "$(ls "$work/release" | wc -l | tr -d ' ')"
+check "...the exact-input trace among them" 1 "$(find "$work/release" -name 'takes-tracex-pl-*.gz' | wc -l | tr -d ' ')"
 check "...the trace under the head's identity code and the pinned recording, both tools' readings in one" \
   "1 dump ratchet" "$(find "$work/release" -name 'takes-trace-pl-*-p42.gz' | grep -cE 'takes-trace-pl-[0-9a-f]{24}-p42\.gz$') $(
     gunzip -c "$work"/release/takes-trace-pl-*-p42.gz | gunzip -c | sed 's/.*"tool":"\([a-z]*\)".*/\1/' | sort | xargs)"
@@ -344,6 +351,61 @@ code=0; STUB_GAPS=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a head whose final takes are reused still names the gaps its capture has" "0 0 1" "$code $(head_calls) $(
   grep -c "the head's final takes read 1 lookup(s) the capture lacks as UNKNOWN" "$work/out/verdict.txt")"
 check "...as does a base whose are" 1 "$(grep -c "the base's final takes read 1 lookup(s) the capture lacks" "$work/out/verdict.txt")"
+rm -rf "$work/release"
+
+# THE SKIP GATE (takes-skip-gate.sh, here a stand-in answering STUB_GATE: SKIP or RUN) and THE SHADOW. Off: nothing asked.
+cat > "$work/bin/gate" <<'GATE'
+#!/usr/bin/env bash
+echo "$TAKES_SKIP_MODE $*" >> "$GATE_LOG"
+if [ "${STUB_GATE:-RUN}" = SKIP ]; then echo SKIP; echo "measure: footprint, 0 readings differ (2 readings)"; echo "takes-skip-gate: SKIP -- stub" >&2; exit 0; fi
+echo "takes-skip-gate: RUN -- stub" >&2; echo RUN; exit 1
+GATE
+chmod +x "$work/bin/gate"
+export GATE_LOG="$work/gate.log"
+gate_run() { # <mode> [head]: the check of c5 (or <head>) against c4, the gate the stand-in; MARKER fresh or old seeds the
+  # daily full row's marker (none by default)
+  : > "$GATE_LOG"; rm -rf "$work/release"
+  if [ -n "${MARKER:-}" ]; then
+    mkdir -p "$work/release" && echo marker > "$work/release/takes-full-pl.txt"
+    [ "$MARKER" = old ] && touch -t 202001010000 "$work/release/takes-full-pl.txt"
+  fi
+  TAKES_SKIP_MODE=$1 TAKES_SKIP_GATE_CMD="$work/bin/gate" TAKES_BASE=$c4 store_run "${2:-$c5}"
+}
+code=0; gate_run off || code=$?
+check "skip gate off: never asked, no shadow" "0 0 0" "$code $(wc -l < "$GATE_LOG" | tr -d ' ') $(grep -c takes-skip-shadow "$work/log")"
+code=0; STUB_GATE=RUN gate_run shadow || code=$?
+check "shadow, the gate says RUN: the takes run, and agree" "0 2 1" \
+  "$code $(head_calls) $(grep -c 'takes-skip-shadow (pl): mode=shadow gate=RUN actual=unmoved agree=yes' "$work/log")"
+check "...the gate asked about this base and head, with the base's exact-input trace and the proof" 1 \
+  "$(grep -cE "^shadow $c4 $c5 .*/gate/base-trace.jsonl.gz -- .*/scripts/ci/takes-skip-proof.sh$" "$GATE_LOG")"
+code=0; STUB_GATE=SKIP gate_run shadow || code=$?
+check "shadow, the gate says SKIP and no take moved: the takes still run, and agree" "0 2 1" \
+  "$code $(head_calls) $(grep -c 'gate=SKIP actual=unmoved agree=yes' "$work/log")"
+code=0; STUB_HEAD_FILM=2 STUB_GATE=SKIP gate_run shadow || code=$?
+check "shadow, the gate says SKIP but a take moved: the row fails, the gate named unsound" "1 1 1" \
+  "$code $(grep -c 'gate=SKIP actual=moved agree=no' "$work/log") $(grep -c 'the gate said SKIP but the takes were moved -- the gate is unsound' "$work/log")"
+code=0; STUB_HEAD_FILM=2 STUB_GATE=RUN gate_run shadow || code=$?
+check "shadow, the gate says RUN and a take moved: agree (the takes verdict is the takes check's own)" 1 \
+  "$(grep -c 'gate=RUN actual=moved agree=yes' "$work/log")"
+# enforce: a SKIP leaves the takes diff out -- unless the commit is sampled (TAKES_SKIP_SAMPLE_EVERY=1: every one is)
+check "a full takes row on main refreshes the daily marker" 1 "$([ -f "$work/release/takes-full-pl.txt" ] && echo 1 || echo 0)"
+code=0; MARKER=fresh TAKES_SKIP_SAMPLE_EVERY=1000000000 STUB_GATE=SKIP gate_run enforce || code=$?
+check "enforce, the gate says SKIP: no resolve or ratchet on either side, and the check passes" "0 0 0" "$code $(head_calls) $(base_calls)"
+check "...saying why" 1 "$(grep -c "the takes diff skipped -- measure: footprint, 0 readings differ (2 readings) under the head's rules" "$work/out/verdict.txt")"
+check "...and not that no identity code changed" 0 "$(grep -c 'no identity code changed' "$work/out/verdict.txt")"
+code=0; TAKES_SKIP_SAMPLE_EVERY=1000000000 STUB_GATE=SKIP gate_run enforce || code=$?
+check "enforce, SKIP, but no full row's marker: the takes run in full, held against the gate" "0 2 1 1" \
+  "$code $(head_calls) $(grep -c 'no full takes row of pl on main in the last 24 hours (no marker)' "$work/log") $(grep -c 'mode=enforce gate=SKIP actual=unmoved agree=yes' "$work/log")"
+code=0; MARKER=old TAKES_SKIP_SAMPLE_EVERY=1000000000 STUB_GATE=SKIP gate_run enforce || code=$?
+check "enforce, SKIP, the marker older than a day: the takes run in full" "0 2 1" \
+  "$code $(head_calls) $(grep -c 'no full takes row of pl on main in the last 24 hours ([0-9]* s ago)' "$work/log")"
+code=0; MARKER=fresh TAKES_SKIP_SAMPLE_EVERY=1 STUB_GATE=SKIP gate_run enforce || code=$?
+check "enforce, a sampled commit: the takes run in full, held against the gate" "0 2 1" \
+  "$code $(head_calls) $(grep -c 'mode=enforce gate=SKIP actual=unmoved agree=yes' "$work/log")"
+code=0; STUB_GATE=RUN gate_run enforce || code=$?
+check "enforce, the gate says RUN: the takes run" "0 2" "$code $(head_calls)"
+code=0; MARKER=fresh TAKES_SKIP_SAMPLE_EVERY=x STUB_GATE=SKIP gate_run enforce || code=$?
+check "enforce, a sample rate that is no number: the takes run (sampled)" "0 2" "$code $(head_calls)"
 rm -rf "$work/release"
 
 # THE CORPUS SHAPE. c8 brings the specs that write their findings, c9 edits only them (an allowlist): no take can move,

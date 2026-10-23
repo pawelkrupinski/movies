@@ -455,6 +455,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("scripts/ci/order-phases.sh") should include("""[ "$ref" = refs/heads/main ] && both""")
   }
 
+  /** THE TAKES SKIP GATE (scripts/ci/takes-skip-gate.sh): SHADOW by default everywhere -- every takes row runs in full and
+   *  holds the gate's answer against it -- until takes-skip-shadow-report.sh says it may be enforced; and one full run of
+   *  main a day whatever the mode (convergence-daily.yml). */
+  "the takes skip gate" should "be in shadow by default, reach the takes step, and run main in full daily" in {
+    val suite = RepoFile.read(".github/workflows/identity-model-convergence.yml")
+    RepoFile.block(leg, "takes-skip") should include("default: shadow")
+    RepoFile.block(suite, "takes-skip") should include("default: shadow")
+    suite should include("takes-skip:                    ${{ inputs.takes-skip || 'shadow' }}")
+    RepoFile.step(leg, "Check which listings the code moved to another film") should include("TAKES_SKIP_MODE: ${{ inputs.takes-skip }}")
+    val daily = RepoFile.read(".github/workflows/convergence-daily.yml")
+    daily should include("cron:")
+    daily should include("gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow")
+  }
+
   /** scripts/identity-measure's whole-corpus measurement: a takes-only dispatch expands every leg to its `takes` row and
    *  its `takes-base` row, and the takes row uploads the check's own output -- both sides' takes and the verdict -- for the
    *  tool to classify. */

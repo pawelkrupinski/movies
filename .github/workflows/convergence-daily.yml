@@ -1,0 +1,60 @@
+name: Convergence daily full run
+
+# ONE FULL CONVERGENCE OF MAIN A DAY, whatever main's pushes did (scripts/ci/takes-skip-gate.sh): once the takes skip gate
+# is enforced, a push whose title-rule change it proves moves no take leaves its takes diff out, and a gate that proved
+# wrongly could hide behind it. This dispatches main's suite with the gate in shadow -- every takes row runs in full and
+# holds the gate's answer against what it finds. The convergence lane may replace a waiting run with a newer push's, so
+# the takes check also runs in full, in enforce mode, while no full takes row of its country is under 24 hours old
+# (its `takes-full-<cc>.txt` marker on the takes store's release).
+on:
+    schedule:
+        - cron: '23 3 * * *'
+    workflow_dispatch:
+
+concurrency:
+    group: convergence-daily
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    dispatch:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            actions: write
+        steps:
+            - name: Dispatch main's convergence, every takes row in full
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [dispatch]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`, not the two secrets by name (Forgejo 15 refuses a workflow_call `secrets:` block).
+        secrets: inherit
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [dispatch, timings]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

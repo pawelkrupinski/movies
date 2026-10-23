@@ -285,6 +285,14 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # THE SKIP GATE (scripts/ci/takes-skip-gate.sh, identity-takes-check.sh): off, shadow (the takes run, the gate's
+            # answer is held against them and posted) or enforce (a proven title-rule-only commit leaves its takes diff out,
+            # 1 in 10 sampled in full). Shadow until scripts/ci/takes-skip-shadow-report.sh counts 20 SKIPs, none disagreeing.
+            takes-skip:
+                description: The takes skip gate -- off, shadow or enforce.
+                required: false
+                type: string
+                default: shadow
             # A complete RECORDING becomes the hermetic pair only when this is true; false still publishes its tree
             # under its run and marks it prod-latest (`convergence-publish`'s `pin`). Record scrape fixtures passes
             # false unless a dispatch asks, while prod-latest proves itself as a landing bar.
@@ -856,6 +864,7 @@ jobs:
                   # A takes-only dispatch's base is the `takes-base` row's (below): this row runs the head and waits.
                   TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}
                   TAKES_BASE_JOB: takes-base (${{ inputs.country }})
+                  TAKES_SKIP_MODE: ${{ inputs.takes-skip }}
               run: |
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
