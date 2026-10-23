@@ -39,6 +39,7 @@ object ReviewImport {
       case ReviewPage.Matchable => (o \ "labelledFilm").toOption.flatMap(filmOf)
       case ReviewPage.Recent    => (o \ "matchedFilm").toOption.flatMap(filmOf)
       case ReviewPage.Queue     => candidates.headOption
+      case ReviewPage.Digest    => None
     }
     val ref   = str(o, "ref").flatMap(FilmRef.parse).orElse(int(o, "tmdb").map(FilmRef.tmdb))
     val draft = ReviewAnswer(ReviewClusterId.of(members), str(o, "country").getOrElse(""), page, verdict, ref, shown, title, members,

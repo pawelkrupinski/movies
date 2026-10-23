@@ -123,6 +123,35 @@ class ReviewController(cc: ControllerComponents,
     }
   }
 
+  /** The review digest: every take awaiting the user's word ([[ReviewDigest.pending]]) — the agents' judgements and
+   *  the candidates they flagged — by country, each with its film named (TMDB's title, asked live, when the row files
+   *  none) and the answers the other pages post. Reads no mirror: the judgements file, the candidates beside it and
+   *  the answers. */
+  def digest(country: Option[String]): Action[AnyContent] = Action {
+    devOnly {
+      val (labels, labelsError) = readLabels()
+      val candidatesPath        = ReviewDigest.candidatesPath(labelsPath)
+      val (candidates, candidatesError) = Try(ReviewDigest.readCandidates(candidatesPath)) match {
+        case Success(read) => (read, None)
+        case Failure(e)    => (Nil, Some(s"could not read $candidatesPath: ${e.getMessage}"))
+      }
+      val wanted  = country.filterNot(_ == "all").flatMap(Country.byCode).map(_.code)
+      val pending = ReviewDigest.pending(labels, candidates, ReviewDigest.answered(answers.current()))
+        .filter(i => wanted.forall(_ == i.country))
+      // a film the row files no title for, named as TMDB names it in the country's language, the films asked side by side
+      val unnamed = pending.filter(_.filmTitle.isEmpty).flatMap(i => i.film.tmdb.map(_ -> i.country)).distinct
+      val looked  = tmdbPosters.fold(Map.empty[(Int, String), String]) { lookup =>
+        unnamed.map { case key @ (id, cc) =>
+          key -> Future(blocking(lookup.film(id, Country.byCode(cc).fold(java.util.Locale.UK)(_.language))))(using ExecutionContext.global)
+        }.flatMap { case (key, film) => Await.result(film, Duration.Inf).flatMap(_.describe).map(key -> _) }.toMap
+      }
+      val items   = pending.map(i => if (i.filmTitle.isDefined) i else i.copy(filmTitle = i.film.tmdb.flatMap(id => looked.get(id -> i.country))))
+      Ok(views.html.reviewDigest(ReviewDigestView(country.getOrElse("all"), items, labelsPath,
+        labelsError.toSeq ++ candidatesError ++ notices)))
+        .withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
+    }
+  }
+
   /** One card's "Why" fold-out, read when it is opened: each member listing's trace — the evidence for and against
    *  the film it weighed, every rule's refusal, the candidates it scored and what it searched. */
   def why(country: String, cluster: String): Action[AnyContent] = Action {
@@ -244,6 +273,19 @@ final case class ReviewView(page: ReviewPage, country: String, cards: Seq[Review
   }
 }
 
+/** Everything `reviewDigest.scala.html` renders: the takes awaiting the user, and where their answers are written. */
+final case class ReviewDigestView(country: String, items: Seq[DigestItem], labelsPath: Path, notices: Seq[String]) {
+  /** The items by country, in `Country.all`'s order. */
+  def byCountry: Seq[(String, Seq[DigestItem])] = {
+    val order = Country.all.map(_.code).zipWithIndex.toMap
+    items.groupBy(_.country).toSeq.sortBy { case (cc, _) => (order.getOrElse(cc, Int.MaxValue), cc) }
+  }
+
+  /** A listing's explain page ([[ReviewController.listing]]): at its venue, or at every venue for a `*` row. */
+  def explainUrl(item: DigestItem): String =
+    routes.ReviewController.listing(item.country, Option.when(item.venue != "*")(item.venue), item.rawTitle).url
+}
+
 /** Everything `reviewListing.scala.html` renders: the query, each listing it names explained, or the listings near it. */
 final case class ListingExplainView(countryOf: Country, venue: Option[String], title: String, explains: Seq[ListingExplain],
                                     near: Seq[services.movies.ListingKey], notices: Seq[String]) {
@@ -258,5 +300,6 @@ object ReviewView {
     case ReviewPage.Queue     => "/debug/review"
     case ReviewPage.Matchable => "/debug/review/matchable"
     case ReviewPage.Recent    => "/debug/review/recent"
+    case ReviewPage.Digest    => "/debug/review/digest"
   }
 }

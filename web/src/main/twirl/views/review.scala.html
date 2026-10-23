@@ -75,6 +75,7 @@
     case ReviewPage.Queue => {Listing clusters the resolver left unmatched or is unsure of — a pooled take, or one prod serves otherwise than the model decided — those an answer settles the most listings of first: the listings no label covers yet, weighted by how likely the resolver is wrong on them. Each card shows what the venue says, the film put forward, and why it is unsure. Mark that film right or wrong, pick another candidate, or give the right film; each answer is written to identity-judgements.tsv as it is given.}
     case ReviewPage.Matchable => {Unmatched clusters whose best candidate the resolver itself rated at the threshold or above — held below the line, or vetoed by a guard. Each card shows what the venue says, the film the model leaned to, and why it held back. Confirm or reject it, or give the right film; answers become labels, never hand matches.}
     case ReviewPage.Recent => {Clusters matched to a film lately, least confident first. Each card shows what the venue says, the film it was matched to, the rule that took it and why. Mark each match right or wrong, or give the right film; answers become labels the rules are graded against.}
+    case ReviewPage.Digest => {}
   }</p>
   @for(n <- view.notices){<div class="notice warn">@n</div>}
   <div class="controls">

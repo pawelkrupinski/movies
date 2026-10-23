@@ -36,6 +36,31 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
   // TMDB's recorded answer for "Howl's Moving Castle" (4935): the poster a card shows when no stored read gives one
   private def howlsLookup = TmdbPosterLookupSpec.lookup
 
+  "the review digest" should "404 in production, and list the takes awaiting the user by country, each film named and its listing explained" in {
+    val labels = Files.createTempDirectory("digest").resolve("identity-judgements.tsv")
+    LabelsTsv.write(labels, Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
+      "agent judged 2026-10-22 (test): Miyazaki's, the venue's year 2004", judged = "2026-10-22")))
+    Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
+      "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
+    status(controller(Mode.Prod, labels = labels).digest(None)(FakeRequest())) shouldBe NOT_FOUND
+    val dev  = controller(Mode.Dev, labels = labels, tmdbPosters = Some(howlsLookup))
+    val html = contentAsString(dev.digest(None)(FakeRequest()))
+    html.indexOf("Polska") should (be > 0 and be < html.indexOf("Deutschland"))
+    html should include("<b class=\"film-title\">Howl&#x27;s Moving Castle (2004)</b>")   // the row files no title: TMDB's
+    html should include("<b class=\"film-title\">Latcho Drom - Good Road (2024)</b>")
+    html should include("agent judged right · 2026-10-22")
+    html should include("flagged · 2026-10-23")
+    html should include("looks wrong: a 19′ short")
+    html should include("/debug/review/listing?country=de&amp;venue=Rastst%C3%A4tte&amp;title=Latcho")
+    html should include("/debug/review/tmdb-poster/1247239?country=de")
+    contentAsString(dev.digest(Some("de"))(FakeRequest())) should not include "Ruchomy zamek Hauru"
+    // answered: the agent's row becomes the user's, and leaves the digest
+    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
+    status(dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "right")))) shouldBe OK
+    LabelsTsv.read(labels).head.note should startWith("review page: right: tmdb:4935 (was: right: agent judged")
+    contentAsString(dev.digest(None)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
+  }
+
   "a candidate's TMDB poster" should "redirect to the poster TMDB names for it, and be not found when TMDB names none or no key is set" in {
     val looked = controller(Mode.Dev, tmdbPosters = Some(howlsLookup)).tmdbPoster(4935, Some("pl"))(FakeRequest())
     status(looked) shouldBe SEE_OTHER

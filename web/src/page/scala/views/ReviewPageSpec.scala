@@ -104,10 +104,32 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
+  /** The review digest over its own judgements file: two agent judgements (one in PL, one in DE) and two candidates. */
+  private val digestDir     = Files.createTempDirectory("digest")
+  private val digestLabels  = digestDir.resolve("identity-judgements.tsv")
+  private val digestAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore)
+  private val digest = {
+    LabelsTsv.write(digestLabels, Seq(
+      LabelRow("pl", "*", "Świąteczna zabawa z Peppą", "tmdb:1778515", "right",
+        "agent judged 2026-10-22 (prodreg-peppa, flagged for the user): the PL billing of the 2026 cinema event",
+        filmTitle = "Festive Fun with Peppa (2026)", judged = "2026-10-22"),
+      LabelRow("de", "Metropolis Kino", "KIRSCHBLÜTEN - HANAMI", "tmdb:6461", "right",
+        "agent judged 2026-10-22 (flagged for the user): Doris Dörrie's 2008 film, the venue's Cineamo id names it",
+        filmTitle = "Kirschblüten – Hanami (2008)", judged = "2026-10-22")))
+    Files.writeString(ReviewDigest.candidatesPath(digestLabels), ReviewDigest.CandidatesHeader + "\n" + Seq(
+      "de\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short's record takes a famous feature's billing; Gatlif's Latcho Drom (1993) is tmdb:47105",
+      "de\tKino im Druckluft\tSnake Eyes\ttmdb:1730437\tSnake Eyes (2026)\t2026-10-23\tlooks wrong: a 21′ short's record; De Palma's Snake Eyes (1998) is tmdb:8688").mkString("", "\n", "\n"))
+    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers, digestLabels, ticking)
+  }
+  private lazy val digestItems = ReviewDigest.pending(LabelsTsv.read(digestLabels),
+    ReviewDigest.readCandidates(ReviewDigest.candidatesPath(digestLabels)), Set.empty)
+
   private def dynamic(exchange: HttpExchange): Boolean = {
     val path = exchange.getRequestURI.getPath
     lazy val body = Json.parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
     val result = Option.when(exchange.getRequestMethod == "POST")(path).collect {
+      case "/debug/review/answer" if (body \ "card" \ "page").asOpt[String].contains("digest") =>
+        digest.answer()(FakeRequest("POST", path).withBody(body))
       case "/debug/review/answer" => controller.answer()(FakeRequest("POST", path).withBody(body))
       case "/debug/review/export" => controller.exportLabels()(FakeRequest("POST", path))
     }.orElse(Option.when(exchange.getRequestMethod == "GET")(path).collect {
@@ -139,6 +161,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/cast/review"             => contentAsString(cast.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/digest/review"           => contentAsString(digest.digest(None)(FakeRequest()))
         case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case why if why.startsWith("/debug/review/why?") =>
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
@@ -157,7 +180,9 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   override def afterAll(): Unit = {
     if (server != null) server.close()
     chrome.foreach(_.close())
-    Files.deleteIfExists(labels): Unit
+    Files.deleteIfExists(labels)
+    Files.list(digestDir).forEach(Files.delete(_))
+    Files.delete(digestDir)
   }
 
   /** Open `path` with `review/review-page.js` ([[tools.PageScripts]]) installed. */
@@ -539,6 +564,54 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString("document.querySelector('.controls').textContent") should include ("Vetoed")
       page.eval("document.querySelector('.card button[data-verdict=wrong]').click()")
       page.waitFor("document.querySelector('.card').getAttribute('data-answered') === 'wrong'")
+    }
+  }
+
+  "the review digest" should "list the takes awaiting the user by country, and record right, not a film and skip as the user's word" in {
+    def item(raw: String) = s"document.querySelector('.card[data-cluster=\"${digestItems.find(_.rawTitle == raw).get.id}\"]')"
+    onPage("/digest/review") { page =>
+      page.evalString("Array.from(document.querySelectorAll('.country-group')).map(g => g.getAttribute('data-country') + ':' + g.querySelectorAll('.card').length).join(' ')") shouldBe
+        "pl:1 de:3"
+      page.evalString("document.getElementById('count').textContent") shouldBe "0 / 4 answered"
+      val hanami = item("KIRSCHBLÜTEN - HANAMI")
+      page.evalString(s"$hanami.querySelector('.said').textContent") shouldBe "agent judged right · 2026-10-22"
+      page.evalString(s"$hanami.querySelector('.film-title').textContent") shouldBe "Kirschblüten – Hanami (2008)"
+      page.evalString(s"$hanami.querySelector('.evidence').textContent") should include("Doris Dörrie's 2008 film")
+      page.evalString(s"$hanami.querySelector('a.explain').getAttribute('href')") should startWith("/debug/review/listing?country=de&venue=Metropolis+Kino")
+      page.evalString(s"$hanami.querySelector('.cand .s a').getAttribute('href')") shouldBe "https://www.themoviedb.org/movie/6461"
+      page.evalString(s"${item("Latcho Drom")}.querySelector('.said').textContent") shouldBe "flagged · 2026-10-23"
+      page.evalInt(s"$hanami.querySelectorAll('button[data-verdict=right], button[data-verdict=wrong], button[data-verdict=event], button[data-skip]').length") shouldBe 4
+      page.eval("document.querySelector('.country-group').scrollIntoView()")
+      ReviewPageSpec.save(page, "review-digest-desktop.png")
+
+      // right: the agent's judgement becomes the user's
+      page.eval(s"$hanami.querySelector('button[data-verdict=right]').click()")
+      page.waitFor(s"$hanami.getAttribute('data-answered') === 'right'")
+      LabelsTsv.read(digestLabels).find(_.film == "tmdb:6461").get.note should startWith("review page: right: Kirschblüten – Hanami (2008) (was: right: agent judged")
+      // not a film: the candidate's take judged wrong, as the user's
+      val latcho = item("Latcho Drom")
+      page.eval(s"$latcho.querySelector('button[data-verdict=event]').click()")
+      page.waitFor(s"$latcho.getAttribute('data-answered') === 'event'")
+      LabelsTsv.read(digestLabels).find(_.rawTitle == "Latcho Drom").map(r => (r.verdict, r.note)) shouldBe
+        Some(("wrong", "review page: not a film: Latcho Drom - Good Road (2024)"))
+      page.evalString("document.getElementById('count').textContent") shouldBe "2 / 4 answered"
+      page.evalString("document.getElementById('export-summary').textContent") should include("1 added")
+      // skip: to the end of its country's list, nothing recorded
+      val before = digestAnswers.history().size
+      val snake  = item("Snake Eyes")
+      page.eval(s"$snake.querySelector('button[data-skip]').click()")
+      page.evalBool(s"$snake.classList.contains('skipped') && $snake.parentNode.lastElementChild === $snake") shouldBe true
+      digestAnswers.history().size shouldBe before
+
+      page.setViewport(400, 900)
+      page.evalBool("document.documentElement.scrollWidth <= window.innerWidth") shouldBe true
+      page.eval(s"$hanami.scrollIntoView()")
+      ReviewPageSpec.save(page, "review-digest-mobile.png")
+    }
+    // answered takes leave the digest; the skipped one stays
+    onPage("/digest/review") { page =>
+      page.evalString("Array.from(document.querySelectorAll('.card .raw-title')).map(t => t.textContent).join('|')") shouldBe
+        "Świąteczna zabawa z Peppą|Snake Eyes"
     }
   }
 

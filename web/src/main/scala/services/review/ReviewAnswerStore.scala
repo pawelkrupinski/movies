@@ -132,10 +132,13 @@ object ReviewAnswers {
    *  gained a venue (its listings all the card's still): re-answered on the grown card, the old verdict no longer stands
    *  behind the new one. An `Undo` withdraws the answer its card showed ([[Index.answerFor]]: by the cluster's id, else
    *  by a listing it holds) — a card answered under an earlier cluster id posts its Undo under its new one — and no
-   *  other, though another cluster's answer shares a listing with it. */
+   *  other, though another cluster's answer shares a listing with it. A digest answer ([[ReviewPage.Digest]]) is of one
+   *  listing AND film: it replaces, and an Undo withdraws, only its own item's answer — never another film's of the
+   *  same listing. */
   def current(history: Seq[ReviewAnswer]): Seq[ReviewAnswer] =
     history.sortBy(_.at).foldLeft(Vector.empty[ReviewAnswer]) { (kept, a) =>
-      val shown = new Index(kept).answerFor(a.clusterId, a.members)
+      val shown =
+        if (a.page == ReviewPage.Digest) kept.find(_.clusterId == a.clusterId) else new Index(kept).answerFor(a.clusterId, a.members)
       if (a.verdict == ReviewVerdict.Undo) kept.filterNot(k => shown.exists(_ eq k))
       else {
         val held   = a.members.map(_.identity).toSet
@@ -144,10 +147,11 @@ object ReviewAnswers {
       }
     }
 
-  /** Looks a cluster's current answer up by its id, then by any of its listings. */
+  /** Looks a cluster's current answer up by its id, then by any of its listings (a digest answer, of one film of a
+   *  listing, by its id alone). */
   final class Index(current: Seq[ReviewAnswer]) {
     private val byId       = current.map(a => a.clusterId -> a).toMap
-    private val byIdentity = current.flatMap(a => a.members.map(_.identity -> a)).toMap
+    private val byIdentity = current.filterNot(_.page == ReviewPage.Digest).flatMap(a => a.members.map(_.identity -> a)).toMap
     def answerFor(clusterId: String, members: Seq[ReviewMember]): Option[ReviewAnswer] =
       byId.get(clusterId).orElse(members.iterator.flatMap(m => byIdentity.get(m.identity)).nextOption())
   }

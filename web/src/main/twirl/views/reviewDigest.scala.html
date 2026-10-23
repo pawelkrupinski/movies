@@ -1,0 +1,156 @@
+@import services.review._
+@(view: controllers.ReviewDigestView)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review digest · Review</title>
+  @_reviewHead()
+  <style>
+    .country-group { margin-top: 24px; }
+    .country-group h2 { font-family: var(--display); font-weight: 700; font-size: 1.15rem; margin: 0; display: flex; gap: 8px; align-items: baseline; }
+    .country-group h2 .n { font: 500 .8rem var(--mono); color: var(--muted); }
+    .card.skipped { opacity: .45; }
+    .said { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+    .said.right { color: var(--ok); } .said.wrong { color: var(--bad); } .said.flag { color: var(--warn); }
+    .evidence { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; border-left: 3px solid var(--line); padding-left: 10px; }
+    .digest .cand { grid-template-columns: 56px 1fr; }
+    .digest .other { justify-content: flex-start; }
+    .notice code { overflow-wrap: anywhere; }
+    pre.commit:empty { display: none; }
+    pre.commit { font: .8rem var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="review-nav">
+    @for(p <- ReviewPage.values) {
+      <a href="@{controllers.ReviewView.pathOf(p)}?country=@view.country" class="@if(p == ReviewPage.Digest){is-active}">@p.title</a>
+    }
+    <a href="/debug">Korpus</a>
+    <span class="spacer"></span>
+    <select aria-label="Country" onchange="location.href=this.value">
+      @for(c <- "all" +: models.Country.all.map(_.code)) {
+        <option value="@{controllers.ReviewView.pathOf(ReviewPage.Digest)}?country=@c"@if(c == view.country){ selected}>@c</option>
+      }
+    </select>
+  </nav>
+  <h1>Review digest</h1>
+  <p class="lede">The takes agents judged without you (their evidence marked AGENT-JUDGED in identity-judgements.tsv) and
+    those they flagged as looking wrong without judging (identity-review-candidates.tsv). Say whether the film shown is
+    the listing's: each answer is written to identity-judgements.tsv as yours as it is given, and the take leaves this
+    page. Skip leaves it for later.</p>
+  @for(n <- view.notices){<div class="notice warn">@n</div>}
+  <div class="notice">Answers go to <code>@view.labelsPath</code>. Commit them as your judgements with <code>scripts/review-commit</code>.</div>
+  <pre id="export-summary" class="commit"></pre>
+  <div class="bar" data-total="@view.items.size">
+    <div class="meter" aria-hidden="true"><i id="meterFill"></i></div>
+    <span class="count" id="count">@if(view.items.isEmpty){nothing to review} else {0 / @view.items.size answered}</span>
+  </div>
+  @if(view.items.isEmpty){<div class="notice" id="empty">Nothing awaits your review.</div>}
+  @for((country, items) <- view.byCountry) {
+    <section class="country-group" data-country="@country">
+      <h2><span class="tag">@country.toUpperCase(java.util.Locale.ROOT)</span>@models.Country.byCode(country).fold(country)(_.displayName) <span class="n">@items.size</span></h2>
+      <div class="list">
+      @for(item <- items) {
+        <article class="card digest" data-cluster="@item.id" data-card="@item.payload.toString">
+          <div class="head">
+            <div class="raw"><span class="tag">@country.toUpperCase(java.util.Locale.ROOT)</span><span class="raw-title">@item.rawTitle</span></div>
+            @item.agentVerdict match {
+              case Some(v) => {<span class="said @v">agent judged @v · @item.flagged</span>}
+              case None    => {<span class="said flag">flagged · @item.flagged</span>}
+            }
+          </div>
+          <div class="meta">@if(item.venue == "*"){every venue billing it} else {@item.venue} · <a class="explain" href="@view.explainUrl(item)">explain this listing</a></div>
+          <div class="lead">
+            <div class="kind">@if(item.agentVerdict.isDefined){The film judged} else {The film it takes}</div>
+            <div class="cand">
+              @item.film.tmdb match {
+                case Some(id) => {<img class="poster" src="@controllers.routes.ReviewController.tmdbPoster(id, Some(country)).url" alt="TMDB poster" loading="lazy" referrerpolicy="no-referrer">}
+                case None     => {<div class="poster empty">no poster</div>}
+              }
+              <div class="t">
+                <b class="film-title">@item.filmTitle.getOrElse(item.film.render)</b>
+                <div class="s">@item.film.url match {
+                  case Some(url) => {<a href="@url" target="_blank" rel="noopener">@item.film.render</a>}
+                  case None      => {@item.film.render}
+                }</div>
+              </div>
+            </div>
+            <div class="rb other">
+              <button type="button" class="btn yes right" data-verdict="right">Right film</button>
+              <button type="button" class="btn none wrong" data-verdict="wrong">Wrong film</button>
+              <button type="button" class="btn event" data-verdict="event">Not a film</button>
+              <button type="button" class="btn skip" data-skip="1">Skip</button>
+              <button type="button" class="btn" data-verdict="undo" hidden>Undo</button>
+              <span class="status"></span>
+            </div>
+          </div>
+          <div class="evidence">@item.evidence</div>
+        </article>
+      }
+      </div>
+    </section>
+  }
+</div>
+<script>
+  (function () {
+    var bar = document.querySelector('.bar');
+    var total = Number(bar.getAttribute('data-total'));
+    function refresh() {
+      var done = document.querySelectorAll('.card[data-answered]:not([data-answered=""])').length;
+      document.getElementById('count').textContent = total ? done + ' / ' + total + ' answered' : 'nothing to review';
+      document.getElementById('meterFill').style.width = total ? (100 * done / total).toFixed(1) + '%' : '0';
+    }
+    function post(body) {
+      return fetch('/debug/review/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+    }
+    function answer(button) {
+      var card = button.closest('.card');
+      var status = card.querySelector('.status');
+      status.classList.remove('is-error');
+      post({ card: JSON.parse(card.getAttribute('data-card')), verdict: button.getAttribute('data-verdict') }).then(function (j) {
+        var undone = j.verdict === 'undo';
+        card.setAttribute('data-answered', undone ? '' : j.verdict);
+        card.classList.toggle('done', !undone);
+        card.classList.remove('skipped');
+        Array.prototype.forEach.call(card.querySelectorAll('.btn.on'), function (b) { b.classList.remove('on'); });
+        if (!undone) button.classList.add('on');
+        card.querySelector('button[data-verdict=undo]').hidden = undone;
+        status.textContent = undone ? 'undone' : 'saved: ' + button.textContent;
+        // each answer is written into identity-judgements.tsv as it is given: what that did, or why it could not
+        var out = document.getElementById('export-summary');
+        if (j.exportError) { status.classList.add('is-error'); status.textContent += ' — ' + j.exportError; out.textContent = j.exportError; }
+        else out.textContent = j.path + '\n' + j.exported;
+        refresh();
+      }).catch(function (err) { status.classList.add('is-error'); status.textContent = String(err.message || err); });
+    }
+    document.addEventListener('click', function (e) {
+      var skip = e.target.closest('.card button[data-skip]');
+      if (skip) {
+        // not now: to the end of its country's list, nothing recorded
+        var card = skip.closest('.card');
+        card.classList.add('skipped');
+        card.querySelector('.status').textContent = 'skipped';
+        card.parentNode.appendChild(card);
+        return;
+      }
+      var b = e.target.closest('.card button[data-verdict]');
+      if (b) answer(b);
+    });
+    // a poster that fails to load gives way to the "no poster" placeholder
+    document.addEventListener('error', function (e) {
+      var img = e.target;
+      if (img.tagName !== 'IMG' || !img.classList.contains('poster')) return;
+      var empty = document.createElement('div');
+      empty.className = 'poster empty';
+      empty.textContent = 'no TMDB poster';
+      img.replaceWith(empty);
+    }, true);
+    refresh();
+  })();
+</script>
+</body>
+</html>

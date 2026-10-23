@@ -75,16 +75,19 @@ object LabelsTsv {
  *  - one row per distinct raw title of the cluster, under its venue when one venue bills it, `*` otherwise.
  *
  * A row the file already holds is never written twice. A row it holds with the OPPOSITE verdict is
- * flipped in place, its old verdict and note kept after "was:". An answer exported before and no longer
+ * flipped in place, its old verdict and note kept after "was:"; so is an agent's judgement ([[ReviewDigest.agentJudged]])
+ * the answer CONFIRMS, which the user's word now stands behind. Of the rows judging the same listing and film, the
+ * one at the answer's own venue (or `*`) is the one touched, before another venue's. An answer exported before and no longer
  * standing (undone, or replaced by a newer answer) takes its rows back: a row it flipped is its "was:"
  * again, a row it added goes — unless an answer still standing gives that row too.
  */
 object LabelsExport {
 
   final case class Summary(added: Int, flipped: Int, unchanged: Int, unexportable: Seq[String], warnings: Seq[String],
-                           alreadyUsed: Int = 0, withdrawn: Int = 0) {
+                           alreadyUsed: Int = 0, withdrawn: Int = 0, confirmed: Int = 0) {
     def render: String =
       ((s"identity-judgements.tsv: $added added, $flipped flipped, $unchanged already there" +
+        (if (confirmed > 0) s"; $confirmed agent judgement${if (confirmed == 1) "" else "s"} confirmed" else "") +
         (if (alreadyUsed > 0) s"; $alreadyUsed answer${if (alreadyUsed == 1) "" else "s"} already used, skipped" else "") +
         (if (withdrawn > 0) s"; $withdrawn row${if (withdrawn == 1) "" else "s"} of withdrawn answers taken back" else "")) +:
         (unexportable.map("not exported: " + _) ++ warnings.map("WARNING: " + _))).mkString("\n")
@@ -118,10 +121,13 @@ object LabelsExport {
 
   def merge(existing: Seq[LabelRow], answers: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): (Seq[LabelRow], Summary) = {
     val rows = scala.collection.mutable.ArrayBuffer.from(existing)
-    var added, flipped, unchanged = 0
+    var added, flipped, unchanged, confirmed = 0
     answers.flatMap(rowsOf(_, identity)).foreach { row =>
-      rows.indexWhere(_.sameJudgement(row)) match {
+      indexOf(rows.toSeq, row)(_ => true) match {
         case -1 => rows += row; added += 1
+        case i if rows(i).verdict == row.verdict && ReviewDigest.agentJudged(rows(i).note) =>
+          rows(i) = rows(i).copy(note = s"${row.note} (was: ${rows(i).verdict}: ${rows(i).note})")
+          confirmed += 1
         case i if rows(i).verdict == row.verdict => unchanged += 1
         case i =>
           val was = rows(i)
@@ -132,7 +138,13 @@ object LabelsExport {
     val unexportable = answers.filter(a => a.verdict != ReviewVerdict.Unsure && rowsOf(a, identity).isEmpty)
       .map(a => s"${a.country} ${a.title}: ${a.verdict.label} with no film to label")
     val warnings = answers.flatMap(a => a.warnings.map(w => s"${a.country} ${a.title}: $w"))
-    (rows.toSeq, Summary(added, flipped, unchanged, unexportable, warnings))
+    (rows.toSeq, Summary(added, flipped, unchanged, unexportable, warnings, confirmed = confirmed))
+  }
+
+  /** The row of `rows` judging `row`'s listing and film that `also` accepts: its own venue's (or `*`'s) first. */
+  private def indexOf(rows: Seq[LabelRow], row: LabelRow)(also: LabelRow => Boolean): Int = {
+    val own = rows.indexWhere(r => r.sameJudgement(row) && r.venue == row.venue && also(r))
+    if (own >= 0) own else rows.indexWhere(r => r.sameJudgement(row) && also(r))
   }
 
   /** `existing` without the rows of `withdrawn` answers, but those a `standing` answer gives too. Only a row the review
@@ -143,7 +155,7 @@ object LabelsExport {
     val stale = withdrawn.flatMap(rowsOf(_, identity))
       .filterNot(row => kept.exists(k => k.sameJudgement(row) && k.verdict == row.verdict))
     stale.foldLeft((existing, 0)) { case ((rows, taken), row) =>
-      rows.indexWhere(r => r.sameJudgement(row) && r.verdict == row.verdict && r.note.startsWith(ReviewNote)) match {
+      indexOf(rows, row)(r => r.verdict == row.verdict && r.note.startsWith(ReviewNote)) match {
         case -1 => (rows, taken)
         case i  => (wasRow(rows(i)).fold(rows.patch(i, Nil, 1))(rows.updated(i, _)), taken + 1)
       }
