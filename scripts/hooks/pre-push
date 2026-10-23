@@ -37,7 +37,8 @@
 #                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
 #                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
 #                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
-#   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
+#   `ios`         scripts/ios-compile-check.sh (app target + XCUITests, Mac and Linux SwiftPM; fails on a concurrency
+#                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
 #   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
 #                 matches and hard clusters: the judgements are well formed and the files leaning on
