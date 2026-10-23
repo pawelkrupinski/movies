@@ -13,10 +13,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -182,7 +179,7 @@ fun CityChoiceScreen(
                 onClick = { subregion = null; query = "" },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null)
                 Text(stringResource(R.string.back), fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp))
             }
         } else if (region != null) {
@@ -190,7 +187,7 @@ fun CityChoiceScreen(
                 onClick = { region = null; query = "" },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null)
                 Text(
                     stringResource(R.string.back_to_regions),
                     fontSize = 15.sp,
@@ -203,11 +200,11 @@ fun CityChoiceScreen(
             onValueChange = { query = it },
             singleLine = true,
             placeholder = { Text(searchHint) },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
                     Icon(
-                        Icons.Filled.Close,
+                        painterResource(R.drawable.ic_close),
                         contentDescription = stringResource(R.string.clear),
                         modifier = Modifier.clickable { query = "" },
                     )

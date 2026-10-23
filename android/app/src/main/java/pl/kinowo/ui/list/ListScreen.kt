@@ -37,13 +37,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.FilterList
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.Swipe
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -370,7 +364,7 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(
-                Icons.Outlined.Swipe,
+                painterResource(R.drawable.ic_swipe),
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(34.dp),
@@ -462,7 +456,7 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
         color = Color.White,
         fontSize = if (compact) 14.sp else baseStyle.fontSize,
     )
-    Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(iconSize))
+    Icon(painterResource(R.drawable.ic_search), contentDescription = null, tint = TextSecondary, modifier = Modifier.size(iconSize))
     Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
     Box(Modifier.weight(1f)) {
         if (value.isEmpty()) {
@@ -481,7 +475,7 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
     if (value.isNotEmpty()) {
         Spacer(Modifier.width(8.dp))
         Icon(
-            Icons.Filled.Close,
+            painterResource(R.drawable.ic_close),
             contentDescription = stringResource(R.string.clear),
             tint = TextSecondary,
             modifier = Modifier.size(iconSize).clickable { onValueChange("") },
@@ -524,7 +518,7 @@ internal fun DateBar(
         }
         IconButton(onClick = onOpenFilters) {
             Icon(
-                Icons.Outlined.FilterList,
+                painterResource(R.drawable.ic_filter_list),
                 contentDescription = stringResource(R.string.filters),
                 tint = if (filtersActive) Brand else TextSecondary,
             )
@@ -761,7 +755,7 @@ private fun EmptyState(text: String, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Outlined.Movie, contentDescription = null, tint = TextSecondary)
+        Icon(painterResource(R.drawable.ic_movie), contentDescription = null, tint = TextSecondary)
         Text(text, color = TextSecondary, modifier = Modifier.padding(top = 8.dp))
     }
 }

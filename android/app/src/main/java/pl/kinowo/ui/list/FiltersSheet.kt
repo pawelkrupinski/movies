@@ -19,13 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -397,7 +391,7 @@ private fun CollapsibleSection(
             if (countLabel != null) {
                 Text(countLabel, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
             }
-            Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            Icon(if (expanded) painterResource(R.drawable.ic_expand_less) else painterResource(R.drawable.ic_expand_more), contentDescription = null)
         }
         if (expanded) content()
     }
@@ -505,7 +499,7 @@ private fun CinemaAreaGroup(
                     modifier = Modifier.padding(end = 8.dp),
                 )
                 Icon(
-                    if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    if (open) painterResource(R.drawable.ic_expand_less) else painterResource(R.drawable.ic_expand_more),
                     contentDescription = null,
                 )
             }
@@ -617,7 +611,7 @@ private fun HiddenFilmsRow(count: Int, onClick: () -> Unit) {
     ) {
         Text(stringResource(R.string.hidden_films), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         Text("$count", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+        Icon(painterResource(R.drawable.ic_keyboard_arrow_right), contentDescription = null)
     }
 }
 
@@ -646,7 +640,7 @@ private fun HiddenFilmsCard(viewModel: KinowoViewModel, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
             }
             Text(stringResource(R.string.hidden_films), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
@@ -680,11 +674,11 @@ private fun HiddenFilmsSearchField(query: String, onChange: (String) -> Unit) {
         onValueChange = onChange,
         singleLine = true,
         placeholder = { Text(stringResource(R.string.search_films)) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 Icon(
-                    Icons.Filled.Close,
+                    painterResource(R.drawable.ic_close),
                     contentDescription = stringResource(R.string.clear),
                     modifier = Modifier.clickable { onChange("") },
                 )
@@ -799,7 +793,7 @@ private fun <T> Dropdown(
         OutlinedButton(onClick = { onExpandedChange(true) }, modifier = Modifier.fillMaxWidth()) {
             Text(label, modifier = Modifier.weight(1f))
             Icon(
-                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                if (expanded) painterResource(R.drawable.ic_expand_less) else painterResource(R.drawable.ic_expand_more),
                 contentDescription = null,
             )
         }

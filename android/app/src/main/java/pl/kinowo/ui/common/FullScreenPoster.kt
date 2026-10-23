@@ -10,8 +10,7 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -151,7 +150,7 @@ fun FullScreenPoster(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
             ) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close), tint = Color.White)
+                Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.close), tint = Color.White)
             }
         }
     }

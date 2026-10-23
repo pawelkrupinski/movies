@@ -7,8 +7,8 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.ui.res.painterResource
+import pl.kinowo.R
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,7 +83,7 @@ const val PosterPlaceholderTag = "posterPlaceholder"
 @Composable
 private fun PlaceholderGlyph() {
     Icon(
-        imageVector = Icons.Outlined.Movie,
+        painter = painterResource(R.drawable.ic_movie),
         contentDescription = null,
         tint = TextSecondary.copy(alpha = 0.35f),
         modifier = Modifier.fillMaxSize(0.35f).testTag(PosterPlaceholderTag),

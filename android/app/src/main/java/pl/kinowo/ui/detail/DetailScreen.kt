@@ -26,10 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -89,7 +86,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                 title = { Text(film?.title ?: "", maxLines = 1, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -98,7 +95,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                     if (film != null) {
                         val context = LocalContext.current
                         IconButton(onClick = { shareFilm(context, shareOrigin, citySlug, film.title, film.slug) }) {
-                            Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
+                            Icon(painterResource(R.drawable.ic_share), contentDescription = stringResource(R.string.share))
                         }
                     }
                 },
@@ -173,7 +170,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(link.cinema, color = CinemaBlue, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                            Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = CinemaBlue, modifier = Modifier.size(13.dp))
+                            Icon(painterResource(R.drawable.ic_open_in_new), contentDescription = null, tint = CinemaBlue, modifier = Modifier.size(13.dp))
                         }
                     }
                 }

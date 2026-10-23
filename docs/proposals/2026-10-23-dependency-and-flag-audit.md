@@ -209,8 +209,12 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
    and Polish diacritics through the deep-link path to the detail screen; it passed on the old `Uri.encode` string
    route too, and fails when the route is left unencoded. Still open: a shared-element list→detail transition (needs a
    stable film id rather than the title as the key).
-6. `material-icons-extended` for 12 icons: R8 strips the rest, so the gain is build time, not APK size. Replace
-   with vector drawables if it's convenient.
+6. `material-icons-extended`: **dropped (2026-10-23).** It served 13 icons, and material3 1.4 no longer pulls
+   `material-icons-core`, so all 13 are now `res/drawable/ic_*.xml` built from the same Material Icons glyphs
+   (rendered pixel-identical to the old `ImageVector`s at 96 dp, LTR and RTL). Measured: debug APK 22.8 MB → 16.0 MB;
+   release APK 2,720,825 → 2,727,913 bytes (+7 KB: R8 had already stripped the unused icons, the drawables are
+   resources); clean `assembleDebug` / `compileDebugKotlin` times within the noise (4-6 s either way, the library's dex
+   being a cached artifact transform). `IconDrawablesTest` keeps the library off the classpath.
 
 **Build settings:**
 

@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -134,7 +131,7 @@ fun FilmCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Filled.Close,
+                        painterResource(R.drawable.ic_close),
                         contentDescription = stringResource(R.string.hide_film),
                         tint = Color.White,
                         modifier = Modifier.size((16 * scale).dp),
@@ -193,12 +190,12 @@ private fun ShareMenu(
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
             text = { Text(stringResource(R.string.share)) },
-            leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_share), contentDescription = null) },
             onClick = { onDismiss(); onShare() },
         )
         DropdownMenuItem(
             text = { Text(stringResource(R.string.copy_link)) },
-            leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null) },
+            leadingIcon = { Icon(painterResource(R.drawable.ic_link), contentDescription = null) },
             onClick = { onDismiss(); onCopy() },
         )
     }
