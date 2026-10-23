@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
+import androidx.compose.ui.platform.testTag
+import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import pl.kinowo.ui.theme.CardSurface
 import pl.kinowo.ui.theme.TextSecondary
@@ -50,7 +51,14 @@ fun PosterImage(
             return@Box
         }
         var index by remember(chain) { mutableIntStateOf(0) }
-        SubcomposeAsyncImage(
+        // Glyph until a poster lands. Drawn beneath the image, which paints
+        // nothing until it succeeds, so a plain AsyncImage (no per-cell
+        // subcomposition, unlike SubcomposeAsyncImage's loading/error slots)
+        // shows what those slots did — minus the blank frame the error slot
+        // left while it advanced the chain.
+        var loaded by remember(chain) { mutableStateOf(false) }
+        if (!loaded) PlaceholderGlyph()
+        AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(chain[index])
                 // No crossfade: PosterPrefetch warms the disk cache ahead of
@@ -60,15 +68,16 @@ fun PosterImage(
             contentDescription = contentDescription,
             contentScale = contentScale,
             modifier = Modifier.fillMaxSize(),
-            loading = { PlaceholderGlyph() },
-            error = {
-                // Advance to the next candidate; if exhausted, leave the glyph.
-                if (index < chain.lastIndex) index++ else PlaceholderGlyph()
-            },
-            success = { SubcomposeAsyncImageContent() },
+            onLoading = { loaded = false },
+            onSuccess = { loaded = true },
+            // Advance to the next candidate; once exhausted the glyph stays.
+            onError = { if (index < chain.lastIndex) index++ },
         )
     }
 }
+
+/** testTag of the film-strip glyph a poster shows while loading or failed. */
+const val PosterPlaceholderTag = "posterPlaceholder"
 
 @Composable
 private fun PlaceholderGlyph() {
@@ -76,7 +85,7 @@ private fun PlaceholderGlyph() {
         imageVector = Icons.Outlined.Movie,
         contentDescription = null,
         tint = TextSecondary.copy(alpha = 0.35f),
-        modifier = Modifier.fillMaxSize(0.35f),
+        modifier = Modifier.fillMaxSize(0.35f).testTag(PosterPlaceholderTag),
     )
 }
 

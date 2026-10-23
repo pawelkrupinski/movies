@@ -32,7 +32,7 @@ private const val WAVE = 12
  * exact.
  *
  * Disk-only (memory cache disabled): prefetch lands the bytes on disk and the
- * on-screen `SubcomposeAsyncImage` decodes from there on first paint — no
+ * on-screen `AsyncImage` decodes from there on first paint — no
  * network wait — without pinning hundreds of decoded bitmaps in memory. Only
  * the primary poster (chain head) is warmed; the rare fallback walk still hits
  * the network on the card that needs it.
