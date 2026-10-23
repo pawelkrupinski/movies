@@ -189,8 +189,12 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 
 ### Library APIs
 
-- **HTTP/2** in `RealHttpFetch.scala:52`, which pins `HTTP_1_1`, possibly on purpose for the proxy tunnel. Try it
-  per host through `HostPolicies` and measure.
+- **HTTP/2: done, per host.** The `HTTP_1_1` pin had no recorded reason (copied from the first scrapers of
+  2026-05-11), and the proxy tunnel was not one: a JDK client behind a `CONNECT` proxy negotiates h2 end to end.
+  15 of 16 hosts probed offer h2 (Cinemeta only 1.1). Sequential fetches are a wash; five concurrent on a warm
+  client open 4 more TLS connections over 1.1 and none over h2, and finish 2-4x sooner on the low-latency origins.
+  `HostPolicy.httpVersion` (default 1.1) opts in Filmweb, Helios's REST API and IMDb's suggestion CDN. The default
+  stays 1.1 because Cloudflare fingerprints the JDK's h2 frames, and most cinema origins are paced or serial anyway.
 - **Sentry cron check-ins** for the periodic worker loops, only if Grafana doesn't already alert on missed runs.
 - Nothing to gain: Caffeine (`BoundedCache`, `CaffeineMovieCache`), jsoup (no document large enough for
   `StreamParser`), Prometheus native histograms (the server side isn't enabled), `TextNormalization` (already has
