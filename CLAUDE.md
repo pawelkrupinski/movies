@@ -131,6 +131,14 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   notification — never a foreground sleep/poll loop. `scripts/agent-procs` audits worktrees; `scripts/agent-time`
   shows where agents' time went.
 
+## Agent tooling: `~/bin/agentctl` (laptop only; reference `~/bin/AGENTCTL.md`)
+
+1. `eval "$(~/bin/agentctl env --print)"`: puts sbt and java on PATH. A locked vault prints the `! secrets unlock` line for the user.
+2. Work and commit in your own worktree.
+3. `~/bin/agentctl land`: fetch, rebase, push through the pre-push hook, verify. Ends `LANDED <sha>` or `NOT LANDED: <why>`.
+4. `~/bin/agentctl wait run <id> [--until landable]`: run it in the background, then end your turn. It prints only the verdict.
+5. `~/bin/agentctl ci-why`: when main is red or the gate refused. It shows the failed jobs, infra vs test, and how to clear it.
+
 ## Commit and push policy
 
 - **Commit at every stable state**, before moving on; each commit a checkpoint you'd happily revert to. Stable: a fix
