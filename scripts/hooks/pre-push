@@ -67,6 +67,10 @@
 # Bypass: PREPUSH_SKIP=redgate. NOT gating: the Identity findings report (a recording's own suspects and
 # corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
+# REUSE: a push of a tree that already passed -- same tree, base, changed paths, hook, red-gate state and PREPUSH_SKIP --
+# skips the path checks (THE REUSE, below; the key kept in ~/.cache/kinowo-prepush). Anything different runs them all.
+# PREPUSH_NO_REUSE=1 runs them regardless.
+#
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
 # the named checks.
 #
@@ -467,6 +471,7 @@ check_redgate() {
         # passed -- no evidence of a red, so no block, and no Touch ID prompt on a push.
         read_forgejo_token || {
             warn "no Forgejo token (\$FORGEJO_API_TOKEN unset; vault 'movies' locked: secrets unlock movies) — red-build gate SKIPPED"
+            gate_state="no-token"
             return 0
         }
     else
@@ -482,10 +487,12 @@ check_redgate() {
             if [ $? = 124 ]; then warn "$forge did not answer $workflow's verdict within ${GhSeconds}s: cut off — red-build gate SKIPPED for it"
             else warn "could not read $workflow's verdict from $forge ($(head -n 1 "$errors")) — red-build gate SKIPPED for it"
             fi
+            gate_state="$gate_state $i:unread"
             continue
         }
-        [ -n "$verdict" ] || continue
+        [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
         read -r conclusion id url api_id <<< "$verdict"
+        gate_state="$gate_state $i:$conclusion:$id"
         if [ "$conclusion" != success ]; then
             # On Forgejo a run has two ids: its number in the URL and the API's run id (the one scripts/forge-gh and the
             # artifact registry use). A Fixes-Red: naming either declares the fix.
@@ -564,9 +571,11 @@ if [ "${#ranges[@]}" -eq 0 ]; then
     exit 0
 fi
 
+# The red gate's state, one word a workflow (`<i>:<conclusion>:<run>`, `<i>:unread`, `<i>:none`): a key of THE REUSE below.
+gate_state="not-main"
 if [ "$to_main" = 1 ]; then
-    if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"
-    else check_redgate "${ranges[@]}" || exit 1
+    if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
+    else gate_state=""; check_redgate "${ranges[@]}" || exit 1
     fi
 fi
 
@@ -588,6 +597,36 @@ base_sha="${ranges[0]%%..*}"
 
 checks="$(printf '%s\n' "$changed" | plan)"
 [ -z "$checks" ] && exit 0
+
+# ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
+# A re-push of the very same tree -- a no-content rebase, a reworded message, a push that lost its race at the remote
+# after the checks passed -- ran every check again: minutes of sbt for a tree already judged. A run that passes stores
+# its KEY in ~/.cache/kinowo-prepush ($PREPUSH_REUSE_DIR); a later push with the same key skips the path checks, said in
+# one line. The key is everything the checks' verdict reads: the pushed tree and the base's (shellcheck and scripttests
+# judge against the base), the changed paths and the checks they select, this hook's own bytes and the helpers it
+# sources, the red gate's state and PREPUSH_SKIP. One byte of difference in any of them -- the tree, the hook, a red run
+# appearing or clearing -- is another key, and everything runs. A key part that cannot be read means no reuse at all. Only
+# a push of one ref is reused; a failed run stores nothing. The red gate itself always runs (above).
+# PREPUSH_NO_REUSE=1 runs everything regardless.
+reuse_dir="${PREPUSH_REUSE_DIR:-$HOME/.cache/kinowo-prepush}" reuse_key=""
+compute_reuse_key() { # prints the key, or fails when any part of it cannot be read
+    local here tree base_tree hook
+    here="$(dirname "${BASH_SOURCE[0]}")"
+    tree="$(git rev-parse --verify -q "$head_sha^{tree}")" && [ -n "$tree" ] || return 1
+    base_tree="$(git rev-parse --verify -q "$base_sha^{tree}")" && [ -n "$base_tree" ] || return 1
+    hook="$(cat "${BASH_SOURCE[0]}" "$here/../hooks-path.sh" "$here/../tool-conventions.sh" | git hash-object --stdin)" \
+        && [ -n "$hook" ] || return 1
+    { echo "tree $tree"; echo "base $base_tree"; echo "hook $hook"; echo "gate $gate_state"
+      echo "skip $(tr -s ' ' '\n' <<< "${PREPUSH_SKIP:-}" | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ' ')"
+      echo "checks $(printf '%s' "$checks" | tr '\n' ' ')"; printf '%s\n' "$changed"; } | git hash-object --stdin
+}
+if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
+    reuse_key="$(compute_reuse_key)" || reuse_key=""
+    if [ -n "$reuse_key" ] && [ -f "$reuse_dir/$reuse_key" ]; then
+        log "same tree $(git rev-parse --short "$head_sha^{tree}"), base, hook and red-gate state as a push that passed $(cat "$reuse_dir/$reuse_key"): $(printf '%s' "$checks" | tr '\n' ' ')reused, not run again (PREPUSH_NO_REUSE=1 runs them)" >&2
+        exit 0
+    fi
+fi
 
 # ── Running them ────────────────────────────────────────────────────────────────────────────────
 changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
@@ -865,4 +904,8 @@ if [ -n "$failed" ]; then
     exit 1
 fi
 rm -rf "$tmp"
+if [ -n "$reuse_key" ] && mkdir -p "$reuse_dir" 2>/dev/null; then
+    printf '%s (%s)\n' "$(date -u +%Y-%m-%dT%H:%MZ)" "${head_sha:0:9}" > "$reuse_dir/$reuse_key.$$" && mv -f "$reuse_dir/$reuse_key.$$" "$reuse_dir/$reuse_key"
+    find "$reuse_dir" -type f -mtime +14 -delete 2>/dev/null
+fi
 log "all clear ($((SECONDS - started))s)"

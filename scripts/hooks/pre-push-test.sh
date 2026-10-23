@@ -5,6 +5,10 @@ set -uo pipefail
 # The caller's PREPUSH_SKIP is the PUSH's: a push skipping `redgate` ran this test with the gate skipped in every scratch
 # push below, and its red-gate cases failed (2026-10-14). Each case names what it skips itself.
 unset PREPUSH_SKIP
+# Every case re-pushes the same scratch trees under different stubs: a stored pass (the hook's REUSE) would answer the
+# next case instead of its checks. Reuse is off here, and on only in its own cases, with a cache of their own.
+export PREPUSH_NO_REUSE=1
+unset PREPUSH_REUSE_DIR
 # Nor do the caller's Forgejo token and remote reach the scratch pushes: each Forgejo case below names its own.
 unset FORGEJO_API_TOKEN PREPUSH_REMOTE_URL PREPUSH_FORGEJO_URL
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -728,6 +732,59 @@ check "gh missing on a GitHub push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without gh)") $(grep -c 'brew install gh' "$gate/err")"
 check "...Forgejo unreachable: still a warning, the push lands" "0 3" \
   "$(gate_push env FJ_FAILS=1 GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'red-build gate SKIPPED' "$gate/err")"
+# ── THE REUSE: a passed run answers a re-push of the SAME tree, and nothing else ─────────────────────────────────────
+# A re-push after a no-content rebase or a reworded message ran every check again. A pass is stored under a key of the
+# pushed tree, the base's, the changed paths, the checks, the hook's bytes, the red-gate state and PREPUSH_SKIP; the
+# expensive check here is the counting script-test runner. What must hold: ANY difference runs everything.
+printf '\033[36m▸\033[0m pre-push: a passed run is reused for the same tree only\n'
+reuse="$gate/reuse"; mkdir -p "$reuse"
+scratch_git "$grepo" reset -q --hard "$oldrefs_base"
+printf '#!/usr/bin/env bash\necho ran >> "$STUB_RUNS"\nexit "${STUB_RUNNER_EXIT:-0}"\n' > "$grepo/scripts/run-script-tests"
+chmod +x "$grepo/scripts/run-script-tests"
+scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a counting runner"
+rbase="$(scratch_git "$grepo" rev-parse HEAD)"
+rhead="$(commit_paths "a script change" -- scripts/z.sh)"
+# <range> [<env>...] -> "<exit> <runner runs so far>"; stderr in $gate/err. $HOOK: the hook to run (default this checkout's).
+reuse_push() {
+  local range=$1; shift
+  (cd "$grepo" && all_green env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/scripttests/}" \
+    STUB_RUNS="$reuse/runs" PREPUSH_FLOOR_BASH="$gate/no-such-bash" "$@" \
+    bash "${HOOK:-$REPO_ROOT/scripts/hooks/pre-push}" --range "$range" >/dev/null 2>"$gate/err"); echo "$? $(cat "$reuse/runs" 2>/dev/null | wc -l | tr -d ' ')"; }
+check "a first push runs the checks" "0 1" "$(reuse_push "$rbase..$rhead")"
+check "the same push again reuses the pass: nothing runs, said once" "0 1 1" \
+  "$(reuse_push "$rbase..$rhead") $(grep -c 'reused, not run again' "$gate/err")"
+reworded="$(scratch_git "$grepo" commit -q --amend -m "the same change, reworded" && scratch_git "$grepo" rev-parse HEAD)"
+check "a new commit of the SAME tree (no-content rebase, reworded message) reuses it" "0 1" "$(reuse_push "$rbase..$reworded")"
+check "PREPUSH_NO_REUSE=1 runs everything regardless" "0 2" "$(reuse_push "$rbase..$reworded" PREPUSH_NO_REUSE=1)"
+changed_tree="$(commit_paths "one more byte" -- scripts/z.sh)"
+check "a changed tree runs everything" "0 3" "$(reuse_push "$rbase..$changed_tree")"
+docs_only="$(commit_paths "a change outside what the checks read" -- docs/x.md)"
+check "...even a change outside every checked path" "0 4" "$(reuse_push "$rbase..$docs_only")"
+check "...and once passed, that tree is reused in turn" "0 4" "$(reuse_push "$rbase..$docs_only")"
+check "another base (same tree) runs everything" "0 5" "$(reuse_push "$rhead..$docs_only")"
+check "a red-gate state that differs runs everything (a red run appeared; tools land while red)" "0 6" \
+  "$(reuse_push "$rbase..$docs_only" GH_IMC="[$red]")"
+check "another PREPUSH_SKIP runs everything" "0 7" "$(reuse_push "$rbase..$docs_only" PREPUSH_SKIP="${pathchecks/scripttests/} linux")"
+# A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.
+mkdir -p "$reuse/hook/scripts/hooks"
+cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$reuse/hook/scripts/"
+cp "$REPO_ROOT/scripts/hooks/pre-push" "$reuse/hook/scripts/hooks/pre-push"; echo "# one more byte" >> "$reuse/hook/scripts/hooks/pre-push"
+check "a hook that differs runs everything" "0 8" "$(HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only")"
+echo "# and a helper" >> "$reuse/hook/scripts/tool-conventions.sh"
+check "...as does a helper it sources" "0 9" "$(HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only")"
+failing="$(commit_paths "a change whose checks fail" -- scripts/z.sh)"
+check "a failed run stores nothing: the same tree runs again" "1 10 0 11" \
+  "$(reuse_push "$rbase..$failing" STUB_RUNNER_EXIT=1) $(reuse_push "$rbase..$failing")"
+# THE MUTANT: the same hook keyed without the pushed tree. It would answer a changed tree from the stored pass -- so
+# "a changed tree runs everything" above is a check that fails on a hook that could skip a changed tree.
+sed 's/^\(    tree=\)".*head_sha^{tree}")"/\1mutant/' "$REPO_ROOT/scripts/hooks/pre-push" > "$reuse/hook/scripts/hooks/pre-push"
+cp "$REPO_ROOT/scripts/tool-conventions.sh" "$reuse/hook/scripts/"
+check "the mutant differs from the hook in the tree's key only" "1" \
+  "$(diff "$REPO_ROOT/scripts/hooks/pre-push" "$reuse/hook/scripts/hooks/pre-push" | grep -c '^>  *tree=mutant && ')"
+HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only" >/dev/null # the same paths as the next push
+mutated="$(commit_paths "a tree the mutant has not seen" -- scripts/z.sh)"
+check "...and it reuses a changed tree, which the check above refuses" "0 12" \
+  "$(HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$mutated")"
 rm -rf "$gate"
 
 spec_summary
