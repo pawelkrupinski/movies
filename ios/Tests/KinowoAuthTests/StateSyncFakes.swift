@@ -24,9 +24,10 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
     /// Whether the session this client sends is signed in; a signed-out one is
     /// refused, as the server answers it 401.
     var signedIn = true
-    /// Hold a fetch this long AFTER it read the server's set, per country —
-    /// its response is on the wire while the set may change underneath it.
-    var fetchDelay: [String: Duration] = [:]
+    /// Hold a fetch on this gate AFTER it read the server's set, per country —
+    /// its response is on the wire while the set may change underneath it,
+    /// until the test opens the gate.
+    var fetchHold: [String: AsyncGate] = [:]
     /// Awaited after a fetch has read the server's set, before it answers.
     var beforeFetchResponse: (() async -> Void)?
     /// Awaited before a hide/unhide/clear reaches the server's set — a request
@@ -62,7 +63,7 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
         if shouldFailFetch { throw URLError(.notConnectedToInternet) }
         if !signedIn { throw URLError(.userAuthenticationRequired) }
         let answer: HiddenFilmsFetchResult = etag != nil && etag == etagOf(country) ? .notModified : .current(state(country))
-        if let delay = fetchDelay[country] { try await Task.sleep(for: delay) }
+        if let hold = fetchHold[country] { await hold.wait() }
         if let beforeFetchResponse { await beforeFetchResponse() }
         return answer
     }
@@ -168,8 +169,12 @@ final class FakeLanguageClient: LanguageClient {
     }
 }
 
-/// A one-shot latch: `wait()` suspends until `open()`.
-actor AsyncGate {
+/// A one-shot latch: `wait()` suspends until `open()`. On the main actor,
+/// like everything else these tests drive, so opening it resumes its waiters
+/// on the same FIFO queue — no hop to another executor a turn-counting wait
+/// could outrun.
+@MainActor
+final class AsyncGate {
     private var isOpen = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 

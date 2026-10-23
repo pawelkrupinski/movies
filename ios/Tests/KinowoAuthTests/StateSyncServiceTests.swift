@@ -27,8 +27,8 @@ final class StateSyncServiceTests: XCTestCase {
     }
 
     /// The language push's debounce, advanced by hand (`debounce.fireAll()`),
-    /// so a pick's push costs no 400 ms wait. The one test that proves the
-    /// production clock passes `MainQueueDebounceScheduler()` instead.
+    /// so a pick's push costs no 400 ms wait. The production clock has its own
+    /// tests (`MainQueueDebounceSchedulerTests`).
     private let debounce = ManualDebounceScheduler()
 
     private func makeSyncService(debounceScheduler: DebounceScheduler? = nil) -> StateSyncService {
@@ -41,21 +41,39 @@ final class StateSyncServiceTests: XCTestCase {
         )
     }
 
-    private func waitUntil(_ cond: @escaping () -> Bool, timeout: TimeInterval = 1,
-                           file: StaticString = #filePath, line: UInt = #line) async throws {
-        let start = Date()
-        while !cond() {
-            if Date().timeIntervalSince(start) > timeout {
-                XCTFail("condition not met within \(timeout)s", file: file, line: line); return
-            }
-            try await Task.sleep(for: .milliseconds(20))
+    /// Take main-queue turns until `cond` holds. No wall clock: the service,
+    /// its fakes and `AsyncGate` all run on the main queue, so a state the
+    /// code under test reaches, it reaches within a bounded number of turns
+    /// however loaded the machine is — a wall-clock budget is spent by a
+    /// process merely waiting for a core.
+    private func waitUntil(turns: Int = 1_000, _ cond: () -> Bool,
+                           file: StaticString = #filePath, line: UInt = #line) async {
+        for _ in 0..<turns {
+            if cond() { return }
+            await nextMainQueueTurn()
         }
+        if !cond() { XCTFail("condition not met within \(turns) main-queue turns", file: file, line: line) }
+    }
+
+    /// One turn of the main queue: resumes behind every block already queued
+    /// on it. Not `Task.yield()` — that lets main-actor jobs run but can come
+    /// back before a `DispatchQueue.main` block (the service's Combine
+    /// `receive(on:)` hops) gets its turn.
+    private func nextMainQueueTurn() async {
+        await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+    }
+
+    /// Let whatever the last step set off run out — for an assertion that
+    /// something did NOT happen. A (wrongly) triggered request is a few
+    /// main-queue turns away, well inside these.
+    private func settle() async {
+        for _ in 0..<50 { await nextMainQueueTurn() }
     }
 
     /// The login reconcile has finished — language adopted, the country's
     /// set migrated, nothing on the wire — so the change observers are live.
-    private func loginSettled(language: String) async throws {
-        try await waitUntil {
+    private func loginSettled(language: String) async {
+        await waitUntil {
             self.prefs.selectedLanguage == language && self.languageClient.inFlight == 0
                 && self.prefs.isHiddenFilmsMigrated(country: self.pl)
         }
@@ -76,7 +94,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
 
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["Film A", "Film B"] }
+        await waitUntil { self.prefs.hiddenFilms == ["Film A", "Film B"] }
 
         XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: pl))
         XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, client.etagOf(pl))
@@ -87,15 +105,13 @@ final class StateSyncServiceTests: XCTestCase {
     func testLoginMergesLocalAndRemoteHiddenPushingOnlyTheLocalOnlyDiff() async throws {
         prefs.hide("Local Only")
         client.remote[pl] = ["Remote Only"]
-        let pushed = expectation(description: "local-only title pushed")
-        client.onHide = { pushed.fulfill() }
         let sync = makeSyncService()
 
         login()
-        await fulfillment(of: [pushed], timeout: 1)
-        try await waitUntil { self.prefs.hiddenFilms == ["Local Only", "Remote Only"] }
+        await waitUntil { self.client.hideCalls.map(\.title) == ["Local Only"] }
+        await waitUntil { self.prefs.hiddenFilms == ["Local Only", "Remote Only"] }
         // Migrated once the queued hide's response has landed.
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         XCTAssertEqual(client.hideCalls.count, 1)
         XCTAssertEqual(client.hideCalls.first?.country, pl)
@@ -112,7 +128,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
 
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["Film A"] }
+        await waitUntil { self.prefs.hiddenFilms == ["Film A"] }
 
         XCTAssertEqual(prefs.disabledCinemas, ["Local Only Cinema"])
         _ = sync
@@ -131,7 +147,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
         login()
 
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        await waitUntil { self.prefs.selectedLanguage == "de" }
         _ = sync
     }
 
@@ -141,12 +157,10 @@ final class StateSyncServiceTests: XCTestCase {
     func testLoginPushesLocalExplicitLanguageWhenAccountHasNone() async throws {
         prefs.setLanguage("es")
         languageClient.remote = nil
-        let pushed = expectation(description: "language pushed to server")
-        languageClient.onPush = { language in if language == "es" { pushed.fulfill() } }
         let sync = makeSyncService()
 
         login()
-        await fulfillment(of: [pushed], timeout: 1)
+        await waitUntil { self.languageClient.pushes == ["es"] }
         _ = sync
     }
 
@@ -160,7 +174,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
 
         login()
-        try await loginSettled(language: resolvedAtInit)
+        await loginSettled(language: resolvedAtInit)
         XCTAssertFalse(debounce.hasPending)
 
         XCTAssertEqual(prefs.selectedLanguage, resolvedAtInit)
@@ -172,18 +186,16 @@ final class StateSyncServiceTests: XCTestCase {
     /// reaches the server too, through language's own debounced push.
     func testLanguagePickAfterLoginIsPushed() async throws {
         languageClient.remote = nil
-        let sync = makeSyncService(debounceScheduler: MainQueueDebounceScheduler())
+        let sync = makeSyncService()
         login()
         // Neither side has a pick, so this merge pushes nothing — no
         // expectation to await; wait for it to settle so the observer the
         // pick below needs is live.
-        try await loginSettled(language: prefs.selectedLanguage)
+        await loginSettled(language: prefs.selectedLanguage)
 
-        let pushed = expectation(description: "explicit pick pushed")
-        languageClient.onPush = { language in if language == "de" { pushed.fulfill() } }
         prefs.setLanguage("de")
         debounce.fireAll()
-        await fulfillment(of: [pushed], timeout: 1)
+        await waitUntil { self.languageClient.pushes == ["de"] }
         _ = sync
     }
 
@@ -195,14 +207,14 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         prefs.setLanguage("es")
         await Task.yield()
         await sync.reconcileCurrentCountry()
 
         XCTAssertEqual(prefs.selectedLanguage, "es")
-        try await waitUntil { self.languageClient.remote == "es" }
+        await waitUntil { self.languageClient.remote == "es" }
         // The debounce runs out after the reconcile already sent the pick:
         // it must find nothing left to send.
         debounce.fireAll()
@@ -218,7 +230,7 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         languageClient.remote = "pl"
         await sync.reconcileCurrentCountry()
@@ -238,15 +250,13 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         languageClient.shouldFailPush = true
-        let attempted = expectation(description: "push attempted")
-        languageClient.onPush = { _ in attempted.fulfill() }
+        let attemptsBefore = languageClient.pushesStarted
         prefs.setLanguage("es")
         debounce.fireAll()
-        await fulfillment(of: [attempted], timeout: 1)
-        languageClient.onPush = nil
+        await waitUntil { self.languageClient.pushesStarted > attemptsBefore && self.languageClient.inFlight == 0 }
 
         languageClient.shouldFailPush = false
         await sync.reconcileCurrentCountry()
@@ -264,13 +274,13 @@ final class StateSyncServiceTests: XCTestCase {
     func testAHideRefusedForGoodIsDroppedAndTheEditsBehindItLand() async throws {
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         let overLong = String(repeating: "x", count: FakeHiddenFilmsClient.maxTitleLength + 1)
         prefs.hide(overLong)
         prefs.hide("Film A")
-        try await waitUntil { self.client.remote[self.pl] == ["Film A"] }
-        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
+        await waitUntil { self.client.remote[self.pl] == ["Film A"] }
+        await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
 
         let refusedSends = client.hideCalls.filter { $0.title == overLong }.count
         await sync.reconcileCurrentCountry()
@@ -289,7 +299,7 @@ final class StateSyncServiceTests: XCTestCase {
         prefs.hide("Film A")
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
         XCTAssertEqual(client.remote[pl], ["Film A"])
 
         await sync.reconcileCurrentCountry()
@@ -314,13 +324,13 @@ final class StateSyncServiceTests: XCTestCase {
         }
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.client.hideCalls.count == 1 } // the union's hide, on its way
+        await waitUntil { self.client.hideCalls.count == 1 } // the union's hide, on its way
 
         prefs.unhide("Local Only")
-        try await Task.sleep(for: .milliseconds(100)) // an unhide sent beside it lands first
-        await gate.open()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) && self.client.inFlight == 0 }
-        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty && self.client.inFlight == 0 }
+        await settle() // an unhide sent beside it lands first
+        gate.open()
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) && self.client.inFlight == 0 }
+        await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty && self.client.inFlight == 0 }
 
         await sync.reconcileCurrentCountry()
         XCTAssertEqual(prefs.hiddenFilms(country: pl), [])
@@ -335,17 +345,15 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         languageClient.refusePush = true
-        let attempted = expectation(description: "push attempted")
-        languageClient.onPush = { _ in attempted.fulfill() }
+        let attemptsBefore = languageClient.pushesStarted
         prefs.setLanguage("es")
         debounce.fireAll()
-        await fulfillment(of: [attempted], timeout: 1)
-        languageClient.onPush = nil
+        await waitUntil { self.languageClient.pushesStarted > attemptsBefore && self.languageClient.inFlight == 0 }
 
-        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        await waitUntil { self.prefs.selectedLanguage == "de" }
         let attempts = languageClient.pushesStarted
         await sync.reconcileCurrentCountry()
         XCTAssertEqual(prefs.selectedLanguage, "de")
@@ -362,7 +370,7 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         languageClient.refusePush = true
         let gate = AsyncGate()
@@ -373,12 +381,12 @@ final class StateSyncServiceTests: XCTestCase {
         let fetchesBefore = languageClient.fetchesStarted
         prefs.setLanguage("es")
         debounce.fireAll()
-        try await waitUntil({ self.languageClient.fetchesStarted > fetchesBefore }, timeout: 2) // refused, fetching
+        await waitUntil { self.languageClient.fetchesStarted > fetchesBefore } // refused, fetching
         prefs.setLanguage("fr")
-        await gate.open()
+        gate.open()
         debounce.fireAll()
 
-        try await waitUntil({ self.languageClient.remote == "fr" && self.languageClient.inFlight == 0 }, timeout: 2)
+        await waitUntil { self.languageClient.remote == "fr" && self.languageClient.inFlight == 0 }
         XCTAssertEqual(prefs.selectedLanguage, "fr")
         _ = sync
     }
@@ -390,15 +398,13 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync1 = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         languageClient.shouldFailPush = true
-        let attempted = expectation(description: "push attempted")
-        languageClient.onPush = { _ in attempted.fulfill() }
+        let attemptsBefore = languageClient.pushesStarted
         prefs.setLanguage("es")
         debounce.fireAll()
-        await fulfillment(of: [attempted], timeout: 1)
-        languageClient.onPush = nil
+        await waitUntil { self.languageClient.pushesStarted > attemptsBefore && self.languageClient.inFlight == 0 }
         languageClient.shouldFailPush = false
 
         // Relaunch: fresh prefs over the same store, fresh service, session restored.
@@ -406,7 +412,7 @@ final class StateSyncServiceTests: XCTestCase {
         let userSubject2 = CurrentValueSubject<UserProfile?, Never>(nil)
         let sync2 = StateSyncService(prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client, languageClient: languageClient)
         userSubject2.send(UserProfile(displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
-        try await waitUntil { self.languageClient.remote == "es" }
+        await waitUntil { self.languageClient.remote == "es" }
         XCTAssertEqual(prefs.selectedLanguage, "es")
         _ = (sync1, sync2)
     }
@@ -419,19 +425,19 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         let gate = AsyncGate()
         languageClient.beforePush = { await gate.wait() }
         prefs.setLanguage("es")
         debounce.fireAll()
-        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        await waitUntil { self.languageClient.pushesStarted == 1 }
         prefs.setLanguage("de")
         languageClient.beforePush = nil
-        await gate.open()
+        gate.open()
         debounce.fireAll()
 
-        try await waitUntil { self.languageClient.pushes.last == "de" }
+        await waitUntil { self.languageClient.pushes.last == "de" }
         XCTAssertEqual(languageClient.remote, "de")
         _ = sync
     }
@@ -444,16 +450,16 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         let gate = AsyncGate()
         languageClient.beforePushResponse = { await gate.wait(); throw URLError(.networkConnectionLost) }
         prefs.setLanguage("es")
         debounce.fireAll()
-        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        await waitUntil { self.languageClient.pushesStarted == 1 }
         prefs.setLanguage("de")
-        await gate.open()
-        try await waitUntil { self.languageClient.inFlight == 0 }
+        gate.open()
+        await waitUntil { self.languageClient.inFlight == 0 }
         languageClient.beforePushResponse = nil
         XCTAssertEqual(languageClient.remote, "es") // the lost push landed
 
@@ -470,20 +476,20 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
 
         let gate = AsyncGate()
         languageClient.beforePushResponse = { await gate.wait() }
         prefs.setLanguage("es")
         debounce.fireAll()
-        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        await waitUntil { self.languageClient.pushesStarted == 1 }
         prefs.setLanguage("fr")
         debounce.fireAll() // past the debounce, with the first push still on the wire
         await Task.yield()
         XCTAssertEqual(languageClient.pushesStarted, 1)
-        await gate.open()
+        gate.open()
 
-        try await waitUntil { self.languageClient.remote == "fr" && self.languageClient.inFlight == 0 }
+        await waitUntil { self.languageClient.remote == "fr" && self.languageClient.inFlight == 0 }
         XCTAssertEqual(languageClient.maxPushesInFlight, 1)
         XCTAssertEqual(languageClient.pushes, ["es", "fr"])
         _ = sync
@@ -499,7 +505,7 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
+        await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
 
         // Only the held push fails: it arms the failure once released, and
         // disarms it as it answers.
@@ -508,14 +514,14 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.onPush = { _ in self.languageClient.shouldFailPush = false }
         prefs.setLanguage("es")
         debounce.fireAll()
-        try await waitUntil { self.languageClient.pushesStarted == 1 }
+        await waitUntil { self.languageClient.pushesStarted == 1 }
         languageClient.beforePush = nil
         prefs.setLanguage("fr")
         debounce.fireAll()
         await Task.yield()
-        await gate.open()
+        gate.open()
 
-        try await waitUntil { self.languageClient.pushes == ["fr"] && self.languageClient.inFlight == 0 }
+        await waitUntil { self.languageClient.pushes == ["fr"] && self.languageClient.inFlight == 0 }
         XCTAssertEqual(languageClient.remote, "fr")
         _ = sync
     }
@@ -527,16 +533,16 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
+        await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
 
         let gate = AsyncGate()
         languageClient.beforeFetchResponse = { await gate.wait() }
         let reconcile = Task { await sync.reconcileCurrentCountry() }
-        try await waitUntil { self.languageClient.fetchesStarted == 2 && self.languageClient.inFlight == 1 }
+        await waitUntil { self.languageClient.fetchesStarted == 2 && self.languageClient.inFlight == 1 }
         prefs.setLanguage("es")
         debounce.fireAll()
-        try await waitUntil { self.languageClient.pushes == ["es"] }
-        await gate.open()
+        await waitUntil { self.languageClient.pushes == ["es"] }
+        gate.open()
         await reconcile.value
 
         XCTAssertEqual(prefs.selectedLanguage, "es")
@@ -551,21 +557,21 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
+        await waitUntil { self.prefs.selectedLanguage == "de" && self.languageClient.inFlight == 0 }
 
         let gate = AsyncGate()
         languageClient.beforePushResponse = { await gate.wait() }
         prefs.setLanguage("pl")
         debounce.fireAll()
-        try await waitUntil { self.languageClient.remote == "pl" } // applied, its response on the wire
+        await waitUntil { self.languageClient.remote == "pl" } // applied, its response on the wire
         languageClient.beforePushResponse = nil
         prefs.setLanguage("es")
         languageClient.remote = "en" // another device
         prefs.setLanguage("pl")
         debounce.fireAll()
-        await gate.open()
+        gate.open()
 
-        try await waitUntil { self.languageClient.inFlight == 0 && self.languageClient.pushesStarted >= 2 }
+        await waitUntil { self.languageClient.inFlight == 0 && self.languageClient.pushesStarted >= 2 }
         XCTAssertEqual(languageClient.remote, "pl")
         _ = sync
     }
@@ -579,14 +585,14 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.beforeFetch = { await gate.wait() }
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.languageClient.fetchesStarted == 1 }
+        await waitUntil { self.languageClient.fetchesStarted == 1 }
 
         prefs.setLanguage("es")
         debounce.fireAll()
         languageClient.beforeFetch = nil
-        await gate.open()
+        gate.open()
 
-        try await waitUntil { self.languageClient.remote == "es" }
+        await waitUntil { self.languageClient.remote == "es" }
         XCTAssertEqual(prefs.selectedLanguage, "es")
         _ = sync
     }
@@ -597,13 +603,13 @@ final class StateSyncServiceTests: XCTestCase {
         languageClient.remote = "de"
         let sync = makeSyncService()
         login()
-        try await loginSettled(language: "de")
+        await loginSettled(language: "de")
         languageClient.shouldFailPush = true
         prefs.setLanguage("es")
         XCTAssertEqual(prefs.pendingLanguagePush, "es")
 
         userSubject.send(nil)
-        try await waitUntil { self.prefs.pendingLanguagePush == nil }
+        await waitUntil { self.prefs.pendingLanguagePush == nil }
         _ = sync
     }
 
@@ -613,7 +619,7 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Film A"]
         let sync1 = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["Film A"] }
+        await waitUntil { self.prefs.hiddenFilms == ["Film A"] }
         XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: pl))
 
         // Another device removed "Film A" from the account.
@@ -626,7 +632,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync2 = StateSyncService(prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client, languageClient: languageClient)
         userSubject2.send(UserProfile(displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
 
-        try await waitUntil { self.prefs.hiddenFilms.isEmpty }
+        await waitUntil { self.prefs.hiddenFilms.isEmpty }
         XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, client.etagOf(pl))
         _ = (sync1, sync2)
     }
@@ -635,7 +641,7 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Film A"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         let validators = prefs.hiddenFilmsValidators(country: pl)
         // The account is unchanged, so the conditional fetch answers 304.
@@ -653,7 +659,7 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = []
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         client.remote[pl] = ["Hidden Elsewhere"]
         await sync.reconcileCurrentCountry()
@@ -665,10 +671,10 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Film A"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         userSubject.send(nil) // logout
-        try await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         XCTAssertNil(prefs.hiddenFilmsValidators(country: pl).etag) // validators forgotten too
         _ = sync
@@ -678,8 +684,8 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Film A"]
         let sync = makeSyncService()
 
-        // Nothing to wait FOR: give a (wrongly) triggered sync a bounded window.
-        try await Task.sleep(for: .milliseconds(50))
+        // Nothing to wait FOR: give a (wrongly) triggered sync its turns.
+        await settle()
 
         XCTAssertTrue(prefs.hiddenFilms.isEmpty)
         XCTAssertTrue(client.fetchedCountries.isEmpty)
@@ -692,7 +698,7 @@ final class StateSyncServiceTests: XCTestCase {
         let sync = makeSyncService()
 
         login()
-        try await waitUntil { self.client.fetchedCountries == [self.pl] && self.client.inFlight == 0 }
+        await waitUntil { self.client.fetchedCountries == [self.pl] && self.client.inFlight == 0 }
 
         XCTAssertEqual(prefs.hiddenFilms, ["My Film"])
         XCTAssertFalse(prefs.isHiddenFilmsMigrated(country: pl))
@@ -701,21 +707,24 @@ final class StateSyncServiceTests: XCTestCase {
 
     // MARK: - Immediate (non-debounced) writes
 
+    /// A write sent "immediately" is on the wire within this many main-queue
+    /// turns of the edit (the edit's Task, the flush's Task, the request).
+    private let immediateTurns = 10
+
     func testHideFiresImmediatelyNoDebounce() async throws {
         client.remote[pl] = []
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
-        let pushed = expectation(description: "hide pushed")
-        client.onHide = { pushed.fulfill() }
         prefs.hide("New Hide")
 
-        // The OLD debounce was 400ms — a push landing well before that proves
-        // there's no debounce left for hiddenFilms.
-        await fulfillment(of: [pushed], timeout: 0.2)
+        // The OLD debounce was 400ms — a push sent within a few main-queue
+        // turns, with no time passing on any clock, proves there's no debounce
+        // left for hiddenFilms.
+        await waitUntil(turns: immediateTurns) { !self.client.hideCalls.isEmpty }
         XCTAssertEqual(client.hideCalls.last?.title, "New Hide")
-        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
+        await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
         XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, client.etagOf(pl))
         _ = sync
     }
@@ -724,13 +733,11 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Was Hidden"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["Was Hidden"] }
+        await waitUntil { self.prefs.hiddenFilms == ["Was Hidden"] }
 
-        let pushed = expectation(description: "unhide pushed")
-        client.onUnhide = { pushed.fulfill() }
         prefs.unhide("Was Hidden")
 
-        await fulfillment(of: [pushed], timeout: 0.2)
+        await waitUntil(turns: immediateTurns) { !self.client.unhideCalls.isEmpty }
         XCTAssertEqual(client.unhideCalls.last?.title, "Was Hidden")
         _ = sync
     }
@@ -739,13 +746,11 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["A", "B"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["A", "B"] }
+        await waitUntil { self.prefs.hiddenFilms == ["A", "B"] }
 
-        let pushed = expectation(description: "clear pushed")
-        client.onClear = { pushed.fulfill() }
         prefs.unhideAll()
 
-        await fulfillment(of: [pushed], timeout: 0.2)
+        await waitUntil(turns: immediateTurns) { !self.client.clearCalls.isEmpty }
         XCTAssertEqual(client.clearCalls, [pl])
         XCTAssertTrue(client.unhideCalls.isEmpty)
         _ = sync
@@ -759,14 +764,11 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = []
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         client.shouldFailWrite = true
-        let attempted = expectation(description: "hide attempted")
-        client.onHide = { attempted.fulfill() }
         prefs.hide("Offline Hide")
-        await fulfillment(of: [attempted], timeout: 1)
-        client.onHide = nil
+        await waitUntil { self.client.hideCalls.count == 1 && self.client.inFlight == 0 }
 
         client.shouldFailWrite = false
         await sync.reconcileCurrentCountry()
@@ -783,14 +785,11 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["Was Hidden"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["Was Hidden"] }
+        await waitUntil { self.prefs.hiddenFilms == ["Was Hidden"] }
 
         client.shouldFailWrite = true
-        let attempted = expectation(description: "unhide attempted")
-        client.onUnhide = { attempted.fulfill() }
         prefs.unhide("Was Hidden")
-        await fulfillment(of: [attempted], timeout: 1)
-        client.onUnhide = nil
+        await waitUntil { self.client.unhideCalls.count == 1 && self.client.inFlight == 0 }
 
         client.shouldFailWrite = false
         await sync.reconcileCurrentCountry()
@@ -809,19 +808,21 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = []
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         // The server's answer, read before the hide reaches it.
         client.remote[pl] = ["Elsewhere"] // another device
-        client.fetchDelay[pl] = .milliseconds(300)
+        let onTheWire = AsyncGate()
+        client.fetchHold[pl] = onTheWire
         let fetchesBefore = client.fetchedCountries.count
         let reconcile = Task { await sync.reconcileCurrentCountry() }
-        try await waitUntil { self.client.fetchedCountries.count > fetchesBefore }
+        await waitUntil { self.client.fetchedCountries.count > fetchesBefore }
         prefs.hide("Mid Fetch")
+        onTheWire.open()
         await reconcile.value
 
         XCTAssertEqual(prefs.hiddenFilms, ["Mid Fetch"])
-        client.fetchDelay[pl] = nil
+        client.fetchHold[pl] = nil
         await sync.reconcileCurrentCountry()
         XCTAssertEqual(prefs.hiddenFilms, ["Elsewhere", "Mid Fetch"])
     }
@@ -833,23 +834,23 @@ final class StateSyncServiceTests: XCTestCase {
     func testAResponseLandingAfterALogoutLeavesTheNextSessionsQueueAlone() async throws {
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         let gate = AsyncGate()
         client.beforeWriteResponse = { await gate.wait() }
         prefs.hide("First")
-        try await waitUntil { self.client.remote[self.pl] == ["First"] } // applied, response on the wire
+        await waitUntil { self.client.remote[self.pl] == ["First"] } // applied, response on the wire
         userSubject.send(nil)
-        try await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
         let fetchesBefore = languageClient.fetchesStarted
         login()
-        try await waitUntil { self.languageClient.fetchesStarted > fetchesBefore } // the new session's reconcile started, so it is observing edits
+        await waitUntil { self.languageClient.fetchesStarted > fetchesBefore } // the new session's reconcile started, so it is observing edits
         client.beforeWriteResponse = nil
         prefs.unhideAll()
-        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl) == [.clearedAll] }
-        await gate.open()
+        await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl) == [.clearedAll] }
+        gate.open()
 
-        try await waitUntil { self.client.clearCalls == [self.pl] && self.client.inFlight == 0 }
+        await waitUntil { self.client.clearCalls == [self.pl] && self.client.inFlight == 0 }
         XCTAssertEqual(client.remote[pl], [])
         _ = sync
     }
@@ -865,11 +866,12 @@ final class StateSyncServiceTests: XCTestCase {
         client.beforeFetchResponse = { await gate.wait() }
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.client.fetchedCountries.contains(self.pl) } // parked on the wire
+        await waitUntil { self.client.fetchedCountries.contains(self.pl) } // parked on the wire
         userSubject.send(nil)
-        await gate.open()
-        try await waitUntil { self.client.inFlight == 0 }
-        try await Task.sleep(for: .milliseconds(100))
+        await nextMainQueueTurn() // the logout reaches the service (a `receive(on: main)` hop)
+        gate.open()
+        await waitUntil { self.client.inFlight == 0 }
+        await settle()
 
         XCTAssertEqual(prefs.pendingHiddenFilmsChanges(country: pl), [])
         XCTAssertEqual(prefs.hiddenFilms(country: pl), ["Mine"])
@@ -885,14 +887,12 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["A"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["A"] }
+        await waitUntil { self.prefs.hiddenFilms == ["A"] }
 
-        let pushed = expectation(description: "hide pushed")
-        client.onHide = { pushed.fulfill() }
         client.remote[pl]?.insert("From Elsewhere") // another device, since the last fetch
         prefs.hide("New")
-        await fulfillment(of: [pushed], timeout: 1)
-        try await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
+        await waitUntil { !self.client.hideCalls.isEmpty }
+        await waitUntil { self.prefs.pendingHiddenFilmsChanges(country: self.pl).isEmpty }
 
         XCTAssertNil(prefs.hiddenFilmsValidators(country: pl).etag)
         _ = sync
@@ -904,13 +904,13 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = []
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
         XCTAssertFalse(client.fetchedCountries.contains(unitedKingdom.code))
 
         client.remote[unitedKingdom.code] = ["UK Film"]
         prefs.setCountry(unitedKingdom)
 
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
         XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
         _ = sync
     }
@@ -921,15 +921,18 @@ final class StateSyncServiceTests: XCTestCase {
     func testCountrySwitchDuringTheLoginReconcileReconcilesTheNewCountry() async throws {
         client.remote[pl] = ["PL Film"]
         client.remote[unitedKingdom.code] = ["UK Film"]
-        client.fetchDelay[pl] = .milliseconds(300)
+        let onTheWire = AsyncGate()
+        client.fetchHold[pl] = onTheWire
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.client.fetchedCountries.contains(self.pl) }
+        await waitUntil { self.client.fetchedCountries.contains(self.pl) }
 
         prefs.setCountry(unitedKingdom)
+        await nextMainQueueTurn() // the switch reaches the service (a `receive(on: main)` hop)
+        onTheWire.open()
 
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
         XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
         XCTAssertEqual(prefs.hiddenFilms(country: pl), ["PL Film"])
         _ = sync
@@ -941,12 +944,12 @@ final class StateSyncServiceTests: XCTestCase {
     func testAHideIsSentToTheCountryItWasMadeIn() async throws {
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
         prefs.hide("PL Film")
         prefs.setCountry(unitedKingdom)
 
-        try await waitUntil { !self.client.hideCalls.isEmpty }
+        await waitUntil { !self.client.hideCalls.isEmpty && self.client.inFlight == 0 }
         XCTAssertEqual(client.hideCalls.map(\.country), [pl])
         XCTAssertEqual(client.remote[pl], ["PL Film"])
         _ = sync
@@ -959,12 +962,12 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = ["PL Film"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+        await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
 
         client.remote[unitedKingdom.code] = ["UK Film"]
         prefs.setCountry(unitedKingdom)
 
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
         XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
         XCTAssertTrue(client.hideCalls.isEmpty, "pushed another country's hides: \(client.hideCalls)")
         _ = sync
@@ -978,15 +981,15 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[unitedKingdom.code] = ["UK Film"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+        await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
         prefs.setCountry(unitedKingdom)
-        try await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
+        await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
 
         // PL's bucket hasn't changed server-side, so a conditional GET with
         // PL's validators would answer 304.
         prefs.setCountry(Country.all.first { $0.code == pl }!)
 
-        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+        await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
         _ = sync
     }
 
@@ -998,15 +1001,17 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[unitedKingdom.code] = ["UK Film"]
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
+        await waitUntil { self.prefs.hiddenFilms == ["PL Film"] }
 
         client.remote[pl] = ["PL Film", "PL Film 2"]
-        client.fetchDelay[pl] = .milliseconds(300)
+        let onTheWire = AsyncGate()
+        client.fetchHold[pl] = onTheWire
         let slowResume = Task { await sync.reconcileCurrentCountry() }
-        try await waitUntil { self.client.fetchedCountries.count == 2 } // the slow fetch is on the wire
+        await waitUntil { self.client.fetchedCountries.count == 2 } // the slow fetch is on the wire
         prefs.setCountry(unitedKingdom)
-        try await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
+        await waitUntil { self.prefs.hiddenFilms == ["UK Film"] }
 
+        onTheWire.open()
         await slowResume.value
         XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
         XCTAssertEqual(prefs.hiddenFilms(country: pl), ["PL Film", "PL Film 2"])
@@ -1020,13 +1025,13 @@ final class StateSyncServiceTests: XCTestCase {
         client.remote[pl] = []
         let sync = makeSyncService()
         login()
-        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
         login()
-        try await Task.sleep(for: .milliseconds(50)) // the second emission is handled (or, wrongly, stacks observers)
+        await settle() // the second emission is handled (or, wrongly, stacks observers)
 
         prefs.hide("New Hide")
-        try await waitUntil { self.client.hideCalls.count >= 1 && self.client.inFlight == 0 }
-        try await Task.sleep(for: .milliseconds(50)) // a stacked observer's second PUT would be here by now
+        await waitUntil { self.client.hideCalls.count >= 1 && self.client.inFlight == 0 }
+        await settle() // a stacked observer's second PUT would be here by now
 
         XCTAssertEqual(client.hideCalls.map(\.title), ["New Hide"])
         _ = sync

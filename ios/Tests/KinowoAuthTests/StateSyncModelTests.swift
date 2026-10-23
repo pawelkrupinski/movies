@@ -292,12 +292,12 @@ enum SyncModel {
         }
 
         private func release() async {
-            await stall?.open()
+            stall?.open()
             stall = nil
         }
 
         func tearDown() {
-            if let hang { Task { await hang.open() } }
+            hang?.open()
             defaults.discardScratch(suiteName: suite)
         }
 
