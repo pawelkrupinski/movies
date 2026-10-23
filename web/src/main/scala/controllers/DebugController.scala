@@ -5,7 +5,6 @@ import services.movies.LatestTitleYear
 import models._
 import play.api.mvc._
 import play.api.Mode
-import services.movies.TitleNormalizer
 import services.readmodel.WebReadModel
 
 import scala.concurrent.{Await, Future}
@@ -54,8 +53,6 @@ class DebugController(cc: ControllerComponents,
                       servingCountry: models.Country,
                       // What "now" is for the pages' own age readings (the mirror badge, cadence).
                       clock: java.time.Clock,
-                      // The serving country's title rules — the wiring's one instance.
-                      normalizer: TitleNormalizer,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {
   // The latest year a title may name, read off this controller's clock: what the row details cap a title's year by.
   private val latestYear = LatestTitleYear(clock)

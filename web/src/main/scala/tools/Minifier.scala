@@ -13,7 +13,7 @@ trait Minifier {
    *  whose template takes nothing that varies (`_sharedStyles`). `block` names it and
    *  must be unique to the call site. Here the block is rendered and processed on every
    *  call; [[MemoisingMinifier]] does both once. */
-  def constant(block: String)(content: => play.twirl.api.Html): play.twirl.api.Html =
+  def constant(@scala.annotation.unused block: String)(content: => play.twirl.api.Html): play.twirl.api.Html =
     play.twirl.api.Html(process(content.body))
 }
 

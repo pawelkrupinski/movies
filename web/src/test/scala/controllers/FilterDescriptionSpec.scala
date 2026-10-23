@@ -11,10 +11,10 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   // ── Test fixtures ───────────────────────────────────────────────────────────
 
-  private def movie(title: String, countries: List[String] = Nil, genres: Seq[String] = Nil): Movie =
+  private def movie(title: String, countries: List[String], genres: Seq[String]): Movie =
     Movie(title = title, countries = countries, genres = genres)
 
-  private def slot(cinema: Cinema, room: String, time: String, format: List[String] = Nil): Showtime = {
+  private def slot(room: String, time: String, format: List[String]): Showtime = {
     val (h, m) = time.split(':').map(_.toInt) match { case Array(a, b) => (a, b) }
     Showtime(dateTime = LocalDateTime.of(2026, 5, 17, h, m), bookingUrl = None, room = Some(room), format = format)
   }
@@ -36,7 +36,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     director      = director,
     cinemaFilmUrls = Nil,
     showings      = Seq(
-      LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, rooms.map(r => slot(cinema, r, "18:00", format))))
+      LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, rooms.map(r => slot(r, "18:00", format))))
     ),
     resolved      = TestReadModel.resolved(title, None, MovieRecord()),
     slug          = FilmHref.slugOf(title),
@@ -246,7 +246,6 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   }
 
   "a long filter combination" should "truncate the title at MaxTitle with an ellipsis" in {
-    val excluded = (1 to 8).map(i => s"X|Room $i").mkString(",")  // unknown cinemas, so room phrase is summary
     val meta = FilterDescription.forIndex(Poznan,
       Map(
         "q"   -> Seq("Mandalorian i Grogu w wielkim galaktycznym konflikcie"),

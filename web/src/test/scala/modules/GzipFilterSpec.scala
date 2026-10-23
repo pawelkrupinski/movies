@@ -12,7 +12,7 @@ import play.api.mvc.{EssentialAction, Results}
 import play.api.test.FakeRequest
 import play.filters.gzip.{GzipFilter, GzipFilterConfig}
 
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.Await
 
 /**
  * Locks the response-compression behaviour `AppLoader` wires via
@@ -27,7 +27,6 @@ class GzipFilterSpec extends AnyFlatSpec with Matchers {
 
   private implicit val sys: ActorSystem     = ActorSystem("gzip-filter-spec")
   private implicit val mat: Materializer    = Materializer(sys)
-  private implicit val executionContext: ExecutionContext = sys.dispatcher
 
   private val gzip = new GzipFilter(GzipFilterConfig())
 

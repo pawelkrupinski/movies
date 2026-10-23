@@ -52,6 +52,9 @@ ThisBuild / scalacOptions ++= Seq(
   // Twirl-generated warnings come out without a parseable category — filter by
   // path. `app/views/` only holds Twirl templates. (No-op outside web.)
   "-Wconf:src=.*views/.*:silent",
+  // Play's generated router binds every route's parameters in patterns it never reads; its warnings point at the
+  // `routes` file but come from the generated `routes/main/router` sources. (No-op outside web.)
+  "-Wconf:src=.*/routes/main/.*:silent",
   // An outcome that says a read failed, saw only part of a collection, or lost its write to
   // another writer must not be dropped unread: an unused value of one of these types is an error. The warning is on
   // for every type and silenced for all others — dropping an `Int` or a `Future` is
@@ -424,6 +427,7 @@ lazy val worker = (project in file("worker"))
 // ── Web app (content serving) ────────────────────────────────────────────────
 
 lazy val web = (project in file("web"))
+  .settings(unusedAll)
   .enablePlugins(PlayScala, SbtWeb)
   // Disable Play's app/ + conf/ + public/ layout so it falls back to the
   // standard sbt layout — src/main/scala, src/main/resources (routes +

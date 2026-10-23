@@ -98,7 +98,7 @@ object StructuredData {
       )
     }
     render(Json.arr(
-      breadcrumb(origin, Seq(city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl)),
+      breadcrumb(Seq(city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl)),
       place(cityUrl, city),
       Json.obj(
         "@context" -> Ctx, "@type" -> "ItemList",
@@ -177,7 +177,7 @@ object StructuredData {
       }
     }
 
-    val crumb = breadcrumb(origin, Seq(
+    val crumb = breadcrumb(Seq(
       city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl, m.title -> canonicalUrl,
     ))
 
@@ -186,7 +186,7 @@ object StructuredData {
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
-  private def breadcrumb(origin: String, crumbs: Seq[(String, String)]): JsValue =
+  private def breadcrumb(crumbs: Seq[(String, String)]): JsValue =
     Json.obj(
       "@context" -> Ctx, "@type" -> "BreadcrumbList",
       "itemListElement" -> crumbs.zipWithIndex.map { case ((name, url), i) =>

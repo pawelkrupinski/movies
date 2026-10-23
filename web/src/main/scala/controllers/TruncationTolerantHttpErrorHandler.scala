@@ -4,7 +4,7 @@ import org.apache.pekko.http.scaladsl.model.EntityStreamException
 import play.api.http.{DefaultHttpErrorHandler, HttpErrorConfig}
 import play.api.mvc.RequestHeader
 import play.api.routing.Router
-import play.api.{Environment, Logger, UsefulException}
+import play.api.{Logger, UsefulException}
 import play.core.SourceMapper
 
 /**
@@ -25,7 +25,6 @@ import play.core.SourceMapper
  * 500 response stand — the client is gone, the body wouldn't be read.
  */
 class TruncationTolerantHttpErrorHandler(
-  environment:   Environment,
   config:        HttpErrorConfig,
   sourceMapper:  Option[SourceMapper],
   router:        => Option[Router]

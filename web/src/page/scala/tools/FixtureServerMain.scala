@@ -198,7 +198,7 @@ object FixtureServerMain {
         }
       }
       val first = segment(p)
-      models.Country.byCode(first).filter(c => p.startsWith(s"/$first/")).flatMap(c => within(c, p.stripPrefix(s"/$first")))
+      models.Country.byCode(first).filter(_ => p.startsWith(s"/$first/")).flatMap(c => within(c, p.stripPrefix(s"/$first")))
         .orElse(models.Country.all.view.flatMap(within(_, p)).headOption)
     }
 

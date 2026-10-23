@@ -3,7 +3,6 @@ package controllers
 import models._
 import play.api.mvc._
 import play.api.Mode
-import services.movies.TitleNormalizer
 import services.readmodel.WebReadModel
 
 import java.time.LocalDate
@@ -28,9 +27,6 @@ class MovieController( cc: ControllerComponents,
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
                        servingCountry: models.Country,
-                       // The serving country's title rules — the wiring's one instance,
-                       // so the city OG card folds titles the way the worker keyed them.
-                       normalizer: TitleNormalizer,
                        // Rewrites every page's inline `<script>`/`<style>`
                        // blocks — the composition root's choice for this mode
                        // (`Minifier.forMode`), so its memo caches live and die

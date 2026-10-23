@@ -194,7 +194,6 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   // (most of /uptime/img-event's beacon noise) lands at WARN rather
   // than ERROR — see the class comment for the full rationale.
   override lazy val httpErrorHandler: HttpErrorHandler = new TruncationTolerantHttpErrorHandler(
-    environment,
     HttpErrorConfig(showDevErrors = environment.mode != Mode.Prod, playEditor = configuration.getOptional[String]("play.editor")),
     devContext.map(_.sourceMapper),
     Some(router)

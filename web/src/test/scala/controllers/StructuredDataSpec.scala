@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 class StructuredDataSpec extends AnyFlatSpec with Matchers {
 
   private def ratings(
-    imdb: Option[Double] = None, filmweb: Option[Double] = None,
+    imdb: Option[Double], filmweb: Option[Double] = None,
     metascore: Option[Int] = None, rt: Option[Int] = None,
   ) = ResolvedRatings(
     imdb = imdb, imdbUrl = imdb.map(_ => "https://imdb.com/title/tt1"),

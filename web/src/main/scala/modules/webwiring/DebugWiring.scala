@@ -160,7 +160,7 @@ trait DebugWiring { self: Wiring =>
 
   lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    servingCountry = country, clock = clock, normalizer = titleNormalizer) }
+    servingCountry = country, clock = clock) }
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on

@@ -4,7 +4,6 @@ import org.apache.pekko.http.scaladsl.model.{EntityStreamException, ErrorInfo}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.http.HttpErrorConfig
-import play.api.{Environment, Mode}
 
 /**
  * Regression: `EntityStreamException` from a sendBeacon-truncated POST
@@ -15,7 +14,6 @@ import play.api.{Environment, Mode}
 class TruncationTolerantHttpErrorHandlerSpec extends AnyFlatSpec with Matchers {
 
   private val handler = new TruncationTolerantHttpErrorHandler(
-    Environment.simple(mode = Mode.Test),
     HttpErrorConfig(showDevErrors = false, playEditor = None),
     sourceMapper = None,
     router       = None

@@ -52,7 +52,6 @@ object TestDebugController {
       cinemaSourceUrls = () => cinemaSourceUrls,
       servingCountry   = models.Country.default,
       clock            = clock,
-      normalizer       = services.movies.SingleCountryNormalizer.titleNormalizer,
     )
     (ctrl, readModel)
   }

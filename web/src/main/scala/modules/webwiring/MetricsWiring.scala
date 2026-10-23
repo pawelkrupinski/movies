@@ -40,13 +40,13 @@ trait MetricsWiring { self: Wiring =>
   // NOT lazy: nothing reads this object again — registering its callback gauges
   // on the registry IS its whole job — so a `lazy val` would never be forced and
   // the panels would stay as blank as they were with Fly's metrics gone.
-  private val webHostMetrics = new WebHostMetrics(webJvmMetrics.registry, metricsCountry.code)
+  @scala.annotation.unused private val webHostMetrics = new WebHostMetrics(webJvmMetrics.registry, metricsCountry.code)
   // How much heap the gzipped-response cache is holding, against its budget. NOT
   // lazy for the same reason as the line above: registering the gauges is the
   // whole job. It forces `encodedResponseCache`, which is only a map — no I/O, no
   // ordering constraint.
   // Every in-heap cache this tier holds, on one `kinowo_web_cache_*` family.
-  private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, Seq(
+  @scala.annotation.unused private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, Seq(
     "response" -> (() => encodedResponseCache.occupancy),
     "cards" -> (() => filmCards.occupancy)) ++
     // Only the production minifier memoises; dev mode's pass-through has nothing to report.

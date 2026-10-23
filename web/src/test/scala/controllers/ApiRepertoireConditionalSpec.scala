@@ -323,7 +323,6 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "clamp a hostile or nonsensical window rather than trusting the URL" in {
-    val (ctrl, _) = windowController()
     CityJsonPayloads.dayWindow(Some(0))        shouldBe Some(1)
     CityJsonPayloads.dayWindow(Some(-5))       shouldBe Some(1)
     CityJsonPayloads.dayWindow(Some(99999))    shouldBe Some(CityJsonPayloads.MaxDayWindow)

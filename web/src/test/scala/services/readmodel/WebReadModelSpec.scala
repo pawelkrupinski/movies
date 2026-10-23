@@ -746,7 +746,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   // change London's rendered links. Those changes -- and only those -- have to
   // move every city, which is what the "slug corpus" cases below pin.
 
-  private def titled(id: String, title: String, year: Option[Int] = None) =
+  private def titled(id: String, title: String, year: Option[Int]) =
     ResolvedMovie(id, title, None, None, Nil, None, year, Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)
 
   private def twoCityModel(): (InMemoryReadModelRepository, WebReadModel) = {
@@ -898,7 +898,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "move every city on a full reload" in {
-    val (repository, rm) = twoCityModel()
+    val (_, rm) = twoCityModel()
     val londonBefore = rm.lastModifiedFor("london")
 
     rm.reload()

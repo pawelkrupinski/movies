@@ -73,7 +73,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
         CinemaCityWroclavia -> SourceData(title = Some(title), releaseYear = Some(2020), showtimes = Seq(models.Showtime(now.minusDays(1), None, None, Nil)))
       )
     )
-    val (ctrl, readModel) = TestMovieController.build(Seq((title, Some(2020), record)))
+    val (_, readModel) = TestMovieController.build(Seq((title, Some(2020), record)))
     val service = new MovieControllerService(readModel, clock = TestMovieController.clock)
 
     val filmId = readModel.filmSlugs.idFor("stary-film").getOrElse(fail("expected the fixture film to have a slug"))

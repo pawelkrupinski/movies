@@ -42,7 +42,7 @@ trait ControllersWiring { self: Wiring =>
     fleetConnection.database.map(db => managedResources.stopping(new services.facebook.FacebookFetchRecorder(
       new services.facebook.MongoFacebookFetches(db.getCollection(services.facebook.FacebookFetches.Collection)), clock, stopwatch)))
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
-    servingCountry = country, normalizer = titleNormalizer, minifier = minifier,
+    servingCountry = country, minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
     filmCards = filmCards,

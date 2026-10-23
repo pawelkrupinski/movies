@@ -96,9 +96,6 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
     ))._1
   }
 
-  private def headingOf(html: String): String =
-    "<title>(.*?)</title>".r.findFirstMatchIn(html).map(_.group(1)).getOrElse("")
-
   /** Each axis has to filter its own field. The action matches the four options
    *  positionally, so a mixed-up arm still compiles and still renders a page —
    *  only the contents are wrong. */

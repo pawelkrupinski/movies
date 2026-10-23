@@ -1,6 +1,6 @@
 package controllers
 
-import models.{Helios, Movie, MovieRecord, Poznan, Showtime, Source, SourceData, Tmdb}
+import models.{Helios, Movie, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
@@ -22,8 +22,6 @@ import java.time.{LocalDate, LocalDateTime}
  * URI alone lets a Unicode letter through where Swift does not, see AsciiUrlSpec.
  */
 class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
-
-  private implicit val city: models.City = Poznan
 
   private val ScrapedPoster = "http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg"
 

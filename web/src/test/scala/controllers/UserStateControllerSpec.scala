@@ -402,7 +402,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = cache, stateRepository = countingRepo)
     countingRepo.findCalls = 0
 
-    val result = callHiddenFilms(ctl, headers = Seq(
+    callHiddenFilms(ctl, headers = Seq(
       "If-None-Match"     -> "\"whatever\"",
       "If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT"
     )*)

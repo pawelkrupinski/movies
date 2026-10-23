@@ -83,7 +83,6 @@ object TestMovieController {
       environment            = mode,
       responseCache          = responseCache,
       servingCountry         = servingCountry,
-      normalizer             = services.movies.TitleNormalizer.forCountry(servingCountry),
       minifier               = tools.Minifier.forMode(mode),
       pageTags               = pageTags,
       recordRender           = recordRender,
