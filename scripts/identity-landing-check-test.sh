@@ -37,7 +37,10 @@ case "$cmd" in testOnly*) g=unit ;; worker/IntegrationTest*) g=it ;; *FilmSchedu
 [ -f "$LOGS/$g.unreachable" ] && exit 2
 mkdir -p "$out"
 if [ -f "$LOGS/$g.log" ]; then cp "$LOGS/$g.log" "$out/sbt.log"; exit 1; fi
-printf '[info] All tests passed.\n' > "$out/sbt.log"
+printf '[info] All tests passed.\n[success] Total time: 3 s\n' > "$out/sbt.log"
+# a run whose tail (its timings job) failed after every spec passed: identity-run's conclusion is failure all the same
+[ -f "$LOGS/$g.tail-fails" ] && exit 1
+exit 0
 STUB
 cat > "$work/bin/measure" <<'STUB'
 #!/usr/bin/env bash
@@ -84,22 +87,36 @@ cat > "$work/logs/unit.log" <<'LOG'
 [info] - should take no film a judgement denies or contradicts, beyond those known-wrong in scope rows *** FAILED ***
 [info]   uk Pavilions Teignmouth | Patrick Monahan -> tmdb:123 judged wrong (MatchedTakesLabelSpec.scala:41)
 [info] IdentitySliceCasesSpec:
+[info] IdentityRefitCaptureReplaySpec:
 [info] - should take identity-judgements.tsv's right film for each listing of uk-relay-1 *** FAILED ***
+[info]   java.lang.IllegalArgumentException: requirement failed: the slice uk-relay-1 lacks answers: GET https://api.themoviedb.org/3/search
+[info] - should take identity-judgements.tsv's right film for each listing of uk-relay-2 *** FAILED ***
+[info]   java.lang.IllegalArgumentException: requirement failed: the slice uk-relay-2 lacks answers: GET https://api.themoviedb.org/3/search
+[info] - should put every Scaladoc directly on the member it documents *** FAILED ***
+[info]   List("RelayStage.scala:101 is followed by another Scaladoc") was not empty (DocCommentPlacementSpec.scala:56)
 [error] Failed tests:
 [error] 	services.identity.MatchedTakesLabelSpec
 [error] 	services.identity.IdentitySliceCasesSpec
 [error] 	services.identity.UnmatchedClustersRatchetSpec
+[error] 	tools.DocCommentPlacementSpec
 [error] (worker / Test / testOnly) sbt.TestsFailedException: Tests unsuccessful
+[error] Total time: 950 s
 LOG
 check "a judgement the unified rows contradict is BLOCKED, the measure LANDABLE notwithstanding" "1" "$(landing --head "$judged" --base "$code")"
 check "...the verdict" "true" "$(has 'BLOCKED')"
 check "...naming the spec and its test" "true" \
   "$(has '- MatchedTakesLabelSpec: should take no film a judgement denies or contradicts, beyond those known-wrong in scope rows')"
 check "...with the hint for its usual cause" "true" "$(has 'hint: judgement rows stale -> known-wrong scope rows')"
-check "...a slice case, its own hint" "true" "$(has 'the case'"'"'s expected.tsv is stale / asks unpinned questions -> re-pin from the recording')"
+check "...a failure under another suite's header (parallel output) is its own suite's, named by the summary" "2 0" \
+  "$(grep -c '^  - IdentitySliceCasesSpec: should take' "$work/out") $(grep -c 'IdentityRefitCaptureReplaySpec' "$work/out")"
+check "...a slice case lacking answers, the re-pin hint" "true" "$(has 'hint: slice case asks unpinned questions -> re-pin from the recording')"
+check "...a failure its location names, that suite's" "true" "$(has '- DocCommentPlacementSpec: should put every Scaladoc directly on the member it documents')"
 check "...a suite the summary names without a test, too" "true" "$(has '- UnmatchedClustersRatchetSpec: (the suite failed: see the log)')"
 rm -f "$work/logs/unit.log"
 
+touch "$work/logs/it.tail-fails"
+check "a run whose tail failed after every spec passed is no failure: the sbt log decides" "0" "$(landing --head "$code" --base "$base")"
+rm -f "$work/logs/it.tail-fails"
 printf '[error] /w/worker/src/main/scala/X.scala:3:5: not found: value y\n[error] (worker / Compile / compileIncremental) Compilation failed\n' > "$work/logs/it.log"
 check "a commit that does not compile is BLOCKED, saying so" "1 true" \
   "$(landing --head "$code" --base "$base") $(has '- compile: /w/worker/src/main/scala/X.scala:3:5: not found: value y')"

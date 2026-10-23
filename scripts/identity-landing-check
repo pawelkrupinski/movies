@@ -94,14 +94,23 @@ run_group() {
   if [ -n "$local" ]; then
     if [ "$name" = it ]; then (cd "$(git rev-parse --show-toplevel)" && "$here/it-local.sh" "$command") > "$dir/sbt.log" 2>&1
     else "$here/sbt-warm" "$command" > "$dir/sbt.log" 2>&1; fi
-    rc=$?; [ "$rc" -le 1 ] || rc=1
   else
     "${IDENTITY_LANDING_CI_RUN:-$here/identity-ci-run}" --head "$commit" --out "$dir/run" -- "$command" > "$dir/ci-run.log" 2>&1
-    rc=$?
     # the artifact's sbt.log (identity-run.yml tees it); a run that never made one is no answer
-    if [ -f "$dir/run/sbt.log" ]; then cp "$dir/run/sbt.log" "$dir/sbt.log"; elif [ "$rc" != 2 ]; then rc=2; fi
+    [ ! -f "$dir/run/sbt.log" ] || cp "$dir/run/sbt.log" "$dir/sbt.log"
   fi
+  # THE SBT LOG DECIDES, not the run's conclusion: the run's tail (its timings job) fails now and then and turns a run
+  # whose every spec passed red (runs 1635, 1641, 1642 on 2026-10-23)
+  rc=2; [ ! -f "$dir/sbt.log" ] || rc=$(sbt_verdict "$dir/sbt.log")
   echo "$rc" > "$dir/exit"
+}
+# sbt_verdict <sbt.log> -> 1 when sbt failed a command (a failed test, an error, a compile error), 0 when it ended with
+# success, 2 when it never ended (a log cut short: no answer)
+sbt_verdict() {
+  local log; log=$(sed -E 's/\x1b\[[0-9;]*m//g' "$1")
+  if grep -qE '\[error\] (Total time|Failed tests:|Error during tests:|.*Compilation failed)|\*\*\* (FAILED|ABORTED) \*\*\*' <<< "$log"; then echo 1
+  elif grep -qE '\[success\] Total time' <<< "$log"; then echo 0
+  else echo 2; fi
 }
 # the commit's tree, for --local: sbt-warm and it-local.sh test the working tree
 if [ -n "$local" ] && [ -n "$specs" ] && [ "$(git rev-parse HEAD)" != "$commit" ]; then
@@ -132,28 +141,59 @@ measure_rc=""
 if [ -n "$measure" ]; then wait "$measure_pid"; measure_rc=$?; fi
 
 # ── reading the failures ───────────────────────────────────────────────────────────────────────
-# failures <sbt.log> -> "<Spec><TAB><test>" per failed test; a suite that failed with no test named (aborted, an
-# error before its tests) as "<Spec><TAB>(the suite failed: …)"; a compile error as "compile<TAB><its first error>"
+# failures <sbt.log> -> "<Spec><TAB><test><TAB><its first detail line>" per failed test; a suite that failed with no
+# test named (aborted, an error before its tests) as "<Spec><TAB>(the suite failed: see the log)"; a compile error as
+# "compile<TAB><its first error>". Suites run in parallel and their output interleaves, so the "<Spec>:" header above a
+# failure need not be its suite's. A failure is the suite its own location names ("(XSpec.scala:56)"); else the suite a
+# failure worded alike was given; else the one suite sbt's summary lists failed that no failure has claimed yet; else
+# the newest such unclaimed suite whose header came before it; else the newest failed suite's header above it.
 failures() {
   sed -E 's/\x1b\[[0-9;]*m//g' "$1" | awk '
+    function close_failure() { if (open) { loc[n] = location; open = 0 } }
     /\[error\] .*Compilation failed/ { compile = 1 }
     /\[error\] [^ ]+\.scala:[0-9]+:[0-9]+:/ && !first_error { first_error = $0; sub(/^.*\[error\] /, "", first_error) }
-    match($0, /\[info\] [A-Z][A-Za-z0-9_$]*:$/) { spec = substr($0, RSTART + 7, RLENGTH - 8) }
-    /\*\*\* FAILED \*\*\*/ { t = $0; sub(/^.*\[info\] +- /, "", t); sub(/ \*\*\* FAILED \*\*\*.*$/, "", t); print spec "\t" t; named[spec] = 1 }
-    /\*\*\* ABORTED \*\*\*/ { t = $0; sub(/^.*\[info\] +/, "", t); print spec "\t(aborted) " t; named[spec] = 1 }
-    /\[error\] (Failed tests|Error during tests):/ { summary = 1; next }
-    summary && /\[error\][ \t]+[a-z][A-Za-z0-9_.$]*$/ { s = $NF; n = split(s, p, "."); if (!(p[n] in named)) print p[n] "\t(the suite failed: see the log)"; named[p[n]] = 1; next }
+    /\[error\] (Failed tests|Error during tests):/ { close_failure(); summary = 1; next }
+    summary && /\[error\][ \t]+[a-z][A-Za-z0-9_.$]*$/ { k = split($NF, p, "."); failed[p[k]] = 1; order[++m] = p[k]; next }
     summary { summary = 0 }
-    END { if (compile) print "compile\t" (first_error ? first_error : "Compilation failed") }'
+    /\[info\] +- / || match($0, /\[info\] [A-Z][A-Za-z0-9_$]*:$/) { close_failure() }
+    match($0, /\[info\] [A-Z][A-Za-z0-9_$]*:$/) { spec = substr($0, RSTART + 7, RLENGTH - 8); seen = seen " " spec }
+    /\*\*\* (FAILED|ABORTED) \*\*\*/ {
+      t = $0; sub(/^.*\[info\] +(- )?/, "", t); aborted = ($0 ~ /ABORTED/); sub(/ \*\*\* (FAILED|ABORTED) \*\*\*.*$/, "", t)
+      n++; test[n] = (aborted ? "(aborted) " : "") t; header[n] = spec; before[n] = seen; detail[n] = ""; location = ""; open = 1; lines = 0; next }
+    open {
+      if (++lines > 40) { close_failure(); next }
+      d = $0; sub(/^.*\[info\] +/, "", d)
+      if (detail[n] == "" && d != "") detail[n] = substr(d, 1, 400)
+      if (location == "" && match(d, /\([A-Z][A-Za-z0-9_$]*\.scala:[0-9]+\)/)) location = substr(d, RSTART + 1, RLENGTH - 2)
+    }
+    END {
+      close_failure()
+      for (i = 1; i <= n; i++) {  # 1. the suite its own location names
+        s = loc[i]; sub(/\.scala:.*/, "", s); who[i] = (s in failed) ? s : ""; if (who[i] != "") claimed[who[i]] = 1
+      }
+      for (i = 1; i <= n; i++) if (who[i] == "") {
+        left = ""; c = 0; for (j = 1; j <= m; j++) if (!(order[j] in claimed)) { left = order[j]; c++ }
+        for (j = 1; j <= n && who[i] == ""; j++) if (j != i && who[j] != "" && substr(test[j], 1, 40) == substr(test[i], 1, 40)) who[i] = who[j]  # 2. worded alike
+        if (c == 1 && who[i] == "") who[i] = left  # 3. the one failed suite no failure claimed yet
+        k = split(before[i], h, " ")
+        for (j = k; j >= 1 && who[i] == ""; j--) if (h[j] in failed && !(h[j] in claimed)) who[i] = h[j]  # 4. the newest unclaimed header
+        for (j = k; j >= 1 && who[i] == ""; j--) if (h[j] in failed) who[i] = h[j]  # 5. the newest failed header
+        if (who[i] == "") who[i] = (header[i] != "" ? header[i] : "?")
+        claimed[who[i]] = 1
+      }
+      for (i = 1; i <= n; i++) print who[i] "\t" test[i] "\t" detail[i]
+      for (j = 1; j <= m; j++) if (!(order[j] in claimed)) print order[j] "\t(the suite failed: see the log)\t"
+      if (compile) print "compile\t" (first_error ? first_error : "Compilation failed") "\t"
+    }'
 }
-# hint <spec> <test> -> what usually makes it fail, and the way out
+# hint <spec> <test> [<first detail line>] -> what usually makes it fail, and the way out
 hint() {
-  case "$1	$2" in
+  case "$1	$2	${3:-}" in
     MatchedTakesLabelSpec*known-wrong*)
       echo "judgement rows stale -> known-wrong scope rows: a judgement now denies a take the unified rows (IdentityUnifiedFit.Takes) hold; add it to identity-judgements.tsv as known-wrong in scope \`rows\` with why, or re-emit the rows (scripts/identity-calibrate.sh --takes)" ;;
     MatchedTakesLabelSpec*)
       echo "the unified rows' takes against the judgements: re-emit the rows (scripts/identity-calibrate.sh --takes) or fix the judgement rows the spec names" ;;
-    IdentitySliceCasesSpec*unpinned*|IdentitySliceCasesSpec*not\ pinned*|IdentitySliceCasesSpec*no\ answer*)
+    IdentitySliceCasesSpec*unpinned*|IdentitySliceCasesSpec*not\ pinned*|IdentitySliceCasesSpec*lacks\ answers*)
       echo "slice case asks unpinned questions -> re-pin from the recording: scripts/identity-slice --emit-case over the case's listings" ;;
     IdentitySliceCasesSpec*)
       echo "a pinned slice case no longer takes its right film: the change regresses that listing (scripts/identity-slice --explain), or the case's expected.tsv is stale / asks unpinned questions -> re-pin from the recording (scripts/identity-slice --emit-case)" ;;
@@ -195,7 +235,7 @@ if [ -n "$specs" ]; then
     else
       [ -n "$found" ] || found="$name	(sbt failed, no test named)"
       echo "  $(printf '%-11s' "$name") FAILED ($out/$name/sbt.log)"
-      while IFS=$'\t' read -r spec test; do blocked+=("$spec	$test	$(hint "$spec" "$test")"); done <<< "$found"
+      while IFS=$'\t' read -r spec test detail; do blocked+=("$spec	$test	$(hint "$spec" "$test" "$detail")"); done <<< "$found"
     fi
   done <<< "$groups"
 fi
