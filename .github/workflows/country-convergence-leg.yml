@@ -677,7 +677,7 @@ jobs:
                   sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
                   # What the leg left in Mongo — the size a RAM-backed mongod would have to hold, and where its
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
-                  docker exec mongo du -sh /data/db || true
+                  scripts/ci/mongo-exec.sh du -sh /data/db || true
                   scripts/ci/mongo-top.sh report || true
                   exit "${suite:-0}"
               env:

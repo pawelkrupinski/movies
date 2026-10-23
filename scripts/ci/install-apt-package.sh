@@ -15,6 +15,9 @@ set -uo pipefail
 limit="${APT_TIMEOUT_SECONDS:-120}"
 attempts="${APT_ATTEMPTS:-3}"
 apt() { sudo timeout "$limit" apt-get -o DPkg::Lock::Timeout=60 -qq "$@"; }
+# Already installed, every one of them -- the Forgejo job image bakes socat in -- is nothing to do: no update, no install.
+installed=$(dpkg-query -W -f='${Status}\n' "$@" 2>/dev/null | grep -c ' installed$')
+[ "$installed" = "$#" ] && { echo "[apt] $* already installed"; exit 0; }
 for attempt in $(seq 1 "$attempts"); do
   if apt update && apt install -y "$@"; then
     exit 0

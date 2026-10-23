@@ -24,7 +24,13 @@ calls=$(wc -l < "$STUB_LOG")
 [ "$calls" -le "${STUB_HANG_CALLS:-0}" ] && { echo $$ >> "$STUB_HUNG"; exec sleep 86400; }
 exit 0
 STUB
-chmod +x "$stub_dir/sudo" "$stub_dir/apt-get"
+# `dpkg-query`: whether the package is installed already -- STUB_INSTALLED says it is, otherwise it is unknown.
+cat > "$stub_dir/dpkg-query" <<'STUB'
+#!/usr/bin/env bash
+[ -n "${STUB_INSTALLED:-}" ] && { echo "install ok installed"; exit 0; }
+echo "dpkg-query: no packages found matching ${*: -1}" >&2; exit 1
+STUB
+chmod +x "$stub_dir/sudo" "$stub_dir/apt-get" "$stub_dir/dpkg-query"
 export STUB_LOG="$stub_dir/log" STUB_HUNG="$stub_dir/hung"
 
 # install <hang calls> [broken] -> its exit status (a stall it does not cut off: shell-spec.sh's spec_bounded's 124)
@@ -45,5 +51,7 @@ check "...after one failed attempt, leaving no apt-get running" "1 0" "$(failed_
 check "a mirror that never answers gives up after the bounded attempts" "1" "$(install 99)"
 check "...having tried three times, leaving no apt-get running" "3 0" "$(failed_attempts) $(spec_still_running "$STUB_HUNG")"
 check "a failing apt-get fails the install" "1" "$(install 0 broken)"
+check "a package installed already (the Forgejo job image's socat) is not installed again" "0" "$(STUB_INSTALLED=1 install 0 broken)"
+check "...no apt-get run at all" "0" "$(wc -l < "$STUB_LOG" | tr -d ' ')"
 
 spec_summary

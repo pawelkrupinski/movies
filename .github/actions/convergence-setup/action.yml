@@ -187,6 +187,21 @@ runs:
           GH_TOKEN: ${{ inputs.token }}
       run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start tree-restore "$GITHUB_WORKSPACE"/.github/scripts/restore-enrichment-tree.sh "${{ inputs.code }}" "${{ inputs.mode }}" "$RUNNER_TEMP/tree-stage"'
 
+    # THE SCRAPE CORPUS TOO, from here on in the background (2026-10-23): its download -- 9 s of a row's setup on average,
+    # 35 at p90 under load -- shares nothing with the JDK, sbt and build-cache restores below, and queued behind them. It
+    # lands in scrape-archive/ as ONE tarball (unpacked only in "Unpack whichever fixtures are present", after those
+    # restores' globs), and names its provenance in a GITHUB_ENV of its own -- a step's GITHUB_ENV is read when that step
+    # ends, so a background write to it is lost -- which "Restore the recorded scrape corpus" hands on with its verdict.
+    - name: Fetch the recorded scrape corpus in the background
+      if: inputs.replay == 'true'
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          : > "$RUNNER_TEMP/corpus-restore.env"
+          GITHUB_ENV="$RUNNER_TEMP/corpus-restore.env" "$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start corpus-restore \
+              "$GITHUB_WORKSPACE"/.github/scripts/convergence-setup.sh corpus "${{ inputs.code }}"
+
     # The JDK, sbt and the build cache BEFORE any fixture is restored: each keys its cache by
     # globbing the workspace (setup-java's `**/*.sbt`, the build cache's `**/src/...`), and a
     # restored enrichment tree is up to 127k files that every such glob walks for nothing —
@@ -263,7 +278,12 @@ runs:
       continue-on-error: ${{ inputs.mode == 'record' }}
       env:
           GH_TOKEN: ${{ inputs.token }}
-      run: '"$GITHUB_WORKSPACE"/.github/scripts/convergence-setup.sh corpus "${{ inputs.code }}"'
+      # The background fetch's verdict and provenance (above); one that never started is fetched here, as it was.
+      run: |
+          [ -f "$RUNNER_TEMP/corpus-restore.started" ] || exec "$GITHUB_WORKSPACE"/.github/scripts/convergence-setup.sh corpus "${{ inputs.code }}"
+          code=0; "$GITHUB_WORKSPACE"/scripts/ci/in-background.sh wait corpus-restore 1200 || code=$?
+          cat "$RUNNER_TEMP/corpus-restore.env" >> "$GITHUB_ENV"
+          exit "$code"
 
     # The corpus this country's last GREEN full leg replayed — recorded by that leg as
     # `corpus-green-<code>.txt` in the fixture release — and, when today's differs, that

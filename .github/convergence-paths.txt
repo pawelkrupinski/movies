@@ -59,6 +59,7 @@ scripts/ci/gh-optional.sh
 scripts/ci/preflight.sh
 scripts/ci/convergence-preflight.sh
 scripts/ci/start-mongo-replset.sh
+scripts/ci/mongo-exec.sh
 scripts/ci/in-background.sh
 scripts/ci/recording-cache.sh
 scripts/ci/cgroup-sampler.sh

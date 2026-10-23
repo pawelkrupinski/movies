@@ -46,6 +46,17 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The NATIVE mongod the Forgejo job image bakes (start-mongo-replset.sh's MONGO_NATIVE_HOME, /opt/mongodb/<version>,
+  // copied out of the same mongo:<version> image by infra's nix/files/forgejo-job-image): the same release, or the
+  // script would start another one wherever the image carries it.
+  "the job image's native mongod" should "be the exact server release production runs" in {
+    val homes = """/opt/mongodb/([0-9][0-9.]*)""".r.findAllMatchIn(RepoFile.read("scripts/ci/start-mongo-replset.sh")).map(_.group(1)).toSeq
+    withClue(s"scripts/ci/start-mongo-replset.sh must start the native mongod $productionVersion: ") {
+      homes should not be empty
+      all(homes) shouldBe productionVersion
+    }
+  }
+
   /** mongod 8.3 refuses to start on Linux 6.19 and newer ("Linux kernel versions 6.19 and newer has a
    *  known incompatibility", SERVER-121912), and the ubuntu-26.04 runner boots 7.0 — its first Main run
    *  (38781236870) died there. Until production's release starts on that kernel, every job that starts

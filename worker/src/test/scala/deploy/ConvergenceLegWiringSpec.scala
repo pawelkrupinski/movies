@@ -667,6 +667,26 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     unpack should include("""stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"""")
   }
 
+  /** The scrape corpus's download (9 s, 35 at p90: 2026-10-23) overlaps the JDK, sbt and build-cache restores too. Its
+   *  provenance goes to a GITHUB_ENV of its own -- a background write to the step's would be lost when the step ends --
+   *  and the restore step hands it on with the download's exit, so a corpus that is gone still ends the leg. */
+  it should "fetch the scrape corpus in the background, before the JDK and caches, and hand its provenance on" in {
+    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    val steps = setup.linesIterator.map(_.trim).filter(_.startsWith("- ")).toSeq
+    def at(fragment: String) = RepoFile.positionOf(steps, fragment)
+    val start = RepoFile.step(setup, "Fetch the recorded scrape corpus in the background")
+    start should include("GITHUB_ENV=\"$RUNNER_TEMP/corpus-restore.env\" \"$GITHUB_WORKSPACE\"/scripts/ci/in-background.sh start corpus-restore")
+    start should include(".github/scripts/convergence-setup.sh corpus \"${{ inputs.code }}\"")
+    withClue("the pair it fetches is resolved first: ")(at("Resolve the recorded pair") should be < at("Fetch the recorded scrape corpus"))
+    at("Fetch the recorded scrape corpus") should be < at("./.github/actions/setup-jdk")
+    val restore = RepoFile.step(setup, "Restore the recorded scrape corpus")
+    restore should include("in-background.sh wait corpus-restore 1200 || code=$?")
+    restore should include("cat \"$RUNNER_TEMP/corpus-restore.env\" >> \"$GITHUB_ENV\"")
+    restore should include("exit \"$code\"")
+    withClue("its verdict is collected before anything reads the corpus: ")(
+      at("Restore the recorded scrape corpus") should be < at("Unpack whichever fixtures are present"))
+  }
+
   /** The prod-Mongo tunnel's `socat` is not on the runner image, and installing it inside the
    *  tunnel step was 9-17 s of every recording's critical path (run 37105119296). Setup starts it
    *  at the top of a RECORDING job, beside the JDK and caches, and the tunnel waits for the rest —
