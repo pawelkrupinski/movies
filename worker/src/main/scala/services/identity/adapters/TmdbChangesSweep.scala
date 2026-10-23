@@ -185,8 +185,9 @@ object TmdbChangesSweep {
       d.getInt32("next").getValue, d.getInt32("films").getValue, d.getInt32("people").getValue)
   }
 
-  /** Counts a tick's requests, retries included: what its allowance is spent in. */
-  /** Counts the sweep's requests this minute (its allowance); public only so DefaultedMemberForwardingSpec can hold it. */
+  /** Counts the sweep's requests this minute, retries included: what its allowance is spent in. Public only so
+    * DefaultedMemberForwardingSpec can hold it.
+    */
   final class CountingFetch(underlying: HttpFetch) extends ForwardingHttpFetch {
     var asked = 0
     protected def around[A](url: String)(call: HttpFetch => A): A = { asked += 1; call(underlying) }
