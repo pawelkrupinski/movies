@@ -201,9 +201,10 @@ rm -rf "$work/release"; mkdir -p "$work/tmp"
 code=0; NO_RUNNER_TEMP=1 TMPDIR="$work/tmp" TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "outside Actions (no RUNNER_TEMP) the check runs, the base in a scratch directory of its own" "0 2" "$code $(base_calls)"
 check "...which is removed at exit" "0" "$(find "$work/tmp" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')"
-code=0; STUB_DUMP_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+# (each with nothing stored: a head whose results are stored runs no resolve or ratchet to fail -- THE HEAD'S OWN RESULTS)
+rm -rf "$work/release"; code=0; STUB_DUMP_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a resolve that fails, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the resolve exited 1' "$work/log")"
-code=0; STUB_RATCHET_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+rm -rf "$work/release"; code=0; STUB_RATCHET_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a ratchet that fails measuring, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the ratchet exited 1' "$work/log")"
 rm -rf "$work/release"
 # (a mktemp that fails: macOS's ignores TMPDIR)
@@ -278,7 +279,7 @@ code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 TAKES_BASE=$c2 store_run "$c4" || true
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a base its own run stored is reused, not compiled or resolved" 0 "$(base_calls)"
-check "...and the head still resolves" 2 "$(grep -vc identity-takes-base "$work/sbt-calls")"
+check "...nor the head, which its own earlier run stored" 0 "$(grep -vc identity-takes-base "$work/sbt-calls")"
 check "...and the check still diffs and passes" 0 "$code"
 check "...saying it reused the base" 1 "$(grep -c 'base resolve reused' "$work/log")"
 
@@ -314,6 +315,36 @@ check "a base that stored nothing, its identity code another's that did, reuses 
 check "...and its final takes" 1 "$(grep -c 'base final takes reused' "$work/log")"
 check "...compiling and resolving nothing for the base" 0 "$(base_calls)"
 check "...and the check still passes" 0 "$code"
+
+# THE HEAD'S OWN RESULTS. A measurement's base row stores main's newest commit while main's own run for it waits; main's
+# takes row then fetches its head's results under the same keys and runs no sbt for them. A key that differs in any
+# input -- another recording -- is made again, never a nearer one reused.
+rm -rf "$work/release"
+REF=refs/heads/measure/c7-1 TAKES_BASE=$c5 store_run "$c7" || true
+check "a measurement against c5 stores c5's side" 1 "$(grep -c 'the base resolve not stored' "$work/log")"
+code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "main's check of c5 then runs no sbt for its head" "0 1" \
+  "$(head_calls) $(grep -c 'every head result was stored -- no head session' "$work/log")"
+check "...timing the head's results as reused" "head-final:reused head-resolve:reused " \
+  "$(grep head- "$work/out/timings.tsv" | cut -f1,3 | tr '\t\n' ': ')"
+check "...and the check still diffs and passes" "0 1" "$code $(grep -c 'identity final takes (pl): 1 listings' "$work/out/verdict.txt")"
+code=0; PIN=43 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "another recording is another key: the head resolves again, its final takes (the capture's alone) reused" \
+  "dump-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+check "...and passes" 0 "$code"
+rm -f "$work"/release/takes-final-*
+code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a head whose decisions alone are stored replays only its final takes" \
+  "ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+check "...in a session that ran just that" 1 "$(grep -c "the head's session ran final in" "$work/log")"
+# the capture's gaps travel with the final takes: a reused head still names its blind spots
+rm -rf "$work/release"
+STUB_GAPS=1 TAKES_BASE=$c4 store_run "$c5" || true
+code=0; STUB_GAPS=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a head whose final takes are reused still names the gaps its capture has" "0 0 1" "$code $(head_calls) $(
+  grep -c "the head's final takes read 1 lookup(s) the capture lacks as UNKNOWN" "$work/out/verdict.txt")"
+check "...as does a base whose are" 1 "$(grep -c "the base's final takes read 1 lookup(s) the capture lacks" "$work/out/verdict.txt")"
+rm -rf "$work/release"
 
 # THE CORPUS SHAPE. c8 brings the specs that write their findings, c9 edits only them (an allowlist): no take can move,
 # so nothing resolves -- but the corpus-shape specs run at the head and the base over the one recording, and only a
@@ -354,10 +385,13 @@ check "an allowlist edit resolves no take" 1 "$(grep -c 'no identity code change
 check "...runs the corpus-shape specs at the head and the base" 2 "$(wc -l < "$work/sbt-calls" | tr -d ' ')"
 check "...and passes on a finding the recording brought, standing at both" 0 "$code"
 check "...reporting it" 1 "$(grep -c '0 new (the code.s: fail), 1 standing' "$work/out/verdict.txt")"
+# (the stub's findings change under one key, as no real head's can: each case a store of its own)
+rm -rf "$work/release"
 code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD="$arrietty$preview" SHAPE_BASE=$arrietty TAKES_BASE=$c8 store_run "$c9" || code=$?
 check "a finding only the head has fails the check" 1 "$code"
 check "...naming it" 1 "$(grep -c 'FAIL SearchQueryMarkers finding: FilmRaum' "$work/out/verdict.txt")"
 # c8's own check: its base c6 predates the findings files, and it stores the head's findings for c9's run to reuse.
+rm -rf "$work/release"
 at "$c8"; code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD=$arrietty SHAPE_BASE=$preview TAKES_BASE=$c6 store_run "$c8" || code=$?
 check "a base from before the specs wrote findings: the head's are reported, not judged" \
   1 "$(grep -c 'the base predates the corpus-shape findings' "$work/out/verdict.txt")"

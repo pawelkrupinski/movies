@@ -274,7 +274,21 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
 }
 # <decisions|final|shape> <key>: none for a result over the recording when no recording is pinned -- its key would name
 # no data, and match another unpinned run's over other data. The final takes read only the checked-in capture.
-asset() { [ "$1" = final ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
+# The capture's gaps (`gaps`) are the final takes' companion, under their key.
+asset() { [ "$1" = final ] || [ "$1" = gaps ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
+# A side's final takes stored, its capture gaps FIRST: a run that finds the final takes stored finds their gaps too (the
+# takes row polls for what its base row stores). No gaps file is no gaps, and stores none.
+keep_final() { # <side> <sha> [base]
+  [ -f "$out/$1/capture-gaps.tsv" ] && keep "$out/$1/capture-gaps.tsv" "$(asset gaps "$(capture_key "$2")")" ${3:+"$3"}
+  keep "$out/$1/ratchet-takes.tsv" "$(asset final "$(capture_key "$2")")" ${3:+"$3"}
+}
+# After a side's final takes were fetched: their capture gaps, when stored (a final stored before the gaps were has none
+# to fetch, and the side's blind-spot line is missing -- information only, never the verdict).
+final_gaps() { # <side> <sha>
+  rm -f "$out/$1/capture-gaps.tsv"
+  fetch_stored "$(asset gaps "$(capture_key "$2")")" "$out/$1/capture-gaps.tsv" || rm -f "$out/$1/capture-gaps.tsv"
+  return 0
+}
 # <sha>: a side's normalizer trace (THE NORMALIZER TRACE), named so the laptop can find it without this row's inputs: the
 # identity code (code_of) and the recording -- p<run> the pinned pair, n<run> a named one (the bare pair) -- and not its
 # fills, which add answers but never take one away: the newest trace of a code over a recording stands for it.
@@ -398,7 +412,7 @@ base_final_finish() {
   base_final_pid=""
   cat "$out/base-final.out"
   SECONDS=$(( $(date +%s) - base_started )); timing base-final replayed
-  [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
+  [ "$final" = 0 ] && keep_final base "$base" base
 }
 base_resolve() {
   base_tree || exit 2
@@ -434,7 +448,7 @@ if [ "$side" = base ]; then
   if [ -n "$takes_moves" ]; then
     SECONDS=0
     if reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
-      echo "identity takes ($cc): base final takes reused"; timing base-final reused
+      echo "identity takes ($cc): base final takes reused"; timing base-final reused; final_gaps base "$base"
     else base_final_start; fi
     SECONDS=0
     if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
@@ -459,46 +473,82 @@ if [ -n "$takes_moves" ]; then
   if [ "$side" != head ]; then
     SECONDS=0
     if reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
-      echo "identity takes ($cc): base final takes reused"; timing base-final reused
+      echo "identity takes ($cc): base final takes reused"; timing base-final reused; final_gaps base "$base"
     else base_final_start; fi
   fi
 fi
 
-# THE HEAD IN ONE sbt: its final takes, its resolve and its corpus shape, each a command of one JVM. Each its own sbt
-# was a JVM start, a project load and a cold JIT apiece -- the head ratchet's 1-2 minutes were mostly that, the replay
-# seconds. sbt stops at a command that fails (a tool's exit takes the JVM with it), so each command's "[success]" is
-# what says it ran: the ratchet first (seconds, and the resolve is no verdict without it), the corpus shape last (its
-# specs FAIL on a finding, which is no failure here).
-head_commands=()
-[ -n "$takes_moves" ] && head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc$(
-    traced "$here/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" "$traces/head-final.jsonl.gz")"
-  "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures$(
-    traced "$here/worker/src/it/scala/IdentityResolveDump.scala" "$traces/head-model.jsonl.gz")")
-[ -n "$shape_moves" ] && head_commands+=("$shape_command")
+# THE HEAD'S OWN RESULTS, STORED. A head is a base's commit as often as not: a measurement's base row resolves main's
+# newest commit while main's own run for it still waits for a runner, and stores it under the key that names its identity
+# code and every input -- the key main's takes row then asks for its head. 36 of 137 main head sessions over 2026-10-21..23
+# resolved a key already stored (209 of their 740 minutes). Each of the head's results is fetched when stored under its
+# own key, exactly as a base's is, and only the rest are made: none left, and the head runs no sbt at all. A key names
+# every input, so a stored result is the one this head would make; a key not stored is made (never a nearer one reused).
+head_final="" head_resolve="" head_shape=""   # each `reused` when fetched from the store
+mkdir -p "$out/head"
+if [ -n "$takes_moves" ]; then
+  if reused "$(asset final "$(capture_key "$head")")" "$out/head/ratchet-takes.tsv" "the head final takes"; then
+    head_final=reused; final_gaps head "$head"; echo "identity takes ($cc): head final takes reused"
+  fi
+  if reused "$(asset decisions "$(decisions_key "$head")")" "$out/head/decisions-$cc.jsonl" "the head resolve"; then
+    head_resolve=reused; echo "identity takes ($cc): head resolve reused from $(asset decisions "$(decisions_key "$head")")"
+  fi
+fi
+if [ -n "$shape_moves" ] && reused "$(asset shape "$(shape_key "$head")")" "$out/head/shape.tar" "the head corpus-shape findings"; then
+  rm -rf "$out/head/shape" && mkdir -p "$out/head/shape" && tar -xf "$out/head/shape.tar" -C "$out/head/shape" \
+    && head_shape=reused && echo "identity takes ($cc): head corpus-shape findings reused"
+fi
+
+# THE HEAD IN ONE sbt: what of its final takes, its resolve and its corpus shape was not stored, each a command of one
+# JVM. Each its own sbt was a JVM start, a project load and a cold JIT apiece -- the head ratchet's 1-2 minutes were
+# mostly that, the replay seconds. sbt stops at a command that fails (a tool's exit takes the JVM with it), so each
+# command's "[success]" is what says it ran: the ratchet first (seconds, and the resolve is no verdict without it), the
+# corpus shape last (its specs FAIL on a finding, which is no failure here).
+head_commands=() head_names=()
+if [ -n "$takes_moves" ]; then
+  [ -n "$head_final" ] || { head_names+=(final); head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc$(
+    traced "$here/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" "$traces/head-final.jsonl.gz")"); }
+  [ -n "$head_resolve" ] || { head_names+=(resolve); head_commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures$(
+    traced "$here/worker/src/it/scala/IdentityResolveDump.scala" "$traces/head-model.jsonl.gz")"); }
+fi
+[ -n "$shape_moves" ] && [ -z "$head_shape" ] && { head_names+=(shape); head_commands+=("$shape_command"); }
+took=()
 if [ "${#head_commands[@]}" -gt 0 ]; then
   rm -f "$here/target/identity-unmatched/ratchet-takes.tsv" "$here/target/identity-unmatched/capture-gaps.tsv" \
         "$here"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
-  mkdir -p "$out/head"
   SECONDS=0
   ( cd "$here" && KINOWO_IDENTITY_CORPUS_DIR="$corpus" "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "${head_commands[@]}" > "$out/head.log" 2>&1 )
   session=$?
   grep -E '\[full-|\[ratchet\]|error|Total time' "$out/head.log"
   # each command's seconds, in order: sbt's "[success] Total time: N s" after every command that succeeded
-  took=()
   while read -r t; do took+=("$t"); done < <(sed 's/\x1b\[[0-9;]*m//g' "$out/head.log" | sed -n 's/^\[success\] Total time: \([0-9]*\) s.*/\1/p')
-  echo "identity takes ($cc): the head's session ran in ${SECONDS}s (sbt exit $session)"
+  echo "identity takes ($cc): the head's session ran ${head_names[*]} in ${SECONDS}s (sbt exit $session)"
+elif [ -n "$takes_moves$shape_moves" ]; then
+  session=0
+  echo "identity takes ($cc): every head result was stored -- no head session"
 fi
+took_by() { # <name>: the seconds the session's <name> command took; fails when it did not run (or not to success)
+  local i
+  for i in "${!head_names[@]}"; do
+    [ "${head_names[$i]}" = "$1" ] && [ "$i" -lt "${#took[@]}" ] && { echo "${took[$i]}"; return 0; }
+  done
+  return 1
+}
 
 if [ -n "$takes_moves" ]; then
-  if [ "${#took[@]}" -ge 1 ]; then
+  if [ -n "$head_final" ]; then
+    SECONDS=0; timing head-final reused
+  elif secs=$(took_by final); then
     ratchet_out "$here" "$out/head/ratchet-takes.tsv"
-    SECONDS=${took[0]}; timing head-final replayed
-    keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
+    SECONDS=$secs; timing head-final replayed
+    keep_final head "$head"
   else
     echo "::warning::identity takes ($cc): the ratchet exited $session ($out/head.log)"; final=2
   fi
-  if [ "${#took[@]}" -ge 2 ] && [ -s "$out/head/decisions-$cc.jsonl" ]; then
-    SECONDS=${took[1]}; timing head-resolve resolved
+  if [ -n "$head_resolve" ]; then
+    SECONDS=0; timing head-resolve reused
+  elif secs=$(took_by resolve) && [ -s "$out/head/decisions-$cc.jsonl" ]; then
+    SECONDS=$secs; timing head-resolve resolved
     keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
     keep_trace head "$head"
   else
@@ -507,7 +557,7 @@ if [ -n "$takes_moves" ]; then
   if [ "$side" = head ]; then
     SECONDS=0
     if awaited "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
-      timing base-final "$how"
+      timing base-final "$how"; final_gaps base "$base"
     else base_final_start; fi # beside the base's resolve below
   else
     base_final_finish
@@ -529,10 +579,15 @@ fi
 
 if [ -n "$shape_moves" ]; then
   shaped=0  # the head's seconds, set only when it wrote findings
-  shape_found "$here" "$out/head/shape"
+  [ -n "$head_shape" ] || shape_found "$here" "$out/head/shape"
   if [ -n "$(ls "$out/head/shape" 2>/dev/null)" ]; then
-    SECONDS=${took[${#took[@]}-1]:-0}; timing head-shape ran; shaped=$SECONDS; SECONDS=0
-    tar -cf "$out/head/shape.tar" -C "$out/head/shape" . && keep "$out/head/shape.tar" "$(asset shape "$(shape_key "$head")")"
+    if [ -n "$head_shape" ]; then
+      SECONDS=0; timing head-shape reused
+    else
+      SECONDS=$(took_by shape || echo 0); timing head-shape ran; shaped=$SECONDS
+      tar -cf "$out/head/shape.tar" -C "$out/head/shape" . && keep "$out/head/shape.tar" "$(asset shape "$(shape_key "$head")")"
+    fi
+    SECONDS=0
     if base_shape_stored awaited; then
       echo "identity takes ($cc): base corpus-shape findings $how"
       timing base-shape "$how"
