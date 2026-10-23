@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (27 runs, 2026-06-25 → 2026-10-07). Before
+> **Summary.** An append-only log, newest run first (28 runs, 2026-06-25 → 2026-10-23). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
-> dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists (prod Mongo is
-> reached through `scripts/local-mirror/prod-tunnel.sh` / `scripts/with-prod-mongo.sh` now).
+> dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
+> before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -26,18 +26,17 @@ and so you can re-check whether a previously-broken venue has recovered.
 `/uptime` is **auth-gated** at every one of its addresses — `https://kinowo.net/uptime`
 (Poland), `https://showtimes.cc/<cc>/uptime` for `uk` / `de` / `us` / `es` — behind
 OAuth + `ADMIN_ALLOWLIST` (`web/.../controllers/AdminAction.scala`); an anonymous
-`curl` gets `401 "Not logged in."`. So query prod Mongo directly instead.
+`curl` gets `401 "Not logged in."`. So rebuild the lists from Mongo instead.
 
-1. Mongo lives on the Hetzner host **`mongo-1`**, reached over an ssh forward
-   (`scripts/local-mirror/prod-tunnel.sh`), usually already running — check with
-   `ps aux | grep 'ssh -N -L 27017'`. The old `flyctl proxy` route died with the
-   Hetzner migration; do not reach for it. Connect with
-   `scripts/with-prod-mongo.sh bash -c 'mongosh "$MONGODB_URI"'` — it reads
-   `MONGODB_URI` from the Touch ID vault, rewrites it to `127.0.0.1:27017` and
-   opens the forward if nothing answers there.
-2. **Sweep ALL FIVE countries.** Each country's uptime lives in its own database —
-   `kinowo` (PL), `kinowo_uk`, `kinowo_de`, `kinowo_us`, `kinowo_es`
-   (`Country.mongoDb`, `common/.../models/Country.scala`) — on the SAME
+1. Read the **local prod mirror**, `mongodb://127.0.0.1:28017`, READ-ONLY, after
+   `scripts/local-mirror/freshness <cc>` (its `uptimeBuckets` and `filmwebFallback`
+   rows say how old the newest document is). Prod Mongo itself (`:27017`,
+   `prod-tunnel.sh`, `with-prod-mongo.sh`) is user-only since 2026-10-19; runs
+   before that read it directly, which is what their entries describe.
+2. **Sweep ALL FIVE countries.** Each country's mirror is its own database —
+   `kinowo_prod_mirror` (PL), `kinowo_uk_prod_mirror`, `kinowo_de_prod_mirror`,
+   `kinowo_us_prod_mirror`, `kinowo_es_prod_mirror` (prod's `kinowo`, `kinowo_uk`, …
+   per `Country.mongoDb`, `common/.../models/Country.scala`) — on the SAME
    connection, so iterate with `db.getSiblingDB(name)`. (Runs before 2026-07-28
    were PL-only; runs between 2026-08-02 and 2026-08-29 were PL-only because the
    other workers were stopped. Both are history — all five run now.)
@@ -258,7 +257,7 @@ from VictoriaLogs' own docs 404s against this deployment's query parser.
 ### Sweep script (checked in 2026-09-29)
 
 Saved as a scratch `sweep.js` and run with
-`mongosh "$MONGODB_URI" --quiet sweep.js > sweep.json` (~40 s for all five DBs).
+`mongosh mongodb://127.0.0.1:28017 --quiet sweep.js > sweep.json` (~6 s for all five mirror DBs).
 Per DB it emits the white list (`bars` = the retained status string, oldest
 first; `arch` = `<age>d/<films>` from `cinema_scrapes`; `g2w` = a
 green→white transition in-window; `seas` = the seasonal-name regex), plus
@@ -268,7 +267,7 @@ the host named in them; `cover` = the PL `filmwebFallback` doc's state), the
 thin count and per-service `fallback: true` bucket counts.
 
 ```js
-const DBS=['kinowo','kinowo_uk','kinowo_de','kinowo_us','kinowo_es'];
+const DBS=['kinowo_prod_mirror','kinowo_uk_prod_mirror','kinowo_de_prod_mirror','kinowo_us_prod_mirror','kinowo_es_prod_mirror'];
 const seasonal=/(open ?air|freiluft|sommer|autokino|drive[- ]?in|summer|verano|terraza|plein|rooftop|garden|park kino|strand|kino am see|cine de verano)/i;
 const out={};
 for (const name of DBS){
@@ -280,7 +279,7 @@ for (const name of DBS){
     {$group:{_id:'$service',b:{$push:{s:'$successes',f:'$failures',z:'$zeroes',fb:'$fallback',th:'$thin',t:'$bucket',e:'$errors'}}}}
   ],{allowDiskUse:true}).toArray();
   const arch={}; d.cinema_scrapes.find({},{scrapedAt:1,films:1}).forEach(a=>{if(a.scrapedAt) arch[a._id]={at:a.scrapedAt,n:Array.isArray(a.films)?a.films.length:(a.films||0)}});
-  const cover={}; if(name==='kinowo') d.filmwebFallback.find({},{active:1,fallbackRef:1,history:{$slice:1}}).forEach(f=>{
+  const cover={}; if(name==='kinowo_prod_mirror') d.filmwebFallback.find({},{active:1,fallbackRef:1,history:{$slice:1}}).forEach(f=>{
     cover[f._id]=f.active?'ACTIVE '+f.fallbackRef:(f.fallbackRef==null&&/UNCOVERED/.test((f.history||[])[0]||'')?'UNCOVERED':'none')});
   let white=[],red=[],thin=[],fb=[];
   for(const r of rows){
@@ -304,7 +303,7 @@ for (const name of DBS){
   out[name]={newest:newest&&newest.bucket,services:rows.length,white:white.length,red:red.length,thin:thin.length,fb,
     g2w:white.filter(w=>w.g2w).length, nonSeasArch10:white.filter(w=>!w.seas&&w.arch!=='none'&&parseFloat(w.arch)<=10).length,
     seasonal:white.filter(w=>w.seas).length};
-  if(name==='kinowo'){out.plWhite=white; out.plThin=thin;}
+  if(name==='kinowo_prod_mirror'){out.plWhite=white; out.plThin=thin;}
   out[name+'_list']=white; out[name+'_red']=red;
 }
 print(JSON.stringify(out));
@@ -313,6 +312,163 @@ print(JSON.stringify(out));
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-10-23
+
+**Twelfth all-five-country sweep**, and the first run since 10-07 (none landed in between). This is also the first
+run read entirely from the **local prod mirror** (`:28017`, `*_prod_mirror`; the methodology above is updated). The
+newest bucket is 2026-10-23 05:00 UTC; `freshness` put every mirror about 15 minutes behind prod. The sweep is the
+checked-in script with the mirror DB names.
+
+Cuts:
+- **PL:** fully probed.
+- **UK / DE / ES:** non-seasonal whites with an archive of 10 days or less.
+- **US:** non-seasonal whites with an archive of 3 days or less. That left 22 (10-07: 194), all probed.
+
+**Red is 0 in every country**, the first such run since red was added. **Two PL scrapers fixed. No aggregator parser
+bugs.**
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 544 | **12** | 2.2% | 0 | 1 | 0 | 43 | 5 (Filmweb) | all 12 + 3 on the fallback |
+| `kinowo_uk` | 856 | **29** | 3.4% | 0 | 0 | 1 | 25 | 0 | 3 (arch≤10d) |
+| `kinowo_de` | 1,554 | **289** | 18.6% | 0 | 0 | 117 | 24 | 19 (kinoprogramm.com) | 9 (arch≤10d) |
+| `kinowo_us` | 5,011 | **816** | 16.3% | 0 | 0 | 201 | 0 | 0 | 22 (arch≤3d) |
+| `kinowo_es` | 610 | **172** | 28.2% | 0 | 0 | 24 | 6 | 0 | 15 (arch≤10d) |
+
+Compared with 10-07:
+- **White:** PL 6 → 12, UK 51 → 29, DE 364 → 289, US 1,073 → 816, ES 223 → 172.
+- **Red:** PL 1 → 0, DE 13 → 0, US 1 → 0. The 13 DE aggregator 404s and ACME Lambertville are gone from the window.
+- **Every white share fell outside PL**, so nothing points to a client breaking. PL doubled only on biletyna
+  cultural centres with no films (below).
+
+### Kino Kultura Chojnów: `fixed` @ac1750630. Previously `needs-human: dates only in prose`
+
+The 09-29 run parked this. The CMS card grid `kino.chojnow.eu/repertuar,m15,s1500.html` gives a film's run as a
+bare-date `Rozpoczęcie:` / `Zakończenie:` pair and puts the times only in prose ("sobota i niedziela, 24 i 25
+października, godz. 18:00"). By 10-23 every card was in that shape (Róża, Marsupilami, Mistyczka), so a weekend of
+three films parsed to nothing. The venue was white in all 30 buckets, and its last archive was 11.3 d old.
+
+The site's box office `bilety.chojnow.eu` is a **Ticket Manager** instance. Its eventCalendar feed
+`/Repertuar/Kalendarz1JsonDane?filter=https://bilety.chojnow.eu/` lists every screening with its `godz.` time,
+poster and seat-map link: 9 screenings, 23–26 Oct, including two that the card grid never showed (Mira, and Kicia
+Kocia na pikniku).
+
+Kino Remus and Kino Diana already read that feed, each through its own copy of the parsing. The fix makes it
+**`TicketManagerFeed`**, used by all three clients, and moves Chojnów onto it, with `OnlyMovieEventsFilter` because
+the box office also sells MOKSiR's stage events. `KinoKulturaChojnowClientSpec` replays the 10-23 capture. It failed
+before the change (4/4) and passes after. The Remus and Diana specs and the e2e snapshots are unchanged.
+
+**Shared path:** the only other users of this box office are Remus and Diana, both green.
+
+### Kino Charlie (Łódź): on the Filmweb fallback since 10-23 04:30, upstream outage. `fixed` @30fdf36a7 (the misreport)
+
+Since about 21:45 UTC on 10-22, `www.charlie.pl` has answered **HTTP 200 with the bare body "Blad polaczenia z baza
+danych"** (its PHP cannot reach its database). The page was still down at 05:29 UTC. Filmweb 92 is covering it, with
+seances for today.
+
+The outage is theirs. Our misreport was that `CharlieClient` read the error page as a day with nothing on: 7 white
+buckets, and a fallback reason of "primary returned no screenings". It now throws on any body that isn't the
+homepage, keyed on its `<title>` "Kino CHARLIE…", so an outage like this reads red and names its cause.
+`ListingParseFailureSpec` gains the case. It failed before the change and passes after.
+**Re-check next run** that the site is back.
+
+### Filmweb-fallback sweep (PL only): 3 active, all upstream, all covered
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| Kino Charlie | 10-23 04:30 | primary returned no screenings (really a DB-error page) | **transient (upstream)**. The misreport is fixed (above). Covered by Filmweb 92. |
+| Cinema N 3D (Nysa, VisualSoft `bilety.kino.nysa.pl`) | 10-22 23:35 | primary returned no screenings | **transient: weekly feed reload**. The `service.php/repertoire/list.json` feed went `{"nbResults":0}` at 17:00 UTC on Thursday 10-22. Its one earlier episode was also a Thursday night (ENTER 10-08 23:35, RECOVERED 10-09 09:10). The venue's own site `kino.nysa.pl/repertuar` lists the full programme through 11-05 (7 films a day), so the box office is reloaded for the Friday film week. Covered by Filmweb 1657. If it recurs every Thursday, consider reading `kino.nysa.pl` (no booking links there). |
+| Kino Plon (Hrubieszów, iKsoris `kinoplon.pl`) | 10-23 03:12 | `HTTP 503` → `CircuitOpenException` | **transient (upstream)**. The whole site has answered 503 since 21:00 UTC on 10-22: "Wystąpił błąd podczas nawiązywania połączenia z bazą danych". Covered by Filmweb 2330. |
+
+These ENTER→RECOVERED flappers since 10-07 are all **transient**, and all are green over the last 24 h:
+- **GCF:** 10-11, 1 h, 8 s budget.
+- **Cinema1:** 10-18, twice, budget and circuit.
+- **Awangarda 2:** 10-20, 1 h, connect.
+- **Kozienice:** 10-09, 1 h.
+- **Na Starówce:** 10-22, 3 h, connect.
+- **Kino ODEON:** 10-08, 5 h.
+- **OKF Iluzja:** 10-10..12.
+- **artKino:** 10-11..12, HTTP 403 then 502.
+- **Kino GOK:** 10-18..20, no screenings.
+- **Domu Sztuki:** 10-11..13, biletyna.
+- **Górnik Łęczyca:** RECOVERED 10-22.
+- **Wolność:** 10-15, 4 h.
+- **Pasja:** 10-15..16, circuit.
+
+`UNCOVERED` one-offs were single 8 s budget or connect timeouts on venues with no Filmweb id, all green since:
+- MOK Nowa Ruda (10-14, 10-22).
+- Kino Tatry (10-12).
+- MOK Głogów (10-19).
+- Four biletyna cultural centres that are white anyway: Lipka, Jastrowie, Drawno, Nowy Tomyśl.
+
+**10-07's fixes hold:**
+- **Kino Marzenie** (chunked): green throughout, with 13 films archived at 05:09.
+- **KinoPort:** green, 23 films.
+- **Chatka Żaka:** green, 1 film.
+
+### Poland: the other whites, all dormant
+
+Every biletyna venue was checked against its place page's JSON-LD. The control, Kino Kameralne Cafe, had 49
+`ScreeningEvent`s.
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Choszczeński Dom Kultury | biletyna | **intentionally-dormant**. 2 comedy and 2 theatre events, no `ScreeningEvent`. |
+| Drawieński Ośrodek Kultury | biletyna | **intentionally-dormant**. No events at all. |
+| MGOK Recz | biletyna | **intentionally-dormant**. No events. |
+| Ośrodek Kultury Jastrowie | biletyna | **intentionally-dormant**. 1 concert. |
+| Nowotomyski Ośrodek Kultury | biletyna | **intentionally-dormant**. 9 theatre events and 1 concert. |
+| Kino na Szekspirowskim (Gdańsk) | biletyna | **intentionally-dormant**. "Brak wydarzeń"; last archive 40 d. |
+| GOK Lipka | biletyna | **intentionally-dormant** (as 10-07). 2 concerts. |
+| CKiS Sępólno Krajeńskie | biletyna | **intentionally-dormant** (as 10-07). |
+| Kino MCK Radłów | Filmweb 2408 | **intentionally-dormant**. The one green→white: white since 22:00 UTC, after its last film. Filmweb `[]` for 28 days. |
+| Baszta (Braniewo) | Filmweb 2352 | **intentionally-dormant** (as 10-07). Filmweb `[]` for 28 days. |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant** (as 10-07). "Brak wydarzeń". |
+
+### UK: 29 white, 3 probed, 0 bugs
+
+The New Vic (Tisbury Village Hall), Film Theatre Stoke-on-Trent and Haslemere Hall are all EMPTY:
+`no-streaming-sessions`, no `data-date` tabs. The control, Finsbury Park Picturehouse, is populated.
+
+### DE: 289 white, 9 probed, 0 bugs; 19 on the kinoprogramm.com fallback
+
+Of the 9 whites:
+- **7 EMPTY** (`data-showtimes-dates="[]"`). That includes Kinocenter Schwelm A0776, which had 6 archived films 1.3 d ago.
+- **1 LAG:** Kulisse A2806, a single date on 10-26.
+- **Guckloch Furtwangen A0855: `unfixable: aggregator data`.** It has a 10-24 slot with `movie: null`, the same shape as Boppard on 10-07.
+
+The control, CinemaxX Kiel A0279, shows 18 days.
+
+**Name bug, `needs-human`:** `Eck&#039; s Kino` A1697 (and `Mal seh&#039;n Kino` A1469):
+- The HTML entity comes from the scraped `data/germany/theaters-raw.json` and is never unescaped.
+- It flows into `venue-sources.json`, `pages.json` and `venues.json`, in both `name` and `displayName`, so the entity text is what users see.
+- The fix is an HTML-unescape where the roster generator ingests names, plus a roster regeneration. That is out of scope for this run.
+- ES has a cousin: `Sala d''actes Ajuntament` E0985 (a doubled apostrophe, `data/spain/provinces.json`).
+
+### US: 816 white, 22 probed, 0 bugs
+
+Of the 22:
+- **11 EMPTY.**
+- **11 LAG**, each with day tabs from 10-23 that were published after our last 840-minute scrape: Feather River Oroville (9 films), Courtyard Mackinaw City (6), El Cine Mayagüez (4, about 38 sessions on 10-24), Reel Pizza, Pocahontas, Auto Cine Santana, Rialto Searcy, Lyric Osceola, Elroy and Grand Fitzgerald.
+
+Four of the LAG cards carry no `data-eventjson`. `FlicksClient.parseDocument` doesn't need it for times (it reads
+each `li` button), and Searcy's fragments carry 2 and 4 session buttons. The control, AMC Empire 25, is populated.
+
+### ES: 172 white, 15 probed, 0 parser bugs; the two Megaramas are a source gap
+
+Of the 15:
+- **9 EMPTY.**
+- **3 LAG:** Martínez Montañés E1025 (10-24/25), Cines Campoo 3D E1003 (10-23..27) and Cine Avenida Jaraíz E0867 (10-23..26).
+- **Sala d'actes Ajuntament E0985: `unfixable: aggregator data`.** Dates on 10-23 and 10-30, every slot `movie: null`.
+- **Megarama Salamanca E0299 and Megarama Granada E0301** (10–11 films archived 9.6 d ago): `needs-human: source gap`.
+  - Both SensaCine pages exist under the same ids, aren't re-listed under new ones, and read `data-showtimes-dates="[]"`.
+  - Salamanca is still open and selling on taquilla.com (dates from 10-23).
+  - Neither is in `data/spain/taquilla.json`. Adding them to the taquilla roster (or a Megarama own-site client) would restore two multiplexes.
+
+The control, Cinesa Marineda City, shows 17 days.
 
 ---
 
