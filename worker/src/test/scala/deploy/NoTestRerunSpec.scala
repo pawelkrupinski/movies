@@ -27,7 +27,7 @@ class NoTestRerunSpec extends AnyFlatSpec with Matchers {
   it should "keep a failed test's trace without a retry to record it on" in {
     // `on-first-retry` / `on-all-retries` record only on a retry, so with none they record nothing.
     playwrightConfig should not include "retry'"
-    playwrightConfig should include("trace: 'retain-on-failure'")
+    playwrightConfig should include("trace: { mode: 'retain-on-failure'")
   }
 
   "the Playwright specs" should "not set retries of their own" in {

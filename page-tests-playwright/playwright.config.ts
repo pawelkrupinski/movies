@@ -151,7 +151,14 @@ export default defineConfig({
     // reference-playwright-base-url-defaults-to-prod) hits real fixtures
     // instead of a Cloudflare bot challenge on kinowo.net/showtimes.cc.
     extraHTTPHeaders: { 'X-Kinowo-Page-Tests': '1' },
-    trace: 'retain-on-failure',
+    // A failed test keeps its trace (no retry exists to record one on: NoTestRerunSpec), but a
+    // light one: the action log with timings, the source, the error and the attachments. DOM
+    // snapshots and the screencast are what made tracing expensive, and every passing test paid
+    // for them only to discard the trace: measured 2026-10-23 on webkit-iphone-13 (5 workers,
+    // shared laptop), full trace ~83s per project run vs ~51s without snapshots or screencast,
+    // the same as no trace at all. The page at the failure stays visible through the
+    // `screenshot` below and the aria snapshot in `error-context.md`.
+    trace: { mode: 'retain-on-failure', snapshots: false, screenshots: false },
     // Capture a screenshot on failure so a CI-only break is visible in
     // the uploaded report without re-running locally.
     screenshot: 'only-on-failure',
