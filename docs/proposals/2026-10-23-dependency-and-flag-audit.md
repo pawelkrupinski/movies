@@ -11,7 +11,7 @@ that must be confirmed before acting. Measure before landing any performance ite
 
 ## Summary: best payoff per hour
 
-1. **MongoDB:** confirm prod's feature-compatibility version (FCV) is 8.3, then add `appName` and slow-op logging.
+1. **MongoDB:** confirm prod's feature-compatibility version (FCV) is 8.3, then add `appName` (done) so mongod's slow-op log lines name their sender.
 2. **JVM:** retire `infra/jvm/jdk25-parity.options`, starting with compact object headers; canary on one worker.
 3. **Android:** a Baseline Profile; posters on the app's shared OkHttp client; `AsyncImage` over
    `SubcomposeAsyncImage` in the grid.
@@ -59,7 +59,7 @@ as a single-node replica set `rs0` (2 vCPU, 4 GB, WiredTiger cache 1 GB, oplog 4
 
 | Parameter | Proposed | Gain | Cost |
 |---|---|---|---|
-| `operationProfiling` slow-op threshold | ~200 ms, sample rate 1.0 | slow queries in the log | none; settable at runtime |
+| `operationProfiling` slow-op threshold | leave: mongod already logs ops over 100 ms by default, profiler off | — | raising it would log less |
 | `oplogMinRetentionHours` | 24 (via `replSetResizeOplog`) | explicit change-stream resume window (4 GB ≈ 12 h today) | oplog may outgrow 4 GB |
 | `blockCompressor` | `zstd` instead of snappy | ~30–40 % smaller on disk and in cache [unverified] | restart; existing collections need a rebuild |
 | `defaultMaxTimeMS` (8.0+ cluster parameter) | reads ~30 s | stops runaway reads | test against the initial hydration first |
@@ -68,7 +68,7 @@ as a single-node replica set `rs0` (2 vCPU, 4 GB, WiredTiger cache 1 GB, oplog 4
 
 **Client** (`common/src/main/scala/.../MongoConnection.scala:450-478`):
 
-- **`appName` per tier and country** [checked absent]. Makes slow-op logs and `currentOp` attributable. Cheapest,
+- **`appName` per tier and country** — done: `kinowo-<tier>-<countries>`, e.g. `kinowo-web-pl`, `kinowo-worker-pl-uk`. Makes slow-op logs and `currentOp` attributable. Cheapest,
   highest-value diagnostic item.
 - **Client-side operation timeout (`timeout`, driver 5.2+ [unverified]).** About 35
   `Await.result(..., 10.seconds)` budgets in `MongoTaskQueue`, `MongoChunkScrapeStore` and `MongoMovieRepository`.
