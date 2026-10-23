@@ -47,7 +47,8 @@ export function kinowoFleet(env: NodeJS.ProcessEnv = process.env, infraDir = INF
     // Prometheus binds monitoring-1's PRIVATE address only (its UI has no auth) and nothing routes
     // there from a laptop: ssh to its public address, curl from there.
     prometheus: { via: "ssh", host: "monitoring-1" },
-    reboot: null,
+    // infra/bin/rolling-reboot: fleetkit's tool (this package's pinned copy) with profile movies.
+    reboot: { tool: join(infraDir, "bin", "rolling-reboot") },
     confirmRoles: [{ role: "mongo", warning: MONGO_WARNING }],
   };
 }

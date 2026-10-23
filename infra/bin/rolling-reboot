@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Reboot this fleet's hosts ONE AT A TIME, each proven serving before the next -- fleetkit's
+# rolling-reboot (bitcashier/fleetkit, shared with bitcashier's fleet), run with profile `movies`
+# over this checkout: k3s-worker-1, then monitoring-1 (the only k3s server, and the monitoring
+# host), then mongo-1 LAST; root at each host's fleet.publicAddress, no jump host.
+#
+#   bin/rolling-reboot --dry-run           # the plan and every pre-check; touches nothing
+#   bin/rolling-reboot --yes --only mongo-1
+#
+# THE CODE IS THE DASHBOARD'S PINNED COPY: infra/version-dashboard/node_modules/fleetkit, the tag
+# package-lock.json names (npm ci there first). The /nixos page's "Reboot N machines that need
+# it" runs this file. SIGTERM (signal.SIGTERM, and a first Ctrl-C) is a "stop requested": the host in
+# progress is finished and proven serving, then it stops before the next. `exec`, so the signal
+# reaches the run itself.
+#
+# Its guards are proved in fleetkit (rolling-reboot/prove: PROFILE=movies cases); this repo's
+# rolling-reboot-test.sh checks only that this wrapper reaches it.
+set -euo pipefail
+INFRA="$(cd "$(dirname "$0")/.." && pwd)"
+TOOL="${INFRA}/version-dashboard/node_modules/fleetkit/rolling-reboot/bin/rolling-reboot"
+if [ ! -f "${TOOL}" ]; then
+    echo "rolling-reboot: ${TOOL} is missing -- run \`npm ci\` in infra/version-dashboard; NOTHING was rebooted" >&2
+    exit 2
+fi
+exec python3 "${TOOL}" --profile movies --repo "${INFRA}" "$@"

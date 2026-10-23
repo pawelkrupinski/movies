@@ -4,7 +4,10 @@ http://127.0.0.1:8788 — two pages from one process:
 
 - **/nixos** — what every NixOS host in the fleet is running (roster from the flake, running state
   from Prometheus over ssh to monitoring-1), and "Bring to latest…" to activate the closure CI
-  already staged (check → switch; the mongo role needs its name typed).
+  already staged (check → switch; the mongo role needs its name typed). "Reboot N machines that need it…"
+  (shown only while a host owes one) runs `infra/bin/rolling-reboot` -- fleetkit's rolling reboot
+  with profile `movies` -- as bitcashier's page does: its `--dry-run` plan first, then, confirmed,
+  `--yes --only <that plan's hosts>`, one host at a time; Stop ends it after the host in progress.
 - **/mobile** — what's in `ios/` and `android/` that neither store has shipped yet, diffed from
   each platform's own live version.
 
