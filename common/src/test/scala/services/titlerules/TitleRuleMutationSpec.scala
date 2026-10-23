@@ -28,7 +28,6 @@ object TitleRuleMutationSpec {
   /** The rows whose examples another row or the billing parse reads alike without them. */
   val Covered: Set[String] = Set(
     "canonical-gwiezdne-wojny",   // xtra-canonical-gwiezdne-wojny-ci folds every casing; kept as the seed's (ProdTitlesNormalizationSpec)
-    "helios-suffix-3",            // xtra-helios-na-scenie takes " w Helios na Scenie" in any case
     "xtra-paren-pokaz-seans",     // xtra-paren-screening-event takes a bracket naming a pokaz or a seans
     "xtra-filmoterapia-w-kinie",  // the billing parse: "FILMOTERAPIA W LUNIE | <film> | seans" is a strand's piece
     "xtra-pokaz-colon-suffix")    // the billing parse: "<film>: pokaz z prelekcją …" closes on a piece opening on "pokaz"

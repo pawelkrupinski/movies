@@ -216,20 +216,20 @@ first; then the fixtures' and specs' strings.
   Helios title bills "- DUB" today).
 - **`TitleRuleExamplesSpec`** holds every row to its examples; **`TitleRuleMutationSpec`** removes each row in turn and
   asks that one of its examples read otherwise (the row is load-bearing). Both run in ~3 s (215 rule sets).
-- **Mutation survivors: 5**, fully covered and listed in `TitleRuleMutationSpec.Covered` (the list must stay exact).
-  Merge or removal candidates, not removed:
+- **Mutation survivors: 5 → 4**, fully covered on their own examples and listed in `TitleRuleMutationSpec.Covered`
+  (the list must stay exact). Checked 2026-10-23 with `TitleRulePipelineDiff` over the golden corpus and over the
+  5.3M fixture/spec/recording strings:
 
-  | row | covered by |
-  |---|---|
-  | `canonical-gwiezdne-wojny` | `xtra-canonical-gwiezdne-wojny-ci` (every casing); kept as the seed's, which `ProdTitlesNormalizationSpec` pins |
-  | `helios-suffix-3` | `xtra-helios-na-scenie` (" w Helios na Scenie" in any case) |
-  | `xtra-paren-pokaz-seans` | `xtra-paren-screening-event` (a bracket naming a pokaz or a seans) |
-  | `xtra-filmoterapia-w-kinie` | the billing parse: "FILMOTERAPIA W LUNIE \| <film> \| seans" is a strand's piece |
-  | `xtra-pokaz-colon-suffix` | the billing parse: "<film>: pokaz z prelekcją …" closes on a piece opening on "pokaz" |
+  | row | covered by | pipeline diff (golden / 5.3M) | outcome |
+  |---|---|---|---|
+  | `canonical-gwiezdne-wojny` | `xtra-canonical-gwiezdne-wojny-ci` (every casing) | 0 / 0 | **kept**: a seed row; without it `ProdTitlesNormalizationSpec` fails ("Gwiezdne Wojny: Mandalorian i Grogu" keys `gwiezdnewojnymandalorianigrogu`), and `TitleNormalizerSpec`'s recase guard is exercised on it |
+  | `helios-suffix-3` | `xtra-helios-na-scenie` (" w Helios na Scenie" in any case) | 0 / 0 (376 strings) | **removed** |
+  | `xtra-paren-pokaz-seans` | `xtra-paren-screening-event` (a bracket naming a pokaz or a seans) | 0 / differs | **kept**: a bare "(seans w ASP)" / "(seans w MOS)" (fixture strings) folds to "" only with it; JSON-wrapped "Erupcja (pokaz jednorazowy)" lines too |
+  | `xtra-filmoterapia-w-kinie` | the billing parse ("FILMOTERAPIA W LUNIE \| <film> \| seans" is a strand's piece) | differs / — | **kept**: without it the golden "FILMOTERAPIA W LUNIE \| Ojczyzna \| seans" recases to "Filmoterapia w lunie …" instead of "Filmoterapia W Lunie …" |
+  | `xtra-pokaz-colon-suffix` | the billing parse ("<film>: pokaz z prelekcją …" closes on a piece opening on "pokaz") | 0 / differs | **kept**: "Folwark Zwierzęcy: Polski Dubbing: pokaz z dostępnością SDH i PJM" and "Labirynt fauna: Pokaz z okazji 20-lecia premiery" keep their tail without it |
 
-  The last two fire, on the fixtures' strings, also where the parse cuts nothing (a JSON line, "(seans w ASP)"), which is
-  why the retirement above kept them; on billings the parse reads them alike. (`xtra-preview-pipe-tail` was a sixth
-  until the closing-piece guard of Main #738: "Minotaurus | Preview Osteuropäische Filmtage 2026" is its own again.)
+  (`xtra-preview-pipe-tail` was a sixth until the closing-piece guard of Main #738: "Minotaurus | Preview
+  Osteuropäische Filmtage 2026" is its own again.)
 
 ## Byte-identity, as checked
 

@@ -996,7 +996,6 @@ xtra-cyfrowe-premiera	venue	cyfrowe-kino			event		(?i)^Premiera!\s+		Cyfrowe Kin
 # ── helios ──
 helios-suffix-1	venue	helios		seed	format		 w Helios RePlay$		Helios 'w Helios RePlay' tag	[["Diabły w Helios RePlay","Diabły"],["Donnie Darko w Helios RePlay","Donnie Darko"]]
 helios-suffix-2	venue	helios		seed	format		 w Helios Anime$		Helios 'w Helios Anime' tag	[["Ghost in the Shell w Helios Anime","Ghost in the Shell"]]
-helios-suffix-3	venue	helios		seed	format		 w Helios na Scenie$		Helios 'w Helios na Scenie' tag	[["Always Lalisa w Helios na Scenie","Always Lalisa"]]
 helios-suffix-4	venue	helios		seed	format		 w HnS$		Helios 'w HnS' tag	[["Billie Eilish - Hit Me Hard and Soft: The Tour Live w HnS","Billie Eilish - Hit Me Hard and Soft: The Tour Live"],["Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D w HnS","Billie Eilish - Hit Me Hard and Soft: The Tour Live in 3D"]]
 helios-suffix-5	venue	helios		seed	format		 - Salon Kultury Helios$		Helios '- Salon Kultury Helios' tag	[["Nasza rewolucja - Salon Kultury Helios","Nasza rewolucja"]]
 helios-suffix-6	venue	helios		seed	format		 - KNTJ$		Helios '- KNTJ' tag	[["Północ - KNTJ","Północ"],["Księga pustyni - KNTJ","Księga pustyni"]]
@@ -1016,7 +1015,7 @@ helios-suffix-16	venue	helios		seed	format		 - AF$		Helios '- AF' tag	[["Lalka -
 # converging once per-film detail was fetched. So it comes off at ingest, where it
 # changes the key; scoped to the chain's key (every Helios venue shares `helios`,
 # `TitleRuleKey`), not a global Canonical fold of a name only Helios bills. The seed's
-# `helios-suffix-3` takes the exact " w Helios na Scenie"; this takes any case and spacing.
+# exact-case `helios-suffix-3` took the same suffix; retired 2026-10-23, fully covered by this row.
 xtra-helios-na-scenie	venue	helios			venue		(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$		'<film> w Helios na Scenie' Helios event-branding suffix, any case — merge-key fold	[["GHOST: 2 Big To Rig W HELIOS NA SCENIE","GHOST: 2 Big To Rig"]]
 
 # ── kino-alternatywy ──
