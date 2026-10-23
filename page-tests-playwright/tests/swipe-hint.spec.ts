@@ -8,6 +8,16 @@ import { cdpSwipe, clearLocalStorage, reload } from './helpers';
 test.describe('swipe hint', () => {
   const hint = (page: Page) => page.locator('#swipe-hint');
 
+  // The hint auto-hides 3 s after it shows (a page timer). On a starved CI box the
+  // browser can stall past that between the page showing it and Playwright polling,
+  // so a plain `toBeVisible()` sees it already gone. Pausing the page clock before the
+  // reload keeps that timer from firing, so "visible" holds until the test asserts it.
+  const freezeHintTimer = async (page: Page) => {
+    await page.clock.install();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
+    await page.clock.fastForward(1000);
+  };
+
   // Touch + viewport-independent: once on mobile Chromium (the only engine with CDP
   // touch injection) is the whole answer, so it rides `@agnostic`. The desktop
   // describe below stays untagged — it only runs on fine-pointer projects.
@@ -21,6 +31,7 @@ test.describe('swipe hint', () => {
 
     test('shows on a fresh device, with the day-swipe copy', async ({ page }) => {
       await clearLocalStorage(page);
+      await freezeHintTimer(page);
       await reload(page);
       await expect(hint(page)).toBeVisible();
       await expect(hint(page)).toContainText('Przesuń, aby zmienić dzień');
@@ -28,6 +39,7 @@ test.describe('swipe hint', () => {
 
     test('does not show a second time the same day', async ({ page }) => {
       await clearLocalStorage(page);
+      await freezeHintTimer(page);
       await reload(page);
       await expect(hint(page)).toBeVisible();   // first visit today
       await reload(page);
@@ -36,6 +48,7 @@ test.describe('swipe hint', () => {
 
     test('a swipe retires it for good (survives the per-day reset)', async ({ page }) => {
       await clearLocalStorage(page);
+      await freezeHintTimer(page);
       await reload(page);
       await expect(hint(page)).toBeVisible();
       await cdpSwipe(page, 'left');             // commit a day-swipe
