@@ -21,7 +21,7 @@ object Dependencies {
   // decode the webp posters cinema CDNs now serve. imageio-core is the shared
   // runtime the format plugin needs.
   private val twelveMonkeysVersion = "3.15.3"
-  private val sentryVersion        = "8.61.0"
+  private val sentryVersion        = "8.61.1"
   // One logback for both apps, so logback.xml + the sentry-logback appender
   // behave the same in each: the worker and the web app both declare it (see
   // build.sbt), and eviction lifts the web app's play-logback copy to it. Keep
