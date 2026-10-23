@@ -20,7 +20,7 @@
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
 #   --base         default the commit's merge-base with <remote>/main; the commit's parent when it is on main already
-#   --recording    a `Record scrape fixtures` run (e.g. 528) every leg replays -- its corpus and tree as released, no
+#   --recording    a `Record scrape fixtures` run (e.g. 528), or prod-latest (the freshest complete nightly), every leg replays -- its corpus and tree as released, no
 #                  fills, the bare pair identity-measure-local lays -- in place of the pinned pair. Never reused. Name
 #                  the countries it holds with --countries (528: pl,de)
 #   --countries    the countries measured and judged: only their legs run (the workflow's `takes-countries`); also a
@@ -161,7 +161,12 @@ done
 countries=$(selected_countries_csv)
 # the countries named on the command line (empty: every leg), as the workflow's takes-countries
 named_countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || named_countries=$countries
-[ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id, not $recording"
+# prod-latest: the freshest complete nightly recording (prod_latest_run), resolved once, by the first country's marker
+if [ "$recording" = prod-latest ]; then
+  recording=$(prod_latest_run "${countries%%,*}") || exit 2
+  echo "identity-measure: --recording prod-latest is run $recording" >&2
+fi
+[ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id or prod-latest, not $recording"
 
 say() { echo "identity-measure: $*" >&2; }
 # Exit 2 is "the measurement could not be made" (above), a failure and a usage slip alike: tool-conventions.sh's die.

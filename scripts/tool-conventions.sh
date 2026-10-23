@@ -217,3 +217,18 @@ gh_download() {
     attempt=$((attempt + 1))
   done
 }
+
+# prod_latest_run <cc> -> the run id of the freshest COMPLETE nightly recording of that country (`--recording prod-latest`):
+# its corpus scraped from prod that night, its enrichment tree filled live over it, as prod-latest-<cc>.txt on the
+# convergence-fixtures release names it (.github/scripts/convergence-publish.sh latest). Not the hermetic pair the
+# identity measure lands on (573). 1, said, when there is none yet or the release cannot be read.
+prod_latest_run() {
+  local cc=$1 dir run
+  dir=$(mktemp -d)
+  gh_download "${KINOWO_IDENTITY_GH_TIMEOUT:-60}" release download "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" \
+    -R "$KINOWO_GH_REPO" --pattern "prod-latest-$cc.txt" --dir "$dir" >/dev/null ||
+    { rm -rf "$dir"; echo "no prod-latest $cc recording (no prod-latest-$cc.txt on ${FIXTURE_RELEASE_TAG:-convergence-fixtures}, or it could not be read): the nightly \"Record scrape fixtures\" writes it once a $cc leg completes" >&2; return 1; }
+  run=$(cut -d' ' -f1 "$dir/prod-latest-$cc.txt"); rm -rf "$dir"
+  [[ "$run" =~ ^[0-9]+$ ]] || { echo "prod-latest-$cc.txt names no run" >&2; return 1; }
+  echo "$run"
+}

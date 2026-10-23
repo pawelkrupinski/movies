@@ -4,7 +4,7 @@
 # (the user's rule, 2026-10-21: measurements, ablations, simulations and replay sweeps run on ci-runner). The CI twin of
 # a local `scripts/it-local.sh 'worker/IntegrationTest/runMain …'` over a laid recording.
 #
-#   scripts/identity-ci-run [--recording RUN] [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
+#   scripts/identity-ci-run [--recording RUN|prod-latest] [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
 #                           -- '<sbt command>'
 #
 #   the command's placeholders: {cc} the country (the command runs once per country when it names it, else once),
@@ -41,7 +41,12 @@ while [ "$#" -gt 0 ]; do
     *) usage_error "unknown argument: $1 (the command goes after --)" ;;
   esac
 done
-[ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id, not $recording"
+# prod-latest: the freshest complete nightly recording (prod_latest_run), resolved once, by the first country's marker
+if [ "$recording" = prod-latest ]; then
+  recording=$(prod_latest_run "${countries%%,*}") || exit 2
+  echo "identity-ci-run: --recording prod-latest is run $recording" >&2
+fi
+[ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id or prod-latest, not $recording"
 [ -n "$command" ] || usage_error "no command: put the sbt command after --"
 say() { echo "identity-ci-run: $*" >&2; }
 remote=${IDENTITY_MEASURE_REMOTE:-}
