@@ -15,7 +15,8 @@ listener=""
 trap '[ -z "$listener" ] || kill "$listener" 2>/dev/null; rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/tree/scripts"
 # The script cds to its checkout and runs scripts/restore-country-corpus.sh there: a tree of its own, the restore a stub.
-cp "$REPO_ROOT/scripts/convergence-local.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$work/tree/scripts/"
+cp "$REPO_ROOT/scripts/convergence-local.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/own-mongod.sh" \
+  "$REPO_ROOT/scripts/forge-gh" "$work/tree/scripts/"
 cat > "$work/tree/scripts/restore-country-corpus.sh" <<'STUB'
 #!/usr/bin/env bash
 echo "restore $*" >> "$STUB/calls"
@@ -35,6 +36,7 @@ STUB
 cat > "$work/bin/docker" <<'STUB'
 #!/usr/bin/env bash
 echo "docker $1" >> "$STUB/calls"
+case "$*" in *rs.initiate*) echo "$*" > "$STUB/initiate" ;; esac
 case "$1" in
   exec) [ -e "$STUB/mongo-never-up" ] && exit 1
         case "$*" in *myState*) echo 1 ;; esac ;;
@@ -97,6 +99,10 @@ check "no MONGODB_URI, nothing listening: a throwaway replica set, started then 
   "$(grep '^docker' "$work/calls" | paste -sd'|' -)"
 check "...and the leg runs on it" "mongodb://127.0.0.1:$fallback_port/?directConnection=true sbt convergenceSpain" \
   "$(env_of MONGODB_URI) $(grep '^sbt' "$work/calls")"
+# A dropDatabase always waits for majority; with the journal default on, a single node's majority is its journal
+# fsync, which a loaded Mac starves past that wait (scripts/own-mongod.sh, the same set for the it/ layer).
+check "...a replica set acknowledging majority on apply, not on a journal sync" "1" \
+  "$(grep -c 'writeConcernMajorityJournalDefault: false' "$work/initiate" 2>/dev/null || echo 0)"
 
 touch "$work/mongo-never-up"
 TMDB_API_KEY=tmdb local_leg es

@@ -67,6 +67,8 @@ SPEC="${2:-$SPEC}"
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/tool-conventions.sh
 . scripts/tool-conventions.sh # local_mongo_port, local_mongo_uri
+# shellcheck source=scripts/own-mongod.sh
+. scripts/own-mongod.sh # throwaway_replica_set_initiate
 FALLBACK_PORT="${CONVERGENCE_LOCAL_MONGO_PORT:-27117}"
 MONGO_WAIT="${CONVERGENCE_LOCAL_MONGO_WAIT:-120}"
 
@@ -131,8 +133,9 @@ else
     ping_mongo() { docker exec convergence-local-mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; }
     primary() { docker exec convergence-local-mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
     until_mongo ping ping_mongo
+    # majority acknowledged on apply, not on a journal sync: scripts/own-mongod.sh says why
     docker exec convergence-local-mongo mongosh --quiet --eval \
-        'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]}) }' >/dev/null
+        "try { rs.status().ok } catch (e) { $(throwaway_replica_set_initiate 127.0.0.1:27017) }" >/dev/null
     until_mongo "a primary" primary
     MONGODB_URI="mongodb://127.0.0.1:$FALLBACK_PORT/?directConnection=true"
 fi

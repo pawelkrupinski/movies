@@ -26,9 +26,16 @@
 # every agent's mongod and build queues behind: on 2026-10-23, at load 300-700, a suite's `dropDatabase` — which
 # ALWAYS waits for majority, w:majority/wtimeout 10 min hard-coded in the server, whatever the client asks — failed
 # with "waiting for replication timed out" (MovieRepositoryIntegrationSpec). Durability buys nothing here: the data
-# directory is deleted when the run ends.
+# directory is deleted when the run ends. scripts/convergence-local.sh's throwaway container initiates its set with the
+# same document (throwaway_replica_set_initiate).
 
 OWN_MONGOD_PID="" OWN_MONGOD_DATA="" OWN_MONGOD_PORT="" OWN_MONGOD_URI=""
+
+# throwaway_replica_set_initiate <host:port> -> the mongosh expression initiating a throwaway single-node set rs0 on that
+# member, majority acknowledged on apply (above).
+throwaway_replica_set_initiate() {
+    printf "rs.initiate({_id: 'rs0', writeConcernMajorityJournalDefault: false, members: [{_id: 0, host: '%s'}]})" "$1"
+}
 
 own_mongod_start() {
     local tag=${1:-own} mongod mongosh candidate ours="" primary="" start_seconds=${IT_LOCAL_START_SECONDS:-60}
@@ -59,7 +66,7 @@ own_mongod_start() {
         sleep 1
     done
     [ -n "$ours" ] || { echo "no mongod of this run's own answered on :$OWN_MONGOD_PORT within ${start_seconds}s (another server holds the port?)" >&2; return 1; }
-    "$mongosh" --quiet "$OWN_MONGOD_URI" --eval "rs.initiate({_id: 'rs0', writeConcernMajorityJournalDefault: false, members: [{_id: 0, host: '127.0.0.1:$OWN_MONGOD_PORT'}]})" >/dev/null
+    "$mongosh" --quiet "$OWN_MONGOD_URI" --eval "$(throwaway_replica_set_initiate "127.0.0.1:$OWN_MONGOD_PORT")" >/dev/null
     for _ in $(seq 1 "$start_seconds"); do
         [ "$("$mongosh" --quiet "$OWN_MONGOD_URI" --eval 'rs.status().myState' 2>/dev/null)" = "1" ] && { primary=1; break; }
         sleep 1
