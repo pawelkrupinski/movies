@@ -27,6 +27,13 @@ final case class HealthPort(value: Int) extends AnyVal
 final case class ExecutableSearchPath(value: Seq[Path]) extends AnyVal
 /** `APP_MODE` — an explicit override of the mode Play derived for itself. */
 enum ApplicationMode { case Development, Test, Production }
+/** Which kind of process a composition root is — the web tier, a worker, or a one-off tool's
+ *  `main` — named where an outside system must tell them apart (mongod's `appName`). */
+enum ProcessTier(val label: String) {
+  case Web    extends ProcessTier("web")
+  case Worker extends ProcessTier("worker")
+  case Tool   extends ProcessTier("tool")
+}
 
 // ── Mongo ─────────────────────────────────────────────────────────────────────
 /** `MONGODB_URI` — the cluster this process's corpus lives on. */
@@ -41,6 +48,24 @@ final case class MirrorMongoUri(value: String) extends AnyVal {
 final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
 /** `KINOWO_MONGO_MAX_POOL_SIZE` — connections per MongoClient. */
 final case class MongoMaxPoolSize(value: Int) extends AnyVal
+/** The `appName` a MongoClient sends at its handshake, which mongod's slow-op log lines and
+ *  `currentOp` show — derived from the process tier and its countries
+ *  ([[ProcessConfiguration.mongoApplicationName]]). Build through [[MongoApplicationName.of]]. */
+final case class MongoApplicationName private (value: String) extends AnyVal
+object MongoApplicationName {
+  /** The driver refuses (and so fails the boot over) an applicationName longer than this, in UTF-8 bytes. */
+  val MaxBytes: Int = 128
+
+  /** What a connection opened without a process's own name sends. */
+  val Default: MongoApplicationName = of("kinowo")
+
+  /** `raw`, cut to [[MaxBytes]] UTF-8 bytes at a character boundary. */
+  def of(raw: String): MongoApplicationName = {
+    val characters = raw.codePoints().toArray.toSeq.map(Character.toString)
+    val widths     = characters.map(_.getBytes(java.nio.charset.StandardCharsets.UTF_8).length).scanLeft(0)(_ + _).tail
+    new MongoApplicationName(characters.zip(widths).takeWhile(_._2 <= MaxBytes).map(_._1).mkString)
+  }
+}
 /** `MONGODB_OPTIONAL` — a local dev's opt-out of the required-Mongo boot check. */
 final case class MongoOptional(value: Boolean) extends AnyVal
 

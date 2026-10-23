@@ -115,7 +115,7 @@ object WorkerMain extends Logging {
       // after JVM start went unaccounted — "Worker running countries" came ~6 s after start.
       val boot   = new BootSteps("process", stopwatch)
       val budget = boot.step("background budget")(WorkerWiring.backgroundBudgetFrom(process))
-      val client = boot.step("mongo client")(MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process)))
+      val client = boot.step("mongo client")(MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process, settings.ProcessTier.Worker)))
       // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
       // of metric objects (each tagged with a `country` label), shared by every
       // country's wiring. This is what fixes the earlier "primary country's registry

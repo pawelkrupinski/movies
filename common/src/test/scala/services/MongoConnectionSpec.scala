@@ -223,6 +223,32 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
       .getConnectionPoolSettings.getMaxSize shouldBe 7
   }
 
+  // mongod's slow-op log lines and `currentOp` name a client only by the `appName` it sent at the
+  // handshake; without one, every web and worker connection looks alike there.
+  "MongoConnection.clientSettings" should "name the process tier and country as the driver's applicationName" in {
+    def appName(tier: settings.ProcessTier, vars: (String, String)*) =
+      MongoConnection.clientSettings(ValidUri, applicationName = tuning(tier, vars*).applicationName).getApplicationName
+    appName(settings.ProcessTier.Web, "KINOWO_COUNTRY" -> "pl")                shouldBe "kinowo-web-pl"
+    appName(settings.ProcessTier.Worker, "KINOWO_COUNTRIES" -> "de")           shouldBe "kinowo-worker-de"
+    appName(settings.ProcessTier.Worker, "KINOWO_COUNTRIES" -> "pl,uk")        shouldBe "kinowo-worker-pl-uk"
+    appName(settings.ProcessTier.Tool, "KINOWO_COUNTRY" -> "us")               shouldBe "kinowo-tool-us"
+  }
+
+  it should "let a URI that names its own appName win" in {
+    MongoConnection
+      .clientSettings(ValidUri + "&appName=mongosh", applicationName = tuning(settings.ProcessTier.Web).applicationName)
+      .getApplicationName shouldBe "mongosh"
+  }
+
+  // The driver refuses an applicationName over 128 UTF-8 bytes, which would fail the boot.
+  "MongoApplicationName" should "cut a name to the driver's 128-byte limit without splitting a character" in {
+    settings.MongoApplicationName.of("kinowo-worker-" + "pl-" * 60).value.getBytes("UTF-8").length shouldBe 128
+    val multiByte = settings.MongoApplicationName.of("ł" * 100).value
+    multiByte.getBytes("UTF-8").length shouldBe 128
+    multiByte shouldBe "ł" * 64
+    settings.MongoApplicationName.of("kinowo-web-pl").value shouldBe "kinowo-web-pl"
+  }
+
   "MongoConnection.clientSettings" should "leave the driver-default transport (no Netty TransportSettings)" in {
     MongoConnection.clientSettings(ValidUri).getTransportSettings  shouldBe null
     MongoConnection.clientSettings(RemoteUri).getTransportSettings shouldBe null
@@ -282,8 +308,9 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     MongoConnection.DefaultProbeTimeout.toSeconds should be > 10L
   }
 
-  private def tuning(vars: (String, String)*): MongoTuning =
-    MongoTuning.from(new settings.ProcessConfiguration(tools.Env.of(vars*)))
+  private def tuning(vars: (String, String)*): MongoTuning = tuning(settings.ProcessTier.Web, vars*)
+  private def tuning(tier: settings.ProcessTier, vars: (String, String)*): MongoTuning =
+    MongoTuning.from(new settings.ProcessConfiguration(tools.Env.of(vars*)), tier)
   private def probeTimeout(raw: String*): scala.concurrent.duration.FiniteDuration =
     tuning(raw.map("MONGODB_PROBE_TIMEOUT_SECONDS" -> _)*).probeTimeout.value
 

@@ -69,7 +69,7 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  refused, it is only the Facebook re-scrapes that stop. */
   lazy val fleetMongoConnection: MongoConnection =
     MongoConnection.forDatabase(mongoAddress.uri, services.FleetDatabase.Name, MongoRequirement.Optional,
-      MongoTuning.from(configuration), sharedMongoClient)
+      MongoTuning.from(configuration, settings.ProcessTier.Worker), sharedMongoClient)
 
   private lazy val facebookGraph: Option[FacebookGraph] = FacebookGraph.fromConfiguration(configuration, tlsContext)
 

@@ -34,7 +34,7 @@ trait MongoWiring { self: Wiring =>
 
   /** How every connection this deployment opens dials (`MONGODB_PROBE_TIMEOUT_SECONDS`,
    *  `KINOWO_MONGO_MAX_POOL_SIZE`). */
-  protected lazy val mongoTuning: MongoTuning = MongoTuning.from(processConfiguration)
+  protected lazy val mongoTuning: MongoTuning = MongoTuning.from(processConfiguration, settings.ProcessTier.Web)
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // `users` + `userStates` come off `UsersDatabase.name` rather than this
