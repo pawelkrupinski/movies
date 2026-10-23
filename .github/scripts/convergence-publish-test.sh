@@ -37,6 +37,10 @@ case "$verb" in
     [ -z "${STUB_UPLOAD_FAILS:-}" ] || { echo "HTTP 422" >&2; exit 1; }
     for f in "${files[@]}"; do cp "$f" "$release/"; done ;;
   delete-asset) echo "delete $1" >> "$root/calls"; rm -f "$release/$1" ;;
+  download)
+    while [ "$#" -gt 0 ]; do case "$1" in --pattern) pattern=$2; shift ;; --dir) dir=$2; shift ;; esac; shift; done
+    [ -f "$release/$pattern" ] || { echo "no asset matches $pattern" >&2; exit 1; }
+    cp "$release/$pattern" "$dir/" ;;
   *) exit 1 ;;
 esac
 STUB
@@ -100,6 +104,24 @@ rm -f "$work/release"/*
 : > "$work/release/enrichment-es-161.tar.zst"
 check "a first pin, with no fills to prune, passes" "0" "$(run env KINOWO_PINNED_TREE=enrichment-es-161.tar.zst \
   KINOWO_CONVERGENCE_CORPUS_RUN=161 KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-20T08:29:15Z bash "$publish" pin es)"
+
+# --- prod-latest --------------------------------------------------------------------------------
+check "no pinned tree leaves prod-latest as it was" "0 absent" \
+  "$(run bash "$publish" latest pl) $([ -e "$work/release/prod-latest-pl.txt" ] && echo present || echo absent)"
+rm -f "$work/release"/* "$work/created"/*
+for n in 1 2 3 4 5 6 7 8; do
+  : > "$work/release/enrichment-pl-$n.tar.zst"; echo "2026-10-0${n}T00:00:00Z" > "$work/created/enrichment-pl-$n.tar.zst"
+done
+echo "2 2026-10-02T00:00:00Z enrichment-pl-2.tar.zst" > "$work/release/hermetic-pl.txt"
+check "a complete recording is marked prod-latest" "0" "$(run env KINOWO_PINNED_TREE=enrichment-pl-8.tar.zst \
+  KINOWO_CONVERGENCE_CORPUS_RUN=8 KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-08T00:00:00Z KINOWO_KEPT_RECORDINGS=1 \
+  bash "$publish" latest pl)"
+check "naming it in the hermetic marker's format" "8 2026-10-08T00:00:00Z enrichment-pl-8.tar.zst" \
+  "$(cat "$work/release/prod-latest-pl.txt")"
+check "leaving the hermetic pair as it was" "2 2026-10-02T00:00:00Z enrichment-pl-2.tar.zst" "$(cat "$work/release/hermetic-pl.txt")"
+check "pruning to the newest five, never the hermetic pair or a kept landing recording" \
+  "enrichment-pl-1.tar.zst enrichment-pl-2.tar.zst enrichment-pl-4.tar.zst enrichment-pl-5.tar.zst enrichment-pl-6.tar.zst enrichment-pl-7.tar.zst enrichment-pl-8.tar.zst hermetic-pl.txt prod-latest-pl.txt" \
+  "$(assets)"
 
 check "an unknown command is refused" "64" "$(run bash "$publish" publish pl)"
 

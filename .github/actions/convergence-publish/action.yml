@@ -48,6 +48,14 @@ inputs:
       pair hermetic legs replay — if the log also shows the boot finished.
     required: false
     default: 'false'
+  pin:
+    description: >-
+      'false' keeps a complete recording OUT of the hermetic pair: its tree is still published under its run
+      (`enrichment-<code>-<run>`) and marked `prod-latest-<code>.txt`, so tools can replay it, but the pair every
+      verdict leg and identity measure replays stays as it was. The nightly recording runs with 'false' until
+      prod-latest has proven stable as a landing bar (record-scrape-fixtures.yml, `pin-hermetic`).
+    required: false
+    default: 'true'
   log:
     description: The suite log, read for the boot-complete line.
     required: false
@@ -135,7 +143,7 @@ runs:
     # it recorded) but never overwrites the tree every main run restores with a capture
     # made by code main has not run. (ConvergencePublishMainOnlySpec)
     - name: Publish the tree to the rolling release
-      if: github.ref == 'refs/heads/main' && inputs.mode == 'record'
+      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -184,7 +192,7 @@ runs:
           echo "healthy=$([ "$verdict" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
     - name: Publish this healthy recording's manifest as the next one's baseline
-      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && steps.health.outputs.healthy == 'true'
+      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && steps.health.outputs.healthy == 'true'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -273,7 +281,7 @@ runs:
     # the last one the pipeline converged on (`CorpusProvenance`). Main only, like the
     # tree: a branch run's green says nothing about main.
     - name: Record the corpus this green leg replayed
-      if: github.ref == 'refs/heads/main' && inputs.green == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.green == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -303,9 +311,26 @@ runs:
     # decided — boot complete in the log, a packed archive — and named it in
     # KINOWO_PINNED_TREE; this step writes the marker that makes it the pair, and prunes.
     - name: Pin this recording as the pair hermetic legs replay
-      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && inputs.complete == 'true' && inputs.pin == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
           CODE:     ${{ inputs.code }}
       run: .github/scripts/convergence-publish.sh pin "$CODE"
+
+    # PROD-LATEST — the freshest COMPLETE recording, whether or not it became the hermetic pair: the
+    # production-shaped recording `scripts/identity-repro` and `--recording prod-latest` replay, so a prod
+    # listing can be reproduced on the corpus prod scraped last night rather than on a pair weeks old.
+    # `prod-latest-<code>.txt` → `<corpus run> <recorded at> <tree asset>`, the hermetic marker's format.
+    #
+    # `github.ref == 'main'` beside `refs/heads/main` in every recording write above and here: Forgejo (CI
+    # since the GitHub suspension) starts a SCHEDULED run with the bare branch name as its ref (action_run.ref
+    # and action_schedule.ref are `main`), so under the refs/heads/main test alone no nightly recording
+    # published its tree from 2026-10-20 to 10-23 (runs 647, 985, 1578: packed, never uploaded).
+    - name: Mark this recording as prod-latest
+      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          CODE:     ${{ inputs.code }}
+      run: .github/scripts/convergence-publish.sh latest "$CODE"

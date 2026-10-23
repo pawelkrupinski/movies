@@ -278,6 +278,14 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # A complete RECORDING becomes the hermetic pair only when this is true; false still publishes its tree
+            # under its run and marks it prod-latest (`convergence-publish`'s `pin`). Record scrape fixtures passes
+            # false unless a dispatch asks, while prod-latest proves itself as a landing bar.
+            pin-hermetic:
+                description: A complete `record` leg pins its recording as the hermetic pair (else prod-latest only).
+                required: false
+                type: boolean
+                default: true
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -957,6 +965,7 @@ jobs:
                   green: ${{ steps.suite.outcome == 'success' }}
                   mode: ${{ inputs.mode }}
                   complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}
+                  pin: ${{ inputs.pin-hermetic }}
                   # A hermetic row's fetchable gaps, for the next leg's pre-suite fill (MissingFixtures.writeRefetches).
                   # Its own fill went up before its suite ("publish-fill").
                   refetch-list: ${{ inputs.mode == 'hermetic' && format('test/resources/fixtures/enrichment-{0}.refetch.tsv', inputs.code) || '' }}

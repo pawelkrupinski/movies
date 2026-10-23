@@ -10,6 +10,14 @@
 #   convergence-publish.sh pin <code>
 #       Write hermetic-<code>.txt naming the pinned pair, then prune all but the newest five pairs and the
 #       fills / refetch / refused lists of the pairs it pruned.
+#   convergence-publish.sh latest <code>
+#       Write prod-latest-<code>.txt naming this complete recording's pinned copy (the hermetic marker's format)
+#       WITHOUT making it the hermetic pair, then prune as `pin` does. What `--recording prod-latest` and
+#       scripts/identity-repro replay.
+#
+# Pruning never removes a KEPT recording: the hermetic pair, prod-latest, and the identity measure's landing
+# recordings ($KINOWO_KEPT_RECORDINGS, default "528 573": identity-measure's pinned pair and its second recording),
+# so nightly prod-latest copies can never age the landing bar out of the release.
 #
 # Every write goes through scripts/ci/gh-release.sh, which retries GitHub's transient answers. Reads
 # FIXTURE_RELEASE_TAG from the environment (the calling workflow's `env`). Run from the repository root.
@@ -72,16 +80,48 @@ pin_pair() {
     prune_pairs "$code"
 }
 
+# prod-latest: the marker only, LAST (a reader sees the old recording or the new one), then the same pruning.
+mark_latest() {
+    local code="$1"
+    pinned="${KINOWO_PINNED_TREE:-}"
+    if [ -z "$pinned" ]; then
+        echo "the boot did not finish, or nothing was packed — prod-latest stays as it was"
+        return 0
+    fi
+    marker="prod-latest-$code.txt"
+    echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT $pinned" > "$marker"
+    "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber || return 1
+    echo "marked $pinned as $code's prod-latest recording"
+    prune_pairs "$code"
+}
+
+# The runs pruning must keep for a country: its hermetic pair's, its prod-latest's, and the kept landing recordings.
+kept_runs() {
+    local code="$1" dir marker
+    dir=$(mktemp -d)
+    for marker in "hermetic-$code.txt" "prod-latest-$code.txt"; do
+        # allow-silenced: an absent marker keeps nothing; the kept list below still holds.
+        gh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir "$dir" --clobber >/dev/null 2>&1 || true
+        [ -f "$dir/$marker" ] && cut -d' ' -f1 "$dir/$marker"
+    done
+    rm -rf "$dir"
+    tr ' ' '\n' <<< "${KINOWO_KEPT_RECORDINGS-528 573}"
+}
+
 # Keep the newest FIVE pairs: with recordings landing every ~15 min, keeping two evicted a pair before an
 # identity measure dispatched on it could restore it (measure 37114004953). Either compressor's: the pairs
 # pinned before the move to zstd are gzip.
 prune_pairs() {
-    local code="$1" names kept
+    local code="$1" names kept protected
+    protected=$(kept_runs "$code" | grep -E '^[0-9]+$' | sort -u)
     # allow-silenced: pruning old pairs is housekeeping; one that fails to delete is pruned next time.
     gh release view "$FIXTURE_RELEASE_TAG" --json assets \
             --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \
         | sort -r | tail -n +6 | cut -f2 \
-        | while read -r stale; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
+        | while read -r stale; do
+              grep -qxF "$(cut -d- -f3 <<< "$stale" | cut -d. -f1)" <<< "$protected" && continue
+              "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true
+          done
     # ...and the fills, refetch and refused lists of the pairs just pruned (convergence-fill.sh): they only
     # mean anything over their own pair's tree.
     # allow-silenced: as above.
@@ -98,5 +138,6 @@ prune_pairs() {
 case "${1:-}" in
     tree) [ "$#" -eq 4 ] || { echo "usage: $0 tree <code> <complete> <log>" >&2; exit 64; }; publish_tree "$2" "$3" "$4" ;;
     pin)  [ "$#" -eq 2 ] || { echo "usage: $0 pin <code>" >&2; exit 64; }; pin_pair "$2" ;;
-    *) echo "usage: $0 <tree <code> <complete> <log> | pin <code>>" >&2; exit 64 ;;
+    latest) [ "$#" -eq 2 ] || { echo "usage: $0 latest <code>" >&2; exit 64; }; mark_latest "$2" ;;
+    *) echo "usage: $0 <tree <code> <complete> <log> | pin <code> | latest <code>>" >&2; exit 64 ;;
 esac

@@ -56,6 +56,15 @@ on:
                 required: false
                 type: boolean
                 default: true
+            pin-hermetic:
+                description: >-
+                    Also make this recording the HERMETIC PAIR every verdict leg and identity measure replays
+                    (the landing bar). Off by default and always off on the nightly cron: a complete recording is
+                    published under its run and marked prod-latest (`--recording prod-latest`,
+                    scripts/identity-repro) without moving the landing bar (573) until prod-latest has proven stable.
+                required: false
+                type: boolean
+                default: false
 
 concurrency:
     group: record-scrape-fixtures-${{ github.ref }}
@@ -146,6 +155,8 @@ jobs:
             # Every scheduled run records the resolver's query set too (a schedule has no
             # inputs, so it cannot read the dispatch default): the gate is kept met, not met once.
             identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
+            # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair.
+            pin-hermetic:   ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}
             command:        ${{ matrix.cmd }}

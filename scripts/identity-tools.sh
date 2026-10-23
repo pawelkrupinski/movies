@@ -297,6 +297,23 @@ identity_newest_recording() {
   return 1
 }
 
+# identity_recording_run <run | prod-latest> <cc> -> the run id a --recording names. `prod-latest`: the freshest COMPLETE
+# nightly recording of that country (its corpus scraped from prod that night, its enrichment tree filled live over it),
+# as `prod-latest-<cc>.txt` on the convergence-fixtures release names it (.github/scripts/convergence-publish.sh latest).
+# Not the hermetic pair identity-measure lands on (573): the one a prod listing reproduces on.
+identity_recording_run() {
+  local spec=$1 cc=$2 dir run
+  [ "$spec" = prod-latest ] || { echo "$spec"; return 0; }
+  dir=$(mktemp -d)
+  identity_gh "$IDENTITY_GH_READ" release download "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" -R "$KINOWO_GH_REPO" \
+    --pattern "prod-latest-$cc.txt" --dir "$dir" >/dev/null 2>&1 ||
+    { rm -rf "$dir"; identity_log "no prod-latest $cc recording yet (no prod-latest-$cc.txt on the convergence-fixtures release): the nightly \"Record scrape fixtures\" writes it once a $cc leg completes"; return 1; }
+  run=$(cut -d' ' -f1 "$dir/prod-latest-$cc.txt"); rm -rf "$dir"
+  [[ "$run" =~ ^[0-9]+$ ]] || { identity_log "prod-latest-$cc.txt names no run"; return 1; }
+  identity_log "prod-latest $cc recording: run $run"
+  echo "$run"
+}
+
 identity_classpath() {
   local tree=$1
   identity_classpath_fresh "$tree" || identity_locked "$(identity_classpath_lock "$tree")" identity_classpath_compile "$tree" || return 1
