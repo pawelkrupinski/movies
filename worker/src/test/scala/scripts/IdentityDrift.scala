@@ -38,7 +38,7 @@ import scala.util.control.NonFatal
  * (`test/resources/fixtures/identity-drift-allow.tsv`: cc, venue or `*`, raw title, checkpoint or `*`, reason) names it.
  *
  * {{{
- *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]
+ *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--no-hold] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]
  * }}}
  * Exit: 0 no divergence beyond the allow-list, 1 divergences, 2 usage.
  */
@@ -48,7 +48,9 @@ object IdentityDrift {
   final case class Options(country: String = "", recording: Option[Path] = None, families: Option[Path] = None, seeds: Int = 2,
                            gate: Int = 15, out: Path = Path.of("target/identity-drift"), allow: Option[Path] = None, labels: Option[Path] = None,
                            /** `--seed S`: that seed alone, to replay one divergence. */
-                           only: Option[Int] = None)
+                           only: Option[Int] = None,
+                           /** `--no-hold`: replay the worker without [[GapHold]], to measure what it holds. */
+                           hold: Boolean = true)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                            => o
@@ -56,6 +58,7 @@ object IdentityDrift {
     case "--families" :: v :: rest      => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
     case "--seeds" :: v :: rest         => parse(rest, o.copy(seeds = v.toInt))
     case "--seed" :: v :: rest          => parse(rest, o.copy(only = Some(v.toInt)))
+    case "--no-hold" :: rest            => parse(rest, o.copy(hold = false))
     case "--gate" :: v :: rest          => parse(rest, o.copy(gate = v.toInt))
     case "--out" :: v :: rest           => parse(rest, o.copy(out = Path.of(v)))
     case "--allow" :: v :: rest         => parse(rest, o.copy(allow = Some(Path.of(v))))
@@ -65,7 +68,7 @@ object IdentityDrift {
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]")
+    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--no-hold] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]")
     sys.exit(2)
   }
 
@@ -239,7 +242,7 @@ object IdentityDrift {
   // ── the incremental sequence ─────────────────────────────────────────────────────────────
 
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
-  final class Worker(reads: Reads, all: Seq[Listing], seed: Long, gatePercent: Int, val clock: MutableClock) {
+  final class Worker(reads: Reads, all: Seq[Listing], seed: Long, gatePercent: Int, val clock: MutableClock, hold: Boolean = true) {
     private val share    = new Share(seed, gatePercent)
     private val recorded = memo(reads)
     var gate             = new Gate(recorded, share)
@@ -272,7 +275,8 @@ object IdentityDrift {
     def project(republished: Iterable[ListingKey] = Nil): Resolution = {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
-      val holding = gapHold(UnmatchedClusters.resolutionOf(model.decisions), priorTakes, model.blind)
+      val modelled = UnmatchedClusters.resolutionOf(model.decisions)
+      val holding  = if (hold) gapHold(modelled, priorTakes, model.blind) else modelled
       val r = stage.apply(holding, held.get, answers.store.version, if (fresh) None else Some(republished))
       taken = Some(r)
       fresh = false
@@ -317,7 +321,7 @@ object IdentityDrift {
   }
 
   /** One seed's sequence; each checkpoint's resolution, named. */
-  def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock): Seq[(String, Resolution)] = {
+  def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, hold: Boolean = true): Seq[(String, Resolution)] = {
     val rng     = new scala.util.Random(seed)
     val venues  = rng.shuffle(listings.map(_.venue).distinct.sorted)
     val (first, later) = venues.splitAt((venues.size * 0.7).toInt)
@@ -327,7 +331,7 @@ object IdentityDrift {
     val initial  = of(first)
     val leaving  = initial.filter(_ => rng.nextDouble() < 0.03)
     def half     = rng.shuffle(venues).take(venues.size / 2).toSet
-    val w = new Worker(reads, listings, seed, gatePercent, clock)
+    val w = new Worker(reads, listings, seed, gatePercent, clock, hold)
     val checkpoints = Seq.newBuilder[(String, Resolution)]
     def rescrape(): Resolution = { val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key)) }
     w.boot(initial); w.project()
@@ -377,7 +381,7 @@ object IdentityDrift {
     val divergences = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)).flatMap { seed =>
       val clock = new MutableClock(recording.recordedAt)
       def readsAt(c: java.time.Clock) = new Reads(country, opened.fetch, opened.gaps, c, filed)
-      val checkpoints = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
+      val checkpoints = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock, o.hold)
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())
       val reference  = takesOf(whole(readsAt(wholeClock), listings, wholeClock))
