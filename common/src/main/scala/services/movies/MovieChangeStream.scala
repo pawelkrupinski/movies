@@ -450,19 +450,22 @@ final class MovieChangeStream(
     new SideCursor(ChangeStreamLiveness.Slots, slotsMetrics,
       (onChange, demand) => slots.flatMap(_.watchRowsApplied(onChange, demand))))
 
+  // Set while an open deferred on an unreadable resume position waits on `changeReopen`. A
+  // registration meanwhile leaves the open to that reopen rather than re-reading the position:
+  // every read counts against [[ChangeStreamResumeToken.MaxDeferredOpens]], which the backoff is
+  // meant to space out — the boot's back-to-back registrations spent two of them in milliseconds.
+  // Declared before `changeReopen`, whose reopen reads it.
+  private val openDeferred = new java.util.concurrent.atomic.AtomicBoolean(false)
+
   // A change stream's onError is TERMINAL — nothing brings the cursor back on its own, and
   // `ensureWatching` only runs on REGISTRATION, which the worker does twice at boot and never
   // again. Without this driver one terminal error killed the worker's stream until the process
   // restarted (see [[ChangeStreamReopen]] for the outage that proved it). Skips the reopen once
   // the last listener has detached, so an idle repository stays idle.
+  // `@unchecked` for -Wsafe-init: the reopen reaches `changeReopen` itself (through `ensureWatching`), a cycle the
+  // checker cannot see is safe; it runs only from the scheduler `failed()` arms, never during construction.
   private val changeReopen = ChangeStreamReopen.onDaemonScheduler("MovieRepository",
-    () => { openDeferred.set(false); if (!movieChanges.isEmpty) ensureWatching() })
-
-  // Set while an open deferred on an unreadable resume position waits on `changeReopen`. A
-  // registration meanwhile leaves the open to that reopen rather than re-reading the position:
-  // every read counts against [[ChangeStreamResumeToken.MaxDeferredOpens]], which the backoff is
-  // meant to space out — the boot's back-to-back registrations spent two of them in milliseconds.
-  private val openDeferred = new java.util.concurrent.atomic.AtomicBoolean(false)
+    (() => { openDeferred.set(false); if (!movieChanges.isEmpty) ensureWatching() }): @unchecked)
 
   /** Attach a consumer, starting the shared cursor if it isn't running; the returned
    *  handle detaches just that consumer and stops the cursor once none remain. */

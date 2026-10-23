@@ -45,6 +45,7 @@ ThisBuild / scalacOptions ++= Seq(
   // Unused imports, locals, privates, parameters, implicits and pattern variables: dead code fails the build. An
   // intentionally unread parameter (a trait default meant to be overridden, a hook) is `@unused`.
   "-Wunused:all",
+  // `-Wsafe-init` (initialization order) is added for main sources only: project/MainSourceInitChecks.scala.
   // Warnings are errors: a warning must be fixed (or explicitly silenced via a
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
   "-Werror",

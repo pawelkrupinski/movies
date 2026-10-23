@@ -119,6 +119,7 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   import MongoIdentityTraceStore._
   private val Timeout = 60.seconds
   private val logger  = play.api.Logger(getClass)
+  private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
   // One writer thread, each family's drop and write landing in the order the model replaced it; a resolve only
   // hands its families over. A trace is diagnostics: a failed write is logged and never fails a projection.
   private val writes = new CoalescedTraceWrites(write, (removed, e) =>
@@ -132,7 +133,6 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
   /** Waits for every handed-over write: for a test, or a shutdown that wants them in. */
   def flush(): Unit = writes.flush()
 
-  private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
   /** How many trace documents this store has replaced or deleted — those whose content moved. */
   def written: Long = documentsWritten.get
   private lazy val collection: MongoCollection[Document] = {
