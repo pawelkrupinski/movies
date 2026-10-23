@@ -2091,14 +2091,16 @@
 
   // Lightweight: only the day select is reflected back to the URL in real
   // time, so stepping through days keeps history meaningful without polluting
-  // the URL with every cast/country tick.
+  // the URL with every cast/country tick. The same write records the
+  // session-local controls in the entry's STATE (`rememberedControlsState`),
+  // which nothing shares or bookmarks, so Back can put them back at boot.
   function syncDateToURL() {
     const dateSel = document.getElementById('date-filter');
     if (!dateSel) return;
     const url = new URL(window.location.href);
     if (dateSel.value === 'today') url.searchParams.delete('date');
     else url.searchParams.set('date', dateSel.value);
-    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    history.replaceState(rememberedControlsState(), '', url.pathname + url.search + url.hash);
   }
 
   // Build (but don't apply) the URL that captures every current filter — used
@@ -2166,7 +2168,7 @@
   // button label so the user has visual confirmation it took.
   function copyFilterLinkToClipboard(button) {
     const path = buildShareURL();
-    history.replaceState(null, '', path);
+    history.replaceState(rememberedControlsState(), '', path);
     const url = window.location.origin + path;
     const done = () => {
       if (!button) return;
@@ -2230,9 +2232,9 @@
   // WHAT STILL RESETS, AND WHY ONLY THIS MUCH. Measured on the same page: a text
   // input, a select and a NAMED radio each restore correctly while an unnamed
   // checkbox is being corrupted -- the queues do not interfere. So search, sort
-  // and the from-time selects are left exactly as the engine restored them, and
-  // pressing Back keeps the search you typed, which is the behaviour every
-  // engine already gets right.
+  // and the from-time selects are not reset, and pressing Back keeps the search
+  // you typed -- put back by the page itself at boot, below, because the
+  // engine's own restore of it lands too late to rely on.
   //
   // Reset here are only the two that cannot be taken at face value:
   //  - the FORMAT group, because `#format-imax` is an unnamed checkbox sharing
@@ -2253,17 +2255,54 @@
     if (date) date.value = 'today';
   }
 
-  // ...AND THE RESTORE CAN LAND AFTER THE GRID IS ALREADY DRAWN. Measured in
-  // Chromium: the search box is still EMPTY at `DOMContentLoaded`, so the filter
-  // pass `bootView` runs sees nothing, and the engine fills the box afterwards.
-  // A box reading "spider" above an unfiltered grid is worse than an empty one,
-  // so re-filter when the controls stop agreeing with the pass that drew what is
-  // on screen. Comparing, rather than re-running unconditionally, keeps an
-  // ordinary load to the single pass it has always cost.
+  // ...AND THE ENGINE'S RESTORE LANDS LATE, on its own schedule. The search box
+  // is still EMPTY at `DOMContentLoaded`, so the pass `bootView` runs sees
+  // nothing. Measured 2026-10-24 with every image request held, so `load` never
+  // fires: Chromium fills the box some time after `DOMContentLoaded`, with no
+  // event to re-filter on, leaving "spider" above the unfiltered grid; WebKit
+  // leaves it empty until `load`. `load` waits on every eager image, so on a
+  // slow network either lasted until the last image landed -- seconds on a
+  // phone (and the history-restore page test's flake on a loaded runner).
+  //
+  // So the page keeps these controls itself: every filter pass records them in
+  // the history entry's state (`syncDateToURL`), and a Back to that entry puts
+  // them back in `applyFiltersFromURL`, BEFORE the first filter pass draws the
+  // grid. Only on a back/forward traversal: a reload starts clear in every
+  // engine, and a new visit has no state. The engine's late restore then writes
+  // the same values again, a no-op.
+  //
+  // The controls are static navbar markup, looked up once: `syncDateToURL` runs
+  // on every filter pass, which has a fixed DOM-query budget.
+  const REMEMBERED_CONTROLS = ['search-input', 'sort-by', 'from-hour', 'from-minute'];
+  let _rememberedElements = null;
+  function rememberedElements() {
+    if (!_rememberedElements)
+      _rememberedElements = REMEMBERED_CONTROLS
+        .map(id => [id, document.getElementById(id)])
+        .filter(([, element]) => element);
+    return _rememberedElements;
+  }
+  function rememberedControlsState() {
+    const controls = {};
+    for (const [id, element] of rememberedElements()) controls[id] = element.value;
+    return { filterControls: controls };
+  }
+  function restoreRememberedControls() {
+    const navigation = performance.getEntriesByType('navigation')[0];
+    if (!navigation || navigation.type !== 'back_forward') return;
+    const controls = history.state && history.state.filterControls;
+    if (!controls) return;
+    for (const [id, element] of rememberedElements())
+      if (typeof controls[id] === 'string') element.value = controls[id];
+  }
+
+  // The belt for an entry with no recorded state (one written before this
+  // shipped): re-filter at `pageshow` when the engine's restore has moved the
+  // controls away from the pass that drew what is on screen. Comparing, rather
+  // than re-running unconditionally, keeps an ordinary load to its single pass.
   let _appliedSignature = null;
   function filterSignature() {
-    const valueOf = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-    return ['search-input', 'sort-by', 'from-hour', 'from-minute'].map(valueOf).join('\u0000');
+    return rememberedElements().map(([, element]) => element.value).join('\u0000');
   }
   function noteFiltersApplied() { _appliedSignature = filterSignature(); }
   window.addEventListener('pageshow', function () {
@@ -2362,6 +2401,9 @@
       buildCinemaPanel();
     }
 
+    // Last, as the engine's own restore would: what the visitor had on this
+    // entry outranks the `q`/`sort`/`from` the entry was first opened with.
+    restoreRememberedControls();
     updateFormatBtn();
   }
 

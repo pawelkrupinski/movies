@@ -19,7 +19,22 @@ import { gotoAndWaitForCards, getVisibleTitles } from './helpers';
 //
 // Tapping a film and pressing Back is the commonest gesture this site sees on a
 // phone, which is what made an engine quirk look like an intermittent outage.
+//
+// Every image request is held for the whole test, so the window `load` event
+// never fires: the restored state must be on screen from DOMContentLoaded. It
+// was not. Chromium writes a control's saved value back only as `load`
+// completes, and `load` waits on every eager image (the app-banner icon among
+// them), so on a slow network the visitor saw an empty search box over the
+// unfiltered grid until the last of them landed. The spec used to wait for
+// `goBack({ waitUntil: 'load' })`, which hid that and tied the test to how fast
+// a loaded machine served those images instead (it went red once at load ~117).
 test.describe('returning to the listing through history', { tag: '@agnostic' }, () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/*', (route) => {
+      if (route.request().resourceType() !== 'image') return route.continue();
+      // Never answered: the page closes with the request still in flight.
+    });
+  });
 
   test('a day survives tapping into a film and pressing Back', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/?date=tomorrow');
@@ -28,8 +43,7 @@ test.describe('returning to the listing through history', { tag: '@agnostic' }, 
 
     // Away and back, the way a visitor does it.
     await gotoAndWaitForCards(page, '/poznan/');
-    await page.goBack({ waitUntil: 'load' });
-    await expect(page.locator('#film-grid')).toBeAttached();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('#date-filter')).toHaveValue('tomorrow');
     // No filter the visitor never set, and the same films as before.
@@ -52,11 +66,25 @@ test.describe('returning to the listing through history', { tag: '@agnostic' }, 
     const narrowed = await getVisibleTitles(page);
 
     await gotoAndWaitForCards(page, '/poznan/?date=anytime');
-    await page.goBack({ waitUntil: 'load' });
-    await expect(page.locator('#film-grid')).toBeAttached();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('#search-input')).toHaveValue(term);
     await expect(page.locator('#format-imax')).not.toBeChecked();
     await expect.poll(() => getVisibleTitles(page).then(t => t.length)).toBe(narrowed.length);
+  });
+
+  // The page keeps the search in the history entry's state, and a reload keeps
+  // that state too -- but a reload starts clear in every engine, so the page
+  // puts the controls back only on a back/forward traversal.
+  test('a reload starts with an empty search', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    const all = await getVisibleTitles(page);
+    await page.fill('#search-input', all[0].slice(0, 4).toLowerCase());
+    await expect.poll(() => getVisibleTitles(page).then(t => t.length)).toBeLessThan(all.length);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('#search-input')).toHaveValue('');
+    await expect.poll(() => getVisibleTitles(page).then(t => t.length)).toBe(all.length);
   });
 });
