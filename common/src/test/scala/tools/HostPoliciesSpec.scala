@@ -39,6 +39,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
       HostPolicies.connectTimeoutFor(url) shouldBe row.connectTimeout
       HostPolicies.requestTimeoutFor(url) shouldBe row.requestTimeout
       HostPolicies.headersFor(url) shouldBe row.headers
+      HostPolicies.httpVersionFor(url) shouldBe row.httpVersion
       // The pace goes through the live knob, so compare the two lookups that
       // share that path rather than the compiled-in value an override may shift.
       HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) shouldBe HostPolicies.requestIntervalFor(exactHost(suffix), new _root_.settings.ProcessConfiguration(Env.of()))
@@ -72,11 +73,12 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
       HostPolicies.connectTimeoutFor(url) shouldBe HostPolicies.DefaultConnectTimeout
       HostPolicies.requestTimeoutFor(url) shouldBe HostPolicies.DefaultRequestTimeout
       HostPolicies.headersFor(url) shouldBe empty
+      HostPolicies.httpVersionFor(url) shouldBe HostPolicies.DefaultHttpVersion
       HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) shouldBe None
     }
   }
 
-  it should "differ from the defaults in at least one of connect timeout, request timeout, pace, fleet pace, or headers" in {
+  it should "differ from the defaults in at least one of connect timeout, request timeout, pace, fleet pace, headers or HTTP version" in {
     // A row that no longer overrides anything is dead data: the host would get
     // exactly what it gets with no row, so the row only misleads the next reader
     // into thinking the host is special-cased.
@@ -86,7 +88,8 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
         row.requestTimeout != HostPolicies.DefaultRequestTimeout ||
         row.minRequestInterval.isDefined ||
         row.fleetMinInterval.isDefined ||
-        row.headers.nonEmpty
+        row.headers.nonEmpty ||
+        row.httpVersion != HostPolicies.DefaultHttpVersion
       overridesSomething shouldBe true
     }
   }
@@ -101,6 +104,23 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     }
     val suffixes = HostPolicies.all.toList.flatMap(_.hostSuffixes)
     suffixes.distinct shouldBe suffixes
+  }
+
+  // ── HTTP version ─────────────────────────────────────────────────────────
+  // HTTP/1.1 stays the default: Cloudflare-fronted origins fingerprint the JDK's HTTP/2
+  // SETTINGS frame, and a naive h2 probe of Metacritic was challenged where our HTTP/1.1
+  // shape is served. The hosts measured to multiplex a concurrent burst over one warm
+  // connection (2026-10-23, no Cloudflare in front) opt in to HTTP/2 by row.
+
+  "httpVersionFor" should "speak HTTP/2 to the measured non-Cloudflare hosts we hit concurrently" in {
+    Seq("https://www.filmweb.pl/film/x", "https://restapi.helios.pl/api/cinema/1", "https://v3.sg.media-imdb.com/suggestion/x/xyz.json")
+      .foreach(url => withClue(url)(HostPolicies.httpVersionFor(url) shouldBe java.net.http.HttpClient.Version.HTTP_2))
+  }
+
+  it should "keep HTTP/1.1 for every other host, Cloudflare-fronted ones included" in {
+    HostPolicies.DefaultHttpVersion shouldBe java.net.http.HttpClient.Version.HTTP_1_1
+    Seq("https://www.multikino.pl/repertuar", "https://www.metacritic.com/movie/x/", "https://www.omdbapi.com/", "https://unlisted.example/x")
+      .foreach(url => withClue(url)(HostPolicies.httpVersionFor(url) shouldBe java.net.http.HttpClient.Version.HTTP_1_1))
   }
 
   // kinoheld.de's GraphQL API serves the German venues Filmstarts does not list; an unpaced

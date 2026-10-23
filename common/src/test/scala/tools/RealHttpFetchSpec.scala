@@ -29,6 +29,14 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       .connectTimeout().orElseThrow() shouldBe HostPolicies.DefaultConnectTimeout
   }
 
+  it should "speak the HTTP version the host policy names, on that host's own connect budget" in {
+    val http = new RealHttpFetch()
+    http.clientFor("https://www.filmweb.pl/film/x").version() shouldBe java.net.http.HttpClient.Version.HTTP_2
+    http.clientFor("https://restapi.helios.pl/api/x").connectTimeout().orElseThrow() shouldBe HostPolicies.DefaultConnectTimeout
+    http.clientFor("https://www.multikino.pl/repertuar").version() shouldBe java.net.http.HttpClient.Version.HTTP_1_1
+    http.clientFor("https://www.iluzjon.fn.org.pl/repertuar.html").version() shouldBe java.net.http.HttpClient.Version.HTTP_1_1
+  }
+
   // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
 
   private def selectedPort(pc: RealHttpFetch.ProxyConfig): Int =

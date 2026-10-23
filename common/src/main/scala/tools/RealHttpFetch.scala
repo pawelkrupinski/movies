@@ -47,9 +47,9 @@ class RealHttpFetch(
   // depends on it — the homepage hands out a session cookie that the
   // API call must carry — and other clients are unaffected (cookies
   // are domain-scoped, and the APIs we talk to are otherwise stateless).
-  private def buildClient(connectTimeout: Duration): HttpClient = {
+  private def buildClient(connectTimeout: Duration, version: HttpClient.Version): HttpClient = {
     val builder = HttpClient.newBuilder()
-      .version(HttpClient.Version.HTTP_1_1)
+      .version(version)
       // Redirects are followed by `send`/`sendAsync` below, through RedirectGuard: the
       // JDK's NORMAL rules, minus any hop onto a local address.
       .followRedirects(HttpClient.Redirect.NEVER)
@@ -71,21 +71,23 @@ class RealHttpFetch(
     builder.build()
   }
 
-  // One HttpClient per distinct connect budget the host-policy table can ask for
-  // (plus the default). Building a client isn't free and the distinct connect
-  // timeouts are few, so prebuild them all and pick per host by connect budget.
-  private val clientsByConnectTimeout: Map[Duration, HttpClient] =
-    (HostPolicies.DefaultConnectTimeout +: HostPolicies.all.map(_.connectTimeout))
+  // One HttpClient per distinct (connect budget, HTTP version) the host-policy table
+  // can ask for (plus the defaults). Building a client isn't free and the distinct
+  // pairs are few, so prebuild them all and pick per host.
+  private val clientsByShape: Map[(Duration, HttpClient.Version), HttpClient] =
+    ((HostPolicies.DefaultConnectTimeout, HostPolicies.DefaultHttpVersion) +:
+      HostPolicies.all.map(policy => (policy.connectTimeout, policy.httpVersion)))
       .distinct
-      .map(connectTimeout => connectTimeout -> buildClient(connectTimeout))
+      .map { case shape @ (connectTimeout, version) => shape -> buildClient(connectTimeout, version) }
       .toMap
 
-  /** Pick the client whose connect budget matches the host policy: the slow-TLS
-   *  hosts get their long handshake budget, everything else the tight default.
-   *  Package-private so the spec can assert the routing (the real slow-handshake
-   *  behaviour needs a live server and can't be reached in a unit test). */
+  /** Pick the client whose connect budget and HTTP version match the host policy: the
+   *  slow-TLS hosts get their long handshake budget, the HTTP/2 hosts an h2 client,
+   *  everything else the tight default over HTTP/1.1. Package-private so the spec can
+   *  assert the routing (the real slow-handshake behaviour needs a live server and
+   *  can't be reached in a unit test). */
   private[tools] def clientFor(url: String): HttpClient =
-    clientsByConnectTimeout(HostPolicies.connectTimeoutFor(url))
+    clientsByShape((HostPolicies.connectTimeoutFor(url), HostPolicies.httpVersionFor(url)))
 
   override def get(url: String): String = get(url, Map.empty)
 

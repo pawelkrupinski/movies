@@ -5,6 +5,7 @@ import java.util.Locale
 import settings.{HostPace, PaceKnob, ProcessConfiguration}
 
 import java.net.URI
+import java.net.http.HttpClient
 import java.time.Duration
 
 /** A per-host override of the network timeouts. `connectTimeout` bounds the
@@ -38,7 +39,11 @@ import java.time.Duration
  *  wins (per-call beats per-host). This belongs on the transport, not the client,
  *  because it is a property of the ORIGIN's admission rule rather than of the API
  *  contract — and because applying it at the terminal fetch means none of the
- *  eleven `HttpFetch` decorators in the chain can silently drop it. */
+ *  eleven `HttpFetch` decorators in the chain can silently drop it.
+ *
+ *  `httpVersion` is the protocol [[RealHttpFetch]] offers the host: HTTP/1.1 by default,
+ *  HTTP/2 (ALPN, falling back to 1.1 where the server declines) for a host measured to
+ *  gain from multiplexing — see [[HostPolicies.DefaultHttpVersion]]. */
 final case class HostPolicy(
   hostSuffixes: Set[String],
   connectTimeout: Duration = HostPolicies.DefaultConnectTimeout,
@@ -48,11 +53,12 @@ final case class HostPolicy(
   headers: Map[String, String] = Map.empty,
   fleetMinInterval: Option[Duration] = None,
   fleetPaceKnob: Option[settings.PaceKnob] = None,
+  httpVersion: HttpClient.Version = HostPolicies.DefaultHttpVersion,
 )
 
 /** The per-host network policy [[RealHttpFetch]] consults — the ONE place a host
- *  earns a non-default connect/request timeout, an outbound pace, or an
- *  identifying header. A host that needs any of those gets ONE row in [[all]]
+ *  earns a non-default connect/request timeout, an outbound pace, an
+ *  identifying header, or HTTP/2. A host that needs any of those gets ONE row in [[all]]
  *  — no bespoke predicate, constant, or if-branch per host. The lookups below
  *  all read that one table (first matching row wins). Add a host = append a
  *  row; nothing else changes.
@@ -77,12 +83,24 @@ object HostPolicies {
    *  legitimately needs longer than the connect phase, so this stays generous. */
   val DefaultRequestTimeout: Duration = Duration.ofSeconds(30)
 
+  /** HTTP/1.1 unless a row opts in. HTTP/2 multiplexes a concurrent burst onto one warm
+   *  connection — measured 2026-10-23 from the laptop, 5 concurrent GETs on a warm client:
+   *  HTTP/1.1 opened 4 more TLS connections, HTTP/2 none, and finished 2-4x sooner on the
+   *  low-latency hosts (filmweb 141-310ms → 43ms, helios 400-455 → 160-190ms, IMDb
+   *  suggestions 150-190 → 45-66ms); sequential fetches are a wash (keep-alive reuses the
+   *  connection either way). It stays opt-in because Cloudflare fingerprints the JDK's
+   *  HTTP/2 SETTINGS frame — a naive h2 probe of Metacritic was challenged where our
+   *  HTTP/1.1 shape is served — and most cinema origins (several behind Cloudflare,
+   *  reached through the Decodo tunnel, which carries h2 end to end) are paced or serial,
+   *  where multiplexing buys nothing. */
+  val DefaultHttpVersion: HttpClient.Version = HttpClient.Version.HTTP_1_1
+
   /** The browser string kinoprogramm.com accepts — see its row below. */
   val KinoprogrammUserAgent: String =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
   /** The per-host policy table — the single place a host earns a non-default
-   *  timeout, pace, or header. First matching row wins. */
+   *  timeout, pace, header, or HTTP version. First matching row wins. */
   val all: Seq[HostPolicy] = Seq(
     // Helios's REST API (restapi.helios.pl) — both the screening/event LIST that
     // HeliosClient fetches per cinema AND the per-screen/detail enrichment. On
@@ -93,7 +111,15 @@ object HostPolicies {
     // floor for hours. 4s is above the ~1-3s a healthy call takes but BELOW the slow
     // tail, so a degraded host now TIMES OUT → the breaker opens → Helios is skipped
     // for the cooldown (it degrades to its NUXT repertoire; detail only enriches).
-    HostPolicy(Set("restapi.helios.pl"), requestTimeout = Duration.ofSeconds(4)),
+    // HTTP/2: ~30 venues' list + detail calls land on this one nginx origin at once, and
+    // a warm h2 connection carries a 5-request burst in ~170ms vs ~430ms over HTTP/1.1.
+    HostPolicy(Set("restapi.helios.pl"), requestTimeout = Duration.ofSeconds(4), httpVersion = HttpClient.Version.HTTP_2),
+
+    // Filmweb (Varnish, no Cloudflare) and IMDb's suggestion CDN (CloudFront, `findId`):
+    // fetched concurrently by enrichment and identity lookups, where a warm h2 connection
+    // carries a 5-request burst ~3x sooner and with no extra TLS handshakes (see
+    // DefaultHttpVersion).
+    HostPolicy(Set("filmweb.pl", "v3.sg.media-imdb.com"), httpVersion = HttpClient.Version.HTTP_2),
 
     // Metacritic's slow Cloudflare-fronted origin. It answers our datacenter
     // egress in ~1-6s on a good day (≈35% of metascore fetches legitimately take
@@ -492,4 +518,8 @@ object HostPolicies {
    *  exactly as the defaults built it. */
   def headersFor(url: String): Map[String, String] =
     policyFor(url).map(_.headers).getOrElse(Map.empty)
+
+  /** The HTTP version to offer `url`'s host: the matching row's, else HTTP/1.1. */
+  def httpVersionFor(url: String): HttpClient.Version =
+    policyFor(url).map(_.httpVersion).getOrElse(DefaultHttpVersion)
 }
