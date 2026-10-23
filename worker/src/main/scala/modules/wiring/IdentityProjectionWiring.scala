@@ -88,13 +88,26 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     newAgreementStage(agreementVerdicts, clock,
       ask = open => services.identity.adapters.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
         open.catalogue, open.records),
-      metrics = workerMetrics.identityAgreement.stage(country.code))
+      metrics = workerMetrics.identityAgreement.stage(country.code),
+      askNow = new services.identity.adapters.InlineFamilyAsks(familyAnswerStore, familySources,
+        managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
+          threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
+        stopwatch = stopwatch,
+        filed = () => {
+          identityProjection.asked(IdentityProjection.Trigger.Answer)
+          identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
+        },
+        agreementQuestionMetrics))
+  /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
+  private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps
    *  nothing, asks nothing and reads every take at once. */
   def newAgreementStage(stored: services.identity.agreement.AgreementVerdicts, stageClock: java.time.Clock,
                         ask: services.identity.agreement.AgreementStage.Open => Unit = _ => (),
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
-                        budgets: Boolean = true): services.identity.agreement.AgreementStage =
+                        budgets: Boolean = true,
+                        askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never)
+      : services.identity.agreement.AgreementStage =
     new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
       venueDetailLookups(),
       titleNormalizer, services.identity.IdentityCalibration.resolver,
@@ -107,7 +120,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       catalogue = catalogueAnswerStore,
       listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
       correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
-      correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue)
+      correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
+      askNow = askNow)
 
   /** The daily drift check: the live takes against a whole resolve of the same listings with nothing kept
    *  ([[services.identity.adapters.IdentityDriftCheck]]), its lines in the worker's log, its count a gauge. Report only

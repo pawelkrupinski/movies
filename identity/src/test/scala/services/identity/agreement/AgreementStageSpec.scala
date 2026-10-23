@@ -641,6 +641,42 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     resolves should be > afterPartial
   }
 
+  // The owner's choice (docs/design/identity-questions.md, step 3): a cluster with a newly scraped listing has its families
+  // asked inline, so its first take reads their answers; a cluster the stage already knew waits on the queue, as before.
+  it should "ask a new cluster's families inline, once, and take what they answer in its first take" in {
+    var rtAnswered = false
+    val rt = new FamilyAnswers {
+      val family: VoterFamily = VoterFamily.RottenTomatoes
+      private def held = new HeldFamilyAnswers(family, Map("klondike_2022" -> SourceRecord(klondike)), unanswered = !rtAnswered)
+      def titled(text: String)     = held.titled(text)
+      def directedBy(name: String) = held.directedBy(name)
+      def record(id: String)       = held.record(id)
+      override def fresh(question: String) = held.fresh(question)
+    }
+    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[(VoterFamily, String)]]
+    val askNow: AgreementStage.AskNow = (questions, _) => { asked += questions; rtAnswered = true }
+    val stage = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
+    val known = resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0))
+    stage.apply(known, listingOf, version = 1)                                     // the first pass: nothing new to it
+    asked shouldBe empty
+    stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)   // new: asked, then taken
+    asked.flatten.toSet should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
+    val once = asked.size
+    stage.apply(resolution, listingOf, version = 3)
+    asked.size shouldBe once
+  }
+
+  it should "ask nothing inline of a cluster met on its first pass, which meets every cluster" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[(VoterFamily, String)]]
+    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = (q, _) => asked += q)
+    stage.apply(resolution, listingOf, version = 1)
+    stage.apply(resolution, listingOf, version = 2)
+    asked shouldBe empty
+    stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")   // the queue's, as before
+  }
+
   it should "stay as the model left it while a family has not answered, and name the question" in {
     val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val decision = stage.apply(resolution, listingOf, version = 1).decisions.head

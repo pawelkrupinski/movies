@@ -67,7 +67,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver,
                            private[agreement] val catalogue: CatalogueAnswers = CatalogueAnswers.Silent, private[agreement] val listedOn: Option[VoterFamily] = None,
                            private[agreement] val correctionPostersAtOnce: Int = AgreementStage.CorrectionPostersAtOnce,
-                           private[agreement] val correctionsPerApply: Int = AgreementStage.CorrectionsPerApply) extends AgreementCorrections, AgreementTakes, AgreementCandidates {
+                           private[agreement] val correctionsPerApply: Int = AgreementStage.CorrectionsPerApply,
+                           private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never) extends AgreementCorrections, AgreementTakes, AgreementCandidates {
 
   /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
    *  decides every verdict again, as a change of the code does. */
@@ -129,6 +130,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
    *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
   private[agreement] val waiting = TrieMap.empty[String, AgreementStage.Waiting]
+  /** The new clusters whose families were asked inline ([[askNow]]): each asked so once in the stage's life. */
+  private[agreement] val askedNow = TrieMap.empty[String, Unit]
   /** The questions handed to `ask` since the families' answers last moved (at `handedAt`): a tick that filed nothing
    *  hands nothing. */
   private[agreement] var handed   = AgreementStage.Open.empty
@@ -258,6 +261,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (now eq decision) decision else takenAsBefore(decision, now)
     }
 
+  /** A cluster the stage meets for the first time since it started — none of its verdict, check or wait held — past its
+   *  first pass, which meets every cluster: what [[askNow]] asks inline. */
+  private[agreement] def newCluster(id: String, version: Long): Boolean =
+    (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
+      !held.contains(id) && !checked.contains(id) && !waiting.contains(id) && !askedNow.contains(id)
+
   /** Forget everything kept of the clusters `ids` names — their verdicts and corrections, stored ones too, their waits and
    *  candidates — and every decision read: the next apply decides them as a stage with nothing kept would. What a drift
    *  check adopting a whole resolve's takes asks (`IdentityDriftCheck.Adopt`). */
@@ -273,6 +282,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def forgetGone(resolution: Resolution, pass: AgreementStage.Pass): Unit = {
     val removed = held.keySet.toSet -- pass.seen -- pass.correcting
     waiting --= waiting.keySet.toSet -- pass.seen
+    askedNow --= askedNow.keySet.toSet -- pass.seen
     candidateFilms --= candidateFilms.keySet.toSet -- pass.seen   // a correction's candidates are read, never kept
     correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
     if (removed.nonEmpty || pass.moved.nonEmpty) {
@@ -422,7 +432,17 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     pass.resolves += 1
     val reads = mutable.Map.empty[String, Long]
     val gaps  = mutable.Set.empty[(VoterFamily, String)]
-    val verdicts = verdictsOf(listings, gaps, reads)
+    val verdicts = {
+      val first = verdictsOf(listings, gaps, reads)
+      if (!first.contains(Answer.Unknown) || !newCluster(id, version)) first
+      else {
+        // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers
+        askedNow(id) = ()
+        askNow(gaps.toSet, AgreementStage.AskNowWithin)
+        gaps.clear(); reads.clear()
+        verdictsOf(listings, gaps, reads)
+      }
+    }
     pass.asked ++= gaps
     if (verdicts.contains(Answer.Unknown)) { waiting(id) = AgreementStage.Waiting(digest, gaps.toSet, clock.instant()); None }
     else {
@@ -699,6 +719,16 @@ object AgreementStage {
   /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had
    *  no answer, to be read again at another. */
   private[agreement] final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long])
+  /** Asks families' questions now, on the calling thread, for at most `within`, filing what they answer: a cluster with a
+   *  newly scraped listing reads its families' answers in its first take (docs/design/identity-questions.md, step 3, the
+   *  owner's choice). A question not answered by then is handed to the queue as every other is. */
+  trait AskNow { def apply(questions: Set[(VoterFamily, String)], within: scala.concurrent.duration.FiniteDuration): Unit }
+  object AskNow {
+    val Never: AskNow = (_, _) => ()
+  }
+  /** How long a new cluster's resolve waits on its families asked inline. */
+  val AskNowWithin: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(5, java.util.concurrent.TimeUnit.SECONDS)
+
   /** How long a cluster with some of its questions answered waits for the rest before it is resolved on what came. */
   val PartialAfter: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, java.util.concurrent.TimeUnit.MINUTES)
 

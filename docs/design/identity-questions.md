@@ -26,8 +26,12 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    ask then, instead of being asked live again on every drain. The fill and the live asks share one memory
    (`WorkerWiring.identityGapMemory`), and every non-answer marker lives in its own collection,
    `identity_question_markers` (`TmdbKind.Marker`; the answers stay where they are). A marker written to
-   `tmdb_queries` before the move is still read until the sweep's 7-day grace deletes it. Next: a cluster with a
-   newly scraped listing has its families asked inline in the projection, under a 5 s deadline (the owner's choice).
+   `tmdb_queries` before the move is still read until the sweep's 7-day grace deletes it. And the agreement's side
+   (the owner's choice): a cluster the live stage meets for the first time since it started, past its first pass, has
+   its families asked inline (`AgreementStage.askNow`, `InlineFamilyAsks`) for at most `AgreementStage.AskNowWithin`
+   (5 s), then resolved again on what they filed; what is not answered by then is the queue's, as before, and an
+   answer that comes later is filed and asks for a projection. Each cluster is asked so once; the drift check's stage
+   never asks.
 4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
    family's own open questions, until answered or the deadline passes. This is GapHold v4.
 

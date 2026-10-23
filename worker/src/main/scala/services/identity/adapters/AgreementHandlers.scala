@@ -163,3 +163,37 @@ object AgreementQuestionMetrics {
     def asked(family: String, outcome: String): Unit = ()
   }
 }
+
+/** The agreement's [[services.identity.agreement.AgreementStage.AskNow]]: a new cluster's family questions, each asked of
+ *  its family's live source on `pool` at once and filed, waited on for at most `within`. One still out by then is
+ *  filed when it comes and asks for a projection (`filed`), as the queue's handler would; the queue holds it too, and
+ *  skips it once it is filed. A failure is the queue's to ask again. */
+final class InlineFamilyAsks(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], pool: java.util.concurrent.ExecutorService,
+                             filed: () => Unit, stopwatch: tools.Stopwatch, metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent)
+    extends services.identity.agreement.AgreementStage.AskNow with Logging {
+  def apply(questions: Set[(VoterFamily, String)], within: scala.concurrent.duration.FiniteDuration): Unit = {
+    val started  = stopwatch.start()
+    val late     = new java.util.concurrent.atomic.AtomicBoolean(false)
+    val asked = questions.toSeq.flatMap { case (family, question) =>
+      sources.get(family).map { source =>
+        pool.submit(new Runnable {
+          def run(): Unit =
+            try {
+              val outcome = tools.HttpPath.within(tools.HttpPath.Agreement)(AgreementQuestions.file(store, family, source, question))
+              metrics.asked(family.label, outcome)
+              if (late.get) filed()
+            } catch {
+              case scala.util.control.NonFatal(e) =>
+                metrics.asked(family.label, AgreementQuestionMetrics.Failed)
+                logger.info(s"agreement: ${family.label} '$question' asked inline failed (${e.getClass.getSimpleName}), the queue's to ask again")
+            }
+        })
+      }
+    }
+    asked.foreach { future =>
+      try future.get((within - started.elapsed).toNanos.max(0L), java.util.concurrent.TimeUnit.NANOSECONDS)
+      catch { case _: java.util.concurrent.TimeoutException | _: java.util.concurrent.ExecutionException => () }
+    }
+    late.set(true)
+  }
+}
