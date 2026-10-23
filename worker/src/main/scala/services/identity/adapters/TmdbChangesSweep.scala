@@ -186,7 +186,8 @@ object TmdbChangesSweep {
   }
 
   /** Counts a tick's requests, retries included: what its allowance is spent in. */
-  private final class CountingFetch(underlying: HttpFetch) extends ForwardingHttpFetch {
+  /** Counts the sweep's requests this minute (its allowance); public only so DefaultedMemberForwardingSpec can hold it. */
+  final class CountingFetch(underlying: HttpFetch) extends ForwardingHttpFetch {
     var asked = 0
     protected def around[A](url: String)(call: HttpFetch => A): A = { asked += 1; call(underlying) }
   }
