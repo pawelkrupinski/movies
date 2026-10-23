@@ -13,11 +13,11 @@
 # is the fallback, run only under the heavy-run slot wrapper. Typical wall time: ~25-40 minutes, most of it the takes rows.
 #
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
-#                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait] [--full] [--fresh] [--json]
+#                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait | --wait] [--full] [--fresh] [--json]
 #                                 [--timeout <minutes>] [--all-countries] [--all-recordings | --one-recording] [--plan]
 #                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]] [--no-cache]
 #        scripts/identity-measure --sweep
-#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
+#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait | --wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
 #   --base         default the commit's merge-base with <remote>/main; the commit's parent when it is on main already
 #   --recording    a `Record scrape fixtures` run (e.g. 528), or prod-latest (the freshest complete nightly), every leg replays -- its corpus and tree as released, no
@@ -38,6 +38,9 @@
 #                  in place of the release's: a base no takes check stored one for, traced by scripts/identity-ci-run
 #   --keep-branch  leave the temporary branch on the remote (on Forgejo the run drops it anyway, below)
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
+#   --wait         say the run's id and an ETA (the median wall time of the workflow's recent measure/ runs), then wait
+#                  with ~/bin/agentctl wait's backoff -- 60 s, x1.5, at most 5 min (IDENTITY_MEASURE_WAIT_FIRST seconds
+#                  first) -- not a read every 30 s. An agent runs it in the background and ends its turn. With --run too
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below; the result cache too)
 #   --no-cache     neither answer from THE RESULT CACHE (below) nor store in it: measure afresh
@@ -141,7 +144,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" recording="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
+ref="" base="" recording="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
 all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -152,6 +155,7 @@ while [ "$#" -gt 0 ]; do
     --country|--countries|--country=*|--countries=*) country_flag "$@"; shift $((COUNTRY_FLAG_ARGS - 1)) ;;
     --keep-branch) keep=1 ;;
     --no-wait) nowait=1 ;;
+    --wait) wait_eta=1 ;;
     --full) full=1 ;;
     --fresh) fresh=1 ;;
     --take-paths) take_paths=1 ;;
@@ -174,6 +178,7 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+[ -z "$wait_eta" ] || [ -z "$nowait" ] || usage_error "--wait and --no-wait contradict each other"
 countries=$(selected_countries_csv)
 # the countries named on the command line (empty: every leg), as the workflow's takes-countries
 named_countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || named_countries=$countries
@@ -481,8 +486,14 @@ takes_rows_done() { # <run id> <sha>: every measured country's takes row has end
     case $state in completed|success|failure|error|cancelled|skipped) ;; *) return 1 ;; esac
   done
 }
+# --wait: the run and its ETA said once, before the wait (scripts/ci/dispatch.sh's run_eta)
+say_eta() { # <run id>
+  [ -n "$wait_eta" ] || return 0
+  if run_eta "$workflow" measure/; then say "run $1: ETA $RUN_ETA_SAID -- waiting with backoff (60 s, x1.5, at most 5 min)"
+  else say "run $1: no ETA (no recent measure run to time) -- waiting with backoff (60 s, x1.5, at most 5 min)"; fi
+}
 wait_for_takes() { # <run id> <sha> <seconds>: sets RUN_CONCLUSION -- the run's own, or `takes-done`; fails at the deadline
-  local id=$1 sha=$2 end=$((SECONDS + $3)) view unread=0
+  local id=$1 sha=$2 end=$((SECONDS + $3)) view unread=0 delay=${IDENTITY_MEASURE_WAIT_FIRST:-60}
   RUN_CONCLUSION=""
   while :; do
     # ten unreadable reads in a row end the wait, as scripts/ci-wait's: one is a blip, ten are no answer
@@ -491,7 +502,8 @@ wait_for_takes() { # <run id> <sha> <seconds>: sets RUN_CONCLUSION -- the run's 
     if [ "${view%%$'\t'*}" = completed ]; then RUN_CONCLUSION=${view#*$'\t'}; return 0; fi
     [ -n "$early_collect" ] && takes_rows_done "$id" "$sha" && { RUN_CONCLUSION=takes-done; return 0; }
     [ "$SECONDS" -lt "$end" ] || return 1
-    sleep "${DISPATCH_POLL_SECONDS:-30}"
+    if [ -n "$wait_eta" ]; then sleep "$delay"; delay=$(dispatch_backoff_next "$delay")
+    else sleep "${DISPATCH_POLL_SECONDS:-30}"; fi
   done
 }
 
@@ -503,6 +515,7 @@ if [ -n "$run" ]; then
     [ -z "$nowait" ] || { say "run $run is $status: collect it once it completes"; exit 2; }
     # wait here, bounded, rather than leave every caller its own poll loop (agents spent ~10 min a measurement on one)
     say "waiting for run $run ($status), at most --timeout $timeout_min minutes"
+    say_eta "$run"
     wait_for_takes "$run" "$run_sha" $((timeout_min * 60)) || die "run $run gave no conclusion within --timeout $timeout_min minutes"
   fi
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
@@ -866,6 +879,7 @@ dispatch() { # → measured_run
     || die "dispatched, but no run of $push on $branch was found"
   measured_run=$DISPATCHED_RUN
   say "run $(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$measured_run" --json url --jq .url || echo "$measured_run")"
+  say_eta "$measured_run"
 }
 
 attempts=1

@@ -22,6 +22,13 @@
 #       Until the run completes; sets RUN_CONCLUSION (cancelled included: never followed to a superseding run).
 #       scripts/ci-wait --run --no-follow: ten unreadable reads in a row end the wait -- one is a blip, and a
 #       null or partial answer is never a conclusion.
+#   dispatch_backoff_next <seconds>
+#       The next poll's delay after one of <seconds>: x1.5, at least 1, at most DISPATCH_BACKOFF_CAP (300) -- the backoff
+#       ~/bin/agentctl's `wait run` polls with, so an hour's wait asks the API about fifteen times, not 120.
+#   run_eta <workflow> <branch prefix> [gh run list args...]
+#       Sets RUN_ETA_SAID to "~N min (median of K recent runs)": the wall time (createdAt to updatedAt) of the workflow's
+#       newest 30 runs that ended success or failure on a branch starting <branch prefix>. Non-zero, RUN_ETA_SAID empty,
+#       when none is listed or the list cannot be read. An estimate to say, never a deadline.
 #
 # The answers are variables, not stdout: a wait run as `x=$(wait_for_run ...)` is a subshell, and a SIGTERM
 # to the caller is deferred until that subshell's wait ends -- hours -- so its clean-up trap never ran.
@@ -125,4 +132,26 @@ wait_for_run() {
     0|1|3) return 0 ;;
     *) RUN_CONCLUSION=""; _dispatch_say "run $run gave no conclusion within ${timeout}s (or could not be read)"; return 1 ;;
   esac
+}
+
+dispatch_backoff_next() {
+  local next=$(($1 * 3 / 2)) cap=${DISPATCH_BACKOFF_CAP:-300}
+  [ "$next" -ge 1 ] || next=1
+  [ "$next" -le "$cap" ] || next=$cap
+  echo "$next"
+}
+
+run_eta() {
+  local workflow=$1 prefix=$2 out minutes count
+  shift 2
+  RUN_ETA_SAID=""
+  out=$(_dispatch_gh run list --workflow "$workflow" --limit 30 "$@" --json status,conclusion,createdAt,updatedAt,headBranch \
+    --jq "[.[] | select(.status == \"completed\" and (.conclusion == \"success\" or .conclusion == \"failure\")
+                       and ((.headBranch // \"\") | startswith(\"$prefix\")))
+               | (.updatedAt | fromdateiso8601) - (.createdAt | fromdateiso8601)] | sort
+           | if length == 0 then empty else \"\\(.[length / 2 | floor] / 60 | ceil) \\(length)\" end") \
+    || { _dispatch_say "could not list $workflow's runs for an ETA"; return 1; }
+  read -r minutes count <<< "$out"
+  [[ "$minutes" =~ ^[0-9]+$ ]] && [[ "$count" =~ ^[0-9]+$ ]] || return 1
+  RUN_ETA_SAID="~$minutes min (median of $count recent runs)"
 }

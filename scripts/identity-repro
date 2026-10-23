@@ -3,7 +3,7 @@
 # Turn a PRODUCTION listing — one a regression alert, a drift-check line or the user names — into a slice case on the
 # freshest recording, or say exactly why it cannot be one.
 #
-#   scripts/identity-repro <cc> <venue> <title> [--recording RUN|prod-latest] [--ref REF] [--no-mirror] [--no-emit]
+#   scripts/identity-repro <cc> <venue> <title> [--recording RUN|prod-latest] [--ref REF] [--no-mirror] [--no-emit] [--wait]
 #
 #   <venue> <title>  substrings, case and accents aside (as identity-slice's --venue/--title); the listing must be one
 #                  venue's one raw title in the recording, else every candidate is listed and nothing is sliced
@@ -15,6 +15,12 @@
 #                  slice reads prod's filed state beside the recording (identity-slice --prod-mirror), and a listing the
 #                  recording lacks is looked up there to say whether prod scraped it after the recording
 #   --no-emit      slice and explain only; do not pin the case (identity-slice --emit-case)
+#   --wait         tonight's recording first: when a "Record scrape fixtures" run newer than prod-latest's is in flight on
+#                  main, say its run id and an ETA (the median wall time of recent recordings), wait for it with
+#                  ~/bin/agentctl wait's backoff (60 s, x1.5, at most 5 min; IDENTITY_REPRO_WAIT_FIRST seconds first, at most
+#                  IDENTITY_REPRO_WAIT_HOURS, 6), then reproduce on prod-latest as it then stands; none in flight, or it
+#                  ends otherwise than success: prod-latest as it is, said so. With --recording prod-latest only. An agent
+#                  runs it in the background and ends its turn
 #
 # Verdicts, one line on stdout, and the exit status:
 #   REPRODUCIBLE  (0)  sliced, every question the slice asked was answered by the recording, case emitted (or --no-emit)
@@ -41,19 +47,50 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 [ "$#" -ge 3 ] || { usage >&2; exit 2; }
 cc=$1 venue=$2 title=$3
 shift 3
-recording=prod-latest ref='' mirror=1 emit=1
+recording=prod-latest ref='' mirror=1 emit=1 wait=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --recording) recording=${2:?--recording needs a run or prod-latest}; shift 2 ;;
     --ref) ref=${2:?--ref needs a ref}; shift 2 ;;
     --no-mirror) mirror=0; shift ;;
     --no-emit) emit=0; shift ;;
+    --wait) wait=1; shift ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 case "$cc" in pl|de|uk|us|es) ;; *) echo "unknown country $cc (pl de uk us es)" >&2; exit 2 ;; esac
 
 verdict() { echo "$1: $cc | $venue | $title — $2"; exit "$3"; }
+
+# --wait: a recording newer than prod-latest's, in flight on main, is waited for (scripts/ci/dispatch.sh's run_eta and
+# dispatch_backoff_next), so a listing prod scraped today reproduces on tonight's recording, not yesterday's.
+if [ "$wait" = 1 ]; then
+  [ "$recording" = prod-latest ] || { echo "--wait waits for tonight's recording: it goes with --recording prod-latest only" >&2; exit 2; }
+  # shellcheck source=scripts/ci/dispatch.sh
+  . "$(dirname "$0")/ci/dispatch.sh"
+  DISPATCH_GH=$KINOWO_GH
+  latest=$(prod_latest_run "$cc") || latest=0
+  flight=$(identity_gh 60 run list --workflow "Record scrape fixtures" --branch main --limit 10 --json databaseId,status \
+    --jq '[.[] | select(.status != "completed") | .databaseId] | max // empty') || flight=""
+  if [ -z "$flight" ] || [ "$flight" -le "$latest" ]; then
+    identity_log "--wait: no recording newer than prod-latest's (run $latest) in flight -- reproducing on it"
+  else
+    if run_eta "Record scrape fixtures" main --branch main; then eta="ETA $RUN_ETA_SAID"; else eta="no ETA"; fi
+    identity_log "--wait: recording run $flight in flight (newer than prod-latest's $latest): $eta -- waiting with backoff (60 s, x1.5, at most 5 min)"
+    delay=${IDENTITY_REPRO_WAIT_FIRST:-60} misses=0 end=$((SECONDS + ${IDENTITY_REPRO_WAIT_HOURS:-6} * 3600))
+    while :; do
+      if state=$(identity_gh 60 run view "$flight" --json status,conclusion --jq '"\(.status) \(.conclusion // "")"'); then misses=0
+      else misses=$((misses + 1)); state=""; fi
+      case "$state" in
+        "completed success") identity_log "--wait: recording run $flight finished"; break ;;
+        completed*) identity_log "--wait: recording run $flight ended ${state#completed }: reproducing on prod-latest's $latest"; break ;;
+      esac
+      [ "$misses" -lt 10 ] || { identity_log "--wait: run $flight could not be read ten times in a row: reproducing on prod-latest's $latest"; break; }
+      [ "$SECONDS" -lt "$end" ] || { identity_log "--wait: run $flight not done within ${IDENTITY_REPRO_WAIT_HOURS:-6} h: reproducing on prod-latest's $latest"; break; }
+      sleep "$delay"; delay=$(dispatch_backoff_next "$delay")
+    done
+  fi
+fi
 
 run=$(identity_recording_run "$recording" "$cc") || verdict FAILED "no $recording recording for $cc (above)" 1
 fixtures=$(identity_recording "$run" "$cc") || verdict FAILED "could not lay out recording $run ($cc)" 1

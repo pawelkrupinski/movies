@@ -69,6 +69,9 @@ case "$1 $2" in
       # the sweep's read of a branch's newest run: "<status> <createdAt>" from $SWEEP_DIR/<branch>, none for a run-less branch
       b=""; prev=""; for a in "$@"; do [ "$prev" = --branch ] && b=$a; prev=$a; done
       [ -f "$SWEEP_DIR/${b//\//_}" ] && cat "$SWEEP_DIR/${b//\//_}"; exit 0
+    elif [[ " $* " == *" status,conclusion,createdAt,updatedAt,headBranch "* ]]; then
+      # --wait's ETA: the workflow's recent runs, $ETA_RUNS (none by default), through the caller's --jq
+      jq -r "$jq_filter" <<< "${ETA_RUNS:-[]}"
     elif [[ " $* " == *" --branch "* ]]; then
       # the run exists only once the commit is on origin's measure/ branch: record what was pushed
       while IFS= read -r f; do { echo "${f#"$ORIGIN"/refs/heads/measure/}" > "$STUB/branch"; cat "$f" > "$STUB/pushed"; }; done \
@@ -84,6 +87,9 @@ case "$1 $2" in
                          view() { printf '{"databaseId":777,"headSha":"%s","headBranch":"measure/abc-1","workflowName":"w","status":"%s","conclusion":"%s"}\n' \
                                     "${HEAD_SHA:-abc1230000000000000000000000000000000000}" "$1" "${2:-}"; }
                          [ -n "${IN_PROGRESS:-}" ] && { touch "$STUB/watched"; view in_progress; exit 0; }
+                         # VIEW_PENDING=n: the run is in progress for the first n of these reads
+                         vp=$(( $(cat "$STUB/view-pending" 2>/dev/null || echo 0) + 1 )); echo "$vp" > "$STUB/view-pending"
+                         [ "$vp" -le "${VIEW_PENDING:-0}" ] && { view in_progress; exit 0; }
                          # CANCELS=n: the first n runs end cancelled, replaced in the lane by a newer dispatch
                          reads=$(( $(cat "$STUB/reads" 2>/dev/null || echo 0) + 1 )); echo "$reads" > "$STUB/reads"
                          [ "$reads" -le "${CANCELS:-0}" ] && { view completed cancelled; exit 0; }
@@ -463,5 +469,25 @@ kill "$watchdog" 2> /dev/null
 check "SIGTERM while waiting on the run exits 130" "130" "$status"
 check "...cancelling the run" "cancelled" "$(cat "$work/stub/cancelled" 2>/dev/null)"
 check "...and deleting the branch" "0" "$(measure_branches)"
+
+# --wait: the run's id and an ETA said before the wait, then agentctl wait's backoff (60 s, x1.5, at most 5 min) between
+# reads instead of a read every DISPATCH_POLL_SECONDS. `sleep` is stubbed to log what it was asked.
+mkdir -p "$work/sleepbin"; printf '#!/bin/sh\necho "$1" >> "$SLEEP_LOG"\n' > "$work/sleepbin/sleep"; chmod +x "$work/sleepbin/sleep"
+eta_run() { printf '{"status":"completed","conclusion":"%s","headBranch":"%s","createdAt":"2026-10-23T10:00:00Z","updatedAt":"2026-10-23T%s:00Z"}' "$@"; }
+slept() { paste -sd' ' "$work/slept" 2>/dev/null; }
+rm -f "$work/slept"
+check "--wait says the run and its ETA from the workflow's recent measure runs" "0|true" \
+  "$(PATH="$work/sleepbin:$PATH" SLEEP_LOG="$work/slept" ETA_RUNS="[$(eta_run success measure/a 10:30),$(eta_run failure measure/b 10:50),$(eta_run success main 13:00)]" \
+     measure landable --countries pl --wait)|$(grep -q 'run 777: ETA ~50 min (median of 2 recent runs)' "$work/out" && echo true || echo false)"
+rm -f "$work/slept"
+check "...then waits with the backoff: 60 s, 90, 135" "0|60 90 135" \
+  "$(PATH="$work/sleepbin:$PATH" SLEEP_LOG="$work/slept" VIEW_PENDING=3 measure landable --countries pl --wait)|$(slept)"
+rm -f "$work/slept"
+check "...where without --wait it reads every DISPATCH_POLL_SECONDS, and says no ETA" "0|0 0 0|false" \
+  "$(PATH="$work/sleepbin:$PATH" SLEEP_LOG="$work/slept" VIEW_PENDING=3 measure landable --countries pl)|$(slept)|$(grep -q ETA "$work/out" && echo true || echo false)"
+rm -f "$work/slept"
+check "no recent measure run to time: said, and the wait goes on" "0|true" \
+  "$(PATH="$work/sleepbin:$PATH" SLEEP_LOG="$work/slept" measure landable --countries pl --wait)|$(grep -q 'run 777: no ETA' "$work/out" && echo true || echo false)"
+check "--wait and --no-wait together are refused" "2" "$(measure landable --countries pl --wait --no-wait)"
 
 spec_summary

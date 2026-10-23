@@ -90,4 +90,19 @@ wait_for_run 7 -1 2> /dev/null; check "a deadline already past still reads the r
 reset; DEFAULT=$(view in_progress)
 wait_for_run 7 0 2> /dev/null; check "a run not done by the deadline ends the wait" "1 ''" "$? '$RUN_CONCLUSION'"
 
+check "the backoff grows x1.5 to five minutes, and never polls at once" "90 135 202 300 300 1" \
+  "$(for d in 60 90 135 202 300 0; do printf '%s ' "$(dispatch_backoff_next "$d")"; done | sed 's/ $//')"
+check "...its cap is DISPATCH_BACKOFF_CAP's" "120" "$(DISPATCH_BACKOFF_CAP=120 dispatch_backoff_next 100)"
+# run_eta through a gh that applies --jq itself, as gh does, to $RUNS
+mkdir -p "$work/jqbin"
+printf '#!/usr/bin/env bash\necho "$*" >> "$WORK/calls"\nf=""; p=""; for a in "$@"; do [ "$p" = --jq ] && f=$a; p=$a; done\n[ -n "${RUNS_FAIL:-}" ] && exit 1\njq -r "$f" <<< "$RUNS"\n' > "$work/jqbin/gh"
+chmod +x "$work/jqbin/gh"
+eta_run() { printf '{"status":"%s","conclusion":"%s","headBranch":"%s","createdAt":"2026-10-23T10:00:00Z","updatedAt":"2026-10-23T%s:00Z"}' "$@"; }
+eta() { reset; DISPATCH_GH="$work/jqbin/gh" RUNS="$1" run_eta w.yml measure/ 2> /dev/null; echo "$? $RUN_ETA_SAID"; }
+check "the ETA is the median wall time of the prefix's decided runs, rounded up" "0 ~40 min (median of 3 recent runs)" \
+  "$(eta "[$(eta_run completed success measure/a 10:20),$(eta_run completed failure measure/b 10:40),$(eta_run completed success measure/c 11:30),$(eta_run completed cancelled measure/d 10:01),$(eta_run in_progress '' measure/e 10:02),$(eta_run completed success main 12:00)]")"
+check "...asking for the workflow's newest 30" "run list --workflow w.yml --limit 30" "$(head -n 1 "$work/calls" | cut -d' ' -f1-6)"
+check "no decided run of the prefix: no ETA" "1 " "$(eta "[$(eta_run completed success main 10:20)]")"
+check "an unreadable list: no ETA, and said" "1 " "$(RUNS_FAIL=1 eta '[]')"
+
 spec_summary
