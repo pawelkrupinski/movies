@@ -21,7 +21,7 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val rows    = RepoFile.jobs(leg)("convergence")
 
   private val FillStep  = "Fill the gaps the last leg listed, before the suite"
-  private val SuiteStep = "Run the suite"
+  private val SuiteStep = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
   private val MainOnly  = "github.ref == 'refs/heads/main'"
 
   private lazy val fillStep = RepoFile.step(leg, FillStep)

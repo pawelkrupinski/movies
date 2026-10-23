@@ -194,7 +194,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The suite step, in every row but the takes check's. */
-  private val SuiteStep  = "Run the suite"
+  private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
 
   /** No row runs the ~100-film sample (2026-10-14): it replays a slice of the corpus the suite replays in full, so it
    *  only ever failed sooner. The suite runs in every row but the identity takes check's. */
@@ -770,7 +770,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val blocks = runs.map(i => lines.slice(lines.lastIndexWhere(_.trim == "run: |", i), i).mkString("\n"))
     all(blocks) should include ("scripts/ci/cpu-sampler.sh 15 &")
     // ...and the suite names which collections Mongo's share of it goes to, sampled before its databases drop.
-    val suite = RepoFile.step(RepoFile.block(leg, "convergence"), "Run the suite")
+    val suite = RepoFile.step(RepoFile.block(leg, "convergence"), "Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
     suite should include ("scripts/ci/mongo-top.sh start")
     suite should include ("scripts/ci/mongo-top.sh report")
     // ...on a red suite too: under the step's `bash -e`, a failing `sbt | tee` ended the script before them.

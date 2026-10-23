@@ -113,7 +113,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     codes shouldBe Country.all.map(_.code).toSet
   }
 
-  private val SuiteStep  = "Run the suite"
+  private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
 
   // No row runs the ~100-film sample (2026-10-14): one job, its suite the only sbt verdict in it.
   it should "run each country's suite in one job of rows, and no sample in any" in {
@@ -132,7 +132,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // runs its publish only inside a short grace window -- and GitHub's 360.
   it should "give each recording job a ceiling over its corpus capture and its suite together" in {
     val convergence = RepoFile.block(leg, "convergence")
-    val corpus = Seq("Tunnel to prod Mongo", "Record the country's corpus").map { name =>
+    val corpus = Seq("Tunnel to prod Mongo", "Record ${{ inputs.country }}'s corpus").map { name =>
       RepoFile.step(convergence, name).linesIterator.map(_.trim)
         .collectFirst { case s"timeout-minutes: $n" => n.toInt }
         .getOrElse(fail(s"the `$name` step has no ceiling of its own"))

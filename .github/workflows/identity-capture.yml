@@ -110,7 +110,7 @@ jobs:
                   MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
 
-            - name: Capture
+            - name: Capture ${{ matrix.code }}
               timeout-minutes: 280
               env:
                   CC: ${{ matrix.code }}
