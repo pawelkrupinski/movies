@@ -360,7 +360,32 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
   `eviction-hard=memory.available<300Mi`. Check overlap with `modules/fleet/container-image-gc.nix`.
 - **CPU throttling:** pods don't set `-XX:ActiveProcessorCount`, so the JVM sizes itself to the node's cores. Audit
   with `container_cpu_cfs_throttled_periods_total`, and pin it to the pod's CPU request where limits throttle.
-- Prometheus `scrape_interval` 30 s → 60 s halves series storage (`prometheus.nix:111`).
+- **Prometheus `scrape_interval`: rejected, no payoff** [checked 2026-10-24 against monitoring-1's own Prometheus].
+  The suggestion misread the config: `prometheus.nix:111` is the `mongodb` job alone. The global interval is 15 s,
+  and `kinowo-web`/`kinowo-worker` are already at 30 s. A longer interval also keeps the series count (91k head
+  series) and cuts only samples. Neither resource is tight:
+  - **Disk:** 10.6 GB of blocks with the full 90 d of history held (oldest sample about 94 d old), against the 20 GB
+    `retentionSize` and 27.8 GB free of 42 GB on `/var/lib/monitoring`. Ingest is 3.4k samples/s, and the two app jobs
+    are 62k of the 85k samples per scrape cycle.
+  - **Memory:** Prometheus's steady state is about 290 MB of Go heap and about 650 MB RSS. Host `MemAvailable` holds
+    about 1.8 GB of 3.7 GiB, with no kernel OOM kills in 14 d. The few dips came from short heap spikes that had
+    nothing to do with ingest. On 10-14 a 1M-sample out-of-order CI-history push took the heap to 960 MB. On 10-19 a
+    one-off spike to 1.9 GB (a query, not a restart and not out-of-order ingest) left 94 MiB available. A scrape
+    interval affects neither.
+  - **What 60 s would have broken:** no rule uses `irate` or a `[1m]` window, and every alert window is at least
+    5 m, so all would still cover ≥4 samples. The `[90s]` windows in `read-model-projection.rules` read recording-rule
+    output and are unaffected. On the dashboards, the 94 `$__rate_interval` query lines (application-health,
+    kinowo-http, worker-diagnostics) get a 60 s window from the datasource `timeInterval` of 15 s. That window would
+    hold one sample and go blank when zoomed in, unless `timeInterval` were raised as well. Four
+    worker-diagnostics `increase(...[$__interval])` panels with a 1 m minimum interval (change-stream applies,
+    venue-apply declines, chunk-page memo, venue projections) would go empty too. The short `for:` alerts would fire
+    on 1–3 samples: `HostOomKilled` and `ReadModelServingDiffersFromCorpus` (1 m), `JvmResidentNearContainerLimit`,
+    `WorkerTaskParkedTooLong`, `MongodNotPrimary` and `MongodNoPrimary` (2 m), and `MongodNotRunning` and
+    `MongodExporterCannotReachMongod` (3 m).
+  - **Per-job alternative:** moving `node`, `kube-state-metrics`, `flux`, `grafana`, `prometheus` and `alertmanager`
+    from 15 s to 30 s would save about 0.5k samples/s (about 15 %). There is no cAdvisor job. That is not worth it
+    while the disk sits at half its cap. Revisit if `prometheus_tsdb_storage_blocks_bytes` nears `retentionSize` or
+    the steady-state RSS grows.
 - **Already fine:** HTTP compression (gzip at the origin; brotli deliberately off because Cloudflare caches one
   variant per URL, see `infra/nix/files/monitoring/rules/web-page-weight.rules`), Caddy HTTP/3 (default), k3s with
   traefik/servicelb/metrics-server disabled, VictoriaLogs memory and disk caps.
