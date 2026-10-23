@@ -47,6 +47,8 @@ check "a slice the judgements do not judge NEEDS-JUDGEMENT" "4|NEEDS-JUDGEMENT" 
   "$(SLICE_OUT='--emit-case REFUSED for x: judge them first\n' repro pl arkadia zabawa)|$(out | cut -d: -f1)"
 check "a slice the recording left questions unanswered NEEDS-ANSWERS, naming them" "5|NEEDS-ANSWERS|yes" \
   "$(SLICE_OUT='UNANSWERED by the recording (read as unknown): tmdb 1778515\n' repro pl arkadia zabawa)|$(out | cut -d: -f1)|$(out | grep -q 'tmdb 1778515' && echo yes)"
+check "a slice taking what prod serves REPRODUCES it, its gaps named" "0|REPRODUCIBLE|yes" \
+  "$(SLICE_OUT='-- prod'"'"'s stored state (mirror):\nUNANSWERED by the recording (read as unknown): imdb x\n' repro pl arkadia zabawa)|$(out | cut -d: -f1)|$(out | grep -q 'imdb x' && echo yes)"
 check "prod taking otherwise is named beside the verdict" "yes" \
   "$(SLICE_OUT='-- prod'"'"'s stored state (mirror):\nPROD TAKES OTHERWISE for 1 of 1: Cinema City Arkadia | Rose: slice none, prod tmdb:7\n' repro pl arkadia zabawa >/dev/null; out | grep -q 'slice none, prod tmdb:7' && echo yes)"
 check "a failed slice FAILS" "1|FAILED" "$(SLICE_EXIT=1 repro pl arkadia zabawa)|$(out | cut -d: -f1)"

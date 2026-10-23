@@ -20,7 +20,8 @@
 #   REPRODUCIBLE  (0)  sliced, every question the slice asked was answered by the recording, case emitted (or --no-emit)
 #   NEEDS-JUDGEMENT (4) sliced, but identity-judgements.tsv does not judge the listing: --emit-case refused. Judge it
 #                      (review page / scripts/label-lookup), then run this again
-#   NEEDS-ANSWERS (5)  sliced, but the recording left questions unanswered (listed): the slice reads them as unknown, as
+#   NEEDS-ANSWERS (5)  sliced, taking otherwise than prod (or prod not compared), and the recording left questions
+#                      unanswered (listed): the slice reads them as unknown, as
 #                      a hermetic leg does, so its take may differ from prod's for want of answers, not code. The next
 #                      nightly recording records them (its identity lookups ask every listing's questions)
 #   NOT-IN-RECORDING (3) the recording holds no such venue or title; says whether the prod mirror has it now (scraped
@@ -133,5 +134,8 @@ else prod="; prod's take not compared (no mirror)"; fi
 if grep -q -- '--emit-case REFUSED' "$out"; then
   verdict NEEDS-JUDGEMENT "sliced on recording $run$prod, but identity-judgements.tsv does not judge \"$key\": judge it, then run again${gaps:+ (also unanswered: $gaps)}" 4
 fi
+# Taking what prod serves, the slice reproduces it whatever it left unanswered (named, for what they may hide).
+[ -z "$gaps" ] || [ "$prod" != "; the slice takes what prod serves" ] ||
+  verdict REPRODUCIBLE "sliced on recording $run$prod (unanswered, read as unknown: $gaps)$([ "$emit" = 1 ] && echo "; case emitted under test/resources/fixtures/identity-slices/")" 0
 [ -z "$gaps" ] || verdict NEEDS-ANSWERS "sliced on recording $run$prod; unanswered: $gaps" 5
 verdict REPRODUCIBLE "sliced on recording $run$prod$([ "$emit" = 1 ] && echo "; case emitted under test/resources/fixtures/identity-slices/")" 0
