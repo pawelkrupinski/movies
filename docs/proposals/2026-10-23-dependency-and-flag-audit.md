@@ -195,9 +195,9 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
    subcomposes per grid cell; `AsyncImage` with `onState`/`placeholder` is the scroll win. Both work on Coil 2;
    Coil 3 (`coil3.*`, `OkHttpNetworkFetcherFactory(callFactory = …)`) is a small follow-on touching
    `PosterPrefetch.kt` and `KinowoViewModel.kt:441-452`.
-3. **Haze:** `ListScreen.kt:98-99,260,412` use the deprecated `haze`/`hazeChild` (now `hazeSource`/`hazeEffect`).
-   The effect is a 1 dp blur with zero tint and noise: a per-frame offscreen render over the scrolling grid for an
-   almost invisible result. Consider dropping the dependency (a design call).
+3. **Haze:** the deprecated `haze`/`hazeChild` calls in `ListScreen.kt` are renamed to `hazeSource`/`hazeEffect`
+   (done 2026-10-23, same parameters). The effect is a 1 dp blur with zero tint and noise, nearly invisible;
+   **decided 2026-10-23: keep it and the dependency** (design call by the owner). Don't re-propose dropping it.
 4. **JSON:** `KinowoApi.kt:87,102,122,141` buffer the body into a String before `decodeFromString`.
    `decodeFromStream(body.byteStream())` lowers peak memory. Also extract the four separate
    `Json { ignoreUnknownKeys = true }` instances into one shared instance.
