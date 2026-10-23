@@ -54,8 +54,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       agreementBacklog = () => agreementStage.backlog,
-      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
-      fillRounds  = () => lookupFill.completeRounds)
+      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) })
 
   /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's

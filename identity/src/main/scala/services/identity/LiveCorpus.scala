@@ -109,10 +109,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
 
   /** How many nodes the listings held make. */
   def nodeCount: Int = nodes.size
-  /** Is `query`'s answer not known yet — asked, and a gap ([[gaps]] of one question, nothing built)? */
-  def unknown(query: CandidateQuery): Boolean = named.getOrElse(query, Some(Nil)).isEmpty
-  /** Is the record of named film `id` not known yet? */
-  def unknownRecord(id: Int): Boolean = { val answer = records.getOrElse(id.toLong, null); answer != null && !answer.isKnown }
   /** The questions a node asked whose answer is not known, and the named films whose record is not. */
   def gaps: AnswersChanged =
     AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isKnown => id.toInt }.toSet)

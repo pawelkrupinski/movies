@@ -104,8 +104,6 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   /** The listing published under `key`, as the last [[update]] read it. */
   def listing(key: ListingKey): Option[Listing] = listingAt(key).map(_.listing)
 
-  /** The decision `key`'s take came from in the last update, `null` for none — read without allocating. */
-  def decisionAt(key: ListingKey): ResolverDecision = { val e = entries.getOrElse(key, null); if (e == null) null else e.decision }
   /** The decision the last [[update]] replaced for `key` with one taking another film: the take before, as far as this
    *  index saw it — none after it was built afresh, or when the film moved without the decision taking another. */
   def priorTake(key: ListingKey): Option[TakeChange.Prior] = replaced.get(key)

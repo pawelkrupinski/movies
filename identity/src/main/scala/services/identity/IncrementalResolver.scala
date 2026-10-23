@@ -69,15 +69,6 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private var reResolved    = 0
   private val clock         = new IncrementalResolver.Timings
 
-  // The listings whose family was last decided on an answer not known yet — a search, a film's record, a venue page —
-  // and the families of the update running that met one ([[blind]]). Immutable, moved only by the families an update
-  // settles: a snapshot reads it as it is, never a copy — a quiet tick costs nothing.
-  private var blindKeys     = Set.empty[ListingKey]
-  private val blindFamilies = mutable.HashSet.empty[Set[ListingKey]]
-  /** The listings whose family was last decided while an answer it read was not known yet (a gap a later fill may close):
-   *  what [[GapHold]] holds a take against. `unanswered` counts only a family's unanswered searches; this every gap. */
-  def blind: Set[ListingKey] = blindKeys
-
   /** The listings the model holds at `venue`: what a venue's next scrape is diffed against. */
   def heldAt(venue: String): Set[ListingKey] = atVenue.getOrElse(venue, Set.empty)
   /** Every listing the model holds. */
@@ -228,9 +219,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       IncrementalResolver.pack(units, regionBatch).foreach { batch =>
         val listings = batch.toSeq.flatMap(heldListing)
         if (listings.nonEmpty) {
-          val reading = new IncrementalResolver.Blind(lookups)
-          val result  = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, reading, normalizer, calibration, pins, decorations, context))
-          if (reading.met) result.foreach(family => blindFamilies += family.listings)
+          val result = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context))
           reResolved += result.size
           result.foreach { family =>
             val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
@@ -254,13 +243,6 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       }
       units = next.toSeq
     }
-    // which listings were decided on a gap: those of a family settled from a batch that met one, or reading a search or a
-    // record the corpus holds no answer to yet
-    settled.foreach { case (listings, family) =>
-      if (blindFamilies(listings) || family.queries.exists(corpus.unknown) || family.films.exists(corpus.unknownRecord)) blindKeys ++= listings
-      else if (blindKeys.nonEmpty) blindKeys --= listings
-    }
-    blindFamilies.clear()
     val removed = replaced.flatMap(id => families.get(id).map(_.storeId)).toSet
     replaced.foreach(forget)
     // The rules behind each settled family's decisions go to the trace store — built there, off this thread, family
@@ -305,7 +287,6 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     atVenue.updateWith(listing.venue)(keys => Some(keys.getOrElse(Set.empty) - listing.key + listing.key))
   }
   private def release(key: ListingKey): Unit = heldListing(key).foreach { listing =>
-    blindKeys -= key
     val keyed = byKey(key)
     keyed.listing = null; heldListings -= 1
     if (keyed.family < 0) byKey.remove(key)
@@ -347,15 +328,6 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 }
 
 object IncrementalResolver {
-  /** `inner`, noting whether any search, film record or venue page it was asked is not known yet. */
-  private[identity] final class Blind(inner: IdentityLookups) extends ForwardingIdentityLookups(inner) {
-    @volatile var met = false
-    private def noted[A](answer: Answer[A]): Answer[A] = { if (answer == Answer.Unknown) met = true; answer }
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
-    override def detail(listing: Listing): Answer[Option[DetailFacts]]    = noted(inner.detail(listing))
-  }
-
   /** One listing key's entry: the listing held (null once released) and its family (-1 for none). */
   private final class Keyed { var listing: Listing = null; var family: Int = -1 }
 
