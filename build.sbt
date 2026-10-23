@@ -34,10 +34,14 @@ ThisBuild / organization := "com.example"
 ThisBuild / version      := "1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.9.0"
 
-// Compiler options shared by every module. Play's sbt plugin adds -deprecation
-// and -unchecked on top of these for the web project.
+// Compiler options shared by every module. Play's sbt plugin adds -unchecked on top
+// of these for the web project (and -deprecation a second time, harmlessly).
 ThisBuild / scalacOptions ++= Seq(
   "-feature",
+  // Every module, not only web (Play's default). Without it a deprecated API use outside
+  // web still failed -Werror, but only as "there was 1 deprecation warning; re-run with
+  // -deprecation for details" -- no file, no line. With it the error names the call site.
+  "-deprecation",
   "-Wunused:imports",
   // Warnings are errors: a warning must be fixed (or explicitly silenced via a
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
