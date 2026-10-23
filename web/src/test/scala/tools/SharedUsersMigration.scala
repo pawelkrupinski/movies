@@ -119,7 +119,7 @@ object SharedUsersMigration {
     }
 
     // One client for every database view, the way the app itself does it.
-    val client = MongoConnection.sharedClientAt(process.mongoAddress, services.MongoTuning.from(process)).getOrElse {
+    val client = MongoConnection.sharedClientAt(process.mongoAddress, services.MongoTuning.from(process, settings.ProcessTier.Tool)).getOrElse {
       println("MONGODB_URI is not set.")
       sys.exit(1)
     }

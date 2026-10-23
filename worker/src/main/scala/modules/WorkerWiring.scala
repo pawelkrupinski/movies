@@ -323,7 +323,7 @@ class WorkerWiring(
   lazy val mongoConnection: MongoConnection = {
     MongoConnection.forCountry(country, mongoAddress.copy(database = Some(mongoDbName)),
       required = MongoConnection.isRequired(testMode = false, optedOut = configuration.mongoOptional),
-      tuning = MongoTuning.from(configuration), sharedClient = sharedMongoClient)
+      tuning = MongoTuning.from(configuration, settings.ProcessTier.Worker), sharedClient = sharedMongoClient)
   }
 
   /** The one clock this wiring's stamps are taken from — a no-match `TmdbAttempt`, an uptime

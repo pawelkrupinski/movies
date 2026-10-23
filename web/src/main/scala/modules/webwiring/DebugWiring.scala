@@ -92,7 +92,7 @@ trait DebugWiring { self: Wiring =>
   protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
     else processConfiguration.mirrorMongoUri
-      .map(mirror => MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)), mongoTuning.maxPoolSize))
+      .map(mirror => MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)), mongoTuning.maxPoolSize, mongoTuning.applicationName))
       .orElse(MongoConnection.sharedClientAt(mongoAddress, mongoTuning))
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack, Seq[RefreshingSnapshot[?]])] =
     debugExtraClient.toSeq.flatMap { client =>

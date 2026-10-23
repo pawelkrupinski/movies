@@ -13,7 +13,7 @@ object CountryDatabase {
     val process    = _root_.settings.ProcessConfiguration.resolve()
     val connection = MongoConnection.forCountry(country,
       process.mongoAddress.copy(database = Some(_root_.settings.MongoDatabaseName(country.mongoDb))),
-      required = services.MongoRequirement.Required, services.MongoTuning.from(process))
+      required = services.MongoRequirement.Required, services.MongoTuning.from(process, settings.ProcessTier.Tool))
     val database = connection.database.getOrElse {
       println(s"${country.displayName}: could not open ${country.mongoDb} — is the Mongo tunnel up " +
         "(scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")

@@ -48,6 +48,17 @@ final class ProcessConfiguration(val env: Env) {
   /** The `KINOWO_COUNTRIES` codes that name no country — for the boot to warn about. */
   def unknownCountryCodes: Seq[UnknownCountryCode] = countryCodes.filter(Country.byCode(_).isEmpty).map(UnknownCountryCode(_))
 
+  /** The `appName` this process's MongoClients send, so mongod's slow-op log and `currentOp`
+   *  tell the tiers and countries apart: `kinowo-web-pl`, `kinowo-worker-de` (a multi-country
+   *  worker joins its codes, `kinowo-worker-pl-uk`), `kinowo-tool-us`. */
+  def mongoApplicationName(tier: ProcessTier): MongoApplicationName = {
+    val countries = tier match {
+      case ProcessTier.Worker => workerCountries.value
+      case _                  => Seq(country)
+    }
+    MongoApplicationName.of(("kinowo" +: tier.label +: countries.map(_.code)).mkString("-"))
+  }
+
   private def countryCodes: Seq[String] =
     text("KINOWO_COUNTRIES").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
 
