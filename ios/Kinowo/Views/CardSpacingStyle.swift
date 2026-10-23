@@ -39,13 +39,6 @@ struct CardSpacingStyle: Equatable {
     var pillRowSpacing: CGFloat = 4
 }
 
-private struct CardSpacingStyleKey: EnvironmentKey {
-    static let defaultValue = CardSpacingStyle()
-}
-
 extension EnvironmentValues {
-    var cardSpacingStyle: CardSpacingStyle {
-        get { self[CardSpacingStyleKey.self] }
-        set { self[CardSpacingStyleKey.self] = newValue }
-    }
+    @Entry var cardSpacingStyle: CardSpacingStyle = CardSpacingStyle()
 }

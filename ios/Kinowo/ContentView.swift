@@ -632,16 +632,9 @@ struct ContentView: View {
     }
 }
 
-private struct ListingViewportWidthKey: EnvironmentKey {
-    /// iPhone 17 — only seen by views hosted outside `ContentView`
-    /// (previews, the tuning screen).
-    static let defaultValue: CGFloat = 393
-}
-
 extension EnvironmentValues {
-    /// Live width of the listing viewport, published by `ContentView`.
-    var listingViewportWidth: CGFloat {
-        get { self[ListingViewportWidthKey.self] }
-        set { self[ListingViewportWidthKey.self] = newValue }
-    }
+    /// Live width of the listing viewport, published by `ContentView`. The
+    /// default (iPhone 17) is only seen by views hosted outside `ContentView`
+    /// (previews, the tuning screen).
+    @Entry var listingViewportWidth: CGFloat = 393
 }

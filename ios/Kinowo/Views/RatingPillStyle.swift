@@ -30,13 +30,6 @@ struct RatingPillStyle: Equatable {
     var interPillGap: CGFloat = 4
 }
 
-private struct RatingPillStyleKey: EnvironmentKey {
-    static let defaultValue = RatingPillStyle()
-}
-
 extension EnvironmentValues {
-    var ratingPillStyle: RatingPillStyle {
-        get { self[RatingPillStyleKey.self] }
-        set { self[RatingPillStyleKey.self] = newValue }
-    }
+    @Entry var ratingPillStyle: RatingPillStyle = RatingPillStyle()
 }

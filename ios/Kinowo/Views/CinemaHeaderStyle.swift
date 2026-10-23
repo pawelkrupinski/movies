@@ -23,13 +23,6 @@ struct CinemaHeaderStyle: Equatable {
     var headerToGrid: CGFloat = 12
 }
 
-private struct CinemaHeaderStyleKey: EnvironmentKey {
-    static let defaultValue = CinemaHeaderStyle()
-}
-
 extension EnvironmentValues {
-    var cinemaHeaderStyle: CinemaHeaderStyle {
-        get { self[CinemaHeaderStyleKey.self] }
-        set { self[CinemaHeaderStyleKey.self] = newValue }
-    }
+    @Entry var cinemaHeaderStyle: CinemaHeaderStyle = CinemaHeaderStyle()
 }

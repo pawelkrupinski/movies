@@ -25,13 +25,6 @@ struct ShowtimePillStyle: Equatable {
     var interPillGap: CGFloat = ShowtimePillMetrics.interPillGap
 }
 
-private struct ShowtimePillStyleKey: EnvironmentKey {
-    static let defaultValue = ShowtimePillStyle()
-}
-
 extension EnvironmentValues {
-    var showtimePillStyle: ShowtimePillStyle {
-        get { self[ShowtimePillStyleKey.self] }
-        set { self[ShowtimePillStyleKey.self] = newValue }
-    }
+    @Entry var showtimePillStyle: ShowtimePillStyle = ShowtimePillStyle()
 }

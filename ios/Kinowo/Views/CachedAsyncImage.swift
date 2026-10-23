@@ -45,13 +45,6 @@ struct CachedAsyncImage<Content: View>: View {
 /// default instance: a tree it wasn't installed in (a preview) has no cache,
 /// and its images take the failure phase — the "no poster" placeholder —
 /// rather than silently reaching for a second, process-wide store.
-private struct PosterStoreKey: EnvironmentKey {
-    static let defaultValue: PosterStore? = nil
-}
-
 extension EnvironmentValues {
-    var posterStore: PosterStore? {
-        get { self[PosterStoreKey.self] }
-        set { self[PosterStoreKey.self] = newValue }
-    }
+    @Entry var posterStore: PosterStore? = nil
 }

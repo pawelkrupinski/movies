@@ -31,13 +31,6 @@ struct FilmDetailStyle: Equatable {
     var showingsHeaderFontSize: CGFloat = 18
 }
 
-private struct FilmDetailStyleKey: EnvironmentKey {
-    static let defaultValue = FilmDetailStyle()
-}
-
 extension EnvironmentValues {
-    var filmDetailStyle: FilmDetailStyle {
-        get { self[FilmDetailStyleKey.self] }
-        set { self[FilmDetailStyleKey.self] = newValue }
-    }
+    @Entry var filmDetailStyle: FilmDetailStyle = FilmDetailStyle()
 }
