@@ -31,7 +31,7 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
         (1 to 4).map(s => Showtime(start.plusHours(f * 10L + s), Some(s"https://$host/purchase/$site-$f-$s?siteToken=$site"))))
     }
 
-  private final class World(seedArchive: Seq[ArchivedScrape] = Nil) {
+  private final class World {
     val registry = new PrometheusRegistry()
     val detector = new CopiedFeedDetector(CopiedFeedDetector.gauge(registry), Country.Poland, watched)
     def gauge: Option[Double] =

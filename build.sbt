@@ -329,6 +329,7 @@ lazy val testkit = (project in file("testkit"))
 // recompiles the scrapers, not the rest of the worker. Built on common and identity; the worker depends on it.
 lazy val scrapers = (project in file("scrapers"))
   .dependsOn(common, identity, testkit % Test)
+  .settings(unusedAll)
   .settings(
     name := "scrapers",
     libraryDependencies ++= Seq(scalatestPlay % Test, scalatestScalaCheck % Test),

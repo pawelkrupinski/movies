@@ -27,7 +27,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   private val http = new FakeHttpFetch("visualsoft")
 
   private def client(base: String, cinema: Cinema, filmGroups: Set[EventCategory] = Set.empty,
-                     institution: Option[Institution] = None) =
+                     institution: Option[Institution]) =
     new SystemBiletowyClient(http, VisualSoftPortal(base), cinema, titles = titleNormalizer, filmGroups = filmGroups,
       institution = institution)
 

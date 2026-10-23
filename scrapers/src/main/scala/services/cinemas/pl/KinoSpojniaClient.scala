@@ -49,7 +49,6 @@ object KinoSpojniaClient {
   // The buy-link query carries the ISO date, percent-encoded in the raw href
   // (`…%26date%3d2026-06-12`) — match both `date=` and `date%3d`.
   private val BookingDatePat = """(?i)date(?:=|%3d)(\d{4}-\d{2}-\d{2})""".r
-  private val YearPat        = """\b(19|20)\d{2}\b""".r
   // A bare-year token in the gray meta line ("2026").
   private val YearTokenPat   = """^(?:19|20)\d{2}$""".r
   // A runtime token ("135'" / "55’") — the minutes followed by a prime.

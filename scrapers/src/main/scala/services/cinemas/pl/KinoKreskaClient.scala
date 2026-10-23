@@ -44,8 +44,7 @@ import scala.util.Try
  */
 class KinoKreskaClient(
   http:  HttpFetch,
-  override val cinema: Cinema,
-  today: => LocalDate
+  override val cinema: Cinema
 ) extends CinemaScraper with DetailEnricher {
 
   import KinoKreskaClient._

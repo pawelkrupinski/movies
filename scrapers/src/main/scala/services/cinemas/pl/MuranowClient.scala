@@ -49,8 +49,7 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
         case Some(date) =>
           day.select("div.movie-calendar-info").asScala.toSeq.flatMap { info =>
             for {
-              inner <- Option(info.selectFirst("div.movie-calendar-info__inner"))
-              id     = inner.attr("data-id")
+              _     <- Option(info.selectFirst("div.movie-calendar-info__inner"))  // only a slot with an inner block
               time  <- Option(info.selectFirst("span.movie-calendar-info__date")).map(_.text.trim)
               dt    <- MuranowClient.parseTime(date, time)
               title <- Option(info.selectFirst("h5.movie-calendar-info__title")).map(_.text.trim).filter(_.nonEmpty)

@@ -16,7 +16,6 @@ class Bilety24OskardSpec extends AnyFlatSpec with Matchers {
 
   private val oskard    = new Bilety24Client(new FakeHttpFetch("kino-oskard"), "https://ckis-konin.bilety24.pl", KinoOskard, titles = titleNormalizer)
   private val oskardRes = oskard.fetch()
-  private val oskardByT = oskardRes.map(cm => cm.movie.title -> cm).toMap
 
   "Bilety24Client (Oskard)" should "return 32 films and 144 showtimes" in {
     oskardRes.size shouldBe 32

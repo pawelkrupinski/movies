@@ -611,7 +611,7 @@ final class PolishScraperCatalog(
     bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-sportu-i-promocji-w-rabce-zdroju-625", KinoSniezkaRabka),   // Rabka-Zdrój
     msi(KinoStopiak),   // Nowy Targ — own site links bilety.stopiakcinema.pl, a standard MSI portal
     // ── bielsko-biala
-    helios(HeliosNuxt.BielskoBiala), cinemaCity("1088", CinemaCityBielskoBiala), new KinoKreskaClient(http, KinoKreska, today),
+    helios(HeliosNuxt.BielskoBiala), cinemaCity("1088", CinemaCityBielskoBiala), new KinoKreskaClient(http, KinoKreska),
     // ── ketrzyn
     new KinoGwiazdaKetrzynClient(http, KinoGwiazdaKetrzyn),   // Kętrzyn
     ekobilet("mck-mragowo", KinoZodiak),   // Mrągowo

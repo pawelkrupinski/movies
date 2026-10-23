@@ -18,7 +18,7 @@ import java.time.LocalDateTime
  *  inference is needed. */
 class KinoKreskaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new KinoKreskaClient(new FakeHttpFetch("kino-kreska"), KinoKreska, today = _root_.tools.SpecClock.PinnedDay).fetch()
+  private val movies = new KinoKreskaClient(new FakeHttpFetch("kino-kreska"), KinoKreska).fetch()
 
   "KinoKreskaClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty
@@ -52,7 +52,7 @@ class KinoKreskaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   // ── The film's /wydarzenie page (recorded 2026-10-06) ─────────────────────
 
-  private val client = new KinoKreskaClient(new FakeHttpFetch("kino-kreska"), KinoKreska, today = _root_.tools.SpecClock.PinnedDay)
+  private val client = new KinoKreskaClient(new FakeHttpFetch("kino-kreska"), KinoKreska)
   private def detailOf(page: String) = client.fetchFilmDetail(s"${KinoKreskaClient.BaseUrl}/wydarzenie/$page").value
 
   it should "read the event page's one-line credit — Czarna woda" in {
@@ -98,7 +98,7 @@ class KinoKreskaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   // ── A listing read that teaches nothing fails the scrape; only the venue's own "none" is empty ──
 
-  private def fetchThrough(http: HttpFetch) = new KinoKreskaClient(http, KinoKreska, today = _root_.tools.SpecClock.PinnedDay).fetch()
+  private def fetchThrough(http: HttpFetch) = new KinoKreskaClient(http, KinoKreska).fetch()
 
   it should "read the endpoint's own empty answer as a venue with nothing scheduled" in {
     // Recorded 2026-10-06 from the same endpoint for a category with no events: status 0,

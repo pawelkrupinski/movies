@@ -66,7 +66,7 @@ class CinemaPlusClient(
     // leaves the listing incomplete.
     val others = ListingPages.readMore("cinemaplus-days", days.filterNot(shown.contains), dayUrl(pageUrl, _))(read).toMap
     val pages  = days.flatMap(day => if (shown.contains(day)) Some(day -> venue) else others.get(day).map(day -> _))
-    toMovies(pages.flatMap { case (day, page) => slots(page, day, cinema) }, cinema)
+    toMovies(pages.flatMap { case (day, page) => slots(page, day) }, cinema)
   }
 
   private def read(url: String): Document =
@@ -113,7 +113,7 @@ object CinemaPlusClient {
     ShowtimeButton.findFirstMatchIn(label.trim).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
 
   /** One day page's film cards → a slot per showtime button, on `day`. */
-  def slots(page: Document, day: LocalDate, cinema: Cinema): Seq[Slot] =
+  def slots(page: Document, day: LocalDate): Seq[Slot] =
     page.select("div.cin-showtimes-grid > div").asScala.toSeq.flatMap { card =>
       val title = Option(card.selectFirst("h3 a")).map(_.text.trim).filter(_.nonEmpty)
       title.toSeq.flatMap { t =>
