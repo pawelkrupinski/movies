@@ -95,8 +95,8 @@ import pl.kinowo.ui.common.viewportWidthDp
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.Brand
 import pl.kinowo.ui.theme.CinemaBlue
@@ -142,8 +142,8 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val refreshScope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
 
-    // Backdrop captured by `Modifier.haze` (the grid) and sampled by the
-    // floating search pill's `hazeChild` to blur whatever scrolls under it.
+    // Backdrop captured by `Modifier.hazeSource` (the grid) and sampled by the
+    // floating search pill's `hazeEffect` to blur whatever scrolls under it.
     val hazeState = remember { HazeState() }
     var showFilters by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -251,13 +251,13 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             // The search field floats over the grid as a bottom capsule
             // (mirrors the iOS `SearchBar`) rather than taking its own row.
             // The grid is the haze source; the pill samples it through
-            // `hazeChild`, so the cards blur and shift as they scroll under it.
+            // `hazeEffect`, so the cards blur and shift as they scroll under it.
             // Bottom content padding keeps the last row clear of the pill.
             Box(Modifier.fillMaxSize()) {
                 // No floating pill on wide screens (search is inline up top), so the
                 // grid only needs to clear it on narrow ones.
                 val gridBottomInset = if (wide) 12.dp else SearchBarBottomInset
-                Box(Modifier.fillMaxSize().haze(hazeState)) {
+                Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
                     when {
                         isLoading && films.isEmpty() -> LoadingState(stringResource(R.string.loading_repertoire))
                         error != null && films.isEmpty() -> ErrorState(error!!) { viewModel.reload() }
@@ -405,11 +405,11 @@ private fun FloatingSearchBar(
             .padding(horizontal = 24.dp, vertical = 14.dp)
             .fillMaxWidth()
             .clip(shape)
-            // Real frosted glass: blur the grid captured by `haze` and lay a
+            // Real frosted glass: blur the grid captured by `hazeSource` and lay a
             // whisper-thin light tint over it, so the pill reads as clear glass
             // (like the iOS `.ultraThinMaterial`) rather than a solid fill. The
             // hairline white border catches the edge against busy posters.
-            .hazeChild(
+            .hazeEffect(
                 state = hazeState,
                 style = HazeStyle(
                     // The opaque base Haze composites the blur over (the app
