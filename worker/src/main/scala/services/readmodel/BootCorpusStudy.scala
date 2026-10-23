@@ -24,7 +24,7 @@ import scala.util.Try
  *
  *  It is separate from the projector so the hydrate can hand it the rows while the worker's
  *  composition root is still being built, before the projector has been built. */
-final class BootCorpusStudy(normalizer: TitleNormalizer, wait: FiniteDuration = BootCorpusStudy.Wait)(using LatestTitleYear)
+final class BootCorpusStudy(normalizer: TitleNormalizer, derivationWait: FiniteDuration = BootCorpusStudy.Wait)(using LatestTitleYear)
   extends BootCorpusReader with Logging {
   import BootCorpusStudy.{NoRows, State, Taken}
 
@@ -51,12 +51,12 @@ final class BootCorpusStudy(normalizer: TitleNormalizer, wait: FiniteDuration = 
   }
 
   /** The hydrate's ready rows, derived, once the derivation is done. Asked once. It is `None` in
-   *  three cases: nothing was offered, the derivation failed, or it ran past `wait`. The boot reads
+   *  three cases: nothing was offered, the derivation failed, or it ran past `derivationWait`. The boot reads
    *  then read the corpus themselves. */
   private[readmodel] def take(): Option[Seq[BootRow]] = {
     val taken = state.getAndSet(State.Closed) match {
       case State.Studying(rows) =>
-        Try(Await.result(rows, wait)).fold(
+        Try(Await.result(rows, derivationWait)).fold(
           exception => { logger.warn(s"read model: the boot hydrate's rows could not be derived (${exception.getMessage}) — reading the corpus instead"); None },
           identity)
       case _ => None

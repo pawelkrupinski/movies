@@ -114,8 +114,8 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
    *  it (nothing here holds a page once it is handed over), with `between` run before each later page.
    *  Collecting the whole read goes through the same pages, as `MongoMovieRepository.findAllChecked` does. */
   private final class PagedRepository(page: Int => StoredMovieRecord, pages: Int, between: Int => Unit = _ => (),
-                                      normalizer: TitleNormalizer = titleNormalizer)
-      extends StoredRowsRepository((0 until pages).map(page), normalizer) {
+                                      rowNormalizer: TitleNormalizer = titleNormalizer)
+      extends StoredRowsRepository((0 until pages).map(page), rowNormalizer) {
     override def hasScreenings: Boolean = true
     override def foreachPage(onPage: Seq[StoredMovieRecord] => Unit): tools.ScanOutcome = {
       (0 until pages).foreach { i => if (i > 0) between(i); onPage(Seq(page(i))) }

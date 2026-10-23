@@ -41,7 +41,7 @@ import scala.util.control.NonFatal
  * [[CacheRefresher]].
  */
 class OmdbBackfill(
-  cache: MovieCache,
+  movieCache: MovieCache,
   omdb:  OMDbClient,
   // Durable per-film backoff so a film OMDb can't resolve isn't re-probed on
   // every daily sweep (which would burn the free 1000/day quota). Default no-op
@@ -49,7 +49,7 @@ class OmdbBackfill(
   attempts: OmdbAttemptStore = OmdbAttemptStore.noop,
   clock:    Clock,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-) extends CacheRefresher(cache, cadenceRecorder) {
+) extends CacheRefresher(movieCache, cadenceRecorder) {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 

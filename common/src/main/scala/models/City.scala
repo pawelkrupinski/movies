@@ -115,9 +115,12 @@ sealed abstract class City(
   def cinemaPillMap: Map[String, String]       = cinemas.map(c => c.displayName -> c.pillName).toMap
 }
 
+// Its parameters keep `City`'s field names (-Wshadow:all would rename them): the 41 declarations below name their
+// arguments `slug = ..., lat = ...` like the data they are, and build_pages.py reads them by those names.
 /** One of the 41 major Polish cities: hand-declined labels, and only the venues inside it
  *  ([[PolishPages.majorCinemas]], filed under its slug). Every other Polish page is a
  *  generated [[PolishPage]]. `data/pl/scripts/build_pages.py` reads these declarations. */
+@annotation.nowarn("msg=shadows field")
 sealed abstract class MajorPolishCity(slug: String, labels: CityLabels, lat: Double, lon: Double)
   extends City(slug, labels, lat, lon, TimeZones.Poland) {
   val cinemas: Seq[Cinema] = PolishPages.majorCinemas(slug)
@@ -503,8 +506,8 @@ case object London extends City("london", CityLabels.undeclined("London"),
  *  equality holds just like the hand-authored `case object` cities. None of the three languages
  *  declines a place name, so all three label slots carry the page's name — "<town> <suffix>" for
  *  a cluster ([[RosterStyle]]). The zone is the place's: the US spans six and Spain two. */
-final class RosterPage private[models] (slug: String, place: RosterPlace, style: RosterStyle)
-  extends City(slug, RosterPage.labels(place, style), place.lat, place.lon, place.zoneId) {
+final class RosterPage private[models] (pageSlug: String, place: RosterPlace, style: RosterStyle)
+  extends City(pageSlug, RosterPage.labels(place, style), place.lat, place.lon, place.zoneId) {
   val cinemas: Seq[Cinema] = place.cinemas
   /** The town the page is named after first, then the rest of its towns. */
   override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct

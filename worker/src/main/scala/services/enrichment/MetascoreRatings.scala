@@ -24,14 +24,14 @@ import scala.util.Success
  * canonical URL.
  */
 class MetascoreRatings(
-  cache:      MovieCache,
+  movieCache: MovieCache,
   tmdb:       TmdbClient,
   metacritic: MetacriticClient,
   // Caches the MC url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   mcLinkCache: ResolutionCache = ResolutionCache.passthrough,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-)(using LatestTitleYear) extends CacheRefresher(cache, cadenceRecorder) {
+)(using LatestTitleYear) extends CacheRefresher(movieCache, cadenceRecorder) {
 
   override protected def sourceName: String = "Metacritic"
 

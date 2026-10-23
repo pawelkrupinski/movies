@@ -907,9 +907,9 @@ case object RegalChain extends Cinema("Regal", "Regal")
 // `name` is that Scala name, and stands in for the case object's `toString` and `hashCode`:
 // `slug` (title rules, metric labels) is derived from it, and every hash-keyed collection of
 // cinemas iterates as it did.
-final class UkCinema(displayName: String, pillName: String, name: String, override val opening: Opening)
-  extends Cinema(displayName, pillName) {
-  def this(displayName: String, pillName: String, name: String) = this(displayName, pillName, name, Opening.YearRound)
+final class UkCinema(venueDisplayName: String, venuePillName: String, name: String, override val opening: Opening)
+  extends Cinema(venueDisplayName, venuePillName) {
+  def this(venueDisplayName: String, venuePillName: String, name: String) = this(venueDisplayName, venuePillName, name, Opening.YearRound)
   override def toString: String = name
   override def hashCode: Int = name.hashCode
 }
@@ -920,8 +920,8 @@ final class UkCinema(displayName: String, pillName: String, name: String, overri
 // built ONCE in `GermanRoster` and reused everywhere (the page's cinemas,
 // `Cinema.byCity`, and the scrape catalog) — so the same `Source` instance is used
 // throughout and identity equality holds like the hand-authored `case object` cinemas did.
-final class GermanCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
-  extends Cinema(displayName, pillName)
+final class GermanCinema(venueDisplayName: String, venuePillName: String, override val opening: Opening = Opening.YearRound)
+  extends Cinema(venueDisplayName, venuePillName)
 
 // ── United States (Flicks) — data-driven from the full roster ────────────────
 // `UsRosterData` (generated from data/us/pages.json) carries 1,995 town and
@@ -929,8 +929,8 @@ final class GermanCinema(displayName: String, pillName: String, override val ope
 // built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
 // serves the page, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.
-final class UsCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
-  extends Cinema(displayName, pillName)
+final class UsCinema(venueDisplayName: String, venuePillName: String, override val opening: Opening = Opening.YearRound)
+  extends Cinema(venueDisplayName, venuePillName)
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
 // `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)
@@ -938,8 +938,8 @@ final class UsCinema(displayName: String, pillName: String, override val opening
 // `UsCinema`: each venue is built ONCE in `SpanishRoster` and reused everywhere, so one
 // `Source` instance serves the page, `Cinema.byCity` and the scrape catalog, and
 // identity equality holds like the hand-authored `case object` cinemas.
-final class SpanishCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
-  extends Cinema(displayName, pillName)
+final class SpanishCinema(venueDisplayName: String, venuePillName: String, override val opening: Opening = Opening.YearRound)
+  extends Cinema(venueDisplayName, venuePillName)
 
 object Cinema {
   /** The display names a generated roster may NOT reuse: every Polish and UK venue's

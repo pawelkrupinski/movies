@@ -23,14 +23,14 @@ import scala.util.Success
  * only when a row needs URL discovery.
  */
 class RottenTomatoesRatings(
-  cache: MovieCache,
+  movieCache: MovieCache,
   tmdb:  TmdbClient,
   rt:    RottenTomatoesClient,
   // Caches the RT url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   rtLinkCache: ResolutionCache = ResolutionCache.passthrough,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-)(using LatestTitleYear) extends CacheRefresher(cache, cadenceRecorder) {
+)(using LatestTitleYear) extends CacheRefresher(movieCache, cadenceRecorder) {
 
   override protected def sourceName: String = "RT"
 

@@ -32,7 +32,7 @@ import scala.util.Try
  * "5 workers comfortable, more risks soft-blocks"); we cap its walk at 5.
  */
 class FilmwebRatings(
-  cache:   MovieCache,
+  movieCache: MovieCache,
   tmdb:    TmdbClient,
   filmweb: FilmwebClient,
   // Caches the Filmweb url discovery keyed by (title, year, fallback, directors),
@@ -45,7 +45,7 @@ class FilmwebRatings(
   // Args: (title, year, searchTitle) matching ImdbIdMissing. No-op by default.
   onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-)(using LatestTitleYear) extends CacheRefresher(cache, cadenceRecorder) {
+)(using LatestTitleYear) extends CacheRefresher(movieCache, cadenceRecorder) {
 
   override protected def sourceName: String = "Filmweb"
 

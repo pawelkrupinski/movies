@@ -29,11 +29,11 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
    *  its URL and score in the Metacritic fields — the walk itself is
    *  field-agnostic. */
   private class RecordingRefresher(
-    cache:    CaffeineMovieCache,
+    movieCache: CaffeineMovieCache,
     scores:   Map[String, Option[Int]],
     discover: Map[CacheKey, Try[String]],
     recorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-  ) extends CacheRefresher(cache, recorder) {
+  ) extends CacheRefresher(movieCache, recorder) {
     val events = new ConcurrentLinkedQueue[String]
 
     override protected def sourceName: String = "Fake"

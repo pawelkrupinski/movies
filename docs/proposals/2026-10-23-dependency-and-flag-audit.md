@@ -219,7 +219,18 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 - **`-deprecation` for the whole build: landed 2026-10-23** — the build was already warning-clean under it (0 fixes).
   Before, a deprecated use outside web still failed `-Werror`, but only as "there was 1 deprecation warning; re-run
   with -deprecation" with no location.
-- **scalac, still open:** `-Wsafe-init`, `-Wshadow:all`, `-unchecked`. Not `-Yexplicit-nulls`.
+- **scalac `-Wsafe-init`: done (2026-10-23), main sources only** (`project/MainSourceInitChecks.scala`). 128
+  warnings over main + every test configuration: 2 in main (an init-order declaration fixed in
+  `MongoIdentityTraceStore` and `MovieChangeStream`, one reopen cycle `@unchecked`; no real bug), 111 ScalaTest specs
+  (one per spec: the DSL registers cases from the constructor), 15 in worker's `fixtures` wirings (5 callback
+  patterns of `WorkerWiring` per subclass), and a compiler crash on web's test sources. Off in `Test`/`it`/`page` and
+  `fixtures` for that reason.
+- **scalac `-Wshadow:all`: done (2026-10-23)**, in ThisBuild. 34 warnings, all a constructor parameter shadowing an
+  inherited field (common 14, worker 17, scrapers, testkit, web 1 each; no type-parameter shadowing): renamed, except
+  `MajorPolishCity`'s four (its 41 declarations name `slug = …, lat = …`, which `build_pages.py` parses), `@nowarn`.
+- **scalac `-unchecked`: nothing to enable.** Scala 3 reports unchecked type patterns by default (verified: a
+  `case _: List[Int]` over `Any` warns without the flag), and the build has none.
+- **scalac, not planned:** `-Yexplicit-nulls`.
 - No `.scalafmt.conf` exists although sbt-scalafmt is installed. Either add one (`runner.dialect = scala3`) or drop
   the plugin.
 

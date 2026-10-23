@@ -167,7 +167,7 @@ class CachedEnrichmentFailure(message: String) extends RuntimeException(message)
  * hammering Rotten Tomatoes on every film. That ambiguity is what made "is the 404
  * actually cached?" impossible to answer without correlating cache statistics.
  */
-class RememberedHttpStatusException(code: Int, method: String, url: String)
-  extends HttpStatusException(code, method, url, retryAfter = None) {
+class RememberedHttpStatusException(statusCode: Int, requestMethod: String, requestUrl: String)
+  extends HttpStatusException(statusCode, requestMethod, requestUrl, retryAfter = None) {
   override def getMessage: String = s"${super.getMessage} (remembered — not re-fetched)"
 }

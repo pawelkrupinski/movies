@@ -33,7 +33,7 @@ final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Op
  * for the few venues whose sources dropped them.
  */
 class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchiveRepository, fallbacks: FallbackStore,
-                   checks: VenueChecks, ledger: ClosureLedger, notify: String => Unit, dispatch: Option[RetirementDispatch],
+                   checks: VenueChecks, ledger: ClosureLedger, sendAlert: String => Unit, dispatch: Option[RetirementDispatch],
                    clock: Clock)
   extends Logging {
 
@@ -68,17 +68,17 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
       (verdict, raised.get(name).map(_.kind)) match {
         case (Verdict.Listed(why), Some(LedgerKind.Closed)) =>
           ledger.withdraw(name)
-          notify(s"↩️ $name no longer looks closed ($why): its retirement is withdrawn. Close its retirement PR if one is open.")
+          sendAlert(s"↩️ $name no longer looks closed ($why): its retirement is withdrawn. Close its retirement PR if one is open.")
         case (Verdict.Listed(why), Some(LedgerKind.SourceDropped)) =>
           ledger.withdraw(name)
-          notify(s"↩️ $name is listed again ($why): its coverage gap has closed.")
+          sendAlert(s"↩️ $name is listed again ($why): its coverage gap has closed.")
         case (Verdict.SourceDropped(drop, signals), previous) if !previous.contains(LedgerKind.SourceDropped) =>
           val line = ClosureSweep.evidenceLine(drop, signals)
           ledger.record(name, LedgerEntry(LedgerKind.SourceDropped, now, line))
           val opening =
             if (previous.contains(LedgerKind.Closed)) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
             else s"📡 $name"
-          notify(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
+          sendAlert(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
         case (Verdict.Closed(drop, signals), previous) if !previous.contains(LedgerKind.Closed) || overdue(name) =>
           newlyClosed += ((byName(name).cinema, drop, signals))
         case _ => ()
@@ -90,7 +90,7 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
     byHand.foreach { case (cinema, drop, signals) =>
       val line = ClosureSweep.evidenceLine(drop, signals)
       ledger.record(cinema.displayName, LedgerEntry(LedgerKind.Closed, now, line))
-      notify(s"${closedLead(cinema.displayName)} — retire by hand. $line")
+      sendAlert(s"${closedLead(cinema.displayName)} — retire by hand. $line")
     }
 
     inRoster.groupBy { case (cinema, _, _) => RosterEntry.of(cinema).get.directory }.foreach { case (directory, venues) =>
@@ -103,11 +103,11 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
         requests.foreach { request =>
           ledger.record(request.name, LedgerEntry(LedgerKind.Closed, now, request.evidence))
           val requested = if (overdue(request.name)) "retirement PR requested again (close any older one still open)" else "retirement PR requested"
-          notify(s"${closedLead(request.name)} — $requested. ${request.evidence}")
+          sendAlert(s"${closedLead(request.name)} — $requested. ${request.evidence}")
         }
       } catch {
         case NonFatal(e) =>
-          notify(s"🪦 ${venues.map(_._1.displayName).mkString(", ")} look closed, but the retirement request failed (${e.getMessage}); retrying tomorrow.")
+          sendAlert(s"🪦 ${venues.map(_._1.displayName).mkString(", ")} look closed, but the retirement request failed (${e.getMessage}); retrying tomorrow.")
       }
     }
   }

@@ -137,8 +137,8 @@ object ZyteClient {
  *  [[HttpStatusException]] every status-aware caller may act on (a 404/410 is as
  *  durable through Zyte as fetched directly). The message is the one these
  *  failures always had: it is what /uptime shows and what people search for. */
-class ZyteOriginStatusException(code: Int, targetUrl: String, message: String)
-    extends HttpStatusException(code, "GET", targetUrl, None) {
+class ZyteOriginStatusException(statusCode: Int, targetUrl: String, message: String)
+    extends HttpStatusException(statusCode, "GET", targetUrl, None) {
   override def getMessage: String = message
 }
 

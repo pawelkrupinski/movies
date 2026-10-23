@@ -18,11 +18,11 @@ import scala.util.Try
  *  it is handed in by reference rather than owned here: `recordSuccess` and a
  *  polled worker bucket must land in the same map the query API reads.
  *
- *  `notify` is the monitor's listener fan-out, so a merged external bucket
+ *  `notifyListeners` is the monitor's listener fan-out, so a merged external bucket
  *  reaches the /uptime SSE exactly like a local record does. */
 private[services] final class UptimeSync(
   buckets: UptimeMonitor.BucketStore,
-  notify: (String, UptimeMonitor.Bucket) => Unit,
+  notifyListeners: (String, UptimeMonitor.Bucket) => Unit,
   clock: java.time.Clock
 ) extends Logging {
   import UptimeMonitor._
@@ -129,7 +129,7 @@ private[services] final class UptimeSync(
     bucket.errors.clear()
     cappedErrors.foreach(bucket.errors.add)
     dropExpired(serviceBuckets, timestamp)
-    if (changed) notify(service, bucket)
+    if (changed) notifyListeners(service, bucket)
   }
 }
 

@@ -155,8 +155,8 @@ object AppLoader {
  * forces the side-effecting components (read-model hydrate, change-stream
  * watches) at the bottom, in the order they need to fire.
  */
-class AppComponents(context: Context, val env: Env, val country: Country, val mongoAddress: MongoAddress)
-    extends BuiltInComponentsFromContext(context)
+class AppComponents(applicationContext: Context, val env: Env, val country: Country, val mongoAddress: MongoAddress)
+    extends BuiltInComponentsFromContext(applicationContext)
     with HttpFiltersComponents
     with CORSComponents
     with GzipFilterComponents

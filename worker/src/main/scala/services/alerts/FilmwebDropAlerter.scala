@@ -34,7 +34,7 @@ import scala.collection.concurrent.TrieMap
  */
 class FilmwebDropAlerter(
   filmwebCinemas: Set[String],     // displayNames of the Filmweb-backed venues
-  notify:         String => Unit,  // deliver one alert line (e.g. TelegramNotifier.send)
+  sendAlert:      String => Unit,  // deliver one alert line (e.g. TelegramNotifier.send)
   threshold:      FilmwebDropThreshold = FilmwebDropThreshold(3)
 ) extends ScrapeOutcomeListener {
 
@@ -55,7 +55,7 @@ class FilmwebDropAlerter(
         downStreak.update(name, streak)
         // putIfAbsent returns None the first crossing → alert once until recovery.
         if (everServed.contains(name) && streak >= threshold.value && alerted.putIfAbsent(name, ()).isEmpty)
-          notify(alertText(cinema, outcome, streak))
+          sendAlert(alertText(cinema, outcome, streak))
     }
   }
 

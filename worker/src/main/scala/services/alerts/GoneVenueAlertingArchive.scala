@@ -27,7 +27,7 @@ final class GoneVenueAlertingArchive(
   underlying:         ScrapeArchiveRepository,
   // Venues another alert already pages for (a fallback's UNCOVERED, the Filmweb-drop alert).
   pagedElsewhere:     Set[String],
-  notify:             String => Unit
+  sendAlert:          String => Unit
 ) extends ForwardingScrapeArchive(underlying) {
   import GoneVenueAlertingArchive._
 
@@ -46,7 +46,7 @@ final class GoneVenueAlertingArchive(
       // Read back rather than re-derive, so the count paged on is the one the archive
       // holds. Neither step can fail the scrape: the Mongo archive's reads and the
       // Telegram send each handle their own failures.
-      underlying.find(cinema).flatMap(_.lastBarren).flatMap(messageFor(cinema, _)).foreach(notify)
+      underlying.find(cinema).flatMap(_.lastBarren).flatMap(messageFor(cinema, _)).foreach(sendAlert)
   }
 }
 

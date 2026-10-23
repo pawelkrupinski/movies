@@ -46,6 +46,9 @@ ThisBuild / scalacOptions ++= Seq(
   // intentionally unread parameter (a trait default meant to be overridden, a hook) is `@unused`.
   "-Wunused:all",
   // `-Wsafe-init` (initialization order) is added for main sources only: project/MainSourceInitChecks.scala.
+  // A type parameter shadowing an outer one, and a constructor parameter shadowing a field the class inherits (a
+  // subclass passing `cache` to its parent's `cache` and then reading its own copy): rename the parameter.
+  "-Wshadow:all",
   // Warnings are errors: a warning must be fixed (or explicitly silenced via a
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
   "-Werror",

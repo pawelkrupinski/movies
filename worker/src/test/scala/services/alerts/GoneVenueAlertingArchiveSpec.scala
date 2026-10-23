@@ -19,7 +19,7 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
   private class Harness(withFallback: Set[Cinema] = Set.empty, start: Instant = Start) {
     val pages   = ListBuffer.empty[String]
     val archive = new GoneVenueAlertingArchive(new InMemoryScrapeArchiveRepository,
-      pagedElsewhere = withFallback.map(_.displayName), notify = message => { pages += message; () })
+      pagedElsewhere = withFallback.map(_.displayName), sendAlert = message => { pages += message; () })
     private var run = 0
     def failRun(cinema: Cinema = KinoMuza, error: String = Gone): Unit = {
       archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), start.plusSeconds(run * 36000L),
@@ -124,7 +124,7 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
   // (17 US drive-ins, 2026-09-27..29).
   it should "file an empty scrape's own word that the venue lists no schedule" in {
     val underlying = new InMemoryScrapeArchiveRepository
-    val archive    = new GoneVenueAlertingArchive(underlying, pagedElsewhere = Set.empty, notify = _ => ())
+    val archive    = new GoneVenueAlertingArchive(underlying, pagedElsewhere = Set.empty, sendAlert = _ => ())
     archive.record(ScrapeAttempt(KinoMuza, Cinema.cityOf(KinoMuza), Start, listingComplete = true, films = Seq.empty,
       noScheduleListed = true))
     underlying.find(KinoMuza).flatMap(_.lastBarren).map(_.noScheduleListed) shouldBe Some(true)

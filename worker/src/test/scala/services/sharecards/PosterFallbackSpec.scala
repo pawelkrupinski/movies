@@ -12,7 +12,7 @@ import java.net.InetSocketAddress
  *  every poster failure says why. */
 class PosterFallbackSpec extends AnyFlatSpec with Matchers {
 
-  private final class MetricsRig(download: CountingDownload) extends Rig(download = download) {
+  private final class MetricsRig(countingDownload: CountingDownload) extends Rig(download = countingDownload) {
     val series = new ShareCardMetrics.Series(Seq("pl"), new PrometheusRegistry)
     override val metrics = series.forCountry("pl")
   }

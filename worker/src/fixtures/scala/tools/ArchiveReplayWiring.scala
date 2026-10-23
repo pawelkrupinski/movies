@@ -23,7 +23,7 @@ import services.scrapes.ScrapeArchiveRepository
  * whole reason this type exists rather than a `FixtureTestWiring` subclass.
  */
 class ArchiveReplayWiring(
-  country:          Country,
+  replayCountry:    Country,
   archive:          ScrapeArchiveRepository,
   enrichmentCache:  Option[EnrichmentCache],
   // REQUIRED, and always a real database. There is no in-memory storage to default
@@ -57,7 +57,7 @@ class ArchiveReplayWiring(
   // [[SharedJsonBodies]] for every pass of an order-independence replay, so each body is parsed once
   // between them rather than once per pass; production's per-thread handoff otherwise.
   tmdbBodies:       JsonBodies = new JsonBodies
-) extends WorkerWiring(country, env = environment) with TestWiring {
+) extends WorkerWiring(replayCountry, env = environment) with TestWiring {
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
 

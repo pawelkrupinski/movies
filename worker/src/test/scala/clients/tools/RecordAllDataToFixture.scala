@@ -56,7 +56,7 @@ object RecordAllDataToFixture {
 
 /** The recording wiring — an instance `main` builds, so the lazily built fetches, clients
  *  and repositories are the run's own rather than object state. */
-final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfiguration) extends TestWiring {
+final class RecordAllDataToFixture(processConfiguration: _root_.settings.ProcessConfiguration) extends TestWiring {
   // The fixture directory under test/resources/fixtures/ that this run writes into.
   //   - country-fixture-artifact.yml leaves it at the default `today` (a fixed,
   //     dateless directory the daily artifact + local sync key off).
@@ -71,7 +71,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // 323-byte-artifact bug). A literal `val` only worked because the compiler
   // inlined it as a constant. A `def` is evaluated fresh on every read, so it is
   // always correct regardless of init order.
-  def captureDate: String = configuration.recordingFixtureDirectory.fold("today")(_.value)
+  def captureDate: String = processConfiguration.recordingFixtureDirectory.fold("today")(_.value)
 
   override lazy val movieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)
   override lazy val httpFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
@@ -88,7 +88,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // recording, capturing the response keyed by the target URL whichever leg served it.
   // Guarded by `RecorderChainCaptureSpec`.
   private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] =
-    modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
+    modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(processConfiguration), tlsContext)
   override lazy val multikinoFetch: HttpFetch =
     new RecordingHttpFetch(captureDate, services.cinemas.CinemaEgress.multikinoChain(processProxyShards, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System))
   override lazy val biletynaFetch: HttpFetch =
@@ -100,7 +100,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // 401s and no enrichment is captured. The recorded filename is still
   // key-agnostic (RecordingHttpFetch strips api_key), so replay is unaffected.
   override lazy val tmdbClient: clients.TmdbClient =
-    new clients.TmdbClient(httpFetch, apiKey = configuration.tmdbApiKey)
+    new clients.TmdbClient(httpFetch, apiKey = processConfiguration.tmdbApiKey)
 
   def run(): Unit = {
     // 1. Production-shape pass: every cinema scrape lands in the identity intake, one

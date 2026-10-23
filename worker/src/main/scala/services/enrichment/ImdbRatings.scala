@@ -22,7 +22,7 @@ import scala.util.{Failure, Try}
  * Shared entry points live in [[CacheRefresher]].
  */
 class ImdbRatings(
-  cache: MovieCache,
+  movieCache: MovieCache,
   imdb:  ImdbClient,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
   // The deployment's language, used to canonicalise IMDb's always-English
@@ -30,7 +30,7 @@ class ImdbRatings(
   // `kinowo`, English "United Kingdom" on the UK site). Defaults to Polish so
   // every existing single-country construction is unchanged.
   enrichmentLanguage: Locale = CountryNames.DefaultLanguage
-) extends CacheRefresher(cache, cadenceRecorder) {
+) extends CacheRefresher(movieCache, cadenceRecorder) {
 
   override protected def sourceName: String = "IMDb"
 
