@@ -7,6 +7,8 @@ name: Nix update
 # host before and after, and writes the patch and a body with what changes on the machines;
 # infra/bin/nix-update-propose force-pushes branch nix-update/all and opens or updates its PR as
 # ci-bot. The self-test (infra/bin/nix-update-test.sh) runs with every other script self-test.
+# The same PR carries the container image pins no other bumper owns (infra/bin/image_pins.py, its
+# self-test infra/bin/image_pins_test.py): this repository's are bumped, movies-gitops' only listed.
 #
 # IT PROPOSES, IT NEVER MERGES. A merge to main is a deploy here (nix-stage-closures.yml stages, and
 # fleet.autoApply activates what it may), so the reviewer is the gate. This is the one PR the
@@ -45,6 +47,11 @@ jobs:
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+
+      # movies-gitops at infra/kubernetes (gitignored here): infra/bin/image_pins.py lists its cluster
+      # component pins (Flux, kube-state-metrics, Reloader, Headlamp) in the body. Anonymous, this server.
+      - name: Check out the GitOps manifests
+        run: infra/bin/fetch-gitops
 
       # Two trees: the old one, exported from HEAD before anything changes, and the checkout itself,
       # which nix-update upgrades in place. Both hosts' closures are built and compared.

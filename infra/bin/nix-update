@@ -24,6 +24,12 @@ and reviewable as "openssl 3.5.1 -> 3.5.2 on all 3 hosts". It also proves the ne
 which the pull request's own CI does not -- nix-stage-closures.yml's `evaluate` instantiates, it
 does not build.
 
+CONTAINER IMAGE PINS ride along (infra/bin/image_pins.py, added 2026-10-23): the Dockerfile's bases, BuildKit,
+Swift's CI container, and movies-gitops' cluster components (Flux, kube-state-metrics, Reloader, Headlamp), which no
+other bumper watched. This checkout's pins are rewritten by each pin's policy; movies-gitops' are listed in the body
+only, to bump there by hand -- that repository gets no bot pull request. A week where only an image pin moved skips
+the host builds: nothing Nix changed.
+
 Pinned packages take the newest release WITHIN THE CURRENT MAJOR only; a newer major is listed in
 the body and left alone (a mongod major has its own upgrade path: featureCompatibilityVersion, one
 major at a time). mongod's version is also held to the CI and local `mongo:<tag>` containers by
@@ -46,6 +52,8 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+
+import image_pins  # beside this script: the container image pins no other bumper owns
 
 REPO = pathlib.Path(__file__).resolve().parents[1]  # infra/, the flake root
 ROOT = REPO.parent  # the git checkout
@@ -297,7 +305,17 @@ def update(old_tree, out):
         summary.append(f"{f['name']} {f['later']} is a newer major, not proposed")
     summary += pin_notes
 
-    # 2. flake.lock.
+    # 2. Container image pins (infra/bin/image_pins.py): this checkout's are rewritten, movies-gitops' only listed.
+    image_rows, image_failures = image_pins.update(ROOT, image_pins.GITOPS, apply=True)
+    images_bumped = [r for r in image_rows if r["action"] == "bumped"]
+    if image_failures:
+        status = 1
+    summary += [f"image {r['name']} {r['current']} -> {r['latest']}" for r in images_bumped]
+    summary += [f"image {r['name']} {r['current']} is behind {r['latest']}: bump by hand" for r in image_rows
+                if r["action"] == "behind"]
+    pin_failures += image_failures
+
+    # 3. flake.lock.
     old_lock = json.loads((old_tree / "flake.lock").read_text())
     code, _, err = run(["nix", "flake", "update"], REPO)
     if code != 0:
@@ -309,26 +327,27 @@ def update(old_tree, out):
     if moved:
         summary.append(f"flake inputs moved: {', '.join(moved)}")
 
-    if not bumped and not moved:
+    if not bumped and not moved and not images_bumped:
         (out / "summary.md").write_text("Nothing to upgrade.\n" + "".join(f"- {s}\n" for s in summary + pin_failures))
         print("nothing to upgrade")
         for line in summary + pin_failures:
             print(line, file=sys.stderr)
         return status
 
-    # 3. Every host, before and after: proves the new tree BUILDS (the PR's own CI only evaluates)
-    # and says what actually changes on the machines.
-    try:
-        names = hosts(REPO)
-    except RuntimeError as e:
-        print(f"could not list the hosts: {e}", file=sys.stderr)
-        return 2
+    # 4. Every host, before and after: proves the new tree BUILDS (the PR's own CI only evaluates)
+    # and says what actually changes on the machines. Nothing Nix moved (only image pins): nothing to build.
+    names, changes, failed = [], {}, {}
+    if bumped or moved:
+        try:
+            names = hosts(REPO)
+        except RuntimeError as e:
+            print(f"could not list the hosts: {e}", file=sys.stderr)
+            return 2
     old_drvs, _ = instantiate(old_tree, names)
     new_drvs, new_eval_errors = instantiate(REPO, names)
     old_built = build(old_drvs)
     new_built = build(new_drvs)
 
-    changes, failed = {}, {}
     for name in names:
         if name in new_eval_errors:
             failed[name] = "does not evaluate:\n" + new_eval_errors[name]
@@ -358,7 +377,7 @@ def update(old_tree, out):
             caught_up = (f"- nixpkgs' `mongodb-ce` is now **{nixpkgs_mongo.strip()}**, not behind the pin ({pinned}): "
                          f"the override in `infra/{MONGODB_FILE}` can go (its comment says so).\n")
 
-    # 4. The pull request.
+    # 5. The pull request.
     def where(hs):
         return f"all {len(names)} hosts" if len(hs) == len(names) else f"{len(hs)}: {', '.join(sorted(hs))}"
     lines = sorted(changes.items(), key=lambda kv: (-len(kv[1]), kv[0]))
@@ -376,7 +395,8 @@ def update(old_tree, out):
                        for n, e in sorted(failed.items()))
 
     body = f"""\
-Weekly `infra/bin/nix-update` (`.github/workflows/nix-update.yml`): every Nix dependency upgrade, in one pull request.
+Weekly `infra/bin/nix-update` (`.github/workflows/nix-update.yml`): every Nix dependency upgrade, and every container
+image pin no other bumper owns, in one pull request.
 
 **Merging this deploys it.** `nix-stage-closures.yml` stages the new closures on every host, and
 `fleet.autoApply` activates them wherever every restart is one the host declared acceptable
@@ -395,8 +415,13 @@ Newest release within each package's current major; a newer major is only listed
         f"- {line}\n" for line in pin_notes + pin_failures) + caught_up + f"""
 ## flake.lock ({len(moved)})
 """ + ("| input | from | to | |\n|---|---|---|---|\n" + "\n".join(input_rows) + "\n" if moved else "No input moved.\n") + f"""
+## Container image pins ({len(images_bumped)} bumped)
+`infra/bin/image_pins.py`. This repository's pins are bumped in this pull request (a `Dockerfile` bump ships with
+the next app image Main builds); movies-gitops' are only listed, to bump there by hand.
+
+""" + image_pins.markdown(image_rows, image_failures) + f"""
 ## Hosts that do not build ({len(failed)})
-{failures or "None: every host evaluated and built."}
+{failures or ("None: every host evaluated and built." if names else "Not built: nothing Nix moved.")}
 
 ## Package version changes, union over {len(names)} hosts ({len(lines)})
 From `nix store diff-closures` of each host's closure before and after; size-only changes are left out.
@@ -411,9 +436,10 @@ From `nix store diff-closures` of each host's closure before and after; size-onl
     if code != 0 or not diff:
         print(f"git diff failed or was empty: {err}", file=sys.stderr)
         return 1
-    parts = [f"{f['name']} {f['take']}" for f in bumped] + (["flake.lock: " + ", ".join(moved)] if moved else [])
+    parts = ([f"{f['name']} {f['take']}" for f in bumped] + (["flake.lock: " + ", ".join(moved)] if moved else [])
+             + [f"{r['name']} {r['latest']}" for r in images_bumped])
     (out / "changes.patch").write_text(diff)
-    (out / "title").write_text(f"nix: weekly update ({'; '.join(parts)})\n")
+    (out / "title").write_text(f"deps: weekly update ({'; '.join(parts)})\n")
     (out / "body.md").write_text(body)
     (out / "summary.md").write_text("".join(f"- {s}\n" for s in summary + pin_failures))
     print("\n".join(summary + pin_failures))
