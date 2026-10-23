@@ -6,7 +6,8 @@ import Foundation
 ///
 /// `@unchecked` because the compiler can't see the lock: every access to
 /// `value` goes through `withLock`, under `lock`. (`OSAllocatedUnfairLock` /
-/// `Mutex` would prove it, but neither exists on Linux's swift 5.10.)
+/// `Mutex` would prove it, but the first is Darwin-only and the second needs
+/// macOS 15 / iOS 18, above this package's floors.)
 public final class LockedValue<Value>: @unchecked Sendable {
     private let lock = NSLock()
     private var value: Value

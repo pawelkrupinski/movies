@@ -58,25 +58,33 @@ public final class URLProtocolStub: URLProtocol {
         }
         Self.requestLog.withLock { $0.append(url) }
         let response = handler(request)
-        let deliver: @Sendable () -> Void = {
-            let httpResponse = HTTPURLResponse(
-                url: url, statusCode: response.statusCode,
-                httpVersion: "HTTP/1.1", headerFields: response.headers)!
-            self.client?.urlProtocol(self, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
-            self.client?.urlProtocol(self, didLoad: response.body)
-            self.client?.urlProtocolDidFinishLoading(self)
-        }
+        let delivery = Delivery(stub: self, url: url, response: response)
         if response.delay > 0 {
-            DispatchQueue.global().asyncAfter(deadline: .now() + response.delay, execute: deliver)
+            DispatchQueue.global().asyncAfter(deadline: .now() + response.delay) { delivery.run() }
         } else {
-            deliver()
+            delivery.run()
         }
     }
 
     override public func stopLoading() {}
 }
 
-/// A delayed answer is delivered from another thread. Safe: the stub keeps no
-/// state of its own (the shared handler and log sit behind locks), and the
-/// `request` / `client` it reads are fixed when URLSession creates it.
-extension URLProtocolStub: @unchecked Sendable {}
+/// One answer, carried to the thread that delivers it (a delayed answer leaves
+/// the loading thread). Unchecked because swift-corelibs-foundation marks
+/// `URLProtocol` non-Sendable. Safe: the stub keeps no state of its own (the
+/// shared handler and log sit behind locks), and the `request` / `client` it
+/// reads are fixed when URLSession creates it.
+private struct Delivery: @unchecked Sendable {
+    let stub: URLProtocolStub
+    let url: URL
+    let response: URLProtocolStub.Response
+
+    func run() {
+        let httpResponse = HTTPURLResponse(
+            url: url, statusCode: response.statusCode,
+            httpVersion: "HTTP/1.1", headerFields: response.headers)!
+        stub.client?.urlProtocol(stub, didReceive: httpResponse, cacheStoragePolicy: .notAllowed)
+        stub.client?.urlProtocol(stub, didLoad: response.body)
+        stub.client?.urlProtocolDidFinishLoading(stub)
+    }
+}

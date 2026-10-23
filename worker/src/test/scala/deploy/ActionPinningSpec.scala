@@ -60,8 +60,7 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
   }
 
   /** `swift-actions/setup-swift@v2` refuses any Ubuntu outside its own list
-   *  (`Version "26.04" of Ubuntu is not supported`), and swift.org publishes no 5.10 build for
-   *  26.04 — so a job that installs Swift stays on an image setup-swift knows. */
+   *  (`Version "26.04" of Ubuntu is not supported`) — so a job that installs Swift stays on an image setup-swift knows. */
   private val SetupSwiftUbuntus = Set("20.04", "22.04", "24.04")
 
   "every job installing Swift via setup-swift" should "run on an Ubuntu setup-swift supports" in {

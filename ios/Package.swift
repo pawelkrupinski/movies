@@ -1,18 +1,11 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
-// Complete Swift concurrency checking for every target, in language mode 5: data races the
-// checker can see are diagnosed at compile time without the Swift 6 mode switch (tools 5.9
-// spells it as an experimental feature). Apple platforms only: swift-corelibs-foundation 5.10
-// (the Linux CI image) declares URL, DispatchQueue, Calendar and URLSession non-Sendable, so
-// there it reports Foundation's missing annotations rather than races; the macOS build checks
-// the same sources against Apple's annotated Foundation. `scripts/ios-compile-check.sh` fails
-// on any concurrency diagnostic, so the count stays at zero.
-#if os(Linux)
-let strictConcurrency: [SwiftSetting] = []
-#else
-let strictConcurrency: [SwiftSetting] = [.enableExperimentalFeature("StrictConcurrency")]
-#endif
+// Swift 6 language mode for every target (tools 6.0's default, spelled out in `swiftLanguageModes`
+// below): complete concurrency checking with data races as errors, on the Mac and on Linux alike —
+// swift-corelibs-foundation 6.2+ annotates URL, DispatchQueue, Calendar and URLSession as Sendable,
+// so the Linux CI image (swift:6.2, ios.yml) checks the same sources the Mac does.
+// `scripts/ios-compile-check.sh` fails on any concurrency diagnostic, so the count stays at zero.
 
 // SPM view of the Kinowo iOS app. The Xcode app (`Kinowo.xcodeproj`)
 // remains the production build for the .ipa; this manifest gives us a
@@ -63,14 +56,12 @@ let authTargets: [Target] = [
             // resolves/persists `selectedLanguage` through it, same reasoning
             // as `CountrySelection` above.
             "Storage/LanguageSelection.swift",
-        ],
-        swiftSettings: strictConcurrency
+        ]
     ),
     .testTarget(
         name: "KinowoAuthTests",
         dependencies: ["KinowoAuth", "KinowoTestSupport"],
-        path: "Tests/KinowoAuthTests",
-        swiftSettings: strictConcurrency
+        path: "Tests/KinowoAuthTests"
     ),
 ]
 #else
@@ -105,14 +96,12 @@ let networkingTargets: [Target] = [
             "Networking/CountrySwitch.swift",
             "Networking/ConditionalListEndpoint.swift",
             "Networking/ClientSupportStore.swift",
-        ],
-        swiftSettings: strictConcurrency
+        ]
     ),
     .testTarget(
         name: "KinowoNetworkingTests",
         dependencies: ["KinowoCore", "KinowoNetworking", "KinowoTestSupport"],
-        path: "Tests/KinowoNetworkingTests",
-        swiftSettings: strictConcurrency
+        path: "Tests/KinowoNetworkingTests"
     ),
 ]
 #else
@@ -191,8 +180,7 @@ let package = Package(
                 // it, and SPM forbids one file in two targets. Tested in
                 // `KinowoAuthTests`. (The Xcode app compiles it once via pbxproj.)
                 "Models/Country.swift",
-            ],
-            swiftSettings: strictConcurrency
+            ]
         ),
         .testTarget(
             name: "KinowoCoreTests",
@@ -204,16 +192,15 @@ let package = Package(
                 // file lives at `Tests/KinowoCoreTests/Fixtures/<x>.html`
                 // and is loaded via `Bundle.module.url(forResource:…)`.
                 .copy("Fixtures"),
-            ],
-            swiftSettings: strictConcurrency
+            ]
         ),
         // Test doubles more than one test target needs (the canned-HTTP
         // `URLProtocolStub`, the `LockedValue` box). A plain target, so its API
         // is `public`; on Linux too, for `KinowoCoreTests`.
         .target(
             name: "KinowoTestSupport",
-            path: "Tests/KinowoTestSupport",
-            swiftSettings: strictConcurrency
+            path: "Tests/KinowoTestSupport"
         ),
-    ] + authTargets + networkingTargets
+    ] + authTargets + networkingTargets,
+    swiftLanguageModes: [.v6]
 )

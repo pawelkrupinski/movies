@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/ios-compile-check.sh: each part's build run with its output kept aside -- removed when it compiles, kept and
-# its errors shown when it does not -- a concurrency diagnostic failing the app and Mac builds (not Linux's), and a part
+# its errors shown when it does not -- a concurrency diagnostic failing every build (Linux's too), and a part
 # whose toolchain is missing skipped with a warning. xcodebuild, swift and docker are stubs on the PATH.
 # Run: bash scripts/ios-compile-check-test.sh
 set -uo pipefail
@@ -56,7 +56,8 @@ STUB_WARN=xcodebuild STUB_WARNING="/w/ios/Kinowo/Foo.swift:3:9: warning: 'foo()'
 check "any other warning: exit 0, nothing left behind" "0 0" "$code $(left)"
 
 STUB_WARN=docker STUB_WARNING="$race" compile --linux-only; code=$?
-check "Linux, built without concurrency checking: its Sendable warnings pass" "0" "$code"
+check "a concurrency warning in the Linux build (Swift 6 mode there too): exit 1" "1" "$code"
+rm -f "$work/tmp"/*
 
 STUB_MISSING=xcodebuild compile --app-only; code=$?
 check "no full Xcode: the app build skipped with a warning, exit 0" "0 yes" "$code $(grep -q 'SKIPPED the app-target build' "$work/out" && echo yes || echo no)"

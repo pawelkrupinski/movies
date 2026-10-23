@@ -41,7 +41,7 @@ permissions:
 
 # Two jobs, two lanes:
 #
-#   unit-integration ─► Linux swift:5.10 container, fast.
+#   unit-integration ─► Linux swift:6.2 container, fast.
 #   ui-tests         ─► macOS runner + iOS Simulator, slow.
 #
 # The live-server contract (the JSON the app decodes) is checked by the
@@ -50,7 +50,7 @@ permissions:
 jobs:
     unit-integration:
         runs-on: ubuntu-26.04
-        container: mirror.gcr.io/library/swift:5.10
+        container: mirror.gcr.io/library/swift:6.2
         steps:
             # Forgejo's runner (act) runs JavaScript actions with the CONTAINER's `node`, and the swift
             # image has none (github.com's runner mounts its own), so checkout failed with exit 127.

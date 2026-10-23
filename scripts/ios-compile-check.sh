@@ -12,17 +12,17 @@
 #      its concurrency diagnostics (below): the macOS-only targets (KinowoAuth, KinowoNetworking
 #      and their tests) are checked nowhere else.
 #
-#   3. The SwiftPM package on LINUX, in the same swift:5.10 image ios.yml's `unit-integration`
+#   3. The SwiftPM package on LINUX, in the same swift:6.2 image ios.yml's `unit-integration`
 #      job uses. swift-corelibs-foundation is not Apple's Foundation: `Locale.language` exists on
 #      a Mac and not there, which compiled locally and failed only in CI (run 35431061855).
 #      Needs Docker; the build directory lives in a named volume, so the second run is incremental.
 #
-# The app and Mac builds run with complete Swift concurrency checking (SWIFT_STRICT_CONCURRENCY =
-# complete in the pbxproj, StrictConcurrency in Package.swift) and FAIL on any concurrency
-# diagnostic, warning or not: a data race the checker sees never lands, though the language mode
-# is still Swift 5 (where most of them are only warnings). Linux has no such checking (Package.swift
-# says why). A file compiled clean is not recompiled by the next incremental run, so the check
-# sees every file that changed, and every file whose dependencies' interfaces changed.
+# All three build in the Swift 6 language mode (SWIFT_VERSION = 6.0 in the pbxproj, tools 6.0 in
+# Package.swift), so complete concurrency checking runs everywhere and a data race is an error; the
+# check also FAILS on any concurrency WARNING (a `@preconcurrency` import, a Sendable note the
+# mode keeps as a warning), so the count stays at zero. A file compiled clean is not recompiled by
+# the next incremental run, so the check sees every file that changed, and every file whose
+# dependencies' interfaces changed.
 #
 # Usage: scripts/ios-compile-check.sh [--app-only | --spm-only | --linux-only]
 # The pre-push hook runs this when a push touches ios/**. Each part is skipped, with a warning,
@@ -59,8 +59,7 @@ built() {
         warn "full log: $out"
         return 1
     fi
-    # Linux builds without concurrency checking; what corelibs' 5.10 reports there is not ours to fix.
-    [ "$what" = linux ] && found="" || found="$(concurrency_diagnostics "$out")"
+    found="$(concurrency_diagnostics "$out")"
     if [ -n "$found" ]; then
         printf '%s\n' "$found" | head -40 >&2
         warn "$(printf '%s\n' "$found" | wc -l | tr -d ' ') concurrency diagnostic(s) — fix them (ios/Package.swift says how the checking is set up); full log: $out"
@@ -98,13 +97,13 @@ linux_build() {
         warn "no Docker daemon — SKIPPED the Linux swift build (CI's unit-integration job still runs it)."
         return 0
     fi
-    log "swift build --build-tests on Linux (swift:5.10, as ios.yml)"
+    log "swift build --build-tests on Linux (swift:6.2, as ios.yml)"
     # The sources read-only; the build products in a named volume, so a Linux .build never
     # lands in ios/.build next to the Mac one.
     built linux "the package compiles on Linux" 'error:' docker run --rm \
         -v "$PWD/ios:/src:ro" \
-        -v kinowo-ios-linux-build:/scratch \
-        swift:5.10 \
+        -v kinowo-ios-linux6-build:/scratch \
+        swift:6.2 \
         swift build --build-tests --package-path /src --scratch-path /scratch
 }
 

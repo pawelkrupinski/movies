@@ -86,7 +86,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test \
 ```
 
 CI runs the unit and UI lanes from `.github/workflows/ios.yml` (Linux Docker
-swift:5.10 and a macos-latest runner, on every PR) and the LocalServer lane
+swift:6.2 and a macos-latest runner, on every PR) and the LocalServer lane
 from the `mobile-local-server` job in `ci.yml`, which boots one fixture
 server for the iOS and Android suites together.
 
