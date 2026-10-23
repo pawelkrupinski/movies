@@ -165,10 +165,17 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 
 **Build settings:**
 
-- `maxParallelForks` for the Robolectric unit tests (absent); the order-independence guards make it reasonably safe.
-- CI runs Gradle three times with `--no-daemon` (`android.yml:242,258,295`). Merge the steps or keep the daemon:
-  tens of seconds per job.
-- `org.gradle.jvmargs=-Xmx2048m`: consider 3g with ParallelGC for Compose and R8.
+- `maxParallelForks` for the Robolectric unit tests: **tried, dropped (2026-10-23).** The test task is only ~16 s
+  (638 tests, ~15 s of test time) and each fork pays its own Robolectric boot: `testDebugUnitTest --rerun` took
+  18/23/31 s with 1 fork, 17/18/24 s with 2 (what a 4-core runner gets), 17/16/53 s with 4 and 28/25/83 s with 7,
+  interleaved at load 25-130. No gain above the noise, and 7 forks drove the laptop's load past 600.
+- CI ran Gradle three times with `--no-daemon`: **done (2026-10-23)**, the build job's three steps share one daemon
+  (the steps stay separate for their reports and uploads). The job's three cache-hit invocations took 19/20 s with
+  `--no-daemon` and 14/12 s with a daemon locally. ci.yml's LocalServer step runs Gradle once, so it keeps
+  `--no-daemon`.
+- `org.gradle.jvmargs`: **done (2026-10-23)**, `-Xmx3g -XX:+UseParallelGC -XX:MaxMetaspaceSize=512m`. GC pauses over a
+  clean `assembleRelease` fell from 17.0 s (2g G1) to 3.3 s. Wall times were noisy (load 60-780): median 110 s to 95 s
+  over five runs each. The CI job's worst case (sbt 4g + Gradle + Kotlin daemon + test JVM) is ~11 GB of its 16 GB.
 - Smaller: `org.gradle.parallel`, `-repackageclasses`, `androidResources.localeFilters` (check against the app's
   real languages).
 
