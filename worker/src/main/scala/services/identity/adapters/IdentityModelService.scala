@@ -12,9 +12,7 @@ import scala.util.control.NonFatal
 
 /** The model as a reader sees it: its resolution, what its lookups do not know yet, its listings. */
 final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing],
-                               questions: Seq[(Set[CandidateQuery], Boolean)] = Nil,
-                               /** The listings decided on an answer not known yet ([[IncrementalResolver.blind]]). */
-                               blind: Set[services.movies.ListingKey] = Set.empty)
+                               questions: Seq[(Set[CandidateQuery], Boolean)] = Nil)
 
 /** What the model did with one drained batch of events. */
 final case class ModelBatch(venues: Int, observations: Int, familiesResolved: Int, families: Int, seconds: Double,
@@ -161,7 +159,7 @@ final class IdentityModelService(
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.
   private def snapshotOf(engine: IncrementalResolver) =
-    ModelSnapshot(engine.resolution, engine.gaps, engine.listings, TmdbRefreshes.of(engine.familyQuestions), engine.blind)
+    ModelSnapshot(engine.resolution, engine.gaps, engine.listings, TmdbRefreshes.of(engine.familyQuestions))
 
   // A request its reader gave up on is cancelled: one the model's thread has not reached yet never runs
   // (a take-up and a snapshot for nobody, delaying the next reader), one it is running finishes.

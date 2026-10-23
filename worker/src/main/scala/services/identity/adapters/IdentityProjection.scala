@@ -293,33 +293,19 @@ final class IdentityProjection(
       case Failure(other) => throw other
       case Success(None) =>
         refuse(run, IdentityProjectionMetrics.Refusal.NotReady, "the identity model is not ready", keep = true)
-      case Success(Some(IdentityProjection.Resolved(modelResolution, held, modelled, blind))) =>
+      case Success(Some(IdentityProjection.Resolved(modelResolution, held, modelled))) =>
         adopt(modelled)
-        projectResolution(run, counters, planned(run, counters, modelResolution, held, blind))
+        projectResolution(run, counters, planned(run, counters, modelResolution, held))
     }
-
-  private val gapHold = new GapHold(clock)
-  /** The take each listing holds, for [[GapHold]]: the last projection's, else — a worker just up — what the site shows,
-   *  its stored film's TMDB film, the fallback film its record names, or none (read only when a decision waits on answers). */
-  private def priorTakes(run: Run): ListingKey => Option[GapHold.Prior] = lastTaken match {
-    case Some(last) => key => last.taken.decisionOf.get(key).map(GapHold.Prior.of)
-    case None =>
-      lazy val stored = {
-        val rows = run.stored.iterator.map(row => row.id.value -> row).toMap
-        StoredFilmSlots.of(run.read, run.stored, normalizer).map { case (key, ref) => key -> GapHold.Prior.stored(ref.tmdbId, rows.get(ref.id)) }
-      }
-      key => stored.get(key)
-  }
 
   /** The resolution as projected, the index moved under it, and the drafts of the scope it moved. */
   private def planned(run: Run, counters: FilmIdCounters, modelResolution: Resolution,
-                      held: Iterable[ListingKey], blind: Set[ListingKey]): IdentityProjection.Planned = {
+                      held: Iterable[ListingKey]): IdentityProjection.Planned = {
     val phases = run.phases
     // what a venue re-published with a poster, days or names the model's decisions do not move with — unknown
     // to a projection with nothing to build on, whose index is read afresh
     val republished = run.previous.map(_ => live.republished(run.byVenue))
-    // a decision waiting on answers keeps the take its listings hold (GapHold): no take moves on evidence with gaps
-    val resolution  = phases("agreement")(agreement(gapHold(modelResolution, priorTakes(run), blind), key => run.decided.get(key), republished))
+    val resolution  = phases("agreement")(agreement(modelResolution, key => run.decided.get(key), republished))
     lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution))
     val at          = clock.instant()
     phases("seed")(seedSlotMemo())
@@ -675,11 +661,9 @@ object IdentityProjection {
   final case class Projected(model: Resolution, taken: Resolution)
 
   /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
-  final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil,
-                            /** The listings decided on an answer not known yet ([[IncrementalResolver.blind]]). */
-                            blind: Set[ListingKey] = Set.empty)
+  final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil)
 
   /** The incremental model, brought up to now on its own thread — no resolve here. */
   def modelled(model: IdentityModelService, timeout: FiniteDuration): (() => Seq[Listing]) => Option[Resolved] = _ =>
-    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings, snapshot.blind))
+    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings))
 }

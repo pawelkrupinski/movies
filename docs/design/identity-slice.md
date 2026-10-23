@@ -98,12 +98,7 @@ production depends on: **the state kept event by event ends where a whole resolv
 - `settled` (every answer filed, the stage applied until it asks nothing and has no backlog), then twice a re-scrape
   tick, a deploy's first projection and the tick after it.
 
-Then the GAP STATES: another deploy whose code asks what was never filed (another 15% of TMDB's answers unfiled),
-projected while they are gaps, half filed, all filed. A listing a gap state moves off its settled take that the settled
-state after moves back is a divergence too (`gap: a take lost / made / another film taken while answers were missing,
-reversed by the fill`): production shows each such move as a take change and back.
-
-At each other checkpoint every listing's film is compared with the whole resolve's (`IdentityResolver.resolve`, a fresh stage
+At each checkpoint every listing's film is compared with the whole resolve's (`IdentityResolver.resolve`, a fresh stage
 asked to its fixpoint, past every partial wait). A divergence names its checkpoint kind and class (`deploy: incremental-
 only take (whole BelowThreshold, incremental Agreed)`); `test/resources/fixtures/identity-drift-allow.tsv` lists the
 intended ones with their reasons (none today). Every hermetic leg's `takes` row runs it on the pinned pair
@@ -118,12 +113,10 @@ by every deploy that kept the verdicts and lost by every one that outruled them 
 Rückenwind alternated the same way, deploy by deploy). Verdicts now keep the whole record (`FilmBson`). And a model
 take's correction read while TMDB had not answered the take's own record was kept as final: UK Chichester's "The Ties
 That Bind Us" stayed the model's film after the record was filed, until a deploy read it again (seed 2). Such a
-correction now waits, as a fill read blind does. The gap states then showed the largest class: on PL alone one deploy's gaps
-moved 160 listings (mostly takes lost, some taken as another film or made) that the fill moved back — the deploy-only
-losses and DE "Rose"'s flip to Babayan's film. The projection now holds each listing of a decision waiting on an answer
-on the take it held (`GapHold`; the model names the listings it decided on an unknown record or page,
-`IncrementalResolver.blind`), for two hours at most: PL moves 0. UK "Notre-Dame de Paris" (the 1956 Hunchback by a
-same-title join) did not reproduce on the recording — the nightly production check is what watches it.
+correction now waits, as a fill read blind does. Over all five countries, two seeds each, nothing else diverged; UK
+"Notre-Dame de Paris" (the 1956 Hunchback by a same-title join) and DE "Rose" (model takes flipping while a deploy's
+new questions were unanswered) did not reproduce as a settled divergence on the recording — the nightly production
+check is what watches them.
 
 ## Faithfulness, and what it does not cover
 
