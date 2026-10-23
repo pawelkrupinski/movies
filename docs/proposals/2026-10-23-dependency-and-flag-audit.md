@@ -152,13 +152,21 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 
 ### Build and test settings
 
-- **`ThisBuild / usePipelining`** (sbt 1.4+): pipelined multi-module compile. A one-line trial; watch the `-Werror`
-  and Twirl modules.
-- **Short unit-test forks:** `-XX:+UseSerialGC -XX:TieredStopAtLevel=1`; keep C2 for the identity and e2e specs.
-  `ForkedTests.scala` is otherwise well tuned.
+- **`ThisBuild / usePipelining`** (sbt 1.4+): **tried 2026-10-23, dropped.** Cold `clean; Test/compile` (compile's
+  own elapsed, interleaved, load 11–40): 80/86/108 s off, 74/80/83 s on, ~7 % at comparable load. But an
+  incremental edit of one `common` file went from 1–2 s (1 file) to 3–4 s: web recompiled 39 + 24 sources (Twirl /
+  routes) on every upstream change. Agents' edit-compile loop and CI's restored target cache are incremental; a
+  cold compile is rare (sbt-warm seeds), so the trade is a loss.
+- **Short unit-test forks:** **tried 2026-10-23, dropped.** `-XX:+UseSerialGC -XX:TieredStopAtLevel=1` on the
+  common / scrapers / testkit forks, `X/Test/test` wall, interleaved with the default (load 25–100):
+  common 35/28/23/31/24 s default vs 50/37/64/51 s fast (C1-only is slower on its 1,713 CPU-bound specs);
+  scrapers 19/11/10/11/12 vs 11/11/12/38; testkit 3–4 vs 2–4. SerialGC alone: common 37 s (and one 364 s run
+  under a load spike), scrapers 11/13 s — no gain either. Startup is not where these forks spend their time.
 - **scalac:** `-Wunused:all` (matches the dead-code rule; land module by module because of `-Werror`),
-  `-Wsafe-init`, `-Wshadow:all`, and `-deprecation`/`-unchecked` for the whole build (today Play adds them to web
-  only). Not `-Yexplicit-nulls`.
+  `-Wsafe-init`, `-Wshadow:all`. **`-deprecation` for the whole build: landed 2026-10-23** — the build was
+  already warning-clean under it (0 fixes). Before, a deprecated use outside web still failed `-Werror`, but only
+  as "there was 1 deprecation warning; re-run with -deprecation" with no location. `-unchecked` not tried. Not
+  `-Yexplicit-nulls`.
 - No `.scalafmt.conf` exists although sbt-scalafmt is installed. Either add one (`runner.dialect = scala3`) or drop
   the plugin.
 
