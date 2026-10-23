@@ -37,7 +37,7 @@ dependencies are currently unwatched.
 | MongoDB server | **8.3.11** (ahead of nixpkgs' 8.2.11) | no 8.4/9.0 found [unverified] | see below |
 | Playwright / axe-core | 1.63 / 4.13 | 1.64.1 / 4.14.0 | one-line bump |
 | ESLint / globals | 9.17 / 15 | 10.13.0 / 17.13.0 | low payoff |
-| Coil (Android) | 2.7.0 | 3.x | see Android |
+| Coil (Android) | **3.6.3** (was 2.7.0) | — | done 2026-10-23, see Android |
 | Haze (Android) | 1.7.3 (deprecated API names) | 2.0 beta | see Android |
 | ML script (numpy, scikit-learn) | pinned by the Python 3.9 floor (`scripts/run-script-tests:42`) | — | raise the floor only if another script wants it |
 | Nix-managed infra (k3s 1.35.8, Grafana 13.0.9, Prometheus 3.12, VictoriaLogs 1.52, Forgejo 16.0.5, Caddy 2.11.4) | current with nixpkgs | — | |
@@ -193,8 +193,10 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
 2. **Posters bypass the shared OkHttp client.** There is no custom `ImageLoader`, so Coil builds its own client and
    connection pool (`MainActivity.kt:198` holds ours). Also, `SubcomposeAsyncImage` (`PosterImage.kt:53`)
    subcomposes per grid cell; `AsyncImage` with `onState`/`placeholder` is the scroll win. Both work on Coil 2;
-   Coil 3 (`coil3.*`, `OkHttpNetworkFetcherFactory(callFactory = …)`) is a small follow-on touching
-   `PosterPrefetch.kt` and `KinowoViewModel.kt:441-452`.
+   **Coil 3.6.3: done 2026-10-23** — the shared client reaches Coil through
+   `OkHttpNetworkFetcherFactory(callFactory = …)` in `KinowoApplication` (`SingletonImageLoader.Factory`), with
+   `CacheControlCacheStrategy` keeping Coil 2's honouring of the CDNs' cache headers; release APK +49 KB; the
+   Baseline Profile was regenerated for the `coil3.*` classes.
 3. **Haze:** the deprecated `haze`/`hazeChild` calls in `ListScreen.kt` are renamed to `hazeSource`/`hazeEffect`
    (done 2026-10-23, same parameters). The effect is a 1 dp blur with zero tint and noise, nearly invisible;
    **decided 2026-10-23: keep it and the dependency** (design call by the owner). Don't re-propose dropping it.
