@@ -18,7 +18,9 @@ test.describe('day-swipe', { tag: '@agnostic' }, () => {
     // Force the animated slide path (not the reduced-motion instant commit) so
     // the in-flight `.day-track--armed` assertions are deterministic.
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });   // anytime → cards present regardless of wall-clock
+    // Toruń (0.37 MB), not Poznań (1.1 MB): a loaded host's renderer stalls for seconds on the bigger
+    // listing, mid-swipe or mid-settle, and the gesture needs no more than a few cards and the day list.
+    await page.goto('/torun/?date=anytime', { waitUntil: 'domcontentloaded' });   // anytime → cards present regardless of wall-clock
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
     test.skip(!coarse, 'day-swipe is gated to coarse pointers (phones)');
     await waitForCards(page);
