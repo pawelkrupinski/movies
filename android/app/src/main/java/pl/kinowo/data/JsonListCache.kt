@@ -1,8 +1,11 @@
 package pl.kinowo.data
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.json.encodeToStream
+import pl.kinowo.net.LenientJson
 import java.io.File
 
 /**
@@ -22,19 +25,19 @@ import java.io.File
  * hands the timestamp back for the city that produced it — a switch sends no
  * conditional header and always gets a fresh 200.
  */
+@OptIn(ExperimentalSerializationApi::class) // Json.decodeFromStream / encodeToStream
 class JsonListCache<T>(
     cacheDir: File,
     name: String,
     private val elementSerializer: KSerializer<T>,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
     private val listSerializer = ListSerializer(elementSerializer)
     private val dataFile = File(cacheDir, "$name.json")
     // line 1: city slug the body was fetched for; line 2: its Last-Modified.
     private val metaFile = File(cacheDir, "$name-meta.txt")
 
     fun load(): List<T>? = try {
-        if (dataFile.exists()) json.decodeFromString(listSerializer, dataFile.readText()) else null
+        if (dataFile.exists()) dataFile.inputStream().buffered().use { LenientJson.decodeFromStream(listSerializer, it) } else null
     } catch (_: Exception) {
         null
     }
@@ -45,7 +48,7 @@ class JsonListCache<T>(
      */
     fun save(city: String, list: List<T>, lastModified: String?) {
         try {
-            dataFile.writeText(json.encodeToString(listSerializer, list))
+            dataFile.outputStream().buffered().use { LenientJson.encodeToStream(listSerializer, list, it) }
             metaFile.writeText(city + "\n" + (lastModified ?: ""))
         } catch (_: Exception) {
             // Best-effort; a failed write just means a slower next start.

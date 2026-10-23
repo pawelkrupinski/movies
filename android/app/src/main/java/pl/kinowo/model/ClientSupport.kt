@@ -1,7 +1,7 @@
 package pl.kinowo.model
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import pl.kinowo.net.LenientJson
 
 /**
  * The server's `GET /api/client-support` answer: per platform, the oldest app
@@ -28,11 +28,10 @@ data class ClientSupport(
     }
 
     companion object {
-        private val json = Json { ignoreUnknownKeys = true }
 
         /** Parse a `/api/client-support` 200 body, or null when it doesn't decode. */
         fun parse(body: String): ClientSupport? =
-            runCatching { json.decodeFromString<ClientSupport>(body) }.getOrNull()
+            runCatching { LenientJson.decodeFromString<ClientSupport>(body) }.getOrNull()
     }
 }
 

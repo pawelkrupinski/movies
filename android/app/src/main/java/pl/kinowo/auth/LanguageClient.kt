@@ -7,11 +7,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import pl.kinowo.net.LenientJson
 
 /**
  * The account's language pick — the one thing still riding the legacy
@@ -48,7 +48,6 @@ class HttpLanguageClient(
     private val client: OkHttpClient,
 ) : LanguageClient {
 
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun fetch(): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
@@ -57,12 +56,12 @@ class HttpLanguageClient(
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            json.decodeFromString<WireLanguage>(response.body.string()).language
+            LenientJson.decodeFromString<WireLanguage>(response.body.string()).language
         }
     }
 
     // PUT /api/me/state writes only `language` (the server ignores any other
-    // key). `language`'s default (null) plus this `Json`'s
+    // key). `language`'s default (null) plus [LenientJson]'s
     // default `encodeDefaults = false` OMITS the key entirely rather than
     // sending an explicit `null` when there's nothing to push — this method
     // is never actually called with one, but the wire shape stays correct
@@ -70,7 +69,7 @@ class HttpLanguageClient(
     // explicit `null` means "clear it", and only the server-side caller of
     // THIS endpoint ever wants the latter.
     override suspend fun push(language: String) = withContext(Dispatchers.IO) {
-        val payload = json.encodeToString(WireLanguage(language))
+        val payload = LenientJson.encodeToString(WireLanguage(language))
         val request = Request.Builder()
             .url("$baseUrl/api/me/state")
             .header("User-Agent", USER_AGENT)

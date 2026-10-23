@@ -1,10 +1,10 @@
 package pl.kinowo.model
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonTransformingSerializer
+import pl.kinowo.net.LenientJson
 
 /**
  * The live country + city catalog the app runs off — fetched from `/api/catalog`,
@@ -28,16 +28,15 @@ data class Catalog(
          *  decode (it always ships and is guard-tested), so effectively never. */
         val fallback = Catalog(Country.all, Cities.all)
 
-        private val json = Json { ignoreUnknownKeys = true }
 
         /** Parse a `/api/catalog` 200 body (`{countries,cities}`), or null on error. */
         fun parseBody(body: String): Catalog? = runCatching {
-            json.decodeFromString<CatalogBody>(body).toCatalog()
+            LenientJson.decodeFromString<CatalogBody>(body).toCatalog()
         }.getOrNull()
 
         /** Parse the bundled seed (`{etag,catalog}`) → (etag, catalog), or null. */
         fun parseSeed(seed: String): Pair<String, Catalog>? = runCatching {
-            val e = json.decodeFromString<CatalogEnvelope>(seed)
+            val e = LenientJson.decodeFromString<CatalogEnvelope>(seed)
             e.etag to e.catalog.toCatalog()
         }.getOrNull()
     }

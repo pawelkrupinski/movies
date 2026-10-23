@@ -5,12 +5,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import pl.kinowo.net.LenientJson
 
 /** One country's hiddenFilms set plus the validators the NEXT conditional
  *  fetch should send back — `etag`/`lastModified` are null only when the
@@ -66,7 +66,6 @@ class HttpHiddenFilmsClient(
     private val client: OkHttpClient,
 ) : HiddenFilmsClient {
 
-    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun fetch(country: String, etag: String?, lastModified: String?): HiddenFilmsFetchResult =
         withContext(Dispatchers.IO) {
@@ -107,7 +106,7 @@ class HttpHiddenFilmsClient(
 
     private fun parse(response: Response): HiddenFilmsState {
         val body = response.body.string()
-        val wire = json.decodeFromString<WireHiddenFilms>(body)
+        val wire = LenientJson.decodeFromString<WireHiddenFilms>(body)
         return HiddenFilmsState(wire.hiddenFilms, response.header("ETag"), response.header("Last-Modified"))
     }
 

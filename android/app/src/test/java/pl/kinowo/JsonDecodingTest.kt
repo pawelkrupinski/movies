@@ -1,6 +1,5 @@
 package pl.kinowo
 
-import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -9,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.net.LenientJson
 
 /**
  * Replays recorded `/api/repertoire` + `/api/details` payloads through the
@@ -16,15 +16,9 @@ import pl.kinowo.model.FilmDetails
  * rather than silently at runtime. Fixtures captured from the live endpoints.
  */
 class JsonDecodingTest {
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private fun fixture(name: String): String =
-        javaClass.classLoader!!.getResourceAsStream("fixtures/$name")!!
-            .bufferedReader().use { it.readText() }
-
     @Test
     fun `lean repertoire decodes into Films with full showings`() {
-        val films = json.decodeFromString<List<Film>>(fixture("repertoire_sample.json"))
+        val films = LenientJson.decodeFromString<List<Film>>(recordedFixture("repertoire_sample.json"))
         assertTrue("expected a non-empty repertoire", films.isNotEmpty())
         val f = films.first()
         assertFalse("title should be non-blank", f.title.isBlank())
@@ -50,7 +44,7 @@ class JsonDecodingTest {
 
     @Test
     fun `cinema links derive from the listing showings`() {
-        val films = json.decodeFromString<List<Film>>(fixture("repertoire_sample.json"))
+        val films = LenientJson.decodeFromString<List<Film>>(recordedFixture("repertoire_sample.json"))
         // At least one fixture film should have a cinema with a URL → a link.
         val withLinks = films.firstOrNull { it.cinemaLinks.isNotEmpty() }
         assertNotNull("expected a film with derivable cinema links", withLinks)
@@ -65,7 +59,7 @@ class JsonDecodingTest {
 
     @Test
     fun `details payload decodes synopsis and trailer embed urls`() {
-        val details = json.decodeFromString<List<FilmDetails>>(fixture("details_sample.json"))
+        val details = LenientJson.decodeFromString<List<FilmDetails>>(recordedFixture("details_sample.json"))
         assertTrue("expected a non-empty details payload", details.isNotEmpty())
         val withBoth = details.firstOrNull { !it.synopsis.isNullOrBlank() && it.trailerURLs.isNotEmpty() }
         assertNotNull("expected an entry with synopsis + trailers", withBoth)
@@ -77,7 +71,7 @@ class JsonDecodingTest {
 
     @Test
     fun `details payload decodes the original title when present and null when absent`() {
-        val details = json.decodeFromString<List<FilmDetails>>(fixture("details_sample.json"))
+        val details = LenientJson.decodeFromString<List<FilmDetails>>(recordedFixture("details_sample.json"))
         val byTitle = details.associateBy { it.title }
         // The backend only sends a distinct original title, so it's present on
         // some rows and absent (decoding to null) on others.
@@ -91,7 +85,7 @@ class JsonDecodingTest {
      *  the US web prints on a 12-hour clock but the API keeps as `HH:mm`. */
     @Test
     fun `a US listing decodes its certificate, labels, ratings and 24-hour showtimes`() {
-        val films = json.decodeFromString<List<Film>>(fixture("repertoire_us.json"))
+        val films = LenientJson.decodeFromString<List<Film>>(recordedFixture("repertoire_us.json"))
         assertEquals(1, films.size)
         val f = films.single()
         assertEquals("PG-13", f.ageRating)

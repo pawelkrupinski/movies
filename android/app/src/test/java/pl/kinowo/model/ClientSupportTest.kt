@@ -5,12 +5,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pl.kinowo.recordedFixture
 
 /** The Kotlin mirror of Scala `ClientVersion` / `ClientSupport` — same cases. */
 class ClientSupportTest {
-
-    private fun fixture(name: String): String =
-        javaClass.classLoader!!.getResourceAsStream("fixtures/$name")!!.bufferedReader().use { it.readText() }
 
     private val gated = ClientSupport.Platform(minimumVersion = "1.2", storeUrl = "https://play.example/app")
 
@@ -55,7 +53,7 @@ class ClientSupportTest {
 
     @Test
     fun decodesTheLivePayload() {
-        val support = ClientSupport.parse(fixture("client_support.json"))!!
+        val support = ClientSupport.parse(recordedFixture("client_support.json"))!!
         assertEquals(
             ClientSupport.Platform("1.0", "https://play.google.com/store/apps/details?id=net.pawel.kinowo"),
             support.android,

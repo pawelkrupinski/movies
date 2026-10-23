@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.runCatchingCancellable
+import pl.kinowo.net.LenientJson
 
 /**
  * Owns the signed-in session — the Android counterpart of iOS `AuthService`.
@@ -36,7 +36,6 @@ class AuthRepository(
     internal val baseUrl: String,
     private val pendingVerifier: PendingVerifierStore,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
 
     private val _user = MutableStateFlow<UserProfile?>(null)
     val user: StateFlow<UserProfile?> = _user.asStateFlow()
@@ -61,7 +60,7 @@ class AuthRepository(
      *  even presented. */
     suspend fun exchangeCode(code: String) {
         val verifier = pendingVerifier.take() ?: return
-        adoptProfileFrom(post("auth/exchange", json.encodeToString(CodeRequest(code, verifier))))
+        adoptProfileFrom(post("auth/exchange", LenientJson.encodeToString(CodeRequest(code, verifier))))
     }
 
     /** Re-hydrate the user from a cookie persisted across launches. */
@@ -81,7 +80,7 @@ class AuthRepository(
         runCatchingCancellable {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
-                    _user.value = json.decodeFromString<UserProfile>(response.body.string())
+                    _user.value = LenientJson.decodeFromString<UserProfile>(response.body.string())
                 }
             }
         }

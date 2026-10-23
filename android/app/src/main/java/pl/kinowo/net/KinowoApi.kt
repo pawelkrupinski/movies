@@ -2,7 +2,8 @@ package pl.kinowo.net
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.decodeFromStream
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -52,11 +53,11 @@ fun interface ClientSupportApi {
  * OkHttp client every caller (posters included) shares, so its cookie jar, pools and timeouts
  * are configured once rather than a process-wide default built here.
  */
+@OptIn(ExperimentalSerializationApi::class) // Json.decodeFromStream
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.net",
     private val client: OkHttpClient,
 ) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi, ClientSupportApi {
-    private val json = Json { ignoreUnknownKeys = true }
 
     /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
     data class Fetched<T>(
@@ -84,8 +85,7 @@ class KinowoApi(
         client.newCall(builder.build()).execute().use { response ->
             if (response.code == 304) return@withContext FetchedCatalog(null, ifNoneMatch, notModified = true)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val body = response.body?.string() ?: throw IOException("empty body")
-            FetchedCatalog(body, response.header("ETag"), notModified = false)
+            FetchedCatalog(response.body.string(), response.header("ETag"), notModified = false)
         }
     }
 
@@ -99,7 +99,7 @@ class KinowoApi(
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            response.body?.string() ?: throw IOException("empty body")
+            response.body.string()
         }
     }
 
@@ -119,8 +119,7 @@ class KinowoApi(
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val body = response.body?.string() ?: throw IOException("empty body")
-            json.decodeFromString<CinemaCatalog>(body)
+            LenientJson.decodeFromStream<CinemaCatalog>(response.body.byteStream())
         }
     }
 
@@ -138,8 +137,10 @@ class KinowoApi(
                 return@withContext Fetched<T>(null, ifModifiedSince, notModified = true)
             }
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val body = response.body?.string() ?: throw IOException("empty body")
-            Fetched(json.decodeFromString<List<T>>(body), response.header("Last-Modified"), notModified = false)
+            // Decoded as the bytes arrive: a big city's repertoire is megabytes,
+            // never held whole as a String beside the models it becomes.
+            val items = LenientJson.decodeFromStream<List<T>>(response.body.byteStream())
+            Fetched(items, response.header("Last-Modified"), notModified = false)
         }
     }
 }

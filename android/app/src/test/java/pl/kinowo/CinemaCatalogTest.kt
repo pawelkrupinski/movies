@@ -1,12 +1,12 @@
 package pl.kinowo
 
-import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.CinemaSeason
+import pl.kinowo.net.LenientJson
 
 /**
  * Decoding of `GET /:city/api/cinemas` into [CinemaCatalog] — the payload the
@@ -14,8 +14,6 @@ import pl.kinowo.model.CinemaSeason
  * partition its cinema list; a flat city carries an empty `areas`.
  */
 class CinemaCatalogTest {
-
-    private val json = Json { ignoreUnknownKeys = true }
 
     @Test
     fun decodesSplitCityAreas() {
@@ -25,7 +23,7 @@ class CinemaCatalogTest {
                       {"name":"North","slug":"north","cinemas":["B Cinema","C Cinema"]}]}
         """.trimIndent()
 
-        val catalog = json.decodeFromString<CinemaCatalog>(body)
+        val catalog = LenientJson.decodeFromString<CinemaCatalog>(body)
 
         assertTrue(catalog.isSplit)
         assertEquals(3, catalog.cinemas.size)
@@ -40,7 +38,7 @@ class CinemaCatalogTest {
     fun decodesFlatCityWithEmptyAreas() {
         val body = """{"cinemas":["Only Cinema"],"areas":[]}"""
 
-        val catalog = json.decodeFromString<CinemaCatalog>(body)
+        val catalog = LenientJson.decodeFromString<CinemaCatalog>(body)
 
         assertFalse(catalog.isSplit)
         assertEquals(listOf("Only Cinema"), catalog.cinemas)
@@ -55,7 +53,7 @@ class CinemaCatalogTest {
 
     @Test
     fun cinemasToDisableExcludesUncheckedAreas() {
-        val catalog = json.decodeFromString<CinemaCatalog>(
+        val catalog = LenientJson.decodeFromString<CinemaCatalog>(
             """{"cinemas":["A Cinema","B Cinema","C Cinema"],
                 "areas":[{"name":"Central","slug":"central","cinemas":["A Cinema"]},
                          {"name":"North","slug":"north","cinemas":["B Cinema","C Cinema"]}]}"""
@@ -77,7 +75,7 @@ class CinemaCatalogTest {
     /** The server decides which venues are out of season; the filter sinks them to the bottom. */
     @Test
     fun outOfSeasonCinemasSinkToTheBottomOnTheServersVerdict() {
-        val catalog = json.decodeFromString<CinemaCatalog>(berlin)
+        val catalog = LenientJson.decodeFromString<CinemaCatalog>(berlin)
 
         assertTrue(catalog.isOffSeason("Freiluftkino Kreuzberg"))
         assertFalse(catalog.isOffSeason("Freiluftkino Rehberge"))   // seasonal, in season
@@ -91,7 +89,7 @@ class CinemaCatalogTest {
     /** The muted second line of an out-of-season row, in each UI language. */
     @Test
     fun backInSeasonLineInEachLanguage() {
-        val season = json.decodeFromString<CinemaCatalog>(berlin).seasonOf("Freiluftkino Kreuzberg")!!
+        val season = LenientJson.decodeFromString<CinemaCatalog>(berlin).seasonOf("Freiluftkino Kreuzberg")!!
 
         assertEquals("back in season · May–Sept", season.backInSeasonLine("en"))
         assertEquals("öffnet wieder · Mai–Sept.", season.backInSeasonLine("de"))
@@ -111,7 +109,7 @@ class CinemaCatalogTest {
     /** A catalog from a server that predates seasons decodes with none, and nothing sinks. */
     @Test
     fun catalogWithoutSeasonsHasNoneOutOfSeason() {
-        val catalog = json.decodeFromString<CinemaCatalog>("""{"cinemas":["A","B"],"areas":[]}""")
+        val catalog = LenientJson.decodeFromString<CinemaCatalog>("""{"cinemas":["A","B"],"areas":[]}""")
         assertTrue(catalog.seasons.isEmpty())
         assertEquals(listOf("A", "B"), catalog.seasonOrdered(catalog.cinemas))
     }
