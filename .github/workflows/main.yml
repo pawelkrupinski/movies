@@ -37,13 +37,15 @@ env:
 #
 #   ci (reusable workflow — lint, test, integration, ──┬─► publish-web
 #       ios/android local-server, page-tests)           ├─► image-worker ──► publish-worker
-#   gates (t=0: which tiers changed since their   ──────┤
-#          last deploy; both publishes read it)         └─► kick-convergence
+#   gates (t=0: which tiers changed since their   ──────┘
+#          last deploy; both publishes read it)
+#     └──► kick-convergence (minutes after the push, whether ci passes or not)
 #
-# NOTHING AFTER A RED ci (2026-10-22): every job here but `gates` and `timings` needs BOTH `ci` and `gates`
-# and runs only when both passed. A failed test row skips the worker image, both publishes and the
-# convergence dispatch instead of letting them take runners after the run is already lost.
-# (MainAfterRedCiSpec)
+# NOTHING SHIPS AFTER A RED ci (2026-10-22): the worker image and both publishes need BOTH `ci` and `gates`
+# and run only when both passed, instead of taking runners after the run is already lost.
+# `kick-convergence` is the one deliberate exception: it hangs off `gates` alone, because convergence
+# builds and judges the commit itself and behind ci it started ~50 min later (see its note).
+# (MainAfterRedCiSpec, KickConvergenceWiringSpec)
 #
 # ONE WORKFLOW, because there used to be three: this file plus
 # `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
@@ -195,13 +197,17 @@ jobs:
                       .github/actions/changed-paths/**
 
 
-    # Kick the convergence suite off ONCE ci IS GREEN (2026-10-22, the user's call). It used to
-    # start at the push, behind only `gates`, because convergence builds and judges the commit
-    # itself and a red or cancelled Main run then never dispatched (2026-10-15: the Arsenal
-    # client's push, f58b71add, waited 1 h 40 min for its first convergence run). Now that Main
-    # runs are never cancelled in flight, and a red run should stop taking runners, it waits:
-    # a red push's commits stay inside the next green run's interval, whose dispatch (diffed
-    # from each suite's own newest run, below) covers them. (MainAfterRedCiSpec)
+    # Kick the convergence suite off AT THE PUSH, behind only `gates` (seconds), never
+    # behind `ci`. Convergence builds and judges the commit itself; Main's tests add
+    # nothing to its answer. Hung off `ci`, a push whose Main run went red on an unrelated
+    # spec never dispatched at all: on 2026-10-15 the Arsenal client's push (f58b71add,
+    # 09:29 UTC) got its first convergence run at 11:08, after three cancelled and two red
+    # Main runs, while a landing waited on it. 65ed31dbf (2026-10-22) moved it behind
+    # `[ci, gates]` with the worker image; that put every dispatch ~50 min after the push,
+    # so it is back on `gates` alone (2026-10-23). The worker image and publishes still
+    # skip after a red ci (MainAfterRedCiSpec).
+    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `gates`
+    # alone (CiRunnerBudgetSpec): this job takes the slot gates has just given back.
     #
     # Two shapes this deliberately is not:
     #
@@ -228,7 +234,9 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        needs: [ci, gates]
+        needs: gates
+        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
+        if: ${{ !cancelled() }}
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
