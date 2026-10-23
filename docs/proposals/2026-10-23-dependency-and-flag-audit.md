@@ -80,9 +80,24 @@ as a single-node replica set `rs0` (2 vCPU, 4 GB, WiredTiger cache 1 GB, oplog 4
 
 - **`appName` per tier and country** — done: `kinowo-<tier>-<countries>`, e.g. `kinowo-web-pl`, `kinowo-worker-pl-uk`. Makes slow-op logs and `currentOp` attributable. Cheapest,
   highest-value diagnostic item.
-- **Client-side operation timeout (`timeout`, driver 5.2+ [unverified]).** About 35
-  `Await.result(..., 10.seconds)` budgets in `MongoTaskQueue`, `MongoChunkScrapeStore` and `MongoMovieRepository`.
-  With it the driver cancels server work instead of abandoning it. Medium effort.
+- **Client-side operation timeout (CSOT): built and tested, PARKED on the local branch `mongo-csot`
+  (`40978c08f`, on top of the `appName` commit; not pushed).** Kept, not landed, because driver 5.13 still marks the
+  whole API `@Alpha(Reason.CLIENT)`: no compatibility guarantee, "inadvisable in production". Land it once the
+  API is at least beta or release-candidate quality — the driver promotes it to `@Beta` or stable, or ships it in
+  an RC without `@Alpha` (re-check on each mongo-scala-driver bump, e.g. grep the jar for `@Alpha` on
+  `MongoClientSettings.Builder.timeout`). What the branch does:
+  - Web and worker clients get a 60 s `timeoutMS` (`MongoConnection.DefaultOperationTimeout`; tools none; a URI
+    `timeoutMS=` overrides). 60 s is the longest existing per-call `Await` budget, so it never cuts a call short.
+  - Change streams (`MovieChangeStream`, `SideCollectionWatch`, the `MongoTaskQueue` doorbell) and all 20 index
+    builds opt out via `OperationTimeoutOptOut.withoutOperationTimeout`. Without it a change stream dies with
+    `MongoOperationTimeoutException` once it idles for the timeout, and the watchers restart-loop on a backoff.
+  - Measured locally: a `$where: sleep(5000)` find under CSOT fails in ~1 s and is gone from `currentOp`; without
+    CSOT the `Await` gives up and the operation keeps running in mongod. (`$function` sleeps aren't interruptible.)
+  - `MongoOperationTimeoutIntegrationSpec` (5 tests) covers the server-side stop and the three watchers surviving
+    idle getMores; removing the opt-outs fails the watcher tests.
+  - Follow-up once landed: the hot 10 s stores (`MongoTaskQueue`, `MongoChunkScrapeStore`, `MongoMovieRepository`
+    point ops) take their own 10 s `withTimeout`, so mongod stops their work when their caller gives up.
+  - Probes ran against the local test mongod 7.0.45, not prod's 8.3.11.
 - Leave as they are: pool of 25, `w:1`, and compression (zlib on loopback only).
 
 ## JVM backend
