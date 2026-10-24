@@ -53,6 +53,20 @@ for kind in e2e pages browsers; do
     check "$kind: a markdown file inside a module moves it" "true" "$(verdict $kind web/src/main/resources/a.md)"
     check "$kind: an empty change moves nothing" "false" "$(printf '' | bash "$scope" $kind "$repo")"
 done
+# A live-scripts list past the pipe buffer (64 KiB): the membership test's `grep -q` closing its pipe early must not turn
+# a live script into "not live" (SIGPIPE on printf, 141 under pipefail). The match sorts first, so grep quits at once.
+big="$tmp/big"
+mkdir -p "$big/.github/workflows" "$big/scripts"
+: >"$big/.github/workflows/ci.yml"
+for i in $(seq 1 1200); do
+    name="zz-live-script-with-a-deliberately-long-name-to-fill-the-pipe-buffer-$i.sh"
+    echo "# $name" >"$big/scripts/$name"
+    echo "run: scripts/$name" >>"$big/.github/workflows/ci.yml"
+done
+echo "# first" >"$big/scripts/aa-first.sh"
+echo "run: scripts/aa-first.sh" >>"$big/.github/workflows/ci.yml"
+check "a live script is live though the live list outgrows the pipe buffer" "true" \
+    "$(echo scripts/aa-first.sh | bash "$scope" e2e "$big")"
 check "e2e: identity's tests move it (main.yml's web tier ships identity/**)" "true" \
     "$(verdict e2e identity/src/test/scala/ASpec.scala)"
 check "pages: identity's tests move nothing" "false" "$(verdict pages identity/src/test/scala/ASpec.scala)"

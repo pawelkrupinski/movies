@@ -123,7 +123,7 @@ compute_live_scripts() {
 
 script_is_live() {
     [ -n "$live_scripts" ] || compute_live_scripts
-    printf '%s\n' "$live_scripts" | grep -qxF "${1##*/}"
+    grep -qxF -- "${1##*/}" <<<"$live_scripts"
 }
 
 inert() {
