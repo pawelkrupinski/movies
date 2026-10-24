@@ -61,9 +61,9 @@ class WorkerRolloutStaggerSpec extends AnyFlatSpec with Matchers {
     probe should include("port: health")
   }
 
-  // The workers run SerialGC, whose full collections stop the whole JVM (the probe's HTTP thread
-  // included) for 2-4 s each, 7-12 times an hour per worker (jvm_gc_collection_seconds,
-  // MarkSweepCompact, 2026-10-21). /ready only reads a flag, but under kubelet's default 1 s timeout
+  // The workers ran SerialGC until 2026-10-24, whose full collections stopped the whole JVM (the
+  // probe's HTTP thread included) for 2-4 s each, 7-12 times an hour per worker (jvm_gc_collection_seconds,
+  // MarkSweepCompact, 2026-10-21); the Parallel collector since stops it too, for less time. /ready only reads a flag, but under kubelet's default 1 s timeout
   // every probe landing in such a pause failed with "context deadline exceeded" and flipped a settled
   // worker NotReady. It gets the budget /health's liveness probe already has on the same server.
   it should "give /ready as long to answer as /health, so a stop-the-world GC pause is not unreadiness" in {

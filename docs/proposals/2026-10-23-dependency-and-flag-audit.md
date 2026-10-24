@@ -165,6 +165,29 @@ each time:
 
 Other runtime items:
 
+- **Workers on the Parallel collector, not SerialGC [done 2026-10-24].** Measured from monitoring-1's Prometheus,
+  the 6 restart-free hours to 10-23 20:40Z (compact headers on): worker-de ran 4.2 full collections an hour at 3.1 s
+  each over a 377-459 MiB live set in its 592 MiB old gen, and 210 young ones at 71 ms; worker-us 2.0 at 3.5 s and 352
+  at 74 ms; GC 4-9% of each worker's CPU. Over the 7 days to 10-24 boots (first 20 minutes) were ~25% of full-GC
+  time, steady state the rest. Not a leak and not an undersized heap in steady state: the floors are flat within a
+  pod's life, and the promotion (DE 11.5, US 9.2 MiB/min) is the identity projection's per-tick working set (US: a
+  tick every ~1.5 min, 5-15 s, 0.6-1.8 GB allocated, so it always spans young collections), the 30-minute read-model
+  prune sweep and decoded TMDB documents (old-gen garbage after 19 min on worker-de: 94 MiB, ~80% of it BsonDocuments
+  and their entries; on worker-us 253 MiB, two corpus-sized sets of `Listing`, `ProjectedListing`, `ScreeningDays`,
+  `SuspectTakes$Take`). Serial reclaims that only by a single-threaded mark-compact of the whole live set. Collector
+  replay of worker-de's heap shape (8 min, three times prod's rates): pauses Serial 7.5 s, Parallel 8 threads 1.6 / 1.3
+  s, 4 threads 2.1 s, 2 threads 4.4 s, G1 2.3 s; process CPU 20.0, 22.5 / 19.7, 19.8, 19.5, 41.3 s; native GC memory
+  3, 42, 29, 23, 70 MB. Parallel at 4 threads (`infra/jvm/worker.options`): -72% pause at Serial's CPU; G1 doubled
+  CPU. Overlays still name `-XX:+UseSerialGC`; the launcher switches it off (`LauncherJvmFlagsSpec`), and the overlays
+  drop it in movies-gitops.
+  **Separate, not fixed by the collector:** on worker-us the hourly whole-corpus projection pushed the old gen from
+  432 to 768 of 768 MiB at 10-24 06:02Z; ~80 full collections reclaimed nothing, the String Deduplication table grew
+  and the pod was OOM-killed at 06:11:46Z. uk/de/pl reached 0.97 of their caps at the same tick (uptime ~60 min) on
+  10-23 and 10-24 and recovered. The whole tick's peak working set needs either US old-gen headroom (proposed:
+  `-Xmx1280m -Xmn384m`, 896 MiB old) or a smaller whole-projection working set.
+  Alerts on both tiers in `jvm-heap.rules`: `JvmFullGcRateHigh` (>60 full GCs/h over 30 min, held 10 min),
+  `JvmGcTimeShareHigh` (>10% of wall clock paused over 30 min, held 30 min), `JvmOldGenAfterGcNearCap` (old gen after
+  collections >90% of cap for 30 min; the Serial/Parallel branch only while full GCs run).
 - **The AOT cache carries almost no profiles [measured 2026-10-23, not adopted].** The training main
   (`tools.ClassArchiveTraining`) only loads classes. On local JDK 27+35 under the worker's launcher options plus PL's
   JAVA_OPTS, its cache holds 12,818 classes and 731 MethodTrainingData / 3,661 MethodCounters (`-Xlog:aot`), 125.5 MB.

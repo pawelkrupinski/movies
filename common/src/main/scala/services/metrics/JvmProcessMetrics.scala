@@ -26,8 +26,8 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *      `-Xmx`, GC pauses under load).
  *
  *  The two JVMs are tuned differently and their panels read that way: the worker
- *  runs SerialGC at `-Xmx320m` (old gen ~90% full at rest), the web app G1 at
- *  `-Xmx384m` (see each web overlay's `JAVA_OPTS`).
+ *  runs the Parallel collector (infra/jvm/worker.options; SerialGC until 2026-10-24) on its
+ *  overlay's heap, the web app G1 (see each overlay's `JAVA_OPTS`).
  *
  *  Deliberately NOT added: a per-task-type CPU counter. Cinema scrapes fan their
  *  parse work onto `ParallelDetailFetch`'s own executor, so `ThreadMXBean` on the

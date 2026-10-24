@@ -206,7 +206,7 @@
         },
         {
           "refId": "B",
-          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=\"Tenured Gen\"}",
+          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=~\"Tenured Gen|PS Old Gen\"}",
           "legendFormat": "old gen {{country}}",
           "datasource": {
             "type": "prometheus",

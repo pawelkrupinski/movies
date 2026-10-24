@@ -293,8 +293,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // A Serial-GC worker's old generation is -Xmx less its young generation (-Xmn; a third of the heap
-  // when unset). Packed close to its live set, every boot and every heavy tick ran back-to-back full
+  // A worker's old generation (SerialGC until 2026-10-24, the Parallel collector since: the same two fixed
+  // generations) is -Xmx less its young generation (-Xmn; a third of the heap when unset). Packed close to its live set, every boot and every heavy tick ran back-to-back full
   // collections: worker-uk's 341 MB old gen over a 268 MB median / 308 MB max live set ran 11 full GCs
   // and 16.2 s of them an hour (24 h to 2026-10-07 10:40 UTC), so it got -Xmn100m (412 MB old), and every
   // worker its young generation sized from its own live set the same day: the old gen a quarter over the

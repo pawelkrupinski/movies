@@ -123,6 +123,25 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The worker's collector is the launcher's, whatever an overlay still names: every country's JAVA_OPTS carry
+  // -XX:+UseSerialGC from before 2026-10-24, and the launcher's options come after them, switching it off for the
+  // Parallel collector. Two collectors left on refuse to start the JVM ("Multiple garbage collectors selected"), so
+  // this starts one under each country's real options. SerialGC paused each worker for every young and every full
+  // collection on ONE thread: a full one took 3.1 s on worker-de and 3.5 s on worker-us over their ~420-450 MB live sets.
+  /** The worker's parallel GC threads: see infra/jvm/worker.options for the measurement behind it. */
+  private val WorkerParallelGcThreads = 4
+
+  private val WorkerOverlays = Seq("pl", "uk", "de", "es", "us").map(cc => cc -> s"infra/kubernetes/worker/overlays/$cc/patch.yaml")
+
+  WorkerOverlays.foreach { case (cc, manifest) =>
+    s"the worker-$cc JVM" should "run the Parallel collector on its launcher's threads, not SerialGC" in {
+      val flags = finalFlags(productionOptions(manifest) ++ LauncherOptions.of("worker"))
+      Seq("UseParallelGC", "UseSerialGC", "UseG1GC", "ParallelGCThreads").map(flag => flag -> flags.get(flag)) shouldBe
+        Seq("UseParallelGC" -> Some("true"), "UseSerialGC" -> Some("false"), "UseG1GC" -> Some("false"),
+            "ParallelGCThreads" -> Some(WorkerParallelGcThreads.toString))
+    }
+  }
+
   // Does the worker's options file leave the flag set once the JVM has read it. Without a pre-touch the
   // heap is committed at boot and paged in only on first use, so worker-pl's RSS stepped +120 MB minutes
   // into a boot (2026-10-07 22:06, 10-12 01:22: the off-book gap -45 -> +76 MB) and that bounded step

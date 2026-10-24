@@ -19,7 +19,8 @@ class GrafanaGcChartsSpec extends AnyFlatSpec with Matchers {
 
   "the application-health dashboard" should "chart each tier's full collections per hour" in {
     val full = exprs.filter(e => e.contains("increase(jvm_gc_collection_seconds_count") && e.contains("[1h]"))
-    full.exists(e => e.contains("MarkSweepCompact") && e.contains("G1 Old Generation")) shouldBe true // the worker's Serial old, web's G1 old
+    // the worker's Parallel old (and Serial's, its collector until 2026-10-24, for the history), web's G1 old
+    full.exists(e => Seq("PS MarkSweep", "MarkSweepCompact", "G1 Old Generation").forall(e.contains)) shouldBe true
   }
 
   it should "chart the share of the wall clock each collector takes, per hour" in {

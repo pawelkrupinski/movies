@@ -2,8 +2,27 @@
 # JAVA_OPTS: the image's AOT cache (tools.ClassArchiveTraining) is trained through the same
 # launcher, and a cache trained under another collector or type-speculation setting does not map,
 # silently putting every class back into metaspace. AotCacheOptionsSpec holds the overlays to these.
-# SerialGC and no type speculation were carried from Fly as the fix for an OOM-restart loop under G1.
--XX:+UseSerialGC
+# No type speculation was carried from Fly with SerialGC, the fix for an OOM-restart loop under G1.
+#
+# The Parallel collector, not SerialGC (2026-10-24). Serial ran every young and every full collection on
+# one thread: over the 6 restart-free hours to 2026-10-23 20:40Z worker-de paused 3.1 s per full
+# collection (4.2 an hour, over a ~420 MB live set) and 71 ms per young one (210 an hour), worker-us 3.5 s
+# and 74 ms, 4-9% of each worker's CPU, and the hourly whole-corpus projection's working set, promoted
+# because it outlives several young collections, is reclaimed only by those full ones. Parallel keeps the
+# same two generations -- each overlay's -Xmn and NodeMemoryBudgetSpec's old-gen rule mean what they did --
+# and runs both collections on several threads. Measured on a replay of worker-de's heap (832m, -Xmn240m,
+# ~410 MB live, its allocation, promotion and a projection-sized working set held 20 s each minute,
+# three times prod's rates; 8 minutes each, local JDK 27): pause time Serial 7.5 s (7 full collections),
+# Parallel on 8 threads 1.6 / 1.3 s, on 4 threads 2.1 s, on 2 4.4 s (3 full collections each); process
+# CPU 20.0 / 22.5, 19.7 / 19.8 / 19.5 s; G1 2.3 s of pauses but twice Serial's CPU (41.3 s) and 67 MB of
+# native GC structures. Four threads -- 72% less pause at Serial's CPU -- so ten JVMs on k3s-worker-1's
+# eight cores do not each take all of them in a pause; their GC structures are 29 MB of native memory
+# (NMT) against Serial's 3. The AOT cache maps under it as under Serial (its archived heap is loaded).
+# Every overlay still names -XX:+UseSerialGC: switched off here, after it on the command line (two
+# collectors left on refuse to start the JVM), until the overlays drop it (LauncherJvmFlagsSpec).
+-XX:-UseSerialGC
+-XX:+UseParallelGC
+-XX:ParallelGCThreads=4
 -XX:-UseTypeSpeculation
 # Map the AOT cache at its own base instead of a random one: relocating it patches every pointer and
 # dirties every page, so the whole archive became private memory (worker image, PL options: 741 MB

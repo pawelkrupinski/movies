@@ -2525,7 +2525,7 @@
             },
             {
               "refId": "C",
-              "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=\"Tenured Gen\"}",
+              "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=~\"Tenured Gen|PS Old Gen\"}",
               "legendFormat": "Old gen {{country}}",
               "datasource": {
                 "type": "prometheus",
@@ -2857,7 +2857,7 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (job, country) (increase(jvm_gc_collection_seconds_count{job=~\"kinowo-worker|kinowo-web\",country=~\"$country\",gc=~\"MarkSweepCompact|G1 Old Generation\"}[1h]))",
+              "expr": "sum by (job, country) (increase(jvm_gc_collection_seconds_count{job=~\"kinowo-worker|kinowo-web\",country=~\"$country\",gc=~\"MarkSweepCompact|PS MarkSweep|G1 Old Generation\"}[1h]))",
               "legendFormat": "{{job}} {{country}}",
               "datasource": {
                 "type": "prometheus",
