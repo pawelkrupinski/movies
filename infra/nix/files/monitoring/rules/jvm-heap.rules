@@ -344,6 +344,130 @@ groups:
             NodeMemoryBudgetSpec's MeasuredLiveSetMaxMib for the country: a live set that grew with
             the corpus wants the heap re-sized there; one that jumped wants the structure found.
 
+      # IS A JVM'S BASELINE MEMORY HIGHER THAN IT WAS A WEEK AGO -- the slow regression every rule
+      # above is blind to. Each of them measures against a CAP (or a 30-minute straight line toward
+      # one), so a live set that grows 40% and still fits stays silent until the day it does not.
+      # Nothing noticed an identity change that raised per-tick allocation 5.1 -> 9.4 MB, and nothing
+      # would notice a cache that creeps up for a fortnight. This compares each JVM with ITSELF, same
+      # weekday, seven days earlier, so a change is caught in the week it ships.
+      #
+      # THE 24-HOUR MEDIAN, NOT A SHORT FLOOR. The first draft was `min_over_time(...[6h])`, and
+      # replayed over the 14 days to 2026-10-24 it held 49 episodes, because a boot's collections
+      # leave the old gen near empty and a SerialGC/Parallel worker reports 0 until its first full
+      # collection: one restart in the week-ago window divides by almost nothing (the ratio read
+      # `inf` on every worker). The median ignores a boot, covers a whole daily traffic cycle, and
+      # moves only once a change has held for half a day -- the right speed for a baseline.
+      #
+      # THE OLD GEN AFTER COLLECTION (`jvm_memory_pool_collection_used_bytes`), one series per JVM:
+      # `max by (job, country)` drops the pool label so the workers' 2026-10-24 switch from SerialGC
+      # (`Tenured Gen`) to Parallel (`PS Old Gen`) compares like with like instead of reading as a
+      # brand-new JVM for a week (431 vs 454 MiB on worker-de across it). On G1 (web) it includes
+      # garbage awaiting a mixed collection, so web's daily medians swing 20-40% on their own.
+      #
+      # IT FIRES ON THE CROSSING, NOT FOR AS LONG AS THE GAP LASTS. A week-over-week comparison stays
+      # true for up to seven days after a real step -- until the step enters the week-ago window --
+      # so the plain level fired 50-68% of the replayed fortnight and repeated a Telegram warning
+      # every 12 hours for a week about one change. The `unless` arm drops a JVM that already met
+      # the condition four hours ago: each crossing fires once (held an hour, so for about three)
+      # and resolves. One notice per regression is the point; the graph is where to watch it after.
+      #
+      # 1.25x AND +128 MiB. Daily medians over 2026-10-03..24: workers move < 10% a week except at
+      # real steps -- worker-de 263 -> 400 MiB on 10-13 (caught) and worker-uk 285 -> 353 on 10-14
+      # (MISSED at this floor: +96 MiB caught it but, with web's G1 swings, fired 8 times in 14 days
+      # and blew the backtest budget). Replayed, this fired 3 times: worker-de, and web-us's
+      # 349 -> 512 MiB climb 10-17..20, which the whole web tier shared and gave back on 10-21.
+      # The absolute floor keeps a 70 MiB heap doubling quiet.
+      #
+      # NO WEEK-AGO DATA, NO ALERT. The comparison drops a series whose week-ago window is empty, and
+      # the `offset 8d` presence term also requires the JVM to have existed when that window OPENED,
+      # so a country added 6 days ago does not compare its first day's boot against today. A new
+      # country is therefore unwatched by this rule for its first eight days.
+      - alert: JvmLiveHeapBaselineRising
+        expr: >-
+          (
+            quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m])
+              > 1.25 * quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m] offset 7d)
+            and
+            quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m])
+              - quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m] offset 7d)
+              > 128 * 1024 * 1024
+            and on (job, country)
+            max by (job, country) (last_over_time(jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}[1h] offset 8d))
+          )
+          unless on (job, country)
+          (
+            quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m] offset 4h)
+              > 1.25 * quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m] offset 7d4h)
+            and
+            quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m] offset 4h)
+              - quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|Tenured Gen|PS Old Gen"}))[24h:5m] offset 7d4h)
+              > 128 * 1024 * 1024
+          )
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} {{ $labels.country }} old gen after GC is {{ $value | humanize1024 }}B (24h median), up from {{ with printf `quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=%q, country=%q, pool=~\"G1 Old Gen|Tenured Gen|PS Old Gen\"}))[24h:5m] offset 7d)` $labels.job $labels.country | query }}{{ . | first | value | humanize1024 }}B{{ end }} a week ago"
+          description: >-
+            What collections leave in this JVM's old generation -- its live set plus what is
+            waiting to be collected -- has just risen more than 25% (and 128 MiB) above the same
+            day last week. Nothing is near a cap yet; this is the regression that gets there in a
+            few weeks, announced once and resolved after a few hours, not repeated. Compare the
+            commits deployed this week (`deployed-*` tags), then find what retains it: a class
+            histogram (`jcmd 1 GC.class_histogram`) or a heap dump (docs/heap-dumps.md), and the
+            `worker-diagnostics` dashboard. A per-tick allocation change shows in the allocation
+            budgets in tools.costs.PerformanceBudgets. A planned corpus or heap change raises this
+            too.
+
+      # THE SAME QUESTION FOR THE WHOLE PROCESS: resident memory, which on top of the heap counts
+      # metaspace, code cache, thread stacks, direct buffers, the String Deduplication table and
+      # malloc'd memory no JVM pool reports (the 445 MB that OOM-killed web-pl on 2026-09-21). A
+      # native leak never shows in the old gen, so the rule above cannot see it.
+      #
+      # RSS IS STEADIER THAN THE OLD GEN -- a JVM commits its heap and keeps it -- so the same shape
+      # carries less noise: web's daily medians stayed within ~10% for three weeks. 1.25x AND
+      # +128 MiB, fired on the crossing like the rule above: replayed over the 14 days to 2026-10-24
+      # it fired on worker-de's 10-13 step (1009 -> 1213 MiB, alongside its old gen) and three times
+      # on worker-es climbing ~600 -> ~780 MiB over 10-07..10, and on nothing else. 1.15x added
+      # web-es, worker-pl and worker-uk at 15-20%. Same week-ago and presence guards as above.
+      - alert: ProcessResidentBaselineRising
+        expr: >-
+          (
+            quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m])
+              > 1.25 * quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m] offset 7d)
+            and
+            quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m])
+              - quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m] offset 7d)
+              > 128 * 1024 * 1024
+            and on (job, country)
+            max by (job, country) (last_over_time(process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}[1h] offset 8d))
+          )
+          unless on (job, country)
+          (
+            quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m] offset 4h)
+              > 1.25 * quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m] offset 7d4h)
+            and
+            quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m] offset 4h)
+              - quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=~"kinowo-web|kinowo-worker"}))[24h:5m] offset 7d4h)
+              > 128 * 1024 * 1024
+          )
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} {{ $labels.country }} resident memory is {{ $value | humanize1024 }}B (24h median), up from {{ with printf `quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=%q, country=%q}))[24h:5m] offset 7d)` $labels.job $labels.country | query }}{{ . | first | value | humanize1024 }}B{{ end }} a week ago"
+          description: >-
+            This JVM's resident memory has just risen more than 25% (and 128 MiB) above the same
+            day last week, so its next spike starts that much closer to the container limit
+            (JvmResidentNearContainerLimit); announced once, resolved after a few hours. Split it
+            first: heap and non-heap pools are `jvm_memory_committed_bytes`, direct buffers
+            `jvm_buffer_pool_used_bytes{pool="direct"}`, the worker's native categories
+            `kinowo_worker_native_memory_bytes`; RSS minus those is memory no JVM pool sees. Then
+            compare the commits deployed this week (`deployed-*` tags), take a heap dump
+            (docs/heap-dumps.md) or read the `worker-diagnostics` dashboard, and check the
+            allocation budgets in tools.costs.PerformanceBudgets. A planned heap or limit change
+            raises this too.
+
       # A JVM WROTE A HEAP DUMP, i.e. it died of (or was about to die of) heap exhaustion and left
       # the evidence on k3s-worker-1. `ExitOnOutOfMemoryError` makes a heap OOM a clean exit and a
       # quiet restart, so without this the dump is the only trace -- and the budget keeps just the

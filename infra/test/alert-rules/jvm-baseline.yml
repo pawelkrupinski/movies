@@ -1,0 +1,98 @@
+# UNIT TESTS FOR THE WEEK-OVER-WEEK BASELINE ALERTS: JvmLiveHeapBaselineRising and
+# ProcessResidentBaselineRising (nix/files/monitoring/rules/jvm-heap.rules).
+#
+# Each compares a JVM's 24-hour median with the same window seven days earlier, so every series
+# here runs NINE DAYS at 5-minute samples: a week-ago level for the first eight days (index 0-2303),
+# then today's from 8d. The 24h median crosses ~8d12h (204h); held an hour, the alert fires at 206h
+# and, announced once, is quiet again at 212h, four hours past the crossing; at 202h nothing has
+# crossed yet. The week-ago window is 20h-44h at 206h. Each rule owes: a sustained ~30% rise firing
+# (across a restart's stale gap), +10% quiet, a large relative rise under the absolute floor quiet,
+# and quiet for a JVM with no week-ago data -- both one that did not exist then (uk) and one that
+# appeared INSIDE the week-ago window, whose first day would otherwise be its baseline (us).
+rule_files:
+  - ../../nix/files/monitoring/rules/jvm-heap.rules
+
+evaluation_interval: 5m
+
+tests:
+  # ── JvmLiveHeapBaselineRising ──────────────────────────────────────────────────────────────────
+  # worker-de's live set steps 400 -> 540 MiB (+35%, +140 MiB) on the day the workers also moved
+  # from SerialGC (Tenured Gen) to Parallel (PS Old Gen): one JVM, compared across the pool rename,
+  # through a restart. web-pl 1400 -> 1540 MiB (+10%, past the floor) and web-es 300 -> 420 MiB
+  # (+40% but +120 MiB) stay quiet, as do uk (no week-ago data) and us (born inside the window).
+  - interval: 5m
+    input_series:
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-de",job="kinowo-worker",country="de",pool="Tenured Gen"}'
+        values: '419430400+0x2303'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-de",job="kinowo-worker",country="de",pool="PS Old Gen"}'
+        values: '_x2304 566231040+0x100 stale stale stale 566231040+0x200'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-web-pl",job="kinowo-web",country="pl",pool="G1 Old Gen"}'
+        values: '1468006400+0x2303 1614807040+0x300'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-web-es",job="kinowo-web",country="es",pool="G1 Old Gen"}'
+        values: '314572800+0x2303 440401920+0x300'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-uk",job="kinowo-worker",country="uk",pool="PS Old Gen"}'
+        values: '_x1728 545259520+0x876'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-us",job="kinowo-worker",country="us",pool="PS Old Gen"}'
+        values: '_x360 104857600+0x1943 545259520+0x300'
+    alert_rule_test:
+      - eval_time: 202h
+        alertname: JvmLiveHeapBaselineRising
+        exp_alerts: []
+      - eval_time: 206h
+        alertname: JvmLiveHeapBaselineRising
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: de}
+            exp_annotations:
+              summary: "kinowo-worker de old gen after GC is 540MiB (24h median), up from 400MiB a week ago"
+              description: >-
+                What collections leave in this JVM's old generation -- its live set plus what is waiting to be collected
+                -- has just risen more than 25% (and 128 MiB) above the same day last week. Nothing is near a cap yet;
+                this is the regression that gets there in a few weeks, announced once and resolved after a few hours,
+                not repeated. Compare the commits deployed this week (`deployed-*` tags), then find what retains it: a
+                class histogram (`jcmd 1 GC.class_histogram`) or a heap dump (docs/heap-dumps.md), and the
+                `worker-diagnostics` dashboard. A per-tick allocation change shows in the allocation budgets in
+                tools.costs.PerformanceBudgets. A planned corpus or heap change raises this too.
+      # Announced once: four hours after the crossing it is no longer news, and stays quiet.
+      - eval_time: 212h
+        alertname: JvmLiveHeapBaselineRising
+        exp_alerts: []
+
+  # ── ProcessResidentBaselineRising ──────────────────────────────────────────────────────────────
+  # web-de's RSS 1000 -> 1300 MiB fires through a restart; worker-pl 2000 -> 2200 MiB (+10%, past
+  # the floor) and worker-es 300 -> 420 MiB (+40% but +120 MiB) stay quiet, as do uk (no week-ago
+  # data) and us (born inside the window).
+  - interval: 5m
+    input_series:
+      - series: 'process_resident_memory_bytes{instance="kinowo-web-de",job="kinowo-web",country="de"}'
+        values: '1048576000+0x2303 1363148800+0x100 stale stale stale 1363148800+0x200'
+      - series: 'process_resident_memory_bytes{instance="kinowo-worker-pl",job="kinowo-worker",country="pl"}'
+        values: '2097152000+0x2303 2306867200+0x300'
+      - series: 'process_resident_memory_bytes{instance="kinowo-worker-es",job="kinowo-worker",country="es"}'
+        values: '314572800+0x2303 440401920+0x300'
+      - series: 'process_resident_memory_bytes{instance="kinowo-web-uk",job="kinowo-web",country="uk"}'
+        values: '_x1728 1363148800+0x876'
+      - series: 'process_resident_memory_bytes{instance="kinowo-web-us",job="kinowo-web",country="us"}'
+        values: '_x360 314572800+0x1943 1363148800+0x300'
+    alert_rule_test:
+      - eval_time: 202h
+        alertname: ProcessResidentBaselineRising
+        exp_alerts: []
+      - eval_time: 206h
+        alertname: ProcessResidentBaselineRising
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-web, country: de}
+            exp_annotations:
+              summary: "kinowo-web de resident memory is 1.27GiB (24h median), up from 1000MiB a week ago"
+              description: >-
+                This JVM's resident memory has just risen more than 25% (and 128 MiB) above the same day last week, so
+                its next spike starts that much closer to the container limit (JvmResidentNearContainerLimit); announced
+                once, resolved after a few hours. Split it first: heap and non-heap pools are
+                `jvm_memory_committed_bytes`, direct buffers `jvm_buffer_pool_used_bytes{pool="direct"}`, the worker's
+                native categories `kinowo_worker_native_memory_bytes`; RSS minus those is memory no JVM pool sees. Then
+                compare the commits deployed this week (`deployed-*` tags), take a heap dump (docs/heap-dumps.md) or
+                read the `worker-diagnostics` dashboard, and check the allocation budgets in
+                tools.costs.PerformanceBudgets. A planned heap or limit change raises this too.
+      # Announced once: four hours after the crossing it is no longer news, and stays quiet.
+      - eval_time: 212h
+        alertname: ProcessResidentBaselineRising
+        exp_alerts: []
