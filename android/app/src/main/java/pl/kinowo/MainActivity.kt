@@ -3,6 +3,7 @@ package pl.kinowo
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -38,6 +39,7 @@ import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.model.LanguageDefault
 import pl.kinowo.net.KinowoApi
+import pl.kinowo.net.appUserAgent
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoApp
 import pl.kinowo.ui.KinowoViewModel
@@ -199,13 +201,19 @@ internal fun kinowoViewModelFactory(
     httpClient: OkHttpClient,
     cookieJar: PersistentCookieJar,
 ): KinowoViewModel.Factory {
-    val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient)
+    // The installed versionName (there is no BuildConfig — see NoBuildConfigTest);
+    // an unreadable one is "" which never parses, so it is treated as supported.
+    val appVersion = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    }.getOrNull().orEmpty()
+    val userAgent = appUserAgent(appVersion, Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
+    val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient, userAgent = userAgent)
     val repository = RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer()))
     val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
     val authRepository = AuthRepository(httpClient, cookieJar, baseUrl = country.baseUrl,
-        pendingVerifier = SharedPrefsPendingVerifierStore(context))
-    val hiddenFilmsClient = HttpHiddenFilmsClient(baseUrl = country.baseUrl, client = httpClient)
-    val languageClient = HttpLanguageClient(baseUrl = country.baseUrl, client = httpClient)
+        pendingVerifier = SharedPrefsPendingVerifierStore(context), userAgent = userAgent)
+    val hiddenFilmsClient = HttpHiddenFilmsClient(baseUrl = country.baseUrl, client = httpClient, userAgent = userAgent)
+    val languageClient = HttpLanguageClient(baseUrl = country.baseUrl, client = httpClient, userAgent = userAgent)
     // The country/city catalog: seeded from the bundled assets snapshot (so a
     // fresh install renders offline and the first fetch already carries the
     // build's ETag), refreshed via `api` (KinowoApi implements CatalogApi),
@@ -215,11 +223,6 @@ internal fun kinowoViewModelFactory(
         context.assets.open("catalog-seed.json").bufferedReader().use { it.readText() }
     }.getOrNull()
     val catalogRepository = CatalogRepository(api, CatalogCache(context.filesDir), catalogSeed)
-    // The installed versionName (there is no BuildConfig — see NoBuildConfigTest);
-    // an unreadable one is "" which never parses, so it is treated as supported.
-    val appVersion = runCatching {
-        context.packageManager.getPackageInfo(context.packageName, 0).versionName
-    }.getOrNull().orEmpty()
     return KinowoViewModel.Factory(
         repository, detailsRepository, UserPreferences(context), authRepository,
         hiddenFilmsClient, languageClient, api, catalogRepository, LocationCityResolver(context),

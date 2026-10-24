@@ -22,7 +22,7 @@ class KinowoApiDecodingTest {
 
     @get:Rule
     val mock = MockWebServerRule()
-    private val api by lazy { KinowoApi(baseUrl = mock.baseUrl, client = OkHttpClient()) }
+    private val api by lazy { KinowoApi(baseUrl = mock.baseUrl, client = OkHttpClient(), userAgent = TEST_USER_AGENT) }
 
     @Test
     fun aStreamedRepertoireDecodesToTheSameFilms() = runBlocking {

@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import pl.kinowo.contracts.MockWebServerRule
+import pl.kinowo.net.TEST_USER_AGENT
 
 /**
  * Pins the URL/header shape [HttpHiddenFilmsClient] builds, against a real
@@ -23,7 +24,7 @@ class HiddenFilmsClientPathTest {
     @get:Rule
     val mock = MockWebServerRule()
     private val server get() = mock.server
-    private val client by lazy { HttpHiddenFilmsClient(baseUrl = mock.baseUrl, client = OkHttpClient()) }
+    private val client by lazy { HttpHiddenFilmsClient(baseUrl = mock.baseUrl, client = OkHttpClient(), userAgent = TEST_USER_AGENT) }
 
     @Test
     fun fetchPathCarriesTheCountry() = runBlocking {

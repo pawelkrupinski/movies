@@ -21,7 +21,7 @@ class KinowoApiPathTest {
     @get:Rule
     val mock = MockWebServerRule()
     private val server get() = mock.server
-    private val api by lazy { KinowoApi(baseUrl = mock.baseUrl, client = OkHttpClient()) }
+    private val api by lazy { KinowoApi(baseUrl = mock.baseUrl, client = OkHttpClient(), userAgent = TEST_USER_AGENT) }
 
     @Test
     fun repertoirePathCarriesTheCitySlug() = runBlocking {
@@ -63,7 +63,7 @@ class KinowoApiPathTest {
             }
             .build()
         server.enqueue(MockResponse().setBody("[]"))
-        KinowoApi(baseUrl = mock.baseUrl, client = given).fetchRepertoire(citySlug = "poznan", ifModifiedSince = null)
+        KinowoApi(baseUrl = mock.baseUrl, client = given, userAgent = TEST_USER_AGENT).fetchRepertoire(citySlug = "poznan", ifModifiedSince = null)
         assertEquals("yes", server.takeRequest().getHeader("X-Given-Client"))
     }
 }

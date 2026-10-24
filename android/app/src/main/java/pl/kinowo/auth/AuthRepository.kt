@@ -1,6 +1,5 @@
 package pl.kinowo.auth
 
-import pl.kinowo.net.USER_AGENT
 import pl.kinowo.net.JSON_MEDIA_TYPE
 import android.content.Context
 import android.net.Uri
@@ -35,6 +34,8 @@ class AuthRepository(
     private val cookieJar: PersistentCookieJar,
     internal val baseUrl: String,
     private val pendingVerifier: PendingVerifierStore,
+    /** See [pl.kinowo.net.appUserAgent]. */
+    private val userAgent: String,
 ) {
 
     private val _user = MutableStateFlow<UserProfile?>(null)
@@ -67,7 +68,7 @@ class AuthRepository(
     suspend fun checkSession() = adoptProfileFrom(
         Request.Builder()
             .url("$baseUrl/api/me")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .build(),
     )
 
@@ -95,7 +96,7 @@ class AuthRepository(
     suspend fun deleteAccount() = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/api/me")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .delete()
             .build()
         runCatchingCancellable { client.newCall(request).execute().close() }
@@ -110,7 +111,7 @@ class AuthRepository(
     private fun post(path: String, jsonBody: String): Request =
         Request.Builder()
             .url("$baseUrl/$path")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .post(jsonBody.toRequestBody(JSON_MEDIA_TYPE))
             .build()
 

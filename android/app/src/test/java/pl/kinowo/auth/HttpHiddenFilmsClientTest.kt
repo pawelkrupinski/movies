@@ -6,6 +6,7 @@ import org.junit.Rule
 import org.junit.Test
 import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
+import pl.kinowo.net.TEST_USER_AGENT
 
 /** [HttpHiddenFilmsClient]'s writes tell an edit the server refuses for good
  *  from a failure worth resending, so [StateSyncService] can stop owing the
@@ -15,7 +16,7 @@ class HttpHiddenFilmsClientTest {
     @get:Rule
     val mock = MockWebServerRule()
     private val server get() = mock.server
-    private val client by lazy { HttpHiddenFilmsClient(baseUrl = mock.baseUrl, client = OkHttpClient()) }
+    private val client by lazy { HttpHiddenFilmsClient(baseUrl = mock.baseUrl, client = OkHttpClient(), userAgent = TEST_USER_AGENT) }
 
     /** Only 400 (over-long title, unknown country) and 413 (full bucket) are
      *  refused for good; a 403 in particular is as likely a Cloudflare challenge

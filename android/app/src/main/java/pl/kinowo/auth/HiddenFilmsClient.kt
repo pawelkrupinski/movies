@@ -1,6 +1,5 @@
 package pl.kinowo.auth
 
-import pl.kinowo.net.USER_AGENT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -64,12 +63,14 @@ class HiddenFilmsWriteRefused(val statusCode: Int) : IOException("HTTP $statusCo
 class HttpHiddenFilmsClient(
     internal val baseUrl: String,
     private val client: OkHttpClient,
+    /** See [pl.kinowo.net.appUserAgent]. */
+    private val userAgent: String,
 ) : HiddenFilmsClient {
 
 
     override suspend fun fetch(country: String, etag: String?, lastModified: String?): HiddenFilmsFetchResult =
         withContext(Dispatchers.IO) {
-            val builder = Request.Builder().url(urlFor(country)).header("User-Agent", USER_AGENT)
+            val builder = Request.Builder().url(urlFor(country)).header("User-Agent", userAgent)
             // If-None-Match, when present, is authoritative over If-Modified-Since
             // (RFC 7232 §3.3) — only the ETag reflects hiddenFilms specifically, so
             // only send the date-based validator when there's no ETag to send instead.
@@ -96,7 +97,7 @@ class HttpHiddenFilmsClient(
         write(Request.Builder().url(urlFor(country)).delete())
 
     private suspend fun write(builder: Request.Builder): HiddenFilmsState = withContext(Dispatchers.IO) {
-        val request = builder.header("User-Agent", USER_AGENT).build()
+        val request = builder.header("User-Agent", userAgent).build()
         client.newCall(request).execute().use { response ->
             if (HiddenFilmsWriteRefused.isPermanent(response.code)) throw HiddenFilmsWriteRefused(response.code)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")

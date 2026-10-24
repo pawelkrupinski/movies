@@ -17,6 +17,7 @@ import org.robolectric.annotation.Config
 import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.net.KinowoApi
 import java.util.concurrent.TimeUnit
+import pl.kinowo.net.TEST_USER_AGENT
 
 /**
  * Posters go through the app's one OkHttp client, not a second client Coil
@@ -40,7 +41,7 @@ class SharedHttpClientTest {
         server.enqueue(MockResponse().setBody("[]"))
         server.enqueue(MockResponse().setBody("poster bytes"))
 
-        KinowoApi(baseUrl = mock.baseUrl, client = app.httpClient).fetchRepertoire("poznan", ifModifiedSince = null)
+        KinowoApi(baseUrl = mock.baseUrl, client = app.httpClient, userAgent = TEST_USER_AGENT).fetchRepertoire("poznan", ifModifiedSince = null)
         loadPoster()
 
         assertEquals(0, takeRequest().sequenceNumber)
@@ -52,7 +53,7 @@ class SharedHttpClientTest {
         server.enqueue(MockResponse().setBody("[]").addHeader("Set-Cookie", "PLAY_SESSION=signed-in; Path=/"))
         server.enqueue(MockResponse().setBody("poster bytes"))
 
-        KinowoApi(baseUrl = mock.baseUrl, client = app.httpClient).fetchRepertoire("poznan", ifModifiedSince = null)
+        KinowoApi(baseUrl = mock.baseUrl, client = app.httpClient, userAgent = TEST_USER_AGENT).fetchRepertoire("poznan", ifModifiedSince = null)
         loadPoster()
 
         takeRequest()

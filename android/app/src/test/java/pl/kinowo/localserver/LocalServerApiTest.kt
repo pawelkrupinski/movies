@@ -12,6 +12,7 @@ import org.junit.Test
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.KinowoApi
+import pl.kinowo.net.TEST_USER_AGENT
 
 /**
  * Android twin of the iOS `LocalServer` suite: hits a live boot of
@@ -41,7 +42,7 @@ class LocalServerApiTest {
             "set KINOWO_LOCAL_URL to run LocalServer tests (boot FixtureServerMain)",
             !base.isNullOrBlank(),
         )
-        api = KinowoApi(baseUrl = base!!, client = OkHttpClient())
+        api = KinowoApi(baseUrl = base!!, client = OkHttpClient(), userAgent = TEST_USER_AGENT)
     }
 
     @Test

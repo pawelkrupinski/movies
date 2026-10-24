@@ -14,6 +14,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.net.PersistentCookieJar
+import pl.kinowo.net.TEST_USER_AGENT
 
 /**
  * [AuthRepository.exchangeCode] runs in a bare `viewModelScope.launch` (the
@@ -35,6 +36,7 @@ class AuthRepositoryFailureTest {
         PersistentCookieJar(ApplicationProvider.getApplicationContext()),
         baseUrl,
         SharedPrefsPendingVerifierStore(ApplicationProvider.getApplicationContext()),
+        TEST_USER_AGENT,
     ).also { it.webSignInUrl("google") } // a sign-in in flight, so exchangeCode really calls out
 
     @Test

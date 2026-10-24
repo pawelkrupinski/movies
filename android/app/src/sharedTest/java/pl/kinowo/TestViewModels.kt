@@ -25,6 +25,7 @@ import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoViewModel
 import java.io.IOException
+import pl.kinowo.net.TEST_USER_AGENT
 
 // Shared by the JVM (`src/test`) and on-device (`src/androidTest`) suites —
 // see the `sharedTest` source set in build.gradle.kts.
@@ -65,13 +66,13 @@ fun testKinowoViewModel(
     catalogSeed: String? = null,
     clientSupportGate: ClientSupportGate = offlineClientSupportGate(),
 ): KinowoViewModel {
-    val api = KinowoApi(baseUrl = UNREACHABLE_BASE_URL, client = http)
+    val api = KinowoApi(baseUrl = UNREACHABLE_BASE_URL, client = http, userAgent = TEST_USER_AGENT)
     return KinowoViewModel(
         repository = repository ?: RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer())),
         detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer())),
         prefs = prefs,
         authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = UNREACHABLE_BASE_URL,
-            pendingVerifier = SharedPrefsPendingVerifierStore(context)),
+            pendingVerifier = SharedPrefsPendingVerifierStore(context), userAgent = TEST_USER_AGENT),
         sync = sync,
         catalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },
         catalogRepository = CatalogRepository(

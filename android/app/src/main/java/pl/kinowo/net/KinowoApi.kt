@@ -46,7 +46,7 @@ fun interface ClientSupportApi {
  * listing), `/{city}/api/details` (synopsis, trailers, cast) and
  * `/{city}/api/cinemas`, plus the country-agnostic `/api/catalog` and
  * `/api/client-support`. Mirrors iOS `RepertoireStore` transport:
- * a `KinowoAndroid/1.0` User-Agent, conditional GET via `If-Modified-Since`,
+ * the app's User-Agent ([appUserAgent]), conditional GET via `If-Modified-Since`,
  * and no on-disk URLCache.
  *
  * [client] is the composition root's (`KinowoApplication`): the one
@@ -57,6 +57,8 @@ fun interface ClientSupportApi {
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.net",
     private val client: OkHttpClient,
+    /** See [appUserAgent]. */
+    private val userAgent: String,
 ) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi, ClientSupportApi {
 
     /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
@@ -79,7 +81,7 @@ class KinowoApi(
     override suspend fun fetchCatalog(ifNoneMatch: String?): FetchedCatalog = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
             .url("$baseUrl/api/catalog")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .cacheControl(CacheControl.FORCE_NETWORK)
         if (ifNoneMatch != null) builder.header("If-None-Match", ifNoneMatch)
         client.newCall(builder.build()).execute().use { response ->
@@ -94,7 +96,7 @@ class KinowoApi(
     override suspend fun fetchClientSupport(): String = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/api/client-support")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .cacheControl(CacheControl.FORCE_NETWORK)
             .build()
         client.newCall(request).execute().use { response ->
@@ -114,7 +116,7 @@ class KinowoApi(
     override suspend fun fetchCinemas(citySlug: String): CinemaCatalog = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/$citySlug/api/cinemas")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .cacheControl(CacheControl.FORCE_NETWORK)
             .build()
         client.newCall(request).execute().use { response ->
@@ -129,7 +131,7 @@ class KinowoApi(
     ): Fetched<T> = withContext(Dispatchers.IO) {
         val builder = Request.Builder()
             .url(url)
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .cacheControl(CacheControl.FORCE_NETWORK)
         if (ifModifiedSince != null) builder.header("If-Modified-Since", ifModifiedSince)
         client.newCall(builder.build()).execute().use { response ->

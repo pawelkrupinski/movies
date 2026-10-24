@@ -1,6 +1,5 @@
 package pl.kinowo.auth
 
-import pl.kinowo.net.USER_AGENT
 import pl.kinowo.net.JSON_MEDIA_TYPE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,13 +45,15 @@ class LanguagePushRefused(val statusCode: Int) : IOException("HTTP $statusCode")
 class HttpLanguageClient(
     internal val baseUrl: String,
     private val client: OkHttpClient,
+    /** See [pl.kinowo.net.appUserAgent]. */
+    private val userAgent: String,
 ) : LanguageClient {
 
 
     override suspend fun fetch(): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/api/me/state")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
@@ -72,7 +73,7 @@ class HttpLanguageClient(
         val payload = LenientJson.encodeToString(WireLanguage(language))
         val request = Request.Builder()
             .url("$baseUrl/api/me/state")
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", userAgent)
             .put(payload.toRequestBody(JSON_MEDIA_TYPE))
             .build()
         client.newCall(request).execute().use { response ->

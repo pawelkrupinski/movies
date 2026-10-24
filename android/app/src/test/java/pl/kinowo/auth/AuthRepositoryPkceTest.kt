@@ -18,6 +18,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.net.PersistentCookieJar
+import pl.kinowo.net.TEST_USER_AGENT
 
 /**
  * The native sign-in's PKCE-style verifier: the start URL carries the S256
@@ -38,6 +39,7 @@ class AuthRepositoryPkceTest {
         PersistentCookieJar(ApplicationProvider.getApplicationContext()),
         mock.baseUrl,
         SharedPrefsPendingVerifierStore(ApplicationProvider.getApplicationContext()),
+        TEST_USER_AGENT,
     )
 
     @Test

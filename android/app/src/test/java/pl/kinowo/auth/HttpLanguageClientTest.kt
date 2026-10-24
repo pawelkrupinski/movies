@@ -6,6 +6,7 @@ import org.junit.Rule
 import org.junit.Test
 import pl.kinowo.contracts.MockWebServerRule
 import pl.kinowo.contracts.assertEveryCallSettlesAsTheTableSays
+import pl.kinowo.net.TEST_USER_AGENT
 
 /** [HttpLanguageClient.push] tells a pick the server refuses for good (a
  *  language it does not know) from a failure worth retrying, so
@@ -16,7 +17,7 @@ class HttpLanguageClientTest {
     @get:Rule
     val mock = MockWebServerRule()
     private val server get() = mock.server
-    private val client by lazy { HttpLanguageClient(baseUrl = mock.baseUrl, client = OkHttpClient()) }
+    private val client by lazy { HttpLanguageClient(baseUrl = mock.baseUrl, client = OkHttpClient(), userAgent = TEST_USER_AGENT) }
 
     /** Only a 400 (a language this server does not know) is refused for good; a
      *  403 in particular is as likely a Cloudflare challenge in front of the app.
