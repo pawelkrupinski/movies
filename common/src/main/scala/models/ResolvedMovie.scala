@@ -69,7 +69,12 @@ case class ResolvedMovie(
   // Published by the first-publish gate's timeout, before its share card existed — so a
   // preview scraper may have cached the fallback image for it. Cleared once the card lands;
   // the worker then asks Facebook to scrape the film's pages again.
-  shareCardPending:   Boolean             = false
+  shareCardPending:   Boolean             = false,
+  // Curated spellings of the title the search matches besides the shown one: each metadata
+  // source's original title (TMDB's native, IMDb's and Filmweb's, which romanise it the way the
+  // language does: "Toki o Kakeru Shōjo", "Khers nist") and TMDB's English title. Never the shown
+  // title again. Defaulted + last, like the fields above, so legacy documents decode to none.
+  searchTitles:       Seq[String]         = Seq.empty
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id

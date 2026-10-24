@@ -48,8 +48,8 @@ case class FilmSchedule(
   lazy val posterHref: Option[WebHref] = posterUrl.flatMap(WebHref.of)
 
   /** What the search matches besides the title ([[SearchTitles]]): once per schedule, which is
-   *  reused render after render, rather than a transliteration per card per request. */
-  lazy val searchTitles: Seq[String] = SearchTitles.of(movie.title, resolved.originalTitle)
+   *  reused render after render, rather than folding spellings per card per request. */
+  lazy val searchTitles: Seq[String] = SearchTitles.of(movie.title, resolved.originalTitle, resolved.searchTitles)
 
   /** The resolved fallback posters a page may load ([[WebHref]]), in their order. */
   lazy val fallbackPosterHrefs: Seq[WebHref] = resolved.fallbackPosterUrls.flatMap(WebHref.of)

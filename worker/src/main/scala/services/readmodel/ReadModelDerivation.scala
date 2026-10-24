@@ -67,7 +67,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("a0adc5be65f4e421"), DerivationScope.Cards),
     // A card's lookup title reads the billing's work (`BillingParse.work`: a strand's piece off), and its display cases a
     // strand's banner apart from the work.
-    Derivation(DerivationVersion("cab16a08fb4b51ac"), DerivationScope.Cards))
+    Derivation(DerivationVersion("cab16a08fb4b51ac"), DerivationScope.Cards),
+    // A card carries the curated spellings of its title the search matches (`ResolvedMovie.searchTitles`: the
+    // sources' original titles and TMDB's English one).
+    Derivation(DerivationVersion("93a1264d51df13fa"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

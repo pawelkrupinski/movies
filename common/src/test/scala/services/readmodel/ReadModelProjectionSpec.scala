@@ -336,6 +336,44 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       Seq("iwangrozny|1944", s"iwangrozny|1944~${titleNormalizer.sanitize("Иван Грозный")}")
   }
 
+  // What the search matches besides the shown title: every metadata source's original title
+  // (TMDB's native one, IMDb's and Filmweb's, which romanise it as the language does) and TMDB's
+  // English title -- curated spellings, far better than a transliteration of the native title.
+  "resolve" should "carry the curated spellings of a film's title for the search" in {
+    val record = MovieRecord(
+      tmdbId = Some(38142),
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("O dziewczynie skaczącej przez czas"), showtimes = Seq(at("2026-06-12T18:00"))),
+        Tmdb      -> SourceData(title = Some("O dziewczynie skaczącej przez czas"), originalTitle = Some("時をかける少女"),
+          englishTitle = Some("The Girl Who Leapt Through Time"), releaseYear = Some(2006)),
+        Imdb      -> SourceData(originalTitle = Some("Toki o kakeru shôjo")),
+        Filmweb   -> SourceData(originalTitle = Some("Toki o Kakeru Shōjo"))
+      )
+    )
+    val movie = ReadModelProjection.resolve(StoredMovieRecord.fromStorage("odziewczynieskaczacejprzezczas|2006", record, titleNormalizer), titleNormalizer)
+    movie.searchTitles shouldBe Seq("時をかける少女", "Toki o kakeru shôjo", "Toki o Kakeru Shōjo", "The Girl Who Leapt Through Time")
+  }
+
+  it should "leave out a spelling that is the shown title again, and repeats of one" in {
+    val record = MovieRecord(
+      tmdbId = Some(1),
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Dune"), showtimes = Seq(at("2026-06-12T18:00"))),
+        Tmdb      -> SourceData(title = Some("Dune"), originalTitle = Some("Dune"), englishTitle = Some("DUNE"), releaseYear = Some(2021)),
+        Imdb      -> SourceData(originalTitle = Some("Dune")),
+        Filmweb   -> SourceData(originalTitle = Some("  "))
+      )
+    )
+    ReadModelProjection.resolve(StoredMovieRecord.fromStorage("dune|2021", record, titleNormalizer), titleNormalizer).searchTitles shouldBe Nil
+  }
+
+  it should "scope a split row's spellings to each card's own title" in {
+    val cards = ReadModelProjection.projectAll(twoTitleStored, titleNormalizer).map(_._1)
+    cards.map(c => c.title -> c.searchTitles) should contain theSameElementsAs Seq(
+      "Iwan Groźny"  -> Seq("Ivan Groznyy"),
+      "Иван Грозный" -> Seq("Ivan Groznyy"))
+  }
+
   "partition" should "answer every question of a row from one derivation of its variants" in {
     // The projector asks a row for its card ids, its screening ids and its projection in
     // one sweep; each answer used to re-partition the slots. Counted at the normalizer:

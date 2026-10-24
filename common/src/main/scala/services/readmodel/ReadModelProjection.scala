@@ -83,8 +83,20 @@ object ReadModelProjection {
       trailerUrls        = r.trailerUrls.flatMap(TrailerEmbed.embedUrlFor).distinct,
       ratings            = ratingsFor(r, title),
       weightedRating     = r.weightedRating,
-      ageRating          = r.ageRating
+      ageRating          = r.ageRating,
+      searchTitles       = searchTitlesOf(r, title)
     )
+  }
+
+  /** The metadata sources whose original titles the search matches: TMDB's is the native title,
+   *  IMDb's and Filmweb's usually the romanisation its language uses. */
+  private val SearchTitleSources: Seq[Source] = Seq(Tmdb, Imdb, Filmweb)
+
+  /** [[ResolvedMovie.searchTitles]]: those sources' original titles and TMDB's English title, each
+   *  once (by case), none the shown `title` again. */
+  private def searchTitlesOf(r: MovieRecord, title: String): Seq[String] = {
+    val spellings = SearchTitleSources.flatMap(r.data.get).flatMap(_.originalTitle) ++ r.data.get(Tmdb).flatMap(_.englishTitle)
+    spellings.map(_.trim).filter(_.nonEmpty).filterNot(_.equalsIgnoreCase(title.trim)).distinctBy(_.toLowerCase(java.util.Locale.ROOT))
   }
 
   /** Per-city synopsis overrides for the read model, keyed by `City.slug`. For
@@ -379,7 +391,8 @@ object ReadModelProjection {
       ratings        = ratingsFor(r, variant.title),
       // Scope the certificate to this variant's sources too — a split row's badge
       // should come from the cinema actually shown in the variant.
-      ageRating      = variant.scoped.ageRating
+      ageRating      = variant.scoped.ageRating,
+      searchTitles   = searchTitlesOf(r, variant.title)
     )
   }
 

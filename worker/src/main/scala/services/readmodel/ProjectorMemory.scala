@@ -74,7 +74,7 @@ private[readmodel] final case class CardHash(parts: Map[String, Int]) {
 private[readmodel] object CardHash {
   import ReadModelProjectionMetrics.CardPart
   def of(m: ResolvedMovie): CardHash = CardHash(Map(
-    CardPart.Title          -> (m.title, m.originalTitle).##,
+    CardPart.Title          -> (m.title, m.originalTitle, m.searchTitles).##,
     CardPart.Poster         -> (m.posterUrl, m.fallbackPosterUrls).##,
     CardPart.Facts          -> (m.runtimeMinutes, m.releaseYear, m.genres, m.countries, m.directors, m.cast).##,
     CardPart.Synopsis       -> m.synopsis.##,

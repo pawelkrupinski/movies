@@ -121,8 +121,12 @@ final class LocalServerRepertoireTests: LocalServerTestCase {
         let lambs = try XCTUnwrap(films.first { $0.title == "Milczenie owiec" }, "fixture film missing")
         XCTAssertEqual(lambs.searchTitles, ["The Silence of the Lambs"])
         let lanterns = try XCTUnwrap(films.first { $0.title == "Zawieście czerwone latarnie" }, "fixture film missing")
-        XCTAssertEqual(lanterns.searchTitles?.first, "大红灯笼高高挂")
-        XCTAssertEqual(lanterns.searchTitles?.count, 2, "the original and its romanisation")
+        let spellings = lanterns.searchTitles ?? []
+        XCTAssertEqual(spellings.first, "大红灯笼高高挂", "the original title first")
+        XCTAssertTrue(spellings.contains("Raise the Red Lantern"), "TMDB's English title: \(spellings)")
+        XCTAssertTrue(spellings.contains("Da hong deng long gao gao gua"), "a source's own romanisation: \(spellings)")
+        let lanternsFound = films.filteredFor(date: .anytime, format: .empty, query: "red lantern", hidden: [])
+        XCTAssertTrue(lanternsFound.map(\.title).contains("Zawieście czerwone latarnie"))
         let found = films.filteredFor(date: .anytime, format: .empty, query: "silence of the lambs", hidden: [])
         XCTAssertEqual(found.map(\.title), ["Milczenie owiec"])
     }
