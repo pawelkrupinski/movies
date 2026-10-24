@@ -14,7 +14,7 @@ import org.scalatest.matchers.should.Matchers
 class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
 
   private val fetch   = new FakeHttpFetch("08-06-2026", strict = true)
-  private val tmdb    = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ())
+  private val tmdb    = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")))
   private val lookups = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), Nil)
 
   "a film's identity record" should "carry what the calibrated measures read: title, year, runtime, directors, countries" in {
@@ -51,7 +51,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       "suggestion/c/Caligula" -> fixture("test/resources/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json"),
       "/find/tt29703523"      -> fixture("test/resources/fixtures/tmdb/find_tt29703523.json"),
       "/find/tt0080491"       -> fixture("test/resources/fixtures/tmdb/find_tt0080491.json")))
-    val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ())
+    val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")))
     val hits = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil)
       .candidates(CandidateQuery.Imdb("Caligula: The Ultimate Cut")).toOption.get
     hits.map(h => (h.tmdbId, h.title, h.year)) shouldBe Seq((1774981, "Caligula: The Ultimate Cut", Some(2024)), (9453, "Caligula", Some(1979)))
@@ -75,7 +75,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       }
       def post(url: String, body: String, contentType: String): String = throw new java.io.IOException("no posts")
     }
-    val lookups = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ()),
+    val lookups = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay"))),
       new services.enrichment.ImdbClient(tools.RoutingHttpFetch.dead("imdb")), Nil)
     val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
     try Seq("one", "two").map(title => pool.submit(() => lookups.candidates(CandidateQuery.Title(title)))).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
@@ -94,7 +94,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       "/find/tt0080491"       -> fixture("test/resources/fixtures/tmdb/find_tt0080491.json")))
     def get(url: String): String = { if (url.contains("suggestion/")) reading(reads.incrementAndGet()); routes.get(url) }
     def post(url: String, body: String, contentType: String): String = throw new java.io.IOException("no posts")
-    def lookups = new TmdbIdentityLookups(new TmdbClient(this, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ()),
+    def lookups = new TmdbIdentityLookups(new TmdbClient(this, apiKey = Some(settings.TmdbApiKey("replay"))),
       new services.enrichment.ImdbClient(this), Nil)
   }
   private val Caligula = "Caligula: The Ultimate Cut"

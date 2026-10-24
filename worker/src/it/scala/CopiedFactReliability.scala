@@ -71,7 +71,7 @@ object CopiedFactReliability {
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
     val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
-      language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
+      language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
     val resolution = IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver)
     val byTitle    = judged.groupBy(_.rawTitle)

@@ -46,7 +46,7 @@ class TmdbRecordBackfillSpec extends AnyFlatSpec with Matchers {
     val chosen = select(states(docs, film, 2), scope = None)
     chosen.toRead shouldBe Seq(film)
     val fetch  = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), new TmdbNormalizer(new TmdbStore(docs, time)))
-    val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ())
+    val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")))
     readAll(chosen.toRead, client.readRecordAgain, time, time.advanceMillis).read shouldBe 1
 
     states(docs, film) shouldBe Seq(RecordState(film, hasCast = true, hasLanguage = true, hasGenres = true))

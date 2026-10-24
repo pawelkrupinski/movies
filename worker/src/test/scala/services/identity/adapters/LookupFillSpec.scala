@@ -49,7 +49,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
                    renewals: () => Seq[Question] = () => Nil,
                    gaps: TmdbStore => AnswersChanged = modelGaps, memory: Option[QuestionMemory] = None,
                    fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
-    new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+    new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
       DaemonExecutors.directExecutor(), sleeps += _, renewals,
       // a memory of its own unless the test shares one: nothing remembered, every gap due
