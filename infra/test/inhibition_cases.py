@@ -13,6 +13,15 @@ tier silence the worker tier -- deleting the one alert that can see a worker dis
 Both read as perfectly sensible YAML. Neither survives being asked.
 
 Run indirectly, by test_alertmanager.sh, which starts the Alertmanager this talks to.
+
+"NOTHING UNPROCESSED" DOES NOT MEAN "INHIBITION APPLIED". Every GET /api/v2/alerts asks the
+inhibitor whether each alert is muted and records the answer, so the first read after the post
+already reports every alert processed. But the inhibitor learns its SOURCE alerts from a
+subscription it drains on its own goroutine: read before it has caught up and every target is
+'active', because no source is cached yet. That is how one staging run (nix-stage-closures 2229,
+2026-10-24) failed all six positive cases at once, 40 ms after the post, on a busy runner. The
+wait below is on a SENTINEL posted after everything else: the subscription is FIFO, so once the
+sentinel's own target reads suppressed, every source posted before it is cached.
 """
 import json
 import sys
@@ -20,8 +29,8 @@ import time
 import urllib.error
 import urllib.request
 
-PORT = sys.argv[1]
-BASE = f"http://127.0.0.1:{PORT}/api/v2"
+PORT = BASE = None  # set by main() from argv
+SETTLE_SECONDS = 30
 
 # (name, source labels, target labels, target must be suppressed)
 CASES = [
@@ -134,6 +143,14 @@ CASES = [
 ]
 
 
+# THE SENTINEL: a source and a target that only each other can match (a host no case uses), muted by
+# the critical-silences-warning-on-the-same-disk rule. Posted in a SECOND request, after every case.
+SENTINEL_SOURCE = {"alertname": "InhibitionSentinelCritical", "severity": "critical",
+                   "host": "inhibition-sentinel", "mountpoint": "/sentinel"}
+SENTINEL_TARGET = {"alertname": "InhibitionSentinelWarning", "severity": "warning",
+                   "host": "inhibition-sentinel", "mountpoint": "/sentinel"}
+
+
 def post(alerts):
     body = json.dumps(alerts).encode()
     request = urllib.request.Request(f"{BASE}/alerts", data=body,
@@ -161,7 +178,9 @@ def key(labels):
     return tuple(sorted(labels.items()))
 
 
-def main():
+def main(port):
+    global PORT, BASE
+    PORT, BASE = port, f"http://127.0.0.1:{port}/api/v2"
     if not await_ready(time.time() + 60):
         print("  FAILED alertmanager did not become ready")
         return 1
@@ -177,15 +196,24 @@ def main():
                 seen.add(key(labels))
                 everything.append({"labels": labels})
     post(everything)
+    post([{"labels": SENTINEL_SOURCE}, {"labels": SENTINEL_TARGET}])
 
-    # Alertmanager processes asynchronously; wait until nothing is left unprocessed.
+    # The inhibitor caches sources asynchronously (see the docstring): wait for the sentinel.
     states = {}
-    deadline = time.time() + 30
+    caught_up = False
+    deadline = time.time() + SETTLE_SECONDS
     while time.time() < deadline:
         states = {key(a["labels"]): a["status"]["state"] for a in fetch()}
-        if states and all(state != "unprocessed" for state in states.values()) and len(states) >= len(seen):
+        caught_up = states.get(key(SENTINEL_TARGET)) == "suppressed"
+        if caught_up and all(state != "unprocessed" for state in states.values()) and len(states) >= len(seen):
             break
         time.sleep(0.25)
+    if not caught_up:
+        # Never read the cases from a cache that may be empty: every negative case would pass.
+        print("  FAILED the inhibition sentinel was never suppressed, so no case below can be trusted:")
+        print(f"         either the inhibitor never caught up within {SETTLE_SECONDS} s, or alertmanager.yaml no longer")
+        print("         silences a warning under a critical on the same host and mountpoint")
+        return 1
 
     bad = 0
     for name, source, target, expected in CASES:
@@ -213,4 +241,5 @@ def main():
     return bad
 
 
-sys.exit(main())
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1]))

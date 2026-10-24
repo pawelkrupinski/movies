@@ -359,6 +359,16 @@ then
   failed=1
 fi
 
+step "the inhibition harness waits for the inhibitor (fake Alertmanager)"
+# The live step below reads an inhibitor that caches its sources asynchronously; this pins that it
+# waits for them (inhibition_cases.py's sentinel) instead of reading every target as 'active'.
+if out="$(python3 "$here/test_inhibition_cases.py" 2>&1)"; then
+  echo "  ok  $(printf '%s' "$out" | grep -c '\.\.\. ok$') test(s)"
+else
+  echo "$out" | tail -25 | sed 's/^/  /'
+  failed=1
+fi
+
 # ------------------------------------------------------------------------------------------------
 # INHIBITION, ASKED OF A RUNNING ALERTMANAGER RATHER THAN OF THE FILE.
 #
