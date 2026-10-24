@@ -1,0 +1,226 @@
+# UNIT TESTS FOR THE GARBAGE-COLLECTION ALERTS: JvmFullGcRateHigh, JvmGcTimeShareHigh and
+# JvmOldGenAfterGcNearCap (nix/files/monitoring/rules/jvm-heap.rules).
+#
+# Each is collector-agnostic, so each is tested on BOTH tiers' collectors: the workers' SerialGC
+# (`MarkSweepCompact`, `Copy`, `Tenured Gen`) and web's G1 (`G1 Old Generation`, `G1 Young
+# Generation`, `G1 Concurrent GC`, `G1 Old Gen`), and each owes a healthy pod's silence, a boot's
+# silence, and a firing that rides out a worker restart's gap. Series are shaped like the fleet's:
+# labelled by instance, job, country, gc / pool.
+rule_files:
+  - ../../nix/files/monitoring/rules/jvm-heap.rules
+
+evaluation_interval: 1m
+
+tests:
+  # worker-us on 2026-10-24 06:02-06:11Z: ~9 full collections a minute, its tenured pool at the cap after every one.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-us",job="kinowo-worker",country="us",gc="MarkSweepCompact"}'
+        values: '8+9x40'
+    alert_rule_test:
+      # Not yet: held ten minutes, so one burst of collections does not page by itself.
+      - eval_time: 5m
+        alertname: JvmFullGcRateHigh
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: JvmFullGcRateHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: us}
+            exp_annotations:
+              summary: "kinowo-worker us runs 369 full GCs an hour"
+              description: >-
+                This JVM is running full (old-generation) collections back to back: each one stops it for seconds,
+                and a run of them means the old generation has almost nothing left to reclaim. Read
+                `jvm_memory_pool_collection_used_bytes` for its old-gen pool (Tenured Gen, PS Old Gen, G1 Old Gen)
+                against `jvm_memory_pool_max_bytes`: near 1.0 after every collection is a live set that no longer
+                fits, so take a class histogram NOW (`kubectl -n kinowo exec deploy/<tier>-<country> -- jcmd 1
+                GC.class_histogram`) before the pod is killed and the evidence with it. Watch
+                JvmStringDedupTableLarge and JvmResidentNearContainerLimit beside it: the native memory a thrash
+                grows is what gets a worker OOM-killed. Raising -Xmx only buys time if something retains more than
+                it should.
+
+  # A BOOT must stay silent: ~9 full collections in a worker's first 20 minutes (the 7-day boot
+  # average), then a steady 6 an hour -- worker-de's shape.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-de",job="kinowo-worker",country="de",gc="MarkSweepCompact"}'
+        values: '0+0.45x20 9+0.1x60'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: JvmFullGcRateHigh
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: JvmFullGcRateHigh
+        exp_alerts: []
+
+  # A thrash that a worker restart interrupts still pages: the counter resets and the series is
+  # absent for three minutes, which the 30-minute increase rides out.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-de",job="kinowo-worker",country="de",gc="MarkSweepCompact"}'
+        values: '0+10x12 stale stale stale 0+10x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: JvmFullGcRateHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: de}
+            exp_annotations:
+              summary: "kinowo-worker de runs 517.2 full GCs an hour"
+              description: >-
+                This JVM is running full (old-generation) collections back to back: each one stops it for seconds,
+                and a run of them means the old generation has almost nothing left to reclaim. Read
+                `jvm_memory_pool_collection_used_bytes` for its old-gen pool (Tenured Gen, PS Old Gen, G1 Old Gen)
+                against `jvm_memory_pool_max_bytes`: near 1.0 after every collection is a live set that no longer
+                fits, so take a class histogram NOW (`kubectl -n kinowo exec deploy/<tier>-<country> -- jcmd 1
+                GC.class_histogram`) before the pod is killed and the evidence with it. Watch
+                JvmStringDedupTableLarge and JvmResidentNearContainerLimit beside it: the native memory a thrash
+                grows is what gets a worker OOM-killed. Raising -Xmx only buys time if something retains more than
+                it should.
+
+  # web on G1: young and concurrent collections only, never a full one -- silent, whatever the young rate.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-web-de",job="kinowo-web",country="de",gc="G1 Old Generation"}'
+        values: '0+0x60'
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-web-de",job="kinowo-web",country="de",gc="G1 Young Generation"}'
+        values: '100+20x60'
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-web-de",job="kinowo-web",country="de",gc="G1 Concurrent GC"}'
+        values: '10+2x60'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: JvmFullGcRateHigh
+        exp_alerts: []
+
+  # A G1 JVM falling back to FULL collections pages like a Serial one: web-us's 2026-09-03 shape.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-web-us",job="kinowo-web",country="us",gc="G1 Old Generation"}'
+        values: '0+2x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: JvmFullGcRateHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-web, country: us}
+            exp_annotations:
+              summary: "kinowo-web us runs 120 full GCs an hour"
+              description: >-
+                This JVM is running full (old-generation) collections back to back: each one stops it for seconds,
+                and a run of them means the old generation has almost nothing left to reclaim. Read
+                `jvm_memory_pool_collection_used_bytes` for its old-gen pool (Tenured Gen, PS Old Gen, G1 Old Gen)
+                against `jvm_memory_pool_max_bytes`: near 1.0 after every collection is a live set that no longer
+                fits, so take a class histogram NOW (`kubectl -n kinowo exec deploy/<tier>-<country> -- jcmd 1
+                GC.class_histogram`) before the pod is killed and the evidence with it. Watch
+                JvmStringDedupTableLarge and JvmResidentNearContainerLimit beside it: the native memory a thrash
+                grows is what gets a worker OOM-killed. Raising -Xmx only buys time if something retains more than
+                it should.
+
+  # ── JvmGcTimeShareHigh ─────────────────────────────────────────────────────────────────────────
+  # worker-uk paused 20% of the time (young 6 s and full 6 s a minute), through a restart at 20m:
+  # the 30-minute rate carries the hold across the gap.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_sum{instance="kinowo-worker-uk",job="kinowo-worker",country="uk",gc="Copy"}'
+        values: '0+6x19 stale stale stale 0+6x40'
+      - series: 'jvm_gc_collection_seconds_sum{instance="kinowo-worker-uk",job="kinowo-worker",country="uk",gc="MarkSweepCompact"}'
+        values: '0+6x19 stale stale stale 0+6x40'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: JvmGcTimeShareHigh
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: JvmGcTimeShareHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: uk}
+            exp_annotations:
+              summary: "kinowo-worker uk spends 20% of its wall clock paused for GC"
+              description: >-
+                For half an hour this JVM has been stopped for garbage collection more than a tenth of the time: its
+                scrapes, projections or requests wait out every pause. Split it by `gc`
+                (`rate(jvm_gc_collection_seconds_sum[30m])`): mostly the old-generation collector is a heap too full
+                to collect into (see JvmFullGcRateHigh and the old-gen pool after GC); mostly the young one is an
+                allocation rate the young generation is too small for -- `jvm_memory_pool_allocated_bytes_total` for
+                the eden pool says which.
+
+  # A healthy worker (2% paused) and a web G1 whose CONCURRENT marking runs half the wall clock
+  # beside the application stay silent: concurrent time is no pause.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_sum{instance="kinowo-worker-pl",job="kinowo-worker",country="pl",gc="Copy"}'
+        values: '0+1.2x80'
+      - series: 'jvm_gc_collection_seconds_sum{instance="kinowo-web-uk",job="kinowo-web",country="uk",gc="G1 Concurrent GC"}'
+        values: '0+30x80'
+      - series: 'jvm_gc_collection_seconds_sum{instance="kinowo-web-uk",job="kinowo-web",country="uk",gc="G1 Young Generation"}'
+        values: '0+0.6x80'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: JvmGcTimeShareHigh
+        exp_alerts: []
+
+  # ── JvmOldGenAfterGcNearCap ────────────────────────────────────────────────────────────────────
+  # G1: what collections leave in G1 Old Gen stays at 95% of the cap for 40 minutes.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-web-de",job="kinowo-web",country="de",pool="G1 Old Gen"}'
+        values: '760000000+0x50'
+      - series: 'jvm_memory_pool_max_bytes{instance="kinowo-web-de",job="kinowo-web",country="de",pool="G1 Old Gen"}'
+        values: '805306368+0x50'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: JvmOldGenAfterGcNearCap
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: JvmOldGenAfterGcNearCap
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-web, country: de, pool: 'G1 Old Gen'}
+            exp_annotations:
+              summary: "kinowo-web de G1 Old Gen is 94.37% full after collections"
+              description: >-
+                What the collector leaves in the old generation has stayed above 90% of its cap for half an hour:
+                the next allocation burst has almost nowhere to go, and full collections that reclaim nothing come
+                next (JvmFullGcRateHigh). Take a class histogram before anything restarts the pod (`jcmd 1
+                GC.class_histogram`), and compare the live set with NodeMemoryBudgetSpec's MeasuredLiveSetMaxMib for
+                the country: a live set that grew with the corpus wants the heap re-sized there; one that jumped
+                wants the structure found.
+
+  # Serial holds the value its last FULL collection left: 95% from one heavy tick, with no full
+  # collection since, is no thrash and stays silent; a healthy G1 at 60% too.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-de",job="kinowo-worker",country="de",pool="Tenured Gen"}'
+        values: '590000000+0x80'
+      - series: 'jvm_memory_pool_max_bytes{instance="kinowo-worker-de",job="kinowo-worker",country="de",pool="Tenured Gen"}'
+        values: '620756992+0x80'
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-de",job="kinowo-worker",country="de",gc="MarkSweepCompact"}'
+        values: '7+0x80'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-web-pl",job="kinowo-web",country="pl",pool="G1 Old Gen"}'
+        values: '480000000+0x80'
+      - series: 'jvm_memory_pool_max_bytes{instance="kinowo-web-pl",job="kinowo-web",country="pl",pool="G1 Old Gen"}'
+        values: '805306368+0x80'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: JvmOldGenAfterGcNearCap
+        exp_alerts: []
+
+  # Serial at its cap after every full collection, while they run, pages -- across a restart's gap.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-us",job="kinowo-worker",country="us",pool="Tenured Gen"}'
+        values: '805000000+0x14 stale stale stale 805000000+0x40'
+      - series: 'jvm_memory_pool_max_bytes{instance="kinowo-worker-us",job="kinowo-worker",country="us",pool="Tenured Gen"}'
+        values: '805306368+0x14 stale stale stale 805306368+0x40'
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-us",job="kinowo-worker",country="us",gc="MarkSweepCompact"}'
+        values: '0+5x14 stale stale stale 0+5x40'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: JvmOldGenAfterGcNearCap
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: us, pool: 'Tenured Gen'}
+            exp_annotations:
+              summary: "kinowo-worker us Tenured Gen is 99.96% full after collections"
+              description: >-
+                What the collector leaves in the old generation has stayed above 90% of its cap for half an hour:
+                the next allocation burst has almost nowhere to go, and full collections that reclaim nothing come
+                next (JvmFullGcRateHigh). Take a class histogram before anything restarts the pod (`jcmd 1
+                GC.class_histogram`), and compare the live set with NodeMemoryBudgetSpec's MeasuredLiveSetMaxMib for
+                the country: a live set that grew with the corpus wants the heap re-sized there; one that jumped
+                wants the structure found.

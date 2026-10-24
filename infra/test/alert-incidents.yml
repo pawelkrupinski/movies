@@ -342,3 +342,17 @@ incidents:
     start: 2026-10-13T22:30:00Z
     end: 2026-10-14T07:50:00Z
     expect_quiet: [IdentityTakeChangesBurst]
+
+  - id: worker-us-full-gc-thrash-oom-kill-2026-10-24
+    description: >-
+      worker-us's hourly whole-corpus identity projection began at 06:01:45Z (95.6 s, its draft
+      618 MB) and its tenured pool went from 432 to 768 of 768 MiB at 06:02:46Z, where every one of
+      ~80 SerialGC full collections in the next nine minutes left it; the String Deduplication table
+      grew beside it (120 MB at 06:06Z) and RSS 1.58 -> 2.11 GB until the memory cgroup OOM-killed
+      the pod at 06:11:46Z. JvmFullGcRateHigh and JvmOldGenAfterGcNearCap were written for this
+      shape; the full-collection rate must page in it.
+    source: jvm_gc_collection_seconds_count{country="us",gc="MarkSweepCompact"} 8 -> 87 over 06:02-06:11Z; jvm_memory_pool_collection_used_bytes{country="us",pool="Tenured Gen"} 768 MiB from 06:02:46Z; kube_pod_container_status_last_terminated_reason OOMKilled, finished 06:11:46Z
+    start: 2026-10-24T06:02:00Z
+    end: 2026-10-24T06:12:00Z
+    grace: 20m
+    expect_firing: [JvmFullGcRateHigh]

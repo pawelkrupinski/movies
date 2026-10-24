@@ -21,6 +21,7 @@
   "jvm_gc_collection_seconds_count",
   "jvm_gc_collection_seconds_sum",
   "jvm_memory_max_bytes",
+  "jvm_memory_pool_collection_used_bytes",
   "jvm_memory_pool_max_bytes",
   "jvm_memory_pool_used_bytes",
   "jvm_memory_used_bytes",

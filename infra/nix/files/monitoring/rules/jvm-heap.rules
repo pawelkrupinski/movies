@@ -38,7 +38,8 @@
 # left for allocation is gone whether the cause is retention or deferred compaction, and both end
 # in the same OOM.
 #
-# ⚠️ ON THE WORKERS (SerialGC) THE FLOOR IS WEAKER STILL, and reading it as retention sent the
+# ⚠️ ON THE WORKERS (SerialGC until 2026-10-24, Parallel since: both reclaim tenured only in a full
+# collection) THE FLOOR IS WEAKER STILL, and reading it as retention sent the
 # 2026-09-05 worker-pl investigation off in the wrong direction for a while. G1 marks concurrently
 # and collects often, so its floor tracks the live set loosely but continuously. SerialGC only ever
 # reclaims tenured at a FULL collection, and these workers do very few -- worker-pl did 2 in 24h
@@ -72,8 +73,8 @@
 # THE POOL NAMES DIFFER BY COLLECTOR, WHICH IS WHY THE MATCH IS A REGEX
 # ------------------------------------------------------------------------------------------------
 #
-# web runs G1 (`-XX:+UseG1GC`) and its tenured pool is `G1 Old Gen`; the workers run SerialGC and
-# theirs is `Tenured Gen`. A rule naming only one silently covers half the fleet -- the exact shape
+# web runs G1 (`-XX:+UseG1GC`) and its tenured pool is `G1 Old Gen`; the workers run the Parallel
+# collector (`PS Old Gen`, `PS MarkSweep`), SerialGC (`Tenured Gen`, `MarkSweepCompact`) until 2026-10-24. A rule naming only one silently covers half the fleet -- the exact shape
 # k3s.rules warns about, where a series that never exists reads as coverage.
 #
 # ⚠️ HISTORY STARTS AT THE 2026-08-29 CUTOVER. `for:` windows longer than that were meaningless
@@ -93,12 +94,12 @@ groups:
           jvm_memory_pool_max_bytes{pool="G1 Old Gen"} > 0.85
           or
           (
-            min_over_time(jvm_memory_pool_used_bytes{pool="Tenured Gen"}[30m])
+            min_over_time(jvm_memory_pool_used_bytes{pool=~"Tenured Gen|PS Old Gen"}[30m])
               / on (instance, pool) group_left
-            jvm_memory_pool_max_bytes{pool="Tenured Gen"} > 0.85
+            jvm_memory_pool_max_bytes{pool=~"Tenured Gen|PS Old Gen"} > 0.85
           )
           and on (instance)
-          increase(jvm_gc_collection_seconds_count{gc="MarkSweepCompact"}[30m]) > 0
+          increase(jvm_gc_collection_seconds_count{gc=~"MarkSweepCompact|PS MarkSweep"}[30m]) > 0
         # TWO HOURS, because this is a trend and not an event. web-us took ~2h from restart to OOM,
         # so this fires with time to act on the pod that is going to die -- and a deploy rolling a
         # pod resets the measurement, which is what keeps a routine restart from paging.
@@ -221,6 +222,127 @@ groups:
             Deduplication=" among the top native categories). The 2026-10-02 storm was a change
             that retained a scored candidate set per unmatched listing (3f4bf656a). Raising the
             limit only buys time: find what fills the heap.
+
+      # HOW OFTEN A JVM RUNS A FULL (OLD-GENERATION) COLLECTION, per pod, on both tiers and whatever
+      # the collector. A full collection stops the whole JVM for as long as it takes to walk the live
+      # set (SerialGC on worker-us: ~3.5 s over ~450 MB), and a JVM that runs them back to back is
+      # one allocation away from OutOfMemoryError -- or, as on worker-us at 2026-10-24 06:02Z, from
+      # the cgroup's OOM kill: its tenured pool sat at 768 of 768 MiB after every one of ~80 full
+      # collections in nine minutes, the String Deduplication table grew in native memory beside it,
+      # and the kernel killed the pod at 06:11:46Z. JvmOldGenNearCap holds two hours; this is the
+      # event, minutes after it starts.
+      #
+      # THE COLLECTOR NAMES ARE EACH COLLECTOR'S OLD-GENERATION BEAN: `MarkSweepCompact` (Serial),
+      # `PS MarkSweep` (Parallel), `G1 Old Generation` (a G1 FULL collection -- its mixed ones count
+      # as young), `ZGC Major Cycles` / `ZGC Cycles` (ZGC). Prometheus held `Copy`,
+      # `MarkSweepCompact`, `G1 Young Generation`, `G1 Old Generation` and `G1 Concurrent GC` on
+      # 2026-10-24. Shenandoah has no old-generation bean of its own, so it is not covered.
+      #
+      # 60 AN HOUR -- ONE A MINUTE -- READ OVER 30 MINUTES, HELD 10. Measured over the 7 days to
+      # 2026-10-24: a steady worker ran 1-9 an hour (median per country), a boot ~9 in its first 20
+      # minutes (DE: 404 full collections over ~45 boots), web's G1 none in most hours (worst hour 9,
+      # web-de). Backtested over the 14 days to 10-24: at 30 an hour the SerialGC workers fired 33
+      # times (16.5 a week: every hourly whole-corpus projection that met a nearly full tenured pool);
+      # at 60 about 10 raw episodes, the thrashes this is for -- 80 in 9 minutes on worker-us 10-24
+      # 06:02Z, 40-600 a half hour on worker-de 10-11/12. The 30-minute `increase` bridges a worker
+      # restart's ~3-minute gap.
+      - alert: JvmFullGcRateHigh
+        expr: >-
+          sum by (job, country) (
+            increase(jvm_gc_collection_seconds_count{job=~"kinowo-web|kinowo-worker",
+              gc=~"MarkSweepCompact|PS MarkSweep|G1 Old Generation|ZGC Major Cycles|ZGC Cycles"}[30m])
+          ) * 2 > 60
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} {{ $labels.country }} runs {{ $value | humanize }} full GCs an hour"
+          description: >-
+            This JVM is running full (old-generation) collections back to back: each one stops it
+            for seconds, and a run of them means the old generation has almost nothing left to
+            reclaim. Read `jvm_memory_pool_collection_used_bytes` for its old-gen pool (Tenured Gen,
+            PS Old Gen, G1 Old Gen) against `jvm_memory_pool_max_bytes`: near 1.0 after every
+            collection is a live set that no longer fits, so take a class histogram NOW (`kubectl
+            -n kinowo exec deploy/<tier>-<country> -- jcmd 1 GC.class_histogram`) before the pod
+            is killed and the evidence with it. Watch JvmStringDedupTableLarge and
+            JvmResidentNearContainerLimit beside it: the native memory a thrash grows is what gets
+            a worker OOM-killed. Raising -Xmx only buys time if something retains more than it should.
+
+      # HOW MUCH OF THE WALL CLOCK A JVM SPENDS STOPPED FOR COLLECTIONS. `jvm_gc_collection_seconds`
+      # is each collector bean's accumulated collection time; for every stop-the-world bean that is
+      # pause time, so their summed rate is the share of the wall clock the JVM was paused. The
+      # CONCURRENT beans (`G1 Concurrent GC`, ZGC's and Shenandoah's `* Cycles`) time work done
+      # BESIDE the application -- a G1 marking cycle runs for seconds without stopping anything --
+      # and are left out, or web would read as paused while it served.
+      #
+      # 10%, OVER 30 MINUTES, HELD 30. Measured over the 7 days to 2026-10-24 (30-minute windows):
+      # web p99 0.0-0.5% (max 0.7%); workers p99 0.4-5.8%, max 13.8% (de), 20.3% (uk), 29.2% (us) --
+      # those maxima the boots and heap thrashes this is for. A boot alone spends ~20 s in full
+      # collections, about 1% of half an hour.
+      - alert: JvmGcTimeShareHigh
+        expr: >-
+          sum by (job, country) (
+            rate(jvm_gc_collection_seconds_sum{job=~"kinowo-web|kinowo-worker",
+              gc!~"G1 Concurrent GC|ZGC Major Cycles|ZGC Minor Cycles|ZGC Cycles|Shenandoah Cycles"}[30m])
+          ) > 0.10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} {{ $labels.country }} spends {{ $value | humanizePercentage }} of its wall clock paused for GC"
+          description: >-
+            For half an hour this JVM has been stopped for garbage collection more than a tenth of
+            the time: its scrapes, projections or requests wait out every pause. Split it by `gc`
+            (`rate(jvm_gc_collection_seconds_sum[30m])`): mostly the old-generation collector is a
+            heap too full to collect into (see JvmFullGcRateHigh and the old-gen pool after GC);
+            mostly the young one is an allocation rate the young generation is too small for --
+            `jvm_memory_pool_allocated_bytes_total` for the eden pool says which.
+
+      # THE OLD GENERATION AFTER A COLLECTION, AGAINST ITS CAP: the leading signal of a full-GC
+      # thrash, read where the collector itself last measured the live set. Unlike
+      # JvmOldGenNearCap's floor of the used sawtooth (two hours, a trend), this is the value each
+      # collection leaves (`jvm_memory_pool_collection_used_bytes`), so it moves the moment a live
+      # set grows past what the generation holds.
+      #
+      # TWO BRANCHES, BECAUSE THE TWO COLLECTOR FAMILIES WRITE IT DIFFERENTLY. G1 rewrites it after
+      # every young and mixed collection, so a G1 old gen above 90% after collections for half an
+      # hour is full. Serial and Parallel write it only after a FULL collection and then hold it,
+      # so a value one heavy tick left could sit there for hours with nothing wrong: that branch
+      # counts only while full collections run (the same gate as JvmOldGenNearCap).
+      #
+      # 90%, HELD 30 MINUTES. Measured over the 7 days to 2026-10-24 (per pod, after collections):
+      # web max 0.31-0.96 (web-de 0.96, web-us 0.91: single G1 collections inside a burst, under the
+      # hold); workers 0.86-0.93 outside a thrash, and 1.0 in worker-us's (10-24 06:02-06:11Z).
+      # `last_over_time` carries a worker's gauge across a restart's gap.
+      - alert: JvmOldGenAfterGcNearCap
+        expr: >-
+          (
+            max by (job, country, pool) (last_over_time(jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|ZGC Old Generation"}[10m]))
+              / on (job, country, pool)
+            max by (job, country, pool) (last_over_time(jvm_memory_pool_max_bytes{job=~"kinowo-web|kinowo-worker", pool=~"G1 Old Gen|ZGC Old Generation"}[10m]))
+          ) > 0.90
+          or
+          (
+            (
+              max by (job, country, pool) (last_over_time(jvm_memory_pool_collection_used_bytes{job=~"kinowo-web|kinowo-worker", pool=~"Tenured Gen|PS Old Gen"}[10m]))
+                / on (job, country, pool)
+              max by (job, country, pool) (last_over_time(jvm_memory_pool_max_bytes{job=~"kinowo-web|kinowo-worker", pool=~"Tenured Gen|PS Old Gen"}[10m]))
+            ) > 0.90
+            and on (job, country)
+            sum by (job, country) (increase(jvm_gc_collection_seconds_count{job=~"kinowo-web|kinowo-worker", gc=~"MarkSweepCompact|PS MarkSweep"}[30m])) > 0
+          )
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} {{ $labels.country }} {{ $labels.pool }} is {{ $value | humanizePercentage }} full after collections"
+          description: >-
+            What the collector leaves in the old generation has stayed above 90% of its cap for
+            half an hour: the next allocation burst has almost nowhere to go, and full collections
+            that reclaim nothing come next (JvmFullGcRateHigh). Take a class histogram before
+            anything restarts the pod (`jcmd 1 GC.class_histogram`), and compare the live set with
+            NodeMemoryBudgetSpec's MeasuredLiveSetMaxMib for the country: a live set that grew with
+            the corpus wants the heap re-sized there; one that jumped wants the structure found.
 
       # A JVM WROTE A HEAP DUMP, i.e. it died of (or was about to die of) heap exhaustion and left
       # the evidence on k3s-worker-1. `ExitOnOutOfMemoryError` makes a heap OOM a clean exit and a
