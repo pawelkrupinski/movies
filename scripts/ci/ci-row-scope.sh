@@ -70,7 +70,7 @@ if [ "$kind" = --outputs ]; then
         fi
     done
     echo "since the newest green Main run ($green): $(wc -l <"$work/since-green" | tr -d ' ') paths"
-    sed 's/^/  /' "$work/since-green" | head -50
+    sed -n '1,50s/^/  /p' "$work/since-green"
     for row in e2e pages browsers; do
         file="$work/since-green"; [ "$row" != e2e ] || file="$work/e2e"
         verdict=$("$self" "$row" . <"$file") || every_row "ci-row-scope.sh $row failed"

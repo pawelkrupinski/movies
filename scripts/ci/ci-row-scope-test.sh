@@ -119,6 +119,13 @@ touch "$tmp/gh-fails"
 check "an unreadable runs list runs every row" "e2e=true pages=true browsers=true" "$(outputs "$docs2_sha")"
 check "and says why" "1" "$(grep -c 'could not read Main.s runs (HTTP 502).*every row runs' "$tmp/log")"
 rm -f "$tmp/gh-fails"
+# More paths than the job prints: the listing's `head` closing its pipe early must not kill the job (exit 141 under
+# pipefail, Main 2280: 123 paths since the green run).
+echo "$docs2_sha" >"$tmp/green"
+mkdir -p "$repo/docs/many" && for i in $(seq 1 3000); do echo x >"$repo/docs/many/page-$i-with-a-long-enough-name.md"; done
+scratch_git "$repo" add -A && scratch_git "$repo" commit -qm many && many_sha=$(scratch_git "$repo" rev-parse HEAD)
+check "a push of thousands of paths still decides every row" "e2e=false pages=false browsers=false" "$(outputs "$many_sha")"
+check "...listing only the first 50" "50" "$(grep -c '^  docs/many/' "$tmp/log")"
 echo 0123456789abcdef0123456789abcdef01234567 >"$tmp/green"
 check "a green commit that cannot be fetched runs every row" "e2e=true pages=true browsers=true" "$(outputs "$docs2_sha")"
 
