@@ -163,7 +163,7 @@ jobs:
                   if git diff --quiet ${{ github.sha }} HEAD -- common identity worker test/resources build.sbt project; then
                       echo "merge=shards" >> "$GITHUB_OUTPUT"
                   else
-                      echo "::warning::main moved what the shards measured since ${{ github.sha }}: round 1 measured here, whole"
+                      echo "::notice::main moved what the shards measured since ${{ github.sha }}: round 1 measured here, whole"
                   fi
 
             # The whole refit, as a local run makes it (scripts/identity-refit --help): the refit's spec, the measure

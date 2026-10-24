@@ -208,6 +208,8 @@ jobs:
             # keyed on the build scripts and wrapper version.
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
+              with:
+                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
 
             # Pure-bash helper tests for the store-screenshot / store-graphics
             # scripts: the country→locale→label lookups a capture depends on.
@@ -464,6 +466,8 @@ jobs:
 
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
+              with:
+                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
 
             # Hardware acceleration: without KVM the x86_64 emulator falls back
             # to software emulation and does not boot inside the timeout.

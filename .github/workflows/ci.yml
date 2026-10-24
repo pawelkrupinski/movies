@@ -393,6 +393,8 @@ jobs:
 
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
+              with:
+                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
 
             # Collect the background compile started above. Build BEFORE booting,
             # as its own step, so the boot's ceiling only has to cover booting.

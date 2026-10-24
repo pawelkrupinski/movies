@@ -286,7 +286,8 @@ def handle(github, run, args, out=sys.stdout):
     jobs = collect(github.jobs(run["id"]), github.log)
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary:
+    # Forgejo discards a job summary, and warns of each: the report above, in the log, is what it keeps.
+    if summary and os.environ.get("GITHUB_SERVER_URL", "https://github.com") == "https://github.com":
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
     payload = otlp_payload(run, jobs)

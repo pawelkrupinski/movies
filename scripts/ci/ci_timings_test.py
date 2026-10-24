@@ -17,6 +17,7 @@ import threading
 import re
 import time
 import unittest
+import unittest.mock
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -149,6 +150,35 @@ class PayloadTest(unittest.TestCase):
         timings.report(RUN, jobs(), out)
         self.assertIn("wall 13m00s, queued 1m00s", out.getvalue())
         self.assertIn("phase    604.7s  replayCutover", out.getvalue())
+
+
+class SummaryTest(unittest.TestCase):
+    """The job summary is written where it is read: GitHub keeps it, Forgejo discards it and warns of each."""
+
+    class Github:
+        def workflow_name(self, _):
+            return RUN["name"]
+
+        def jobs(self, _):
+            return JOBS
+
+        def log(self, job_id):
+            return LOGS.get(job_id, "")
+
+    def summary_on(self, server):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = Path(tmp, "summary.md")
+            summary.write_text("")
+            env = {"GITHUB_STEP_SUMMARY": str(summary), "GITHUB_SERVER_URL": server}
+            with unittest.mock.patch.dict(os.environ, env):
+                timings.handle(self.Github(), dict(RUN, workflow_id=1), type("Args", (), {"push": False})(), io.StringIO())
+            return summary.read_text()
+
+    def test_github_gets_the_summary(self):
+        self.assertIn("united-kingdom / convergence", self.summary_on("https://github.com"))
+
+    def test_forgejo_gets_none(self):
+        self.assertEqual("", self.summary_on("http://forgejo.internal:3000"))
 
 
 class ConclusionTest(unittest.TestCase):

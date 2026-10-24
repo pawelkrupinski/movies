@@ -127,6 +127,8 @@ jobs:
 
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
+              with:
+                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
 
             - name: Robolectric tests, classes and methods in a seeded order
               env:
@@ -174,6 +176,8 @@ jobs:
 
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
+              with:
+                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
 
             - name: Enable KVM
               # The script lives at the repo root; this job's run steps default to android/.

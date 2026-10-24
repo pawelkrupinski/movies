@@ -35,6 +35,9 @@
 set -uo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
+# A self-test runs its tool as a test, never as the CI step it is run from: one that reads GITHUB_STEP_SUMMARY or
+# GITHUB_OUTPUT would write into the calling step's own (Forgejo warns of every job summary, and discards it).
+unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT
 
 Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin data"
 # The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds
