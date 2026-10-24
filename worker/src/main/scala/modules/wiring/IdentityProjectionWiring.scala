@@ -129,39 +129,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
       askNow = askNow, attempted = identityQuestionMemory.attempted)
 
-  /** The daily drift check: the live takes against a whole resolve of the same listings with nothing kept
-   *  ([[services.identity.adapters.IdentityDriftCheck]]), its lines in the worker's log, its count a gauge. Report only
-   *  unless `KINOWO_IDENTITY_DRIFT_REPAIR` asks it to adopt the whole resolve's takes. */
-  lazy val identityDriftCheck: services.identity.adapters.IdentityDriftCheck = {
-    import services.identity.adapters.IdentityDriftCheck
-    new IdentityDriftCheck(
-      live = () => identityProjection.lastProjected.flatMap { projected =>
-        identityModel.current(IdentityProjectionWiring.ModelTimeout).map { snapshot =>
-          val now = snapshot.resolution.decisionOf
-          IdentityDriftCheck.Live(projected.taken, snapshot.listings.iterator.map(l => l.key -> l).toMap,
-            key => now.get(key).exists(d => projected.model.decisionOf.get(key).exists(_ eq d)), agreementStage.waitingOn)
-        }
-      },
-      whole = live => IdentityDriftCheck.wholeResolve(live, cutoverLookups(), titleNormalizer,
-        services.identity.PinConstraints(new services.identity.MongoPinStore(mongoConnection.database).all()),
-        (stageClock: java.time.Clock) => newAgreementStage(new services.identity.agreement.InMemoryAgreementVerdicts, stageClock, budgets = false),
-        familyAnswerStore.version, clock),
-      lines = new services.identity.TakeChangeLines(country, configuration.commit),
-      metrics = workerMetrics.identityDrift.forCountry(country.code, clock),
-      response = if (configuration.identityDriftRepair.value) new IdentityDriftCheck.Adopt(identityModel, agreementStage, identityProjectionTrigger)
-                 else IdentityDriftCheck.Response.ReportOnly,
-      pressed = () => tools.HeapPressure.pressed(), stopwatch = stopwatch)
-  }
-  /** Runs [[identityDriftCheck]] once a day, off-peak: an hourly tick runs it within the country's night
-   *  ([[IdentityProjectionWiring.offPeak]]) once per local date, claimed so a restart that night does not run it again —
-   *  a check timed from boot would never come round on a worker deployed several times a day. */
-  lazy val identityDriftSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("identity-drift-check-tick", () => {
-      val venueClock = new models.VenueClock(clock)
-      if (IdentityProjectionWiring.offPeak(venueClock, country.zone) &&
-          scheduledRunStore.claim(s"identity-drift-check:${venueClock.today(country.zone)}")) identityDriftCheck.run()
-      ()
-    }, IdentityProjectionWiring.DriftTick, IdentityProjectionWiring.DriftTick, scheduledRunStore, clock, ticks))
+  // The drift check (services.identity.adapters.IdentityDriftCheck) no longer runs on the worker: its whole resolve and
+  // fresh agreement stage, beside the model's own state, filled worker-us's tenured gen and OOM-killed it at its first
+  // nightly check two nights running (2026-10-23/24, 525 -> 768 of 768 MiB in ~75 s). It runs off the worker
+  // (`scripts/identity-slice --drift`, CI against a recording or the prod mirror) until its working set is bounded.
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.adapters.PosterAnswerStore = new services.identity.adapters.PosterAnswerStore(familyAnswerStore, clock)
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
@@ -257,13 +228,6 @@ object IdentityProjectionWiring {
   /** How long a projection waits for the model to catch up — a rebuild after a deploy included —
    *  before it refuses and the stored films keep serving. */
   val ModelTimeout: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")
-  /** How often the drift check's tick asks whether tonight's check is due. */
-  val DriftTick: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(1, "hour")
-  /** The country's night, when the drift check runs: past the evening's scrapes, before the morning's (01:00–06:00). */
-  def offPeak(clock: models.VenueClock, zone: java.time.ZoneId): Boolean = {
-    val hour = clock.now(zone).getHour
-    hour >= 1 && hour < 6
-  }
   /** The countries whose titles Filmweb indexes well enough to vote (signal-combination experiment §9). */
   val FilmwebVoting: Set[String] = Set("pl", "de", "es")
   /** The families besides IMDb whose own id a film TMDB and IMDb hold no record of may stand on, in preference: Wikidata's

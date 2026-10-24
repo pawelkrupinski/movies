@@ -514,7 +514,6 @@ class WorkerWiring(
     boot.step("tmdb changes sweep")(identityTmdbChangesSchedule.start())
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("tmdb store sweep")(identityTmdbSweepSchedule.start())
-    boot.step("identity drift check")(identityDriftSchedule.start())
     boot.step("identity outstanding questions")(outstandingQuestionsSchedule.start())
     boot.step("orphan film-state sweep")(orphanFilmStateSweepSchedule.start())
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
