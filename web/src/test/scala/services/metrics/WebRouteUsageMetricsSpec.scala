@@ -67,6 +67,9 @@ class WebRouteUsageMetricsSpec extends AnyFlatSpec with Matchers {
     import WebRouteUsageMetrics.clientKind
     clientKind(Some("KinowoIOS/1.0")) shouldBe "ios_app"
     clientKind(Some("KinowoAndroid/1.0")) shouldBe "android_app"
+    // Since 2026-10-24 each app names its build and OS behind the same prefix.
+    clientKind(Some("KinowoIOS/2.1.3 (iOS 18.2.1)")) shouldBe "ios_app"
+    clientKind(Some("KinowoAndroid/2.1.3 (Android 15; API 35)")) shouldBe "android_app"
     clientKind(Some("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1")) shouldBe "browser"
     clientKind(Some("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")) shouldBe "bot"
     clientKind(Some("meta-externalagent/1.1")) shouldBe "bot"

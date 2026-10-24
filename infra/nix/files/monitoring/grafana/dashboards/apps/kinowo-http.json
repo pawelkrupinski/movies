@@ -1687,7 +1687,7 @@
     {
       "type": "table",
       "title": "Days since last call, by route and client kind",
-      "description": "Who still calls each route, from kinowo_web_route_last_called_seconds over 60 days, all countries. An empty cell = that client kind made no call in the window. ios_app/android_app match the apps' fixed KinowoIOS/ and KinowoAndroid/ User-Agents. bot = self-declared crawlers, link previews and scripted clients. browser = any other Mozilla/ agent. other = no or unrecognised agent. A route whose only recent cells are bot is retirable from the clients' side; SEO redirects may still be worth keeping for crawlers.",
+      "description": "Who still calls each route, from kinowo_web_route_last_called_seconds over 60 days, all countries. An empty cell = that client kind made no call in the window. ios_app/android_app match the apps' KinowoIOS/ and KinowoAndroid/ User-Agent prefixes (the build and OS follow it). bot = self-declared crawlers, link previews and scripted clients. browser = any other Mozilla/ agent. other = no or unrecognised agent. A route whose only recent cells are bot is retirable from the clients' side; SEO redirects may still be worth keeping for crawlers.",
       "id": 28,
       "datasource": {
         "type": "prometheus",

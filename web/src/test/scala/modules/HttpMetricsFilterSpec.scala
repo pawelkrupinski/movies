@@ -297,7 +297,7 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
 
   it should "stamp when the route was last called, by client kind" in {
     val harness = new Harness()
-    harness.run(routed("GET", "/poznan/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoAndroid/1.0")))
+    harness.run(routed("GET", "/poznan/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoAndroid/2.1.3 (Android 15; API 35)")))
 
     harness.valueOf(s"""kinowo_web_route_last_called_seconds{client="android_app",country="pl",route="/:city/"}""") shouldBe
       Some(java.time.Instant.parse("2026-10-11T12:00:00Z").getEpochSecond.toDouble)

@@ -27,8 +27,8 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   override def afterAll(): Unit = Await.result(system.terminate(), SpecTimeouts.Io): Unit
 
-  private val Ios     = "KinowoIOS/1.0"
-  private val Android = "KinowoAndroid/1.0"
+  private val Ios     = "KinowoIOS/2.1.3 (iOS 18.2)"
+  private val Android = "KinowoAndroid/2.1.3 (Android 15; API 35)"
   private val Browser = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)"
   private val Bot     = "Mozilla/5.0 (compatible; Googlebot/2.1)"
 

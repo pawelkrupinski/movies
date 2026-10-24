@@ -34,8 +34,10 @@ import scala.jdk.CollectionConverters._
  * `client` is one of five values, so the ceiling is routes × 5 per country and in
  * practice far lower: most routes are only ever hit by one or two client kinds.
  *
- * The mobile apps send a fixed `KinowoIOS/1.0` / `KinowoAndroid/1.0` with no
- * build number, so this tells "an app still calls it" but not WHICH app version.
+ * The mobile apps send `KinowoIOS/<version> (iOS <os>)` / `KinowoAndroid/<versionName>
+ * (Android <release>; API <sdk>)` (builds before 2026-10-24: a fixed `KinowoIOS/1.0` /
+ * `KinowoAndroid/1.0`). Only the prefix is matched, so `client` stays a closed set: this
+ * tells "an app still calls it"; the build and OS stay out of the label.
  */
 class WebRouteUsageMetrics(registry: PrometheusRegistry, country: String, clock: Clock) {
 
