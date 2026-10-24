@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# Set tools.costs.PerformanceBudgets' allocation figures (`measured`) from what a CI run measured, not a laptop: a
+# Mac's JVM lands ~3-5% off CI's Linux one, inside the 15% band but enough to turn a re-measured budget red on Main
+# (twice on 2026-10-24).
+#
+#   scripts/adopt-ci-budgets <run id>        the run's `performance-budgets-*` artifacts (ci.yml's unit, it, e2e and
+#                                            chrome page rows upload them; scripts/forge-gh fetches them from either forge)
+#   scripts/adopt-ci-budgets <dir | .tsv>    performance-budgets.tsv files already on disk (a local run's target/)
+#
+#   --out-of-band  also adopt a figure outside its budget's band (a red check): only for a deliberate trade, never a
+#                  regression -- the PerformanceBudgets header says which is which
+#   --dry-run      print what would change, write nothing
+#   --repo O/R     another repository than this checkout's
+#
+# Each ratchet takes the median of the run's figures for it, in the unit its `measured` uses; ceilings and operation
+# counts are left alone. It prints one line per budget: ADOPTED, SAME, OUT OF BAND (left), NOT MEASURED (no figure in
+# the run), NOT IN THE FILE. Commit what it wrote with the run id and each move in the message.
+# Exit: 0 done, 1 no figure in the run, 2 a usage mistake. The logic and its tests: scripts/adopt_ci_budgets.py,
+# scripts/adopt_ci_budgets_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+exec python3 -I "$(dirname "$0")/adopt_ci_budgets.py" "$@"

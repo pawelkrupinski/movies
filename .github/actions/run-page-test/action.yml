@@ -249,6 +249,20 @@ runs:
         check_name: page tests (chrome)
         include_passed: false
 
+    # The render and browser budget figures this row measured, for `scripts/adopt-ci-budgets` (ci.yml's unit rows).
+    - name: Upload the performance budget figures
+      if: ${{ !cancelled() && inputs.kind == 'chrome' }}
+      uses: actions/upload-artifact@v6
+      with:
+        # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+        overwrite: true
+        name: performance-budgets-page-chrome
+        path: |
+          target/performance-budgets.tsv
+          */target/performance-budgets.tsv
+        if-no-files-found: ignore
+        retention-days: 14
+
     # One `npx playwright test` per `runs` record. Each invocation writes its
     # OWN junit + html report (PLAYWRIGHT_JUNIT_OUTPUT_NAME / _HTML_OUTPUT_DIR,
     # read by playwright.config.ts) so a second record can't overwrite the

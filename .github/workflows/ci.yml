@@ -316,6 +316,22 @@ jobs:
                   check_name: unit tests (${{ matrix.shard }})
                   include_passed: false
 
+            # EVERY BUDGET FIGURE THIS ROW MEASURED (tools.costs.PerformanceBudget.Report): `scripts/adopt-ci-budgets <run>`
+            # sets PerformanceBudgets' `measured` from them, CI's Linux JVM figures rather than a laptop's. Unforked specs write
+            # the root target/, forked ones their module's. Red rows too: a budget out of its band is what it reads.
+            - name: Upload the performance budget figures
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v6
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: performance-budgets-unit-${{ matrix.shard }}
+                  path: |
+                      target/performance-budgets.tsv
+                      */target/performance-budgets.tsv
+                  if-no-files-found: ignore
+                  retention-days: 14
+
     # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
     # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
     # the Playwright suite uses) once, then runs both the iOS `LocalServer*` XCTest
@@ -638,6 +654,20 @@ jobs:
                   check_name: integration tests (${{ matrix.row }})
                   include_passed: false
 
+            # This row's budget figures, for `scripts/adopt-ci-budgets` (see the unit rows).
+            - name: Upload the performance budget figures
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v6
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: performance-budgets-it-${{ matrix.row }}
+                  path: |
+                      target/performance-budgets.tsv
+                      */target/performance-budgets.tsv
+                  if-no-files-found: ignore
+                  retention-days: 14
+
             # The old-ref compile started beside itAll (above): its verdict, failing as it would have.
             - name: identity-slice's tool files still compile into a ref from before them
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
@@ -789,6 +819,20 @@ jobs:
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: e2e tests (${{ matrix.shard }})
                   include_passed: false
+
+            # This row's budget figures, for `scripts/adopt-ci-budgets` (see the unit rows).
+            - name: Upload the performance budget figures
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@v6
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: performance-budgets-e2e-${{ matrix.shard }}
+                  path: |
+                      target/performance-budgets.tsv
+                      */target/performance-budgets.tsv
+                  if-no-files-found: ignore
+                  retention-days: 14
 
             # The web image's build and push, started before the e2e run (above): its log, and its exit as the row's.
             - name: The web image was built and pushed

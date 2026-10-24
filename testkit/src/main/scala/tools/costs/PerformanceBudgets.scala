@@ -19,9 +19,16 @@ import tools.costs.PerformanceBudget.{bytes, ceiling, operations}
  *    2. When the cost is a deliberate trade (a page that now shows more), re-measure on the parent
  *       commit and on yours with the spec's own `info` lines (each prints `name: actual, held to
  *       floor..limit`; every check also appends to `target/performance-budgets.tsv`), two runs on an idle
- *       machine, and set `measured` to yours.
- *  - It went red BELOW its band (the path got cheaper): set `measured` to the new cost, re-measured the
- *    same way, in the commit that made it cheaper, so the gain is held from then on.
+ *       machine, to see what moved and by how much.
+ *  - It went red BELOW its band (the path got cheaper): the same, in the commit that made it cheaper, so
+ *    the gain is held from then on.
+ *  - THE FIGURE WRITTEN DOWN IS CI'S, NOT A LAPTOP'S. A Mac's JVM lands ~3-5% off CI's Linux one, and
+ *    figures re-measured locally turned Main red twice on 2026-10-24. Every row of ci.yml that runs a budget
+ *    spec uploads its `performance-budgets.tsv` as a `performance-budgets-<row>` artifact, and
+ *    `scripts/adopt-ci-budgets <run id>` sets each `measured` here to the median of that run's figures (a
+ *    figure outside its band only with `--out-of-band`, for a deliberate trade). After a red Main run on a
+ *    budget you moved on purpose, adopt that run's figures in the fixing commit (`Fixes-Red:`); after a green
+ *    one, they recalibrate a figure that drifted.
  *  - Either way, say in the commit message what moved and both numbers, and add a dated note here.
  *  - A path whose runs genuinely spread wider than the default band names its own `band =` with a comment
  *    saying what spread was measured — never to quiet a regression.
