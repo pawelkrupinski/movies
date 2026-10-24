@@ -48,12 +48,13 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
                    rounds: mutable.Buffer[LookupFillRound] = mutable.Buffer.empty,
                    refreshes: () => Seq[CandidateQuery] = () => Nil,
                    gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None,
-                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
+                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
+                   backstop: TmdbAgeBackstop = TmdbAgeBackstop.Never) =
     new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
       DaemonExecutors.directExecutor(), sleeps += _, refreshes,
       // a memory of its own unless the test shares one: nothing remembered, every gap due
-      gapMemory.getOrElse(new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock)
+      gapMemory.getOrElse(new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock, backstop)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {
@@ -75,6 +76,19 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
       gaps = _ => AnswersChanged.Empty).round()
     service.requests.map(u => java.net.URLDecoder.decode(u, "UTF-8")).count(_.contains("query=Aged film")) shouldBe round.asked
     round.asked should (be > 0 and be <= IdentityLookupFillRate(60).allowanceOver(IdentityLookupFillInterval(30.minutes).value))
+  }
+
+  it should "fetch again, last, the records and people the model reads that TMDB last gave a month ago" in {
+    val service = new Service
+    val clock   = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)
+    val held    = new InMemoryTmdbDocuments
+    val stamp   = new org.bson.BsonDocument(TmdbStore.FetchedAt, org.bson.BsonInt64(clock.millis() - 40.days.toMillis))
+    held.put(TmdbKind.Film, Seq("11" -> stamp))
+    held.put(TmdbKind.Person, Seq("22" -> stamp))
+    val read = Set(TmdbStore.keyOf(TmdbKind.Film, "11"), TmdbStore.keyOf(TmdbKind.Person, "22"))
+    fill(store(), service, gaps = _ => AnswersChanged.Empty, backstop = new TmdbAgeBackstop(held, () => Some(read), clock)).round()
+    service.requests.count(_.contains("/movie/11?")) shouldBe 2   // the record's two responses
+    service.requests.count(_.contains("/person/22/")) shouldBe 1
   }
 
   "a fill round" should "ask every unanswered question once, into the model's store, so the next shadow resolve has no gap" in {

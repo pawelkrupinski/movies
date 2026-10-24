@@ -70,7 +70,7 @@ live at take-up (`StoredFirstLookups`).
 | kind | store | asked again | non-answer | swept | a take waits |
 |---|---|---|---|---|---|
 | Title, Director, Imdb, ImdbTitled, TitleCredit | tmdb_queries | 1 d below 0.9 confidence, 7 d settled (`TmdbRefreshes`) | marker (fill and live asks), empty 1 d, failure 5 min doubling to 6 h (`TmdbGapMemory`) | unread 30 d | on fill rounds |
-| FilmRecord | tmdb_films | changes feed only | as above | unread 30 d | on fill rounds |
+| FilmRecord | tmdb_films | changes feed; 30 d while the model reads it (`TmdbAgeBackstop`) | as above | unread 30 d | on fill rounds |
 | VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich) | gone (404/410) filed; failure marked attempted, read again past 6 h | never | on fill rounds |
 | FamilySearch | identity_family_answers | 90 d | empty filed; failure on queue backoff | 400 d since fetched | 10 min* |
 | FamilyRecord | identity_family_answers | 365 d | as above | 400 d | 10 min* |
@@ -96,8 +96,9 @@ until one is.
   already remembered its non-answer its own way (checked 2026-10-24): an empty answer is filed as one (a find naming no
   film too), a failed agreement ask waits out the task queue's backoff, a failed venue page read is marked attempted for
   the detail refresh's 6 h. Those need no marker; only the model's markers live in `identity_question_markers`.
-- **Records and people refresh only from the changes feed**; a missed window leaves them stale. The paced sweep in
-  flight (`tmdb-changes-sweep`) persists its window and cursor so a missed window resumes; an age backstop is still
-  step 3's.
+- **Records and people refreshed only from the changes feed**; an edit it never showed (the sweep behind longer than
+  TMDB's 14 days of history, or an edit read as irrelevant) left them stale for good. Since step 3 the lookup fill
+  also fetches again, last in its round and at most `TmdbAgeBackstop.PerRound` (50) a round, every record and person
+  the model reads that TMDB last gave over 30 days ago (`TmdbAgeBackstop`), oldest first.
 - **Separate askers, separate pacing**: the fill's rate, the task queue's `Behind` and the sweep's own pace. The `path`
   label now splits them on the counter.

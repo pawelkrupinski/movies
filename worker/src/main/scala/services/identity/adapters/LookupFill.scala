@@ -134,7 +134,8 @@ final class LookupFill(
   sleep:       Long => Unit,
   refreshes:   () => Seq[CandidateQuery],
   gapMemory:   TmdbGapMemory,
-  clock:       java.time.Clock
+  clock:       java.time.Clock,
+  backstop:    TmdbAgeBackstop = TmdbAgeBackstop.Never
 ) extends Logging {
   // When the last round began: a round's allowance is the rate over the time since, never more than a `window` —
   // rounds run as the model finds gaps (`EventTrigger`), not only once a window, and must not ask more for it.
@@ -158,7 +159,8 @@ final class LookupFill(
     // gaps are, by definition, not yet.
     val gaps    = new LookupGaps
     val fetch   = new NormalizingHttpFetch(new LookupFillLiveFetch(liveFetch, budget), normalizer)
-    val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch), Nil, gaps)
+    val client  = tmdb(fetch)
+    val lookups = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil, gaps)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
@@ -182,6 +184,16 @@ final class LookupFill(
     // Then, with what the allowance has left, questions asked again because they have aged
     // (`TmdbRefreshes`) — through the same live fetch.
     tools.HttpPath.within(tools.HttpPath.Refresh)(refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates))
+    // Last, records and people TMDB last gave a month ago (`TmdbAgeBackstop`): what its changes may never have named. A
+    // failed one is named again by the backstop's next scan.
+    try tools.HttpPath.within(tools.HttpPath.Refresh)(backstop.due().iterator.takeWhile(_ => budget.remaining > 0).foreach { aged =>
+      try aged match {
+        case TmdbAgeBackstop.Aged.Film(id)   => client.identityRecord(id)
+        case TmdbAgeBackstop.Aged.Person(id) => client.personDirectorCredits(id)
+      }
+      catch { case NonFatal(_) => () }
+    })
+    catch { case NonFatal(e) => logger.warn("identity lookup fill: no records or people fetched again for their age, this round", e) }
     gapMemory.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get)
     current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
     val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,

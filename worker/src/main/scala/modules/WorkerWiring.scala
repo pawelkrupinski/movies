@@ -271,7 +271,9 @@ class WorkerWiring(
       metrics     = workerMetrics.identityLookupFill.lookupsForCountry(country.code),
       executor    = lookupFillExecutor,
       sleep       = lookupFillSleep,
-      clock       = clock)
+      clock       = clock,
+      backstop    = new services.identity.adapters.TmdbAgeBackstop(identityTmdbLayer.backend,
+        liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock))
 
   /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
    *  due, gaps remembered as unanswered). A round asks what the rate allows since the last. */

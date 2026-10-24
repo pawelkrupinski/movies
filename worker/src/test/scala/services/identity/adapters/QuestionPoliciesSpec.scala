@@ -36,7 +36,7 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
       QuestionKind.ImdbTitled  -> search,
       QuestionKind.TitleCredit -> search,
       QuestionKind.FilmRecord ->
-        QuestionPolicies.Policy("tmdb_films", Seq(Renewal.ChangesFeed), NonAnswer.Marker(1.day, 5.minutes, 6.hours), Sweep.Unread(30.days), None),
+        QuestionPolicies.Policy("tmdb_films", Seq(Renewal.ChangesFeed, Renewal.After(30.days, "read by the model")), NonAnswer.Marker(1.day, 5.minutes, 6.hours), Sweep.Unread(30.days), None),
       QuestionKind.VenuePage     -> QuestionPolicies.Policy("venue_pages", Seq(Renewal.After(6.hours, "any")), NonAnswer.GoneFiled, Sweep.Kept, None),
       QuestionKind.FamilySearch  -> family(90.days),
       QuestionKind.FamilyRecord  -> family(365.days),

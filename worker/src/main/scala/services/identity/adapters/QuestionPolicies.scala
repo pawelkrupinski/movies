@@ -21,7 +21,7 @@ object QuestionPolicies {
   /** When a stored answer is asked again: past an age (`when` says which answers), or when a feed names it. */
   enum Renewal {
     case After(age: FiniteDuration, when: String)
-    /** TMDB's daily change lists (`TmdbChangesSweep`), and no age. */
+    /** TMDB's daily change lists (`TmdbChangesSweep`). */
     case ChangesFeed
   }
 
@@ -85,7 +85,7 @@ object QuestionPolicies {
     QuestionKind.Imdb        -> search,
     QuestionKind.ImdbTitled  -> search,
     QuestionKind.TitleCredit -> search,
-    QuestionKind.FilmRecord  -> Policy(TmdbKind.Film.collection, Seq(Renewal.ChangesFeed), tmdbMemory, Sweep.Unread(TmdbStoreSweep.KeepUnread), None),
+    QuestionKind.FilmRecord  -> Policy(TmdbKind.Film.collection, Seq(Renewal.ChangesFeed, Renewal.After(TmdbAgeBackstop.MaxAge, "read by the model")), tmdbMemory, Sweep.Unread(TmdbStoreSweep.KeepUnread), None),
     QuestionKind.VenuePage -> Policy(
       MongoVenuePageStore.Collection,
       Seq(Renewal.After(Freshness.ttlFor(FreshnessKind.DetailEnrich).get, "any")),
