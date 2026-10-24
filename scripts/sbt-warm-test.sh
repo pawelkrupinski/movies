@@ -360,9 +360,20 @@ keepers_of() { pgrep -f 'sbt-warm --keep' | while read -r p; do
     ps -o args= -p "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')" 2>/dev/null | grep -q -- 'sbt-warm --keep' && continue
     [ "$(lsof -a -p "$p" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')" = "$1" ] && echo "$p"; done | tr '\n' ' ' | awk '{ print NF, $0 } END { if (NR == 0) print 0 }' | sed 's/ *$//'; }
 fake_server "$scratch/restopped"; server=$!; await_server "$server"
-(cd "$scratch/restopped" && KINOWO_IDENTITY_CACHE="$scratch/own-slots" KINOWO_JVM_SLOTS=1 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=60 \
-  "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+# Main #1259: the call returns the moment it has forked its keeper, and a keeper not yet exec'd (on a loaded runner)
+# still carries the call's own command line -- a --stop then took it for no keeper and left it alive, holding the slot.
+# A nohup that waits a second before it runs the keeper -- its command line, once it is waiting, naming none -- holds the
+# keeper there that long.
+mkdir -p "$scratch/slow-nohup"
+cat > "$scratch/slow-nohup/nohup" <<SLOW
+#!/bin/sh
+keeper="\$*" exec /bin/sh -c 'touch "$scratch/slow-nohup/waiting"; sleep 1; exec $(command -v nohup) \$keeper'
+SLOW
+chmod +x "$scratch/slow-nohup/nohup"
+(cd "$scratch/restopped" && PATH="$scratch/slow-nohup:$PATH" KINOWO_IDENTITY_CACHE="$scratch/own-slots" KINOWO_JVM_SLOTS=1 \
+  KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=60 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 old_keeper=$(cat "$restopped_key.keep.flock" 2>/dev/null)
+for _ in $(seq 1 50); do [ -e "$scratch/slow-nohup/waiting" ] && break; sleep 0.1; done
 (cd "$scratch/restopped" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1)
 check "--stop stops the checkout's keeper with its server, its JVM slot free" "stopped gone free" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${old_keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$own_slot")"

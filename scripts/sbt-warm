@@ -9,7 +9,8 @@
 #                                        checkout's server, which it keeps in use (never idle-stopped) while it serves
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --status            this checkout's server, and every kept one
-#   scripts/sbt-warm --stop              stop this checkout's server and its keeper (by pid, its own only: never `sbt --client shutdown`,
+#   scripts/sbt-warm --stop              stop this checkout's server and its keeper, returning once the keeper is gone and
+#                                        its slot free (by pid, its own only: never `sbt --client shutdown`,
 #                                        which reaches whatever server active.json names). Refused in the ROOT checkout
 #                                        (a tool call starts there: four agents' clean-ups on 2026-10-15 stopped its
 #                                        server instead of their own); --stop --root stops it on purpose
@@ -147,14 +148,28 @@ stop_servers_of() { # <root> <why>
 # its whole process group (the keeper and its poll's sleep), and waits for the lock -- so its JVM slot is free on return.
 # A keeper left running after its server was stopped held the slot the next call waited for, and that call, holding the
 # busy lock the keeper waited on to end, kept it alive: a deadlock (2026-10-19).
+# A keeper just started is not one YET: the call that starts it returns once it has forked it, and until the fork has
+# exec'd it carries the call's own command line (and the lock file, the previous keeper's pid). So while the lock is
+# held, it waits up to 10 s for the pid it names to be a keeper: a --stop right after a call took a loaded runner's
+# not-yet-exec'd keeper for none and left it alive, holding the slot (Main #1259).
 stop_keeper_of() { # <state prefix> <why>
-  local keep=$1.keep.flock pid
-  lock_busy "$keep" || return 0
-  pid=$(cat "$keep" 2>/dev/null)
-  [ -n "$pid" ] && ps -o args= -p "$pid" 2>/dev/null | grep -q -- 'sbt-warm --keep' || return 0
+  local keep=$1.keep.flock pid=""
+  for _ in $(seq 1 100); do
+    lock_busy "$keep" || return 0
+    pid=$(cat "$keep" 2>/dev/null)
+    [ -n "$pid" ] && ps -o args= -p "$pid" 2>/dev/null | grep -q -- 'sbt-warm --keep' && break
+    pid=""; sleep 0.1
+  done
+  [ -n "$pid" ] || { log "$keep is held, but by no keeper in 10 s (pid ${pid:-$(cat "$keep" 2>/dev/null)}): left alone"; return 0; }
   kill -TERM -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null
   for _ in $(seq 1 100); do lock_busy "$keep" || break; sleep 0.1; done
-  record_stop keeper "$pid" "$(cat "$1.root" 2>/dev/null || echo "?")" "$2"
+  if lock_busy "$keep"; then
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
+    for _ in $(seq 1 20); do lock_busy "$keep" || break; sleep 0.1; done
+    record_stop keeper "$pid" "$(cat "$1.root" 2>/dev/null || echo "?")" "$2 (SIGKILL: alive 10 s after SIGTERM)"
+  else
+    record_stop keeper "$pid" "$(cat "$1.root" 2>/dev/null || echo "?")" "$2"
+  fi
 }
 
 # Forgets a checkout's server: its keeper and servers stopped (stop_servers_of), its records removed -- but never the lock

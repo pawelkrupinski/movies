@@ -109,7 +109,9 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 - **A server gone missing?** `~/.cache/kinowo-sbt-warm/stops.log` has a line for every server and keeper sbt-warm
   stopped (when, why, which process asked) and a `vanished` line for one that ended otherwise, naming the JVM reaper's
   kill (`~/Library/Logs/jvm-reaper.log`) or a crash file when one exists; each keeper's own log is `<key>.log` beside it.
-  `--stop` stops the checkout's keeper with its server. The reaper's hog rule spares a server whose keeper lives.
+  `--stop` stops the checkout's keeper with its server and returns once the keeper is gone and its JVM slot free
+  (waiting up to 10 s for a keeper still starting, SIGKILL past 10 s of SIGTERM). The reaper's hog rule spares a
+  server whose keeper lives.
 - **Long-lived servers** (the fixture server, any `runMain` that serves until stopped):
   `scripts/sbt-warm --serve '<command>'` — it keeps the checkout's server (and so its slot) in use until stopped, so
   stop it when done.
