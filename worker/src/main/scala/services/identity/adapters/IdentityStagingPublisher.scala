@@ -192,6 +192,8 @@ object IdentityStagingPublisher {
   val QuestionsShown = 60
   /** The most listings a cluster lists; it counts them all. */
   val ListingsShown = 12
+  /** The most explanation lines a take keeps, the most telling first; a last line counts the rest. */
+  val ExplanationShown = 6
   private val TickName = "identity-staging"
 
   /** A cluster's key on the screen: its id ([[StoredFamily.idOf]], its smallest listing), hashed short. */
@@ -205,7 +207,7 @@ object IdentityStagingPublisher {
     val leaning = decision.leaning.orElse(decision.candidate).map(_.film)
     StagedTake(decision.film, decision.film.flatMap(resolution.films.get).map(_.title), decision.basis.toString, decision.confidence,
       leaning, leaning.flatMap(resolution.films.get).map(_.title),
-      decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"))
+      decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"), decision.explanationShown(ExplanationShown))
   }
 
   /** Who a question is asked of: the family it names, else the part of the identity system that asks it. */

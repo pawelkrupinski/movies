@@ -100,6 +100,21 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
       Map("imdb|title|Diuna" -> StagedQuestion.Answered, "find|tt1160419" -> StagedQuestion.Absent)
   }
 
+  it should "keep why a take was decided: the first lines of its explanation, the rest counted" in {
+    val docs = new InMemoryStagingDocuments
+    val live = publisher(docs)
+    val why  = (1 to IdentityStagingPublisher.ExplanationShown + 2).map(i => s"evidence $i")
+    waits    = Map.empty
+    taken    = Some(resolution(decision(Seq(belle), Some(1), ResolverDecision.Basis.OwnMatch)))
+    live.publish()
+
+    clock.advanceSeconds(20)
+    taken = Some(resolution(ResolverDecision(Seq(dune), Some(438631), 0.96, ResolverDecision.Basis.OwnMatch, why)()))
+    live.publish()
+    val Seq(decided) = shown(docs)
+    decided.take.explanation shouldBe why.take(IdentityStagingPublisher.ExplanationShown) :+ "… and 2 more"
+  }
+
   // Most new films are asked inline and settle inside one projection: no publish ever sees them waiting.
   it should "list a cluster decided between two publishes as decided, and one whose film changed as changed, with the film it had" in {
     val docs = new InMemoryStagingDocuments

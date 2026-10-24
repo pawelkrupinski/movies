@@ -63,6 +63,13 @@ class IdentityStagingControllerSpec extends AnyFlatSpec with Matchers {
     (deNow \ "keys").as[Seq[String]].sorted shouldBe Seq("b3", "b4")
   }
 
+  it should "carry each take's explanation for the page to show why it was decided" in {
+    uk.publish("uk", Seq(cluster("c1", "Groundswell").copy(take = StagedTake(Some(7), Some("Groundswell"), "OwnMatch", 0.96,
+      explanation = Seq("best tmdb 7 at 96.0%")))), Nil, beat(1))
+    val ukNow = (data(None) \ "countries").as[Seq[JsValue]].find(c => (c \ "code").as[String] == "uk").get
+    (ukNow \ "changed" \ 0 \ "take" \ "explanation").as[Seq[String]] shouldBe Seq("best tmdb 7 at 96.0%")
+  }
+
   it should "read a malformed cursor as none" in {
     IdentityStagingController.cursors(Some("pl:12,de,uk:x")) shouldBe Map("pl" -> Instant.ofEpochMilli(12))
   }

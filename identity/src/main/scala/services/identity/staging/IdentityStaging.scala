@@ -33,12 +33,14 @@ object StagedQuestion {
 }
 
 /** A cluster's take as the projection last wrote it: its film (and title, when the resolve read its record), basis and
- *  confidence; the film a no-match leans to; a fallback film's `source:id title`. */
+ *  confidence; the film a no-match leans to; a fallback film's `source:id title`; why — the first lines of the decision's
+ *  explanation (`ResolverDecision.explanationShown`), none in a document written before it was kept. */
 final case class StagedTake(film: Option[Int], title: Option[String], basis: String, confidence: Double,
-                            leaning: Option[Int] = None, leaningTitle: Option[String] = None, fallback: Option[String] = None)
+                            leaning: Option[Int] = None, leaningTitle: Option[String] = None, fallback: Option[String] = None,
+                            explanation: Seq[String] = Nil)
 
 object StagedTake {
-  given OFormat[StagedTake] = Json.format[StagedTake]
+  given OFormat[StagedTake] = Json.using[Json.WithDefaultValues].format[StagedTake]
 }
 
 /**

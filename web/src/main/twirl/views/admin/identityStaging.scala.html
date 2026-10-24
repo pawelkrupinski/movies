@@ -53,6 +53,9 @@
     .r-lost { color: #d67a6a; }
     .r-changed { color: #d6a35c; }
     .empty { color: #555; padding: 6px 2px; }
+    .why { list-style: none; margin: 2px 0 4px; color: #aaa; }
+    .why li { margin: 1px 0; padding-left: 10px; text-indent: -10px; word-break: break-word; }
+    .why li::before { content: "· "; color: #555; }
   </style>
 </head>
 <body>
@@ -138,11 +141,17 @@
       var hidden = cl.questionCount > cl.questions.length ? "<div class=\"line label\">… and " + (cl.questionCount - cl.questions.length) + " more</div>" : "";
       return "<table><tr><th>kind</th><th>asked of</th><th>question</th><th>outcome</th></tr>" + rows + "</table>" + hidden;
     }
+    /** The first lines of the take's explanation: the evidence the decision rests on (none in an older snapshot). */
+    function why(t) {
+      if (!t.explanation || !t.explanation.length) return "";
+      return "<div class=\"line\"><span class=\"label\">why</span><ul class=\"why\">" +
+        t.explanation.map(function (line) { return "<li>" + esc(line) + "</li>"; }).join("") + "</ul></div>";
+    }
     function body(cl) {
       var listings = cl.listings.map(function (l) { return esc(l.rawTitle) + " @@ " + esc(l.venue); }).join("<br>") +
         (cl.listingCount > cl.listings.length ? "<br>… and " + (cl.listingCount - cl.listings.length) + " more" : "");
       return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" +
-        "<div class=\"line\"><span class=\"label\">take</span> " + esc(takeText(cl.take)) + "</div>" +
+        "<div class=\"line\"><span class=\"label\">take</span> " + esc(takeText(cl.take)) + "</div>" + why(cl.take) +
         "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
         " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
     }
@@ -160,8 +169,8 @@
       } else {
         var answered = cl.questions.filter(function (q) { return q.outcome === "answered"; }).length;
         meta = change(cl) + " " + dur(serverNow() - cl.resolvedAt) + " ago" +
-          (cl.resolvedAt > cl.since ? " · waited " + dur(cl.resolvedAt - cl.since) : "") + " · " + answered + " answered, " +
-          (cl.questionCount - answered) + " left out";
+          (cl.resolvedAt > cl.since ? " · waited " + dur(cl.resolvedAt - cl.since) : "") +
+          (cl.questionCount ? " · " + answered + " answered, " + (cl.questionCount - answered) + " left out" : "");
       }
       return "<details class=\"cluster\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary><span class=\"title\">" +
         headline(cl) + "</span><span class=\"meta\">" + (cl.resolvedAt == null ? "" : change(cl) + " · ") + esc(takeText(cl.take)) +

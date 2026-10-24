@@ -36,9 +36,15 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
   def tmdbId: Option[Int]            = film
-  def render: String =
-    s"${film.fold("no film")(id => s"tmdb $id")} (${ResolverDecision.percent(confidence)}, $basis) — " +
-      s"${members.size} listing(s)\n    " + explanation.mkString("\n    ")
+  /** The verdict in one line, as every screen and script names it: its film (for a no-match, the fallback's `source:id`
+   *  it takes, if any), its confidence and its basis. */
+  def headline: String =
+    s"${film.fold(fallback.fold("no film")(f => s"${f.source}:${f.id}"))(id => s"tmdb $id")} (${ResolverDecision.percent(confidence)}, $basis)"
+  /** The first `max` lines of `explanation` — the evidence the verdict rests on, most telling first — and, when some are
+   *  left out, a last line saying how many: what a screen with no room for the whole of it shows. */
+  def explanationShown(max: Int): Seq[String] =
+    if (explanation.size <= max) explanation else explanation.take(max) :+ s"… and ${explanation.size - max} more"
+  def render: String = s"$headline — ${members.size} listing(s)\n    " + explanation.mkString("\n    ")
 }
 
 object ResolverDecision {

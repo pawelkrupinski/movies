@@ -48,4 +48,12 @@ class IdentityStagingSpec extends AnyFlatSpec with Matchers {
     read(1).changed.map(_.key) shouldBe Seq("c")
     read(1).cursor shouldBe cursors.get("uk")
   }
+
+  it should "read a take written before its explanation was kept as one without" in {
+    val docs = new InMemoryStagingDocuments
+    val old  = play.api.libs.json.Json.toJson(cluster("a")).as[play.api.libs.json.JsObject]
+    val take = (old \ "take").as[play.api.libs.json.JsObject] - "explanation"
+    docs.put(Seq(StagingDoc("pl|cluster|a", "pl", "cluster", clock.instant(), play.api.libs.json.Json.stringify(old + ("take" -> take)))))
+    new IdentityStaging(docs, clock).ofCountry("pl").map(_.take.explanation) shouldBe Seq(Nil)
+  }
 }

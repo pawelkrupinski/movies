@@ -94,4 +94,21 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.eval("document.querySelector('section[data-country=pl] details.cluster').open").as[Boolean] shouldBe true
     }
   }
+
+  it should "show why a decided cluster was matched, and no question counts when it asked none" in {
+    val take = StagedTake(Some(1234), Some("Groundswell"), "OwnMatch", 0.96,
+      explanation = Seq("Ojai Playhouse/Groundswell: best tmdb 1234 at 96.0%", "kept apart: tmdb 99 (year 1987)", "… and 3 more"))
+    staging.publish("us", Nil, Nil, beat(0), resolved = Seq(cluster("c1", "Ojai Playhouse", "Groundswell", Nil, resolvedAt = Some(clock.millis()))
+      .copy(take = take, resolution = Some(StagedCluster.Decided))), keptFor = java.time.Duration.ofDays(7))
+    onPage { page =>
+      val row = "section[data-country=us] details.cluster"
+      page.waitFor(s"document.querySelector('$row') !== null")
+      page.evalString(s"document.querySelector('$row summary').textContent") should include ("Groundswell · OwnMatch 96%")
+      page.evalString(s"document.querySelector('$row .body.meta').textContent") should not include ("answered")
+      page.eval(s"document.querySelector('$row summary').click()")
+      page.waitFor(s"document.querySelector('$row').open")
+      page.evalInt(s"document.querySelectorAll('$row ul.why li').length") shouldBe 3
+      page.evalString(s"document.querySelector('$row ul.why').textContent") should include ("best tmdb 1234 at 96.0%")
+    }
+  }
 }
