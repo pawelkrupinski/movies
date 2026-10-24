@@ -302,9 +302,11 @@ in
         answer does not hold.
 
         8.3 SINCE 2026-09-27, an in-place binary upgrade from 8.2.11 (the one supported step: minor
-        releases cannot be skipped). The FEATURE COMPATIBILITY VERSION is a separate, later step --
-        until `setFeatureCompatibilityVersion: "8.3"` runs, an 8.2 binary can still open these data
-        files, so the binary change alone rolls back like any other generation.
+        releases cannot be skipped); 8.3.13 since 2026-10-24. The FEATURE COMPATIBILITY VERSION was
+        raised to 8.3 by hand on 2026-10-24, after a fresh dump was pulled off the box and verified: from
+        then on an 8.2 binary can NO LONGER open these data files, so going back below 8.3 means
+        restoring a dump, not switching to an older generation. The next minor bumps the FCV the same
+        way: binary first, FCV by hand later, behind a verified off-box dump.
 
         WAS LATEST (mongodb-ce, 8.2.11) BY DECISION, migrating from the Fly instance's 7.0.39. This is
         the cheap moment to make that jump and the migration is the right vehicle for it: the move

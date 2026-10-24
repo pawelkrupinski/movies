@@ -11,7 +11,7 @@ that must be confirmed before acting. Measure before landing any performance ite
 
 ## Summary: best payoff per hour
 
-1. **MongoDB:** confirm prod's feature-compatibility version (FCV) is 8.3, then add `appName` (done) so mongod's slow-op log lines name their sender.
+1. **MongoDB:** prod's feature-compatibility version (FCV) raised to 8.3 (done 2026-10-24; it was still 8.2), and `appName` added (done) so mongod's slow-op log lines name their sender.
 2. **JVM:** retire `infra/jvm/jdk25-parity.options`, starting with compact object headers (done: file retired 2026-10-24); canary on one worker.
 3. **Android:** a Baseline Profile; posters on the app's shared OkHttp client; `AsyncImage` over
    `SubcomposeAsyncImage` in the grid.
@@ -66,14 +66,13 @@ Cheap cover, not built (assessed 2026-10-24):
 as a single-node replica set `rs0` (2 vCPU, 4 GB, WiredTiger cache 1 GB, oplog 4 GB). The binary was moved from
 8.2.11 to 8.3 on 2026-09-27. CI's `mongo:8.3.11` is held to it by `MongoServerVersionParitySpec`.
 
-- **Open: FCV.** The role calls `setFeatureCompatibilityVersion: "8.3"` "a separate, later step", and nothing
-  records it was done. Check with `db.adminCommand({getParameter: 1, featureCompatibilityVersion: 1})`. Setting it
-  is one-way: an 8.2 binary can no longer open the data. Take an **off-box** dump first. That copy now exists:
-  since 2026-10-24 monitoring-1 pulls mongo-1's newest completed dump every morning over a read-only `rrsync -ro`
-  key, keeps seven by count, and `MongodumpOffboxStale` / `MongodumpOffboxMetricAbsent` watch it
-  (`roles/mongodb-offbox-backup.nix`). Before raising FCV, trigger a fresh dump and pull, verify the copy on
-  monitoring-1 (`gzip -t` every file, `bsondump` document counts per collection), then set FCV by hand --
-  operator-only, against prod.
+- **FCV: done 2026-10-24.** It was still 8.2: the role called `setFeatureCompatibilityVersion: "8.3"` "a separate,
+  later step" and nothing had recorded it. Before raising it, a fresh dump (`20261024T114604Z`) was pulled off the box
+  to monitoring-1 (`roles/mongodb-offbox-backup.nix`: a daily pull over a read-only `rrsync -ro` key, seven copies by
+  count, watched by `MongodumpOffboxStale` / `MongodumpOffboxMetricAbsent`) and verified there: byte-identical size
+  to the source, `gzip -t` on all 473 files, `bsondump` counts on sampled collections. Then FCV was set by hand
+  (operator-only, against prod) and returned `ok: 1`; web and worker logged no errors in the following 10 minutes.
+  It is one-way: an 8.2 binary can no longer open the data.
 - **The local prod mirror (`:28017`) runs 7.0.43, not prod's version.** Behaviour checked there can differ from
   prod's 8.3.
 - 8.3 is on MongoDB's minor-release track, so it gets no patches once the next release ships. Keep following each
