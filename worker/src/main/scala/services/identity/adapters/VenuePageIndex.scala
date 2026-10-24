@@ -77,6 +77,10 @@ object VenuePageIndex {
    *  re-asks: the same string on both sides is all the model needs. */
   def keyOf(detailGroup: String, page: String): String = LookupQuery.venueDetail(detailGroup, page).key
 
+  private val KeyPrefix = s"${LookupQuery.DetailMethod} "
+  /** Is `key` one [[keyOf]] makes — a venue page's, of all an answer feed carries? */
+  def isKey(key: String): Boolean = key.startsWith(KeyPrefix)
+
   private def answerOf(page: VenuePage): Option[FilmDetail] = page.outcome match {
     case VenuePage.Read(detail) => Some(detail)
     case VenuePage.Gone(_)      => None

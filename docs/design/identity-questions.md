@@ -106,6 +106,20 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    queue's and the fill's own pace. Every failed agreement ask is marked against its host (`AgreementQuestions.hostOf`):
    the one its failure names (a status, an open breaker, an unreadable body), else the last host the ask requested,
    which the host breaker notes on the asking thread (`tools.RequestedHost`) — a timeout or refused connection names none.
+   C5, one way answers are cached and one change feed (2026-10-24). The caches stay apart, each for its own reason:
+   `CachedTmdbDocuments` (the byte-capped document LRU and its film-hit cache, sized by the 2026-10-07 heap dump),
+   `StoredTmdbLookups` (one prefetch's decoded working set, let go after it) and `VenuePageIndex` (the frozen snapshot each
+   settle diffs). D1: `TmdbIdentityLookups` no longer memoises a title's IMDb suggestions for 10 min (Unknown included);
+   the questions asking while a read runs share it, and a fill round's lookups keep each title's read for the round
+   (`oneReadPerTitle`, one ask per question). D2: one `AnswerFeed` (identity, beside `AnswerChanges`;
+   `FiledAnswerFeed`, owned by `IdentityTmdbLayer`). The TMDB store publishes a document whose value moved, the family
+   store every answer it files (and `noteFiled`'s TMDB record read again), the venue page index a page whose answer moved
+   at a settle (before the drain, as before); subscribers run on the publishing thread. The model subscribes (TMDB keys
+   to `filed`, venue keys to `observed`); the agreement stage reads `FamilyAnswerStore.changes`, a view counting only the
+   keys `Question.parse` names, so a TMDB filing leaves its version, and a quiet tick, as they were (`AnswerFeedSpec`
+   holds the old and new versions and `changedSince` sets side by side). Next: D3, the agreement view fed the TMDB
+   finds and records the stage reads (`find|…`, `tmdb|record|…` as the TMDB store files them), so their filing moves the
+   stage without the asker's `noteFiled`; then D4.
 
 Decided by the owner: a new film's questions are asked **straight away**, inline, with no budget of their own beyond
 the rate-limit protections every request already goes through (the 429 gate, breakers, `HostPolicies`) (2026-10-23);

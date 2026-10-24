@@ -118,7 +118,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       venueDetailLookups(),
       titleNormalizer, services.identity.IdentityCalibration.resolver,
       tmdbOf = imdbId => identityTmdbStore.foundFirst(imdbId).toAnswer,
-      stored = stored, ask = ask, metrics = metrics, clock = stageClock, changes = familyAnswerStore,
+      stored = stored, ask = ask, metrics = metrics, clock = stageClock, changes = familyAnswerStore.changes,
       posters = posterAnswerStore,
       // the fill's resolve of a cluster alone asks what the model's whole-corpus resolve never did: read as the model
       // reads (the store, else live), never from the store alone, where those questions were gaps nothing asked

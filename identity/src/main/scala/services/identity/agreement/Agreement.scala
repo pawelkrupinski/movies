@@ -75,6 +75,30 @@ trait FamilyAnswers {
 trait AnswerChanges { def changedSince(version: Long): Option[Set[String]] }
 object AnswerChanges { val Unknown: AnswerChanges = _ => None }
 
+/**
+ * The one feed answers are announced on, whichever store filed them: a key per filing (a TMDB document's
+ * `<collection>:<id>`, a family answer's `<family>|<kind>|<text>`, a venue page's detail key). Each store decides what
+ * counts as a filing — the TMDB store a document whose value moved, the family store every answer it files, the venue
+ * page index a page whose answer moved at a settle — and publishes it here. Readers subscribe (called on the publishing
+ * thread, in order: what the model reads of the asking thread, `ObservationReads.changed`, is that thread's), or count
+ * the keys they read through a [[AnswerFeed.View]] of their own.
+ */
+trait AnswerFeed {
+  /** Announces a filing under `key`: counted by every view accepting it, then handed to every subscriber, on this thread. */
+  def publish(key: String): Unit
+  /** Calls `listener` with every key published from now on. */
+  def subscribe(listener: String => Unit): Unit
+  /** The filings whose keys `accept` takes, numbered by a version of the view's own: one it does not take moves nothing. */
+  def view(accept: String => Boolean): AnswerFeed.View
+}
+object AnswerFeed {
+  /** One reader's count of the filings it reads ([[version]]), and which ones came since a version ([[changedSince]]). */
+  trait View extends AnswerChanges { def version: Long }
+  /** The keys the agreement stage reads: those an agreement question names ([[services.identity.Question.parse]]) —
+   *  never a TMDB document's or a venue page's, so the model's filings leave its version where it was. */
+  val agreementKeys: String => Boolean = key => services.identity.Question.parse(key).isDefined
+}
+
 /** A family's identification of a cluster: its own id and record of the film it took, when it took one. */
 final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
 

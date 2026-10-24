@@ -212,8 +212,11 @@ class WorkerWiring(
       new services.venuepages.MongoVenuePageStore(_))
 
   /** The venue detail pages read into venue_pages, as the identity model reads them. */
-  lazy val venuePageIndex: services.identity.adapters.VenuePageIndex =
-    new services.identity.adapters.VenuePageIndex(venuePageStore, changed = key => identityModel.observed(key))
+  lazy val venuePageIndex: services.identity.adapters.VenuePageIndex = {
+    import services.identity.adapters.VenuePageIndex
+    identityTmdbLayer.feed.subscribe(key => if (VenuePageIndex.isKey(key)) identityModel.observed(key))
+    new VenuePageIndex(venuePageStore, changed = identityTmdbLayer.feed.publish)
+  }
 
   /** Where the model files which rules decided each listing (`identity_traces`, read by the admin
    *  page only): beside its families in the country's database, or nowhere without one. ONE for every model a

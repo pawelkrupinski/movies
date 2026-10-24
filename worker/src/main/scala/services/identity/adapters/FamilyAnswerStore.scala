@@ -3,7 +3,7 @@ package adapters
 
 import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonString}
 import org.mongodb.scala.bson.BsonArray
-import services.identity.agreement.{FamilyAnswers, Showing, SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{AnswerFeed, FamilyAnswers, Showing, SourceHit, SourceRecord, VoterFamily}
 
 import java.time.Clock
 import scala.concurrent.duration.FiniteDuration
@@ -19,28 +19,22 @@ import scala.jdk.CollectionConverters._
  * family's site under `<family>|showing|<venue>`, asked again after [[QuestionPolicies.FamilyShowingAge]] — a programme
  * moves daily.
  */
-final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends services.identity.agreement.AnswerChanges {
+final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFeed = new FiledAnswerFeed)
+    extends services.identity.agreement.AnswerChanges {
   import FamilyAnswerStore._
 
-  private val filed = new java.util.concurrent.atomic.AtomicLong()
-  /** How many answers this store filed since it was made: a reader's verdicts over them hold while it does not move. */
-  def version: Long = filed.get
+  /** The agreement's view of the feed ([[AnswerFeed.agreementKeys]]): every answer this store files, and every other one
+   *  an agreement question names that is published there — the stage's verdicts hold while its version does not move. */
+  val changes: AnswerFeed.View = feed.view(AnswerFeed.agreementKeys)
+  /** How many agreement answers were filed since this store was made. */
+  def version: Long = changes.version
 
-  /** Counts a filing under `id`: every answer [[put]] files, and one the agreement reads that another store filed — a
-   *  TMDB record read again for its release day: the stage's verdicts hold while the version does not move, so it must. */
-  def noteFiled(id: String): Unit = {
-    changes.put(filed.incrementAndGet(), id)
-    while (changes.size > FamilyAnswerStore.ChangesKept) changes.pollFirstEntry()
-    ()
-  }
+  /** Announces a filing under `id` that another store made — a TMDB record read again for its release day: the stage's
+   *  verdicts hold while the version does not move, so it must. Counted only when an agreement question names `id`. */
+  def noteFiled(id: String): Unit = feed.publish(id)
 
-  /** Each filing's question id, by the version it made — what [[changedSince]] answers from; the oldest dropped past
-   *  [[FamilyAnswerStore.ChangesKept]], a version before them then unknown. */
-  private val changes = new java.util.concurrent.ConcurrentSkipListMap[Long, String]()
   /** The questions filed after `version`, or `None` once filings that old are no longer kept. */
-  def changedSince(version: Long): Option[Set[String]] =
-    Option.when(changes.isEmpty || version >= changes.firstKey - 1 || version >= filed.get)(
-      changes.tailMap(version, false).values.asScala.toSet)
+  def changedSince(version: Long): Option[Set[String]] = changes.changedSince(version)
 
   /** `family`'s answers, as the agreement reads them. */
   def answers(of: VoterFamily): FamilyAnswers = new FamilyAnswers {
@@ -68,11 +62,11 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
   // Read as an answer: kept by the worker's document cache (`CachedTmdbDocuments`) until a filing replaces it — a whole-
   // document `get` asks Mongo each time, and the stage checks each waiting cluster's questions on every projection.
   private[identity] def document(id: String): Option[BsonDocument] = docs.answers(TmdbKind.Family, Seq(id)).get(id)
-  /** Files `d` under `id`, stamped and counted as every answer is: what [[PosterAnswerStore]] files the posters' hashes by,
-   *  so one version and one [[changedSince]] cover everything the agreement reads. */
+  /** Files `d` under `id`, stamped and published as every answer is: what [[PosterAnswerStore]] files the posters' hashes
+   *  by, so one version and one [[changedSince]] cover everything the agreement reads. */
   private[identity] def put(id: String, d: BsonDocument): Unit = {
     docs.put(TmdbKind.Family, Seq(id -> d.append(TmdbStore.FetchedAt, BsonInt64(clock.millis()))))
-    noteFiled(id)
+    feed.publish(id)
   }
 }
 
@@ -83,8 +77,6 @@ object FamilyAnswerStore {
     if (id.contains("|record|")) QuestionPolicies.FamilyRecordAge
     else if (id.contains("|showing|")) QuestionPolicies.FamilyShowingAge
     else QuestionPolicies.FamilySearchAge
-  /** How many filings [[FamilyAnswerStore.changedSince]] can name: a burst past it re-reads the verdicts' answers. */
-  val ChangesKept = 100000
 
   def titleId(family: VoterFamily, text: String): String    = s"${family.label}|title|$text"
   def directorId(family: VoterFamily, name: String): String = s"${family.label}|director|$name"

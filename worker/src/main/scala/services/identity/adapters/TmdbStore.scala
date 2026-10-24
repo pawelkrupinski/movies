@@ -155,12 +155,12 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with Tmd
  * re-fetch whose only news is TMDB's daily popularity or vote drift (54 of 60 sampled UK re-fetches)
  * changes nothing the model reads, and wakes nothing.
  */
-final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
+final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock,
+                      feed: services.identity.agreement.AnswerFeed = new FiledAnswerFeed) {
   import TmdbStore._
 
-  private val listeners = new java.util.concurrent.CopyOnWriteArrayList[String => Unit]()
-  /** Call `listener` with a document's key ([[keyOf]]) whenever its value changes. */
-  def onChanged(listener: String => Unit): Unit = { listeners.add(listener); () }
+  /** Call `listener` with a document's key ([[keyOf]]) whenever its value changes: the feed's TMDB keys ([[isKey]]). */
+  def onChanged(listener: String => Unit): Unit = feed.subscribe(key => if (isKey(key)) listener(key))
 
   // ── writes: one document's new value, and whether it moved ─────────────────────────
 
@@ -192,7 +192,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
       if (written.nonEmpty) docs.put(kind, written.map { case (id, d, _) => id -> d })
       written.collect { case (id, _, true) => id }
     }
-    moved.foreach(id => listeners.forEach(_(keyOf(kind, id))))
+    moved.foreach(id => feed.publish(keyOf(kind, id)))
   }
 
   /** A title search's (or find's) films, in its order, each hit's fields kept on its film. */
@@ -309,6 +309,9 @@ object TmdbStore {
 
   /** The key a document is announced and tracked under (`ObservationReads`). */
   def keyOf(kind: TmdbKind, id: String): String = s"${kind.collection}:$id"
+  private val Prefixes = Seq(TmdbKind.Film, TmdbKind.Person, TmdbKind.Query).map(kind => s"${kind.collection}:")
+  /** Is `key` one this store announces ([[keyOf]] of a film, a person or a question) — of all the feed carries? */
+  def isKey(key: String): Boolean = Prefixes.exists(key.startsWith)
 
   /** Which of a film's two record responses: the deployment language's `…?append_to_response=
    *  credits,release_dates`, or en-US `…?append_to_response=alternative_titles`. */
