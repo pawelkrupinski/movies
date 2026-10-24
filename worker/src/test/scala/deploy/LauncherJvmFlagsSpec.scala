@@ -123,10 +123,10 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The worker's collector is the launcher's, whatever an overlay still names: every country's JAVA_OPTS carry
-  // -XX:+UseSerialGC from before 2026-10-24, and the launcher's options come after them, switching it off for the
-  // Parallel collector. Two collectors left on refuse to start the JVM ("Multiple garbage collectors selected"), so
-  // this starts one under each country's real options. SerialGC paused each worker for every young and every full
+  // The worker's collector is the launcher's, whatever an overlay names: no country's JAVA_OPTS names one since
+  // 2026-10-24 (they all carried -XX:+UseSerialGC before), and the launcher's options come after them, so one an
+  // overlay brought back would be switched off for the Parallel collector. Two collectors left on refuse to start the
+  // JVM ("Multiple garbage collectors selected"), so this starts one under each country's real options. SerialGC paused each worker for every young and every full
   // collection on ONE thread: a full one took 3.1 s on worker-de and 3.5 s on worker-us over their ~420-450 MB live sets.
   /** The worker's parallel GC threads: see infra/jvm/worker.options for the measurement behind it. */
   private val WorkerParallelGcThreads = 4
@@ -139,6 +139,10 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
       Seq("UseParallelGC", "UseSerialGC", "UseG1GC", "ParallelGCThreads").map(flag => flag -> flags.get(flag)) shouldBe
         Seq("UseParallelGC" -> Some("true"), "UseSerialGC" -> Some("false"), "UseG1GC" -> Some("false"),
             "ParallelGCThreads" -> Some(WorkerParallelGcThreads.toString))
+    }
+
+    it should "leave the collector to the launcher rather than name one in its overlay" in {
+      productionOptions(manifest).filter(_.matches("-XX:[+-]Use\\w*GC")) shouldBe empty
     }
   }
 

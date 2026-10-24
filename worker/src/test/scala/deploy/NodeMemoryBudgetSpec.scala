@@ -150,7 +150,9 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     // web-us DERIVED, not measured: its 7d RSS peak to 2026-10-03 was 1524 MiB on -Xmx1024m, less the
     // 256 MiB its heap then gave back (-Xmx768m). Replace with a measured 7d peak after 2026-10-10.
     // worker-us re-measured 2026-10-04 on -Xmx1152m: 1528 MiB over six boots in 4h (1570-1620 on 1280m).
-    ("web", "us") -> 1268, ("worker", "us") -> 1528,
+    // DERIVED since 2026-10-24's -Xmx1280m stopgap (the nightly identity drift check's whole resolve filled its old gen):
+    // 1528 + the 128 MiB the heap grew. Replace with a measured 7d peak after 2026-10-31.
+    ("web", "us") -> 1268, ("worker", "us") -> 1656,
   )
 
   /** How far above its measured peak a request may sit. `-Xms` equals `-Xmx` on every deployment
@@ -299,7 +301,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // and 16.2 s of them an hour (24 h to 2026-10-07 10:40 UTC), so it got -Xmn100m (412 MB old), and every
   // worker its young generation sized from its own live set the same day: the old gen a quarter over the
   // max, the rest young — no more than half the heap, past which a young collection's survivors can
-  // outgrow the old gen and Serial falls back to a full one. US already sat just over (768 old over 605).
+  // outgrow the old gen and Serial falls back to a full one. US already sat just over (768 old over 605), and
+  // got 896 (-Xmx1280m -Xmn384m) on 2026-10-24 when the nightly identity drift check's whole resolve filled the 768.
   // Live set = max `jvm_memory_pool_collection_used_bytes{pool="Tenured Gen"}` over 24 h, pods past 10 min up.
   // DE re-measured 2026-10-12: Germany's per-venue sources (Cineamo, kinoheld) took its corpus from 1,890
   // films / 19k listings to 5,022 / 30k overnight, and its 400 MB old gen sat full, ~19 full GCs a minute
@@ -326,7 +329,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The heap and its young generation: `-Xmn`, or the third Serial gives it when unset. */
+  /** The heap and its young generation: `-Xmn`, or the third Serial and Parallel give it when unset. */
   private def generations(tier: String, cc: String): (Int, Int) = {
     val opts = javaOpts(tier, cc)
     val heap = flagMib(opts, "-Xmx", tier, cc)
