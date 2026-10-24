@@ -55,10 +55,11 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       agreementBacklog = () => agreementStage.backlog,
       suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
-      changeFeed  = identityTakeChanges.offer)
+      changeFeed  = changes => identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_))))
 
-  /** Each written projection's change list, held for the staging publisher to drain. */
-  lazy val identityTakeChanges: services.identity.staging.ChangeFeed[services.identity.TakeChange] =
+  /** What the staging publisher drains as it happens: each written projection's change list, and the live agreement
+   *  stage's waits starting and ending. */
+  lazy val identityStagingEvents: services.identity.staging.ChangeFeed[services.identity.staging.StagingEvent] =
     new services.identity.staging.ChangeFeed(services.identity.adapters.IdentityStagingPublisher.FeedCapacity)
 
   /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
@@ -98,7 +99,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
-        stopwatch = stopwatch))
+        stopwatch = stopwatch),
+      staging = Some(identityStagingEvents.offer))
     familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
     stage
   }
@@ -120,7 +122,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** What this country's takes still wait on, published for the local staging screen (`scripts/identity-staging`). */
   lazy val identityStagingPublisher: services.identity.adapters.IdentityStagingPublisher = managedResources.stopping(
     new services.identity.adapters.IdentityStagingPublisher(country.code, identityStaging,
-      taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityTakeChanges.drain(),
+      taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityStagingEvents.drain(),
       waitingOn = agreementStage.waitingOn,
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code)))
@@ -133,7 +135,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
                         ask: Set[services.identity.Question] => Unit = _ => (),
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
                         budgets: Boolean = true,
-                        askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never)
+                        askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never,
+                        staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None)
       : services.identity.agreement.AgreementStage =
     new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
       venueDetailLookups(),
@@ -149,7 +152,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
       askNow = askNow, attempted = identityQuestionMemory.attempted,
-      attemptsMarked = Some(() => identityQuestionMemory.marks))
+      attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging)
 
   // The drift check (services.identity.adapters.IdentityDriftCheck) no longer runs on the worker: its whole resolve and
   // fresh agreement stage, beside the model's own state, filled worker-us's tenured gen and OOM-killed it at its first

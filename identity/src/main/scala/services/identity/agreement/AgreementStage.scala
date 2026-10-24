@@ -69,6 +69,11 @@ import scala.collection.mutable
  * join: one attempted and not answered is read as no evidence ([[settled]]), the take decided without it, the question
  * asked on every pass and read again once answered. `attemptsMarked`, when given, counts the writes of the memory behind
  * `attempted`: an apply at the same version reads what it waits on again only once that count moved.
+ *
+ * `staging`, when given, is told each wait as it starts and ends ([[services.identity.staging.StagingEvent]]): a cluster
+ * the apply put to wait, one it stopped waiting on, and a new cluster whose families it asked inline and decided within
+ * the one apply — the waits the staging screen would never see by sampling. Only an apply that reads anything tells it;
+ * a quiet one changes no wait.
  */
 final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], private[agreement] val venues: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
                            private[agreement] val calibration: IdentityCalibration, private[agreement] val tmdbOf: String => Answer[Option[Int]], private[agreement] val stored: AgreementVerdicts,
@@ -81,7 +86,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val correctionsPerApply: Int = AgreementStage.CorrectionsPerApply,
                            private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
                            private[agreement] val attempted: Question => Boolean = _ => false,
-                           private[agreement] val attemptsMarked: Option[() => Long] = None) extends AgreementCorrections, AgreementTakes, AgreementCandidates {
+                           private[agreement] val attemptsMarked: Option[() => Long] = None,
+                           private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None)
+    extends AgreementCorrections, AgreementTakes, AgreementCandidates {
 
   /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
    *  decides every verdict again, as a change of the code does. */
@@ -232,8 +239,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val started = tools.Stopwatch.start()
     applying = version
     val pass      = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)))
+    val waitedBefore = staging.map(_ => waitingClusters)
     val decisions = resolution.decisions.map(decide(_, listingOf, pass))
     forgetGone(resolution, pass)
+    staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
     handOver(version)
     // read before the questions are: a mark landing while they are read moves it, and the next apply reads them again
@@ -242,6 +251,34 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     unread = pass.spent
     report(decisions, pass, started)
     resolution.copy(decisions = decisions)
+  }
+
+  /** The clusters the stage waits on now: on their families' questions or fill ([[waiting]]), or on their take's
+   *  correction ([[correctionWaits]]), by cluster id. */
+  private[agreement] def waitingClusters: Set[String] =
+    waiting.keySet.toSet ++ correctionWaits.keySet.iterator.map(_.stripPrefix(AgreementStage.CorrectionPrefix))
+
+  /** What the stage waits on for cluster `id`: its families' questions and its correction's. */
+  private def questionsOf(id: String): Set[Question] =
+    waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.getOrElse(AgreementStage.correctionId(id), Set.empty)
+
+  /** Tell `staging` the waits this apply started and ended, against those it began with (`before`): a cluster put to
+   *  wait (since its inline ask, when it had one), one asked inline and decided within the apply, and one still a cluster
+   *  that waits no more. A cluster gone — regrouped, or taken by the model — is no wait ended: its listings are another
+   *  cluster's now. */
+  private def tellWaits(tell: Seq[services.identity.staging.StagingEvent] => Unit, before: Set[String], pass: AgreementStage.Pass): Unit = {
+    import services.identity.staging.StagingEvent
+    val after  = waitingClusters
+    val now    = clock.millis()
+    val events = Vector.newBuilder[StagingEvent]
+    (after -- before).toSeq.sorted.foreach(id => events += StagingEvent.Waiting(id, pass.inline.get(id).fold(now)(_._1), questionsOf(id)))
+    pass.inline.toSeq.sortBy(_._1).foreach { case (id, (at, asked)) =>
+      if (!after(id) && !before(id)) { events += StagingEvent.Waiting(id, at, asked); events += StagingEvent.Settled(id, now) }
+    }
+    (before -- after).toSeq.sorted.filter(id => pass.seen(id) || pass.correcting(AgreementStage.correctionId(id)))
+      .foreach(id => events += StagingEvent.Settled(id, now))
+    val told = events.result()
+    if (told.nonEmpty) tell(told)
   }
 
   /** What the model's `decision` is taken as: a model take read against the evidence that may correct it, a no-match
@@ -472,6 +509,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       else {
         // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers
         askedNow(id) = ()
+        pass.inline(id) = (clock.millis(), gaps.toSet)
         askNow(gaps.toSet, AgreementStage.AskNowWithin)
         gaps.clear(); reads.clear()
         verdictsOf(listings, gaps, reads)
@@ -645,6 +683,8 @@ object AgreementStage {
     /** The clusters read, by id, and the model takes read against the evidence, by their correction's id. */
     val seen         = mutable.Set.empty[String]
     val correcting   = mutable.Set.empty[String]
+    /** The new clusters whose families this apply asked inline ([[AgreementStage.askNow]]), with when and what. */
+    val inline       = mutable.Map.empty[String, (Long, Set[Question])]
     /** The filings' ids since each version a stored correction was checked at, hashed once per apply. */
     val changedAt    = mutable.Map.empty[Long, Option[java.util.Set[java.lang.Long]]]
     /** How many clusters the resolver was asked about again — the apply's cost — and how many agreed films a poster vetoed. */
@@ -702,7 +742,9 @@ object AgreementStage {
    * found standing) at, the digests of the answers it read — a filing of one decides it again — what it came to, and
    * the questions it waits on. */
   /** A model take's correction's id among the stored verdicts. */
-  def correctionId(cluster: String): String = s"correction|$cluster"
+  def correctionId(cluster: String): String = s"$CorrectionPrefix$cluster"
+  /** What a correction's stored id is its cluster's id behind. */
+  val CorrectionPrefix = "correction|"
   /** How many model takes one apply reads the evidence of afresh: a take not read yet beyond them stands as the model
    *  took it until a later apply — the first deploy's backfill of every take spread over applies, never one boot's spike. */
   val CorrectionsPerApply = 200

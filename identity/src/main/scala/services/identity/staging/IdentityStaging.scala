@@ -46,7 +46,8 @@ object StagedTake {
 /**
  * One listing cluster on the staging screen (docs/design/identity-questions.md, "The staging screen"): STAGING while
  * its take waits on an answer (`resolvedAt` empty), RECENTLY RESOLVED once it stopped waiting — `resolution` says how:
- * `settled` (the same cluster waits on nothing now), `regrouped` (its listings moved to another cluster, or left),
+ * `settled` (the same cluster waits on nothing now — or, never seen staging, a wait that began and ended between two
+ * publishes, `since` its start), `regrouped` (its listings moved to another cluster, or left),
  * `decided` (a cluster of new listings that settled between two publishes, never seen waiting: most new films, asked
  * inline), or a settled cluster whose listings' film moved between two publishes — a late answer or new data — `gained`
  * (had none), `lost` (has none now) or `changed`; `was` is the TMDB film its listings held before.

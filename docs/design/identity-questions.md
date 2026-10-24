@@ -209,22 +209,32 @@ What every country's takes still wait on, and what was decided lately, on one de
 (`AgreementStage.waitingOn`), not in Mongo, so each worker publishes them to its own database, and the local server
 reads every country's through the prod mirror:
 
-- **Worker** (`IdentityStagingPublisher`, every 20 s, on its own thread, never the projection's): over the takes the
-  projection last wrote, a cluster whose `WaitingOn` is not settled STAGES — its listings, take, model gaps, whether the
+- **Events** (`StagingEvent`, into a bounded `ChangeFeed` of 20,000 the publisher drains; the oldest go past it,
+  counted in a warning): what happened, told AS IT HAPPENS, not sampled — a wait begun and ended between two samples
+  was never seen (most new clusters: their families asked inline, decided inside one projection). The agreement
+  stage tells each wait as it starts (`Waiting`: the cluster, when, on which questions — a cluster put to wait on its
+  families or its fill's TMDB answer, a take's correction waiting on its evidence, a new cluster asked inline) and
+  ends (`Settled`); only an apply that reads anything tells it, so a quiet tick allocates nothing for it. Each written
+  projection hands on its CHANGE LIST (`Changed`, `TakeChange`: each listing whose take it changed, its film and basis
+  before and after, a listing new to the films `decided`) — the same list the take-change counter
+  (`kinowo_worker_identity_take_changes_total{basis,kind}`, which the take alerts read) and log lines read. A wait on
+  the model's own gaps is no stage event: it is read as it stands at each publish.
+- **Worker** (`IdentityStagingPublisher`, every 20 s, on its own thread, never the projection's): drains the events,
+  and over the takes the projection last wrote, a cluster whose `WaitingOn` is not settled STAGES — since its wait
+  began (its `Waiting` event; else the first publish that saw it) — with its listings, take, model gaps, whether the
   fill waits on TMDB, and each open question with its kind, who it is asked of and `QuestionMemory.outcome` (not
   attempted / failed n× with the next retry and host / absent / answered), plus attempted/total, rewritten as it changes
   and deleted once it stops. Every RESOLUTION since the last publish is written once, its own document, which the
   database deletes 7 days later (a TTL index on `expireAt`): a cluster that staged and waits on nothing now (`settled`
-  with its take, or `regrouped` when its listings no longer form it); and, from the projections' CHANGE LISTS since
-  (`TakeChange`: each listing whose take a written projection changed, its film and basis before and after, a new
-  listing `decided`; drained from a bounded `ChangeFeed`), a settled cluster of new listings (`decided`: most new
-  films, asked inline within one projection) or one whose listings' film moved (`gained`, `lost` or `changed`, with
-  the film it had: `was`). By listing, not by cluster key: a key moves when a new listing sorts first or clusters
-  merge, which changes no listing's film. At most 500 staging clusters (the longest waiting) are listed and 500
-  resolutions written a publish; 60 questions each; the per-country beat counts them all. Each publish also exports
-  the takes by basis (`kinowo_worker_identity_takes{basis}`, `_take_listings{basis}`); the change list itself is
-  counted by the projection (`kinowo_worker_identity_take_changes_total{basis,kind}`, the same counter the take alerts
-  read): the worker dashboard's "Identity takes" panels.
+  with its take, at its `Settled` event's time, or `regrouped` when its listings no longer form it); and one never seen
+  staging — a settled cluster of new listings (`decided`), one whose listings' film moved (`gained`, `lost` or
+  `changed`, with the film it had: `was`), or one whose wait began and ended between two publishes (`settled`, since
+  its wait began, with the questions it waited on). Decided and moved are read by listing, not by cluster key: a key
+  moves when a new listing sorts first or clusters merge, which changes no listing's film. A publish that fails keeps
+  what it drained for the next. At most 500 staging clusters (the longest waiting) are listed and 500 resolutions
+  written a publish; 60 questions each; the per-country beat counts them all. Each publish also exports the takes by
+  basis (`kinowo_worker_identity_takes{basis}`, `_take_listings{basis}`): with the change counter, the worker
+  dashboard's "Identity takes" panels.
 - **Store** (`IdentityStaging`, `identity_staging` in each country's database): staging clusters, resolutions and
   the country's beat. Mirrored locally (`DebugMirror.IdentityStaging`, `debug-mirror-collections.json`), so
   the page follows prod as the mirror tails it, TTL deletes included.

@@ -4,7 +4,7 @@ package adapters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.VoterFamily
-import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedQuestion, StagingDoc, StagingDocuments}
+import services.identity.staging.{ChangeFeed, IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedQuestion, StagingDoc, StagingDocuments, StagingEvent}
 import services.movies.ListingKey
 import tools.MutableClock
 
@@ -35,10 +35,10 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   private var waits: Map[Set[ListingKey], WaitingOn] = Map.empty
   private var outcomes: Map[Question, QuestionMemory.Outcome] = Map.empty
   private var taken: Option[Resolution] = None
-  /** The projections' change lists the publisher drains. */
-  private val feed = new ChangeFeed[TakeChange](100)
-  private def moved(listing: ListingKey, before: Option[Int], after: Option[Int]) = TakeChange(listing, Some("film"), before, after)
-  private def decidedOn(listing: ListingKey, film: Option[Int]) = TakeChange(listing, None, None, film)
+  /** What happened, as the projection and the stage tell it: the events the publisher drains. */
+  private val feed = new ChangeFeed[StagingEvent](100)
+  private def moved(listing: ListingKey, before: Option[Int], after: Option[Int]) = StagingEvent.Changed(TakeChange(listing, Some("film"), before, after))
+  private def decidedOn(listing: ListingKey, film: Option[Int]) = StagingEvent.Changed(TakeChange(listing, None, None, film))
 
   private final class CountingDocuments extends StagingDocuments {
     private val inner = new InMemoryStagingDocuments
@@ -197,6 +197,34 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     feed.offer(Seq(decidedOn(early, Some(438631))))
     live.publish()
     shown(docs) shouldBe empty
+  }
+
+  // A new cluster's families asked inline: it waited, and settled, inside one projection, between two publishes.
+  it should "list a cluster whose wait began and ended between two publishes as settled, since its wait began, on what it waited" in {
+    val docs = new InMemoryStagingDocuments
+    val live = publisher(docs)
+    waits    = Map.empty
+    outcomes = Map(search -> QuestionMemory.Outcome.Answered)
+    taken    = Some(resolution(decision(Seq(dune), Some(438631), ResolverDecision.Basis.Agreed)))
+    val began = clock.millis()
+    feed.offer(Seq(StagingEvent.Waiting(StoredFamily.idOf(Seq(dune)), began, Set(search)), StagingEvent.Settled(StoredFamily.idOf(Seq(dune)), began + 3000)))
+    clock.advanceSeconds(20)
+    live.publish()
+    val Seq(resolved) = shown(docs)
+    (resolved.resolution, resolved.since, resolved.resolvedAt) shouldBe ((Some(StagedCluster.Settled), began, Some(began + 3000)))
+    resolved.questions.map(q => q.text -> q.outcome) shouldBe Seq("imdb|title|Diuna" -> StagedQuestion.Answered)
+    resolved.take.title shouldBe Some("Dune: Part One")
+  }
+
+  it should "stage a cluster since its wait began, not since a publish first saw it" in {
+    val docs = new InMemoryStagingDocuments
+    waits = Map(Set(dune) -> WaitingOn(0, Set(search), onTmdb = false))
+    taken = Some(resolution(decision(Seq(dune))))
+    val began = clock.millis()
+    feed.offer(Seq(StagingEvent.Waiting(StoredFamily.idOf(Seq(dune)), began, Set(search))))
+    clock.advanceSeconds(15)
+    publisher(docs).publish()
+    shown(docs).map(c => (c.staging, c.since)) shouldBe Seq((true, began))
   }
 
   it should "write the changes a failed publish drained with the next" in {
