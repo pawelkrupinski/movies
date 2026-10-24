@@ -173,6 +173,19 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     heard.toSeq shouldBe Seq(hostA -> Transition.Answered(3))
   }
 
+  // A timeout names no host: an ask that has to say which host it failed against reads the one it requested.
+  it should "note each request's host for a recording open on the calling thread, and for none other" in {
+    val cb        = breaker(new RecordingHttpFetch(timeout))
+    val recording = new RequestedHost.Recording
+    RequestedHost.within(recording) {
+      a[HttpTimeoutException] should be thrownBy cb.get(urlB)
+      a[HttpTimeoutException] should be thrownBy cb.get(urlA)
+    }
+    recording.last shouldBe Some(hostA)
+    a[HttpTimeoutException] should be thrownBy cb.get(urlB)                  // outside it: not noted
+    recording.last shouldBe Some(hostA)
+  }
+
   it should "keep a request's answer when its listener throws" in {
     val delegate = new RecordingHttpFetch(timeout)
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,

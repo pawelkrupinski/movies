@@ -6,7 +6,7 @@ import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.tasks.HandlerOutcome.{Deferred, Done, Skipped}
 import services.tasks.{EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
-import tools.{CircuitOpenException, HttpStatusException}
+import tools.{CircuitOpenException, HttpStatusException, RequestedHost, UnexpectedBodyException}
 
 import java.time.Clock
 
@@ -67,12 +67,21 @@ object AgreementQuestions {
       each { case Question.Catalogue(CatalogueQuestion.Page(url)) => url }
   }
 
-  /** The host a failed ask's request went to, when its failure names it: lower-cased, as the host breakers name it
+  /** The host a failed ask's request went to: the one its failure names (a status, a breaker that is open, a body that
+   *  could not be read, through any wrapping), else the last host the ask requested (`requested`, noted by the host
+   *  breaker: a timeout or a refused connection names none). Lower-cased, as the host breakers name it
    *  ([[HostRecovery]] releases a host's failures by that name). */
-  def hostOf(failure: Throwable): Option[String] = failure match {
-    case status: HttpStatusException =>
-      scala.util.Try(java.net.URI.create(status.url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase(java.util.Locale.ROOT))
-    case _                           => None
+  def hostOf(failure: Throwable, requested: Option[String] = None): Option[String] = {
+    def urlHost(url: String) = scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_))
+    def named(e: Throwable, depth: Int): Option[String] = e match {
+      case null                          => None
+      case status: HttpStatusException   => urlHost(status.url)
+      case open: CircuitOpenException    => Some(open.host)
+      case body: UnexpectedBodyException => urlHost(body.url)
+      case other if depth < 4            => named(other.getCause, depth + 1)
+      case _                             => None
+    }
+    named(failure, 0).orElse(requested).map(_.toLowerCase(java.util.Locale.ROOT))
   }
 
   /** What a question is counted under ([[AgreementQuestionMetrics]]): its family's label, else its kind's. */
@@ -215,12 +224,14 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
     asking(Seq(question), label, what, filed) { ask; Answered }
 
   /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). A host whose
-   *  breaker is open defers the task (never attempted); any other failure is remembered, a poster failing for the last
-   *  time given up on, and a projection asked for too: the questions were attempted. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
+   *  breaker is open defers the task (never attempted); any other failure is remembered against the host it went to
+   *  ([[AgreementQuestions.hostOf]]: the hosts `ask` requests are noted as it runs), a poster failing for the last time
+   *  given up on, and a projection asked for too: the questions were attempted. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
    *  [[AgreementQuestionMetrics.Failed]]. */
-  private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome =
+  private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome = {
+    val requested = new RequestedHost.Recording
     try {
-      val outcome = ask
+      val outcome = RequestedHost.within(requested)(ask)
       // attempted: what the memory answers of it from now on — an empty answer filed is a durable non-answer
       if (outcome == AgreementQuestionMetrics.Nothing) memory.unanswered(questions) else memory.answered(questions)
       filed(); metrics.asked(label, outcome); Done
@@ -231,7 +242,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
         Deferred(Some(s"$what: ${open.getMessage}"), Some(clock.instant().plusMillis(open.openForMs)))
       case scala.util.control.NonFatal(e) =>
         metrics.asked(label, AgreementQuestionMetrics.Failed)
-        val failures = memory.failed(questions, AgreementQuestions.hostOf(e))
+        val failures = memory.failed(questions, AgreementQuestions.hostOf(e, requested.last))
         logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
         val givenUp = failures.collect {
           case (Question.Poster(poster), times) if times >= QuestionPolicies.PosterGiveUpAttempts => poster
@@ -243,6 +254,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
         filed()
         Done
     }
+  }
 }
 
 /** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it

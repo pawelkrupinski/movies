@@ -103,8 +103,9 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    marks it recovered (`recovered(host)`, every failure marked against it before due), the stage's open questions that
    failed against it are queued again at once (the stage hands a question over once per answers' version), and the fill
    is asked for a round; one log line each, `<host> back: N questions asked again`. Nothing is sent outside the
-   queue's and the fill's own pace. Only a failure that names its host releases this way: a 5xx or 429
-   (`AgreementQuestions.hostOf`); a timeout's waits out its backoff.
+   queue's and the fill's own pace. Every failed agreement ask is marked against its host (`AgreementQuestions.hostOf`):
+   the one its failure names (a status, an open breaker, an unreadable body), else the last host the ask requested,
+   which the host breaker notes on the asking thread (`tools.RequestedHost`) — a timeout or refused connection names none.
 
 Decided by the owner: a new film's questions are asked **straight away**, inline, with no budget of their own beyond
 the rate-limit protections every request already goes through (the 429 gate, breakers, `HostPolicies`) (2026-10-23);

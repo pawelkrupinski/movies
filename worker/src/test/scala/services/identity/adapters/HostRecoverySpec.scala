@@ -3,8 +3,8 @@ package adapters
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.VoterFamily
-import services.tasks.InMemoryTaskQueue
+import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
+import services.tasks.{HandlerOutcome, InMemoryTaskQueue}
 import tools.HostCircuitBreakerHttpFetch.Transition
 import tools.{CircuitOpenException, HostCircuitBreakerHttpFetch, HttpFetch, HttpStatusException, MutableClock}
 
@@ -89,5 +89,39 @@ class HostRecoverySpec extends AnyFlatSpec with Matchers {
     HostRecovery.recovers(Transition.Answered(QuestionMemory.MinOutageReads - 1)) shouldBe false
     HostRecovery.recovers(Transition.Opened) shouldBe false
     HostRecovery.recovers(Transition.Closed) shouldBe true
+  }
+
+  // A timeout, a refused connection, names no host: the ask's failure is marked against the host it requested, which the
+  // breaker notes as the request goes out, so the host's recovery releases it like any other.
+  "a timed-out ask" should "be marked against the host it went to, and asked again when that host is back" in {
+    val world   = new World
+    val timeout = new Switching
+    timeout.respond = _ => throw new java.net.http.HttpTimeoutException("request timed out")
+    val breaker = new HostCircuitBreakerHttpFetch(timeout, failureThreshold = 4, openDuration = 60.seconds, clock = world.clock,
+      onTransition = world.recovery.heard)
+    val source = new FamilySource {
+      val family: VoterFamily = VoterFamily.Imdb
+      def titled(text: String): Seq[SourceHit] = { breaker.get(imdbUrl); Nil }
+      def directedBy(name: String): Seq[SourceHit] = Nil
+      def record(id: String): Option[SourceRecord] = None
+    }
+    val asker = AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, world.clock), world.clock)(
+      sources = Map(VoterFamily.Imdb -> source), memory = world.memory)
+    asker.handle(AgreementAskers.task(imdb)()) shouldBe HandlerOutcome.Done
+    world.memory.outcome(imdb).collect { case QuestionMemory.Outcome.Failed(1, _, host) => host } shouldBe Some(Some(imdbHost))
+    world.open = Set(imdb)
+    (1 to 2).foreach(_ => a[java.net.http.HttpTimeoutException] should be thrownBy breaker.get(imdbUrl))
+    timeout.respond = _ => "{}"
+    breaker.get(imdbUrl) shouldBe "{}"                                     // answered after 3 failures in a row: back
+    world.queued shouldBe 1
+    world.memory.due(Set[Question](imdb)) shouldBe Set(imdb)
+  }
+
+  "the host of a failed ask" should "be the one its failure names, through any wrapping, else the one it requested" in {
+    AgreementQuestions.hostOf(new java.util.concurrent.CompletionException(new HttpStatusException(503, "GET", imdbUrl, None)),
+      Some(wikiHost)) shouldBe Some(imdbHost)
+    AgreementQuestions.hostOf(new CircuitOpenException("Query.Wikidata.org", 1000L), None) shouldBe Some(wikiHost)
+    AgreementQuestions.hostOf(new java.net.ConnectException("refused"), Some(wikiHost)) shouldBe Some(wikiHost)
+    AgreementQuestions.hostOf(new java.net.ConnectException("refused"), None) shouldBe None
   }
 }

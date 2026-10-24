@@ -192,6 +192,7 @@ class HostCircuitBreakerHttpFetch(
   protected def around[T](url: String)(call: HttpFetch => T): T = hostOf(url) match {
     case None => call(delegate)// unparseable host — nothing to key a breaker on
     case Some(host) =>
+      RequestedHost.note(host)
       val (remaining, why) = admit(host)
       if (remaining > 0L) throw new CircuitOpenException(host, remaining, why)
       try { val result = call(delegate); onSuccess(host); result }
@@ -211,6 +212,7 @@ class HostCircuitBreakerHttpFetch(
   override def getAsync(url: String): CompletableFuture[String] = hostOf(url) match {
     case None => delegate.getAsync(url)
     case Some(host) =>
+      RequestedHost.note(host)
       val (remaining, why) = admit(host)
       if (remaining > 0L) CompletableFuture.failedFuture(new CircuitOpenException(host, remaining, why))
       else delegate.getAsync(url).handle[String]((result, throwable) => {
