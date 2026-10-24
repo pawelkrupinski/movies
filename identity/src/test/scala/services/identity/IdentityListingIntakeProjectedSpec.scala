@@ -263,6 +263,43 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     read.find(_.listing.title == "Obcy").get should be theSameInstanceAs first.find(_.listing.title == "Obcy").get
   }
 
+  it should "keep, reading a venue again, the object it held for each listing read exactly as it was" in {
+    // prod 2026-10-24: the hourly whole read projected every venue anew, so through that projection worker-us held a second
+    // copy of all ~96k listings beside the model's own (the projection's index re-keyed to the copies), and its 768 MiB
+    // old gen went 525 -> 768 MiB in 30 s, ~80 full GCs reclaiming nothing, OOM-killed nine minutes later.
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1), film(Multikino, "Obcy", 2))
+    w.archive.store(Helios, clock.instant(), film(Helios, "Diuna", 2), film(Helios, "Lalka", 3))
+    w.project()                                                // call 1: whole
+    val modelled = w.whole.map(_.listing)
+    w.intake.adopt(modelled)
+    val held = w.intake.projectedByVenue(live).toMap           // call 2: the model's objects throughout
+    (3 to IdentityListingIntake.WholeReadEvery).foreach(_ => w.project()._2 shouldBe 0)
+    w.archive.store(Helios, clock.instant().plusSeconds(60), film(Helios, "Diuna", 2, 4), film(Helios, "Lalka", 3))
+    val before = w.reads
+    val read   = w.intake.projectedByVenue(live)               // the thirteenth call: whole again
+    w.reads - before shouldBe 2
+    read.flatMap(_._2) shouldBe w.whole
+    val now = read.toMap
+    now(Multikino) should be theSameInstanceAs held(Multikino) // unmoved: the very listing the index and the model hold
+    now(Helios).find(_.listing.title == "Lalka").get should be theSameInstanceAs held(Helios).find(_.listing.title == "Lalka").get
+    val diuna = now(Helios).find(_.listing.title == "Diuna").get
+    diuna should not be theSameInstanceAs (held(Helios).find(_.listing.title == "Diuna").get)
+    diuna.showtimes should not be held(Helios).find(_.listing.title == "Diuna").get.showtimes
+  }
+
+  it should "take, reading a venue again, the listing as read where it moved only outside the model's equality" in {
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.intake.adopt(w.project()._1.map(_.listing))
+    val held = w.intake.projectedByVenue(live).toMap
+    val reposted = film(Multikino, "Lalka", 0, 1).copy(posterUrl = Some("https://kino.example/new.jpg"))
+    w.archive.store(Multikino, clock.instant().plusSeconds(60), reposted)
+    val now = w.intake.projectedByVenue(live).toMap
+    now(Multikino) should not be theSameInstanceAs (held(Multikino))
+    now(Multikino).map(_.listing.poster) shouldBe Seq(Some("https://kino.example/new.jpg"))
+  }
+
   it should "read again, between two reads of the stamps, only the venues it took a scrape of" in {
     // A projection run on the intake's own scrapes reads its listings by `projectedChanged`: no archive's stamps, only
     // the venues the intake took since. A row another process filed is read by the next stamped read.

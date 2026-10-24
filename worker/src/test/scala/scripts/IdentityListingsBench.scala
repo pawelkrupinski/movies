@@ -65,7 +65,27 @@ object IdentityListingsBench {
     // What a projection tick holds while it works on the listings: one pass's result, live.
     val held = intake.listings(live)
     println(f"held by one pass's listings (${held.size} venues): ${(usedAfterGc() - between) / 1e6}%.0f MB")
+    projectionsWholeRead(intake, live, () => usedAfterGc())
     conn.close()
     sys.exit(0)
+  }
+
+  /** What the projection's read (`projectedByVenue`) holds through its hourly whole read beside the identity model's own
+   *  listings — the objects it adopted: worker-us's old gen filled at that read, 2026-10-24. One read each
+   *  [[IdentityListingIntake.WholeReadEvery]] calls is whole; nothing moves between them here. */
+  private def projectionsWholeRead(intake: IdentityListingIntake, live: Seq[Cinema], usedAfterGc: () => Long): Unit = {
+    val model = intake.projectedByVenue(live).flatMap(_._2).map(_.listing)    // whole: the listings the model adopts
+    intake.adopt(model)
+    (2 to IdentityListingIntake.WholeReadEvery).foreach(_ => intake.projectedByVenue(live))
+    val steady = usedAfterGc()
+    val whole  = intake.projectedByVenue(live)                                  // whole again
+    val during = usedAfterGc()
+    val modelled = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[services.identity.Listing, java.lang.Boolean])
+    model.foreach(modelled.add)
+    val copies = whole.iterator.flatMap(_._2).count(p => !modelled.contains(p.listing))
+    println(f"the projection's whole read, beside the model's ${model.size} listings: held ${(during - steady) / 1e6}%.0f MB more " +
+      f"($copies listings not the model's object)")
+    intake.adopt(model)
+    println(f"after the next adoption: ${(usedAfterGc() - steady) / 1e6}%.0f MB over the steady state (${whole.size} venues)")
   }
 }

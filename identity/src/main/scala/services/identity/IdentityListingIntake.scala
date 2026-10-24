@@ -109,8 +109,8 @@ final class IdentityListingIntake(
   }
 
   /** `films` of `cinema`, as the projection holds them. A listing the identity model holds the same takes the model's
-   *  object at the next [[adopt]], not here: a read needs no lookup of the model's 100k listings, and a venue read this
-   *  tick is the only kind not yet adopted. */
+   *  object at the next [[adopt]], not here: a read needs no lookup of the model's 100k listings. A listing read again as
+   *  it was keeps the object the venue held (`Held.heldAgain`), so only what moved since is not yet adopted. */
   private def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]): Seq[ProjectedListing] =
     films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
 
@@ -228,11 +228,35 @@ object IdentityListingIntake {
       // venue's id to pick the rows (`scanLean`), half of a quiet read's documents.
       val complete =
         if (!wanted.valuesIterator.exists(reread)) tools.ScanOutcome.complete
-        else repository.scanLean(reread, LeanStageWorks.billsStageWork)(_.foreach(row =>
-          fresh += row.cinema.displayName -> Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films)))))
+        else repository.scanLean(reread, LeanStageWorks.billsStageWork)(_.foreach { row =>
+          val name = row.cinema.displayName
+          fresh += name -> heldAgain(entries.get(name), Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films))))
+        })
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
     }
+
+    /** `read`, a venue read again, holding the object `held` holds for each listing read as it was — the same row and
+     *  showtimes, and the listing [[modelledAs]] would take for it — and `held`'s own entry (its stamp moved on) when that
+     *  is every listing. Projected anew, a venue read again is a copy of what it held, which is the identity model's own
+     *  object once adopted: the hourly whole read held a second copy of every listing beside the model's through its
+     *  projection (worker-us: ~96k listings, its old gen full and OOM-killed, 2026-10-24) — until the next [[adopt]] took
+     *  each back to the very object it had replaced. */
+    private def heldAgain(held: Option[Entry], read: Entry): Entry =
+      (held.flatMap(_.listings), read.listings) match {
+        case (Some(was), Some(now)) =>
+          val byKey = was.groupBy(_.listing.key)
+          val kept  = now.map(p => byKey.get(p.listing.key).flatMap(_.find(h => sameRead(h, p))).getOrElse(p))
+          if (kept.corresponds(was)(_ eq _)) read.copy(listings = Some(was), adopted = held.exists(_.adopted))
+          else read.copy(listings = Some(kept))
+        case _ => read
+      }
+
+    /** Is `held` what holding `read` comes to: the same row and showtimes, and its listing one [[modelledAs]] would take —
+     *  but never over days the read could not read, which read the venue again next time ([[unread]]). */
+    private def sameRead(held: ProjectedListing, read: ProjectedListing): Boolean =
+      held.row == read.row && held.showtimes == read.showtimes && !read.listing.screenings.isUnknown &&
+        publishesAsRead(held.listing, read.listing)
 
     /** Does a venue hold a stage relay whose days its read could not read? It is read again, however still its row. */
     private def unread(entry: Entry): Boolean = entry.listings.exists(_.exists(_.listing.screenings.isUnknown))
@@ -262,11 +286,14 @@ object IdentityListingIntake {
    *  gave a stage relay ([[services.scrapes.LeanListing.leanFilm]]): they are outside a listing's equality, and the
    *  model's may be older, or unknown where this read knows them. (Another film's lean read gives no days at all.) */
   private def modelledAs(modelled: Map[ListingKey, Listing], listing: Listing): Listing =
-    // the model's object only where it publishes what the read does — its poster and names too, which the listing's
-    // equality leaves out: one taken in place of a re-published poster put the old one back before the model held the new
-    modelled.get(listing.key).filter(held => held == listing && held.poster == listing.poster && held.names == listing.names &&
-      (listing.screenings.isEmpty || held.screenings == listing.screenings))
-      .getOrElse(listing)
+    modelled.get(listing.key).filter(publishesAsRead(_, listing)).getOrElse(listing)
+
+  /** Does `held` publish what `read` does — its poster and names too, which the listing's equality leaves out (one taken in
+   *  place of a re-published poster put the old one back before the model held the new) — and its days, where the read
+   *  gives any? */
+  private def publishesAsRead(held: Listing, read: Listing): Boolean =
+    held == read && held.poster == read.poster && held.names == read.names &&
+      (read.screenings.isEmpty || held.screenings == read.screenings)
 
   /** How a projection read takes the archives: whole, by their rows' stamps, or only what this intake took since. */
   private[identity] enum Read { case Whole, Stamped, Changed }
