@@ -10,7 +10,7 @@ import play.api._
 import models.Country
 import services.MongoAddress
 import settings.{ApplicationMode, ProcessConfiguration}
-import tools.{Env, IssuerCertificateFetching}
+import tools.{ConstructByType, Env, IssuerCertificateFetching}
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
@@ -204,9 +204,11 @@ class AppComponents(applicationContext: Context, val env: Env, val country: Coun
   // runtime DI. Calling it here is also what publishes the prefix to
   // `router.RoutesPrefix`, so every reverse route (`controllers.routes.*`, the
   // asset URLs in every template) emits the deployment's mount point too.
+  // `ConstructByType` hands each controller to the generated constructor by its type: that constructor's parameter
+  // order is the order controllers first appear in the routes file, so moving a route must not touch this line.
   lazy val router: Router =
     AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
-      .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, pickerController, debugController, identityStagingController, debugStreamController, ssoController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, shareCardGalleryController, reviewController, assets)
+      .orElse(ConstructByType[Routes](httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, pickerController, debugController, identityStagingController, debugStreamController, ssoController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, shareCardGalleryController, reviewController, assets)
         .withPrefix(httpConfiguration.context))
 
   // The routes inventory the "longest uncalled route" panel ranks against — a

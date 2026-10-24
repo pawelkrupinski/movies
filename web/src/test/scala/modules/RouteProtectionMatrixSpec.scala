@@ -157,8 +157,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val envConfig   = new EnvConfigController(cc, adminAction, null)
     val identity    = new IdentityAdminController(cc, adminAction, users, null, null)
     val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
-    new router.Routes(Components.httpErrorHandler, null, null, null, null, null, null, debug, null, null, sso, auth, userState,
-      null, null, uptime, tasks, null, null, facebook, envConfig, identity, null, review, null)
+    // By type, so reordering the routes file leaves this alone; every controller not listed is null.
+    _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, debug, sso, auth, userState, uptime, tasks,
+      facebook, envConfig, identity, review)
   }
 
   /** `(verb, path as the routes file spells it)` for every route the router serves. */
