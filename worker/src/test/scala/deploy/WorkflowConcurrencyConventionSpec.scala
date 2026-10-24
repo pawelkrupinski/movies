@@ -89,6 +89,29 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
     nonCancelling(main) shouldBe true
   }
 
+  /** NO JOB OF A MAIN RUN CANCELS ANOTHER RUN'S JOBS (2026-10-24). Our Forgejo creates a queued run's jobs `waiting`
+   *  while the run itself waits behind the one in flight, and evaluates a job-level group as those jobs are created
+   *  (infra nix/files/forgejo/github-job-concurrency.patch, `ApplyJobConcurrencyOfRun`). A job-level
+   *  `cancel-in-progress: true` on a test row therefore lets every push cancel the rows of the run in flight, which
+   *  then publishes nothing: the run-level lane above, without the deploys. A superseded push costs no test runner as
+   *  it is: it waits, and the server cancels it while it waits, before any job starts (14 of the 16 Main runs cancelled
+   *  on 2026-10-24; the other two by hand). A job-level group may serialize (`publish-*`), never cancel. */
+  "Main's jobs and ci.yml's" should "never cancel another run's jobs from a job-level group" in {
+    val cancelling = for {
+      stem        <- Seq("main", "ci")
+      yml         = workflows.collectFirst { case (`stem`, y) => y }.getOrElse(fail(s"no $stem.yml"))
+      (job, body) <- RepoFile.jobs(yml)
+      line        <- body.linesIterator.map(_.trim)
+      if line.startsWith("cancel-in-progress:") && line != "cancel-in-progress: false"
+    } yield s"$stem/$job: $line"
+    cancelling shouldBe empty
+    val main = workflows.collectFirst { case ("main", yml) => yml }.get
+    Seq("publish-web", "publish-worker").foreach { job =>
+      val lines = RepoFile.jobs(main)(job).linesIterator.map(_.trim).toSeq
+      lines.sliding(2).toSeq should contain(Seq(s"group: $job", "cancel-in-progress: false"))
+    }
+  }
+
   "a reusable workflow" should "declare no group, leaving the lane to its caller" in {
     workflows.collect { case (stem, yml) if yml.contains("workflow_call:") && groupOf(yml).isDefined => stem } shouldBe empty
   }
