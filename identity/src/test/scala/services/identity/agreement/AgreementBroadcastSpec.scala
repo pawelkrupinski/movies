@@ -311,4 +311,26 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
     asked.flatMap(_.collect { case Question.Record(id) => id }) shouldBe Seq(metSamson.id)
   }
+
+  // The settle rule (docs/design/identity-questions.md, step 4): no clock ends a wait. A record's read is waited on until it
+  // is filed or attempted — a read that failed ends the wait as a filed one does, a day passing does not.
+  it should "be waited on until its read is attempted, not for a while: a failed read ends the wait though nothing is filed" in {
+    val listing = screening("Samson i Dalila", "2026-12-05")
+    val stored  = new YearOnlyRecords(table, Set(metSamson.id))
+    var failed  = false
+    val clock   = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-01T12:00:00Z"))
+    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = clock, tmdb = Some(stored), changes = _ => Some(Set.empty),
+      attempted = { case Question.Record(id) => failed && id == metSamson.id; case _ => false })
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def apply() = stage.apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
+    apply().film shouldBe None
+    clock.advanceSeconds(java.time.Duration.ofDays(2).toSeconds)
+    apply()
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe Set(metSamson.id)   // two days on: still waited on
+    failed = true
+    apply().film shouldBe None                                                         // its read failed: waited on no more
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
+  }
 }

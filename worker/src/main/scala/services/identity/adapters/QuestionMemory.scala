@@ -90,14 +90,24 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
   /** What the memory knows of `question`'s last ask: `None` when it holds none (never attempted, or long enough ago that
    *  its marker was swept). */
   def outcome(question: Question): Option[QuestionMemory.Outcome] =
-    markerOf(question).flatMap(marker => markers(Seq(question -> marker)).get(marker)).map { doc =>
-      failureWaitOf(doc) match {
-        case Some(wait) =>
-          Outcome.Failed(failuresOf(doc), Instant.ofEpochMilli(TmdbStore.fetchedAt(doc).getOrElse(0L) + wait), stringOf(doc.get(HostField)))
-        case None if isAnswered(doc) => Outcome.Answered
-        case None                    => Outcome.Absent
-      }
+    markerOf(question).flatMap(marker => markers(Seq(question -> marker)).get(marker)).map(outcomeOf)
+
+  /** What the memory knows of each of `questions`' last ask, read at once: those it holds none of left out. */
+  def outcomes(questions: Set[Question]): Map[Question, QuestionMemory.Outcome] = {
+    val ids = questions.iterator.flatMap(question => markerOf(question).map(question -> _)).toSeq
+    if (ids.isEmpty) Map.empty
+    else {
+      val held = markers(ids)
+      ids.flatMap { case (question, marker) => held.get(marker).map(doc => question -> outcomeOf(doc)) }.toMap
     }
+  }
+
+  private def outcomeOf(doc: BsonDocument): QuestionMemory.Outcome = failureWaitOf(doc) match {
+    case Some(wait) =>
+      Outcome.Failed(failuresOf(doc), Instant.ofEpochMilli(TmdbStore.fetchedAt(doc).getOrElse(0L) + wait), stringOf(doc.get(HostField)))
+    case None if isAnswered(doc) => Outcome.Answered
+    case None                    => Outcome.Absent
+  }
 
   /** Has `question` been asked and come to an answer, a durable non-answer or a failure — not merely queued? */
   def attempted(question: Question): Boolean = outcome(question).isDefined

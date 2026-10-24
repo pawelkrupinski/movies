@@ -73,14 +73,30 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    answer filed included) or `Failed(attempts, nextRetryAt, host)`, and `attempted(question)`, until the marker is swept
    (7 d). Each host's health is a marker of its own (`roundEnded(…, host)`; TMDB's keeps `unanswered|tmdb-health`), and a
    host's recovery releases the failures marked against it; only the fill reports a host's rounds today (TMDB).
-4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
-   family's own open questions, until answered or the deadline passes. This is GapHold v4.
+4. **One settle rule** in place of GapHold and `PartialAfter`, and no timer. Done 2026-10-24 (C4): a cluster waiting
+   on its families' questions SETTLES once every question it waits on has been ATTEMPTED (`AgreementStage.settles`):
+   answered, a durable non-answer (404/410, "nothing there", filed empty) or a failed ask (connection, timeout, 5xx after
+   the fetch's on-the-spot retries). It is then decided on the families that answered, the rest left out as no verdict.
+   A question merely enqueued, never attempted, holds the cluster; no clock releases it. "Attempted" is the memory's
+   record of each ask (`QuestionMemory.attempted`, injected as the stage's `attempted`; an answer held counts by
+   itself), and an ask that failed asks for a projection as a filing does, so the cluster settles at once.
+   Settling ends the wait, not the asking: the questions none answered stay asked on every pass
+   (`AgreementStage.unreached`, retried on the memory's backoff, 5 min doubling to 6 h), and the settled verdict reads
+   them as unanswered (`AgreementStage.Unanswered`), so the first answered reads it again, after a restart too. Any new
+   data reads a settled cluster again: a late answer (that read), a refreshed answer that moved (its read's digest), a
+   re-scrape (its listings' digest); a settled cluster settles again rather than waiting anew. A TMDB record read again
+   for its release day is waited on until its read is filed or attempted (`AgreementStage.waitsOn`); `RecordWait`'s
+   day is gone. `PartialAfter` is gone; the drift check's whole resolve applies its fresh stage once, reading the same
+   memory. OUTSTANDING questions — handed to the queue and never attempted (a task lost, the queue wiped, a restart
+   mid-task), or failed and past their retry — are queued again every 10 min (`OutstandingQuestions`,
+   `identity-outstanding-questions`). A poster, a find and a catalogue question still hold only the take that reads
+   them, until answered (a poster given up on after 8 failures is answered, as unread).
 
-Decided by the owner (2026-10-23): one deadline for every kind, **30 minutes**, after which the take settles on what it
-has while the questions not yet reached keep being asked; and a new film's questions are asked **straight away**,
-inline, with no budget of their own beyond the rate-limit protections every request already goes through (the 429
-gate, breakers, `HostPolicies`). A new answer can always move a take: settling only ends the wait, never the
-take's readiness to change when an answer arrives or changes, before the deadline or after.
+Decided by the owner: a new film's questions are asked **straight away**, inline, with no budget of their own beyond
+the rate-limit protections every request already goes through (the 429 gate, breakers, `HostPolicies`) (2026-10-23);
+and NO timer (2026-10-24, superseding the 30-minute deadline of 2026-10-23): a take settles once every question it
+waits on was attempted, and any answer or new data recalculates it. A new answer can always move a take: settling only
+ends the wait, never the take's readiness to change when an answer arrives or changes.
 
 ## The questions
 
@@ -120,25 +136,25 @@ the renewals (`QuestionRenewals`), the memory (`QuestionMemory`, by the question
 | FilmRecord | tmdb_films | changes feed; 30 d while the model reads it (`QuestionRenewals`) | as above | unread 30 d | on fill rounds |
 | Person | tmdb_people | as FilmRecord | its director search's marker | unread 30 d | on fill rounds |
 | VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich, the pipeline's) | the pipeline's: gone (404/410) filed; failure marked attempted, read again past 6 h | never | on fill rounds |
-| FamilySearch | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d since fetched | 10 min* |
-| FamilyRecord | identity_family_answers | 365 d | as above | 400 d | 10 min* |
-| FamilyShowing | identity_family_answers | 20 h | as above | 400 d | 10 min* |
-| Find | tmdb_queries | when the stage opens it | none found filed; failure remembered, 5 min doubling to 6 h | unread 30 d | 10 min* |
-| Record | tmdb_films | once, when a take waits on its release day | unknown filed empty; failure remembered, 5 min doubling to 6 h | unread 30 d | 10 min* |
-| Poster | identity_family_answers | 365 d | failure remembered, 5 min doubling to 6 h; given up after 8 in a row, filed unread and remembered 7 d | 400 d | 10 min* |
-| CataloguePage | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d | 10 min* |
-| CatalogueId | identity_family_answers | 365 d mapped, 30 d unmapped | as above | 400 d | 10 min* |
+| FamilySearch | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d since fetched | until attempted* |
+| FamilyRecord | identity_family_answers | 365 d | as above | 400 d | until attempted* |
+| FamilyShowing | identity_family_answers | 20 h | as above | 400 d | until attempted* |
+| Find | tmdb_queries | when the stage opens it | none found filed; failure remembered, 5 min doubling to 6 h | unread 30 d | until answered |
+| Record | tmdb_films | once, when a take waits on its release day | unknown filed empty; failure remembered, 5 min doubling to 6 h | unread 30 d | until its read is filed or attempted |
+| Poster | identity_family_answers | 365 d | failure remembered, 5 min doubling to 6 h; given up after 8 in a row, filed unread and remembered 7 d | 400 d | until answered |
+| CataloguePage | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d | until answered |
+| CatalogueId | identity_family_answers | 365 d mapped, 30 d unmapped | as above | 400 d | until answered |
 
-\* `AgreementStage.PartialAfter`: a waiting cluster resolves once every question is answered, or once 10 min have
-passed AND at least one is (`AgreementStage.due`). A cluster none of whose questions is ever answered keeps waiting
-until one is.
+\* The settle rule (step 4, `AgreementStage.settles`): a waiting cluster resolves once every question is answered, or
+once every one was attempted, then on what answered; the rest stay asked, and an answer read later moves the take. A
+take waiting "until answered" stays pending meanwhile, its failures retried on the memory's backoff.
 
 ## What the table shows (the holes steps 2-4 close)
 
 - **The drift check sees only the model** (verified): `IdentityDriftCheck` counts a key unsettled when
   `ResolverDecision.unanswered > 0`, the resolver's unanswered candidate queries. An agreement unknown is not counted.
 - **Three stop-waiting rules**: fill rounds, GapHold's 2 h (reverted), `PartialAfter`'s 10 min with its
-  at-least-one-answer condition.
+  at-least-one-answer condition. Since step 4 the agreement's is one, with no clock: until attempted.
 - **Non-answer memory was partial**: until step 3 only the fill wrote gap markers, and a live miss at take-up left
   none, so it was asked again at every take-up. The model's live asks write them now. Every other kind remembered its
   non-answer its own way (checked 2026-10-24): an empty answer is filed as one (a find naming no film too), a failed

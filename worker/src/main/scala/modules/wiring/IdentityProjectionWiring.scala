@@ -86,17 +86,28 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   }
   lazy val agreementStage: services.identity.agreement.AgreementStage =
     newAgreementStage(agreementVerdicts, clock,
-      ask = questions => services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
-        agreementQuestionMetrics),
+      ask = enqueueAgreementQuestions,
       metrics = workerMetrics.identityAgreement.stage(country.code),
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
         stopwatch = stopwatch))
+  /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */
+  private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): Unit =
+    services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
+  /** The questions the live stage waits on that a lost task left unattempted, or that failed and are due again, queued
+   *  again: under the settle rule an unattempted question holds its cluster. */
+  lazy val outstandingQuestions: services.identity.adapters.OutstandingQuestions =
+    new services.identity.adapters.OutstandingQuestions(() => agreementStage.wanted, identityQuestionMemory, enqueueAgreementQuestions, clock)
+  /** Runs [[outstandingQuestions]] every [[services.identity.adapters.OutstandingQuestions.Interval]]. */
+  lazy val outstandingQuestionsSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
+    new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => { outstandingQuestions.reask(); () },
+      services.identity.adapters.OutstandingQuestions.Interval, services.identity.adapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps
-   *  nothing, asks nothing and reads every take at once. */
+   *  nothing, asks nothing and reads every take at once. Both read what was attempted from the one memory
+   *  ([[identityQuestionMemory]]): a cluster settles once every question it waits on was. */
   def newAgreementStage(stored: services.identity.agreement.AgreementVerdicts, stageClock: java.time.Clock,
                         ask: Set[services.identity.Question] => Unit = _ => (),
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
@@ -116,7 +127,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
       correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
-      askNow = askNow)
+      askNow = askNow, attempted = identityQuestionMemory.attempted)
 
   /** The daily drift check: the live takes against a whole resolve of the same listings with nothing kept
    *  ([[services.identity.adapters.IdentityDriftCheck]]), its lines in the worker's log, its count a gauge. Report only

@@ -601,44 +601,86 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     refreshed.flatten.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
   }
 
-  it should "resolve a waiting cluster again only once all its questions are answered, or some after it waited long" in {
+  /** A family whose answers come as `isAnswered` says, each title search of IMDb's counted in `resolves`. */
+  private final class Flipping(val family: VoterFamily, records: Map[String, SourceRecord], isAnswered: => Boolean, resolves: () => Unit = () => ())
+      extends FamilyAnswers {
+    private def held = new HeldFamilyAnswers(family, records, unanswered = !isAnswered)
+    def titled(text: String)     = { resolves(); held.titled(text) }
+    def directedBy(name: String) = held.directedBy(name)
+    def record(id: String)       = held.record(id)
+    override def fresh(question: String) = held.fresh(question)
+  }
+
+  // The settle rule (docs/design/identity-questions.md, step 4, the owner's, 2026-10-24): no clock. A cluster settles once
+  // every question it waits on was attempted — answered, durably unanswered or failed — and is decided on what answered.
+  it should "resolve a waiting cluster again only once all its questions are answered, or settle it once every one is attempted" in {
     var resolves = 0
-    var rtAnswered, filmwebAnswered = false
-    def flipping(of: VoterFamily, records: Map[String, SourceRecord], isAnswered: => Boolean): FamilyAnswers = new FamilyAnswers {
-      private val family0 = of
-      val family: VoterFamily = of
-      private def held = new HeldFamilyAnswers(family0, records, unanswered = !isAnswered)
-      def titled(text: String)     = { if (family0 == VoterFamily.Imdb) resolves += 1; held.titled(text) }
-      def directedBy(name: String) = held.directedBy(name)
-      def record(id: String)       = held.record(id)
-      override def fresh(question: String) = held.fresh(question)
-    }
+    var rtAnswered, filmwebAnswered, filmwebFailed = false
     val families = Map(
-      VoterFamily.Imdb           -> flipping(VoterFamily.Imdb, Map("tt16315948" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))), true),
-      VoterFamily.Wiki           -> flipping(VoterFamily.Wiki, Map("Q1" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))), true),
-      VoterFamily.Filmweb        -> flipping(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), filmwebAnswered),
-      VoterFamily.RottenTomatoes -> flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered))
+      VoterFamily.Imdb           -> new Flipping(VoterFamily.Imdb, Map("tt16315948" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))), true, () => resolves += 1),
+      VoterFamily.Wiki           -> new Flipping(VoterFamily.Wiki, Map("Q1" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))), true),
+      VoterFamily.Filmweb        -> new Flipping(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), filmwebAnswered),
+      VoterFamily.RottenTomatoes -> new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered))
     val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-04T21:00:00Z"))
     val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
-      new InMemoryAgreementVerdicts, ask = handed += _, clock = clock)
+      new InMemoryAgreementVerdicts, ask = handed += _, clock = clock,
+      attempted = { case Question.Family(VoterFamily.Filmweb, _) => filmwebFailed; case _ => false })
     val model = resolution
     stage.apply(model, listingOf, version = 1).decisions.head.film shouldBe None
     val (afterFirst, handedFirst) = (resolves, handed.size)
     stage.apply(model, listingOf, version = 1)
     (resolves, handed.size) shouldBe ((afterFirst, handedFirst))   // a quiet tick: no resolve, nothing handed
     rtAnswered = true
-    stage.apply(model, listingOf, version = 2)                      // one of its questions answered, Filmweb's still open: no resolve
+    stage.apply(model, listingOf, version = 2)                      // one of its questions answered, Filmweb's never asked: no resolve
     resolves shouldBe afterFirst
-    clock.advanceSeconds(AgreementStage.PartialAfter.toSeconds)
-    stage.apply(model, listingOf, version = 2)                      // waited long with some answered: resolved on what came,
-    resolves should be > afterFirst                                 // though nothing was filed since — the wait is the clock's
-    stage.apply(model, listingOf, version = 3)
+    clock.advanceSeconds(java.time.Duration.ofDays(7).toSeconds)
+    stage.apply(model, listingOf, version = 2).decisions.head.film shouldBe None   // no clock settles it: Filmweb's question holds
+    resolves shouldBe afterFirst
+    filmwebFailed = true
+    // Filmweb asked and failed, though nothing was filed: settled on the families that answered (IMDb, Wikidata, RT agree)
+    stage.apply(model, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
     resolves should be > afterFirst
-    val afterPartial = resolves
+    stage.waitingOn(stage.apply(model, listingOf, version = 2).decisions.head).settled shouldBe true
+    handed.clear()
+    stage.apply(model, listingOf, version = 3).decisions.head.film shouldBe Some(913760)   // settled: the take stands, its
+    handed.flatten.collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty   // question still asked
+    // a re-scrape moving its listing reads the settled cluster again: settled again, on the same families, not waiting anew
+    val rescraped    = bare.copy(runtime = Some(100))
+    val beforeScrape = resolves
+    stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 3, republished = None).decisions.head.film shouldBe Some(913760)
+    resolves should be > beforeScrape
+    stage.unreached.values.flatten.collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
     filmwebAnswered = true
-    stage.apply(model, listingOf, version = 4).decisions.head.film shouldBe Some(913760)   // all answered: resolved, taken
-    resolves should be > afterPartial
+    val beforeAnswer = resolves
+    stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 4).decisions.head.film shouldBe Some(913760)   // its answer came: read again
+    resolves should be > beforeAnswer
+    stage.unreached shouldBe empty
+  }
+
+  it should "move a settled take on a later answer, its unanswered questions asked on every pass and after a restart too" in {
+    var rtAnswered = false
+    val families = agreeing() ++ Map(
+      VoterFamily.Filmweb        -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), unanswered = true),
+      VoterFamily.RottenTomatoes -> new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered))
+    val verdicts = new InMemoryAgreementVerdicts
+    val failed: Question => Boolean = {   // Filmweb and RT asked, and failed
+      case Question.Family(VoterFamily.Filmweb | VoterFamily.RottenTomatoes, _) => true
+      case _                                                                    => false
+    }
+    val first = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      verdicts, clock = _root_.tools.SpecClock.Pinned, attempted = failed)
+    val settled = first.apply(resolution, listingOf, version = 1).decisions.head
+    settled.film shouldBe None                                      // settled on IMDb and Wikidata alone: no agreement, no film
+    first.waitingOn(settled).settled shouldBe true
+    // a worker restarted: the settled verdict stands, and what none answered is asked again on every pass
+    val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
+    val again = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      verdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, attempted = failed)
+    again.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None
+    handed.flatten.collect { case Question.Family(family, _) => family }.toSet shouldBe Set(VoterFamily.Filmweb, VoterFamily.RottenTomatoes)
+    rtAnswered = true                                               // RT answers at last: IMDb, Wikidata and RT agree
+    again.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
   }
 
   // The owner's choice (docs/design/identity-questions.md, step 3): a cluster with a newly scraped listing has its families

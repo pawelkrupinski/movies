@@ -33,7 +33,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
-          productions = () => productionsOf(listings, measured, asked), undated = undatedOf(lookups, version))
+          productions = () => productionsOf(listings, measured, asked), undated = undatedOf(lookups))
         Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
           StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
       }
@@ -173,7 +173,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
-          Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups, version))
+          Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups))
             .left.map(asked ++= _.map(Question.Record(_))).toOption.flatten
         }
         .map(taken => taking(decision)(ResolverDecision.Basis.Broadcast, taken.line, film = Some(taken.film)))

@@ -32,7 +32,7 @@ import scala.util.control.NonFatal
  *  - SETTLE: every answer filed and the stage applied until it asks nothing and has no backlog.
  *
  * CHECKPOINTS, each compared listing by listing with the WHOLE resolve ([[IdentityResolver.resolve]] and a fresh stage
- * asked to its fixpoint, the clock past every partial wait): `settled`; then, twice, a re-scrape tick, a deploy's first
+ * asked to its fixpoint, settling as production does once every question was attempted): `settled`; then, twice, a re-scrape tick, a deploy's first
  * tick (no answer filed in between: prod's first projection after a boot) and the tick after it. Every listing whose
  * film differs at a checkpoint is a DIVERGENCE (`drift-<cc>.tsv`), unless the allow-list
  * (`test/resources/fixtures/identity-drift-allow.tsv`: cc, venue or `*`, raw title, checkpoint or `*`, reason) names it.
@@ -174,6 +174,12 @@ object IdentityDrift {
     private val hashing = new PosterHashing(new services.sharecards.EgressPosterDownload(reads.fetch), new services.sharecards.VipsPosterShrinker(binary = None),
       id => reads.tmdb.posters(id, also = Seq("en")), reads.country.language.getLanguage)
     private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
+    /** What a round tried to answer and could not: attempted, as production's memory records a failed ask — a cluster
+     *  waiting on it settles ([[AgreementStage.settles]]). An answer filed is attempted by itself. */
+    def attempted(question: Question): Boolean = question match {
+      case Question.Family(family, asked) => failures.containsKey((family, asked))
+      case _                              => false
+    }
     def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
     def tmdbOf(imdb: String): Answer[Option[Int]] = reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
       case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(found => Answer.Known(found))
@@ -185,7 +191,7 @@ object IdentityDrift {
         identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code), catalogue = catalogue.answers,
         listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code),
         correctionPostersAtOnce = if (budgets) AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
-        correctionsPerApply = if (budgets) AgreementStage.CorrectionsPerApply else Int.MaxValue)
+        correctionsPerApply = if (budgets) AgreementStage.CorrectionsPerApply else Int.MaxValue, attempted = attempted)
     /** The family questions the stage's last apply left open, none given up as unreachable. */
     def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
       Question.families(stage.wanted) -- unreachable
@@ -215,8 +221,8 @@ object IdentityDrift {
 
   // ── the whole resolve ────────────────────────────────────────────────────────────────────
 
-  /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint, and again once its
-   *  partial waits are over — what a worker with nothing kept would take. */
+  /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint — what a worker with
+   *  nothing kept would take. */
   def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock): Resolution = {
     val answers  = new Answers(reads, new tools.FiledAnswers.Noting(reads.filed), clock)
     val lookups  = memo(reads)
@@ -226,21 +232,17 @@ object IdentityDrift {
     settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, clock, _ => false)
   }
 
-  /** Applies until the stage asks nothing and holds no backlog — answering between applies — then once more past every
-   *  partial wait ([[AgreementStage.PartialAfter]]), until that too settles. */
+  /** Applies until the stage asks nothing and holds no backlog — answering between applies: what a round could not
+   *  answer is attempted, and the clusters waiting on it settle as production's do. */
   def settle(stage: AgreementStage, apply: () => Resolution, answers: Answers, clock: MutableClock, release: String => Boolean,
              rounds: Int = 60): Resolution = {
     var now = apply()
     var n   = 0
     def quiet = !answers.open(stage) && !stage.backlog
-    for (_ <- 0 until 2) {
-      while (!quiet && n < rounds) {
-        n += 1
-        System.err.println(s"[identity-drift] settle round $n: ${answers.described(stage)}")
-        answers.answer(stage, release); clock.advance(Duration.ofMinutes(1)); now = apply()
-      }
-      clock.advance(Duration.ofMillis(AgreementStage.PartialAfter.toMillis).plusMinutes(1))
-      now = apply()
+    while (!quiet && n < rounds) {
+      n += 1
+      System.err.println(s"[identity-drift] settle round $n: ${answers.described(stage)}")
+      answers.answer(stage, release); clock.advance(Duration.ofMinutes(1)); now = apply()
     }
     if (!quiet) System.err.println(s"[identity-drift] the stage did not settle in $rounds rounds: ${answers.described(stage)}")
     now

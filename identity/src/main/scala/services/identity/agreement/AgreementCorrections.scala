@@ -117,7 +117,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // a correction reads no film database's productions; a record of the billed work stored with its year alone is read
       // again before the day decides, as the stage's own take reads it (UK Theatr Gwaun Fishguard's bare "Romeo and
       // Juliet" on the RBO relay's day stood as Zeffirelli's film while the relay's record held only 2027)
-      tmdb.flatMap(lookups => Broadcast.take(listings, measured, known)(undatedOf(lookups, version)).left.map(asked ++= _.map(Question.Record(_))).toOption.flatten)
+      tmdb.flatMap(lookups => Broadcast.take(listings, measured, known)(undatedOf(lookups)).left.map(asked ++= _.map(Question.Record(_))).toOption.flatten)
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
     val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
       val modelRecord = SourceRecord.ofTmdb(model, film)

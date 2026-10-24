@@ -18,8 +18,8 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   private[agreement] def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
   /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
    *  ([[waitsOn]])? What the stage's take and the fill's `broadcast.take` signal both wait on. */
-  private[agreement] def undatedOf(lookups: IdentityLookups, version: Long): Int => Boolean =
-    film => !lookups.releaseDay(film).isKnown && waitsOn(film, version)
+  private[agreement] def undatedOf(lookups: IdentityLookups): Int => Boolean =
+    film => !lookups.releaseDay(film).isKnown && waitsOn(film)
 
   /** The candidates of a relay whose listings link a listings site's catalogue entry as their page, read as the venues
    *  bill them — the entry's facts left out: Flicks links an encore to an old season's page, whose year denies the
@@ -54,11 +54,11 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   }
 
   /** Does the take still wait on a record's day: never asked for again, or asked and its read neither filed since
-   *  (`changes`; none it can tell of counts as filed) nor overdue? A record TMDB still dates by its year once read again
-   *  is taken as dating none: one read, never a loop. */
-  private[agreement] def waitsOn(film: Int, version: Long): Boolean = rereads.get(film).forall { case (askedAt, since) =>
-    !changes.changedSince(askedAt).forall(_(AgreementStage.recordReadId(film))) &&
-      clock.instant().isBefore(since.plusMillis(AgreementStage.RecordWait.toMillis))
+   *  (`changes`; none it can tell of counts as filed) nor attempted (`attempted`: a read that failed)? No clock: the
+   *  settle rule's (docs/design/identity-questions.md, step 4). A record TMDB still dates by its year once read again is
+   *  taken as dating none: one read, never a loop. */
+  private[agreement] def waitsOn(film: Int): Boolean = rereads.get(film).forall { askedAt =>
+    !changes.changedSince(askedAt).forall(_(AgreementStage.recordReadId(film))) && !attempted(Question.Record(film))
   }
 
   /** `answer`, `hashes`' to the poster `question`, the question noted in `asked` while it is `Unknown` or stale: a stale

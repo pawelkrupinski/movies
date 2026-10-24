@@ -99,25 +99,14 @@ object IdentityDriftCheck {
   }
 
   /** The whole resolve of `live`'s listings, as a worker with nothing kept takes them: the model's resolve over `lookups`
-   *  with `pins`, then a fresh stage (`stage`, over a clock of its own) applied once, and again past every partial wait
-   *  ([[agreement.AgreementStage.PartialAfter]]) — it asks nothing, so what the families have not answered stays open. */
+   *  with `pins`, then a fresh stage (`stage`, over `clock`) applied once. It asks nothing: a cluster settles as the live
+   *  stage's does, once every question it waits on was attempted (the memory both read), and one waiting on a question
+   *  never attempted stays open. */
   def wholeResolve(live: Live, lookups: IdentityLookups, normalizer: services.movies.TitleNormalizer, pins: PinConstraints,
                    stage: java.time.Clock => agreement.AgreementStage, version: Long, clock: java.time.Clock): Whole = {
-    val model   = IdentityResolver.resolve(live.listings.values, lookups, normalizer, IdentityCalibration.resolver, pins)
-    val shifted = new ShiftedClock(clock)
-    val fresh   = stage(shifted)
-    fresh.apply(model, live.listings.get, version, None)
-    shifted.shift(java.time.Duration.ofMillis(agreement.AgreementStage.PartialAfter.toMillis).plusMinutes(1))
+    val model = IdentityResolver.resolve(live.listings.values, lookups, normalizer, IdentityCalibration.resolver, pins)
+    val fresh = stage(clock)
     Whole(fresh.apply(model, live.listings.get, version, None), fresh.waitingOn)
-  }
-
-  /** `base`, moved on by what [[shift]] adds: the whole resolve's stage reads its partial waits as over. */
-  final class ShiftedClock(base: java.time.Clock) extends java.time.Clock {
-    @volatile private var by = java.time.Duration.ZERO
-    def shift(d: java.time.Duration): Unit = by = by.plus(d)
-    override def instant(): java.time.Instant = base.instant().plus(by)
-    override def getZone: java.time.ZoneId = base.getZone
-    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
   }
 
   /** What the check does with what drifted, picked at the composition root. */

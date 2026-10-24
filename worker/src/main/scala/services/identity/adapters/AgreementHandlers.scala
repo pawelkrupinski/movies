@@ -129,7 +129,8 @@ object AgreementQuestions {
  * the TMDB store as it files every TMDB answer; a poster hashed (`hashing`) and filed; a batch of catalogue ids mapped
  * at once (`mapping`), a catalogue page's links read (`pages`). A question whose store already holds a fresh answer is
  * skipped ([[AgreementQuestionMetrics.Fresh]]), and so is one still inside the wait a failed ask left it
- * ([[AgreementQuestionMetrics.Waiting]]); once one is filed a projection is asked for (`filed`), which reads it.
+ * ([[AgreementQuestionMetrics.Waiting]]); once one is filed — or its ask failed, which may settle a cluster waiting on it
+ * — a projection is asked for (`filed`), which reads it.
  *
  * Every ask that comes to something is recorded in `memory` ([[QuestionMemory]]): an answer, an empty answer filed (a
  * durable non-answer), a failure with the host it went to when the failure names it. A failed ask is remembered (5 min
@@ -212,8 +213,8 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
     asking(Seq(question), label, what, filed) { ask; Answered }
 
   /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). A host whose
-   *  breaker is open defers the task; any other failure is remembered, and a poster failing for the last time given up
-   *  on. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
+   *  breaker is open defers the task (never attempted); any other failure is remembered, a poster failing for the last
+   *  time given up on, and a projection asked for too: the questions were attempted. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
    *  [[AgreementQuestionMetrics.Failed]]. */
   private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome =
     try {
@@ -235,7 +236,9 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
         }
         // its last attempt failed too: given up on, read as unread rather than waited on for ever
         givenUp.foreach(posters.giveUp)
-        if (givenUp.nonEmpty) { memory.unanswered(givenUp.map(Question.Poster(_))); filed() }
+        if (givenUp.nonEmpty) memory.unanswered(givenUp.map(Question.Poster(_)))
+        // attempted, though nothing was filed: a cluster waiting on it may settle now (AgreementStage.settles)
+        filed()
         Done
     }
 }
