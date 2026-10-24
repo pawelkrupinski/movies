@@ -496,7 +496,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     triggers(w.projection.tickChanged()) shouldBe Seq("retry")
   }
 
-  "A projection that moves a listing's TMDB film" should "report and log the take change, and nothing for expected churn" in {
+  "A projection that moves a listing's TMDB film" should "report and log the take change, a new listing decided, and nothing for expected churn" in {
     var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
     val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
       r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
@@ -509,7 +509,11 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
     w.scrape(programme)
     w.projection.tick().refused shouldBe None
-    w.takes shouldBe empty // a first projection matches; it moves nothing
+    // a first projection matches: it decides every listing, and moves none
+    w.takes.map(_.kind).distinct shouldBe Seq(TakeChange.Kind.Decided)
+    w.takes.map(t => t.listing.venue -> t.listing.rawTitle).toSet shouldBe
+      programme.toSeq.flatMap { case (cinema, films) => films.map(cinema.displayName -> _.movie.title) }.toSet
+    w.takes.clear()
     w.projection.tick()
     w.takes shouldBe empty // nor does a projection that keeps every film
 
@@ -518,11 +522,16 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Obcy", Some(1979), 9, 10))))
     val events = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(w.projection.tick().refused shouldBe None)
     val logged = events.map(_.getFormattedMessage).filter(_.startsWith("identity take change"))
-    w.takes.map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.before, t.after)).sortBy(t => (t._3, t._2)) shouldBe Seq(
+    w.takes.filter(_.moved).map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.before, t.after)).sortBy(t => (t._3, t._2)) shouldBe Seq(
       (TakeChange.Kind.Lost, Helios.displayName, "Lalka", Some(501), None), (TakeChange.Kind.Lost, KinoApollo.displayName, "Lalka", Some(501), None),
       (TakeChange.Kind.Lost, Multikino.displayName, "Lalka", Some(501), None),
       (TakeChange.Kind.Changed, Rialto.displayName, "Obcy", Some(502), Some(602)),
       (TakeChange.Kind.Changed, Multikino.displayName, "Obcy", Some(502), Some(602)))
+    // KinoMuza's Obcy is new to the films: decided, onto the film its cluster took; every change carries its bases
+    w.takes.filterNot(_.moved).map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.after, t.basisAfter)) shouldBe Seq(
+      (TakeChange.Kind.Decided, KinoMuza.displayName, "Obcy", Some(602), Some(ResolverDecision.Basis.OwnMatch)))
+    w.takes.find(t => t.listing.venue == Helios.displayName).map(t => (t.basisBefore, t.basisAfter)) shouldBe
+      Some((Some(ResolverDecision.Basis.OwnMatch), Some(ResolverDecision.Basis.BelowThreshold)))
     logged should have size 6 // a line per take, and the tick's summary
     logged.find(_.contains(Rialto.displayName)).get should (include("changed") and include("Obcy") and include("tmdb 502") and include("tmdb 602") and
       include("OwnMatch: corrected Obcy: because Obcy"))
@@ -583,6 +592,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val w = new ProjectionWorld(store, programme.keys.toSeq, clock, matched)
     w.scrape(programme)
     w.projection.tick()
+    w.takes.clear()   // every listing decided
     takes = takes + ("Obcy" -> Some(602))
     decline = true
     w.projection.tick()

@@ -84,6 +84,11 @@ EVENT_ONLY_VALUES = {
     # the timer has run, then drop these.
     ("kinowo_identity_build_net_lost", "country", "de"),
     ("kinowo_identity_build_net_lost", "country", "uk"),
+    # NOT PUBLISHED YET (2026-10-24): the take-change counter counts a new listing's first take as
+    # `kind="decided"` (and gained `basis`) since the staging publisher's cluster counter folded into
+    # it, so the fleet has no such series to snapshot. Re-snapshot once the workers run it, then drop
+    # this.
+    ("kinowo_worker_identity_take_changes_total", "kind", "decided"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

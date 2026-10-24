@@ -215,14 +215,16 @@ reads every country's through the prod mirror:
   attempted / failed n× with the next retry and host / absent / answered), plus attempted/total, rewritten as it changes
   and deleted once it stops. Every RESOLUTION since the last publish is written once, its own document, which the
   database deletes 7 days later (a TTL index on `expireAt`): a cluster that staged and waits on nothing now (`settled`
-  with its take, or `regrouped` when its listings no longer form it); and, from each LISTING's film as the last publish
-  saw it, a cluster of new listings (`decided`: most new films, asked inline within one projection) or one whose
-  listings' film moved (`gained`, `lost` or `changed`, with the film it had: `was`). By listing, not by cluster key: a
-  key moves when a new listing sorts first or clusters merge, which changes no listing's film. The first publish after
-  a boot only records. At most 500 staging clusters (the longest waiting) are listed and 500 resolutions written a
-  publish; 60 questions each; the per-country beat counts them all. Each publish also exports the takes by basis
-  (`kinowo_worker_identity_takes{basis}`, `_take_listings{basis}`) and counts each resolution
-  (`kinowo_worker_identity_cluster_changes_total{basis,change}`): the worker dashboard's "Identity takes" panels.
+  with its take, or `regrouped` when its listings no longer form it); and, from the projections' CHANGE LISTS since
+  (`TakeChange`: each listing whose take a written projection changed, its film and basis before and after, a new
+  listing `decided`; drained from a bounded `ChangeFeed`), a settled cluster of new listings (`decided`: most new
+  films, asked inline within one projection) or one whose listings' film moved (`gained`, `lost` or `changed`, with
+  the film it had: `was`). By listing, not by cluster key: a key moves when a new listing sorts first or clusters
+  merge, which changes no listing's film. At most 500 staging clusters (the longest waiting) are listed and 500
+  resolutions written a publish; 60 questions each; the per-country beat counts them all. Each publish also exports
+  the takes by basis (`kinowo_worker_identity_takes{basis}`, `_take_listings{basis}`); the change list itself is
+  counted by the projection (`kinowo_worker_identity_take_changes_total{basis,kind}`, the same counter the take alerts
+  read): the worker dashboard's "Identity takes" panels.
 - **Store** (`IdentityStaging`, `identity_staging` in each country's database): staging clusters, resolutions and
   the country's beat. Mirrored locally (`DebugMirror.IdentityStaging`, `debug-mirror-collections.json`), so
   the page follows prod as the mirror tails it, TTL deletes included.

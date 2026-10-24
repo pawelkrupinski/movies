@@ -6,11 +6,12 @@
 # new data, an answer store that changed, an agreement stage taking or withdrawing a film, or a
 # deploy.
 #
-# THE COUNTER: `kinowo_worker_identity_take_changes_total{country,kind}`, written by every identity
-# projection that writes (services.identity.TakeChange): a listing STILL PUBLISHED whose TMDB film
-# moved -- `lost` (had one, has none), `changed` (another film), `gained` (had none). Expected churn
-# is never counted: a listing leaving the schedule has no cluster, a new one no previous film, and a
-# re-key or merge that keeps the TMDB film keeps the take. Each change is also logged one line
+# THE COUNTER: `kinowo_worker_identity_take_changes_total{country,basis,kind}`, written by every
+# identity projection that writes (services.identity.TakeChange, its change list): a listing STILL
+# PUBLISHED whose TMDB film moved -- `lost` (had one, has none), `changed` (another film), `gained`
+# (had none) -- or a new listing's first take (`decided`, which these rules leave out), by the basis
+# holding it after. Expected churn is never counted: a listing leaving the schedule has no cluster,
+# and a re-key or merge that keeps the TMDB film keeps the take. Each move is also logged one line
 # (`identity take change: <kind> <venue> | <listing>: <old> -> <new>; reason <basis: why>; ...`), its
 # facts also FIELDS (kind, basis, venue, tmdb_before/after, previous_basis, rules, runner_up, repro,
 # build, projection_id), and a per-tick `identity take change: summary` line, so the drill-down is

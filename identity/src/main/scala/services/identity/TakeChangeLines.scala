@@ -48,7 +48,7 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
     val rival  = node.flatMap(_.runnerUp)
     val pinned = decision.exists(_.basis == ResolverDecision.Basis.Pinned) || prior.exists(_.basis == ResolverDecision.Basis.Pinned)
     val message = s"identity take change: ${take.kind.label} ${key.venue} | ${key.rawTitle}: " +
-      s"${film(take.before, was)} -> ${film(take.after, now.map(_._2))} (${take.previousFilm}); reason $reason" +
+      s"${film(take.before, was)} -> ${film(take.after, now.map(_._2))} (${take.previousFilm.getOrElse("new")}); reason $reason" +
       prior.fold("")(p => s"; before ${p.basis} (${ResolverDecision.percent(p.confidence)})${p.reason.fold("")(r => s": $r")}") +
       s"; explain: $repro"
     Line(message, Seq(
@@ -96,7 +96,7 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
    *  and the `previous_*` fields the live take, `tmdb_after`, `basis` and `reason_*` the whole resolve's, and `kind` what
    *  adopting the whole resolve would do to the listing. */
   def drift(listing: services.movies.ListingKey, live: Option[ResolverDecision], whole: Option[ResolverDecision], published: Option[Listing]): Line = {
-    val take = TakeChange(listing, "", live.flatMap(_.film), whole.flatMap(_.film))
+    val take = TakeChange(listing, Some(""), live.flatMap(_.film), whole.flatMap(_.film), live.map(_.basis), whole.map(_.basis))
     val line = of(take, None, None, whole, published,
       live.map(d => TakeChange.Prior(d.basis, d.confidence, d.explanation.lastOption, Some(DecidedBy.of(d, listing)))), Some(DriftTrigger))
     Line(DriftPrefix + line.message.stripPrefix("identity take change:"), line.fields.filterNot(_._1 == "film_before") ++ Seq(
@@ -104,17 +104,17 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
       "live_fallback" -> live.flatMap(_.fallback).map(f => s"${f.source}:${f.id}")))
   }
 
-  /** The tick's summary: how many takes moved by kind and by basis (`basisOf` each listing's, none when no decision
-   *  names it), and how many of them were logged a line each. */
-  def summary(takes: Seq[TakeChange], basisOf: TakeChange => Option[ResolverDecision.Basis], logged: Int): Line = {
+  /** The tick's summary: how many takes moved (`takes`, its match changes, [[TakeChange.moved]]) by kind and by basis
+   *  (each one's [[TakeChange.basisAfter]], none when no decision names it), and how many of them were logged a line each. */
+  def summary(takes: Seq[TakeChange], logged: Int): Line = {
     val byKind  = takes.groupMapReduce(_.kind.label)(_ => 1)(_ + _)
-    val byBasis = takes.groupMapReduce(t => basisOf(t).fold("no decision")(_.toString))(_ => 1)(_ + _)
+    val byBasis = takes.groupMapReduce(_.basisAfter.fold("no decision")(_.toString))(_ => 1)(_ + _)
     def render(counts: Map[String, Int]) = counts.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")
     val unlogged = takes.size - logged
     Line(s"identity take change: summary ${takes.size} take changes (${render(byKind)}); by basis ${render(byBasis)}" +
       (if (unlogged > 0) s"; $unlogged more not logged" else ""),
       Seq("take_changes" -> takes.size, "logged" -> logged, "by_basis" -> render(byBasis)) ++
-        TakeChange.Kind.values.toSeq.map(kind => kind.label -> byKind.getOrElse(kind.label, 0)))
+        TakeChange.Kind.Moves.map(kind => kind.label -> byKind.getOrElse(kind.label, 0)))
   }
 
   /** The command that replays `key` — its venue and billed title, exactly — under the code of the build that took it:

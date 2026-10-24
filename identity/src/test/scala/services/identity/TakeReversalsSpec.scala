@@ -7,7 +7,7 @@ import services.movies.ListingKey
 class TakeReversalsSpec extends AnyFlatSpec with Matchers {
 
   private def key(title: String): ListingKey = ListingKey.Published("Chichester Cinema at New Park", title, None, Nil)
-  private def change(title: String, before: Option[Int], after: Option[Int]) = TakeChange(key(title), s"film-$title", before, after)
+  private def change(title: String, before: Option[Int], after: Option[Int]) = TakeChange(key(title), Some(s"film-$title"), before, after)
   private val ties = "The Ties That Bind Us"
 
   "take reversals" should "count a listing the next projection moves back to the film it held" in {

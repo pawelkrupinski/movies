@@ -64,7 +64,8 @@ trait IdentityProjectionMetrics {
   /** A reconciling projection of the whole corpus ran — `measured` when an earlier projection gave it the scope to check
    *  its drift against, unmeasured when none had (`drifted` is then not called). */
   def reconciled(measured: Boolean): Unit
-  /** A written projection moved these listings' TMDB films ([[TakeChange]]): the live alarm on match changes. */
+  /** A written projection's change list ([[TakeChange]]): the listings whose TMDB film it moved — the live alarm on match
+   *  changes — and those it decided first, each with its basis. */
   def takesChanged(changes: Seq[TakeChange]): Unit
 }
 
@@ -140,7 +141,10 @@ final class IdentityProjection(
   agreementBacklog: () => Boolean = () => false,
   /** Handed each WRITTEN projection of the whole corpus's resolution, as projected, and every listing it decided: what
    *  counts its suspect takes (`SuspectTakeCount.submit`), which must return at once — the count is no part of a projection. */
-  suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => ()
+  suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => (),
+  /** Handed each written projection's change list, as [[IdentityProjectionMetrics.takesChanged]] is: what the staging
+   *  screen is told ([[staging.ChangeFeed]]), which must return at once. */
+  changeFeed:  Seq[TakeChange] => Unit = _ => ()
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -479,7 +483,7 @@ final class IdentityProjection(
         s"declined $declined; ${plan.regroupings}" +
         f" in $seconds%.1fs (${phases.render})",
       Seq("listings" -> listings, "films" -> films, "written" -> tick.written, "retired" -> tick.retired, "declined" -> declined,
-        "take_changes" -> plan.takes.size, "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,
+        "take_changes" -> plan.takes.count(_.moved), "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,
         // which films, a handful: what a retire or decline burst is drilled into by
         "retired_films" -> Option.when(plan.retired.nonEmpty)(plan.retired.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" ")),
         "declined_films" -> Option.when(unwritten.nonEmpty)(unwritten.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" "))))
@@ -491,11 +495,12 @@ final class IdentityProjection(
    *  not against the parked film. As many as the last projection's declined films' listings — none on a healthy tick. */
   private var heldTakes: Seq[TakeChange] = Nil
 
-  /** The listings whose TMDB film this projection moved — and wrote: a film the store declined is retried by the next
-   *  projection, which counts it then, against the take before the first try ([[heldTakes]]) — counted, logged one line
-   *  each (the first [[IdentityProjection.TakeChangesLogged]]) for drill-down, and summed up in one line by kind and
-   *  basis; the lines and their fields are [[TakeChangeLines]]'. The country, build and projection id are every worker
-   *  log line's own fields. */
+  /** The projection's CHANGE LIST: the listings whose take this projection changed — and wrote: a film the store declined
+   *  is retried by the next projection, which counts it then, against the take before the first try ([[heldTakes]]) —
+   *  each with the basis of the decision it replaced and of the one that holds it now. Handed whole to the metrics and
+   *  to [[changeFeed]]; its match changes ([[TakeChange.moved]]) logged one line each (the first
+   *  [[IdentityProjection.TakeChangesLogged]]) for drill-down, and summed up in one line by kind and basis; the lines and
+   *  their fields are [[TakeChangeLines]]'. The country, build and projection id are every worker log line's own fields. */
   private def reportTakes(plan: ProjectionPlan, resolution: Resolution, before: Map[FilmId, StoredMovieRecord],
                           unwritten: Set[FilmId]): Unit =
     if (plan.takes.nonEmpty || heldTakes.nonEmpty) {
@@ -503,21 +508,28 @@ final class IdentityProjection(
       heldTakes   = Nil
       // A retried listing is compared with what the site showed before its first try; one landing back there is no change.
       val planned = plan.takes.map(t => held.get(t.listing).fold(t)(h => t.copy(previousFilm = h.previousFilm, before = h.before)))
-        .filter(t => t.before != t.after)
-      val moved   = planned.iterator.map(_.listing).toSet
-      val now     = plan.films.iterator.flatMap(f => f.members.iterator.filter(moved).map(_ -> f)).toMap
-      val (takes, notWritten) = planned.partition(t => now.get(t.listing).forall(f => !unwritten(f.id)))
+        .filter(t => !t.moved || t.before != t.after)
+      val listed  = planned.iterator.map(_.listing).toSet
+      val now     = plan.films.iterator.flatMap(f => f.members.iterator.filter(listed).map(_ -> f)).toMap
+      val (written, notWritten) = planned.partition(t => now.get(t.listing).forall(f => !unwritten(f.id)))
       heldTakes = notWritten
-      if (takes.nonEmpty) {
-        metrics.takesChanged(takes)
-        val wanted    = takes.iterator.map(_.listing).toSet
+      if (written.nonEmpty) {
+        val wanted    = written.iterator.map(_.listing).toSet
         val decisions = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
-        val logged    = takes.take(IdentityProjection.TakeChangesLogged)
-        logged.foreach { t =>
-          log(takeLines.of(t, before.get(FilmId(t.previousFilm)).map(_.title), now.get(t.listing).map(f => f.id.value -> f.title),
-            decisions.get(t.listing), live.listing(t.listing), live.priorTake(t.listing), Some(trigger)))
+        val changes   = written.map(t => t.copy(basisBefore = live.priorTake(t.listing).map(_.basis),
+          basisAfter = decisions.get(t.listing).map(_.basis)))
+        metrics.takesChanged(changes)
+        changeFeed(changes)
+        val takes     = changes.filter(_.moved)
+        if (takes.nonEmpty) {
+          val logged = takes.take(IdentityProjection.TakeChangesLogged)
+          logged.foreach { t =>
+            log(takeLines.of(t, t.previousFilm.flatMap(id => before.get(FilmId(id))).map(_.title),
+              now.get(t.listing).map(f => f.id.value -> f.title), decisions.get(t.listing), live.listing(t.listing),
+              live.priorTake(t.listing), Some(trigger)))
+          }
+          log(takeLines.summary(takes, logged.size))
         }
-        log(takeLines.summary(takes, t => decisions.get(t.listing).map(_.basis), logged.size))
       }
     }
 

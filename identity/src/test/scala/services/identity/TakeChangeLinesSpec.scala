@@ -17,7 +17,7 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
       refusals = Seq(DecisionTrace.Refusal("favoured-calibrated", "below the cut")), candidates = Seq("238 31.0% rank 1 'The Godfather' (1972)"),
       blocker = Some("rule:below-the-cut"))))
     val decision = ResolverDecision(Seq(muza), None, 0.62, ResolverDecision.Basis.BelowThreshold, Seq("first why", "last why"))(trace)
-    val line     = lines.of(TakeChange(muza, "f-12", Some(238), None), Some("Ojciec chrzestny"), None, Some(decision), None, None)
+    val line     = lines.of(TakeChange(muza, Some("f-12"), Some(238), None), Some("Ojciec chrzestny"), None, Some(decision), None, None)
     val fields   = line.fields.toMap
     fields("rules") shouldBe Some("refused:favoured-calibrated:below-the-cut")
     fields("runner_up") shouldBe Some("238 31.0% rank 1 'The Godfather' (1972)")
@@ -37,7 +37,7 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
     val listing  = Listing(models.KinoMuza, muza, "Ojciec chrzestny '72", "Ojciec chrzestny", "ojciec chrzestny", Some(1972), Nil, None, None, None)
     // the take before beat 238 with 240: the runner-up won
     val prior    = TakeChange.Prior(ResolverDecision.Basis.OwnMatch, 0.7, None, Some("accept:exact-top-hit"), Some(238))
-    val fields   = withRules.of(TakeChange(muza, "f-12", Some(240), Some(238)), None, Some("f-12" -> "Ojciec chrzestny"), Some(decision),
+    val fields   = withRules.of(TakeChange(muza, Some("f-12"), Some(240), Some(238)), None, Some("f-12" -> "Ojciec chrzestny"), Some(decision),
       Some(listing), Some(prior), Some("scrape")).fields.toMap
     fields("stage") shouldBe Some("model")
     fields("decided_by") shouldBe Some("accept:sole-work")
@@ -56,10 +56,10 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
       DecisionTrace(None, None, Map(muza -> DecisionTrace.Node(Some("relay-record"), Nil, Nil))))
     DecidedBy.stage(relay, muza) shouldBe "relay"
     val pinned = ResolverDecision(Seq(muza), Some(238), 1.0, ResolverDecision.Basis.Pinned, Nil)()
-    val byPin  = lines.of(TakeChange(muza, "f-12", Some(240), Some(238)), None, None, Some(pinned), None, None, Some("deploy")).fields.toMap
+    val byPin  = lines.of(TakeChange(muza, Some("f-12"), Some(240), Some(238)), None, None, Some(pinned), None, None, Some("deploy")).fields.toMap
     (byPin("stage"), byPin("decided_by"), byPin("trigger")) shouldBe ((Some("pin"), Some("pin"), Some("review")))
     // a take no runner-up was weighed beside names none, and says nothing of one winning
-    val bare = lines.of(TakeChange(muza, "f-12", Some(240), Some(238)), None, None, Some(pinned), None,
+    val bare = lines.of(TakeChange(muza, Some("f-12"), Some(240), Some(238)), None, None, Some(pinned), None,
       Some(TakeChange.Prior(ResolverDecision.Basis.OwnMatch, 0.7, None)), None).fields.toMap
     (bare("runner_up_tmdb"), bare("margin"), bare("runner_up_won")) shouldBe ((None, None, None))
   }
@@ -93,9 +93,10 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
   }
 
   "A tick's summary" should "count every take by kind and basis, and say how many were not logged a line each" in {
-    val takes = Seq(TakeChange(muza, "f-1", Some(1), None), TakeChange(muza.copy(venue = "Helios"), "f-1", Some(1), Some(2)),
-      TakeChange(muza.copy(venue = "Rialto"), "f-3", None, Some(4)))
-    val summary = lines.summary(takes, t => Option.when(t.after.isDefined)(ResolverDecision.Basis.Agreed), logged = 2)
+    val agreed = Some(ResolverDecision.Basis.Agreed)
+    val takes  = Seq(TakeChange(muza, Some("f-1"), Some(1), None), TakeChange(muza.copy(venue = "Helios"), Some("f-1"), Some(1), Some(2), basisAfter = agreed),
+      TakeChange(muza.copy(venue = "Rialto"), Some("f-3"), None, Some(4), basisAfter = agreed))
+    val summary = lines.summary(takes, logged = 2)
     summary.message shouldBe "identity take change: summary 3 take changes (changed 1, gained 1, lost 1); by basis Agreed 2, no decision 1; " +
       "1 more not logged"
     summary.fields.toMap shouldBe Map("take_changes" -> 3, "logged" -> 2, "by_basis" -> "Agreed 2, no decision 1", "lost" -> 1, "changed" -> 1,

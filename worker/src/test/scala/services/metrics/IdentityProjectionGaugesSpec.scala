@@ -3,15 +3,15 @@ package services.metrics
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.TakeChange
+import services.identity.{ResolverDecision, TakeChange}
 import services.movies.ListingKey
 
-/** The take reversals, per country and per billing: what the oscillation alerts read. */
+/** The take changes by basis and change, and the take reversals per country and per billing: what the take alerts read. */
 class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
   import PrometheusExposition.{render, sample}
 
   private def change(venue: String, title: String, before: Option[Int], after: Option[Int]) =
-    TakeChange(ListingKey.Published(venue, title, None, Nil), s"film-$title", before, after)
+    TakeChange(ListingKey.Published(venue, title, None, Nil), Some(s"film-$title"), before, after)
 
   "the take reversals" should "count a billing once a projection however many venues it reversed at, beside the listings" in {
     // UK "RBO Cinema Season 2026-27: Macbeth" at every boot: lost at the boot's projection, taken back at the next
@@ -25,6 +25,31 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
     val text = render(registry)
     sample(text, "kinowo_worker_identity_take_reversals_total", """country="uk"""") shouldBe Some(6.0)
     sample(text, "kinowo_worker_identity_billing_reversals_total", """billing="rbo cinema season 2026 27 macbeth",country="uk"""") shouldBe Some(2.0)
+  }
+
+  "the take changes" should "count each listing of a projection's change list by the basis holding it after and its kind, a new one decided" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")
+    val agreed   = Some(ResolverDecision.Basis.Agreed)
+    metrics.takesChanged(Seq(change("Kino Muza", "Diuna", Some(1), None).copy(basisAfter = Some(ResolverDecision.Basis.Vetoed)),
+      change("Rialto", "Diuna", Some(1), Some(2)).copy(basisAfter = agreed),
+      TakeChange(ListingKey.Published("Helios", "Diuna", None, Nil), None, None, Some(2), basisAfter = agreed),
+      TakeChange(ListingKey.Published("Amok", "Diuna", None, Nil), None, None, Some(2), basisAfter = agreed)))
+    val text = render(registry)
+    sample(text, "kinowo_worker_identity_take_changes_total", """basis="Vetoed",country="pl",kind="lost"""") shouldBe Some(1.0)
+    sample(text, "kinowo_worker_identity_take_changes_total", """basis="Agreed",country="pl",kind="changed"""") shouldBe Some(1.0)
+    sample(text, "kinowo_worker_identity_take_changes_total", """basis="Agreed",country="pl",kind="decided"""") shouldBe Some(2.0)
+    // every basis and kind at 0 from boot
+    sample(text, "kinowo_worker_identity_take_changes_total", """basis="OwnMatch",country="pl",kind="gained"""") shouldBe Some(0.0)
+  }
+
+  it should "never read a new listing's first take as a reversal" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")
+    val muza     = ListingKey.Published("Kino Muza", "Diuna", None, Nil)
+    metrics.takesChanged(Seq(TakeChange(muza, Some("film-Diuna"), None, Some(2))))
+    metrics.takesChanged(Seq(TakeChange(muza, None, None, None)))
+    sample(render(registry), "kinowo_worker_identity_take_reversals_total", """country="pl"""") shouldBe Some(0.0)
   }
 
   "the rule firings" should "add each rule's listings and the listings counted, a series per rule id" in {

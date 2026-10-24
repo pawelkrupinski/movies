@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{Regroupings, SuspectTakes}
+import services.identity.{Regroupings, ResolverDecision, SuspectTakes}
 import services.identity.adapters.IdentityProjectionMetrics
 
 /**
@@ -28,10 +28,12 @@ import services.identity.adapters.IdentityProjectionMetrics
  *  - `kinowo_worker_identity_projection_drift_total` — films an hourly projection of the whole corpus changed that the
  *    scoped projections between (`ProjectionScope`: only the films their changes reach) would have left as they were.
  *    Zero, always: anything else is a film a scope missed, which the whole projection has just put right.
- *  - `kinowo_worker_identity_take_changes_total{kind}` — listings still published whose TMDB film a written projection
- *    moved: `lost` (had one, has none), `changed` (another), `gained` (had none). A listing leaving the schedule, a new
- *    one, and a re-key or merge that keeps the TMDB film are churn and never counted ([[services.identity.TakeChange]]);
- *    the alarm on match changes reads this. Each change is also logged, its facts as fields
+ *  - `kinowo_worker_identity_take_changes_total{basis,kind}` — each written projection's change list
+ *    ([[services.identity.TakeChange]]), by the basis that holds the listing after (`ResolverDecision.Basis`): listings
+ *    still published whose TMDB film it moved — `lost` (had one, has none), `changed` (another), `gained` (had none) —
+ *    and listings new to the films it `decided` (matched or not). A listing leaving the schedule, and a re-key or merge
+ *    that keeps the TMDB film, are churn and never counted; the alarm on match changes reads the moves, the worker
+ *    dashboard's "Identity takes" panels all four. Each move is also logged, its facts as fields
  *    (`identity take change: …`, [[services.identity.TakeChangeLines]]).
  *  - `kinowo_worker_identity_take_reversals_total` — take changes that move a listing BACK to the film (or no-film) it held
  *    before its last change ([[services.identity.TakeReversals]]): two rules undoing each other, an oscillation. UK
@@ -100,8 +102,8 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
 
   private val takeChanges: Counter = Counter.builder()
     .name("kinowo_worker_identity_take_changes_total")
-    .help("Published listings whose TMDB film a written identity projection moved: lost / changed / gained. Churn (a listing leaving, a re-key keeping the film) is not counted.")
-    .labelNames("country", "kind")
+    .help("Published listings whose TMDB film a written identity projection moved (lost / changed / gained) or that it decided first (decided), by the basis that holds them after. Churn (a listing leaving, a re-key keeping the film) is not counted.")
+    .labelNames("country", "basis", "kind")
     .register(registry)
 
   private val takeReversals: Counter = Counter.builder()
@@ -149,14 +151,16 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     // Exported at 0 from boot: no drift reads 0, not absent, and an unmeasured hour shows as reconciles{measured=false}.
     drift.labelValues(country)
     Seq("true", "false").foreach(reconciles.labelValues(country, _))
-    // Every kind exported at 0 from boot, so a first change is an increase a rate sees, not a series appearing.
-    services.identity.TakeChange.Kind.values.foreach(k => takeChanges.labelValues(country, k.label))
+    // Every basis and kind exported at 0 from boot, so a first change is an increase a rate sees, not a series appearing.
+    for (basis <- ResolverDecision.Basis.values; kind <- services.identity.TakeChange.Kind.values)
+      takeChanges.labelValues(country, basis.toString, kind.label)
     takeReversals.labelValues(country)
     private val reversals = new services.identity.TakeReversals
     private val billings  = new services.identity.BillingReversals
     def takesChanged(changes: Seq[services.identity.TakeChange]): Unit = {
-      changes.groupMapReduce(_.kind)(_ => 1)(_ + _).foreach { case (kind, n) => takeChanges.labelValues(country, kind.label).inc(n.toDouble) }
-      val reversed = reversals.note(changes)
+      changes.groupMapReduce(t => (t.basisAfter.fold(IdentityProjectionGauges.NoDecision)(_.toString), t.kind.label))(_ => 1)(_ + _)
+        .foreach { case ((basis, kind), n) => takeChanges.labelValues(country, basis, kind).inc(n.toDouble) }
+      val reversed = reversals.note(changes.filter(_.moved))
       takeReversals.labelValues(country).inc(reversed.size.toDouble)
       val noted = billings.note(reversed)
       noted.forgotten.foreach(billing => billingReversals.remove(country, billing))
@@ -173,4 +177,9 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     def refused(reason: IdentityProjectionMetrics.Refusal): Unit = refusals.labelValues(country, reason.label).inc()
     def drifted(films: Int): Unit = drift.labelValues(country).inc(films.toDouble)
   }
+}
+
+object IdentityProjectionGauges {
+  /** The `basis` of a change no decision names. */
+  val NoDecision = "none"
 }

@@ -54,7 +54,12 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       agreementBacklog = () => agreementStage.backlog,
-      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) })
+      suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
+      changeFeed  = identityTakeChanges.offer)
+
+  /** Each written projection's change list, held for the staging publisher to drain. */
+  lazy val identityTakeChanges: services.identity.staging.ChangeFeed[services.identity.TakeChange] =
+    new services.identity.staging.ChangeFeed(services.identity.adapters.IdentityStagingPublisher.FeedCapacity)
 
   /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
@@ -115,7 +120,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** What this country's takes still wait on, published for the local staging screen (`scripts/identity-staging`). */
   lazy val identityStagingPublisher: services.identity.adapters.IdentityStagingPublisher = managedResources.stopping(
     new services.identity.adapters.IdentityStagingPublisher(country.code, identityStaging,
-      taken = () => identityProjection.lastProjected.map(_.taken), waitingOn = agreementStage.waitingOn,
+      taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityTakeChanges.drain(),
+      waitingOn = agreementStage.waitingOn,
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code)))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */

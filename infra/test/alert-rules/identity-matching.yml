@@ -14,23 +14,23 @@ tests:
   # UK loses 213 listings' films at its first projection after a deploy, the worker having restarted just before.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_identity_take_changes_total{country="uk",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="uk",basis="OwnMatch",kind="lost",instance="w1"}'
         values: '1x30 stale _x2 213x40'
       - series: 'kinowo_worker_identity_cutover_listings{country="uk",path="projection",instance="w1"}'
         values: '36700x30 stale _x2 36700x40'
-      - series: 'kinowo_worker_identity_take_changes_total{country="de",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="de",basis="OwnMatch",kind="lost",instance="w1"}'
         values: '0x30 20x43'
-      - series: 'kinowo_worker_identity_take_changes_total{country="de",kind="changed",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="de",basis="OwnMatch",kind="changed",instance="w1"}'
         values: '0x30 39x43'
       - series: 'kinowo_worker_identity_cutover_listings{country="de",path="projection",instance="w1"}'
         values: '34650x73'
-      - series: 'kinowo_worker_identity_take_changes_total{country="es",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="es",basis="OwnMatch",kind="lost",instance="w1"}'
         values: '0x30 20x43'
       - series: 'kinowo_worker_identity_cutover_listings{country="es",path="projection",instance="w1"}'
         values: '5400x73'
-      - series: 'kinowo_worker_identity_take_changes_total{country="us",kind="gained",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="us",basis="OwnMatch",kind="gained",instance="w1"}'
         values: '0x30 656x43'
-      - series: 'kinowo_worker_identity_take_changes_total{country="us",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="us",basis="OwnMatch",kind="lost",instance="w1"}'
         values: '0x73'
       - series: 'kinowo_worker_identity_cutover_listings{country="us",path="projection",instance="w1"}'
         values: '103800x73'
@@ -53,9 +53,9 @@ tests:
   # the `for:` is up, then firing for pl alone.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_identity_take_changes_total{country="pl",kind="changed",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="pl",basis="OwnMatch",kind="changed",instance="w1"}'
         values: '0x30 600x5 stale _x2 600x40'
-      - series: 'kinowo_worker_identity_take_changes_total{country="pl",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="pl",basis="OwnMatch",kind="lost",instance="w1"}'
         values: '0x30 0x5 stale _x2 0x40'
       - series: 'kinowo_worker_identity_cutover_listings{country="pl",path="projection",instance="w1"}'
         values: '9408x35 stale _x2 9408x40'
@@ -78,17 +78,17 @@ tests:
   # under the floor), and US gaining 5,000 takes at once (gained is not counted).
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_identity_take_changes_total{country="uk",kind="changed",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="uk",basis="OwnMatch",kind="changed",instance="w1"}'
         values: '0+2x60'
       - series: 'kinowo_worker_identity_cutover_listings{country="uk",path="projection",instance="w1"}'
         values: '35891x60'
-      - series: 'kinowo_worker_identity_take_changes_total{country="xx",kind="changed",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="xx",basis="OwnMatch",kind="changed",instance="w1"}'
         values: '0x20 40x40'
       - series: 'kinowo_worker_identity_cutover_listings{country="xx",path="projection",instance="w1"}'
         values: '1000x60'
-      - series: 'kinowo_worker_identity_take_changes_total{country="us",kind="gained",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="us",basis="OwnMatch",kind="gained",instance="w1"}'
         values: '0x20 5000x40'
-      - series: 'kinowo_worker_identity_take_changes_total{country="us",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="us",basis="OwnMatch",kind="lost",instance="w1"}'
         values: '0x60'
       - series: 'kinowo_worker_identity_cutover_listings{country="us",path="projection",instance="w1"}'
         values: '101678x60'

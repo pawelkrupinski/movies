@@ -6,7 +6,7 @@ import services.movies.ListingKey
 
 class BillingReversalsSpec extends AnyFlatSpec with Matchers {
 
-  private def reversal(venue: String, title: String) = TakeChange(ListingKey.Published(venue, title, None, Nil), s"film-$title", Some(2), Some(1))
+  private def reversal(venue: String, title: String) = TakeChange(ListingKey.Published(venue, title, None, Nil), Some(s"film-$title"), Some(2), Some(1))
 
   "billing reversals" should "count a projection's reversals once per billing, however many venues bill it" in {
     // UK "RBO Cinema Season 2026-27: Macbeth": one projection put 57 listings back to the Met's record at once

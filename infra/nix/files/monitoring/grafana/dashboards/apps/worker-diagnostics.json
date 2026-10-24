@@ -2877,7 +2877,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "sum by (country, kind) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\"}[1h]))",
+          "expr": "sum by (country, kind) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\", kind!=\"decided\"}[1h]))",
           "legendFormat": "{{country}} take {{kind}} /h"
         },
         {
@@ -4107,8 +4107,8 @@
     },
     {
       "id": 76,
-      "title": "Identity match changes per bar (at least an hour) — decided, gained, lost, changed, settled",
-      "description": "`kinowo_worker_identity_cluster_changes_total{change,basis}` per bar (at least an hour): each cluster since the staging publisher's last publish `decided` (every listing new), whose listings' film was `gained` (had none), `lost` (has none now) or `changed`, or `settled` (seen waiting first), by the basis it holds after. Counted from the second publish after a worker boot. The same changes are listed on the local /debug/identity/staging page.",
+      "title": "Identity match changes per bar (at least an hour) — decided, gained, lost, changed",
+      "description": "`kinowo_worker_identity_take_changes_total{kind,basis}` per bar (at least an hour): each written projection's change list, by listing — a listing new to the films `decided` (matched or not), or one whose film was `gained` (had none), `lost` (has none now) or `changed` — by the basis that holds it after. The same changes, by cluster, are listed on the local /debug/identity/staging page.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -4155,8 +4155,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "sum by (change, basis) (increase(kinowo_worker_identity_cluster_changes_total{country=~\"$country\"}[$__interval]))",
-          "legendFormat": "{{change}} · {{basis}}"
+          "expr": "sum by (kind, basis) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{kind}} · {{basis}}"
         }
       ],
       "interval": "1h"

@@ -232,8 +232,10 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
     val kept    = drafts.flatMap(_.inherited).toSet
     val retired = stored.map(_.id).filterNot(kept).distinct.sortBy(_.value)
 
-    // The listings of the scope whose TMDB film moved — read off the index's clusters, so nothing is built per listing.
-    val takes = TakeChange.of(previousOf, l => index.clusterOf.get(l).flatMap(index.clusters.get).map(_.film))
+    // The listings of the scope whose TMDB film moved, and its clusters' listings on no stored film yet — read off the
+    // index's clusters, so nothing is built per listing.
+    val takes = TakeChange.of(previousOf, l => index.clusterOf.get(l).flatMap(index.clusters.get).map(_.film),
+      within.clusters.iterator.flatMap(c => c.members.iterator.map(_ -> c.film)))
     ProjectionDraft(drafts, retired, retired.filterNot(id => index.placed(id.value)), covered, index.additions,
       regroupings(drafts, retired), venues, build, rowsOf, takes, VenueSlots.rowsByKey(_, _, normalizer))
   }
