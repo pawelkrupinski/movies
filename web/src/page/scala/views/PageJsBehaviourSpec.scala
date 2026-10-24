@@ -1525,11 +1525,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         if (reachable) reachable.focus();
         return document.activeElement !== null && document.activeElement.closest('#picker-locate-status') !== null;
       })()""") shouldBe true
-      Seq("keyDown", "keyUp").foreach { kind =>
-        page.send("Input.dispatchKeyEvent", play.api.libs.json.Json.obj(
-          "type" -> kind, "key" -> "Enter", "code" -> "Enter", "windowsVirtualKeyCode" -> 13, "nativeVirtualKeyCode" -> 13,
-          "text" -> (if (kind == "keyDown") "\r" else "")))
-      }
+      pressKey(page, "Enter", 13, text = "\r")
       page.waitFor(s"__panes.requestsFor('de') === ${asked + 1}")
       releasePane(page, "de")
       page.waitFor("__panes.picked !== undefined")
@@ -4295,6 +4291,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("!!document.activeElement.closest('#area-picker-overlay')") shouldBe true
 
       pressEscape(page)
+      // The press leaves the page in front (see `pressKey`): a hidden page renders
+      // no frame, so its dialog's `close` -- and the picker's removal -- may never come.
+      a[RuntimeException] should be thrownBy page.waitFor("document.visibilityState !== 'visible'", timeoutMs = tools.SpecTimeouts.quiet(scala.concurrent.duration.FiniteDuration(300, "ms")).toMillis.toInt)
       page.waitFor("!document.getElementById('area-picker-overlay')")
       page.evalBool("localStorage.getItem('areasChosen:' + CURRENT_CITY) === null") shouldBe true
       page.evalString("localStorage.getItem('disabledCinemas')") shouldBe "[]"
@@ -5476,17 +5475,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def pinDeterministicFont(page: CdpPage): Unit =
     page.eval("__dom.pinFont()")
 
+  /** A real key press through CDP's input pipeline: a modal `<dialog>` closes on
+   *  it (a synthetic `KeyboardEvent` never closes one), Enter activates the
+   *  focused control. `text` is what keyDown types.
+   *
+   *  No `nativeVirtualKeyCode`: given one, macOS Chrome also hands the press to
+   *  the browser's own key handling, and an Escape so sent opened (or brought
+   *  forward) a `chrome://settings/help` tab ~12 ms later, hiding the page under
+   *  test — every time, with 27 or with Escape's real macOS code 53. A hidden
+   *  page stops rendering, and Chrome fires a `<dialog>`'s `close` from the next
+   *  frame, so the area picker, which removes itself on `close`, stayed in the
+   *  DOM whenever the tab was hidden before that frame (~1 in 5). */
+  private def pressKey(page: CdpPage, key: String, keyCode: Int, text: String = ""): Unit =
+    Seq("keyDown", "keyUp").foreach { kind =>
+      page.send("Input.dispatchKeyEvent", play.api.libs.json.Json.obj(
+        "type" -> kind, "key" -> key, "code" -> key, "windowsVirtualKeyCode" -> keyCode,
+        "text" -> (if (kind == "keyDown") text else "")))
+    }
+
+  private def pressEscape(page: CdpPage): Unit = pressKey(page, "Escape", 27)
+
   /** Quote a string for embedding inside a JS expression. Round-trips
    *  Polish diacritics + apostrophes via `JSON.stringify`-compatible
    *  escaping. */
-  /** A real Escape key press through CDP's input pipeline, so a modal `<dialog>`
-   *  gets its native `cancel` — a synthetic `KeyboardEvent` never triggers it. */
-  private def pressEscape(page: CdpPage): Unit =
-    Seq("keyDown", "keyUp").foreach { kind =>
-      page.send("Input.dispatchKeyEvent", play.api.libs.json.Json.obj(
-        "type" -> kind, "key" -> "Escape", "code" -> "Escape", "windowsVirtualKeyCode" -> 27, "nativeVirtualKeyCode" -> 27))
-    }
-
   private def jsString(s: String): String =
     play.api.libs.json.JsString(s).toString
 
