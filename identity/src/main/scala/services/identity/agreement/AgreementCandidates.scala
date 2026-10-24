@@ -35,13 +35,17 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   /** The house productions the families hold of the works the listings bill, as their searches by the listings' own
    *  titles find them — each search's first [[FamilyLookups.Records]] hits whose title bills a house beside a work, their
    *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
-   *  `asked`, while one is not answered. Read only for a relay whose banner spells another house than a record it fits. */
+   *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits. */
   private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.IdentityMeasures.Listing,
                             asked: mutable.Set[Question]): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
     val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
-      if (answer == Answer.Unknown) { unknown = true; asked += Question.Family(family, question) }
+      if (answer == Answer.Unknown) {
+        val gap = Question.Family(family, question)
+        asked += gap
+        if (!attempted(gap)) unknown = true
+      }
       answer.toOption
     }
     val found = familiesInOrder.flatMap { case (family, answers) =>
@@ -62,11 +66,11 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   }
 
   /** `answer`, `hashes`' to the poster `question`, the question noted in `asked` while it is `Unknown` or stale: a stale
-   *  answer is read, and asked again. */
-  private[agreement] def posterRead[A](question: AgreementStage.PosterQuestion, answer: Answer[A], hashes: PosterAnswers,
+   *  answer is read, and asked again; one attempted and not answered is read as `absent` ([[settled]]). */
+  private[agreement] def posterRead[A](question: AgreementStage.PosterQuestion, answer: Answer[A], absent: => A, hashes: PosterAnswers,
                             asked: mutable.Set[Question]): Answer[A] = {
     if (answer == Answer.Unknown || !hashes.fresh(question)) asked += Question.Poster(question)
-    answer
+    settled(Question.Poster(question), answer, absent)
   }
 
   /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its
@@ -80,7 +84,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     val urls = PosterEvidence.urls(listings)
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Nil)
     else {
-      val venue = urls.map(url => url -> posterRead(AgreementStage.PosterQuestion.Venue(url), hashes.venue(url), hashes, asked))
+      val venue = urls.map(url => url -> posterRead(AgreementStage.PosterQuestion.Venue(url), hashes.venue(url), None, hashes, asked))
       if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
       else {
         val shown: Seq[PosterHash] = venue.flatMap(_._2.toOption.flatten)
@@ -89,7 +93,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
           val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
           def apart(film: Int) = tmdb.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
           val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
-          val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), hashes, asked))
+          val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), Nil, hashes, asked))
           if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
           else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.toOption.getOrElse(Nil)) }.toMap))
         }

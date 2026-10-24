@@ -64,7 +64,10 @@ import scala.collection.mutable
  * memory's record of each ask; an answer counts by itself). It is then decided on the families that answered, the rest
  * left out as no verdict. A question merely handed to `ask` holds it; no clock does. Settling ends the wait, not the
  * asking: the questions none answered stay asked on every pass ([[unreached]]), and the first of them answered reads the
- * cluster again, so a later answer can always move the take.
+ * cluster again, so a later answer can always move the take. The one rule holds for every question a take reads — a
+ * find, a poster, a catalogue page or id, a record's day, a family's question read by a correction or the broadcast
+ * join: one attempted and not answered is read as no evidence ([[settled]]), the take decided without it, the question
+ * asked on every pass and read again once answered.
  */
 final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], private[agreement] val venues: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
                            private[agreement] val calibration: IdentityCalibration, private[agreement] val tmdbOf: String => Answer[Option[Int]], private[agreement] val stored: AgreementVerdicts,
@@ -101,7 +104,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (cluster.isEmpty && correction.isEmpty) WaitingOn.model(decision)
       else WaitingOn(
         decision.unanswered,
-        cluster.fold(Set.empty[Question])(_.gaps) ++ correction.getOrElse(Set.empty),
+        // a question attempted is waited on no more: asked still, the take decided without it
+        (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.getOrElse(Set.empty)).filterNot(tried),
         onTmdb = cluster.exists(_.blindAt.isDefined))
     }
 
@@ -134,10 +138,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** Each settled cluster's questions none answered when it settled ([[settles]]): asked on every pass. Its verdict reads
    *  them as unanswered ([[AgreementStage.Unanswered]]), so the first answered reads it again, after a restart too. */
   private[agreement] val unreached = TrieMap.empty[String, Set[Question]]
-  /** The waiting clusters whose wait had settled ([[settles]]) when the last [[apply]] ended, by id — as a rule none: a
-   *  cluster that settles is decided, not kept waiting. A wait settling since is what reads the same decisions at the
-   *  same version again: a failed ask files nothing. */
-  private[agreement] var settledAt = Set.empty[String]
+  /** The questions the last [[apply]] waited on that were not attempted yet: one attempted since — a failed ask files
+   *  nothing — is what reads the same decisions at the same version again ([[attemptedSince]]). */
+  private[agreement] var awaiting = Set.empty[Question]
   /** The questions handed to `ask` since the families' answers last moved (at `handedAt`): a tick that filed nothing
    *  hands nothing. */
   private[agreement] var handed   = Set.empty[Question]
@@ -147,9 +150,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  or once the read was attempted and failed (`attempted`), is waited on no more. One entry per stage-work record, a few
    *  hundred. */
   private[agreement] val rereads = TrieMap.empty[Int, Long]
-  /** The records read again for their day the last [[apply]] waited on no more ([[waitsOn]]): a read attempted since,
-   *  though nothing was filed, is what reads the same decisions at the same version again. */
-  private[agreement] var rereadDone = Set.empty[Int]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
   private[agreement] val candidateFilms = TrieMap.empty[String, AgreementStage.CandidateFilms]
   /** The `version` the current [[apply]] runs at. */
@@ -177,7 +177,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   def apply(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long,
             republished: Option[Iterable[ListingKey]] = Some(Nil)): Resolution = synchronized {
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
-    val waited = settledSince || rereadSince
+    val waited = attemptedSince
     last.collect { case (was, at, came) if !reread && !waited && !unread && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
@@ -186,11 +186,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     }
   }
 
-  /** Has a cluster's wait settled since the last apply ended — its last question attempted, though nothing was filed? */
-  private[agreement] def settledSince: Boolean = waiting.exists { case (id, w) => !settledAt(id) && settles(w) }
-
-  /** Has a record's read for its day been attempted since the last apply ended, though nothing was filed? */
-  private[agreement] def rereadSince: Boolean = rereads.keysIterator.exists(film => !rereadDone(film) && attempted(Question.Record(film)))
+  /** Was a question the last apply waited on attempted since, though nothing was filed — a cluster's wait settling, a
+   *  take's evidence read as none? */
+  private[agreement] def attemptedSince: Boolean = awaiting.exists(tried)
 
   /** Forget the listings read for each decision holding one of `keys`; whether one the stage reads — a cluster nothing
    *  took, a model take it corrects — holds any. */
@@ -223,10 +221,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val pass      = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)))
     val decisions = resolution.decisions.map(decide(_, listingOf, pass))
     forgetGone(resolution, pass)
-    wantedNow = pass.wanted(correctionPostersAtOnce)
+    wantedNow = pass.wanted(correctionPostersAtOnce, tried)
     handOver(version)
-    rereadDone = rereads.keysIterator.filterNot(waitsOn).toSet
-    settledAt = waiting.collect { case (id, w) if settles(w) => id }.toSet
+    awaiting = wantedNow.filterNot(tried)
     unread = pass.spent
     report(decisions, pass, started)
     resolution.copy(decisions = decisions)
@@ -530,6 +527,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     case _                                 => attempted(gap)
   }
 
+  /** `answer` to `question`, or — not answered though attempted (it failed, or came to nothing durable) — `absent`: no
+   *  evidence, the take decided without it (the settle rule, docs/design/identity-questions.md step 4). The caller notes
+   *  the question asked all the same, so it is asked on every pass and read again once answered. */
+  private[agreement] def settled[A](question: Question, answer: Answer[A], absent: => A): Answer[A] =
+    if (answer == Answer.Unknown && attempted(question)) Answer.Known(absent) else answer
+
   /** A stored read whose answer is stale, as the question to ask again. */
   private[agreement] def staleOf(question: String): Option[Question] = question.split("\\|", 2) match {
     case Array(label, asked) => families.collectFirst { case (family, answers) if family.label == label && !answers.fresh(asked) => Question.Family(family, asked) }
@@ -554,7 +557,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
    *  not answered yet, the IMDb id then noted in `finding`. */
   private[agreement] def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[Question]): Answer[Option[Int]] =
-    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(Agreement.tmdbFound(tmdbOf, _, finding)))(film => Answer.Known(Some(film)))
+    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(Agreement.tmdbFound(tmdbOf, _, finding, attempted)))(film => Answer.Known(Some(film)))
 
   /** A family's answers that note every question still a gap, and the digest of every answer read. */
   private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[String, Long]) extends FamilyAnswers {
@@ -638,10 +641,11 @@ object AgreementStage {
     /** Did a take go unread for want of budget: asked once the budget was spent? */
     def spent: Boolean = budget < 0
     /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
-     *  take's posters draining behind every other task. */
-    def wanted(postersAtOnce: Int): Set[Question] = {
+     *  take's posters draining behind every other task — those not `tried` yet first, so posters that keep failing hold
+     *  no slot another poster could use. */
+    def wanted(postersAtOnce: Int, tried: Question => Boolean): Set[Question] = {
       val capped = if (correctionPosters.sizeIs <= postersAtOnce) correctionPosters
-        else correctionPosters.toSeq.sortBy(PosterAnswers.idOf).take(postersAtOnce)
+        else correctionPosters.toSeq.sortBy(poster => (tried(Question.Poster(poster)), PosterAnswers.idOf(poster))).take(postersAtOnce)
       asked.toSet ++ capped.iterator.map(Question.Poster(_))
     }
   }

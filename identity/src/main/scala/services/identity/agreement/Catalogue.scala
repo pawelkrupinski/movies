@@ -39,20 +39,22 @@ object Catalogue {
   }
 
   /** The one film the listings' catalogue ids name — `Known(None)` when they carry no mappable id, or their ids name two
-   *  films; `Unknown`, each open question noted in `asked`, while one is not answered yet. */
-  def named(listings: Seq[Listing], catalogue: CatalogueAnswers, asked: mutable.Set[Question]): Answer[Option[Named]] = {
+   *  films; `Unknown`, each open question noted in `asked`, while one is not answered yet — and not `attempted`: one
+   *  attempted and not answered is read as naming nothing (the settle rule), and still asked. */
+  def named(listings: Seq[Listing], catalogue: CatalogueAnswers, asked: mutable.Set[Question],
+            attempted: Question => Boolean = _ => false): Answer[Option[Named]] = {
     var open = false
-    def known[A](answer: Answer[A], question: => Unit): Option[A] = answer match {
+    def known[A](answer: Answer[A], question: Question): Option[A] = answer match {
       case Answer.Known(value) => Some(value)
-      case Answer.Unknown      => question; open = true; None
+      case Answer.Unknown      => asked += question; if (!attempted(question)) open = true; None
     }
     // the ids each listing carries, then those its venue's page links (marked: the explanation says where it came from)
     val ids: Seq[(CatalogueId, Boolean)] = (listings.flatMap(_.catalogueIds).map(_ -> false) ++ listings.flatMap(_.page).distinct.flatMap { page =>
-      known(catalogue.linked(page), asked += Question.Catalogue(CatalogueQuestion.Page(page))).getOrElse(Nil).map(_ -> true)
+      known(catalogue.linked(page), Question.Catalogue(CatalogueQuestion.Page(page))).getOrElse(Nil).map(_ -> true)
     }).filter { case (id, _) => CatalogueSources.mappable(id) }.distinctBy(_._1)
     val hits: Seq[(CatalogueId, Boolean, CatalogueHit)] = ids.flatMap { case (id, linked) =>
       if (id.source == CatalogueSources.Imdb) Seq((id, linked, CatalogueHit(None, None, Some(id.id), "TMDB's find")))
-      else known(catalogue.mapped(id), asked += Question.Catalogue(CatalogueQuestion.Id(id))).getOrElse(Nil).map(hit => (id, linked, hit))
+      else known(catalogue.mapped(id), Question.Catalogue(CatalogueQuestion.Id(id))).getOrElse(Nil).map(hit => (id, linked, hit))
     }
     if (open) Answer.Unknown
     else if (hits.isEmpty || !oneFilm(hits.map(_._3))) Answer.Known(None)
@@ -68,35 +70,35 @@ object Catalogue {
    *  one noted in `asked`: a catalogue question, a family's record, TMDB's find of an IMDb id. `stated`: the listings with what their venue's own pages state — the year and director a record must
    *  not contradict (PL Kinoteka's "Czarne zombie" page credits Bedward's 2026 film, and links Corman's 1963 one).
    *  `titlePicks`: the films the listings' own titles pick, each search's most popular hit ([[AgreementStage]]), read
-   *  only for a feed's id ([[fedOnly]]). */
+   *  only for a feed's id ([[fedOnly]]). A question `attempted` and not answered is read as none, and still asked. */
   def take(listings: Seq[Listing], stated: Seq[Listing], catalogue: CatalogueAnswers, families: Map[VoterFamily, FamilyAnswers],
            tmdbOf: String => Answer[Option[Int]], titlePicks: () => Set[Int],
-           asked: mutable.Set[Question]): Answer[Option[Taken]] =
+           asked: mutable.Set[Question], attempted: Question => Boolean = _ => false): Answer[Option[Taken]] =
     // a feed's ids alone, and nothing that could corroborate the film they name: no question worth asking
     if (uncorroborable(listings, stated, titlePicks)) Answer.Known(None)
-    else named(listings, catalogue, asked).flatMap {
+    else named(listings, catalogue, asked, attempted).flatMap {
       case None => Answer.Known(None)
       case Some(_) if listings.exists(ListingShape.billsSeveral) => Answer.Known(None)
       case Some(film) =>
         // the record whose facts the listings must not contradict: Wikidata's item, else IMDb's title
-        val record: Option[Answer[Option[SourceRecord]]] = film.item.flatMap(q => families.get(VoterFamily.Wiki).map(f => noted(f, q, asked)))
-          .orElse(film.imdb.flatMap(tt => families.get(VoterFamily.Imdb).map(f => noted(f, tt, asked))))
+        val record: Option[Answer[Option[SourceRecord]]] = film.item.flatMap(q => families.get(VoterFamily.Wiki).map(f => noted(f, q, asked, attempted)))
+          .orElse(film.imdb.flatMap(tt => families.get(VoterFamily.Imdb).map(f => noted(f, tt, asked, attempted))))
         record.fold[Answer[Option[Taken]]](Answer.Known(None))(_.flatMap {
           case None => Answer.Known(None)   // no film item, no IMDb title: nothing a card can stand on
           case Some(facts) if Agreement.contradictedByTheListing(stated, facts) => Answer.Known(None)
-          case Some(facts) => takenOn(film, facts, listings, stated, tmdbOf, titlePicks, asked)
+          case Some(facts) => takenOn(film, facts, listings, stated, tmdbOf, titlePicks, asked, attempted)
         })
     }
 
   /** What the catalogue's `film` takes on the record whose `facts` the listings do not contradict: its TMDB film, else the
    *  record it stands on. */
   private def takenOn(film: Named, facts: SourceRecord, listings: Seq[Listing], stated: Seq[Listing], tmdbOf: String => Answer[Option[Int]],
-                      titlePicks: () => Set[Int], finding: mutable.Set[Question]): Answer[Option[Taken]] = {
+                      titlePicks: () => Set[Int], finding: mutable.Set[Question], attempted: Question => Boolean): Answer[Option[Taken]] = {
     val imdb = film.imdb.orElse(facts.crossIds.get("imdb"))
     // TMDB's own find of the IMDb id first: Wikidata's TMDB id can name a record TMDB since deleted or merged (DE
     // "Dann passiert das Leben": P4947 1517080, gone; TMDB finds its IMDb id as 1445025)
     val tmdb: Answer[Option[Int]] = imdb match {
-      case Some(tt) => Agreement.tmdbFound(tmdbOf, tt, finding)
+      case Some(tt) => Agreement.tmdbFound(tmdbOf, tt, finding, attempted)
       case None     => Answer.Known(film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)))
     }
     tmdb.map {
@@ -139,10 +141,11 @@ object Catalogue {
   private def oneFilm(hits: Seq[CatalogueHit]): Boolean =
     hits.flatMap(_.item).distinct.sizeIs <= 1 && hits.flatMap(_.tmdb).distinct.sizeIs <= 1 && hits.flatMap(_.imdb).distinct.sizeIs <= 1
 
-  /** `family`'s record of `id`, a question noted when it is not answered yet. */
-  private def noted(family: FamilyAnswers, id: String, asked: mutable.Set[Question]): Answer[Option[SourceRecord]] = {
-    val answer = family.record(id)
-    if (answer == Answer.Unknown || !family.fresh(s"record|$id")) asked += Question.Family(family.family, s"record|$id")
-    answer
+  /** `family`'s record of `id`, a question noted when it is not answered yet — none once it was `attempted`. */
+  private def noted(family: FamilyAnswers, id: String, asked: mutable.Set[Question], attempted: Question => Boolean): Answer[Option[SourceRecord]] = {
+    val answer   = family.record(id)
+    val question = Question.Family(family.family, s"record|$id")
+    if (answer == Answer.Unknown || !family.fresh(s"record|$id")) asked += question
+    if (answer == Answer.Unknown && attempted(question)) Answer.Known(None) else answer
   }
 }

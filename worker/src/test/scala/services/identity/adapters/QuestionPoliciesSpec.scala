@@ -3,7 +3,7 @@ package adapters
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.adapters.QuestionPolicies.{NonAnswer, Renewal, Sweep, TakeWait}
+import services.identity.adapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.movies.ListingKey
@@ -20,20 +20,18 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
     QuestionPolicies.table.keySet shouldBe QuestionKind.values.toSet
   }
 
-  it should "hold today's stores, renewals, non-answer memory, sweeps and waits" in {
+  it should "hold today's stores, renewals, non-answer memory and sweeps" in {
     val search = QuestionPolicies.Policy(
       "tmdb_queries",
       Seq(Renewal.After(1.day, "its cluster below 0.9 confidence"), Renewal.After(7.days, "settled")),
       NonAnswer.Remembered(1.day, 5.minutes, 6.hours),
-      Sweep.Unread(30.days),
-      TakeWait.FillRounds
+      Sweep.Unread(30.days)
     )
     val failure = NonAnswer.EmptyFiled(5.minutes, 6.hours)
-    def family(age: FiniteDuration, waited: TakeWait = TakeWait.UntilAttempted) =
-      QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(age, "any")), failure, Sweep.Fetched(400.days), waited)
+    def family(age: FiniteDuration) =
+      QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(age, "any")), failure, Sweep.Fetched(400.days))
     def record(store: String, nonAnswer: NonAnswer) =
-      QuestionPolicies.Policy(store, Seq(Renewal.ChangesFeed, Renewal.After(30.days, "read by the model")), nonAnswer, Sweep.Unread(30.days),
-        TakeWait.FillRounds)
+      QuestionPolicies.Policy(store, Seq(Renewal.ChangesFeed, Renewal.After(30.days, "read by the model")), nonAnswer, Sweep.Unread(30.days))
     val expected = Map(
       QuestionKind.Title       -> search,
       QuestionKind.Director    -> search,
@@ -42,18 +40,17 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
       QuestionKind.TitleCredit -> search,
       QuestionKind.FilmRecord  -> record("tmdb_films", NonAnswer.Remembered(1.day, 5.minutes, 6.hours)),
       QuestionKind.Person      -> record("tmdb_people", NonAnswer.WithItsSearch),
-      QuestionKind.VenuePage     -> QuestionPolicies.Policy("venue_pages", Seq(Renewal.After(6.hours, "any")), NonAnswer.GoneFiled, Sweep.Kept, TakeWait.FillRounds),
+      QuestionKind.VenuePage     -> QuestionPolicies.Policy("venue_pages", Seq(Renewal.After(6.hours, "any")), NonAnswer.GoneFiled, Sweep.Kept),
       QuestionKind.FamilySearch  -> family(90.days),
       QuestionKind.FamilyRecord  -> family(365.days),
       QuestionKind.FamilyShowing -> family(20.hours),
-      QuestionKind.Find          -> QuestionPolicies.Policy("tmdb_queries", Nil, failure, Sweep.Unread(30.days), TakeWait.UntilAnswered),
-      QuestionKind.Record        -> QuestionPolicies.Policy("tmdb_films", Nil, failure, Sweep.Unread(30.days), TakeWait.UntilAttempted),
+      QuestionKind.Find          -> QuestionPolicies.Policy("tmdb_queries", Nil, failure, Sweep.Unread(30.days)),
+      QuestionKind.Record        -> QuestionPolicies.Policy("tmdb_films", Nil, failure, Sweep.Unread(30.days)),
       QuestionKind.Poster -> QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(365.days, "hashed")),
-        NonAnswer.GivenUp(5.minutes, 6.hours, 8, 7.days), Sweep.Fetched(400.days), TakeWait.UntilAnswered),
-      QuestionKind.CataloguePage -> family(90.days, TakeWait.UntilAnswered),
+        NonAnswer.GivenUp(5.minutes, 6.hours, 8, 7.days), Sweep.Fetched(400.days)),
+      QuestionKind.CataloguePage -> family(90.days),
       QuestionKind.CatalogueId -> QuestionPolicies.Policy("identity_family_answers",
-        Seq(Renewal.After(365.days, "mapped to a film"), Renewal.After(30.days, "mapped to none")), failure, Sweep.Fetched(400.days),
-        TakeWait.UntilAnswered)
+        Seq(Renewal.After(365.days, "mapped to a film"), Renewal.After(30.days, "mapped to none")), failure, Sweep.Fetched(400.days))
     )
     QuestionKind.values.foreach(kind => (kind -> QuestionPolicies.of(kind)) shouldBe (kind -> expected(kind)))
   }

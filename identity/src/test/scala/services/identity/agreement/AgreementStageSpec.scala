@@ -729,4 +729,20 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     (waits.modelGaps, waits.settled) shouldBe ((0, false))
     waits.questions should contain (services.identity.Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
   }
+
+  // The one settle rule holds for TMDB's find of an agreed IMDb id too: attempted and not answered, it is read as TMDB
+  // holding none — the agreed film taken on its IMDb id — and asked still; its answer, filed, takes TMDB's film.
+  it should "take an agreed film on its IMDb id once TMDB's find of it was attempted, and TMDB's film once the find answers" in {
+    var found: Answer[Option[Int]] = Answer.Unknown
+    var attempted = false
+    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => found,
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = { case Question.Find(_) => attempted; case _ => false })
+    stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head   // the find never asked: held
+    attempted = true
+    val fallback = stage.apply(resolution, listingOf, version = 1).decisions.head   // attempted, nothing filed: decided without it
+    (fallback.film, fallback.fallback.map(_.id)) shouldBe ((None, Some("tt16315948")))
+    stage.wanted should contain (Question.Find("tt16315948"))                     // asked still
+    found = Answer.Known(Some(913760))
+    stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
+  }
 }

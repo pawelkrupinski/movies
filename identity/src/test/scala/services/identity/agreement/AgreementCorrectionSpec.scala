@@ -354,4 +354,33 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     Correction.ruleOf(Correction.Outcome(Some(7), "corrected from 'Manon' (1949) — screens on the day 'Manon' (2026) was broadcast")) shouldBe
       "correction:broadcast"
   }
+
+  // The one settle rule holds for a correction: one waiting on a family's question that was attempted and not answered is
+  // decided on what it has, the family left out as no verdict and asked still — and read again once it answers.
+  it should "settle a correction waiting on a family once its question was attempted, and read it again once the family answers" in {
+    var (rtAnswered, rtFailed) = (false, false)
+    val rt = new FamilyAnswers {
+      val family: VoterFamily = VoterFamily.RottenTomatoes
+      private def held = new HeldFamilyAnswers(family, Map("x" -> has), unanswered = !rtAnswered)
+      def titled(text: String)     = held.titled(text)
+      def directedBy(name: String) = held.directedBy(name)
+      def record(id: String)       = held.record(id)
+      override def fresh(question: String) = held.fresh(question)
+    }
+    var filed = Set.empty[String]
+    val s = new AgreementStage(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed),
+      posters = hasPoster, tmdb = Some(table()), attempted = { case Question.Family(VoterFamily.RottenTomatoes, _) => rtFailed; case _ => false })
+    decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch            // waiting on RT, never asked
+    rtFailed = true
+    val settled = decided(s)                                             // asked and failed, nothing filed: decided on what it has
+    (settled.basis, settled.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
+    settled.explanation.last should include ("imdb, wiki take 'Lalka' (1968)")
+    val rtAsked = s.wanted.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q }
+    rtAsked should not be empty                                          // asked still
+    s.waitingOn(settled).settled shouldBe true
+    rtAnswered = true
+    filed = rtAsked.flatMap(_.id)
+    decided(s, version = 2).explanation.last should include ("imdb, rt, wiki take 'Lalka' (1968)")
+  }
 }

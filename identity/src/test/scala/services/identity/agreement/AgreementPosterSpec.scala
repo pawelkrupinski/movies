@@ -146,4 +146,26 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val agreed = decidedWith(Map(1001 -> Seq(PosterHash(0L)), 1002 -> Seq(PosterHash(-1L))))
     (agreed.film, agreed.basis) shouldBe ((Some(1002), ResolverDecision.Basis.Agreed))   // a poster matching no candidate vetoes nothing
   }
+
+  // The one settle rule (docs/design/identity-questions.md, step 4): a poster attempted and not hashed is no evidence —
+  // the cluster decided without it, the poster asked still — and its hash, once filed, is read.
+  it should "decide without a candidate's poster once its hashing was attempted, and read the hash once it is filed" in {
+    val listing = lalka()
+    var films: Map[Int, Seq[PosterHash]] = Map(1001 -> Seq(near(3)))
+    var failed = false
+    val posters = new PosterAnswers {
+      def venue(url: String): Answer[Option[PosterHash]] = Answer.Known(Some(shown))
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
+    }
+    val voting = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table),
+      attempted = { case Question.Poster(AgreementStage.PosterQuestion.Film(1002)) => failed; case _ => false })
+    def decided(version: Long) = voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version).decisions.head
+    decided(1).film shouldBe None                                         // 1002's poster never hashed: held
+    failed = true
+    decided(1).film shouldBe Some(1001)                                   // its hashing failed: decided on 1001's alone
+    voting.wanted should contain (Question.Poster(AgreementStage.PosterQuestion.Film(1002)))
+    films = films + (1002 -> Seq(near(2)))                                // hashed at last, as near: no poster speaks for one
+    decided(2).film shouldBe None
+  }
 }

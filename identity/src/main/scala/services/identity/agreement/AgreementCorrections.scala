@@ -37,9 +37,11 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     val digest = correctionDigest(decision, listingOf)
     val kept = held.get(key).filter(v => v.listings == digest && v.rules == decidedUnder).flatMap(v => v.correction.filter { c =>
       val waits = correctionWaits.get(key)
-      // one waiting on an answer is read again unless what it asks is known — after a restart it is not — and, waiting on
-      // a TMDB find (filed outside the answers' changes), once anything was filed at all
-      !(c.waiting && (waits.isEmpty || waits.exists(_.exists(_.isInstanceOf[Question.Find])) && !checked.get(key).exists(_._2 == version))) &&
+      // one waiting on an answer is read again unless what it asks is known — after a restart it is not — once all it
+      // waits on was attempted (the settle rule: decided on what it has), and, waiting on a TMDB find, once anything was
+      // filed at all
+      !(c.waiting && (waits.isEmpty || waits.exists(_.forall(tried)) ||
+        waits.exists(_.exists(_.isInstanceOf[Question.Find])) && !checked.get(key).exists(_._2 == version))) &&
         checked.get(key).collect { case (listed, at) if listed == digest => at }.exists { at =>
           at == version || {
             // stands when none of its reads was filed since: the filings' ids hashed once per version they are read from
@@ -124,10 +126,12 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // (a) a venue poster matching another candidate, not the taken film
       val posters = correctionPosters(digested, model, reads, asked, reading)
       val vetoed  = posters.toOption.flatten
-      // a venue poster given up on (its fetch kept failing) is no evidence: the take is read as one a poster questions,
-      // and corrected only where the rest decides it without the poster
-      val unread  = posters != Answer.Unknown && vetoed.isEmpty &&
-        PosterEvidence.urls(listings).exists(url => reading.posters.unread(AgreementStage.PosterQuestion.Venue(url)))
+      // a venue poster given up on (its fetch kept failing), or attempted and not hashed, is no evidence: the take is read
+      // as one a poster questions, and corrected only where the rest decides it without the poster
+      val unread  = posters != Answer.Unknown && vetoed.isEmpty && PosterEvidence.urls(listings).exists { url =>
+        val poster = AgreementStage.PosterQuestion.Venue(url)
+        reading.posters.unread(poster) || reading.posters.venue(url) == Answer.Unknown && attempted(Question.Poster(poster))
+      }
       val questioned = vetoed.isDefined || unread
       // (e) the venues' own programmes on `listedOn`'s site, asked only of a take a poster questions: a few venues' a day
       val listed = reading.programmes.filter(_ => questioned).fold[Answer[Option[SourceRecord]]](Answer.Known(None))(answers =>
@@ -151,14 +155,12 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       val sharesDirector = (other: Int) => named(other).flatMap(o => Correction.shareDirector(o.directors.getOrElse(Nil), film.directors.getOrElse(Nil)))
       Correction.decide(title(model), evidence, sharesDirector)
     })
+    // asked on every pass, the attempted ones too; waiting only on what was not attempted yet (the settle rule)
     val waits = Option.when(asked.nonEmpty)(asked.toSet)
-    // a record waited on is read when its read is filed ([[AgreementStage.recordReadId]]); a find is filed outside them
-    val read  = (reads.keysIterator ++ asked.iterator.collect {
-      case Question.Family(family, question) => s"${family.label}|$question"
-      case Question.Poster(poster)           => PosterAnswers.idOf(poster)
-      case Question.Record(film)             => AgreementStage.recordReadId(film)
-    }).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
-    (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), scala.collection.immutable.ArraySeq.unsafeWrapArray(read), waits.isDefined || blindReads != blindBefore), waits)
+    // each question asked is read again when its answer is filed, under the id it is filed by ([[Question.id]])
+    val read  = (reads.keysIterator ++ asked.iterator.flatMap(_.id)).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
+    (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), scala.collection.immutable.ArraySeq.unsafeWrapArray(read),
+      asked.exists(question => !tried(question)) || blindReads != blindBefore), waits)
   }
 
   /** The candidate a venue poster matches against the model's take ([[PosterEvidence.veto]]) — read first against the
@@ -169,12 +171,12 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     val urls = PosterEvidence.urls(digested.listings)
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(None)
     else {
-      def read[A](question: AgreementStage.PosterQuestion, answer: Answer[A]): Answer[A] = {
+      def read[A](question: AgreementStage.PosterQuestion, answer: Answer[A], absent: A): Answer[A] = {
         reads(PosterAnswers.idOf(question)) = 0L
-        posterRead(question, answer, reading.posters, asked)
+        posterRead(question, answer, absent, reading.posters, asked)
       }
-      val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url)))
-      val own   = read(AgreementStage.PosterQuestion.Film(model), reading.posters.film(model))
+      val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url), None))
+      val own   = read(AgreementStage.PosterQuestion.Film(model), reading.posters.film(model), Nil)
       if (venue.exists(_._2 == Answer.Unknown) || own == Answer.Unknown) Answer.Unknown
       else {
         val held = own.toOption.getOrElse(Nil)
@@ -196,11 +198,14 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
 
   /** The film more of the families take than take the model's, by its TMDB id — a pick's TMDB or IMDb id, else the one
    *  film of `reached` its record is by its facts — with what they say, `uncounted`'s take aside; `Unknown` while a
-   *  family's question, or TMDB's find of a taken IMDb id, is not answered yet. */
+   *  family's question, or TMDB's find of a taken IMDb id, is not answered yet — and not attempted: a family attempted and
+   *  not answered is left out as no verdict, as a settled cluster leaves it (the settle rule). */
   private[agreement] def familiesAgainst(listings: Seq[Listing], model: Int, modelRecord: SourceRecord, reached: => Seq[Int], records: Int => Option[SourceRecord],
                               uncounted: Option[VoterFamily], reads: mutable.Map[String, Long], asked: mutable.Set[Question]): Answer[Option[(Int, String)]] = {
-    val verdicts = verdictsOf(listings, asked, reads)
-    if (verdicts.contains(Answer.Unknown)) Answer.Unknown
+    val gaps     = mutable.Set.empty[Question]
+    val verdicts = verdictsOf(listings, gaps, reads)
+    asked ++= gaps
+    if (verdicts.contains(Answer.Unknown) && !gaps.forall(tried)) Answer.Unknown
     else {
       val mapped = verdicts.flatMap(_.toOption).flatMap(_.pick).filterNot(pick => uncounted.contains(pick.family)).map { pick =>
         val id = tmdbFilmOf(pick.record.crossIds.get("tmdb").flatMap(_.toIntOption), pick.record.crossIds.get("imdb"), asked)

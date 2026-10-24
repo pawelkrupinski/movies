@@ -147,7 +147,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
   /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it
    *  needs is open, each noted to ask. */
   private[agreement] def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[Question]): Option[ResolverDecision] =
-    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), asked)
+    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), asked, attempted)
       .toOption.flatten.map { taken =>
       taken.film.fold(taking(decision)(ResolverDecision.Basis.Catalogue, taken.line,
         fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) }))(film =>

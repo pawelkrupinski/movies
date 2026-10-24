@@ -8,8 +8,9 @@ import scala.concurrent.duration._
 
 /**
  * What each kind of identity question is held to, in one table: where its answer is stored, when it is asked again,
- * what is remembered when the source gives no answer, how long an unread answer is kept, and how long a take waits on
- * it. The table decides: every age, wait and sweep below is defined here and nowhere else, and the code that acts on one
+ * what is remembered when the source gives no answer and how long an unread answer is kept. How a take waits is no
+ * column: on a model question by the lookup fill's rounds, on every agreement question until it is attempted, then
+ * decided without it (`AgreementStage.settles`, docs/design/identity-questions.md step 4). The table decides: every age, wait and sweep below is defined here and nowhere else, and the code that acts on one
  * reads it from here — the renewals ([[QuestionRenewals]]), the non-answer memory ([[QuestionMemory]], by the
  * question's kind), the agreement's stores' freshness (`wanted`) and the store sweep ([[TmdbStoreSweep]])
  * (docs/design/identity-questions.md holds it as prose, [[QuestionPoliciesSpec]] keeps the two in step).
@@ -112,19 +113,6 @@ object QuestionPolicies {
     }
   }
 
-  /** How a take waits on an open question of the kind. No clock ends any of these waits (the owner, 2026-10-24). */
-  enum TakeWait {
-    /** The model's gaps: a decision waits on the lookup fill's rounds. */
-    case FillRounds
-    /** The settle rule (`AgreementStage.settles`): a cluster waits until every question it waits on was attempted —
-     *  answered, durably unanswered or failed — then is decided on what answered, the question still asked; a record read
-     *  again for its day, until its read is filed or attempted (`AgreementStage.waitsOn`). */
-    case UntilAttempted
-    /** The take that reads it stays pending until it is answered (a poster given up on is answered, as unread); a
-     *  failure is asked again on the memory's backoff. */
-    case UntilAnswered
-  }
-
   /** When the store sweep ([[TmdbStoreSweep]]) deletes an answer. */
   enum Sweep {
     /** Unread by the model taken up, and unfetched, this long. */
@@ -139,9 +127,7 @@ object QuestionPolicies {
     store: String,
     renewal: Seq[Renewal],
     nonAnswer: NonAnswer,
-    swept: Sweep,
-    /** How a take waits on an open question of this kind. */
-    waitedOn: TakeWait
+    swept: Sweep
   )
 
   private val remembered = NonAnswer.Remembered(UnansweredWait, FirstFailureWait, MaxFailureWait)
@@ -151,18 +137,16 @@ object QuestionPolicies {
     TmdbKind.Query.collection,
     Seq(Renewal.After(UnsettledAge, s"its cluster below $Settled confidence"), Renewal.After(SettledAge, "settled")),
     remembered,
-    Sweep.Unread(KeepUnread),
-    TakeWait.FillRounds
+    Sweep.Unread(KeepUnread)
   )
 
   private def record(store: String, nonAnswer: NonAnswer) =
-    Policy(store, Seq(Renewal.ChangesFeed, Renewal.After(ModelRecordAge, "read by the model")), nonAnswer, Sweep.Unread(KeepUnread), TakeWait.FillRounds)
+    Policy(store, Seq(Renewal.ChangesFeed, Renewal.After(ModelRecordAge, "read by the model")), nonAnswer, Sweep.Unread(KeepUnread))
 
   private def agreement(store: String, renewal: Renewal*) =
-    Policy(store, renewal, emptyFiled, Sweep.Fetched(KeepFamily), TakeWait.UntilAnswered)
+    Policy(store, renewal, emptyFiled, Sweep.Fetched(KeepFamily))
 
-  private def family(age: FiniteDuration) =
-    agreement(TmdbKind.Family.collection, Renewal.After(age, "any")).copy(waitedOn = TakeWait.UntilAttempted)
+  private def family(age: FiniteDuration) = agreement(TmdbKind.Family.collection, Renewal.After(age, "any"))
 
   val table: Map[QuestionKind, Policy] = Map(
     QuestionKind.Title       -> search,
@@ -176,8 +160,7 @@ object QuestionPolicies {
       MongoVenuePageStore.Collection,
       Seq(Renewal.After(Freshness.ttlFor(FreshnessKind.DetailEnrich).get, "any")),
       NonAnswer.GoneFiled,
-      Sweep.Kept,
-      TakeWait.FillRounds
+      Sweep.Kept
     ),
     QuestionKind.FamilySearch  -> family(FamilySearchAge),
     QuestionKind.FamilyRecord  -> family(FamilyRecordAge),
@@ -186,10 +169,10 @@ object QuestionPolicies {
     // as one (`TmdbStore.foundFirst`), a record TMDB does not know as empty. A record read again is asked once in the
     // stage's life, when a take waits on its release day.
     QuestionKind.Find   -> agreement(TmdbKind.Query.collection).copy(swept = Sweep.Unread(KeepUnread)),
-    QuestionKind.Record -> agreement(TmdbKind.Film.collection).copy(swept = Sweep.Unread(KeepUnread), waitedOn = TakeWait.UntilAttempted),
+    QuestionKind.Record -> agreement(TmdbKind.Film.collection).copy(swept = Sweep.Unread(KeepUnread)),
     QuestionKind.Poster -> agreement(TmdbKind.Family.collection, Renewal.After(PosterAge, "hashed"))
       .copy(nonAnswer = NonAnswer.GivenUp(FirstFailureWait, MaxFailureWait, PosterGiveUpAttempts, PosterUnreadAge)),
-    QuestionKind.CataloguePage -> agreement(TmdbKind.Family.collection, Renewal.After(CataloguePageAge, "any")),
+    QuestionKind.CataloguePage -> family(CataloguePageAge),
     QuestionKind.CatalogueId -> agreement(
       TmdbKind.Family.collection,
       Renewal.After(CatalogueMappedAge, "mapped to a film"),

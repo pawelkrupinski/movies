@@ -89,8 +89,13 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    day is gone. `PartialAfter` is gone; the drift check's whole resolve applies its fresh stage once, reading the same
    memory. OUTSTANDING questions — handed to the queue and never attempted (a task lost, the queue wiped, a restart
    mid-task), or failed and past their retry — are queued again every 10 min (`OutstandingQuestions`,
-   `identity-outstanding-questions`). A poster, a find and a catalogue question still hold only the take that reads
-   them, until answered (a poster given up on after 8 failures is answered, as unread).
+   `identity-outstanding-questions`). The one rule holds for every agreement question a take reads, not the clusters'
+   alone: a find, a poster, a catalogue page or id, a record's day, a family's question read by a correction or the
+   broadcast join is waited on until attempted, then read as no evidence (`AgreementStage.settled`: a find as naming no
+   TMDB film, a poster as unread, a catalogue question as naming nothing, a correction's family as no verdict), the take
+   or correction decided without it, the question asked on every pass and read again once answered (a find filed is
+   noted among the answers' changes, as a record read is). So the policy table has no wait column: a model question
+   waits on fill rounds, an agreement question until attempted.
 
 Decided by the owner: a new film's questions are asked **straight away**, inline, with no budget of their own beyond
 the rate-limit protections every request already goes through (the 429 gate, breakers, `HostPolicies`) (2026-10-23);
@@ -125,29 +130,28 @@ live at take-up (`StoredFirstLookups`).
 
 ## The policy table (`QuestionPolicies.table`): it decides
 
-Every age, wait and sweep below is defined in `QuestionPolicies` and read from there by the code that acts on it (C3):
+Every age, non-answer wait and sweep below is defined in `QuestionPolicies` and read from there by the code that acts on it (C3):
 the renewals (`QuestionRenewals`), the memory (`QuestionMemory`, by the question's kind), the agreement's stores'
 `wanted` and the store sweep. Only the venue page's 6 h is the pipeline's, stated here. A remembered non-answer is an
 `unanswered|` marker in `identity_question_markers`, swept 7 d after it was stamped.
 
-| kind | store | asked again | non-answer | swept | a take waits |
-|---|---|---|---|---|---|
-| Title, Director, Imdb, ImdbTitled, TitleCredit | tmdb_queries | 1 d below 0.9 confidence, 7 d settled (`QuestionRenewals`) | remembered (fill and live asks): empty 1 d, failure 5 min doubling to 6 h | unread 30 d | on fill rounds |
-| FilmRecord | tmdb_films | changes feed; 30 d while the model reads it (`QuestionRenewals`) | as above | unread 30 d | on fill rounds |
-| Person | tmdb_people | as FilmRecord | its director search's marker | unread 30 d | on fill rounds |
-| VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich, the pipeline's) | the pipeline's: gone (404/410) filed; failure marked attempted, read again past 6 h | never | on fill rounds |
-| FamilySearch | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d since fetched | until attempted* |
-| FamilyRecord | identity_family_answers | 365 d | as above | 400 d | until attempted* |
-| FamilyShowing | identity_family_answers | 20 h | as above | 400 d | until attempted* |
-| Find | tmdb_queries | when the stage opens it | none found filed; failure remembered, 5 min doubling to 6 h | unread 30 d | until answered |
-| Record | tmdb_films | once, when a take waits on its release day | unknown filed empty; failure remembered, 5 min doubling to 6 h | unread 30 d | until its read is filed or attempted |
-| Poster | identity_family_answers | 365 d | failure remembered, 5 min doubling to 6 h; given up after 8 in a row, filed unread and remembered 7 d | 400 d | until answered |
-| CataloguePage | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d | until answered |
-| CatalogueId | identity_family_answers | 365 d mapped, 30 d unmapped | as above | 400 d | until answered |
+| kind | store | asked again | non-answer | swept |
+|---|---|---|---|---|
+| Title, Director, Imdb, ImdbTitled, TitleCredit | tmdb_queries | 1 d below 0.9 confidence, 7 d settled (`QuestionRenewals`) | remembered (fill and live asks): empty 1 d, failure 5 min doubling to 6 h | unread 30 d |
+| FilmRecord | tmdb_films | changes feed; 30 d while the model reads it (`QuestionRenewals`) | as above | unread 30 d |
+| Person | tmdb_people | as FilmRecord | its director search's marker | unread 30 d |
+| VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich, the pipeline's) | the pipeline's: gone (404/410) filed; failure marked attempted, read again past 6 h | never |
+| FamilySearch | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d since fetched |
+| FamilyRecord | identity_family_answers | 365 d | as above | 400 d |
+| FamilyShowing | identity_family_answers | 20 h | as above | 400 d |
+| Find | tmdb_queries | when the stage opens it | none found filed; failure remembered, 5 min doubling to 6 h | unread 30 d |
+| Record | tmdb_films | once, when a take waits on its release day | unknown filed empty; failure remembered, 5 min doubling to 6 h | unread 30 d |
+| Poster | identity_family_answers | 365 d | failure remembered, 5 min doubling to 6 h; given up after 8 in a row, filed unread and remembered 7 d | 400 d |
+| CataloguePage | identity_family_answers | 90 d | empty filed; failure remembered, 5 min doubling to 6 h | 400 d |
+| CatalogueId | identity_family_answers | 365 d mapped, 30 d unmapped | as above | 400 d |
 
-\* The settle rule (step 4, `AgreementStage.settles`): a waiting cluster resolves once every question is answered, or
-once every one was attempted, then on what answered; the rest stay asked, and an answer read later moves the take. A
-take waiting "until answered" stays pending meanwhile, its failures retried on the memory's backoff.
+A take waits on a model question by the lookup fill's rounds, and on every agreement question until it is attempted
+(step 4): no column, since it never varies within a system.
 
 ## What the table shows (the holes steps 2-4 close)
 

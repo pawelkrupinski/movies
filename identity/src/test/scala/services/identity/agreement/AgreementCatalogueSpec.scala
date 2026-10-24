@@ -192,4 +192,27 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     // no TMDB film for a title search to pick, no venue stating a fact: nothing but the feed's own word
     taken(fed).fallback shouldBe None
   }
+
+  // The one settle rule: a catalogue id whose mapping was attempted and not answered names nothing — the cluster decided on
+  // the rest — and is asked still; its mapping, filed, is read.
+  it should "decide without a catalogue id once its mapping was attempted, and read the mapping once it is filed" in {
+    val other   = CatalogueId("letterboxd", "fantasy-other")
+    var hits    = Map(fantasy -> Seq(fantasyHit))
+    var failed  = false
+    val catalogue = new CatalogueAnswers {
+      def linked(page: String): Answer[Seq[CatalogueId]]    = Answer.Known(Nil)
+      def mapped(id: CatalogueId): Answer[Seq[CatalogueHit]] = hits.get(id).fold[Answer[Seq[CatalogueHit]]](Answer.Unknown)(Answer.Known(_))
+    }
+    val s = new AgreementStage(families(), table, normalizer, IdentityCalibration.resolver, tmdbOf = finds, new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), catalogue = catalogue,
+      attempted = { case Question.Catalogue(CatalogueQuestion.Id(`other`)) => failed; case _ => false })
+    val l = listing(ids = Seq(fantasy, other))
+    def decidedAt(version: Long) = s.apply(resolutionOf(l), Map(l.key -> l).get, version).decisions.head
+    decidedAt(1).film shouldBe None                                       // the other id never mapped: held
+    failed = true
+    decidedAt(1).film shouldBe Some(1318829)                              // its mapping failed: taken on the id that mapped
+    s.wanted should contain (Question.Catalogue(CatalogueQuestion.Id(other)))
+    hits = hits + (other -> Seq(CatalogueHit(Some("Q2"), Some(31506), None, "Letterboxd")))   // it names another film:
+    decidedAt(2).film shouldBe None                                       // two films named, none taken
+  }
 }

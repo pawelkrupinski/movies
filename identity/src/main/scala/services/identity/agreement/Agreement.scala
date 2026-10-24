@@ -320,11 +320,17 @@ object Agreement {
       turnedDown)
   }
 
-  /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
-  private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[Question]): Answer[Option[Int]] = {
+  /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet — `Unknown`
+   *  until it was `attempted` (the settle rule, docs/design/identity-questions.md step 4), then none. */
+  private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[Question],
+                                  attempted: Question => Boolean = _ => false): Answer[Option[Int]] = {
     val answer = tmdbOf(tt)
-    if (answer == Answer.Unknown) finding += Question.Find(tt)
-    answer
+    if (answer != Answer.Unknown) answer
+    else {
+      // asked every pass; once attempted and not answered, read as TMDB holding none: the take decided without it
+      finding += Question.Find(tt)
+      if (attempted(Question.Find(tt))) Answer.Known(None) else answer
+    }
   }
 
   /** Did `verdict` weigh the film (`isIt`, its takers' `records`) and turn it down — take none, its evidence leaning to

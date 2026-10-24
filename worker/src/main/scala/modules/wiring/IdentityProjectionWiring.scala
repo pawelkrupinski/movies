@@ -204,7 +204,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  cluster's family questions inline ([[agreementStage]]'s `askNow`). */
   lazy val agreementAsker: services.identity.adapters.AgreementAsker =
     new services.identity.adapters.AgreementAsker(familyAnswerStore, familySources,
-      find = imdbId => { tmdbClient.findByImdbId(imdbId); () },
+      // a find filed is noted among the answers' changes, as a record read again is: a take or correction that read it is
+      // read again
+      find = imdbId => { tmdbClient.findByImdbId(imdbId); familyAnswerStore.noteFiled(services.identity.adapters.TmdbStore.findId(imdbId)) },
       reread = film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(services.identity.agreement.AgreementStage.recordReadId(film)) },
       posterAnswerStore, posterHashing, catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
       filed = () => {
