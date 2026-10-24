@@ -114,6 +114,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
 
     clock.advanceSeconds(20)
     taken = Some(resolution(ResolverDecision(Seq(dune), Some(438631), 0.96, ResolverDecision.Basis.OwnMatch, why)()))
+    feed.offer(Seq(decidedOn(dune, Some(438631))))
     live.publish()
     val Seq(decided) = shown(docs)
     decided.take.explanation shouldBe why.take(IdentityStagingPublisher.ExplanationShown) :+ "… and 2 more"
