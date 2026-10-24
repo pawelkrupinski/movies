@@ -398,7 +398,7 @@ jobs:
             # as its own step, so the boot's ceiling only has to cover booting.
             #
             # The two were one step, and the 300s below had to stretch over both. That
-            # holds until the caches go cold together — a Renovate dependency bump
+            # holds until the caches go cold together — a dependency bump
             # invalidates coursier while a source change invalidates sbt-target — and
             # then the runner spends the entire window fetching the sbt launcher and
             # compiling, reaching only "set current project to movies" by the time it is
