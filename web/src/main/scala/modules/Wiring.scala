@@ -98,7 +98,8 @@ trait Wiring
     // is this deployment's own database `usersConnection` IS `mongoConnection`,
     // and closing it here would be closing the primary early.
     if (usersConnection ne mongoConnection) usersConnection.close()
-    // The same for the fleet database: its own view only off Poland's deployment.
+    // The same for the fleet database: its own view unless it is this deployment's own (Poland's
+    // while `MONGODB_FLEET_DB` is unset).
     if (fleetConnection ne mongoConnection) fleetConnection.close()
     // The /debug read-mirror owns its own MongoClient when distinct from the
     // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).

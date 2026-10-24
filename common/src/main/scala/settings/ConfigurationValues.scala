@@ -39,6 +39,8 @@ enum ProcessTier(val label: String) {
 /** `MONGODB_URI` — the cluster this process's corpus lives on. */
 final case class MongoUri(value: String) extends AnyVal
 // `MONGODB_DB` and `MONGODB_USERS_DB` are `DatabaseNames.scala`'s: `models.Country` names them.
+/** `MONGODB_FLEET_DB` — the database every country's web and worker share for fleet-wide state (`services.FleetDatabase`). */
+final case class FleetDatabaseName(value: String) extends AnyVal
 /** `MONGODB_MOVIES_MIRROR_URI` — the local read-mirror /debug reads instead of the tunnel. */
 final case class MirrorMongoUri(value: String) extends AnyVal {
   /** The mirror is a Mongo cluster like any other, once chosen. */

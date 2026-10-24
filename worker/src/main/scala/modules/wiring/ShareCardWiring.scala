@@ -68,8 +68,11 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  multi-country process, the same client) as the country's own. Optional: unreachable or
    *  refused, it is only the Facebook re-scrapes that stop. */
   lazy val fleetMongoConnection: MongoConnection =
-    MongoConnection.forDatabase(mongoAddress.uri, services.FleetDatabase.Name, MongoRequirement.Optional,
+    MongoConnection.forDatabase(mongoAddress.uri, fleetDatabaseName, MongoRequirement.Optional,
       MongoTuning.from(configuration, settings.ProcessTier.Worker), sharedMongoClient)
+
+  /** `MONGODB_FLEET_DB`, else Poland's `kinowo` ([[services.FleetDatabase]]). */
+  lazy val fleetDatabaseName: settings.MongoDatabaseName = services.FleetDatabase.name(configuration.fleetDatabase)
 
   private lazy val facebookGraph: Option[FacebookGraph] = FacebookGraph.fromConfiguration(configuration, tlsContext)
 
@@ -91,7 +94,7 @@ trait ShareCardWiring { self: WorkerWiring =>
     case Some(store) => new FacebookRescrapeQueue(store, country.code)
     case None =>
       if (facebookGraph.isDefined) logger.error(s"share card: Facebook re-scrapes are OFF for ${country.code} — " +
-        s"the fleet database ${services.FleetDatabase.Name.value} could not be reached or used")
+        s"the fleet database ${fleetDatabaseName.value} could not be reached or used")
       ShareCardRescrapes.disabled(shareCardMetrics)
   }
 

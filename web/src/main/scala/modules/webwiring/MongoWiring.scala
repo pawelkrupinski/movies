@@ -60,7 +60,7 @@ trait MongoWiring { self: Wiring =>
   // unreachable or refused, it is only those that stop.
   lazy val fleetConnection: MongoConnection = Wiring.connectionTo(
     ownDbName    = mongoAddress.databaseFor(country),
-    sharedDbName = services.FleetDatabase.Name,
+    sharedDbName = services.FleetDatabase.name(processConfiguration.fleetDatabase),
     own          = mongoConnection,
     openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, MongoRequirement.Optional, mongoTuning, sharedClient = mongoSharedClient))
 }

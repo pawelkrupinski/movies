@@ -93,6 +93,9 @@ final class ProcessConfiguration(val env: Env) {
   /** `MONGODB_USERS_DB`. */
   def usersDatabase: Option[UsersDatabaseName] = text("MONGODB_USERS_DB").map(UsersDatabaseName(_))
 
+  /** `MONGODB_FLEET_DB`. */
+  def fleetDatabase: Option[FleetDatabaseName] = text("MONGODB_FLEET_DB").map(FleetDatabaseName(_))
+
   /** `MONGODB_MOVIES_MIRROR_URI`. */
   def mirrorMongoUri: Option[MirrorMongoUri] = text("MONGODB_MOVIES_MIRROR_URI").map(MirrorMongoUri(_))
 
