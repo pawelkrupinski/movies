@@ -4,7 +4,7 @@ package adapters
 import play.api.Logging
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
-import services.tasks.HandlerOutcome.{Deferred, Done, Reschedule, Skipped}
+import services.tasks.HandlerOutcome.{Deferred, Done, Skipped}
 import services.tasks.{EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
 import tools.{CircuitOpenException, HttpStatusException}
 
@@ -15,8 +15,9 @@ import java.time.Clock
  * have not answered yet for the clusters the model left unmatched, TMDB's `find` of an agreed IMDb id, a TMDB record to
  * read again for its release day, a poster to hash and a catalogue page or id — enqueued by the stage the moment it
  * meets them ([[AgreementQuestions.enqueue]]) as one task type ([[TaskType.AskQuestion]]) naming each by its id
- * ([[Question.id]]), and each asked on the task pool ([[AgreementAsker]]) with every other lookup's retries, backoff,
- * breaker and metrics.
+ * ([[Question.id]]), and each asked on the task pool ([[AgreementAsker]]) with every other lookup's breaker and metrics.
+ * A question its source failed to answer is remembered ([[QuestionMemory]]) and neither queued nor asked again until its
+ * wait ends.
  */
 object AgreementQuestions {
   private val QuestionsKey = "questions"
@@ -34,12 +35,13 @@ object AgreementQuestions {
    *  at boot ahead of 36 scrape chunks, an hour's drain at the pool's pace). */
   val Behind: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(7, java.util.concurrent.TimeUnit.DAYS)
 
-  /** Every agreement question among `questions` as an [[TaskType.AskQuestion]] task — one question each, catalogue ids a
-   *  batch each ([[tasks]]) — its ids its payload and, after `agreement|`, its dedup key: one already queued is not
-   *  queued again. Claimed after every other task ([[Behind]]) and counted under the question's label ([[labelOf]]). */
-  def enqueue(queue: TaskQueue, questions: Set[Question], clock: Clock,
+  /** Every agreement question among `questions` still due (`memory`: not inside the wait a failed ask left it) as an
+   *  [[TaskType.AskQuestion]] task — one question each, catalogue ids a batch each ([[tasks]]) — its ids its payload and,
+   *  after `agreement|`, its dedup key: one already queued is not queued again. Claimed after every other task
+   *  ([[Behind]]) and counted under the question's label ([[labelOf]]). */
+  def enqueue(queue: TaskQueue, questions: Set[Question], memory: QuestionMemory, clock: Clock,
               metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent): Unit =
-    tasks(questions).foreach { asked =>
+    tasks(memory.due(questions.filter(_.kind.system == QuestionSystem.Agreement))).foreach { asked =>
       val payload = payloadOf(asked)
       metrics.enqueued(labelOf(asked.head), queue.enqueue(TaskType.AskQuestion, s"agreement|${payload(QuestionsKey)}", payload,
         submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
@@ -72,7 +74,7 @@ object AgreementQuestions {
     case Question.Record(_)         => AgreementQuestionMetrics.TmdbRecord
     case Question.Poster(_)         => AgreementQuestionMetrics.Poster
     case Question.Catalogue(_)      => AgreementQuestionMetrics.Catalogue
-    case Question.Candidate(_) | Question.FilmRecord(_) | Question.VenuePage(_) => question.kind.toString
+    case Question.Candidate(_) | Question.FilmRecord(_) | Question.Person(_) | Question.VenuePage(_) => question.kind.toString
   }
 
   /** The questions a task asks: an [[TaskType.AskQuestion]]'s by their ids, and a task of the four types before it by
@@ -106,27 +108,6 @@ object AgreementQuestions {
     outcome
   }
 
-  /** A failed ask as the queue takes it: a host whose breaker is open was never asked — the attempt is given back and
-   *  the task waits the block out — and anything else is asked again on the queue's backoff. */
-  def failed(e: Throwable, what: String, clock: Clock): HandlerOutcome = e match {
-    case open: CircuitOpenException => Deferred(Some(s"$what: ${open.getMessage}"), Some(clock.instant().plusMillis(open.openForMs)))
-    case other                      => Reschedule(Some(s"$what: ${other.getMessage}"))
-  }
-
-  /** One question asked as the asker asks every one: `ask` run — it says how it came out — then a projection asked for
-   *  (`filed`); a failure [[failed]]. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
-   *  [[AgreementQuestionMetrics.Failed]]. */
-  def asked(label: String, what: String, metrics: AgreementQuestionMetrics, clock: Clock, filed: () => Unit)(ask: => String): HandlerOutcome =
-    try { val outcome = ask; filed(); metrics.asked(label, outcome); Done }
-    catch { case scala.util.control.NonFatal(e) =>
-      val outcome = failed(e, what, clock)
-      metrics.asked(label, outcome match {
-        case _: Deferred => AgreementQuestionMetrics.Deferred
-        case _           => AgreementQuestionMetrics.Failed
-      })
-      outcome
-    }
-
   // The payloads of the four task types before AskQuestion. Old queued tasks only; remove after 2026-11-07.
   def familyOf(task: Task): Option[VoterFamily] = task.payload.get(FamilyKey).flatMap(label => VoterFamily.values.find(_.label == label))
   def questionOf(task: Task): Option[String]    = task.payload.get(QuestionKey)
@@ -139,24 +120,30 @@ object AgreementQuestions {
 /**
  * Asks the agreement's questions, each by its kind: a family's search, record or programme of the family's live source
  * (`sources`), filed; TMDB's find of an agreed IMDb id (`find`) or its record of a film read again (`reread`), filed by
- * the TMDB store as it files every TMDB answer; a poster hashed (`hashing`) and filed, and given up on once its fetch
- * has failed every attempt the queue allows it ([[PosterAnswerStore.GiveUpAttempts]]); a batch of catalogue ids mapped
+ * the TMDB store as it files every TMDB answer; a poster hashed (`hashing`) and filed; a batch of catalogue ids mapped
  * at once (`mapping`), a catalogue page's links read (`pages`). A question whose store already holds a fresh answer is
- * skipped ([[AgreementQuestionMetrics.Fresh]]); once one is filed a projection is asked for (`filed`), which reads it;
- * a failure is the queue's to ask again ([[AgreementQuestions.failed]]).
+ * skipped ([[AgreementQuestionMetrics.Fresh]]), and so is one still inside the wait a failed ask left it
+ * ([[AgreementQuestionMetrics.Waiting]]); once one is filed a projection is asked for (`filed`), which reads it.
+ *
+ * A failed ask is remembered (`memory`, [[QuestionMemory]]: 5 min doubling to 6 h, its kind's policy) and the task is
+ * done: the stage hands the question over again once the families' answers move, and it is queued and asked once its
+ * wait has ended — the queue's own backoff no longer asks it a second time. A host whose breaker is open was never asked:
+ * the task gives its attempt back and waits the block out (`Deferred`), nothing remembered. A poster whose fetch has
+ * failed [[QuestionPolicies.PosterGiveUpAttempts]] times in a row is given up on: filed as unread, as the stage reads it,
+ * and remembered for [[QuestionPolicies.PosterUnreadAge]].
  *
  * The queue's handler of [[TaskType.AskQuestion]] — and, through [[oldQueued]], of the four task types before it — and
  * what [[InlineFamilyAsks]] asks a new cluster's family questions through.
  */
 final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], find: String => Unit, reread: Int => Unit,
                            posters: PosterAnswerStore, hashing: PosterHashing, catalogue: CatalogueAnswerStore, mapping: CatalogueMapping,
-                           pages: CatalogueLinkReader, filed: () => Unit, clock: Clock,
-                           metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler {
-  import AgreementQuestionMetrics.{Fresh, Answered}
+                           pages: CatalogueLinkReader, filed: () => Unit, memory: QuestionMemory, clock: Clock,
+                           metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler with Logging {
+  import AgreementQuestionMetrics.{Fresh, Answered, Waiting}
 
   val taskType: TaskType = TaskType.AskQuestion
 
-  def handle(task: Task): HandlerOutcome = ask(AgreementQuestions.questionsOf(task), task.attempts)
+  def handle(task: Task): HandlerOutcome = ask(AgreementQuestions.questionsOf(task))
 
   /** The four task types before [[TaskType.AskQuestion]], their tasks still queued when it was deployed: each decoded
    *  into its questions and asked as one. Old queued tasks only; remove after 2026-11-07. */
@@ -168,68 +155,92 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
       }
     }
 
-  /** One task's questions asked — its one question, or a batch of catalogue questions as one — on its `attempts`th
-   *  attempt. `announce`: whether a filing asks for a projection — always on the queue; inline, only once the resolve
-   *  stopped waiting for it. */
-  def ask(questions: Seq[Question], attempts: Int = 1, announce: => Boolean = true): HandlerOutcome = {
+  /** One task's questions asked — its one question, or a batch of catalogue questions as one — those of them still due.
+   *  `announce`: whether a filing asks for a projection — always on the queue; inline, only once the resolve stopped
+   *  waiting for it. */
+  def ask(questions: Seq[Question], announce: => Boolean = true): HandlerOutcome = {
     val announced: () => Unit = () => if (announce) filed()
-    questions match {
-      case Seq(question) => ask(question, attempts, announced)
+    val due = memory.due(questions.toSet)
+    questions.filterNot(due).foreach(question => metrics.asked(AgreementQuestions.labelOf(question), Waiting))
+    questions.filter(due) match {
+      case Seq(question) => ask(question, announced)
       case batch if batch.nonEmpty && batch.forall(_.isInstanceOf[Question.Catalogue]) =>
         askCatalogue(batch.collect { case Question.Catalogue(question) => question }, announced)
       case _ => Skipped
     }
   }
 
-  private def ask(question: Question, attempts: Int, filed: () => Unit): HandlerOutcome = question match {
+  private def ask(question: Question, filed: () => Unit): HandlerOutcome = question match {
     case Question.Family(family, asked) =>
       sources.get(family).fold[HandlerOutcome](Skipped) { source =>
         if (!families.wanted(FamilyAnswerStore.questionId(family, asked))) fresh(family.label)
-        else AgreementQuestions.asked(family.label, s"${family.label} '$asked'", metrics, clock, filed)(
-          AgreementQuestions.file(families, family, source, asked))
+        else asking(Seq(question), family.label, s"${family.label} '$asked'", filed)(AgreementQuestions.file(families, family, source, asked))
       }
     case Question.Find(imdbId) =>
-      answered(AgreementQuestionMetrics.TmdbFind, s"TMDB find '$imdbId'", filed)(find(imdbId))
+      answered(question, AgreementQuestionMetrics.TmdbFind, s"TMDB find '$imdbId'", filed)(find(imdbId))
     case Question.Record(film) =>
-      answered(AgreementQuestionMetrics.TmdbRecord, s"TMDB record $film", filed)(reread(film))
+      answered(question, AgreementQuestionMetrics.TmdbRecord, s"TMDB record $film", filed)(reread(film))
     case Question.Poster(poster) =>
       if (!posters.wanted(poster)) fresh(AgreementQuestionMetrics.Poster)
-      else answered(AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(poster)}", filed)(posters.file(poster, hashing.of(poster))) match {
-        // its last attempt failed too: given up on, read as unread rather than waited on for ever
-        case _: Reschedule if attempts >= PosterAnswerStore.GiveUpAttempts => posters.giveUp(poster); filed(); Done
-        case other => other
-      }
+      else answered(question, AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(poster)}", filed)(posters.file(poster, hashing.of(poster)))
     case Question.Catalogue(asked) => askCatalogue(Seq(asked), filed)
-    case Question.Candidate(_) | Question.FilmRecord(_) | Question.VenuePage(_) => Skipped
+    case Question.Candidate(_) | Question.FilmRecord(_) | Question.Person(_) | Question.VenuePage(_) => Skipped
   }
 
   /** Catalogue questions asked as one: the ids mapped in one batch, each page read — skipped when the store holds fresh
    *  answers to them all. */
   private def askCatalogue(questions: Seq[CatalogueQuestion], filed: () => Unit): HandlerOutcome =
     if (!questions.exists(catalogue.wanted)) fresh(AgreementQuestionMetrics.Catalogue)
-    else answered(AgreementQuestionMetrics.Catalogue, s"catalogue ${questions.flatMap(Question.Catalogue(_).id).mkString(" ")}", filed) {
-      AgreementCatalogueQuestions.file(catalogue, mapping, pages, questions); ()
+    else {
+      val asked = questions.map(Question.Catalogue(_))
+      asking(asked, AgreementQuestionMetrics.Catalogue, s"catalogue ${asked.flatMap(_.id).mkString(" ")}", filed) {
+        AgreementCatalogueQuestions.file(catalogue, mapping, pages, questions); Answered
+      }
     }
 
   private def fresh(label: String): HandlerOutcome = { metrics.asked(label, Fresh); Skipped }
 
-  private def answered(label: String, what: String, filed: () => Unit)(ask: => Unit): HandlerOutcome =
-    AgreementQuestions.asked(label, what, metrics, clock, filed) { ask; Answered }
+  private def answered(question: Question, label: String, what: String, filed: () => Unit)(ask: => Unit): HandlerOutcome =
+    asking(Seq(question), label, what, filed) { ask; Answered }
+
+  /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). A host whose
+   *  breaker is open defers the task; any other failure is remembered, and a poster failing for the last time given up
+   *  on. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
+   *  [[AgreementQuestionMetrics.Failed]]. */
+  private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome =
+    try { val outcome = ask; filed(); metrics.asked(label, outcome); Done }
+    catch {
+      case open: CircuitOpenException =>
+        metrics.asked(label, AgreementQuestionMetrics.Deferred)
+        Deferred(Some(s"$what: ${open.getMessage}"), Some(clock.instant().plusMillis(open.openForMs)))
+      case scala.util.control.NonFatal(e) =>
+        metrics.asked(label, AgreementQuestionMetrics.Failed)
+        val failures = memory.failed(questions)
+        logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
+        val givenUp = failures.collect {
+          case (Question.Poster(poster), times) if times >= QuestionPolicies.PosterGiveUpAttempts => poster
+        }
+        // its last attempt failed too: given up on, read as unread rather than waited on for ever
+        givenUp.foreach(posters.giveUp)
+        if (givenUp.nonEmpty) { memory.unanswered(givenUp.map(Question.Poster(_))); filed() }
+        Done
+    }
 }
 
 /** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it
  *  came out — [[Answered]], [[Nothing]] there (a refused query, a missing page: filed as no film), [[Fresh]] (an answer
- *  already filed: skipped), [[Deferred]] (the host's breaker open) or [[Failed]] (asked again on the queue's backoff). A
- *  family is its label (`imdb`, `rt` …), TMDB's find of an agreed IMDb id [[TmdbFind]], a TMDB record read again for its
- *  release day [[TmdbRecord]]. */
+ *  already filed: skipped), [[Waiting]] (inside the wait a failed ask left it: skipped), [[Deferred]] (the host's breaker
+ *  open) or [[Failed]] (remembered, asked again once its wait ends). A family is its label (`imdb`, `rt` …), TMDB's find
+ *  of an agreed IMDb id [[TmdbFind]], a TMDB record read again for its release day [[TmdbRecord]]. */
 trait AgreementQuestionMetrics {
   def enqueued(family: String, added: Boolean): Unit
   def asked(family: String, outcome: String): Unit
 }
 
 object AgreementQuestionMetrics {
-  val Answered = "answered"; val Nothing = "nothing"; val Fresh = "fresh"; val Deferred = "deferred"; val Failed = "failed"
-  val Outcomes: Seq[String] = Seq(Answered, Nothing, Fresh, Deferred, Failed)
+  val Answered = "answered"; val Nothing = "nothing"; val Fresh = "fresh"; val Waiting = "waiting"; val Deferred = "deferred"
+  val Failed = "failed"
+  val Outcomes: Seq[String] = Seq(Answered, Nothing, Fresh, Waiting, Deferred, Failed)
   val TmdbFind = "tmdb-find"
   val TmdbRecord = "tmdb-record"
   /** A poster hashed for the agreement's poster evidence. */
@@ -245,7 +256,8 @@ object AgreementQuestionMetrics {
 /** The agreement's [[services.identity.agreement.AgreementStage.AskNow]]: a new cluster's family questions, each asked
  *  through `asker` — as the queue asks it — on `pool` at once, waited on for at most `within`. One still out by then is
  *  filed when it comes and asks for a projection, as on the queue; the queue holds it too, and skips it once it is
- *  filed. A failure is the queue's to ask again. */
+ *  filed. A failure is remembered by the asker, as on the queue, and asked again once its wait ends; one still inside
+ *  its wait is not asked. */
 final class InlineFamilyAsks(asker: AgreementAsker, pool: java.util.concurrent.ExecutorService, stopwatch: tools.Stopwatch)
     extends services.identity.agreement.AgreementStage.AskNow with Logging {
   def apply(questions: Set[Question], within: scala.concurrent.duration.FiniteDuration): Unit = {
@@ -254,8 +266,8 @@ final class InlineFamilyAsks(asker: AgreementAsker, pool: java.util.concurrent.E
     val asked = questions.toSeq.collect { case question: Question.Family =>
       pool.submit(new Runnable {
         def run(): Unit = tools.HttpPath.within(tools.HttpPath.Agreement)(asker.ask(Seq(question), announce = late.get)) match {
-          case outcome @ (_: Reschedule | _: Deferred) =>
-            logger.info(s"agreement: ${question.family.label} '${question.question}' asked inline failed ($outcome), the queue's to ask again")
+          case outcome: Deferred =>
+            logger.info(s"agreement: ${question.family.label} '${question.question}' asked inline deferred ($outcome), the queue's to ask again")
           case _ => ()
         }
       })

@@ -17,8 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger
  *  prints for Provazník's 2025 "Broken Voices" and Wajda's 1980 "The Conductor"), filed and read back, and asked for on
  *  the queue. */
 class AgreementPostersSpec extends AnyFlatSpec with Matchers {
-  private def asker(store: PosterAnswerStore, hashing: PosterHashing, filed: () => Unit = () => ()) =
-    AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)(posters = store, hashing = hashing, filed = filed)
+  private def asker(store: PosterAnswerStore, hashing: PosterHashing, filed: () => Unit = () => (),
+                    memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)) =
+    AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)(posters = store, hashing = hashing, filed = filed,
+      memory = memory)
   private def venueTask(attempts: Int = 1) = AgreementAskers.task(Question.Poster(PosterQuestion.Venue(patria)))(attempts)
   private def filmTask(tmdbId: Int)        = AgreementAskers.task(Question.Poster(PosterQuestion.Film(tmdbId)))()
   private val clock    = new MutableClock(Instant.parse("2026-10-05T00:00:00Z"))
@@ -107,15 +109,16 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     store.wanted(PosterQuestion.Film(1)) shouldBe true
     store.file(PosterQuestion.Film(1), Seq(HashedPoster("/1.jpg", PosterHash(1L))))
     store.wanted(PosterQuestion.Film(1)) shouldBe false
-    clock.advanceSeconds(PosterAnswerStore.Age.toSeconds + 1)
+    clock.advanceSeconds(QuestionPolicies.PosterAge.toSeconds + 1)
     store.wanted(PosterQuestion.Film(1)) shouldBe true
   }
 
   "a poster to hash" should "go on the queue once, however often the stage meets it" in {
     val queue = new InMemoryTaskQueue
     val posters = Set[PosterQuestion](PosterQuestion.Venue(patria), PosterQuestion.Film(95269))
-    AgreementQuestions.enqueue(queue, posters.map(Question.Poster(_)), clock)
-    AgreementQuestions.enqueue(queue, posters.map(Question.Poster(_)), clock)
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    AgreementQuestions.enqueue(queue, posters.map(Question.Poster(_)), memory, clock)
+    AgreementQuestions.enqueue(queue, posters.map(Question.Poster(_)), memory, clock)
     queue.monitor().counts.values.sum shouldBe 2
   }
 
@@ -153,15 +156,17 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
 
   // prod PL 2026-10-06: biletyna.pl refused all 226 of its posters (403) and each was filed as "no poster" for a year —
   // a failed read taken for data, the poster evidence for Binti, Fritzi and the rest gone with it
-  it should "be filed as unread when the origin refuses it, asked again a week on, and asked again at once when the failure may pass" in {
-    val store = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
-    val task  = venueTask()
-    asker(store, hashing(new Recorded(Some(PosterFailure.Timeout)))).handle(task) shouldBe a[HandlerOutcome.Reschedule]
+  it should "be filed as unread when the origin refuses it, asked again a week on, and asked again minutes on when the failure may pass" in {
+    val store  = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val task   = venueTask()
+    asker(store, hashing(new Recorded(Some(PosterFailure.Timeout))), memory = memory).handle(task) shouldBe HandlerOutcome.Done
     store.venue(patria) shouldBe Answer.Unknown
-    asker(store, hashing(new Recorded(Some(PosterFailure.Http4xx)))).handle(task) shouldBe HandlerOutcome.Done
+    clock.advanceSeconds(QuestionPolicies.FirstFailureWait.toSeconds + 1)
+    asker(store, hashing(new Recorded(Some(PosterFailure.Http4xx))), memory = memory).handle(task) shouldBe HandlerOutcome.Done
     (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
     store.fresh(PosterQuestion.Venue(patria)) shouldBe true
-    clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
+    clock.advanceSeconds(QuestionPolicies.PosterUnreadAge.toSeconds + 1)
     store.fresh(PosterQuestion.Venue(patria)) shouldBe false
   }
 
@@ -174,7 +179,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     store.file(PosterQuestion.Film(2), Nil)
     store.venue(biletyna) shouldBe Answer.Known(None)
     store.fresh(PosterQuestion.Venue(biletyna)) shouldBe true
-    clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
+    clock.advanceSeconds(QuestionPolicies.PosterUnreadAge.toSeconds + 1)
     (store.wanted(PosterQuestion.Venue(biletyna)), store.fresh(PosterQuestion.Venue(biletyna))) shouldBe ((true, false))
     // a film TMDB keeps no poster of is data, not a failed read: read for a year
     store.wanted(PosterQuestion.Film(2)) shouldBe false
@@ -182,17 +187,22 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
 
   // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so 17 of its posters were asked again 10
   // times and more, and the correction waiting on one never decided
-  it should "be given up on once its fetch has failed every attempt the queue allows it, filed as unread" in {
+  it should "be given up on once its fetch has failed the policy's attempts in a row, filed as unread and remembered so" in {
     val store    = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
-    val timeouts = asker(store, hashing(new Recorded(Some(PosterFailure.Timeout))))
-    def attempt(n: Int) = timeouts.handle(venueTask(n))
-    attempt(PosterAnswerStore.GiveUpAttempts - 1) shouldBe a[HandlerOutcome.Reschedule]
+    val memory   = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val download = new Recorded(Some(PosterFailure.Timeout))
+    val timeouts = asker(store, hashing(download), memory = memory)
+    // each failure waited out before the next ask: one asked inside its wait is not asked
+    def attempt() = { val outcome = timeouts.handle(venueTask()); clock.advanceSeconds(QuestionPolicies.MaxFailureWait.toSeconds + 1); outcome }
+    (1 until QuestionPolicies.PosterGiveUpAttempts).foreach(_ => attempt() shouldBe HandlerOutcome.Done)
     store.venue(patria) shouldBe Answer.Unknown
-    attempt(PosterAnswerStore.GiveUpAttempts) shouldBe HandlerOutcome.Done
+    attempt() shouldBe HandlerOutcome.Done
     (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
     // hashed again sooner than a read poster: the host may answer again
     store.wanted(PosterQuestion.Venue(patria)) shouldBe false
-    clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
+    memory.due(Set[Question](Question.Poster(PosterQuestion.Venue(patria)))) shouldBe empty
+    clock.advanceSeconds(QuestionPolicies.PosterUnreadAge.toSeconds + 1)
     store.wanted(PosterQuestion.Venue(patria)) shouldBe true
+    memory.due(Set[Question](Question.Poster(PosterQuestion.Venue(patria)))) should not be empty
   }
 }

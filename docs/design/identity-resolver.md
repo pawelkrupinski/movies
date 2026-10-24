@@ -2478,7 +2478,7 @@ The schedule now (`tmdb-changes-sweep`, a claimed task ticking once a minute, no
   swept at its (higher, capped) rate for longer, never in a burst.
 - **Freshness:** a day's edits are read from the day after, starting at the country's phase, and done within 20
   hours: at most ~2.8 days after the edit (it was ~1 day). TMDB's edits to a record are rare and slow-moving;
-  a brand-new film, the staleness that matters, is the fill's refreshes' (`TmdbRefreshes`), unchanged.
+  a brand-new film, the staleness that matters, is the fill's renewals' (`QuestionRenewals`), unchanged.
 
 ## 20. The unified evidence model (phase 1, 2026-10-05: inventory, dataset, fit, measure)
 
@@ -2801,8 +2801,9 @@ first apply with no verdict stored.
 for ever on Kino Kryterium's poster, which `bilety.ck105.koszalin.pl` times out from the worker's IP as it does its
 pages (17 poster tasks, `network`/`timeout`, ≥10 attempts each). Its posters now go through the venue's Zyte route
 (`ShareCardWiring.posterEgressRoutes`), as its scrapes do. And no correction waits on a poster for ever any more: a
-poster whose fetch fails on the queue's `PosterAnswerStore.GiveUpAttempts`th attempt is GIVEN UP on — filed as no poster,
-marked unread, tried again after `UnreadAge`. An unread venue poster is no evidence. The take is read as one a poster
+poster whose fetch fails on the queue's `GiveUpAttempts`th attempt is GIVEN UP on — filed as no poster,
+marked unread, tried again after `UnreadAge` (since 2026-10-24 counted by `QuestionMemory`: `QuestionPolicies.PosterGiveUpAttempts`
+failures in a row, `PosterUnreadAge`). An unread venue poster is no evidence. The take is read as one a poster
 questions (the programmes, the families), and is corrected only where that evidence decides it without the poster.
 Families alone never do.
 

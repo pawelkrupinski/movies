@@ -132,10 +132,9 @@ final class LookupFill(
   metrics:     LookupFillMetrics,
   executor:    ExecutorService,
   sleep:       Long => Unit,
-  refreshes:   () => Seq[CandidateQuery],
-  gapMemory:   TmdbGapMemory,
-  clock:       java.time.Clock,
-  backstop:    TmdbAgeBackstop = TmdbAgeBackstop.Never
+  renewals:    () => Seq[Question],
+  memory:      QuestionMemory,
+  clock:       java.time.Clock
 ) extends Logging {
   // When the last round began: a round's allowance is the rate over the time since, never more than a `window` —
   // rounds run as the model finds gaps (`EventTrigger`), not only once a window, and must not ask more for it.
@@ -164,8 +163,8 @@ final class LookupFill(
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
-    val asked = gapMemory.due(questions())
-    // Asked and still unanswered — not deferred for want of budget — is remembered (`TmdbGapMemory`):
+    val asked = memory.due(questions())
+    // Asked and still unanswered — not deferred for want of budget — is remembered (`QuestionMemory`):
     // a durable non-answer is asked again a day later, one whose read failed on a short backoff.
     def outcome[A](answer: => Answer[A]): LookupFill.Asked = {
       val (deferred, failed) = (budget.deferred.get, budget.failed.get)
@@ -175,26 +174,22 @@ final class LookupFill(
       else if (budget.deferred.get != deferred) LookupFill.Asked.Settled
       else LookupFill.Asked.Unanswered
     }
-    val (queryOutcomes, filmOutcomes) = tools.HttpPath.within(tools.HttpPath.Fill)(
-      (asked.queries.toSeq.sorted.map(q => q -> outcome(lookups.candidates(q))),
-        asked.films.toSeq.sorted.map(id => id -> outcome(lookups.film(id)))))
-    def those[K](outcomes: Seq[(K, LookupFill.Asked)], kind: LookupFill.Asked) = outcomes.collect { case (k, `kind`) => k }
-    gapMemory.unanswered(those(queryOutcomes, LookupFill.Asked.Unanswered), those(filmOutcomes, LookupFill.Asked.Unanswered))
-    gapMemory.failed(those(queryOutcomes, LookupFill.Asked.Failed), those(filmOutcomes, LookupFill.Asked.Failed))
-    // Then, with what the allowance has left, questions asked again because they have aged
-    // (`TmdbRefreshes`) — through the same live fetch.
-    tools.HttpPath.within(tools.HttpPath.Refresh)(refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates))
-    // Last, records and people TMDB last gave a month ago (`TmdbAgeBackstop`): what its changes may never have named. A
-    // failed one is named again by the backstop's next scan.
-    try tools.HttpPath.within(tools.HttpPath.Refresh)(backstop.due().iterator.takeWhile(_ => budget.remaining > 0).foreach { aged =>
-      try aged match {
-        case TmdbAgeBackstop.Aged.Film(id)   => client.identityRecord(id)
-        case TmdbAgeBackstop.Aged.Person(id) => client.personDirectorCredits(id)
-      }
-      catch { case NonFatal(_) => () }
+    val outcomes = tools.HttpPath.within(tools.HttpPath.Fill)(
+      asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> outcome(lookups.candidates(q))) ++
+        asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> outcome(lookups.film(id))))
+    def those(kind: LookupFill.Asked) = outcomes.collect { case (question, `kind`) => question }
+    memory.unanswered(those(LookupFill.Asked.Unanswered))
+    memory.failed(those(LookupFill.Asked.Failed))
+    // Then, with what the allowance has left, what has aged (`QuestionRenewals`) — through the same live fetch: the
+    // questions first, then the records and people TMDB last gave a month ago, what its changes may never have named. A
+    // record or person that failed is named again by the next scan.
+    tools.HttpPath.within(tools.HttpPath.Refresh)(renewals().iterator.takeWhile(_ => budget.remaining > 0).foreach {
+      case Question.Candidate(query) => lookups.candidates(query)
+      case Question.FilmRecord(id)   => try client.identityRecord(id) catch { case NonFatal(_) => () }
+      case Question.Person(id)       => try client.personDirectorCredits(id) catch { case NonFatal(_) => () }
+      case _                         => ()
     })
-    catch { case NonFatal(e) => logger.warn("identity lookup fill: no records or people fetched again for their age, this round", e) }
-    gapMemory.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get)
+    memory.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get)
     current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
     val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)

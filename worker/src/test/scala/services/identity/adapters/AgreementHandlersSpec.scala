@@ -12,11 +12,12 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /** The agreement's open questions go on the task queue once each, one task type naming them by id; the asker asks the
  *  family's source, files the answer and asks for a projection — a refused query or a missing page filed as no film, a
- *  host whose breaker is open waited out, any other failure asked again — and asks the tasks of the types before it
- *  still queued as it asks its own. */
+ *  host whose breaker is open waited out, any other failure remembered and neither queued nor asked again until its wait
+ *  ends — and asks the tasks of the types before it still queued as it asks its own. */
 class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
   private val clock = new MutableClock(Instant.parse("2026-10-04T00:00:00Z"))
   private def world() = new FamilyAnswerStore(new InMemoryTmdbDocuments, clock)
+  private def newMemory() = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
 
   /** A family answering every title, or failing every ask with `failure`. */
   private final class Answering(val family: VoterFamily, failure: Option[Throwable] = None) extends FamilySource {
@@ -28,21 +29,22 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
   }
   private def task(family: VoterFamily, question: String) = AgreementAskers.task(Question.Family(family, question))()
   private def asker(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], filed: () => Unit = () => (),
-                    metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) =
-    AgreementAskers.over(store, clock)(sources = sources, filed = filed, metrics = metrics)
+                    metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, memory: QuestionMemory = newMemory()) =
+    AgreementAskers.over(store, clock)(sources = sources, filed = filed, memory = memory, metrics = metrics)
 
   "the agreement's open questions" should "go on the queue once each, however often the stage meets them" in {
     val queue = new InMemoryTaskQueue
     val open  = Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.RottenTomatoes, "record|klondike_2022"),
       Question.Find("tt16315948"))
-    AgreementQuestions.enqueue(queue, open, clock)
-    AgreementQuestions.enqueue(queue, open, clock)
+    val asked = newMemory()
+    AgreementQuestions.enqueue(queue, open, asked, clock)
+    AgreementQuestions.enqueue(queue, open, asked, clock)
     queue.monitor().counts.values.sum shouldBe 3
   }
 
   it should "be claimed after every other task, one enqueued after them included" in {
     val queue = new InMemoryTaskQueue
-    AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), clock)
+    AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), newMemory(), clock)
     queue.enqueue(TaskType.ScrapeCinema, "scrape|Kino Muza", submittedAt = clock.instant().plusSeconds(60))
     queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(61)).map(_.taskType) shouldBe Some(TaskType.ScrapeCinema)
     queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(61)).map(_.taskType) shouldBe Some(TaskType.AskQuestion)
@@ -76,15 +78,45 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     store.answers(VoterFamily.Filmweb).titled("Akademia Polskiego Filmu: wykład") shouldBe Answer.Known(Nil)
   }
 
-  it should "wait out a host whose breaker is open, ask again after any other failure, and file nothing either way" in {
+  it should "wait out a host whose breaker is open, and file nothing either way" in {
     val store = world()
     val blocked = new Answering(VoterFamily.RottenTomatoes, Some(new CircuitOpenException("www.rottentomatoes.com", 60000L)))
     val down    = new Answering(VoterFamily.Metacritic, Some(new HttpStatusException(503, "GET", "https://www.metacritic.com/search/x", None)))
     val handler = asker(store, Map(VoterFamily.RottenTomatoes -> blocked, VoterFamily.Metacritic -> down))
     handler.handle(task(VoterFamily.RottenTomatoes, "title|Dune")) shouldBe a[HandlerOutcome.Deferred]
-    handler.handle(task(VoterFamily.Metacritic, "title|Dune")) shouldBe a[HandlerOutcome.Reschedule]
+    handler.handle(task(VoterFamily.Metacritic, "title|Dune")) shouldBe HandlerOutcome.Done
     store.answers(VoterFamily.RottenTomatoes).titled("Dune") shouldBe Answer.Unknown
     store.answers(VoterFamily.Metacritic).titled("Dune") shouldBe Answer.Unknown
+  }
+
+  // Until C3 a failed ask went back on the queue's backoff while the stage, the inline asks and the memory knew nothing of
+  // it: one memory now decides when it is asked again, and the queue does not ask it a second time.
+  it should "remember any other failure: neither queue it nor ask it again until its wait ends, then ask it" in {
+    val store = world(); val remembered = newMemory(); val queue = new InMemoryTaskQueue
+    val dune  = Question.Family(VoterFamily.Metacritic, "title|Dune")
+    var fails = true
+    val asked = new AtomicInteger
+    val metacritic = new FamilySource {
+      val family: VoterFamily = VoterFamily.Metacritic
+      def titled(text: String): Seq[SourceHit] = {
+        asked.incrementAndGet()
+        if (fails) throw new HttpStatusException(503, "GET", "https://www.metacritic.com/search/x", None) else Seq(SourceHit("m1", text, None, Some(2021)))
+      }
+      def directedBy(name: String): Seq[SourceHit] = Nil
+      def record(id: String): Option[SourceRecord] = None
+    }
+    val handler = asker(store, Map(VoterFamily.Metacritic -> metacritic), memory = remembered)
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Done
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Skipped                      // inside its wait: not asked
+    AgreementQuestions.enqueue(queue, Set(dune), remembered, clock)
+    queue.monitor().counts.values.sum shouldBe 0                                                      // nor queued
+    asked.get shouldBe 1
+    clock.advanceMillis(QuestionPolicies.FirstFailureWait.toMillis + 1)
+    AgreementQuestions.enqueue(queue, Set(dune), remembered, clock)
+    queue.monitor().counts.values.sum shouldBe 1
+    fails = false
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Done
+    store.answers(VoterFamily.Metacritic).titled("Dune").toOption.map(_.size) shouldBe Some(1)
   }
 
   "the agreement's questions" should "report each enqueue's result and each question's outcome" in {
@@ -95,8 +127,8 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
       def asked(family: String, outcome: String): Unit   = { outcomes += family -> outcome; () }
     }
     val queue = new InMemoryTaskQueue
-    AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Find("tt1")), clock, metrics)
-    AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), clock, metrics)
+    AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Find("tt1")), newMemory(), clock, metrics)
+    AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), newMemory(), clock, metrics)
     enqueues.toSeq shouldBe Seq("imdb" -> true, "tmdb-find" -> true, "imdb" -> false)
     val store = world()
     val handler = asker(store, Map(VoterFamily.Imdb -> new Answering(VoterFamily.Imdb),
@@ -128,8 +160,8 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
       def enqueued(family: String, added: Boolean): Unit = { enqueues += family -> added; () }
       def asked(family: String, outcome: String): Unit   = { enqueues += family -> (outcome == AgreementQuestionMetrics.Answered); () }
     }
-    AgreementQuestions.enqueue(queue, Set(Question.Record(1703624)), clock, metrics)
-    AgreementQuestions.enqueue(queue, Set(Question.Record(1703624)), clock, metrics)
+    AgreementQuestions.enqueue(queue, Set(Question.Record(1703624)), newMemory(), clock, metrics)
+    AgreementQuestions.enqueue(queue, Set(Question.Record(1703624)), newMemory(), clock, metrics)
     queue.monitor().counts.values.sum shouldBe 1
     val task = queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant()).get
     val reread = scala.collection.mutable.Buffer.empty[Int]; val projections = new AtomicInteger

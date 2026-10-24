@@ -36,7 +36,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
 
   "the model's live asks" should "ask a new question at once, then leave one left unanswered to the fill for a day" in {
     val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
-    val memory  = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val live    = new Live(Answer.Unknown)
     val lookups = new StoredFirstLookups(nothingStored, live, LiveAsks.remembered(memory))
     lookups.candidates(lalka) shouldBe Answer.Unknown
@@ -50,7 +50,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
 
   it should "remember a read that failed on the failure backoff, minutes not a day" in {
     val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
-    val memory  = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val live    = new Live(Answer.Unknown, fail = true)
     val lookups = new StoredFirstLookups(nothingStored, live, LiveAsks.remembered(memory))
     lookups.candidates(lalka)
@@ -65,7 +65,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     val clock    = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
     val docs     = new InMemoryTmdbDocuments
     val answered = new Live(Answer.Known(Nil))
-    new StoredFirstLookups(nothingStored, answered, LiveAsks.remembered(new TmdbGapMemory(docs, "pl-PL", clock))).candidates(lalka) shouldBe Answer.Known(Nil)
+    new StoredFirstLookups(nothingStored, answered, LiveAsks.remembered(new QuestionMemory(docs, "pl-PL", clock))).candidates(lalka) shouldBe Answer.Known(Nil)
     docs.size(TmdbKind.Marker) shouldBe 0
     val always = new Live(Answer.Unknown)
     val plain  = new StoredFirstLookups(nothingStored, always)

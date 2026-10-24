@@ -12,11 +12,11 @@ import scala.concurrent.duration._
  * Every answer the pipeline or the fill ever fetched was filed (`tmdb_films`, `tmdb_people`,
  * `tmdb_queries`) and nothing ever deleted one: a search for a title no venue lists any more, a film
  * only that search named, a person a since-dropped listing credited — and each `unanswered|` gap
- * marker ([[TmdbGapMemory]]), one per question TMDB could not answer, long after the question was
+ * marker ([[QuestionMemory]]), one per question its source could not answer, long after the question was
  * last asked. The store grew with every title the country ever screened.
  *
  * A sweep deletes:
- *  - a gap marker stamped longer ago than `markerGrace` — long past [[TmdbGapMemory.RetryAfter]], it
+ *  - a non-answer marker stamped longer ago than `markerGrace` — long past every wait the memory holds, it
  *    holds nothing back;
  *  - an answer last fetched longer ago than `keepUnread` that NONE of the model's questions reads now
  *    (`liveKeys`, the keys [[ObservationReads]] tracks). An answer the model reads is kept however old
@@ -33,9 +33,9 @@ final class TmdbStoreSweep(
   documents:   TmdbDocumentRetention,
   liveKeys:    () => Option[Set[String]],
   clock:       Clock,
-  keepUnread:  FiniteDuration = TmdbStoreSweep.KeepUnread,
-  markerGrace: FiniteDuration = TmdbStoreSweep.MarkerGrace,
-  keepFamily:  FiniteDuration = TmdbStoreSweep.KeepFamily
+  keepUnread:  FiniteDuration = QuestionPolicies.KeepUnread,
+  markerGrace: FiniteDuration = QuestionPolicies.MarkerGrace,
+  keepFamily:  FiniteDuration = QuestionPolicies.KeepFamily
 ) extends Logging {
   import TmdbStoreSweep._
 
@@ -51,12 +51,12 @@ final class TmdbStoreSweep(
     val doomed  = scanned.map { case (kind, stamped) =>
       kind -> stamped.filter { case (id, at) =>
         if (kind == TmdbKind.Family) at < familyCutoff
-        else if (kind == TmdbKind.Marker || id.startsWith(TmdbGapMemory.Prefix)) at < markerCutoff
+        else if (kind == TmdbKind.Marker || id.startsWith(QuestionMemory.Prefix)) at < markerCutoff
         else at < answerCutoff && live.exists(keys => !keys.contains(TmdbStore.keyOf(kind, id)))
       }
     }
     val swept = Swept(
-      markers = doomed.flatMap { case (kind, ids) => ids.filter(i => kind == TmdbKind.Marker || i._1.startsWith(TmdbGapMemory.Prefix)) }.size,
+      markers = doomed.flatMap { case (kind, ids) => ids.filter(i => kind == TmdbKind.Marker || i._1.startsWith(QuestionMemory.Prefix)) }.size,
       deleted = doomed.map { case (kind, stamped) => documents.deleteIfStill(kind, stamped) }.sum,
       modelUp = live.isDefined)
     logger.info(s"TMDB store sweep: ${swept.deleted} deleted (${swept.markers} of them gap markers past ${markerGrace.toDays}d)" +
@@ -67,14 +67,6 @@ final class TmdbStoreSweep(
 }
 
 object TmdbStoreSweep {
-  /** How long an answer the model no longer reads is kept since TMDB last gave it: a listing that comes
-   *  back within a month is answered from the store, not asked again. */
-  val KeepUnread: FiniteDuration = 30.days
-  /** How long another family's answer is kept since it was last fetched: longer than [[FamilyAnswerStore.RecordAge]],
-   *  so a record is asked again before it can be swept. */
-  val KeepFamily: FiniteDuration = 400.days
-  /** How long a gap marker is kept since it was stamped: a week of 1-day retries' worth. */
-  val MarkerGrace: FiniteDuration = 7.days
   /** How often the sweep runs. */
   val Interval: FiniteDuration = 24.hours
 

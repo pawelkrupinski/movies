@@ -86,7 +86,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   }
   lazy val agreementStage: services.identity.agreement.AgreementStage =
     newAgreementStage(agreementVerdicts, clock,
-      ask = questions => services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, clock, agreementQuestionMetrics),
+      ask = questions => services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
+        agreementQuestionMetrics),
       metrics = workerMetrics.identityAgreement.stage(country.code),
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
@@ -198,7 +199,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       filed = () => {
         identityProjection.asked(IdentityProjection.Trigger.Answer)
         identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
-      }, clock, agreementQuestionMetrics)
+      }, identityQuestionMemory, clock, agreementQuestionMetrics)
   /** The agreement's questions as queue tasks, and the tasks of the types before them still queued. */
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = agreementAsker +: agreementAsker.oldQueued
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film

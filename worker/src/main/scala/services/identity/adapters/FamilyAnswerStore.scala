@@ -6,17 +6,18 @@ import org.mongodb.scala.bson.BsonArray
 import services.identity.agreement.{FamilyAnswers, Showing, SourceHit, SourceRecord, VoterFamily}
 
 import java.time.Clock
-import scala.concurrent.duration._
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 /**
  * What the other film database FAMILIES answered ([[VoterFamily]]): each one's title and person searches' films and
  * its records of films, filed once fetched and read from here — a document not filed yet is a gap ([[Answer.Unknown]])
- * the agreement fill asks, never "no film". Kept long: a search's films are asked again only after [[SearchAge]], a
- * record after [[RecordAge]] (a released film's year, credits and running time do not move), and the stale answer is
- * read meanwhile. One document per question, under `<family>|title|<text>`, `<family>|director|<name>` and
- * `<family>|record|<id>`; and a venue's programme on the family's site under `<family>|showing|<venue>`, asked again
- * after [[ShowingAge]] — a programme moves daily.
+ * the agreement fill asks, never "no film". Kept long: a search's films are asked again only after
+ * [[QuestionPolicies.FamilySearchAge]], a record after [[QuestionPolicies.FamilyRecordAge]] (a released film's year,
+ * credits and running time do not move), and the stale answer is read meanwhile. One document per question, under
+ * `<family>|title|<text>`, `<family>|director|<name>` and `<family>|record|<id>`; and a venue's programme on the
+ * family's site under `<family>|showing|<venue>`, asked again after [[QuestionPolicies.FamilyShowingAge]] — a programme
+ * moves daily.
  */
 final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends services.identity.agreement.AnswerChanges {
   import FamilyAnswerStore._
@@ -58,9 +59,9 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
   def fileRecord(family: VoterFamily, id: String, found: Option[SourceRecord]): Unit = put(recordId(family, id), recordDoc(found))
   def fileShowing(family: VoterFamily, venue: String, found: Seq[Showing]): Unit     = put(showingId(family, venue), showingsDoc(found))
 
-  /** Is the question's answer missing, or older than its kind keeps it ([[SearchAge]], [[RecordAge]], [[ShowingAge]])? */
-  def wanted(id: String): Boolean =
-    document(id).forall(TmdbStore.olderThan(_, if (id.contains("|record|")) RecordAge else if (id.contains("|showing|")) ShowingAge else SearchAge, clock))
+  /** Is the question's answer missing, or older than its kind keeps it (the policy's `FamilySearchAge`, `FamilyRecordAge`,
+   *  `FamilyShowingAge`)? */
+  def wanted(id: String): Boolean = document(id).forall(TmdbStore.olderThan(_, ageOf(id), clock))
 
   private def hits(id: String): Answer[Seq[SourceHit]] =
     document(id).map(hitsOf).toAnswer
@@ -76,13 +77,12 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
 }
 
 object FamilyAnswerStore {
-  /** How long a search's films are read before the fill asks again: venues list a title for weeks, and a new film
-   *  joining a search is what a re-ask would find. */
-  val SearchAge: FiniteDuration = 90.days
-  /** How long a film's record is read before the fill asks again: a released film's facts do not move. */
-  val RecordAge: FiniteDuration = 365.days
-  /** How long a venue's programme is read before the fill asks again: a day's, as the programme moves. */
-  val ShowingAge: FiniteDuration = 20.hours
+  /** How long the answer filed under `id` is read before it is asked again, as [[QuestionPolicies]] sets it for the
+   *  question's kind. */
+  def ageOf(id: String): FiniteDuration =
+    if (id.contains("|record|")) QuestionPolicies.FamilyRecordAge
+    else if (id.contains("|showing|")) QuestionPolicies.FamilyShowingAge
+    else QuestionPolicies.FamilySearchAge
   /** How many filings [[FamilyAnswerStore.changedSince]] can name: a burst past it re-reads the verdicts' answers. */
   val ChangesKept = 100000
 

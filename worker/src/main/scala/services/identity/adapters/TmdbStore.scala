@@ -26,7 +26,7 @@ enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
   /** What another film database FAMILY answered ([[FamilyAnswerStore]]): its title and person searches' films, and its
    *  records of films — kept long, since a released film's facts do not move. */
   case Family extends TmdbKind("identity_family_answers", None)
-  /** What was asked and left unanswered, for every kind of question, and when it is due again ([[TmdbGapMemory]]):
+  /** What was asked and left unanswered, for every kind of question, and when it is due again ([[QuestionMemory]]):
    *  `unanswered|<the question's id>`, never an answer (docs/design/identity-questions.md). */
   case Marker extends TmdbKind("identity_question_markers", None)
 }

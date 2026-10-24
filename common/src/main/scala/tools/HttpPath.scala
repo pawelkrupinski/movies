@@ -24,7 +24,7 @@ object HttpPath {
   val Agreement = "agreement"
   /** TMDB's change lists swept into the model's store (`TmdbChangesSweep`). */
   val Sweep = "sweep"
-  /** The model's aged questions asked again by the fill (`TmdbRefreshes`). */
+  /** The model's aged questions, records and people asked again by the fill (`QuestionRenewals`). */
   val Refresh = "refresh"
   /** A venue detail page read into venue_pages (`VenuePageReader`, the `ReadVenuePage` task). */
   val VenuePage = "venue_page"

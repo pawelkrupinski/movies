@@ -46,15 +46,14 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
 
   private def fill(store: TmdbStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
                    rounds: mutable.Buffer[LookupFillRound] = mutable.Buffer.empty,
-                   refreshes: () => Seq[CandidateQuery] = () => Nil,
-                   gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None,
-                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
-                   backstop: TmdbAgeBackstop = TmdbAgeBackstop.Never) =
+                   renewals: () => Seq[Question] = () => Nil,
+                   gaps: TmdbStore => AnswersChanged = modelGaps, memory: Option[QuestionMemory] = None,
+                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
     new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, refreshes,
+      DaemonExecutors.directExecutor(), sleeps += _, renewals,
       // a memory of its own unless the test shares one: nothing remembered, every gap due
-      gapMemory.getOrElse(new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock, backstop)
+      memory.getOrElse(new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {
@@ -72,7 +71,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val service = new Service
     val aged    = (1 to 1000).map(i => CandidateQuery.Title(s"Aged film $i"))
     val round = fill(tmdb, service, rate = 60,
-      refreshes = () => aged,
+      renewals = () => aged.map(Question.Candidate(_)),
       gaps = _ => AnswersChanged.Empty).round()
     service.requests.map(u => java.net.URLDecoder.decode(u, "UTF-8")).count(_.contains("query=Aged film")) shouldBe round.asked
     round.asked should (be > 0 and be <= IdentityLookupFillRate(60).allowanceOver(IdentityLookupFillInterval(30.minutes).value))
@@ -86,7 +85,8 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     held.put(TmdbKind.Film, Seq("11" -> stamp))
     held.put(TmdbKind.Person, Seq("22" -> stamp))
     val read = Set(TmdbStore.keyOf(TmdbKind.Film, "11"), TmdbStore.keyOf(TmdbKind.Person, "22"))
-    fill(store(), service, gaps = _ => AnswersChanged.Empty, backstop = new TmdbAgeBackstop(held, () => Some(read), clock)).round()
+    val renewals = new QuestionRenewals(store(), held, "pl-PL", () => Nil, () => Some(read), clock)
+    fill(store(), service, gaps = _ => AnswersChanged.Empty, renewals = () => renewals.due()).round()
     service.requests.count(_.contains("/movie/11?")) shouldBe 2   // the record's two responses
     service.requests.count(_.contains("/person/22/")) shouldBe 1
   }
@@ -172,7 +172,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
   // (a 503) was not remembered at all and asked again every round. Both now wait a short backoff.
   it should "remember a question whose read failed for minutes, and one TMDB answered 404 for a day" in {
     val clock   = new tools.MutableClock(TestWiring.FixedInstant)
-    val memory  = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val Seq(absent, refused, failing) = Seq("Absent", "Refused", "Failing").map(CandidateQuery.Title(_))
     val service = new HttpFetch {
       private def answer(url: String): String =
@@ -185,8 +185,8 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String = answer(url)
     }
     // Two rounds: the 503 backs the host off, which would defer anything asked after it.
-    fill(store(), service, gaps = _ => AnswersChanged(Set(absent, refused), Set.empty), gapMemory = Some(memory)).round()
-    fill(store(), service, gaps = _ => AnswersChanged(Set(failing), Set.empty), gapMemory = Some(memory)).round()
+    fill(store(), service, gaps = _ => AnswersChanged(Set(absent, refused), Set.empty), memory = Some(memory)).round()
+    fill(store(), service, gaps = _ => AnswersChanged(Set(failing), Set.empty), memory = Some(memory)).round()
     val asked = AnswersChanged(Set(absent, refused, failing), Set.empty)
 
     clock.advance(java.time.Duration.ofMinutes(1))

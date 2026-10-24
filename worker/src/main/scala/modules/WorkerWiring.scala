@@ -134,9 +134,12 @@ class WorkerWiring(
     new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => { identityTmdbChanges.tick(); () },
       services.identity.adapters.TmdbChangesSweep.TickInterval,
       configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
-  /** The model's questions due to be asked again (`TmdbRefreshes`). */
-  lazy val identityTmdbRefreshes: services.identity.adapters.TmdbRefreshes =
-    new services.identity.adapters.TmdbRefreshes(identityTmdbStore, country.language.toLanguageTag, clock)
+  /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and
+   *  people it reads, while it is taken up. */
+  lazy val identityRenewals: services.identity.adapters.QuestionRenewals =
+    new services.identity.adapters.QuestionRenewals(identityTmdbStore, identityTmdbLayer.backend, country.language.toLanguageTag,
+      questions = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(Seq.empty[(Set[services.identity.CandidateQuery], Boolean)])(_.questions),
+      liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   // The model is the country's identity: the intake's accepted listings, answered from the model's
   // store and asked live on a gap (`cutoverLookups`).
   lazy val identityModel: services.identity.adapters.IdentityModelService = {
@@ -193,13 +196,13 @@ class WorkerWiring(
     val counted = new services.identity.adapters.LiveAsks.Counted(identityLookupFetch)
     new services.identity.adapters.StoredFirstLookups(storedLookups(reads),
       new services.identity.adapters.TmdbIdentityLookups(tmdbClientOver(counted), new services.enrichment.ImdbClient(counted), Nil),
-      services.identity.adapters.LiveAsks.remembered(identityGapMemory))
+      services.identity.adapters.LiveAsks.remembered(identityQuestionMemory))
   }
 
-  /** What was asked of TMDB and left unanswered, and when it is due again: one memory for the fill and the model's
-   *  live asks ([[services.identity.adapters.TmdbGapMemory]]). */
-  lazy val identityGapMemory: services.identity.adapters.TmdbGapMemory =
-    new services.identity.adapters.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)
+  /** What was asked and left unanswered, and when it is due again: one memory for the fill, the model's live asks and
+   *  the agreement's questions ([[services.identity.adapters.QuestionMemory]]). */
+  lazy val identityQuestionMemory: services.identity.adapters.QuestionMemory =
+    new services.identity.adapters.QuestionMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)
 
   /** `venue_pages`: every venue detail page read, written once by page (`VenuePageReader`). */
   lazy val venuePageStore: services.venuepages.VenuePageStore = newVenuePageStore
@@ -256,7 +259,7 @@ class WorkerWiring(
   // The model's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19), on its own claimed
   // schedule (`identityLookupRefreshSchedule`): the model asks live only what its store lacks, so an
   // answer the store holds is renewed here — a search that found nothing before TMDB had the film
-  // (`TmdbRefreshes`) — and any question still open; a record TMDB changed since is `identityTmdbChanges`'.
+  // (`QuestionRenewals`) — and any question still open; a record TMDB changed since is `identityTmdbChanges`'.
   // Through the lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
   lazy val lookupFill: services.identity.adapters.LookupFill =
@@ -265,17 +268,14 @@ class WorkerWiring(
       tmdb        = tmdbClientOver,
       liveFetch   = enrichmentFetch,
       normalizer  = identityTmdbNormalizer,
-      gapMemory   = identityGapMemory,
-      refreshes   = () => identityModel.peek(WorkerWiring.IdentityModelPeek)
-        .fold(Seq.empty[services.identity.CandidateQuery])(snapshot => identityTmdbRefreshes.due(snapshot.questions)),
+      memory      = identityQuestionMemory,
+      renewals    = () => identityRenewals.due(),
       rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),
       window      = identityLookupFillInterval,
       metrics     = workerMetrics.identityLookupFill.lookupsForCountry(country.code),
       executor    = lookupFillExecutor,
       sleep       = lookupFillSleep,
-      clock       = clock,
-      backstop    = new services.identity.adapters.TmdbAgeBackstop(identityTmdbLayer.backend,
-        liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock))
+      clock       = clock)
 
   /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
    *  due, gaps remembered as unanswered). A round asks what the rate allows since the last. */

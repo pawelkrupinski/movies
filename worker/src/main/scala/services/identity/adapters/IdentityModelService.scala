@@ -159,7 +159,7 @@ final class IdentityModelService(
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.
   private def snapshotOf(engine: IncrementalResolver) =
-    ModelSnapshot(engine.resolution, engine.gaps, engine.listings, TmdbRefreshes.of(engine.familyQuestions))
+    ModelSnapshot(engine.resolution, engine.gaps, engine.listings, QuestionRenewals.of(engine.familyQuestions))
 
   // A request its reader gave up on is cancelled: one the model's thread has not reached yet never runs
   // (a take-up and a snapshot for nobody, delaying the next reader), one it is running finishes.

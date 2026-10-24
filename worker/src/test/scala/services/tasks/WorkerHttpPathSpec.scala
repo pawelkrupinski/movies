@@ -11,7 +11,7 @@ import services.enrichment.{ImdbClient, ImdbIdResolver}
 import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
 import services.identity.{AnswersChanged, CandidateQuery, Question, UnansweredTmdbLookups}
-import services.identity.adapters.{AgreementAskers, AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, StoredFirstLookups, TmdbChangesSweep, TmdbGapMemory, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
+import services.identity.adapters.{AgreementAskers, AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, QuestionMemory, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
 import services.metrics.WorkerHttpMetrics
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, MovieService}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -53,8 +53,8 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
   private def lookupFill(wire: Wire, gaps: AnswersChanged = AnswersChanged.Empty, refreshes: Seq[CandidateQuery] = Nil) = {
     val store = new TmdbStore(new InMemoryTmdbDocuments, clock)
     new LookupFill(() => gaps, wire.tmdbOver, wire.fetch, new TmdbNormalizer(store), IdentityLookupFillRate(600),
-      IdentityLookupFillInterval(30.minutes), _ => (), DaemonExecutors.directExecutor(), _ => (), () => refreshes,
-      new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock)
+      IdentityLookupFillInterval(30.minutes), _ => (), DaemonExecutors.directExecutor(), _ => (),
+      () => refreshes.map(services.identity.Question.Candidate(_)), new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock)
   }
 
   private def sweep(wire: Wire) = {

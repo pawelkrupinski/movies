@@ -283,7 +283,7 @@ corpora (5 resolves), and the identity/hard-cluster integration specs (1,210 res
 | CaptureReplay.answering | CaptureReplay:27 | questions answered live | 5 runs | — | kept |
 | LogisticFit.fit / fitSigned / newton | LogisticFit | fixed Newton steps; active set ≤ 4n+4 | explicit | — | fixed count is deliberate (artefact equality) |
 | IdentityRefit.search | IdentityRefit:329 | greedy coordinate ascent | `maxChanges` 5 | — | kept (order-sensitive by design, deterministic) |
-| retries/backoff (EventTrigger, TmdbGapMemory, …) | | capped doubling | explicit | — | — |
+| retries/backoff (EventTrigger, QuestionMemory, …) | | capped doubling | explicit | — | — |
 
 CPU: the resolve-perf work of 09-29/30 put the resolver's cost in scoring and title relations, not in the loops; the
 loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo reads, sibling denials).

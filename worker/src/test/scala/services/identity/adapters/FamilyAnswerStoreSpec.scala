@@ -37,7 +37,7 @@ class FamilyAnswerStoreSpec extends AnyFlatSpec with Matchers {
     store.fileTitled(VoterFamily.Filmweb, "Klondike", Nil)
     store.fileRecord(VoterFamily.Filmweb, "880000", None)
     store.wanted(FamilyAnswerStore.titleId(VoterFamily.Filmweb, "Klondike")) shouldBe false
-    clock.advanceMillis((FamilyAnswerStore.SearchAge + 1.day).toMillis)
+    clock.advanceMillis((QuestionPolicies.FamilySearchAge + 1.day).toMillis)
     store.wanted(FamilyAnswerStore.titleId(VoterFamily.Filmweb, "Klondike")) shouldBe true
     store.answers(VoterFamily.Filmweb).titled("Klondike") shouldBe Answer.Known(Nil)
     store.wanted(FamilyAnswerStore.recordId(VoterFamily.Filmweb, "880000")) shouldBe false
@@ -56,7 +56,7 @@ class FamilyAnswerStoreSpec extends AnyFlatSpec with Matchers {
     filmweb.showing("Kino Nowe") shouldBe Answer.Known(Nil)
     val id = FamilyAnswerStore.showingId(VoterFamily.Filmweb, "Kozienicki Dom Kultury")
     store.wanted(id) shouldBe false
-    clock.advanceMillis((FamilyAnswerStore.ShowingAge + 1.minute).toMillis)
+    clock.advanceMillis((QuestionPolicies.FamilyShowingAge + 1.minute).toMillis)
     store.wanted(id) shouldBe true
     filmweb.showing("Kozienicki Dom Kultury") shouldBe Answer.Known(programme)
   }

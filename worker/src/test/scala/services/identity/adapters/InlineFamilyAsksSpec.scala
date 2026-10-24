@@ -21,8 +21,8 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
   }
   private val hit = SourceHit("tt16315948", "Klondike", None, Some(2022))
   private def asks(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], pool: java.util.concurrent.ExecutorService,
-                   filed: () => Unit = () => ()) =
-    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed), pool, Stopwatch.System)
+                   filed: () => Unit = () => (), memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", SpecClock.Pinned)) =
+    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed, memory = memory), pool, Stopwatch.System)
 
   "inline family asks" should "file each family's answer before returning" in {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
@@ -50,11 +50,18 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     filed.get shouldBe 1
   }
 
-  it should "leave a failed ask to the queue" in {
-    val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
-    val pool  = Executors.newFixedThreadPool(1)
-    asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, throw new java.io.IOException("down"))), pool)(Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), 5.seconds)
+  it should "remember a failed ask, as the queue's asker does, and not ask it inline again inside its wait" in {
+    val store  = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", SpecClock.Pinned)
+    val pool   = Executors.newFixedThreadPool(1)
+    val asked  = new AtomicInteger()
+    val klondike = Question.Family(VoterFamily.Imdb, "title|Klondike")
+    val down   = asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, { asked.incrementAndGet(); throw new java.io.IOException("down") })), pool,
+      memory = memory)
+    down(Set(klondike), 5.seconds)
+    down(Set(klondike), 5.seconds)
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe true
+    (asked.get, memory.due(Set[Question](klondike))) shouldBe ((1, Set.empty))
     pool.shutdown()
   }
 }

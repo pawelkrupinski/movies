@@ -8,14 +8,13 @@ import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
 
 import java.nio.file.Files
 import java.time.Clock
-import scala.concurrent.duration._
 
 /**
  * The posters' hashes the agreement stage reads ([[PosterEvidence]]): a venue's poster by its URL, and a TMDB film's
  * posters — hashes only, never the images — filed once hashed and read from here; a poster not filed yet is a gap
  * ([[Answer.Unknown]]) the poster fill asks, never "no poster". Filed among the other families' answers (`answers`:
  * `identity_family_answers`, kept long, and counted in its `version`), under `poster|venue|<url>` and
- * `poster|film|<tmdbId>`, and hashed again only after [[PosterAnswerStore.Age]]: an image at one URL, and a released
+ * `poster|film|<tmdbId>`, and hashed again only after [[QuestionPolicies.PosterAge]]: an image at one URL, and a released
  * film's artwork, rarely change. A film's document keeps beside its hashes the TMDB paths they were read from
  * ([[PosterAnswers.Paths]]), for the review pages to show; the agreement reads only the hashes.
  */
@@ -42,9 +41,10 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
       answers.put(idOf(question), d)
   }
 
-  /** `question`'s poster GIVEN UP on: not read — refused, unreadable, or its fetch failed every attempt the queue allowed
-   *  it ([[GiveUpAttempts]]) — so it is filed as no poster and marked [[Unread]]: no evidence either way
-   *  ([[PosterAnswers.unread]]), never a gap waited on for ever, and asked again after [[UnreadAge]]. */
+  /** `question`'s poster GIVEN UP on: not read — refused, unreadable, or its fetch failed
+   *  [[QuestionPolicies.PosterGiveUpAttempts]] times in a row — so it is filed as no poster and marked [[Unread]]: no
+   *  evidence either way ([[PosterAnswers.unread]]), never a gap waited on for ever, and asked again after
+   *  [[QuestionPolicies.PosterUnreadAge]]. */
   def giveUp(question: PosterQuestion): Unit =
     answers.put(idOf(question), new BsonDocument("hashes", BsonNull()).append(Unread, org.bson.BsonBoolean.TRUE))
 
@@ -52,12 +52,13 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
 
   override def fresh(question: PosterQuestion): Boolean = !wanted(question)
 
-  /** Is the question's answer missing, or older than [[Age]] — [[UnreadAge]] for a venue poster with no hash: one given
-   *  up on, or one filed so before a failed read was told from data (prod PL 2026-10-06: all 226 biletyna.pl posters,
-   *  refused by the origin, filed as "no poster" with no unread mark, for a year)? */
+  /** Is the question's answer missing, or older than [[QuestionPolicies.PosterAge]] — [[QuestionPolicies.PosterUnreadAge]]
+   *  for a venue poster with no hash: one given up on, or one filed so before a failed read was told from data (prod PL
+   *  2026-10-06: all 226 biletyna.pl posters, refused by the origin, filed as "no poster" with no unread mark, for a
+   *  year)? */
   def wanted(question: PosterQuestion): Boolean = document(idOf(question)).forall { d =>
     val unreadVenue = isUnread(d) || (question.isInstanceOf[PosterQuestion.Venue] && hashesOf(d).isEmpty)
-    val age         = if (unreadVenue) UnreadAge else Age
+    val age         = if (unreadVenue) QuestionPolicies.PosterUnreadAge else QuestionPolicies.PosterAge
     TmdbStore.olderThan(d, age, clock)
   }
 
@@ -65,13 +66,6 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
 }
 
 object PosterAnswerStore {
-  /** How long a hash is read before the fill hashes the poster again. */
-  val Age: FiniteDuration = 365.days
-  /** How long a poster given up on is read as unread before the fill tries it again. */
-  val UnreadAge: FiniteDuration = 7.days
-  /** The attempt on which a poster whose fetch keeps failing is given up on: about an hour and a half of the queue's
-   *  backoff (Kino Kryterium's posters, 2026-10-06: ten attempts between 14:55 and 16:09). */
-  val GiveUpAttempts = 8
   private val Unread = "unread"
 
   private def isUnread(d: BsonDocument): Boolean = d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue
@@ -90,8 +84,8 @@ final case class HashedPoster(path: String, hash: PosterHash)
  * by votes, at TMDB's 185-wide print.
  *
  * A poster the origin refuses, or no decoder can read, is not read (`None`: filed unread, asked again after
- * [[PosterAnswerStore.UnreadAge]]); a failure that may pass — a timeout,
- * a 5xx, the network — THROWS, for the queue to ask again on its backoff. A venue's link is fetched escaped as a card
+ * [[QuestionPolicies.PosterUnreadAge]]); a failure that may pass — a timeout, a 5xx, the network — THROWS, for the
+ * asker to remember and ask again on the failure backoff ([[QuestionMemory]]). A venue's link is fetched escaped as a card
  * serves it ([[services.movies.SlotFields.url]]: a raw space no fetch takes is no network failure), and a film TMDB
  * answers durably gone ([[tools.HttpStatusException.isDurable]]) has no posters.
  */

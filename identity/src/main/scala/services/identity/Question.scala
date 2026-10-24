@@ -21,6 +21,9 @@ enum Question {
   case Candidate(query: CandidateQuery)
   /** A model gap: a film's TMDB record (`tmdb_films`), for a film an answer names. */
   case FilmRecord(tmdbId: Int)
+  /** A person's TMDB record (`tmdb_people`): the films a director search's person directed and wrote, read in its walk
+   *  and renewed by age as a film's record is. */
+  case Person(tmdbId: Int)
   /** A model gap: the detail page of a listing at a venue with detail pages (`venue_pages`). */
   case VenuePage(listing: ListingKey)
   /** An agreement question to another film database: `question` as the agreement names it (`title|<text>`,
@@ -42,6 +45,7 @@ enum Question {
     case Candidate(CandidateQuery.ImdbTitled(_))  => QuestionKind.ImdbTitled
     case Candidate(CandidateQuery.TitleCredit(_)) => QuestionKind.TitleCredit
     case FilmRecord(_)                            => QuestionKind.FilmRecord
+    case Person(_)                                => QuestionKind.Person
     case VenuePage(_)                             => QuestionKind.VenuePage
     // as the family store ages them (`FamilyAnswerStore.wanted`): by the stored id
     case Family(family, question) =>
@@ -60,7 +64,8 @@ enum Question {
    *  `<family>|<question>` (`FamilyAnswerStore.questionId`), `find|<imdbId>` (`TmdbStore.findId`),
    *  `tmdb|record|<tmdbId>` ([[agreement.AgreementStage.recordReadId]]), `poster|venue|<url>` and `poster|film|<tmdbId>`
    *  ([[PosterAnswers.idOf]]), `catalogue|<source>|<id>` and `catalogue-page|<url>` (`CatalogueAnswerStore.idOf`,
-   *  `pageId`) — read back by [[Question.parse]]. None for a model gap: its stores name it in the country's language. */
+   *  `pageId`) — read back by [[Question.parse]]. None for a model question: its stores name it in the country's
+   *  language. */
   def id: Option[String] = this match {
     case Family(family, question)                 => Some(s"${family.label}|$question")
     case Find(imdbId)                             => Some(s"find|$imdbId")
@@ -68,7 +73,7 @@ enum Question {
     case Poster(question)                         => Some(PosterAnswers.idOf(question))
     case Catalogue(CatalogueQuestion.Id(of))      => Some(s"catalogue|${of.source}|${of.id}")
     case Catalogue(CatalogueQuestion.Page(url))   => Some(s"catalogue-page|$url")
-    case Candidate(_) | FilmRecord(_) | VenuePage(_) => None
+    case Candidate(_) | FilmRecord(_) | Person(_) | VenuePage(_) => None
   }
 }
 
@@ -121,7 +126,8 @@ enum QuestionKind(val system: QuestionSystem, val askers: Seq[String]) {
   case Imdb        extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh))
   case ImdbTitled  extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh))
   case TitleCredit extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh))
-  case FilmRecord  extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Sweep))
+  case FilmRecord  extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh, HttpPath.Sweep))
+  case Person      extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.Fill, HttpPath.Live, HttpPath.Refresh, HttpPath.Sweep))
   case VenuePage   extends QuestionKind(QuestionSystem.Model, Seq(HttpPath.VenuePage))
 
   case FamilySearch  extends QuestionKind(QuestionSystem.Agreement, Seq(HttpPath.Agreement))

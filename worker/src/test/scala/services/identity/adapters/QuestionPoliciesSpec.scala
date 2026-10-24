@@ -24,34 +24,71 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
     val search = QuestionPolicies.Policy(
       "tmdb_queries",
       Seq(Renewal.After(1.day, "its cluster below 0.9 confidence"), Renewal.After(7.days, "settled")),
-      NonAnswer.Marker(1.day, 5.minutes, 6.hours),
+      NonAnswer.Remembered(1.day, 5.minutes, 6.hours),
       Sweep.Unread(30.days),
       None
     )
+    val failure = NonAnswer.EmptyFiled(5.minutes, 6.hours)
     def family(age: FiniteDuration) =
-      QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(age, "any")), NonAnswer.EmptyFiled, Sweep.Fetched(400.days), Some(10.minutes))
+      QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(age, "any")), failure, Sweep.Fetched(400.days), Some(10.minutes))
+    def record(store: String, nonAnswer: NonAnswer) =
+      QuestionPolicies.Policy(store, Seq(Renewal.ChangesFeed, Renewal.After(30.days, "read by the model")), nonAnswer, Sweep.Unread(30.days), None)
     val expected = Map(
       QuestionKind.Title       -> search,
       QuestionKind.Director    -> search,
       QuestionKind.Imdb        -> search,
       QuestionKind.ImdbTitled  -> search,
       QuestionKind.TitleCredit -> search,
-      QuestionKind.FilmRecord ->
-        QuestionPolicies.Policy("tmdb_films", Seq(Renewal.ChangesFeed, Renewal.After(30.days, "read by the model")), NonAnswer.Marker(1.day, 5.minutes, 6.hours), Sweep.Unread(30.days), None),
+      QuestionKind.FilmRecord  -> record("tmdb_films", NonAnswer.Remembered(1.day, 5.minutes, 6.hours)),
+      QuestionKind.Person      -> record("tmdb_people", NonAnswer.WithItsSearch),
       QuestionKind.VenuePage     -> QuestionPolicies.Policy("venue_pages", Seq(Renewal.After(6.hours, "any")), NonAnswer.GoneFiled, Sweep.Kept, None),
       QuestionKind.FamilySearch  -> family(90.days),
       QuestionKind.FamilyRecord  -> family(365.days),
       QuestionKind.FamilyShowing -> family(20.hours),
-      QuestionKind.Find          -> QuestionPolicies.Policy("tmdb_queries", Nil, NonAnswer.EmptyFiled, Sweep.Unread(30.days), Some(10.minutes)),
-      QuestionKind.Record        -> QuestionPolicies.Policy("tmdb_films", Nil, NonAnswer.EmptyFiled, Sweep.Unread(30.days), Some(10.minutes)),
-      QuestionKind.Poster -> QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(365.days, "hashed")), NonAnswer.GivenUp(8, 7.days),
-        Sweep.Fetched(400.days), Some(10.minutes)),
+      QuestionKind.Find          -> QuestionPolicies.Policy("tmdb_queries", Nil, failure, Sweep.Unread(30.days), Some(10.minutes)),
+      QuestionKind.Record        -> QuestionPolicies.Policy("tmdb_films", Nil, failure, Sweep.Unread(30.days), Some(10.minutes)),
+      QuestionKind.Poster -> QuestionPolicies.Policy("identity_family_answers", Seq(Renewal.After(365.days, "hashed")),
+        NonAnswer.GivenUp(5.minutes, 6.hours, 8, 7.days), Sweep.Fetched(400.days), Some(10.minutes)),
       QuestionKind.CataloguePage -> family(90.days),
       QuestionKind.CatalogueId -> QuestionPolicies.Policy("identity_family_answers",
-        Seq(Renewal.After(365.days, "mapped to a film"), Renewal.After(30.days, "mapped to none")), NonAnswer.EmptyFiled, Sweep.Fetched(400.days),
+        Seq(Renewal.After(365.days, "mapped to a film"), Renewal.After(30.days, "mapped to none")), failure, Sweep.Fetched(400.days),
         Some(10.minutes))
     )
     QuestionKind.values.foreach(kind => (kind -> QuestionPolicies.of(kind)) shouldBe (kind -> expected(kind)))
+  }
+
+  // C3: the table decides. Before it only described constants the stores, refreshers, memory and sweep kept for
+  // themselves; each now reads its age or wait from the table, so the two cannot drift apart.
+  it should "be what the stores, the memory and the sweep act on" in {
+    val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-24T00:00:00Z"))
+    def renewedAfter(kind: QuestionKind) = QuestionPolicies.of(kind).renewal.collect { case Renewal.After(age, _) => age }
+    // a family's answer is kept for its kind's renewal age
+    Seq(QuestionKind.FamilySearch -> "title|Lalka", QuestionKind.FamilyRecord -> "record|1", QuestionKind.FamilyShowing -> "showing|muranow")
+      .foreach { case (kind, question) =>
+        FamilyAnswerStore.ageOf(FamilyAnswerStore.questionId(VoterFamily.Imdb, question)) shouldBe renewedAfter(kind).head
+      }
+    // a failed agreement question held back the table's first failure wait; a poster given up on its retry
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val (find, poster) = (Question.Find("tt1"), Question.Poster(PosterQuestion.Film(7)))
+    memory.failed(Seq(find)); memory.unanswered(Seq(poster))
+    val NonAnswer.EmptyFiled(firstFailure, _) = QuestionPolicies.of(QuestionKind.Find).nonAnswer: @unchecked
+    val NonAnswer.GivenUp(_, _, _, retry)     = QuestionPolicies.of(QuestionKind.Poster).nonAnswer: @unchecked
+    clock.advanceMillis(firstFailure.toMillis - 1)
+    memory.due(Set[Question](find)) shouldBe empty
+    clock.advanceMillis(2)
+    memory.due(Set[Question](find)) shouldBe Set(find)
+    clock.advanceMillis(retry.toMillis - firstFailure.toMillis - 2)
+    memory.due(Set[Question](poster)) shouldBe empty
+    clock.advanceMillis(2)
+    memory.due(Set[Question](poster)) shouldBe Set(poster)
+    // the sweep keeps an unread answer as long as the table says
+    val Sweep.Unread(keepUnread) = QuestionPolicies.of(QuestionKind.Title).swept: @unchecked
+    val docs = new InMemoryTmdbDocuments
+    docs.put(TmdbKind.Query, Seq("movie|pl-PL|Lalka" -> new org.bson.BsonDocument(TmdbStore.FetchedAt, org.bson.BsonInt64(clock.millis()))))
+    clock.advanceMillis(keepUnread.toMillis - 1)
+    new TmdbStoreSweep(docs, () => Some(Set.empty), clock).sweep().deleted shouldBe 0
+    clock.advanceMillis(2)
+    new TmdbStoreSweep(docs, () => Some(Set.empty), clock).sweep().deleted shouldBe 1
   }
 
   "Question" should "name each kind the way its store ages it" in {
@@ -74,7 +111,7 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
     open.filter(_.kind.system == QuestionSystem.Agreement).size shouldBe 8
     val queue = new services.tasks.InMemoryTaskQueue
     val clock = tools.SpecClock.Pinned
-    AgreementQuestions.enqueue(queue, open, clock)
+    AgreementQuestions.enqueue(queue, open, new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock), clock)
     val tasks = Iterator.continually(queue.claim("w", 1.minute, clock.instant())).takeWhile(_.isDefined).flatten.toSeq
     def asking(id: String) = (TaskType.AskQuestion, s"agreement|$id", Map("questions" -> id))
     tasks.map(task => (task.taskType, task.dedupKey, task.payload)).toSet shouldBe Set(
@@ -97,7 +134,8 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
       Question.Catalogue(CatalogueQuestion.Page("https://example.org/film")) -> CatalogueAnswerStore.pageId("https://example.org/film"))
     ids.map { case (question, _) => question.id } shouldBe ids.map { case (_, id) => Some(id) }
     ids.map { case (question, id) => Question.parse(id) shouldBe Some(question) }
-    (Question.FilmRecord(7).id, Question.parse("nobody|title|Lalka"), Question.parse("tmdb|record|x")) shouldBe ((None, None, None))
+    (Question.FilmRecord(7).id, Question.Person(7).id, Question.parse("nobody|title|Lalka"), Question.parse("tmdb|record|x")) shouldBe
+      ((None, None, None, None))
   }
 
   it should "name the model's gaps a change of answers names, asked by the fill, live and the refreshes" in {

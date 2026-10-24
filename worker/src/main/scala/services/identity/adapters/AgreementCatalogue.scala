@@ -8,7 +8,6 @@ import services.tasks.Task
 import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 import java.time.Clock
-import scala.concurrent.duration._
 
 /**
  * The catalogue mappings the agreement's catalogue take reads ([[agreement.Catalogue]]): what each catalogue id maps to,
@@ -39,22 +38,20 @@ final class CatalogueAnswerStore(answers: FamilyAnswerStore, clock: Clock, pages
   def filePage(page: String, links: Seq[CatalogueId]): Unit = answers.put(pageId(page), new BsonDocument("links", BsonArray.fromIterable(links.map(id =>
     new BsonDocument("source", BsonString(id.source)).append("id", BsonString(id.id))))))
 
-  /** Is the question's answer missing, or older than its kind keeps it: a mapping found for [[MappedAge]], one Wikidata
-   *  states on no item yet for [[UnmappedAge]] (it gains items), a page's links for [[PageAge]]? */
+  /** Is the question's answer missing, or older than its kind keeps it ([[QuestionPolicies]]): a mapping found for
+   *  `CatalogueMappedAge`, one Wikidata states on no item yet for `CatalogueUnmappedAge` (it gains items), a page's links
+   *  for `CataloguePageAge`? */
   def wanted(question: CatalogueQuestion): Boolean = {
     val (id, age) = question match {
-      case CatalogueQuestion.Page(url) => (pageId(url), PageAge)
-      case CatalogueQuestion.Id(of)    => (idOf(of), if (answers.document(idOf(of)).exists(d => hitsOf(d).nonEmpty)) MappedAge else UnmappedAge)
+      case CatalogueQuestion.Page(url) => (pageId(url), QuestionPolicies.CataloguePageAge)
+      case CatalogueQuestion.Id(of) =>
+        (idOf(of), if (answers.document(idOf(of)).exists(d => hitsOf(d).nonEmpty)) QuestionPolicies.CatalogueMappedAge else QuestionPolicies.CatalogueUnmappedAge)
     }
     answers.document(id).forall(TmdbStore.olderThan(_, age, clock))
   }
 }
 
 object CatalogueAnswerStore {
-  val MappedAge: FiniteDuration   = 365.days
-  val UnmappedAge: FiniteDuration = 30.days
-  val PageAge: FiniteDuration     = 90.days
-
   def idOf(id: CatalogueId): String = s"catalogue|${id.source}|${id.id}"
   def pageId(page: String): String  = s"catalogue-page|$page"
 

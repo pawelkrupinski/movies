@@ -79,7 +79,7 @@ class AgreementCatalogueStoreSpec extends AnyFlatSpec with Matchers {
     s.fileMapped(mapped, Seq(CatalogueHit(Some("Q1"), Some(1), None, "Wikidata P1265")))
     s.fileMapped(unmapped, Nil)
     Seq(mapped, unmapped).map(id => s.wanted(CatalogueQuestion.Id(id))) shouldBe Seq(false, false)
-    clock.advanceSeconds(CatalogueAnswerStore.UnmappedAge.toSeconds + 1)
+    clock.advanceSeconds(QuestionPolicies.CatalogueUnmappedAge.toSeconds + 1)
     Seq(mapped, unmapped).map(id => s.wanted(CatalogueQuestion.Id(id))) shouldBe Seq(false, true)
   }
 
@@ -87,8 +87,9 @@ class AgreementCatalogueStoreSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val questions = (1 to AgreementCatalogueQuestions.Batch + 1).map(i => CatalogueQuestion.Id(CatalogueId("webedia", i.toString))).toSet[CatalogueQuestion] +
       CatalogueQuestion.Id(CatalogueId("letterboxd", "x")) + CatalogueQuestion.Page(empire)
-    AgreementQuestions.enqueue(queue, questions.map(Question.Catalogue(_)), clock)
-    AgreementQuestions.enqueue(queue, questions.map(Question.Catalogue(_)), clock)
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    AgreementQuestions.enqueue(queue, questions.map(Question.Catalogue(_)), memory, clock)
+    AgreementQuestions.enqueue(queue, questions.map(Question.Catalogue(_)), memory, clock)
     queue.monitor().counts.values.sum shouldBe 4
   }
 
