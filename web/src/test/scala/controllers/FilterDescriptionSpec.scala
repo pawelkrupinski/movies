@@ -475,7 +475,8 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     val many = (0 until 600).map(i => film(s"Film $i", Multikino, (1 to 8).map(r => s"Sala $r"),
       List("USA", "Polska"), genres = Seq("Dramat", "Komedia"), director = Seq(s"Director $i"),
       cast = (1 to 8).map(c => s"Actor $i-$c")))
-    tools.costs.PerformanceBudgets.UnfilteredListingDescription.check(
-      tools.costs.AllocationMeter.median()(FilterDescription.forIndex(Poznan, Map.empty, many)))
+    val allocated = tools.costs.AllocationMeter.median()(FilterDescription.forIndex(Poznan, Map.empty, many))
+    info(tools.costs.PerformanceBudgets.UnfilteredListingDescription.render(allocated))
+    tools.costs.PerformanceBudgets.UnfilteredListingDescription.check(allocated)
   }
 }

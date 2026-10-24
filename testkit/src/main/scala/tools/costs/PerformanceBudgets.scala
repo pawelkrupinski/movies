@@ -3,18 +3,28 @@ package tools.costs
 import tools.costs.PerformanceBudget.{bytes, ceiling, operations}
 
 /**
- * Every hot path's cost budget, in one place: what it measured when its budget was set, and the
- * ceiling its spec holds it to. Each names the spec that reads it, and `PerformanceBudgetsSpec`
- * fails on one no spec reads.
+ * Every hot path's cost budget, in one place: what it measured when its budget was set, and what its
+ * spec holds it to. Each names the spec that reads it, and `PerformanceBudgetsSpec` fails on one no
+ * spec reads.
+ *
+ * An allocation budget (`bytes`) is a two-sided RATCHET around `measured` (`PerformanceBudget.DefaultBand`,
+ * 0.85x to 1.15x unless it names a wider band): its spec fails when the path costs MORE (a regression) and
+ * when it costs LESS (a stale figure). So `measured` is always today's cost, never a number from months
+ * ago that a regression can hide under. A `ceiling` only bounds from above; an `operations` count is exact.
  *
  * HOW TO UPDATE ONE — deliberately, never to make a red build green:
- *  1. Find out WHY the path costs more. A regression is fixed, not budgeted: a cache that stopped
- *     hitting, a copy per element, a read of rows nobody keeps.
- *  2. When the cost is a deliberate trade (a page that now shows more), re-measure on the parent
- *     commit and on yours with the spec's own `info` lines (each prints `name: actual of limit`),
- *     on an idle machine, and set `measured` to yours.
- *  3. Say in the commit message what moved and both numbers. A path made cheaper lowers its budget
- *     in the same commit, so the gain is held from then on.
+ *  - It went red ABOVE its band (a regression):
+ *    1. Find out WHY the path costs more. A regression is fixed, not budgeted: a cache that stopped
+ *       hitting, a copy per element, a read of rows nobody keeps.
+ *    2. When the cost is a deliberate trade (a page that now shows more), re-measure on the parent
+ *       commit and on yours with the spec's own `info` lines (each prints `name: actual, held to
+ *       floor..limit`; every check also appends to `target/performance-budgets.tsv`), two runs on an idle
+ *       machine, and set `measured` to yours.
+ *  - It went red BELOW its band (the path got cheaper): set `measured` to the new cost, re-measured the
+ *    same way, in the commit that made it cheaper, so the gain is held from then on.
+ *  - Either way, say in the commit message what moved and both numbers, and add a dated note here.
+ *  - A path whose runs genuinely spread wider than the default band names its own `band =` with a comment
+ *    saying what spread was measured — never to quiet a regression.
  *
  * Allocation is per thread (`AllocationMeter`), warmed and the median of several runs, so it holds on
  * a loaded machine; operation counts are exact.
@@ -35,36 +45,42 @@ object PerformanceBudgets {
   // Lowered 2026-10-11 when the listing, film and facet pages stopped embedding every country's city
   // catalog (`KINOWO_CATALOG`, then the `/` landing's alone), measured against parent ee9c28631:
   // listing warm 2.03 -> 1.30 MB, film page warm 4.00 -> 2.81, cold 5.83 -> 4.63, facet warm 2.14 -> 1.30.
+  // Re-measured 2026-10-24 on f4d30dacc when budgets became two-sided ratchets (four runs, one in a fresh
+  // JVM, every figure within 2.2% across them; Main's `chrome / stable` rows, Linux, printed within 5% of
+  // these — film page warm 2.89, /api/repertoire cold 12.84 — well inside the 15% band): listing cold 20.0 -> 18.3 MB, warm 1.30 -> 1.26, film page
+  // cold 4.63 -> 4.50, warm 2.81 -> 2.75, facet warm 1.30 -> 1.26, landing 990 -> 1,040 KB, /api/repertoire
+  // cold 14.3 -> 13.4, warm 1.35 -> 1.28, /api/details cold 4.15 -> 4.13, warm 651 -> 663 KB; blob hit 7.0 KB.
 
   /** The city listing with every controller cache empty: schedules, cards, JSON-LD all built. */
-  val ListingCold = bytes("listing render, cold caches", measured = mb(20.0))
+  val ListingCold = bytes("listing render, cold caches", measured = mb(18.3))
   /** The city listing with the controller's caches full and the response blob missed (`?diag=`). */
-  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.30))
+  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.26))
   /** The city listing served from the gzipped blob. */
   val ListingBlobHit = bytes("listing render, response blob hit", measured = kb(7.0))
   /** The heaviest film page, cold and warm. */
-  val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.63))
-  val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.81))
+  val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.50))
+  val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.75))
   /** The facet page of the country the most films list. */
-  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.30))
+  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.26))
   /** The `/` city-selection landing. It embedded every country's city catalog, so it grew with the roster
    *  (2.95 -> 5.21 MB when the US went from 468 metro pages to 2,003 town pages); it now carries only its
    *  own country's pane, rendered once per process (`PickerFragments`), and fetches the rest after load:
    *  5.21 MB -> 990 KB, measured 2026-10-11. */
-  val Landing = bytes("landing render", measured = kb(990))
+  val Landing = bytes("landing render", measured = kb(1040))
   /** `/api/repertoire` and `/api/details`, every film's JSON built (cold) or kept (warm). */
-  val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(14.3))
-  val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.35))
-  val ApiDetailsCold    = bytes("/api/details render, cold caches", measured = mb(4.15))
-  val ApiDetailsWarm    = bytes("/api/details render, warm caches", measured = kb(651))
+  val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(13.4))
+  val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.28))
+  val ApiDetailsCold    = bytes("/api/details render, cold caches", measured = mb(4.13))
+  val ApiDetailsWarm    = bytes("/api/details render, warm caches", measured = kb(663))
 
   /** Schedules a second render over an unchanged read model builds again: none, in every fixture city
    *  (`RenderBudgetSpec`) and in a city with a venue on an earlier clock (`ScheduleCacheBudgetSpec`). */
   val ScheduleRebuildsOnRepeatRender = operations("schedules rebuilt by a repeated render", limit = 0)
 
   /** `FilterDescriptionSpec`: an unfiltered listing's description over 600 films, which must not build the
-   *  filters' universes (~1 MB a New York render when it did). */
-  val UnfilteredListingDescription = bytes("unfiltered listing description, 600 films", measured = kb(4.0))
+   *  filters' universes (~1 MB a New York render when it did). 4.0 -> 2.9 KB re-measured 2026-10-24 on
+   *  f4d30dacc (three runs, identical). */
+  val UnfilteredListingDescription = bytes("unfiltered listing description, 600 films", measured = kb(2.9))
 
   // ── The browser (`PageJsBehaviourSpec`, real Chrome) ──────────────────────────────────────────
 
@@ -80,7 +96,9 @@ object PerformanceBudgets {
    *  5.02 MB (5.00 and 5.02, two runs) once the agreement stage stopped reading each of the 3,459 questions it
    *  waits on every quiet tick (9.35 MB: 4.4 MB of `QuestionMemory` reads, read only once the memory marks). */
   val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.02))
-  val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(34.1))
+  /** The whole tick: 34.1 -> 36.1 MB, re-measured 2026-10-24 (35.92 / 36.71 / 36.07 locally on quiet-tick-alloc's
+   *  3ef51dd60; Main's e2e row printed 35.01 on ff779d962 — CI's Linux JVM runs ~3% under a Mac's here). */
+  val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(36.1))
   /** Venue slots built by projections over a corpus where nothing moved. */
   val QuietProjectionSlotsBuilt = operations("venue slots built with nothing moved", limit = 0)
 
