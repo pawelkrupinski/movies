@@ -118,9 +118,10 @@ groups:
       # the next), UK "Notre-Dame de Paris" (1956 Hunchback, only prod's pooled state), DE "Rose".
       # CI's incremental = whole gate (scripts/identity-slice --drift on the pinned recording) holds the
       # code to 0; anything here is state a recording does not reach. Five, so one cluster's listings
-      # at a venue or two do not page; `for: 1h` outlasts a check whose numbers a restart wiped.
+      # at a venue or two do not page; `for: 1h` outlasts a check whose numbers a restart wiped, and
+      # `last_over_time([10m])` carries the hold across the restart's ~3m with no gauge.
       - alert: IdentityIncrementalDrift
-        expr: sum by (country) (max by (country, kind) (kinowo_worker_identity_drift_listings)) >= 5
+        expr: sum by (country) (max by (country, kind) (last_over_time(kinowo_worker_identity_drift_listings[10m]))) >= 5
         for: 1h
         labels:
           severity: warning

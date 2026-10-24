@@ -185,7 +185,7 @@ class ThresholdsMatchTheRules(unittest.TestCase):
             self.text = f.read()
 
     def rule(self, name):
-        m = re.search(r"- alert: " + name + r"\n(.*?)(?=\n      - alert: |\Z)", self.text, re.S)
+        m = re.search(r"- alert: " + name + r"\n(.*?)(?=\n      (?:- alert: |#)|\Z)", self.text, re.S)
         self.assertIsNotNone(m, name)
         return m.group(1)
 
