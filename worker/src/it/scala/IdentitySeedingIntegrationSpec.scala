@@ -65,7 +65,7 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val w = wiring(mongoTarget, c, storages, configuration.fixtureRoot, configuration.env)
       val listings = listingsOf(w, c.normalizer)
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
-        language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, new CountedGaps(c.misses))
+        language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, new CountedGaps(c.misses))
       val (resolution, seconds) = timed(IdentityResolver.resolve(listings, new Memo(source), c.normalizer, IdentityCalibration.resolver))
       val clusters = resolution.decisions.map(_.listings)
       val review   = IdSeeding.review(films, clusters)

@@ -72,7 +72,7 @@ class SharedJsonBodiesSpec extends AnyFlatSpec with Matchers {
       val docs     = new InMemoryTmdbDocuments
       val store    = new TmdbStore(docs, new MutableClock(TestWiring.FixedInstant))
       val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), new TmdbNormalizer(store, bodies))
-      val client   = new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), bodies = bodies)
+      val client   = new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => (), bodies = bodies)
       (client.identityRecord(film), docs.get(TmdbKind.Film, Seq(film.toString)))
     }
     val unshared = pass(new JsonBodies)

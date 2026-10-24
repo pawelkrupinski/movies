@@ -85,7 +85,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     }
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val svc = new MovieService(cache, new InProcessEventBus(),
-      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key"))), clock = _root_.tools.SpecClock.Pinned)
+      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ()), clock = _root_.tools.SpecClock.Pinned)
     svc.withFilmDetails(MovieRecord(), 1018) shouldBe None
     failing.set(false)
     svc.withFilmDetails(MovieRecord(), 1018).flatMap(_.imdbId) shouldBe Some("tt0166924")
@@ -102,7 +102,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
       "/movie/311?language=en-US"   -> recorded("movie_311_en.json")))
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val svc = new MovieService(cache, new InProcessEventBus(),
-      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key"))), clock = _root_.tools.SpecClock.Pinned)
+      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ()), clock = _root_.tools.SpecClock.Pinned)
     svc.withFilmDetails(MovieRecord(), 311).flatMap(_.runtimeMinutes) shouldBe Some(229)
   }
 

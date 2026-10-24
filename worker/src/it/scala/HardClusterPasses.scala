@@ -62,7 +62,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
     val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), wrap(responses(country)),
       fixtureRoot, clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)),
       // The outage pass refuses on purpose; its retries need not sleep through it.
-      fillSleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep, environment = environment, venuePages = venuePages)
+      retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep, environment = environment, venuePages = venuePages)
     (w, storage)
   }
 

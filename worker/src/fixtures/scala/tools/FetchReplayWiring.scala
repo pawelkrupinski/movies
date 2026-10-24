@@ -17,7 +17,7 @@ object FetchReplayWiring {
   def apply(country: Country, storage: ConvergenceStorage, rows: Seq[ArchivedScrape], fetch: HttpFetch,
             fixtureRoot: settings.FixtureRoot = settings.FixtureRoot.RepositoryRelative,
             clock: Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
-            fillSleep: Long => Unit = Thread.sleep, environment: Env = Env.of(),
+            retrySleep: Long => Unit = Thread.sleep, environment: Env = Env.of(),
             venuePages: services.venuepages.VenuePageStore => services.venuepages.VenuePageStore = identity): ArchiveReplayWiring = {
     CorpusFixture.seedInto(storage.archive, rows)
     val language = country.language
@@ -37,12 +37,12 @@ object FetchReplayWiring {
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
       // `venue_pages` through `venuePages`: a pass may run its own, one whose writes misbehave.
       override lazy val venuePageStore: services.venuepages.VenuePageStore = venuePages(newVenuePageStore)
-      // A replay never waits in real time: the identity lookup fill's pause between rounds.
-      override protected def lookupFillSleep: Long => Unit = fillSleep
+      // A replay never waits in real time: the identity lookup fill paces like a retry does.
+      override protected def lookupFillSleep: Long => Unit = retrySleep
       // A stub key: the answers are replayed, and a keyless client short-circuits
       // before it reaches the fetch at all.
       override def tmdbClientOver(http: HttpFetch): TmdbClient =
-        new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language,
+        new TmdbClient(http, apiKey = Some(settings.TmdbApiKey("replay")), language = language, retrySleep = retrySleep,
           bodies = tmdbJsonBodies)
     }
   }

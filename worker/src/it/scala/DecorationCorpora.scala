@@ -23,7 +23,7 @@ final class DecorationCorpora(configuration: settings.ProcessConfiguration, stor
     .map { c =>
       val w = IdentityShadow.wiring(target, c, storages, configuration.fixtureRoot, configuration.env)
       val lookups = new IdentityShadow.Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
-        language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps))
+        language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps))
       Loaded(c, IdentityShadow.listingsOf(w, c.normalizer), lookups)
     }
 

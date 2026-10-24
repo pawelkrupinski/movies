@@ -79,7 +79,7 @@ object UnmatchedClustersCapture {
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
     val source   = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
-      language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps)
+      language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps)
     val lookups  = new Memo(source)
     val whole     = IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver)
     val decisions = whole.decisions.filter(d => d.film.isEmpty && d.fallback.isEmpty && d.unanswered == 0)
@@ -100,7 +100,7 @@ object UnmatchedClustersCapture {
     val store     = new FamilyAnswerStore(docs, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val families  = UnmatchedClusters.familiesOf(c.country)
     val sources   = LiveFamilySources.of(cache, c.country, families)
-    val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
+    val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ())
     val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
     val tmdbOf: String => Answer[Option[Int]] = imdb => Try(tmdb.findByImdbId(imdb).map(_.id)).toOption
       .fold[Answer[Option[Int]]](Answer.Unknown) { found => finds.put(imdb, found); Answer.Known(found) }

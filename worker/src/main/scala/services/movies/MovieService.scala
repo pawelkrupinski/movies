@@ -289,7 +289,7 @@ object MovieService {
   /** A failed TMDB lookup that is an ANSWER about the film, not a read that did not happen:
    *  TMDB's own "not found" (`ReadOutcome.isAbsent`), a deterministic failure a retry would
    *  replay (`TaskWorker.isDeterministic`), or a missing replay fixture — which only the
-   *  fixture harness throws, and treats as permanent (see `tools.RetryingHttpFetch.recoverable`). Anything
+   *  fixture harness throws, and treats as permanent (see `TmdbClient.isTransient`). Anything
    *  else — an outage, a rate limit, a timeout, a 401 on a bad key — is about TMDB, never the
    *  film, and must not conclude it. */
   def failedDefinitively(failure: Throwable): Boolean =

@@ -168,7 +168,7 @@ object IdentityShadow {
              root: settings.FixtureRoot, environment: Env): ArchiveReplayWiring = {
     val storage = ConvergenceStorage.mongo(target, s"idshadow-${c.label}", c.normalizer)
     storages.synchronized(storages += storage)
-    FetchReplayWiring(c.country, storage, c.rows, c.fetch, root, fillSleep = (_: Long) => (), environment = environment)
+    FetchReplayWiring(c.country, storage, c.rows, c.fetch, root, retrySleep = (_: Long) => (), environment = environment)
   }
 
   // ── the resolver ──────────────────────────────────────────────────────────────────────

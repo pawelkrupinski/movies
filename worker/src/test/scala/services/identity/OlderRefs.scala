@@ -63,22 +63,6 @@ object OlderRefs {
       .flatMap(read => call(read, "corpus", byCinema, normalizer)).map(_.asInstanceOf[Seq[Listing]])
       .getOrElse(Listing.corpus(byCinema, normalizer))
 
-  /** A TMDB client over `fetch` that never sleeps: an older ref's client retries a failure itself and takes the pause
-   *  between tries as `retrySleep` (gone 2026-10-24, the wire's `RetryingHttpFetch` retries since), passed a no-op here;
-   *  a newer one has no such parameter. Every other parameter at its default (a fresh `JsonBodies` where the ref has one). */
-  def tmdbClient(fetch: tools.HttpFetch, key: settings.TmdbApiKey, language: java.util.Locale): clients.TmdbClient = {
-    val noSleep: Long => Unit = _ => ()
-    val constructor = classOf[clients.TmdbClient].getConstructors.maxBy(_.getParameterCount)
-    val args = constructor.getParameterTypes.map {
-      case t if t == classOf[tools.HttpFetch]        => fetch
-      case t if t == classOf[Option[?]]              => Some(key)
-      case t if t == classOf[java.util.Locale]       => language
-      case t if t == classOf[Function1[?, ?]]        => noSleep
-      case t                                         => t.getConstructor().newInstance()
-    }
-    constructor.newInstance(args.map(_.asInstanceOf[AnyRef])*).asInstanceOf[clients.TmdbClient]
-  }
-
   /** The lookups added after the oldest ref a tool runs under, which its wrappers pass to their source ([[passing]]). */
   val NewerLookups: Set[String] = Set("overview", "numbersFilmsByTmdbId")
 }
