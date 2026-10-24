@@ -210,7 +210,25 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
   client open 4 more TLS connections over 1.1 and none over h2, and finish 2-4x sooner on the low-latency origins.
   `HostPolicy.httpVersion` (default 1.1) opts in Filmweb, Helios's REST API and IMDb's suggestion CDN. The default
   stays 1.1 because Cloudflare fingerprints the JDK's h2 frames, and most cinema origins are paced or serial anyway.
-- **Sentry cron check-ins** for the periodic worker loops, only if Grafana doesn't already alert on missed runs.
+- **Sentry cron check-ins: done via Prometheus instead (2026-10-24), no Sentry.** Before, only the host timers and a
+  couple of censuses had a staleness alert; ~30 in-process loops published nothing per run, so a dead scheduler, a hung
+  tick or a tick throwing every run left flat gauges and no page. Now every loop runs its tick through
+  `ScheduledTick.recorded`, which stamps `kinowo_{worker,web}_scheduled_tick_last_success_timestamp_seconds{country,tick}`
+  and `..._interval_seconds` (seeded at arm time with the first run's due time). One rule per tier
+  (`Worker/WebScheduledTickStale`, `rules/scheduled-ticks.rules`) fires past 3 of the loop's own periods, never under
+  30 min, plus an `absent()` companion each. Coverage:
+
+  | Jobs | Period | Alert |
+  |---|---|---|
+  | Worker: scrape, detail, enrichment and chunk-scrape reapers; the claimed enqueuers (share-card budget, prune and city cards; content audits; OMDb backfill) | 1m to 24h | `WorkerScheduledTickStale` (new) |
+  | Worker: settle, TMDB store/changes sweeps, orphan-film-state sweep, venue closure, identity lookup refresh, drift-check tick | 1m to 24h | same (new) |
+  | Worker: corpus census and the four sampled censuses, side-rows cleanup, read-model prune and derivation pass, movie-cache cold retry and rehydrate, task-lease reaper, heartbeat, liveness watchdog, phase planner, Facebook re-scrape drain, env-config publish, uptime flush | 5s to 24h | same (new) |
+  | Web: read-model backstop and cold retry, films-served sampler, Facebook fetch flush, uptime flush/poll/tag reload | 10s to 30m | `WebScheduledTickStale` (new) |
+  | Host: registry prune (k3s-worker-1, daily) | 24h | `RegistryPruneStale` / `...MetricAbsent` (new) |
+  | Host: mongodump, off-box pull, nix GC, container-image GC, heap-dump prune, identity-regression watch, auto-apply and its state publisher, synthetic-probe discovery | 2m to 24h | already covered |
+
+  Not covered, deliberately: the process-level `JvmVitalsSampler` (diagnostic gauges that no alert reads for
+  freshness), the dev-only debug snapshot ticker, and the task pool's run loops (`WorkerQueueStalled` already covers them).
 - Nothing to gain: Caffeine (`BoundedCache`, `CaffeineMovieCache`), jsoup (no document large enough for
   `StreamParser`), Prometheus native histograms (the server side isn't enabled), `TextNormalization` (already has
   an ASCII fast path).
