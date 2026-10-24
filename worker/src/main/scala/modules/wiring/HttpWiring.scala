@@ -65,8 +65,14 @@ trait HttpWiring { self: WorkerWiring =>
     new MonitoringHttpFetch(
       HttpWiring.pacedWire(
         new CountingHttpFetch(sharedRealHttpLeaf, workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-        configuration, pacingFleet, pacingClock, pacingSleep, workerMetrics.httpBreakers.meterFor(country.code, phase)),
+        configuration, pacingFleet, pacingClock, pacingSleep, workerMetrics.httpBreakers.meterFor(country.code, phase),
+        breakerListener(phase)),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
+
+  /** Who hears the `phase` chain's host breakers change state: the enrichment chain's, the identity questions waiting on
+   *  a host that is back ([[identityHostTransition]]); the scrape chain's, nobody. */
+  protected def breakerListener(phase: String): (String, HostCircuitBreakerHttpFetch.Transition) => Unit =
+    if (phase == WorkerHttpMetrics.Phase.Enrich) identityHostTransition else (_, _) => ()
 
   /** How the chain's pacing layers wait out a host's slot. A real wait wherever a request can go
    *  out; a wiring whose leaf never sends one (a hermetic replay) keeps every pacing decision and
@@ -147,7 +153,8 @@ object HttpWiring {
    *  it asks every host exactly as politely as the worker does. */
   def pacedWire(leaf: HttpFetch, configuration: settings.ProcessConfiguration, fleetHostPace: FleetHostPace,
                 clock: java.time.Clock, sleep: Long => Unit,
-                breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch = {
+                breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop,
+                breakerListener: (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => ()): HttpFetch = {
     val pace = PacedHttpFetch.configuredInterval(configuration)
     new PacedHttpFetch(
       new ThrottledHttpFetch(
@@ -155,7 +162,7 @@ object HttpWiring {
         new RetryingHttpFetch(
           new HostCircuitBreakerHttpFetch(
             PacedHttpFetch.perProcess(leaf, pace, clock = clock, sleep = sleep),
-            meter = breakerMeter, clock = clock),
+            meter = breakerMeter, clock = clock, onTransition = breakerListener),
           sleep),
         paceFor = pace, clock = clock, sleep = sleep),
       fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),

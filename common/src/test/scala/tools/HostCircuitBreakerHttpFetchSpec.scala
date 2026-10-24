@@ -139,6 +139,49 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     cb.openRemainingMillis(hostA) shouldBe 0L // closed
   }
 
+  // The identity questions that failed against a host are asked again the moment it is back (the owner, 2026-10-24),
+  // which needs the breaker to say so: until then a close was a log line only.
+  it should "tell its listener once that a host opened, and once that it closed after a successful half-open probe" in {
+    import HostCircuitBreakerHttpFetch.Transition
+    val delegate = new RecordingHttpFetch(timeout)
+    val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
+    val heard    = scala.collection.mutable.Buffer.empty[(String, Transition)]
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock,
+      onTransition = (host, transition) => { heard += host -> transition; () })
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    a[CircuitOpenException] should be thrownBy cb.get(urlA)
+    clock.advanceSeconds(61)
+    a[HttpTimeoutException] should be thrownBy cb.get(urlA) // the probe fails: re-opened, not news to the listener
+    clock.advanceSeconds(61)
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+    cb.get(urlA) shouldBe "ok"
+    heard.toSeq shouldBe Seq(hostA -> Transition.Opened, hostA -> Transition.Closed)
+  }
+
+  it should "tell its listener a host answered after failures too few to open it, and nothing for a clean answer" in {
+    import HostCircuitBreakerHttpFetch.Transition
+    val delegate = new RecordingHttpFetch(timeout)
+    val heard    = scala.collection.mutable.Buffer.empty[(String, Transition)]
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
+      clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z")), onTransition = (host, transition) => { heard += host -> transition; () })
+    (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+    cb.get(urlA) shouldBe "ok"
+    cb.getAsync(urlB).join() shouldBe "ok"
+    heard.toSeq shouldBe Seq(hostA -> Transition.Answered(3))
+  }
+
+  it should "keep a request's answer when its listener throws" in {
+    val delegate = new RecordingHttpFetch(timeout)
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
+      clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z")), onTransition = (_, _) => throw new IllegalStateException("listener"))
+    a[HttpTimeoutException] should be thrownBy cb.get(urlA)
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+  }
+
   it should "admit only ONE probe when the cooldown elapses, not every caller that arrives with it" in {
     // The class has always promised "one trial call", but the open check was a
     // plain read: once the window elapsed EVERY caller saw 0 remaining and went to

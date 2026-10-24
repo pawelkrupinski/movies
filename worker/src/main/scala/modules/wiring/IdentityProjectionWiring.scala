@@ -213,6 +213,24 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         identityProjection.asked(IdentityProjection.Trigger.Answer)
         identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
       }, identityQuestionMemory, clock, agreementQuestionMetrics)
+  /** Asks again at once the questions that failed against an enrichment host that is back: the open agreement questions
+   *  queued, and a fill round for the model's gaps ([[services.identity.adapters.HostRecovery]]). */
+  lazy val identityHostRecovery: services.identity.adapters.HostRecovery =
+    new services.identity.adapters.HostRecovery(identityQuestionMemory, () => agreementStage.wanted,
+      askAgain = questions => services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
+        agreementQuestionMetrics),
+      fill = () => identityFillTrigger.request())
+  /** What the enrichment chain's host breakers tell the identity questions: a host back is handed to
+   *  [[identityHostRecovery]] on a thread of its own, off the request that brought the news. */
+  def identityHostTransition(host: String, transition: tools.HostCircuitBreakerHttpFetch.Transition): Unit =
+    if (services.identity.adapters.HostRecovery.recovers(transition)) identityHostRecoveryExecutor.execute { () =>
+      try identityHostRecovery.heard(host, transition)
+      catch { case scala.util.control.NonFatal(e) => logger.warn(s"[${country.code}] identity questions: $host back, but asking again failed", e) }
+    }
+  /** One thread for the hosts' recoveries; a recovery past a full queue runs on the request that brought it. */
+  protected lazy val identityHostRecoveryExecutor: java.util.concurrent.ExecutorService =
+    managedResources.executor("identity host recovery")(tools.DaemonExecutors.boundedPool(s"identity-host-recovery-${country.code}",
+      threads = 1, queueCapacity = 256, tools.WhenFull.RunOnCaller))
   /** The agreement's questions as queue tasks, and the tasks of the types before them still queued. */
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = agreementAsker +: agreementAsker.oldQueued
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film

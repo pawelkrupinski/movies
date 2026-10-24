@@ -155,6 +155,22 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
       docs.put(TmdbKind.Marker, Seq(health -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
   }
 
+  /** `host` is back — its breaker closed after an outage, or it answered after a run of failures
+   *  ([[HostRecovery]]): every failure marked against it before now is due again at once ([[due]]), as after a round's
+   *  recovery ([[roundEnded]]). */
+  def recovered(host: String): Unit = {
+    val now = clock.millis()
+    docs.put(TmdbKind.Marker, Seq(healthMarker(host) -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
+  }
+
+  /** Those of `questions` whose last ask failed against `host` (a model question's with no host recorded: TMDB's). */
+  def failedAgainst(host: String, questions: Set[Question]): Set[Question] = {
+    val ids  = questions.iterator.flatMap(question => markerOf(question).map(question -> _)).toSeq
+    val held = if (ids.isEmpty) Map.empty[String, BsonDocument] else markers(ids)
+    ids.collect { case (question, marker) if held.get(marker).exists(doc => failureWaitOf(doc).isDefined && hostOf(question, doc).contains(host)) =>
+      question }.toSet
+  }
+
   /** When each of `hosts` last recovered from an outage, of those that did. */
   private def recoveries(hosts: Set[String]): Map[String, Long] = {
     val ids  = hosts.map(host => host -> healthMarker(host)).toMap

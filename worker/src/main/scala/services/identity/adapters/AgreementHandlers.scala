@@ -67,9 +67,11 @@ object AgreementQuestions {
       each { case Question.Catalogue(CatalogueQuestion.Page(url)) => url }
   }
 
-  /** The host a failed ask's request went to, when its failure names it. */
+  /** The host a failed ask's request went to, when its failure names it: lower-cased, as the host breakers name it
+   *  ([[HostRecovery]] releases a host's failures by that name). */
   def hostOf(failure: Throwable): Option[String] = failure match {
-    case status: HttpStatusException => scala.util.Try(java.net.URI.create(status.url).getHost).toOption.flatMap(Option(_))
+    case status: HttpStatusException =>
+      scala.util.Try(java.net.URI.create(status.url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase(java.util.Locale.ROOT))
     case _                           => None
   }
 

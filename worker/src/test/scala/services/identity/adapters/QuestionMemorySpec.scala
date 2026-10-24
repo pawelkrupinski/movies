@@ -181,4 +181,24 @@ class QuestionMemorySpec extends AnyFlatSpec with Matchers {
     memory.due(Set[Question](imdbLalka, wiki)) shouldBe Set(imdbLalka)
     QuestionMemory.healthMarker(QuestionMemory.TmdbHost) shouldBe "unanswered|tmdb-health"   // TMDB's keeps its id
   }
+
+  // A host's breaker closing is its recovery too (HostRecovery): no round of the fill's has to see it come back.
+  it should "release a host's failures, and only its, when it is marked recovered, and name the questions that failed against it" in {
+    val clock  = at
+    val memory = this.memory(clock)
+    val wiki   = Question.Family(VoterFamily.Wiki, "title|Lalka")
+    val rt     = Question.Family(VoterFamily.RottenTomatoes, "title|Lalka")
+    memory.failed(Seq(imdbLalka), Some("v3.sg.media-imdb.com")); memory.failed(Seq(wiki), Some("query.wikidata.org"))
+    memory.failed(Seq(Question.Candidate(lalka)))                         // a model question's, with no host: TMDB's
+    memory.unanswered(Seq(rt))
+    val asked = Set[Question](imdbLalka, wiki, rt, Question.Candidate(lalka))
+    memory.failedAgainst("v3.sg.media-imdb.com", asked) shouldBe Set(imdbLalka)
+    memory.failedAgainst(QuestionMemory.TmdbHost, asked) shouldBe Set(Question.Candidate(lalka))
+    clock.advance(Duration.ofSeconds(30))
+    memory.recovered("v3.sg.media-imdb.com")
+    memory.due(asked - rt) shouldBe Set(imdbLalka)
+    clock.advance(Duration.ofSeconds(30))
+    memory.failed(Seq(imdbLalka), Some("v3.sg.media-imdb.com"))           // failing again after the recovery: waits again
+    memory.due(asked - rt) shouldBe empty
+  }
 }

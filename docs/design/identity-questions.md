@@ -96,6 +96,15 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    or correction decided without it, the question asked on every pass and read again once answered (a find filed is
    noted among the answers' changes, as a record read is). So the policy table has no wait column: a model question
    waits on fill rounds, an agreement question until attempted.
+   Host recovery (2026-10-24, the owner: "track external services being down and coming back"): the enrichment chain's
+   host breakers tell a listener each transition (`HostCircuitBreakerHttpFetch.Transition`: `Opened`, `Closed`,
+   `Answered(failures)`). A host back — its breaker closed after an outage, or answering after at least
+   `MinOutageReads` failures in a row that never opened it — is `HostRecovery`'s, on a thread of its own: the memory
+   marks it recovered (`recovered(host)`, every failure marked against it before due), the stage's open questions that
+   failed against it are queued again at once (the stage hands a question over once per answers' version), and the fill
+   is asked for a round; one log line each, `<host> back: N questions asked again`. Nothing is sent outside the
+   queue's and the fill's own pace. Only a failure that names its host releases this way: a 5xx or 429
+   (`AgreementQuestions.hostOf`); a timeout's waits out its backoff.
 
 Decided by the owner: a new film's questions are asked **straight away**, inline, with no budget of their own beyond
 the rate-limit protections every request already goes through (the 429 gate, breakers, `HostPolicies`) (2026-10-23);

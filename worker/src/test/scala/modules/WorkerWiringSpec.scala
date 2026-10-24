@@ -642,4 +642,31 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     w.projected shouldBe 1                                        // once: the hours are the claimed reconcile's
   }
 
+  // A host that is back has the identity questions that failed against it asked again at once (the owner, 2026-10-24):
+  // the enrichment chain's breakers tell the identity side, which releases the host's failures in the question memory.
+  "the enrichment chain's host breakers" should "release the identity questions that failed against a host once it answers again" in {
+    import services.identity.Question
+    import services.identity.agreement.VoterFamily
+    val host    = "films.example.org"
+    @volatile var down = true
+    val leaf: HttpFetch = new HttpFetch {
+      override def get(url: String): String =
+        if (down) throw new tools.HttpStatusException(503, "GET", url, None) else "{}"
+      override def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
+      override protected def realHttpLeaf: HttpFetch = leaf
+      override protected lazy val identityHostRecoveryExecutor: java.util.concurrent.ExecutorService = tools.DaemonExecutors.directExecutor()
+    }
+    val question = Question.Family(VoterFamily.Imdb, "title|Lalka")
+    // one read, asked again on the spot (RetryingHttpFetch): its tries are the host's failures in a row
+    tools.RetryingHttpFetch.Attempts should be >= services.identity.adapters.QuestionMemory.MinOutageReads
+    a[tools.HttpStatusException] should be thrownBy wiring.enrichmentFetch.get(s"https://$host/lalka")
+    wiring.identityQuestionMemory.failed(Seq(question), Some(host))
+    wiring.identityQuestionMemory.due(Set[Question](question)) shouldBe empty
+    down = false
+    wiring.enrichmentFetch.get(s"https://$host/lalka") shouldBe "{}"
+    wiring.identityQuestionMemory.due(Set[Question](question)) shouldBe Set(question)
+    wiring.stop()
+  }
 }

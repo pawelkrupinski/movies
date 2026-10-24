@@ -72,9 +72,12 @@ class HostCircuitBreakerHttpFetch(
   // scraped out of captured log output (same seam as ThrottledHttpFetch's report).
   report:           Option[String => Unit] = None,
   // Where the open count and each opening go (`kinowo_worker_http_breaker_*`); unmetered by default.
-  meter:            CircuitBreakerMeter = CircuitBreakerMeter.noop
+  meter:            CircuitBreakerMeter = CircuitBreakerMeter.noop,
+  // Who hears each host going away and coming back (`Transition`), once per transition, on the thread whose request
+  // made it: a cheap call that hands any real work elsewhere. Nobody by default.
+  onTransition:     (String, HostCircuitBreakerHttpFetch.Transition) => Unit = (_, _) => ()
 ) extends ForwardingHttpFetch with Logging {
-  import HostCircuitBreakerHttpFetch.Breaker
+  import HostCircuitBreakerHttpFetch.{Breaker, Transition}
 
   private val breakers = new ConcurrentHashMap[String, Breaker]()
 
@@ -102,10 +105,21 @@ class HostCircuitBreakerHttpFetch(
 
   /** A clean round-trip — the host is alive, so drop any accrued failure state.
    *  Only a breaker that was actually OPEN announces its close: below the
-   *  threshold nothing was announced, so the recovery isn't news either. */
+   *  threshold nothing was announced, so the recovery isn't news either. The
+   *  listener hears both: [[Transition.Closed]], or the host [[Transition.Answered]]
+   *  after the failures it had accrued. */
   private def onSuccess(host: String): Unit =
-    if (Option(breakers.remove(host)).exists(_.openUntil.isDefined))
-      announce(logger.info(_), s"Circuit CLOSED for $host — its half-open probe succeeded.")
+    Option(breakers.remove(host)).foreach { was =>
+      if (was.openUntil.isDefined) {
+        announce(logger.info(_), s"Circuit CLOSED for $host — its half-open probe succeeded.")
+        tell(host, Transition.Closed)
+      } else tell(host, Transition.Answered(was.failures))
+    }
+
+  /** Hand `transition` to the listener. Its failure is logged, never the request's: the request itself went fine. */
+  private def tell(host: String, transition: Transition): Unit =
+    try onTransition(host, transition)
+    catch { case scala.util.control.NonFatal(e) => logger.warn(s"breaker listener failed on $transition for $host", e) }
 
   /** A trip-worthy failure — count it; open (or re-open) at the threshold, and say
    *  which of the two it was. */
@@ -121,7 +135,7 @@ class HostCircuitBreakerHttpFetch(
         Breaker(failures, Some(clock.instant().plusMillis(openDuration.toMillis)), why)
       } else Breaker(failures, None, why)
     })
-    if (opened.get()) meter.opened()
+    if (opened.get()) { meter.opened(); tell(host, Transition.Opened) }
     if (opened.get())
       announce(logger.warn(_), s"Circuit OPEN for $host after $failureThreshold consecutive failures " +
         s"(last: ${why.getOrElse("unknown")}) — skipping all calls to it for ${openDuration.toSeconds}s.")
@@ -216,6 +230,16 @@ class HostCircuitBreakerHttpFetch(
 }
 
 object HostCircuitBreakerHttpFetch {
+  /** A host's breaker changing state, as its listener hears it: once each time it happens. */
+  enum Transition {
+    /** The host failed `failureThreshold` times in a row: skipped from now (not said again while a probe re-opens it). */
+    case Opened
+    /** An open host's half-open probe was answered: it is back. */
+    case Closed
+    /** The host answered after `failures` trip-worthy failures in a row, too few to have opened it. */
+    case Answered(failures: Int)
+  }
+
   /** Per-host state: consecutive trip-worthy failures, (once tripped) the instant
    *  the breaker goes half-open, and WHY it last failed. `openUntil = None` ⇒ closed.
    *
