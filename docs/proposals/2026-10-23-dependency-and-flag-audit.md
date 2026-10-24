@@ -177,13 +177,21 @@ Other runtime items:
   replay of worker-de's heap shape (8 min, three times prod's rates): pauses Serial 7.5 s, Parallel 8 threads 1.6 / 1.3
   s, 4 threads 2.1 s, 2 threads 4.4 s, G1 2.3 s; process CPU 20.0, 22.5 / 19.7, 19.8, 19.5, 41.3 s; native GC memory
   3, 42, 29, 23, 70 MB. Parallel at 4 threads (`infra/jvm/worker.options`): -72% pause at Serial's CPU; G1 doubled
-  CPU. Overlays still name `-XX:+UseSerialGC`; the launcher switches it off (`LauncherJvmFlagsSpec`), and the overlays
-  drop it in movies-gitops.
-  **Separate, not fixed by the collector:** on worker-us the hourly whole-corpus projection pushed the old gen from
-  432 to 768 of 768 MiB at 10-24 06:02Z; ~80 full collections reclaimed nothing, the String Deduplication table grew
-  and the pod was OOM-killed at 06:11:46Z. uk/de/pl reached 0.97 of their caps at the same tick (uptime ~60 min) on
-  10-23 and 10-24 and recovered. The whole tick's peak working set needs either US old-gen headroom (proposed:
-  `-Xmx1280m -Xmn384m`, 896 MiB old) or a smaller whole-projection working set.
+  CPU. The overlays no longer name a collector (movies-gitops 1c911f2; `LauncherJvmFlagsSpec` holds it).
+  **In prod (2026-10-24, 45 min from ~35 min after boot, all five on Parallel):** worker-de young 202/h at 24 ms (Serial:
+  210/h at 71 ms), full 2.7/h at 0.98 s (Serial: 4.2/h at 3.1 s), pause time 0.21% of wall clock (Serial ~0.78%,
+  -73%, as the replay predicted); us young 22 ms, no full collection in the window; uk/pl full 0.70 / 0.55 s; every
+  worker's GC pause share 0.01-0.35%. An early read: the old gens were not yet full and no nightly peak was in the
+  window, so re-check over a full day.
+  **Separate, not fixed by the collector -- the nightly identity drift check (8a4d91642), not the hourly
+  projection:** its tick, first run 60 min after boot inside 01:00-06:00 local, resolved every listing plus a fresh
+  agreement stage beside the model's own state. worker-us (booted 05:01:45) went 525 -> 768 of 768 MiB old gen at
+  06:02-06:03Z on 10-24, ~80 full collections reclaimed nothing, OOM-killed 06:11:46Z; the same on 10-23 (cap 06:03,
+  restart 06:10); uk/de/pl reached ~0.97 in their local nights. Old gen >95% after GC appeared only then, never before
+  the check landed. Stopgap: worker-us `-Xmx1280m -Xmn384m` (896 MiB old, gitops 1c911f2). Fix: the identity session
+  stops wiring the tick into the worker (84f8ffe3f) and runs the check off the worker. A smaller duplicate found on the
+  way is fixed: the intake's whole read no longer copies every unchanged listing (9c692ebc6; US archive: +88 MB and
+  96,536 copies -> 0).
   Alerts on both tiers in `jvm-heap.rules`: `JvmFullGcRateHigh` (>60 full GCs/h over 30 min, held 10 min),
   `JvmGcTimeShareHigh` (>10% of wall clock paused over 30 min, held 30 min), `JvmOldGenAfterGcNearCap` (old gen after
   collections >90% of cap for 30 min; the Serial/Parallel branch only while full GCs run).
