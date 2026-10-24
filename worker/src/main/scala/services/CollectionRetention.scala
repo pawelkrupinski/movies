@@ -69,6 +69,8 @@ object CollectionRetention {
     "tmdb_people"             -> Sweep("TmdbStoreSweep"),
     "tmdb_queries"            -> Sweep("TmdbStoreSweep"),
     "identity_question_markers" -> Sweep("TmdbStoreSweep"),
+    // the fleet database's: each country's staging clusters (capped) and resolved ones (capped, aged out), deleted by it
+    "identity_staging"        -> Sweep("IdentityStagingPublisher"),
     "env_overrides"           -> KeptForever("one per overridden setting, deleted on unset"),
     "env_registry"            -> KeptForever("the fixed set of settings, republished whole"),
     "authExchangeCodes"       -> Ttl("issuedAt"),
