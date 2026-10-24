@@ -140,12 +140,19 @@ def rewrite_mongodb(text, version, hashes):
     return URL_HASH.sub(lambda m: m.group(1) + m.group(2) + m.group(3) + hashes[m.group(2)] + m.group(5), text)
 
 
+def native_home(version):
+    # The Forgejo job image's own mongod (start-mongo-replset.sh's MONGO_NATIVE_HOME), which the spec holds to the
+    # same release: `/opt/mongodb/<tag>`.
+    return re.compile(r"(/opt/mongodb/)" + re.escape(version) + r"(?![\w.])")
+
+
 def rewrite_tags(text, current, version):
-    """Every `mongo:<current>` made `mongo:<version>`. Refuses a file that names none."""
+    """Every `mongo:<current>` and native `/opt/mongodb/<current>` made `<version>`. Refuses a file naming no tag."""
     pattern = mongo_tag(current)
     if not pattern.search(text):
         raise ValueError(f"names no mongo:{current}")
-    return pattern.sub(lambda m: m.group(1) + version, text)
+    text = pattern.sub(lambda m: m.group(1) + version, text)
+    return native_home(current).sub(lambda m: m.group(1) + version, text)
 
 
 def mongodb_releases():
@@ -222,6 +229,10 @@ def bump_mongodb():
         (ROOT / p).write_text(t)
     found["checked"] = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
         ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + " moved with it"
+    if any(native_home(current).search(t) for t in tag_files.values()):
+        found["notes"].append(f"mongodb {take}: the Forgejo job image bakes its native mongod at `/opt/mongodb/{current}` "
+                              "(bitcashier/infra `nix/files/forgejo-job-image/Dockerfile`); until it bakes "
+                              f"`/opt/mongodb/{take}` too, CI starts the `mongo:{take}` container instead (slower, same release)")
     return found
 
 
@@ -485,6 +496,9 @@ def self_test():
     check("tags", rewrite_tags("image=mirror.gcr.io/library/mongo:8.3.11\nrun mongo:8.3.11 --x\nmongo:8.3.111\n",
                                "8.3.11", "8.3.13"),
           "image=mirror.gcr.io/library/mongo:8.3.13\nrun mongo:8.3.13 --x\nmongo:8.3.111\n")
+    check("native home moves with the tags", rewrite_tags("home=/opt/mongodb/8.3.11\nimage=mongo:8.3.11\n/opt/mongodb/8.3.111\n",
+                                                          "8.3.11", "8.3.13"),
+          "home=/opt/mongodb/8.3.13\nimage=mongo:8.3.13\n/opt/mongodb/8.3.111\n")
     check("diff line", DIFF_LINE.match("openssl: 3.5.1 → 3.5.2, +4.1 KiB")["change"], "3.5.1 → 3.5.2")
     check("coloured size dropped", DIFF_LINE.match(ANSI.sub("", "libgcrypt: 1.12.2 → 1.12.4, \x1b[31;1m+9.6 KiB\x1b[0m"))["change"],
           "1.12.2 → 1.12.4")

@@ -65,7 +65,9 @@ check "with no Docker Hub token the fallback still pulls, anonymously" "0" "$(ST
 check "...without a login" "0" "$(grep -c '^login' "$STUB_LOG")"
 check "a daemon with a Docker Hub mirror of its own pulls Docker Hub's name, through that mirror" "1" \
   "$(STUB_DAEMON_MIRROR=http://forgejo.internal:3012/ start healthy >/dev/null; grep -c -- '^run .* docker.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
-check "...trying no other registry first" "pull -q docker.io/library/mongo:8.3.11" "$(grep '^pull' "$STUB_LOG" | head -1)"
+# The script's own tag, so a mongod bump (infra/bin/nix-update's) needs no edit here.
+hub_image="$(sed -n 's/^hub_image=//p' "$REPO_ROOT/scripts/ci/start-mongo-replset.sh")"
+check "...trying no other registry first" "pull -q $hub_image" "$(grep '^pull' "$STUB_LOG" | head -1)"
 check "...without logging in to Docker Hub" "0" "$(grep -c '^login' "$STUB_LOG")"
 check "the data directory is on disk by default" "0" "$(start healthy >/dev/null; grep -c -- '--tmpfs' "$STUB_LOG")"
 check "...and on a RAM-backed tmpfs of the size asked for" "1" \

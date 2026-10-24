@@ -91,7 +91,7 @@ scripts/convergence-local.sh --i-need-a-local-leg de convergenceGermanySample   
 It reads `TMDB_API_KEY` (required) and `OMDB_API_KEY` (optional) from the environment or,
 inline, from the Touch ID vault (`secrets get movies TMDB_API_KEY`) — and never the
 vault's `MONGODB_URI`, which is production's. Mongo: `MONGODB_URI` if set, else the
-itAll mongod on `:28017`, else a throwaway `mongo:8.3.11` on `:27117`; every run's
+itAll mongod on `:28017`, else a throwaway `mongo:<production release>` on `:27117`; every run's
 databases sit under a unique `MONGODB_DB` prefix and the suite drops them.
 
 By hand, the same thing:
