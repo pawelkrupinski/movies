@@ -68,7 +68,11 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    (was `TmdbRefreshes` and `TmdbAgeBackstop`) is the one renewal by age, `due(): Seq[Question]`, which the lookup fill
    asks after its gaps: aged questions, then at most 50 aged records and people (`Question.Person`, a new kind) a round,
    the store scanned at most every 6 h. Retry timings of agreement failures moved from the queue's backoff to the
-   memory's; nothing else.
+   memory's; nothing else. For step 4 the memory records every agreement ask that comes to something and answers
+   `outcome(question)`: none (never attempted; merely queued is not), `Answered`, `Absent` (a durable non-answer, an empty
+   answer filed included) or `Failed(attempts, nextRetryAt, host)`, and `attempted(question)`, until the marker is swept
+   (7 d). Each host's health is a marker of its own (`roundEnded(…, host)`; TMDB's keeps `unanswered|tmdb-health`), and a
+   host's recovery releases the failures marked against it; only the fill reports a host's rounds today (TMDB).
 4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
    family's own open questions, until answered or the deadline passes. This is GapHold v4.
 

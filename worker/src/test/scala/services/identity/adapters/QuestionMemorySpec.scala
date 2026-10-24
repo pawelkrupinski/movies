@@ -149,4 +149,36 @@ class QuestionMemorySpec extends AnyFlatSpec with Matchers {
     memory.failed(unremembered) shouldBe empty
     memory.due(unremembered) shouldBe unremembered
   }
+
+  // What the next step's settle rule reads: a question is waited on until it was attempted — answered, durably not, or
+  // failed — and merely queued is not attempted.
+  it should "say of each question whether it was attempted, and how it came out, with the failing host" in {
+    val clock  = at
+    val memory = this.memory(clock)
+    val (find, record, poster) = (Question.Find("tt1"), Question.Record(7), Question.Poster(PosterQuestion.Film(7)))
+    memory.attempted(imdbLalka) shouldBe false
+    memory.answered(Seq(imdbLalka)); memory.unanswered(Seq(find))
+    memory.failed(Seq(record), Some("api.themoviedb.org")); memory.failed(Seq(record), Some("api.themoviedb.org"))
+    memory.failed(Seq(poster))
+    (memory.outcome(imdbLalka), memory.outcome(find)) shouldBe ((Some(QuestionMemory.Outcome.Answered), Some(QuestionMemory.Outcome.Absent)))
+    memory.outcome(record) shouldBe
+      Some(QuestionMemory.Outcome.Failed(2, clock.instant().plus(QuestionPolicies.FirstFailureWait.toJava.multipliedBy(2)), Some("api.themoviedb.org")))
+    memory.outcome(poster) shouldBe Some(QuestionMemory.Outcome.Failed(1, clock.instant().plus(QuestionPolicies.FirstFailureWait.toJava), None))
+    Seq(imdbLalka, find, record, poster).forall(memory.attempted) shouldBe true
+    memory.due(Set[Question](imdbLalka, find)) shouldBe Set(imdbLalka, find)       // an answer holds nothing back
+    memory.answered(Seq(record))
+    memory.failed(Seq(record)) shouldBe Map(record -> 1)                          // counted afresh after an answer
+  }
+
+  it should "release a host's failures when that host recovers, and no other host's" in {
+    val clock  = at
+    val memory = this.memory(clock)
+    val wiki   = Question.Family(VoterFamily.Wiki, "title|Lalka")
+    memory.failed(Seq(imdbLalka), Some("v3.sg.media-imdb.com")); memory.failed(Seq(wiki), Some("query.wikidata.org"))
+    memory.roundEnded(answered = 0, failed = 3, deferred = 0, host = "v3.sg.media-imdb.com")
+    clock.advance(Duration.ofMinutes(1))
+    memory.roundEnded(answered = 2, failed = 0, deferred = 0, host = "v3.sg.media-imdb.com")
+    memory.due(Set[Question](imdbLalka, wiki)) shouldBe Set(imdbLalka)
+    QuestionMemory.healthMarker(QuestionMemory.TmdbHost) shouldBe "unanswered|tmdb-health"   // TMDB's keeps its id
+  }
 }

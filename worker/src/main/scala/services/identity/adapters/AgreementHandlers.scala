@@ -67,6 +67,12 @@ object AgreementQuestions {
       each { case Question.Catalogue(CatalogueQuestion.Page(url)) => url }
   }
 
+  /** The host a failed ask's request went to, when its failure names it. */
+  def hostOf(failure: Throwable): Option[String] = failure match {
+    case status: HttpStatusException => scala.util.Try(java.net.URI.create(status.url).getHost).toOption.flatMap(Option(_))
+    case _                           => None
+  }
+
   /** What a question is counted under ([[AgreementQuestionMetrics]]): its family's label, else its kind's. */
   def labelOf(question: Question): String = question match {
     case Question.Family(family, _) => family.label
@@ -125,7 +131,9 @@ object AgreementQuestions {
  * skipped ([[AgreementQuestionMetrics.Fresh]]), and so is one still inside the wait a failed ask left it
  * ([[AgreementQuestionMetrics.Waiting]]); once one is filed a projection is asked for (`filed`), which reads it.
  *
- * A failed ask is remembered (`memory`, [[QuestionMemory]]: 5 min doubling to 6 h, its kind's policy) and the task is
+ * Every ask that comes to something is recorded in `memory` ([[QuestionMemory]]): an answer, an empty answer filed (a
+ * durable non-answer), a failure with the host it went to when the failure names it. A failed ask is remembered (5 min
+ * doubling to 6 h, its kind's policy) and the task is
  * done: the stage hands the question over again once the families' answers move, and it is queued and asked once its
  * wait has ended — the queue's own backoff no longer asks it a second time. A host whose breaker is open was never asked:
  * the task gives its attempt back and waits the block out (`Deferred`), nothing remembered. A poster whose fetch has
@@ -208,14 +216,19 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
    *  on. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
    *  [[AgreementQuestionMetrics.Failed]]. */
   private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome =
-    try { val outcome = ask; filed(); metrics.asked(label, outcome); Done }
+    try {
+      val outcome = ask
+      // attempted: what the memory answers of it from now on — an empty answer filed is a durable non-answer
+      if (outcome == AgreementQuestionMetrics.Nothing) memory.unanswered(questions) else memory.answered(questions)
+      filed(); metrics.asked(label, outcome); Done
+    }
     catch {
       case open: CircuitOpenException =>
         metrics.asked(label, AgreementQuestionMetrics.Deferred)
         Deferred(Some(s"$what: ${open.getMessage}"), Some(clock.instant().plusMillis(open.openForMs)))
       case scala.util.control.NonFatal(e) =>
         metrics.asked(label, AgreementQuestionMetrics.Failed)
-        val failures = memory.failed(questions)
+        val failures = memory.failed(questions, AgreementQuestions.hostOf(e))
         logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
         val givenUp = failures.collect {
           case (Question.Poster(poster), times) if times >= QuestionPolicies.PosterGiveUpAttempts => poster

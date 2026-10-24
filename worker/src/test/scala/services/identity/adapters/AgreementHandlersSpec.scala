@@ -111,12 +111,14 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     AgreementQuestions.enqueue(queue, Set(dune), remembered, clock)
     queue.monitor().counts.values.sum shouldBe 0                                                      // nor queued
     asked.get shouldBe 1
+    remembered.outcome(dune).collect { case QuestionMemory.Outcome.Failed(1, _, host) => host } shouldBe Some(Some("www.metacritic.com"))
     clock.advanceMillis(QuestionPolicies.FirstFailureWait.toMillis + 1)
     AgreementQuestions.enqueue(queue, Set(dune), remembered, clock)
     queue.monitor().counts.values.sum shouldBe 1
     fails = false
     handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Done
     store.answers(VoterFamily.Metacritic).titled("Dune").toOption.map(_.size) shouldBe Some(1)
+    remembered.outcome(dune) shouldBe Some(QuestionMemory.Outcome.Answered)
   }
 
   "the agreement's questions" should "report each enqueue's result and each question's outcome" in {
