@@ -71,12 +71,12 @@ live at take-up (`StoredFirstLookups`).
 |---|---|---|---|---|---|
 | Title, Director, Imdb, ImdbTitled, TitleCredit | tmdb_queries | 1 d below 0.9 confidence, 7 d settled (`TmdbRefreshes`) | marker (fill and live asks), empty 1 d, failure 5 min doubling to 6 h (`TmdbGapMemory`) | unread 30 d | on fill rounds |
 | FilmRecord | tmdb_films | changes feed only | as above | unread 30 d | on fill rounds |
-| VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich) | gone (404/410) filed; failure nothing | never | on fill rounds |
+| VenuePage | venue_pages | 6 h (`Freshness` DetailEnrich) | gone (404/410) filed; failure marked attempted, read again past 6 h | never | on fill rounds |
 | FamilySearch | identity_family_answers | 90 d | empty filed; failure on queue backoff | 400 d since fetched | 10 min* |
 | FamilyRecord | identity_family_answers | 365 d | as above | 400 d | 10 min* |
 | FamilyShowing | identity_family_answers | 20 h | as above | 400 d | 10 min* |
-| Find | tmdb_queries | when the stage opens it | nothing filed, no marker | unread 30 d | 10 min* |
-| Record | tmdb_films | when a take waits on its release day | nothing filed, no marker | unread 30 d | 10 min* |
+| Find | tmdb_queries | when the stage opens it | none found filed; failure on queue backoff | unread 30 d | 10 min* |
+| Record | tmdb_films | once, when a take waits on its release day | unknown filed empty; failure on queue backoff | unread 30 d | 10 min* |
 | Poster | identity_family_answers | 365 d | given up after 8 failures, retried after 7 d | 400 d | 10 min* |
 | CataloguePage | identity_family_answers | 90 d | empty filed; failure on queue backoff | 400 d | 10 min* |
 | CatalogueId | identity_family_answers | 365 d mapped, 30 d unmapped | as above | 400 d | 10 min* |
@@ -91,8 +91,11 @@ until one is.
   `ResolverDecision.unanswered > 0`, the resolver's unanswered candidate queries. An agreement unknown is not counted.
 - **Three stop-waiting rules**: fill rounds, GapHold's 2 h (reverted), `PartialAfter`'s 10 min with its
   at-least-one-answer condition.
-- **Non-answer memory is partial**: until step 3 only the fill wrote `TmdbGapMemory` markers. The model's live asks
-  write them now; the agreement's TMDB find and record re-read, and a venue page read that fails, still leave none.
+- **Non-answer memory was partial**: until step 3 only the fill wrote `TmdbGapMemory` markers, and a live miss at
+  take-up left none, so it was asked again at every take-up. The model's live asks write them now. Every other kind
+  already remembered its non-answer its own way (checked 2026-10-24): an empty answer is filed as one (a find naming no
+  film too), a failed agreement ask waits out the task queue's backoff, a failed venue page read is marked attempted for
+  the detail refresh's 6 h. Those need no marker; only the model's markers live in `identity_question_markers`.
 - **Records and people refresh only from the changes feed**; a missed window leaves them stale. The paced sweep in
   flight (`tmdb-changes-sweep`) persists its window and cursor so a missed window resumes; an age backstop is still
   step 3's.

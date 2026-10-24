@@ -33,13 +33,11 @@ object QuestionPolicies {
     case Marker(empty: FiniteDuration, firstFailure: FiniteDuration, maxFailure: FiniteDuration)
     /** An empty answer is filed as one ("no film"); a failure files nothing and is asked again on the task queue's backoff. */
     case EmptyFiled
-    /** A gone page (404/410) is filed; a failure files nothing and is asked again by the next detail refresh. */
+    /** A gone page (404/410) is filed; a failed read is marked attempted (`EnrichDetailsTasks.pageAttempted`) and read
+     *  again past the detail refresh's age, one the store did not take on the task queue's backoff. */
     case GoneFiled
     /** Given up on after `attempts` failed fetches, filed as unread and tried again after `retry`. */
     case GivenUp(attempts: Int, retry: FiniteDuration)
-    /** Nothing filed: TMDB's empty answer or failure leaves no marker; the task queue's backoff asks a failure again,
-     *  and the stage opens the question again while it has no answer. */
-    case Nothing
   }
 
   /** When the store sweep ([[TmdbStoreSweep]]) deletes an answer. */
@@ -98,10 +96,11 @@ object QuestionPolicies {
     QuestionKind.FamilySearch  -> family(FamilyAnswerStore.SearchAge),
     QuestionKind.FamilyRecord  -> family(FamilyAnswerStore.RecordAge),
     QuestionKind.FamilyShowing -> family(FamilyAnswerStore.ShowingAge),
-    // TMDB's answers, filed in the TMDB store as the model's are, through the TMDB client (not the fill: no marker); a
-    // record read again is asked when a take waits on its release day, never by age
-    QuestionKind.Find   -> agreement(TmdbKind.Query.collection).copy(nonAnswer = NonAnswer.Nothing, swept = Sweep.Unread(TmdbStoreSweep.KeepUnread)),
-    QuestionKind.Record -> agreement(TmdbKind.Film.collection).copy(nonAnswer = NonAnswer.Nothing, swept = Sweep.Unread(TmdbStoreSweep.KeepUnread)),
+    // TMDB's answers, filed in the TMDB store as the model's are, through the TMDB client: a find naming no film is filed
+    // as one (`TmdbStore.foundFirst`), a record TMDB does not know as empty; a failure is asked again on the task
+    // queue's backoff. A record read again is asked once in the stage's life, when a take waits on its release day.
+    QuestionKind.Find   -> agreement(TmdbKind.Query.collection).copy(swept = Sweep.Unread(TmdbStoreSweep.KeepUnread)),
+    QuestionKind.Record -> agreement(TmdbKind.Film.collection).copy(swept = Sweep.Unread(TmdbStoreSweep.KeepUnread)),
     QuestionKind.Poster -> agreement(TmdbKind.Family.collection, Renewal.After(PosterAnswerStore.Age, "hashed"))
       .copy(nonAnswer = NonAnswer.GivenUp(PosterAnswerStore.GiveUpAttempts, PosterAnswerStore.UnreadAge)),
     QuestionKind.CataloguePage -> agreement(TmdbKind.Family.collection, Renewal.After(CatalogueAnswerStore.PageAge, "any")),
