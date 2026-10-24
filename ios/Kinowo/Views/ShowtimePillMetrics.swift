@@ -40,6 +40,11 @@ enum ShowtimePillMetrics {
     static let pressedBackgroundRGB: (red: Double, green: Double, blue: Double) = (90 / 255, 90 / 255, 158 / 255)
     static let textRGB: (red: Double, green: Double, blue: Double) = (170 / 255, 212 / 255, 255 / 255)
     static let formatAlpha: Double = 0.7
+    /// The lighter pill of a day a search brought in (`OutsideDays`): a `#4d4d82` fill and
+    /// `#d4e8ff` text, as the web's `.date-group.outside-day .badge-time` and Android's
+    /// `OutsideDayChipBackground` / `OutsideDayChipText`.
+    static let outsideBackgroundRGB: (red: Double, green: Double, blue: Double) = (77 / 255, 77 / 255, 130 / 255)
+    static let outsideTextRGB: (red: Double, green: Double, blue: Double) = (212 / 255, 232 / 255, 255 / 255)
 
     /// Inset inside the pill, uniform on both axes so the time sits in an even
     /// box of padding (`.padding(.horizontal,)` / `.padding(.vertical,)`). 4 pt

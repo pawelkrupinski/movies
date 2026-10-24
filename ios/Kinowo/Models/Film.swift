@@ -12,6 +12,11 @@ struct Film: Identifiable, Hashable, Codable {
     /// argument optional — the many fixture `Film(…)` constructions across the
     /// test suites don't care about slugs and shouldn't have to name one.
     var slug: String? = nil
+    /// What the search matches besides the title: the original title and, for one in another
+    /// script, its romanisation ("大红灯笼高高挂", "da hong deng long gao gao gua"), computed by the
+    /// server (`SearchTitles`) so the app needs no transliterator. Optional, with a default, for
+    /// the same reasons as `slug`: an older server omits it, and fixtures need not name it.
+    var searchTitles: [String]? = nil
     /// Lenient on purpose: a poster URL Foundation refuses is `nil`, not a
     /// failed listing — see `LenientURL`.
     @LenientURL var posterURL: URL?
@@ -55,6 +60,12 @@ struct Film: Identifiable, Hashable, Codable {
     let directors: [String]
     let cast: [String]
     let showings: [DayShowings]
+
+    /// Whether the search `query` (any case) is in the title or one of `searchTitles`.
+    func matchesSearch(_ query: String) -> Bool {
+        let needle = query.lowercased()
+        return title.lowercased().contains(needle) || (searchTitles ?? []).contains { $0.lowercased().contains(needle) }
+    }
 
     /// Earliest screening this film still carries, as a sortable
     /// `YYYY-MM-DDTHH:MM` string across every day and cinema — the iOS twin of

@@ -112,6 +112,21 @@ final class LocalServerRepertoireTests: LocalServerTestCase {
         }
     }
 
+    // ── searchTitles: the search's original titles ───────────────
+
+    /// The listing serves each film's original title (and a romanisation of one in another script)
+    /// as `searchTitles`, and the search finds a film by it on any day.
+    func testSearchFindsAFilmByItsServedOriginalTitle() throws {
+        let (films, _) = try repertoire()
+        let lambs = try XCTUnwrap(films.first { $0.title == "Milczenie owiec" }, "fixture film missing")
+        XCTAssertEqual(lambs.searchTitles, ["The Silence of the Lambs"])
+        let lanterns = try XCTUnwrap(films.first { $0.title == "Zawieście czerwone latarnie" }, "fixture film missing")
+        XCTAssertEqual(lanterns.searchTitles?.first, "大红灯笼高高挂")
+        XCTAssertEqual(lanterns.searchTitles?.count, 2, "the original and its romanisation")
+        let found = films.filteredFor(date: .anytime, format: .empty, query: "silence of the lambs", hidden: [])
+        XCTAssertEqual(found.map(\.title), ["Milczenie owiec"])
+    }
+
     // ── /api/details ─────────────────────────────────────────────
 
     func testDetailsDecodeAndJoinListedFilmsByTitle() throws {

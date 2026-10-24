@@ -297,7 +297,9 @@ struct FilmDetailView: View {
                 // `navigationDestination` re-resolves it from the unfiltered
                 // `store.films`, undoing the grid's per-day prune), so
                 // `ShowingsView` renders the complete schedule across every day.
+                // The full schedule: no day of it is "brought in" by a search.
                 ShowingsView(film: film)
+                    .environment(\.outsideDays, nil)
             }
             .padding(.top, 4)
         }

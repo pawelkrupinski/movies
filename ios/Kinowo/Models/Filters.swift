@@ -429,7 +429,7 @@ extension Sequence where Element == Film {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return films.compactMap { film in
             if hidden.contains(film.title) { return nil }
-            if !trimmedQuery.isEmpty && !film.title.lowercased().contains(trimmedQuery) { return nil }
+            if !trimmedQuery.isEmpty && !film.matchesSearch(trimmedQuery) { return nil }
             if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
             if !excludedGenres.isEmpty && !film.genres.isEmpty && Set(film.genres).isSubset(of: excludedGenres) { return nil }
             if !excludedDirectors.isEmpty && !film.directors.isEmpty && Set(film.directors).isSubset(of: excludedDirectors) { return nil }

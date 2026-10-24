@@ -293,6 +293,7 @@ struct SearchFieldContent: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier(A11y.Search.clear)
             }
         }
     }

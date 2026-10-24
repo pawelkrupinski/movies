@@ -37,6 +37,11 @@ struct ContentView: View {
     @State private var excludedDirectors: Set<String> = []
     @State private var excludedCast: Set<String> = []
     @State private var search: String = ""
+    /// The search's day (`SearchDay`): what clearing the search goes back to, and which days it
+    /// brought in.
+    @State private var searchDay = SearchDay()
+    /// Set while the search itself moves `dateFilter`, so that move is not taken for a pick.
+    @State private var dayMovedBySearch = false
     @State private var sortOption: SortOption = .earliest
     @State private var showFilters: Bool = false
     /// First-visit area picker for a split city (presented once — see below).
@@ -475,6 +480,8 @@ struct ContentView: View {
                     // only the grouped-by-cinema section view suppresses it.
                     FilmGridView(films: films(for: preset),
                                  scrollResetToken: AnyHashable(dateFilter))
+                        // While a search shows every day, the days it brought in are drawn lighter.
+                        .environment(\.outsideDays, preset == .anytime ? searchDay.outsideDays(now: Date(), zone: cityZone) : nil)
                         .refreshable { await store.reload() }
                         .tag(preset)
                 }
@@ -501,7 +508,17 @@ struct ContentView: View {
             }
             // Flash the day name and retire the swipe hint whenever the day
             // changes — by a swipe OR a date-pill tap (both move this selection).
-            .onChange(of: dateFilter) { didChangeDay() }
+            .onChange(of: dateFilter) {
+                // A day moved by the search itself is no pick; any other (a swipe, a pill) is.
+                if dayMovedBySearch { dayMovedBySearch = false } else { searchDay.dayPicked() }
+                didChangeDay()
+            }
+            .onChange(of: search) {
+                if let day = searchDay.queryChanged(to: search, showing: dateFilter) {
+                    dayMovedBySearch = true
+                    dateFilter = day
+                }
+            }
         }
     }
 
@@ -588,10 +605,13 @@ struct ContentView: View {
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
             excludedCast: excludedCast,
-            zone: catalog.zone(ofSlug: prefs.selectedCity, inCountry: prefs.selectedCountry)
+            zone: cityZone
         )
         .sorted(by: sortOption)
     }
+
+    /// The selected city's zone: what "today" means for its listings.
+    private var cityZone: TimeZone { catalog.zone(ofSlug: prefs.selectedCity, inCountry: prefs.selectedCountry) }
 
     /// Flash the given day label in the middle of the screen for ~0.7 s,
     /// then fade it out over 0.2 s. Cancels any previous fade-out task so

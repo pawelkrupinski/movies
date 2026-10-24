@@ -27,4 +27,7 @@ struct ShowtimePillStyle: Equatable {
 
 extension EnvironmentValues {
     @Entry var showtimePillStyle: ShowtimePillStyle = ShowtimePillStyle()
+    /// While a search shows every day, the days it brought in, drawn lighter (`SearchDay`);
+    /// nil everywhere else.
+    @Entry var outsideDays: OutsideDays? = nil
 }

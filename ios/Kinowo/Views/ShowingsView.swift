@@ -27,6 +27,7 @@ struct ShowingsView: View {
     /// header text instead of trusting `day.label`, which is baked once by
     /// the server in the deployment's fixed default language.
     @Environment(\.locale) private var locale
+    @Environment(\.outsideDays) private var outsideDays
 
     var body: some View {
         let allDays = film.showings
@@ -39,6 +40,7 @@ struct ShowingsView: View {
 
         VStack(alignment: .leading, spacing: spacing.showingsBlock) {
             ForEach(days, id: \.date) { day in
+                let outside = outsideDays?.contains(day.date) ?? false
                 // Each day is its own block so the gap below the day label
                 // (`dayToCinema`) is independent of `showingsBlock`, which spaces
                 // the cinema rows within a day and the day blocks from one
@@ -46,7 +48,7 @@ struct ShowingsView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(DateLabel.format(isoDate: day.date, locale: locale).uppercased())
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Color.white.opacity(0.85))
+                        .foregroundColor(Color.white.opacity(outside ? 1 : 0.85))
                         .tracking(0.5)
                         .padding(.top, spacing.dayLabelTop)
                     VStack(alignment: .leading, spacing: spacing.showingsBlock) {
@@ -59,6 +61,7 @@ struct ShowingsView: View {
                                     ForEach(cinema.showtimes) { st in
                                         ShowtimeBadge(
                                             showtime: st,
+                                            outside: outside,
                                             displayFormat: FormatTokenFilter.filter(st.format, removing: strippedTokens)
                                         )
                                     }
@@ -206,6 +209,8 @@ private struct ShowtimeBadge: View {
     @Environment(\.showtimePillStyle) private var style
     @Environment(\.locale) private var locale
     let showtime: Showtime
+    /// On a day a search brought in: the lighter pill.
+    var outside: Bool = false
     var displayFormat: String = ""
 
     /// True while a long-press is held down — drives the room tooltip.
@@ -252,6 +257,14 @@ private struct ShowtimeBadge: View {
         red: ShowtimePillMetrics.textRGB.red,
         green: ShowtimePillMetrics.textRGB.green,
         blue: ShowtimePillMetrics.textRGB.blue)
+    private static let outsideFill = Color(
+        red: ShowtimePillMetrics.outsideBackgroundRGB.red,
+        green: ShowtimePillMetrics.outsideBackgroundRGB.green,
+        blue: ShowtimePillMetrics.outsideBackgroundRGB.blue)
+    private static let outsideTimeColor = Color(
+        red: ShowtimePillMetrics.outsideTextRGB.red,
+        green: ShowtimePillMetrics.outsideTextRGB.green,
+        blue: ShowtimePillMetrics.outsideTextRGB.blue)
 
     var body: some View {
         let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -260,16 +273,16 @@ private struct ShowtimeBadge: View {
         let pill = HStack(spacing: style.internalGap) {
             Text(showtime.time)
                 .font(.system(size: style.timeFontSize, weight: style.timeWeight))
-                .foregroundColor(Self.timeColor)
+                .foregroundColor(outside ? Self.outsideTimeColor : Self.timeColor)
             if !trimmedFormat.isEmpty {
                 Text(trimmedFormat)
                     .font(.system(size: style.formatFontSize, weight: style.formatWeight))
-                    .foregroundColor(Self.timeColor.opacity(ShowtimePillMetrics.formatAlpha))
+                    .foregroundColor((outside ? Self.outsideTimeColor : Self.timeColor).opacity(ShowtimePillMetrics.formatAlpha))
             }
         }
         .padding(.horizontal, style.horizontalInset)
         .padding(.vertical, style.verticalInset)
-        .background(holding ? Self.pressedFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
+        .background(holding ? Self.pressedFill : outside ? Self.outsideFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
         .onGeometryChange(for: CGFloat.self, of: {
             $0.frame(in: .named(Self.cardCoordinateSpace)).midX
         }) { pillMidX = $0 }

@@ -24,6 +24,17 @@ final class FilteredForTests: XCTestCase {
              directors: directors, cast: cast, showings: days)
     }
 
+    // The search matches the original title and its romanisation (`searchTitles`, served).
+    func testQueryMatchesTheOriginalTitleAndItsRomanisation() {
+        var lanterns = film("Zawieście czerwone latarnie", [day(today, [cinema("Muza", [slot("18:00")])])])
+        lanterns.searchTitles = ["大红灯笼高高挂", "da hong deng long gao gao gua"]
+        let films = [lanterns, film("Title2", [day(today, [cinema("Apollo", [slot("18:00")])])])]
+        for query in ["大红灯笼", "Gao Gao Gua", "czerwone"] {
+            XCTAssertEqual(films.filteredFor(date: .anytime, format: .empty, query: query, hidden: []).map(\.title),
+                           ["Zawieście czerwone latarnie"], query)
+        }
+    }
+
     private let today: String = DateFilter.iso(Date())
     private let tomorrow: String = DateFilter.iso(Date().addingTimeInterval(86_400))
 
