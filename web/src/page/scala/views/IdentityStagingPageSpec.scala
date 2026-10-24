@@ -111,4 +111,22 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.evalString(s"document.querySelector('$row ul.why').textContent") should include ("best tmdb 1234 at 96.0%")
     }
   }
+
+  // The US saw "settled · Royal Ballet & Opera 2026/27: Swan Lake · Broadcast 91%" and nothing before it: the take's
+  // unshrinkable line took the whole row, squeezing the listing's title to nothing.
+  it should "keep a resolved row's listing in view beside a long take, and name a row with no listing by its take" in {
+    val take = StagedTake(Some(1702782), Some("Royal Ballet & Opera 2026/27: Swan Lake"), "Broadcast", 0.91)
+    val swan = cluster("d1", "Galaxy Theatres Gig Harbour", "Royal Ballet: Swan Lake", Nil, resolvedAt = Some(clock.millis()))
+      .copy(take = take, listingCount = 2)
+    staging.publish("es", Nil, Nil, beat(0), resolved = Seq(swan, swan.copy(key = "d2", listings = Nil, listingCount = 0)),
+      keptFor = java.time.Duration.ofDays(7))
+    onPage { page =>
+      def title(key: String) = s"document.querySelector('section[data-country=es] details.cluster[data-id=\"es|$key\"] summary .title')"
+      page.waitFor(s"${title("d2")} !== null")
+      page.eval("document.getElementById('countries').style.width = '460px'")   // one column, as on a laptop's half screen
+      page.evalString(s"${title("d1")}.textContent") should include ("Royal Ballet: Swan Lake")
+      page.evalInt(s"Math.round(${title("d1")}.getBoundingClientRect().width)") should be > 100
+      page.evalString(s"${title("d2")}.textContent") should include ("(no listings) Royal Ballet & Opera 2026/27: Swan Lake")
+    }
+  }
 }

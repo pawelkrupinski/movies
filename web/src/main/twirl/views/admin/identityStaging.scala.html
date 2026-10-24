@@ -32,8 +32,10 @@
     summary::before { content: "▸"; color: #555; }
     details[open] > summary::before { content: "▾"; }
     summary:hover { background: #171717; }
-    .title { color: #ddd; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .title { color: #ddd; flex: 1 1 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .meta { color: #777; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    /* The take shrinks too: unshrinkable, a long one squeezed the listing's title to nothing. */
+    summary > .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .progress { color: #4aa3df; }
     .body { padding: 4px 4px 10px 18px; font-size: 12px; }
     .body .line { margin: 2px 0; }
@@ -120,7 +122,8 @@
       return "no film · " + t.basis + (t.leaning != null ? " (leans " + (t.leaningTitle || "tmdb " + t.leaning) + ")" : "");
     }
     function headline(cl) {
-      var l = cl.listings[0] || { venue: "", rawTitle: "?" };
+      var l = cl.listings[0];
+      if (!l) return "(no listings) " + esc(cl.take.title || cl.take.leaningTitle || "") + " <span class=\"meta\">" + esc(cl.key) + "</span>";
       var more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) : "";
       return esc(l.rawTitle) + " <span class=\"meta\">@@ " + esc(l.venue) + more + "</span>";
     }
