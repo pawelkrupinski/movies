@@ -25,6 +25,7 @@ worker/src/test/scala/scripts/BuildHardClusters.scala
 # nothing else of the web. Its file and every web source it reaches, which
 # ConvergenceDispatchGateSpec recomputes, so a new dependency cannot go unlisted.
 web/src/main/scala/controllers/MovieControllerService.scala
+web/src/main/scala/controllers/SearchTitles.scala
 web/src/main/scala/controllers/StartedShowtimeCut.scala
 web/src/main/scala/controllers/WebHref.scala
 web/src/main/scala/tools/AsciiUrl.scala

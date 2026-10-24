@@ -86,6 +86,15 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (film \ "originalTitle").toOption shouldBe None
   }
 
+  // What the apps' search matches besides the title: the original title (and, for one in
+  // another script, its romanisation), computed once here so Swift and Kotlin need no ICU.
+  it should "carry the original title's search spellings on the lean listing" in {
+    val (ctrl, _) = buildController()
+    val film = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())))
+      .as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "searchTitles").as[Seq[String]] shouldBe Seq("The Test Movie")
+  }
+
   // The `slug` field is the apps' whole deep-link path — `/{city}/movie/{slug}` — and
   // it is SERVED rather than folded client-side so a Swift copy and a Kotlin copy
   // cannot drift from `tools.Slugify`. Nothing asserted it, so an empty or wrong slug

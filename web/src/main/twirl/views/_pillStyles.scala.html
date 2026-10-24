@@ -41,6 +41,10 @@
     -webkit-touch-callout: none;
   }
   a.badge-time:hover { background: #5a5a9e; color: #fff; }
+  /* A showtime on a day a search brought in (`.date-group.outside-day`): a lighter pill than the
+     listing's own day. The same colours as the apps' (iOS `ShowtimePillMetrics`, Android `Theme.kt`). */
+  .date-group.outside-day .badge-time { background: #4d4d82; color: #d4e8ff; }
+  .date-group.outside-day a.badge-time:hover { background: #5a5a9e; color: #fff; }
   /* The format tag is one unbreakable box. A column narrower than the whole pill (the 250 px
      zoomed phones: "11:30 AM IMAX 3D DUB" needs ~119 px of a ~94 px column) then drops the tag
      whole under the time, rather than splitting it at a space ("11:30 AM IMAX 3D" / "DUB"). As an

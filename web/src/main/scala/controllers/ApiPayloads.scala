@@ -14,7 +14,10 @@ case class ApiRatings(
   filmweb: Option[Double], filmwebURL: Option[WebHref]
 )
 case class ApiFilm(
-  title: String, slug: String, posterURL: Option[WebHref], fallbackPosterURLs: Seq[WebHref],
+  title: String, slug: String,
+  // What the search matches besides the title: the original title and its romanisation ([[SearchTitles]]).
+  searchTitles: Seq[String],
+  posterURL: Option[WebHref], fallbackPosterURLs: Seq[WebHref],
   runtimeMinutes: Option[Int], releaseYear: Option[Int], genres: Seq[String],
   // Age rating / certificate (UK BBFC "15"/"PG"/…); omitted when the film has none.
   ageRating: Option[String],
@@ -95,6 +98,7 @@ object ApiFilm {
       // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
       // would be two more places for it to drift from `tools.Slugify`.
       slug             = fs.slug.getOrElse(""),
+      searchTitles     = fs.searchTitles,
       // Every URL below is a [[WebHref]], http(s) only — both apps hand the links
       // to the system, where a scraped custom-scheme or `intent:` URL would open
       // another app — and goes through AsciiUrl: the mobile models decode these

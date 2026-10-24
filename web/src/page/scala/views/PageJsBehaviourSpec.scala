@@ -1794,6 +1794,93 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The search matches a film's original title and its romanisation too (`data-search-titles`,
+  // server-side `SearchTitles`), and looks through EVERY day: "Milczenie owiec" (The Silence of
+  // the Lambs) has no showing on the fixture's today, 2026-06-08.
+  it should "find a film by its original title, or its romanisation, on any day" in {
+    onPath("/") { page =>
+      page.eval("pickDay('today')")
+      page.eval("__grid.search('silence of the lambs')")
+      page.evalString("__grid.titleOrder()") shouldBe "Milczenie owiec"
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "anytime"
+
+      // 大红灯笼高高挂, Zhang Yimou's original title, typed as itself and as ICU's pinyin.
+      for (query <- Seq("大红灯笼", "gao gao gua")) {
+        page.eval(s"__grid.search('$query')")
+        withClue(s"searching '$query': ") {
+          page.evalString("__grid.titleOrder()").split('|') should contain ("Zawieście czerwone latarnie")
+        }
+      }
+    }
+  }
+
+  it should "draw the days the search brought in lighter than the day it began on" in {
+    onPath("/") { page =>
+      page.eval("pickDay('today')")
+      val today = page.evalString("dateBounds().today")
+      page.eval("__grid.search('straszny film')")
+      withClue(s"today is $today; plain rows ${page.evalString("__grid.shownDayRows(false).join()")}: ") {
+        page.evalBool("__grid.shownDayRows(false).length > 0 && __grid.shownDayRows(false).every(d => d === dateBounds().today)") shouldBe true
+        page.evalBool("__grid.shownDayRows(true).length > 0 && __grid.shownDayRows(true).every(d => d !== dateBounds().today)") shouldBe true
+      }
+      // Lighter means lighter: the pill on an added day is not the listing's own colour.
+      page.evalString("getComputedStyle(document.querySelector('.date-group.outside-day .badge-time')).backgroundColor") shouldBe "rgb(77, 77, 130)"
+    }
+  }
+
+  it should "go back to the day it began on when cleared" in {
+    onPath("/") { page =>
+      page.eval("pickDay('tomorrow')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'tomorrow'")
+      page.eval("__grid.search('straszny')")
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.eval("__grid.search('')")
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+      page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "tomorrow"
+      page.evalInt("document.querySelectorAll('.date-group.outside-day').length") shouldBe 0
+    }
+  }
+
+  it should "filter by a day picked while it runs, by each day picked after, and keep the last when cleared" in {
+    onPath("/") { page =>
+      page.eval("pickDay('today')")
+      page.eval("__grid.search('straszny')")
+      // A pill slides the grid there; the committed `?date=` is the settle signal.
+      page.eval("pickDay('tomorrow')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'tomorrow'")
+      page.evalBool("__grid.shownDates().length > 0 && __grid.shownDates().every(d => d === dateBounds().tomorrow)") shouldBe true
+      // A picked day shows only itself: nothing is drawn lighter any more.
+      page.evalInt("document.querySelectorAll('.date-group.outside-day').length") shouldBe 0
+      page.eval("pickDay('week')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'week'")
+      page.eval("__grid.search('')")
+      page.evalString("document.getElementById('date-filter').value") shouldBe "week"
+    }
+  }
+
+  it should "search every day from the link's day when the page opens on a shared query" in {
+    onPath("/?q=straszny&date=tomorrow") { page =>
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.eval("__grid.search('')")
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+    }
+  }
+
+  // A reload starts with an empty search, so the URL must not strand it on the search's "All".
+  it should "keep the searched-from day in the URL while the search shows every day" in {
+    onPath("/") { page =>
+      page.eval("pickDay('tomorrow')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'tomorrow'")
+      page.eval("__grid.search('straszny')")
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.evalString("new URL(location.href).searchParams.get('date')") shouldBe "tomorrow"
+      // A picked day is the listing's own: that one the URL carries.
+      page.eval("pickDay('week')")
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'week'")
+    }
+  }
+
   /**
    * iOS Safari auto-zooms when focus lands on an input whose font-size is
    * below 16px — and the navbar search is intentionally ~12.5px (see

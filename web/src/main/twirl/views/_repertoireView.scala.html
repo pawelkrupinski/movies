@@ -92,6 +92,9 @@
     return {
       title:     col.dataset.title.toLowerCase(),
       rawTitle:  col.dataset.title,
+      // The original title and its romanisation (`SearchTitles`, server-side): what the
+      // search matches besides the title.
+      searchTitles: (col.dataset.searchTitles || '').toLowerCase().split('|').filter(Boolean),
       // Sort key: the server-computed weighted rating average (0 when unrated).
       rating:    parseFloat(col.dataset.rating) || 0,
       countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
@@ -141,6 +144,9 @@
     const roomList  = getSubmenuFilter('room');
     return {
       query:     (document.getElementById('search-input')?.value || '').trim().toLowerCase(),
+      // While a search shows every day, the days it brought in that the listing was not on
+      // (`searchOriginDay`, shared.js) are drawn lighter; null when nothing is.
+      outsideDay: outsideSearchedDay(),
       hidden:    new Set(getHidden()),
       disabled:  new Set(getDisabledCinemas()),
       fmtTokens: fmtTokens,
@@ -163,7 +169,7 @@
   // looking at a single showtime.
   function cardExcluded(state, card) {
     return state.hidden.has(card.rawTitle)
-      || (state.query && !card.title.includes(state.query))
+      || (state.query && !card.title.includes(state.query) && !card.searchTitles.some(t => t.includes(state.query)))
       || missesAll(state.countries, c => card.countries.has(c))
       || missesAll(state.genres,    g => card.genres.has(g))
       || missesAll(state.directors, d => card.directors.has(d))
@@ -191,6 +197,20 @@
     if (value === 'week')     return d => d >= today && d <= in7Days;
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return d => d === value;
     return _ => true;
+  }
+
+  // The days a search added: those outside the day the listing showed when the search began,
+  // while the search still shows every day. `null` when no day is to be drawn lighter.
+  function outsideSearchedDay() {
+    const origin = typeof searchOriginDay === 'function' ? searchOriginDay() : null;
+    if (origin === null) return null;
+    const keep = dayPredicate(origin);
+    return d => !keep(d);
+  }
+
+  // A day group outside the searched-from day, drawn lighter (only while the grid shows every day).
+  function markOutside(element, outside) {
+    if (element.classList.contains('outside-day') !== outside) element.classList.toggle('outside-day', outside);
   }
 
   // ── Master filter ─────────────────────────────────────────────────────────
@@ -221,7 +241,9 @@
     syncDateToURL();
     undoTruncation();
     const state  = readFilters();
-    const dateOk = dayPredicate(document.getElementById('date-filter')?.value || 'anytime');
+    const dayValue = document.getElementById('date-filter')?.value || 'anytime';
+    const dateOk = dayPredicate(dayValue);
+    const outside = dayValue === 'anytime' ? state.outsideDay : null;
     const perBadge = needsBadgeLoop(state);
 
     let visibleCount = 0;
@@ -237,7 +259,7 @@
       let colVisible = false, colEarliest = null;
 
       for (const group of col.groups) {
-        if (!dateOk(group.date)) { setVisible(group, false); continue; }
+        if (!dateOk(group.date)) { setVisible(group, false); markOutside(group.element, false); continue; }
 
         let groupVisible = false;
         for (const cg of group.cinemaGroups) {
@@ -272,6 +294,7 @@
         }
 
         setVisible(group, groupVisible);
+        markOutside(group.element, !!outside && groupVisible && outside(group.date));
         if (groupVisible) colVisible = true;
       }
 
@@ -355,6 +378,7 @@
     if (!gridEl) return;
     const state  = readFilters();
     const dateOk = dayPredicate(dayValue);
+    const outside = dayValue === 'anytime' ? state.outsideDay : null;
     const sortBy = getSortBy();
 
     // Visible cards with their commit sort key: earliest visible showtime
@@ -392,6 +416,7 @@
             });
           }
           group.style.display = groupVisible ? '' : 'none';
+          markOutside(group, !!outside && groupVisible && outside(group.dataset.date));
           if (groupVisible) colVisible = true;
         });
       }

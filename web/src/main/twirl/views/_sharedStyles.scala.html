@@ -165,6 +165,9 @@
   .pill.genre { font-size: .75rem; color: #888; text-decoration: none; }
   a.pill.genre:hover { color: #aad4ff; border-color: #4a4a8e; }
   .date-label { font-size: .7rem; color: #888; margin-bottom: var(--gap-date-cinema, .2rem); margin-top: var(--gap-ratings-date, .5rem); }
+  /* A day a search brought in that the listing was not on (`outside-day`, set by the filter pass while
+     a search shows every day): its label a shade lighter; its showtimes in `_pillStyles`. */
+  .date-group.outside-day .date-label { color: #aaa; }
   #room-tooltip {
     position: fixed;
     background: #0e0e1e;

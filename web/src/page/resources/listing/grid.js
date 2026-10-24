@@ -56,6 +56,22 @@
       for (var i = 1; i < r.length; i++) if (r[i] > r[i - 1] + 1e-9) return false;
       return r.length > 1;
     },
+    // Type `text` into the search box as a person does (its `input` event), then run the pass
+    // the debounce would have.
+    search: function (text) {
+      var box = document.getElementById('search-input');
+      box.value = text;
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+      applyFilters();
+    },
+    // The ISO dates of the visible day-rows drawn lighter (`outside-day`), and of the rest.
+    shownDayRows: function (outside) {
+      return all('#film-grid .col[data-title]').filter(unfiltered)
+        .flatMap(function (c) { return all('.date-group[data-date]', c); })
+        .filter(unfiltered)
+        .filter(function (g) { return g.classList.contains('outside-day') === outside; })
+        .map(function (g) { return g.dataset.date; });
+    },
     // The ISO dates of every unfiltered day-row of every visible card.
     shownDates: function () {
       return all('#film-grid .col[data-title]').filter(unfiltered)

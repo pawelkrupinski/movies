@@ -1974,6 +1974,66 @@
   }
   window.pickDay = pickDay;
 
+  // ── A search's day ────────────────────────────────────────────────────────
+  //
+  // A search looks through EVERY day: the first letter typed moves the listing to
+  // "All" (no slide) and remembers the day it was on; clearing the search goes back
+  // there -- unless a day was picked while it ran (a tap, a swipe, a key), which then
+  // stays. While the search shows every day, the days it brought in are drawn lighter
+  // (`outside-day`, decided by the filter pass from `searchOriginDay`).
+  let _searchOrigin = null;      // the day the listing was on when the search began; null: no search
+  let _searchDayPicked = false;  // a day was picked while the search ran
+  let _searchMovingDay = false;  // the search itself is moving the day, which is no pick
+
+  /** The day a running search began from, while nothing has been picked since; else null. */
+  function searchOriginDay() { return _searchOrigin !== null && !_searchDayPicked ? _searchOrigin : null; }
+  window.searchOriginDay = searchOriginDay;
+
+  function moveDayForSearch(value) {
+    const sel = document.getElementById('date-filter');
+    if (!sel || sel.value === value) return;
+    sel.value = value;
+    _searchMovingDay = true;
+    try { onDateChange(); } finally { _searchMovingDay = false; }
+  }
+
+  function currentQuery() {
+    return (document.getElementById('search-input')?.value || '').trim();
+  }
+
+  // The search box's `input` (typing, and the native clear X, which fires it too).
+  function onSearchInput() {
+    const sel = document.getElementById('date-filter');
+    const query = currentQuery();
+    if (sel && query && _searchOrigin === null) {
+      _searchOrigin = sel.value;
+      _searchDayPicked = false;
+      moveDayForSearch('anytime');
+    } else if (!query && _searchOrigin !== null) {
+      const back = _searchDayPicked ? null : _searchOrigin;
+      _searchOrigin = null;
+      _searchDayPicked = false;
+      if (back) moveDayForSearch(back);
+    }
+    applyFiltersDebounced();
+  }
+  window.onSearchInput = onSearchInput;
+
+  // The day the URL carries: the searched-from day while the search itself is showing
+  // "All", so a reload (which starts with an empty search) and Back land on the day the
+  // listing was really on, not on the search's "All".
+  function urlDay(sel) { return searchOriginDay() ?? sel.value; }
+
+  // A page opened on a query with no remembered search (a shared `?q=` link): the
+  // search begins from the link's day, showing every day.
+  function beginSearchAtBoot() {
+    const sel = document.getElementById('date-filter');
+    if (!sel || !currentQuery() || _searchOrigin !== null) return;
+    _searchOrigin = sel.value;
+    _searchDayPicked = false;
+    sel.value = 'anytime';
+  }
+
   // The day the centre grid is currently rendering. Tracked separately from the
   // `#date-filter` value because the carousel moves the dropdown to the target
   // up front (at slide start) while the centre grid keeps showing the old day
@@ -2052,7 +2112,13 @@
   // the dropdown to the target.
   function onDateChange() {
     const sel = document.getElementById('date-filter');
-    if (sel) _appliedDay = sel.value;
+    if (sel) {
+      // A day moved by anything but the search itself, mid-search, is a pick: it stays when the
+      // search is cleared. Not the first apply at boot (nothing was on screen to move from).
+      if (_searchOrigin !== null && !_searchMovingDay && _appliedDay !== null && _appliedDay !== sel.value)
+        _searchDayPicked = true;
+      _appliedDay = sel.value;
+    }
     syncDayPills();
     applyFilters();
   }
@@ -2098,8 +2164,9 @@
     const dateSel = document.getElementById('date-filter');
     if (!dateSel) return;
     const url = new URL(window.location.href);
-    if (dateSel.value === 'today') url.searchParams.delete('date');
-    else url.searchParams.set('date', dateSel.value);
+    const day = urlDay(dateSel);
+    if (day === 'today') url.searchParams.delete('date');
+    else url.searchParams.set('date', day);
     history.replaceState(rememberedControlsState(), '', url.pathname + url.search + url.hash);
   }
 
@@ -2112,7 +2179,7 @@
     const setOrDel = (k, v) => { if (v) p.set(k, v); else p.delete(k); };
 
     const dateSel = document.getElementById('date-filter');
-    if (dateSel) setOrDel('date', dateSel.value === 'today' ? '' : dateSel.value);
+    if (dateSel) { const day = urlDay(dateSel); setOrDel('date', day === 'today' ? '' : day); }
 
     const search = document.getElementById('search-input');
     setOrDel('q', search ? (search.value || '').trim() : '');
@@ -2285,7 +2352,9 @@
   function rememberedControlsState() {
     const controls = {};
     for (const [id, element] of rememberedElements()) controls[id] = element.value;
-    return { filterControls: controls };
+    // The search's day too: Back to a search restores where clearing it would go.
+    const searchDay = _searchOrigin === null ? null : { origin: _searchOrigin, picked: _searchDayPicked };
+    return { filterControls: controls, searchDay: searchDay };
   }
   function restoreRememberedControls() {
     const navigation = performance.getEntriesByType('navigation')[0];
@@ -2294,6 +2363,14 @@
     if (!controls) return;
     for (const [id, element] of rememberedElements())
       if (typeof controls[id] === 'string') element.value = controls[id];
+    const searchDay = history.state.searchDay;
+    if (searchDay && typeof searchDay.origin === 'string') {
+      _searchOrigin = searchDay.origin;
+      _searchDayPicked = !!searchDay.picked;
+      // The URL carried the searched-from day (`urlDay`); the listing was on "All".
+      const sel = document.getElementById('date-filter');
+      if (sel && !_searchDayPicked) sel.value = 'anytime';
+    }
   }
 
   // The belt for an entry with no recorded state (one written before this
@@ -2404,6 +2481,7 @@
     // Last, as the engine's own restore would: what the visitor had on this
     // entry outranks the `q`/`sort`/`from` the entry was first opened with.
     restoreRememberedControls();
+    beginSearchAtBoot();
     updateFormatBtn();
   }
 
