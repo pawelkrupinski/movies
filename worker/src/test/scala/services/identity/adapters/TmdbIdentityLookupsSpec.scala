@@ -82,4 +82,51 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     finally pool.shutdownNow()
     overlap.get shouldBe 2
   }
+
+  /** IMDb's suggestions for "Caligula: The Ultimate Cut" and TMDB's finds of the films they list, every read of the
+   *  suggestions counted and first handed to `reading` (which may throw, or wait). */
+  private final class SuggestionReads(reading: Int => Unit) extends tools.HttpFetch {
+    private def fixture(path: String) = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)), java.nio.charset.StandardCharsets.UTF_8)
+    val reads = new java.util.concurrent.atomic.AtomicInteger
+    private val routes = tools.RoutingHttpFetch.getOnly(Seq(
+      "suggestion/c/Caligula" -> fixture("test/resources/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json"),
+      "/find/tt29703523"      -> fixture("test/resources/fixtures/tmdb/find_tt29703523.json"),
+      "/find/tt0080491"       -> fixture("test/resources/fixtures/tmdb/find_tt0080491.json")))
+    def get(url: String): String = { if (url.contains("suggestion/")) reading(reads.incrementAndGet()); routes.get(url) }
+    def post(url: String, body: String, contentType: String): String = throw new java.io.IOException("no posts")
+    def lookups = new TmdbIdentityLookups(new TmdbClient(this, apiKey = Some(settings.TmdbApiKey("replay")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(this), Nil)
+  }
+  private val Caligula = "Caligula: The Ultimate Cut"
+
+  "a title's IMDb suggestions" should "be read anew by a question asked after the last read returned — a failed read kept for none" in {
+    // QuestionMemory remembers a question left unanswered; the lookups themselves keep no answer, nor its absence.
+    val fetch   = new SuggestionReads(n => if (n == 1) throw new java.io.IOException("HTTP 503"))
+    val lookups = fetch.lookups
+    lookups.candidates(CandidateQuery.Imdb(Caligula)) shouldBe Answer.Unknown
+    lookups.candidates(CandidateQuery.Imdb(Caligula)).toOption.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
+    fetch.reads.get shouldBe 2
+  }
+
+  it should "be read once for every question asking for them while the read runs" in {
+    val entered = new java.util.concurrent.CountDownLatch(1)
+    val release = new java.util.concurrent.CountDownLatch(1)
+    val fetch   = new SuggestionReads(_ => { entered.countDown(); release.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); () })
+    val lookups = fetch.lookups
+    val pool    = java.util.concurrent.Executors.newFixedThreadPool(2)
+    try {
+      val first  = pool.submit(() => lookups.candidates(CandidateQuery.Imdb(Caligula)))
+      entered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+      val waiter = new java.util.concurrent.atomic.AtomicReference[Thread]
+      val second = pool.submit(() => { waiter.set(Thread.currentThread()); lookups.candidates(CandidateQuery.TitleCredit(Caligula)) })
+      // the second question parks — on the first one's read, or (were reads not shared) on a read of its own
+      val until = System.nanoTime() + SpecTimeouts.Io.toNanos
+      def parked = Option(waiter.get).exists(t => Set(Thread.State.WAITING, Thread.State.TIMED_WAITING)(t.getState))
+      while (!parked && System.nanoTime() < until) Thread.onSpinWait()
+      release.countDown()
+      first.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS).toOption.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
+      second.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe Answer.Known(Nil)
+    } finally pool.shutdownNow()
+    fetch.reads.get shouldBe 1
+  }
 }

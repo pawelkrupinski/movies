@@ -25,7 +25,7 @@ import scala.util.Try
  * lookup at a time or, in a convergence leg, on its pool of prefetch threads.
  */
 final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: Seq[DetailEnricher],
-                                gaps: TmdbIdentityLookups.Gaps = TmdbIdentityLookups.NoGaps)
+                                gaps: TmdbIdentityLookups.Gaps = TmdbIdentityLookups.NoGaps, oneReadPerTitle: Boolean = false)
     extends IdentityLookups {
 
   private val venueDetails = new VenueDetails(enrichers, gaps)
@@ -54,15 +54,21 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       })
   }
 
-  // A title's IMDb suggestions answer two questions — the films IMDb suggests (`Imdb`) and those it lists under the
-  // title (`ImdbTitled`) — read once for a few minutes, AS ANSWERED: a read that met a gap (a replay's unrecorded
-  // request, a failure) is Unknown to both, never an empty list the second question would take for IMDb's answer.
-  private val recentSuggestions = tools.BoundedCache.ofSize(512).expireAfterWrite(java.time.Duration.ofMinutes(10))
-    .build[String, Answer[ImdbClient.Suggested]]()
-  private def suggested(title: String): Answer[ImdbClient.Suggested] =
-    Option(recentSuggestions.getIfPresent(title)).getOrElse {
-      val read = answered(imdb.suggestionsFor(title)); recentSuggestions.put(title, read); read
-    }
+  // A title's IMDb suggestions answer three questions — the films IMDb suggests (`Imdb`), those it lists under the title
+  // (`ImdbTitled`) and the director its closing bracket credits (`TitleCredit`) — which a prefetch asks side by side:
+  // one read serves every question asking while it runs, AS ANSWERED (a read that met a gap or threw is Unknown to all
+  // of them, never an empty list). Nothing is kept once it returns: what was answered is filed in the TMDB store, and
+  // what was not is remembered per question, by `QuestionMemory`. Unless `oneReadPerTitle`: a lookup fill's round, made
+  // for the round alone, asks a title's questions one after another and owes one ask per question — its reads serve
+  // every question of the round.
+  private val reading = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.CompletableFuture[Answer[ImdbClient.Suggested]]]()
+  private def suggested(title: String): Answer[ImdbClient.Suggested] = {
+    val mine    = new java.util.concurrent.CompletableFuture[Answer[ImdbClient.Suggested]]()
+    val running = reading.putIfAbsent(title, mine)
+    if (running ne null) running.join()
+    else try { val read = answered(imdb.suggestionsFor(title)); mine.complete(read); read }
+    finally { mine.complete(Answer.Unknown); if (!oneReadPerTitle) reading.remove(title, mine) }   // a read that threw: Unknown to its waiters
+  }
   private def suggestedMovies(title: String): Answer[Seq[ImdbClient.Suggestion]] = suggested(title).map(_.movies)
 
   /** Every person the name could mean, each with what they directed — or, with no directing credit, wrote (a venue may

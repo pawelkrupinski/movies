@@ -159,7 +159,7 @@ final class LookupFill(
     val gaps    = new LookupGaps
     val fetch   = new NormalizingHttpFetch(new LookupFillLiveFetch(liveFetch, budget), normalizer)
     val client  = tmdb(fetch)
-    val lookups = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil, gaps)
+    val lookups = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil, gaps, oneReadPerTitle = true)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
