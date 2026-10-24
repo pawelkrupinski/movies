@@ -18,8 +18,8 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
   any non-ignored root path and reports a Bash command that dirties the root or switches its branch;
   `scripts/hooks/pre-commit` refuses a commit in the root (`ALLOW_ROOT_COMMIT=1` for a person doing it on purpose).
   `scripts/root-checkout-check` (run by `agent-procs` and every push) warns when the root is off `main` or dirty.
-- **The only ref that reaches origin is `main`.** Never push a feature branch, never open a PR (the five bot
-  workflows, the `chore/identity-capture` verdict push and `scripts/mobile-ship.sh`'s own release commit are the
+- **The only ref that reaches origin is `main`.** Never push a feature branch, never open a PR (the bot PRs
+  CLAUDE.md lists, the `chore/identity-capture` verdict push and `scripts/mobile-ship.sh`'s own release commit are the
   exceptions — see `CLAUDE.md`). Before typing `git push` or `gh pr create`, run `git rev-parse --abbrev-ref HEAD` and name the
   ref you push (`<sha>:main`); a push of anything but `main` violates the rule.
 - **Landing:** rebase onto main → every relevant layer green locally → land → `git worktree remove <path>` and

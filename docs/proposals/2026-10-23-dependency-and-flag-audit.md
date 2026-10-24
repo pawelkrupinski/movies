@@ -52,9 +52,9 @@ Cheap cover, not built (assessed 2026-10-24):
 | ML script (numpy, scikit-learn) | pinned by the Python 3.9 floor (`scripts/run-script-tests:42`) | — | raise the floor only if another script wants it |
 | Nix-managed infra (k3s 1.35.8, Grafana 13.0.9, Prometheus 3.12, VictoriaLogs 1.52, Forgejo 16.0.5, Caddy 2.11.4) | current with nixpkgs | — | |
 | Flux (distribution; controllers source/kustomize 1.9.4, image 1.2.4) | v2.9.4 | v2.9.6 | movies-gitops; listed weekly by `infra/bin/image_pins.py`, bump by hand (`flux install --export`) |
-| kube-state-metrics | v2.14.0 | v2.20.0 | movies-gitops; listed weekly; check `k3s.rules`' series names first |
-| Reloader | v1.0.28 | v1.4.22 | movies-gitops; listed weekly, bump by hand |
-| Headlamp | v0.45.0 | v0.46.0 | movies-gitops; listed weekly, bump by hand |
+| kube-state-metrics | v2.14.0 | v2.20.0 | movies-gitops; bumped weekly in its `image-pins/all` PR (since 2026-10-24); check `k3s.rules`' series names first |
+| Reloader | v1.0.28 | v1.4.22 | movies-gitops; bumped weekly in its `image-pins/all` PR |
+| Headlamp | v0.45.0 | v0.46.0 | movies-gitops; bumped weekly in its `image-pins/all` PR |
 | `eclipse-temurin:27-jdk@sha256` (Dockerfile) | 2026-10-17 digest | same | digest refreshed weekly in the nix-update PR |
 | `ubuntu:26.04` (Dockerfile, script-test container) | 26.04 LTS | 26.10 (interim, not taken) | newer LTS listed weekly |
 | `moby/buildkit` (setup-buildx) | v0.33.1 | v0.34.1 | bumped weekly in the nix-update PR (within major) |

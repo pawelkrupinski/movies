@@ -10,7 +10,7 @@ WHAT IT DOES, AND WHAT IT DOES NOT. It proposes; it never merges, pushes or depl
 every upgrade it finds to this tree -- the pinned packages (PINNED below) and every flake input --
 and writes ONE patch plus a title and a body into --out (ported from bitcashier/infra's
 bin/nix-update, operator decision 2026-10-22: "one PR for all nix dep updates").
-.github/workflows/nix-update.yml turns them into a pull request with infra/bin/nix-update-propose.
+.github/workflows/nix-update.yml turns them into a pull request with infra/bin/propose-pr.
 A merge to main IS a deploy of the fleet -- nix-stage-closures.yml stages every host's closure and
 `fleet.autoApply` activates what it may -- so the person merging is the gate, and the body exists to
 give them what they need.
@@ -27,7 +27,7 @@ does not build.
 CONTAINER IMAGE PINS ride along (infra/bin/image_pins.py, added 2026-10-23): the Dockerfile's bases, BuildKit,
 Swift's CI container, and movies-gitops' cluster components (Flux, kube-state-metrics, Reloader, Headlamp), which no
 other bumper watched. This checkout's pins are rewritten by each pin's policy; movies-gitops' are listed in the body
-only, to bump there by hand -- that repository gets no bot pull request. A week where only an image pin moved skips
+only: they move in that repository's own weekly PR (image_pins.py --gitops-out, the same workflow). A week where only an image pin moved skips
 the host builds: nothing Nix changed.
 
 Pinned packages take the newest release WITHIN THE CURRENT MAJOR only; a newer major is listed in
@@ -305,14 +305,17 @@ def update(old_tree, out):
         summary.append(f"{f['name']} {f['later']} is a newer major, not proposed")
     summary += pin_notes
 
-    # 2. Container image pins (infra/bin/image_pins.py): this checkout's are rewritten, movies-gitops' only listed.
-    image_rows, image_failures = image_pins.update(ROOT, image_pins.GITOPS, apply=True)
-    images_bumped = [r for r in image_rows if r["action"] == "bumped"]
+    # 2. Container image pins (infra/bin/image_pins.py): this checkout's are rewritten, movies-gitops' only listed
+    #    (they move in that repository's own PR, image_pins.py --gitops-out).
+    image_rows, image_failures = image_pins.update(ROOT, image_pins.GITOPS, write={"repo"})
+    images_bumped = [r for r in image_rows if r["action"] == "bumped" and not r["gitops"]]
     if image_failures:
         status = 1
     summary += [f"image {r['name']} {r['current']} -> {r['latest']}" for r in images_bumped]
     summary += [f"image {r['name']} {r['current']} is behind {r['latest']}: bump by hand" for r in image_rows
                 if r["action"] == "behind"]
+    summary += [f"image {r['name']} {r['current']} -> {r['latest']} in movies-gitops' PR" for r in image_rows
+                if r["action"] == "bumped" and r["gitops"]]
     pin_failures += image_failures
 
     # 3. flake.lock.
@@ -417,7 +420,8 @@ Newest release within each package's current major; a newer major is only listed
 """ + ("| input | from | to | |\n|---|---|---|---|\n" + "\n".join(input_rows) + "\n" if moved else "No input moved.\n") + f"""
 ## Container image pins ({len(images_bumped)} bumped)
 `infra/bin/image_pins.py`. This repository's pins are bumped in this pull request (a `Dockerfile` bump ships with
-the next app image Main builds); movies-gitops' are only listed, to bump there by hand.
+the next app image Main builds); movies-gitops' are only listed: their tag bumps are that repository's own PR
+(`{image_pins.GITOPS_BRANCH}`), and Flux's regeneration is by hand.
 
 """ + image_pins.markdown(image_rows, image_failures) + f"""
 ## Hosts that do not build ({len(failed)})

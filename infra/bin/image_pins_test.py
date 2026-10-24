@@ -9,6 +9,7 @@ fails on its own push, not on next Monday's nix-update run.
 import json
 import os
 import pathlib
+import shutil
 import sys
 import tempfile
 import threading
@@ -131,14 +132,14 @@ class Protocol(unittest.TestCase):
     def test_digest(self):
         self.assertEqual(image_pins.Registry(self.base).digest("acme/tool", "v1.0.0"), NEW)
 
-    def check(self, policy, text, root="repo"):
+    def check(self, policy, text, root="repo", write=("repo",)):
         with tempfile.TemporaryDirectory() as d:
             tree = pathlib.Path(d)
             (tree / "gitops").mkdir()
             target = tree / ("gitops" if root == "gitops" else "") / "Dockerfile"
             target.write_text(text)
             pin = image_pins.Pin("tool", ["Dockerfile"], self.base, "acme/tool", policy, root=root)
-            row = image_pins.check(pin, tree, tree / "gitops", apply=True)
+            row = image_pins.check(pin, tree, tree / "gitops", write=write)
             return row, target.read_text()
 
     def test_minor_bumps_within_major_and_writes(self):
@@ -155,10 +156,69 @@ class Protocol(unittest.TestCase):
         row, text = self.check("report", "image: acme/tool:v1.0.0\n")
         self.assertEqual((row["action"], text), ("behind", "image: acme/tool:v1.0.0\n"))
 
-    def test_gitops_pin_never_writes(self):
-        row, text = self.check("minor", "image: acme/tool:v1.0.0\n", root="gitops")
-        self.assertEqual((row["action"], row["files"], text), ("behind", ["gitops/Dockerfile"], "image: acme/tool:v1.0.0\n"))
-        self.assertIn("bump by hand** in movies-gitops", image_pins.markdown([row], []))
+    def test_gitops_pin_left_alone_by_this_repositorys_pr(self):
+        row, text = self.check("minor", "image: acme/tool:v1.0.0\n", root="gitops", write=("repo",))
+        self.assertEqual((row["action"], row["files"], text), ("bumped", ["gitops/Dockerfile"], "image: acme/tool:v1.0.0\n"))
+        self.assertIn(f"bumped in movies-gitops' PR (`{image_pins.GITOPS_BRANCH}`)", image_pins.markdown([row], []))
+
+    def test_gitops_pin_written_by_its_own_pr(self):
+        row, text = self.check("minor", "image: acme/tool:v1.0.0\n", root="gitops", write=("gitops",))
+        self.assertEqual((row["action"], text), ("bumped", "image: acme/tool:v1.2.0\n"))
+        self.assertIn("| bumped here |", image_pins.markdown([row], [], here="gitops"))
+
+    def test_repo_pin_listed_in_the_gitops_pr(self):
+        row, _ = self.check("minor", "FROM acme/tool:v1.0.0\n", write=())
+        self.assertIn("bumped in movies' nix-update PR", image_pins.markdown([row], [], here="gitops"))
+
+    def test_gitops_report_pin_listed_by_hand(self):
+        row, text = self.check("report", "image: acme/tool:v1.0.0\n", root="gitops", write=("gitops",))
+        self.assertEqual((row["action"], text), ("behind", "image: acme/tool:v1.0.0\n"))
+        self.assertIn("bump by hand** in movies-gitops", image_pins.markdown([row], [], here="gitops"))
+
+    def propose(self, ksm_text):
+        """propose_gitops over a movies-gitops tree: a minor pin named kube-state-metrics, and a report pin with Flux's
+        header shape. Returns (out dir contents, the tree's file afterwards)."""
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        tree = pathlib.Path(d)
+        gitops = tree / "gitops"
+        (gitops / ".git").mkdir(parents=True)  # what update() takes for a checkout; no git runs
+        (gitops / "flux").mkdir()
+        (gitops / "ksm.yaml").write_text(ksm_text)
+        (gitops / "flux" / "gotk.yaml").write_text("# Flux Version: v1.0.0\n")
+        rules = tree / image_pins.K3S_RULES
+        rules.parent.mkdir(parents=True)
+        rules.write_text("expr: kube_deployment_spec_replicas - kube_deployment_status_replicas_ready > 0\n"
+                         "expr: kube_node_status_condition == 0 and up\n")
+        pins = [image_pins.Pin("kube-state-metrics", ["ksm.yaml"], self.base, "acme/tool", "minor", root="gitops"),
+                image_pins.Pin("flux", ["flux/gotk.yaml"], self.base, "acme/tool", "report", root="gitops",
+                               pattern=r"^# Flux Version: (?P<tag>v[\d.]+)$", note="regenerate it")]
+        out = tree / "out"
+        failures = image_pins.propose_gitops(out, tree, gitops, pins=pins)
+        self.assertEqual(failures, [])
+        files = {f: (out / f).read_text() for f in ("title", "body.md", "changes.patch")}
+        return files, (gitops / "ksm.yaml").read_text()
+
+    def test_gitops_pr_bumps_the_tag_and_warns_about_k3s_rules(self):
+        files, ksm = self.propose("image: registry.k8s.io/acme/tool:v1.0.0\n")
+        self.assertEqual(ksm, "image: registry.k8s.io/acme/tool:v1.2.0\n")
+        self.assertEqual(files["title"], "Image pins: kube-state-metrics v1.2.0\n")
+        # the -p1 unified diff propose-pr `git apply`s to a clean checkout of main (propose-pr-test.sh applies this form)
+        self.assertEqual(files["changes.patch"], "--- a/ksm.yaml\n+++ b/ksm.yaml\n@@ -1 +1 @@\n"
+                                                 "-image: registry.k8s.io/acme/tool:v1.0.0\n"
+                                                 "+image: registry.k8s.io/acme/tool:v1.2.0\n")
+        body = files["body.md"]
+        self.assertIn("check `k3s.rules`' series names", body)
+        for series in ("kube_deployment_spec_replicas", "kube_deployment_status_replicas_ready",
+                       "kube_node_status_condition"):
+            self.assertIn(f"`{series}`", body)
+        self.assertIn("| kube-state-metrics | `ksm.yaml` | v1.0.0 | **v1.2.0** (major: v2.0.0) | bumped here |", body)
+        self.assertIn("| flux | `flux/gotk.yaml` | v1.0.0 | **v1.2.0** (major: v2.0.0) | **bump by hand** in movies-gitops |", body)
+
+    def test_gitops_pr_without_a_bump_proposes_nothing(self):
+        files, ksm = self.propose("image: acme/tool:v1.2.0\n")
+        self.assertEqual((files["changes.patch"], ksm), ("", "image: acme/tool:v1.2.0\n"))
+        self.assertNotIn("k3s.rules", files["body.md"])
 
 
 class RealPins(unittest.TestCase):
@@ -180,6 +240,15 @@ class RealPins(unittest.TestCase):
     @unittest.skipUnless((image_pins.GITOPS / ".git").exists(), "no movies-gitops checkout (infra/bin/fetch-gitops)")
     def test_movies_gitops(self):
         self.shapes("gitops")
+
+    def test_only_plain_tags_bumped_by_machine_in_movies_gitops(self):
+        """Flux is a generated manifest (`flux install --export`), never a tag rewrite: it stays listed only."""
+        policies = {p.name: p.policy for p in image_pins.PINS if p.root == "gitops"}
+        self.assertEqual(policies, {"flux": "report", "kube-state-metrics": "minor", "reloader": "minor",
+                                    "headlamp": "minor"})
+
+    def test_k3s_rules_series_read(self):
+        self.assertIn("kube_deployment_status_replicas_ready", image_pins.k3s_series())
 
 
 if __name__ == "__main__":

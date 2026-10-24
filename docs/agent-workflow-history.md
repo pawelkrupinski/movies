@@ -14,9 +14,9 @@ incidents that produced them, so the rules can stay short. Append here when a ne
 
 ## No PRs, never push a feature branch
 
-- Breached twice — 2026-07-02 and 2026-07-19 — each costing a close-PR + delete-remote-branch cleanup. The five bot
+- Breached twice — 2026-07-02 and 2026-07-19 — each costing a close-PR + delete-remote-branch cleanup. The bot
   workflows that open PRs (decoration-discovery, identity-refit, identity-capture, discover-cinemas,
-  retire-venues) are the deliberate exceptions.
+  retire-venues; since 2026-10-22/24 nix-update's two, here and in movies-gitops) are the deliberate exceptions.
 - 2026-10-16: a push of `HEAD` while a rebase was stopped landed 7 commits at once — hence push a named
   `<sha>:main`, never mid-rebase `HEAD`, and never from the shared root (others detach it).
 
