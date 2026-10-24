@@ -160,8 +160,8 @@ jobs:
         # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
         env:
             WORKER_ROW: ${{ matrix.suites }}
-        # `checks: write` so action-junit-report can post the failure
-        # check-run + summary.
+        # `checks: write` is unused on Forgejo (action-junit-report only annotates
+        # failures there), kept as its callers grant it.
         permissions:
             contents: read
             checks: write
@@ -309,9 +309,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: unit tests (${{ matrix.shard }})
-                  detailed_summary: true
                   include_passed: false
 
     # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
@@ -457,20 +459,24 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   # SwiftPM writes `<base>.xml` (XCTest) and
                   # `<base>-swift-testing.xml` (swift-testing); glob both.
                   report_paths: 'ios-localserver*.xml'
                   check_name: iOS LocalServer
-                  detailed_summary: true
                   include_passed: false
 
             - name: Publish Android test report
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
                   check_name: Android LocalServer
-                  detailed_summary: true
                   include_passed: false
 
             - name: Stop FixtureServerMain
@@ -623,9 +629,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'target/test-reports/it/**/*.xml'
                   check_name: integration tests (${{ matrix.row }})
-                  detailed_summary: true
                   include_passed: false
 
             # The old-ref compile started beside itAll (above): its verdict, failing as it would have.
@@ -773,9 +781,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: e2e tests (${{ matrix.shard }})
-                  detailed_summary: true
                   include_passed: false
 
             # The web image's build and push, started before the e2e run (above): its log, and its exit as the row's.

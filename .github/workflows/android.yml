@@ -168,8 +168,8 @@ jobs:
     build:
         needs: preflight
         runs-on: ubuntu-26.04
-        # `checks: write` so action-junit-report can post the failure
-        # check-run + summary from the Gradle JUnit XML. `contents: write`
+        # `checks: write` is unused on Forgejo (action-junit-report only annotates the
+        # Gradle JUnit XML's failures there), kept as its callers grant it. `contents: write`
         # so the rolling-release step can create/update the public
         # `android-latest` GitHub Release + its tag.
         permissions:
@@ -255,9 +255,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
                   check_name: Android unit tests
-                  detailed_summary: true
                   include_passed: false
 
             - name: Assemble debug APK

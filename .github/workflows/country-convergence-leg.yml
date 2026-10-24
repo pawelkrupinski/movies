@@ -803,9 +803,11 @@ jobs:
               if: always() && !startsWith(matrix.phase, 'takes')
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: ${{ matrix.phase }} (${{ inputs.country }})
-                  detailed_summary: true
                   include_passed: true
                   # A leg that wrote no XML has to say so. The directory is emptied by
                   # `convergence-setup` before the suite runs, so "no report" now means

@@ -33,8 +33,8 @@ concurrency:
     group: ios-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# `checks: write` so action-junit-report can post failure check-runs +
-# summaries; `contents: read` for checkout. All jobs are same-repo.
+# `checks: write` is unused on Forgejo (action-junit-report only annotates
+# failures there); `contents: read` for checkout. All jobs are same-repo.
 permissions:
     contents: read
     checks: write
@@ -105,9 +105,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'ios-unit*.xml'
                   check_name: iOS unit/integration
-                  detailed_summary: true
                   include_passed: false
 
 
@@ -187,9 +189,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'xcuitest.xml'
                   check_name: iOS XCUITest
-                  detailed_summary: true
                   include_passed: false
 
             # XCUITest step is continue-on-error (see there), so leave a glance-able signal when
@@ -219,9 +223,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
                   report_paths: 'ios-macos*.xml'
                   check_name: iOS SPM (macOS)
-                  detailed_summary: true
                   include_passed: false
 
             # `failure()` alone never fires for the XCUITest step: continue-on-error keeps the job
