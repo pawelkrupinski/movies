@@ -1045,10 +1045,120 @@
       "panels": []
     },
     {
+      "id": 41,
+      "type": "timeseries",
+      "title": "The off-box copy on monitoring-1: age of its newest dump, and since the last pull (h)",
+      "description": "THE ONLY COPY THAT SURVIVES LOSING mongo-1. monitoring-1 pulls the newest completed dump every morning at 05:00 over a read-only rrsync key and keeps seven by count (roles/mongodb-offbox-backup.nix). 'newest copy' is the age of the DATA it holds, read from the dump's stamp: a sawtooth from ~2h to ~26h. 'since the last pull' can stay fresh while it climbs -- a pull that finds nothing newer still succeeds. 'copies held' (right axis) should sit at 7. Alerts: MongodumpOffboxStale > 36h, MongodumpOffboxMetricAbsent.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 27
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 36
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "copies held.*"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - kinowo_mongodump_offbox_newest_dump_timestamp_seconds) / 3600",
+          "legendFormat": "newest copy ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "(time() - kinowo_mongodump_offbox_last_success_timestamp_seconds) / 3600",
+          "legendFormat": "since the last pull ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "kinowo_mongodump_offbox_copies",
+          "legendFormat": "copies held ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
       "id": 18,
       "type": "timeseries",
       "title": "Age of the last successful mongodump (h)",
-      "description": "HETZNER'S SERVER BACKUPS DO NOT COVER ATTACHED VOLUMES, so the nightly dump is the only logical copy of this database that exists. Expect a sawtooth peaking just under 24h. WHAT IT PROTECTS AND WHAT IT DOES NOT: it is a copy on the SAME volume as the database, so it covers a bad migration or a dropped collection and not the loss of the volume -- off-box replication is a known gap. Alert: MongodumpStale > 36h (one full missed run plus most of a day's grace).",
+      "description": "HETZNER'S SERVER BACKUPS DO NOT COVER ATTACHED VOLUMES, so the nightly dump is the only logical copy of this database that exists. Expect a sawtooth peaking just under 24h. WHAT IT PROTECTS AND WHAT IT DOES NOT: it is a copy on mongo-1 itself, so it covers a bad migration or a dropped collection and not the loss of the machine -- that is the off-box copy monitoring-1 pulls each morning (MongodumpOffboxStale). Alert: MongodumpStale > 36h (one full missed run plus most of a day's grace).",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -1119,7 +1229,7 @@
       "id": 19,
       "type": "timeseries",
       "title": "Last mongodump size",
-      "description": "A BACKUP THAT IS PRESENT BUT TRUNCATED IS WORSE THAN A MISSING ONE, because it passes every check that only asks whether a dump exists -- and the check that it fails is a restore, at the worst possible moment. A step down that is not explained by a deliberate deletion means a dump that failed part-way and still wrote a directory, or one taken against the wrong database. Alert: MongodumpShrankSharply, at half the smallest dump of the past week.",
+      "description": "A BACKUP THAT IS PRESENT BUT TRUNCATED IS WORSE THAN A MISSING ONE, because it passes every check that only asks whether a dump exists -- and the check that it fails is a restore, at the worst possible moment. A step down that is not explained by a deliberate deletion means a dump that failed part-way and still wrote a directory, or one taken against the wrong database. Alert: MongodumpShrankSharply, at half the smallest dump of the past week. The off-box copy's size is drawn beside it: the two lines should agree within a day.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -1162,7 +1272,16 @@
         {
           "refId": "A",
           "expr": "kinowo_mongodump_last_size_bytes",
-          "legendFormat": "{{host}}",
+          "legendFormat": "on {{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_mongodump_offbox_last_size_bytes",
+          "legendFormat": "off-box copy on {{host}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"

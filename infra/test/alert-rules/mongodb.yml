@@ -227,6 +227,10 @@ tests:
         values: "3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 694800 694800 694800 694800 694800 694800 694800 694800 694800"
       - series: 'kinowo_mongodump_last_size_bytes{host="mongo-1"}'
         values: "1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1010000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1020000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1030000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1040000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1050000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1060000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1070000 1080000 1080000 1080000 1080000 1080000 1080000 1080000 1080000 1080000"
+      # The off-box copy: each night's dump (hour 1, 25, ...) is pulled two hours later, so the
+      # newest copy held is that dump until the next pull.
+      - series: 'kinowo_mongodump_offbox_newest_dump_timestamp_seconds{host="monitoring-1"}'
+        values: "3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 3600 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 90000 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 176400 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 262800 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 349200 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 435600 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 522000 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 608400 694800 694800 694800 694800 694800 694800"
       - series: 'mongodb_up{host="mongo-1"}'
         values: "1x200"
       - series: 'mongodb_mongod_replset_my_state{host="mongo-1",set="rs0"}'
@@ -254,6 +258,12 @@ tests:
         exp_alerts: []
       - eval_time: 200h
         alertname: MongodumpShrankSharply
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodumpOffboxStale
+        exp_alerts: []
+      - eval_time: 200h
+        alertname: MongodumpOffboxMetricAbsent
         exp_alerts: []
       - eval_time: 200h
         alertname: MongodExporterCannotReachMongod
@@ -341,6 +351,17 @@ tests:
             exp_annotations:
               description: "`MongodumpStale` cannot fire without this series, so the backup is unwatched. Either the dump has never run on this host, or node_exporter is not reading the textfile directory the dump writes to (`--collector.textfile.directory` must point at fleet.mongodb.backup.textfileDirectory). AN ABSENT SERIES IS NOT A HEALTHY BACKUP."
               summary: "Nothing is publishing mongodump's success timestamp"
+      - eval_time: 5h
+        alertname: MongodumpOffboxMetricAbsent
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: MongodumpOffboxMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: "warning"
+            exp_annotations:
+              description: "`MongodumpOffboxStale` cannot fire without this series, so the only copy of the database that survives losing mongo-1 is unwatched. Either the pull has never succeeded on monitoring-1 (`systemctl start mongodb-offbox-pull` and read its journal), or node_exporter is not reading the textfile directory it writes to. AN ABSENT SERIES IS NOT A HEALTHY BACKUP."
+              summary: "Nothing is publishing the off-box mongodump copy's age"
 
   # ---------------------------------------------------------------------------------------------
   # MONGOD STOPS AT 11M, the exporter losing it at the same moment, while the oplog window
@@ -434,8 +455,32 @@ tests:
               host: "mongo-1"
               severity: "warning"
             exp_annotations:
-              description: "The nightly dump has not completed since 1d 15h 0m 0s ago. Check `systemctl status mongodump` and `journalctl -u mongodump`. Remember what this covers and what it does not: it is a logical copy on the SAME volume as the database, so it protects against a bad migration or a dropped collection and not against losing the volume. Off-box replication of these dumps is a known gap."
+              description: "The nightly dump has not completed since 1d 15h 0m 0s ago. Check `systemctl status mongodump` and `journalctl -u mongodump`. This is the copy ON mongo-1; while it is stale the off-box copy on monitoring-1 stops advancing too (`MongodumpOffboxStale` follows within a day)."
               summary: "No successful mongodump for over 36 hours"
+
+  # ---------------------------------------------------------------------------------------------
+  # THE OFF-BOX COPY STOPS ADVANCING. The newest copy held was dumped at hour 1, and every pull
+  # since has found nothing newer -- the pull's own success time would stay fresh, this does not.
+  # Silent at 30h, when one morning's pull is merely late; firing at 40h.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1h
+    name: an off-box copy older than 36 hours fires
+    input_series:
+      - series: 'kinowo_mongodump_offbox_newest_dump_timestamp_seconds{host="monitoring-1"}'
+        values: "3600x48"
+    alert_rule_test:
+      - eval_time: 30h
+        alertname: MongodumpOffboxStale
+        exp_alerts: []
+      - eval_time: 40h
+        alertname: MongodumpOffboxStale
+        exp_alerts:
+          - exp_labels:
+              host: "monitoring-1"
+              severity: "warning"
+            exp_annotations:
+              description: "The newest dump held on monitoring-1 was taken 1d 15h 0m 0s ago. If `MongodumpStale` is firing too, the dump itself stopped -- start there. If not, the pull is failing: `systemctl status mongodb-offbox-pull` and `journalctl -u mongodb-offbox-pull` on monitoring-1 (\"Host key verification failed\" means mongo-1 was re-converted and `fleet.mongodbOffboxBackup.source.hostKey` needs its new key). Until this clears, losing mongo-1 loses everything since that copy was taken."
+              summary: "The newest off-box copy of the database is over 36 hours old"
 
   # ---------------------------------------------------------------------------------------------
   # A TRUNCATED DUMP. A week of ~1 MB dumps, then night 8's comes out at 400 KB -- the shape of a

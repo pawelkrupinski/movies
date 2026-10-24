@@ -53,15 +53,23 @@
 # exists to prevent.
 #
 # WHAT THE TIMER DOES AND DOES NOT BUY, stated plainly so nobody over-trusts it: a local mongodump
-# on the same volume protects against a bad migration, a dropped collection, an application bug
-# that corrupts documents -- the failures where the disk is fine and the DATA is wrong. It does NOT
-# protect against losing the volume, because it is ON the volume. OFF-BOX REPLICATION OF THESE
-# DUMPS IS NOT IMPLEMENTED AND IS THE LARGEST KNOWN GAP IN THIS ROLE; the shape it should take is a
-# pull from somewhere that is not this machine, so that a host compromise cannot delete both copies.
+# protects against a bad migration, a dropped collection, an application bug that corrupts
+# documents -- the failures where the disk is fine and the DATA is wrong. On its own it does NOT
+# protect against losing this machine, or against somebody who owns it: every copy it makes is
+# here, so whoever can delete the database can delete the dumps too.
+#
+# THE OFF-BOX COPY CLOSES THAT, AND IT IS A PULL ON PURPOSE. monitoring-1 (roles/mongodb-offbox-
+# backup.nix) copies the newest completed dump every morning and keeps its own N by count, logging
+# in through `backup.offBoxPull` below: one account whose key can only run `rrsync -ro` over the
+# dump directory. This host holds no credential for monitoring-1, so a compromise here cannot
+# delete the off-box copies; a compromise there can read dumps it already has and change nothing
+# here. mongodb.rules alerts on the off-box copy's age and on its metric's absence, beside the
+# alerts on the local dump.
 { config, lib, pkgs, ... }:
 
 let
   cfg = config.fleet.mongodb;
+  pullEnabled = cfg.backup.enable && cfg.backup.offBoxPull.authorizedKey != "";
 
   # THE SERVER RELEASE, ahead of nixpkgs. nixpkgs' mongodb-ce tracks the 8.2 minor line
   # (its updateScript selects `r8.2*` tags), but 8.2 is on MongoDB's MINOR-release track, and
@@ -208,6 +216,15 @@ let
     stamp="$(${pkgs.coreutils}/bin/date -u +%Y%m%dT%H%M%SZ)"
     target="${cfg.backup.directory}/$stamp"
 
+    # WRITTEN UNDER `.partial-`, RENAMED ONLY ONCE mongodump HAS EXITED 0. A stamp directory is then
+    # a COMPLETED dump by construction, which is what the off-box puller (roles/mongodb-offbox-
+    # backup.nix) relies on to take "the newest one" without asking whether it is finished -- and
+    # what keeps a failed dump out of the rotation count and the size metric below. The glob
+    # `*/` skips dot-directories, so a partial is invisible to both. A dump that died is cleared at
+    # the start of the next one rather than left to accumulate.
+    partial="${cfg.backup.directory}/.partial-$stamp"
+    ${pkgs.coreutils}/bin/rm -rf ${cfg.backup.directory}/.partial-*
+
     # --config FOR THE PASSWORD, never --password. Everything on a command line is readable by
     # every local user through /proc, and `ps` on a database host is the first place a curious
     # process looks. The config file is rendered by sops-nix into /run (0400) and never enters the
@@ -221,7 +238,8 @@ let
       --port=${toString cfg.port} \
       --gzip \
       --oplog \
-      --out="$target"
+      --out="$partial"
+    ${pkgs.coreutils}/bin/mv "$partial" "$target"
 
     # ROTATION BY COUNT, NOT BY AGE. `find -mtime +N -delete` deletes the old dumps whether or not
     # any NEW ones succeeded -- so a fortnight of silently failing dumps ends with a backup
@@ -596,6 +614,40 @@ in
           ABSENT as well as on it being stale.
         '';
       };
+
+      # THE OFF-BOX COPY'S DOOR INTO THIS HOST. The copy itself is roles/mongodb-offbox-backup.nix,
+      # on another machine; all this host does is let that machine READ the dump directory.
+      offBoxPull = {
+        authorizedKey = lib.mkOption {
+          type = lib.types.str;
+          default = "";
+          description = ''
+            The PUBLIC half of the puller's ssh key, one authorized_keys line WITHOUT options. The
+            forced command and `restrict` are added here, so they cannot be left off at the call
+            site -- the same shape as fleet.deployStaging.authorizedKey. Empty creates no account.
+
+            WHAT THE KEY CAN DO, AND IT IS THE POINT OF THE DESIGN: run rsync as a SENDER over the
+            dump directory and nothing else. `rrsync -ro` refuses any write or delete and confines
+            every path to the directory; `restrict` takes away the pty, port, agent and X11
+            forwarding. A compromised puller can read the dumps -- which it holds copies of anyway
+            -- and cannot touch this host's. A compromised THIS host cannot reach the puller's copies
+            at all, because nothing here holds a credential for that machine.
+
+            Provisioned by infra/bin/provision-mongodb-offbox-key, which writes the private half
+            into the puller's sops file and this half into nix/files/mongodb-offbox-pull.pub.
+          '';
+        };
+
+        user = lib.mkOption {
+          type = lib.types.str;
+          default = "mongodb-offbox";
+          description = ''
+            The account the puller logs in as. Its group is given read on the dump directory
+            (0750, below) and it is in no other group: the dumps are the only thing it can read
+            that every local user cannot.
+          '';
+        };
+      };
     };
   };
 
@@ -777,7 +829,13 @@ in
       # 0700, stricter than the log directory above, because the dump directory lives under it and a
       # database backup is exactly as sensitive as the database.
       "d ${cfg.dbPath} 0700 mongodb mongodb -"
-      "d ${cfg.backup.directory} 0700 mongodb mongodb -"
+      #
+      # 0750 TO THE PULLER'S GROUP when an off-box puller is configured, and only then: that group
+      # is the one account the forced command below runs as. mongodump writes 0755/0644 inside, so
+      # the parent's mode is the whole of the gate -- which is why it is the parent that changes.
+      (if pullEnabled
+        then "d ${cfg.backup.directory} 0750 mongodb ${cfg.backup.offBoxPull.user} -"
+        else "d ${cfg.backup.directory} 0700 mongodb mongodb -")
       # NOTHING HERE CREATES THE TEXTFILE DIRECTORY. modules/fleet/observability.nix owns it for
       # every publisher on the host at once, and a second `d` rule for the same path from a role
       # would be a second opinion about its mode that only one of them can win.
@@ -905,6 +963,19 @@ in
         ProtectSystem = "strict";
         ReadWritePaths = [ cfg.dbPath (builtins.dirOf cfg.logPath) ];
       };
+    };
+
+    # THE PULLER'S ACCOUNT. A system user with a real shell because sshd runs the forced command
+    # THROUGH the user's shell, and a nologin shell refuses it before rrsync is ever reached. The
+    # shell is never interactive: `command=` replaces whatever the client asked for.
+    users.groups.${cfg.backup.offBoxPull.user} = lib.mkIf pullEnabled { };
+    users.users.${cfg.backup.offBoxPull.user} = lib.mkIf pullEnabled {
+      isSystemUser = true;
+      group = cfg.backup.offBoxPull.user;
+      shell = pkgs.bashInteractive;
+      openssh.authorizedKeys.keys = [
+        ''command="${pkgs.rrsync}/bin/rrsync -ro ${cfg.backup.directory}",restrict ${cfg.backup.offBoxPull.authorizedKey}''
+      ];
     };
 
     systemd.services.mongodump = lib.mkIf cfg.backup.enable {

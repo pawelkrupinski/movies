@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Mint (or rotate) the ssh key monitoring-1 pulls mongo-1's dumps with -- roles/mongodb-offbox-backup.nix.
+#
+#   infra/bin/provision-mongodb-offbox-key
+#
+# WHAT IT WRITES, both into this checkout, for you to commit together:
+#   nix/secrets/monitoring-1.yaml      `mongodb-offbox/ssh-key`, the PRIVATE half, sops-sealed to the
+#                                      operator and monitoring-1 (infra/.sops.yaml)
+#   nix/files/mongodb-offbox-pull.pub  the PUBLIC half, which mongo-1's
+#                                      fleet.mongodb.backup.offBoxPull.authorizedKey reads
+#
+# The private half exists in plain text only in a 0700 temporary directory for the second this takes,
+# and is deleted on exit. It is NOT kept in the vault: it guards nothing that cannot be re-minted by
+# running this again, and a copy anywhere else is one more place it could leak from.
+#
+# ROTATING: run it again, commit, then deploy mongo-1 AND monitoring-1. Until both run the new
+# generation the pull fails (MongodumpOffboxStale after 36h) -- the order between them does not matter.
+#
+# Needs: ssh-keygen, sops, jq, and the operator age key -- from the vault, as
+# `secrets run movies NIX_SOPS_ADMIN_AGE_KEY -- infra/bin/provision-mongodb-offbox-key`, or SOPS_AGE_KEY set.
+set -euo pipefail
+
+infra="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+secrets_file="$infra/nix/secrets/monitoring-1.yaml"
+public_file="$infra/nix/files/mongodb-offbox-pull.pub"
+
+for tool in ssh-keygen sops jq; do
+  command -v "$tool" >/dev/null || { echo "missing: $tool" >&2; exit 1; }
+done
+export SOPS_AGE_KEY="${SOPS_AGE_KEY:-${NIX_SOPS_ADMIN_AGE_KEY:-}}"
+[[ -n "$SOPS_AGE_KEY" ]] || {
+  echo "no operator age key: run as  secrets run movies NIX_SOPS_ADMIN_AGE_KEY -- $0" >&2
+  exit 1
+}
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+chmod 700 "$work"
+
+ssh-keygen -q -t ed25519 -N '' -C "mongodb-offbox@monitoring-1" -f "$work/key" </dev/null
+
+# `sops set` takes a JSON value: the key, newline-terminated (ssh refuses one without), as a string.
+(cd "$infra" && sops set "$secrets_file" '["mongodb-offbox"]["ssh-key"]' "$(jq -Rs . <"$work/key")")
+# Read it back: `sops set` with a malformed index exits 0 having changed nothing.
+(cd "$infra" && sops -d --extract '["mongodb-offbox"]["ssh-key"]' "$secrets_file") | cmp -s - "$work/key" || {
+  echo "the sealed key does not read back as the one minted -- $secrets_file NOT updated" >&2
+  exit 1
+}
+
+cut -d' ' -f1,2 "$work/key.pub" >"$public_file"
+
+echo "sealed  $secrets_file  [mongodb-offbox][ssh-key]"
+echo "wrote   $public_file  ($(ssh-keygen -lf "$work/key.pub" | awk '{print $2}'))"
+echo "commit both, then deploy mongo-1 and monitoring-1."

@@ -68,8 +68,12 @@ as a single-node replica set `rs0` (2 vCPU, 4 GB, WiredTiger cache 1 GB, oplog 4
 
 - **Open: FCV.** The role calls `setFeatureCompatibilityVersion: "8.3"` "a separate, later step", and nothing
   records it was done. Check with `db.adminCommand({getParameter: 1, featureCompatibilityVersion: 1})`. Setting it
-  is one-way: an 8.2 binary can no longer open the data. Take an **off-box** dump first, because backups are a
-  local `mongodump` on the same volume ("the largest known gap", per the role).
+  is one-way: an 8.2 binary can no longer open the data. Take an **off-box** dump first. That copy now exists:
+  since 2026-10-24 monitoring-1 pulls mongo-1's newest completed dump every morning over a read-only `rrsync -ro`
+  key, keeps seven by count, and `MongodumpOffboxStale` / `MongodumpOffboxMetricAbsent` watch it
+  (`roles/mongodb-offbox-backup.nix`). Before raising FCV, trigger a fresh dump and pull, verify the copy on
+  monitoring-1 (`gzip -t` every file, `bsondump` document counts per collection), then set FCV by hand --
+  operator-only, against prod.
 - **The local prod mirror (`:28017`) runs 7.0.43, not prod's version.** Behaviour checked there can differ from
   prod's 8.3.
 - 8.3 is on MongoDB's minor-release track, so it gets no patches once the next release ships. Keep following each

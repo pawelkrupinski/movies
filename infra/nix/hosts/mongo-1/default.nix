@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 
 let
   # THE HETZNER VOLUME'S DEVICE PATH, read back with
@@ -91,6 +91,11 @@ in
     # every client. NO 6PN ENTRY, because there is no Fly peer anywhere on this fleet any more (see
     # the import list). Never the public IP.
     bindAddresses = [ "127.0.0.1" "10.20.0.13" ];
+
+    # THE OFF-BOX COPY'S READ-ONLY DOOR: monitoring-1 pulls the nightly dump with this key, which can
+    # run nothing but `rrsync -ro` over the dump directory. See roles/mongodb-offbox-backup.nix; the
+    # key is minted (and rotated) by infra/bin/provision-mongodb-offbox-key.
+    backup.offBoxPull.authorizedKey = lib.fileContents ../../files/mongodb-offbox-pull.pub;
   };
 
   # Same two out-of-repo prerequisites as mongo-1 -- the `kinowo_monitor` user and its password --

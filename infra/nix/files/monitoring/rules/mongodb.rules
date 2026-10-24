@@ -113,10 +113,9 @@ groups:
           summary: "No successful mongodump for over 36 hours"
           description: >-
             The nightly dump has not completed since {{ $value | humanizeDuration }} ago. Check
-            `systemctl status mongodump` and `journalctl -u mongodump`. Remember what this covers
-            and what it does not: it is a logical copy on the SAME volume as the database, so it
-            protects against a bad migration or a dropped collection and not against losing the
-            volume. Off-box replication of these dumps is a known gap.
+            `systemctl status mongodump` and `journalctl -u mongodump`. This is the copy ON mongo-1;
+            while it is stale the off-box copy on monitoring-1 stops advancing too
+            (`MongodumpOffboxStale` follows within a day).
 
       - alert: MongodumpMetricAbsent
         expr: absent(kinowo_mongodump_last_success_timestamp_seconds)
@@ -155,6 +154,49 @@ groups:
             A backup that is present but truncated is worse than a missing one, because it passes
             every check that only asks whether a dump exists. Compare the directory listings under
             fleet.mongodb.backup.directory before the next rotation removes the older copy.
+
+      # -------------------------------------------------------------------------------------------
+      # THE OFF-BOX COPY. monitoring-1 pulls the newest completed dump every morning
+      # (roles/mongodb-offbox-backup.nix), so the series below carry host="monitoring-1". It is the
+      # only copy that survives losing mongo-1, or somebody who owns it -- which is why it is
+      # watched on its own rather than assumed from the local dump being fresh.
+      #
+      # THE AGE IS THE COPY'S DATA, NOT THE PULL'S. `newest_dump_timestamp` is the dump time of the
+      # newest copy held, read from its stamp: a pull that "succeeds" every morning by finding it
+      # already holds an old dump (mongo-1 stopped dumping, or stopped offering new ones) keeps its
+      # own success time fresh and this one stale.
+      # -------------------------------------------------------------------------------------------
+      - alert: MongodumpOffboxStale
+        expr: time() - kinowo_mongodump_offbox_newest_dump_timestamp_seconds > 36 * 3600
+        # NO `for:`, for MongodumpStale's reason. The newest copy is normally 2h (just pulled) to
+        # 26h old; 36h is one missed pull plus most of a day.
+        labels:
+          severity: warning
+        annotations:
+          summary: "The newest off-box copy of the database is over 36 hours old"
+          description: >-
+            The newest dump held on {{ $labels.host }} was taken {{ $value | humanizeDuration }}
+            ago. If `MongodumpStale` is firing too, the dump itself stopped -- start there. If not,
+            the pull is failing: `systemctl status mongodb-offbox-pull` and `journalctl -u
+            mongodb-offbox-pull` on monitoring-1 ("Host key verification failed" means mongo-1 was
+            re-converted and `fleet.mongodbOffboxBackup.source.hostKey` needs its new key). Until
+            this clears, losing mongo-1 loses everything since that copy was taken.
+
+      - alert: MongodumpOffboxMetricAbsent
+        expr: absent(kinowo_mongodump_offbox_newest_dump_timestamp_seconds)
+        # Six hours, for MongodumpMetricAbsent's reason: legitimately absent until a fresh host's
+        # first pull, which is exactly the state somebody needs to be told about.
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is publishing the off-box mongodump copy's age"
+          description: >-
+            `MongodumpOffboxStale` cannot fire without this series, so the only copy of the
+            database that survives losing mongo-1 is unwatched. Either the pull has never succeeded
+            on monitoring-1 (`systemctl start mongodb-offbox-pull` and read its journal), or
+            node_exporter is not reading the textfile directory it writes to. AN ABSENT SERIES IS
+            NOT A HEALTHY BACKUP.
 
   # ------------------------------------------------------------------------------------------------
   # THE EXPORTER'S GROUP. Everything here needs mongodb_exporter on mongo-1 to be running AND

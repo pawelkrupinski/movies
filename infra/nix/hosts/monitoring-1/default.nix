@@ -29,6 +29,7 @@ in
     ../../modules/roles/k3s-server.nix
     ../../modules/roles/victoria-logs.nix
     ../../modules/roles/identity-regressions.nix
+    ../../modules/roles/mongodb-offbox-backup.nix
 
     # THE SHIPPER, IMPORTED PER HOST -- WHICH IS THE WRONG PLACE FOR IT, AND IS SAID OUT LOUD HERE
     # RATHER THAN LEFT TO BE DISCOVERED. It lives under modules/fleet/ because it is true of every
@@ -379,6 +380,18 @@ in
   # identity take-change lines, every 5 minutes, for rules/identity-regressions.rules. See
   # roles/identity-regressions.nix.
   fleet.identityRegressions.enable = true;
+
+  # THE OFF-BOX COPY OF mongo-1's NIGHTLY DUMP: pulled read-only every morning, seven kept by count, on
+  # this host's root disk. Why here and not k3s-worker-1: roles/mongodb-offbox-backup.nix's header.
+  fleet.mongodbOffboxBackup = {
+    enable = true;
+    source = {
+      address = "10.20.0.13";
+      # mongo-1's /etc/ssh/ssh_host_ed25519_key.pub (read 2026-10-24 with ssh-keyscan from this host).
+      # It changes when mongo-1 is re-converted; update it alongside that host's sops recipient.
+      hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINA6nssJex22eGm9mGOdSdpnpMq48njYXK/6yUGKZap5";
+    };
+  };
 
   # AND IT SHIPS ITS OWN JOURNAL TO ITSELF. Not redundant: without this, the one host whose logs
   # would explain a monitoring outage is the one host missing from the store, and every query that

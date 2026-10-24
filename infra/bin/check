@@ -25,6 +25,8 @@
 #   reboot-required    the decision behind `nixos_reboot_required`, whose only other test is to
 #                      reboot a machine and read a metric afterwards -- which is how it stayed
 #                      wrong.
+#   mongodb off-box    the pull of mongo-1's dumps onto monitoring-1: newest COMPLETED dump only,
+#                      rotation by count, the metric its alerts read.
 #   replica-set origin WHICH hosts may CREATE the replica set. `nix eval` proves each host builds;
 #                      it cannot notice that two of them would both build a unit that calls
 #                      `rs.initiate()`, which is a silent, data-losing mistake rather than a broken
@@ -331,6 +333,21 @@ if [ -f test/test_heap_dumps.sh ]; then
   fi
 else
   echo "  FAILED test/test_heap_dumps.sh is missing"
+  failed=1
+fi
+
+step "mongodb off-box pull"
+# The off-box copy of mongo-1's dump. Its other test is "lose mongo-1 and try to restore". See
+# nix/files/mongodb-offbox-pull.sh.
+if [ -f test/test_mongodb_offbox_pull.sh ]; then
+  if out="$(bash test/test_mongodb_offbox_pull.sh 2>&1)"; then
+    echo "$out" | tail -1 | sed 's/^/  /'
+  else
+    echo "$out" | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_mongodb_offbox_pull.sh is missing"
   failed=1
 fi
 
