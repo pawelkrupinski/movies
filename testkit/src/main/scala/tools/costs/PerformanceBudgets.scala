@@ -51,8 +51,10 @@ object PerformanceBudgets {
   // cold 4.63 -> 4.50, warm 2.81 -> 2.75, facet warm 1.30 -> 1.26, landing 990 -> 1,040 KB, /api/repertoire
   // cold 14.3 -> 13.4, warm 1.35 -> 1.28, /api/details cold 4.15 -> 4.13, warm 651 -> 663 KB; blob hit 7.0 KB.
 
-  /** The city listing with every controller cache empty: schedules, cards, JSON-LD all built. */
-  val ListingCold = bytes("listing render, cold caches", measured = mb(18.3))
+  /** The city listing with every controller cache empty: schedules, cards, JSON-LD all built. 18.3 -> 20.4 MB on
+   *  2026-10-24 for the cards' curated search spellings (846a6b572, then dbee52416's leaner fold): Main measured 19.49
+   *  before them, 20.43 / 20.44 after. */
+  val ListingCold = bytes("listing render, cold caches", measured = mb(20.4))
   /** The city listing with the controller's caches full and the response blob missed (`?diag=`). */
   val ListingWarm = bytes("listing render, warm caches", measured = mb(1.26))
   /** The city listing served from the gzipped blob. */
@@ -68,7 +70,9 @@ object PerformanceBudgets {
    *  5.21 MB -> 990 KB, measured 2026-10-11. */
   val Landing = bytes("landing render", measured = kb(1040))
   /** `/api/repertoire` and `/api/details`, every film's JSON built (cold) or kept (warm). */
-  val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(13.4))
+  /** 13.4 -> 15.3 MB on 2026-10-24 for the films' curated search spellings, which the apps' payload carries: Main
+   *  measured 14.67 before them, 15.55 after (15.00 locally). */
+  val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(15.3))
   val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.28))
   val ApiDetailsCold    = bytes("/api/details render, cold caches", measured = mb(4.13))
   val ApiDetailsWarm    = bytes("/api/details render, warm caches", measured = kb(663))
