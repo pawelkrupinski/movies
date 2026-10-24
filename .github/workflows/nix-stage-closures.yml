@@ -260,6 +260,12 @@ jobs:
           node-version-file: infra/version-dashboard/.nvmrc
           cache: 'npm'
           cache-dependency-path: infra/version-dashboard/package-lock.json
+      # package.json fetches fleetkit as git+ssh://forgejo-git/...: give the job that alias, with a
+      # read-only deploy key on the private bitcashier/fleetkit (the job token cannot read it).
+      - name: Reach fleetkit
+        env:
+          FLEETKIT_DEPLOY_KEY: ${{ secrets.FLEETKIT_DEPLOY_KEY }}
+        run: .github/scripts/fleetkit-access.sh
       - name: The fleet dashboard type-checks, lints and passes its tests
         working-directory: infra/version-dashboard
         run: |
