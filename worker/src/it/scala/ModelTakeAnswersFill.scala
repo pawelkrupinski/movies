@@ -144,7 +144,7 @@ object ModelTakeAnswersFill {
 
     // the IMDb ids a family took, on TMDB — what the dataset maps a pick by
     val tmdb = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
-      language = c.country.language, retrySleep = (_: Long) => ()))
+      language = c.country.language))
     val findsFile = out.resolve(s"finds-$code.tsv")
     val finds = new java.util.concurrent.ConcurrentHashMap[String, String]()
     if (Files.exists(findsFile)) Files.readAllLines(findsFile).asScala.map(_.split('\t')).foreach(a => finds.put(a(0), a.lift(1).getOrElse("")))

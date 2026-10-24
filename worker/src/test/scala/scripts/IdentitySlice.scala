@@ -157,7 +157,7 @@ object IdentitySlice {
                     /** Prod's state beside the recording — the stage's stored verdicts, the pins — from the local prod mirror; none in a hermetic slice. */
                     val prod: tools.ProdState = tools.ProdState.none) {
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
-    val tmdb = new clients.TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = country.language, retrySleep = (_: Long) => ())
+    val tmdb = OlderRefs.tmdbClient(fetch, settings.TmdbApiKey(StubTmdbKey), country.language)
     private val venueClock = new models.VenueClock(clock)
     /** The country's venue detail pages, read by its scrapers' own detail enrichers over the same fetch. */
     val enrichers: Seq[services.cinemas.common.DetailEnricher] = {

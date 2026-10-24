@@ -18,7 +18,7 @@ class StoredLookupsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   private def asked(queries: CandidateQuery*) = {
     val memo = new IdentityShadow.Memo(new TmdbIdentityLookups(new clients.TmdbClient(fetch,
-      apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)), language = language, retrySleep = (_: Long) => ()),
+      apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)), language = language),
       new services.enrichment.ImdbClient(fetch), Nil))
     queries.foreach(memo.candidates)
     memo

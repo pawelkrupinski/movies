@@ -77,7 +77,7 @@ object UnmatchedClustersFill {
     // the overviews the synopsis evidence asks, off the recording's TMDB tree
     val overviewsOf = recorded.map { opened =>
       val client = new clients.TmdbClient(opened.fetch, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
-        language = country.language, retrySleep = (_: Long) => ())
+        language = country.language)
       new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(opened.fetch), Nil, opened.gaps)
     }
     // the casts, original languages and genres a capture taken without them lacks, off the same tree
@@ -98,7 +98,7 @@ object UnmatchedClustersFill {
     val families = UnmatchedClusters.familiesOf(country)
     val sources  = LiveFamilySources.of(cache, country, families)
     val tmdb  = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
-      language = country.language, retrySleep = (_: Long) => ()))
+      language = country.language))
     val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]](capture.finds.asJava)
     val tmdbOf: String => Answer[Option[Int]] = imdb => Option(finds.get(imdb)).map(Answer.Known(_)).getOrElse {
       tmdb.flatMap(client => Try(client.findByImdbId(imdb).map(_.id)).toOption)

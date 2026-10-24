@@ -84,7 +84,7 @@ object IdentityJudgeCards {
 
   /** TMDB live, for the records a capture never read: only with a key, and never asked twice for one film. */
   private def liveLookups(): Option[IdentityLookups] = settings.ProcessConfiguration.resolve().tmdbApiKey.map { key =>
-    new TmdbIdentityLookups(new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(key), retrySleep = (ms: Long) => Thread.sleep(ms)),
+    new TmdbIdentityLookups(new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(key)),
       new services.enrichment.ImdbClient(new tools.RealHttpFetch()), Nil)
   }
 

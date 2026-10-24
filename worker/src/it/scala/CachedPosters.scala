@@ -73,5 +73,5 @@ object CachedPosters {
   def of(configuration: settings.ProcessConfiguration, country: models.Country, dir: Option[Path] = None): CachedPosters =
     new CachedPosters(dir.orElse(configuration.identityPosterCache.map(_.value)).getOrElse(Path.of("target", "identity-posters")),
       configuration.identityLiveGaps.map(key => new TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
-        language = country.language, retrySleep = (_: Long) => ())), country.language.getLanguage)
+        language = country.language)), country.language.getLanguage)
 }

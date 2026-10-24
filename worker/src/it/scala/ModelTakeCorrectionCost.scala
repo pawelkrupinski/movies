@@ -47,7 +47,7 @@ object ModelTakeCorrectionCost {
             d.copy(basis = ResolverDecision.Basis.Pinned)(d.trace) else d))
         val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
         val tmdb  = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
-          language = l.c.country.language, retrySleep = (_: Long) => ()))
+          language = l.c.country.language))
         val tmdbOf: String => Answer[Option[Int]] = imdb => Answer.Known(finds.computeIfAbsent(imdb, id =>
           tmdb.flatMap(client => scala.util.Try(client.findByImdbId(id).map(_.id)).toOption.flatten)))
         val byKey = l.listings.map(x => x.key -> x).toMap

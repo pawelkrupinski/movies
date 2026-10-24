@@ -1,12 +1,11 @@
 package clients
 
 import play.api.libs.json._
-import _root_.tools.{HttpFetch, HttpStatusException, RetryWithBackoff}
+import _root_.tools.{HttpFetch, HttpStatusException}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
-import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -45,9 +44,6 @@ class TmdbClient(
   // `val` so the enrichment (`MovieService`) can canonicalise the country names
   // TMDB returns in the SAME language it fetched them in.
   val language: Locale = TmdbClient.DefaultLanguage,
-  // How a transient failure waits before its retry. Real time in production; a harness
-  // that replays an outage passes a no-op, or every refused request costs it ~1s asleep.
-  retrySleep: Long => Unit = Thread.sleep,
   // How a film's two responses (`details`, `fullDetails`, `identityRecord`) are parsed: shared with
   // the identity store's normalizer, which parsed the same bodies a moment before on this thread
   // (`tools.JsonBodies`) — every reader of them takes that parse, so none stays on the thread.
@@ -83,16 +79,11 @@ class TmdbClient(
   private def orEmptyWhenUnknown(read: => String): String =
     try read catch { case e: HttpStatusException if e.code == 404 => """{"crew":[]}""" }
 
-  /** Every TMDB call routes through here. TMDB's API 5xxs and times out for a
-   *  few minutes now and then (it took down a CI integration run on
-   *  `/movie/{id}/external_ids`); a transient blip almost always succeeds on the
-   *  next try, so retry it — and a 429 — a couple of times with a short backoff. Any
-   *  other 4xx — a 404 for an id/title TMDB doesn't know — is NOT transient and fails fast (no point
-   *  burning the remaining attempts). A `None`/empty parse result isn't an
-   *  exception, so the existing graceful-degradation paths are untouched. */
-  private def httpGet(url: String, auth: Map[String, String]): String =
-    RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
-      retryOn = TmdbClient.isTransient, sleep = retrySleep)(http.get(url, auth))
+  /** Every TMDB call routes through here. A transient failure — a timeout, a lost connection, a 5xx — is asked
+   *  again on the spot by the chain `http` is ([[_root_.tools.RetryingHttpFetch]] in `HttpWiring.pacedWire`), a 429 is
+   *  waited out by its gate (`ThrottledHttpFetch`); a 404 for an id/title TMDB doesn't know fails at once. A
+   *  `None`/empty parse result isn't an exception, so the graceful-degradation paths are untouched. */
+  private def httpGet(url: String, auth: Map[String, String]): String = http.get(url, auth)
 
   private def searchUrl(title: String, yearParameter: Option[Int]): String = {
     val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
@@ -424,23 +415,6 @@ object TmdbClient {
    *  every existing single-country (Poland-only) call site — and every test
    *  fixture keyed on `language=pl-PL` URLs — byte-identical. */
   val DefaultLanguage: Locale = Locale.forLanguageTag("pl-PL")
-
-  /** A TMDB HTTP failure worth retrying: a 5xx server error or a 429 rate-limit
-   *  (transient), or any network-level IOException — `HttpTimeoutException`,
-   *  `ConnectException`, a reset socket. A 4xx other than 429 (a 404 for an id
-   *  TMDB doesn't know, a 401 for a bad key) is permanent and must NOT retry.
-   *
-   *  A `FileNotFoundException` is excluded even though it's an `IOException`: prod's
-   *  `RealHttpFetch` never throws it, but the fixture-replay `FakeHttpFetch` throws
-   *  it on a missing fixture — a PERMANENT miss (matching `TestWiring`'s
-   *  "missing fixture is permanent" rule). Retrying it just storms the replay harness
-   *  with thousands of pointless backoff sleeps. */
-  private[clients] def isTransient(t: Throwable): Boolean = t match {
-    case _: java.io.FileNotFoundException => false
-    case e: HttpStatusException           => e.code >= 500 || e.code == 429
-    case _: java.io.IOException           => true
-    case _                                => false
-  }
 
   /** One key of a film's edits: the languages its items name and — for crew — each credited
    *  person with their department, and the jobs (from an item's new or original value). */
