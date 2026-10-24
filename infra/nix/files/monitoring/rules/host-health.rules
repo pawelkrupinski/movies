@@ -121,6 +121,54 @@ groups:
             which process grew.
 
       # -----------------------------------------------------------------------------------------
+      # SWAP. Every host has zram swap (modules/fleet/host-memory.nix, sizes in
+      # files/host-memory.json) and pods are pinned to NoSwap, so what swaps is the host's own
+      # daemons. zram ABSORBING A BURST is what it is there for: a one-off push of idle pages out
+      # to compressed RAM is a minute or two of pswpout and then nothing. CONTINUOUS paging --
+      # pages going out and coming back for a quarter of an hour -- is the working set no longer
+      # fitting, paid on zram in CPU (compression) as well as latency.
+      #
+      # MemAvailable stays the headroom axis (the rules above): zram's compressed pages count as
+      # used memory, so a host swapping hard reads low there too. These two say what MemAvailable
+      # cannot -- that the machine is already trading memory for CPU, and how much swap is left.
+      #
+      # MEASURED 2026-10-24, before zram was rolled out: swap traffic 0 pages/s and SwapTotal 0 on
+      # every host. The series come from node_exporter's default vmstat (pswp*) and meminfo
+      # collectors.
+      # -----------------------------------------------------------------------------------------
+      - alert: SwapTrafficSustained
+        # PAGES PER SECOND (4 KiB each), in plus out: 128/s is 512 KiB/s, ~450 MiB over the hold.
+        # A burst zram absorbs is gone from a 5m rate well before the fifteen-minute hold
+        # completes; only paging that keeps going reaches it.
+        expr: >-
+          rate(node_vmstat_pswpin[5m]) + rate(node_vmstat_pswpout[5m]) > 128
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has been swapping continuously for 15 minutes ({{ $value | humanize }} pages/s)"
+          description: >-
+            The working set no longer fits RAM and zram is paging it in and out. `vmstat 1 5`
+            (`si`/`so` columns) confirms it; `systemd-cgtop -m --order=memory` names the unit that
+            grew; `zramctl` shows how much is compressed. Pods cannot swap (NoSwap), so on a k3s
+            node this is a host daemon -- k3s itself, containerd, or the journal.
+
+      - alert: SwapUsedHigh
+        # THREE QUARTERS OF THE zram DEVICE IN USE for half an hour. A host without swap has
+        # SwapTotal 0, and 0/0 is NaN, which compares false -- no guard needed.
+        expr: >-
+          1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes > 0.75
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has used {{ $value | humanizePercentage }} of its swap"
+          description: >-
+            The swap that buys time before the OOM killer is nearly spent. On zram this memory is
+            compressed RAM, so it is also headroom the host no longer has. Find the process that
+            grew (`systemd-cgtop -m --order=memory`) before MemoryAvailableCritical fires.
+
+      # -----------------------------------------------------------------------------------------
       # OOM KILLS. The event the rules above are trying to get ahead of, alerted on separately
       # because getting ahead of it does not always work.
       # -----------------------------------------------------------------------------------------

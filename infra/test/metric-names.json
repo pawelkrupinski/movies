@@ -67,9 +67,13 @@
   "node_load15",
   "node_memory_MemAvailable_bytes",
   "node_memory_MemTotal_bytes",
+  "node_memory_SwapFree_bytes",
+  "node_memory_SwapTotal_bytes",
   "node_pressure_memory_stalled_seconds_total",
   "node_systemd_unit_state",
   "node_vmstat_oom_kill",
+  "node_vmstat_pswpin",
+  "node_vmstat_pswpout",
   "probe_duration_seconds",
   "probe_http_status_code",
   "probe_http_uncompressed_body_length",
@@ -82,6 +86,6 @@
   "prometheus_tsdb_storage_blocks_bytes",
   "up"
  ],
- "taken": "2026-10-21",
+ "taken": "2026-10-24",
  "window_days": 14
 }

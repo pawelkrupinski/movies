@@ -236,6 +236,82 @@ tests:
         exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
+  # SWAP TRAFFIC: A BURST, A TRICKLE AND A THRASH. mongo-1 pushes 30000 pages out to zram over
+  # two minutes and stops -- what zram is for, and it must not page. monitoring-1 trickles 60
+  # pages/s, under the 128 line. k3s-worker-1 pages 100/s in and 100/s out without let-up: past
+  # the line, and once the fifteen-minute hold is through, it fires -- and only it does.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_vmstat_pswpin{host="mongo-1",role="mongodb"}'
+        values: '0+0x60'
+      - series: 'node_vmstat_pswpout{host="mongo-1",role="mongodb"}'
+        values: '0x5 15000 30000+0x55'
+      - series: 'node_vmstat_pswpin{host="monitoring-1",role="monitoring"}'
+        values: '0+1800x60'
+      - series: 'node_vmstat_pswpout{host="monitoring-1",role="monitoring"}'
+        values: '0+1800x60'
+      - series: 'node_vmstat_pswpin{host="k3s-worker-1",role="k3s-agent"}'
+        values: '0+6000x60'
+      - series: 'node_vmstat_pswpout{host="k3s-worker-1",role="k3s-agent"}'
+        values: '0+6000x60'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SwapTrafficSustained
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: SwapTrafficSustained
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              role: k3s-agent
+              severity: warning
+            exp_annotations:
+              summary: "k3s-worker-1 has been swapping continuously for 15 minutes (200 pages/s)"
+              description: >-
+                The working set no longer fits RAM and zram is paging it in and out. `vmstat 1 5` (`si`/`so`
+                columns) confirms it; `systemd-cgtop -m --order=memory` names the unit that grew; `zramctl`
+                shows how much is compressed. Pods cannot swap (NoSwap), so on a k3s node this is a host
+                daemon -- k3s itself, containerd, or the journal.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # SWAP FILLING. k3s-worker-1 holds 80% of its swap in use, past the 75% line, and fires once
+  # the half-hour hold is through; mongo-1 at half is quiet; monitoring-1 has no swap at all
+  # (SwapTotal 0, so the ratio is NaN) and is quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_SwapTotal_bytes{host="k3s-worker-1",role="k3s-agent"}'
+        values: '4000000000+0x60'
+      - series: 'node_memory_SwapFree_bytes{host="k3s-worker-1",role="k3s-agent"}'
+        values: '800000000+0x60'
+      - series: 'node_memory_SwapTotal_bytes{host="mongo-1",role="mongodb"}'
+        values: '2000000000+0x60'
+      - series: 'node_memory_SwapFree_bytes{host="mongo-1",role="mongodb"}'
+        values: '1000000000+0x60'
+      - series: 'node_memory_SwapTotal_bytes{host="monitoring-1",role="monitoring"}'
+        values: '0+0x60'
+      - series: 'node_memory_SwapFree_bytes{host="monitoring-1",role="monitoring"}'
+        values: '0+0x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: SwapUsedHigh
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: SwapUsedHigh
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              role: k3s-agent
+              severity: warning
+            exp_annotations:
+              summary: "k3s-worker-1 has used 80% of its swap"
+              description: >-
+                The swap that buys time before the OOM killer is nearly spent. On zram this memory is
+                compressed RAM, so it is also headroom the host no longer has. Find the process that grew
+                (`systemd-cgtop -m --order=memory`) before MemoryAvailableCritical fires.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
   # AN OOM KILL. The counter steps from 0 to 1 at the fifth minute and stays there -- it is a
   # count of past events, so it never goes back down. The rule fires within the ten-minute
   # `increase()` window after its one-minute hold, and stops on its own once the step falls out of the

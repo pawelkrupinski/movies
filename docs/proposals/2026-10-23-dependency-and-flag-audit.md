@@ -15,7 +15,7 @@ that must be confirmed before acting. Measure before landing any performance ite
 2. **JVM:** retire `infra/jvm/jdk25-parity.options`, starting with compact object headers (done: file retired 2026-10-24); canary on one worker.
 3. **Android:** a Baseline Profile; posters on the app's shared OkHttp client; `AsyncImage` over
    `SubcomposeAsyncImage` in the grid.
-4. **Hosts:** zram swap and kubelet memory reserves on every host (implemented, deploy owed: see Hosts).
+4. **Hosts:** zram swap and kubelet memory reserves on every host (landed 2026-10-24, apply owed: see Hosts).
 5. **iOS:** `@Observable` with a deployment-target bump to iOS 17.
 6. **Page tests:** replace the remaining `waitForTimeout` sleeps.
 
@@ -380,7 +380,8 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
 
 ## Hosts, k3s, edge
 
-- **Swap and kubelet reserves: done, deploy owed** (branch `hosts-memory-safety`, `modules/fleet/host-memory.nix`,
+- **Swap and kubelet reserves: landed 2026-10-24, apply owed** (by hand, mongo-1 → monitoring-1 → k3s-worker-1:
+  the auto-applier refuses closures that start units or restart k3s; `modules/fleet/host-memory.nix`,
   numbers in `infra/nix/files/host-memory.json`). Before: no swap on any host, no kubelet reserves, and k3s's
   default `evictionHard` (imagefs/nodefs only) left `memory.available` with NO threshold, so k3s-worker-1's
   allocatable equalled its 15616Mi capacity. Now: zram (zstd) 50% on mongo-1 and monitoring-1, 25% on
@@ -392,6 +393,9 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
   eviction stays at k3s's 5%, so no overlap with `container-image-gc.nix`. Asserted per host by
   `infra/test/test_host_memory.sh`. No host-level OOM was on record; the sizes are not from measured
   daemon RSS (none recorded for k3s, caddy, Prometheus) and should be checked against `node_memory_*` after rollout.
+  Alerting (`rules/host-health.rules`): low memory was already covered (`MemoryAvailableLow` < 15% for 15m,
+  `MemoryAvailableCritical` < 7% for 5m; 14-day minimum 19% on monitoring-1); added `SwapTrafficSustained`
+  (pswpin + pswpout > 128 pages/s for 15m) and `SwapUsedHigh` (> 75% of swap for 30m), both 0 before rollout.
 - **CPU throttling:** pods don't set `-XX:ActiveProcessorCount`, so the JVM sizes itself to the node's cores. Audit
   with `container_cpu_cfs_throttled_periods_total`, and pin it to the pod's CPU request where limits throttle.
 - **Prometheus `scrape_interval`: rejected, no payoff** [checked 2026-10-24 against monitoring-1's own Prometheus].
