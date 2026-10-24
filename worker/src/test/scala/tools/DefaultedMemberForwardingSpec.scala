@@ -61,6 +61,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
         new services.identity.adapters.TmdbChangesSweep.CountingFetch(d)),
       // Counts the model's live asks' failed reads, so a gap whose read failed is asked again on the failure backoff.
       classOf[services.identity.adapters.LiveAsks.Counted] -> ((d: HttpFetch) => new services.identity.adapters.LiveAsks.Counted(d)),
+      // Asks a recoverable failure again on the spot.
+      classOf[RetryingHttpFetch] -> ((d: HttpFetch) => new RetryingHttpFetch(d, _ => ())),
       // Normalizes what it sees into a store as a side effect; every call reaches the fetch it decorates.
       classOf[services.identity.adapters.NormalizingHttpFetch] -> ((d: HttpFetch) =>
         new services.identity.adapters.NormalizingHttpFetch(d, new services.identity.adapters.TmdbNormalizer(
@@ -74,7 +76,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
           classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.adapters.LookupFillLiveFetch],
           classOf[services.identity.adapters.NormalizingHttpFetch], classOf[services.identity.adapters.TmdbChangesSweep.CountingFetch],
-          classOf[services.identity.adapters.LiveAsks.Counted])
+          classOf[services.identity.adapters.LiveAsks.Counted], classOf[RetryingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

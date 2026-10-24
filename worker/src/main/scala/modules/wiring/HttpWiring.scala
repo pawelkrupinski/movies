@@ -4,7 +4,7 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, OMDbClient, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
+import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust}
 
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
@@ -140,7 +140,8 @@ trait HttpWiring { self: WorkerWiring =>
 object HttpWiring {
 
   /** Everything between a caller and the wire that decides WHEN a request may go out: the fleet's shared
-   *  pace, the 429 gate, the host breaker and the per-host pace (`HostPolicies`), in the order the trait's
+   *  pace, the 429 gate, the on-the-spot retry of a recoverable failure (`RetryingHttpFetch`), the host breaker and the
+   *  per-host pace (`HostPolicies`), in the order the trait's
    *  notes explain. Both phase chains are this over their metered leaf; a process that sends requests
    *  with no worker around it (a convergence leg's `FillMissingFixtures`) is this over the bare one, so
    *  it asks every host exactly as politely as the worker does. */
@@ -150,9 +151,12 @@ object HttpWiring {
     val pace = PacedHttpFetch.configuredInterval(configuration)
     new PacedHttpFetch(
       new ThrottledHttpFetch(
-        new HostCircuitBreakerHttpFetch(
-          PacedHttpFetch.perProcess(leaf, pace, clock = clock, sleep = sleep),
-          meter = breakerMeter, clock = clock),
+        // a timeout, a lost connection or a server error asked again on the spot, each try through the breaker
+        new RetryingHttpFetch(
+          new HostCircuitBreakerHttpFetch(
+            PacedHttpFetch.perProcess(leaf, pace, clock = clock, sleep = sleep),
+            meter = breakerMeter, clock = clock),
+          sleep),
         paceFor = pace, clock = clock, sleep = sleep),
       fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
       PacedHttpFetch.FleetHorizon, clock, sleep = sleep, paceName = "the fleet's pace")
