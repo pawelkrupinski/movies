@@ -84,14 +84,19 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
       Option.when(IdentityProjectionWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
   }
-  lazy val agreementStage: services.identity.agreement.AgreementStage =
-    newAgreementStage(agreementVerdicts, clock,
+  /** The live agreement stage. The TMDB finds and records it waits on ([[services.identity.agreement.AgreementStage.wanted]])
+   *  move its answers' version as the TMDB store files them, whoever asked: the agreement's asker or the model's fill. */
+  lazy val agreementStage: services.identity.agreement.AgreementStage = {
+    val stage = newAgreementStage(agreementVerdicts, clock,
       ask = enqueueAgreementQuestions,
       metrics = workerMetrics.identityAgreement.stage(country.code),
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
         stopwatch = stopwatch))
+    familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
+    stage
+  }
   /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */
   private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): Unit =
     services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
@@ -176,10 +181,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  cluster's family questions inline ([[agreementStage]]'s `askNow`). */
   lazy val agreementAsker: services.identity.adapters.AgreementAsker =
     new services.identity.adapters.AgreementAsker(familyAnswerStore, familySources,
-      // a find filed is noted among the answers' changes, as a record read again is: a take or correction that read it is
-      // read again
-      find = imdbId => { tmdbClient.findByImdbId(imdbId); familyAnswerStore.noteFiled(services.identity.adapters.TmdbStore.findId(imdbId)) },
-      reread = film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(services.identity.agreement.AgreementStage.recordReadId(film)) },
+      // what they file reaches the stage through the TMDB store's own filings ([[familyAnswerStore]]'s `awaitedBy`)
+      find = imdbId => { tmdbClient.findByImdbId(imdbId); () }, reread = film => { tmdbClient.readRecordAgain(film); () },
       posterAnswerStore, posterHashing, catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
       filed = () => {
         identityProjection.asked(IdentityProjection.Trigger.Answer)

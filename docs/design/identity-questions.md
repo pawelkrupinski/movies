@@ -93,8 +93,8 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    alone: a find, a poster, a catalogue page or id, a record's day, a family's question read by a correction or the
    broadcast join is waited on until attempted, then read as no evidence (`AgreementStage.settled`: a find as naming no
    TMDB film, a poster as unread, a catalogue question as naming nothing, a correction's family as no verdict), the take
-   or correction decided without it, the question asked on every pass and read again once answered (a find filed is
-   noted among the answers' changes, as a record read is). So the policy table has no wait column: a model question
+   or correction decided without it, the question asked on every pass and read again once answered (a find or record
+   the stage waits on is counted among the answers' changes as the TMDB store files it, C5's D3). So the policy table has no wait column: a model question
    waits on fill rounds, an agreement question until attempted.
    Host recovery (2026-10-24, the owner: "track external services being down and coming back"): the enrichment chain's
    host breakers tell a listener each transition (`HostCircuitBreakerHttpFetch.Transition`: `Opened`, `Closed`,
@@ -117,9 +117,15 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    at a settle (before the drain, as before); subscribers run on the publishing thread. The model subscribes (TMDB keys
    to `filed`, venue keys to `observed`); the agreement stage reads `FamilyAnswerStore.changes`, a view counting only the
    keys `Question.parse` names, so a TMDB filing leaves its version, and a quiet tick, as they were (`AnswerFeedSpec`
-   holds the old and new versions and `changedSince` sets side by side). Next: D3, the agreement view fed the TMDB
-   finds and records the stage reads (`find|…`, `tmdb|record|…` as the TMDB store files them), so their filing moves the
-   stage without the asker's `noteFiled`; then D4.
+   holds the old and new versions and `changedSince` sets side by side). D3 (done): the agreement view maps the TMDB
+   store's own filings of a find (`tmdb_queries:find|<imdbId>`) and a film record (`tmdb_films:<id>`) to the ids the
+   stage reads them by (`find|<imdbId>`, `tmdb|record|<id>`; `FamilyAnswerStore.agreementKeyOf`), but only while the live
+   stage waits on that question (`awaitedBy(stage.wanted.contains)`): a take-up files thousands of records, and each
+   counted would move the stage's version and re-read every verdict. So the asker's two hand bridges (`noteFiled` after a
+   find and after a record read again) are gone, and with them the corrections' special case for a find "filed outside
+   the answers' changes": a waiting correction is read again when a find it asked is filed, as for any question. A find
+   or record filed unmoved moves nothing; the ask's attempt still reads the takes again (`attemptedSince`). A wanted
+   record or find filed by the model's fill now releases the wait too, before the agreement's own ask. Next: D4.
 
 Decided by the owner: a new film's questions are asked **straight away**, inline, with no budget of their own beyond
 the rate-limit protections every request already goes through (the 429 gate, breakers, `HostPolicies`) (2026-10-23);

@@ -37,11 +37,10 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     val digest = correctionDigest(decision, listingOf)
     val kept = held.get(key).filter(v => v.listings == digest && v.rules == decidedUnder).flatMap(v => v.correction.filter { c =>
       val waits = correctionWaits.get(key)
-      // one waiting on an answer is read again unless what it asks is known — after a restart it is not — once all it
-      // waits on was attempted (the settle rule: decided on what it has), and, waiting on a TMDB find, once anything was
-      // filed at all
-      !(c.waiting && (waits.isEmpty || waits.exists(_.forall(tried)) ||
-        waits.exists(_.exists(_.isInstanceOf[Question.Find])) && !checked.get(key).exists(_._2 == version))) &&
+      // one waiting on an answer is read again unless what it asks is known — after a restart it is not — and once all
+      // it waits on was attempted (the settle rule: decided on what it has); a TMDB find it waits on is filed among the
+      // answers' changes as the families' answers are, and read again below like them
+      !(c.waiting && (waits.isEmpty || waits.exists(_.forall(tried)))) &&
         checked.get(key).collect { case (listed, at) if listed == digest => at }.exists { at =>
           at == version || {
             // stands when none of its reads was filed since: the filings' ids hashed once per version they are read from

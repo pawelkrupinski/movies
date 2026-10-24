@@ -23,14 +23,21 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFee
     extends services.identity.agreement.AnswerChanges {
   import FamilyAnswerStore._
 
-  /** The agreement's view of the feed ([[AnswerFeed.agreementKeys]]): every answer this store files, and every other one
-   *  an agreement question names that is published there — the stage's verdicts hold while its version does not move. */
-  val changes: AnswerFeed.View = feed.view(AnswerFeed.agreementKeys)
+  /** Which TMDB finds and records the agreement stage waits on ([[awaitedBy]]): none until a stage says. */
+  @volatile private var awaited: Question => Boolean = _ => false
+
+  /** The agreement's view of the feed ([[agreementKeyOf]]): every answer this store files, every other one an agreement
+   *  question names that is published there, and the TMDB store's filing of a find or a record the stage waits on, under
+   *  the question's id — the stage's verdicts hold while its version does not move. */
+  val changes: AnswerFeed.View = feed.view(key => agreementKeyOf(key, awaited))
   /** How many agreement answers were filed since this store was made. */
   def version: Long = changes.version
 
-  /** Announces a filing under `id` that another store made — a TMDB record read again for its release day: the stage's
-   *  verdicts hold while the version does not move, so it must. Counted only when an agreement question names `id`. */
+  /** The agreement stage whose waits decide which TMDB finds and records move [[changes]]: `waitsOn` asked of each
+   *  find or record the TMDB store files, on the filing thread. Set once by the live stage's wiring. */
+  def awaitedBy(waitsOn: Question => Boolean): Unit = awaited = waitsOn
+
+  /** Announces a filing under `id` that another store made: counted only when an agreement question names `id`. */
   def noteFiled(id: String): Unit = feed.publish(id)
 
   /** The questions filed after `version`, or `None` once filings that old are no longer kept. */
@@ -71,6 +78,19 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFee
 }
 
 object FamilyAnswerStore {
+  private val FindPrefix = TmdbStore.keyOf(TmdbKind.Query, TmdbStore.findId(""))
+  private val FilmPrefix = TmdbStore.keyOf(TmdbKind.Film, "")
+
+  /** The id the agreement reads a filing `key` under, or None for one it does not read: a key an agreement question names
+   *  as itself; the TMDB store's find of an IMDb id (`tmdb_queries:find|<imdbId>`) as `find|<imdbId>` and its film record
+   *  (`tmdb_films:<id>`) as `tmdb|record|<id>` ([[Question.id]]) — only while `awaited` says the stage waits on that
+   *  question: a take-up files thousands of records, and each counted would move the stage's version, re-reading every
+   *  verdict filed since. */
+  def agreementKeyOf(key: String, awaited: Question => Boolean): Option[String] =
+    if (key.startsWith(FindPrefix)) Some(Question.Find(key.substring(FindPrefix.length))).filter(awaited).flatMap(_.id)
+    else if (key.startsWith(FilmPrefix)) key.substring(FilmPrefix.length).toIntOption.map(Question.Record(_)).filter(awaited).flatMap(_.id)
+    else AnswerFeed.agreementKeys(key)
+
   /** How long the answer filed under `id` is read before it is asked again, as [[QuestionPolicies]] sets it for the
    *  question's kind. */
   def ageOf(id: String): FiniteDuration =

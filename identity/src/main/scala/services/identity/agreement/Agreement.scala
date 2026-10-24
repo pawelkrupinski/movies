@@ -88,15 +88,16 @@ trait AnswerFeed {
   def publish(key: String): Unit
   /** Calls `listener` with every key published from now on. */
   def subscribe(listener: String => Unit): Unit
-  /** The filings whose keys `accept` takes, numbered by a version of the view's own: one it does not take moves nothing. */
-  def view(accept: String => Boolean): AnswerFeed.View
+  /** The filings `read` takes, each under the key `read` names it by (the key itself, or the id its reader asks it
+   *  under), numbered by a version of the view's own: one it does not take (`None`) moves nothing. */
+  def view(read: String => Option[String]): AnswerFeed.View
 }
 object AnswerFeed {
   /** One reader's count of the filings it reads ([[version]]), and which ones came since a version ([[changedSince]]). */
   trait View extends AnswerChanges { def version: Long }
   /** The keys the agreement stage reads: those an agreement question names ([[services.identity.Question.parse]]) —
    *  never a TMDB document's or a venue page's, so the model's filings leave its version where it was. */
-  val agreementKeys: String => Boolean = key => services.identity.Question.parse(key).isDefined
+  val agreementKeys: String => Option[String] = key => Option.when(services.identity.Question.parse(key).isDefined)(key)
 }
 
 /** A family's identification of a cluster: its own id and record of the film it took, when it took one. */

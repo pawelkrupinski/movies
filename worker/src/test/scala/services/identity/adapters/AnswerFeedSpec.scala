@@ -75,10 +75,38 @@ class AnswerFeedSpec extends AnyFlatSpec with Matchers {
     before.version should be > kept.toLong   // the drop of the oldest was met
   }
 
+  "the agreement's view" should "count a TMDB find or record the stage waits on, as the question it waits on — and no other" in {
+    val clock    = new MutableClock(Instant.parse("2026-10-24T00:00:00Z"))
+    val docs     = new InMemoryTmdbDocuments
+    val feed     = new FiledAnswerFeed
+    val tmdb     = new TmdbStore(docs, clock, feed)
+    val families = new FamilyAnswerStore(docs, clock, feed)
+    val awaited  = mutable.Set[Question](Question.Find("tt2"), Question.Record(7))
+    families.awaitedBy(awaited.contains)
+    def film(id: Int, year: Int): Unit =
+      tmdb.filmPartial(id, TmdbStore.Partial.Local, play.api.libs.json.Json.obj("id" -> id, "release_date" -> s"$year-01-01"))
+    // a take-up's filings: finds and records none waits on move nothing
+    (1 to 50).foreach { id =>
+      tmdb.question(TmdbStore.findId(s"tt1$id"), Seq(Hit(id + 200, s"film $id", None, Some(2000), 1.0)))
+      film(id + 100, 2000)
+    }
+    families.version shouldBe 0
+    // the find and the record it waits on, under the ids its questions are asked by
+    tmdb.question(TmdbStore.findId("tt2"), Nil)
+    film(7, 2026)
+    families.version shouldBe 2
+    families.changedSince(0) shouldBe Some(Set(Question.Find("tt2").id.get, AgreementStage.recordReadId(7)))
+    // filed again unmoved, nothing; once no longer waited on, a move counts no more
+    tmdb.question(TmdbStore.findId("tt2"), Nil)
+    awaited.clear()
+    film(7, 2025)
+    families.version shouldBe 2
+  }
+
   "a view" should "count only the keys it accepts, each view on its own" in {
     val feed   = new FiledAnswerFeed
     val agreed = feed.view(services.identity.agreement.AnswerFeed.agreementKeys)
-    val all    = feed.view(_ => true)
+    val all    = feed.view(Some(_))
     Seq(TmdbStore.keyOf(TmdbKind.Query, TmdbStore.findId("tt1")), VenuePageIndex.keyOf("g", "p"), "imdb|title|Es", "find|tt1")
       .foreach(feed.publish)
     agreed.version shouldBe 2
