@@ -224,7 +224,7 @@ reads every country's through the prod mirror:
   (`kinowo_worker_identity_takes{basis}`, `_take_listings{basis}`) and counts each resolution
   (`kinowo_worker_identity_cluster_changes_total{basis,change}`): the worker dashboard's "Identity takes" panels.
 - **Store** (`IdentityStaging`, `identity_staging` in each country's database): staging clusters, resolutions and
-  the country's beat. Mirrored locally (`DebugMirror.IdentityStaging`, `scripts/local-mirror/mirror-targets.js`), so
+  the country's beat. Mirrored locally (`DebugMirror.IdentityStaging`, `debug-mirror-collections.json`), so
   the page follows prod as the mirror tails it, TTL deletes included.
 - **Web** (`IdentityStagingController`, wired in `DebugWiring` over the per-country mirror connections): every
   country's section on the same page, each cluster a `<details>` row opening onto its questions; the page polls

@@ -52,8 +52,8 @@ trait DebugWiring { self: Wiring =>
   //
   // The mirror is read UNCONDITIONALLY once configured, so a collection its sync
   // doesn't carry reads as permanently EMPTY — a blank page, no error. POINTING A
-  // NEW READER HERE MEANS ADDING ITS COLLECTION TO `services.DebugMirror`, which
-  // `MongoConnectionSpec` diffs against the sync's own list.
+  // NEW READER HERE MEANS ADDING ITS COLLECTION TO `debug-mirror-collections.json`
+  // (`services.DebugMirror`), the one list the sync reads too; `MongoConnectionSpec` holds the readers' names to it.
   //
   // Each stack's whole-collection reads (the corpus listing; for a switched-to
   // country also its read-model dump) are `RefreshingSnapshot`s: re-reading them
@@ -136,6 +136,12 @@ trait DebugWiring { self: Wiring =>
         (country, conn, stack, Seq(listing, readModel, cadence))
       }
     }
+  /** One store per country the /debug pages can show, the boot country's first: each built from that country's mirror
+   *  connection (the boot country's `movieMirrorConnection`, then each extra stack's). A per-country /debug view that reads
+   *  one store of its own takes it from here instead of repeating the connection list. */
+  protected def debugStores[T](store: MongoConnection => T): Seq[T] =
+    (movieMirrorConnection +: debugExtraStacks.map(_._2)).map(store)
+
   lazy val debugCountries: DebugCountries =
     DebugCountries.of(bootDebugStack,
       debugExtraStacks.map { case (country, _, stack, _) => country -> stack }.toMap,
@@ -170,6 +176,6 @@ trait DebugWiring { self: Wiring =>
   // Every country's identity staging (/debug/identity/staging): what each country's worker publishes to its own
   // database's `identity_staging`, read through the same per-country mirror connections the /debug stacks use.
   lazy val identityStagingController = new controllers.IdentityStagingController(controllerComponents, environmentMode,
-    (movieMirrorConnection +: debugExtraStacks.map(_._2)).map(conn => services.identity.staging.IdentityStaging.in(conn.database, clock)),
+    debugStores(conn => services.identity.staging.IdentityStaging.in(conn.database, clock)),
     country, clock)
 }

@@ -20,8 +20,9 @@ costs three sequential reads — the row, its enrichment attempts, its rating
 cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
 **~0.5ms**: the corpus lands in ~200ms and a row expand in single-digit ms.
 
-**What's mirrored** — `scripts/local-mirror/mirror-targets.js`, the single
-source of truth for both halves:
+**What's mirrored** — `common/src/main/resources/debug-mirror-collections.json`, the single
+source of truth for both halves (`mirror-targets.js` reads it for the sync, `services.DebugMirror.Collections` for the
+app; each collection carries its rationale there, and adding one is that one edit):
 
 - **Collections:** `movies`, `screenings`, `movie_slots`,
   `enrichment_attempts`, `rating_cadence`, `web_movies`, `web_screenings` (plus
@@ -44,8 +45,8 @@ source of truth for both halves:
   staleness audit re-seeds a database missing one. A collection this list
   omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
   country stacks read the mirror unconditionally. `MongoConnectionSpec` fails
-  if the app reads one the list omits, diffing it against
-  `services.DebugMirror` rather than a literal — which is how `web_movies` /
+  if the app reads one the file omits, holding each reader's own collection constant
+  to it rather than a literal — which is how `web_movies` /
   `web_screenings` (a blank `/debug/readmodel` for every non-boot country) turned
   up missing.
 
@@ -89,7 +90,7 @@ scripts/local-mirror/freshness uk --quiet --not-before 2026-10-13T07:35:22Z --ma
 
 Not fresh means: synced more than `--max-lag-hours` ago, synced BEFORE `--not-before` (the reader would mix two
 moments), a seed in flight (`<db>:seed` in `__mirror_state` — the copy is a fragment), or a `--need`ed
-collection holding nothing (a collection newly added to `mirror-targets.js` stays empty until the RUNNING
+collection holding nothing (a collection newly added to `debug-mirror-collections.json` stays empty until the RUNNING
 daemon's checkout has it — the launchd agent runs the root checkout, so `git pull` there — and its staleness
 audit re-seeds). The rule is `freshness-rule.js`, asserted with
 `mongosh --nodb --quiet --file staleness-rule.js --file freshness-rule.js --file freshness-rule-spec.js`.

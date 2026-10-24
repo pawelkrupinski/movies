@@ -360,23 +360,30 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "have the sync mirror every collection the /debug stacks read" in {
-    // The read set comes from [[DebugMirror]] — each entry names a reader Wiring
-    // points at the mirror connection — NOT a literal maintained here. Updating a
-    // hand-written copy by hand is what let this drift three times over: a
-    // collection missing from the sync reads as permanently EMPTY rather than
-    // failing, so `movie_slots` rendered every /debug film slot-less, `web_movies`
-    // / `web_screenings` left `/debug/readmodel` blank for every non-boot country,
-    // and `pending_movies` blanked the staging table — each silently, and each
-    // while this list still looked deliberate.
-    val read = DebugMirror.Collections
-    val mirrored = """"([A-Za-z_]+)"""".r.findAllMatchIn(
-      """\[([^\]]*)\]""".r.findFirstMatchIn(
-        mirrorTargetsJs.linesIterator.dropWhile(!_.contains("MIRRORED_COLLECTIONS")).mkString(" ")
-      ).map(_.group(1)).getOrElse("")
-    ).map(_.group(1)).toSet
-    withClue(s"mirror-targets.js mirrors $mirrored but /debug reads $read: ") {
-      (read -- mirrored) shouldBe empty
+    // The sync and `DebugMirror.Collections` read ONE file (debug-mirror-collections.json),
+    // so they cannot drift; what can still drift is a reader's collection constant against
+    // that file. A collection missing from the sync reads as permanently EMPTY rather than
+    // failing: `movie_slots` rendered every /debug film slot-less, `web_movies` /
+    // `web_screenings` left `/debug/readmodel` blank for every non-boot country — silently.
+    // Each reader Wiring points at the mirror connection is listed here by its OWN constant.
+    val read = Set(
+      services.movies.MovieRepository.Collection, services.movies.ScreeningsRepository.Collection,
+      services.movies.SlotsRepository.Collection, services.attempts.EnrichmentAttempts.Collection,
+      services.cadence.RatingCadenceReader.Collection,
+      services.readmodel.MongoReadModelRepository.MoviesCollection,
+      services.readmodel.MongoReadModelRepository.ScreeningsCollection,
+      DebugMirror.IdentityFamilies, DebugMirror.VenuePages, DebugMirror.IdentityListings, DebugMirror.TmdbFilms,
+      DebugMirror.FamilyAnswers, DebugMirror.IdentityTraces, DebugMirror.IdentityStaging)
+    withClue(s"debug-mirror-collections.json carries ${DebugMirror.Collections} but /debug reads $read: ") {
+      (read -- DebugMirror.Collections) shouldBe empty
     }
+  }
+
+  it should "have the sync script read the same file, so no list is kept in two places" in {
+    // mirror-targets.js derives MIRRORED_COLLECTIONS from the JSON; a literal list creeping back
+    // into it would be the second copy this file exists to remove.
+    mirrorTargetsJs should include (DebugMirror.ListResource)
+    mirrorTargetsJs should not include "\"movies\""
   }
 
   it should "mirror the scrape archive, so a local replay has something to replay" in {

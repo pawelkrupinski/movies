@@ -1,0 +1,24 @@
+{
+  "_about": "THE list of collections the local prod mirror syncs (scripts/local-mirror reads it through mirror-targets.js; services.DebugMirror reads it as DebugMirror.Collections). One entry per collection, each with why it is mirrored. A collection missing here reads as permanently EMPTY on a /debug page, not slowly-from-prod. A running mirror notices an edit within a minute and restarts its tailers. `tasks` is deliberately absent: it is a WRITE path (the /debug row's re-enrich enqueues for the real worker), so mirroring it would strand the work locally.",
+  "collections": [
+    { "name": "movies", "why": "The corpus table: the film rows (/debug), also read by the identity review pages." },
+    { "name": "screenings", "why": "The corpus table's showtimes, stitched back into the film rows." },
+    { "name": "movie_slots", "why": "The per-cinema slot rows the corpus readers resolve beside `movies`, and each listing's venue facts on the review pages. Missing, every /debug film rendered slot-less." },
+    { "name": "enrichment_attempts", "why": "The per-row expand: each rating source's last fetch." },
+    { "name": "rating_cadence", "why": "The per-row expand: each rating source's refresh cadence." },
+    { "name": "web_movies", "why": "The /debug/readmodel dump of what the serving app actually serves; also the review pages' film records. Missing, the dump was blank for every non-boot country." },
+    { "name": "web_screenings", "why": "The /debug/readmodel dump's screenings." },
+    { "name": "cinema_scrapes", "why": "Backs no /debug page. Each cinema's last content-bearing scrape: the listing the client actually produced, before the corpus merge touched it, which is what you read when a scrape looks wrong and the corpus a local replay replays. Over the tunnel that read is the latency this mirror exists to remove." },
+    { "name": "identity_model_families", "why": "The identity review pages (/debug/review*): the model's decisions. ~190 MB over the five countries with the other review collections (2026-10-06)." },
+    { "name": "identity_listings", "why": "Review pages: each venue's last scrape as the identity intake holds it (catalogue ids, screenings)." },
+    { "name": "venue_pages", "why": "Review pages: each listing's own film page at its venue." },
+    { "name": "tmdb_films", "why": "Review pages: the resolver's own TMDB record of each candidate film, for the candidates the corpus lacks." },
+    { "name": "identity_family_answers", "why": "Review pages: what the other film databases answered, and each candidate's TMDB poster paths filed beside the hashes (13 MB over the five countries, 2026-10-08)." },
+    { "name": "identity_traces", "why": "Review pages: each listing's trace (the evidence for and against the film it weighed, every rule's refusal), read when a card's Why fold-out opens." },
+    { "name": "identity_agreements", "why": "Backs no page: the agreement stage's stored verdicts (the film each cluster's families agreed on, or a fill rule took). Prod state no recording holds, which `scripts/identity-slice --prod-mirror` reads so a slice decides, and explains, as prod's stage does." },
+    { "name": "identity_pins", "why": "Backs no page: operator pins, read by `scripts/identity-slice --prod-mirror` beside the agreements." },
+    { "name": "identity_staging", "why": "The staging screen (/debug/identity/staging): each country's clusters still waiting on an answer and those resolved lately, capped by its publisher (at most 700 small documents a country)." },
+    { "name": "uptimeBuckets", "why": "Backs no /debug page: ~24 h of 15-minute scrape outcomes per service (TTL-expired in prod; the tailer carries those deletes). The scheduled white-cinema investigation (docs/white-cinema-investigations.md) replays /uptime's classification over them, since /uptime is admin-gated and prod Mongo is off limits to agents." },
+    { "name": "filmwebFallback", "why": "Backs no /debug page: one document per venue that ever fell back (PL's own-site to Filmweb, UK chains to Flicks; other countries hold none, and an empty prod collection never makes a mirror stale). The white-cinema sweep reads it beside the buckets to tell a venue served via its fallback from one that is genuinely white." }
+  ]
+}

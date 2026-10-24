@@ -1,16 +1,13 @@
 package services
 
-import services.attempts.EnrichmentAttempts
-import services.cadence.RatingCadenceReader
-import services.fallback.MongoFallbackStore
-import services.movies.{MovieRepository, ScreeningsRepository, SlotsRepository}
-import services.readmodel.MongoReadModelRepository
-import services.scrapes.ScrapeArchiveRepository
+import play.api.libs.json.{JsObject, Json}
 
 /**
  * The collections the dev-only `/debug*` pages read through the local read-mirror
  * (`MONGODB_MOVIES_MIRROR_URI`), and therefore the collections
- * `scripts/local-mirror/mirror-targets.js` has to sync.
+ * `scripts/local-mirror/mirror-targets.js` has to sync. The list is ONE file,
+ * `common/src/main/resources/debug-mirror-collections.json`, which the sync reads too and which
+ * states why each collection is there.
  *
  * Why this exists: web's `Wiring` points EVERY reader in a `/debug` country stack
  * at the mirror connection, and a collection the sync doesn't carry reads as
@@ -22,13 +19,12 @@ import services.scrapes.ScrapeArchiveRepository
  * collection list and the app's readers were only ever linked by a hand-written
  * literal in a spec, which drifted.
  *
- * So: every reader Wiring points at the mirror names its collection here, and
- * `MongoConnectionSpec` fails when `mirror-targets.js` doesn't carry one of them.
- * ADD A READER TO A `/debug` STACK ⇒ ADD ITS COLLECTION HERE.
+ * So: every reader Wiring points at the mirror has its collection in that file, and
+ * `MongoConnectionSpec` fails when one is missing. ADD A READER TO A `/debug` STACK ⇒ ADD ITS COLLECTION TO THE FILE.
  *
  * The reverse does not hold: an entry here need not back a page. `cinema_scrapes`
  * is mirrored for INSPECTION and local replay rather than for a reader, and
- * `uptimeBuckets` and `filmwebFallback` for the white-cinema sweep — see their notes below. The rule is "a reader implies an entry", not "an entry implies a
+ * `uptimeBuckets` and `filmwebFallback` for the white-cinema sweep — see their notes in the file. The rule is "a reader implies an entry", not "an entry implies a
  * reader".
  *
  * `tasks` is deliberately absent: it is a WRITE path (the /debug row's ↻
@@ -53,53 +49,16 @@ object DebugMirror {
    *  name): the staging screen's, `/debug/identity/staging`. */
   val IdentityStaging  = "identity_staging"
 
-  val Collections: Set[String] = Set(
-    // The corpus table: the film rows, their showtimes, and their per-cinema slots.
-    MovieRepository.Collection,
-    ScreeningsRepository.Collection,
-    SlotsRepository.Collection,
-    // The per-row expand: each rating source's last fetch and its refresh cadence.
-    EnrichmentAttempts.Collection,
-    RatingCadenceReader.Collection,
-    // The /debug/readmodel dump of what the serving app actually serves.
-    MongoReadModelRepository.MoviesCollection,
-    MongoReadModelRepository.ScreeningsCollection,
-    // Each cinema's last content-bearing scrape. The one entry here that backs
-    // no /debug page: it is mirrored because it is what you read when a scrape
-    // looks wrong — the listing the client actually produced, before the corpus
-    // merge touched it — and fetching that over the tunnel is the latency this
-    // mirror exists to remove. Mirroring it also means a local replay has a
-    // corpus to replay without re-scraping.
-    ScrapeArchiveRepository.Collection,
-    // The identity review pages (web `/debug/review*`): the model's decisions, and beside
-    // `movie_slots` / `movies` / `web_movies` above, each listing's own film page and its
-    // venue's last scrape (catalogue ids, screenings), and the resolver's own TMDB record of each
-    // candidate film (worker `TmdbKind.Film`), for the candidates the corpus lacks; and each
-    // listing's trace (the evidence for and against the film it weighed, every rule's refusal),
-    // which a card's "Why" fold-out reads when it is opened. ~190 MB over the five countries (2026-10-06).
-    // And each candidate's TMDB poster, by the paths the poster corroboration filed beside its hashes
-    // (`identity_family_answers`: 13 MB over the five countries, 2026-10-08).
-    IdentityFamilies,
-    VenuePages,
-    IdentityListings,
-    TmdbFilms,
-    FamilyAnswers,
-    IdentityTraces,
-    // The staging screen (/debug/identity/staging): each country's clusters still waiting on an answer and those
-    // resolved lately, capped by its publisher (at most 700 small documents a country).
-    IdentityStaging,
-    // The /uptime buckets (~24 h of 15-minute scrape outcomes per service). Backs no
-    // /debug page either: the scheduled white-cinema investigation
-    // (docs/white-cinema-investigations.md) replays `UptimeController`'s classification
-    // over them — `/uptime` itself is admin-gated — to find venues whose last three
-    // buckets were all fetch-ok-but-empty, and to tell "was green hours ago" from
-    // "never had a programme".
-    UptimeMonitor.Collection,
-    // Each venue's fallback state (one document per venue that ever fell back: PL's
-    // own-site → Filmweb, UK chains → Flicks; other countries hold none). Backs no
-    // /debug page: the white-cinema sweep reads it for the same reason it reads the
-    // buckets — `/uptime`'s fallback section is admin-gated — to tell a venue
-    // served via its fallback from one that is genuinely white.
-    MongoFallbackStore.CollectionName
-  )
+  /** The collection list itself, with a rationale for each: one checked-in file that the sync reads too
+   *  (`scripts/local-mirror/mirror-targets.js`), so a collection is added in ONE edit. */
+  val ListResource = "debug-mirror-collections.json"
+
+  /** Every collection the sync carries, read from [[ListResource]]. The specs hold the stores' own collection names
+   *  (`MongoConnectionSpec`, identity's `MirroredStoresSpec`) to this set. */
+  val Collections: Set[String] = {
+    val in = Option(getClass.getClassLoader.getResourceAsStream(ListResource))
+      .getOrElse(throw new IllegalStateException(s"$ListResource is missing from the classpath"))
+    try (Json.parse(in) \ "collections").as[Seq[JsObject]].map(c => (c \ "name").as[String]).toSet
+    finally in.close()
+  }
 }

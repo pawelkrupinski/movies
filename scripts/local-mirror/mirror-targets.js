@@ -3,58 +3,26 @@
 // Loaded via mongosh's `--file` list BEFORE the script that uses it, so these
 // names are plain globals — mongosh has no module system.
 //
-// These are what a /debug page load reads: the corpus table (`movies`, with
-// `screenings` stitched back in for showtimes and `movie_slots` carrying the
-// per-film slot rows the corpus readers resolve alongside it), the per-row
-// expand's two stores (`enrichment_attempts`, `rating_cadence`), and the
-// read-cache dump (`web_movies`, `web_screenings`).
+// The list itself lives in ONE place, `common/src/main/resources/debug-mirror-collections.json`,
+// with each collection's rationale beside it: `services.DebugMirror.Collections` reads the
+// same file, so a collection is added in one edit and the Scala readers and this sync
+// cannot disagree. This script re-reads the file every time it runs, so a RUNNING mirror
+// notices an edit (targets-fingerprint.js digests the names; mirror.sh polls it).
 //
-// `cinema_scrapes` is the exception: it backs no page. It holds each cinema's
-// last content-bearing scrape — the listing the client actually produced, before
-// the corpus merge touched it — which is the first thing you want when a scrape
-// looks wrong, and the corpus a local replay replays. Reading that over the
-// tunnel is the latency this mirror exists to remove.
-//
-// Adding a collection here is what makes it readable at LAN latency; anything
+// Adding a collection there is what makes it readable at LAN latency; anything
 // absent reads as permanently EMPTY, NOT slowly-from-prod — the /debug country
 // stacks read the mirror unconditionally, with no fall-back to the tunnel.
-// `services.DebugMirror` is the Scala side of this list, and
-// `MongoConnectionSpec` fails when the two disagree.
+// `MongoConnectionSpec` and `MirroredStoresSpec` hold the stores' collection names to it.
 //
-// A collection added here is MISSING from every existing mirror until it is
+// A collection added there is MISSING from every existing mirror until it is
 // re-seeded — which is why staleness.js treats "prod has documents, the mirror
 // has none of that collection" as stale, so the next cycle heals it by itself.
 //
-// The identity review pages (`/debug/review*`) read the model's decisions
-// (`identity_model_families`), each listing's venue facts (`movie_slots`, the venue's
-// own film page in `venue_pages`, its feed's catalogue ids and screenings in
-// `identity_listings`) and the films' records (`movies`, `web_movies`, and the resolver's
-// own TMDB records in `tmdb_films` for the candidates the corpus lacks, and their TMDB posters' paths
-// in `identity_family_answers`), and each listing's trace (`identity_traces`) for a card's "Why" fold-out.
-//
-// `identity_agreements` (the agreement stage's stored verdicts: the film each cluster's families agreed on or a fill
-// rule took) and `identity_pins` (operator pins) back no page either: they are prod state no recording holds, which
-// `scripts/identity-slice --prod-mirror` reads so a slice decides — and explains — as prod's stage does. Without them
-// an agreement take (Agreed, Filled, Poster, …) has no prod-side record at all: the model's families and traces hold
-// only the model's decision.
-//
-// `uptimeBuckets` (~24 h of 15-minute scrape outcomes per service, TTL-expired in
-// prod; the tailer carries those deletes) backs no page either: the scheduled
-// white-cinema investigation replays `/uptime`'s classification over it, since
-// `/uptime` is admin-gated and prod Mongo is off limits to agents. It reads
-// `filmwebFallback` beside it (one document per venue that ever fell back — PL's
-// own-site → Filmweb, UK chains → Flicks — so a few hundred KB at most; the other
-// countries hold none, and an empty prod collection never makes a mirror stale).
-const MIRRORED_COLLECTIONS = [
-  "movies", "screenings", "movie_slots",
-  "enrichment_attempts", "rating_cadence",
-  "web_movies", "web_screenings",
-  "cinema_scrapes",
-  "identity_model_families", "identity_listings", "venue_pages", "tmdb_films",
-  "identity_family_answers", "identity_traces",
-  "identity_agreements", "identity_pins", "identity_staging",
-  "uptimeBuckets", "filmwebFallback",
-];
+// An unreadable or malformed file THROWS: every caller then prints nothing, which
+// mirror.sh reads as "don't know", never as an empty list.
+const MIRRORED_COLLECTIONS_FILE = __dirname + "/../../common/src/main/resources/debug-mirror-collections.json";
+const MIRRORED_COLLECTIONS = JSON.parse(require("fs").readFileSync(MIRRORED_COLLECTIONS_FILE, "utf8"))
+  .collections.map(c => c.name);
 
 // Prod's per-country databases sit side by side on the ONE local mirror
 // instance, each suffixed rather than reusing prod's name. The suffix is load
