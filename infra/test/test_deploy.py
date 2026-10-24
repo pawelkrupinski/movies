@@ -212,5 +212,37 @@ class Verify(unittest.TestCase):
         self.assertEqual(deploy.verify_verdict("/p", "/p", "", "", set(), set(), {}), [])
 
 
+class ApplyScript(unittest.TestCase):
+    """The APPLY script itself, run under a systemd-run that, like the real one, hands its transient
+    unit systemd's own PATH and not the login shell's: a bare `nix-env` is not found there, and every
+    --apply exited 127 with the host unchanged (mongo-1, 2026-10-24)."""
+
+    def test_the_switch_finds_nix_env_without_the_login_path(self):
+        import shutil, subprocess, tempfile
+        work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work)
+        stubs, cand, log = os.path.join(work, "bin"), os.path.join(work, "system"), os.path.join(work, "log")
+        os.makedirs(stubs); os.makedirs(os.path.join(cand, "bin")); os.makedirs(os.path.join(cand, "sw", "bin"))
+
+        def script(path, body):
+            with open(path, "w") as f:
+                f.write("#!/bin/sh\n" + body + "\n")
+            os.chmod(path, 0o755)
+
+        script(os.path.join(stubs, "sudo"), '[ "$1" = -n ] && shift; exec "$@"')
+        # systemd-run: skip its options up to `--`, then run the command with systemd's bare PATH.
+        script(os.path.join(stubs, "systemd-run"),
+               'while [ "$1" != -- ]; do shift; done; shift; exec env -i PATH=/usr/bin:/bin "$@"')
+        script(os.path.join(cand, "sw", "bin", "nix-env"), 'echo "nix-env $*" >> ' + log)
+        script(os.path.join(cand, "bin", "switch-to-configuration"), 'echo "switch $*" >> ' + log)
+
+        out = subprocess.run(["/bin/sh", "-c", deploy.APPLY, "apply", cand], capture_output=True, text=True,
+                             env={"PATH": stubs + ":/usr/bin:/bin"})
+        self.assertIn("@@ SWITCH rc=0", out.stdout, out.stdout + out.stderr)
+        with open(log) as f:
+            self.assertEqual(f.read().splitlines(),
+                             ["nix-env --profile /nix/var/nix/profiles/system --set " + cand, "switch switch"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

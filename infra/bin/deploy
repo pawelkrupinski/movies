@@ -241,9 +241,11 @@ if [ "$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null)" != "$cand" ] 
 fi
 # PROFILE BEFORE SWITCH, the order nixos-auto-apply and nixos-rebuild use: the bootloader menu is
 # built from the profile, so the other order boots the old generation at the next reboot.
-# systemd-run so an ssh drop (or an sshd restart) cannot kill a half-done switch.
+# systemd-run so an ssh drop (or an sshd restart) cannot kill a half-done switch. Its transient unit
+# gets systemd's PATH, not the login shell's /run/current-system/sw/bin, so nix-env is named by the
+# candidate's own path: a bare `nix-env` exited 127 and switched nothing (mongo-1, 2026-10-24).
 $SUDO systemd-run --quiet --collect --wait --pipe --unit "bin-deploy-$(date +%s)" -- \
-  /bin/sh -c "nix-env --profile /nix/var/nix/profiles/system --set '$cand' && '$cand/bin/switch-to-configuration' switch"
+  /bin/sh -c "'$cand/sw/bin/nix-env' --profile /nix/var/nix/profiles/system --set '$cand' && '$cand/bin/switch-to-configuration' switch"
 rc=$?
 echo "@@ SWITCH rc=$rc now=$(readlink -f /run/current-system)"
 echo "@@ END"
