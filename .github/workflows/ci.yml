@@ -275,7 +275,7 @@ jobs:
             # exporter invalidation (`target-cache-exact-hit-is-current`). (SharedSbtBuildSetupSpec)
             - uses: ./.github/actions/setup-sbt-build
               with:
-                  target-cache-key: sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-key: sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', 'web/src/main/resources/**') }}
                   target-cache-restore-keys: |
                       sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-
                       sbt-target-it-${{ runner.os }}-
@@ -354,7 +354,7 @@ jobs:
                   # artifacts don't mix with the other jobs' cache. Boots
                   # web/PageTest FixtureServerMain → page scope (every module's
                   # main + test + the web page sources).
-                  target-cache-key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
                   target-cache-restore-keys: |
                       sbt-target-android-ls-${{ runner.os }}-
 
@@ -552,7 +552,7 @@ jobs:
             # so an exact hit is this commit's compile and skips the exporter invalidation.
             - uses: ./.github/actions/setup-sbt-build
               with:
-                  target-cache-key: sbt-target-it-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-key: sbt-target-it-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
                   target-cache-restore-keys: |
                       sbt-target-it-${{ runner.os }}-
                       sbt-target-unit-worker-${{ runner.os }}-

@@ -16,6 +16,9 @@ import sbt.Keys._
  *    of an uninitialized field.
  * Every configuration starts from the options of the one it extends, so the flag goes on `Compile` and comes off in
  * `Test` (`it` and `page` extend it) and in `fixtures` (which extends `Compile`).
+ *
+ * The checker reads other files' compiled TASTy, which an incremental compile can still hold from before a change:
+ * project/StaleTastyRetry.scala recovers a batch run from that.
  */
 object MainSourceInitChecks extends AutoPlugin {
   // worker's `Fixtures` (build.sbt) by its name: a setting scoped to it is inert in a module without one.

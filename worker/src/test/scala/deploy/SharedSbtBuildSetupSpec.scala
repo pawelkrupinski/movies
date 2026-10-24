@@ -10,6 +10,8 @@ import org.scalatest.matchers.should.Matchers
  *  disk cache, because every workspace glob walks a restored enrichment tree of up to 127k files. */
 class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   private val Action = ".github/actions/setup-sbt-build/action.yml"
+  private val EverySource = "hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', " +
+    "'**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**')"
   private val Adopters = Seq(
     ".github/workflows/identity-capture.yml",
     ".github/workflows/identity-refit.yml",
@@ -40,8 +42,23 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
 
   it should "key the default build cache as the shared sbt-target family, falling back to its newest entry" in {
     val action = RepoFile.read(Action)
-    action should include("format('sbt-target-{0}-{1}', runner.os, hashFiles('build.sbt', 'project/build.properties'")
+    action should include(s"format('sbt-target-{0}-{1}', runner.os, $EverySource)")
     action should include("format('sbt-target-{0}-', runner.os)")
+  }
+
+  /** A key that leaves out a source directory its job compiles (`fixtures`, `it`, `page`) is an EXACT hit after a change
+   *  to that directory alone, and an exact hit on an `exact-hit-is-current` key skips the exporter invalidation, so the
+   *  entry it vouches for is not this commit's compile after all. The unit, integration and e2e rows compile worker's
+   *  `fixtures` (its Test and It classpaths carry them, e2e depends on them) and their keys left it out until
+   *  2026-10-24. The two other writers of the shared family hash the same set as the action, or one family has two
+   *  definitions of its sources. */
+  "every sbt-target-<os>- writer" should "hash every source directory a full build compiles" in {
+    Seq(".github/workflows/decoration-discovery.yml", ".github/workflows/country-fixture-artifact.yml").foreach { file =>
+      withClue(s"$file: ") { RepoFile.read(file) should include(s"key: sbt-target-$${{ runner.os }}-$${{ $EverySource }}") }
+    }
+    val key = RepoFile.read("scripts/ci/sbt-sources-key.sh")
+    key should include("':(glob)**/src/fixtures/**/*.scala'")
+    key.linesIterator.find(_.trim.startsWith("e2e)")).getOrElse(fail("no e2e set")) should include("${common[@]}")
   }
 
   /** Heap is each sbt call's own `-J-Xmx`: one job's calls differ, so a job-wide input would change some. */
@@ -59,16 +76,16 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   "Main's sbt jobs" should "key a build-cache family each, no prefix of another's" in {
     val ci = RepoFile.read(".github/workflows/ci.yml")
     val unit = RepoFile.jobs(ci)("test")
-    unit should include("target-cache-key: sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}")
+    unit should include("target-cache-key: sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', 'web/src/main/resources/**') }}")
     unit should include("sbt-target-unit-${{ matrix.shard }}-${{ runner.os }}-\n")
     unit should include("sbt-target-${{ runner.os }}-\n")
     unit should not include "sbt-target-${{ runner.os }}-unit-"
     unit should include("target-cache-exact-hit-is-current: 'true'")
     val android = RepoFile.jobs(ci)("mobile-local-server")
     android should include("java-version: 21")
-    android should include("target-cache-key: sbt-target-android-ls-${{ runner.os }}-")
+    android should include("target-cache-key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}")
     val integration = RepoFile.jobs(ci)("integration-test")
-    integration should include("target-cache-key: sbt-target-it-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}")
+    integration should include("target-cache-key: sbt-target-it-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}")
     integration should include("sbt-target-it-${{ runner.os }}-\n")
     integration should include("target-cache-exact-hit-is-current: 'true'")
     val e2e = RepoFile.jobs(ci)("e2e")

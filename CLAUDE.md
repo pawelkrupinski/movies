@@ -317,3 +317,7 @@ reds were changes `identity-measure` alone had called LANDABLE. The pre-push hoo
   TitleShapeMeasures.*`), in a warm local sbt as much as in a CI build cache restored from an older commit (Main #226).
   `scripts/ci/sbt-invalidate-exporters.sh` deletes the exporters' classes so zinc recompiles them; `sbt-target-cache`
   runs it after every restore. Locally, run it (or `clean`) before rebuilding.
+- **"wrong number of arguments at pickleQuotes" with "Ignoring analyses of X due to error in reading TASTy" is stale
+  TASTy, not your code**: `-Wsafe-init` read an unchanged dependent's class file before zinc's next cycle recompiled it
+  (Main #1397). A batch sbt drops that configuration's classes and runs again by itself (project/StaleTastyRetry.scala);
+  in sbt-warm's server run `staleTastyDrop`, then the command again.

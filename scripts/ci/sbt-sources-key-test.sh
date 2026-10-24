@@ -29,11 +29,13 @@ echo y > "$work/repo/README" && scratch_git "$work/repo" add README
 check "a file neither set names moves neither key" "$(key e2e) $(key convergence)" "$e2e $convergence"
 
 echo 'object G' > "$work/repo/worker/src/fixtures/scala/F.scala" && scratch_git "$work/repo" add -A
-check "a fixtures source moves the convergence key" "$([ "$(key convergence)" != "$convergence" ] && echo moved)" moved
-check "...and not the e2e job's, which does not name it" "$(key e2e)" "$e2e"
+check "a fixtures source moves both keys: the e2e job compiles worker's fixtures too" \
+  "$([ "$(key convergence)" != "$convergence" ] && [ "$(key e2e)" != "$e2e" ] && echo moved)" moved
+e2e=$(key e2e) convergence=$(key convergence)
 
 echo 'b' > "$work/repo/web/src/main/resources/a.css" && scratch_git "$work/repo" add -A
 check "a web resource moves the e2e key" "$([ "$(key e2e)" != "$e2e" ] && echo moved)" moved
+check "...and not the convergence key, which does not name it" "$(key convergence)" "$convergence"
 
 echo 'object B' > "$work/repo/common/src/main/scala/A.scala" && scratch_git "$work/repo" add -A
 e2e2=$(key e2e)

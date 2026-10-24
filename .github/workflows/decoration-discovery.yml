@@ -64,7 +64,7 @@ jobs:
 
             - uses: ./.github/actions/sbt-target-cache
               with:
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
