@@ -37,7 +37,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
     storedFirst(Key.Query(query), stored.candidates(query), live.candidates(query))
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = storedFirst(Key.Film(tmdbId), stored.film(tmdbId), live.film(tmdbId))
   /** The store's day of a record it holds — `Unknown` for one it holds dated by its year alone, which the agreement
-   *  stage asks TMDB to read again (`agreement.AgreementStage.wantedRecords`) — else the day of the record asked live. */
+   *  stage asks TMDB to read again (`agreement.AgreementStage.wanted`, its `Question.Record`s) — else the day of the record asked live. */
   override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
     case Answer.Known(_) if stored.film(tmdbId).isKnown => stored.releaseDay(tmdbId)
     case answer                                         => answer.map(_.flatMap(_.released))

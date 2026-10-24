@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, CandidateQuery, Evidence, FallbackIds, IdentityLookups,
-  IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash}
+  IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Question}
 
 import scala.collection.mutable
 
@@ -37,11 +37,11 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
    *  `asked`, while one is not answered. Read only for a relay whose banner spells another house than a record it fits. */
   private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.IdentityMeasures.Listing,
-                            asked: mutable.Set[(VoterFamily, String)]): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
+                            asked: mutable.Set[Question]): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
     val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
-      if (answer == Answer.Unknown) { unknown = true; asked += family -> question }
+      if (answer == Answer.Unknown) { unknown = true; asked += Question.Family(family, question) }
       answer.toOption
     }
     val found = familiesInOrder.flatMap { case (family, answers) =>
@@ -64,8 +64,8 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   /** `answer`, `hashes`' to the poster `question`, the question noted in `asked` while it is `Unknown` or stale: a stale
    *  answer is read, and asked again. */
   private[agreement] def posterRead[A](question: AgreementStage.PosterQuestion, answer: Answer[A], hashes: PosterAnswers,
-                            asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[A] = {
-    if (answer == Answer.Unknown || !hashes.fresh(question)) asked += question
+                            asked: mutable.Set[Question]): Answer[A] = {
+    if (answer == Answer.Unknown || !hashes.fresh(question)) asked += Question.Poster(question)
     answer
   }
 
@@ -74,7 +74,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  is not. A candidate numbering another edition than a listing showing a poster is not compared
    *  ([[PosterEvidence.editionsApart]]). */
   private[agreement] def posterDistances(id: String, digest: Long, listings: Seq[Listing], also: Option[Int],
-                              asked: mutable.Set[AgreementStage.PosterQuestion],
+                              asked: mutable.Set[Question],
                               candidates: (String, Long, Seq[Listing]) => Seq[Int] = candidatesOf,
                               hashes: PosterAnswers = posters): Answer[Seq[Map[Int, Option[Int]]]] = {
     val urls = PosterEvidence.urls(listings)

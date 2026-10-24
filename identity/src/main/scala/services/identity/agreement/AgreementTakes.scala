@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, BilledPiece, CatalogueQuestion, DetailFacts, ProseWords,
+import services.identity.{Answer, BilledPiece, DetailFacts, ProseWords, Question,
   IdentityResolver, Listing, PosterEvidence, ResolverDecision}
 
 import scala.collection.mutable
@@ -24,7 +24,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  TMDB candidates, none denied, and the films the families took or lean to) — `Unknown` while a TMDB answer the
    *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). */
   private[agreement] def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
-                       thisYear: Int, version: Long, asked: mutable.Set[(VoterFamily, String)]): Answer[Option[StoredFill]] =
+                       thisYear: Int, version: Long, asked: mutable.Set[Question]): Answer[Option[StoredFill]] =
     tmdb.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
       val noting = new AgreementStage.UnknownNoting(lookups)
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
@@ -56,7 +56,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
   /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue
    *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]) or
    *  the venue's synopsis another's description (`synopsis`, [[synopsisAgainst]]). */
-  private[agreement] def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[String],
+  private[agreement] def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[Question],
                          distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]], synopsis: Int => Option[String]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
       tmdbFilmOf(fill.tmdb, fill.imdb, finding) match {
@@ -84,7 +84,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
   /** The decision with the agreed film taken — pending while TMDB was not asked about its IMDb id yet or the venue posters
    *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate;
    *  nor when the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]): REFUSED, saying why. */
-  private[agreement] def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String],
+  private[agreement] def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[Question],
                     distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]], synopsis: Int => Option[String]): AgreementStage.Take = {
     val imdb = agreed.crossId("imdb")
     // read only for a film the families' take may stand on: a find only review sites' agreement waits on is none to ask
@@ -146,9 +146,8 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
 
   /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it
    *  needs is open, each noted to ask. */
-  private[agreement] def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String],
-                         catalogueAsked: mutable.Set[CatalogueQuestion]): Option[ResolverDecision] =
-    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), catalogueAsked, asked, finding)
+  private[agreement] def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[Question]): Option[ResolverDecision] =
+    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), asked)
       .toOption.flatten.map { taken =>
       taken.film.fold(taking(decision)(ResolverDecision.Basis.Catalogue, taken.line,
         fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) }))(film =>
@@ -165,17 +164,17 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
 
   /** The decision with the one record the cluster's screening days name taken ([[Broadcast]]): of the TMDB films its own
    *  evidence reaches, none denied — none while one of their records is not known yet, nor while a record of the billed
-   *  work states no day only because the store filed it with its year alone: that record is noted in `dating`, to be
-   *  read again ([[wantedRecords]]). */
-  private[agreement] def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], dating: mutable.Set[Int],
-                        version: Long, asked: mutable.Set[(VoterFamily, String)]): Option[ResolverDecision] =
+   *  work states no day only because the store filed it with its year alone: that record is noted in `asked`, to be
+   *  read again. */
+  private[agreement] def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing],
+                        version: Long, asked: mutable.Set[Question]): Option[ResolverDecision] =
     tmdb.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
       val records = (candidatesOf(id, digest, listings) ++ uncatalogued(listings, lookups)).distinct.map(film => film -> lookups.film(film))
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
           Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups, version))
-            .left.map(dating ++= _).toOption.flatten
+            .left.map(asked ++= _.map(Question.Record(_))).toOption.flatten
         }
         .map(taken => taking(decision)(ResolverDecision.Basis.Broadcast, taken.line, film = Some(taken.film)))
     }

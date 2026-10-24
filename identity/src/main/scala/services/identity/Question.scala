@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.agreement.AgreementStage.{Open, PosterQuestion}
+import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.movies.ListingKey
 import tools.HttpPath
@@ -12,7 +12,8 @@ import tools.HttpPath
  *
  * It names WHAT is asked, not what the answer means: the model's answers still form candidates and the agreement's
  * still vote, veto and correct. One type is what lets asking, storing, remembering non-answers, waiting and measuring
- * be told the same way for both (docs/design/identity-questions.md); today it only names them, and nothing reads it.
+ * be told the same way for both (docs/design/identity-questions.md). A set of them is the one currency for questions
+ * asked, open and waited on: the agreement stage notes, keeps and hands its own to the queue as one (step C1).
  */
 enum Question {
   /** A model gap: a title, person, IMDb or IMDb-any-language search ([[CandidateQuery]]). */
@@ -57,20 +58,9 @@ enum Question {
 
 object Question {
 
-  /** The questions an agreement stage left open, one each. */
-  def ofOpen(open: Open): Set[Question] =
-    open.questions.map(Family(_, _)) ++ open.finds.map(Find(_)) ++ open.records.map(Record(_)) ++
-      open.posters.map(Poster(_)) ++ open.catalogue.map(Catalogue(_))
-
-  /** The agreement questions among `questions`, as the stage leaves them open: [[ofOpen]]'s inverse. */
-  def toOpen(questions: Iterable[Question]): Open = questions.foldLeft(Open(Set.empty, Set.empty)) {
-    case (open, Family(family, question)) => open.copy(questions = open.questions + (family -> question))
-    case (open, Find(imdbId))             => open.copy(finds = open.finds + imdbId)
-    case (open, Record(tmdbId))           => open.copy(records = open.records + tmdbId)
-    case (open, Poster(question))         => open.copy(posters = open.posters + question)
-    case (open, Catalogue(question))      => open.copy(catalogue = open.catalogue + question)
-    case (open, _)                        => open
-  }
+  /** The families' questions among `questions`, as the family store and its askers name them. */
+  def families(questions: Iterable[Question]): Set[(VoterFamily, String)] =
+    questions.iterator.collect { case Family(family, question) => family -> question }.toSet
 
   /** The model's gaps a change of answers names: its queries, its films' records, its listings' detail pages. */
   def ofAnswersChanged(changed: AnswersChanged): Set[Question] =

@@ -25,7 +25,7 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
     val pool  = Executors.newFixedThreadPool(4)
     val asks  = new InlineFamilyAsks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, Seq(hit))), pool, () => (), Stopwatch.System)
-    asks(Set(VoterFamily.Imdb -> "title|Klondike", VoterFamily.Wiki -> "title|Klondike"), 5.seconds)   // no Wiki source: not asked
+    asks(Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.Wiki, "title|Klondike")), 5.seconds)   // no Wiki source: not asked
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe false
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Wiki, "title|Klondike")) shouldBe true
     pool.shutdown()
@@ -39,7 +39,7 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     val slow    = source(VoterFamily.RottenTomatoes, { release.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); Seq(hit) })
     val asks    = new InlineFamilyAsks(store, Map(VoterFamily.RottenTomatoes -> slow), pool, () => filed.incrementAndGet(), Stopwatch.System)
     val started = System.nanoTime()
-    asks(Set(VoterFamily.RottenTomatoes -> "title|Klondike"), 200.millis)
+    asks(Set(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")), 200.millis)
     (System.nanoTime() - started).nanos should be < 5.seconds
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.RottenTomatoes, "title|Klondike")) shouldBe true
     release.countDown()
@@ -53,7 +53,7 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
     val pool  = Executors.newFixedThreadPool(1)
     val asks  = new InlineFamilyAsks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, throw new java.io.IOException("down"))), pool, () => (), Stopwatch.System)
-    asks(Set(VoterFamily.Imdb -> "title|Klondike"), 5.seconds)
+    asks(Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), 5.seconds)
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe true
     pool.shutdown()
   }

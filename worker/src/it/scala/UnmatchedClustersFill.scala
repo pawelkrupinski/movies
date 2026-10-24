@@ -115,16 +115,18 @@ object UnmatchedClustersFill {
       modules.wiring.IdentityProjectionWiring.identities(country.code), catalogue.answers,
         modules.wiring.IdentityProjectionWiring.listedOn(country.code))
     // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next time
-    val asked = new AgreementQuestionRounds(store, sources, s"${country.code} fill").run(() => agree())(_.stage.wanted,
-      pending = o => o.stage.wantedPosters.nonEmpty || o.stage.wantedCatalogue.nonEmpty || o.stage.wantedFinds.nonEmpty ||
+    val asked = new AgreementQuestionRounds(store, sources, s"${country.code} fill").run(() => agree())(o => Question.families(o.stage.wanted),
+      pending = o => o.stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) | Question.Find(_) => true; case _ => false } ||
         (live.isDefined && (!lookups.queries.isEmpty || !lookups.films.isEmpty)) ||
         (overviewsOf.isDefined && lookups.overviews.asScala.exists(id => !capture.overviews.contains(id))) ||
         (overviewsOf.isDefined && lookups.casts.asScala.exists(id => !capture.casts.contains(id))),
       beside = { o =>
-        println(s"[${country.code}] fill: ${o.stage.wantedPosters.size} poster(s), ${o.stage.wantedCatalogue.size} catalogue question(s), ${o.stage.wantedFinds.size} find(s)")
-        posters.file(posterStore, o.stage.wantedPosters.toSeq)
-        catalogue.file(o.stage.wantedCatalogue)
-        o.stage.wantedFinds.foreach(tmdbOf)
+        val (wantedPosters, wantedCatalogue, wantedFinds) = (o.stage.wanted.toSeq.collect { case Question.Poster(q) => q },
+          o.stage.wanted.collect { case Question.Catalogue(q) => q }, o.stage.wanted.collect { case Question.Find(imdb) => imdb })
+        println(s"[${country.code}] fill: ${wantedPosters.size} poster(s), ${wantedCatalogue.size} catalogue question(s), ${wantedFinds.size} find(s)")
+        posters.file(posterStore, wantedPosters)
+        catalogue.file(wantedCatalogue)
+        wantedFinds.foreach(tmdbOf)
         live.foreach { tmdbLookups =>
           val queries = lookups.queries.asScala.toSeq.flatMap(query => tmdbLookups.candidates(query).toOption.map(query -> _))
           val films   = lookups.films.asScala.toSeq.flatMap(id => tmdbLookups.film(id).toOption.map(id -> _))
@@ -150,11 +152,15 @@ object UnmatchedClustersFill {
     UnmatchedClusters.write(path, capture.copy(families = filed, finds = finds.asScala.toMap, unreachable = asked.unreachable))
     val reread   = UnmatchedClusters.read(path)
     val replayed = UnmatchedClusters.replay(reread)
-    val unasked  = UnmatchedClusters.unasked(reread, replayed.stage.wanted)
+    val unasked  = UnmatchedClusters.unasked(reread, Question.families(replayed.stage.wanted))
     check(unasked.isEmpty, s"the filled capture replays asking what it never answered: ${unasked.take(5).mkString("; ")}")
-    check(replayed.stage.wantedFinds.isEmpty, s"the filled capture replays wanting finds: ${replayed.stage.wantedFinds.take(5).mkString("; ")}")
-    check(replayed.stage.wantedPosters.isEmpty, s"the filled capture replays wanting posters: ${replayed.stage.wantedPosters.take(5).mkString("; ")}")
-    check(replayed.stage.wantedCatalogue.isEmpty, s"the filled capture replays wanting catalogue answers: ${replayed.stage.wantedCatalogue.take(5).mkString("; ")}")
+    def wanting(what: String)(kind: PartialFunction[Question, Any]) = {
+      val open = replayed.stage.wanted.collect(kind)
+      check(open.isEmpty, s"the filled capture replays wanting $what: ${open.take(5).mkString("; ")}")
+    }
+    wanting("finds") { case Question.Find(imdb) => imdb }
+    wanting("posters") { case Question.Poster(q) => q }
+    wanting("catalogue answers") { case Question.Catalogue(q) => q }
     val unanswered = replayed.unanswered -- unansweredBefore
     check(unanswered.isEmpty, s"the filled capture replays leaving TMDB questions unanswered: ${unanswered.take(5).mkString("; ")}")
     println(s"[${country.code}] filled after $rounds round(s): ${filed.size} family answers, ${finds.size} finds, ${asked.unreachable.size} unreachable")

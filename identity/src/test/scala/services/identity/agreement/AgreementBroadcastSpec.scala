@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, CandidateQuery, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, Resolution,
+import services.identity.{Answer, Question, CandidateQuery, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, Resolution,
   ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
@@ -230,20 +230,20 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     // prod 2026-10-05: 88% of the season relays' stored records predate the whole day (PL "Samson i Dalila" never fired)
     val listing = screening("Samson i Dalila", "2026-12-05")
     val stored  = new YearOnlyRecords(table, Set(metSamson.id, metMacbeth.id))
-    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
     val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored))
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     // the Met's record states no day: no take yet — it is asked again, and only it (Macbeth bills another work)
     stage.apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
-    stage.wantedRecords shouldBe Set(metSamson.id)
-    asked.flatMap(_.records) shouldBe Seq(metSamson.id)
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe Set(metSamson.id)
+    asked.flatMap(_.collect { case Question.Record(id) => id }) shouldBe Seq(metSamson.id)
     // read again, it states its day, and the screening day takes it
     stored.reread(metSamson.id)
     val taken = stage.apply(resolution, Map(listing.key -> listing).get, version = 2).decisions.head
     (taken.film, taken.basis) shouldBe ((Some(metSamson.id), ResolverDecision.Basis.Broadcast))
-    stage.wantedRecords shouldBe empty
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
   }
 
   // prod UK 2026-10-18: Theatr Gwaun Fishguard's bare "Romeo and Juliet" on 25 May 2027, the RBO 2026/27 relay's day (its
@@ -253,7 +253,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val listing = screening("Samson i Dalila", "2026-12-05")
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))
     val filed   = scala.collection.mutable.Set.empty[String]
-    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
     val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
       changes = _ => Some(filed.toSet))
@@ -262,26 +262,26 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     def apply(version: Long) = stage.apply(resolution, Map(listing.key -> listing).get, version).decisions.head
     // the Met's record states no day: the model's take stands for now, and the record is asked again
     apply(1).film shouldBe Some(film1949.id)
-    stage.wantedRecords shouldBe Set(metSamson.id)
-    asked.flatMap(_.records) shouldBe Seq(metSamson.id)
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe Set(metSamson.id)
+    asked.flatMap(_.collect { case Question.Record(id) => id }) shouldBe Seq(metSamson.id)
     // read again, it states its day, and the screening day switches the take to it
     stored.reread(metSamson.id)
     filed += AgreementStage.recordReadId(metSamson.id)
     val taken = apply(2)
     (taken.film, taken.basis) shouldBe ((Some(metSamson.id), ResolverDecision.Basis.Corrected))
-    stage.wantedRecords shouldBe empty
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
   }
 
   "a stage relay whose days could not be read" should "wait, asking nothing, and be taken once a read gives its days" in {
     val unread  = FilmTable.listing(Multikino, "Samson i Dalila").copy(screenings = ScreeningDays.Unknown)
-    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
     val stage   = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table))
     def decided(listing: Listing, version: Long) = stage.apply(Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1,
       ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty),
       Map(listing.key -> listing).get, version).decisions.head
     decided(unread, 1).film shouldBe None
-    (stage.wantedRecords, asked.flatMap(_.records)) shouldBe ((Set.empty, Nil))
+    (stage.wanted.collect { case Question.Record(id) => id }, asked.flatMap(_.collect { case Question.Record(id) => id })) shouldBe ((Set.empty, Nil))
     decided(unread.copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5)))), 2).film shouldBe Some(metSamson.id)
     // unknown days are no days and no season, but never "screens on none"
     (ScreeningDays.Unknown.isEmpty, ScreeningDays.Unknown.days, unread.broadcastSeason) shouldBe ((false, Nil, None))
@@ -292,7 +292,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val listing = screening("Samson i Dalila", "2026-12-05")
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))   // never gains its day
     val filed   = scala.collection.mutable.Set.empty[String]
-    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
     val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
       changes = _ => Some(filed.toSet))
@@ -303,12 +303,12 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     // other answers filed meanwhile: still waiting on the read, and not asked twice
     filed += "imdb|title|Samson i Dalila"
     apply(2).film shouldBe None
-    stage.wantedRecords shouldBe Set(metSamson.id)
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe Set(metSamson.id)
     // the read filed, the record still year-only: waited on no more, and never asked again
     filed += AgreementStage.recordReadId(metSamson.id)
     apply(3).film shouldBe None
     apply(4).film shouldBe None
-    stage.wantedRecords shouldBe empty
-    asked.flatMap(_.records) shouldBe Seq(metSamson.id)
+    stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
+    asked.flatMap(_.collect { case Question.Record(id) => id }) shouldBe Seq(metSamson.id)
   }
 }

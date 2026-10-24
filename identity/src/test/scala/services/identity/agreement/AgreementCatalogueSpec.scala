@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.{Kinoteka, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, FilmTable, Hit, IdentityCalibration,
+import services.identity.{Answer, Question, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, FilmTable, Hit, IdentityCalibration,
   IdentityLookups, IdentityMeasures, Listing, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
@@ -57,7 +57,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
   }
 
   private def stage(catalogue: CatalogueAnswers, fams: Map[VoterFamily, FamilyAnswers] = families(), tmdbOf: String => Answer[Option[Int]] = finds,
-                    ask: AgreementStage.Open => Unit = _ => (), venues: IdentityLookups = table) =
+                    ask: Set[Question] => Unit = _ => (), venues: IdentityLookups = table) =
     new AgreementStage(fams, venues, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, new InMemoryAgreementVerdicts,
       ask = ask, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), catalogue = catalogue)
 
@@ -158,11 +158,11 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hold the cluster while its id is not mapped yet, and hand the id to the queue" in {
-    val handed = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val s      = stage(new HeldCatalogue(Map.empty, Map.empty), ask = handed += _)
     decided(s, listing()).film shouldBe None
-    s.wantedCatalogue shouldBe Set(CatalogueQuestion.Id(fantasy))
-    handed.flatMap(_.catalogue).toSet shouldBe Set(CatalogueQuestion.Id(fantasy))
+    s.wanted.collect { case Question.Catalogue(q) => q } shouldBe Set(CatalogueQuestion.Id(fantasy))
+    handed.flatten.collect { case Question.Catalogue(q) => q }.toSet shouldBe Set(CatalogueQuestion.Id(fantasy))
   }
 
   "a catalogue id the venue's page links" should "map through the page's own read, an IMDb id through TMDB's find of it" in {
@@ -173,7 +173,7 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
       Map("imdb" -> "tt40381362"))
     val waiting = stage(new HeldCatalogue(Map.empty, Map.empty))
     decided(waiting, l).film shouldBe None
-    waiting.wantedCatalogue shouldBe Set(CatalogueQuestion.Page(page))
+    waiting.wanted.collect { case Question.Catalogue(q) => q } shouldBe Set(CatalogueQuestion.Page(page))
     val d = decided(stage(new HeldCatalogue(Map(page -> Seq(tt)), Map.empty), families(imdb = Map("tt40381362" -> taxidermist)),
       tmdbOf = { case "tt40381362" => Answer.Known(Some(1686904)); case _ => Answer.Known(None) }), l)
     (d.film, d.basis) shouldBe ((Some(1686904), ResolverDecision.Basis.Catalogue))

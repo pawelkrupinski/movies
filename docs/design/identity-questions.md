@@ -2,7 +2,7 @@
 
 Identity decisions read answers to questions asked of outside sources. Two systems ask them, with different rules for
 asking, storing, remembering a non-answer, waiting and giving up: the model's gaps (`CandidateQuery`, film records,
-venue pages) and the agreement stage's questions (`AgreementStage.Open`). GapHold, the drift check and
+venue pages) and the agreement stage's questions (a `Set[Question]`, step C1). GapHold, the drift check and
 `AnswersChanged` see only the first, yet the agreement's answers move takes too, model takes included.
 
 The plan unifies the plumbing and keeps the meanings: model answers still form candidates through a dependency chain,
@@ -32,6 +32,14 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    (5 s), then resolved again on what they filed; what is not answered by then is the queue's, as before, and an
    answer that comes later is filed and asks for a projection. Each cluster is asked so once; the drift check's stage
    never asks.
+   C1, fewer abstractions (2026-10-24): `Set[Question]` is the one currency for the agreement's questions asked, open
+   and waited on. Gone: `AgreementStage.Open`, `AgreementStage.CorrectionWaits`, `Question.ofOpen` / `toOpen`, the
+   accessors `wantedFinds` / `wantedPosters` / `wantedCatalogue` / `wantedRecords` and the `Pass`'s five accumulators.
+   The stage notes every question in one set (the corrections' posters apart, handed a few at a time), keeps a
+   cluster's and a correction's waits as one, hands `ask` (`AgreementQuestions.enqueueOpen`) and `askNow` one, and
+   `AgreementStage.wanted` is all of them; a caller after one kind matches it out (`Question.families` for the
+   family store's pairs). Task types, payloads and dedup keys are as before (`QuestionPoliciesSpec`). The model's
+   `AnswersChanged` stays split: every reader indexes each kind into its own map, so a union would be re-split per tick.
 4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
    family's own open questions, until answered or the deadline passes. This is GapHold v4.
 

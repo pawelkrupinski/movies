@@ -86,8 +86,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   }
   lazy val agreementStage: services.identity.agreement.AgreementStage =
     newAgreementStage(agreementVerdicts, clock,
-      ask = open => services.identity.adapters.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
-        open.catalogue, open.records),
+      ask = open => services.identity.adapters.AgreementQuestions.enqueueOpen(taskQueue, open, clock, agreementQuestionMetrics),
       metrics = workerMetrics.identityAgreement.stage(country.code),
       askNow = new services.identity.adapters.InlineFamilyAsks(familyAnswerStore, familySources,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
@@ -103,7 +102,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps
    *  nothing, asks nothing and reads every take at once. */
   def newAgreementStage(stored: services.identity.agreement.AgreementVerdicts, stageClock: java.time.Clock,
-                        ask: services.identity.agreement.AgreementStage.Open => Unit = _ => (),
+                        ask: Set[services.identity.Question] => Unit = _ => (),
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
                         budgets: Boolean = true,
                         askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never)

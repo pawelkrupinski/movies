@@ -127,7 +127,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   /** The record's release day — `Unknown` while the localized response it was parsed from holds only a year: filed before
    *  records kept the whole day (`TmdbNormalizer.minimal` cut it to the year), the record states no day though TMDB does,
-   *  and reading it again (`agreement.AgreementStage.wantedRecords`) files the day. */
+   *  and reading it again (`agreement.AgreementStage.wanted`, its `Question.Record`s) files the day. */
   override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
     // the whole document, read only for a record stating no day: an answer reads no partial's date, and the answer cache
     // holding one per film would cost every film its bytes for the few stage relays that read it

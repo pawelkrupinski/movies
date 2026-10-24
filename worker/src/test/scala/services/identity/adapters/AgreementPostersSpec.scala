@@ -111,8 +111,8 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   "a poster to hash" should "go on the queue once, however often the stage meets it" in {
     val queue = new InMemoryTaskQueue
     val posters = Set[PosterQuestion](PosterQuestion.Venue(patria), PosterQuestion.Film(95269))
-    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, posters = posters)
-    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, posters = posters)
+    AgreementQuestions.enqueueOpen(queue, posters.map(Question.Poster(_)), clock)
+    AgreementQuestions.enqueueOpen(queue, posters.map(Question.Poster(_)), clock)
     queue.monitor().counts.values.sum shouldBe 2
   }
 

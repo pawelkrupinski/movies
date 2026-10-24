@@ -528,9 +528,10 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     apply()
     // every family answers that it knows no such film, so the families agree on nothing and the fill reads the cluster
     var rounds = 0
-    while (wiring.agreementStage.wanted.nonEmpty && rounds < 5) {
+    def asked = services.identity.Question.families(wiring.agreementStage.wanted)
+    while (asked.nonEmpty && rounds < 5) {
       rounds += 1
-      wiring.agreementStage.wanted.foreach { case (family: VoterFamily, question) => question.split("\\|", 2) match {
+      asked.foreach { case (family: VoterFamily, question) => question.split("\\|", 2) match {
         case Array("title", text)    => wiring.familyAnswerStore.fileTitled(family, text, Nil)
         case Array("director", name) => wiring.familyAnswerStore.fileDirected(family, name, Nil)
         case Array("record", id)     => wiring.familyAnswerStore.fileRecord(family, id, None)
@@ -539,7 +540,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       } }
       apply()
     }
-    wiring.agreementStage.wanted shouldBe empty
+    asked shouldBe empty
     requests.get should be > 0
     wiring.stop()
   }

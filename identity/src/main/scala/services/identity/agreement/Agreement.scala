@@ -3,7 +3,7 @@ package services.identity.agreement
 import services.billing.BillingPieces
 
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  IdentityResolver, Listing, ListingShape, PosterEvidence}
+  IdentityResolver, Listing, ListingShape, PosterEvidence, Question}
 import services.identity.toAnswer
 import services.identity.SourceReliability
 import services.identity.SourceReliability.{Fact, Trust}
@@ -321,9 +321,9 @@ object Agreement {
   }
 
   /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
-  private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[String]): Answer[Option[Int]] = {
+  private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[Question]): Answer[Option[Int]] = {
     val answer = tmdbOf(tt)
-    if (answer == Answer.Unknown) finding += tt
+    if (answer == Answer.Unknown) finding += Question.Find(tt)
     answer
   }
 

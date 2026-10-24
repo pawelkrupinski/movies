@@ -264,10 +264,11 @@ object IdentitySlice {
     val resolution = UnmatchedClusters.resolutionOf(model)
     // a periodic projection: every listing read, nothing to build on
     val asked = quietly(new tools.AgreementQuestionRounds(store, reads.sources, label).run(() => periodic.apply(resolution, byKey.get, store.version, None))(
-      _ => periodic.wanted, pending = _ => periodic.wantedPosters.nonEmpty || periodic.wantedCatalogue.nonEmpty,
+      _ => OlderRefs.stageWanted(periodic)._1, pending = _ => { val (_, p, c) = OlderRefs.stageWanted(periodic); p.nonEmpty || c.nonEmpty },
       beside = { _ =>
-        tools.ConcurrentAsks.each(periodic.wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
-        catalogue.file(periodic.wantedCatalogue)
+        val (_, wantedPosters, wantedCatalogue) = OlderRefs.stageWanted(periodic)
+        tools.ConcurrentAsks.each(wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
+        catalogue.file(wantedCatalogue)
       }))
     // a changed projection: the worker's ONE stage (IdentityProjectionWiring's agreementStage, which the periodic projection
     // applied before it) handed every listing, the re-scraped venues' read again

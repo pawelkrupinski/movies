@@ -177,15 +177,22 @@ object IdentityDrift {
         listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code),
         correctionPostersAtOnce = if (budgets) AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
         correctionsPerApply = if (budgets) AgreementStage.CorrectionsPerApply else Int.MaxValue)
+    /** The family questions the stage's last apply left open, none given up as unreachable. */
+    def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
+      Question.families(stage.wanted) -- unreachable
     /** Whether the stage's last apply left something to answer. */
     def open(stage: AgreementStage): Boolean =
-      (stage.wanted -- unreachable).nonEmpty || stage.wantedPosters.nonEmpty || stage.wantedCatalogue.nonEmpty
+      askable(stage).nonEmpty || stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) => true; case _ => false }
+    /** What the stage's last apply left open, for a settle round's line. */
+    def described(stage: AgreementStage): String =
+      s"${askable(stage).size} question(s), ${stage.wanted.count(_.isInstanceOf[Question.Poster])} poster(s), " +
+        s"${stage.wanted.count(_.isInstanceOf[Question.Catalogue])} catalogue question(s) open, backlog ${stage.backlog}"
     /** One round of the queue's work: the stage's open questions answered — a held filed answer released, the rest
      *  asked of the recording's sites — its posters hashed and its catalogue questions filed. */
     def answer(stage: AgreementStage, release: String => Boolean): Unit = {
-      val open = (stage.wanted -- unreachable).toSeq.filterNot { case (family, question) => release(FamilyAnswerStore.questionId(family, question)) }
-      tools.ConcurrentAsks.each(stage.wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
-      catalogue.file(stage.wantedCatalogue)
+      val open = askable(stage).toSeq.filterNot { case (family, question) => release(FamilyAnswerStore.questionId(family, question)) }
+      tools.ConcurrentAsks.each(stage.wanted.toSeq.collect { case Question.Poster(q) => q }, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
+      catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
       tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
         try { AgreementQuestions.file(store, family, reads.sources(family), asked); () }
         catch { case NonFatal(_) => failures.merge(question, 1, (a, b) => a + b); () }
@@ -220,15 +227,13 @@ object IdentityDrift {
     for (_ <- 0 until 2) {
       while (!quiet && n < rounds) {
         n += 1
-        System.err.println(s"[identity-drift] settle round $n: ${(stage.wanted -- answers.unreachable).size} question(s), ${stage.wantedPosters.size} poster(s), " +
-          s"${stage.wantedCatalogue.size} catalogue question(s) open, backlog ${stage.backlog}")
+        System.err.println(s"[identity-drift] settle round $n: ${answers.described(stage)}")
         answers.answer(stage, release); clock.advance(Duration.ofMinutes(1)); now = apply()
       }
       clock.advance(Duration.ofMillis(AgreementStage.PartialAfter.toMillis).plusMinutes(1))
       now = apply()
     }
-    if (!quiet) System.err.println(s"[identity-drift] the stage did not settle in $rounds rounds: ${(stage.wanted -- answers.unreachable).size} question(s), " +
-      s"${stage.wantedPosters.size} poster(s), ${stage.wantedCatalogue.size} catalogue question(s) open, backlog ${stage.backlog}")
+    if (!quiet) System.err.println(s"[identity-drift] the stage did not settle in $rounds rounds: ${answers.described(stage)}")
     now
   }
 

@@ -152,8 +152,10 @@ object IdentityResolveDump {
     val byKey = listings.map(l => l.key -> l).toMap
     // each family's questions four at a time, as the experiment read the sites unblocked; one its host never answers given up
     val asked = new AgreementQuestionRounds(store, sources, s"${c.label} agreement").run(() => stage.apply(resolution, byKey.get, store.version))(
-      _ => stage.wanted, pending = _ => stage.wantedPosters.nonEmpty || stage.wantedCatalogue.nonEmpty,
-      beside = { _ => posters.file(posterStore, stage.wantedPosters.toSeq); catalogue.file(stage.wantedCatalogue) })
+      _ => Question.families(stage.wanted), pending = _ => stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) => true; case _ => false },
+      beside = { _ =>
+        posters.file(posterStore, stage.wanted.toSeq.collect { case Question.Poster(q) => q }); catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
+      })
     val (taken, rounds) = (asked.outcome, asked.rounds)
     // every answer the stage read, in the family seed's format: what `integration.ModelTakeCorrectionCost` measures over
     Files.writeString(dir.resolve(s"answers-${c.country.code}.jsonl"), answered.get(TmdbKind.Family, answered.fetchedBefore(TmdbKind.Family, Long.MaxValue)
@@ -176,7 +178,7 @@ object IdentityResolveDump {
       s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Catalogue)} by their catalogue ids; " +
       s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Withdrawn)} model take(s) withdrawn, " +
       s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Corrected)} corrected after $rounds round(s); " +
-      s"${stage.wanted.size} question(s), ${stage.wantedPosters.size} poster(s) still open")
+      s"${Question.families(stage.wanted).size} question(s), ${stage.wanted.count(_.isInstanceOf[Question.Poster])} poster(s) still open")
     // every listing's film after the stage — what a change compares against its base: a film switched, gained or lost
     Files.writeString(dir.resolve(s"final-${c.country.code}.jsonl"), taken.decisions.flatMap { d =>
       d.members.flatMap(byKey.get).map(l => Json.stringify(JsObject(Seq(
@@ -196,8 +198,8 @@ object IdentityResolveDump {
     val clusters = taken.decisions.map(d => d -> d.members.flatMap(byKey.get)).filter(_._2.nonEmpty)
     var rounds = 0
     var open: Set[CatalogueQuestion] = Set.empty
-    while ({ open = clusters.flatMap { case (_, ls) => val asked = mutable.Set.empty[CatalogueQuestion]; Catalogue.named(ls, catalogue.answers, asked); asked }
-             .toSet; open.nonEmpty && rounds < 4 }) {
+    while ({ open = clusters.flatMap { case (_, ls) => val asked = mutable.Set.empty[Question]; Catalogue.named(ls, catalogue.answers, asked)
+               asked.collect { case Question.Catalogue(q) => q } }.toSet; open.nonEmpty && rounds < 4 }) {
       rounds += 1
       println(s"[${c.label}] catalogue report round $rounds: ${open.size} question(s)")
       catalogue.file(open)

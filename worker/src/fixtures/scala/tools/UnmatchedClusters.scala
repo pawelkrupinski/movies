@@ -162,11 +162,11 @@ object UnmatchedClusters {
     all("model", Seq(outcome.model.unknownQueries -> "queries", outcome.model.unknownFilms -> "films")
         .collect { case (n, what) if n > 0 => s"$n $what unanswered" }) ++
       // a question the capture gave up on as unreachable is left open as production leaves a failed fetch's
-      all("family", unasked(capture, outcome.stage.wanted).map { case (family, key) => s"($family, $key)" }) ++
-      all("imdb-find", outcome.stage.wantedFinds) ++
-      all("poster", outcome.stage.wantedPosters.map(_.toString)) ++
-      all("catalogue", outcome.stage.wantedCatalogue.map(_.toString)) ++
-      all("record", outcome.stage.wantedRecords.map(id => s"tmdb $id")) ++
+      all("family", unasked(capture, Question.families(outcome.stage.wanted)).map { case (family, key) => s"($family, $key)" }) ++
+      all("imdb-find", outcome.stage.wanted.collect { case Question.Find(imdb) => imdb }) ++
+      all("poster", outcome.stage.wanted.collect { case Question.Poster(poster) => poster.toString }) ++
+      all("catalogue", outcome.stage.wanted.collect { case Question.Catalogue(question) => question.toString }) ++
+      all("record", outcome.stage.wanted.collect { case Question.Record(id) => s"tmdb $id" }) ++
       // TMDB's answers the stage's own resolves ask — a fill rule's, a poster's candidates — that the capture never held
       all("tmdb", outcome.unanswered)
   }

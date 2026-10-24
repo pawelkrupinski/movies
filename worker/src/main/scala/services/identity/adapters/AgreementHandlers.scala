@@ -11,14 +11,15 @@ import tools.{CircuitOpenException, HttpStatusException}
 import java.time.Clock
 
 /**
- * The agreement's questions as QUEUE TASKS: what the other film database families have not answered yet for the
- * clusters the model left unmatched (`agreement.AgreementStage.wanted`), TMDB's `find` of an agreed IMDb id
- * (`wantedFinds`), and a TMDB record to read again for its release day (`wantedRecords`) — enqueued by the stage the moment it meets them ([[AgreementQuestions.enqueueOpen]]), each asked on
- * the task pool with every other lookup's retries, backoff, breaker and metrics.
+ * The agreement's questions as QUEUE TASKS (`agreement.AgreementStage.wanted`): what the other film database families
+ * have not answered yet for the clusters the model left unmatched, TMDB's `find` of an agreed IMDb id, and a TMDB
+ * record to read again for its release day — enqueued by the stage the moment it meets them
+ * ([[AgreementQuestions.enqueueOpen]]), each asked on the task pool with every other lookup's retries, backoff, breaker
+ * and metrics.
  */
 object AgreementQuestions {
-  private val Family   = "family"
-  private val Question = "question"
+  private val FamilyKey   = "family"
+  private val QuestionKey = "question"
   private val ImdbId   = "imdbId"
   private val TmdbRecord = "tmdbRecord"
   private val VenuePoster = "venuePoster"
@@ -31,26 +32,26 @@ object AgreementQuestions {
 
   /** Every open question, find, poster, catalogue question and record, one task each (catalogue ids a batch each) — one
    *  already queued is not queued again — claimed after every other task ([[Behind]]). */
-  def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock,
-                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, posters: Set[PosterQuestion] = Set.empty,
-                  catalogue: Set[CatalogueQuestion] = Set.empty, records: Set[Int] = Set.empty): Unit = {
+  def enqueueOpen(queue: TaskQueue, open: Set[Question], clock: Clock,
+                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent): Unit = {
     def behind(label: String, taskType: TaskType, key: String, payload: Map[String, String]): Unit =
       enqueueBehind(queue, clock, metrics, label, taskType, key, payload)
-    wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
-      behind(family.label, TaskType.AgreementQuestion, s"agreement|${family.label}|$question", Map(Family -> family.label, Question -> question))
-    }
-    finds.toSeq.sorted.foreach(imdbId => behind(AgreementQuestionMetrics.TmdbFind, TaskType.AgreementFind, s"agreement-find|$imdbId", Map(ImdbId -> imdbId)))
+    open.toSeq.collect { case Question.Family(family, question) => (family, question) }.sortBy { case (family, question) => (family.ordinal, question) }
+      .foreach { case (family, question) =>
+        behind(family.label, TaskType.AgreementQuestion, s"agreement|${family.label}|$question", Map(FamilyKey -> family.label, QuestionKey -> question))
+      }
+    open.toSeq.collect { case Question.Find(imdbId) => imdbId }.sorted.foreach(imdbId => behind(AgreementQuestionMetrics.TmdbFind, TaskType.AgreementFind, s"agreement-find|$imdbId", Map(ImdbId -> imdbId)))
     // a TMDB question as a find is: one task type, so a worker that predates records skips the task rather than failing it
-    records.toSeq.sorted.foreach(tmdbId =>
+    open.toSeq.collect { case Question.Record(tmdbId) => tmdbId }.sorted.foreach(tmdbId =>
       behind(AgreementQuestionMetrics.TmdbRecord, TaskType.AgreementFind, s"agreement-record|$tmdbId", Map(TmdbRecord -> tmdbId.toString)))
-    posters.toSeq.map(question => question -> PosterAnswers.idOf(question)).sortBy(_._2).foreach { case (question, id) =>
+    open.toSeq.collect { case Question.Poster(question) => question -> PosterAnswers.idOf(question) }.sortBy(_._2).foreach { case (question, id) =>
       val payload = question match {
         case PosterQuestion.Venue(url)   => Map(VenuePoster -> url)
         case PosterQuestion.Film(tmdbId) => Map(FilmPoster -> tmdbId.toString)
       }
       behind(AgreementQuestionMetrics.Poster, TaskType.AgreementPoster, s"agreement-$id", payload)
     }
-    AgreementCatalogueQuestions.enqueue(queue, catalogue, clock, metrics)
+    AgreementCatalogueQuestions.enqueue(queue, open.collect { case Question.Catalogue(question) => question }, clock, metrics)
   }
 
   /** One question as a task claimed [[Behind]] every other, counted under `label` — added, or already queued. */
@@ -99,8 +100,8 @@ object AgreementQuestions {
       outcome
     }
 
-  def familyOf(task: Task): Option[VoterFamily] = task.payload.get(Family).flatMap(label => VoterFamily.values.find(_.label == label))
-  def questionOf(task: Task): Option[String]    = task.payload.get(Question)
+  def familyOf(task: Task): Option[VoterFamily] = task.payload.get(FamilyKey).flatMap(label => VoterFamily.values.find(_.label == label))
+  def questionOf(task: Task): Option[String]    = task.payload.get(QuestionKey)
   def imdbIdOf(task: Task): Option[String]      = task.payload.get(ImdbId)
   def tmdbRecordOf(task: Task): Option[Int]     = task.payload.get(TmdbRecord).flatMap(_.toIntOption)
   def posterOf(task: Task): Option[PosterQuestion] =
@@ -171,24 +172,26 @@ object AgreementQuestionMetrics {
 final class InlineFamilyAsks(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], pool: java.util.concurrent.ExecutorService,
                              filed: () => Unit, stopwatch: tools.Stopwatch, metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent)
     extends services.identity.agreement.AgreementStage.AskNow with Logging {
-  def apply(questions: Set[(VoterFamily, String)], within: scala.concurrent.duration.FiniteDuration): Unit = {
+  def apply(questions: Set[Question], within: scala.concurrent.duration.FiniteDuration): Unit = {
     val started  = stopwatch.start()
     val late     = new java.util.concurrent.atomic.AtomicBoolean(false)
-    val asked = questions.toSeq.flatMap { case (family, question) =>
-      sources.get(family).map { source =>
-        pool.submit(new Runnable {
-          def run(): Unit =
-            try {
-              val outcome = tools.HttpPath.within(tools.HttpPath.Agreement)(AgreementQuestions.file(store, family, source, question))
-              metrics.asked(family.label, outcome)
-              if (late.get) filed()
-            } catch {
-              case scala.util.control.NonFatal(e) =>
-                metrics.asked(family.label, AgreementQuestionMetrics.Failed)
-                logger.info(s"agreement: ${family.label} '$question' asked inline failed (${e.getClass.getSimpleName}), the queue's to ask again")
-            }
-        })
-      }
+    val asked = questions.toSeq.flatMap {
+      case Question.Family(family, question) =>
+        sources.get(family).map { source =>
+          pool.submit(new Runnable {
+            def run(): Unit =
+              try {
+                val outcome = tools.HttpPath.within(tools.HttpPath.Agreement)(AgreementQuestions.file(store, family, source, question))
+                metrics.asked(family.label, outcome)
+                if (late.get) filed()
+              } catch {
+                case scala.util.control.NonFatal(e) =>
+                  metrics.asked(family.label, AgreementQuestionMetrics.Failed)
+                  logger.info(s"agreement: ${family.label} '$question' asked inline failed (${e.getClass.getSimpleName}), the queue's to ask again")
+              }
+          })
+        }
+      case _ => None
     }
     asked.foreach { future =>
       try future.get((within - started.elapsed).toNanos.max(0L), java.util.concurrent.TimeUnit.NANOSECONDS)

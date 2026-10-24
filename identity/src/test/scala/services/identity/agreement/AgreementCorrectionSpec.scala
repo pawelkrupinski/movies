@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, CandidateQuery, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, ScreeningDays}
+import services.identity.{Answer, Question, CandidateQuery, FilmTable, ForwardingIdentityLookups, Hit, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
 /** The model's own takes on their way to the projection, read against the evidence that can contradict them
@@ -55,25 +55,25 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stand unread on a cluster that is an event, not a film: no poster hashed, no family asked" in {
-    val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val handed  = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val concert = listing.copy(rawTitle = "Koncert: Lalka", title = "Koncert: Lalka", cleanTitle = "Koncert: Lalka")
     val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map.empty, Map.empty), tmdb = Some(table()))
     s.apply(model, Map(listing.key -> concert).get, 1).decisions.head.basis shouldBe ResolverDecision.Basis.OwnMatch
-    (s.wantedPosters, s.wanted, handed.toSeq) shouldBe ((Set.empty, Set.empty, Seq.empty))
+    (s.wanted, handed.toSeq) shouldBe ((Set.empty, Seq.empty))
   }
 
   it should "read the other candidates' posters only when the take's own are far from the venue's, and ask the families only then" in {
-    val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val handed  = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     // nothing hashed: the venue's poster and the take's are asked for, no other candidate's
     val waiting = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map.empty, Map.empty), tmdb = Some(table()))
     decided(waiting).basis shouldBe ResolverDecision.Basis.OwnMatch
-    waiting.wantedPosters shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1001))
+    waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1001))
     // the take's own poster matches the venue's: no veto can stand, nothing more is asked
     val own = stage(takingHas, new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(2)))))
     decided(own).basis shouldBe ResolverDecision.Basis.OwnMatch
-    (own.wantedPosters, own.wanted) shouldBe ((Set.empty, Set.empty))
+    own.wanted shouldBe empty
   }
 
   it should "be withdrawn when a poster questions it and its venues' Filmweb programme lists a film it contradicts, switched when both name that film" in {
@@ -113,7 +113,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val s = stage(takingHas, posters, changes = _ => Some(filed))
     val first = decided(s)
     first.basis shouldBe ResolverDecision.Basis.OwnMatch
-    s.wantedPosters shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
     // a filing it never read decides nothing again
     films = films + (1002 -> Seq(near(3)))
     filed = Set("imdb|title|Something else")
@@ -230,7 +230,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val s = stage(listedBy(rybkowski), givenUp, listedOn = Some(VoterFamily.Filmweb))
     val taken = decided(s)
     (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Withdrawn, None))
-    s.wantedPosters shouldBe empty
+    s.wanted.collect { case Question.Poster(q) => q } shouldBe empty
   }
 
   it should "switch where its programme and the families name one film, the poster counted for nothing" in {
@@ -251,11 +251,11 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     val stale = new HeldPosters(Map(venuePoster -> None), Map(1001 -> Seq(far), 1002 -> Seq(near(3))), Set(unreadVenue), Set(unreadVenue))
     val s = stage(takingHas, stale)
     decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
-    s.wantedPosters shouldBe Set(unreadVenue)
+    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(unreadVenue)
     // a fresh one is not asked again
     val fresh = stage(takingHas, givenUp)
     decided(fresh)
-    fresh.wantedPosters shouldBe empty
+    fresh.wanted.collect { case Question.Poster(q) => q } shouldBe empty
   }
 
   // prod US 2026-10-06: Oriental Theatre Milwaukee's "NT Live: All My Sons" — Milwaukee Film bills the National

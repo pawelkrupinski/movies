@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision}
+import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Listing, PosterAnswers, PosterHash, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
 /** The venue posters on the agreement's way to the projection: a cluster nothing took takes the one candidate its poster
@@ -25,7 +25,7 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   private def resolutionOf(listing: Listing) = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
     1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
 
-  private def stage(posters: PosterAnswers, families: Map[VoterFamily, FamilyAnswers] = silentFamilies, ask: AgreementStage.Open => Unit = _ => ()) =
+  private def stage(posters: PosterAnswers, families: Map[VoterFamily, FamilyAnswers] = silentFamilies, ask: Set[Question] => Unit = _ => ()) =
     new AgreementStage(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       ask = ask, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table))
 
@@ -117,14 +117,14 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
 
   it should "hold the cluster while a poster is not hashed yet, and hand the poster to the queue" in {
     val listing = lalka()
-    val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val handed  = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val waiting = stage(new HeldPosters(Map.empty, Map.empty), ask = handed += _)
     waiting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
-    waiting.wantedPosters shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster))
+    waiting.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster))
     val films = stage(new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(shown))), ask = handed += _)
     films.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
-    films.wantedPosters shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
-    handed.flatMap(_.posters).toSet shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1002))
+    films.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    handed.flatten.collect { case Question.Poster(q) => q }.toSet shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1002))
   }
 
   "a film the families agree on" should "not be taken when the venue's poster matches another candidate and not it" in {

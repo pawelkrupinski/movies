@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Resolution, ResolverDecision}
+import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
 /** The model's no-matches, on their way to the projection: one ≥3 families agree on takes that film — TMDB's when its
@@ -403,7 +403,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       billed = listing(KinoMuza, "Klondike", year = Some(2022), director = Some("Maryna Er Gorbach")))
     verdicts.all().flatMap(_.agreed).map(_.crossId("imdb")) shouldBe Seq(Some("tt16315948"))   // they agree on the linked film
     (decided.film, decided.fallback) shouldBe ((None, None))
-    stage.wantedFinds shouldBe empty
+    stage.wanted.collect { case Question.Find(tt) => tt } shouldBe empty
   }
 
   it should "hand back the same decision object while its verdict stands, so the projection redrafts it only when it moves" in {
@@ -579,26 +579,26 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "ask TMDB about the agreed IMDb id before taking it as a fallback" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
-    stage.wantedFinds shouldBe Set("tt16315948")
+    stage.wanted.collect { case Question.Find(tt) => tt } shouldBe Set("tt16315948")
   }
 
   it should "hand the questions it meets unanswered to the queue at once, and a stale answer's too while it uses it" in {
-    val asked = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
-    asked.flatMap(_.questions) should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
+    asked.flatten should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
     val staleRt = agreeing() + (VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes,
       Map("klondike_2022" -> SourceRecord(klondike)), stale = true))
-    val refreshed = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val refreshed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val stage = new AgreementStage(staleRt, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, ask = refreshed += _, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the stale answers still count
-    refreshed.flatMap(_.questions).filter(_._1 == VoterFamily.RottenTomatoes) should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
+    refreshed.flatten should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
     refreshed.clear()
     stage.apply(resolution, listingOf, version = 1)                                // a quiet tick reads no answer again…
     refreshed shouldBe empty
     stage.apply(resolution, listingOf, version = 2)                                // …one after a filing re-reads the kept verdict's
-    refreshed.flatMap(_.questions).filter(_._1 == VoterFamily.RottenTomatoes) should not be empty
+    refreshed.flatten.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
   }
 
   it should "resolve a waiting cluster again only once all its questions are answered, or some after it waited long" in {
@@ -619,7 +619,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       VoterFamily.Filmweb        -> flipping(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), filmwebAnswered),
       VoterFamily.RottenTomatoes -> flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered))
     val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-04T21:00:00Z"))
-    val handed = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val handed = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, ask = handed += _, clock = clock)
     val model = resolution
@@ -653,7 +653,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def record(id: String)       = held.record(id)
       override def fresh(question: String) = held.fresh(question)
     }
-    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[(VoterFamily, String)]]
+    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val askNow: AgreementStage.AskNow = (questions, _) => { asked += questions; rtAnswered = true }
     val stage = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
@@ -661,27 +661,27 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stage.apply(known, listingOf, version = 1)                                     // the first pass: nothing new to it
     asked shouldBe empty
     stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)   // new: asked, then taken
-    asked.flatten.toSet should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
+    asked.flatten.toSet should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
     val once = asked.size
     stage.apply(resolution, listingOf, version = 3)
     asked.size shouldBe once
   }
 
   it should "ask nothing inline of a cluster met on its first pass, which meets every cluster" in {
-    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[(VoterFamily, String)]]
+    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = (q, _) => asked += q)
     stage.apply(resolution, listingOf, version = 1)
     stage.apply(resolution, listingOf, version = 2)
     asked shouldBe empty
-    stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")   // the queue's, as before
+    stage.wanted should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))   // the queue's, as before
   }
 
   it should "stay as the model left it while a family has not answered, and name the question" in {
     val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val decision = stage.apply(resolution, listingOf, version = 1).decisions.head
     decision shouldBe resolution.decisions.head
-    stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
+    stage.wanted should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike"))
     // what the drift check counts unsettled: the model's take waits on no gap of its own, yet on the family's question
     val waits = stage.waitingOn(decision)
     (waits.modelGaps, waits.settled) shouldBe ((0, false))

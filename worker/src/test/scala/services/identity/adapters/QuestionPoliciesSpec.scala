@@ -4,9 +4,10 @@ package adapters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.adapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
-import services.identity.agreement.AgreementStage.{Open, PosterQuestion}
+import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.movies.ListingKey
+import services.tasks.TaskType
 import tools.HttpPath
 
 import scala.concurrent.duration._
@@ -65,18 +66,25 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
     Question.Catalogue(CatalogueQuestion.Id(CatalogueId("letterboxd", "lalka"))).kind shouldBe QuestionKind.CatalogueId
   }
 
-  it should "carry the agreement's open questions there and back unchanged" in {
-    val open = Open(
-      questions = Set(VoterFamily.Imdb -> "title|Lalka", VoterFamily.Filmweb -> "showing|kino-muranow"),
-      finds = Set("tt0063208"),
-      posters = Set(PosterQuestion.Film(7), PosterQuestion.Venue("https://example.org/p.jpg")),
-      catalogue = Set(CatalogueQuestion.Page("https://example.org/film")),
-      records = Set(7, 8)
-    )
-    val questions = Question.ofOpen(open)
-    questions.size shouldBe 8
-    questions.map(_.kind.system) shouldBe Set(QuestionSystem.Agreement)
-    Question.toOpen(questions + Question.FilmRecord(7)) shouldBe open
+  it should "hand the agreement's open questions to the queue as the tasks a deployed worker reads: their types, keys and payloads" in {
+    val open = Set[Question](Question.Family(VoterFamily.Imdb, "title|Lalka"), Question.Family(VoterFamily.Filmweb, "showing|kino-muranow"),
+      Question.Find("tt0063208"), Question.Record(7), Question.Poster(PosterQuestion.Film(7)),
+      Question.Poster(PosterQuestion.Venue("https://example.org/p.jpg")), Question.Catalogue(CatalogueQuestion.Page("https://example.org/film")),
+      Question.Catalogue(CatalogueQuestion.Id(CatalogueId("letterboxd", "lalka"))), Question.FilmRecord(7))
+    open.filter(_.kind.system == QuestionSystem.Agreement).size shouldBe 8
+    val queue = new services.tasks.InMemoryTaskQueue
+    val clock = tools.SpecClock.Pinned
+    AgreementQuestions.enqueueOpen(queue, open, clock)
+    val tasks = Iterator.continually(queue.claim("w", 1.minute, clock.instant())).takeWhile(_.isDefined).flatten.toSeq
+    tasks.map(task => (task.taskType, task.dedupKey, task.payload)).toSet shouldBe Set(
+      (TaskType.AgreementQuestion, "agreement|imdb|title|Lalka", Map("family" -> "imdb", "question" -> "title|Lalka")),
+      (TaskType.AgreementQuestion, "agreement|filmweb|showing|kino-muranow", Map("family" -> "filmweb", "question" -> "showing|kino-muranow")),
+      (TaskType.AgreementFind, "agreement-find|tt0063208", Map("imdbId" -> "tt0063208")),
+      (TaskType.AgreementFind, "agreement-record|7", Map("tmdbRecord" -> "7")),
+      (TaskType.AgreementPoster, "agreement-poster|film|7", Map("filmPoster" -> "7")),
+      (TaskType.AgreementPoster, "agreement-poster|venue|https://example.org/p.jpg", Map("venuePoster" -> "https://example.org/p.jpg")),
+      (TaskType.AgreementCatalogue, "agreement-catalogue-page|https://example.org/film", Map("page" -> "https://example.org/film")),
+      (TaskType.AgreementCatalogue, "agreement-catalogue|letterboxd|lalka", Map("source" -> "letterboxd", "ids" -> "lalka")))
   }
 
   it should "name the model's gaps a change of answers names, asked by the fill, live and the refreshes" in {

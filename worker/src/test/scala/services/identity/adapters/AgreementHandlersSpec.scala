@@ -30,15 +30,16 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
 
   "the agreement's open questions" should "go on the queue once each, however often the stage meets them" in {
     val queue = new InMemoryTaskQueue
-    val open  = Set(VoterFamily.Imdb -> "title|Klondike", VoterFamily.RottenTomatoes -> "record|klondike_2022")
-    AgreementQuestions.enqueueOpen(queue, open, Set("tt16315948"), clock)
-    AgreementQuestions.enqueueOpen(queue, open, Set("tt16315948"), clock)
+    val open  = Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.RottenTomatoes, "record|klondike_2022"),
+      Question.Find("tt16315948"))
+    AgreementQuestions.enqueueOpen(queue, open, clock)
+    AgreementQuestions.enqueueOpen(queue, open, clock)
     queue.monitor().counts.values.sum shouldBe 3
   }
 
   it should "be claimed after every other task, one enqueued after them included" in {
     val queue = new InMemoryTaskQueue
-    AgreementQuestions.enqueueOpen(queue, Set(VoterFamily.Imdb -> "title|Klondike"), Set.empty, clock)
+    AgreementQuestions.enqueueOpen(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), clock)
     queue.enqueue(TaskType.ScrapeCinema, "scrape|Kino Muza", submittedAt = clock.instant().plusSeconds(60))
     queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(61)).map(_.taskType) shouldBe Some(TaskType.ScrapeCinema)
     queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(61)).map(_.taskType) shouldBe Some(TaskType.AgreementQuestion)
@@ -91,8 +92,8 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
       def asked(family: String, outcome: String): Unit   = { outcomes += family -> outcome; () }
     }
     val queue = new InMemoryTaskQueue
-    AgreementQuestions.enqueueOpen(queue, Set(VoterFamily.Imdb -> "title|Klondike"), Set("tt1"), clock, metrics)
-    AgreementQuestions.enqueueOpen(queue, Set(VoterFamily.Imdb -> "title|Klondike"), Set.empty, clock, metrics)
+    AgreementQuestions.enqueueOpen(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Find("tt1")), clock, metrics)
+    AgreementQuestions.enqueueOpen(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), clock, metrics)
     enqueues.toSeq shouldBe Seq("imdb" -> true, "tmdb-find" -> true, "imdb" -> false)
     val store = world()
     val handler = new AgreementQuestionHandler(store, Map(VoterFamily.Imdb -> new Answering(VoterFamily.Imdb),
@@ -124,8 +125,8 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
       def enqueued(family: String, added: Boolean): Unit = { enqueues += family -> added; () }
       def asked(family: String, outcome: String): Unit   = { enqueues += family -> (outcome == AgreementQuestionMetrics.Answered); () }
     }
-    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, metrics, records = Set(1703624))
-    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, metrics, records = Set(1703624))
+    AgreementQuestions.enqueueOpen(queue, Set(Question.Record(1703624)), clock, metrics)
+    AgreementQuestions.enqueueOpen(queue, Set(Question.Record(1703624)), clock, metrics)
     queue.monitor().counts.values.sum shouldBe 1
     val task = Task("t3", TaskType.AgreementFind, "agreement-record|1703624", Map("tmdbRecord" -> "1703624"), 1)
     val reread = scala.collection.mutable.Buffer.empty[Int]; val projections = new AtomicInteger

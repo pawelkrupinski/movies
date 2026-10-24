@@ -87,8 +87,8 @@ class AgreementCatalogueStoreSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val questions = (1 to AgreementCatalogueQuestions.Batch + 1).map(i => CatalogueQuestion.Id(CatalogueId("webedia", i.toString))).toSet[CatalogueQuestion] +
       CatalogueQuestion.Id(CatalogueId("letterboxd", "x")) + CatalogueQuestion.Page(empire)
-    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, catalogue = questions)
-    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, catalogue = questions)
+    AgreementQuestions.enqueueOpen(queue, questions.map(Question.Catalogue(_)), clock)
+    AgreementQuestions.enqueueOpen(queue, questions.map(Question.Catalogue(_)), clock)
     queue.monitor().counts.values.sum shouldBe 4
   }
 

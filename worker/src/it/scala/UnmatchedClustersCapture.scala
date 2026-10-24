@@ -115,9 +115,11 @@ object UnmatchedClustersCapture {
       modules.wiring.IdentityProjectionWiring.identities(c.country.code), catalogue.answers,
         modules.wiring.IdentityProjectionWiring.listedOn(c.country.code))
     // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next capture
-    val asked = new AgreementQuestionRounds(store, sources, c.label).run(() => agree())(_.stage.wanted,
-      pending = o => o.stage.wantedPosters.nonEmpty || o.stage.wantedCatalogue.nonEmpty,
-      beside = { o => posters.file(posterStore, o.stage.wantedPosters.toSeq); catalogue.file(o.stage.wantedCatalogue) })
+    val asked = new AgreementQuestionRounds(store, sources, c.label).run(() => agree())(o => Question.families(o.stage.wanted),
+      pending = o => o.stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) => true; case _ => false },
+      beside = { o =>
+        posters.file(posterStore, o.stage.wanted.toSeq.collect { case Question.Poster(q) => q }); catalogue.file(o.stage.wanted.collect { case Question.Catalogue(q) => q })
+      })
     val (outcome, rounds) = (asked.outcome, asked.rounds)
     val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
     val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
@@ -135,10 +137,12 @@ object UnmatchedClustersCapture {
     // the capture must replay to exactly what was captured
     val reread   = UnmatchedClusters.read(written)
     val replayed = UnmatchedClusters.replay(reread)
-    val unasked  = UnmatchedClusters.unasked(reread, replayed.stage.wanted)
+    val unasked  = UnmatchedClusters.unasked(reread, Question.families(replayed.stage.wanted))
     check(unasked.isEmpty, s"the capture replays asking what it never answered: ${unasked.take(5).mkString("; ")}")
-    check(replayed.stage.wantedPosters.isEmpty, s"the capture replays wanting posters: ${replayed.stage.wantedPosters.take(5).mkString("; ")}")
-    check(replayed.stage.wantedCatalogue.isEmpty, s"the capture replays wanting catalogue answers: ${replayed.stage.wantedCatalogue.take(5).mkString("; ")}")
+    val wantedPosters   = replayed.stage.wanted.collect { case Question.Poster(q) => q }
+    val wantedCatalogue = replayed.stage.wanted.collect { case Question.Catalogue(q) => q }
+    check(wantedPosters.isEmpty, s"the capture replays wanting posters: ${wantedPosters.take(5).mkString("; ")}")
+    check(wantedCatalogue.isEmpty, s"the capture replays wanting catalogue answers: ${wantedCatalogue.take(5).mkString("; ")}")
     check(UnmatchedClusters.takes(capture, replayed) == UnmatchedClusters.takes(capture, outcome), "the capture replays to other takes than it captured")
     println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
       s"${filed.size} family answers after $rounds round(s), ${asked.unreachable.size} unreachable; takes ${UnmatchedClusters.takes(capture, outcome).size}")
