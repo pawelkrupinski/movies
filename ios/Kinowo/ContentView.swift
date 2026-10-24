@@ -3,11 +3,11 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
     @EnvironmentObject var catalog: CatalogStore
-    @EnvironmentObject var authService: AuthService
+    @Environment(AuthService.self) var authService
     @EnvironmentObject var deepLink: DeepLinkCoordinator
-    @EnvironmentObject var sync: StateSyncService
+    @Environment(\.stateSync) var sync
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.locale) private var locale
     /// iPhone portrait is `.regular` height, landscape `.compact` — so this
@@ -323,7 +323,7 @@ struct ContentView: View {
                 // one on the next reconcile, and login is the only other trigger
                 // for that. Without this, a hide made elsewhere while this app
                 // sat backgrounded would stay invisible until the next cold start.
-                Task { await sync.reconcileCurrentCountry() }
+                Task { await sync?.reconcileCurrentCountry() }
             }
         }
     }
@@ -634,6 +634,9 @@ extension EnvironmentValues {
     /// default (iPhone 17) is only seen by views hosted outside `ContentView`
     /// (previews, the tuning screen).
     @Entry var listingViewportWidth: CGFloat = 393
+    /// The app's one `StateSyncService`, injected at the root by `KinowoApp`;
+    /// nil only in views hosted outside it (previews, the tuning screen).
+    @Entry var stateSync: StateSyncService? = nil
 }
 
 private extension ListingSafeArea {

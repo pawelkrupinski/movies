@@ -6,20 +6,21 @@ import KinowoTestSupport
 /// located city. Picking a country is itself a choice, and the gate owes it
 /// that country's cities; the flag has to survive a relaunch and has to stop
 /// applying the moment a city is actually chosen.
+@MainActor
 final class UserPreferencesExplicitPickTests: XCTestCase {
 
     private var defaults: UserDefaults!
 
     private static let suite = "UserPreferencesExplicitPickTests"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: Self.suite)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: Self.suite)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testNothingToHonourBeforeACountryIsPicked() {

@@ -42,6 +42,7 @@ let authTargets: [Target] = [
             "Auth/HiddenFilmsClient.swift",
             "Auth/LanguageClient.swift",
             "Auth/StateSyncService.swift",
+            "Auth/ObservedValues.swift",
             "Auth/PkceVerifier.swift",
             "Auth/AuthRequests.swift",
             "Storage/UserPreferences.swift",

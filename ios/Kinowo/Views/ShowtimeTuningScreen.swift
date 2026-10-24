@@ -626,5 +626,5 @@ enum TuningSampleData {
 
 #Preview {
     ShowtimeTuningScreen()
-        .environmentObject(UserPreferences())
+        .environment(UserPreferences())
 }

@@ -8,19 +8,20 @@ import KinowoTestSupport
 /// and `UserPreferences` route the base URL / language through them, and SPM
 /// forbids sharing one file across two targets. Mirrors the Android `CountryTest`
 /// so the two apps can't drift.
+@MainActor
 final class CountryTests: XCTestCase {
 
     private var defaults: UserDefaults!
     private static let suite = "CountryTests"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: Self.suite)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: Self.suite)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     // MARK: - Registry

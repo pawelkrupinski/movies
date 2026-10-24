@@ -440,12 +440,12 @@ struct FiltersSheet: View {
     @Binding var excludedGenres: Set<String>
     @Binding var excludedDirectors: Set<String>
     @Binding var excludedCast: Set<String>
-    @ObservedObject var prefs: UserPreferences
+    var prefs: UserPreferences
     let allCountries: [(name: String, count: Int)]
     let allGenres: [(name: String, count: Int)]
     let allDirectors: [(name: String, count: Int)]
     let allCast: [(name: String, count: Int)]
-    @EnvironmentObject var authService: AuthService
+    @Environment(AuthService.self) var authService
     @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
     @Environment(\.dismiss) private var dismiss
@@ -716,7 +716,7 @@ struct FiltersSheet: View {
 // is nothing left to manage and the row itself would also have disappeared
 // from the parent screen.
 struct HiddenFilmsList: View {
-    @ObservedObject var prefs: UserPreferences
+    var prefs: UserPreferences
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
 
@@ -822,7 +822,7 @@ struct NameFilterList: View {
 
 private struct HiddenFilmRow: View {
     let title: String
-    @ObservedObject var prefs: UserPreferences
+    var prefs: UserPreferences
 
     var body: some View {
         HStack {

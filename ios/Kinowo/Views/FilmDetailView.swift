@@ -19,7 +19,7 @@ struct FilmDetailView: View {
     @EnvironmentObject var details: DetailsStore
     // The share link is city-scoped (`/<city>/film?title=…`), so the detail
     // screen needs the selected-city slug the same way the listing card does.
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
     @Environment(\.filmDetailStyle) private var style
     @Environment(\.locale) private var locale
     @Environment(\.listingViewportWidth) private var viewportWidth

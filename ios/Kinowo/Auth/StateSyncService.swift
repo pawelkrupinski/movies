@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 /// Keeps hiddenFilms — and the account's language pick — in step with the
 /// server while signed in.
@@ -15,8 +14,8 @@ import Combine
 /// a country this device has never synced needs its own migration, not the
 /// previously-selected country's). See `reconcile(country:)`.
 ///
-/// Local hide/unhide/clear-all now push IMMEDIATELY (via
-/// `UserPreferences.hiddenFilmsChanges`) instead of on a debounce: the old
+/// Local hide/unhide/clear-all now push IMMEDIATELY (as the prefs'
+/// `PreferencesEditListener`) instead of on a debounce: the old
 /// 400ms debounce existed to batch several toggles into ONE bulk PUT body,
 /// which `HiddenFilmsClient`'s per-title endpoints have no equivalent
 /// need for — each hide/unhide is already its own idempotent request. That
@@ -42,7 +41,7 @@ import Combine
 /// close for a picker choice, but this mirrors the shape the mechanism
 /// always had here.
 @MainActor
-final class StateSyncService: ObservableObject {
+final class StateSyncService: PreferencesEditListener {
     private let prefs: UserPreferences
     private let client: HiddenFilmsClient
     private let languageClient: LanguageClient
@@ -50,11 +49,11 @@ final class StateSyncService: ObservableObject {
     /// Bumped by every genuine logout, which forgets the hiddenFilms queue: a
     /// response from before it must not touch the next session's queue.
     private var session = 0
-    private var authCancellable: AnyCancellable?
-    private var prefsCancellables = Set<AnyCancellable>()
+    /// Watches the selected country while signed in.
+    private var countryObservation: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
-    private let debounceScheduler: DebounceScheduler
-    private var pendingDebounce: AnyCancellable?
+    /// Holds the language pick's debounced push, if one is waiting.
+    private let languagePushDebouncer: Debouncer
     /// The language push on the wire, if any — see `sendPendingLanguage`.
     private var languageSendTask: Task<Void, Never>?
     /// Set while `adopt` writes the account's pick — see there.
@@ -82,50 +81,57 @@ final class StateSyncService: ObservableObject {
 
     init(
         prefs: UserPreferences,
-        userPublisher: AnyPublisher<UserProfile?, Never>,
+        signedInUser: @escaping @MainActor () -> UserProfile?,
         client: HiddenFilmsClient,
         languageClient: LanguageClient,
-        debounceScheduler: DebounceScheduler = MainQueueDebounceScheduler()
+        languagePushDebouncer: Debouncer = TaskDebouncer()
     ) {
         self.prefs = prefs
         self.client = client
         self.languageClient = languageClient
-        self.debounceScheduler = debounceScheduler
-        observeUser(userPublisher)
+        self.languagePushDebouncer = languagePushDebouncer
+        observeUser(signedInUser)
     }
 
-    private func observeUser(_ publisher: AnyPublisher<UserProfile?, Never>) {
-        authCancellable = publisher
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] user in
+    /// `signedInUser` reads observable state (`AuthService.user`), watched
+    /// here: its current value first — `nil` before a session restores — then
+    /// one per change.
+    private func observeUser(_ signedInUser: @escaping @MainActor () -> UserProfile?) {
+        let users = observedValues(signedInUser)
+        // Ends with the service: its next value finds `self` gone.
+        Task { [weak self] in
+            for await user in users {
                 guard let self else { return }
-                if user != nil {
-                    // `AuthService.user` re-publishes the profile every time
-                    // `checkSession()` re-runs (the root `.task` restarts when
-                    // the language `.id` flips) — only the FIRST non-nil value
-                    // is a login; re-running `onLogin` would stack a second set
-                    // of change observers and PUT every hide twice.
-                    guard !self.isLoggedIn else { return }
-                    self.isLoggedIn = true
-                    self.onLogin()
-                } else {
-                    // Clear every country's migration flag only on a GENUINE
-                    // logout, not the initial `nil` the publisher emits before a
-                    // session restores — otherwise every cold start would re-run
-                    // the first-login union instead of treating the server as
-                    // authoritative.
-                    // The same goes for an unsent language pick: it is
-                    // persisted precisely so the session restore after a
-                    // relaunch can still push it.
-                    if self.isLoggedIn {
-                        self.session += 1
-                        self.prefs.clearHiddenFilmsMigration()
-                        self.pendingLanguage = nil
-                    }
-                    self.isLoggedIn = false
-                    self.cancelSync()
-                }
+                self.userChanged(to: user)
             }
+        }
+    }
+
+    private func userChanged(to user: UserProfile?) {
+        if user != nil {
+            // `AuthService.user` is re-set to the profile every time
+            // `checkSession()` re-runs (the root `.task` restarts when the
+            // language `.id` flips) — only the FIRST non-nil value is a login;
+            // re-running `onLogin` would start a second country observation
+            // and reconcile twice.
+            guard !isLoggedIn else { return }
+            isLoggedIn = true
+            onLogin()
+        } else {
+            // Clear every country's migration flag only on a GENUINE logout,
+            // not the initial `nil` before a session restores — otherwise every
+            // cold start would re-run the first-login union instead of treating
+            // the server as authoritative.
+            // The same goes for an unsent language pick: it is persisted
+            // precisely so the session restore after a relaunch can still push it.
+            if isLoggedIn {
+                session += 1
+                prefs.clearHiddenFilmsMigration()
+                pendingLanguage = nil
+            }
+            isLoggedIn = false
+            cancelSync()
+        }
     }
 
     private func onLogin() {
@@ -135,7 +141,7 @@ final class StateSyncService: ObservableObject {
             // made while its fetch is in flight must already be pending, or
             // the account's older state would overwrite it. Country switches
             // too: one made meanwhile reconciles its own country.
-            self.observeLocalChanges()
+            self.prefs.editListener = self
             self.observeCountryChanges()
             await self.reconcileLanguage()
             await self.reconcile(country: self.prefs.selectedCountry.code)
@@ -145,9 +151,11 @@ final class StateSyncService: ObservableObject {
     private func cancelSync() {
         syncTask?.cancel()
         syncTask = nil
-        pendingDebounce = nil
+        languagePushDebouncer.cancel()
         accountLanguage = nil
-        prefsCancellables.removeAll()
+        if prefs.editListener === self { prefs.editListener = nil }
+        countryObservation?.cancel()
+        countryObservation = nil
     }
 
     /// Public entry point for the foreground-resume trigger
@@ -279,7 +287,7 @@ final class StateSyncService: ObservableObject {
     /// self-heal the hiddenFilms writes rely on; a permanent refusal
     /// (`LanguagePushRefused`) drops it and takes the account's pick instead.
     private func sendPendingLanguage() async {
-        pendingDebounce = nil
+        languagePushDebouncer.cancel()
         // Wait out the send on the wire, then send what is still pending: that
         // send's loop picks up a pick made meanwhile only when it succeeds — a
         // failure was the older pick's, not this one's. Android's waiters do the
@@ -325,7 +333,7 @@ final class StateSyncService: ObservableObject {
     private func adopt(_ remoteLanguage: String) {
         accountLanguage = remoteLanguage
         guard remoteLanguage != prefs.selectedLanguage else { return }
-        // Not a pick: `languageChanged` hears it synchronously and must not
+        // Not a pick: `languageChanged(to:)` hears it synchronously and must not
         // queue it — even from inside a send, where a pick back to the
         // account's value is otherwise kept pending.
         adopting = true
@@ -333,34 +341,15 @@ final class StateSyncService: ObservableObject {
         prefs.setLanguage(remoteLanguage)
     }
 
-    /// Push every local hide/unhide/clear-all immediately — see the class
-    /// doc for why there's no debounce here any more. Language pushes on its
-    /// own debounce instead — see `schedulePush`.
-    private func observeLocalChanges() {
-        // Delivered synchronously, like the language pick below: `push` reads
-        // the selected country, which must still be the one the edit was made
-        // in — a `receive(on:)` hop let a switch in the same turn intervene.
-        prefs.hiddenFilmsChanges
-            .sink { [weak self] change in self?.push(change) }
-            .store(in: &prefsCancellables)
-
-        // `.dropFirst()` skips the INIT value `UserPreferences` resolves at
-        // launch (device/storefront fallback, not a pick) — every mutation
-        // after that goes through `setLanguage`: either an explicit pick, or
-        // `reconcileLanguage` adopting `accountLanguage`, which is skipped.
-        // Delivered synchronously (no `receive(on:)` hop — `setLanguage` runs
-        // on the main actor), so a pick is pending before any reconcile that
-        // follows it can read the account's older value.
-        prefs.$selectedLanguage
-            .dropFirst()
-            .sink { [weak self] language in self?.languageChanged(to: language) }
-            .store(in: &prefsCancellables)
-    }
-
+    /// Push every local hide/unhide/clear-all immediately — see the class doc
+    /// for why there's no debounce here any more (language pushes on its own
+    /// debounce instead — see `schedulePush`). Heard synchronously: the
+    /// selected country read here must still be the one the edit was made in.
+    ///
     /// Queue the edit (persisted — see `UserPreferences.pendingHiddenFilmsChanges`)
     /// and send the queue. One that fails stays queued; the next reconcile
     /// re-sends it before fetching — unless it was refused for good.
-    private func push(_ change: HiddenFilmsChange) {
+    func hiddenFilmsEdited(_ change: HiddenFilmsChange) {
         guard isLoggedIn else { return }
         let country = prefs.selectedCountry.code
         prefs.setPendingHiddenFilmsChanges(prefs.pendingHiddenFilmsChanges(country: country) + [change], country: country)
@@ -413,7 +402,11 @@ final class StateSyncService: ObservableObject {
         return await task.value
     }
 
-    private func languageChanged(to language: String) {
+    /// Every language change after launch goes through `setLanguage`: either
+    /// an explicit pick, or `reconcileLanguage` adopting `accountLanguage`,
+    /// which is skipped. Heard synchronously, so a pick is pending before any
+    /// reconcile that follows it can read the account's older value.
+    func languageChanged(to language: String) {
         guard !adopting else { return }
         languagePicks += 1
         // A push on the wire may already have reached the server, so a pick
@@ -421,7 +414,7 @@ final class StateSyncService: ObservableObject {
         guard language != accountLanguage || languageSendTask != nil else {
             // Back on (or adopted) what the account already holds — nothing to push.
             pendingLanguage = nil
-            pendingDebounce = nil
+            languagePushDebouncer.cancel()
             return
         }
         pendingLanguage = language
@@ -431,7 +424,7 @@ final class StateSyncService: ObservableObject {
     /// Debounced push of `pendingLanguage` — 400ms, long enough that a rapid
     /// run of picker taps folds into one PUT.
     private func schedulePush() {
-        pendingDebounce = debounceScheduler.schedule(after: 0.4) { [weak self] in
+        languagePushDebouncer.schedule(after: 0.4) { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self, self.isLoggedIn else { return }
                 await self.sendPendingLanguage()
@@ -444,32 +437,44 @@ final class StateSyncService: ObservableObject {
     /// already migrated: `reconcile` is cheap (a conditional GET) once
     /// migrated, so re-running it on every switch back costs nothing.
     private func observeCountryChanges() {
-        prefs.$selectedCountry
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] country in
-                guard let self, self.isLoggedIn else { return }
+        // The first value is the country selected at login, which the login
+        // reconcile already covers.
+        let countries = observedValues { [prefs] in prefs.selectedCountry }.dropFirst()
+        countryObservation = Task { [weak self] in
+            for await country in countries {
+                guard let self else { return }
+                guard self.isLoggedIn else { continue }
                 Task { await self.reconcile(country: country.code) }
             }
-            .store(in: &prefsCancellables)
+        }
     }
 }
 
-/// The clock behind the language push's debounce: runs `action` on the main
-/// actor after `delay` seconds, unless the returned token is cancelled or
-/// released first. Injected so a test can fire it without waiting.
-protocol DebounceScheduler {
-    @MainActor func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable
+/// Holds at most one pending action — the language push's debounce: `schedule`
+/// replaces whatever is waiting, which then never runs; `cancel` drops it.
+/// Injected so a test can fire it without waiting on a clock.
+@MainActor
+protocol Debouncer: AnyObject {
+    func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void)
+    func cancel()
 }
 
 /// The production clock: a main-actor task that sleeps out the delay.
-struct MainQueueDebounceScheduler: DebounceScheduler {
-    @MainActor func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable {
-        let task = Task { @MainActor in
+@MainActor
+final class TaskDebouncer: Debouncer {
+    private var pending: Task<Void, Never>?
+
+    func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) {
+        pending?.cancel()
+        pending = Task { @MainActor in
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             action()
         }
-        return AnyCancellable { task.cancel() }
+    }
+
+    func cancel() {
+        pending?.cancel()
+        pending = nil
     }
 }

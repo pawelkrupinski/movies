@@ -8,7 +8,7 @@ struct FilmCardView: View {
     /// duplicate label — see `CinemaSectionedGridView`.
     var showCinemaHeaders: Bool = true
     var truncatable: Bool = true
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
     /// Vertical gaps. Defaults to the shipping layout; the non-prod
     /// `ShowtimeTuningScreen` overrides it through the environment.
     @Environment(\.cardSpacingStyle) private var spacing
@@ -155,7 +155,7 @@ struct MetaPillsView: View {
 
 private struct PosterView: View {
     let film: Film
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
 
     var body: some View {
         ZStack(alignment: .topLeading) {

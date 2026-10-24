@@ -1,8 +1,8 @@
 import Foundation
-import Combine
+import Observation
 
-/// One local hiddenFilms edit, as `UserPreferences.hiddenFilmsChanges`
-/// reports it — specific enough that `StateSyncService` can call the
+/// One local hiddenFilms edit, as `UserPreferences` reports it to its
+/// `editListener` — specific enough that `StateSyncService` can call the
 /// matching `HiddenFilmsClient` method directly instead of diffing a
 /// before/after `Set`.
 enum HiddenFilmsChange: Equatable {
@@ -28,16 +28,37 @@ enum HiddenFilmsChange: Equatable {
     }
 }
 
+/// Hears the local edits the signed-in account must learn about, synchronously
+/// inside the call that made them — so while it runs, `selectedCountry` is
+/// still the country the edit was made in, and a pick is pending before any
+/// reconcile that follows it can read the account's older value.
+/// `StateSyncService`, while signed in.
+@MainActor
+protocol PreferencesEditListener: AnyObject {
+    /// Once per hide/unhide/clear-all — the SPECIFIC operation, not just "the
+    /// set changed" — so the listener can call the matching granular endpoint
+    /// instead of inferring one from a before/after diff.
+    func hiddenFilmsEdited(_ change: HiddenFilmsChange)
+    /// Every `setLanguage` that changed the language: an explicit pick, or the
+    /// listener itself adopting the account's.
+    func languageChanged(to language: String)
+}
+
 /// UserDefaults-backed per-device preferences: hidden films and the
 /// cross-platform `disabledCinemas` exclusion set.
 /// Mirrors what the web app stores in `localStorage` for anonymous users.
-final class UserPreferences: ObservableObject {
+///
+/// `@Observable`, so a view re-renders only when a property its body read
+/// changes — a swipe-hint stamp no longer redraws every film card.
+@MainActor
+@Observable
+final class UserPreferences {
     /// The hidden titles of the country being browsed. Stored PER COUNTRY
     /// (one `hiddenFilms_<code>` key each), like the server's
     /// `/api/me/{country}/hidden-films` buckets and Android's store, so a
     /// country switch shows that country's own set instead of carrying the
     /// previous one across. Re-read from the store by `setCountry`.
-    @Published private(set) var hiddenFilms: Set<String> = []
+    private(set) var hiddenFilms: Set<String> = []
     /// The excluded-cinemas set, shared in NAME only with the web's
     /// `disabledCinemas` localStorage key — both are device-local, neither
     /// round-trips through `StateSyncService` any more (only hiddenFilms
@@ -46,18 +67,18 @@ final class UserPreferences: ObservableObject {
     /// groups on a split one — and `filteredFor` drops them. Global across
     /// cities like the web, so a stale name from another city never matches
     /// (which is why a city switch needs no reset).
-    @Published private(set) var disabledCinemas: Set<String> = []
+    private(set) var disabledCinemas: Set<String> = []
     /// True once the user has swiped between Filmy / Kina at least once.
-    @Published private(set) var hasSwipedScreens: Bool = false
+    private(set) var hasSwipedScreens: Bool = false
     /// `yyyy-MM-dd` of the last day the swipe hint was shown, or "" if never.
-    @Published private(set) var swipeHintShownDate: String = ""
+    private(set) var swipeHintShownDate: String = ""
     /// Slug of the city the user is browsing, or `nil` until the
     /// first-launch gate resolves one (by location or explicit pick).
-    @Published private(set) var selectedCity: String?
+    private(set) var selectedCity: String?
     /// The most-recent `chosen→nearest` pair the "switch city?" prompt was
     /// shown for, or `nil` if never. Only the single latest pair is kept, so
     /// returning to a previously-declined city re-arms the prompt.
-    @Published private(set) var citySwitchPromptKey: String?
+    private(set) var citySwitchPromptKey: String?
     /// Countries `StateSyncService` has done the one-time local→server
     /// hiddenFilms migration for (see `HiddenFilmsClient`). Per-country, not
     /// one global flag — hiddenFilms is per-country now, and a device might
@@ -68,24 +89,27 @@ final class UserPreferences: ObservableObject {
     private var hiddenFilmsMigratedCountries: Set<String> = []
     /// Slugs of split cities whose first-visit area picker the user has already
     /// completed, so it shows once per city (never on a flat city). Device-local.
-    @Published private(set) var areaPickerSeenCities: Set<String> = []
+    private(set) var areaPickerSeenCities: Set<String> = []
     /// True while the city gate must present the country's list instead of
     /// offering a located city. Set when the user picks a country themselves:
     /// they have just said which country they want, and answering that with
     /// "you're near Poznań" offers the very thing they navigated away from.
     /// Cleared by `setCity(_:)`, however the city was reached.
-    @Published private(set) var awaitingExplicitCityPick: Bool = false
+    private(set) var awaitingExplicitCityPick: Bool = false
     /// The selected country (see `Country`) — which deployment the app talks
     /// to. Defaults to Poland until the user picks otherwise. Persisted via
     /// `CountrySelection` (same `store`) so it's readable at launch by
     /// `kinowoBaseURL`.
-    @Published private(set) var selectedCountry: Country
+    private(set) var selectedCountry: Country
     /// The selected UI language — fully independent of `selectedCountry` (see
     /// `LanguageSelection`). Resolved at init from the persisted pick, else
     /// device-preferred, else English — the storefront-informed fallback is
     /// primed asynchronously by `KinowoApp` for the *next* launch, since
     /// StoreKit's lookup can't run inside this synchronous initializer.
-    @Published private(set) var selectedLanguage: String
+    private(set) var selectedLanguage: String
+
+    /// See `PreferencesEditListener`.
+    @ObservationIgnored weak var editListener: PreferencesEditListener?
 
     private let store: UserDefaults
     /// Builds before per-country sets kept ONE device-wide set here; `init`
@@ -132,29 +156,20 @@ final class UserPreferences: ObservableObject {
         #endif
     }
 
-    /// Fires once per hide/unhide/clear-all — the SPECIFIC operation, not
-    /// just "the set changed" — so `StateSyncService` can call the matching
-    /// granular endpoint (`hide`/`unhide`/`clear`) instead of having to
-    /// infer one from a before/after diff. A `PassthroughSubject`, not
-    /// `$hiddenFilms`: it never replays a stored value at subscribe time, so
-    /// unlike the old `$hiddenFilms.dropFirst()` sync observation, there's
-    /// no startup value to skip.
-    let hiddenFilmsChanges = PassthroughSubject<HiddenFilmsChange, Never>()
-
     /// Hide/unhide/clear-all act on the country being browsed.
     func hide(_ title: String) {
         setHiddenFilms(hiddenFilms.union([title]), country: selectedCountry.code)
-        hiddenFilmsChanges.send(.hidden(title))
+        editListener?.hiddenFilmsEdited(.hidden(title))
     }
 
     func unhide(_ title: String) {
         setHiddenFilms(hiddenFilms.subtracting([title]), country: selectedCountry.code)
-        hiddenFilmsChanges.send(.unhidden(title))
+        editListener?.hiddenFilmsEdited(.unhidden(title))
     }
 
     func unhideAll() {
         setHiddenFilms([], country: selectedCountry.code)
-        hiddenFilmsChanges.send(.clearedAll)
+        editListener?.hiddenFilmsEdited(.clearedAll)
     }
 
     /// Replace the whole excluded-cinemas set — the single writer. The Filtry
@@ -354,6 +369,7 @@ final class UserPreferences: ObservableObject {
         guard selectedLanguage != code else { return }
         selectedLanguage = code
         LanguageSelection.select(code, in: store)
+        editListener?.languageChanged(to: code)
     }
 
     /// The persisted EXPLICIT language pick, or nil if the user has never

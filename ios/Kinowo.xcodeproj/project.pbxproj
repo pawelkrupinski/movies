@@ -32,6 +32,7 @@
 		DD00000000000000000F03 /* ConditionalPayloadCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000F03 /* ConditionalPayloadCache.swift */; };
 		DD00000000000000000031 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000031 /* AuthService.swift */; };
 		DD00000000000000000032 /* StateSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000032 /* StateSyncService.swift */; };
+		DD0000000000000000A5F1 /* ObservedValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5F1 /* ObservedValues.swift */; };
 		DD00000000000000000033 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000033 /* UserProfile.swift */; };
 		DD00000000000000000034 /* HiddenFilmsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000034 /* HiddenFilmsClient.swift */; };
 		DD00000000000000000037 /* LanguageClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000037 /* LanguageClient.swift */; };
@@ -151,6 +152,7 @@
 		CC00000000000000000F03 /* ConditionalPayloadCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionalPayloadCache.swift; sourceTree = "<group>"; };
 		CC00000000000000000031 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		CC00000000000000000032 /* StateSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateSyncService.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5F1 /* ObservedValues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservedValues.swift; sourceTree = "<group>"; };
 		CC00000000000000000033 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		CC00000000000000000034 /* HiddenFilmsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsClient.swift; sourceTree = "<group>"; };
 		CC00000000000000000037 /* LanguageClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageClient.swift; sourceTree = "<group>"; };
@@ -297,6 +299,7 @@
 			children = (
 				CC00000000000000000031 /* AuthService.swift */,
 				CC00000000000000000032 /* StateSyncService.swift */,
+				CC0000000000000000A5F1 /* ObservedValues.swift */,
 				CC00000000000000000033 /* UserProfile.swift */,
 				CC00000000000000000034 /* HiddenFilmsClient.swift */,
 				CC00000000000000000037 /* LanguageClient.swift */,
@@ -547,6 +550,7 @@
 				DD00000000000000000F03 /* ConditionalPayloadCache.swift in Sources */,
 				DD00000000000000000031 /* AuthService.swift in Sources */,
 				DD00000000000000000032 /* StateSyncService.swift in Sources */,
+				DD0000000000000000A5F1 /* ObservedValues.swift in Sources */,
 				DD00000000000000000033 /* UserProfile.swift in Sources */,
 				DD00000000000000000034 /* HiddenFilmsClient.swift in Sources */,
 				DD00000000000000000037 /* LanguageClient.swift in Sources */,

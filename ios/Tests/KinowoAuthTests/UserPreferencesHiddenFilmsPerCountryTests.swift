@@ -5,6 +5,7 @@ import KinowoTestSupport
 /// hiddenFilms is per country — server-side (`/api/me/{country}/hidden-films`)
 /// and so locally too, as on Android. A single device-wide set let one
 /// country's hides leak into another on a country switch.
+@MainActor
 final class UserPreferencesHiddenFilmsPerCountryTests: XCTestCase {
 
     private static let suite = "UserPreferencesHiddenFilmsPerCountryTests"
@@ -14,14 +15,14 @@ final class UserPreferencesHiddenFilmsPerCountryTests: XCTestCase {
     private let unitedKingdom = Country.all.first { $0.code == "uk" }!
     private let germany       = Country.all.first { $0.code == "de" }!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: Self.suite)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: Self.suite)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testACountrySwitchShowsThatCountrysOwnSetAndSwitchingBackRestoresTheFirst() {

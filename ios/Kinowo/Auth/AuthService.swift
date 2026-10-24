@@ -1,18 +1,19 @@
 import Foundation
 import AuthenticationServices
-import Combine
+import Observation
 
 @MainActor
-final class AuthService: NSObject, ObservableObject {
-    @Published var user: UserProfile?
-    @Published var isLoading = false
+@Observable
+final class AuthService: NSObject {
+    var user: UserProfile?
+    var isLoading = false
 
     /// Armed when a sign-in starts so the post-OAuth foreground doesn't re-fire
     /// the nearer-city prompt the user already answered. Read by `ContentView`.
     let citySwitchSuppressor = CitySwitchSuppressor()
 
     private let session: URLSession
-    private var webAuthSession: ASWebAuthenticationSession?
+    @ObservationIgnored private var webAuthSession: ASWebAuthenticationSession?
 
     override init() {
         self.session = URLSession.shared
@@ -64,7 +65,7 @@ final class AuthService: NSObject, ObservableObject {
 
     // MARK: - Apple Sign-In
 
-    private var appleSignInContinuation: CheckedContinuation<ASAuthorization, Error>?
+    @ObservationIgnored private var appleSignInContinuation: CheckedContinuation<ASAuthorization, Error>?
 
     func signInWithApple() async {
         // The Apple sheet briefly backgrounds the app; skip the nearer-city

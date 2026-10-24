@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import Observation
 @testable import KinowoAuth
 
 // In-memory stand-ins for StateSyncService's collaborators, shared by its
@@ -191,27 +191,31 @@ final class AsyncGate {
 }
 
 /// The language debounce's clock, advanced by hand: nothing fires until the
-/// test says so, and then everything scheduled fires at once.
+/// test says so.
 @MainActor
-final class ManualDebounceScheduler: DebounceScheduler {
-    private var scheduled: [(id: Int, action: @MainActor () -> Void)] = []
-    private var nextID = 0
+final class ManualDebouncer: Debouncer {
+    private var pending: (@MainActor () -> Void)?
 
-    var hasPending: Bool { !scheduled.isEmpty }
+    var hasPending: Bool { pending != nil }
 
-    func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) -> AnyCancellable {
-        nextID += 1
-        let id = nextID
-        scheduled.append((id, action))
-        // Only StateSyncService cancels or releases the token, on the main actor; the (checked)
-        // assumption traps rather than races if that ever changes.
-        return AnyCancellable { [weak self] in MainActor.assumeIsolated { self?.scheduled.removeAll { $0.id == id } } }
+    func schedule(after delay: TimeInterval, _ action: @escaping @MainActor () -> Void) { pending = action }
+
+    func cancel() { pending = nil }
+
+    /// Fire the pending action, if any, as if its delay had elapsed.
+    func fire() {
+        let due = pending
+        pending = nil
+        due?()
     }
+}
 
-    /// Fire everything scheduled so far, as if its delay had elapsed.
-    func fireAll() {
-        let due = scheduled
-        scheduled = []
-        due.forEach { $0.action() }
-    }
+/// The signed-in user as `AuthService` holds it — observable, so the service
+/// under test watches it the way it watches the real one.
+@MainActor
+@Observable
+final class SignedInAccount {
+    var user: UserProfile?
+
+    func signIn() { user = UserProfile(displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google") }
 }

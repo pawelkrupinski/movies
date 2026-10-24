@@ -7,19 +7,20 @@ import KinowoTestSupport
 /// table. Lives in `KinowoAuthTests` for the same reason `CountryTests` does:
 /// `LanguageSelection` is owned by the `KinowoAuth` SPM target because
 /// `UserPreferences` routes the resolved/persisted language through it.
+@MainActor
 final class LanguageSelectionTests: XCTestCase {
 
     private var defaults: UserDefaults!
     private static let suite = "LanguageSelectionTests"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: Self.suite)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: Self.suite)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     // MARK: - resolve(storefrontCountry:) 4-step algorithm

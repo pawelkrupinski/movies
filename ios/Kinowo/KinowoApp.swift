@@ -7,9 +7,9 @@ struct KinowoApp: App {
     @StateObject private var store: RepertoireStore
     @StateObject private var details = DetailsStore(cache: .details(in: ConditionalPayloadCache<FilmDetails>.defaultDirectory))
     @StateObject private var catalog = CatalogStore()
-    @StateObject private var prefs: UserPreferences
-    @StateObject private var authService: AuthService
-    @StateObject private var sync: StateSyncService
+    @State private var prefs: UserPreferences
+    @State private var authService: AuthService
+    @State private var sync: StateSyncService
     @StateObject private var deepLink = DeepLinkCoordinator()
     @StateObject private var clientSupport = ClientSupportStore()
     /// The one poster disk cache: the grid and detail images read it through
@@ -36,11 +36,11 @@ struct KinowoApp: App {
         self.posters = posters
         _store = StateObject(wrappedValue: RepertoireStore(
             cache: .repertoire(in: ConditionalPayloadCache<Film>.defaultDirectory), posters: posters))
-        _prefs = StateObject(wrappedValue: preferences)
-        _authService = StateObject(wrappedValue: authService)
-        _sync = StateObject(wrappedValue: StateSyncService(
+        _prefs = State(initialValue: preferences)
+        _authService = State(initialValue: authService)
+        _sync = State(initialValue: StateSyncService(
             prefs: preferences,
-            userPublisher: authService.$user.eraseToAnyPublisher(),
+            signedInUser: { authService.user },
             client: HttpHiddenFilmsClient(),
             languageClient: HttpLanguageClient()
         ))
@@ -86,9 +86,9 @@ struct KinowoApp: App {
                 .environmentObject(store)
                 .environmentObject(details)
                 .environmentObject(catalog)
-                .environmentObject(prefs)
-                .environmentObject(authService)
-                .environmentObject(sync)
+                .environment(prefs)
+                .environment(authService)
+                .environment(\.stateSync, sync)
                 .environmentObject(deepLink)
                 .environment(\.posterStore, posters)
                 // Follow the selected (country-independent) language for

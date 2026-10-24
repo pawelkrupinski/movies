@@ -15,7 +15,7 @@ import SwiftUI
 /// an empty "Kina" header.
 struct CinemaFilterSectionView: View {
     let catalog: CinemaCatalog
-    @ObservedObject var prefs: UserPreferences
+    var prefs: UserPreferences
     @Environment(\.locale) private var locale
 
     @State private var openAreas: Set<String> = []

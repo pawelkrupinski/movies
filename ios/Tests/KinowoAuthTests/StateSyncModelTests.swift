@@ -1,6 +1,5 @@
 import XCTest
 import KinowoTestSupport
-import Combine
 @testable import KinowoAuth
 
 /// Model-based test of `StateSyncService`: seeded random sequences of what a
@@ -242,13 +241,13 @@ enum SyncModel {
         private let prefs: UserPreferences
         private let server = FakeHiddenFilmsClient()
         private let languageClient = FakeLanguageClient()
-        private let debounce = ManualDebounceScheduler()
+        private let debounce = ManualDebouncer()
         /// Opened at the next `.release`; every response waits on it while set.
         private var stall: AsyncGate?
         /// Responses held by `stall` right now, and how many of them are language calls.
         private var held = 0
         private var languageHeld = 0
-        private let user = CurrentValueSubject<UserProfile?, Never>(nil)
+        private let account = SignedInAccount()
         private var service: StateSyncService?
 
         private var signedIn = false
@@ -304,8 +303,8 @@ enum SyncModel {
         private var country: String { prefs.selectedCountry.code }
 
         func play(_ events: [SyncEvent]) async -> String? {
-            service = StateSyncService(prefs: prefs, userPublisher: user.eraseToAnyPublisher(),
-                                       client: server, languageClient: languageClient, debounceScheduler: debounce)
+            service = StateSyncService(prefs: prefs, signedInUser: { [account] in account.user },
+                                       client: server, languageClient: languageClient, languagePushDebouncer: debounce)
             for (index, event) in events.enumerated() {
                 await apply(event)
                 await quiesce()
@@ -346,7 +345,7 @@ enum SyncModel {
                 }
             case .login:
                 session(signedIn: true)
-                user.send(UserProfile(displayName: "Model", email: "model@example.com", avatarUrl: nil, provider: "google"))
+                account.user = UserProfile(displayName: "Model", email: "model@example.com", avatarUrl: nil, provider: "google")
                 signedIn = true
             case .logout:
                 // What the account is still owed is forgotten with the session.
@@ -362,7 +361,7 @@ enum SyncModel {
                     if prefs.pendingLanguagePush != nil { expectedLanguage = nil }
                 }
                 session(signedIn: false)
-                user.send(nil)
+                account.user = nil
                 signedIn = false
             case .resume:
                 resume()
@@ -415,7 +414,7 @@ enum SyncModel {
                 turns += 1
                 await Task.yield()
                 if debounce.hasPending {
-                    debounce.fireAll()
+                    debounce.fire()
                     idleTurns = 0
                 } else {
                     idleTurns = server.inFlight + languageClient.inFlight == held ? idleTurns + 1 : 0

@@ -43,7 +43,7 @@ enum CountryDisplayName {
 /// SwiftUI / CoreLocation — excluded from `KinowoCore`. The decision logic it
 /// leans on (`City.nearestWithin100km`) is pure and tested there.
 struct CityGate: View {
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
     // For the chosen city's own zone — a country has one to offer and the US
@@ -82,7 +82,7 @@ struct CityGate: View {
 /// `ContentView`, "choose another" drops to the manual list. No fix → the
 /// manual `CityChoiceView` directly.
 struct CityResolverView: View {
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
     @EnvironmentObject var catalog: CatalogStore
     @StateObject private var resolver = LocationCityResolver()
     @State private var detected: City?
@@ -190,12 +190,12 @@ struct CityConfirmView: View {
 /// Two steps where the country groups its cities (the US, by state), one
 /// everywhere else — see `pickingRegion`.
 struct CityChoiceView: View {
-    @EnvironmentObject var prefs: UserPreferences
+    @Environment(UserPreferences.self) var prefs
     @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
     // For `choose(_:)`'s fallback suppression — see there.
-    @EnvironmentObject var authService: AuthService
+    @Environment(AuthService.self) var authService
     @Environment(\.locale) private var locale
     /// The location-detected nearest city, when one was found — used only to
     /// pre-suppress the switch prompt for a deliberate pick of another city.

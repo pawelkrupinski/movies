@@ -2,20 +2,21 @@ import XCTest
 import KinowoTestSupport
 @testable import KinowoAuth
 
+@MainActor
 final class UserPreferencesCityTests: XCTestCase {
 
     private var defaults: UserDefaults!
 
     private static let suite = "UserPreferencesCityTests"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         defaults = .scratch(suiteName: Self.suite)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.discardScratch(suiteName: Self.suite)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testSelectedCityStartsNil() {
