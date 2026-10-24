@@ -18,6 +18,7 @@ let
   domain = "registry.kinowo.net";
   acmeWebroot = "/var/lib/acme/acme-challenge";
   reg = config.services.dockerRegistry;
+  textfileDir = config.fleet.observability.textfileDirectory;
   # The module keeps its generated config file private; its ExecStart is the one place it is named.
   registryConfig = lib.last (lib.splitString " " config.systemd.services.docker-registry.serviceConfig.ExecStart);
 
@@ -100,6 +101,19 @@ in
       systemctl stop docker-registry.service
       ${pkgs.util-linux}/bin/runuser -u docker-registry -- \
         ${reg.package}/bin/registry garbage-collect --delete-untagged ${registryConfig}
+
+      # THAT IT RAN, for `RegistryPruneStale` (files/monitoring/rules/k3s.rules): a timer that
+      # stops starting this unit fails nothing, so `SystemdUnitFailed` never hears of it. Written
+      # last (only a completed prune counts) and through a temporary, for ../fleet/nix-gc.nix's
+      # reason: node_exporter drops every series of a textfile it cannot parse.
+      tmp="${textfileDir}/registry-prune.prom.tmp"
+      {
+        echo "# HELP kinowo_registry_prune_last_success_timestamp_seconds When this host last completed a registry prune and garbage-collect."
+        echo "# TYPE kinowo_registry_prune_last_success_timestamp_seconds gauge"
+        echo "kinowo_registry_prune_last_success_timestamp_seconds $(date +%s)"
+      } > "$tmp"
+      chmod 0644 "$tmp"
+      mv "$tmp" "${textfileDir}/registry-prune.prom"
     '';
   };
 

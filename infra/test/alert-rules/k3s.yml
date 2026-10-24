@@ -135,6 +135,85 @@ tests:
         exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE REGISTRY PRUNE, the daily 04:00 timer on k3s-worker-1 (roles/registry.nix) that keeps ten
+  # images per repository. Running: silent. Stopped: its textfile timestamp freezes and, three
+  # missed runs later, `RegistryPruneStale` says so. Never published while its timer exists:
+  # `RegistryPruneMetricAbsent`. A host without the timer (mongo-1) is never reported.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: the registry prune ran this morning
+    input_series:
+      - series: 'node_systemd_unit_state{name="registry-prune.timer",state="active",host="k3s-worker-1"}'
+        values: '1+0x300'
+      - series: 'kinowo_registry_prune_last_success_timestamp_seconds{host="k3s-worker-1"}'
+        values: '3000+0x300'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: RegistryPruneStale
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: RegistryPruneMetricAbsent
+        exp_alerts: []
+
+  - interval: 1m
+    name: the registry prune stopped
+    input_series:
+      - series: 'node_systemd_unit_state{name="registry-prune.timer",state="active",host="k3s-worker-1"}'
+        values: '1+0x6000'
+      - series: 'kinowo_registry_prune_last_success_timestamp_seconds{host="k3s-worker-1"}'
+        values: '0+0x6000'
+    alert_rule_test:
+      # Two days without a prune: two missed runs, deliberately still quiet.
+      - eval_time: 2d
+        alertname: RegistryPruneStale
+        exp_alerts: []
+      - eval_time: 4d
+        alertname: RegistryPruneStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+            exp_annotations:
+              summary: "k3s-worker-1 has not pruned the image registry for over 3 days"
+              description: >-
+                registry.kinowo.net keeps every image CI pushes until `registry-prune` deletes all
+                but the newest ten per repository and garbage-collects their layers, on the same
+                root disk the cluster runs on. `systemctl status registry-prune` and
+                `journalctl -u registry-prune -n 50`; the unit stops the registry for its
+                garbage-collect and its EXIT trap starts it again, so check `docker-registry` is
+                active too.
+      - eval_time: 4d
+        alertname: RegistryPruneMetricAbsent
+        exp_alerts: []
+
+  - interval: 1m
+    name: the registry prune never published
+    input_series:
+      - series: 'node_systemd_unit_state{name="registry-prune.timer",state="active",host="k3s-worker-1"}'
+        values: '1+0x6000'
+      - series: 'node_systemd_unit_state{name="fleet-nix-gc.timer",state="active",host="mongo-1"}'
+        values: '1+0x6000'
+    alert_rule_test:
+      - eval_time: 1d
+        alertname: RegistryPruneMetricAbsent
+        exp_alerts: []
+      - eval_time: 3d
+        alertname: RegistryPruneMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              name: registry-prune.timer
+              state: active
+            exp_annotations:
+              summary: "k3s-worker-1 has never reported a successful registry prune"
+              description: >-
+                `RegistryPruneStale` is a comparison and cannot fire without this series, so the
+                registry's disk is unwatched. Either the prune has never succeeded here or the
+                textfile write at the end of `registry-prune` is broken. AN ABSENT SERIES IS NOT A
+                PRUNED REGISTRY.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
   # A HEALTHY CLUSTER, WHICH EVERY K3S AND KUBE-STATE-METRICS RULE MUST LEAVE SILENT. Both k3s
   # units active, the node Ready, every Deployment at its replica count, no container waiting or
   # OOM-killed, and kube-state-metrics answering -- the steady state these rules page away from.

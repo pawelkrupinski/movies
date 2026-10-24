@@ -171,6 +171,47 @@ groups:
             `fleet.containerImageGc.enable` is false on it. AN ABSENT SERIES IS NOT A COLLECTED
             IMAGE STORE.
 
+      # -----------------------------------------------------------------------------------------
+      # THE REGISTRY PRUNE, the other half of the image disk on k3s-worker-1: registry.kinowo.net
+      # (roles/registry.nix) keeps every image CI pushes until its daily 04:00 `registry-prune`
+      # deletes all but the newest ten per repository and garbage-collects their layers.
+      # `SystemdUnitFailed` catches a run that fails; these catch the timer that stops starting it,
+      # which fails nothing.
+      # -----------------------------------------------------------------------------------------
+      - alert: RegistryPruneStale
+        expr: time() - kinowo_registry_prune_last_success_timestamp_seconds > 3 * 86400
+        # THREE DAYS against a DAILY timer: three missed prunes, the `NixGarbageCollectionStale`
+        # budget. A day's pushes are a few GB of layers, so three days is room, not an emergency.
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has not pruned the image registry for over 3 days"
+          description: >-
+            registry.kinowo.net keeps every image CI pushes until `registry-prune` deletes all
+            but the newest ten per repository and garbage-collects their layers, on the same
+            root disk the cluster runs on. `systemctl status registry-prune` and
+            `journalctl -u registry-prune -n 50`; the unit stops the registry for its
+            garbage-collect and its EXIT trap starts it again, so check `docker-registry` is
+            active too.
+
+      - alert: RegistryPruneMetricAbsent
+        # Joined on the TIMER, for `ContainerImageGarbageCollectionMetricAbsent`'s reason: only the
+        # registry host has one, so no other host can be reported for a prune it correctly lacks.
+        expr: >-
+          node_systemd_unit_state{name="registry-prune.timer",state="active"} == 1
+            unless on (host) kinowo_registry_prune_last_success_timestamp_seconds
+        # TWO DAYS: past the first 04:00 run after a deploy.
+        for: 2d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has never reported a successful registry prune"
+          description: >-
+            `RegistryPruneStale` is a comparison and cannot fire without this series, so the
+            registry's disk is unwatched. Either the prune has never succeeded here or the
+            textfile write at the end of `registry-prune` is broken. AN ABSENT SERIES IS NOT A
+            PRUNED REGISTRY.
+
   # ------------------------------------------------------------------------------------------------
   # THE OBJECT-STATE GROUP. Everything here needs kube-state-metrics to be running IN the cluster
   # and reachable on its NodePort; see movies-gitops/kube-state-metrics/deployment.yaml for the
