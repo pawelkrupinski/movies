@@ -158,9 +158,6 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
 }
 
 object IdentityStagingPublisher {
-  /** Where every publish reports the takes it read, by basis (`ResolverDecision.Basis`): the clusters and listings each
-   *  basis holds now, and each cluster since the last publish `decided` (new), `settled` (seen waiting), or whose film
-   *  moved ([[changeOf]]: `gained`, `lost`, `changed`). */
   /** A settled cluster's film moving, as the metric names it: an unmatched one `gained` a film, a matched one `lost` its
    *  film, or `changed` it for another. */
   def changeOf(was: Option[Int], now: Option[Int]): String = (was, now) match {
@@ -169,6 +166,9 @@ object IdentityStagingPublisher {
     case _               => StagedCluster.Changed
   }
 
+  /** Where every publish reports the takes it read, by basis (`ResolverDecision.Basis`): the clusters and listings each
+   *  basis holds now, and each cluster since the last publish `decided` (new), `settled` (seen waiting), or whose film
+   *  moved ([[changeOf]]: `gained`, `lost`, `changed`). */
   trait TakeMetrics {
     def held(clusters: Map[String, Int], listings: Map[String, Int]): Unit
     def changed(basis: String, change: String): Unit
