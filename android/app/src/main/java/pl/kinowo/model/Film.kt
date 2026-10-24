@@ -21,6 +21,10 @@ data class Film(
      *  the field — `filmShareUrl` then falls back to the legacy `?title=` form,
      *  which the server still answers (with a 301). */
     val slug: String? = null,
+    /** What the search matches besides the title: the original title and, for one in another
+     *  script, its romanisation ("大红灯笼高高挂", "da hong deng long gao gao gua"), computed by the
+     *  server (`SearchTitles`) so the app needs no transliterator. Empty from an older server. */
+    val searchTitles: List<String> = emptyList(),
     val posterURL: String? = null,
     /** Alternative poster URLs in source-priority order, tried in turn when
      *  `posterURL` fails to load (cinema CDNs intermittently 403/404). */
@@ -44,6 +48,12 @@ data class Film(
 ) {
     /** Title is the stable identity (matches iOS `Film.id`). */
     val id: String get() = title
+
+    /** Whether the search [query] (any case) is in the title or one of [searchTitles]. */
+    fun matchesSearch(query: String): Boolean {
+        val needle = query.lowercase()
+        return title.lowercase().contains(needle) || searchTitles.any { it.lowercase().contains(needle) }
+    }
 
     /** Full poster chain: primary first, then declared fallbacks. */
     val posterChain: List<String>

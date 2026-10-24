@@ -69,6 +69,19 @@ class JsonDecodingTest {
         )
     }
 
+    // `/api/repertoire` serves each film's `searchTitles` (its original title and that title's
+    // romanisation); a server that predates the key must still decode, with nothing to match.
+    @Test
+    fun `repertoire decodes searchTitles when present and none when absent`() {
+        val films = LenientJson.decodeFromString<List<Film>>(
+            """[{"title":"Zawieście czerwone latarnie","searchTitles":["大红灯笼高高挂","da hong deng long gao gao gua"]},{"title":"Older Server Film"}]""",
+        )
+        assertEquals(listOf("大红灯笼高高挂", "da hong deng long gao gao gua"), films[0].searchTitles)
+        assertEquals(emptyList<String>(), films[1].searchTitles)
+        assertTrue(films[0].matchesSearch("gao gao"))
+        assertTrue(films[1].matchesSearch("older"))
+    }
+
     @Test
     fun `details payload decodes the original title when present and null when absent`() {
         val details = LenientJson.decodeFromString<List<FilmDetails>>(recordedFixture("details_sample.json"))

@@ -19,6 +19,10 @@ val TextSecondary = Color(0xB3FFFFFF)
 // #aad4ff text (CinemaBlue, the format tag at 0.7 alpha); pressed/hover #5a5a9e.
 val ShowtimeChipBackground = Color(0xFF3A3A6E)
 val ShowtimeChipBackgroundPressed = Color(0xFF5A5A9E)
+// A showtime on a day a search brought in (`SearchDay`): a lighter chip than the listing's own
+// day, as the web's `.date-group.outside-day .badge-time` and iOS's `outsideBackgroundRGB`.
+val OutsideDayChipBackground = Color(0xFF4D4D82)
+val OutsideDayChipText = Color(0xFFD4E8FF)
 
 // Long-press room tooltip on a showtime pill (mirrors iOS ShowtimeBadge).
 val RoomTooltipBackground = Color(0xFF0E0E1E)

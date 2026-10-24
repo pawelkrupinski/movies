@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import pl.kinowo.ui.theme.CinemaBlue
+import pl.kinowo.ui.theme.OutsideDayChipBackground
+import pl.kinowo.ui.theme.OutsideDayChipText
 import pl.kinowo.ui.theme.ShowtimeChipBackground
 import pl.kinowo.ui.theme.ShowtimeChipBackgroundPressed
 
@@ -27,5 +29,13 @@ class ShowtimeChipColorTest {
         assertEquals("chip fill must be the web #3a3a6e", Color(0xFF3A3A6E), ShowtimeChipBackground)
         assertEquals("pressed fill must be the web #5a5a9e hover", Color(0xFF5A5A9E), ShowtimeChipBackgroundPressed)
         assertEquals("time text must be the web #aad4ff", Color(0xFFAAD4FF), CinemaBlue)
+    }
+
+    // A day a search brought in: the web's `.date-group.outside-day .badge-time`, lighter than the
+    // listing's own day on both counts.
+    @Test
+    fun outsideDayChipIsTheWebsLighterPill() {
+        assertEquals(Color(0xFF4D4D82), OutsideDayChipBackground)
+        assertEquals(Color(0xFFD4E8FF), OutsideDayChipText)
     }
 }

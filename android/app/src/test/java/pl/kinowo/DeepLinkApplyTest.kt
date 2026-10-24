@@ -36,7 +36,9 @@ class DeepLinkApplyTest {
 
         vm.applyScalarFilters(DeepLink.parse("https://kinowo.net/warszawa/?date=tomorrow&q=duna&dim=2D&lang=NAP&imax=1&from=18:30&sort=rating")!!.filters)
 
-        assertEquals(DateFilter.Tomorrow, vm.dateFilter)
+        // A link's query searches every day, from the link's day (`SearchDay`).
+        assertEquals(DateFilter.Anytime, vm.dateFilter)
+        assertEquals(DateFilter.Tomorrow, vm.searchDay.origin)
         assertEquals("duna", vm.search)
         assertEquals("2D", vm.formatFilter.dimension)
         assertEquals("NAP", vm.formatFilter.language)

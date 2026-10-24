@@ -1,5 +1,6 @@
 package pl.kinowo.ui.common
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +46,8 @@ import pl.kinowo.filter.FormatTokenFilter
 import pl.kinowo.model.DateLabel
 import pl.kinowo.model.Film
 import pl.kinowo.ui.theme.CinemaBlue
+import pl.kinowo.ui.theme.OutsideDayChipBackground
+import pl.kinowo.ui.theme.OutsideDayChipText
 import pl.kinowo.ui.theme.RoomTooltipBackground
 import pl.kinowo.ui.theme.RoomTooltipBorder
 import pl.kinowo.ui.theme.RoomTooltipText
@@ -89,6 +92,10 @@ data class ShowtimeChipStyle(
  *  values, so production renders exactly as before; the tuning screen overrides
  *  it through `CompositionLocalProvider`. */
 val LocalShowtimeChipStyle = compositionLocalOf { ShowtimeChipStyle() }
+
+/** While a search shows every day, whether a day ("YYYY-MM-DD") is one it brought in, drawn
+ *  lighter (`SearchDay.outsideDays`); null everywhere else, the detail screen included. */
+val LocalOutsideDays = compositionLocalOf<((String) -> Boolean)?> { null }
 
 /** A copy with every dimension multiplied by [scale] — the viewport-width factor
  *  from [ShowtimeChipMetrics]. Weights are untouched. `scale == 1f` (the 360 dp
@@ -138,19 +145,21 @@ fun Showings(
     val common = FormatTokenFilter.tokensToStrip(film.showings)
     var budget = maxChips ?: Int.MAX_VALUE
     var shown = 0
+    val outsideDays = LocalOutsideDays.current
 
     // Provide the scaled chip style so the leaf ShowtimeChip reads it directly.
     CompositionLocalProvider(LocalShowtimeChipStyle provides chipStyle) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(showingsBlock)) {
         for (day in film.showings) {
             if (budget <= 0) break
+            val outside = outsideDays?.invoke(day.date) ?: false
             // Each day is its own block so the gap below the day label
             // (`dayToCinema`) is independent of `showingsBlock`, which spaces the
             // cinema/pills rows and the day blocks from one another.
             Column {
                 Text(
                     text = DateLabel.format(day.date).uppercase(),
-                    color = TextSecondary,
+                    color = if (outside) Color.White else TextSecondary,
                     fontSize = (11 * scale).sp,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -184,6 +193,7 @@ fun Showings(
                                     format = FormatTokenFilter.filter(st.format, common),
                                     room = st.displayRoom,
                                     onClick = st.bookingURL?.let { url -> { openUrl(context, url) } },
+                                    outside = outside,
                                 )
                             }
                         }
@@ -211,7 +221,7 @@ fun Showings(
  * iOS `ShowtimeBadge`. The room is only shown when the scraper provided one.
  */
 @Composable
-private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (() -> Unit)?) {
+private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (() -> Unit)?, outside: Boolean = false) {
     var holding by remember { mutableStateOf(false) }
     val style = LocalShowtimeChipStyle.current
     // The room tooltip grows with the viewport in lockstep with the chip it pops
@@ -232,7 +242,7 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
                 },
             )
         }
-        .background(if (holding) ShowtimeChipBackgroundPressed else ShowtimeChipBackground)
+        .background(if (holding) ShowtimeChipBackgroundPressed else if (outside) OutsideDayChipBackground else ShowtimeChipBackground)
         // The time uses the trimmed `pillTextStyle` (no includeFontPadding), so it
         // doesn't read tall on its own; the inset (4dp by default) then adds the
         // breathing room around it. Inset + trim pinned by ShowtimeChipPaddingTest.
@@ -246,12 +256,12 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
             horizontalArrangement = Arrangement.spacedBy(style.internalGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(time, color = CinemaBlue, style = pillTextStyle(style.timeFontSize, style.timeWeight))
+            Text(time, color = if (outside) OutsideDayChipText else CinemaBlue, style = pillTextStyle(style.timeFontSize, style.timeWeight))
             if (format.isNotEmpty()) {
                 // 7sp default, not larger: the time's 11sp is the most that still lets
                 // two chips share a row on the narrowest card; an 8sp+ tag pushes
                 // the second chip onto a new line. See ShowtimeChipFitTest.
-                Text(format, color = ShowtimeFormatTag, style = pillTextStyle(style.formatFontSize, style.formatWeight))
+                Text(format, color = if (outside) OutsideDayChipText.copy(alpha = 0.7f) else ShowtimeFormatTag, style = pillTextStyle(style.formatFontSize, style.formatWeight))
             }
         }
         if (holding && room != null) {

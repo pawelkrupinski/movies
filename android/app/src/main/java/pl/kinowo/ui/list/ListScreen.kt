@@ -1,5 +1,9 @@
 package pl.kinowo.ui.list
 
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.runtime.CompositionLocalProvider
+import pl.kinowo.ui.common.LocalOutsideDays
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -290,15 +294,19 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 // cinema. Only the grouped-by-cinema section view
                                 // (CinemaGrid, below) suppresses it, since its
                                 // section header already names the cinema.
-                                FilmsGrid(
-                                    films = visible,
-                                    state = state,
-                                    bottomInset = gridBottomInset,
-                                    showCinemaHeaders = true,
-                                    onOpen = onOpenFilm,
-                                    onHide = { viewModel.hide(it) },
-                                    modifier = columnModifier,
-                                )
+                                // While a search shows every day, the "All" page draws
+                                // the days the search brought in lighter.
+                                CompositionLocalProvider(LocalOutsideDays provides viewModel.outsideDays(day)) {
+                                    FilmsGrid(
+                                        films = visible,
+                                        state = state,
+                                        bottomInset = gridBottomInset,
+                                        showCinemaHeaders = true,
+                                        onOpen = onOpenFilm,
+                                        onHide = { viewModel.hide(it) },
+                                        modifier = columnModifier,
+                                    )
+                                }
                             }
                         }
                     }
@@ -559,6 +567,8 @@ private fun DatePill(label: String, selected: Boolean, wide: Boolean, modifier: 
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) { onClick() }
+            // Which day is on, for TalkBack and for tests (`assertIsSelected`).
+            .semantics { this.selected = selected }
             // Roomy 12dp inset on wide screens; narrow phones tighten to 6dp so
             // the three weighted dated pills, after filling the leftover width
             // between 🎬 and Filtry, still clear "Jutro" / "7 dni" at 14sp on a

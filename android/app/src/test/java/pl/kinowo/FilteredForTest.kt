@@ -128,6 +128,18 @@ class FilteredForTest {
         assertEquals(listOf(fixedTomorrow), filtered[0].showings.map { it.date })
     }
 
+    // The search matches the original title and its romanisation (`searchTitles`, served).
+    @Test
+    fun queryMatchesTheOriginalTitleAndItsRomanisation() {
+        val lanterns = film("Zawieście czerwone latarnie", listOf(day(today, listOf(cinema("Muza", listOf(slot("18:00")))))))
+            .copy(searchTitles = listOf("大红灯笼高高挂", "da hong deng long gao gao gua"))
+        val films = listOf(lanterns, fixture().first())
+        for (query in listOf("大红灯笼", "Gao Gao Gua", "czerwone")) {
+            val result = films.filteredFor(date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = query, hidden = emptySet(), now = now)
+            assertEquals(query, listOf("Zawieście czerwone latarnie"), result.map { it.title })
+        }
+    }
+
     @Test
     fun queryMatchesCaseInsensitiveSubstring() {
         val result = fixture().filteredFor(

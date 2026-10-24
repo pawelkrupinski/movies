@@ -208,7 +208,7 @@ fun List<Film>.filteredFor(
     val trimmedQuery = query.trim().lowercase()
     return mapNotNull { film ->
         if (film.title in hidden) return@mapNotNull null
-        if (trimmedQuery.isNotEmpty() && !film.title.lowercase().contains(trimmedQuery)) return@mapNotNull null
+        if (trimmedQuery.isNotEmpty() && !film.matchesSearch(trimmedQuery)) return@mapNotNull null
         // Countries intentionally has NO isEmpty guard (matches iOS): a film
         // with no countries is a subset of any non-empty exclusion set, so it
         // drops as soon as any country is excluded.

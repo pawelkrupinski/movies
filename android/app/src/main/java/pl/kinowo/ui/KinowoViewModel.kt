@@ -62,6 +62,7 @@ import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaFilterSection
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
+import pl.kinowo.filter.SearchDay
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.filter.filteredFor
@@ -240,10 +241,39 @@ class KinowoViewModel(
     var citySwitchSuggestion by mutableStateOf<CitySwitchSuggestion?>(null)
         private set
 
-    var dateFilter by mutableStateOf<DateFilter>(DateFilter.Today)
+    private var shownDay by mutableStateOf<DateFilter>(DateFilter.Today)
+
+    /** The listing's day. Set from outside (a pill tap, a swipe, a deep link) it is a pick, which
+     *  outlasts a running search ([SearchDay]); the search's own moves go through [shownDay]. */
+    var dateFilter: DateFilter
+        get() = shownDay
+        set(value) {
+            if (value != shownDay) searchDay = searchDay.dayPicked()
+            shownDay = value
+        }
     var sortBy by mutableStateOf(SortOption.DEFAULT)
     var formatFilter by mutableStateOf(FormatFilter.EMPTY)
-    var search by mutableStateOf("")
+    private var searchText by mutableStateOf("")
+
+    /** The search box. A search looks through every day ([SearchDay]): the first letter moves the
+     *  listing to "All", and clearing it goes back to the day it began on, unless one was picked. */
+    var search: String
+        get() = searchText
+        set(value) {
+            searchText = value
+            val change = searchDay.queryChanged(value, showing = shownDay)
+            searchDay = change.next
+            change.moveTo?.let { shownDay = it }
+        }
+
+    /** The search's day: what clearing the search goes back to, and which days it brought in. */
+    var searchDay by mutableStateOf(SearchDay())
+        private set
+
+    /** On the page for [page], the days the search brought in, drawn lighter; null when none is. */
+    fun outsideDays(page: DateFilter): ((String) -> Boolean)? =
+        // `now` as `filmsFor`'s: the filter's own default, read as the page is drawn.
+        searchDay.outsideDays(page, zone = currentZone())
     var excludedCountries by mutableStateOf<Set<String>>(emptySet())
     var excludedGenres by mutableStateOf<Set<String>>(emptySet())
     var excludedDirectors by mutableStateOf<Set<String>>(emptySet())
