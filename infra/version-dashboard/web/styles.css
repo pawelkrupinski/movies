@@ -56,6 +56,8 @@ details.cons summary { cursor: pointer; color: #7d8590; font-size: 11px; }
 .out .rule { color: #f5a623; }
 .out .cmd { color: #6e7681; }
 .consfoot { color: #9aa4b2; font-size: 11px; margin-top: 6px; }
+.release { margin-bottom: 20px; }
+.release .actionrow + .actionrow, .release details.cons + .actionrow { margin-top: 8px; }
 .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 
 /* The cell furniture the fleet table is built from, ported from the reference so that the two

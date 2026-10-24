@@ -65,6 +65,32 @@ export interface MobileState {
   readonly platforms: readonly Platform[];
   /** The newest build threw: the platforms are from the build before it, and the page says so. */
   readonly buildError: string | null;
+  /** The newest `scripts/mobile-ship.sh` run started from this page; absent until the first press. */
+  readonly release?: ReleaseRun;
+}
+
+/**
+ * One run of the release script. A "plan" is its `--dry-run` (inspects both stores, changes
+ * nothing); a "release" ships, and is only offered under a plan that finished with a version to ship.
+ */
+export interface ReleaseRun {
+  readonly mode: "plan" | "release";
+  /** Epoch ms. */
+  readonly startedAt: number;
+  readonly lines: readonly string[];
+  readonly done: boolean;
+  /** Exit code once done; null while running or when the process was killed or could not start. */
+  readonly exit: number | null;
+}
+
+/** The version a finished, successful plan would ship (its `→ X.Y.Z: …` line); null: nothing to ship. */
+export function plannedVersion(run: ReleaseRun | undefined): string | null {
+  if (!run || run.mode !== "plan" || !run.done || run.exit !== 0) return null;
+  for (const line of run.lines) {
+    const planned = /→ (\d+\.\d+\.\d+):/.exec(line);
+    if (planned?.[1]) return planned[1];
+  }
+  return null;
 }
 
 export const emptyMobileState = (): MobileState => ({ ready: false, builtAt: 0, took: 0, platforms: [], buildError: null });

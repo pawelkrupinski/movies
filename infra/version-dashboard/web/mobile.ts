@@ -1,6 +1,6 @@
 /**
  * The mobile page in the browser: re-render every pushed snapshot with the server's own view, and
- * the Refresh and vault-unlock buttons.
+ * the Refresh, vault-unlock and release buttons.
  */
 import type { MobileState } from "../src/mobile/model.js";
 import { renderMobile } from "../src/mobile/view.js";
@@ -53,13 +53,33 @@ export async function unlockVault(): Promise<void> {
   }
 }
 
+/** Starts the release script's dry run ("plan") or, under a fresh plan, the release itself. */
+export async function release(mode: "plan" | "release"): Promise<void> {
+  const note = document.getElementById("refreshnote");
+  if (note) note.textContent = mode === "plan" ? "starting the dry run…" : "starting the release…";
+  try {
+    const response = await deps.fetch("/mobile/release", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
+    const answer = (await response.json()) as { ok?: boolean; error?: string };
+    if (note) note.textContent = answer.ok ? "" : `could not start: ${answer.error ?? "unknown"}`;
+  } catch {
+    if (note) note.textContent = "could not reach the dashboard";
+  }
+}
+
+const ACTIONS: Readonly<Record<string, () => Promise<void>>> = {
+  refresh,
+  "unlock-vault": unlockVault,
+  "release-plan": () => release("plan"),
+  release: () => release("release"),
+};
+
 export function start(): void {
   const initial = document.getElementById("initial")?.textContent;
   if (initial) latest = (JSON.parse(initial) as { state: MobileState }).state;
   document.addEventListener("click", (event) => {
-    const button = (event.target as Element | null)?.closest<HTMLButtonElement>("button[data-action=refresh], button[data-action=unlock-vault]");
-    if (!button || button.disabled) return;
-    void (button.dataset.action === "unlock-vault" ? unlockVault() : refresh());
+    const button = (event.target as Element | null)?.closest<HTMLButtonElement>("button[data-action]");
+    const action = button && !button.disabled ? ACTIONS[button.dataset.action ?? ""] : undefined;
+    if (action) void action();
   });
   connect<MobileState>("mobile", (snapshot) => applySnapshot(snapshot.state));
   // The "built … ago" line ages between snapshots; re-render it from the state already held.

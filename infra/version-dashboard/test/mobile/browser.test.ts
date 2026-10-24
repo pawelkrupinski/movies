@@ -32,7 +32,7 @@ beforeAll(() => {
   setDeps({
     now: () => NOW,
     fetch: async (url, init) => {
-      posts.push(`${init?.method ?? "GET"} ${url}`);
+      posts.push(`${init?.method ?? "GET"} ${url}${typeof init?.body === "string" ? ` ${init.body}` : ""}`);
       return { json: async () => ({ ok: true }) } as Response;
     },
   });
@@ -67,5 +67,13 @@ describe("the mobile page in a browser", () => {
     document.querySelector<HTMLButtonElement>("button[data-action=unlock-vault]")?.click();
     expect(posts).toEqual(["POST /mobile/unlock-vault"]);
     expect(document.getElementById("refreshnote")?.textContent).toBe("waiting for Touch ID…");
+  });
+
+  it("posts the release dry run, then the release, from their buttons", () => {
+    const release = { mode: "plan" as const, startedAt: NOW, lines: ["10:00:01 → 2.0.14: main is newer"], done: true, exit: 0 };
+    FakeEventSource.last?.push({ version: 4, changedAt: NOW, checkedAt: NOW, state: state([upToDate("iOS")], { release }) });
+    document.querySelector<HTMLButtonElement>("button[data-action=release-plan]")?.click();
+    document.querySelector<HTMLButtonElement>("button[data-action=release]")?.click();
+    expect(posts).toEqual(['POST /mobile/release {"mode":"plan"}', 'POST /mobile/release {"mode":"release"}']);
   });
 });

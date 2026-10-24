@@ -1,10 +1,15 @@
 import type { FastifyInstance } from "fastify";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { REPO_DIR } from "../config.js";
+import { runCommand } from "../exec.js";
 import type { Page } from "../page.js";
 import type { MobileSources } from "./build.js";
 import { MobileLive } from "./live.js";
 import type { MobileState } from "./model.js";
 import { androidReleaseState, ascApi, iosReleaseState, playClient, vaultSecrets } from "./stores.js";
+import { ReleaseRuns } from "./release-run.js";
 import { renderMobile } from "./view.js";
 
 type WakeSource = { readonly onWake: (listener: () => void) => void };
@@ -16,10 +21,36 @@ export function mobileSources(repoDir: string = REPO_DIR): MobileSources {
   return { repoDir, ios: () => iosReleaseState(asc.get), android: () => androidReleaseState(play), now: Date.now };
 }
 
+/**
+ * What the release lane's builds need that launchd's PATH lacks: Gradle's JDK (sdkman's current
+ * java) and the Android SDK, both where a login shell on this Mac finds them.
+ */
+export function releaseEnvironment(home = homedir(), exists: (path: string) => boolean = existsSync): Record<string, string> {
+  const env: Record<string, string> = {};
+  const path = [process.env.PATH ?? ""];
+  const java = join(home, ".sdkman", "candidates", "java", "current");
+  if (exists(java)) {
+    env.JAVA_HOME = java;
+    path.unshift(join(java, "bin"));
+  }
+  const android = "/opt/homebrew/share/android-commandlinetools";
+  if (exists(android)) env.ANDROID_HOME = android;
+  env.PATH = path.filter(Boolean).join(":");
+  return env;
+}
+
 export function createMobilePage(
   wake: WakeSource,
   live = new MobileLive(mobileSources()),
   unlockVault: () => Promise<void> = vaultSecrets().unlock,
+  releases: ReleaseRuns = new ReleaseRuns({
+    script: join(REPO_DIR, "scripts", "mobile-ship.sh"),
+    cwd: REPO_DIR,
+    env: releaseEnvironment(),
+    run: runCommand,
+    now: Date.now,
+    publish: (run) => live.showRelease(run),
+  }),
 ): Page<MobileState> & { live: MobileLive } {
   // A sleep outlives the 10-minute timer; the page re-reads the stores as soon as the Mac wakes.
   wake.onWake(() => void live.rebuild());
@@ -49,6 +80,14 @@ export function createMobilePage(
         }
         void live.rebuild();
         return { ok: true };
+      });
+      // The release button: `{"mode": "plan"}` is the dry run, `{"mode": "release"}` ships under a
+      // fresh plan. Answers once the run has started; its output reaches the page as snapshots.
+      app.post<{ Body: { mode?: unknown } }>("/mobile/release", async (request, reply) => {
+        const mode = request.body?.mode;
+        if (mode !== "plan" && mode !== "release") return reply.code(400).send({ error: "mode must be plan or release" });
+        const answer = releases.start(mode);
+        return reply.code(answer.status).send(answer.payload);
       });
     },
   };

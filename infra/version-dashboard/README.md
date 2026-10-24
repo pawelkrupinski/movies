@@ -9,7 +9,10 @@ http://127.0.0.1:8788 — two pages from one process:
   with profile `movies` -- as bitcashier's page does: its `--dry-run` plan first, then, confirmed,
   `--yes --only <that plan's hosts>`, one host at a time; Stop ends it after the host in progress.
 - **/mobile** — what's in `ios/` and `android/` that neither store has shipped yet, diffed from
-  each platform's own live version.
+  each platform's own live version. "Release to the App Store and Google Play…" runs
+  `scripts/mobile-ship.sh --dry-run` and shows its plan; under a plan with a version to ship (and
+  under 30 minutes old) "Ship X.Y.Z to both stores" runs the script for real, its output streamed
+  to the page. The real run is protected work: a restart drains it rather than killing a build.
 
 The same package also holds the mobile release lane, `src/mobile-release/` (run as
 `scripts/mobile-ship.sh`), which reuses the page's App Store Connect and Play clients; it is a

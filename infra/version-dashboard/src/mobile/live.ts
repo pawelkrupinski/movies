@@ -4,7 +4,7 @@
  */
 import { Store } from "../store.js";
 import { buildMobile, nextBuildDelayMs, type MobileSources } from "./build.js";
-import { allPlatformsNetworkFailed, emptyMobileState, type MobileState } from "./model.js";
+import { allPlatformsNetworkFailed, emptyMobileState, type MobileState, type ReleaseRun } from "./model.js";
 import { describeError } from "./network.js";
 
 /**
@@ -67,11 +67,18 @@ export class MobileLive {
     return this.building;
   }
 
+  /** Shows a release run on the page beside whatever the newest build found. */
+  showRelease(release: ReleaseRun): void {
+    this.store.set({ ...this.store.get().state, release });
+  }
+
   private async runBuild(): Promise<void> {
     let built: MobileState | null = null;
     try {
       built = await this.build();
-      this.store.set(built);
+      // A build knows nothing of the release run beside it: that is kept, not wiped.
+      const { release } = this.store.get().state;
+      this.store.set(release ? { ...built, release } : built);
       this.consecutiveNetworkFailures = allPlatformsNetworkFailed(built) ? this.consecutiveNetworkFailures + 1 : 0;
       this.maybeRestart();
     } catch (error) {

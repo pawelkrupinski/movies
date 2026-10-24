@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextBuildDelayMs, REBUILD_MS, RETRY_FLOOR_MS } from "../../src/mobile/build.js";
 import { MobileLive, SELF_RESTART_AFTER, SELF_RESTART_GRACE_MS } from "../../src/mobile/live.js";
 import { allPlatformsNetworkFailed, type MobileState } from "../../src/mobile/model.js";
-import { createMobilePage } from "../../src/mobile/page.js";
+import { createMobilePage, releaseEnvironment } from "../../src/mobile/page.js";
+import { ReleaseRuns } from "../../src/mobile/release-run.js";
 import { allFailed, NOW, oneOk, state } from "./states.js";
 
 beforeEach(() => {
@@ -173,5 +174,44 @@ describe("the page", () => {
     expect((await app.inject({ method: "GET", url: "/mobile/unlock-vault" })).statusCode).toBe(404);
     await app.close();
     page.live.stop();
+  });
+
+  it("starts the release script's runs from POST /mobile/release, and keeps their output across rebuilds", async () => {
+    // Fastify reads a request body on real timers: faked, the inject never answers.
+    vi.useRealTimers();
+    const page = liveWith(oneOk);
+    const ran: (readonly string[])[] = [];
+    const releases = new ReleaseRuns({
+      script: "/repo/scripts/mobile-ship.sh",
+      cwd: "/repo",
+      env: {},
+      run: async (argv, options) => {
+        ran.push(argv);
+        options.onLine?.("10:00:01 → 2.0.14: main is newer");
+        return { code: 0, stdout: "", stderr: "", timedOut: false };
+      },
+      now: () => NOW,
+      publish: (run) => page.live.showRelease(run),
+    });
+    const mobile = createMobilePage({ onWake: () => {} }, page.live, async () => {}, releases);
+    const app = Fastify();
+    mobile.routes?.(app);
+    expect((await app.inject({ method: "POST", url: "/mobile/release", payload: { mode: "plan" } })).statusCode).toBe(202);
+    expect(ran).toEqual([["/repo/scripts/mobile-ship.sh", "--dry-run"]]);
+    await page.live.rebuild();
+    expect(page.live.store.get().state.release).toMatchObject({ mode: "plan", done: true, exit: 0, lines: ["10:00:01 → 2.0.14: main is newer"] });
+    expect((await app.inject({ method: "POST", url: "/mobile/release", payload: { mode: "ship" } })).statusCode).toBe(400);
+    expect((await app.inject({ method: "GET", url: "/mobile/release" })).statusCode).toBe(404);
+    await app.close();
+    page.live.stop();
+  });
+});
+
+describe("releaseEnvironment", () => {
+  it("puts sdkman's JDK first on PATH and names the Android SDK, where they exist", () => {
+    const env = releaseEnvironment("/home", () => true);
+    expect(env).toMatchObject({ JAVA_HOME: "/home/.sdkman/candidates/java/current", ANDROID_HOME: "/opt/homebrew/share/android-commandlinetools" });
+    expect(env.PATH?.startsWith("/home/.sdkman/candidates/java/current/bin:")).toBe(true);
+    expect(releaseEnvironment("/home", () => false)).not.toHaveProperty("JAVA_HOME");
   });
 });

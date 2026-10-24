@@ -90,4 +90,24 @@ describe("renderMobile", () => {
     expect(out).not.toContain("built in");
     expect(out).toContain("<button class=needs-live data-action=refresh>Refresh</button>");
   });
+
+  it("offers the release dry run, and the ship press only under a successful plan with a version", () => {
+    const plan = { mode: "plan" as const, startedAt: NOW, lines: ["10:00:01 → 2.0.14: main is newer", "<b>"], done: true, exit: 0 };
+    expect(render([upToDate("iOS")])).toContain("data-action=release-plan>Release to the App Store and Google Play…</button>");
+    expect(render([upToDate("iOS")])).not.toContain("data-action=release>");
+
+    const planned = render([upToDate("iOS")], { release: plan });
+    expect(planned).toContain("dry run started 1m ago: finished");
+    expect(planned).toContain("<pre class=out>10:00:01 → 2.0.14: main is newer\n&lt;b&gt;</pre>");
+    expect(planned).toContain("data-action=release>Ship 2.0.14 to both stores</button>");
+
+    for (const release of [
+      { ...plan, lines: ["10:00:01 → nothing to release: both stores have main"] },
+      { ...plan, exit: 1 },
+      { ...plan, done: false, exit: null },
+      { ...plan, mode: "release" as const },
+    ]) expect(render([upToDate("iOS")], { release })).not.toContain("data-action=release>");
+    expect(render([upToDate("iOS")], { release: { ...plan, done: false, exit: null } })).toContain("data-action=release-plan disabled>");
+    expect(render([upToDate("iOS")], { release: { ...plan, mode: "release", exit: 1 } })).toContain("release started 1m ago: failed (exit 1)");
+  });
 });

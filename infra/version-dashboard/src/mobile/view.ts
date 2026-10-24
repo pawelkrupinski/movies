@@ -5,7 +5,7 @@
  */
 import { ago } from "../age.js";
 import { html, type Raw } from "../html.js";
-import type { Commit, MobileState, Platform } from "./model.js";
+import { plannedVersion, type Commit, type MobileState, type Platform, type ReleaseRun } from "./model.js";
 
 /** Where each platform's pending version waits to go live. */
 const STORE_OF: Readonly<Record<string, string>> = { iOS: "Apple", Android: "Google Play" };
@@ -42,6 +42,25 @@ function platformBlock(platform: Platform): Raw {
   return html`${line}<table><tr><th>commit</th><th>date</th><th>subject</th><th>submission</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released: ${carried} in ${pendingVersion}, ${commits.length - carried} not submitted yet</div>`;
 }
 
+/**
+ * The release button and, once pressed, its run: the dry run's plan and, under a plan with a version
+ * to ship, the second press that ships it. Pressing again starts a fresh dry run.
+ */
+function releaseBlock(run: ReleaseRun | undefined, now: number): Raw {
+  const running = !!run && !run.done;
+  const planButton = html`<button class='applybtn needs-live' data-action=release-plan${running ? " disabled" : ""}>Release to the App Store and Google Play…</button>`;
+  const intro = html`<span class=hint>runs <code>scripts/mobile-ship.sh --dry-run</code> first: it reads both stores and says what it would ship, changing nothing</span>`;
+  if (!run) return html`<div class=actionrow>${planButton}${intro}</div>`;
+  const what = run.mode === "plan" ? "dry run" : "release";
+  const status = !run.done ? "running…" : run.exit === 0 ? "finished" : `failed (exit ${run.exit ?? "abnormal"})`;
+  const version = plannedVersion(run);
+  const ship = version
+    ? html`<div class=actionrow><button class='applybtn go needs-live' data-action=release>Ship ${version} to both stores</button><span class=hint>builds both apps from one commit, submits iOS for review, then promotes Android to production — a production release cannot be taken back</span></div>`
+    : "";
+  const output = html`<pre class=out>${run.lines.join("\n")}</pre>`;
+  return html`<div class=actionrow>${planButton}</div><details class=cons open><summary>${what} started ${ago(run.startedAt / 1000, now / 1000)}: ${status}</summary>${output}</details>${ship}`;
+}
+
 /** The whole page body for one state. `now` in epoch ms. */
 export function renderMobile(state: MobileState, now: number): Raw {
   const built = state.ready ? html` · built in ${state.took.toFixed(1)}s, ${ago(state.builtAt / 1000, now / 1000)}` : "";
@@ -52,5 +71,5 @@ export function renderMobile(state: MobileState, now: number): Raw {
   const failure = state.buildError
     ? html`<div class=err>The last rebuild failed, so what is below is from the build before it: ${state.buildError}</div>`
     : "";
-  return html`<div id=mobile>${header}${failure}${state.platforms.map(platformBlock)}</div>`;
+  return html`<div id=mobile>${header}${failure}<div class=release>${releaseBlock(state.release, now)}</div>${state.platforms.map(platformBlock)}</div>`;
 }
