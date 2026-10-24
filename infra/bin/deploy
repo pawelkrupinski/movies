@@ -234,8 +234,8 @@ cand="$1"
 SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
 [ -x "$cand/bin/switch-to-configuration" ] || { echo "!! $cand is not on this host"; echo "@@ END"; exit 5; }
 # THE PIN FIRST: nixos-auto-apply activates the pin whenever it is not running and is inert, so an
-# OLDER pin left behind would switch this host back. Writing it also wakes the applier, which then
-# finds the lock held, or the closure already running.
+# OLDER pin left behind would switch this host back. Writing it also wakes the applier, which may
+# hold the switch lock for a moment (the retry below) and then finds the closure already running.
 if [ "$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null)" != "$cand" ] && [ -d /var/lib/nixdeploy ]; then
   $SUDO ln -sfn "$cand" /var/lib/nixdeploy/staged-system && echo "· pinned $cand"
 fi
@@ -244,9 +244,19 @@ fi
 # systemd-run so an ssh drop (or an sshd restart) cannot kill a half-done switch. Its transient unit
 # gets systemd's PATH, not the login shell's /run/current-system/sw/bin, so nix-env is named by the
 # candidate's own path: a bare `nix-env` exited 127 and switched nothing (mongo-1, 2026-10-24).
-$SUDO systemd-run --quiet --collect --wait --pipe --unit "bin-deploy-$(date +%s)" -- \
-  /bin/sh -c "'$cand/sw/bin/nix-env' --profile /nix/var/nix/profiles/system --set '$cand' && '$cand/bin/switch-to-configuration' switch"
-rc=$?
+# THE APPLIER MAY HOLD THE LOCK: the pin written above wakes nixos-auto-apply, which takes
+# switch-to-configuration's lock while it judges the pin and lets go a second or so later. The switch
+# then exits 11, "Could not acquire lock" (mongo-1, 2026-10-24): wait that out, for a minute at most.
+tries=0
+while :; do
+  $SUDO systemd-run --quiet --collect --wait --pipe --unit "bin-deploy-$(date +%s)-$tries" -- \
+    /bin/sh -c "'$cand/sw/bin/nix-env' --profile /nix/var/nix/profiles/system --set '$cand' && '$cand/bin/switch-to-configuration' switch"
+  rc=$?
+  [ "$rc" -eq 11 ] && [ "$tries" -lt 20 ] || break
+  tries=$((tries + 1))
+  echo "· switch lock held (another activation); retrying in 3 s"
+  sleep 3
+done
 echo "@@ SWITCH rc=$rc now=$(readlink -f /run/current-system)"
 echo "@@ END"
 """
@@ -254,7 +264,10 @@ echo "@@ END"
 VERIFY_STATES = r"""
 set -u
 for u in "$@"; do
-  echo "unit $u $(systemctl show -p ActiveState,Result,Type --value "$u" 2>/dev/null | tr '\n' ' ')"
+  # One property per call, in the order unit_ok reads them: with several, `--value` prints them in
+  # systemd's own order (ActiveState, Type, Result), and a cleanly exited oneshot read as unhealthy.
+  echo "unit $u $(systemctl show -p ActiveState --value "$u" 2>/dev/null)" \
+    "$(systemctl show -p Result --value "$u" 2>/dev/null) $(systemctl show -p Type --value "$u" 2>/dev/null)"
 done
 echo "@@ END"
 """

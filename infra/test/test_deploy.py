@@ -243,6 +243,56 @@ class ApplyScript(unittest.TestCase):
             self.assertEqual(f.read().splitlines(),
                              ["nix-env --profile /nix/var/nix/profiles/system --set " + cand, "switch switch"])
 
+    def test_a_switch_lock_held_by_the_applier_is_waited_out(self):
+        # Writing the pin wakes nixos-auto-apply, which holds switch-to-configuration's lock for a
+        # second while it judges the pin: the deploy's own switch exited 11, "Could not acquire lock".
+        import shutil, subprocess, tempfile
+        work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work)
+        stubs, cand, log = os.path.join(work, "bin"), os.path.join(work, "system"), os.path.join(work, "log")
+        os.makedirs(stubs); os.makedirs(os.path.join(cand, "bin")); os.makedirs(os.path.join(cand, "sw", "bin"))
+
+        def script(path, body):
+            with open(path, "w") as f:
+                f.write("#!/bin/sh\n" + body + "\n")
+            os.chmod(path, 0o755)
+
+        script(os.path.join(stubs, "sudo"), '[ "$1" = -n ] && shift; exec "$@"')
+        script(os.path.join(stubs, "sleep"), "exit 0")
+        script(os.path.join(stubs, "systemd-run"), 'while [ "$1" != -- ]; do shift; done; shift; exec "$@"')
+        script(os.path.join(cand, "sw", "bin", "nix-env"), "exit 0")
+        held = os.path.join(work, "held")
+        open(held, "w").close()
+        script(os.path.join(cand, "bin", "switch-to-configuration"),
+               'echo switch >> ' + log + '; if [ -e ' + held + ' ]; then rm ' + held
+               + '; echo "Could not acquire lock" >&2; exit 11; fi; exit 0')
+
+        out = subprocess.run(["/bin/sh", "-c", deploy.APPLY, "apply", cand], capture_output=True, text=True,
+                             env={"PATH": stubs + ":/usr/bin:/bin"})
+        self.assertIn("@@ SWITCH rc=0", out.stdout, out.stdout + out.stderr)
+        with open(log) as f:
+            self.assertEqual(f.read().splitlines(), ["switch", "switch"])
+
+    def test_the_unit_states_are_read_in_the_order_the_verdict_expects(self):
+        # `systemctl show -p A,B,C --value` prints systemd's own property order (ActiveState, Type,
+        # Result), not the order asked for: a oneshot that had exited cleanly read as unhealthy.
+        import shutil, subprocess, tempfile
+        work = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, work)
+        stubs = os.path.join(work, "bin")
+        os.makedirs(stubs)
+        with open(os.path.join(stubs, "systemctl"), "w") as f:
+            f.write('#!/bin/sh\n'
+                    'case "$3" in\n'
+                    '  ActiveState) echo inactive ;; Result) echo success ;; Type) echo oneshot ;;\n'
+                    '  *) printf "inactive\\noneshot\\nsuccess\\n" ;;\n'
+                    'esac\n')
+        os.chmod(os.path.join(stubs, "systemctl"), 0o755)
+        out = subprocess.run(["/bin/sh", "-c", deploy.VERIFY_STATES, "verify", "systemd-fsck-root.service"],
+                             capture_output=True, text=True, env={"PATH": stubs + ":/usr/bin:/bin"})
+        line = next(l for l in out.stdout.splitlines() if l.startswith("unit "))
+        self.assertTrue(deploy.unit_ok(line.split()[2:]), line)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
