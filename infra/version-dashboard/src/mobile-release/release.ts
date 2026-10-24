@@ -15,6 +15,7 @@
 import { copyFile, mkdir, open, readFile, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { RELEASE_REMOTE } from "../config.js";
 import { describeFailure, type Executor } from "../exec.js";
 import { retryingReads, type AscApi, type PlayApi, type Secrets, type Sleep } from "../mobile/stores.js";
 import { inspectAndroid, internalBuildFor, nextVersionCode, promoteAndroid, type AndroidState } from "./android.js";
@@ -62,10 +63,10 @@ class Git {
     return (await this.deps.run(["git", ...args], { cwd, timeoutMs: 5 * MINUTE })).code === 0;
   }
 
-  /** Every mobile-* tag on origin → the commit it points at (peeled). */
+  /** Every mobile-* tag on the release remote → the commit it points at (peeled). */
   async remoteTags(): Promise<Map<string, string>> {
     const tags = new Map<string, string>();
-    for (const line of (await this.run(["ls-remote", "--tags", "origin", "refs/tags/mobile-*"])).split("\n")) {
+    for (const line of (await this.run(["ls-remote", "--tags", RELEASE_REMOTE, "refs/tags/mobile-*"])).split("\n")) {
       const [sha, ref] = line.split("\t");
       if (!sha || !ref) continue;
       const name = ref.replace(/^refs\/tags\//, "").replace(/\^\{\}$/, "");
@@ -87,13 +88,13 @@ export interface Inspection {
 
 export async function inspect(deps: ReleaseDeps, options: Pick<ReleaseOptions, "requested" | "force">): Promise<Inspection> {
   const git = new Git(deps);
-  await git.run(["fetch", "--quiet", "origin", "main"]);
-  const mainSha = await git.run(["rev-parse", "origin/main"]);
+  await git.run(["fetch", "--quiet", RELEASE_REMOTE, "main"]);
+  const mainSha = await git.run(["rev-parse", `${RELEASE_REMOTE}/main`]);
   const onMain = await git.run(["show", `${mainSha}:mobile-version.txt`]);
   const [ios, android, tags] = await Promise.all([inspectIos(deps.asc), inspectAndroid(deps.play), git.remoteTags()]);
   // A tag's commit may not be local yet, and the diff below needs it. --force: the lanes force-move
   // these tags on a re-upload, so a stale local copy must not win.
-  await git.run(["fetch", "--quiet", "--force", "origin", "refs/tags/mobile-*:refs/tags/mobile-*"]);
+  await git.run(["fetch", "--quiet", "--force", RELEASE_REMOTE, "refs/tags/mobile-*:refs/tags/mobile-*"]);
   const tagShas = [...new Set(tags.values())];
   const unchanged = new Map<string, boolean>();
   for (const sha of tagShas) unchanged.set(sha, await git.succeeds(["diff", "--quiet", sha, mainSha, "--", ...APP_PATHS]));
@@ -227,22 +228,22 @@ async function bumpMain(deps: ReleaseDeps, git: Git, worktree: string, version: 
   if (bump.code !== 0) throw new Error(describeFailure(["mobile-release.sh"], bump));
   for (let attempt = 1; ; attempt++) {
     const sha = await git.run(["rev-parse", "HEAD"], worktree);
-    const push = await deps.run(["git", "push", "--quiet", "origin", "HEAD:refs/heads/main"], {
+    const push = await deps.run(["git", "push", "--quiet", RELEASE_REMOTE, "HEAD:refs/heads/main"], {
       cwd: worktree,
       timeoutMs: 10 * MINUTE,
       env: { PREPUSH_SKIP: "ios" },
       mergeStderr: true,
     });
     if (push.code === 0) {
-      const remote = (await git.run(["ls-remote", "origin", "refs/heads/main"])).split("\t")[0];
-      if (remote !== sha) throw new Error(`pushed ${sha} but origin/main is ${remote}`);
+      const remote = (await git.run(["ls-remote", RELEASE_REMOTE, "refs/heads/main"])).split("\t")[0];
+      if (remote !== sha) throw new Error(`pushed ${sha} but ${RELEASE_REMOTE}/main is ${remote}`);
       deps.log(`main bumped to ${version} at ${sha.slice(0, 9)} (pre-push iOS compile check skipped: the archive compiles it)`);
       return sha;
     }
     if (attempt >= 3) throw new Error(describeFailure(["git", "push"], push));
     deps.log(`push raced another commit; rebasing (attempt ${attempt})`);
-    await git.run(["fetch", "--quiet", "origin", "main"], worktree);
-    await git.run(["rebase", "--quiet", "origin/main"], worktree);
+    await git.run(["fetch", "--quiet", RELEASE_REMOTE, "main"], worktree);
+    await git.run(["rebase", "--quiet", `${RELEASE_REMOTE}/main`], worktree);
   }
 }
 

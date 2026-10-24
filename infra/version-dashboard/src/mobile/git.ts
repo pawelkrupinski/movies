@@ -2,11 +2,12 @@
  * The git half of the mobile page: which commit shipped each store's live version, and what has
  * landed in that platform's directory since.
  */
+import { RELEASE_REMOTE } from "../config.js";
 import { runCommand } from "../exec.js";
 import type { Commit } from "./model.js";
 
 const GIT_TIMEOUT_MS = 30_000;
-/** Short: it runs on every build, and a slow or unreachable origin must cost seconds, never the
+/** Short: it runs on every build, and a slow or unreachable remote must cost seconds, never the
  * whole git timeout. */
 const TAG_FETCH_TIMEOUT_MS = 15_000;
 
@@ -15,7 +16,7 @@ async function git(repoDir: string, args: readonly string[], timeoutMs = GIT_TIM
 }
 
 /**
- * Force-fetches origin's `mobile-*` tags into this checkout; returns whether that worked.
+ * Force-fetches the release remote's `mobile-*` tags into this checkout; returns whether that worked.
  *
  * FORCED BECAUSE THE TAGS MOVE: tag-mobile-release.sh force-moves `mobile-<platform>-<version>`
  * whenever a version is re-uploaded, and `git fetch`/`git pull` auto-follow a NEW tag but refuse to
@@ -25,7 +26,7 @@ async function git(repoDir: string, args: readonly string[], timeoutMs = GIT_TIM
  * Non-fatal: a failure leaves the tags as they were.
  */
 export async function fetchMobileTags(repoDir: string): Promise<boolean> {
-  const result = await git(repoDir, ["fetch", "--quiet", "--no-tags", "origin", "+refs/tags/mobile-*:refs/tags/mobile-*"], TAG_FETCH_TIMEOUT_MS);
+  const result = await git(repoDir, ["fetch", "--quiet", "--no-tags", RELEASE_REMOTE, "+refs/tags/mobile-*:refs/tags/mobile-*"], TAG_FETCH_TIMEOUT_MS);
   if (result.code !== 0) {
     const why = result.timedOut ? "timed out" : result.stderr.trim() || `exit ${result.code}`;
     console.error(`mobile dashboard: could not fetch mobile-* tags (${why}); using local tags`);

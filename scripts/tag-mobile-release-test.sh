@@ -30,28 +30,28 @@ echo x > "$REPO/f"
 scratch_git "$REPO" add f
 scratch_git "$REPO" commit -q -m init
 scratch_repo "$SCRATCH/origin.git" --bare
-scratch_git "$REPO" remote add origin "$SCRATCH/origin.git"
-scratch_git "$REPO" push -q origin HEAD:refs/heads/main
+scratch_git "$REPO" remote add forgejo "$SCRATCH/origin.git"
+scratch_git "$REPO" push -q forgejo HEAD:refs/heads/main
 
 # ── the happy path: tags and pushes ────────────────────────────────────────────
 bash "$REPO/scripts/tag-mobile-release.sh" ios 1.0.0 >/dev/null 2>&1
 check "exits 0 on a clean tag+push" "0" "$?"
 check "creates the tag locally" "mobile-ios-1.0.0" "$(scratch_git "$REPO" tag -l mobile-ios-1.0.0)"
-check "pushes the tag to origin" "1" \
-  "$(scratch_git "$REPO" ls-remote origin | grep -c mobile-ios-1.0.0)"
+check "pushes the tag to forgejo" "1" \
+  "$(scratch_git "$REPO" ls-remote forgejo | grep -c mobile-ios-1.0.0)"
 
 # ── a broken remote: warns, does not fail ──────────────────────────────────────
-scratch_git "$REPO" remote set-url origin /nonexistent-path
+scratch_git "$REPO" remote set-url forgejo /nonexistent-path
 push_output="$(bash "$REPO/scripts/tag-mobile-release.sh" android 2.0.0 2>&1)"
 check "exits 0 even when the push fails" "0" "$?"
 check "still creates the tag locally" "mobile-android-2.0.0" \
   "$(scratch_git "$REPO" tag -l mobile-android-2.0.0)"
 # The tag is FORCE-moved on every re-upload of a version, so the manual retry it
-# suggests must force too — a plain `git push origin <tag>` is rejected as
-# "already exists" whenever origin still holds the tag's previous position.
+# suggests must force too — a plain `git push forgejo <tag>` is rejected as
+# "already exists" whenever the remote still holds the tag's previous position.
 check "suggests a FORCE push as the manual retry" "1" \
-  "$(printf '%s' "$push_output" | grep -c 'git push -f origin mobile-android-2.0.0')"
-scratch_git "$REPO" remote set-url origin "$SCRATCH/origin.git"
+  "$(printf '%s' "$push_output" | grep -c 'git push -f forgejo mobile-android-2.0.0')"
+scratch_git "$REPO" remote set-url forgejo "$SCRATCH/origin.git"
 
 # ── a version string git can't use as a ref: warns, does not fail ─────────────
 bash "$REPO/scripts/tag-mobile-release.sh" ios "1.0.0 with a space" >/dev/null 2>&1
