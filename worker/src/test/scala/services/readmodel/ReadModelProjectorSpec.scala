@@ -1689,7 +1689,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val sweeper   = new ReadModelSweeper(projector.projection)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.start(sweeper)
-    sweeper.schedule(fakeScheduler)
+    sweeper.schedule(fakeScheduler, tools.TickRecorder.Unrecorded)
     val healedAtBoot = rm.movieUpserts.size       // Foo had no card, so the boot heal wrote it
 
     fakeScheduler.scheduled should have size 2   // the prune and the derivation tick, never the reproject

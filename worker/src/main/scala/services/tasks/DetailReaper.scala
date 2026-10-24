@@ -5,7 +5,7 @@ import services.movies.LatestTitleYear
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import services.freshness.{FreshnessKind, FreshnessStore}
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 import models.{Cinema, MovieRecord, Source}
 import play.api.Logging
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
@@ -63,7 +63,9 @@ class DetailReaper(
   clock:     Clock,
   // Which of a row's pages it asks for, under which key (`DetailPages`): one per venue and film for
   // the pipeline, every page a venue slot names for a cut-over country's identity model.
-  pages:     DetailPages = DetailPages.PerVenue
+  pages:     DetailPages = DetailPages.PerVenue,
+  // Where each completed run is reported (`ScheduledTickStale`).
+  ticks: TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -90,6 +92,7 @@ class DetailReaper(
   def start(): Unit = {
     if (enrichers.isEmpty) { logger.info("DetailReaper: no deferred cinemas; not starting."); return }
     scheduleNext(initialDelay.value)
+    ticks.started("detail-reaper", tickInterval.value, initialDelay.value)
     logger.info(s"DetailReaper started over ${enrichers.size} deferred cinema(s): each detail refreshed once per " +
                 s"${dueWindow.period.toHours}h, phase-spread over ticks every ${tickInterval.value.toSeconds}s.")
   }
@@ -98,7 +101,7 @@ class DetailReaper(
    *  afresh, so an interval flip applies on the next cycle. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.logged("DetailReaper", logger)(tickIfClaimed()); scheduleNext(tickInterval.value) }
+      def run(): Unit = { ScheduledTick.recorded("detail-reaper", tickInterval.value, logger, ticks)(tickIfClaimed()); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

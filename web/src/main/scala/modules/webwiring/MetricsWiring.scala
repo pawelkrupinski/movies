@@ -19,8 +19,11 @@ trait MetricsWiring { self: Wiring =>
   // A web deployment serves exactly one country; tag its /metrics with that
   // country so its series line up with the worker's per-country series in Grafana.
   private def metricsCountry = country
-  lazy val webMovieMetrics = managedResources.stopping(new WebMovieMetrics(movieControllerService, country, clock))
+  lazy val webMovieMetrics = managedResources.stopping(new WebMovieMetrics(movieControllerService, country, clock, ticks = ticks))
   lazy val webJvmMetrics = new WebJvmMetrics
+  /** Where this tier's periodic loops report each completed run (`ScheduledTickStale`). */
+  lazy val ticks: tools.TickRecorder =
+    services.metrics.ScheduledTickMetrics.web(webJvmMetrics.registry).forCountry(metricsCountry.code, clock)
   // Request rate / error rate / latency, recorded by `HttpMetricsFilter` on the
   // SAME registry the JVM collectors use — so it surfaces on the existing
   // /metrics body with no new endpoint. Replaces the dead Fly-proxy panels

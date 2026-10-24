@@ -4,7 +4,7 @@ import settings.ConfigRefreshInterval
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, Env, ScheduledTick}
+import tools.{DaemonExecutors, Env, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
@@ -34,7 +34,9 @@ class EnvConfigService(
   // read knobs is what gets published.
   env:            Env,
   tickInterval:   ConfigRefreshInterval = ConfigRefreshInterval(30.seconds),
-  isSecret:       String => Boolean = EnvKnobClassifier.isSecret
+  isSecret:       String => Boolean = EnvKnobClassifier.isSecret,
+  // Where each completed publish is reported (`ScheduledTickStale`).
+  ticks:          TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("env-config")
@@ -42,8 +44,9 @@ class EnvConfigService(
   /** Wire the override cache into Env and start the refresh/publish loop. */
   def start(): Unit = {
     env.installOverrides(overrides.lookup)
+    ticks.started("env-config-publish", tickInterval.value, scala.concurrent.duration.Duration.Zero)
     scheduler.scheduleWithFixedDelay(
-      () => ScheduledTick.logged("EnvConfigService publish", logger)(publishTick()), 0L, tickInterval.value.toSeconds, TimeUnit.SECONDS)
+      () => ScheduledTick.recorded("env-config-publish", tickInterval.value, logger, ticks)(publishTick()), 0L, tickInterval.value.toSeconds, TimeUnit.SECONDS)
     logger.info(s"EnvConfigService[$app] started: overrides installed, publishing every ${tickInterval.value.toSeconds}s.")
   }
 

@@ -1454,8 +1454,8 @@
     {
       "id": 23,
       "type": "timeseries",
-      "title": "Days since the Nix store was last collected",
-      "description": "THE UPSTREAM OF THE INODE PANEL ABOVE. By the time inode alerts fire, the collector has usually been dead for weeks -- and the repair gets harder as the disk fills, then impossible at zero inodes when nix-collect-garbage cannot take its own lock. The timer is daily with Persistent=true, so a host that was off catches up on boot rather than skipping; a line climbing past 1 means the unit is failing rather than being skipped. Alert: NixGarbageCollectionStale, 3 days.",
+      "title": "Days since the Nix store was last collected, and the registry last pruned",
+      "description": "THE UPSTREAM OF THE INODE PANEL ABOVE. By the time inode alerts fire, the collector has usually been dead for weeks -- and the repair gets harder as the disk fills, then impossible at zero inodes when nix-collect-garbage cannot take its own lock. The timer is daily with Persistent=true, so a host that was off catches up on boot rather than skipping; a line climbing past 1 means the unit is failing rather than being skipped. Alert: NixGarbageCollectionStale, 3 days. registry prune (k3s-worker-1): `kinowo_registry_prune_last_success_timestamp_seconds`, the daily 04:00 prune and garbage-collect of registry.kinowo.net (alert: RegistryPruneStale, 3 days).",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -1515,6 +1515,15 @@
           "refId": "A",
           "expr": "(time() - fleet_nix_gc_last_success_timestamp_seconds) / 86400",
           "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "(time() - kinowo_registry_prune_last_success_timestamp_seconds) / 86400",
+          "legendFormat": "registry prune ({{host}})",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"

@@ -1,0 +1,183 @@
+# UNIT TESTS FOR THE PERIODIC-LOOP RULES. Every reading is an absolute epoch second evaluated at an
+# absolute `eval_time`, because the rule is a `time()` comparison: a series that merely "looks old"
+# relative to nothing would pass whatever the threshold said. The loops' own side -- seeded at arm
+# time, stamped per returned run, never per thrown one -- is checked in ScheduledTickMetricsSpec and
+# ClaimedPeriodicTaskSpec.
+rule_files:
+  - ../../nix/files/monitoring/rules/scheduled-ticks.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # HEALTHY: a minute reaper stamped every minute, and a daily sweep last run 20 hours ago -- far
+  # past the half-hour floor, well inside its own three days. Neither may fire.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: running loops are quiet, each held to its own period
+    input_series:
+      - series: 'kinowo_worker_scheduled_tick_last_success_timestamp_seconds{country="pl",tick="scrape-reaper",job="kinowo-worker"}'
+        values: '0+60x180'
+      - series: 'kinowo_worker_scheduled_tick_interval_seconds{country="pl",tick="scrape-reaper",job="kinowo-worker"}'
+        values: '60x180'
+      - series: 'kinowo_worker_scheduled_tick_last_success_timestamp_seconds{country="pl",tick="venue-closure",job="kinowo-worker"}'
+        values: '-72000x180'
+      - series: 'kinowo_worker_scheduled_tick_interval_seconds{country="pl",tick="venue-closure",job="kinowo-worker"}'
+        values: '86400x180'
+      - series: 'kinowo_web_scheduled_tick_last_success_timestamp_seconds{country="pl",tick="web-movie-metrics",job="kinowo-web"}'
+        values: '0+60x180'
+      - series: 'kinowo_web_scheduled_tick_interval_seconds{country="pl",tick="web-movie-metrics",job="kinowo-web"}'
+        values: '60x180'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: WorkerScheduledTickStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: WebScheduledTickStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: WorkerScheduledTickMetricsAbsent
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: WebScheduledTickMetricsAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A MINUTE REAPER STOPPED at t=0. Three periods would be three minutes; the floor holds it to
+  # half an hour, and `for: 5m` to thirty-five. Quiet at 30m, firing at 40m.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a stopped minute loop fires past the half-hour floor
+    input_series:
+      - series: 'kinowo_worker_scheduled_tick_last_success_timestamp_seconds{country="uk",tick="scrape-reaper",job="kinowo-worker"}'
+        values: '0x60'
+      - series: 'kinowo_worker_scheduled_tick_interval_seconds{country="uk",tick="scrape-reaper",job="kinowo-worker"}'
+        values: '60x60'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerScheduledTickStale
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: WorkerScheduledTickStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+              tick: scrape-reaper
+            exp_annotations:
+              summary: "uk worker loop scrape-reaper has not completed a run in over three of its periods"
+              description: >-
+                The value is how many seconds ago the loop last completed a run (or was due to run
+                its first). Its scheduler thread died, its tick is hanging, or every tick is
+                throwing: search the worker's logs for `scrape-reaper tick failed`, and take a
+                thread dump (`jcmd 1 Thread.print` in the pod) for a tick that is stuck rather than
+                failing. A restart re-arms every loop, which clears this; take the dump first, or
+                the cause goes with the process.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # AN HOURLY LOOP IS HELD TO THREE HOURS, NOT THE FLOOR: two hours stale is quiet, past three
+  # (plus the hold) fires. And a web loop, stamped then stopped.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a slower loop is held to three of its own periods
+    input_series:
+      - series: 'kinowo_worker_scheduled_tick_last_success_timestamp_seconds{country="de",tick="settle",job="kinowo-worker"}'
+        values: '0x300'
+      - series: 'kinowo_worker_scheduled_tick_interval_seconds{country="de",tick="settle",job="kinowo-worker"}'
+        values: '3600x300'
+      - series: 'kinowo_web_scheduled_tick_last_success_timestamp_seconds{country="de",tick="read-model-backstop",job="kinowo-web"}'
+        values: '0x300'
+      - series: 'kinowo_web_scheduled_tick_interval_seconds{country="de",tick="read-model-backstop",job="kinowo-web"}'
+        values: '1800x300'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: WorkerScheduledTickStale
+        exp_alerts: []
+      - eval_time: 3h10m
+        alertname: WorkerScheduledTickStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: de
+              tick: settle
+            exp_annotations:
+              summary: "de worker loop settle has not completed a run in over three of its periods"
+              description: >-
+                The value is how many seconds ago the loop last completed a run (or was due to run
+                its first). Its scheduler thread died, its tick is hanging, or every tick is
+                throwing: search the worker's logs for `settle tick failed`, and take a thread dump
+                (`jcmd 1 Thread.print` in the pod) for a tick that is stuck rather than failing. A
+                restart re-arms every loop, which clears this; take the dump first, or the cause
+                goes with the process.
+      - eval_time: 1h
+        alertname: WebScheduledTickStale
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: WebScheduledTickStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: de
+              tick: read-model-backstop
+            exp_annotations:
+              summary: "de web loop read-model-backstop has not completed a run in over three of its periods"
+              description: >-
+                The value is how many seconds ago the loop last completed a run (or was due to run
+                its first). `read-model-backstop` / `read-model-cold-retry` stale means the served
+                listing is no longer being re-read and may be frozen; `web-movie-metrics` stale
+                means the films-served gauges (and every alert reading them) are repeating an old
+                sample. Search the web pod's logs for `read-model-backstop tick failed`, and take a
+                thread dump (`jcmd 1 Thread.print`) before restarting.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A LOOP ARMED WITH A LONG FIRST DELAY is seeded with its due time, in the future: not stale.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a loop not yet due is not stale
+    input_series:
+      - series: 'kinowo_worker_scheduled_tick_last_success_timestamp_seconds{country="es",tick="tmdb-changes-sweep",job="kinowo-worker"}'
+        values: '7200x100'
+      - series: 'kinowo_worker_scheduled_tick_interval_seconds{country="es",tick="tmdb-changes-sweep",job="kinowo-worker"}'
+        values: '60x100'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: WorkerScheduledTickStale
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # NO SERIES AT ALL: the companions fire after their hour, and the comparisons cannot.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a tier publishing no loop pulse fires its companion
+    input_series:
+      - series: 'up{job="kinowo-worker"}'
+        values: '1x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerScheduledTickMetricsAbsent
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: WorkerScheduledTickMetricsAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No worker is publishing its periodic loops' last runs"
+              description: >-
+                `kinowo_worker_scheduled_tick_last_success_timestamp_seconds` has no series from
+                any country, so `WorkerScheduledTickStale` cannot fire and no worker loop is
+                watched. If the workers are down, `WorkerDown` is the alert to read; if they are
+                up, the wiring's `ticks` recorder is no longer reaching the loops
+                (modules.WorkerWiring).
+      - eval_time: 70m
+        alertname: WebScheduledTickMetricsAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No web pod is publishing its periodic loops' last runs"
+              description: >-
+                `kinowo_web_scheduled_tick_last_success_timestamp_seconds` has no series from any
+                country, so `WebScheduledTickStale` cannot fire and no web loop is watched. If the
+                web tier is down its own alerts are firing; if it is up, the wiring's `ticks`
+                recorder is no longer reaching the loops (modules.webwiring.MetricsWiring).

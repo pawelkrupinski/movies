@@ -338,7 +338,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   lazy val scrapeCostEstimates = new ScrapeCostEstimates(scrapeTasksPerVenue)
   lazy val scrapePhasePlanner = managedResources.stopping(new ScrapePhasePlanner(
     cinemaScrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema)), scrapeCostStore, venueCadenceStore.periodFor, scrapePhases,
-    scrapeCostEstimates))
+    scrapeCostEstimates, ticks))
 
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
@@ -379,5 +379,5 @@ trait ScrapeWiring { self: WorkerWiring =>
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, costs = scrapeCostEstimates,
       chunkSpread = scrapeChunkSpread,
       inFlight = chunkRunInFlight,
-      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock))
+      enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore, clock = clock, ticks = ticks))
 }

@@ -4,7 +4,7 @@ import settings.LivenessStaleAfter
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
@@ -41,7 +41,9 @@ class LivenessWatchdog(
   stalenessThreshold: LivenessStaleAfter,
   onWedged:           () => Unit,
   checkEvery:         LivenessWatchdog.CheckInterval = LivenessWatchdog.CheckInterval(1.minute),
-  now:                () => Long
+  now:                () => Long,
+  // Where each check is reported (`ScheduledTickStale`): a dead watchdog restarts nothing.
+  ticks:              TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   private val fired = new AtomicBoolean(false)
@@ -70,7 +72,8 @@ class LivenessWatchdog(
     }
 
   def start(): Unit = {
-    scheduler.scheduleWithFixedDelay(() => ScheduledTick.logged("LivenessWatchdog", logger)(check()), checkEvery.value.toMillis, checkEvery.value.toMillis, TimeUnit.MILLISECONDS)
+    ticks.started("liveness-watchdog", checkEvery.value, checkEvery.value)
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("liveness-watchdog", checkEvery.value, logger, ticks)(check()), checkEvery.value.toMillis, checkEvery.value.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"LivenessWatchdog armed: restart if the heartbeat is stale > ${stalenessThreshold.value.toSeconds}s (checked every ${checkEvery.value.toSeconds}s).")
   }
 

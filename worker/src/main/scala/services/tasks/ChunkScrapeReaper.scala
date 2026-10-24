@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ConcurrentHashMap, RejectedExecutionException, ScheduledExecutorService, TimeUnit}
@@ -40,7 +40,9 @@ class ChunkScrapeReaper(
   staleAfter:   ChunkScrapePlanner.RunTimeout = ChunkScrapePlanner.RunTimeout(ChunkScrapePlanner.DefaultRunTimeout),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
-  scheduler:    ScheduledExecutorService = DaemonExecutors.scheduler("chunk-scrape-reaper")
+  scheduler:    ScheduledExecutorService = DaemonExecutors.scheduler("chunk-scrape-reaper"),
+  // Where each completed sweep is reported (`ScheduledTickStale`).
+  ticks:        TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   /** runIds with a deadline pending in this process, so a sweep does not arm a second. */
@@ -50,7 +52,8 @@ class ChunkScrapeReaper(
     // The boot sweep is unclaimed: this process's timers are gone, whoever swept this hour.
     scheduler.schedule((() => ScheduledTick.logged("ChunkScrapeReaper boot sweep", logger)(sweep())): Runnable,
       initialDelay.value.toMillis, TimeUnit.MILLISECONDS)
-    scheduler.scheduleWithFixedDelay(() => ScheduledTick.logged("ChunkScrapeReaper", logger)(sweepIfClaimed()),
+    ticks.started("chunk-scrape-reaper", interval.value, initialDelay.value + interval.value)
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("chunk-scrape-reaper", interval.value, logger, ticks)(sweepIfClaimed()),
       (initialDelay.value + interval.value).toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
     logger.info(s"ChunkScrapeReaper started — a deadline per chunked run, a sweep in ${initialDelay.value.toSeconds}s " +
       s"and then every ${interval.value.toMinutes}min.")

@@ -2,7 +2,7 @@ package controllers
 
 import models.{City, Country}
 import play.api.Logging
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -39,6 +39,9 @@ class WebMovieMetrics(
   // A poster host serving fewer of the country's films than this is counted under `other`
   // ([[WebMovieMetrics.PosterCensus]]): the long tail of single-venue sites stays one series.
   posterHostFloor: Int = WebMovieMetrics.PosterHostFloor,
+  // Where each completed sample is reported (`ScheduledTickStale`): a dead sampler serves its
+  // last counts for ever, which the films-served alerts read as a steady country.
+  ticks: TickRecorder = TickRecorder.Unrecorded,
 ) extends services.Stoppable with Logging {
   private val cities: Seq[City] = servingCountry.cities
   private val country: String   = servingCountry.code
@@ -74,8 +77,10 @@ class WebMovieMetrics(
 
   def start(): Unit = {
     Try(sample()).recover { case e => logger.warn(s"web-movie-metrics initial sample failed: ${e.getMessage}") }
+    val every = scala.concurrent.duration.Duration(WebMovieMetrics.SampleSeconds, TimeUnit.SECONDS)
+    ticks.started("web-movie-metrics", every, every)
     scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"web-movie-metrics sample tick failed: ${e.getMessage}") },
+      () => ScheduledTick.recorded("web-movie-metrics", every, logger, ticks)(sample()),
       WebMovieMetrics.SampleSeconds, WebMovieMetrics.SampleSeconds, TimeUnit.SECONDS)
   }
 

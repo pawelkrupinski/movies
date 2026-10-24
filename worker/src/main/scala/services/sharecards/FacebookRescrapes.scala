@@ -245,7 +245,9 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  */
 class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String],
                             fetches: FacebookFetches, country: String, metrics: ShareCardMetrics, clock: Clock,
-                            stopwatch: tools.Stopwatch) extends services.Stoppable with Logging {
+                            stopwatch: tools.Stopwatch,
+                            // Where each completed tick is reported (`ScheduledTickStale`).
+                            ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded) extends services.Stoppable with Logging {
   import FacebookRescrapeDrain.*
 
   private val brake = new FacebookUsageBrake(store, clock)
@@ -337,8 +339,10 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
   def start(): Unit = synchronized {
     if (scheduler.isEmpty) {
       val s = DaemonExecutors.scheduler(s"facebook-rescrapes-$country")
-      s.scheduleWithFixedDelay(() => Try(tick()).failed.foreach { e =>
-        failures.admit().foreach(suppressed => logger.warn(
+      ticks.started("facebook-rescrape-drain", TickEvery, TickEvery)
+      s.scheduleWithFixedDelay(() => Try(tick()) match {
+        case Success(_) => ticks.completed("facebook-rescrape-drain", TickEvery)
+        case Failure(e) => failures.admit().foreach(suppressed => logger.warn(
           s"share card: re-scrape drain failed (${e.getClass.getSimpleName}: ${e.getMessage}); $suppressed more since the last report"))
       }, TickEvery.toMillis, TickEvery.toMillis, TimeUnit.MILLISECONDS)
       scheduler = Some(s)

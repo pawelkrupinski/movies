@@ -33,7 +33,8 @@ class RetiredVenueCensus(
   futureShowtimes: Gauge,
   country:         Country,
   clock:           Clock,
-  override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval
+  override protected val sampleInterval: FiniteDuration = RetiredVenueCensus.DefaultSampleInterval,
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
 ) extends SampledCensus {
 
   override protected def firstSampleSlot: Int = SampledCensus.Slots.RetiredVenues

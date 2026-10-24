@@ -43,7 +43,8 @@ class RatingRunCensus(
   oldestAge:      Gauge,
   country:        Country,
   clock:          Clock,
-  override protected val sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
+  override protected val sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval,
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
 ) extends SampledCensus {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)

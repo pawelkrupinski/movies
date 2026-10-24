@@ -3,7 +3,7 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.schedule.InMemoryScheduledRunStore
-import tools.{LogCapture, ManualScheduler, MutableClock}
+import tools.{LogCapture, ManualScheduler, MutableClock, TickRecorder}
 
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicInteger
@@ -18,7 +18,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
     val clock = new MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
     val scheduler = new ManualScheduler(clock)
     val task = new ClaimedPeriodicTask("failing-job", () => { runs.incrementAndGet(); throw new IllegalStateException("store unreadable") },
-      20.millis, 0.millis, new InMemoryScheduledRunStore, clock, _ => scheduler)
+      20.millis, 0.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, _ => scheduler)
     val logged = LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
       scheduler.advance(Duration.ofMillis(20)) // the first run, then one interval on: the second
@@ -39,7 +39,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
     // Unreadable once, right after the first run: the read that picks the next run's delay.
     def interval: FiniteDuration = if (broken) { broken = false; throw new IllegalStateException("config unreadable") } else 20.millis
     val task = new ClaimedPeriodicTask("unread-interval", () => { if (runs.incrementAndGet() == 1) broken = true },
-      interval, 20.millis, new InMemoryScheduledRunStore, clock, _ => scheduler)
+      interval, 20.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, _ => scheduler)
     val logged = LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
       scheduler.advance(Duration.ofMillis(20 + ClaimedPeriodicTask.MinimumFallbackDelay.toMillis))
@@ -61,7 +61,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
       if (!broken) 1.hour
       else if (reads.incrementAndGet() >= 100) 1.hour
       else throw new IllegalStateException("config unreadable")
-    val task = new ClaimedPeriodicTask("zero-initial-delay", () => (), interval, 0.millis, new InMemoryScheduledRunStore, clock, _ => scheduler)
+    val task = new ClaimedPeriodicTask("zero-initial-delay", () => (), interval, 0.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, _ => scheduler)
     LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
       broken = true
@@ -69,5 +69,30 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
       task.stop()
     }
     reads.get() shouldBe 2 // the first tick's claim and its next delay, then nothing for a minute
+  }
+
+  // The pulse `ScheduledTickStale` reads: armed with its first run's due time, stamped after every
+  // run that returned, never after one that threw -- a task failing every run has stopped running.
+  "A periodic task" should "tell its tick recorder when it is armed and after each run that returned" in {
+    val clock     = new MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
+    val scheduler = new ManualScheduler(clock)
+    val events    = new java.util.concurrent.ConcurrentLinkedQueue[String]
+    val ticks = new TickRecorder {
+      def started(tick: String, interval: FiniteDuration, firstRunIn: FiniteDuration): Unit =
+        events.add(s"started $tick every ${interval.toMillis}ms, first in ${firstRunIn.toMillis}ms")
+      def completed(tick: String, interval: FiniteDuration): Unit = events.add(s"completed $tick every ${interval.toMillis}ms")
+    }
+    val runs = new AtomicInteger
+    val task = new ClaimedPeriodicTask("recorded-job", () => { if (runs.incrementAndGet() == 2) throw new IllegalStateException("boom") },
+      20.millis, 5.millis, new InMemoryScheduledRunStore, clock, ticks, _ => scheduler)
+    LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
+      task.start()
+      scheduler.advance(Duration.ofMillis(5 + 20 + 20)) // three runs: fine, throws, fine
+      task.stop()
+    }
+    runs.get() shouldBe 3
+    import scala.jdk.CollectionConverters.*
+    events.asScala.toList shouldBe List(
+      "started recorded-job every 20ms, first in 5ms", "completed recorded-job every 20ms", "completed recorded-job every 20ms")
   }
 }

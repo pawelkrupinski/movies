@@ -61,7 +61,7 @@ trait RatingsWiring { self: WorkerWiring =>
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] = managedResources.stoppingEach(
     omdbBackfill.map(_ => new OmdbBackfillReaper(
       () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant()); () },
-      interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock)))
+      interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock, ticks = ticks)))
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's
   // per-row refreshOneSync; the EnrichmentReaper is the SOLE enqueue path — it
@@ -115,5 +115,5 @@ trait RatingsWiring { self: WorkerWiring =>
   lazy val enrichmentReaper = managedResources.stopping(new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
     maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
-    runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer), clock = clock))
+    runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer), clock = clock, ticks = ticks))
 }

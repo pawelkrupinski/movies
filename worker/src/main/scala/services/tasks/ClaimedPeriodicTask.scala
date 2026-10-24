@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -18,6 +18,7 @@ import scala.concurrent.duration._
  */
 class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDuration, initialDelay: FiniteDuration,
                           runStore: ScheduledRunStore, clock: Clock,
+                          ticks: TickRecorder,
                           // Builds the task's scheduler from its name; a spec hands in a stepped one.
                           newScheduler: String => ScheduledExecutorService = DaemonExecutors.scheduler(_))
     extends Stoppable with Logging {
@@ -26,12 +27,13 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
 
   def start(): Unit = {
     scheduleNext(initialDelay)
+    ticks.started(name, interval, initialDelay)
     logger.info(s"$name started: once per ${interval.toSeconds}s, first in ${initialDelay.toSeconds}s.")
   }
 
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.logged(name, logger)(tickIfClaimed()); scheduleNext(intervalOr(delay)) }
+      def run(): Unit = { ScheduledTick.recorded(name, intervalOr(delay), logger, ticks)(tickIfClaimed()); scheduleNext(intervalOr(delay)) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

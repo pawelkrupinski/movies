@@ -155,7 +155,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       if (IdentityProjectionWiring.offPeak(venueClock, country.zone) &&
           scheduledRunStore.claim(s"identity-drift-check:${venueClock.today(country.zone)}")) identityDriftCheck.run()
       ()
-    }, IdentityProjectionWiring.DriftTick, IdentityProjectionWiring.DriftTick, scheduledRunStore, clock))
+    }, IdentityProjectionWiring.DriftTick, IdentityProjectionWiring.DriftTick, scheduledRunStore, clock, ticks))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.adapters.PosterAnswerStore = new services.identity.adapters.PosterAnswerStore(familyAnswerStore, clock)
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */

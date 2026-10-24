@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -30,20 +30,23 @@ class ClaimedEnqueueReaper(
   initialDelay: FiniteDuration,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
-  timing:       ClaimedEnqueueReaper.Timing = ClaimedEnqueueReaper.Timing.FromBoot
+  timing:       ClaimedEnqueueReaper.Timing = ClaimedEnqueueReaper.Timing.FromBoot,
+  // Where each completed run is reported (`ScheduledTickStale`).
+  ticks: TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler(s"$occurrence-reaper")
 
   def start(): Unit = {
     scheduleNext(initialDelay)
+    ticks.started(occurrence, interval, initialDelay)
     logger.info(s"$occurrence reaper started: enqueue once per ${interval.toSeconds}s.")
   }
 
   /** Self-rescheduling tick: enqueue, then schedule the next reading `interval` afresh. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.logged(s"$occurrence reaper", logger)(tickIfClaimed()); scheduleNext(nextDelay()) }
+      def run(): Unit = { ScheduledTick.recorded(occurrence, interval, logger, ticks)(tickIfClaimed()); scheduleNext(nextDelay()) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

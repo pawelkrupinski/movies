@@ -47,7 +47,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
     scrapeFreshnessPolicy, clock = clock)
   lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue, clock)
   lazy val chunkScrapeReaper        = managedResources.stopping(new ChunkScrapeReaper(chunkScrapeStore, taskQueue, chunkScrapeCoordinator,
-    runStore = scheduledRunStore, clock = clock))
+    runStore = scheduledRunStore, clock = clock, ticks = ticks))
 
   /** A chunked venue is mid-scrape while its run doc is live and not yet abandoned.
    *  Keeps the reaper from re-admitting it into a no-op — see [[ScrapeInFlight]]. */

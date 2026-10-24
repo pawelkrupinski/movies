@@ -63,7 +63,8 @@ trait CorpusWiring { self: WorkerWiring =>
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
       rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)),
       // The boot's other whole-corpus readers take the hydrate's read rather than read it again.
-      bootReaders = Seq(readModelBootStudy)))
+      bootReaders = Seq(readModelBootStudy),
+      ticks = ticks))
 
   /** Where the scrape guards keep each venue's state (the listing intake's). */
   lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)
@@ -86,5 +87,6 @@ trait CorpusWiring { self: WorkerWiring =>
     retiredVenues = () => RetiredVenueRows.sweep(Some(screeningsRepository), Some(slotsRepository),
       VenueRoster.venuesOf(country), now = clock.instant()),
     afterSweeps = () => retiredVenueCensus.sample(),
-    strandedDue = StrandedSideRowsCleanup.weekly(scheduledRunStore, clock)))
+    strandedDue = StrandedSideRowsCleanup.weekly(scheduledRunStore, clock),
+    ticks = ticks))
 }

@@ -68,7 +68,8 @@ trait ReadModelWiring { self: Wiring =>
     coldRetryInterval = processConfiguration.readModelColdRetryInterval(WebReadModel.DefaultColdRetryInterval),
     streamMetrics     = webReadModelStreamMetrics,
     clock             = clock,
-    servingCountry    = Some(country)))
+    servingCountry    = Some(country),
+    ticks             = ticks))
 
   // Read at scrape time, so the model (forced at boot) is never built by the metric.
   lazy val webReadModelStreamMetrics = new services.metrics.WebReadModelStreamMetrics(webJvmMetrics.registry, country.code,

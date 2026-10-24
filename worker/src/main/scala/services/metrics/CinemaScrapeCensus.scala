@@ -57,7 +57,8 @@ class CinemaScrapeCensus(
   neverScraped:   Gauge,
   country:        Country,
   clock:          Clock,
-  override protected val sampleInterval: FiniteDuration = CinemaScrapeCensus.DefaultSampleInterval
+  override protected val sampleInterval: FiniteDuration = CinemaScrapeCensus.DefaultSampleInterval,
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
 ) extends SampledCensus {
   import CinemaScrapeCensus._
 

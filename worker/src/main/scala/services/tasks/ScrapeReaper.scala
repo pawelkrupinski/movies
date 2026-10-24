@@ -6,7 +6,7 @@ import services.Stoppable
 import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 import services.cinemas.common.CinemaScraper
 
 import java.time.{Clock, Duration => JDuration, Instant}
@@ -146,7 +146,9 @@ class ScrapeReaper(
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock,
   // Runs the readiness wait and the ticks; a spec hands in a stepped one to cross the delays by hand.
-  scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
+  scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper"),
+  // Where each completed tick is reported (`ScheduledTickStale`).
+  ticks: TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   /** Venues this tick must admit for the roster to be swept once per freshness
@@ -218,6 +220,8 @@ class ScrapeReaper(
     // Defer onto the scheduler thread so we can block it on the freshness hydrate
     // without holding up boot wiring; it then schedules the periodic ticks.
     scheduler.execute(() => ScheduledTick.logged("ScrapeReaper start", logger)(awaitReadyThenStart()))
+    // Armed now, not once the freshness mirror is ready: a hydrate that never finishes is no scraping too.
+    ticks.started("scrape-reaper", interval.value, initialDelay.value)
     logger.info(s"ScrapeReaper started over ${scrapers.size} cinemas, first tick after freshness hydrate then ${initialDelay.value.toSeconds}s, every ${interval.value.toSeconds}s.")
   }
 
@@ -232,7 +236,7 @@ class ScrapeReaper(
   private def awaitReadyThenStart(): Unit = {
     while (!Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout.value)).isSuccess)
       logger.info("ScrapeReaper: freshness mirror still hydrating; holding scrape ticks (no cold re-scrape).")
-    scheduler.scheduleWithFixedDelay(() => ScheduledTick.logged("ScrapeReaper", logger)(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("scrape-reaper", interval.value, logger, ticks)(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
   }
 
   /** Tick only if this machine wins the current minute's occurrence claim —

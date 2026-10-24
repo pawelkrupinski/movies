@@ -2,9 +2,10 @@ package services.tasks
 
 import play.api.Logging
 import services.Stoppable
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, TickRecorder, ScheduledTick}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -23,7 +24,9 @@ import scala.util.Try
 class WorkerHeartbeat(
   queue:           TaskQueue,
   intervalSeconds: Long      = 60,
-  now:             () => Long
+  now:             () => Long,
+  // Where each beat is reported (`ScheduledTickStale`).
+  ticks:           TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("worker-heartbeat")
@@ -65,8 +68,9 @@ class WorkerHeartbeat(
 
   def start(): Unit = {
     lastBeatMillis = now()
+    ticks.started("worker-heartbeat", intervalSeconds.seconds, intervalSeconds.seconds)
     scheduler.scheduleAtFixedRate(
-      () => beat(),
+      () => ScheduledTick.recorded("worker-heartbeat", intervalSeconds.seconds, logger, ticks)(beat()),
       intervalSeconds, intervalSeconds, TimeUnit.SECONDS)
     logger.info(s"WorkerHeartbeat started; logging queue depth every ${intervalSeconds}s.")
   }

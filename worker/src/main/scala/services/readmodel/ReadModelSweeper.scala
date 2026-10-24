@@ -1,5 +1,7 @@
 package services.readmodel
 
+import tools.{ScheduledTick, TickRecorder}
+
 import play.api.Logging
 import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
 import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval}
@@ -82,17 +84,23 @@ class ReadModelSweeper(
    *  source: a drift candidate for the sweep's verdict. */
   private[readmodel] def noteDrift(row: RowDrift): Unit = sweepDrift += row
 
-  /** Schedule the paced passes on `scheduler`: the orphan prune and the derivation pass's slices.
-   *  The worker's root calls it once the projector's stream watch is up. */
-  def schedule(scheduler: ScheduledExecutorService): Unit = {
+  /** Schedule the paced passes on `scheduler`: the orphan prune and the derivation pass's slices,
+   *  each completed tick reported to `ticks` (`ScheduledTickStale`). The worker's root calls it once
+   *  the projector's stream watch is up. */
+  def schedule(scheduler: ScheduledExecutorService, ticks: TickRecorder): Unit = {
+    val prune      = scala.concurrent.duration.Duration(PruneSeconds, TimeUnit.SECONDS)
+    val derivation = scala.concurrent.duration.Duration(DerivationPassTickSeconds, TimeUnit.SECONDS)
+    val bootDelay  = scala.concurrent.duration.Duration(PruneBootDelaySeconds, TimeUnit.SECONDS)
+    ticks.started("read-model-prune", prune, bootDelay)
+    ticks.started("read-model-derivation-pass", derivation, bootDelay)
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(
-      () => Try(pruneOrphans()).recover { case exception => logger.warn(s"read-model prune tick failed: ${exception.getMessage}") },
+      () => ScheduledTick.recorded("read-model-prune", prune, logger, ticks)(pruneOrphans()),
       PruneBootDelaySeconds, PruneSeconds, TimeUnit.SECONDS)
     // The derivation pass's slices, paced: a no-op unless the first sweep found one owed.
     scheduler.scheduleAtFixedRate(
-      () => Try(advanceDerivationPass()).recover { case exception => logger.warn(s"read-model derivation pass tick failed: ${exception.getMessage}") },
+      () => ScheduledTick.recorded("read-model-derivation-pass", derivation, logger, ticks)(advanceDerivationPass()),
       PruneBootDelaySeconds, DerivationPassTickSeconds, TimeUnit.SECONDS)
     logger.info(s"read-model sweeps scheduled: orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s).")
   }

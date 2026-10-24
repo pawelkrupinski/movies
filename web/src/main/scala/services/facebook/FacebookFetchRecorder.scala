@@ -1,7 +1,7 @@
 package services.facebook
 
 import play.api.Logging
-import tools.{DaemonExecutors, LogThrottle}
+import tools.{DaemonExecutors, LogThrottle, ScheduledTick, TickRecorder}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -19,14 +19,18 @@ import scala.util.Try
  * every page cannot grow the heap between writes. A batch the store refuses is dropped and logged:
  * losing a fetch only means that page's next card change is not re-scraped.
  */
-final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock, stopwatch: tools.Stopwatch) extends services.Stoppable with Logging {
+final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock, stopwatch: tools.Stopwatch,
+                                  // Where each completed flush is reported (`ScheduledTickStale`).
+                                  ticks: TickRecorder = TickRecorder.Unrecorded) extends services.Stoppable with Logging {
   import FacebookFetchRecorder.*
 
   private val pending  = new ConcurrentHashMap[String, Instant]()
   private val failures = new LogThrottle(10.minutes.toNanos, stopwatch)
 
   private val scheduler = DaemonExecutors.scheduler("facebook-fetches")
-  scheduler.scheduleWithFixedDelay(() => flush(), FlushEvery.toMillis, FlushEvery.toMillis, TimeUnit.MILLISECONDS)
+  ticks.started("facebook-fetch-flush", FlushEvery, FlushEvery)
+  scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("facebook-fetch-flush", FlushEvery, logger, ticks)(flush()),
+    FlushEvery.toMillis, FlushEvery.toMillis, TimeUnit.MILLISECONDS)
 
   /** A film page served at `url` to a client naming itself `userAgent`: joins the batch when that
    *  is Facebook's crawler. */

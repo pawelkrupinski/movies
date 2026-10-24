@@ -84,6 +84,6 @@ trait ResolutionWiring { self: WorkerWiring =>
     managedResources.stopping(new SettleReaper(() => settleTick(),
     interval = SettleInterval(services.identity.adapters.IdentityProjection.ReconcileEvery),
     initialDelay = SettleReaper.InitialDelay(services.identity.adapters.IdentityProjection.ReconcileEvery),
-    runStore = scheduledRunStore, clock = clock))
+    runStore = scheduledRunStore, clock = clock, ticks = ticks))
   }
 }

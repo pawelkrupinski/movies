@@ -1886,6 +1886,92 @@
           }
         }
       ]
+    },
+    {
+      "id": 34,
+      "type": "timeseries",
+      "title": "Periodic loops \u2014 time since each last completed a run, against its period",
+      "description": "Each scheduled loop stamps `kinowo_web_scheduled_tick_last_success_timestamp_seconds` after every run that returned (seeded at arm time with its first run's due time), and `kinowo_web_scheduled_tick_interval_seconds` with how often it means to run. Solid: time since the last completed run; dashed: the loop's period. A healthy loop saws below its period; `WebScheduledTickStale` (rules/scheduled-ticks.rules) fires past three periods, never under 30 minutes, held 5 minutes.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 159
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "time() - max by (country, tick) (kinowo_web_scheduled_tick_last_success_timestamp_seconds{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{tick}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, tick) (kinowo_web_scheduled_tick_interval_seconds{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{tick}} period"
+        }
+      ]
     }
   ],
   "annotations": {

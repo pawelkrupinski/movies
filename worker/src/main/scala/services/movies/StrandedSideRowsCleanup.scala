@@ -2,7 +2,7 @@ package services.movies
 
 import play.api.Logging
 import services.Stoppable
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, TickRecorder}
 
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
 
@@ -47,7 +47,9 @@ class StrandedSideRowsCleanup(
   retiredVenues: () => RetiredVenueRows,
   afterSweeps:   () => Unit,
   strandedDue:   () => Boolean,
-  scheduler:     ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup")
+  scheduler:     ScheduledExecutorService = DaemonExecutors.scheduler("stranded-side-rows-cleanup"),
+  // Where each completed daily tick is reported (`ScheduledTickStale`).
+  ticks:         TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   private val RunEveryHours       = 24L
@@ -66,6 +68,7 @@ class StrandedSideRowsCleanup(
   def start(): Unit = {
     logger.info(s"Side-row cleanup scheduled every ${RunEveryHours}h, its stranded-film backstop weekly " +
       s"(first run in ${StartupDelaySeconds}s).")
+    ticks.started("side-rows-cleanup", RunEveryHours.hours, StartupDelaySeconds.seconds)
     scheduler.scheduleAtFixedRate(
       () => {
         Try(if (strandedDue()) { removeStranded(); () }).recover {
@@ -77,7 +80,8 @@ class StrandedSideRowsCleanup(
         Try(afterSweeps()).recover {
           case exception => logger.warn(s"Side-row cleanup's after-sweep report failed: ${exception.getMessage}")
         }
-        ()
+        // Each step's own failure is logged above and does not stop the next; the tick itself ran.
+        ticks.completed("side-rows-cleanup", RunEveryHours.hours)
       },
       StartupDelaySeconds, RunEveryHours * 3600, TimeUnit.SECONDS
     )

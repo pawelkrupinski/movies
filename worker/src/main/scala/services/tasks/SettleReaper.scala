@@ -23,8 +23,9 @@ class SettleReaper(
   // How long after `start()` the first tick runs.
   initialDelay: SettleReaper.InitialDelay,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:        Clock
-) extends ClaimedPeriodicTask("settle", settle, interval.value, initialDelay.value, runStore, clock)
+  clock:        Clock,
+  ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded
+) extends ClaimedPeriodicTask("settle", settle, interval.value, initialDelay.value, runStore, clock, ticks)
 
 object SettleReaper {
 

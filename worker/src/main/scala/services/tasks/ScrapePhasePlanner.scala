@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.Stoppable
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, TickRecorder, ScheduledTick}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
@@ -20,7 +20,9 @@ final class ScrapePhasePlanner(
   costs:     ScrapeCostStore,
   periodFor: String => FiniteDuration,
   phases:    CostSpacedPhaseOffset,
-  estimates: ScrapeCostEstimates
+  estimates: ScrapeCostEstimates,
+  // Where each replan is reported (`ScheduledTickStale`).
+  ticks:     TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("scrape-phase-plan")
@@ -35,7 +37,10 @@ final class ScrapePhasePlanner(
       })
 
   def start(): Unit = {
-    val _ = scheduler.scheduleWithFixedDelay(() => replan(), 0L, ScrapePhasePlanner.ReplanInterval.toMillis, TimeUnit.MILLISECONDS)
+    ticks.started("scrape-phase-plan", ScrapePhasePlanner.ReplanInterval, scala.concurrent.duration.Duration.Zero)
+    val _ = scheduler.scheduleWithFixedDelay(
+      () => ScheduledTick.recorded("scrape-phase-plan", ScrapePhasePlanner.ReplanInterval, logger, ticks)(replan()),
+      0L, ScrapePhasePlanner.ReplanInterval.toMillis, TimeUnit.MILLISECONDS)
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }

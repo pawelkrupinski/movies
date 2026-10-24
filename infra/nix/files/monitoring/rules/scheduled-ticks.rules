@@ -1,0 +1,105 @@
+# IS EVERY PERIODIC LOOP STILL RUNNING? -- one question asked of every scheduled loop in the worker
+# and the web tier, instead of one Sentry cron check-in per loop (the option this replaced, from
+# docs/proposals/2026-10-23-dependency-and-flag-audit.md).
+#
+# THE FAILURE IS SILENT BY CONSTRUCTION. A reaper, census, sweep or sampler whose scheduler died,
+# whose tick hangs, or whose tick throws on every run logs a line at most and then publishes
+# NOTHING NEW: its gauges stay flat at their last value (which reads exactly like health), its
+# enqueues stop (which reads like nothing being due), and the process keeps answering /health. A
+# dead ScrapeReaper empties the site a cinema at a time over a week; a dead census freezes every
+# rule that reads it.
+#
+# THE SERIES. `tools.ScheduledTick.recorded` stamps, after every run that RETURNED,
+#
+#   kinowo_<tier>_scheduled_tick_last_success_timestamp_seconds{country,tick}
+#   kinowo_<tier>_scheduled_tick_interval_seconds{country,tick}
+#
+# (`services.metrics.ScheduledTickMetrics`; `tick` names the loop: `scrape-reaper`, `settle`,
+# `corpus-census`, `uptime-flush`, ...). When a loop is ARMED its timestamp is seeded with its first
+# run's DUE time, so a loop that never completes a run goes stale from when it should have, and a
+# long initial delay is not a stall. A loop that is not armed at all (DetailReaper with no deferred
+# cinemas, the OMDb backfill without a key) publishes no series and is correctly unwatched.
+#
+# THE THRESHOLD IS EACH LOOP'S OWN: three of its periods, never under thirty minutes. Three periods
+# is two missed runs plus the one in flight; a daily sweep goes stale after three days, the hourly
+# settle after three hours, the minute reapers after half an hour. The floor is for the loops that
+# tick every few seconds or minutes (the 5s re-scrape drain, the 10s uptime flush, the 1m reapers):
+# a GC pause, a slow Mongo round trip or one long tick must not page, and half an hour of a dead
+# reaper is still far short of anything a visitor sees (a cinema's scrape window is hours).
+#
+# `max by (country, tick)`: the occurrence claims let only one replica of a country run a claimed
+# window, so the newest stamp across replicas is the loop's; today every country runs one.
+#
+# A RESTART resets the gauges with the process: absent for the ~3 minutes the pod is replaced, then
+# re-seeded at the new pod's arm time. Neither state can fire -- an absent series compares to
+# nothing and a re-seeded one is fresh -- so no `last_over_time` bridging is needed, and the short
+# `for:` is only there to ride out a scrape that lands mid-tick.
+groups:
+  - name: scheduled-ticks
+    rules:
+      - alert: WorkerScheduledTickStale
+        expr: >-
+          time() - max by (country, tick) (kinowo_worker_scheduled_tick_last_success_timestamp_seconds)
+            > on (country, tick)
+          clamp_min(3 * max by (country, tick) (kinowo_worker_scheduled_tick_interval_seconds), 1800)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} worker loop {{ $labels.tick }} has not completed a run in over three of its periods"
+          description: >-
+            The value is how many seconds ago the loop last completed a run (or was due to run its
+            first). Its scheduler thread died, its tick is hanging, or every tick is throwing:
+            search the worker's logs for `{{ $labels.tick }} tick failed`, and take a thread dump
+            (`jcmd 1 Thread.print` in the pod) for a tick that is stuck rather than failing. A
+            restart re-arms every loop, which clears this; take the dump first, or the cause goes
+            with the process.
+
+      - alert: WebScheduledTickStale
+        expr: >-
+          time() - max by (country, tick) (kinowo_web_scheduled_tick_last_success_timestamp_seconds)
+            > on (country, tick)
+          clamp_min(3 * max by (country, tick) (kinowo_web_scheduled_tick_interval_seconds), 1800)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} web loop {{ $labels.tick }} has not completed a run in over three of its periods"
+          description: >-
+            The value is how many seconds ago the loop last completed a run (or was due to run its
+            first). `read-model-backstop` / `read-model-cold-retry` stale means the served listing
+            is no longer being re-read and may be frozen; `web-movie-metrics` stale means the
+            films-served gauges (and every alert reading them) are repeating an old sample. Search
+            the web pod's logs for `{{ $labels.tick }} tick failed`, and take a thread dump (`jcmd 1
+            Thread.print`) before restarting.
+
+      # THE COMPANIONS. The two rules above are comparisons and cannot fire without their series,
+      # so a tier that stops publishing the family altogether -- a wiring that lost its recorder, a
+      # rename -- would leave every loop in it unwatched and every rule here silent. `WorkerDown`
+      # and the web's own down alerts cover the whole target vanishing; these cover the process up
+      # and answering /metrics without the family.
+      - alert: WorkerScheduledTickMetricsAbsent
+        expr: absent(kinowo_worker_scheduled_tick_last_success_timestamp_seconds)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No worker is publishing its periodic loops' last runs"
+          description: >-
+            `kinowo_worker_scheduled_tick_last_success_timestamp_seconds` has no series from any
+            country, so `WorkerScheduledTickStale` cannot fire and no worker loop is watched. If
+            the workers are down, `WorkerDown` is the alert to read; if they are up, the wiring's
+            `ticks` recorder is no longer reaching the loops (modules.WorkerWiring).
+
+      - alert: WebScheduledTickMetricsAbsent
+        expr: absent(kinowo_web_scheduled_tick_last_success_timestamp_seconds)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No web pod is publishing its periodic loops' last runs"
+          description: >-
+            `kinowo_web_scheduled_tick_last_success_timestamp_seconds` has no series from any
+            country, so `WebScheduledTickStale` cannot fire and no web loop is watched. If the web
+            tier is down its own alerts are firing; if it is up, the wiring's `ticks` recorder is no
+            longer reaching the loops (modules.webwiring.MetricsWiring).

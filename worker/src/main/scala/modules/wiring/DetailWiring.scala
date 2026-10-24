@@ -56,7 +56,7 @@ trait DetailWiring { self: WorkerWiring =>
     configuration.detailTickInterval(DetailTickInterval(DetailReaper.DefaultTickInterval))
   lazy val detailReaper = managedResources.stopping(new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore,
     dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
-    runStore = scheduledRunStore, clock = clock,
+    runStore = scheduledRunStore, clock = clock, ticks = ticks,
     // The model reads every listing's page.
     pages = services.tasks.DetailPages.PerPage))
 }

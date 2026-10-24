@@ -80,7 +80,8 @@ class CinemaContentCensus(
   country:      Country,
   clock:        Clock,
   override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval,
-  rereadInterval: FiniteDuration = CinemaContentCensus.RereadInterval
+  rereadInterval: FiniteDuration = CinemaContentCensus.RereadInterval,
+  override protected val ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
 ) extends SampledCensus {
   import CinemaContentCensus._
 

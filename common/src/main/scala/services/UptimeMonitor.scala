@@ -45,7 +45,9 @@ class UptimeMonitor(
   clock: java.time.Clock,
   // Where a bucket TTL index this monitor could not bring into line is recorded — the
   // worker passes its process's one set, which its gauge reads.
-  ttlMismatches: TtlIndexMismatches = new TtlIndexMismatches
+  ttlMismatches: TtlIndexMismatches = new TtlIndexMismatches,
+  // Where each completed flush / poll / tag reload is reported (`ScheduledTickStale`).
+  ticks: tools.TickRecorder = tools.TickRecorder.Unrecorded
 ) extends Logging {
   import UptimeMonitor._
 
@@ -93,7 +95,11 @@ class UptimeMonitor(
       val exec = tools.DaemonExecutors.scheduler("uptime-monitor", threads = 2)
       scheduler.set(exec)
       backgroundSchedule(Some(c), tagColl).foreach { job =>
-        exec.scheduleWithFixedDelay(job.task, job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
+        val tick   = s"uptime-${job.name}"
+        val period = scala.concurrent.duration.Duration(job.periodMs, TimeUnit.MILLISECONDS)
+        ticks.started(tick, period, period)
+        exec.scheduleWithFixedDelay(() => tools.ScheduledTick.recorded(tick, period, logger, ticks)(job.task.run()),
+          job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
       }
       if (surfaceExternalWrites)
         logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s, reloading uptimeServiceTags every ${tagReloadIntervalMs / 1000}s for cross-process updates.")
@@ -132,16 +138,16 @@ class UptimeMonitor(
     bucketCollection: Option[MongoCollection[Document]],
     tagCollection: Option[MongoCollection[Document]]
   ): Seq[ScheduledJob] = {
-    val flushJob = bucketCollection.map(c => ScheduledJob("flush", FlushIntervalMs, () => Try(flush(c))))
+    val flushJob = bucketCollection.map(c => ScheduledJob("flush", FlushIntervalMs, () => { flush(c); () }))
     val readerJobs =
       if (!surfaceExternalWrites) Seq.empty
       else Seq(
-        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => Try(sync.poll(c)))),
+        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => { sync.poll(c); () })),
         // Re-read the tag collection so a cinema tagged by the worker after this
         // app booted still surfaces — but on its OWN, far slower period. The read
         // is unfiltered and the collection is no longer small (see
         // `TagReloadIntervalMs`), so it must not ride the 10s bucket poll.
-        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => Try(serviceTags.load(tc)))),
+        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => { serviceTags.load(tc); () })),
       ).flatten
     flushJob.toSeq ++ readerJobs
   }

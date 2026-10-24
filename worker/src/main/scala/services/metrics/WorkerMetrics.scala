@@ -97,6 +97,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // Each country's daily drift check: its live takes against a whole resolve — see IdentityDriftGauges.
   val identityDrift: IdentityDriftGauges = new IdentityDriftGauges(registry)
 
+  // Every periodic loop's pulse (kinowo_worker_scheduled_tick_*) — see ScheduledTickMetrics.
+  val scheduledTicks: ScheduledTickMetrics = ScheduledTickMetrics.worker(registry)
+
   // Listings landed incomplete, and venues stuck incomplete — see ListingIncompleteMetrics.
   val listingIncomplete: ListingIncompleteMetrics = new ListingIncompleteMetrics(countryCodes, registry)
 

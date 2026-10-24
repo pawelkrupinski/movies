@@ -132,7 +132,11 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // Whether `userStates` has its unique userId index — `UserStateIndexMetrics`.
     "kinowo_web_user_state_userid_index_unique",
     // Heap one listing render allocated — `services.metrics.WebRenderMetrics`.
-    "kinowo_web_page_render_allocated_bytes"
+    "kinowo_web_page_render_allocated_bytes",
+    // Each web loop's last completed run and period (ScheduledTickMetrics.web), read by
+    // scheduled-ticks.rules' `WebScheduledTickStale`.
+    "kinowo_web_scheduled_tick_last_success_timestamp_seconds",
+    "kinowo_web_scheduled_tick_interval_seconds"
   )
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —

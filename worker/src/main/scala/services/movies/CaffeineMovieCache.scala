@@ -7,7 +7,7 @@ import models.{MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.concurrent.duration.DurationInt
@@ -64,7 +64,9 @@ class CaffeineMovieCache(
   rehydrateInterval: CacheRehydrateInterval = CacheRehydrateInterval(6.hours),
   // The boot's other whole-corpus readers, handed the boot hydrate's read so the boot reads
   // the corpus once (see [[BootCorpusReader]]). None for specs and a lone cache.
-  bootReaders: Seq[BootCorpusReader] = Nil
+  bootReaders: Seq[BootCorpusReader] = Nil,
+  // Where each completed cold-retry and backstop tick is reported (`ScheduledTickStale`).
+  ticks: TickRecorder = TickRecorder.Unrecorded
 ) extends MovieCache with Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -850,17 +852,17 @@ class CaffeineMovieCache(
     }
 
   def start(): Unit = {
+    ticks.started("movie-cache-cold-retry", CaffeineMovieCache.ColdRetryInterval, CaffeineMovieCache.ColdRetryInterval)
     refreshScheduler.scheduleAtFixedRate(
-      () => Try(coldRetryTick()).recover { case exception => logger.warn(s"MovieCache cold-retry tick failed: ${exception.getMessage}") },
+      () => ScheduledTick.recorded("movie-cache-cold-retry", CaffeineMovieCache.ColdRetryInterval, logger, ticks)(coldRetryTick()),
       CaffeineMovieCache.ColdRetryInterval.toSeconds, CaffeineMovieCache.ColdRetryInterval.toSeconds, TimeUnit.SECONDS)
     watchHandle = repository.watchChangesFencedWithVenues(applyUpsert, applyDelete, applyVenueSlots)
     logger.info(
       s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
+    ticks.started("movie-cache-rehydrate", rehydrateInterval.value, rehydrateInterval.value)
     refreshScheduler.scheduleAtFixedRate(
-      () => Try(rehydrate()).recover {
-        case exception => logger.warn(s"MovieCache rehydrate tick failed: ${exception.getMessage}")
-      },
+      () => ScheduledTick.recorded("movie-cache-rehydrate", rehydrateInterval.value, logger, ticks)(rehydrate()),
       BackstopIntervalSeconds, BackstopIntervalSeconds, TimeUnit.SECONDS
     )
   }

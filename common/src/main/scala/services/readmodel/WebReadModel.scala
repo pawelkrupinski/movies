@@ -5,7 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.jdk.CollectionConverters._
@@ -45,7 +45,9 @@ class WebReadModel(
     // (or retired, so on no country's page), and reads the slugs THIS country's cities
     // used to answer at (`Country.formerSlugs`) alongside their own. `None` — specs over
     // one country's fixture rows — takes every row and no former slugs.
-    servingCountry:    Option[Country] = None) extends Stoppable with Logging {
+    servingCountry:    Option[Country] = None,
+    // Where each completed backstop and cold-retry tick is reported (`ScheduledTickStale`).
+    ticks:             TickRecorder = TickRecorder.Unrecorded) extends Stoppable with Logging {
 
   private val formerSlugs: String => Seq[String] = servingCountry.fold((_: String) => Seq.empty[String])(c => c.formerSlugs)
 
@@ -526,11 +528,13 @@ class WebReadModel(
         movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete, outcome.answered)
         screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, outcome.answered)
     }
+    ticks.started("read-model-backstop", reloadInterval.value, reloadInterval.value)
+    ticks.started("read-model-cold-retry", coldRetryInterval.value, coldRetryInterval.value)
     scheduler.scheduleAtFixedRate(
-      () => Try(backstopTick()).recover { case exception => logger.warn(s"WebReadModel backstop tick failed: ${exception.getMessage}") },
+      () => ScheduledTick.recorded("read-model-backstop", reloadInterval.value, logger, ticks)(backstopTick()),
       BackstopSeconds, BackstopSeconds, TimeUnit.SECONDS)
     scheduler.scheduleAtFixedRate(
-      () => Try(coldRetryTick()).recover { case exception => logger.warn(s"WebReadModel cold-retry tick failed: ${exception.getMessage}") },
+      () => ScheduledTick.recorded("read-model-cold-retry", coldRetryInterval.value, logger, ticks)(coldRetryTick()),
       ColdRetrySeconds, ColdRetrySeconds, TimeUnit.SECONDS)
     logger.info(s"WebReadModel started; backstop reload every ${BackstopSeconds}s; " +
       s"cold retry every ${ColdRetrySeconds}s; " +

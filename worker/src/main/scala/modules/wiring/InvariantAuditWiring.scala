@@ -40,8 +40,8 @@ trait InvariantAuditWiring { self: WorkerWiring =>
     def enqueue(taskType: TaskType, key: String): () => Unit =
       () => { taskQueue.enqueue(taskType, key, submittedAt = clock.instant()); () }
     Seq(new ClaimedEnqueueReaper("read-model-content-audit",
-      enqueue(TaskType.AuditReadModelContent, "read-model-content-audit"), 1.hour, 20.minutes, scheduledRunStore, clock)) ++
+      enqueue(TaskType.AuditReadModelContent, "read-model-content-audit"), 1.hour, 20.minutes, scheduledRunStore, clock, ticks = ticks)) ++
     Option.when(shareCardsEnabled)(new ClaimedEnqueueReaper("share-card-audit",
-      enqueue(TaskType.AuditShareCards, "share-card-audit"), 1.hour, 25.minutes, scheduledRunStore, clock))
+      enqueue(TaskType.AuditShareCards, "share-card-audit"), 1.hour, 25.minutes, scheduledRunStore, clock, ticks = ticks))
   })
 }

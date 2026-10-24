@@ -71,11 +71,11 @@ trait TaskQueueWiring { self: WorkerWiring =>
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
     // Report claims / outcomes / handler durations to the Prometheus metrics.
     observer = taskMetrics
-  , clock = clock))
+  , clock = clock, ticks = ticks))
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).
-  lazy val workerHeartbeat = managedResources.stopping(new WorkerHeartbeat(taskQueue, now = () => clock.millis()))
+  lazy val workerHeartbeat = managedResources.stopping(new WorkerHeartbeat(taskQueue, now = () => clock.millis(), ticks = ticks))
 
   // Last-resort backstop for a WEDGED-but-alive JVM (the 2026-06-23 heap OOM, where
   // the process limped on for ~2h answering /health 200 because the OOM had killed
@@ -91,7 +91,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
     lastBeatMillis     = () => workerHeartbeat.lastTickMillis,
     stalenessThreshold = livenessStaleAfter,
     onWedged           = () => { tools.HeapDumper.dump(heapDumpDirectory, tools.HeapDumper.Wedged, clock); sys.exit(70) },
-    now                = () => clock.millis()))
+    now                = () => clock.millis(),
+    ticks              = ticks))
 }
 
 object TaskQueueWiring {

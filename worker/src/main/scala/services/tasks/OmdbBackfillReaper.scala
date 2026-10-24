@@ -33,8 +33,9 @@ class OmdbBackfillReaper(
   // that drive `tickIfClaimed` directly.
   initialDelay: OmdbBackfillReaper.InitialDelay = OmdbBackfillReaper.InitialDelay(OmdbBackfillReaper.DefaultInitialDelay),
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
-  clock:        Clock
-) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval.value, initialDelay.value, runStore, clock)
+  clock:        Clock,
+  ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded
+) extends ClaimedEnqueueReaper("omdb-backfill", enqueueSweep, interval.value, initialDelay.value, runStore, clock, ticks = ticks)
 
 object OmdbBackfillReaper {
 

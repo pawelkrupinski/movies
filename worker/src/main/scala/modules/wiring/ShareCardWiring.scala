@@ -98,7 +98,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** This country's side of draining the fleet's re-scrape queue, on its own thread. */
   lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] = managedResources.stoppingEach(
     for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled; fetches <- facebookFetches }
-    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, shareCardMetrics, clock, stopwatch))
+    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, shareCardMetrics, clock, stopwatch, ticks))
 
   def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
 
@@ -142,12 +142,12 @@ trait ShareCardWiring { self: WorkerWiring =>
       Seq(
         new ClaimedEnqueueReaper("share-card-budget",
           enqueue(TaskType.PruneShareCards, "share-card-budget", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)),
-          10.minutes, 4.minutes, scheduledRunStore, clock),
+          10.minutes, 4.minutes, scheduledRunStore, clock, ticks = ticks),
         new ClaimedEnqueueReaper("share-card-prune",
           enqueue(TaskType.PruneShareCards, "share-card-prune", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Daily)),
-          24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt)),
+          24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt), ticks),
         // The city cards' weekly spread, ticked every minute like the scrape reaper.
-        new ClaimedEnqueueReaper("city-card", () => { cityCardService.enqueueDue(); () }, 1.minute, 3.minutes, scheduledRunStore, clock))
+        new ClaimedEnqueueReaper("city-card", () => { cityCardService.enqueueDue(); () }, 1.minute, 3.minutes, scheduledRunStore, clock, ticks = ticks))
     })
 }
 

@@ -9,7 +9,7 @@ import services.Stoppable
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -81,7 +81,9 @@ class EnrichmentReaper(
   // shared with the newcomer-fold path so the two can't drift. `None` builds one over
   // this reaper's own queue/freshness/dueWindow (tests are unaffected); the wiring
   // passes `Some(...)` of the SAME instance it hands `MovieService` for the newcomer kick.
-  enqueuer: Option[RatingEnqueuer] = None
+  enqueuer: Option[RatingEnqueuer] = None,
+  // Where each completed run is reported (`ScheduledTickStale`).
+  ticks: TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -93,6 +95,7 @@ class EnrichmentReaper(
 
   def start(): Unit = {
     scheduleNext(initialDelay.value)
+    ticks.started("enrichment-reaper", tickInterval.value, initialDelay.value)
     logger.info(s"EnrichmentReaper started: ${ratingEnqueuer.sourceCount} rating source(s), each row refreshed on an " +
                 s"adaptive cadence (base ${dueWindow.period.toHours}h, backing off per-film toward the cap when its " +
                 s"displayed value is stable), phase-spread over ticks every ${tickInterval.value.toSeconds}s.")
@@ -103,7 +106,7 @@ class EnrichmentReaper(
    *  would freeze the boot-time value). */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.logged("EnrichmentReaper", logger)(tickIfClaimed()); scheduleNext(tickInterval.value) }
+      def run(): Unit = { ScheduledTick.recorded("enrichment-reaper", tickInterval.value, logger, ticks)(tickIfClaimed()); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

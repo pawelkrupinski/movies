@@ -84,8 +84,10 @@ class WorkerWiring(
   val workerMetrics: WorkerMetrics =
     injectedWorkerMetrics.getOrElse(
       WorkerMetrics.singleCountry(country, workerPoolSize))
+  /** Where this country's periodic loops report each completed run (`ScheduledTickStale`). */
+  lazy val ticks: tools.TickRecorder = workerMetrics.scheduledTicks.forCountry(country.code, clock)
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, clock = clock,
-    ttlMismatches = workerMetrics.ttlIndexMismatches)
+    ttlMismatches = workerMetrics.ttlIndexMismatches, ticks = ticks)
 
   // ── The incremental identity model ─────────────────────────────────────────
   // The resolver kept current by events (docs/design/identity-resolver.md §20) instead of a
@@ -115,10 +117,10 @@ class WorkerWiring(
     services.movies.OrphanFilmStateSweep.liveTmdbIds(movieRepository), clock)
   lazy val orphanFilmStateSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("orphan-film-state-sweep", () => { orphanFilmStateSweep.sweep(); () },
-      services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock))
+      services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock, ticks))
   lazy val identityTmdbSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); () },
-      services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock))
+      services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks))
   lazy val identityTmdbStore: services.identity.adapters.TmdbStore = identityTmdbLayer.store
   lazy val identityTmdbNormalizer: services.identity.adapters.TmdbNormalizer = new services.identity.adapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`): each day's edits checked at a
@@ -131,7 +133,7 @@ class WorkerWiring(
   lazy val identityTmdbChangesSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => { identityTmdbChanges.tick(); () },
       services.identity.adapters.TmdbChangesSweep.TickInterval,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock))
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
   /** The model's questions due to be asked again (`TmdbRefreshes`). */
   lazy val identityTmdbRefreshes: services.identity.adapters.TmdbRefreshes =
     new services.identity.adapters.TmdbRefreshes(identityTmdbStore, country.language.toLanguageTag, clock)
@@ -249,7 +251,7 @@ class WorkerWiring(
       java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
     clock)
   lazy val closureSchedule = managedResources.stopping(new services.tasks.ClaimedPeriodicTask("venue-closure", () => closureSweep.sweep(),
-    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock))
+    WorkerWiring.ClosureSweepInterval, WorkerWiring.ClosureSweepInitialDelay, scheduledRunStore, clock, ticks))
 
   // The model's PACED LIVE LOOKUP FILL (docs/design/identity-resolver.md §19), on its own claimed
   // schedule (`identityLookupRefreshSchedule`): the model asks live only what its store lacks, so an
@@ -286,7 +288,7 @@ class WorkerWiring(
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => lookupFill.start(), identityLookupFillInterval.value,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock))
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def lookupFillSleep: Long => Unit = Thread.sleep
@@ -470,7 +472,7 @@ class WorkerWiring(
       try readModelProjector.prepare(readModelSweeper) finally projectorPrepared = true
       cacheStarted.await()
       readModelProjector.watch()
-      if (readModelProjector.enabled) readModelSweeper.schedule(readModelScheduler)
+      if (readModelProjector.enabled) readModelSweeper.schedule(readModelScheduler, ticks)
     }
     // The cache hydrate (synchronous findAll — the first scrape tick needs a populated cache for
     // sibling/redirect checks). The heavy jobs stay deferred off the boot window: the first

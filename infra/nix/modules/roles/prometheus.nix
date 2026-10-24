@@ -228,6 +228,10 @@ let
     # has, venues not going quiet day after day, stored cards equal to a fresh projection, share-
     # card pointers that resolve on disk -- the questions no mechanism panel answers.
     "runtime-invariants"
+    # IS EVERY PERIODIC LOOP STILL RUNNING. Each worker and web loop publishes when it last completed
+    # a run and how often it means to; one rule holds every loop to a few of its own periods. What
+    # the user chose over Sentry cron check-ins (docs/proposals/2026-10-23-dependency-and-flag-audit.md).
+    "scheduled-ticks"
     # ARE THE FILM SHARE CARDS WITHIN THEIR DISK BUDGET, and are their poster upstreams answering.
     # The worker renders the cards (and caches posters) onto k3s-worker-1's disk under one budget.
     "share-cards"

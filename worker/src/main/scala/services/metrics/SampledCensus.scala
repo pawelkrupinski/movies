@@ -1,11 +1,10 @@
 package services.metrics
 
 import play.api.Logging
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Try
 
 /**
  * The sample-on-a-timer scaffolding every census in this package shares: take the first
@@ -22,7 +21,7 @@ import scala.util.Try
  * measures the thing nothing else can see — a cinema that stopped being scraped, a
  * rating source that stopped running — so a sampler that dies on one bad tick
  * leaves a FLAT line, which reads exactly like health. Every implementation has to
- * wrap its tick in the same `Try`, and "every implementation has to remember" is
+ * wrap its tick in the same guard, and "every implementation has to remember" is
  * how one of them eventually doesn't.
  */
 trait SampledCensus extends services.Stoppable with Logging {
@@ -38,12 +37,11 @@ trait SampledCensus extends services.Stoppable with Logging {
    *  it cheap and side-effect-free beyond writing gauges. */
   def sample(): Unit
 
-  private lazy val scheduler = DaemonExecutors.scheduler(censusName)
+  /** Where each reading that completed is reported (`ScheduledTickStale`): a dead sampler leaves
+   *  its gauges flat, which reads exactly like health. */
+  protected def ticks: TickRecorder = TickRecorder.Unrecorded
 
-  private def sampleQuietly(occasion: String): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"$censusName $occasion failed: ${e.getMessage}") }
-    ()
-  }
+  private lazy val scheduler = DaemonExecutors.scheduler(censusName)
 
   /** Which of [[SampledCensus.Slots]] this census takes its first reading in: 0 for a light one. */
   protected def firstSampleSlot: Int = 0
@@ -52,7 +50,8 @@ trait SampledCensus extends services.Stoppable with Logging {
   protected def firstSampleDelay: FiniteDuration = SampledCensus.firstDelay(firstSampleSlot, sampleInterval)
 
   def start(): Unit = {
-    scheduler.scheduleAtFixedRate(() => sampleQuietly("sample tick"),
+    ticks.started(censusName, sampleInterval, firstSampleDelay)
+    scheduler.scheduleAtFixedRate(() => ScheduledTick.recorded(censusName, sampleInterval, logger, ticks)(sample()),
       firstSampleDelay.toMillis, sampleInterval.toMillis, TimeUnit.MILLISECONDS)
     ()
   }

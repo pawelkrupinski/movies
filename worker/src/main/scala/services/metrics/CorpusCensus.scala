@@ -8,7 +8,7 @@ import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClo
 import play.api.Logging
 import services.movies.{CacheKey, CinemaCorroboration, MovieCache, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.readmodel.ReadModelProjection
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
 import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -58,7 +58,9 @@ final class CorpusCensus(
   cities:          Seq[City],
   clock:           Clock,
   metrics:         CorpusCensusMetrics = CorpusCensusMetrics.noop,
-  publishInterval: FiniteDuration    = CorpusCensus.DefaultPublishInterval
+  publishInterval: FiniteDuration    = CorpusCensus.DefaultPublishInterval,
+  // Where each completed publish is reported (`ScheduledTickStale`): a dead census leaves its gauges flat.
+  ticks:           TickRecorder      = TickRecorder.Unrecorded
 ) extends services.Stoppable with Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -160,7 +162,9 @@ final class CorpusCensus(
       Try(seed()).recover { case e => logger.warn(s"corpus-census could not count the cache: ${e.getMessage}") }
       publishQuietly()
     }
-    scheduler.scheduleAtFixedRate(() => publishQuietly(), publishInterval.toSeconds, publishInterval.toSeconds, TimeUnit.SECONDS)
+    ticks.started("corpus-census", publishInterval, publishInterval)
+    scheduler.scheduleAtFixedRate(() => ScheduledTick.recorded("corpus-census", publishInterval, logger, ticks)(publish()),
+      publishInterval.toSeconds, publishInterval.toSeconds, TimeUnit.SECONDS)
     ()
   }
 

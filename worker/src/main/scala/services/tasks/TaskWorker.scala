@@ -5,7 +5,7 @@ import settings.WorkerPoolSize
 import services.Stoppable
 import services.metrics.TaskObserver
 import services.metrics.WorkerTaskMetrics.Outcome
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, TickRecorder, ScheduledTick}
 import play.api.Logging
 
 import java.net.InetAddress
@@ -91,7 +91,9 @@ class TaskWorker(
   // What "now" is for claims and a released task's back-off — the wiring's clock. It has to
   // ADVANCE: a clock that stands still (TestWiring's pinned one) parks every backed-off task
   // forever, so a harness that starts the task worker must give the wiring a moving clock.
-  clock:             java.time.Clock
+  clock:             java.time.Clock,
+  // Where each completed lease reap is reported (`ScheduledTickStale`).
+  ticks:             TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
   import HandlerOutcome._
   import TaskWorker._
@@ -128,8 +130,11 @@ class TaskWorker(
     // Leases run `processingTimeout` (5min), so reaping every `reapInterval`
     // (30s) is ample. A reap returns crashed/stuck (and other nodes') leases to
     // waiting; ring so the freed work is picked up now, not at the next backstop.
+    ticks.started("task-lease-reaper", reapInterval.value, reapInterval.value)
     reaper.scheduleWithFixedDelay(
-      () => Try { if (queue.reapExpiredLeases(clock.instant()) > 0) doorbell.ring() },
+      () => ScheduledTick.recorded("task-lease-reaper", reapInterval.value, logger, ticks) {
+        if (queue.reapExpiredLeases(clock.instant()) > 0) doorbell.ring()
+      },
       reapInterval.value.toMillis, reapInterval.value.toMillis, TimeUnit.MILLISECONDS)
     (0 until poolSize.value).foreach { i =>
       val id = s"$baseId-$i"
