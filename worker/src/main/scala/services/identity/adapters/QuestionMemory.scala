@@ -43,6 +43,16 @@ import java.time.{Clock, Instant}
 final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) {
   import QuestionMemory._
 
+  private val written = new java.util.concurrent.atomic.AtomicLong
+  /** How many times this memory has written its markers: moved only after a write landed (or failed, maybe partly), so a
+   *  reader that saw it unmoved since it last read [[attempted]] knows no question has been attempted since — what the
+   *  agreement stage's quiet apply checks instead of reading every question it waits on (`AgreementStage.attemptsMarked`).
+   *  Sound as the document cache is: every marker write goes through this worker's one memory. */
+  def marks: Long = written.get
+
+  private def write(markers: Seq[(String, BsonDocument)]): Unit =
+    try docs.put(TmdbKind.Marker, markers) finally { written.incrementAndGet(); () }
+
   /** `questions` without those still inside their wait. */
   def due(questions: Set[Question]): Set[Question] = {
     val ids = questions.iterator.flatMap(question => markerOf(question).map(question -> _)).toMap
@@ -80,7 +90,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
 
   private def mark(questions: Iterable[Question], outcome: Option[String]): Unit = {
     val marked = questions.iterator.flatMap(markerOf).toSeq.distinct
-    if (marked.nonEmpty) docs.put(TmdbKind.Marker, marked.map { marker =>
+    if (marked.nonEmpty) write(marked.map { marker =>
       val doc = new BsonDocument(TmdbStore.FetchedAt, BsonInt64(clock.millis()))
       outcome.foreach(o => doc.append(OutcomeField, BsonString(o)))
       marker -> doc
@@ -131,7 +141,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
         host.foreach(h => doc.append(HostField, BsonString(h)))
         (question, marker -> doc, times)
       }
-      docs.put(TmdbKind.Marker, marked.map(_._2))
+      write(marked.map(_._2))
       marked.map { case (question, _, times) => question -> times }.toMap
     }
   }
@@ -150,9 +160,9 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
     lazy val inOutage = markers(Seq(Health -> health)).get(health).exists(doc => BsonFields.int64(doc.get(OutageSince)).isDefined)
     val now = clock.millis()
     if (failed > 0 && answered == 0 && failed + deferred >= MinOutageReads)
-      docs.put(TmdbKind.Marker, Seq(health -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
+      write(Seq(health -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
     else if (failed == 0 && answered > 0 && inOutage)
-      docs.put(TmdbKind.Marker, Seq(health -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
+      write(Seq(health -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
   }
 
   /** `host` is back — its breaker closed after an outage, or it answered after a run of failures
@@ -160,7 +170,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
    *  recovery ([[roundEnded]]). */
   def recovered(host: String): Unit = {
     val now = clock.millis()
-    docs.put(TmdbKind.Marker, Seq(healthMarker(host) -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
+    write(Seq(healthMarker(host) -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
   }
 
   /** Those of `questions` whose last ask failed against `host` (a model question's with no host recorded: TMDB's). */

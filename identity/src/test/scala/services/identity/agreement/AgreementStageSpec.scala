@@ -658,6 +658,33 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stage.unreached shouldBe empty
   }
 
+  // A quiet apply (nothing filed) reads what it waits on again only once the memory behind `attempted` marked something:
+  // reading every waiting question's memory on each tick cost the e2e corpus's quiet projection 4.4 MB (3,459 questions).
+  it should "read none of what it waits on while the memory marks nothing, and settle on the apply after it marks" in {
+    var filmwebFailed = false
+    var marks, reads  = 0L
+    val families = agreeing() ++ Map(
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), unanswered = true))
+    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
+      attempted = { question => reads += 1; question match { case Question.Family(VoterFamily.Filmweb, _) => filmwebFailed; case _ => false } },
+      attemptsMarked = Some(() => marks))
+    val resolution = this.resolution                                                     // the model hands the same decisions
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None   // Filmweb's question holds it
+    stage.awaiting should not be empty
+    reads = 0
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None   // quiet: nothing marked, nothing read
+    reads shouldBe 0L
+    marks += 1                                                                           // a mark of another question: read
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe None   // once, none attempted, still held
+    reads should be > 0L
+    reads = 0
+    stage.apply(resolution, listingOf, version = 1)
+    reads shouldBe 0L                                                                    // and not again until the next mark
+    filmwebFailed = true; marks += 1                                                     // Filmweb asked and failed: settled
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
+  }
+
   it should "move a settled take on a later answer, its unanswered questions asked on every pass and after a restart too" in {
     var rtAnswered = false
     val families = agreeing() ++ Map(

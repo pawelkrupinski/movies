@@ -74,10 +74,12 @@ object PerformanceBudgets {
 
   // ── The identity projection over the settled fixture corpus (`IdentityCutoverEndToEndSpec`) ───
 
-  /** A scoped tick with nothing moved, and a whole one, on the projecting thread. The quiet tick measures
+  /** A scoped tick with nothing moved, and a whole one, on the projecting thread. The quiet tick measured
    *  6.52 MB on 7f10382ca, the commit that first set it (at 5.62, which no run reproduces): six of its seven
-   *  runs within 0.2%, the seventh the hourly whole read; 7.50 MB with C2 off (`-XX:TieredStopAtLevel=1`). */
-  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(6.52))
+   *  runs within 0.2%, the seventh the hourly whole read; 7.50 MB with C2 off (`-XX:TieredStopAtLevel=1`).
+   *  5.02 MB (5.00 and 5.02, two runs) once the agreement stage stopped reading each of the 3,459 questions it
+   *  waits on every quiet tick (9.35 MB: 4.4 MB of `QuestionMemory` reads, read only once the memory marks). */
+  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.02))
   val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(34.1))
   /** Venue slots built by projections over a corpus where nothing moved. */
   val QuietProjectionSlotsBuilt = operations("venue slots built with nothing moved", limit = 0)

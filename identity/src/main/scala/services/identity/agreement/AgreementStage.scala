@@ -67,7 +67,8 @@ import scala.collection.mutable
  * cluster again, so a later answer can always move the take. The one rule holds for every question a take reads — a
  * find, a poster, a catalogue page or id, a record's day, a family's question read by a correction or the broadcast
  * join: one attempted and not answered is read as no evidence ([[settled]]), the take decided without it, the question
- * asked on every pass and read again once answered.
+ * asked on every pass and read again once answered. `attemptsMarked`, when given, counts the writes of the memory behind
+ * `attempted`: an apply at the same version reads what it waits on again only once that count moved.
  */
 final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], private[agreement] val venues: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
                            private[agreement] val calibration: IdentityCalibration, private[agreement] val tmdbOf: String => Answer[Option[Int]], private[agreement] val stored: AgreementVerdicts,
@@ -79,7 +80,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val correctionPostersAtOnce: Int = AgreementStage.CorrectionPostersAtOnce,
                            private[agreement] val correctionsPerApply: Int = AgreementStage.CorrectionsPerApply,
                            private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
-                           private[agreement] val attempted: Question => Boolean = _ => false) extends AgreementCorrections, AgreementTakes, AgreementCandidates {
+                           private[agreement] val attempted: Question => Boolean = _ => false,
+                           private[agreement] val attemptsMarked: Option[() => Long] = None) extends AgreementCorrections, AgreementTakes, AgreementCandidates {
 
   /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
    *  decides every verdict again, as a change of the code does. */
@@ -141,6 +143,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The questions the last [[apply]] waited on that were not attempted yet: one attempted since — a failed ask files
    *  nothing — is what reads the same decisions at the same version again ([[attemptedSince]]). */
   private[agreement] var awaiting = Set.empty[Question]
+  /** `attemptsMarked` as it stood when [[awaiting]] was last found unattempted: while the memory has marked nothing
+   *  since, none of them can have been attempted, and a quiet apply reads none of their records (3,459 on the e2e corpus,
+   *  4.4 MB a tick). */
+  private[agreement] var awaitingMarks: Option[Long] = None
   /** The questions handed to `ask` since the families' answers last moved (at `handedAt`): a tick that filed nothing
    *  hands nothing. */
   private[agreement] var handed   = Set.empty[Question]
@@ -188,7 +194,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** Was a question the last apply waited on attempted since, though nothing was filed — a cluster's wait settling, a
    *  take's evidence read as none? */
-  private[agreement] def attemptedSince: Boolean = awaiting.exists(tried)
+  private[agreement] def attemptedSince: Boolean = awaiting.nonEmpty && {
+    val marks = attemptsMarked.map(_())
+    (marks.isEmpty || marks != awaitingMarks) && {
+      val since = awaiting.exists(tried)
+      if (!since) awaitingMarks = marks   // marked since, but none of these: not read again until the next mark
+      since
+    }
+  }
 
   /** Forget the listings read for each decision holding one of `keys`; whether one the stage reads — a cluster nothing
    *  took, a model take it corrects — holds any. */
@@ -223,6 +236,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     forgetGone(resolution, pass)
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
     handOver(version)
+    // read before the questions are: a mark landing while they are read moves it, and the next apply reads them again
+    awaitingMarks = attemptsMarked.map(_())
     awaiting = wantedNow.filterNot(tried)
     unread = pass.spent
     report(decisions, pass, started)

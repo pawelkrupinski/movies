@@ -170,6 +170,22 @@ class QuestionMemorySpec extends AnyFlatSpec with Matchers {
     memory.failed(Seq(record)) shouldBe Map(record -> 1)                          // counted afresh after an answer
   }
 
+  // The agreement stage's quiet apply reads none of the questions it waits on while this count stands still: it must move
+  // on every write of a marker, and on no read.
+  it should "count its writes, each answer, non-answer and failure marked, and no read" in {
+    val memory = this.memory(at)
+    val find   = Question.Find("tt1")
+    memory.marks shouldBe 0L
+    memory.attempted(imdbLalka); memory.due(Set[Question](imdbLalka)); memory.outcomes(Set[Question](imdbLalka, find))
+    memory.marks shouldBe 0L
+    memory.answered(Seq(imdbLalka))
+    memory.marks shouldBe 1L
+    memory.unanswered(Seq(find)); memory.failed(Seq(Question.Record(7)))
+    memory.marks shouldBe 3L
+    memory.answered(Nil); memory.failed(Nil)                                       // nothing to mark: nothing written
+    memory.marks shouldBe 3L
+  }
+
   it should "release a host's failures when that host recovers, and no other host's" in {
     val clock  = at
     val memory = this.memory(clock)

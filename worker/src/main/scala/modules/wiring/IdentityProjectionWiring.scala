@@ -127,7 +127,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
       correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
-      askNow = askNow, attempted = identityQuestionMemory.attempted)
+      askNow = askNow, attempted = identityQuestionMemory.attempted,
+      attemptsMarked = Some(() => identityQuestionMemory.marks))
 
   // The drift check (services.identity.adapters.IdentityDriftCheck) no longer runs on the worker: its whole resolve and
   // fresh agreement stage, beside the model's own state, filled worker-us's tenured gen and OOM-killed it at its first
