@@ -1,5 +1,6 @@
 import XCTest
 import KinowoTestSupport
+@testable import KinowoCore
 @testable import KinowoAuth
 
 /// `HttpLanguageClient.push` must report a rejected PUT as a failure — a
@@ -54,7 +55,7 @@ final class HttpLanguageClientTests: XCTestCase {
         let client = HttpLanguageClient(session: URLProtocolStub.session())
         _ = try await client.fetch()
         try await client.push("de")
-        XCTAssertEqual(agents.withLock { $0 }, ["KinowoIOS/1.0", "KinowoIOS/1.0"])
+        XCTAssertEqual(agents.withLock { $0 }, [KinowoUserAgent.value, KinowoUserAgent.value])
     }
 }
 

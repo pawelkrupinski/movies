@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+@testable import KinowoCore
 @testable import KinowoAuth
 
 /// Every auth request carries the app's User-Agent: without it the server's route-usage stats file
@@ -17,7 +18,7 @@ final class AuthRequestsTests: XCTestCase {
             ("deleteAccount", AuthRequests.deleteAccount(base: base)),
         ]
         for (name, request) in requests {
-            XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), "KinowoIOS/1.0", name)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), KinowoUserAgent.value, name)
         }
     }
 
