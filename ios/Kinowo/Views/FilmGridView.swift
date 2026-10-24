@@ -26,7 +26,7 @@ private extension View {
     /// Quickly animate the enclosing `ScrollViewReader` back to `gridTopAnchorID`
     /// whenever `token` changes — a brief scroll up rather than an abrupt snap.
     func resetsScrollToTop<T: Equatable>(on token: T, using proxy: ScrollViewProxy) -> some View {
-        onChange(of: token) { _ in
+        onChange(of: token) {
             withAnimation(.easeOut(duration: 0.25)) {
                 proxy.scrollTo(gridTopAnchorID, anchor: .top)
             }
@@ -106,7 +106,7 @@ struct FilmGridView: View {
                     .id(gridTopAnchorID)
             }
             .scrollDismissesKeyboard(.immediately)
-            .modifier(ScrollClipDisabledIfAvailable())
+            .scrollClipDisabled()
             .resetsScrollToTop(on: scrollResetToken, using: proxy)
         }
     }
@@ -176,7 +176,7 @@ struct CinemaSectionedGridView<Header: View>: View {
                 .id(gridTopAnchorID)
             }
             .scrollDismissesKeyboard(.immediately)
-            .modifier(ScrollClipDisabledIfAvailable())
+            .scrollClipDisabled()
             .resetsScrollToTop(on: scrollResetToken, using: proxy)
         }
     }
@@ -196,15 +196,5 @@ struct CinemaSectionedGridView<Header: View>: View {
                     .frame(height: headerStyle.underlineThickness)
             }
             .accessibilityIdentifier(A11y.CinemaPage.sectionHeader)
-    }
-}
-
-private struct ScrollClipDisabledIfAvailable: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 17.0, *) {
-            content.scrollClipDisabled()
-        } else {
-            content
-        }
     }
 }

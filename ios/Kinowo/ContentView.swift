@@ -171,7 +171,7 @@ struct ContentView: View {
                 // First visit to a split city (London): ask which areas to show.
                 // Fires when the catalog resolves as split and this city hasn't
                 // been seen; shown once (markAreaPickerSeen). No-op on flat cities.
-                .onChange(of: store.catalog) { catalog in
+                .onChange(of: store.catalog) { _, catalog in
                     if catalog.isSplit,
                        let city = prefs.selectedCity,
                        !prefs.areaPickerSeenCities.contains(city) {
@@ -273,7 +273,7 @@ struct ContentView: View {
         }
         // Cold start: the first non-empty `store.films` is the first
         // repertoire load completing.
-        .onChange(of: store.films.isEmpty) { isEmpty in
+        .onChange(of: store.films.isEmpty) { _, isEmpty in
             if !isEmpty {
                 maybeShowSwipeHint()
                 openFiltersIfRequested()
@@ -283,9 +283,9 @@ struct ContentView: View {
         // city's repertoire is the loaded one — not merely when films turn
         // non-empty, which on a warm app / cached cold-start is still the
         // PREVIOUS city's list (so the film lookup would miss).
-        .onChange(of: store.loadedCitySlug) { _ in applyPendingDeepLinkIfReady() }
+        .onChange(of: store.loadedCitySlug) { applyPendingDeepLinkIfReady() }
         // A link that arrived while the app was already running.
-        .onChange(of: deepLink.pending) { link in
+        .onChange(of: deepLink.pending) { _, link in
             if let link { consumeDeepLink(link) }
         }
         .onAppear {
@@ -294,7 +294,7 @@ struct ContentView: View {
             if let link = deepLink.pending { consumeDeepLink(link) }
             Task { await maybeSuggestCitySwitch() }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             // App came back from background — drop screenings that
             // slipped into the past while we were idle and re-sort
             // cinemas by their earliest remaining slot of the day.
@@ -501,7 +501,7 @@ struct ContentView: View {
             }
             // Flash the day name and retire the swipe hint whenever the day
             // changes — by a swipe OR a date-pill tap (both move this selection).
-            .onChange(of: dateFilter) { _ in didChangeDay() }
+            .onChange(of: dateFilter) { didChangeDay() }
         }
     }
 

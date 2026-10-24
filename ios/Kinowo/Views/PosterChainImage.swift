@@ -85,7 +85,7 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
             }
         }
         .id(generation)
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             // Bringing the app to the foreground resets the backoff clock so
             // a flaky CDN gets a fresh attempt immediately, not on the tail
             // of an old cycle. Only fire the restart when we're currently
@@ -99,8 +99,8 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
         // — a re-enriched film swapping its primary artwork, or dropping a
         // fallback. Start the new chain from its own primary instead of
         // resuming at an index that belonged to the old one.
-        .onChange(of: primary) { _ in restartFromPrimary() }
-        .onChange(of: fallbacks) { _ in restartFromPrimary() }
+        .onChange(of: primary) { restartFromPrimary() }
+        .onChange(of: fallbacks) { restartFromPrimary() }
         .onDisappear { retryTask?.cancel(); retryTask = nil }
     }
 

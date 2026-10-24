@@ -325,6 +325,10 @@ for the app, its XCUITests and the SwiftPM package (tools 6.0, `swiftLanguageMod
 from swift 5.10 to 6.2, whose corelibs Foundation no longer marks URL / DispatchQueue / Calendar / URLSession
 non-Sendable (the package builds and its 400 tests pass on Linux 6.2 and 6.4 with zero diagnostics).
 `scripts/ios-compile-check.sh` fails on any concurrency diagnostic on all three builds.
+**Since 2026-10-24:** deployment target **18.0** (the user's call; the package's floors are `.iOS(.v18)` /
+`.macOS(.v15)`, and `ios-compile-check.sh` fails when the pbxproj and `Package.swift` disagree). The bump retired
+the `#available(iOS 17)` `scrollClipDisabled` wrapper, the 13 deprecated one-parameter `onChange(of:perform:)`
+closures, and the NSLock in the tests' `LockedValue` (now `Synchronization.Mutex`, Sendable checked).
 
 1. **`@Observable` (iOS 17)** instead of 9 `ObservableObject` classes and about 22 `@Published` properties.
    `UserPreferences` (`Storage/UserPreferences.swift:34-88`) re-renders every observer on any change. The Combine
@@ -344,8 +348,8 @@ non-Sendable (the package builds and its 400 tests pass on Linux 6.2 and 6.4 wit
    `PosterStore.swift:181`), `asyncAfter` (`ShowtimeTuningScreen.swift:199`, `FilmDetailView.swift:441`) and
    `Task.sleep(nanoseconds:)` (5 sites).
 4. **`onGeometryChange`** instead of `GeometryReader` + `PreferenceKey` workarounds (`ShowingsView.swift:269-273,347-352`,
-   `ContentView.swift:153-157`, `FiltersBar.swift:227`): fewer views per showtime pill in a lazy grid. Whether it
-   back-deploys to iOS 16 is unverified.
+   `ContentView.swift:153-157`, `FiltersBar.swift:227`): fewer views per showtime pill in a lazy grid. Available at
+   the iOS 18 floor.
 5. **`@Entry`** for the 7 `EnvironmentKey` structs (back-deploys): about 30 lines deleted.
 6. Optional: Swift Testing for new tests (`Package.swift` is tools 6.0 now); `glassEffect` for the iOS 26
    look behind `#available`.

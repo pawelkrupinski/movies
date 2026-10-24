@@ -62,6 +62,24 @@ rm -f "$work/tmp"/*
 STUB_MISSING=xcodebuild compile --app-only; code=$?
 check "no full Xcode: the app build skipped with a warning, exit 0" "0 yes" "$code $(grep -q 'SKIPPED the app-target build' "$work/out" && echo yes || echo no)"
 
+# a project/manifest pair under IOS_DIR: floor <manifest major> <project value per configuration...>
+floor() {
+  local manifest=$1; shift
+  rm -rf "$work/ios"; mkdir -p "$work/ios/Kinowo.xcodeproj"
+  printf '        .macOS(.v15),\n        .iOS(.v%s),\n' "$manifest" > "$work/ios/Package.swift"
+  for value in "$@"; do printf '\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = %s;\n' "$value"; done > "$work/ios/Kinowo.xcodeproj/project.pbxproj"
+}
+floor 18 18.0 18.0 18.0
+IOS_DIR="$work/ios" compile --spm-only; code=$?
+check "the project and the package on one floor: exit 0, the floor said" "0 yes" "$code $(said 'iOS deployment target 18.0 in the project and the package')"
+floor 18 18.0 16.0 18.0
+IOS_DIR="$work/ios" compile --spm-only; code=$?
+check "one build configuration left behind: exit 1, both named" "1 yes" "$code $(said 'project.pbxproj says 16.0 18.0 , Package.swift 18.0')"
+floor 16 18.0 18.0
+IOS_DIR="$work/ios" compile --app-only; code=$?
+check "the package left behind: exit 1" "1 yes" "$code $(said 'Package.swift 16.0')"
+check "the real tree agrees" "0" "$(compile --spm-only; echo $?)"
+
 compile --wat; code=$?
 check "an unknown mode is a usage error" "2" "$code"
 

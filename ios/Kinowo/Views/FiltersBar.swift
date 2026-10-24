@@ -402,8 +402,8 @@ struct SwipeHintOverlay: View {
 // Tap feedback: spring-scale the label down on press and back on
 // release. Used by the Filtry icon (and any future TopBar button) so
 // taps feel like they registered without needing to wait for the
-// sheet to slide in. Works on iOS 16+; `.symbolEffect(.bounce)` would
-// be the more idiomatic choice but it's iOS 17+ only.
+// sheet to slide in. (`.symbolEffect(.bounce)` animates only the symbol,
+// on a value change, not the whole label while it is held down.)
 struct BounceButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -416,7 +416,7 @@ struct BounceButtonStyle: ButtonStyle {
 }
 
 // Translucent capsule background for the search pill. On iOS 26+ uses
-// the Liquid-Glass `.glassEffect` modifier; on iOS 16-25 falls back
+// the Liquid-Glass `.glassEffect` modifier; on iOS 18-25 falls back
 // to `.ultraThinMaterial`.
 private struct GlassyPillBackground: ViewModifier {
     @ViewBuilder
@@ -679,7 +679,7 @@ struct FiltersSheet: View {
             // After a successful sign-in (user goes nil → set), scroll the sheet
             // down to the freshly-revealed Konto section so the result of logging
             // in lands in view rather than off the bottom.
-            .onChange(of: authService.user != nil) { loggedIn in
+            .onChange(of: authService.user != nil) { _, loggedIn in
                 if loggedIn {
                     withAnimation { proxy.scrollTo(accountAnchor, anchor: .bottom) }
                 }
@@ -744,7 +744,7 @@ struct HiddenFilmsList: View {
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("search.placeholder"))
         .navigationTitle("filtersheet.hidden_films")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: prefs.hiddenFilms) { new in
+        .onChange(of: prefs.hiddenFilms) { _, new in
             if new.isEmpty { dismiss() }
         }
     }

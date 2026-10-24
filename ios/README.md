@@ -11,7 +11,7 @@ in `Models/` are `Codable` and the stores decode the API bodies directly.
 ## Open & run
 
 1. `open ios/Kinowo.xcodeproj`
-2. Pick an iPhone simulator (iOS 16+) and ⌘R.
+2. Pick an iPhone simulator (iOS 18+) and ⌘R.
 3. Set a development team if you want to run on a real device:
    Project → Kinowo target → *Signing & Capabilities* → *Team*.
 

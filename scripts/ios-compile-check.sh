@@ -24,6 +24,10 @@
 # the next incremental run, so the check sees every file that changed, and every file whose
 # dependencies' interfaces changed.
 #
+# Every mode first checks the iOS deployment target: the Xcode project (each build configuration) and
+# ios/Package.swift's `.iOS(.vN)` must name one floor, or the SwiftPM builds check the sources against a
+# platform the app does not ship to. IOS_DIR (default ios) points the check at another tree in tests.
+#
 # Usage: scripts/ios-compile-check.sh [--app-only | --spm-only | --linux-only]
 # The pre-push hook runs this when a push touches ios/**. Each part is skipped, with a warning,
 # when its toolchain is missing (no full Xcode, no swift, no Docker daemon) — never silently.
@@ -69,6 +73,19 @@ built() {
     log "$ok"
 }
 
+# deployment_target -> the one iOS floor the project's build configurations and the package manifest agree on,
+# or a failure naming both
+deployment_target() {
+    local dir="${IOS_DIR:-ios}" project manifest
+    project="$(sed -nE 's/.*IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);.*/\1/p' "$dir/Kinowo.xcodeproj/project.pbxproj" | sort -u | tr '\n' ' ')"
+    manifest="$(sed -nE 's/.*\.iOS\(\.v([0-9]+)\).*/\1.0/p' "$dir/Package.swift")"
+    if [ -z "$manifest" ] || [ "$project" != "$manifest " ]; then
+        warn "iOS deployment targets disagree: project.pbxproj says ${project:-nothing}, Package.swift ${manifest:-nothing} — raise both together"
+        return 1
+    fi
+    log "iOS deployment target $manifest in the project and the package"
+}
+
 app_build() {
     if ! xcodebuild -version >/dev/null 2>&1; then
         warn "xcodebuild unavailable (no full Xcode selected) — SKIPPED the app-target build."
@@ -106,6 +123,10 @@ linux_build() {
         swift:6.2 \
         swift build --build-tests --package-path /src --scratch-path /scratch
 }
+
+case "$mode" in
+    --app-only|--spm-only|--linux-only|all) deployment_target || status=1 ;;
+esac
 
 case "$mode" in
     --app-only)   app_build || status=1 ;;

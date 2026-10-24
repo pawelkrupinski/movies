@@ -413,7 +413,7 @@ struct CityChoiceView: View {
             .navigationBarTitleDisplayMode(.inline)
             // Switching country changes what every step means, so neither a
             // half-typed query nor a state from the country just left survives it.
-            .onChange(of: countryCode) { _ in
+            .onChange(of: countryCode) {
                 query = ""
                 region = nil
                 subregion = nil

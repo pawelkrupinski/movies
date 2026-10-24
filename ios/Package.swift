@@ -111,11 +111,12 @@ let networkingTargets: [Target] = []
 let package = Package(
     name: "Kinowo",
     platforms: [
-        // The Foundation APIs we use (URLSession async, DateFormatter)
-        // are universally available on these floors; the floor exists
-        // mainly so `swift test` on macOS picks a sane toolchain.
-        .macOS(.v13),
-        .iOS(.v16),
+        // The app's floor, iOS 18 (`IPHONEOS_DEPLOYMENT_TARGET` in the
+        // pbxproj; `scripts/ios-compile-check.sh` fails when the two
+        // disagree), and its macOS twin for `swift test`: both carry the
+        // Observation framework (`@Observable`) and `Synchronization.Mutex`.
+        .macOS(.v15),
+        .iOS(.v18),
     ],
     products: [
         .library(name: "KinowoCore", targets: ["KinowoCore"]),
