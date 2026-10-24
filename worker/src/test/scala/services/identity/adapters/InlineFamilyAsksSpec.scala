@@ -20,12 +20,14 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     def record(id: String): Option[SourceRecord] = None
   }
   private val hit = SourceHit("tt16315948", "Klondike", None, Some(2022))
+  private def asks(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], pool: java.util.concurrent.ExecutorService,
+                   filed: () => Unit = () => ()) =
+    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed), pool, Stopwatch.System)
 
   "inline family asks" should "file each family's answer before returning" in {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
     val pool  = Executors.newFixedThreadPool(4)
-    val asks  = new InlineFamilyAsks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, Seq(hit))), pool, () => (), Stopwatch.System)
-    asks(Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.Wiki, "title|Klondike")), 5.seconds)   // no Wiki source: not asked
+    asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, Seq(hit))), pool)(Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.Wiki, "title|Klondike")), 5.seconds)   // no Wiki source: not asked
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe false
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Wiki, "title|Klondike")) shouldBe true
     pool.shutdown()
@@ -37,9 +39,8 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     val release = new CountDownLatch(1)
     val filed   = new AtomicInteger()
     val slow    = source(VoterFamily.RottenTomatoes, { release.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); Seq(hit) })
-    val asks    = new InlineFamilyAsks(store, Map(VoterFamily.RottenTomatoes -> slow), pool, () => filed.incrementAndGet(), Stopwatch.System)
     val started = System.nanoTime()
-    asks(Set(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")), 200.millis)
+    asks(store, Map(VoterFamily.RottenTomatoes -> slow), pool, () => { filed.incrementAndGet(); () })(Set(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")), 200.millis)
     (System.nanoTime() - started).nanos should be < 5.seconds
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.RottenTomatoes, "title|Klondike")) shouldBe true
     release.countDown()
@@ -52,8 +53,7 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
   it should "leave a failed ask to the queue" in {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
     val pool  = Executors.newFixedThreadPool(1)
-    val asks  = new InlineFamilyAsks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, throw new java.io.IOException("down"))), pool, () => (), Stopwatch.System)
-    asks(Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), 5.seconds)
+    asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, throw new java.io.IOException("down"))), pool)(Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), 5.seconds)
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe true
     pool.shutdown()
   }

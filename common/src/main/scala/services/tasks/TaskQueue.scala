@@ -57,14 +57,15 @@ object TaskType {
   // payload. Read-model content against a fresh projection; share-card pointers against the disk.
   case object AuditReadModelContent extends TaskType { val name = "AuditReadModelContent" }
   case object AuditShareCards       extends TaskType { val name = "AuditShareCards"       }
-  /** An identity agreement question one film database family has not answered yet, and TMDB's find of an agreed
-   *  IMDb id (`services.identity.adapters.AgreementQuestions`). */
+  /** An identity agreement question — a family's search, record or programme, TMDB's find of an agreed IMDb id or a
+   *  record read again, a poster to hash, a catalogue page or a batch of catalogue ids — named by its id
+   *  (`services.identity.Question.id`) and asked by `services.identity.adapters.AgreementAsker`. */
+  case object AskQuestion           extends TaskType { val name = "AskQuestion"           }
+  // The four agreement task types AskQuestion replaced, each its own payload, asked as AskQuestion is
+  // (`AgreementQuestions.questionsOf`). Old queued tasks only; remove after 2026-11-07.
   case object AgreementQuestion     extends TaskType { val name = "AgreementQuestion"     }
   case object AgreementFind         extends TaskType { val name = "AgreementFind"         }
-  /** A venue's or a TMDB film's poster to hash for the agreement's poster evidence (`services.identity.adapters.AgreementPosterHandler`). */
   case object AgreementPoster       extends TaskType { val name = "AgreementPoster"       }
-  /** A batch of catalogue ids to map, or a venue film page whose catalogue links to read, for the agreement's catalogue
-   *  take (`services.identity.adapters.AgreementCatalogueHandler`). */
   case object AgreementCatalogue    extends TaskType { val name = "AgreementCatalogue"    }
 
   val all: Seq[TaskType] =
@@ -72,7 +73,7 @@ object TaskType {
         RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         ScrapeChunk, ScrapeChunkReduce,
         RenderShareCard, PruneShareCards, ReleaseShareCardHold, RenderCityCard,
-        AuditReadModelContent, AuditShareCards, AgreementQuestion, AgreementFind, AgreementPoster, AgreementCatalogue)
+        AuditReadModelContent, AuditShareCards, AskQuestion, AgreementQuestion, AgreementFind, AgreementPoster, AgreementCatalogue)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
 }

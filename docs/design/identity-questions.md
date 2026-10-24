@@ -40,6 +40,18 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    `AgreementStage.wanted` is all of them; a caller after one kind matches it out (`Question.families` for the
    family store's pairs). Task types, payloads and dedup keys are as before (`QuestionPoliciesSpec`). The model's
    `AnswersChanged` stays split: every reader indexes each kind into its own map, so a union would be re-split per tick.
+   C2, one task type, one handler, one asking function (2026-10-24): every agreement question has a stable id, the form
+   its store files or names it by (`Question.id`, read back by `Question.parse`: `<family>|<question>`, `find|<imdbId>`,
+   `tmdb|record|<tmdbId>`, `poster|venue|<url>`, `poster|film|<tmdbId>`, `catalogue|<source>|<id>`,
+   `catalogue-page|<url>`). `AgreementQuestions.enqueue` queues them as one task type, `AskQuestion`, its payload the
+   ids (one a task, a source's catalogue ids 50 a task as before), its dedup key `agreement|<ids>` (a family
+   question's as before), claimed `Behind` and counted under the same `AgreementQuestionMetrics` labels.
+   `AgreementAsker.ask` asks every kind, and `InlineFamilyAsks` asks a new cluster's families through it (a late answer
+   filed and announced, as on the queue). Gone: `AgreementQuestionHandler`, `AgreementFindHandler`,
+   `AgreementPosterHandler`, `AgreementCatalogueHandler`, `AgreementQuestions.enqueueOpen` /
+   `AgreementCatalogueQuestions.enqueue`, and the inline asks' own filing. The four old task types and their payload
+   decoders (`AgreementQuestions.questionsOf`) stay only for the tasks queued before the deploy, asked by the same
+   asker (`AgreementAsker.oldQueued`); remove them after 2026-11-07.
 4. **One settle rule** in place of GapHold and `PartialAfter`: a decision on an established take waits only on its
    family's own open questions, until answered or the deadline passes. This is GapHold v4.
 
@@ -69,7 +81,7 @@ take's readiness to change when an answer arrives or changes, before the deadlin
 | CataloguePage | the catalogue ids a venue's film page links | Letterboxd, Flicks, Kinoteka, Alamo pages | agreement |
 | CatalogueId | what a catalogue id maps to | Wikidata P-ids (Webedia, Letterboxd, RT) | agreement |
 
-The agreement's questions are tasks claimed `AgreementQuestions.Behind` (7 days) behind every other task; the model's
+The agreement's questions are `AskQuestion` tasks claimed `AgreementQuestions.Behind` (7 days) behind every other task; the model's
 are asked by the lookup fill (`identity-lookup-refresh`, every 30 min, `IdentityLookupFillRate`, 300/min in prod) and
 live at take-up (`StoredFirstLookups`).
 

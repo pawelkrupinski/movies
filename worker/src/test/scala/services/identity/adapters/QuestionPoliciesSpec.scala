@@ -74,17 +74,30 @@ class QuestionPoliciesSpec extends AnyFlatSpec with Matchers {
     open.filter(_.kind.system == QuestionSystem.Agreement).size shouldBe 8
     val queue = new services.tasks.InMemoryTaskQueue
     val clock = tools.SpecClock.Pinned
-    AgreementQuestions.enqueueOpen(queue, open, clock)
+    AgreementQuestions.enqueue(queue, open, clock)
     val tasks = Iterator.continually(queue.claim("w", 1.minute, clock.instant())).takeWhile(_.isDefined).flatten.toSeq
+    def asking(id: String) = (TaskType.AskQuestion, s"agreement|$id", Map("questions" -> id))
     tasks.map(task => (task.taskType, task.dedupKey, task.payload)).toSet shouldBe Set(
-      (TaskType.AgreementQuestion, "agreement|imdb|title|Lalka", Map("family" -> "imdb", "question" -> "title|Lalka")),
-      (TaskType.AgreementQuestion, "agreement|filmweb|showing|kino-muranow", Map("family" -> "filmweb", "question" -> "showing|kino-muranow")),
-      (TaskType.AgreementFind, "agreement-find|tt0063208", Map("imdbId" -> "tt0063208")),
-      (TaskType.AgreementFind, "agreement-record|7", Map("tmdbRecord" -> "7")),
-      (TaskType.AgreementPoster, "agreement-poster|film|7", Map("filmPoster" -> "7")),
-      (TaskType.AgreementPoster, "agreement-poster|venue|https://example.org/p.jpg", Map("venuePoster" -> "https://example.org/p.jpg")),
-      (TaskType.AgreementCatalogue, "agreement-catalogue-page|https://example.org/film", Map("page" -> "https://example.org/film")),
-      (TaskType.AgreementCatalogue, "agreement-catalogue|letterboxd|lalka", Map("source" -> "letterboxd", "ids" -> "lalka")))
+      asking("imdb|title|Lalka"), asking("filmweb|showing|kino-muranow"), asking("find|tt0063208"), asking("tmdb|record|7"),
+      asking("poster|film|7"), asking("poster|venue|https://example.org/p.jpg"), asking("catalogue-page|https://example.org/film"),
+      asking("catalogue|letterboxd|lalka"))
+    tasks.flatMap(AgreementQuestions.questionsOf).toSet shouldBe open.filter(_.kind.system == QuestionSystem.Agreement)
+  }
+
+  it should "name each agreement question by the id its store files or names it by, read back as the same question" in {
+    val film = Question.Family(VoterFamily.RottenTomatoes, "record|m/klondike_2022")
+    val ids = Seq[(Question, String)](
+      Question.Family(VoterFamily.Imdb, "title|Lalka | Doll") -> FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Lalka | Doll"),
+      film -> FamilyAnswerStore.recordId(VoterFamily.RottenTomatoes, "m/klondike_2022"),
+      Question.Find("tt0063208") -> TmdbStore.findId("tt0063208"),
+      Question.Record(7) -> services.identity.agreement.AgreementStage.recordReadId(7),
+      Question.Poster(PosterQuestion.Film(7)) -> PosterAnswers.idOf(PosterQuestion.Film(7)),
+      Question.Poster(PosterQuestion.Venue("https://example.org/p|1.jpg")) -> PosterAnswers.idOf(PosterQuestion.Venue("https://example.org/p|1.jpg")),
+      Question.Catalogue(CatalogueQuestion.Id(CatalogueId("letterboxd", "lalka"))) -> CatalogueAnswerStore.idOf(CatalogueId("letterboxd", "lalka")),
+      Question.Catalogue(CatalogueQuestion.Page("https://example.org/film")) -> CatalogueAnswerStore.pageId("https://example.org/film"))
+    ids.map { case (question, _) => question.id } shouldBe ids.map { case (_, id) => Some(id) }
+    ids.map { case (question, id) => Question.parse(id) shouldBe Some(question) }
+    (Question.FilmRecord(7).id, Question.parse("nobody|title|Lalka"), Question.parse("tmdb|record|x")) shouldBe ((None, None, None))
   }
 
   it should "name the model's gaps a change of answers names, asked by the fill, live and the refreshes" in {

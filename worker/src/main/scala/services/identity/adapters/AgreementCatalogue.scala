@@ -4,8 +4,7 @@ package adapters
 import org.bson.{BsonDocument, BsonInt32, BsonString}
 import org.mongodb.scala.bson.BsonArray
 import services.enrichment.{LetterboxdClient, WikidataClient}
-import services.tasks.HandlerOutcome.Skipped
-import services.tasks.{HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.Task
 import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 import java.time.Clock
@@ -109,25 +108,10 @@ object AgreementCatalogueQuestions {
   private val Source = "source"
   private val Ids    = "ids"
   private val Page   = "page"
-  /** How many ids of one source one task maps: one SPARQL query. */
+  /** How many ids of one source one task maps: one SPARQL query ([[AgreementQuestions.enqueue]]). */
   val Batch = 50
 
-  /** The catalogue questions as queue tasks — ids a batch per source, a page each — claimed after every other task
-   *  ([[AgreementQuestions.Behind]]). */
-  def enqueue(queue: TaskQueue, questions: Set[CatalogueQuestion], clock: Clock, metrics: AgreementQuestionMetrics): Unit = {
-    val ids   = questions.toSeq.collect { case CatalogueQuestion.Id(id) => id }
-    val pages = questions.toSeq.collect { case CatalogueQuestion.Page(url) => url }.sorted
-    ids.groupBy(_.source).toSeq.sortBy(_._1).foreach { case (source, of) =>
-      of.map(_.id).sorted.grouped(Batch).foreach { batch =>
-        AgreementQuestions.enqueueBehind(queue, clock, metrics, AgreementQuestionMetrics.Catalogue, TaskType.AgreementCatalogue,
-          s"agreement-catalogue|$source|${batch.mkString(",")}", Map(Source -> source, Ids -> batch.mkString(",")))
-      }
-    }
-    pages.foreach(url => AgreementQuestions.enqueueBehind(queue, clock, metrics, AgreementQuestionMetrics.Catalogue, TaskType.AgreementCatalogue,
-      s"agreement-catalogue-page|$url", Map(Page -> url)))
-  }
-
-  /** The questions a task asks. */
+  /** The questions an [[TaskType.AgreementCatalogue]] task asks. Old queued tasks only; remove after 2026-11-07. */
   def of(task: Task): Seq[CatalogueQuestion] =
     task.payload.get(Page).map(url => Seq(CatalogueQuestion.Page(url))).getOrElse(
       (for { source <- task.payload.get(Source).toSeq; ids <- task.payload.get(Ids).toSeq; id <- ids.split(",").toSeq if id.nonEmpty }
@@ -140,21 +124,5 @@ object AgreementCatalogueQuestions {
     if (ids.nonEmpty) { val found = mapping.map(ids); ids.foreach(id => store.fileMapped(id, found.getOrElse(id, Nil))) }
     open.collect { case CatalogueQuestion.Page(url) => url }.foreach(url => store.filePage(url, pages.links(url)))
     open.size
-  }
-}
-
-/** One catalogue task: its ids mapped or its page read, and filed — skipped when the store holds fresh answers — and,
- *  once filed, a projection asked for (`filed`), which reads them. */
-final class AgreementCatalogueHandler(store: CatalogueAnswerStore, mapping: CatalogueMapping, pages: CatalogueLinkReader, filed: () => Unit, clock: Clock,
-                                      metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler {
-  val taskType: TaskType = TaskType.AgreementCatalogue
-
-  def handle(task: Task): HandlerOutcome = {
-    val questions = AgreementCatalogueQuestions.of(task)
-    if (questions.isEmpty) Skipped
-    else if (!questions.exists(store.wanted)) { metrics.asked(AgreementQuestionMetrics.Catalogue, AgreementQuestionMetrics.Fresh); Skipped }
-    else AgreementQuestions.asked(AgreementQuestionMetrics.Catalogue, s"catalogue ${task.payload.values.mkString(" ")}", metrics, clock, filed) {
-      AgreementCatalogueQuestions.file(store, mapping, pages, questions); AgreementQuestionMetrics.Answered
-    }
   }
 }

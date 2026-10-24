@@ -10,8 +10,8 @@ import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.enrichment.{ImdbClient, ImdbIdResolver}
 import services.events.InProcessEventBus
 import services.freshness.InMemoryFreshnessStore
-import services.identity.{AnswersChanged, CandidateQuery, UnansweredTmdbLookups}
-import services.identity.adapters.{AgreementFindHandler, InMemoryTmdbDocuments, LookupFill, StoredFirstLookups, TmdbChangesSweep, TmdbGapMemory, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
+import services.identity.{AnswersChanged, CandidateQuery, Question, UnansweredTmdbLookups}
+import services.identity.adapters.{AgreementAskers, AgreementQuestions, FamilyAnswerStore, InMemoryTmdbDocuments, LookupFill, StoredFirstLookups, TmdbChangesSweep, TmdbGapMemory, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
 import services.metrics.WorkerHttpMetrics
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, MovieService}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -101,8 +101,8 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
 
   "An agreement question" should "be asked on the `agreement` path" in {
     val wire = new Wire
-    val find = new AgreementFindHandler(id => { wire.tmdb.findByImdbId(id); () }, id => wire.tmdb.readRecordAgain(id), () => (), clock)
-    runTask(TaskType.AgreementFind, Map("imdbId" -> "tt0000001"))(find.handle)
+    val asker = AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)(find = id => { wire.tmdb.findByImdbId(id); () })
+    runTask(TaskType.AskQuestion, AgreementQuestions.payloadOf(Seq(Question.Find("tt0000001"))))(asker.handle)
     wire.paths shouldBe Set(HttpPath.Agreement)
   }
 

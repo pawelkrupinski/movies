@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{PosterDownload, PosterFailure, VipsPosterShrinker}
-import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task, TaskType}
+import services.tasks.{HandlerOutcome, InMemoryTaskQueue}
 import tools.MutableClock
 
 import java.nio.file.{Files, Path, StandardCopyOption}
@@ -17,6 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger
  *  prints for Provazník's 2025 "Broken Voices" and Wajda's 1980 "The Conductor"), filed and read back, and asked for on
  *  the queue. */
 class AgreementPostersSpec extends AnyFlatSpec with Matchers {
+  private def asker(store: PosterAnswerStore, hashing: PosterHashing, filed: () => Unit = () => ()) =
+    AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)(posters = store, hashing = hashing, filed = filed)
+  private def venueTask(attempts: Int = 1) = AgreementAskers.task(Question.Poster(PosterQuestion.Venue(patria)))(attempts)
+  private def filmTask(tmdbId: Int)        = AgreementAskers.task(Question.Poster(PosterQuestion.Film(tmdbId)))()
   private val clock    = new MutableClock(Instant.parse("2026-10-05T00:00:00Z"))
   private val fixtures = Path.of("test", "resources", "fixtures", "identity-posters")
   private val patria   = "https://kinopatria.com/wp-content/uploads/2026/10/8232401.3-264x396_c.jpg"
@@ -56,8 +60,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
       id => throw new tools.HttpStatusException(404, "GET", s"https://api.themoviedb.org/3/movie/$id/images", None), "pl")
     gone.film(1575247) shouldBe Nil
     val store = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
-    new AgreementPosterHandler(store, gone, () => (), clock)
-      .handle(Task("t1", TaskType.AgreementPoster, "agreement-poster|film|1575247", Map("filmPoster" -> "1575247"), 1)) shouldBe HandlerOutcome.Done
+    asker(store, gone).handle(filmTask(1575247)) shouldBe HandlerOutcome.Done
     store.film(1575247) shouldBe Answer.Known(Nil)
     val down = new PosterHashing(new Recorded(), new VipsPosterShrinker(binary = None),
       id => throw new tools.HttpStatusException(503, "GET", s"https://api.themoviedb.org/3/movie/$id/images", None), "pl")
@@ -111,8 +114,8 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   "a poster to hash" should "go on the queue once, however often the stage meets it" in {
     val queue = new InMemoryTaskQueue
     val posters = Set[PosterQuestion](PosterQuestion.Venue(patria), PosterQuestion.Film(95269))
-    AgreementQuestions.enqueueOpen(queue, posters.map(Question.Poster(_)), clock)
-    AgreementQuestions.enqueueOpen(queue, posters.map(Question.Poster(_)), clock)
+    AgreementQuestions.enqueue(queue, posters.map(Question.Poster(_)), clock)
+    AgreementQuestions.enqueue(queue, posters.map(Question.Poster(_)), clock)
     queue.monitor().counts.values.sum shouldBe 2
   }
 
@@ -120,14 +123,14 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     val store       = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
     val download    = new Recorded()
     val projections = new AtomicInteger
-    val handler     = new AgreementPosterHandler(store, hashing(download), () => { projections.incrementAndGet(); () }, clock)
-    val task        = Task("t1", TaskType.AgreementPoster, s"agreement-poster|venue|$patria", Map("venuePoster" -> patria), 1)
+    val handler     = asker(store, hashing(download), () => { projections.incrementAndGet(); () })
+    val task        = venueTask()
     handler.handle(task) shouldBe HandlerOutcome.Done
     store.venue(patria).toOption.flatten shouldBe defined
     projections.get shouldBe 1
     handler.handle(task) shouldBe HandlerOutcome.Skipped
     download.fetched.get shouldBe 1
-    handler.handle(Task("t2", TaskType.AgreementPoster, "agreement-poster|film|1483477", Map("filmPoster" -> "1483477"), 1)) shouldBe HandlerOutcome.Done
+    handler.handle(filmTask(1483477)) shouldBe HandlerOutcome.Done
     store.film(1483477).toOption.map(_.size) shouldBe Some(3)
   }
 
@@ -136,8 +139,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   it should "file a film's poster paths beside the hashes read from them" in {
     val families = new FamilyAnswerStore(new InMemoryTmdbDocuments, clock)
     val store    = new PosterAnswerStore(families, clock)
-    new AgreementPosterHandler(store, hashing(), () => (), clock)
-      .handle(Task("t1", TaskType.AgreementPoster, "agreement-poster|film|1483477", Map("filmPoster" -> "1483477"), 1)) shouldBe HandlerOutcome.Done
+    asker(store, hashing()).handle(filmTask(1483477)) shouldBe HandlerOutcome.Done
     val filed = families.document(PosterAnswers.idOf(PosterQuestion.Film(1483477))).get
     val paths = PosterHashing.chosen(tmdb.posters(1483477, also = Seq("en")), "pl")
     PosterAnswers.pathsOf(filed) shouldBe paths
@@ -153,10 +155,10 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   // a failed read taken for data, the poster evidence for Binti, Fritzi and the rest gone with it
   it should "be filed as unread when the origin refuses it, asked again a week on, and asked again at once when the failure may pass" in {
     val store = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
-    val task  = Task("t1", TaskType.AgreementPoster, s"agreement-poster|venue|$patria", Map("venuePoster" -> patria), 1)
-    new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Timeout))), () => (), clock).handle(task) shouldBe a[HandlerOutcome.Reschedule]
+    val task  = venueTask()
+    asker(store, hashing(new Recorded(Some(PosterFailure.Timeout)))).handle(task) shouldBe a[HandlerOutcome.Reschedule]
     store.venue(patria) shouldBe Answer.Unknown
-    new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Http4xx))), () => (), clock).handle(task) shouldBe HandlerOutcome.Done
+    asker(store, hashing(new Recorded(Some(PosterFailure.Http4xx)))).handle(task) shouldBe HandlerOutcome.Done
     (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
     store.fresh(PosterQuestion.Venue(patria)) shouldBe true
     clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
@@ -182,8 +184,8 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   // times and more, and the correction waiting on one never decided
   it should "be given up on once its fetch has failed every attempt the queue allows it, filed as unread" in {
     val store    = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
-    val timeouts = new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Timeout))), () => (), clock)
-    def attempt(n: Int) = timeouts.handle(Task("t1", TaskType.AgreementPoster, s"agreement-poster|venue|$patria", Map("venuePoster" -> patria), n))
+    val timeouts = asker(store, hashing(new Recorded(Some(PosterFailure.Timeout))))
+    def attempt(n: Int) = timeouts.handle(venueTask(n))
     attempt(PosterAnswerStore.GiveUpAttempts - 1) shouldBe a[HandlerOutcome.Reschedule]
     store.venue(patria) shouldBe Answer.Unknown
     attempt(PosterAnswerStore.GiveUpAttempts) shouldBe HandlerOutcome.Done

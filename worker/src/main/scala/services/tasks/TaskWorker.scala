@@ -359,7 +359,7 @@ object TaskWorker {
         TaskType.RtRating | TaskType.McRating | TaskType.RefreshAllImdb | TaskType.RefreshAllFilmweb |
         TaskType.RefreshAllMetacritic | TaskType.RefreshAllRt | TaskType.RefreshAllOmdb => tools.HttpPath.Enrich
     case TaskType.ReadVenuePage => tools.HttpPath.VenuePage
-    case TaskType.AgreementQuestion | TaskType.AgreementFind | TaskType.AgreementPoster | TaskType.AgreementCatalogue =>
+    case TaskType.AskQuestion | TaskType.AgreementQuestion | TaskType.AgreementFind | TaskType.AgreementPoster | TaskType.AgreementCatalogue =>
       tools.HttpPath.Agreement
     case TaskType.SettleNow | TaskType.RenderShareCard | TaskType.PruneShareCards | TaskType.ReleaseShareCardHold |
         TaskType.RenderCityCard | TaskType.AuditReadModelContent | TaskType.AuditShareCards => tools.HttpPath.Other

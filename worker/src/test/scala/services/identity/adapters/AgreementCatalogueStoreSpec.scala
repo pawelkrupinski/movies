@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.FlicksClient
 import services.cinemas.pl.KinotekaClient
 import services.enrichment.{LetterboxdClient, WikidataClient}
-import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task, TaskType}
+import services.tasks.{HandlerOutcome, InMemoryTaskQueue}
 import tools.{MutableClock, RoutingHttpFetch}
 
 import java.nio.file.{Files, Path}
@@ -87,8 +87,8 @@ class AgreementCatalogueStoreSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val questions = (1 to AgreementCatalogueQuestions.Batch + 1).map(i => CatalogueQuestion.Id(CatalogueId("webedia", i.toString))).toSet[CatalogueQuestion] +
       CatalogueQuestion.Id(CatalogueId("letterboxd", "x")) + CatalogueQuestion.Page(empire)
-    AgreementQuestions.enqueueOpen(queue, questions.map(Question.Catalogue(_)), clock)
-    AgreementQuestions.enqueueOpen(queue, questions.map(Question.Catalogue(_)), clock)
+    AgreementQuestions.enqueue(queue, questions.map(Question.Catalogue(_)), clock)
+    AgreementQuestions.enqueue(queue, questions.map(Question.Catalogue(_)), clock)
     queue.monitor().counts.values.sum shouldBe 4
   }
 
@@ -96,12 +96,13 @@ class AgreementCatalogueStoreSpec extends AnyFlatSpec with Matchers {
     val s           = store()
     val projections = new AtomicInteger
     val fetch       = venues
-    val handler     = new AgreementCatalogueHandler(s, mapping(), reader(fetch), () => { projections.incrementAndGet(); () }, clock)
-    val ids         = Task("t1", TaskType.AgreementCatalogue, "agreement-catalogue|webedia|325279,144766", Map("source" -> "webedia", "ids" -> "325279,144766"), 1)
+    val handler     = AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)(catalogue = s, mapping = mapping(),
+      pages = reader(fetch), filed = () => { projections.incrementAndGet(); () })
+    val ids         = AgreementAskers.task(Seq("325279", "144766").map(id => Question.Catalogue(CatalogueQuestion.Id(CatalogueId("webedia", id))))*)()
     handler.handle(ids) shouldBe HandlerOutcome.Done
     (s.mapped(CatalogueId("webedia", "325279")).toOption.map(_.flatMap(_.tmdb)), s.mapped(CatalogueId("webedia", "144766"))) shouldBe
       ((Some(Seq(1318829)), Answer.Known(Nil)))
-    val page = Task("t2", TaskType.AgreementCatalogue, s"agreement-catalogue-page|$empire", Map("page" -> empire), 1)
+    val page = AgreementAskers.task(Question.Catalogue(CatalogueQuestion.Page(empire)))()
     handler.handle(page) shouldBe HandlerOutcome.Done
     s.linked(empire).toOption.map(_.size) shouldBe Some(2)
     handler.handle(page) shouldBe HandlerOutcome.Skipped

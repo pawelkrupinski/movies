@@ -5,8 +5,6 @@ import org.bson.{BsonDocument, BsonInt64, BsonNull, BsonString}
 import org.mongodb.scala.bson.BsonArray
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
-import services.tasks.HandlerOutcome.{Done, Skipped}
-import services.tasks.{HandlerOutcome, Task, TaskHandler, TaskType}
 
 import java.nio.file.Files
 import java.time.Clock
@@ -138,26 +136,5 @@ object PosterHashing {
       case _                        => 3
     }
     images.sortBy(image => (order(image), -image.voteCount, image.filePath)).map(_.filePath).distinct.take(PosterEvidence.FilmPosters)
-  }
-}
-
-/** One poster to hash, as a queue task ([[agreement.AgreementStage.PosterQuestion]]): hashed and filed — skipped while
- *  the store holds a fresh hash — and, once filed, a projection asked for (`filed`), which reads it. */
-final class AgreementPosterHandler(store: PosterAnswerStore, hashing: PosterHashing, filed: () => Unit, clock: Clock,
-                                   metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler {
-  val taskType: TaskType = TaskType.AgreementPoster
-
-  def handle(task: Task): HandlerOutcome = AgreementQuestions.posterOf(task).fold[HandlerOutcome](Skipped) { question =>
-    if (!store.wanted(question)) { metrics.asked(AgreementQuestionMetrics.Poster, AgreementQuestionMetrics.Fresh); Skipped }
-    else {
-      val outcome = AgreementQuestions.asked(AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(question)}", metrics, clock, filed) {
-        store.file(question, hashing.of(question)); AgreementQuestionMetrics.Answered
-      }
-      outcome match {
-        // its last attempt failed too: given up on, read as unread rather than waited on for ever
-        case _: HandlerOutcome.Reschedule if task.attempts >= PosterAnswerStore.GiveUpAttempts => store.giveUp(question); filed(); Done
-        case other => other
-      }
-    }
   }
 }

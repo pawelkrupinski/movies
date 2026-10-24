@@ -13,7 +13,8 @@ import tools.HttpPath
  * It names WHAT is asked, not what the answer means: the model's answers still form candidates and the agreement's
  * still vote, veto and correct. One type is what lets asking, storing, remembering non-answers, waiting and measuring
  * be told the same way for both (docs/design/identity-questions.md). A set of them is the one currency for questions
- * asked, open and waited on: the agreement stage notes, keeps and hands its own to the queue as one (step C1).
+ * asked, open and waited on: the agreement stage notes, keeps and hands its own to the queue as one (step C1), which asks
+ * each by its [[id]] (step C2).
  */
 enum Question {
   /** A model gap: a title, person, IMDb or IMDb-any-language search ([[CandidateQuery]]). */
@@ -54,9 +55,44 @@ enum Question {
     case Catalogue(CatalogueQuestion.Page(_))    => QuestionKind.CataloguePage
     case Catalogue(CatalogueQuestion.Id(_))      => QuestionKind.CatalogueId
   }
+
+  /** The id an agreement question is asked under on the queue, the form its store files or names it by:
+   *  `<family>|<question>` (`FamilyAnswerStore.questionId`), `find|<imdbId>` (`TmdbStore.findId`),
+   *  `tmdb|record|<tmdbId>` ([[agreement.AgreementStage.recordReadId]]), `poster|venue|<url>` and `poster|film|<tmdbId>`
+   *  ([[PosterAnswers.idOf]]), `catalogue|<source>|<id>` and `catalogue-page|<url>` (`CatalogueAnswerStore.idOf`,
+   *  `pageId`) — read back by [[Question.parse]]. None for a model gap: its stores name it in the country's language. */
+  def id: Option[String] = this match {
+    case Family(family, question)                 => Some(s"${family.label}|$question")
+    case Find(imdbId)                             => Some(s"find|$imdbId")
+    case Record(tmdbId)                           => Some(agreement.AgreementStage.recordReadId(tmdbId))
+    case Poster(question)                         => Some(PosterAnswers.idOf(question))
+    case Catalogue(CatalogueQuestion.Id(of))      => Some(s"catalogue|${of.source}|${of.id}")
+    case Catalogue(CatalogueQuestion.Page(url))   => Some(s"catalogue-page|$url")
+    case Candidate(_) | FilmRecord(_) | VenuePage(_) => None
+  }
 }
 
 object Question {
+
+  /** The agreement question `id` names ([[Question.id]]), or None for an id no agreement question has. */
+  def parse(id: String): Option[Question] = {
+    def pair(rest: String) = rest.split("\\|", 2) match {
+      case Array(first, second) => Some(first -> second)
+      case _                    => None
+    }
+    pair(id).flatMap {
+      case ("find", imdbId)       => Some(Find(imdbId))
+      case ("tmdb", rest)         => pair(rest).collect { case ("record", tmdbId) => tmdbId.toIntOption.map(Record(_)) }.flatten
+      case ("poster", rest)       => pair(rest).flatMap {
+        case ("venue", url)   => Some(Poster(PosterQuestion.Venue(url)))
+        case ("film", tmdbId) => tmdbId.toIntOption.map(film => Poster(PosterQuestion.Film(film)))
+        case _                => None
+      }
+      case ("catalogue", rest)    => pair(rest).map { case (source, of) => Catalogue(CatalogueQuestion.Id(CatalogueId(source, of))) }
+      case ("catalogue-page", url) => Some(Catalogue(CatalogueQuestion.Page(url)))
+      case (label, question)      => VoterFamily.values.find(_.label == label).map(Family(_, question))
+    }
+  }
 
   /** The families' questions among `questions`, as the family store and its askers name them. */
   def families(questions: Iterable[Question]): Set[(VoterFamily, String)] =
