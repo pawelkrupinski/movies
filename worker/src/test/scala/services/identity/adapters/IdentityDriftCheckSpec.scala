@@ -51,6 +51,16 @@ class IdentityDriftCheckSpec extends AnyFlatSpec with Matchers {
     report.byKind shouldBe Map("changed" -> 1, "lost" -> 1)
   }
 
+  it should "count a listing unsettled while its LIVE take waits on the agreement, whatever the whole resolve took" in {
+    // the live stage still waits on a correction's questions for Helios' "Rose" (UK Chichester's case): no drift yet
+    val waiting = now.copy(waitingOn = d =>
+      if (d.members.contains(helios)) WaitingOn(0, Set(Question.Family(agreement.VoterFamily.Imdb, "title|Rose")), onTmdb = false)
+      else WaitingOn.model(d))
+    val report = IdentityDriftCheck.compare(waiting, whole)
+    report.drifted.map(_.listing) shouldBe Seq(raices)
+    (report.unsettled, report.waitingOnAgreement) shouldBe ((3, 2))
+  }
+
   it should "log, count and hand over what drifted — and do nothing while the heap is pressed" in {
     var counted   = Option.empty[IdentityDriftCheck.Report]
     var responded = Seq.empty[IdentityDriftCheck.Drift]

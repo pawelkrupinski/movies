@@ -146,11 +146,20 @@ object IdentityDrift {
   final class GatedDocuments(inner: TmdbDocuments, share: Share) extends TmdbDocuments {
     @volatile var open = false
     private val released = ConcurrentHashMap.newKeySet[String]()
+    /** The held answers a stage asked for and was refused: what [[openAll]] files. */
+    private val withheld = ConcurrentHashMap.newKeySet[String]()
     private def question(id: String) = Seq("|title|", "|director|", "|record|", "|showing|").exists(id.contains)
     def held(id: String): Boolean = !open && !released.contains(id) && question(id) && share.held(id)
     def release(id: String): Unit = { released.add(id); () }
     def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
-      inner.get(kind, ids).filter { case (id, _) => kind != TmdbKind.Family || !held(id) }
+      inner.get(kind, ids).filter { case (id, _) => kind != TmdbKind.Family || !held(id) || { withheld.add(id); false } }
+    /** Every answer filed: the gate open, and each held answer a stage was refused `note`d as filed now, as the queue files
+     *  it in production — opened unnoted, a correction waiting on one stood as it was, never read again (UK Chichester's
+     *  "The Ties That Bind Us", seed 2: a divergence of the harness's, not production's). */
+    def openAll(note: String => Unit): Unit = {
+      open = true
+      withheld.asScala.toSeq.sorted.filter(released.add).foreach(note)
+    }
     def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = { docs.foreach(d => released.add(d._1)); inner.put(kind, docs) }
   }
 
@@ -285,7 +294,7 @@ object IdentityDrift {
     }
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
-      gate.open = true; docs.open = true
+      gate.open = true; docs.openAll(answers.store.noteFiled)
       model.batch(answered = gate.release(1.0, new scala.util.Random(0)))
       settle(stage, () => project(), answers, clock, releaseFamily)
     }

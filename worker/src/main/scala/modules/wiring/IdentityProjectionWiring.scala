@@ -127,7 +127,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         identityModel.current(IdentityProjectionWiring.ModelTimeout).map { snapshot =>
           val now = snapshot.resolution.decisionOf
           IdentityDriftCheck.Live(projected.taken, snapshot.listings.iterator.map(l => l.key -> l).toMap,
-            key => now.get(key).exists(d => projected.model.decisionOf.get(key).exists(_ eq d)))
+            key => now.get(key).exists(d => projected.model.decisionOf.get(key).exists(_ eq d)), agreementStage.waitingOn)
         }
       },
       whole = live => IdentityDriftCheck.wholeResolve(live, cutoverLookups(), titleNormalizer,

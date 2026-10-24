@@ -46,8 +46,10 @@ final class IdentityDriftCheck(live: () => Option[IdentityDriftCheck.Live], whol
 object IdentityDriftCheck {
   /** The live state: what the last projection took (its resolution after the agreement), the model's listings now — what
    *  the whole resolve reads — and which listings the model decides as it did for that projection: only those are
-   *  compared, a listing a scrape or an answer moved since being no drift. */
-  final case class Live(taken: Resolution, listings: Map[ListingKey, Listing], unchanged: ListingKey => Boolean)
+   *  compared, a listing a scrape or an answer moved since being no drift — and what each live take still waits on
+   *  ([[agreement.AgreementStage.waitingOn]] of the live stage): one waiting is no drift either, whatever the whole takes. */
+  final case class Live(taken: Resolution, listings: Map[ListingKey, Listing], unchanged: ListingKey => Boolean,
+                        waitingOn: ResolverDecision => WaitingOn = WaitingOn.model)
 
   /** The whole resolve: its takes, and what each still waits on ([[agreement.AgreementStage.waitingOn]] of its stage). */
   final case class Whole(resolution: Resolution, waitingOn: ResolverDecision => WaitingOn)
@@ -82,7 +84,12 @@ object IdentityDriftCheck {
    *  waiting on an answer, the model's or the agreement's, counted unsettled instead. */
   def compare(live: Live, whole: Whole): Report = {
     val keys     = live.listings.keys.filter(k => live.unchanged(k) && live.taken.decisionOf.contains(k)).toSeq.sorted(using ListingKey.ordering)
-    val waits    = keys.flatMap(k => whole.resolution.decisionOf.get(k).map(k -> whole.waitingOn(_))).filterNot(_._2.settled).toMap
+    // waiting on either side: the whole take's open questions, or the live take's (a correction the live stage waits on
+    // answers to — UK Chichester's "The Ties That Bind Us", 2026-10-24 — that the whole resolve read already)
+    val waits    = keys.flatMap { k =>
+      whole.resolution.decisionOf.get(k).map(whole.waitingOn).filterNot(_.settled)
+        .orElse(live.taken.decisionOf.get(k).map(live.waitingOn).filterNot(_.settled)).map(k -> _)
+    }.toMap
     val settled  = keys.filterNot(waits.contains)
     val drifted  = settled.flatMap { k =>
       val (was, now) = (live.taken.decisionOf.get(k), whole.resolution.decisionOf.get(k))
