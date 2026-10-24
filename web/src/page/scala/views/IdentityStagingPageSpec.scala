@@ -86,7 +86,7 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.evalInt("document.querySelectorAll('section[data-country=pl] details.cluster[open] tr.question').length") shouldBe 2
       page.evalString("document.querySelector('section[data-country=pl] tr.question .o-failed').textContent") should include ("failed 3×")
 
-      // the next publish: Diuna stops waiting, and arrives under "Recently resolved" by the page's own poll, still open
+      // the next publish: Diuna stops waiting, and arrives under "Decided and changed" by the page's own poll, still open
       clock.advanceSeconds(20)
       staging.publish("pl", Seq(diuna.copy(resolvedAt = Some(clock.millis()), resolution = Some(StagedCluster.Settled))), Nil, beat(0))
       page.waitFor("document.querySelector('section[data-country=pl]').textContent.indexOf('settled') >= 0")

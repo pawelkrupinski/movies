@@ -49,7 +49,9 @@
     .r-settled { color: #6a9b78; }
     .r-regrouped { color: #b89cd6; }
     .r-decided { color: #6a9b78; }
-    .r-moved { color: #d6a35c; }
+    .r-gained { color: #6a9b78; }
+    .r-lost { color: #d67a6a; }
+    .r-changed { color: #d6a35c; }
     .empty { color: #555; padding: 6px 2px; }
   </style>
 </head>
@@ -58,8 +60,8 @@
     <h1>Identity staging</h1>
   </div>
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
-    — every country's clusters whose take still waits on an answer, and those decided, moved or settled in the last
-    hours, as each country's worker last published them to its database (read here through the local prod mirror).
+    — every country's clusters whose take still waits on an answer, and every match decided or changed in the last
+    7 days (decided: new listings matched; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
     Open a row for its questions.</div>
   <div id="countries"></div>
 
@@ -67,6 +69,7 @@
     "use strict";
     var POLL_MS = @pollMillis;
     var STALE_MS = 120000;
+    var SHOWN = 300;   // the newest decisions and changes a country lists; the rest are counted
     var state = {};          // code → { name, beat, cursor, clusters: { key → cluster } }
     var order = [];          // the countries in the server's order
     var open = {};           // "code|key" → true while its row is open
@@ -143,6 +146,11 @@
         "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
         " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
     }
+    /** A resolution's label, and the film its listings held before when it moved. */
+    function change(cl) {
+      return "<span class=\"r-" + esc(cl.resolution) + "\">" + esc(cl.resolution) + "</span>" +
+        (cl.was != null ? " <span class=\"meta\">(was tmdb " + cl.was + ")</span>" : "");
+    }
     function row(code, cl) {
       var id = code + "|" + cl.key;
       var meta;
@@ -151,11 +159,13 @@
           (cl.modelGaps ? " · " + cl.modelGaps + " gaps" : "") + (cl.onTmdb ? " · tmdb" : "") + " · waiting " + dur(serverNow() - cl.since);
       } else {
         var answered = cl.questions.filter(function (q) { return q.outcome === "answered"; }).length;
-        meta = "<span class=\"r-" + esc(cl.resolution) + "\">" + esc(cl.resolution) + "</span> " + dur(serverNow() - cl.resolvedAt) +
-          " ago · waited " + dur(cl.resolvedAt - cl.since) + " · " + answered + " answered, " + (cl.questionCount - answered) + " left out";
+        meta = change(cl) + " " + dur(serverNow() - cl.resolvedAt) + " ago" +
+          (cl.resolvedAt > cl.since ? " · waited " + dur(cl.resolvedAt - cl.since) : "") + " · " + answered + " answered, " +
+          (cl.questionCount - answered) + " left out";
       }
       return "<details class=\"cluster\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary><span class=\"title\">" +
-        headline(cl) + "</span><span class=\"meta\">" + esc(takeText(cl.take)) + "</span></summary>" +
+        headline(cl) + "</span><span class=\"meta\">" + (cl.resolvedAt == null ? "" : change(cl) + " · ") + esc(takeText(cl.take)) +
+        "</span></summary>" +
         "<div class=\"body line meta\">" + meta + "</div>" + body(cl) + "</details>";
     }
 
@@ -171,14 +181,15 @@
           (beat ? "published " + dur(age) + " ago" : "no snapshot yet") + "</span></h2>";
         var counts = "<div class=\"counts\"><span class=\"pill staging\"><span class=\"n\">" + (beat ? beat.staging : staging.length) +
           "</span> staging" + (beat && beat.shown < beat.staging ? " (" + beat.shown + " shown)" : "") + "</span>" +
-          "<span class=\"pill resolved\"><span class=\"n\">" + resolved.length + "</span> resolved</span>" +
+          "<span class=\"pill resolved\"><span class=\"n\">" + resolved.length + "</span> decided or changed</span>" +
           "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span></div>";
         var kinds = beat ? Object.keys(beat.openByKind).sort().map(function (k) {
           return "<span class=\"kind\">" + esc(k) + " " + beat.openByKind[k] + "</span>";
         }).join("") : "";
         return "<section class=\"country\" data-country=\"" + esc(code) + "\">" + head + counts + "<div class=\"kinds\">" + kinds + "</div>" +
           "<h3>Staging</h3>" + (staging.length ? staging.map(function (cl) { return row(code, cl); }).join("") : "<div class=\"empty\">nothing waits</div>") +
-          "<h3>Recently resolved</h3>" + (resolved.length ? resolved.map(function (cl) { return row(code, cl); }).join("") : "<div class=\"empty\">none lately</div>") +
+          "<h3>Decided and changed, last 7 days</h3>" + (resolved.length ? resolved.slice(0, SHOWN).map(function (cl) { return row(code, cl); }).join("") +
+            (resolved.length > SHOWN ? "<div class=\"empty\">… and " + (resolved.length - SHOWN) + " older</div>" : "") : "<div class=\"empty\">none lately</div>") +
           "</section>";
       }).join("");
       document.getElementById("countries").innerHTML = html;

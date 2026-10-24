@@ -45,15 +45,17 @@ object StagedTake {
  * One listing cluster on the staging screen (docs/design/identity-questions.md, "The staging screen"): STAGING while
  * its take waits on an answer (`resolvedAt` empty), RECENTLY RESOLVED once it stopped waiting — `resolution` says how:
  * `settled` (the same cluster waits on nothing now), `regrouped` (its listings moved to another cluster, or left),
- * `decided` (a cluster that formed and settled between two publishes, never seen waiting: most new films, asked inline)
- * or `moved` (a settled cluster whose film changed between two publishes: a late answer or new data moved it).
+ * `decided` (a cluster of new listings that settled between two publishes, never seen waiting: most new films, asked
+ * inline), or a settled cluster whose listings' film moved between two publishes — a late answer or new data — `gained`
+ * (had none), `lost` (has none now) or `changed`; `was` is the TMDB film its listings held before.
  *
  * `listings` and `questions` are capped for the page; `listingCount`, `questionCount` and `attempted` (asked and come to
  * an answer, a durable non-answer or a failure: `QuestionMemory.attempted`) count them all. Times are epoch millis.
  */
 final case class StagedCluster(key: String, listings: Seq[StagedListing], listingCount: Int, take: StagedTake,
                                modelGaps: Int, onTmdb: Boolean, questions: Seq[StagedQuestion], questionCount: Int,
-                               attempted: Int, since: Long, resolvedAt: Option[Long] = None, resolution: Option[String] = None) {
+                               attempted: Int, since: Long, resolvedAt: Option[Long] = None, resolution: Option[String] = None,
+                               was: Option[Int] = None) {
   def staging: Boolean = resolvedAt.isEmpty
 }
 
@@ -61,7 +63,9 @@ object StagedCluster {
   val Settled   = "settled"
   val Regrouped = "regrouped"
   val Decided   = "decided"
-  val Moved     = "moved"
+  val Gained    = "gained"
+  val Lost      = "lost"
+  val Changed   = "changed"
   given OFormat[StagedListing] = Json.format[StagedListing]
   given OFormat[StagedCluster] = Json.format[StagedCluster]
 }
@@ -80,8 +84,10 @@ object StagingBeat {
 final case class StagingCountry(country: String, beat: Option[StagingBeat], changed: Seq[StagedCluster], keys: Seq[String],
                                 cursor: Option[Instant])
 
-/** A stored document of the staging collection, as the store holds it: a cluster's or a country's beat. */
-final case class StagingDoc(id: String, country: String, kind: String, updatedAt: Instant, body: String)
+/** A stored document of the staging collection, as the store holds it: a staging cluster's, a resolved one's or a
+ *  country's beat. `expireAt`: when the database deletes it (a resolved cluster's), none kept until its writer deletes it. */
+final case class StagingDoc(id: String, country: String, kind: String, updatedAt: Instant, body: String,
+                            expireAt: Option[Instant] = None)
 
 /** The index entry of a [[StagingDoc]]: everything but its body. */
 final case class StagingEntry(id: String, country: String, kind: String, updatedAt: Instant)
@@ -100,23 +106,29 @@ trait StagingDocuments {
  * reads from every country's database at once. The waits live in the worker's memory, not in Mongo, so they are
  * published here, one document per cluster.
  *
- * Bounded by its writer: a country's documents are its staging clusters (capped) and its recently resolved ones
- * (capped, aged out), and the publisher deletes every other one it wrote (`CollectionRetention`: `Sweep`).
+ * Bounded twice: a country's staging clusters (capped) are its publisher's, rewritten as they change and deleted once
+ * they stop waiting (`CollectionRetention`: `Sweep`); each resolution — a cluster that settled, regrouped, was decided
+ * or whose film moved — is written ONCE, its own document (a cluster that moves twice is listed twice), and deleted by
+ * the database at its `expireAt` (a TTL index): the screen's history, kept across restarts.
  */
 final class IdentityStaging(docs: StagingDocuments, clock: Clock) {
   import IdentityStaging.*
 
-  /** Every cluster `country` holds, as last published: what its worker resumes from after a restart. */
+  /** Every cluster `country` holds staging, as last published: what its worker resumes from after a restart. */
   def ofCountry(country: String): Seq[StagedCluster] = {
     val ids = docs.index().filter(e => e.country == country && e.kind == ClusterKind).map(_.id)
     if (ids.isEmpty) Nil else docs.bodies(ids).values.toSeq.flatMap(body => Json.parse(body).asOpt[StagedCluster])
   }
 
-  /** `country`'s clusters written or rewritten (`upserts`), those it holds no more (`removed`, by key), and its beat. */
-  def publish(country: String, upserts: Seq[StagedCluster], removed: Iterable[String], beat: StagingBeat): Unit = {
+  /** `country`'s staging clusters written or rewritten (`upserts`), those it holds no more (`removed`, by key), the
+   *  clusters resolved since its last publish (`resolved`, each kept until `keptFor` after it resolved), and its beat. */
+  def publish(country: String, upserts: Seq[StagedCluster], removed: Iterable[String], beat: StagingBeat,
+              resolved: Seq[StagedCluster] = Nil, keptFor: java.time.Duration = java.time.Duration.ZERO): Unit = {
     val now = clock.instant()
     if (removed.nonEmpty) docs.remove(removed.iterator.map(clusterId(country, _)).toSeq)
-    docs.put(upserts.map(c => StagingDoc(clusterId(country, c.key), country, ClusterKind, now, Json.stringify(Json.toJson(c)))) :+
+    docs.put(upserts.map(c => StagingDoc(clusterId(country, c.key), country, ClusterKind, now, Json.stringify(Json.toJson(c)))) ++
+      resolved.map(c => StagingDoc(resolvedId(country, c.key), country, ResolvedKind, now, Json.stringify(Json.toJson(c)),
+        expireAt = Some(Instant.ofEpochMilli(c.resolvedAt.getOrElse(now.toEpochMilli)).plus(keptFor)))) :+
       StagingDoc(beatId(country), country, BeatKind, now, Json.stringify(Json.toJson(beat))))
   }
 
@@ -129,7 +141,7 @@ final class IdentityStaging(docs: StagingDocuments, clock: Clock) {
     }
     val bodies = if (wanted.isEmpty) Map.empty[String, String] else docs.bodies(wanted)
     byCountry.toSeq.sortBy(_._1).map { case (country, entries) =>
-      val clusters = entries.filter(_.kind == ClusterKind)
+      val clusters = entries.filter(e => e.kind == ClusterKind || e.kind == ResolvedKind)
       StagingCountry(country,
         beat    = bodies.get(beatId(country)).flatMap(Json.parse(_).asOpt[StagingBeat]),
         changed = clusters.flatMap(e => bodies.get(e.id)).flatMap(Json.parse(_).asOpt[StagedCluster]),
@@ -145,10 +157,12 @@ object IdentityStaging {
   /** The store in `database`'s [[Collection]]; in memory without one. */
   def in(database: Option[org.mongodb.scala.MongoDatabase], clock: Clock): IdentityStaging =
     new IdentityStaging(database.fold[StagingDocuments](new InMemoryStagingDocuments)(db => new MongoStagingDocuments(db.getCollection(Collection))), clock)
-  private val ClusterKind = "cluster"
-  private val BeatKind    = "beat"
-  private def clusterId(country: String, key: String): String = s"$country|c|$key"
-  private def keyOf(country: String, id: String): String      = id.stripPrefix(s"$country|c|")
+  private val ClusterKind  = "cluster"
+  private val ResolvedKind = "resolved"
+  private val BeatKind     = "beat"
+  private def clusterId(country: String, key: String): String  = s"$country|c|$key"
+  private def resolvedId(country: String, key: String): String = s"$country|r|$key"
+  private def keyOf(country: String, id: String): String       = id.stripPrefix(s"$country|c|").stripPrefix(s"$country|r|")
   private def beatId(country: String): String                 = s"$country|beat"
 }
 
@@ -172,11 +186,17 @@ final class MongoStagingDocuments(collection: MongoCollection[Document]) extends
         .flatMap(d => for { id <- d.get("_id"); body <- d.get(Body) } yield id.asString.getValue -> body.asString.getValue)
     }.toMap
 
+  /** The TTL index that deletes a resolved cluster at its `expireAt`: made by the first write, so only a writer makes it. */
+  private lazy val expiring: Unit = services.MongoTtlIndex.ensure(collection, ExpireAt, 0, "IdentityStaging")
+
   def put(docs: Seq[StagingDoc]): Unit =
     docs.grouped(Batch).foreach { batch =>
-      val writes = batch.map(doc => new ReplaceOneModel[Document](Filters.eq("_id", doc.id),
-        Document("_id" -> doc.id, Country -> doc.country, Kind -> doc.kind, UpdatedAt -> new Date(doc.updatedAt.toEpochMilli), Body -> doc.body),
-        new ReplaceOptions().upsert(true)))
+      expiring
+      val writes = batch.map { doc =>
+        val fields = Document("_id" -> doc.id, Country -> doc.country, Kind -> doc.kind, UpdatedAt -> new Date(doc.updatedAt.toEpochMilli), Body -> doc.body)
+        new ReplaceOneModel[Document](Filters.eq("_id", doc.id),
+          doc.expireAt.fold(fields)(at => fields + (ExpireAt -> new Date(at.toEpochMilli))), new ReplaceOptions().upsert(true))
+      }
       Await.result(collection.bulkWrite(writes, new BulkWriteOptions().ordered(false)).toFuture(), Timeout)
     }
 
@@ -189,6 +209,7 @@ object MongoStagingDocuments {
   private val Kind      = "kind"
   private val UpdatedAt = "updatedAt"
   private val Body      = "body"
+  private val ExpireAt  = "expireAt"
   private val Timeout   = 10.seconds
   private val Batch     = 500
 }

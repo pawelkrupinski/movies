@@ -212,16 +212,20 @@ reads every country's through the prod mirror:
 - **Worker** (`IdentityStagingPublisher`, every 20 s, on its own thread, never the projection's): over the takes the
   projection last wrote, a cluster whose `WaitingOn` is not settled STAGES — its listings, take, model gaps, whether the
   fill waits on TMDB, and each open question with its kind, who it is asked of and `QuestionMemory.outcome` (not
-  attempted / failed n× with the next retry and host / absent / answered), plus attempted/total. RESOLVED, kept 6 h,
-  the newest 200: a cluster that staged and waits on nothing now (`settled` with its take, or `regrouped` when its
-  listings no longer form it); and, from each cluster's film as the last publish saw it, one that formed and settled
-  between two publishes (`decided`: most new films, whose questions are asked inline within one projection) or whose
-  film changed (`moved`: a late answer or new data). The first publish after a boot only records the films. At most
-  500 staging clusters (the longest waiting) and 60 questions each are listed; the per-country beat counts them all.
-  Only changed clusters are written.
-- **Store** (`IdentityStaging`, `identity_staging` in each country's database): one document per cluster plus the
-  country's beat; the publisher deletes what it no longer holds. Mirrored locally (`DebugMirror.IdentityStaging`,
-  `scripts/local-mirror/mirror-targets.js`), so the page follows prod as the mirror tails it.
+  attempted / failed n× with the next retry and host / absent / answered), plus attempted/total, rewritten as it changes
+  and deleted once it stops. Every RESOLUTION since the last publish is written once, its own document, which the
+  database deletes 7 days later (a TTL index on `expireAt`): a cluster that staged and waits on nothing now (`settled`
+  with its take, or `regrouped` when its listings no longer form it); and, from each LISTING's film as the last publish
+  saw it, a cluster of new listings (`decided`: most new films, asked inline within one projection) or one whose
+  listings' film moved (`gained`, `lost` or `changed`, with the film it had: `was`). By listing, not by cluster key: a
+  key moves when a new listing sorts first or clusters merge, which changes no listing's film. The first publish after
+  a boot only records. At most 500 staging clusters (the longest waiting) are listed and 500 resolutions written a
+  publish; 60 questions each; the per-country beat counts them all. Each publish also exports the takes by basis
+  (`kinowo_worker_identity_takes{basis}`, `_take_listings{basis}`) and counts each resolution
+  (`kinowo_worker_identity_cluster_changes_total{basis,change}`): the worker dashboard's "Identity takes" panels.
+- **Store** (`IdentityStaging`, `identity_staging` in each country's database): staging clusters, resolutions and
+  the country's beat. Mirrored locally (`DebugMirror.IdentityStaging`, `scripts/local-mirror/mirror-targets.js`), so
+  the page follows prod as the mirror tails it, TTL deletes included.
 - **Web** (`IdentityStagingController`, wired in `DebugWiring` over the per-country mirror connections): every
   country's section on the same page, each cluster a `<details>` row opening onto its questions; the page polls
   `/debug/identity/staging/data` every 5 s with each country's cursor, so a poll carries only the clusters written
