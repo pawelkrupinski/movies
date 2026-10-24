@@ -1,11 +1,12 @@
 import Foundation
+import Observation
 // The Xcode app compiles this file into one flat module alongside every
 // Model/Auth file, where no module named `KinowoCore`/`KinowoAuth` exists —
 // `canImport` is false there, so this compiles to nothing and every symbol
 // below resolves exactly as it does today. Only the standalone `KinowoNetworking`
 // SPM target (see `Package.swift`) sees these as true, which is what lets
 // `swift test` drive `RepertoireStore` directly instead of only through the
-// Combine-free decoder line `LocalServerRepertoireTests` exercises.
+// decoder line `LocalServerRepertoireTests` exercises.
 #if canImport(KinowoCore)
 @testable import KinowoCore
 #endif
@@ -14,21 +15,22 @@ import Foundation
 #endif
 
 @MainActor
-final class RepertoireStore: ObservableObject {
-    @Published var films: [Film] = []
-    @Published var isLoading: Bool = false
-    @Published var error: Error? = nil
+@Observable
+final class RepertoireStore {
+    var films: [Film] = []
+    var isLoading: Bool = false
+    var error: Error? = nil
     /// The city whose repertoire `films` currently holds, or nil before the
     /// first successful load OR while a switch (`use(citySlug:)`/`use(country:)`,
     /// via `resetForCitySwitch`) has dropped it. A deep link's film lookup
     /// waits for this to equal its target slug — nil is just another shade of
     /// "not yet" alongside the wrong slug, so clearing it mid-switch is safe.
-    @Published private(set) var loadedCitySlug: String?
+    private(set) var loadedCitySlug: String?
     /// The current city's cinema universe + area grouping (`/api/cinemas`).
     /// `.empty` (flat) until fetched; a split city (London) drives the
     /// multi-select area picker off `catalog.areas`, a flat city ignores it and
     /// keeps the single-select pill bar.
-    @Published private(set) var catalog: CinemaCatalog = .empty
+    private(set) var catalog: CinemaCatalog = .empty
 
     private let endpoint: ConditionalListEndpoint<Film>
     private var base: URL { endpoint.base }

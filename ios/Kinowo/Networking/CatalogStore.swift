@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import Observation
 
 /// The live country + city catalog the app runs off. It is:
 ///  - **seeded** from the bundled `catalog-seed.json` (shipped in the distro), so
@@ -12,9 +12,10 @@ import Combine
 /// It publishes `countries`/`cities` for the UI; the per-country query logic lives
 /// on `[City]`/`[Country]` (KinowoCore, unit-tested) and is called through here.
 @MainActor
-final class CatalogStore: ObservableObject {
-    @Published private(set) var countries: [Country]
-    @Published private(set) var cities: [City]
+@Observable
+final class CatalogStore {
+    private(set) var countries: [Country]
+    private(set) var cities: [City]
     /// The server's old-owner table: which country a link naming none means.
     private(set) var bareSlugOwners: [String: String] = [:]
 

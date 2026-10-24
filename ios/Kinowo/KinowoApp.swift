@@ -4,14 +4,14 @@ import StoreKit
 
 @main
 struct KinowoApp: App {
-    @StateObject private var store: RepertoireStore
-    @StateObject private var details = DetailsStore(cache: .details(in: ConditionalPayloadCache<FilmDetails>.defaultDirectory))
-    @StateObject private var catalog = CatalogStore()
+    @State private var store: RepertoireStore
+    @State private var details = DetailsStore(cache: .details(in: ConditionalPayloadCache<FilmDetails>.defaultDirectory))
+    @State private var catalog = CatalogStore()
     @State private var prefs: UserPreferences
     @State private var authService: AuthService
     @State private var sync: StateSyncService
-    @StateObject private var deepLink = DeepLinkCoordinator()
-    @StateObject private var clientSupport = ClientSupportStore()
+    @State private var deepLink = DeepLinkCoordinator()
+    @State private var clientSupport = ClientSupportStore()
     /// The one poster disk cache: the grid and detail images read it through
     /// the environment, `store` purges it daily.
     private let posters: PosterStore
@@ -34,7 +34,7 @@ struct KinowoApp: App {
         let authService = AuthService()
         let posters = PosterStore()
         self.posters = posters
-        _store = StateObject(wrappedValue: RepertoireStore(
+        _store = State(initialValue: RepertoireStore(
             cache: .repertoire(in: ConditionalPayloadCache<Film>.defaultDirectory), posters: posters))
         _prefs = State(initialValue: preferences)
         _authService = State(initialValue: authService)
@@ -83,13 +83,13 @@ struct KinowoApp: App {
     var body: some Scene {
         WindowGroup {
             gatedRoot
-                .environmentObject(store)
-                .environmentObject(details)
-                .environmentObject(catalog)
+                .environment(store)
+                .environment(details)
+                .environment(catalog)
                 .environment(prefs)
                 .environment(authService)
                 .environment(\.stateSync, sync)
-                .environmentObject(deepLink)
+                .environment(deepLink)
                 .environment(\.posterStore, posters)
                 // Follow the selected (country-independent) language for
                 // in-session SwiftUI `Text(LocalizedStringKey)` resolution

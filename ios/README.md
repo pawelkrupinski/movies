@@ -39,7 +39,7 @@ ios/
 │   │   ├── Film.swift          Film, DayShowings, CinemaShowings, Showtime, Ratings
 │   │   └── Filters.swift       DateFilter (anytime/today/tomorrow/week)
 │   ├── Networking/
-│   │   ├── RepertoireClient.swift  URLSession fetcher + @Published store
+│   │   ├── RepertoireClient.swift  URLSession fetcher + @Observable store
 │   │   ├── DetailsStore.swift      `/api/details` fetcher (synopsis, trailers)
 │   │   └── CatalogStore.swift      `/api/catalog` fetcher (countries, cities)
 │   ├── Storage/

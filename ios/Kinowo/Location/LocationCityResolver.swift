@@ -34,7 +34,7 @@ extension CLLocationManager: LocationRequesting {}
 /// unit-tested cross-platform; what this class owns, and what
 /// `LocationCityResolverTests` covers, is the ORDER and the DEADLINES.
 @MainActor
-final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerDelegate {
+final class LocationCityResolver: NSObject, CLLocationManagerDelegate {
     enum Outcome: Equatable {
         /// A fix landed inside a known city's 100 km radius.
         case city(City)

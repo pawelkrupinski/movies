@@ -9,8 +9,8 @@ import XCTest
 // request headers), so a server-side shape change that would break the
 // production stores breaks here first.
 //
-// `RepertoireStore` / `DetailsStore` / `CatalogStore` themselves are
-// Combine-bound and excluded from the `KinowoCore` SPM target (see
+// `RepertoireStore` / `DetailsStore` / `CatalogStore` themselves need
+// `KinowoAuth` and are excluded from the `KinowoCore` SPM target (see
 // Package.swift), so this suite exercises the decoder + model line they
 // delegate to rather than the store objects. `/api/catalog` is not covered
 // for the same reason: its `CatalogBody` decoder lives in the app-target-only

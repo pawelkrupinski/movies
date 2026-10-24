@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 // See `RepertoireClient.swift`: a no-op in the Xcode app's flat module, true
 // only in the `KinowoNetworking` SPM target that lets `swift test` drive this.
 #if canImport(KinowoCore)
@@ -18,10 +19,11 @@ import Foundation
 /// `[FilmDetails]` in `KinowoCore`, so this stays a thin URLSession
 /// shim and the map-building rule is unit-tested without the network.
 @MainActor
-final class DetailsStore: ObservableObject {
+@Observable
+final class DetailsStore {
     /// title → details. Sparse: the backend only ships films that have
     /// a synopsis or a trailer, so a missing key is the common case.
-    @Published private(set) var byTitle: [String: FilmDetails] = [:]
+    private(set) var byTitle: [String: FilmDetails] = [:]
 
     private let endpoint: ConditionalListEndpoint<FilmDetails>
 

@@ -16,7 +16,7 @@ import SwiftUI
 /// details map populates.
 struct FilmDetailView: View {
     let film: Film
-    @EnvironmentObject var details: DetailsStore
+    @Environment(DetailsStore.self) var details
     // The share link is city-scoped (`/<city>/film?title=…`), so the detail
     // screen needs the selected-city slug the same way the listing card does.
     @Environment(UserPreferences.self) var prefs

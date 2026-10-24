@@ -446,8 +446,8 @@ struct FiltersSheet: View {
     let allDirectors: [(name: String, count: Int)]
     let allCast: [(name: String, count: Int)]
     @Environment(AuthService.self) var authService
-    @EnvironmentObject var catalog: CatalogStore
-    @EnvironmentObject var store: RepertoireStore
+    @Environment(CatalogStore.self) var catalog
+    @Environment(RepertoireStore.self) var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
 

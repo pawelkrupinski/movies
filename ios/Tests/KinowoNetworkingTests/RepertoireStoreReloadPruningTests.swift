@@ -1,4 +1,5 @@
 import XCTest
+import Observation
 import KinowoTestSupport
 @testable import KinowoCore
 @testable import KinowoNetworking
@@ -49,6 +50,24 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
 
         XCTAssertTrue(store.films.isEmpty,
                        "a screening 45 minutes in the past should have been pruned from a freshly-fetched payload, got \(store.films)")
+    }
+
+    /// `@Observable`: the grid, which reads `films`, hears a reload land them.
+    func testAReaderOfTheFilmsHearsAReloadLandThem() async throws {
+        let now = Date()
+        let (date, time) = warsawDateAndTime(now.addingTimeInterval(60 * 60))
+        let payload = [film(date: date, time: time)]
+        URLProtocolStub.handler = { request in
+            request.url!.path.hasSuffix("/cinemas")
+                ? .init(statusCode: 404, headers: [:], body: Data())
+                : jsonResponse(payload)
+        }
+        let store = RepertoireStore(base: deployment, citySlug: city, session: URLProtocolStub.session(), cache: cache, posters: .throwaway())
+        let heard = LockedValue(false)
+        withObservationTracking { _ = store.films } onChange: { heard.withLock { $0 = true } }
+        await store.reload(now: now)
+        XCTAssertTrue(heard.withLock { $0 })
+        XCTAssertEqual(store.films.count, 1)
     }
 
     /// A screening still inside the 30-minute grace survives the same path —

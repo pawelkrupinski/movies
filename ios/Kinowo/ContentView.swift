@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var store: RepertoireStore
-    @EnvironmentObject var details: DetailsStore
+    @Environment(RepertoireStore.self) var store
+    @Environment(DetailsStore.self) var details
     @Environment(UserPreferences.self) var prefs
-    @EnvironmentObject var catalog: CatalogStore
+    @Environment(CatalogStore.self) var catalog
     @Environment(AuthService.self) var authService
-    @EnvironmentObject var deepLink: DeepLinkCoordinator
+    @Environment(DeepLinkCoordinator.self) var deepLink
     @Environment(\.stateSync) var sync
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.locale) private var locale
@@ -78,7 +78,7 @@ struct ContentView: View {
     /// alert when non-nil. The resolver is held as state so it survives
     /// across the async fix.
     @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
-    @StateObject private var locationResolver = LocationCityResolver()
+    @State private var locationResolver = LocationCityResolver()
 
     /// Run after the carousel commits a day change (it has already advanced
     /// `dateFilter`): flash the new day's name and retire the onboarding hint.

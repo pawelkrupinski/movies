@@ -1,4 +1,5 @@
 import XCTest
+import Observation
 import KinowoTestSupport
 @testable import KinowoCore
 @testable import KinowoNetworking
@@ -33,6 +34,16 @@ final class ClientSupportStoreTests: XCTestCase {
         let store = await check(appVersion: "2.0.11", respond: ok(liveBody))
         XCTAssertEqual(store.requiredUpdate, URL(string: "https://apps.apple.com/app/id6792566321"))
         XCTAssertEqual(URLProtocolStub.requestedURLs, [deployment.appendingPathComponent("api/client-support")])
+    }
+
+    /// `@Observable`: the app root, which reads `requiredUpdate`, hears the gate go up.
+    func testAReaderOfTheGateHearsItRaised() async {
+        URLProtocolStub.handler = ok(liveBody)
+        let store = ClientSupportStore(session: URLProtocolStub.session(), appVersion: "2.0.11")
+        let heard = LockedValue(0)
+        withObservationTracking { _ = store.requiredUpdate } onChange: { heard.withLock { $0 += 1 } }
+        await store.check(baseURL: deployment)
+        XCTAssertEqual(heard.withLock { $0 }, 1)
     }
 
     func testACurrentVersionDoesNotRaiseTheGate() async {

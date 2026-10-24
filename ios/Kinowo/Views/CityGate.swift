@@ -44,11 +44,11 @@ enum CountryDisplayName {
 /// leans on (`City.nearestWithin100km`) is pure and tested there.
 struct CityGate: View {
     @Environment(UserPreferences.self) var prefs
-    @EnvironmentObject var store: RepertoireStore
-    @EnvironmentObject var details: DetailsStore
+    @Environment(RepertoireStore.self) var store
+    @Environment(DetailsStore.self) var details
     // For the chosen city's own zone — a country has one to offer and the US
     // needs six. Injected app-wide in `KinowoApp`, same as the others.
-    @EnvironmentObject var catalog: CatalogStore
+    @Environment(CatalogStore.self) var catalog
 
     var body: some View {
         if let slug = prefs.selectedCity {
@@ -83,8 +83,8 @@ struct CityGate: View {
 /// manual `CityChoiceView` directly.
 struct CityResolverView: View {
     @Environment(UserPreferences.self) var prefs
-    @EnvironmentObject var catalog: CatalogStore
-    @StateObject private var resolver = LocationCityResolver()
+    @Environment(CatalogStore.self) var catalog
+    @State private var resolver = LocationCityResolver()
     @State private var detected: City?
     @State private var showChoice = false
 
@@ -191,9 +191,9 @@ struct CityConfirmView: View {
 /// everywhere else — see `pickingRegion`.
 struct CityChoiceView: View {
     @Environment(UserPreferences.self) var prefs
-    @EnvironmentObject var catalog: CatalogStore
-    @EnvironmentObject var store: RepertoireStore
-    @EnvironmentObject var details: DetailsStore
+    @Environment(CatalogStore.self) var catalog
+    @Environment(RepertoireStore.self) var store
+    @Environment(DetailsStore.self) var details
     // For `choose(_:)`'s fallback suppression — see there.
     @Environment(AuthService.self) var authService
     @Environment(\.locale) private var locale
@@ -205,7 +205,7 @@ struct CityChoiceView: View {
     /// The "use my location" toolbar button's own resolver — separate from the
     /// gate's `CityResolverView`, since this button re-runs the same check on
     /// demand rather than once on first launch.
-    @StateObject private var locateResolver = LocationCityResolver()
+    @State private var locateResolver = LocationCityResolver()
     /// A fix is in flight for the toolbar button — disables it and swaps its
     /// icon for a spinner so a second tap can't stack a second request.
     @State private var locating = false

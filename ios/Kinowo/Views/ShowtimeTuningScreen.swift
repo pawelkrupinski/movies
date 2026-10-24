@@ -27,7 +27,7 @@ struct ShowtimeTuningScreen: View {
     @State private var spacing = CardSpacingStyle()
     @State private var cinemaHeader = CinemaHeaderStyle()
     @State private var filmStyle = FilmDetailStyle()
-    @StateObject private var details = DetailsStore.seeded(TuningSampleData.details)
+    @State private var details = DetailsStore.seeded(TuningSampleData.details)
     @State private var sheetHeight: CGFloat = 360
     @State private var copied = false
     @GestureState private var dragTranslation: CGFloat = 0
@@ -87,7 +87,7 @@ struct ShowtimeTuningScreen: View {
 
     private var filmPreview: some View {
         FilmDetailView(film: TuningSampleData.detailFilm)
-            .environmentObject(details)
+            .environment(details)
             .environment(\.filmDetailStyle, filmStyle)
     }
 

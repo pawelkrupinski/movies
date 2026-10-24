@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import Observation
 
 /// Holds the most recent inbound deep link until the UI consumes it.
 ///
@@ -9,6 +9,7 @@ import Combine
 /// film push, then clears it. Kept as a tiny observable so the link survives
 /// the gate flip and a not-yet-loaded repertoire.
 @MainActor
-final class DeepLinkCoordinator: ObservableObject {
-    @Published var pending: DeepLink?
+@Observable
+final class DeepLinkCoordinator {
+    var pending: DeepLink?
 }

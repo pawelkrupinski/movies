@@ -16,7 +16,7 @@ that must be confirmed before acting. Measure before landing any performance ite
 3. **Android:** a Baseline Profile; posters on the app's shared OkHttp client; `AsyncImage` over
    `SubcomposeAsyncImage` in the grid.
 4. **Hosts:** zram swap and kubelet memory reserves on every host (landed 2026-10-24, apply owed: see Hosts).
-5. **iOS:** `@Observable` with a deployment-target bump to iOS 17.
+5. **iOS:** `@Observable` with a deployment-target bump (done 2026-10-24: iOS 18).
 6. **Page tests:** replace the remaining `waitForTimeout` sleeps.
 
 ## Versions: mostly already current
@@ -330,10 +330,15 @@ non-Sendable (the package builds and its 400 tests pass on Linux 6.2 and 6.4 wit
 the `#available(iOS 17)` `scrollClipDisabled` wrapper, the 13 deprecated one-parameter `onChange(of:perform:)`
 closures, and the NSLock in the tests' `LockedValue` (now `Synchronization.Mutex`, Sendable checked).
 
-1. **`@Observable` (iOS 17)** instead of 9 `ObservableObject` classes and about 22 `@Published` properties.
-   `UserPreferences` (`Storage/UserPreferences.swift:34-88`) re-renders every observer on any change. The Combine
-   pipelines in `StateSyncService.swift:99,449,460-470` become `Observations` or a cancellable `Task`. The largest
-   code deletion. Needs the iOS 17 bump and test rewrites in `KinowoAuthTests`.
+1. **`@Observable`: done 2026-10-24.** The 7 stores with observed state (`UserPreferences`, `AuthService`,
+   `RepertoireStore`, `DetailsStore`, `CatalogStore`, `ClientSupportStore`, `DeepLinkCoordinator`; 22 `@Published`)
+   are `@Observable`; `StateSyncService` and `LocationCityResolver`, which published nothing, are plain classes
+   (`@Entry var stateSync`, `@State`). No `import Combine` is left in the app. `UserPreferences` now invalidates per
+   property (`UserPreferencesObservationTests`). `StateSyncService` watches the signed-in user and the selected
+   country through `observedValues` (`Auth/ObservedValues.swift`: `withObservationTracking` re-armed, because
+   `Observations` needs iOS 26), hears hide/unhide and language edits synchronously through
+   `PreferencesEditListener` (an async stream would let a country switch in the same turn intervene), and debounces
+   with a `TaskDebouncer`. `KinowoAuth` stays macOS/iOS-only for CryptoKit (`PkceVerifier`), not Combine.
 2. **Swift 6.2 approachable concurrency + default MainActor isolation**: **measured and skipped
    (2026-10-23).** The app sources carry 28 `@MainActor`s, 18 of them in files the SwiftPM package also compiles
    (`StateSyncService`, `LocationCityResolver`, the `Networking/` stores), where the package has no MainActor default

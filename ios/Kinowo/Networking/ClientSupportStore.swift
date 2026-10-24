@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import Observation
 // See `RepertoireClient.swift`: a no-op in the Xcode app's flat module, true
 // only in the `KinowoNetworking` SPM target that lets `swift test` drive this.
 #if canImport(KinowoCore)
@@ -18,9 +18,10 @@ import Combine
 /// app. Nothing is persisted; the answer is a few hundred bytes and asked
 /// once per launch, so an offline launch simply isn't gated.
 @MainActor
-final class ClientSupportStore: ObservableObject {
+@Observable
+final class ClientSupportStore {
     /// Non-nil when this build is below the server's minimum: where to update.
-    @Published private(set) var requiredUpdate: URL?
+    private(set) var requiredUpdate: URL?
 
     private let session: URLSession
     private let appVersion: String

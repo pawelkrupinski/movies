@@ -16,22 +16,24 @@ import PackageDescription
 // - `KinowoCore` — Foundation-only sources (Models + the cache /
 //   poster layer of Networking). The Views/, Storage/, ContentView, KinowoApp,
 //   RepertoireClient, DetailsStore files are excluded because they
-//   import SwiftUI/UIKit/Combine, none of which exist on
-//   swift-corelibs-foundation. The Xcode app still compiles those
+//   import SwiftUI/UIKit, which don't exist on swift-corelibs-foundation, or
+//   need `KinowoAuth` (below). The Xcode app still compiles those
 //   files for the real device build — they live in `Kinowo/` and
 //   `xcodebuild` picks them up through the `.pbxproj`.
 //   `Location/` is IN the target but wrapped in `#if canImport(CoreLocation)`,
 //   so it compiles to nothing on Linux and its resolver's ordering and
 //   deadlines are unit-tested on the macOS leg.
-// - `KinowoAuth` — Combine-dependent auth/sync layer (macOS/iOS only).
+// - `KinowoAuth` — the auth/sync layer, macOS/iOS only: `PkceVerifier` hashes
+//   with CryptoKit, which Linux lacks (the `@Observable` state and the
+//   `observedValues` stream are plain Observation, on Linux too).
 //   Compiled as a separate module so StateSyncService can be tested via
 //   `swift test` on macOS without pulling SwiftUI into KinowoCore.
 // - `KinowoCoreTests` — unit + LocalServer XCTest cases, resourced
 //   with a captured production `/api/details` JSON fixture.
-// - `KinowoAuthTests` — sync-service tests (Combine; macOS/iOS only).
+// - `KinowoAuthTests` — sync-service tests (macOS/iOS only, with `KinowoAuth`).
 // - `KinowoTestSupport` — test doubles shared across test targets
 //   (`URLProtocolStub`, `LockedValue`).
-#if canImport(Combine)
+#if canImport(CryptoKit)
 let authTargets: [Target] = [
     .target(
         name: "KinowoAuth",
@@ -69,8 +71,8 @@ let authTargets: [Target] = [
 let authTargets: [Target] = []
 #endif
 
-// - `KinowoNetworking` — Combine-dependent store layer (macOS/iOS only),
-//   same reasoning as `KinowoAuth`: compiled as its own module so
+// - `KinowoNetworking` — the `@Observable` store layer, macOS/iOS only because it
+//   depends on `KinowoAuth`: compiled as its own module so
 //   `RepertoireStore` can be driven directly by `swift test` on macOS (a
 //   stubbed `URLSession` in, real reload/cache/prune logic exercised)
 //   instead of only through the decoder-only line `LocalServerRepertoireTests`
@@ -83,9 +85,9 @@ let authTargets: [Target] = []
 //   exists, and true only here — `@testable` because none of those types are
 //   `public`, and widening that surface just for this target isn't worth it.
 //   `DetailsStore.swift`, `CountrySwitch.swift`, `ConditionalListEndpoint.swift` and `ClientSupportStore.swift` ride along under the same `#if canImport` guard.
-// - `KinowoNetworkingTests` — `RepertoireStore` / `DetailsStore` / `ClientSupportStore` unit tests (Combine;
-//   macOS/iOS only).
-#if canImport(Combine)
+// - `KinowoNetworkingTests` — `RepertoireStore` / `DetailsStore` / `ClientSupportStore` unit tests
+//   (macOS/iOS only).
+#if canImport(CryptoKit)
 let networkingTargets: [Target] = [
     .target(
         name: "KinowoNetworking",
@@ -156,10 +158,10 @@ let package = Package(
                 "KinowoApp.swift",
                 "DeepLinkCoordinator.swift",
                 "Auth",
-                // Combine (`ObservableObject` / `@Published`) — not on
-                // Linux. Logic in these files is a thin URLSession +
-                // parser-delegation shim; the parser layer below is
-                // what carries the test-worthy behaviour.
+                // The `@Observable` stores — `KinowoNetworking`'s, which
+                // needs `KinowoAuth`. Logic in these files is a thin
+                // URLSession + parser-delegation shim; the parser layer
+                // below is what carries the test-worthy behaviour.
                 "Networking/RepertoireClient.swift",
                 "Networking/DetailsStore.swift",
                 "Networking/CountrySwitch.swift",
