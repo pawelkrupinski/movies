@@ -34,8 +34,9 @@ import java.time.{Clock, Instant}
  * [[QuestionMemory.Outcome.Absent]] (a durable non-answer, an empty answer filed included) or
  * [[QuestionMemory.Outcome.Failed]] (how many times in a row, when it is due again, and the host the failing request
  * went to when the ask knew it) — kept until the marker is swept. Each host's health is a marker of its own
- * ([[roundEnded]], TMDB's under the id it always had): a host's recovery releases the failures marked against it before
- * (a failure with no host recorded is a model question's, TMDB's).
+ * ([[roundEnded]], TMDB's under the id it always had): a host's recovery releases the failures marked against it before.
+ * The model's asks mark theirs against the host the read went to as the agreement's do (an IMDb suggestion's is IMDb's);
+ * a model question's failure with no host recorded — marked before they did, 2026-10-24 — is TMDB's.
  *
  * Read as an answer is ([[TmdbDocuments.answers]]): the worker's document cache keeps a marker, or its absence, until a
  * write of it — the agreement's open questions are checked here on every hand-over to the queue.
@@ -146,11 +147,11 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
     }
   }
 
-  /** How a round of reads of `host` (TMDB's, the fill's, by default) came out, as a whole. A round where every read
-   *  FAILED is the host down, not a
+  /** How a round of reads of `host` (TMDB's by default; the fill reports each host's reads apart) came out, as a whole.
+   *  A round where every read FAILED is the host down, not a
    *  question it cannot answer; the first round after one where reads answered and none failed is its recovery, and
-   *  every model question's failure marked before it is due again at once ([[due]]) — otherwise a long outage left each
-   *  question up to the longest failure wait behind a TMDB answering again. A round with answers AND failures is neither:
+   *  every failure marked against the host before it is due again at once ([[due]]) — otherwise a long outage left each
+   *  question up to the longest failure wait behind a host answering again. A round with answers AND failures is neither:
    *  a question that keeps failing while others answer keeps its own backoff. Nor is a round of fewer than
    *  [[MinOutageReads]] reads: one question failing alone is that question's failure, and calling it an outage released
    *  its backoff every other round. A read counts once it was wanted — failed, or deferred behind the host's back-off (an
@@ -206,7 +207,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
   private def policyOf(question: Question): QuestionPolicies.NonAnswer = QuestionPolicies.of(question.kind).nonAnswer
   private def failureWaitOf(doc: BsonDocument): Option[Long]          = BsonFields.int64(doc.get(FailureWait))
   private def isAnswered(doc: BsonDocument): Boolean                  = stringOf(doc.get(OutcomeField)).contains(AnsweredOutcome)
-  // the host a failure was marked against: a model question's, with none recorded, is TMDB's
+  // the host a failure was marked against: a model question's with none recorded (marked before 2026-10-24) is TMDB's
   private def hostOf(question: Question, doc: BsonDocument): Option[String] =
     stringOf(doc.get(HostField)).orElse(Option.when(question.kind.system == QuestionSystem.Model)(TmdbHost))
   private def stringOf(value: org.bson.BsonValue): Option[String] = Option(value).filter(_.isString).map(_.asString.getValue)

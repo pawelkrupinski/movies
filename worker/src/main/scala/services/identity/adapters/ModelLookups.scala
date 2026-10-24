@@ -51,15 +51,20 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
   /** The store's answer; on a gap, the live one -- read back from the store it was just filed into, so the question
    *  answers as the store holds it (popularity to its bucket), as every later ask of it will: answered as TMDB stated
    *  it, a take-up decided on one input and its next drain on another. The live answer only when the store took none.
-   *  A gap still in its backoff is not asked; one asked and left unanswered is remembered, failed or not. */
+   *  A gap still in its backoff is not asked; one asked and left unanswered is remembered, failed or not — a failure
+   *  against the host its read went to ([[LiveAsks.failedHost]]: an IMDb suggestion's is IMDb's), whose recovery releases it. */
   private def storedFirst[A](question: Question, fromStore: => Answer[A], asked: => Answer[A]): Answer[A] =
     fromStore.orElse {
       if (!asks.due(question)) Answer.Unknown
       else {
         val failedBefore = LiveAsks.failures
-        val liveAnswer   = tools.HttpPath.within(tools.HttpPath.Live)(asked)
+        val requested    = new tools.RequestedHost.Recording
+        val liveAnswer   = tools.RequestedHost.within(requested)(tools.HttpPath.within(tools.HttpPath.Live)(asked))
         val answer       = fromStore.orElse(liveAnswer)
-        if (!answer.isKnown) asks.unanswered(question, failed = LiveAsks.failures != failedBefore)
+        if (!answer.isKnown) {
+          val failed = LiveAsks.failures != failedBefore
+          asks.unanswered(question, failed, if (failed) LiveAsks.failedHost(requested) else None)
+        }
         answer
       }
     }
@@ -69,8 +74,9 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
 trait LiveAsks {
   /** Is `question` asked live now — never asked, or past its backoff? */
   def due(question: Question): Boolean
-  /** `question` was asked live and left unanswered: a durable non-answer, or a read that `failed`. */
-  def unanswered(question: Question, failed: Boolean): Unit
+  /** `question` was asked live and left unanswered: a durable non-answer, or a read that `failed` — against `host`, when
+   *  known. */
+  def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit
 }
 
 object LiveAsks {
@@ -78,27 +84,34 @@ object LiveAsks {
   /** Every gap asked live, nothing remembered: what the model did before step 3, and a replay's lookups. */
   val Always: LiveAsks = new LiveAsks {
     def due(question: Question): Boolean                       = true
-    def unanswered(question: Question, failed: Boolean): Unit = ()
+    def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit = ()
   }
 
   /** The one memory ([[QuestionMemory]]): one backoff for a gap, whoever asked it. */
   def remembered(memory: QuestionMemory): LiveAsks = new LiveAsks {
     def due(question: Question): Boolean = memory.due(Set(question)).nonEmpty
-    def unanswered(question: Question, failed: Boolean): Unit =
-      if (failed) { memory.failed(Seq(question)); () } else memory.unanswered(Seq(question))
+    def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit =
+      if (failed) { memory.failed(Seq(question), host); () } else memory.unanswered(Seq(question))
   }
 
-  private val failed = ThreadLocal.withInitial[java.lang.Long](() => 0L)
+  private val failed      = ThreadLocal.withInitial[java.lang.Long](() => 0L)
+  private val lastFailure = new ThreadLocal[Throwable]
   /** How many live reads failed on this thread (a 5xx, a timeout, a 429, an open breaker; not a 404): what tells a
    *  live ask's failure from TMDB's durable non-answer. */
   def failures: Long = failed.get
 
-  /** `fetch`, its failed reads counted on the requesting thread ([[failures]]). */
+  /** The host this thread's latest failed read went to: the one its failure names, else the last host requested within
+   *  `requested` ([[AgreementQuestions.hostOf]], as the agreement's asks name theirs). */
+  def failedHost(requested: tools.RequestedHost.Recording): Option[String] = AgreementQuestions.hostOf(lastFailure.get, requested.last)
+
+  /** `fetch`, its failed reads counted on the requesting thread ([[failures]]) and each request's host noted
+   *  (`tools.RequestedHost`). */
   final class Counted(fetch: tools.HttpFetch) extends tools.ForwardingHttpFetch {
     protected def around[T](url: String)(call: tools.HttpFetch => T): T =
-      try call(fetch)
+      try { tools.RequestedHost.note(LookupFillLiveFetch.hostOf(url)); call(fetch) }
       catch {
-        case scala.util.control.NonFatal(e) if !tools.ReadOutcome.isAbsent(e) => failed.set(failed.get + 1); throw e
+        case scala.util.control.NonFatal(e) if !tools.ReadOutcome.isAbsent(e) =>
+          failed.set(failed.get + 1); lastFailure.set(e); throw e
       }
   }
 }

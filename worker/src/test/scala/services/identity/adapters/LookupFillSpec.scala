@@ -195,6 +195,33 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     memory.due(asked) shouldBe AnswersChanged(Set(refused, failing), Set.empty)   // the failures, minutes later
   }
 
+  // The model's failures are marked against the host their read went to, and each host's round is its own: IMDb down
+  // while TMDB answers is IMDb's outage, and IMDb answering again releases the IMDb-backed questions that failed in it.
+  it should "mark a failed read against its host, and release that host's failures when its own reads recover" in {
+    val clock   = new tools.MutableClock(TestWiring.FixedInstant)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val imdb    = "v3.sg.media-imdb.com"
+    @volatile var imdbDown = true
+    val service = new HttpFetch {
+      private def answer(url: String): String =
+        if (url.contains(imdb) && imdbDown) throw new java.net.http.HttpTimeoutException("request timed out")
+        else if (url.contains(imdb)) """{"d":[],"q":"x","v":1}"""
+        else """{"results":[],"crew":[],"cast":[]}"""
+      override def get(url: String): String                                    = answer(url)
+      override def get(url: String, headers: Map[String, String]): String      = answer(url)
+      override def post(url: String, body: String, contentType: String): String = answer(url)
+    }
+    val down = (1 to 3).map(i => CandidateQuery.Imdb(s"Down $i"))
+    fill(store(), service, gaps = _ => AnswersChanged(down.toSet + CandidateQuery.Title("Answered"), Set.empty), memory = Some(memory)).round()
+    memory.outcome(Question.Candidate(down.head)).collect { case f: QuestionMemory.Outcome.Failed => f.host } shouldBe Some(Some(imdb))
+    // the first failed (the rest deferred behind IMDb's back-off: IMDb's outage) and is held, though TMDB answered
+    memory.due(AnswersChanged(Set(down.head), Set.empty)) shouldBe AnswersChanged.Empty
+    clock.advance(java.time.Duration.ofMinutes(1))
+    imdbDown = false
+    fill(store(), service, gaps = _ => AnswersChanged(Set(CandidateQuery.Imdb("Up")), Set.empty), memory = Some(memory)).round()
+    memory.due(AnswersChanged(Set(down.head), Set.empty)) shouldBe AnswersChanged(Set(down.head), Set.empty)  // IMDb is back
+  }
+
   "a background round" should "end quietly when the worker's shutdown interrupts it, leaving the interrupt set, not escape as uncaught" in {
     var interrupt = true
     val rounds    = mutable.Buffer.empty[LookupFillRound]

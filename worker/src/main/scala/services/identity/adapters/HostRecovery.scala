@@ -16,7 +16,8 @@ import tools.HostCircuitBreakerHttpFetch.Transition
  * failure marked against it before is due again. The open agreement questions (`open`, the stage's last apply's) whose
  * last ask failed against it are handed to `askAgain`, which queues them — the stage hands a question over once per
  * answers' version, so without this they waited for the next version — and the fill is asked for a round
- * (`fill`), which asks the model's due gaps, TMDB's among them, at its own rate.
+ * (`fill`), which asks the model's due gaps at its own rate — those whose read failed against the host among them,
+ * marked against it as the agreement's are.
  *
  * Nothing here sends a request: the queue and the fill ask at their own pace, through the same 429 gate, breaker and
  * fleet pace as before, so a host that flaps re-queues its questions at most once per breaker cooldown, each queued once.

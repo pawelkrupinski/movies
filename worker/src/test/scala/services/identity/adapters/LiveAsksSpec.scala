@@ -12,7 +12,8 @@ import java.time.{Duration, Instant}
 class LiveAsksSpec extends AnyFlatSpec with Matchers {
   private val lalka = CandidateQuery.Title("Lalka")
 
-  private final class Live(answer: => Answer[Seq[Hit]], fail: Boolean = false) extends IdentityLookups {
+  private final class Live(answer: => Answer[Seq[Hit]], fail: Boolean = false, failing: String = "https://api.themoviedb.org/3/x")
+      extends IdentityLookups {
     var asked = 0
     def hasDetail(listing: Listing): Boolean                      = false
     def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Known(None)
@@ -22,7 +23,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
       if (fail) scala.util.Try(new LiveAsks.Counted(new tools.HttpFetch {
         def get(url: String): String = throw new java.net.SocketTimeoutException("slow")
         def post(url: String, body: String, contentType: String): String = get(url)
-      }).get("https://api.themoviedb.org/3/x"))
+      }).get(failing))
       answer
     }
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
@@ -71,5 +72,22 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     val plain  = new StoredFirstLookups(nothingStored, always)
     plain.candidates(lalka); plain.candidates(lalka)
     always.asked shouldBe 2
+  }
+
+  // An IMDb-backed candidate question (its suggestions are IMDb's) failed against IMDb: IMDb's recovery releases it, not
+  // TMDB's. A timeout names no host; the request's own does.
+  it should "mark a failed read against the host it went to, which releases it on recovering" in {
+    val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val imdb    = "v3.sg.media-imdb.com"
+    val query   = CandidateQuery.Imdb("Lalka")
+    val live    = new Live(Answer.Unknown, fail = true, failing = s"https://$imdb/suggestion/l/lalka.json")
+    new StoredFirstLookups(nothingStored, live, LiveAsks.remembered(memory)).candidates(query)
+    memory.outcome(Question.Candidate(query)).collect { case f: QuestionMemory.Outcome.Failed => f.host } shouldBe Some(Some(imdb))
+    clock.advance(Duration.ofSeconds(30))
+    memory.recovered(QuestionMemory.TmdbHost)
+    memory.due(Set[Question](Question.Candidate(query))) shouldBe empty      // TMDB back says nothing of IMDb
+    memory.recovered(imdb)
+    memory.due(Set[Question](Question.Candidate(query))) shouldBe Set(Question.Candidate(query))
   }
 }

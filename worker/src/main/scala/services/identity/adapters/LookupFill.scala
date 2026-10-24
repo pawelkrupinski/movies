@@ -4,7 +4,7 @@ package adapters
 import clients.TmdbClient
 import play.api.Logging
 import settings.IdentityLookupFillRate
-import tools.{CircuitOpenException, ForwardingHttpFetch, HttpFetch, HttpStatusException}
+import tools.{CircuitOpenException, ForwardingHttpFetch, HttpFetch, HttpStatusException, RequestedHost}
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -28,12 +28,25 @@ final class LookupFillBudget(allowance: Int, pace: FiniteDuration, sleep: Long =
   /** Asks whose read FAILED — taught nothing (a 5xx, a timeout, a 429, an open breaker); not a 404. */
   val failed   = new AtomicInteger()
   val deferred = new AtomicInteger()
+  // each host's reads this round: answered, failed, deferred
+  private val byHost = scala.collection.mutable.Map.empty[String, Array[Int]]
+  @volatile private var failure: Option[Throwable] = None
+  private def count(host: String, outcome: Int): Unit = byHost.getOrElseUpdate(host, new Array[Int](3))(outcome) += 1
+
+  /** A read of `host` answered — a 404/410 too: the host's answer. */
+  def answeredBy(host: String): Unit = synchronized { answered.incrementAndGet(); count(host, 0) }
+  /** A read of `host` failed with `e`. */
+  def failedAt(host: String, e: Throwable): Unit = synchronized { failed.incrementAndGet(); count(host, 1); failure = Some(e) }
+  /** The round's latest failed read, what names the host a failed question's read went to. */
+  def lastFailure: Option[Throwable] = failure
+  /** How each host's wanted reads came out this round: (answered, failed, deferred). */
+  def hosts: Map[String, (Int, Int, Int)] = synchronized(byHost.map { case (host, c) => host -> (c(0), c(1), c(2)) }.toMap)
 
   /** A slot for one live ask of `url` at `host`, waiting its pace; false once the allowance is spent or
    *  the host has overloaded this round. */
   def acquire(host: String, url: String): Boolean = synchronized {
     wanted.getOrElseUpdate(host, scala.collection.mutable.Set.empty) += url
-    if (overloaded(host) || used >= allowance) { deferred.incrementAndGet(); false }
+    if (overloaded(host) || used >= allowance) { deferred.incrementAndGet(); count(host, 2); false }
     else { if (used > 0) sleep(pace.toMillis); used += 1; asked.incrementAndGet(); true }
   }
 
@@ -60,13 +73,13 @@ final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) exte
   protected def around[A](url: String)(call: HttpFetch => A): A = {
     val host = LookupFillLiveFetch.hostOf(url)
     if (!budget.acquire(host, url)) throw new LookupGap(s"deferred: $url")
-    else try { val a = call(fetch); budget.answered.incrementAndGet(); a }
+    else try { RequestedHost.note(host); val a = call(fetch); budget.answeredBy(host); a }
     catch {
       // The one classifier: a 404/410 is TMDB's answer ("nothing here"); everything else taught nothing.
       case absent if tools.ReadOutcome.isAbsent(absent) =>
-        budget.answered.incrementAndGet(); throw absent
+        budget.answeredBy(host); throw absent
       case NonFatal(e) =>
-        budget.failed.incrementAndGet()
+        budget.failedAt(host, e)
         val overload = LookupFillLiveFetch.isOverload(e)
         // The host only: a URL may carry a key.
         logger.info(s"identity lookup fill: $host failed (${e.getClass.getSimpleName}${if (overload) ", overload" else ""})")
@@ -77,14 +90,16 @@ final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) exte
 }
 
 object LookupFillLiveFetch {
-  def hostOf(url: String): String = scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse(url.takeWhile(_ != '?'))
+  /** Lower-cased, as the host breakers and the question memory name it. */
+  def hostOf(url: String): String =
+    scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse(url.takeWhile(_ != '?')).toLowerCase(java.util.Locale.ROOT)
 
   /** The service asking us to slow down, or not answering: a 429, a 5xx, an open breaker, a
    *  network-level failure. */
   def isOverload(e: Throwable): Boolean = e match {
     case s: HttpStatusException          => s.code == 429 || s.code >= 500
     case _: CircuitOpenException         => true
-    // A replayed fixture's miss (the network never throws it): permanent, as `TmdbClient` reads it.
+    // A replayed fixture's miss (the network never throws it): permanent, as `RetryingHttpFetch` reads it.
     case _: java.io.FileNotFoundException => false
     case _: java.io.IOException          => true
     case _                               => false
@@ -165,21 +180,24 @@ final class LookupFill(
     // search names is the model's gap after its next drain, and the next round's question.
     val asked = memory.due(questions())
     // Asked and still unanswered — not deferred for want of budget — is remembered (`QuestionMemory`):
-    // a durable non-answer is asked again a day later, one whose read failed on a short backoff.
-    def outcome[A](answer: => Answer[A]): LookupFill.Asked = {
+    // a durable non-answer is asked again a day later, one whose read failed on a short backoff, marked against the
+    // host that read went to (an IMDb suggestion's is IMDb's), whose recovery releases it.
+    def outcome[A](answer: => Answer[A]): (LookupFill.Asked, Option[String]) = {
       val (deferred, failed) = (budget.deferred.get, budget.failed.get)
+      val requested = new RequestedHost.Recording
+      val known     = RequestedHost.within(requested)(answer.isKnown)
       // A read that failed wins over the deferrals its back-off then caused within the same question.
-      if (answer.isKnown) LookupFill.Asked.Settled
-      else if (budget.failed.get != failed) LookupFill.Asked.Failed
-      else if (budget.deferred.get != deferred) LookupFill.Asked.Settled
-      else LookupFill.Asked.Unanswered
+      if (known) (LookupFill.Asked.Settled, None)
+      else if (budget.failed.get != failed) (LookupFill.Asked.Failed, AgreementQuestions.hostOf(budget.lastFailure.orNull, requested.last))
+      else if (budget.deferred.get != deferred) (LookupFill.Asked.Settled, None)
+      else (LookupFill.Asked.Unanswered, None)
     }
     val outcomes = tools.HttpPath.within(tools.HttpPath.Fill)(
       asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> outcome(lookups.candidates(q))) ++
         asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> outcome(lookups.film(id))))
-    def those(kind: LookupFill.Asked) = outcomes.collect { case (question, `kind`) => question }
-    memory.unanswered(those(LookupFill.Asked.Unanswered))
-    memory.failed(those(LookupFill.Asked.Failed))
+    memory.unanswered(outcomes.collect { case (question, (LookupFill.Asked.Unanswered, _)) => question })
+    outcomes.collect { case (question, (LookupFill.Asked.Failed, host)) => (question, host) }.groupMap(_._2)(_._1)
+      .foreach { case (host, failed) => memory.failed(failed, host) }
     // Then, with what the allowance has left, what has aged (`QuestionRenewals`) — through the same live fetch: the
     // questions first, then the records and people TMDB last gave a month ago, what its changes may never have named. A
     // record or person that failed is named again by the next scan.
@@ -189,7 +207,8 @@ final class LookupFill(
       case Question.Person(id)       => try client.personDirectorCredits(id) catch { case NonFatal(_) => () }
       case _                         => ()
     })
-    memory.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get)
+    // each host's round on its own: one host down says nothing of another's health
+    budget.hosts.foreach { case (host, (answered, failed, deferred)) => memory.roundEnded(answered, failed, deferred, host) }
     current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
     val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)
