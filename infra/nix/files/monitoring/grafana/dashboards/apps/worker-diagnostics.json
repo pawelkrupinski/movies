@@ -2877,7 +2877,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "sum by (country, kind) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\", kind!=\"decided\"}[1h]))",
+          "expr": "sum by (country, kind) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\", kind!~\"decided|joined\"}[1h]))",
           "legendFormat": "{{country}} take {{kind}} /h"
         },
         {
@@ -4129,8 +4129,8 @@
     },
     {
       "id": 76,
-      "title": "Identity match changes per bar (at least an hour) — decided, gained, lost, changed",
-      "description": "`kinowo_worker_identity_take_changes_total{kind,basis}` per bar (at least an hour): each written projection's change list, by listing — a listing new to the films `decided` (matched or not), or one whose film was `gained` (had none), `lost` (has none now) or `changed` — by the basis that holds it after. The same changes, by cluster, are listed on the local /debug/identity/staging page.",
+      "title": "Identity match changes per bar (at least an hour) — decided, joined, gained, lost, changed",
+      "description": "`kinowo_worker_identity_take_changes_total{kind,basis}` per bar (at least an hour): each written projection's change list, by listing — a listing new to the films `decided` (a new cluster, matched or not) or `joined` (a cluster already on the films), or one whose film was `gained` (had none), `lost` (has none now) or `changed` — by the basis that holds it after. The same changes, by cluster, are listed on the local /debug/identity/staging page; `staging events dropped` (`kinowo_worker_identity_staging_dropped_total`) counts any that page was never told, and is 0.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -4179,6 +4179,15 @@
           },
           "expr": "sum by (kind, basis) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{kind}} · {{basis}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (increase(kinowo_worker_identity_staging_dropped_total{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{country}} staging events dropped"
         }
       ],
       "interval": "1h"

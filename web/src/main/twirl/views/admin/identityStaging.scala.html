@@ -51,6 +51,9 @@
     .r-settled { color: #6a9b78; }
     .r-regrouped { color: #b89cd6; }
     .r-decided { color: #6a9b78; }
+    .r-joined { color: #5f6b63; }
+    details.quiet > summary .title { color: #8a8a8a; }
+    .pill.dropped .n { color: #e07a6a; }
     .r-gained { color: #6a9b78; }
     .r-lost { color: #d67a6a; }
     .r-changed { color: #d6a35c; }
@@ -66,7 +69,7 @@
   </div>
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
     — every country's clusters whose take still waits on an answer, and every match decided or changed in the last
-    7 days (decided: new listings matched; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
+    7 days (decided: a new cluster's listings; joined: new listings joining a cluster already on the site; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
     Open a row for its questions.</div>
   <div id="countries"></div>
 
@@ -125,6 +128,7 @@
       var l = cl.listings[0];
       if (!l) return "(no listings) " + esc(cl.take.title || cl.take.leaningTitle || "") + " <span class=\"meta\">" + esc(cl.key) + "</span>";
       var more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) : "";
+      if (cl.resolution === "joined") more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) + " joined" : "";
       return esc(l.rawTitle) + " <span class=\"meta\">@@ " + esc(l.venue) + more + "</span>";
     }
     function outcomeText(q) {
@@ -175,7 +179,9 @@
           (cl.resolvedAt > cl.since ? " · waited " + dur(cl.resolvedAt - cl.since) : "") +
           (cl.questionCount ? " · " + answered + " answered, " + (cl.questionCount - answered) + " left out" : "");
       }
-      return "<details class=\"cluster\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary><span class=\"title\">" +
+      // a listing joining a match already on the site: most of the activity, listed quietly
+      var quiet = cl.resolution === "joined" ? " quiet" : "";
+      return "<details class=\"cluster" + quiet + "\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary><span class=\"title\">" +
         headline(cl) + "</span><span class=\"meta\">" + (cl.resolvedAt == null ? "" : change(cl) + " · ") + esc(takeText(cl.take)) +
         "</span></summary>" +
         "<div class=\"body line meta\">" + meta + "</div>" + body(cl) + "</details>";
@@ -194,7 +200,8 @@
         var counts = "<div class=\"counts\"><span class=\"pill staging\"><span class=\"n\">" + (beat ? beat.staging : staging.length) +
           "</span> staging" + (beat && beat.shown < beat.staging ? " (" + beat.shown + " shown)" : "") + "</span>" +
           "<span class=\"pill resolved\"><span class=\"n\">" + resolved.length + "</span> decided or changed</span>" +
-          "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span></div>";
+          "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span>" +
+          (beat && beat.dropped ? "<span class=\"pill dropped\"><span class=\"n\">" + beat.dropped + "</span> events dropped</span>" : "") + "</div>";
         var kinds = beat ? Object.keys(beat.openByKind).sort().map(function (k) {
           return "<span class=\"kind\">" + esc(k) + " " + beat.openByKind[k] + "</span>";
         }).join("") : "";

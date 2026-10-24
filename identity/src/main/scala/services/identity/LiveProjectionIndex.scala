@@ -309,8 +309,13 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   }
 
   /** A projection wrote `films` and retired `retired`: the stored films are those now — the next update counts a film it
-   *  wrote as moved only if another writer has moved it since. */
-  def written(films: Seq[ProjectedFilm], retired: Seq[services.movies.FilmId]): Unit = {
+   *  wrote as moved only if another writer has moved it since. Returns the projection's CHANGE LIST, read off what the
+   *  writes did to each listing's stored film — what the site shows for it, before and after: a listing on a stored film
+   *  of another TMDB film than before (`lost`, `gained`, `changed`), or on one now and on none before (`decided`, or
+   *  `joined` when another listing of its cluster was on one). A listing re-pointed to another film of the same TMDB
+   *  film, or onto none (it left), changed no take. Only the listings the writes re-pointed are read: none on a quiet
+   *  tick. */
+  def written(films: Seq[ProjectedFilm], retired: Seq[services.movies.FilmId]): Seq[TakeChange] = {
     val reslot = mutable.HashSet.empty[ListingKey]
     retired.foreach(id => unstore(id.value, reslot))
     films.foreach(f => restore(StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)), reslot, f.touched))
@@ -320,11 +325,23 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     // part of the slot's own listing key), and a whole projection reading the store afresh finds the listing on another
     // film — and drafts its cluster again.
     val writtenInto = films.iterator.flatMap(f => f.members.iterator.map(_ -> f.id.value)).toMap
-    val moved       = repoint(reslot.iterator)
+    val before      = mutable.HashMap.empty[ListingKey, Option[StoredFilmRef]]
+    val moved       = repoint(reslot.iterator, Some(before))
     def placedAsWritten(k: ListingKey): Boolean = writtenInto.get(k).exists(id => previousAt(k).exists(_.id == id))
     afterWrites ++= moved.filterNot(placedAsWritten)
     afterWrites ++= writtenInto.keysIterator.filterNot(placedAsWritten)
-    ()
+    def wasPlaced(k: ListingKey): Boolean = before.get(k).fold(previousAt(k).isDefined)(_.isDefined)
+    moved.iterator.flatMap { k =>
+      previousAt(k).flatMap { now =>
+        before(k) match {
+          case Some(was) if was.tmdbId == now.tmdbId => None
+          case Some(was)                             => Some(TakeChange(k, Some(was.id), was.tmdbId, now.tmdbId))
+          case None                                  =>
+            val cluster = entries.get(k).flatMap(e => Option(e.cluster)).flatMap(clusters.get).fold(Set.empty[ListingKey])(_.members)
+            Some(TakeChange(k, None, None, now.tmdbId, joined = cluster.exists(m => m != k && wasPlaced(m))))
+        }
+      }
+    }.toSeq.sortBy(_.listing)
   }
 
   /** `k` as the listing published under it holds it: one key object per listing, not one per map that names it — a stored
@@ -351,7 +368,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
 
   /** Work out `keys`' previous films again: the film whose slot each is, else the one whose slot it folds into — the
    *  builder's rule ([[IdentityProjectionPlan.index]]). The ones that moved. */
-  private def repoint(keys: Iterator[ListingKey]): mutable.HashSet[ListingKey] = {
+  private def repoint(keys: Iterator[ListingKey], before: Option[mutable.HashMap[ListingKey, Option[StoredFilmRef]]] = None)
+      : mutable.HashSet[ListingKey] = {
     val moved = mutable.HashSet.empty[ListingKey]
     keys.foreach { k =>
       val next = entries.get(k).filter(_.listing != null).flatMap { e =>
@@ -363,6 +381,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       val was = previousAt(k)
       if (next != was) {
         moved += k
+        before.foreach(_.getOrElseUpdate(k, was))
         was.foreach(r => listingsOf = listingsOf.updatedWith(r.id)(_.map(_ - k).filter(_.nonEmpty)))
         next match {
           case Some(r) => place(k, r); listingsOf = listingsOf.updated(r.id, listingsOf.getOrElse(r.id, Set.empty) + k)

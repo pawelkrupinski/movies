@@ -31,10 +31,10 @@ import services.identity.adapters.IdentityProjectionMetrics
  *  - `kinowo_worker_identity_take_changes_total{basis,kind}` — each written projection's change list
  *    ([[services.identity.TakeChange]]), by the basis that holds the listing after (`ResolverDecision.Basis`): listings
  *    still published whose TMDB film it moved — `lost` (had one, has none), `changed` (another), `gained` (had none) —
- *    and listings new to the films it `decided` (matched or not). A listing leaving the schedule, and a re-key or merge
- *    that keeps the TMDB film, are churn and never counted; the alarm on match changes reads the moves, the worker
- *    dashboard's "Identity takes" panels all four. Each move is also logged, its facts as fields
- *    (`identity take change: …`, [[services.identity.TakeChangeLines]]).
+ *    and listings new to the films: `decided` (a new cluster, matched or not) or `joined` (a cluster already on them). A
+ *    listing leaving the schedule, and a re-key or merge that keeps the TMDB film, are churn and never counted; the alarm
+ *    on match changes reads the moves, the worker dashboard's "Identity takes" panels all five. Each move is also logged,
+ *    its facts as fields (`identity take change: …`, [[services.identity.TakeChangeLines]]).
  *  - `kinowo_worker_identity_take_reversals_total` — take changes that move a listing BACK to the film (or no-film) it held
  *    before its last change ([[services.identity.TakeReversals]]): two rules undoing each other, an oscillation. UK
  *    Chichester's "The Ties That Bind Us" flipped between two films on every pod start of 2026-10-13/14;
@@ -102,7 +102,7 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
 
   private val takeChanges: Counter = Counter.builder()
     .name("kinowo_worker_identity_take_changes_total")
-    .help("Published listings whose TMDB film a written identity projection moved (lost / changed / gained) or that it decided first (decided), by the basis that holds them after. Churn (a listing leaving, a re-key keeping the film) is not counted.")
+    .help("Published listings whose TMDB film a written identity projection moved (lost / changed / gained) or that it placed first (decided: a new cluster; joined: an existing one), by the basis that holds them after. Churn (a listing leaving, a re-key keeping the film) is not counted.")
     .labelNames("country", "basis", "kind")
     .register(registry)
 

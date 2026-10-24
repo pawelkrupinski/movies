@@ -129,4 +129,20 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.evalString(s"${title("d2")}.textContent") should include ("(no listings) Royal Ballet & Opera 2026/27: Swan Lake")
     }
   }
+
+  it should "list listings joining a match quietly, as joined, and say how many events the worker was never told" in {
+    val joined = cluster("c1@7/joined", "Abbeygate Bury St Edmunds", "NAZA", Nil, resolvedAt = Some(clock.millis()))
+      .copy(listingCount = 86, resolution = Some(StagedCluster.Joined))
+    staging.publish("uk", Seq(joined), Nil, beat(0).copy(dropped = Some(42)))
+    onPage { page =>
+      page.waitFor("document.querySelector('section[data-country=uk] details.cluster') !== null")
+      page.evalString("document.querySelector('section[data-country=uk] details.cluster').className") should include ("quiet")
+      page.evalString("document.querySelector('section[data-country=uk] details.cluster summary .r-joined').textContent") shouldBe "joined"
+      page.evalString("document.querySelector('section[data-country=uk] details.cluster summary .title').textContent") should include ("+85 joined")
+      page.evalString("document.querySelector('section[data-country=uk] .pill.dropped').textContent") should include ("42 events dropped")
+      // quiet: its title drawn dimmer than a decision's
+      page.evalString("getComputedStyle(document.querySelector('section[data-country=uk] details.cluster summary .title')).color") shouldBe
+        "rgb(138, 138, 138)"
+    }
+  }
 }

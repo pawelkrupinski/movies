@@ -37,8 +37,14 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   private var taken: Option[Resolution] = None
   /** What happened, as the projection and the stage tell it: the events the publisher drains. */
   private val feed = new ChangeFeed[StagingEvent](100)
-  private def moved(listing: ListingKey, before: Option[Int], after: Option[Int]) = StagingEvent.Changed(TakeChange(listing, Some("film"), before, after))
-  private def decidedOn(listing: ListingKey, film: Option[Int]) = StagingEvent.Changed(TakeChange(listing, None, None, film))
+  private def moved(listing: ListingKey, before: Option[Int], after: Option[Int]) = TakeChange(listing, Some("film"), before, after)
+  private def decidedOn(listing: ListingKey, film: Option[Int], joined: Boolean = false) = TakeChange(listing, None, None, film, joined = joined)
+  private var projections = 0L
+  /** One written projection's change list, told to the feed. */
+  private def projected(changes: TakeChange*): Unit = {
+    projections += 1
+    feed.offer(changes.map(StagingEvent.Changed(_, projections, clock.millis())))
+  }
 
   private final class CountingDocuments extends StagingDocuments {
     private val inner = new InMemoryStagingDocuments
@@ -51,10 +57,11 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     def remove(ids: Seq[String])   = { removed = ids; inner.remove(ids) }
   }
 
-  private def publisher(docs: StagingDocuments, resolvedCap: Int = 200, stagingCap: Int = 500) =
+  private def publisher(docs: StagingDocuments, stagingCap: Int = 500, metrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded,
+                        filmTitle: Int => Option[String] = _ => None) =
     new IdentityStagingPublisher("pl", new IdentityStaging(docs, clock), () => taken, () => feed.drain(),
       d => waits.getOrElse(d.members.toSet, WaitingOn.model(d)), qs => outcomes.view.filterKeys(qs).toMap, clock, window = 6.hours,
-      resolvedCap = resolvedCap, stagingCap = stagingCap)
+      stagingCap = stagingCap, takeMetrics = metrics, filmTitle = filmTitle)
 
   /** What the screen reads of the country: its staging clusters and its resolutions. */
   private def shown(docs: StagingDocuments): Seq[StagedCluster] =
@@ -114,7 +121,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
 
     clock.advanceSeconds(20)
     taken = Some(resolution(ResolverDecision(Seq(dune), Some(438631), 0.96, ResolverDecision.Basis.OwnMatch, why)()))
-    feed.offer(Seq(decidedOn(dune, Some(438631))))
+    projected(decidedOn(dune, Some(438631)))
     live.publish()
     val Seq(decided) = shown(docs)
     decided.take.explanation shouldBe why.take(IdentityStagingPublisher.ExplanationShown) :+ "… and 2 more"
@@ -134,7 +141,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     waits = Map.empty
     taken = Some(resolution(decision(Seq(belle), Some(2), ResolverDecision.Basis.OwnMatch),
       decision(Seq(dune), Some(438631), ResolverDecision.Basis.Agreed)))
-    feed.offer(Seq(moved(belle, Some(1), Some(2)), decidedOn(dune, Some(438631))))
+    projected(moved(belle, Some(1), Some(2)), decidedOn(dune, Some(438631)))
     live.publish()
     shown(docs).map(c => (c.listings.head.rawTitle, c.resolution, c.was, c.take.title)) should contain theSameElementsAs Seq(
       ("Belle", Some(StagedCluster.Changed), Some(1), None), ("Diuna", Some(StagedCluster.Decided), None, Some("Dune: Part One")))
@@ -154,13 +161,14 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
 
     waits = Map.empty
     taken = Some(resolution(decision(Seq(dune, dune2), Some(438631), ResolverDecision.Basis.OwnMatch)))
-    feed.offer(Seq(decidedOn(dune, Some(438631)), moved(dune2, None, Some(438631))))
+    projected(decidedOn(dune, Some(438631), joined = true), moved(dune2, None, Some(438631)))
     live.publish()
-    // the cluster it was in, regrouped; the one its listings formed, which gave Rialto's listing a film: moved
-    shown(docs).map(_.resolution) should contain theSameElementsAs Seq(Some(StagedCluster.Regrouped), Some(StagedCluster.Gained))
+    // the cluster it was in, regrouped; Kino Muza's listing joining it; Rialto's, given a film: moved
+    shown(docs).map(c => (c.resolution, c.listings.map(_.venue))) should contain theSameElementsAs Seq(
+      (Some(StagedCluster.Regrouped), Seq("Rialto")), (Some(StagedCluster.Joined), Seq("Kino Muza")), (Some(StagedCluster.Gained), Seq("Rialto")))
 
     docs.docs.filter(_.kind == "resolved").map(d => d.expireAt.map(_.toEpochMilli)) shouldBe
-      Seq.fill(2)(Some(clock.millis() + 6.hours.toMillis))
+      Seq.fill(3)(Some(clock.millis() + 6.hours.toMillis))
 
     clock.advanceSeconds(20)
     live.publish()
@@ -175,17 +183,17 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     live.publish()
     clock.advanceSeconds(20)
     taken = Some(resolution(decision(Seq(belle), Some(2), ResolverDecision.Basis.OwnMatch)))
-    feed.offer(Seq(moved(belle, Some(1), Some(2))))
+    projected(moved(belle, Some(1), Some(2)))
     live.publish()
     clock.advanceSeconds(20)
     taken = Some(resolution(decision(Seq(belle), None, ResolverDecision.Basis.Vetoed)))
-    feed.offer(Seq(moved(belle, Some(2), None)))
+    projected(moved(belle, Some(2), None).copy(basisAfter = Some(ResolverDecision.Basis.Vetoed)))
     live.publish()
     shown(docs).map(c => (c.resolution, c.was, c.take.basis)) should contain theSameElementsAs Seq(
       (Some(StagedCluster.Changed), Some(1), "OwnMatch"), (Some(StagedCluster.Lost), Some(2), "Vetoed"))
   }
 
-  it should "not call a cluster re-keyed by a new listing decided or moved: none of its listings' films changed" in {
+  it should "list a new listing re-keying a cluster as joined, and none of its listings decided or moved" in {
     val docs = new InMemoryStagingDocuments
     val live = publisher(docs)
     val early = key("Kino Amok", "A Diuna")   // sorts first: the cluster's id, its key, moves to it
@@ -194,9 +202,9 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     live.publish()
     clock.advanceSeconds(20)
     taken = Some(resolution(decision(Seq(early, dune), Some(438631), ResolverDecision.Basis.OwnMatch), decision(Seq(early, belle))))
-    feed.offer(Seq(decidedOn(early, Some(438631))))
+    projected(decidedOn(early, Some(438631), joined = true))
     live.publish()
-    shown(docs) shouldBe empty
+    shown(docs).map(c => (c.resolution, c.listings.map(_.rawTitle), c.listingCount)) shouldBe Seq((Some(StagedCluster.Joined), Seq("A Diuna"), 1))
   }
 
   // A new cluster's families asked inline: it waited, and settled, inside one projection, between two publishes.
@@ -227,6 +235,28 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     shown(docs).map(c => (c.staging, c.since)) shouldBe Seq((true, began))
   }
 
+  // DE ZOO PALAST Berlin's "Gigi", 2026-10-24: staging, then Agreed on tmdb 17281 — shown as `settled`, which never
+  // compares films, and as "tmdb 17281": the film only the agreement took is not in the model's resolution.
+  it should "list a cluster that stopped waiting and whose film moved as that move, after its wait, titled from the TMDB store" in {
+    val docs = new InMemoryStagingDocuments
+    val live = publisher(docs, filmTitle = Map(17281 -> "Gigi").get)
+    val gigi = key("ZOO PALAST Berlin", "Gigi")
+    waits = Map(Set(gigi) -> WaitingOn(0, Set(search), onTmdb = false))
+    taken = Some(resolution(decision(Seq(gigi), None, ResolverDecision.Basis.Vetoed)))
+    live.publish()
+    val began = shown(docs).head.since
+    clock.advanceSeconds(180)
+    waits = Map.empty
+    outcomes = Map(search -> QuestionMemory.Outcome.Answered)
+    taken = Some(resolution(decision(Seq(gigi), Some(17281), ResolverDecision.Basis.Agreed)))
+    projected(moved(gigi, None, Some(17281)).copy(basisAfter = Some(ResolverDecision.Basis.Agreed)))
+    live.publish()
+    val Seq(resolved) = shown(docs)
+    (resolved.resolution, resolved.was, resolved.since, resolved.take.title) shouldBe ((Some(StagedCluster.Gained), None, began, Some("Gigi")))
+    resolved.resolvedAt.get - resolved.since shouldBe 180000L   // after waiting 3 minutes
+    resolved.questions.map(q => q.text -> q.outcome) shouldBe Seq("imdb|title|Diuna" -> StagedQuestion.Answered)
+  }
+
   it should "write the changes a failed publish drained with the next" in {
     val docs   = new InMemoryStagingDocuments
     var broken = true
@@ -239,7 +269,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     val live = publisher(flaky)
     waits = Map.empty
     taken = Some(resolution(decision(Seq(belle), Some(2), ResolverDecision.Basis.OwnMatch)))
-    feed.offer(Seq(moved(belle, Some(1), Some(2))))
+    projected(moved(belle, Some(1), Some(2)))
     an[IllegalStateException] should be thrownBy live.publish()
     broken = false
     live.publish()
@@ -248,7 +278,10 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
 
   it should "report its takes by basis" in {
     val heldBy  = scala.collection.mutable.Buffer.empty[(Map[String, Int], Map[String, Int])]
-    val metrics: IdentityStagingPublisher.TakeMetrics = (clusters, listings) => heldBy += clusters -> listings
+    val metrics = new IdentityStagingPublisher.TakeMetrics {
+      def held(clusters: Map[String, Int], listings: Map[String, Int]): Unit = heldBy += clusters -> listings
+      def dropped(events: Long): Unit                                        = ()
+    }
     val live = new IdentityStagingPublisher("pl", new IdentityStaging(new InMemoryStagingDocuments, clock), () => taken, () => feed.drain(),
       d => WaitingOn.model(d), _ => Map.empty, clock, takeMetrics = metrics)
     taken = Some(resolution(decision(Seq(belle), None, ResolverDecision.Basis.Vetoed), decision(Seq(dune, dune2), Some(438631), ResolverDecision.Basis.Agreed)))
@@ -257,9 +290,9 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   }
 
 
-  it should "keep the newest resolved clusters up to its cap, and list the longest waiting up to its own" in {
+  it should "list the longest waiting up to its cap" in {
     val docs = new InMemoryStagingDocuments
-    val live = publisher(docs, resolvedCap = 1, stagingCap = 1)
+    val live = publisher(docs, stagingCap = 1)
     waits = Map(Set(dune) -> WaitingOn(0, Set(search), onTmdb = false))
     taken = Some(resolution(decision(Seq(dune)), decision(Seq(belle))))
     live.publish()
@@ -310,5 +343,80 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     taken = None
     publisher(docs).publish()
     docs.written shouldBe empty
+  }
+
+  it should "count what its feed let go in its beat and its metric, never dropping one silently" in {
+    val docs    = new InMemoryStagingDocuments
+    val small   = new ChangeFeed[StagingEvent](2)
+    var counted = 0L
+    val metrics = new IdentityStagingPublisher.TakeMetrics {
+      def held(clusters: Map[String, Int], listings: Map[String, Int]): Unit = ()
+      def dropped(events: Long): Unit                                        = counted += events
+    }
+    val live = new IdentityStagingPublisher("pl", new IdentityStaging(docs, clock), () => taken, () => small.drain(),
+      d => WaitingOn.model(d), _ => Map.empty, clock, takeMetrics = metrics)
+    waits = Map.empty
+    taken = Some(resolution(decision(Seq(dune, dune2, belle), Some(438631), ResolverDecision.Basis.OwnMatch)))
+    small.offer(Seq(dune, dune2, belle).map(l => StagingEvent.Changed(decidedOn(l, Some(438631)), 1, clock.millis())))
+    live.publish()
+    counted shouldBe 1
+    new IdentityStaging(docs, clock).read(Map.empty).head.beat.flatMap(_.dropped) shouldBe Some(1L)
+    live.publish()
+    new IdentityStaging(docs, clock).read(Map.empty).head.beat.flatMap(_.dropped) shouldBe None   // counted once
+  }
+
+  // Exactly once, proved over random runs: every listing's take transition a projection tells the feed is in exactly one
+  // resolution written — through clusters forming, merging, splitting and re-keying, listings arriving and leaving,
+  // films changing and unmatched clusters matched, several projections between two publishes, publishes that fail and
+  // are written by the next, and the publisher restarting.
+  it should "write every change it is told in exactly one resolution, whatever happens between and to its publishes" in {
+    val listings = (1 to 8).map(i => key(s"Kino $i", s"Film ${i % 3}"))
+    (1 to 300).foreach { seed =>
+      val rng     = new scala.util.Random(seed)
+      val docs    = new InMemoryStagingDocuments
+      var broken  = false
+      val flaky   = new StagingDocuments {
+        def index()                  = docs.index()
+        def bodies(ids: Seq[String]) = docs.bodies(ids)
+        def put(ds: Seq[StagingDoc]) = if (broken) throw new IllegalStateException("mongo down") else docs.put(ds)
+        def remove(ids: Seq[String]) = docs.remove(ids)
+      }
+      val told    = scala.collection.mutable.ArrayBuffer.empty[String]
+      var live    = publisher(flaky)
+      var stored  = Map.empty[ListingKey, Option[Int]]   // each listing's film on the site, as the projection wrote it
+      waits = Map.empty
+      (1 to 30).foreach { _ =>
+        // a projection: some listings published, grouped and matched at random — merges, splits, re-keys, films moving
+        val published = listings.filter(_ => rng.nextInt(4) != 0)
+        val groups    = published.groupBy(_ => rng.nextInt(3)).values.toSeq.map(_.sorted)
+        val clusters  = groups.map(ls => ls -> Option.when(rng.nextInt(3) != 0)(1 + rng.nextInt(3)))
+        taken = Some(resolution(clusters.map { case (ls, film) => decision(ls, film, ResolverDecision.Basis.OwnMatch) }*))
+        // some clusters wait, and settle later — changing their film or not
+        waits = clusters.collect { case (ls, _) if rng.nextInt(4) == 0 => ls.toSet[ListingKey] -> WaitingOn(0, Set(search), onTmdb = false) }.toMap
+        val changes = clusters.flatMap { case (ls, film) =>
+          ls.flatMap { l =>
+            stored.get(l) match {
+              case Some(was) if was == film => None
+              case Some(was)                => Some(moved(l, was, film))
+              case None                     => Some(decidedOn(l, film, joined = ls.exists(stored.contains)))
+            }
+          }
+        }
+        stored = stored -- listings.filterNot(published.contains) ++ clusters.flatMap { case (ls, film) => ls.map(_ -> film) }
+        projected(changes*)
+        told ++= changes.map(c => s"${c.listing.venue} ${c.kind.label} ${c.before}")
+        rng.nextInt(5) match {
+          case 0 => broken = true; an[IllegalStateException] should be thrownBy live.publish(); broken = false
+          case 1 => live.stop(); live = publisher(flaky)                                  // a restart: it publishes on stopping
+          case 2 => ()                                                                    // no publish: the next writes both
+          case _ => clock.advanceSeconds(20); live.publish()
+        }
+      }
+      live.publish()
+      val written = new IdentityStaging(docs, clock).read(Map.empty).filter(_.country == "pl").flatMap(_.changed)
+        .filter(_.resolution.exists(r => TakeChange.Kind.values.exists(_.label == r)))
+      written.foreach(c => c.listings.size shouldBe c.listingCount)
+      withClue(s"seed $seed: ")(written.flatMap(c => c.listings.map(l => s"${l.venue} ${c.resolution.get} ${c.was}")).sorted shouldBe told.sorted)
+    }
   }
 }

@@ -16,6 +16,7 @@ enum StagingEvent {
   /** The stage stopped waiting on `cluster` at `at`: every question it waited on answered or attempted, its take
    *  decided. */
   case Settled(cluster: String, at: Long)
-  /** A written projection changed a listing's take (its change list, [[TakeChange]]). */
-  case Changed(change: TakeChange)
+  /** Projection number `projection` (counted from the worker's start), written at `at`, changed a listing's take (an
+   *  entry of its change list, [[TakeChange]]). */
+  case Changed(change: TakeChange, projection: Long, at: Long)
 }

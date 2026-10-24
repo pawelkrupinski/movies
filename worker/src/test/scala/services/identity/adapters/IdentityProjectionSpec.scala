@@ -496,7 +496,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     triggers(w.projection.tickChanged()) shouldBe Seq("retry")
   }
 
-  "A projection that moves a listing's TMDB film" should "report and log the take change, a new listing decided, and nothing for expected churn" in {
+  "A projection that moves a listing's TMDB film" should "report and log the take change, a new listing joined, and nothing for expected churn" in {
     var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
     val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
       r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
@@ -527,9 +527,9 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       (TakeChange.Kind.Lost, Multikino.displayName, "Lalka", Some(501), None),
       (TakeChange.Kind.Changed, Rialto.displayName, "Obcy", Some(502), Some(602)),
       (TakeChange.Kind.Changed, Multikino.displayName, "Obcy", Some(502), Some(602)))
-    // KinoMuza's Obcy is new to the films: decided, onto the film its cluster took; every change carries its bases
+    // KinoMuza's Obcy is new to the films: joined to the match its cluster already was; every change carries its bases
     w.takes.filterNot(_.moved).map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.after, t.basisAfter)) shouldBe Seq(
-      (TakeChange.Kind.Decided, KinoMuza.displayName, "Obcy", Some(602), Some(ResolverDecision.Basis.OwnMatch)))
+      (TakeChange.Kind.Joined, KinoMuza.displayName, "Obcy", Some(602), Some(ResolverDecision.Basis.OwnMatch)))
     w.takes.find(t => t.listing.venue == Helios.displayName).map(t => (t.basisBefore, t.basisAfter)) shouldBe
       Some((Some(ResolverDecision.Basis.OwnMatch), Some(ResolverDecision.Basis.BelowThreshold)))
     logged should have size 6 // a line per take, and the tick's summary
@@ -576,8 +576,9 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.takes should have size 3
   }
 
-  /** A move the store declines is retried by the next projection: counted once, when it is written, not on every try. */
-  it should "count a take change only once its film is written" in {
+  /** A move the store declines is retried by the next projection: each change counted once, as the store took it — the
+   *  film parked without its TMDB id, then written — never on every try. */
+  it should "count a take change once for each change the store took, never on a retry" in {
     var takes   = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
     var decline = false
     val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
@@ -596,12 +597,16 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     takes = takes + ("Obcy" -> Some(602))
     decline = true
     w.projection.tick()
+    // declined: the store holds the film parked, without its TMDB id — what the site shows, its two listings lost, once
+    w.takes.map(t => (t.kind, t.listing.rawTitle, t.before, t.after)).distinct shouldBe Seq((TakeChange.Kind.Lost, "Obcy", Some(502), None))
+    w.takes should have size 2
+    w.takes.clear()
     w.projection.tick()
-    w.takes shouldBe empty // declined twice: nothing moved on the site
+    w.takes shouldBe empty // declined again: nothing moved on the site
     decline = false
     w.projection.tick()
     w.projection.tick()
-    w.takes.map(t => (t.kind, t.listing.rawTitle)).distinct shouldBe Seq((TakeChange.Kind.Changed, "Obcy"))
+    w.takes.map(t => (t.kind, t.listing.rawTitle, t.before, t.after)).distinct shouldBe Seq((TakeChange.Kind.Gained, "Obcy", None, Some(602)))
     w.takes should have size 2 // its two listings, once
   }
 

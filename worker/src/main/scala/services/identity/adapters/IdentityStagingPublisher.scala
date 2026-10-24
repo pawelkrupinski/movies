@@ -24,10 +24,11 @@ import scala.util.control.NonFatal
  * what the question memory says of its last ask (`outcome`), rewritten as it changes and deleted once it stops. What
  * RESOLVED since the last publish is written once, each its own document kept for `window` (the database deletes it): a
  * cluster that staged and waits on nothing now — `settled` with the take it got, or `regrouped` when its listings no
- * longer form it — and one never seen staging: decided (`decided`, a cluster of listings all new: most new films, their
- * families asked inline within one projection), moved (`gained`, `lost` or `changed`), or `settled` after a wait that
- * began and ended between two publishes, with when and on what. At most `resolvedCap` a publish. A quiet country writes
- * its beat and nothing else; every publish reports its takes by basis to `takeMetrics`.
+ * longer form it — one `settled` after a wait that began and ended between two publishes, never seen staging, with when
+ * and on what; and every change of the projections' change lists, each in exactly one document ([[changesOf]]: decided,
+ * joined, gained, lost, changed). Nothing is capped: what the feed lets go, or a run of failed publishes, is counted in
+ * the beat (`dropped`) and `takeMetrics`. A quiet country writes its beat and nothing else; every publish reports its
+ * takes by basis to `takeMetrics`.
  *
  * Off the projection's thread, on its own schedule (`start`): the projection's quiet tick allocates nothing for it.
  */
@@ -35,17 +36,25 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
                                      changes: () => ChangeFeed.Drained[StagingEvent], waitingOn: ResolverDecision => WaitingOn,
                                      outcomes: Set[Question] => Map[Question, QuestionMemory.Outcome], clock: Clock,
                                      window: FiniteDuration = IdentityStagingPublisher.Window,
-                                     resolvedCap: Int = IdentityStagingPublisher.ResolvedCap,
                                      stagingCap: Int = IdentityStagingPublisher.StagingCap,
                                      ticks: TickRecorder = TickRecorder.Unrecorded,
-                                     takeMetrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded)
+                                     takeMetrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded,
+                                     /** A TMDB film's title where the resolution names none: a film only a later stage took
+                                      *  (an agreement), read from the TMDB store's records, on this publisher's thread. */
+                                     filmTitle: Int => Option[String] = _ => None)
     extends Stoppable with Logging {
   import IdentityStagingPublisher.*
+
+  /** A TMDB film's title: as the model's resolution has it, else as the TMDB store does (`filmTitle`). */
+  private def titleIn(resolution: Resolution): Int => Option[String] =
+    id => resolution.films.get(id).map(_.title).orElse(filmTitle(id))
 
   /** What the last publish left in the store, by key; read back from it once, on the first publish after a boot. */
   private var published: Option[Map[String, StagedCluster]] = None
   /** The events drained but not yet written: a publish that failed writes them with the next. */
   private var unwritten = Vector.empty[StagingEvent]
+  /** The events let go since the last written beat: by the feed, full, or past [[UnwrittenCap]] while publishes fail. */
+  private var dropped = 0L
   private lazy val scheduler = DaemonExecutors.scheduler(s"identity-staging-$country")
 
   def start(interval: FiniteDuration = Interval): Unit = {
@@ -55,7 +64,12 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
     ()
   }
 
-  override def stop(): Unit = { scheduler.shutdown(); () }
+  /** Stops the schedule, and publishes once more: what happened since the last publish is written, not lost with the
+   *  worker's memory. Only a worker killed outright loses the events of its last publish interval. */
+  override def stop(): Unit = {
+    scheduler.shutdown()
+    try publish() catch { case NonFatal(e) => logger.warn(s"identity staging ($country): the last publish before stopping failed", e) }
+  }
 
   /** One snapshot: staging and recently resolved clusters worked out, the changed ones written. Nothing before the
    *  projection's first written take. */
@@ -65,13 +79,6 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       val before = published.getOrElse(staging.ofCountry(country).map(c => c.key -> c).toMap)
       val wasStaging = before
       val events = unwritten ++ drained()
-      // Each listing's first change since the last publish: the take it held then — a cluster decided (every listing
-      // new) or moved (a listing's film changed) since. By listing, not by cluster: a cluster's key moves when a new
-      // listing sorts first or clusters merge, which changes no listing's film.
-      val firstOf = events.foldLeft(Map.empty[ListingKey, TakeChange]) {
-        case (m, StagingEvent.Changed(c)) if !m.contains(c.listing) => m.updated(c.listing, c)
-        case (m, _)                                                 => m
-      }
       // Each cluster's first wait started and last wait ended since: when it began waiting (and on what), and when it
       // stopped — most new clusters wait only inside one projection (their families asked inline), never seen staging.
       val startedOf = events.foldLeft(Map.empty[String, StagingEvent.Waiting]) {
@@ -79,12 +86,16 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
         case (m, _)                       => m
       }
       val endedOf = events.collect { case StagingEvent.Settled(cluster, at) => keyOfId(cluster) -> at }.toMap
+      val changed = events.collect { case c: StagingEvent.Changed => c }
 
       val waiting  = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
       val settled  = Map.newBuilder[String, ResolverDecision]
-      val between  = Seq.newBuilder[Between]
+      val between  = Seq.newBuilder[(String, ResolverDecision, StagingEvent.Waiting)]
       val clustersBy   = scala.collection.mutable.HashMap.empty[String, Int]
       val listingsBy   = scala.collection.mutable.HashMap.empty[String, Int]
+      // each changed listing's cluster now: only those changed are looked up
+      val changedListings = changed.iterator.map(_.change.listing).toSet
+      val clusterOf       = scala.collection.mutable.HashMap.empty[ListingKey, ResolverDecision]
       resolution.decisions.foreach { decision =>
         if (decision.members.nonEmpty) {
           val key   = keyOf(decision)
@@ -92,39 +103,42 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
           val basis = decision.basis.toString
           clustersBy(basis) = clustersBy.getOrElse(basis, 0) + 1
           listingsBy(basis) = listingsBy.getOrElse(basis, 0) + decision.members.size
+          if (changedListings.nonEmpty) decision.members.foreach(m => if (changedListings(m)) clusterOf(m) = decision)
           if (!waits.settled) waiting += ((key, decision, waits))
           else if (wasStaging.contains(key)) settled += key -> decision
-          else if (firstOf.nonEmpty || startedOf.nonEmpty) {
-            val changed = decision.members.flatMap(firstOf.get)
-            val how =
-              if (changed.nonEmpty && changed.size == decision.members.size && changed.forall(!_.moved)) Some((StagedCluster.Decided, None))
-              else changed.iterator.filter(_.moved).map(_.before).find(_ != decision.film).map(was => (changeOf(was, decision.film), was))
-            val waited = startedOf.get(key)
-            // decided, moved or settled between two publishes: since it began waiting, when it did, and on what
-            if (how.isDefined || waited.isDefined) between += Between(key, decision,
-              waited.fold(waits)(w => WaitingOn(0, w.questions, onTmdb = false)), how.fold(StagedCluster.Settled)(_._1), how.flatMap(_._2),
-              waited.fold(now)(_.at), endedOf.getOrElse(key, now))
-          }
+          // a wait begun and ended between two publishes: since it began, when it ended, and on what
+          else startedOf.get(key).foreach(w => between += ((key, decision, w)))
         }
       }
       val waitingNow = waiting.result()
       val betweenNow = between.result()
       // every question this tick shows, its last ask's outcome read from the memory at once
       val resolvedQuestions = wasStaging.valuesIterator.flatMap(_.questions).flatMap(q => Question.parse(q.text)).toSet
-      val known = outcomes(waitingNow.iterator.flatMap(_._3.questions).toSet ++ betweenNow.iterator.flatMap(_.waits.questions) ++
+      val known = outcomes(waitingNow.iterator.flatMap(_._3.questions).toSet ++ betweenNow.iterator.flatMap(_._3.questions) ++
         resolvedQuestions)
       val nowStaging = waitingNow.map { case (key, decision, waits) =>
         val since = wasStaging.get(key).map(_.since).orElse(startedOf.get(key).map(_.at)).getOrElse(now)
         key -> stagedOf(key, decision, resolution, waits, since, known)
       }.toMap
       val settledNow = settled.result()
-      // each written once, under its own key (the cluster's and when it was published): a cluster that moves twice shows twice
-      val resolvedNow = (wasStaging.collect { case (key, was) if !nowStaging.contains(key) =>
+      val changeDocs = changesOf(changed, clusterOf, resolution)
+      val changedClusters = changeDocs.groupBy(_.key.takeWhile(_ != '@'))
+      // A cluster that stopped waiting and whose listings' take the projection changed is that change — gained, lost,
+      // changed, decided or joined — after its wait (since it began, with its questions); `settled` only when no take
+      // moved. Each written once, under its own key (the cluster's and when it was published, or what changed).
+      val waited = wasStaging.collect { case (key, was) if !nowStaging.contains(key) =>
         resolvedOf(was, settledNow.get(key), resolution, endedOf.getOrElse(key, now), known)
-      } ++ betweenNow.map { b =>
+      } ++ betweenNow.map { case (key, decision, w) =>
         // never seen waiting: its take, and the questions it waited on as the memory tells them now
-        stagedOf(b.key, b.decision, resolution, b.waits, b.since, known).copy(resolvedAt = Some(b.at), resolution = Some(b.how), was = b.was)
-      }).toSeq.sortBy(_.key).take(resolvedCap).map(c => c.copy(key = s"${c.key}@$now"))
+        stagedOf(key, decision, resolution, WaitingOn(0, w.questions, onTmdb = false), w.at, known)
+          .copy(resolvedAt = Some(endedOf.getOrElse(key, now)), resolution = Some(StagedCluster.Settled))
+      }
+      val (waitedThenChanged, settledAlone) = waited.toSeq.partition(c => c.resolution.contains(StagedCluster.Settled) && changedClusters.contains(c.key))
+      val afterWaits = waitedThenChanged.iterator.map(c => c.key -> c).toMap
+      val resolvedNow = settledAlone.map(c => c.copy(key = s"${c.key}@$now")) ++ changeDocs.map { doc =>
+        afterWaits.get(doc.key.takeWhile(_ != '@')).fold(doc)(w => doc.copy(since = w.since, questions = w.questions,
+          questionCount = w.questionCount, attempted = w.attempted))
+      }
       val shownStaging = nowStaging.values.toSeq.sortBy(c => (c.since, c.key)).take(stagingCap)
 
       val next     = shownStaging.map(c => c.key -> c).toMap
@@ -133,31 +147,67 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       val open     = nowStaging.values.toSeq.flatMap(_.questions)
       val beat     = StagingBeat(at = now, staging = nowStaging.size, shown = shownStaging.size, resolved = resolvedNow.size,
         openByKind = open.filter(_.outcome != StagedQuestion.Answered).groupMapReduce(_.kind)(_ => 1)(_ + _),
-        modelGaps = nowStaging.valuesIterator.map(_.modelGaps).sum)
+        modelGaps = nowStaging.valuesIterator.map(_.modelGaps).sum, dropped = Option.when(dropped > 0)(dropped))
       takeMetrics.held(clustersBy.toMap, listingsBy.toMap)
       try {
-        staging.publish(country, upserts, removed, beat, resolvedNow, java.time.Duration.ofMillis(window.toMillis))
+        staging.publish(country, upserts, removed, beat, resolvedNow.sortBy(_.key), java.time.Duration.ofMillis(window.toMillis))
         published = Some(next)
         unwritten = Vector.empty
+        dropped = 0
       } catch {
         // the next publish diffs against the store again, what it holds unknown now, and writes these events with its own
-        case NonFatal(e) => published = None; unwritten = events.takeRight(UnwrittenCap); throw e
+        case NonFatal(e) =>
+          published = None
+          unwritten = events.takeRight(UnwrittenCap)
+          letGo(events.size - unwritten.size)
+          throw e
       }
     }
   }
 
-  /** What happened since the last drain; a feed that let some go is logged (its oldest: their clusters show staging and
-   *  settling as sampled, only a decision, move or brief wait among them goes unlisted). */
+  /** What happened since the last drain; what the feed let go is counted ([[letGo]]). */
   private def drained(): Vector[StagingEvent] = {
     val feed = changes()
-    if (feed.dropped > 0) logger.warn(s"identity staging ($country): ${feed.dropped} staging events let go before a publish read them")
+    letGo(feed.dropped)
     feed.changes
   }
+
+  /** `n` events let go before a publish wrote them: counted in the next beat and the metric, and logged. */
+  private def letGo(n: Long): Unit = if (n > 0) {
+    dropped += n
+    takeMetrics.dropped(n)
+    logger.warn(s"identity staging ($country): $n staging events let go before a publish wrote them")
+  }
+
+  /** The projections' change lists as RESOLUTIONS, every change in exactly one: one document per projection, cluster,
+   *  kind and film before — a cluster `decided` (its listings all new), listings that `joined` a cluster already on the
+   *  films, or listings whose film was `gained`, `lost` or `changed` (`was` the film they held) — listing the listings
+   *  that changed (the first [[ListingsShown]], `listingCount` all of them), its cluster's take as it stands now. A
+   *  listing in no cluster now is a document of its own, its take the change's film. Keyed by the projection and what
+   *  changed, so a publish that fails and writes them with the next writes the same documents. */
+  private def changesOf(changed: Seq[StagingEvent.Changed], clusterOf: collection.Map[ListingKey, ResolverDecision],
+                        resolution: Resolution): Seq[StagedCluster] =
+    changed.groupBy { c =>
+      val change = c.change
+      (c.projection, clusterOf.get(change.listing).fold(ListingKey.serialised(change.listing))(d => StoredFamily.idOf(d.members)),
+        change.kind, change.before)
+    }.toSeq.map { case ((projection, cluster, kind, was), changes) =>
+      val at       = changes.head.at
+      val listings = changes.map(_.change.listing).distinct.sorted
+      val take     = clusterOf.get(listings.head).fold {
+        val first = changes.head.change
+        StagedTake(first.after, first.after.flatMap(titleIn(resolution)), first.basisAfter.fold("none")(_.toString), 0.0, None, None, None)
+      }(takeOf(_, titleIn(resolution)))
+      val key      = keyOfId(cluster)
+      StagedCluster(s"$key@$projection/${kind.label}${was.fold("")("/" + _)}", listings.iterator.map(k => StagedListing(k.venue, k.rawTitle))
+        .toSeq.take(ListingsShown), listings.size, take, 0, onTmdb = false, Nil, 0, 0, at, resolvedAt = Some(at),
+        resolution = Some(kind.label), was = was)
+    }
 
   private def stagedOf(key: String, decision: ResolverDecision, resolution: Resolution, waits: WaitingOn, since: Long,
                        known: Map[Question, QuestionMemory.Outcome]): StagedCluster = {
     val questions = waits.questions.toSeq.map(questionOf(_, known)).sortBy(q => (StagedQuestion.Outcomes.indexOf(q.outcome), q.kind, q.text))
-    StagedCluster(key, listingsOf(decision), decision.members.size, takeOf(decision, resolution), waits.modelGaps, waits.onTmdb,
+    StagedCluster(key, listingsOf(decision), decision.members.size, takeOf(decision, titleIn(resolution)), waits.modelGaps, waits.onTmdb,
       questions.take(QuestionsShown), questions.size, questions.count(_.outcome != StagedQuestion.NotAttempted), since)
   }
 
@@ -165,7 +215,7 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
   private def resolvedOf(was: StagedCluster, settled: Option[ResolverDecision], resolution: Resolution, now: Long,
                          known: Map[Question, QuestionMemory.Outcome]): StagedCluster = {
     val questions = was.questions.map(q => Question.parse(q.text).fold(q)(questionOf(_, known)))
-    was.copy(take = settled.fold(was.take)(takeOf(_, resolution)), questions = questions,
+    was.copy(take = settled.fold(was.take)(takeOf(_, titleIn(resolution))), questions = questions,
       attempted = was.attempted.max(questions.count(_.outcome != StagedQuestion.NotAttempted)),
       resolvedAt = Some(now), resolution = Some(if (settled.isDefined) StagedCluster.Settled else StagedCluster.Regrouped))
   }
@@ -182,29 +232,25 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
 }
 
 object IdentityStagingPublisher {
-  /** A settled cluster's film moving, as the screen names it: an unmatched one `gained` a film, a matched one `lost` its
-   *  film, or `changed` it for another. */
-  def changeOf(was: Option[Int], now: Option[Int]): String = (was, now) match {
-    case (None, Some(_)) => StagedCluster.Gained
-    case (Some(_), None) => StagedCluster.Lost
-    case _               => StagedCluster.Changed
-  }
-
   /** Where every publish reports the takes it read, by basis (`ResolverDecision.Basis`): the clusters and listings each
-   *  basis holds now. What changed is the projection's to count (`IdentityProjectionMetrics.takesChanged`). */
+   *  basis holds now, and the events it was never told. What changed is the projection's to count
+   *  (`IdentityProjectionMetrics.takesChanged`). */
   trait TakeMetrics {
     def held(clusters: Map[String, Int], listings: Map[String, Int]): Unit
+    /** `events` the staging screen was not told: let go by a full feed, or past what failed publishes keep. */
+    def dropped(events: Long): Unit
   }
   object TakeMetrics {
-    val Unrecorded: TakeMetrics = (_, _) => ()
+    val Unrecorded: TakeMetrics = new TakeMetrics {
+      def held(clusters: Map[String, Int], listings: Map[String, Int]): Unit = ()
+      def dropped(events: Long): Unit                                        = ()
+    }
   }
 
   /** How often a country publishes. */
   val Interval: FiniteDuration = 20.seconds
   /** How long a resolved cluster stays on the screen: the database deletes it then (its `expireAt`). */
   val Window: FiniteDuration = 7.days
-  /** The most clusters one publish writes as resolved: a regrouping projection's flood stays bounded. */
-  val ResolvedCap = 500
   /** The most changes a failed publish keeps for the next: the newest. */
   val UnwrittenCap = 20000
   /** How many changes the projection's feed holds for the publisher between two publishes; the oldest go past it. */
@@ -225,18 +271,15 @@ object IdentityStagingPublisher {
   /** The screen's key of the cluster whose id is `id`. */
   def keyOfId(id: String): String = java.lang.Long.toHexString(agreement.AgreementStage.digest(Seq(id)))
 
-  /** A cluster that resolved between two publishes, never seen staging: decided, moved, or settled after a wait (`how`,
-   *  with the film it had: `was`), what it waited on (none when it did not), since when, and when it resolved. */
-  private final case class Between(key: String, decision: ResolverDecision, waits: WaitingOn, how: String, was: Option[Int],
-                                   since: Long, at: Long)
 
   private def listingsOf(decision: ResolverDecision): Seq[StagedListing] =
     decision.members.iterator.map(key => StagedListing(key.venue, key.rawTitle)).toSeq.distinct.sortBy(l => (l.venue, l.rawTitle)).take(ListingsShown)
 
-  private def takeOf(decision: ResolverDecision, resolution: Resolution): StagedTake = {
+  /** `decision`'s take as the screen shows it, each TMDB film titled by `titleOf`. */
+  private def takeOf(decision: ResolverDecision, titleOf: Int => Option[String]): StagedTake = {
     val leaning = decision.leaning.orElse(decision.candidate).map(_.film)
-    StagedTake(decision.film, decision.film.flatMap(resolution.films.get).map(_.title), decision.basis.toString, decision.confidence,
-      leaning, leaning.flatMap(resolution.films.get).map(_.title),
+    StagedTake(decision.film, decision.film.flatMap(titleOf), decision.basis.toString, decision.confidence,
+      leaning, leaning.flatMap(titleOf),
       decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"), decision.explanationShown(ExplanationShown))
   }
 

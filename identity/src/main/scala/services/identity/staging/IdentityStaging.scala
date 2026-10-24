@@ -66,6 +66,7 @@ object StagedCluster {
   val Settled   = "settled"
   val Regrouped = "regrouped"
   val Decided   = "decided"
+  val Joined    = "joined"
   val Gained    = "gained"
   val Lost      = "lost"
   val Changed   = "changed"
@@ -75,8 +76,10 @@ object StagedCluster {
 
 /** A country's snapshot as a whole, written on every publish: when (`at`, epoch millis — a stale one is a worker that
  *  stopped publishing), how many clusters stage (`staging`, of which `shown` are listed) and resolved lately, and the
- *  open questions of the staging clusters by kind. */
-final case class StagingBeat(at: Long, staging: Int, shown: Int, resolved: Int, openByKind: Map[String, Int], modelGaps: Int)
+ *  open questions of the staging clusters by kind — and how many events the worker was never told since the last beat
+ *  (`dropped`: its feed full, or failed publishes past what they keep), which the screen shows. */
+final case class StagingBeat(at: Long, staging: Int, shown: Int, resolved: Int, openByKind: Map[String, Int], modelGaps: Int,
+                             dropped: Option[Long] = None)
 
 object StagingBeat {
   given OFormat[StagingBeat] = Json.format[StagingBeat]

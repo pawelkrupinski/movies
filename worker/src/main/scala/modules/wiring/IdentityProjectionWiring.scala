@@ -55,7 +55,11 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       agreementBacklog = () => agreementStage.backlog,
       suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
-      changeFeed  = changes => identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_))))
+      changeFeed  = { val projections = new java.util.concurrent.atomic.AtomicLong
+        changes => {
+          val (projection, at) = (projections.incrementAndGet(), clock.millis())
+          identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_, projection, at)))
+        } })
 
   /** What the staging publisher drains as it happens: each written projection's change list, and the live agreement
    *  stage's waits starting and ending. */
@@ -125,7 +129,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityStagingEvents.drain(),
       waitingOn = agreementStage.waitingOn,
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
-      takeMetrics = workerMetrics.identityTakes.forCountry(country.code)))
+      takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
+      filmTitle = { val records = storedLookups(); id => records.film(id).toOption.flatten.map(_.title) }))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps

@@ -9,7 +9,8 @@
 # THE COUNTER: `kinowo_worker_identity_take_changes_total{country,basis,kind}`, written by every
 # identity projection that writes (services.identity.TakeChange, its change list): a listing STILL
 # PUBLISHED whose TMDB film moved -- `lost` (had one, has none), `changed` (another film), `gained`
-# (had none) -- or a new listing's first take (`decided`, which these rules leave out), by the basis
+# (had none) -- or a new listing's first take (`decided`, or `joined` an existing cluster, which these
+# rules leave out), by the basis
 # holding it after. Expected churn is never counted: a listing leaving the schedule has no cluster,
 # and a re-key or merge that keeps the TMDB film keeps the take. Each move is also logged one line
 # (`identity take change: <kind> <venue> | <listing>: <old> -> <new>; reason <basis: why>; ...`), its

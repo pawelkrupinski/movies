@@ -60,7 +60,6 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
                                  venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty,
                                  build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
                                  rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty,
-                                 takes: Seq[TakeChange] = Nil,
                                  // A venue's rows by the key each listing is published under (`VenueSlots.rowsByKey`, which
                                  // needs the drafting's normalizer); none without `rowsOf`'s rows.
                                  keyRows: (Cinema, Seq[CinemaMovie]) => VenueSlots.VenueRows = (_, _) => Map.empty) {
@@ -99,9 +98,10 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
 }
 
 /** A projection ready to write: the films (every key unique, every TMDB id on one film), the ids to
- *  retire, the FilmId-map entries it adds, and the draft's regroupings and take changes. */
+ *  retire, the FilmId-map entries it adds, and the draft's regroupings. What its writes change is read off the index once
+ *  they are taken ([[LiveProjectionIndex.written]]). */
 final case class ProjectionPlan(films: Seq[ProjectedFilm], retired: Seq[FilmId], counterAdditions: Seq[FilmIdCounter],
-                                regroupings: Regroupings, takes: Seq[TakeChange] = Nil)
+                                regroupings: Regroupings)
 
 /**
  * THE IDENTITY PROJECTION's decisions (docs/design/identity-resolver.md §2 "Projection", §6, §8
@@ -240,7 +240,7 @@ object IdentityProjectionPlan {
       ProjectedFilm(id, d.counter, title, year, key, d.record, d.members, d.touched)
     }
     val freshEntries = films.filter(f => draft.counters.filmIdOf(f.counter).isEmpty).map(f => FilmIdCounter(f.id.value, f.counter))
-    ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.takes)
+    ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings)
   }
 
   /** How many venues' rows a projection reads at once to build their slots: a batch's rows are let go before the next. */
