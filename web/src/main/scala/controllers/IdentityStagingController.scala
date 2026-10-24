@@ -7,25 +7,30 @@ import services.identity.staging.{IdentityStaging, StagingCountry}
 import java.time.Instant
 
 /**
- * `/admin/identity/staging` — the staging screen (docs/design/identity-questions.md, "The staging screen"): every
- * country's identity clusters whose takes still wait on an answer, and those that stopped waiting lately, on one page.
- * Each country's worker publishes them to the fleet database ([[IdentityStaging]]), which every deployment reads, so any
- * country's host shows them all.
+ * `/debug/identity/staging` — the staging screen (docs/design/identity-questions.md, "The staging screen"): every
+ * country's identity clusters whose takes still wait on an answer, and those decided, moved or settled lately, on one
+ * page. Each country's worker publishes its own to its database ([[IdentityStaging]]); a local dev server reads every
+ * country's (`stores`, one per country: its prod mirror, as the rest of /debug reads).
  *
- * The page renders a shell and polls `/admin/identity/staging/data` every few seconds, passing back each country's
- * cursor: a poll reads the collection's small index and only the clusters written since, so it costs the clusters that
- * moved, not the whole screen. Gated by [[AdminAction]] (login + ADMIN_ALLOWLIST), like the other admin pages.
+ * The page renders a shell and polls `/debug/identity/staging/data` every few seconds, passing back each country's
+ * cursor: a poll reads each collection's small index and only the clusters written since, so it costs the clusters
+ * that moved, not the whole screen. Dev-only: 404 in prod, like the rest of /debug ([[DevMode]]).
  */
-class IdentityStagingController(cc: ControllerComponents, adminAction: AdminAction, staging: IdentityStaging,
+class IdentityStagingController(cc: ControllerComponents, environment: play.api.Mode, stores: Seq[IdentityStaging],
                                 country: models.Country, clock: java.time.Clock,
                                 pollMillis: Int = IdentityStagingController.PollMillis) extends AbstractController(cc) {
   import IdentityStagingController._
 
-  def index: Action[AnyContent] = adminAction { Ok(views.html.admin.identityStaging(country, pollMillis)) }
+  def index: Action[AnyContent] = Action {
+    DevMode.gate(environment)(Ok(views.html.admin.identityStaging(country, pollMillis)))
+  }
 
   /** `since`: each country's cursor from the last answer, `pl:<millis>,uk:<millis>`; none, every cluster. */
-  def data(since: Option[String]): Action[AnyContent] = adminAction {
-    Ok(Json.obj("now" -> clock.millis(), "countries" -> answer(staging.read(cursors(since)))))
+  def data(since: Option[String]): Action[AnyContent] = Action {
+    DevMode.gate(environment) {
+      val wanted = cursors(since)
+      Ok(Json.obj("now" -> clock.millis(), "countries" -> answer(stores.flatMap(_.read(wanted)))))
+    }
   }
 }
 

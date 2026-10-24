@@ -1,7 +1,7 @@
 package views
 
 import com.sun.net.httpserver.HttpExchange
-import controllers.{IdentityStagingController, TestAdminAction}
+import controllers.IdentityStagingController
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 /**
- * `/admin/identity/staging` in real Chrome: every country's section on the one page, each cluster a row that opens onto
+ * `/debug/identity/staging` in real Chrome: every country's section on the one page, each cluster a row that opens onto
  * its questions and their outcomes, and the page following what the workers publish next by its own polls — a row
  * left open stays open across them.
  *
@@ -24,9 +24,9 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
   private val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
   private val staging = new IdentityStaging(new InMemoryStagingDocuments, clock)
-  private val controller = new IdentityStagingController(Helpers.stubControllerComponents(), TestAdminAction(), staging,
+  private val controller = new IdentityStagingController(Helpers.stubControllerComponents(), play.api.Mode.Dev, Seq(staging),
     models.Country.Poland, clock, pollMillis = 100)
-  private def admin(path: String) = FakeRequest("GET", path).withSession("userId" -> TestAdminAction.AdminUserId)
+  private def admin(path: String) = FakeRequest("GET", path)
 
   private def question(text: String, outcome: String, attempts: Int = 0) =
     StagedQuestion("FamilySearch", "imdb", text, outcome, attempts, Option.when(attempts > 0)(clock.millis() + 600000), Option.when(attempts > 0)("imdb.com"))
@@ -39,10 +39,10 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   private val diuna = cluster("a1", "Kino Muza", "Diuna",
     Seq(question("imdb|title|Diuna", StagedQuestion.Failed, attempts = 3), question("wiki|title|Diuna", StagedQuestion.NotAttempted)))
 
-  /** The page's polls, answered by the controller as an admin's session, its query string and all. */
-  private def data(exchange: HttpExchange): Boolean = exchange.getRequestURI.getPath == "/admin/identity/staging/data" && {
+  /** The page's polls, answered by the controller, its query string and all. */
+  private def data(exchange: HttpExchange): Boolean = exchange.getRequestURI.getPath == "/debug/identity/staging/data" && {
     val since  = Option(exchange.getRequestURI.getRawQuery).map(q => java.net.URLDecoder.decode(q.stripPrefix("since="), StandardCharsets.UTF_8))
-    val result = controller.data(since)(admin("/admin/identity/staging/data"))
+    val result = controller.data(since)(admin("/debug/identity/staging/data"))
     val bytes  = contentAsString(result).getBytes(StandardCharsets.UTF_8)
     exchange.getResponseHeaders.add("Content-Type", "application/json")
     exchange.sendResponseHeaders(status(result), bytes.length.toLong)
@@ -57,7 +57,7 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   override def beforeAll(): Unit = {
     chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
-      { case "/admin/identity/staging" => contentAsString(controller.index(admin("/admin/identity/staging"))) },
+      { case "/debug/identity/staging" => contentAsString(controller.index(admin("/debug/identity/staging"))) },
       dynamicRoute = data)
   }
 
@@ -67,8 +67,8 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   }
 
   private def onPage(body: CdpPage => Any): Unit = chrome match {
-    case Some(c) => c.openPage(server.baseUrl + "/admin/identity/staging")(body)
-    case None    => cancel("Chrome not installed — skipping /admin/identity/staging page test")
+    case Some(c) => c.openPage(server.baseUrl + "/debug/identity/staging")(body)
+    case None    => cancel("Chrome not installed — skipping /debug/identity/staging page test")
   }
 
   "the staging page" should "show every country at once, open a cluster onto its questions, and follow the next publish live" in {

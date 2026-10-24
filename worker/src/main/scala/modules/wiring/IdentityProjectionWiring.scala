@@ -108,11 +108,11 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val outstandingQuestionsSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => { outstandingQuestions.reask(); () },
       services.identity.adapters.OutstandingQuestions.Interval, services.identity.adapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks))
-  /** The staging screen's store (`identity_staging`), in the fleet database every country's web reads; in memory
-   *  without one. */
+  /** The staging screen's store (`identity_staging`), in this country's database, which the local screen reads beside
+   *  every other country's; in memory without one. */
   lazy val identityStaging: services.identity.staging.IdentityStaging =
-    services.identity.staging.IdentityStaging.in(fleetMongoConnection.database, clock)
-  /** What this country's takes still wait on, published for the staging screen (`/admin/identity/staging`). */
+    services.identity.staging.IdentityStaging.in(mongoConnection.database, clock)
+  /** What this country's takes still wait on, published for the local staging screen (`scripts/identity-staging`). */
   lazy val identityStagingPublisher: services.identity.adapters.IdentityStagingPublisher = managedResources.stopping(
     new services.identity.adapters.IdentityStagingPublisher(country.code, identityStaging,
       taken = () => identityProjection.lastProjected.map(_.taken), waitingOn = agreementStage.waitingOn,

@@ -48,17 +48,19 @@
     .o-answered { color: #6a9b78; }
     .r-settled { color: #6a9b78; }
     .r-regrouped { color: #b89cd6; }
+    .r-decided { color: #6a9b78; }
+    .r-moved { color: #d6a35c; }
     .empty { color: #555; padding: 6px 2px; }
   </style>
 </head>
 <body>
   <div class="page-head">
     <h1>Identity staging</h1>
-    @views.html._countrySwitch("/admin/identity/staging", current)
   </div>
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
-    — every country's clusters whose take still waits on an answer, and those that stopped waiting in the last hours,
-    as each country's worker last published them. Open a row for its questions.</div>
+    — every country's clusters whose take still waits on an answer, and those decided, moved or settled in the last
+    hours, as each country's worker last published them to its database (read here through the local prod mirror).
+    Open a row for its questions.</div>
   <div id="countries"></div>
 
   <script>

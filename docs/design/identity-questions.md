@@ -202,22 +202,28 @@ A take waits on a model question by the lookup fill's rounds, and on every agree
 - **Separate askers, separate pacing**: the fill's rate, the task queue's `Behind` and the sweep's own pace. The `path`
   label now splits them on the counter.
 
-## The staging screen (`/admin/identity/staging`)
+## The staging screen (`/debug/identity/staging`, local)
 
-What every country's takes still wait on, on one admin page (login + `ADMIN_ALLOWLIST`, like `/admin/identity`). The
-stage's waits live in each worker's memory (`AgreementStage.waitingOn`), not in Mongo — the review and explain pages,
-which read the production mirror, cannot show them — so each worker publishes them:
+What every country's takes still wait on, and what was decided lately, on one dev-only page of a local dev server
+(`scripts/dev-server.sh`; 404 in prod like the rest of `/debug`). The stage's waits live in each worker's memory
+(`AgreementStage.waitingOn`), not in Mongo, so each worker publishes them to its own database, and the local server
+reads every country's through the prod mirror:
 
 - **Worker** (`IdentityStagingPublisher`, every 20 s, on its own thread, never the projection's): over the takes the
   projection last wrote, a cluster whose `WaitingOn` is not settled STAGES — its listings, take, model gaps, whether the
   fill waits on TMDB, and each open question with its kind, who it is asked of and `QuestionMemory.outcome` (not
-  attempted / failed n× with the next retry and host / absent / answered), plus attempted/total. A cluster that staged
-  and waits on nothing now is RESOLVED (`settled` with its take, or `regrouped` when its listings no longer form it),
-  kept 6 h, the newest 200. At most 500 staging clusters (the longest waiting) and 60 questions each are listed; the
-  per-country beat counts them all. Only changed clusters are written.
-- **Store** (`IdentityStaging`, `identity_staging` in the fleet database, which every deployment can read): one document
-  per cluster plus a beat per country; the publisher deletes what it no longer holds.
-- **Web** (`IdentityStagingController`): every country's section on the same page, each cluster a `<details>` row
-  opening onto its questions; the page polls `/admin/identity/staging/data` every 5 s with each country's cursor, so a
-  poll carries only the clusters written since (and those written at the cursor, once more). A beat older than two
-  minutes is shown stale: that worker stopped publishing.
+  attempted / failed n× with the next retry and host / absent / answered), plus attempted/total. RESOLVED, kept 6 h,
+  the newest 200: a cluster that staged and waits on nothing now (`settled` with its take, or `regrouped` when its
+  listings no longer form it); and, from each cluster's film as the last publish saw it, one that formed and settled
+  between two publishes (`decided`: most new films, whose questions are asked inline within one projection) or whose
+  film changed (`moved`: a late answer or new data). The first publish after a boot only records the films. At most
+  500 staging clusters (the longest waiting) and 60 questions each are listed; the per-country beat counts them all.
+  Only changed clusters are written.
+- **Store** (`IdentityStaging`, `identity_staging` in each country's database): one document per cluster plus the
+  country's beat; the publisher deletes what it no longer holds. Mirrored locally (`DebugMirror.IdentityStaging`,
+  `scripts/local-mirror/mirror-targets.js`), so the page follows prod as the mirror tails it.
+- **Web** (`IdentityStagingController`, wired in `DebugWiring` over the per-country mirror connections): every
+  country's section on the same page, each cluster a `<details>` row opening onto its questions; the page polls
+  `/debug/identity/staging/data` every 5 s with each country's cursor, so a poll carries only the clusters written
+  since (and those written at the cursor, once more). A beat older than two minutes is shown stale: that worker
+  stopped publishing, or the mirror stopped following.

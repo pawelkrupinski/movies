@@ -97,6 +97,29 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
       Map("imdb|title|Diuna" -> StagedQuestion.Answered, "find|tt1160419" -> StagedQuestion.Absent)
   }
 
+  // Most new films are asked inline and settle inside one projection: no publish ever sees them waiting.
+  it should "list a cluster decided between two publishes as decided, and one whose film changed as moved" in {
+    val docs = new InMemoryStagingDocuments
+    val live = publisher(docs)
+    waits    = Map.empty
+    outcomes = Map(find -> QuestionMemory.Outcome.Absent)
+    taken    = Some(resolution(decision(Seq(belle), Some(1), ResolverDecision.Basis.OwnMatch)))
+    live.publish()
+    shown(docs) shouldBe empty   // the first publish after a boot only records: everything is new to it
+
+    clock.advanceSeconds(20)
+    waits = Map.empty
+    taken = Some(resolution(decision(Seq(belle), Some(2), ResolverDecision.Basis.OwnMatch),
+      decision(Seq(dune), Some(438631), ResolverDecision.Basis.Agreed)))
+    live.publish()
+    shown(docs).map(c => (c.listings.head.rawTitle, c.resolution, c.take.title)) should contain theSameElementsAs Seq(
+      ("Belle", Some(StagedCluster.Moved), None), ("Diuna", Some(StagedCluster.Decided), Some("Dune: Part One")))
+
+    clock.advanceSeconds(20)
+    live.publish()   // nothing moved since: both stay listed, unchanged
+    shown(docs).map(_.resolution) should contain theSameElementsAs Seq(Some(StagedCluster.Moved), Some(StagedCluster.Decided))
+  }
+
   it should "call a cluster whose listings no longer form it regrouped, and drop resolved ones past the window" in {
     val docs = new InMemoryStagingDocuments
     val live = publisher(docs)
@@ -108,7 +131,8 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     waits = Map.empty
     taken = Some(resolution(decision(Seq(dune, dune2), Some(438631), ResolverDecision.Basis.OwnMatch)))
     live.publish()
-    shown(docs).map(_.resolution) shouldBe Seq(Some(StagedCluster.Regrouped))
+    // the cluster it was in, regrouped; the one its listings formed, decided between the two publishes
+    shown(docs).map(_.resolution) should contain theSameElementsAs Seq(Some(StagedCluster.Regrouped), Some(StagedCluster.Decided))
 
     clock.advance(java.time.Duration.ofHours(7))
     live.publish()

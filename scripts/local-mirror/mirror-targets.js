@@ -52,7 +52,7 @@ const MIRRORED_COLLECTIONS = [
   "cinema_scrapes",
   "identity_model_families", "identity_listings", "venue_pages", "tmdb_films",
   "identity_family_answers", "identity_traces",
-  "identity_agreements", "identity_pins",
+  "identity_agreements", "identity_pins", "identity_staging",
   "uptimeBuckets", "filmwebFallback",
 ];
 

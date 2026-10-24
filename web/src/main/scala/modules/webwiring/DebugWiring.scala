@@ -166,4 +166,10 @@ trait DebugWiring { self: Wiring =>
   // renders from. The live row's details cell ships empty (lazily fetched on
   // expand), so no cinema-URL snapshot is needed.
   lazy val debugStreamController = new DebugStreamController(controllerComponents, debugCountries, environmentMode)(using materializer)
+
+  // Every country's identity staging (/debug/identity/staging): what each country's worker publishes to its own
+  // database's `identity_staging`, read through the same per-country mirror connections the /debug stacks use.
+  lazy val identityStagingController = new controllers.IdentityStagingController(controllerComponents, environmentMode,
+    (movieMirrorConnection +: debugExtraStacks.map(_._2)).map(conn => services.identity.staging.IdentityStaging.in(conn.database, clock)),
+    country, clock)
 }

@@ -49,6 +49,9 @@ object DebugMirror {
    *  a spec holds to these names: the stores are the identity code's, which this mirror does not reach). */
   val IdentityFamilies = "identity_model_families"
   val IdentityTraces   = "identity_traces"
+  /** What each country's worker publishes of its identity stage's waits (`IdentityStaging`, which a spec holds to this
+   *  name): the staging screen's, `/debug/identity/staging`. */
+  val IdentityStaging  = "identity_staging"
 
   val Collections: Set[String] = Set(
     // The corpus table: the film rows, their showtimes, and their per-cinema slots.
@@ -82,6 +85,9 @@ object DebugMirror {
     TmdbFilms,
     FamilyAnswers,
     IdentityTraces,
+    // The staging screen (/debug/identity/staging): each country's clusters still waiting on an answer and those
+    // resolved lately, capped by its publisher (at most 700 small documents a country).
+    IdentityStaging,
     // The /uptime buckets (~24 h of 15-minute scrape outcomes per service). Backs no
     // /debug page either: the scheduled white-cinema investigation
     // (docs/white-cinema-investigations.md) replays `UptimeController`'s classification

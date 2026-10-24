@@ -36,6 +36,10 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
 
   /** What the last publish left in the store, by key; read back from it once, on the first publish after a boot. */
   private var published: Option[Map[String, StagedCluster]] = None
+  /** Each cluster's film as the last publish saw it, by key: what tells a cluster decided or moved since — most settle
+   *  inside one projection (a new film's questions are asked inline), never seen staging. None until the first publish
+   *  after a boot, which only records them: everything is new to a worker just started. */
+  private var lastTakes: Option[Map[String, Option[Int]]] = None
   private lazy val scheduler = DaemonExecutors.scheduler(s"identity-staging-$country")
 
   def start(interval: FiniteDuration = Interval): Unit = {
@@ -55,28 +59,39 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       val before = published.getOrElse(staging.ofCountry(country).map(c => c.key -> c).toMap)
       val wasStaging = before.valuesIterator.filter(_.staging).map(c => c.key -> c).toMap
 
-      val waiting = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
-      val settled = Map.newBuilder[String, ResolverDecision]
+      val waiting  = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
+      val settled  = Map.newBuilder[String, ResolverDecision]
+      val decided  = Seq.newBuilder[(String, ResolverDecision, WaitingOn, String)]
+      val takesNow = Map.newBuilder[String, Option[Int]]
       resolution.decisions.foreach { decision =>
         if (decision.members.nonEmpty) {
+          val key   = keyOf(decision)
           val waits = waitingOn(decision)
-          if (!waits.settled) waiting += ((keyOf(decision), decision, waits))
-          else if (wasStaging.nonEmpty) {
-            val key = keyOf(decision)
-            if (wasStaging.contains(key)) settled += key -> decision
-          }
+          takesNow += key -> decision.film
+          if (!waits.settled) waiting += ((key, decision, waits))
+          else if (wasStaging.contains(key)) settled += key -> decision
+          else lastTakes.foreach(_.get(key) match {
+            case None                                => decided += ((key, decision, waits, StagedCluster.Decided))
+            case Some(film) if film != decision.film => decided += ((key, decision, waits, StagedCluster.Moved))
+            case _                                   => ()
+          })
         }
       }
       val waitingNow = waiting.result()
+      val decidedNow = decided.result()
       // every question this tick shows, its last ask's outcome read from the memory at once
       val resolvedQuestions = wasStaging.valuesIterator.flatMap(_.questions).flatMap(q => Question.parse(q.text)).toSet
-      val known = outcomes(waitingNow.iterator.flatMap(_._3.questions).toSet ++ resolvedQuestions)
+      val known = outcomes(waitingNow.iterator.flatMap(_._3.questions).toSet ++ decidedNow.iterator.flatMap(_._3.questions) ++
+        resolvedQuestions)
       val nowStaging = waitingNow.map { case (key, decision, waits) =>
         key -> stagedOf(key, decision, resolution, waits, wasStaging.get(key).fold(now)(_.since), known)
       }.toMap
       val settledNow = settled.result()
       val resolvedNow = wasStaging.collect { case (key, was) if !nowStaging.contains(key) =>
         key -> resolvedOf(was, settledNow.get(key), resolution, now, known)
+      } ++ decidedNow.map { case (key, decision, waits, how) =>
+        // decided between two publishes, never seen waiting: its take, and no open question (it settled)
+        key -> stagedOf(key, decision, resolution, waits, now, known).copy(resolvedAt = Some(now), resolution = Some(how))
       }
       val keptResolved = (before.valuesIterator.filter(c => !c.staging && !nowStaging.contains(c.key)).map(c => c.key -> c).toMap ++ resolvedNow)
         .values.toSeq.filter(_.resolvedAt.exists(_ > now - window.toMillis)).sortBy(c => -c.resolvedAt.getOrElse(0L)).take(resolvedCap)
@@ -92,6 +107,7 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       try {
         staging.publish(country, upserts, removed, beat)
         published = Some(next)
+        lastTakes = Some(takesNow.result())
       } catch {
         // the next publish diffs against the store again: what it holds is unknown now
         case NonFatal(e) => published = None; throw e

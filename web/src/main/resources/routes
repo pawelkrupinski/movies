@@ -79,6 +79,12 @@ GET     /debug/readmodel/screenings controllers.DebugController.debugReadModelSc
 # their current refresh interval (slowest/most-stable first), with the last two
 # displayed-value changes on hover. Reads the worker-written `rating_cadence`.
 GET     /debug/cadence              controllers.DebugController.cadence()
+# Dev-only: every country's clusters whose take still waits on an answer, and those decided, moved or settled
+# lately, on one page (docs/design/identity-questions.md, "The staging screen"). Each worker publishes its own
+# to its country's `identity_staging`; the page polls /data, which reads every country's mirror database.
+# 404 in prod like the rest of /debug.
+GET     /debug/identity/staging      controllers.IdentityStagingController.index()
+GET     /debug/identity/staging/data controllers.IdentityStagingController.data(since: Option[String] ?= None)
 # Dev-only SSE feed of `movies` change-stream events so the /debug table live-
 # updates (merged rows vanish, new films appear). 404 in prod — the stream is
 # only ever opened in dev, never watching the worker's collection 24/7.
@@ -245,13 +251,6 @@ GET     /admin/identity/traces           controllers.IdentityAdminController.tra
 POST    /admin/identity/pins             controllers.IdentityAdminController.createPin()
 + nocsrf
 POST    /admin/identity/pins/remove      controllers.IdentityAdminController.removePin()
-
-# ── Admin: identity staging ─────────────────────────────────────────────────
-# Every country's clusters whose take still waits on an answer, and those resolved lately, on one page
-# (docs/design/identity-questions.md, "The staging screen"). Each worker publishes its own to the fleet
-# database; the page polls /data with each country's cursor. Read-only; same login + ADMIN_ALLOWLIST gate.
-GET     /admin/identity/staging          controllers.IdentityStagingController.index()
-GET     /admin/identity/staging/data     controllers.IdentityStagingController.data(since: Option[String] ?= None)
 
 # ── Admin: share cards ──────────────────────────────────────────────────────
 # Every city and film share card this country's pages name, in two searchable tabs,

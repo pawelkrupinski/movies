@@ -44,7 +44,9 @@ object StagedTake {
 /**
  * One listing cluster on the staging screen (docs/design/identity-questions.md, "The staging screen"): STAGING while
  * its take waits on an answer (`resolvedAt` empty), RECENTLY RESOLVED once it stopped waiting — `resolution` says how:
- * `settled` (the same cluster waits on nothing now) or `regrouped` (its listings moved to another cluster, or left).
+ * `settled` (the same cluster waits on nothing now), `regrouped` (its listings moved to another cluster, or left),
+ * `decided` (a cluster that formed and settled between two publishes, never seen waiting: most new films, asked inline)
+ * or `moved` (a settled cluster whose film changed between two publishes: a late answer or new data moved it).
  *
  * `listings` and `questions` are capped for the page; `listingCount`, `questionCount` and `attempted` (asked and come to
  * an answer, a durable non-answer or a failure: `QuestionMemory.attempted`) count them all. Times are epoch millis.
@@ -58,6 +60,8 @@ final case class StagedCluster(key: String, listings: Seq[StagedListing], listin
 object StagedCluster {
   val Settled   = "settled"
   val Regrouped = "regrouped"
+  val Decided   = "decided"
+  val Moved     = "moved"
   given OFormat[StagedListing] = Json.format[StagedListing]
   given OFormat[StagedCluster] = Json.format[StagedCluster]
 }
@@ -91,10 +95,10 @@ trait StagingDocuments {
 }
 
 /**
- * The staging screen's store: what each country's worker publishes of its identity stage's waits
- * (`IdentityStagingPublisher`) and what the web's `/admin/identity/staging` reads, every country at once. In the FLEET
- * database ([[services.FleetDatabase]]), which every country's worker and web already hold rights on — the waits live
- * in each worker's memory, not in its country's Mongo, so they are published here, one document per cluster.
+ * The staging screen's store: what a country's worker publishes of its identity stage's waits
+ * (`IdentityStagingPublisher`), in that country's own database, and what the local screen (`scripts/identity-staging`)
+ * reads from every country's database at once. The waits live in the worker's memory, not in Mongo, so they are
+ * published here, one document per cluster.
  *
  * Bounded by its writer: a country's documents are its staging clusters (capped) and its recently resolved ones
  * (capped, aged out), and the publisher deletes every other one it wrote (`CollectionRetention`: `Sweep`).
@@ -136,11 +140,11 @@ final class IdentityStaging(docs: StagingDocuments, clock: Clock) {
 }
 
 object IdentityStaging {
-  /** The collection, in the fleet database ([[services.FleetDatabase]]). */
+  /** The collection, in each country's database. */
   val Collection = "identity_staging"
-  /** The store in `fleet`'s [[Collection]] (the fleet database: [[services.FleetDatabase]]); in memory without one. */
-  def in(fleet: Option[org.mongodb.scala.MongoDatabase], clock: Clock): IdentityStaging =
-    new IdentityStaging(fleet.fold[StagingDocuments](new InMemoryStagingDocuments)(db => new MongoStagingDocuments(db.getCollection(Collection))), clock)
+  /** The store in `database`'s [[Collection]]; in memory without one. */
+  def in(database: Option[org.mongodb.scala.MongoDatabase], clock: Clock): IdentityStaging =
+    new IdentityStaging(database.fold[StagingDocuments](new InMemoryStagingDocuments)(db => new MongoStagingDocuments(db.getCollection(Collection))), clock)
   private val ClusterKind = "cluster"
   private val BeatKind    = "beat"
   private def clusterId(country: String, key: String): String = s"$country|c|$key"
@@ -148,7 +152,7 @@ object IdentityStaging {
   private def beatId(country: String): String                 = s"$country|beat"
 }
 
-/** [[StagingDocuments]] in the fleet database's [[IdentityStaging.Collection]]. */
+/** [[StagingDocuments]] in a country database's [[IdentityStaging.Collection]]. */
 final class MongoStagingDocuments(collection: MongoCollection[Document]) extends StagingDocuments {
   import MongoStagingDocuments.*
 
