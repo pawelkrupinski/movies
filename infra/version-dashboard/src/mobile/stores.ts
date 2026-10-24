@@ -59,7 +59,29 @@ export class VaultLockedError extends Error {
   }
 }
 
-const VAULT_NAMESPACE = "movies";
+export const VAULT_NAMESPACE = "movies";
+
+/**
+ * Every vault key the release lane reads (here, in src/mobile-release and in
+ * scripts/app-store-credentials.sh; a test keeps the list whole). The /mobile page starts the lane
+ * under `secrets run` with exactly these: the vault pins an unlock to the process that asked, so
+ * only the dashboard, unlocked by its own Touch ID, can read them -- the lane's own `get` is locked.
+ */
+export const RELEASE_SECRET_NAMES = [
+  "APP_STORE_KEY_ID",
+  "APP_STORE_ISSUER_ID",
+  "APP_STORE_KEY_P8",
+  "PLAY_SERVICE_ACCOUNT_JSON",
+  "KINOWO_RELEASE_KEYSTORE_BASE64",
+  "KINOWO_RELEASE_STORE_PASSWORD",
+  "KINOWO_RELEASE_KEY_ALIAS",
+  "KINOWO_RELEASE_KEY_PASSWORD",
+] as const;
+
+/** A secret handed in through the environment (`secrets run`) wins; the vault is asked only for the rest. */
+export function secretsFromEnvironmentFirst(environment: Readonly<Record<string, string | undefined>>, vault: Secrets): Secrets {
+  return async (name) => environment[name] || vault(name);
+}
 const VAULT_TIMEOUT_MS = 10_000;
 /** Long enough for a person to notice the Touch ID dialog and touch the sensor. */
 const UNLOCK_TIMEOUT_MS = 120_000;

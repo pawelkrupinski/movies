@@ -11,8 +11,12 @@ http://127.0.0.1:8788 — two pages from one process:
 - **/mobile** — what's in `ios/` and `android/` that neither store has shipped yet, diffed from
   each platform's own live version. "Release to the App Store and Google Play…" runs
   `scripts/mobile-ship.sh --dry-run` and shows its plan; under a plan with a version to ship (and
-  under 30 minutes old) "Ship X.Y.Z to both stores" runs the script for real, its output streamed
-  to the page. The real run is protected work: a restart drains it rather than killing a build.
+  under 30 minutes old) "Ship X.Y.Z to both stores" runs the script for real, with any "What's new"
+  typed per language as its `--notes-dir`. Both run under `secrets run movies <keys>` (the vault
+  pins an unlock to the asking process, so the script's own lookups would be locked; the keys are
+  `RELEASE_SECRET_NAMES`), detached in a session of their own with output and exit code in
+  `~/.cache/kinowo-nixos-dashboard/mobile-release/`: a restart neither waits for a release nor
+  kills it, and the new process picks its console back up.
 
 The same package also holds the mobile release lane, `src/mobile-release/` (run as
 `scripts/mobile-ship.sh`), which reuses the page's App Store Connect and Play clients; it is a

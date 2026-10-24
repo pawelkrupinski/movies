@@ -8,7 +8,7 @@ import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { REPO_DIR } from "../config.js";
 import { runCommand } from "../exec.js";
-import { ascApi, playClient, vaultSecrets } from "../mobile/stores.js";
+import { ascApi, playClient, secretsFromEnvironmentFirst, vaultSecrets } from "../mobile/stores.js";
 import { notesFrom, readNotesDir } from "./notes.js";
 import { release } from "./release.js";
 
@@ -38,14 +38,16 @@ if (values.help) {
 // lives only there. (Every key -- App Store, Play, the upload keystore -- is in the Touch ID vault.)
 const repoDir = dirname(execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: REPO_DIR, encoding: "utf8" }).trim());
 
+// Run from the /mobile page, the keys arrive in the environment (see RELEASE_SECRET_NAMES).
+const secrets = secretsFromEnvironmentFirst(process.env, vaultSecrets().get);
 const notesDir = values["notes-dir"];
 const stamp = () => new Date().toTimeString().slice(0, 8);
 try {
   await release(
     {
-      asc: ascApi(),
-      play: playClient(),
-      secrets: vaultSecrets().get,
+      asc: ascApi(secrets),
+      play: playClient(secrets),
+      secrets,
       run: runCommand,
       sleep: (ms) => new Promise((wake) => setTimeout(wake, ms)),
       log: (line) => console.log(`${stamp()} ${line}`),

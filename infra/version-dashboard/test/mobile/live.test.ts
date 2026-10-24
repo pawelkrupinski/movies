@@ -1,4 +1,7 @@
 import Fastify from "fastify";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextBuildDelayMs, REBUILD_MS, RETRY_FLOOR_MS } from "../../src/mobile/build.js";
 import { MobileLive, SELF_RESTART_AFTER, SELF_RESTART_GRACE_MS } from "../../src/mobile/live.js";
@@ -179,16 +182,23 @@ describe("the page", () => {
   it("starts the release script's runs from POST /mobile/release, and keeps their output across rebuilds", async () => {
     // Fastify reads a request body on real timers: faked, the inject never answers.
     vi.useRealTimers();
+    const stateDir = mkdtempSync(join(tmpdir(), "mobile-release-"));
     const page = liveWith(oneOk);
     const ran: (readonly string[])[] = [];
     const releases = new ReleaseRuns({
       script: "/repo/scripts/mobile-ship.sh",
       cwd: "/repo",
       env: {},
-      run: async (argv, options) => {
-        ran.push(argv);
-        options.onLine?.("10:00:01 → 2.0.14: main is newer");
-        return { code: 0, stdout: "", stderr: "", timedOut: false };
+      secrets: { bin: "/bin/secrets", namespace: "movies", names: [] },
+      stateDir,
+      processes: {
+        spawn: (argv, { log }) => {
+          ran.push(argv);
+          writeFileSync(log, "10:00:01 → 2.0.14: main is newer\n");
+          writeFileSync(join(stateDir, "exit"), "0\n");
+          return 4000;
+        },
+        alive: () => false,
       },
       now: () => NOW,
       publish: (run) => page.live.showRelease(run),
@@ -197,13 +207,14 @@ describe("the page", () => {
     const app = Fastify();
     mobile.routes?.(app);
     expect((await app.inject({ method: "POST", url: "/mobile/release", payload: { mode: "plan" } })).statusCode).toBe(202);
-    expect(ran).toEqual([["/repo/scripts/mobile-ship.sh", "--dry-run"]]);
+    expect(ran.map((argv) => argv.at(-1))).toEqual(["--dry-run"]);
     await page.live.rebuild();
     expect(page.live.store.get().state.release).toMatchObject({ mode: "plan", done: true, exit: 0, lines: ["10:00:01 → 2.0.14: main is newer"] });
     expect((await app.inject({ method: "POST", url: "/mobile/release", payload: { mode: "ship" } })).statusCode).toBe(400);
     expect((await app.inject({ method: "GET", url: "/mobile/release" })).statusCode).toBe(404);
     await app.close();
     page.live.stop();
+    rmSync(stateDir, { recursive: true, force: true });
   });
 });
 

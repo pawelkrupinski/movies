@@ -5,7 +5,7 @@
  */
 import { ago } from "../age.js";
 import { html, type Raw } from "../html.js";
-import { plannedVersion, type Commit, type MobileState, type Platform, type ReleaseRun } from "./model.js";
+import { NOTES_LANGUAGES, PLAY_NOTES_LIMIT, plannedVersion, type Commit, type MobileState, type Platform, type ReleaseRun } from "./model.js";
 
 /** Where each platform's pending version waits to go live. */
 const STORE_OF: Readonly<Record<string, string>> = { iOS: "Apple", Android: "Google Play" };
@@ -54,8 +54,9 @@ function releaseBlock(run: ReleaseRun | undefined, now: number): Raw {
   const what = run.mode === "plan" ? "dry run" : "release";
   const status = !run.done ? "running…" : run.exit === 0 ? "finished" : `failed (exit ${run.exit ?? "abnormal"})`;
   const version = plannedVersion(run);
+  const notes = NOTES_LANGUAGES.map((language) => html`<label class=notes><span>${language}</span><textarea data-notes=${language} maxlength=${PLAY_NOTES_LIMIT} rows=2 placeholder="What's new — blank ships the generic line"></textarea></label>`);
   const ship = version
-    ? html`<div class=actionrow><button class='applybtn go needs-live' data-action=release>Ship ${version} to both stores</button><span class=hint>builds both apps from one commit, submits iOS for review, then promotes Android to production — a production release cannot be taken back</span></div>`
+    ? html`<div class=notesrow>${notes}</div><div class=actionrow><button class='applybtn go needs-live' data-action=release>Ship ${version} to both stores</button><span class=hint>builds both apps from one commit, submits iOS for review, then promotes Android to production — a production release cannot be taken back</span></div>`
     : "";
   const output = html`<pre class=out>${run.lines.join("\n")}</pre>`;
   return html`<div class=actionrow>${planButton}</div><details class=cons open><summary>${what} started ${ago(run.startedAt / 1000, now / 1000)}: ${status}</summary>${output}</details>${ship}`;

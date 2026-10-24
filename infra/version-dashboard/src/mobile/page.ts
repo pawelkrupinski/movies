@@ -2,14 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { REPO_DIR } from "../config.js";
-import { runCommand } from "../exec.js";
+import { CACHE_DIR, REPO_DIR } from "../config.js";
 import type { Page } from "../page.js";
 import type { MobileSources } from "./build.js";
 import { MobileLive } from "./live.js";
 import type { MobileState } from "./model.js";
-import { androidReleaseState, ascApi, iosReleaseState, playClient, vaultSecrets } from "./stores.js";
-import { ReleaseRuns } from "./release-run.js";
+import { realDetachedProcesses, ReleaseRuns } from "./release-run.js";
+import { androidReleaseState, ascApi, iosReleaseState, playClient, RELEASE_SECRET_NAMES, SECRETS_BIN, VAULT_NAMESPACE, vaultSecrets } from "./stores.js";
 import { renderMobile } from "./view.js";
 
 type WakeSource = { readonly onWake: (listener: () => void) => void };
@@ -47,7 +46,9 @@ export function createMobilePage(
     script: join(REPO_DIR, "scripts", "mobile-ship.sh"),
     cwd: REPO_DIR,
     env: releaseEnvironment(),
-    run: runCommand,
+    secrets: { bin: SECRETS_BIN, namespace: VAULT_NAMESPACE, names: RELEASE_SECRET_NAMES },
+    stateDir: join(CACHE_DIR, "mobile-release"),
+    processes: realDetachedProcesses,
     now: Date.now,
     publish: (run) => live.showRelease(run),
   }),
@@ -60,8 +61,14 @@ export function createMobilePage(
     title: "Mobile releases",
     store: live.store,
     live,
-    start: () => live.start(),
-    stop: () => live.stop(),
+    start: () => {
+      live.start();
+      releases.resume();
+    },
+    stop: () => {
+      live.stop();
+      releases.stop();
+    },
     renderBody: (snapshot) => renderMobile(snapshot.state, Date.now()).__raw,
     routes(app: FastifyInstance) {
       // Starts a build and answers at once: the new state reaches every tab over the event stream,
@@ -81,12 +88,14 @@ export function createMobilePage(
         void live.rebuild();
         return { ok: true };
       });
-      // The release button: `{"mode": "plan"}` is the dry run, `{"mode": "release"}` ships under a
-      // fresh plan. Answers once the run has started; its output reaches the page as snapshots.
-      app.post<{ Body: { mode?: unknown } }>("/mobile/release", async (request, reply) => {
-        const mode = request.body?.mode;
+      // The release button: `{"mode": "plan"}` is the dry run, `{"mode": "release", "notes": {"pl": …}}` ships under a
+      // fresh plan. Answers once the run has started; its output reaches the page as snapshots, and
+      // the run outlives this process (see release-run.ts).
+      app.post<{ Body: { mode?: unknown; notes?: unknown } }>("/mobile/release", async (request, reply) => {
+        const { mode, notes } = request.body ?? {};
         if (mode !== "plan" && mode !== "release") return reply.code(400).send({ error: "mode must be plan or release" });
-        const answer = releases.start(mode);
+        if (notes !== undefined && (typeof notes !== "object" || notes === null)) return reply.code(400).send({ error: "notes must be an object" });
+        const answer = releases.start(mode, (notes ?? {}) as Record<string, unknown>);
         return reply.code(answer.status).send(answer.payload);
       });
     },

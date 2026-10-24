@@ -24,10 +24,26 @@ export function setDeps(next: Partial<Deps>): void {
 
 let latest: MobileState | null = null;
 
+/** The "What's new" text typed so far, by language. */
+function typedNotes(): Record<string, string> {
+  const notes: Record<string, string> = {};
+  for (const box of document.querySelectorAll<HTMLTextAreaElement>("textarea[data-notes]")) {
+    if (box.dataset.notes && box.value.trim()) notes[box.dataset.notes] = box.value;
+  }
+  return notes;
+}
+
 export function applySnapshot(state: MobileState): void {
   latest = state;
   const app = document.getElementById("app");
-  if (app) app.innerHTML = renderMobile(state, deps.now()).__raw;
+  if (!app) return;
+  // Every snapshot redraws the page, the boxes with it: what was typed is put back.
+  const typed = typedNotes();
+  app.innerHTML = renderMobile(state, deps.now()).__raw;
+  for (const [language, text] of Object.entries(typed)) {
+    const box = app.querySelector<HTMLTextAreaElement>(`textarea[data-notes=${language}]`);
+    if (box) box.value = text;
+  }
 }
 
 /** Asks for a rebuild; the result arrives as a snapshot, which re-renders the page by itself. */
@@ -58,7 +74,7 @@ export async function release(mode: "plan" | "release"): Promise<void> {
   const note = document.getElementById("refreshnote");
   if (note) note.textContent = mode === "plan" ? "starting the dry run…" : "starting the release…";
   try {
-    const response = await deps.fetch("/mobile/release", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
+    const response = await deps.fetch("/mobile/release", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mode === "release" ? { mode, notes: typedNotes() } : { mode }) });
     const answer = (await response.json()) as { ok?: boolean; error?: string };
     if (note) note.textContent = answer.ok ? "" : `could not start: ${answer.error ?? "unknown"}`;
   } catch {

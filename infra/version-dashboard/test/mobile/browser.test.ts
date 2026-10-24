@@ -73,7 +73,12 @@ describe("the mobile page in a browser", () => {
     const release = { mode: "plan" as const, startedAt: NOW, lines: ["10:00:01 → 2.0.14: main is newer"], done: true, exit: 0 };
     FakeEventSource.last?.push({ version: 4, changedAt: NOW, checkedAt: NOW, state: state([upToDate("iOS")], { release }) });
     document.querySelector<HTMLButtonElement>("button[data-action=release-plan]")?.click();
+    const polish = document.querySelector<HTMLTextAreaElement>("textarea[data-notes=pl]");
+    if (polish) polish.value = "Nowe kina.";
+    // A snapshot (a rebuild, the 30-second re-render) redraws the page: typed text must survive it.
+    FakeEventSource.last?.push({ version: 5, changedAt: NOW, checkedAt: NOW, state: state([upToDate("iOS", "2.0.8")], { release }) });
+    expect(document.querySelector<HTMLTextAreaElement>("textarea[data-notes=pl]")?.value).toBe("Nowe kina.");
     document.querySelector<HTMLButtonElement>("button[data-action=release]")?.click();
-    expect(posts).toEqual(['POST /mobile/release {"mode":"plan"}', 'POST /mobile/release {"mode":"release"}']);
+    expect(posts).toEqual(['POST /mobile/release {"mode":"plan"}', 'POST /mobile/release {"mode":"release","notes":{"pl":"Nowe kina."}}']);
   });
 });

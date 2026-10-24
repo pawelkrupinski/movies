@@ -56,4 +56,12 @@ check "dies on a locked vault" "1" "$?"
 check "tells you how to unlock it" "1" "$(grep -c 'secrets unlock movies' <<<"$out")"
 check "stops before anything uses the credentials" "0" "$(grep -c reached <<<"$out")"
 
+# ── handed in by the caller (the /mobile dashboard runs the lane under `secrets run`) ──
+out=$(FAKE_LOCKED=1 SECRETS_BIN="$FAKE" APP_STORE_KEY_ID=ENVKEY APP_STORE_ISSUER_ID=env-issuer APP_STORE_KEY_P8=env-p8 bash -c '
+  . "'"$HERE"'/log.sh"; . "'"$HERE"'/app-store-credentials.sh"
+  load_app_store_credentials
+  printf "%s|%s|%s\n" "$APP_STORE_KEY_ID" "$APP_STORE_ISSUER_ID" "$(cat "$API_PRIVATE_KEYS_DIR/AuthKey_$APP_STORE_KEY_ID.p8")"' 2>&1)
+check "takes the key from the environment without asking a locked vault" "0" "$?"
+check "uses the environment's values" "ENVKEY|env-issuer|env-p8" "$out"
+
 spec_summary

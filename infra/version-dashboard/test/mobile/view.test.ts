@@ -100,13 +100,18 @@ describe("renderMobile", () => {
     expect(planned).toContain("dry run started 1m ago: finished");
     expect(planned).toContain("<pre class=out>10:00:01 → 2.0.14: main is newer\n&lt;b&gt;</pre>");
     expect(planned).toContain("data-action=release>Ship 2.0.14 to both stores</button>");
+    // What's new, per store language; blank keeps the lane's generic line.
+    for (const language of ["pl", "en", "de", "es"]) expect(planned).toContain(`<textarea data-notes=${language} maxlength=500`);
 
     for (const release of [
       { ...plan, lines: ["10:00:01 → nothing to release: both stores have main"] },
       { ...plan, exit: 1 },
       { ...plan, done: false, exit: null },
       { ...plan, mode: "release" as const },
-    ]) expect(render([upToDate("iOS")], { release })).not.toContain("data-action=release>");
+    ]) {
+      expect(render([upToDate("iOS")], { release })).not.toContain("data-action=release>");
+      expect(render([upToDate("iOS")], { release })).not.toContain("<textarea");
+    }
     expect(render([upToDate("iOS")], { release: { ...plan, done: false, exit: null } })).toContain("data-action=release-plan disabled>");
     expect(render([upToDate("iOS")], { release: { ...plan, mode: "release", exit: 1 } })).toContain("release started 1m ago: failed (exit 1)");
   });

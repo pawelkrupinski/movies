@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
-import type { CommandOptions, CommandResult } from "../../src/exec.js";
-import { drain, resetLifecycle, runningWork } from "../../src/lifecycle.js";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ReleaseRun } from "../../src/mobile/model.js";
-import { PLAN_MAX_AGE_MS, ReleaseRuns } from "../../src/mobile/release-run.js";
+import { PLAN_MAX_AGE_MS, ReleaseRuns, type DetachedProcesses } from "../../src/mobile/release-run.js";
 import { NOW } from "./states.js";
 
 const SCRIPT = "/repo/scripts/mobile-ship.sh";
@@ -12,93 +13,171 @@ const PLAN_LINES = [
   "10:00:01   iOS      archive + upload → new version → submit for review",
 ];
 
-/** An executor whose runs stay open until the test finishes them, printing `lines` as they start. */
-function scripted() {
-  const runs: { argv: readonly string[]; options: CommandOptions; finish: (code: number) => void }[] = [];
-  const run = (argv: readonly string[], options: CommandOptions) =>
-    new Promise<CommandResult>((resolve) => {
-      runs.push({ argv, options, finish: (code) => resolve({ code, stdout: "", stderr: "", timedOut: false }) });
-    });
-  return { run, runs };
+let stateDir: string;
+beforeEach(() => {
+  stateDir = mkdtempSync(join(tmpdir(), "mobile-release-"));
+});
+afterEach(() => rmSync(stateDir, { recursive: true, force: true }));
+
+/** Processes the test plays: it writes their output and exit code where the real ones would. */
+function processes() {
+  const started: { argv: readonly string[]; cwd: string; env: Readonly<Record<string, string>>; log: string; pid: number }[] = [];
+  const dead = new Set<number>();
+  const fake: DetachedProcesses = {
+    spawn(argv, options) {
+      const pid = 4000 + started.length;
+      started.push({ argv, ...options, pid });
+      return pid;
+    },
+    alive: (pid) => pid >= 4000 && !dead.has(pid),
+  };
+  return { fake, started, dead };
 }
 
-function releases(now = () => NOW) {
-  const executor = scripted();
+function releases(fake: DetachedProcesses, now = () => NOW) {
   const published: ReleaseRun[] = [];
-  const runs = new ReleaseRuns({ script: SCRIPT, cwd: "/repo", env: { JAVA_HOME: "/jdk" }, run: executor.run, now, publish: (run) => published.push(run) });
-  return { runs, executor, published, latest: () => published.at(-1) };
+  const runs = new ReleaseRuns({
+    script: SCRIPT,
+    cwd: "/repo",
+    env: { JAVA_HOME: "/jdk" },
+    secrets: { bin: "/bin/secrets", namespace: "movies", names: ["APP_STORE_KEY_ID", "PLAY_SERVICE_ACCOUNT_JSON"] },
+    stateDir,
+    processes: fake,
+    now,
+    publish: (run) => published.push(run),
+    pollMs: 60_000,
+  });
+  return { runs, published, latest: () => published.at(-1) };
 }
 
-const settle = () => new Promise((wake) => setTimeout(wake, 0));
+const output = (lines: readonly string[]) => writeFileSync(join(stateDir, "output.log"), lines.map((line) => `${line}\n`).join(""));
+const exit = (code: number) => writeFileSync(join(stateDir, "exit"), `${code}\n`);
 
-afterEach(() => resetLifecycle());
+/** A dry run that printed `lines` and exited `code`. */
+function planned(runs: ReleaseRuns, lines: readonly string[] = PLAN_LINES, code = 0) {
+  expect(runs.start("plan").status).toBe(202);
+  output(lines);
+  exit(code);
+  runs.poll();
+}
 
 describe("the release button's runs of scripts/mobile-ship.sh", () => {
-  it("plans with --dry-run, streaming each line to the page as it arrives", async () => {
-    const { runs, executor, latest } = releases();
+  it("plans with --dry-run under `secrets run`, detached, its output read back from the log", () => {
+    const { fake, started } = processes();
+    const { runs, latest } = releases(fake);
     expect(runs.start("plan")).toEqual({ status: 202, payload: { ok: true } });
-    const [plan] = executor.runs;
-    expect(plan?.argv).toEqual([SCRIPT, "--dry-run"]);
-    expect(plan?.options).toMatchObject({ cwd: "/repo", env: { JAVA_HOME: "/jdk" }, mergeStderr: true });
-    PLAN_LINES.forEach((line) => plan?.options.onLine?.(line));
-    expect(latest()).toEqual({ mode: "plan", startedAt: NOW, lines: PLAN_LINES, done: false, exit: null });
-    plan?.finish(0);
-    await settle();
-    expect(latest()).toMatchObject({ done: true, exit: 0 });
+    const [plan] = started;
+    // The vault hands the lane its keys: `secrets` itself is this process's child, so the unlock
+    // this dashboard holds covers it. The shell after it records the script's exit code.
+    expect(plan?.argv.slice(0, 7)).toEqual(["/bin/secrets", "run", "movies", "APP_STORE_KEY_ID", "PLAY_SERVICE_ACCOUNT_JSON", "--", "/bin/sh"]);
+    expect(plan?.argv.slice(-3)).toEqual([join(stateDir, "exit"), SCRIPT, "--dry-run"]);
+    expect(plan).toMatchObject({ cwd: "/repo", env: { JAVA_HOME: "/jdk" }, log: join(stateDir, "output.log") });
+    expect(latest()).toEqual({ mode: "plan", startedAt: NOW, lines: [], done: false, exit: null });
+
+    output(PLAN_LINES.slice(0, 2));
+    runs.poll();
+    expect(latest()).toMatchObject({ lines: PLAN_LINES.slice(0, 2), done: false });
+    output(PLAN_LINES);
+    exit(0);
+    runs.poll();
+    expect(latest()).toEqual({ mode: "plan", startedAt: NOW, lines: PLAN_LINES, done: true, exit: 0 });
+    runs.stop();
   });
 
-  it("refuses to release before a plan, and under a plan with nothing to ship or one that failed", async () => {
-    const { runs, executor } = releases();
-    expect(runs.start("release").status).toBe(409);
-    for (const [lines, code] of [[["10:00:01 → nothing to release: both stores have main"], 0], [PLAN_LINES, 1]] as const) {
-      runs.start("plan");
-      lines.forEach((line) => executor.runs.at(-1)?.options.onLine?.(line));
-      executor.runs.at(-1)?.finish(code);
-      await settle();
-      expect(runs.start("release").status).toBe(409);
-    }
-    expect(executor.runs.every((run) => run.argv.includes("--dry-run"))).toBe(true);
-  });
-
-  it("releases under a fresh successful plan, without --dry-run, as work a restart waits for", async () => {
-    const { runs, executor, latest } = releases();
+  it("a run whose process died without an exit code is done, with none", () => {
+    const { fake, started, dead } = processes();
+    const { runs, latest } = releases(fake);
     runs.start("plan");
-    PLAN_LINES.forEach((line) => executor.runs[0]?.options.onLine?.(line));
-    executor.runs[0]?.finish(0);
-    await settle();
+    output(["Error: locked — run `secrets unlock movies`"]);
+    dead.add(started[0]?.pid ?? 0);
+    runs.poll();
+    expect(latest()).toMatchObject({ done: true, exit: null, lines: ["Error: locked — run `secrets unlock movies`"] });
+  });
+
+  it("refuses to release before a plan, and under a plan with nothing to ship or one that failed", () => {
+    const { fake, started } = processes();
+    const { runs } = releases(fake);
+    expect(runs.start("release").status).toBe(409);
+    planned(runs, ["10:00:01 → nothing to release: both stores have main"]);
+    expect(runs.start("release").status).toBe(409);
+    planned(runs, PLAN_LINES, 1);
+    expect(runs.start("release").status).toBe(409);
+    expect(started.every((run) => run.argv.at(-1) === "--dry-run")).toBe(true);
+  });
+
+  it("releases under a fresh successful plan, without --dry-run, one run at a time", () => {
+    const { fake, started } = processes();
+    const { runs, latest } = releases(fake);
+    planned(runs);
     expect(runs.start("release")).toEqual({ status: 202, payload: { ok: true } });
-    await settle();
-    const release = executor.runs[1];
-    expect(release?.argv).toEqual([SCRIPT]);
-    expect(latest()).toMatchObject({ mode: "release", lines: [], done: false });
-    expect(runningWork().map((work) => work.label)).toEqual(["mobile release"]);
-    // One run at a time: neither a second release nor a plan may start beside it.
+    expect(started[1]?.argv.at(-1)).toBe(SCRIPT);
+    // The new run starts from an empty console: the plan's output and exit code are gone.
+    runs.poll();
+    expect(latest()).toMatchObject({ mode: "release", lines: [], done: false, exit: null });
     expect(runs.start("release").status).toBe(409);
     expect(runs.start("plan").status).toBe(409);
-    const drained = drain();
-    release?.finish(0);
-    await drained;
-    expect(latest()).toMatchObject({ done: true, exit: 0 });
+    runs.stop();
   });
 
-  it("refuses a release under a plan older than PLAN_MAX_AGE_MS: the stores it read have moved on", async () => {
+  it("hands the lane the What's new text typed on the page, one file per language, and refuses what Play would", () => {
+    const { fake, started } = processes();
+    const { runs } = releases(fake);
+    planned(runs);
+    expect(runs.start("release", { pl: "x".repeat(501) })).toMatchObject({ status: 400, payload: { error: expect.stringContaining("500") } });
+    expect(runs.start("release", { fr: "Corrections" }).status).toBe(400);
+    expect(runs.start("release", { pl: "  Nowe kina.  ", en: "New cinemas.", de: "   " })).toEqual({ status: 202, payload: { ok: true } });
+    const notesDir = join(stateDir, "notes");
+    expect(started[1]?.argv.slice(-3)).toEqual([SCRIPT, "--notes-dir", notesDir]);
+    expect(readdirSync(notesDir).sort()).toEqual(["en.txt", "pl.txt"]);
+    expect(readFileSync(join(notesDir, "pl.txt"), "utf8")).toBe("Nowe kina.");
+    runs.stop();
+  });
+
+  it("without any text the lane keeps its generic line, and an earlier release's text is not reused", () => {
+    const { fake, started } = processes();
+    const { runs } = releases(fake);
+    planned(runs);
+    runs.start("release", { pl: "Nowe kina." });
+    exit(0);
+    runs.poll();
+    planned(runs);
+    runs.start("release", {});
+    expect(started.at(-1)?.argv.at(-1)).toBe(SCRIPT);
+    expect(readdirSync(join(stateDir, "notes"))).toEqual([]);
+  });
+
+  it("refuses a release under a plan older than PLAN_MAX_AGE_MS: the stores it read have moved on", () => {
     let now = NOW;
-    const { runs, executor } = releases(() => now);
-    runs.start("plan");
-    PLAN_LINES.forEach((line) => executor.runs[0]?.options.onLine?.(line));
-    executor.runs[0]?.finish(0);
-    await settle();
+    const { fake } = processes();
+    const { runs } = releases(fake, () => now);
+    planned(runs);
     now += PLAN_MAX_AGE_MS + 1;
     expect(runs.start("release")).toMatchObject({ status: 409, payload: { error: expect.stringContaining("plan again") } });
   });
 
-  it("refuses a release once the dashboard is restarting", async () => {
-    const { runs, executor } = releases();
-    runs.start("plan");
-    PLAN_LINES.forEach((line) => executor.runs[0]?.options.onLine?.(line));
-    executor.runs[0]?.finish(0);
-    await settle();
-    await drain();
-    expect(runs.start("release").status).toBe(503);
+  it("a restarted dashboard picks a release still running back up, and will not start a second beside it", () => {
+    const { fake, started } = processes();
+    const before = releases(fake);
+    planned(before.runs);
+    before.runs.start("release");
+    output(["10:05:00 [ios] ▸ archiving"]);
+    before.runs.stop();
+
+    const after = releases(fake);
+    after.runs.resume();
+    expect(after.latest()).toEqual({ mode: "release", startedAt: NOW, lines: ["10:05:00 [ios] ▸ archiving"], done: false, exit: null });
+    expect(after.runs.start("plan").status).toBe(409);
+    exit(0);
+    after.runs.poll();
+    expect(after.latest()).toMatchObject({ done: true, exit: 0 });
+    expect(started).toHaveLength(2);
+    after.runs.stop();
+  });
+
+  it("resumes nothing when no run was ever started", () => {
+    const { fake } = processes();
+    const { runs, published } = releases(fake);
+    runs.resume();
+    expect(published).toEqual([]);
   });
 });

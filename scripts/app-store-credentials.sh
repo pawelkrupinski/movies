@@ -18,6 +18,9 @@
 load_app_store_credentials() {
   local bin="${SECRETS_BIN:-$HOME/.local/bin/secrets}"
   vault_get() { # $1 name
+    # Handed in already (the /mobile dashboard runs the lane under `secrets run`, since the vault
+    # pins an unlock to the process that asked and this script is never that one): no vault call.
+    if [ -n "${!1:-}" ]; then printf '%s' "${!1}"; return; fi
     "$bin" get movies "$1" 2>/dev/null \
       || die "can't read $1 from the vault — run \`secrets unlock movies\` (Touch ID) and retry"
   }

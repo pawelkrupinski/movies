@@ -11,8 +11,12 @@ import {
   type PlayApi,
   type Secrets,
   VaultLockedError,
+  RELEASE_SECRET_NAMES,
+  secretsFromEnvironmentFirst,
   vaultSecrets,
 } from "../../src/mobile/stores.js";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { CommandOptions, CommandResult } from "../../src/exec.js";
 import { dnsFailure } from "./errors.js";
 
@@ -241,5 +245,31 @@ describe("the Touch ID vault CLI", () => {
     expect(ok.argvs).toEqual(["/bin/secrets unlock movies"]);
     const refused = run({ "unlock movies": { code: 1, stderr: "Error: Touch ID cancelled" } });
     await expect(vaultSecrets(refused.exec, "/bin/secrets").unlock()).rejects.toThrow(/cancelled/);
+  });
+});
+
+describe("secrets handed to the release script", () => {
+  it("takes a secret from the environment when it is there, and asks the vault only otherwise", async () => {
+    const asked: string[] = [];
+    const vault: Secrets = async (name) => {
+      asked.push(name);
+      return `vault:${name}`;
+    };
+    const secrets = secretsFromEnvironmentFirst({ APP_STORE_KEY_ID: "KEY1", EMPTY: "" }, vault);
+    expect(await secrets("APP_STORE_KEY_ID")).toBe("KEY1");
+    expect(await secrets("EMPTY")).toBe("vault:EMPTY");
+    expect(await secrets("PLAY_SERVICE_ACCOUNT_JSON")).toBe("vault:PLAY_SERVICE_ACCOUNT_JSON");
+    expect(asked).toEqual(["EMPTY", "PLAY_SERVICE_ACCOUNT_JSON"]);
+  });
+
+  it("names every secret the lane and the iOS script read, so none is left to a locked vault", () => {
+    const root = join(import.meta.dirname, "..", "..");
+    const sources = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory() ? sources(join(dir, entry.name)) : entry.name.endsWith(".ts") ? [join(dir, entry.name)] : []);
+    const read = new Set<string>();
+    for (const file of sources(join(root, "src"))) for (const match of readFileSync(file, "utf8").matchAll(/secrets\("([A-Z0-9_]+)"\)/g)) read.add(match[1] ?? "");
+    for (const match of readFileSync(join(root, "..", "..", "scripts", "app-store-credentials.sh"), "utf8").matchAll(/vault_get ([A-Z0-9_]+)/g)) read.add(match[1] ?? "");
+    expect(read.size).toBeGreaterThan(5);
+    expect([...read].sort()).toEqual([...RELEASE_SECRET_NAMES].sort());
   });
 });

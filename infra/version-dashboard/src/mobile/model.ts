@@ -83,6 +83,13 @@ export interface ReleaseRun {
   readonly exit: number | null;
 }
 
+/** Play caps a release note at 500 characters; the App Store allows 4000. */
+export const PLAY_NOTES_LIMIT = 500;
+/** The store languages the lane has a generic "What's new" line for (src/mobile-release/notes.ts). */
+export const NOTES_LANGUAGES = ["pl", "en", "de", "es"] as const;
+/** "What's new" typed on the page, by language; a language left out ships the generic line. */
+export type ReleaseNotes = Partial<Record<(typeof NOTES_LANGUAGES)[number], string>>;
+
 /** The version a finished, successful plan would ship (its `→ X.Y.Z: …` line); null: nothing to ship. */
 export function plannedVersion(run: ReleaseRun | undefined): string | null {
   if (!run || run.mode !== "plan" || !run.done || run.exit !== 0) return null;

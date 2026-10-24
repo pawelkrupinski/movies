@@ -58,6 +58,11 @@ details.cons summary { cursor: pointer; color: #7d8590; font-size: 11px; }
 .consfoot { color: #9aa4b2; font-size: 11px; margin-top: 6px; }
 .release { margin-bottom: 20px; }
 .release .actionrow + .actionrow, .release details.cons + .actionrow { margin-top: 8px; }
+.notesrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px; margin-top: 8px; }
+.notes { display: flex; gap: 6px; align-items: flex-start; }
+.notes span { color: #7d8590; font-size: 11px; width: 2ch; padding-top: 4px; }
+.notes textarea { flex: 1; font: inherit; font-size: 12px; background: #0a0c10; color: #d7dae0;
+                  border: 1px solid #2f3646; border-radius: 5px; padding: 4px 6px; resize: vertical; }
 .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 
 /* The cell furniture the fleet table is built from, ported from the reference so that the two

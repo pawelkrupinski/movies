@@ -16,8 +16,7 @@ const GENERIC: Readonly<Record<string, string>> = {
   es: "Corrección de errores y mejoras.",
 };
 
-/** Play caps a release note at 500 characters; the App Store allows 4000. */
-export const PLAY_NOTES_LIMIT = 500;
+export { PLAY_NOTES_LIMIT } from "../mobile/model.js";
 
 export type Notes = (locale: string) => string;
 
