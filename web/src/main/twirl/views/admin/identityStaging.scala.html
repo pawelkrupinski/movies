@@ -1,0 +1,211 @@
+@(current: models.Country, pollMillis: Int)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identity staging — @current.brandName</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; }
+    .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 18px; max-width: 900px; }
+    .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2ecc40; margin-right: 5px; vertical-align: middle; }
+    .sub.stale .dot { background: #c0392b; }
+    #countries { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; align-items: start; }
+    .country { background: #121212; border: 1px solid #1f1f1f; border-radius: 6px; padding: 12px; min-width: 0; }
+    .country h2 { font-size: 14px; color: #fff; display: flex; gap: 10px; align-items: baseline; }
+    .country h2 .age { font-size: 10px; color: #666; font-weight: 400; }
+    .country h2 .age.stale { color: #e07a6a; }
+    .counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+    .pill { background: #181818; border: 1px solid #262626; border-radius: 5px; padding: 4px 9px; }
+    .pill .n { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pill.staging .n { color: #f0ad4e; }
+    .pill.resolved .n { color: #6a9b78; }
+    .kinds { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+    .kind { font-size: 10px; color: #b89cd6; background: #1d1726; border-radius: 3px; padding: 1px 6px; }
+    h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin: 12px 0 4px; }
+    details { border-bottom: 1px solid #1a1a1a; }
+    summary { cursor: pointer; padding: 4px 2px; display: flex; gap: 8px; align-items: baseline; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "▸"; color: #555; }
+    details[open] > summary::before { content: "▾"; }
+    summary:hover { background: #171717; }
+    .title { color: #ddd; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { color: #777; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .progress { color: #4aa3df; }
+    .body { padding: 4px 4px 10px 18px; font-size: 12px; }
+    .body .line { margin: 2px 0; }
+    .body .label { color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    td, th { padding: 2px 6px; border-bottom: 1px solid #161616; vertical-align: top; text-align: left; }
+    th { font-size: 10px; color: #666; font-weight: 600; }
+    .q-text { word-break: break-all; color: #9bb3c9; }
+    .o-not-attempted { color: #888; }
+    .o-failed { color: #e07a6a; }
+    .o-absent { color: #c8a45a; }
+    .o-answered { color: #6a9b78; }
+    .r-settled { color: #6a9b78; }
+    .r-regrouped { color: #b89cd6; }
+    .empty { color: #555; padding: 6px 2px; }
+  </style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>Identity staging</h1>
+    @views.html._countrySwitch("/admin/identity/staging", current)
+  </div>
+  <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
+    — every country's clusters whose take still waits on an answer, and those that stopped waiting in the last hours,
+    as each country's worker last published them. Open a row for its questions.</div>
+  <div id="countries"></div>
+
+  <script>
+    "use strict";
+    var POLL_MS = @pollMillis;
+    var STALE_MS = 120000;
+    var state = {};          // code → { name, beat, cursor, clusters: { key → cluster } }
+    var order = [];          // the countries in the server's order
+    var open = {};           // "code|key" → true while its row is open
+    var skew = 0;            // client now − server now
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    }
+    function dur(ms) {
+      if (ms < 0) ms = 0;
+      var s = Math.floor(ms / 1000);
+      if (s < 60) return s + "s";
+      var m = Math.floor(s / 60);
+      if (m < 60) return m + "m";
+      var h = Math.floor(m / 60);
+      return h + "h " + (m % 60) + "m";
+    }
+    function serverNow() { return Date.now() - skew; }
+
+    function apply(data) {
+      skew = Date.now() - data.now;
+      order = data.countries.map(function (c) { return c.code; });
+      data.countries.forEach(function (c) {
+        var held = state[c.code] || (state[c.code] = { clusters: {} });
+        held.name = c.name;
+        if (c.beat) held.beat = c.beat;
+        if (c.cursor != null) held.cursor = c.cursor;
+        c.changed.forEach(function (cl) { held.clusters[cl.key] = cl; });
+        var keep = {};
+        c.keys.forEach(function (k) { keep[k] = true; });
+        Object.keys(held.clusters).forEach(function (k) { if (!keep[k]) delete held.clusters[k]; });
+      });
+    }
+
+    function since() {
+      return order.filter(function (code) { return state[code] && state[code].cursor != null; })
+        .map(function (code) { return code + ":" + state[code].cursor; }).join(",");
+    }
+
+    function takeText(t) {
+      if (t.film != null) return (t.title ? t.title : "tmdb " + t.film) + " · " + t.basis + " " + Math.round(t.confidence * 100) + "%";
+      if (t.fallback) return t.fallback + " · " + t.basis;
+      return "no film · " + t.basis + (t.leaning != null ? " (leans " + (t.leaningTitle || "tmdb " + t.leaning) + ")" : "");
+    }
+    function headline(cl) {
+      var l = cl.listings[0] || { venue: "", rawTitle: "?" };
+      var more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) : "";
+      return esc(l.rawTitle) + " <span class=\"meta\">@@ " + esc(l.venue) + more + "</span>";
+    }
+    function outcomeText(q) {
+      if (q.outcome === "failed") {
+        var retry = q.nextRetryAt != null ? (q.nextRetryAt > serverNow() ? ", next in " + dur(q.nextRetryAt - serverNow()) : ", due") : "";
+        return "failed " + q.attempts + "×" + retry + (q.host ? " (" + esc(q.host) + ")" : "");
+      }
+      return q.outcome;
+    }
+    function questionsTable(cl) {
+      if (!cl.questions.length) return "<div class=\"line label\">no agreement question" +
+        (cl.modelGaps ? "; the model waits on " + cl.modelGaps + " gap(s)" : "") + (cl.onTmdb ? "; the fill waits on TMDB" : "") + "</div>";
+      var rows = cl.questions.map(function (q) {
+        return "<tr class=\"question\"><td>" + esc(q.kind) + "</td><td>" + esc(q.asker) + "</td><td class=\"q-text\">" + esc(q.text) +
+          "</td><td class=\"o-" + esc(q.outcome) + "\">" + outcomeText(q) + "</td></tr>";
+      }).join("");
+      var hidden = cl.questionCount > cl.questions.length ? "<div class=\"line label\">… and " + (cl.questionCount - cl.questions.length) + " more</div>" : "";
+      return "<table><tr><th>kind</th><th>asked of</th><th>question</th><th>outcome</th></tr>" + rows + "</table>" + hidden;
+    }
+    function body(cl) {
+      var listings = cl.listings.map(function (l) { return esc(l.rawTitle) + " @@ " + esc(l.venue); }).join("<br>") +
+        (cl.listingCount > cl.listings.length ? "<br>… and " + (cl.listingCount - cl.listings.length) + " more" : "");
+      return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" +
+        "<div class=\"line\"><span class=\"label\">take</span> " + esc(takeText(cl.take)) + "</div>" +
+        "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
+        " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
+    }
+    function row(code, cl) {
+      var id = code + "|" + cl.key;
+      var meta;
+      if (cl.resolvedAt == null) {
+        meta = "<span class=\"progress\">" + cl.attempted + "/" + cl.questionCount + " attempted</span>" +
+          (cl.modelGaps ? " · " + cl.modelGaps + " gaps" : "") + (cl.onTmdb ? " · tmdb" : "") + " · waiting " + dur(serverNow() - cl.since);
+      } else {
+        var answered = cl.questions.filter(function (q) { return q.outcome === "answered"; }).length;
+        meta = "<span class=\"r-" + esc(cl.resolution) + "\">" + esc(cl.resolution) + "</span> " + dur(serverNow() - cl.resolvedAt) +
+          " ago · waited " + dur(cl.resolvedAt - cl.since) + " · " + answered + " answered, " + (cl.questionCount - answered) + " left out";
+      }
+      return "<details class=\"cluster\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary><span class=\"title\">" +
+        headline(cl) + "</span><span class=\"meta\">" + esc(takeText(cl.take)) + "</span></summary>" +
+        "<div class=\"body line meta\">" + meta + "</div>" + body(cl) + "</details>";
+    }
+
+    function render() {
+      var html = order.map(function (code) {
+        var c = state[code];
+        var all = Object.keys(c.clusters).map(function (k) { return c.clusters[k]; });
+        var staging = all.filter(function (cl) { return cl.resolvedAt == null; }).sort(function (a, b) { return a.since - b.since; });
+        var resolved = all.filter(function (cl) { return cl.resolvedAt != null; }).sort(function (a, b) { return b.resolvedAt - a.resolvedAt; });
+        var beat = c.beat;
+        var age = beat ? serverNow() - beat.at : null;
+        var head = "<h2>" + esc(c.name) + " <span class=\"age" + (age != null && age > STALE_MS ? " stale" : "") + "\">" +
+          (beat ? "published " + dur(age) + " ago" : "no snapshot yet") + "</span></h2>";
+        var counts = "<div class=\"counts\"><span class=\"pill staging\"><span class=\"n\">" + (beat ? beat.staging : staging.length) +
+          "</span> staging" + (beat && beat.shown < beat.staging ? " (" + beat.shown + " shown)" : "") + "</span>" +
+          "<span class=\"pill resolved\"><span class=\"n\">" + resolved.length + "</span> resolved</span>" +
+          "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span></div>";
+        var kinds = beat ? Object.keys(beat.openByKind).sort().map(function (k) {
+          return "<span class=\"kind\">" + esc(k) + " " + beat.openByKind[k] + "</span>";
+        }).join("") : "";
+        return "<section class=\"country\" data-country=\"" + esc(code) + "\">" + head + counts + "<div class=\"kinds\">" + kinds + "</div>" +
+          "<h3>Staging</h3>" + (staging.length ? staging.map(function (cl) { return row(code, cl); }).join("") : "<div class=\"empty\">nothing waits</div>") +
+          "<h3>Recently resolved</h3>" + (resolved.length ? resolved.map(function (cl) { return row(code, cl); }).join("") : "<div class=\"empty\">none lately</div>") +
+          "</section>";
+      }).join("");
+      document.getElementById("countries").innerHTML = html;
+    }
+
+    document.addEventListener("toggle", function (e) {
+      var el = e.target;
+      if (el.matches && el.matches("details.cluster")) {
+        if (el.open) open[el.dataset.id] = true; else delete open[el.dataset.id];
+      }
+    }, true);
+
+    function poll() {
+      var q = since();
+      fetch("@routes.IdentityStagingController.data(None)" + (q ? "?since=" + encodeURIComponent(q) : ""), { credentials: "same-origin" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (data) {
+          apply(data);
+          render();
+          document.getElementById("sub").className = "sub";
+          document.getElementById("status").textContent = "live · updated " + new Date().toLocaleTimeString();
+        })
+        .catch(function (e) {
+          document.getElementById("sub").className = "sub stale";
+          document.getElementById("status").textContent = "poll failed: " + e.message;
+        })
+        .then(function () { setTimeout(poll, POLL_MS); });
+    }
+    poll();
+  </script>
+</body>
+</html>

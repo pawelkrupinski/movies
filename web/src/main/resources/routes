@@ -246,6 +246,13 @@ POST    /admin/identity/pins             controllers.IdentityAdminController.cre
 + nocsrf
 POST    /admin/identity/pins/remove      controllers.IdentityAdminController.removePin()
 
+# ── Admin: identity staging ─────────────────────────────────────────────────
+# Every country's clusters whose take still waits on an answer, and those resolved lately, on one page
+# (docs/design/identity-questions.md, "The staging screen"). Each worker publishes its own to the fleet
+# database; the page polls /data with each country's cursor. Read-only; same login + ADMIN_ALLOWLIST gate.
+GET     /admin/identity/staging          controllers.IdentityStagingController.index()
+GET     /admin/identity/staging/data     controllers.IdentityStagingController.data(since: Option[String] ?= None)
+
 # ── Admin: share cards ──────────────────────────────────────────────────────
 # Every city and film share card this country's pages name, in two searchable tabs,
 # to look over by eye. Read-only; same login + ADMIN_ALLOWLIST gate.

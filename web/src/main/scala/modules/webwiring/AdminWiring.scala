@@ -7,7 +7,8 @@ import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
 
 /** ── Operator pages ────────────────────────────────────────────────────────
- *  What sits behind the `AdminAction` gate: /uptime, /tasks, /admin/config, /admin/identity and /admin/share-cards,
+ *  What sits behind the `AdminAction` gate: /uptime, /tasks, /admin/config, /admin/identity, /admin/identity/staging
+ *  and /admin/share-cards,
  *  and the read-only views of worker-owned state they render. */
 trait AdminWiring { self: Wiring =>
 
@@ -64,6 +65,12 @@ trait AdminWiring { self: Wiring =>
     new IdentityAdminController(controllerComponents, adminAction, userRepository, identityPins,
       mongoConnection.database.fold[services.identity.IdentityTraceReads](services.identity.IdentityTraceReads.Empty)(
         new services.identity.MongoIdentityTraceReads(_)))
+
+  // Every country's identity staging (/admin/identity/staging): what each worker publishes to the fleet database.
+  lazy val identityStaging: services.identity.staging.IdentityStaging =
+    services.identity.staging.IdentityStaging.in(fleetConnection.database, clock)
+  lazy val identityStagingController =
+    new controllers.IdentityStagingController(controllerComponents, adminAction, identityStaging, country, clock)
 
   // Every share card this country names, to look over by eye (/admin/share-cards).
   lazy val shareCardGalleryController =

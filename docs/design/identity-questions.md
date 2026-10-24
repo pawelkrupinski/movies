@@ -201,3 +201,23 @@ A take waits on a model question by the lookup fill's rounds, and on every agree
   the model reads that TMDB last gave over 30 days ago (`QuestionRenewals`), oldest first.
 - **Separate askers, separate pacing**: the fill's rate, the task queue's `Behind` and the sweep's own pace. The `path`
   label now splits them on the counter.
+
+## The staging screen (`/admin/identity/staging`)
+
+What every country's takes still wait on, on one admin page (login + `ADMIN_ALLOWLIST`, like `/admin/identity`). The
+stage's waits live in each worker's memory (`AgreementStage.waitingOn`), not in Mongo — the review and explain pages,
+which read the production mirror, cannot show them — so each worker publishes them:
+
+- **Worker** (`IdentityStagingPublisher`, every 20 s, on its own thread, never the projection's): over the takes the
+  projection last wrote, a cluster whose `WaitingOn` is not settled STAGES — its listings, take, model gaps, whether the
+  fill waits on TMDB, and each open question with its kind, who it is asked of and `QuestionMemory.outcome` (not
+  attempted / failed n× with the next retry and host / absent / answered), plus attempted/total. A cluster that staged
+  and waits on nothing now is RESOLVED (`settled` with its take, or `regrouped` when its listings no longer form it),
+  kept 6 h, the newest 200. At most 500 staging clusters (the longest waiting) and 60 questions each are listed; the
+  per-country beat counts them all. Only changed clusters are written.
+- **Store** (`IdentityStaging`, `identity_staging` in the fleet database, which every deployment can read): one document
+  per cluster plus a beat per country; the publisher deletes what it no longer holds.
+- **Web** (`IdentityStagingController`): every country's section on the same page, each cluster a `<details>` row
+  opening onto its questions; the page polls `/admin/identity/staging/data` every 5 s with each country's cursor, so a
+  poll carries only the clusters written since (and those written at the cursor, once more). A beat older than two
+  minutes is shown stale: that worker stopped publishing.
