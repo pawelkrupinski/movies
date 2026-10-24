@@ -108,32 +108,47 @@ groups:
 
       # PRODUCTION'S INCREMENTAL STATE DRIFTED FROM A WHOLE RESOLVE OF THE SAME LISTINGS.
       #
-      # Every night (01:00-06:00 local) each country's worker resolves the listings its last projection read
-      # whole -- the model's resolve and a fresh agreement stage, nothing kept -- and compares each listing's
-      # film with the live take (IdentityDriftCheck). `kinowo_worker_identity_drift_listings{country,kind}`
-      # holds the last check's count until the next; each drifted listing is one `identity drift:` line in
-      # VictoriaLogs with the take-change fields (`tmdb_before` the live film, `tmdb_after` the whole
-      # resolve's, `previous_basis` the live basis). The cases this was written for held for days: DE
-      # Wawrczeck / Spieleabend / Gitarrenfestival / Rueckenwind (taken Agreed by one deploy's state, lost by
-      # the next), UK "Notre-Dame de Paris" (1956 Hunchback, only prod's pooled state), DE "Rose".
-      # CI's incremental = whole gate (scripts/identity-slice --drift on the pinned recording) holds the
-      # code to 0; anything here is state a recording does not reach. Five, so one cluster's listings
-      # at a venue or two do not page; `for: 1h` outlasts a check whose numbers a restart wiped, and
-      # `last_over_time([10m])` carries the hold across the restart's ~3m with no gauge.
+      # After each nightly "Record scrape fixtures" run, .github/workflows/identity-live-drift.yml resolves each
+      # country's recording whole -- the model's resolve and a fresh agreement stage, nothing kept -- and compares
+      # each listing's TMDB film with the film prod was screening it as when the corpus was recorded
+      # (scripts.IdentityLiveDrift; prod-films-<cc>.json.gz). It ran inside each worker (IdentityDriftCheck) until
+      # its whole resolve OOM-killed worker-us two nights running (442cff245). scripts/ci/identity_live_drift.py
+      # pushes `kinowo_identity_drift_listings{country,kind}` once per run, so a reader takes the last sample of a
+      # day; the drifted listings are the run's `identity-live-drift` artifact (live-drift-<cc>.tsv). The cases
+      # this was written for held for days: DE Wawrczeck / Spieleabend / Gitarrenfestival / Rueckenwind (taken
+      # Agreed by one deploy's state, lost by the next), UK "Notre-Dame de Paris" (1956 Hunchback, only prod's
+      # pooled state), DE "Rose". CI's incremental = whole gate (scripts/identity-slice --drift on the pinned
+      # recording) holds the code to 0; anything here is state a recording does not reach. Five, so one
+      # cluster's listings at a venue or two do not page; the 26h window holds a night's count until the next.
       - alert: IdentityIncrementalDrift
-        expr: sum by (country) (max by (country, kind) (last_over_time(kinowo_worker_identity_drift_listings[10m]))) >= 5
-        for: 1h
+        expr: sum by (country) (max by (country, kind) (last_over_time(kinowo_identity_drift_listings[26h]))) >= 5
+        for: 5m
         labels:
           severity: warning
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} listings' live identity takes differ from a whole resolve of the same listings"
           description: >-
-            The nightly drift check found {{ $value }} {{ $labels.country }} listings whose live film (the incremental
-            model and agreement state) is not what a whole resolve with nothing kept takes. Dig in:
-            `_time:1d country:{{ $labels.country }} "identity drift:" | stats by (kind, previous_basis, basis, tmdb_before, tmdb_after) count() n | sort by (n desc)`
-            -- each line's `repro` replays the listing; `scripts/identity-slice {{ $labels.country }} --drift` replays
-            the incremental sequence on a recording. KINOWO_IDENTITY_DRIFT_REPAIR=true makes the check adopt the
-            whole resolve's takes.
+            The nightly drift check found {{ $value }} {{ $labels.country }} listings whose live film (what prod
+            screened them as when the newest recording was made) is not what a whole resolve with nothing kept
+            takes. The listings: the newest "Identity live drift" run's `identity-live-drift` artifact,
+            live-drift-{{ $labels.country }}.tsv; `scripts/identity-slice {{ $labels.country }} --key 'venue|title'`
+            slices one, and `scripts/identity-slice {{ $labels.country }} --drift` replays the incremental sequence
+            on a recording.
+
+      # THE DRIFT CHECK ITSELF STOPPED: a country whose newest compared moment is two days old (the recording, or
+      # the "Identity live drift" run after it, failed) checks nothing, and IdentityIncrementalDrift goes quiet.
+      - alert: IdentityLiveDriftStale
+        expr: time() - max by (country) (last_over_time(kinowo_identity_drift_recorded_timestamp_seconds[7d])) > 2 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the identity drift check has compared nothing for over two days"
+          description: >-
+            kinowo_identity_drift_recorded_timestamp_seconds{country="{{ $labels.country }}"} is over two days old:
+            the nightly "Record scrape fixtures" run or the "Identity live drift" run after it failed for
+            {{ $labels.country }}, so IdentityIncrementalDrift reads nothing new. `agentctl ci-why` or the
+            "Identity live drift" run's log.
 
       # THE WATCH ITSELF STOPPED. The three gauges above are a file node_exporter keeps serving whatever
       # its age: a dead timer would freeze them, firing or silent, forever.

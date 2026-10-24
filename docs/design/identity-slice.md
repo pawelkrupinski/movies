@@ -102,9 +102,10 @@ At each checkpoint every listing's film is compared with the whole resolve's (`I
 asked to its fixpoint, past every partial wait). A divergence names its checkpoint kind and class (`deploy: incremental-
 only take (whole BelowThreshold, incremental Agreed)`); `test/resources/fixtures/identity-drift-allow.tsv` lists the
 intended ones with their reasons (none today). Every hermetic leg's `takes` row runs it on the pinned pair
-(`scripts/ci/identity-drift-check.sh`) and fails on a divergence; production runs the same comparison nightly against its
-live state (`IdentityDriftCheck`: `identity drift:` lines, `kinowo_worker_identity_drift_listings`, the
-`IdentityIncrementalDrift` alert).
+(`scripts/ci/identity-drift-check.sh`) and fails on a divergence; production's live state gets the same comparison after
+each nightly recording, on CI (`scripts.IdentityLiveDrift` in `.github/workflows/identity-live-drift.yml`: the recording
+resolved whole against the films prod was screening as it was recorded, `kinowo_identity_drift_listings`, the
+`IdentityIncrementalDrift` alert) — the worker's own nightly check (`IdentityDriftCheck`) OOM-killed worker-us.
 
 What it found first (recording 573, 2026-10-22): the agreement's stored verdict kept an agreed film as its title and year
 alone, so a stage brought up by a deploy took films its first decision had refused on the record's other facts — DE

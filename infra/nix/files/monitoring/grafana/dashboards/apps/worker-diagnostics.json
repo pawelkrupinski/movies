@@ -3834,8 +3834,8 @@
     },
     {
       "id": 72,
-      "title": "Identity drift — live takes against a whole resolve, nightly",
-      "description": "`kinowo_worker_identity_drift_listings{kind}`: listings whose live film the last nightly drift check (IdentityDriftCheck, 01:00-06:00 local) found a whole resolve of the same listings — the model's resolve and a fresh agreement stage, nothing kept — takes otherwise, by what adopting it would do (lost, gained, changed); 0 when incremental = whole. `kinowo_worker_identity_drift_unsettled`: listings the whole resolve left waiting on an answer, not compared. `kinowo_worker_identity_drift_checked_timestamp_seconds`: when the check last ran (drawn as hours since). Each drifted listing is an `identity drift:` line in VictoriaLogs with the take-change fields. `IdentityIncrementalDrift` alerts at 5.",
+      "title": "Identity drift — live takes against a whole resolve, after each recording",
+      "description": "`kinowo_identity_drift_listings{kind}`: listings whose TMDB film prod was screening them as when the newest nightly recording was made, a whole resolve of the same listings — the model's resolve and a fresh agreement stage, nothing kept — takes otherwise, by what adopting it would do (lost, gained, changed); 0 when incremental = whole. Computed on CI after each \"Record scrape fixtures\" run (.github/workflows/identity-live-drift.yml, scripts.IdentityLiveDrift) — no longer on the worker, whose whole resolve OOM-killed worker-us — and pushed once a run, so each line holds its last sample of a day. `kinowo_identity_drift_unsettled`: listings the whole resolve left on a model gap, not compared. `kinowo_identity_drift_compared` (right axis): listings joined to a screening film and compared. `kinowo_identity_drift_recorded_timestamp_seconds`: the compared moment (drawn as hours since; `IdentityLiveDriftStale` past two days). The drifted listings: the run's `identity-live-drift` artifact. `IdentityIncrementalDrift` alerts at 5.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3858,7 +3858,20 @@
             "showPoints": "never"
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* compared"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -3878,7 +3891,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country, kind) (kinowo_worker_identity_drift_listings{country=~\"$country\"})",
+          "expr": "max by (country, kind) (last_over_time(kinowo_identity_drift_listings{country=~\"$country\"}[1d]))",
           "legendFormat": "{{country}} drifted {{kind}}"
         },
         {
@@ -3887,8 +3900,17 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country) (kinowo_worker_identity_drift_unsettled{country=~\"$country\"})",
+          "expr": "max by (country) (last_over_time(kinowo_identity_drift_unsettled{country=~\"$country\"}[1d]))",
           "legendFormat": "{{country}} unsettled"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (last_over_time(kinowo_identity_drift_compared{country=~\"$country\"}[1d]))",
+          "legendFormat": "{{country}} compared"
         },
         {
           "refId": "C",
@@ -3896,8 +3918,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "(time() - max by (country) (kinowo_worker_identity_drift_checked_timestamp_seconds{country=~\"$country\"})) / 3600",
-          "legendFormat": "{{country}} hours since the check"
+          "expr": "(time() - max by (country) (last_over_time(kinowo_identity_drift_recorded_timestamp_seconds{country=~\"$country\"}[7d]))) / 3600",
+          "legendFormat": "{{country}} hours since the compared recording"
         }
       ]
     },

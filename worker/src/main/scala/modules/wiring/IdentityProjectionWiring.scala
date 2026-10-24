@@ -153,8 +153,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
 
   // The drift check (services.identity.adapters.IdentityDriftCheck) no longer runs on the worker: its whole resolve and
   // fresh agreement stage, beside the model's own state, filled worker-us's tenured gen and OOM-killed it at its first
-  // nightly check two nights running (2026-10-23/24, 525 -> 768 of 768 MiB in ~75 s). It runs off the worker
-  // (`scripts/identity-slice --drift`, CI against a recording or the prod mirror) until its working set is bounded.
+  // nightly check two nights running (2026-10-23/24, 525 -> 768 of 768 MiB in ~75 s). Production's live takes are compared
+  // off the worker instead, on CI after each nightly recording (scripts.IdentityLiveDrift, identity-live-drift.yml).
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.adapters.PosterAnswerStore = new services.identity.adapters.PosterAnswerStore(familyAnswerStore, clock)
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */

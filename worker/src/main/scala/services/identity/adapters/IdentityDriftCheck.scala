@@ -9,8 +9,12 @@ import services.movies.ListingKey
  * stage's kept verdicts) last projected — against a WHOLE resolve of exactly the listings that projection read, with
  * nothing kept: the model's resolve over them and a fresh agreement stage over the answers filed now. Every listing whose
  * film differs is DRIFT, logged one `identity drift:` line each with the take-change lines' fields
- * ([[TakeChangeLines.drift]]) and counted (`kinowo_worker_identity_drift_listings{country,kind}`), and handed to the
+ * ([[TakeChangeLines.drift]]) and counted ([[IdentityDriftCheck.Metrics]]), and handed to the
  * [[IdentityDriftCheck.Response]] the composition root picked: report only, or adopt the whole resolve's takes.
+ *
+ * NOT WIRED: run nightly on the worker, its whole resolve OOM-killed worker-us (442cff245). Production's live takes are
+ * compared off the worker now, on each nightly recording (`scripts.IdentityLiveDrift`, .github/workflows/identity-live-drift.yml,
+ * `kinowo_identity_drift_*`).
  *
  * A listing whose whole take still waits on an answer — the model's or the agreement's ([[WaitingOn]]: a family's
  * search, a TMDB answer its fill reads, its correction's questions) — is no evidence either way: counted as unsettled,

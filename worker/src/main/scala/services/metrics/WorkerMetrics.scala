@@ -96,8 +96,6 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val identityAgreement: IdentityAgreementMetrics = new IdentityAgreementMetrics(registry)
   // Each country's takes by basis, and their changes — see IdentityTakeMetrics.
   val identityTakes: IdentityTakeMetrics = new IdentityTakeMetrics(registry)
-  // Each country's daily drift check: its live takes against a whole resolve — see IdentityDriftGauges.
-  val identityDrift: IdentityDriftGauges = new IdentityDriftGauges(registry)
 
   // Every periodic loop's pulse (kinowo_worker_scheduled_tick_*) — see ScheduledTickMetrics.
   val scheduledTicks: ScheduledTickMetrics = ScheduledTickMetrics.worker(registry)

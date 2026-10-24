@@ -108,27 +108,49 @@ tests:
             exp_annotations:
               summary: "The identity regression watch has not read the take-change log for over 30 minutes"
               description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."
-  # The nightly drift check: DE's 7 drifted listings (4 lost, 3 changed) fire after the hour's hold, the
-  # count summed over kinds and the pod's labels dropped; PL's 3 stay under the bar of 5. DE's worker restarts at
-  # 41m (three minutes of no gauge): the hold must bridge it, not start over.
-  - interval: 1m
+  # The nightly drift check (.github/workflows/identity-live-drift.yml), one pushed sample per country and kind a night:
+  # DE's 7 drifted listings (4 lost, 3 changed) fire once the 5-minute hold passes and hold through the day with no
+  # newer sample; PL's 3 stay under the bar of 5. The next night's push of 0 clears DE.
+  - interval: 1h
     input_series:
-      - series: 'kinowo_worker_identity_drift_listings{country="de",kind="lost",pod="worker-de-a"}'
-        values: '4x40 stale stale stale 4x46'
-      - series: 'kinowo_worker_identity_drift_listings{country="de",kind="changed",pod="worker-de-a"}'
-        values: '3x40 stale stale stale 3x46'
-      - series: 'kinowo_worker_identity_drift_listings{country="de",kind="gained",pod="worker-de-a"}'
-        values: '0x90'
-      - series: 'kinowo_worker_identity_drift_listings{country="pl",kind="lost",pod="worker-pl-a"}'
-        values: '3x90'
+      - series: 'kinowo_identity_drift_listings{country="de",kind="lost",job="kinowo-ci"}'
+        values: '4 _x23 0'
+      - series: 'kinowo_identity_drift_listings{country="de",kind="changed",job="kinowo-ci"}'
+        values: '3 _x23 0'
+      - series: 'kinowo_identity_drift_listings{country="de",kind="gained",job="kinowo-ci"}'
+        values: '0 _x23 0'
+      - series: 'kinowo_identity_drift_listings{country="pl",kind="lost",job="kinowo-ci"}'
+        values: '3 _x23 3'
     alert_rule_test:
-      - eval_time: 50m
+      - eval_time: 3m
         alertname: IdentityIncrementalDrift
         exp_alerts: []
-      - eval_time: 70m
+      - eval_time: 23h
         alertname: IdentityIncrementalDrift
         exp_alerts:
           - exp_labels: { severity: warning, country: de }
             exp_annotations:
               summary: "de: 7 listings' live identity takes differ from a whole resolve of the same listings"
-              description: "The nightly drift check found 7 de listings whose live film (the incremental model and agreement state) is not what a whole resolve with nothing kept takes. Dig in: `_time:1d country:de \"identity drift:\" | stats by (kind, previous_basis, basis, tmdb_before, tmdb_after) count() n | sort by (n desc)` -- each line's `repro` replays the listing; `scripts/identity-slice de --drift` replays the incremental sequence on a recording. KINOWO_IDENTITY_DRIFT_REPAIR=true makes the check adopt the whole resolve's takes."
+              description: "The nightly drift check found 7 de listings whose live film (what prod screened them as when the newest recording was made) is not what a whole resolve with nothing kept takes. The listings: the newest \"Identity live drift\" run's `identity-live-drift` artifact, live-drift-de.tsv; `scripts/identity-slice de --key 'venue|title'` slices one, and `scripts/identity-slice de --drift` replays the incremental sequence on a recording."
+      - eval_time: 25h
+        alertname: IdentityIncrementalDrift
+        exp_alerts: []
+  # The check stopping: DE's newest compared moment was recorded at 0 and never again, PL's a day later. DE fires once
+  # its moment is two days old and the hour's hold has passed; PL is a day younger.
+  - interval: 1h
+    input_series:
+      - series: 'kinowo_identity_drift_recorded_timestamp_seconds{country="de",job="kinowo-ci"}'
+        values: '0'
+      - series: 'kinowo_identity_drift_recorded_timestamp_seconds{country="pl",job="kinowo-ci"}'
+        values: '_x24 86400'
+    alert_rule_test:
+      - eval_time: 48h30m
+        alertname: IdentityLiveDriftStale
+        exp_alerts: []
+      - eval_time: 50h
+        alertname: IdentityLiveDriftStale
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de }
+            exp_annotations:
+              summary: "de: the identity drift check has compared nothing for over two days"
+              description: "kinowo_identity_drift_recorded_timestamp_seconds{country=\"de\"} is over two days old: the nightly \"Record scrape fixtures\" run or the \"Identity live drift\" run after it failed for de, so IdentityIncrementalDrift reads nothing new. `agentctl ci-why` or the \"Identity live drift\" run's log."

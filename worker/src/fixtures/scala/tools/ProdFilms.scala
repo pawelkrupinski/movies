@@ -42,6 +42,9 @@ object ProdFilms {
   }
 
   def read(code: String): Option[Seq[ProdFilm]] =
-    Option.when(Files.exists(pathFor(code)))(
-      Using.resource(new GZIPInputStream(Files.newInputStream(pathFor(code))))(in => Json.parse(in).as[Seq[ProdFilm]]))
+    Option.when(Files.exists(pathFor(code)))(readFrom(pathFor(code)))
+
+  /** The films a recording laid out elsewhere holds (its `corpus/prod-films-<cc>.json.gz`). */
+  def readFrom(path: Path): Seq[ProdFilm] =
+    Using.resource(new GZIPInputStream(Files.newInputStream(path)))(in => Json.parse(in).as[Seq[ProdFilm]])
 }

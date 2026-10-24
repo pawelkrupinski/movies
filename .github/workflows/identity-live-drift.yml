@@ -1,0 +1,112 @@
+# IS PRODUCTION'S LIVE IDENTITY STATE WHERE A WHOLE RESOLVE OF THE SAME LISTINGS IS? Each country's worker used to answer
+# that itself, nightly (IdentityDriftCheck), until the whole resolve beside its model's state OOM-killed worker-us two
+# nights running (442cff245). A recording holds both sides of the same moment -- the scrape corpus, and the films prod
+# was screening as it was recorded (prod-films-<cc>.json.gz) -- so this runs the comparison on a runner's heap instead:
+# scripts.IdentityLiveDrift resolves the recording whole (the model and a fresh agreement stage asked to its fixpoint,
+# over the checkout's capture of prod's filed family answers) and names each listing whose TMDB film differs from the
+# one prod screened it as.
+#
+# THE RESULT IS A METRIC, not the run's colour: scripts/ci/identity_live_drift.py pushes the counts as
+# kinowo_identity_drift_* (Prometheus, via the token-gated OTLP path the build timings use), which the
+# IdentityIncrementalDrift alert and worker-diagnostics' "Identity drift" panel read; the drifted listings are the
+# `identity-live-drift` artifact's live-drift-<cc>.tsv. Red only when a country could not be compared or the push failed.
+# Prod itself is never read: the recording already holds what it read, read-only, when it was made.
+#
+# After each recording on main, and by hand (`run-id`: any recording's run).
+name: Identity live drift
+
+on:
+    workflow_run:
+        workflows: [Record scrape fixtures]
+        types: [completed]
+    workflow_dispatch:
+        inputs:
+            run-id:
+                description: The Record scrape fixtures run to compare (default the one that just completed).
+                required: true
+                type: string
+            countries:
+                description: Comma-separated codes the recording holds.
+                required: false
+                default: 'pl,de,uk,us,es'
+                type: string
+
+concurrency:
+    group: identity-live-drift
+    cancel-in-progress: false
+
+env:
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+
+permissions:
+    contents: read
+
+jobs:
+    compare:
+        # A recording off main, or one that failed, is not prod's moment.
+        if: github.event_name != 'workflow_run' || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success')
+        runs-on: ubuntu-26.04
+        timeout-minutes: 300
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+            - name: Lay out the recording
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RECORDING: ${{ inputs.run-id || github.event.workflow_run.id }}
+                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+                  KINOWO_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  [[ "$RECORDING" =~ ^[0-9]+$ ]] || { echo "::error::run-id is a run id, not $RECORDING"; exit 1; }
+                  IFS=, read -r -a ccs <<< "$COUNTRIES"
+                  scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" "${ccs[@]}"
+                  rm -rf "$RUNNER_TEMP/recording/archive"
+            - uses: ./.github/actions/setup-sbt-build
+            - name: Compare each country's live takes with a whole resolve
+              shell: bash
+              env:
+                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+              run: |
+                  set -uo pipefail
+                  fixtures="$RUNNER_TEMP/recording/pair/test/resources/fixtures" out="$RUNNER_TEMP/identity-live-drift"
+                  mkdir -p "$out"
+                  failed=0
+                  IFS=, read -r -a ccs <<< "$COUNTRIES"
+                  for cc in "${ccs[@]}"; do
+                      echo "::group::$cc"
+                      sbt -batch -J-Xmx11g 'set worker / Test / run / fork := false' \
+                          "worker/Test/runMain scripts.IdentityLiveDrift $cc --recording $fixtures --families test/resources/fixtures/identity-unmatched/$cc.json.gz --out $out" \
+                          2>&1 | tee "$out/sbt-$cc.log" || failed=1
+                      echo "::endgroup::"
+                      [ -f "$out/live-drift-$cc.json" ] || { echo "::error::$cc: no live-drift-$cc.json (see sbt-$cc.log)"; failed=1; }
+                      grep -E '^## |^      ' "$out/sbt-$cc.log" || true
+                  done
+                  exit $failed
+            - name: Push the counts to Prometheus
+              if: ${{ !cancelled() }}
+              env:
+                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+              run: python3 scripts/ci/identity_live_drift.py "$RUNNER_TEMP/identity-live-drift" --push
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: identity-live-drift
+                  path: ${{ runner.temp }}/identity-live-drift/
+                  retention-days: 30
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [compare]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
+        secrets: inherit
