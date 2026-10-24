@@ -30,6 +30,8 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   inventory at `984f4857b` (2026-10-06), before consolidation.
 - [design/identity-slice.md](design/identity-slice.md) — `scripts/identity-slice`: one listing's identity reproduced
   in seconds; design and limits.
+- [design/identity-cluster-identity.md](design/identity-cluster-identity.md) — a stable cluster identity for the
+  agreement stage's verdicts, waits and staging rows: design and the owner's open questions (not implemented).
 - [design/convergence-fixture-fill.md](design/convergence-fixture-fill.md) — how a hermetic convergence leg's
   missing fixtures get recorded, and what that does to a verdict.
 - [design/identity-known-wrongs-and-todos.md](design/identity-known-wrongs-and-todos.md) — SUPERSEDED snapshot of
