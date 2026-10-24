@@ -25,28 +25,46 @@ object SearchTitles {
   private val Abjads: Set[Character.UnicodeScript] =
     Set(Character.UnicodeScript.ARABIC, Character.UnicodeScript.HEBREW, Character.UnicodeScript.SYRIAC, Character.UnicodeScript.THAANA)
 
-  private def scripts(text: String): Set[Character.UnicodeScript] =
-    text.codePoints().toArray.iterator.filter(Character.isLetter).map(Character.UnicodeScript.of).toSet
+  /** What a spelling's letters are written in, from one pass over its code points: every render
+   *  cold-builds this for each film's spellings, so no array, iterator or set per spelling. */
+  private enum Written { case Unlettered, Latin, Abjad, Other }
 
-  private def isLatin(text: String): Boolean = {
-    val found = scripts(text)
-    found.nonEmpty && found.subsetOf(Set(Character.UnicodeScript.LATIN))
+  private def written(text: String): Written = {
+    var latin = false
+    var other = false
+    var i     = 0
+    while (i < text.length) {
+      val cp = text.codePointAt(i)
+      if (Character.isLetter(cp)) {
+        val script = Character.UnicodeScript.of(cp)
+        if (script == Character.UnicodeScript.LATIN) latin = true
+        else if (Abjads(script)) return Written.Abjad
+        else other = true
+      }
+      i += Character.charCount(cp)
+    }
+    if (other) Written.Other else if (latin) Written.Latin else Written.Unlettered
   }
+
+  /** Latin-ASCII leaves ASCII as it is, so most titles skip ICU altogether. */
+  private def unaccented(text: String): String =
+    if (text.forall(_ < 0x80)) text else withoutAccents.get.transliterate(text)
 
   /** The spellings, in order, each once (by case), none `title` again (with or without accents). `curated` is
    *  `ResolvedMovie.searchTitles`; a document projected before it existed has only `originalTitle`. */
   def of(title: String, originalTitle: Option[String], curated: Seq[String]): Seq[String] = {
     val spellings = (originalTitle.toSeq ++ curated).map(_.trim).filter(_.nonEmpty)
-    val anyLatin  = spellings.exists(isLatin)
-    val forms = spellings.flatMap { spelling =>
-      if (isLatin(spelling)) Seq(spelling, withoutAccents.get.transliterate(spelling))
-      else if (!anyLatin && scripts(spelling).intersect(Abjads).isEmpty) Seq(spelling, toLatin.get.transliterate(spelling).trim)
+    val scripts   = spellings.map(written)
+    val anyLatin  = scripts.contains(Written.Latin)
+    val forms = spellings.lazyZip(scripts).flatMap { (spelling, script) =>
+      if (script == Written.Latin) Seq(spelling, unaccented(spelling))
+      else if (script == Written.Other && !anyLatin) Seq(spelling, toLatin.get.transliterate(spelling).trim)
       else Seq(spelling)
     }
     // Not the title again, nor the title without its accents: what the clients match the title
     // itself by is theirs to decide, not a spelling of some other title.
     val key   = (text: String) => text.toLowerCase(java.util.Locale.ROOT)
-    val shown = Set(title.trim, withoutAccents.get.transliterate(title.trim)).map(key)
+    val shown = Set(title.trim, unaccented(title.trim)).map(key)
     forms.filterNot(form => shown(key(form))).distinctBy(key)
   }
 }
