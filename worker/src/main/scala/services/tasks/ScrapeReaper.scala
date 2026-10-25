@@ -6,12 +6,12 @@ import services.Stoppable
 import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
 import services.cinemas.common.CinemaScraper
 
 import java.time.{Clock, Duration => JDuration, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -147,7 +147,8 @@ class ScrapeReaper(
   clock:    Clock,
   // Runs the readiness wait and the ticks; a spec hands in a stepped one to cross the delays by hand.
   scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper"),
-  // Where each completed tick is reported (`ScheduledTickStale`).
+  // Where each tick whose work ran to its end is reported (`ScheduledTickStale`): by the tick itself, or — when it
+  // spreads its batch — by its last slice, never at the hand-off ([[completeTick]]).
   ticks: TickRecorder = TickRecorder.Unrecorded
 ) extends Stoppable with Logging {
 
@@ -236,15 +237,32 @@ class ScrapeReaper(
   private def awaitReadyThenStart(): Unit = {
     while (!Try(Await.ready(freshness.whenReady(FreshnessKind.CinemaScrape), readyTimeout.value)).isSuccess)
       logger.info("ScrapeReaper: freshness mirror still hydrating; holding scrape ticks (no cold re-scrape).")
-    scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("scrape-reaper", interval.value, logger, ticks)(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
+    // The schedule records only that it started: the tick's work completes it ([[completeTick]]).
+    scheduler.scheduleWithFixedDelay(() => ScheduledTick.recorded("scrape-reaper", interval.value, logger,
+      TickRecorder.completedByTheWork(ticks))(tickIfClaimed()), initialDelay.value.toMillis, interval.value.toMillis, TimeUnit.MILLISECONDS)
   }
 
   /** Tick only if this machine wins the current minute's occurrence claim —
    *  otherwise another machine is enqueuing this window's stale cinemas, so
-   *  skip. Returns the number enqueued (0 when the claim was lost). */
+   *  skip (a no-op, which completes). Returns the number enqueued (0 when the claim was lost). */
   private[tasks] def tickIfClaimed(): Int = {
     val key = OccurrenceKey.at("scrape", clock.millis(), interval.value, 0.seconds)
-    if (runStore.claim(key)) tick() else 0
+    if (runStore.claim(key)) tick() else { completeTick(TickRun.Completed); 0 }
+  }
+
+  /** A tick's work ended as `run`: reported when it completed. */
+  private def completeTick(run: TickRun): Unit =
+    if (run == TickRun.Completed) ticks.completed("scrape-reaper", interval.value)
+
+  /** The slices of one spread tick still to end, and whether every one ended complete: the last to end completes the
+   *  tick, unless one could not enqueue. A slice dropped on shutdown never ends, and the tick never completes. */
+  private final class SpreadTick(slices: Int) {
+    private val left       = new AtomicInteger(slices)
+    private val incomplete = new AtomicBoolean(false)
+    def ended(run: TickRun): Unit = {
+      if (run == TickRun.Incomplete) incomplete.set(true)
+      if (left.decrementAndGet() == 0) completeTick(TickRun.completedWhen(!incomplete.get))
+    }
   }
 
   /** Enqueue every stale cinema, most-overdue first under the per-tick cap.
@@ -291,6 +309,7 @@ class ScrapeReaper(
       case scala.util.Success(count) => count
       case scala.util.Failure(exception) =>
         logger.warn(s"ScrapeReaper: waiting count unreadable (${exception.getMessage}) — admitting nothing this tick.")
+        completeTick(TickRun.Incomplete)
         return 0
     }
 
@@ -299,28 +318,33 @@ class ScrapeReaper(
     if (enqueueSpread.value <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
       val enqueued = enqueueUpTo(due, rampedCap(now), room)
-      if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
-      enqueued
+      if (enqueued.added > 0) logger.info(s"ScrapeReaper enqueued ${enqueued.added} stale cinema(s) ($outstanding scrape task(s) already waiting).")
+      completeTick(enqueued.run)
+      enqueued.added
     } else {
       // Spread the capped batch across the interval so the parses don't clump — see
       // `enqueueSpread`. Enqueue the first slice now; defer the rest onto staggered
       // offsets. The queue dedups, so a slice landing near the next tick can't
       // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
-      // matching the un-spread contract for the first-of-batch.
-      val plan = planSlices(admissible(due.take(rampedCap(now)), room), enqueueSpread.value)
-      val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size, TaskRoom.Unbounded) }.getOrElse(0)
+      // matching the un-spread contract for the first-of-batch. The tick completes when its
+      // last slice has enqueued, not when it handed the slices off ([[SpreadTick]]).
+      val plan   = planSlices(admissible(due.take(rampedCap(now)), room), enqueueSpread.value)
+      val spread = new SpreadTick(plan.size)
+      val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size, TaskRoom.Unbounded) }.getOrElse(Enqueued.Zero)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {
           ScheduledTick.logged(s"ScrapeReaper slice at +${offset.toSeconds}s", logger) {
-            val n = enqueueUpTo(group, group.size, TaskRoom.Unbounded)
-            if (n > 0) logger.info(s"ScrapeReaper enqueued $n stale cinema(s) (spread slice at +${offset.toSeconds}s).")
+            val n = Try(enqueueUpTo(group, group.size, TaskRoom.Unbounded))
+            spread.ended(n.fold(_ => TickRun.Incomplete, _.run))
+            if (n.get.added > 0) logger.info(s"ScrapeReaper enqueued ${n.get.added} stale cinema(s) (spread slice at +${offset.toSeconds}s).")
           }
         })
       }
+      spread.ended(enqueuedNow.run)
       val deferred = plan.drop(1).map(_._2.size).sum
-      if (enqueuedNow > 0 || deferred > 0)
-        logger.info(s"ScrapeReaper enqueued $enqueuedNow stale cinema(s) now, spreading $deferred more across the tick in ${plan.size - 1} slice(s).")
-      enqueuedNow
+      if (enqueuedNow.added > 0 || deferred > 0)
+        logger.info(s"ScrapeReaper enqueued ${enqueuedNow.added} stale cinema(s) now, spreading $deferred more across the tick in ${plan.size - 1} slice(s).")
+      enqueuedNow.added
     }
   }
 
@@ -349,18 +373,18 @@ class ScrapeReaper(
 
   /** Enqueue due cinemas in order until `cap` NEW tasks have been added or the next
    *  doesn't fit `room`; already-waiting/working cinemas dedup for free (they count
-   *  against neither). Returns the number of tasks actually added. */
-  private def enqueueUpTo(due: Vector[(String, String)], cap: Int, room: TaskRoom): Int = {
-    var enqueued = 0
+   *  against neither). Returns how many tasks were actually added, and how many enqueues failed. */
+  private def enqueueUpTo(due: Vector[(String, String)], cap: Int, room: TaskRoom): Enqueued = {
+    var enqueued = Enqueued.Zero
     var spent    = 0.0
-    due.iterator.takeWhile { case (key, _) => enqueued < cap && room.fits(spent, key, first = enqueued == 0) }
+    due.iterator.takeWhile { case (key, _) => enqueued.added < cap && room.fits(spent, key, first = enqueued.added == 0) }
       .foreach { case (key, displayName) =>
-        if (queue.enqueue(TaskType.ScrapeCinema, key,
-              Map(ScrapeCinemaHandler.CinemaKey -> displayName), submittedAt = clock.instant()) == EnqueueResult.Added) {
-          enqueued += 1
-          spent    += costs.costOf(key)
-        }
+        val result = Enqueued.of(queue.enqueue(TaskType.ScrapeCinema, key,
+          Map(ScrapeCinemaHandler.CinemaKey -> displayName), submittedAt = clock.instant()))
+        if (result.added > 0) spent += costs.costOf(key)
+        enqueued += result
       }
+    if (enqueued.failed > 0) logger.warn(s"ScrapeReaper: ${enqueued.failed} scrape enqueue(s) failed; they stay due for the next tick.")
     enqueued
   }
 

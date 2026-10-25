@@ -863,4 +863,62 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     line should include ("waiting=2")
     line should include ("backlog=2")
   }
+
+  // The scrape reaper's completion was recorded when its tick RETURNED, so a tick that merely handed its spread slices to
+  // the scheduler completed though every slice then failed, and one whose waiting count could not be read (admitting
+  // nothing) or whose every enqueue the queue refused completed too. The work completes it now.
+  "A scheduled scrape tick" should "complete only once its last spread slice has enqueued" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza).map(c => new StubCinemaScraper(c, movieAt(c)))
+    val clock     = new tools.MutableClock(specClock.instant())
+    val scheduler = new tools.ManualScheduler(clock)
+    val ticks     = new tools.RecordingTickRecorder
+    val deferred  = scala.collection.mutable.ArrayBuffer[Runnable]()
+    val reaper    = new ScrapeReaper(scrapers, new InMemoryTaskQueue, new InMemoryFreshnessStore,
+      enqueueSpread = settings.ScrapeEnqueueSpreadSlices(3), initialDelay = settings.ScrapeInitialDelay(0.millis),
+      clock = clock, scheduler = scheduler, ticks = ticks) {
+      override protected def scheduleSlice(delay: FiniteDuration, task: Runnable): Unit = { deferred += task; () }
+    }
+    reaper.start()
+    scheduler.advance(java.time.Duration.ZERO)
+    deferred.size shouldBe 2
+    ticks.completedRuns shouldBe empty      // handed off, not done
+    deferred(0).run()
+    ticks.completedRuns shouldBe empty
+    deferred(1).run()
+    ticks.completedRuns.map(_._1) shouldBe Seq("scrape-reaper")
+    reaper.stop()
+  }
+
+  it should "not complete when a spread slice could not enqueue" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza).map(c => new StubCinemaScraper(c, movieAt(c)))
+    val queue     = new FailingEnqueueTaskQueue
+    queue.failing = false
+    val ticks     = new tools.RecordingTickRecorder
+    val deferred  = scala.collection.mutable.ArrayBuffer[Runnable]()
+    val reaper    = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      enqueueSpread = settings.ScrapeEnqueueSpreadSlices(3), clock = _root_.tools.SpecClock.Pinned, ticks = ticks) {
+      override protected def scheduleSlice(delay: FiniteDuration, task: Runnable): Unit = { deferred += task; () }
+    }
+    reaper.tickIfClaimed()
+    queue.failing = true
+    tools.LogCapture.capture(classOf[ScrapeReaper].getName)(deferred.foreach(_.run()))
+    ticks.completedRuns shouldBe empty
+  }
+
+  it should "not complete when its waiting count is unreadable or its enqueues fail, and complete a lost claim" in {
+    val scrapers = Seq(Multikino, KinoApollo).map(c => new StubCinemaScraper(c, movieAt(c)))
+    val ticks    = new tools.RecordingTickRecorder
+    val queue    = new FailingEnqueueTaskQueue
+    def reaper(q: TaskQueue, runStore: services.schedule.ScheduledRunStore = new InMemoryScheduledRunStore) =
+      new ScrapeReaper(scrapers, q, new InMemoryFreshnessStore, maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(20),
+        runStore = runStore, clock = _root_.tools.SpecClock.Pinned, ticks = ticks)
+    reaper(new FailingReadTaskQueue).tickIfClaimed() shouldBe 0
+    reaper(queue).tickIfClaimed() shouldBe 0
+    ticks.completedRuns shouldBe empty
+    reaper(queue, NeverClaimScheduledRunStore).tickIfClaimed() shouldBe 0
+    ticks.completedRuns should have size 1   // another replica's window: a no-op, completed
+    queue.failing = false
+    reaper(queue).tickIfClaimed() shouldBe 2
+    ticks.completedRuns should have size 2
+  }
 }
