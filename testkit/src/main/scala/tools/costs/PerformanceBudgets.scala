@@ -1,6 +1,6 @@
 package tools.costs
 
-import tools.costs.PerformanceBudget.{bytes, ceiling, operations}
+import tools.costs.PerformanceBudget.{Band, bytes, ceiling, operations}
 
 /**
  * Every hot path's cost budget, in one place: what it measured when its budget was set, and what its
@@ -90,8 +90,11 @@ object PerformanceBudgets {
 
   /** `FilterDescriptionSpec`: an unfiltered listing's description over 600 films, which must not build the
    *  filters' universes (~1 MB a New York render when it did). 4.0 -> 2.9 KB re-measured 2026-10-24 on
-   *  f4d30dacc (three runs, identical). */
-  val UnfilteredListingDescription = bytes("unfiltered listing description, 600 films", measured = kb(2.9))
+   *  f4d30dacc (three runs, identical). A wide band: at ~2.7 KB the JVM's allocation granularity alone moves it
+   *  ±15% (CI read 2.9, 2.6 and 2.5 KB on Main runs 2519, 2540 and 2602 the same day, no change on its path),
+   *  and what it guards against is three orders of magnitude off. */
+  val UnfilteredListingDescription =
+    bytes("unfiltered listing description, 600 films", measured = kb(2.7), band = Band(upper = 1.5, lower = 0.6))
 
   // ── The browser (`PageJsBehaviourSpec`, real Chrome) ──────────────────────────────────────────
 
