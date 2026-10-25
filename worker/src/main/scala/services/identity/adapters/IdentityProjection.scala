@@ -248,6 +248,9 @@ final class IdentityProjection(
   private var projected = false
   /** The running projection's trigger ([[triggerOf]]), which its take-change lines name. */
   private var trigger = "deploy"
+  /** Whether the stored films hold this process's own takes: once a projection of it wrote all it planned (its first is of
+   *  the whole corpus). Until then a take moved on unchanged inputs is the code's ([[TakeCauses]]). */
+  private var ownTakes = false
 
   /** Note what asks for the projection the caller is about to request: a scrape the model took in, an answer filed, a
    *  stored film another writer moved. The next projection names it as its `trigger` ([[triggerOf]]). */
@@ -382,8 +385,9 @@ final class IdentityProjection(
     // The index holds what was written: a film written counts as moved next time only if another writer moves it. After a
     // declined write the next projection builds it afresh, so it is moved here only to read the change list off it.
     val written = tick.changed.filterNot(f => lastUnwritten(f.id)) ++ lastParked
-    reportTakes(live.written(written, p.plan.retired), p.resolution, run.stored, written)
+    reportTakes(live.written(written, p.plan.retired), p.resolution, run.stored, written, fresh = run.previous.isEmpty)
     if (tick.declined == 0) {
+      ownTakes = true
       shapes.commit(whole = p.scope.whole)
       carried = ProjectionScope.Changes.none
       last = Some(Last(counters.size + p.plan.counterAdditions.size))
@@ -502,26 +506,30 @@ final class IdentityProjection(
   /** The projection's CHANGE LIST ([[LiveProjectionIndex.written]]: each listing whose stored film the writes moved to
    *  another TMDB film, or placed on one for the first time — what the site shows for it, read off the store as written,
    *  so a film the store declined changes no take until a later projection writes it), each with the basis of the
-   *  decision it replaced and of the one that holds it now. Handed whole to the metrics and to [[changeFeed]]; its match
+   *  decision it replaced and of the one that holds it now, and why it moved ([[TakeCauses]]; `fresh`: the index was built
+   *  afresh for this projection, so it knows no listing as re-published). Handed whole to the metrics and to [[changeFeed]]; its match
    *  changes ([[TakeChange.moved]]) logged one line each (the first [[IdentityProjection.TakeChangesLogged]]) for
    *  drill-down, and summed up in one line by kind and basis; the lines and their fields are [[TakeChangeLines]]'. The
    *  country, build and projection id are every worker log line's own fields. */
   private def reportTakes(changed: Seq[TakeChange], resolution: Resolution, stored: Seq[StoredMovieRecord],
-                          written: Seq[ProjectedFilm]): Unit =
+                          written: Seq[ProjectedFilm], fresh: Boolean): Unit =
     if (changed.nonEmpty) {
       val wanted    = changed.iterator.map(_.listing).toSet
       val decisions = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
+      lazy val before = stored.iterator.map(r => r.id -> r).toMap
+      val reading   = TakeCauses.Reading(id => before.get(FilmId(id)), k => live.listing(k).isDefined, live.publishedAt,
+        Option.unless(fresh)(live.lastRepublished), k => decisions.get(k).fold(Seq.empty[ListingKey])(_.members), trigger, ownTakes)
       val changes   = changed.map { t =>
         val prior = live.priorTake(t.listing)
-        t.copy(basisBefore = prior.map(_.basis), basisAfter = decisions.get(t.listing).map(_.basis), prior = prior,
+        val take  = t.copy(basisBefore = prior.map(_.basis), basisAfter = decisions.get(t.listing).map(_.basis), prior = prior,
           published = live.listing(t.listing), formerly = live.formerly(t.listing), trigger = Some(trigger))
+        take.copy(cause = TakeCauses.of(take, reading))
       }
       metrics.takesChanged(changes)
       changeFeed(changes)
       val takes     = changes.filter(_.moved)
       if (takes.nonEmpty) {
         val moved  = takes.iterator.map(_.listing).toSet
-        val before = stored.iterator.map(r => r.id -> r).toMap
         val now    = written.iterator.flatMap(f => f.members.iterator.filter(moved).map(_ -> f)).toMap
         val logged = takes.take(IdentityProjection.TakeChangesLogged)
         logged.foreach { t =>

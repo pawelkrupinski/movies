@@ -52,6 +52,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   // take before, which the take-change log names beside the new one. As many as the tick's moved takes — none on a
   // quiet tick — and only its basis, confidence, last reason and its trace of the listing, never the decision itself.
   private var replaced      = Map.empty[ListingKey, TakeChange.Prior]
+  // The listings the last update read published otherwise than the one before: what a take's cause reads ([[TakeCauses]]).
+  private var reread        = (_: ListingKey) => false
   // Of the listings whose venue re-published them with other facts (a runtime, an original title, a page's), each one's
   // facts before the last such change ([[formerly]]): the newest FormerlyKept, without its screenings, names and words.
   private val former = new java.util.LinkedHashMap[ListingKey, Listing](256, 0.75f, false) {
@@ -118,6 +120,14 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
    *  screenings, names or words moved. */
   def formerly(key: ListingKey): Option[Listing] = Option(former.get(key))
 
+  /** The listings the last [[update]] read published otherwise than the update before: new to their venue, gone from it,
+   *  their facts moved, or only their poster, screening days, names or words ([[Listing.movedOutsideEquality]]). Every
+   *  listing, of an index built afresh. */
+  def lastRepublished: ListingKey => Boolean = reread
+
+  /** Whether the last [[update]] read a listing published at venue slot `at` ([[StoredFilmSlots.slotOf]]). */
+  def publishedAt(at: (String, String)): Boolean = slots.get(at).exists(_.keys.nonEmpty)
+
   /** The index as it stands, over `counters`: its listings, previous films and listings' clusters are views of this
    *  index, which read what the next [[update]] or [[written]] moves — a projection's, read before the two. */
   def index(counters: FilmIdCounters): ProjectionIndex = {
@@ -146,8 +156,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     val keys = mutable.HashSet.empty[ListingKey]   // whose published listing (or whether it is published) moved
     val heldUnindexed = markHeld(held, keys)
     val byKeyAt = mutable.HashMap.empty[String, Map[ListingKey, ProjectedListing]]
-    readVenues(venues, keys, byKeyAt)
+    val outside = mutable.HashSet.empty[ListingKey]   // equal, but moved where the model's equality does not look
+    readVenues(venues, keys, byKeyAt, outside)
     val republished = republish(keys, byKeyAt, heldUnindexed)
+    reread = k => republished(k) || outside(k)
     val (films, freed, reslot) = restoreStored(stored)
 
     // 3. Previous films: of every listing whose publication, slot or film moved.
@@ -182,9 +194,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   private def at(venue: String, byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]]): Map[ListingKey, ProjectedListing] =
     byKeyAt.getOrElseUpdate(venue, oneByKey(venueListings.getOrElse(venue, Nil)))
 
-  /** 1. Listings: a venue whose listing is another object, or gone — the keys whose listing moved added to `keys`. */
+  /** 1. Listings: a venue whose listing is another object, or gone — the keys whose listing moved added to `keys`, and
+   *  those equal but moved outside the model's equality to `outside`. */
   private def readVenues(venues: Seq[(String, Seq[ProjectedListing])], keys: mutable.HashSet[ListingKey],
-                         byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]]): Unit = {
+                         byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]], outside: mutable.HashSet[ListingKey]): Unit = {
     val live = venues.iterator.map(_._1).toSet
     venues.foreach { case (venue, listings) =>
       if (!venueListings.get(venue).exists(_ eq listings)) {
@@ -193,7 +206,14 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
         was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
         now.keysIterator.foreach(k => if (!was.contains(k)) keys += k)   // new to its venue
         // An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept.
-        now.foreach { case (k, n) => listingAt(k).foreach(l => if ((l ne n) && l == n) rekey(l, n)) }
+        now.foreach { case (k, n) =>
+          listingAt(k).foreach { l =>
+            if ((l ne n) && l == n) {
+              if (Listing.movedOutsideEquality(l.listing, n.listing)) outside += k
+              rekey(l, n)
+            }
+          }
+        }
         venueListings(venue) = listings
         byKeyAt(venue) = now
       }

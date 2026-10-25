@@ -349,7 +349,11 @@ only and have none of these; `projection_trigger` and the take lines' ids below 
   `correction:families+poster`, `withdrawal:filmweb`, `poster:vote`, `pin`), `title_rules` (`title:<title-rules.tsv
   id>` and `format:<tag>` the title took), `score` (the node's own probability of the film it weighed), `runner_up_tmdb`
   / `runner_up_score` / `margin` (the best other film it weighed, and score minus its score), `trigger` (the
-  projection's, or `review` when a pin decided either side), `previous_decided_by` / `previous_runner_up_tmdb` and
+  projection's, or `review` when a pin decided either side), `cause` (why it moved, `services.identity.TakeCauses`:
+  `evidence` — a listing the take rested on left or was re-published otherwise, an answer was filed or a stored film moved;
+  `code` — none of that, and the decision moved: a build's first projections, or its own decision replaced; `regrouped`
+  — the store moved the listing; IdentityBuildNetLosses pages on `code` alone; lines from before 2026-10-25 have
+  none), `previous_decided_by` / `previous_runner_up_tmdb` and
   `runner_up_won` (`true`: the film taken now is the one the take before beat), `listing_year`/
   `listing_runtime`/`listing_director`/`listing_original_title`, and `repro` — a ready
   `scripts/identity-slice <cc> --key 'venue|raw title' --ref <build>` line (any listing, matched or not; lines logged before
@@ -394,6 +398,7 @@ q() { ssh monitoring-1 "curl -s http://10.20.0.11:9428/select/logsql/query --dat
 | Which stages moved takes after a deploy, and by what | `_time:24h build:=<sha> trigger:deploy kind:* \| stats by (country, stage, decided_by) count() n \| sort by (n desc)` |
 | Near-misses: changes decided by a thin margin | `_time:24h kind:* margin:<0.05 \| fields _time, country, venue, listing, decided_by, score, runner_up_tmdb, runner_up_score` |
 | What a scrape vs a filed answer moved | `_time:24h kind:* \| stats by (country, trigger, stage) count()` |
+| What build Y's code moved, apart from what left | `_time:24h build:=<sha> kind:* \| stats by (country, cause, kind) count() n \| sort by (n desc)` |
 | Tick sizes over a day | `_time:24h "identity take change: summary" \| fields _time, country, take_changes, lost, changed, gained, logged, by_basis` |
 | Retired / declined films | `_time:24h "identity projection:" retired:>0 \| fields _time, country, retired, retired_films, declined_films` |
 | Suspect-take counts | `_time:24h "identity suspect takes: counted" \| fields _time, country, suspected, suspect_fragment, suspect_era, suspect_runtime` |

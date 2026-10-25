@@ -24,9 +24,9 @@ tests:
         values: '_x5 9x30'
       - series: 'kinowo_identity_film_net_lost{country="uk",tmdb="1151422",title="Royal Opera House: Carmen",build="aa334f31db4c",host="monitoring-1"}'
         values: '_x5 40x10 _x20'
-      - series: 'kinowo_identity_build_net_lost{country="pl",build="96fb23c6c38a",tmdb="1778515",title="Świąteczna zabawa z Peppą",host="monitoring-1"}'
+      - series: 'kinowo_identity_build_net_lost{country="pl",build="96fb23c6c38a",cause="code",tmdb="1778515",title="Świąteczna zabawa z Peppą",host="monitoring-1"}'
         values: '_x5 123x30'
-      - series: 'kinowo_identity_build_net_lost{country="de",build="627fa9416268",tmdb="309809",title="Der kleine Prinz",host="monitoring-1"}'
+      - series: 'kinowo_identity_build_net_lost{country="de",build="627fa9416268",cause="code",tmdb="309809",title="Der kleine Prinz",host="monitoring-1"}'
         values: '_x5 65x30'
       - series: 'kinowo_identity_regressions_last_success_timestamp_seconds{host="monitoring-1"}'
         values: '0+60x35'
@@ -52,13 +52,34 @@ tests:
       - eval_time: 25m
         alertname: IdentityBuildNetLosses
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl, build: "96fb23c6c38a", tmdb: "1778515", title: "Świąteczna zabawa z Peppą", host: monitoring-1 }
+          - exp_labels: { severity: warning, country: pl, build: "96fb23c6c38a", cause: code, tmdb: "1778515", title: "Świąteczna zabawa z Peppą", host: monitoring-1 }
             exp_annotations:
-              summary: "pl: build 96fb23c6c38a unmatched 123 more listings than it matched (most: 'Świąteczna zabawa z Peppą')"
-              description: "Over its last 24h in pl, build 96fb23c6c38a took the film away from 123 more listings than it gave one to -- above the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most: 'Świąteczna zabawa z Peppą' (tmdb 1778515). Dig in: `_time:24h country:pl build:=96fb23c6c38a kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)` then the listings' `repro` lines. If the build is still deployed, CI's identity takes check for it should have listed these takes."
+              summary: "pl: build 96fb23c6c38a's code unmatched 123 more listings than it matched (most: 'Świąteczna zabawa z Peppą')"
+              description: "Over its last 24h in pl, build 96fb23c6c38a took the film away from 123 more listings than it gave one to on inputs that did not move (cause code) -- above the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most: 'Świąteczna zabawa z Peppą' (tmdb 1778515). Dig in: `_time:24h country:pl build:=96fb23c6c38a cause:code kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)` then the listings' `repro` lines. If the build is still deployed, CI's identity takes check for it should have listed these takes."
       - eval_time: 25m
         alertname: IdentityRegressionWatchStale
         exp_alerts: []
+
+  # The cause decides: a build's net loss pages only when its code did it. PL build dbee52416, 2026-10-24 18:51Z: 11
+  # listings of "Kupiłem motocykl, który jest wampirem" rested on Kino Pionier 1907's one listing, which left when its
+  # screening passed -- the evidence's, past PL's bar of 10 and silent. The same 11 lost on inputs that did not move
+  # after a build change (cause code, build 0e41a4812) page.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_identity_build_net_lost{country="pl",build="dbee52416",cause="evidence",tmdb="41153",title="Kupiłem motocykl, który jest wampirem",host="monitoring-1"}'
+        values: '11x40'
+      - series: 'kinowo_identity_build_net_lost{country="pl",build="0e41a4812",cause="code",tmdb="41153",title="Kupiłem motocykl, który jest wampirem",host="monitoring-1"}'
+        values: '11x40'
+      - series: 'kinowo_identity_regressions_last_success_timestamp_seconds{host="monitoring-1"}'
+        values: '0+60x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: IdentityBuildNetLosses
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl, build: "0e41a4812", cause: code, tmdb: "41153", title: "Kupiłem motocykl, który jest wampirem", host: monitoring-1 }
+            exp_annotations:
+              summary: "pl: build 0e41a4812's code unmatched 11 more listings than it matched (most: 'Kupiłem motocykl, który jest wampirem')"
+              description: "Over its last 24h in pl, build 0e41a4812 took the film away from 11 more listings than it gave one to on inputs that did not move (cause code) -- above the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most: 'Kupiłem motocykl, który jest wampirem' (tmdb 41153). Dig in: `_time:24h country:pl build:=0e41a4812 cause:code kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)` then the listings' `repro` lines. If the build is still deployed, CI's identity takes check for it should have listed these takes."
 
   # A listing moving between two films three times in a day fires at once; "Rose" at two does not.
   - interval: 1m

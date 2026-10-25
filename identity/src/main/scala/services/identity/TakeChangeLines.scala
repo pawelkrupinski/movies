@@ -21,6 +21,9 @@ import settings.CommitSha
  *    `runner_up_score` (the best other film it weighed), `margin` (the two's difference);
  *  - what set it off: `trigger` — the projection's (`deploy`: the first after a pod start, `periodic`, `scrape`, `answer`,
  *    `film-change`, `retry`; [[services.identity.adapters]]' projection names them) or `review` when a pin decided either side;
+ *  - why it moved ([[TakeCauses]]): `cause` — `evidence` (what the take stood on moved: a listing left or was re-published
+ *    otherwise, an answer was filed), `code` (nothing it stood on moved, and the decision did) or `regrouped`. The build
+ *    alert pages on `code` alone;
  *  - the take before: `previous_basis`, `previous_confidence`, `previous_reason`, `previous_decided_by`,
  *    `previous_runner_up_tmdb` ([[LiveProjectionIndex.priorTake]]), and `runner_up_won` — whether the film taken now is the
  *    one the take before beat;
@@ -50,7 +53,7 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
     val message = s"identity take change: ${take.kind.label} ${key.venue} | ${key.rawTitle}: " +
       s"${film(take.before, was)} -> ${film(take.after, now.map(_._2))} (${take.previousFilm.getOrElse("new")}); reason $reason" +
       prior.fold("")(p => s"; before ${p.basis} (${ResolverDecision.percent(p.confidence)})${p.reason.fold("")(r => s": $r")}") +
-      s"; explain: $repro"
+      take.cause.fold("")(c => s"; cause ${c.label}") + s"; explain: $repro"
     Line(message, Seq(
       "kind"                   -> take.kind.label,
       "venue"                  -> key.venue,
@@ -78,6 +81,7 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
       "runner_up_score"        -> rival.map(r => rounded(r.score)),
       "margin"                 -> score.zip(rival).map { case (s, r) => rounded(s - r.score) },
       "trigger"                -> (if (pinned) Some("review") else trigger),
+      "cause"                  -> take.cause.map(_.label),
       "previous_basis"         -> prior.map(_.basis.toString),
       "previous_confidence"    -> prior.map(p => rounded(p.confidence)),
       "previous_reason"        -> prior.flatMap(_.reason),

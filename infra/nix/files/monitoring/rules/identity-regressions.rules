@@ -15,7 +15,7 @@
 # roles/identity-regressions.nix timer), into node_exporter's textfile directory:
 #
 #   kinowo_identity_film_net_lost{country,tmdb,title,build}           6h window, per film
-#   kinowo_identity_build_net_lost{country,build,tmdb,title}          24h window, per build
+#   kinowo_identity_build_net_lost{country,build,cause,tmdb,title}    24h window, per build and cause
 #   kinowo_identity_listing_flips{country,tmdb_a,tmdb_b,title,build,venue}  24h window, per film pair
 #
 # A LOSS OF A TAKE JUDGED WRONG (test/resources/fixtures/identity-judgements.tsv, matched by country, venue or *,
@@ -56,8 +56,18 @@ groups:
             -- each line's `repro` reproduces one listing at the build; `scripts/listing-history {{ $labels.country }} --title '...'`
             gives the per-deploy history.
 
-      # ONE BUILD UNMATCHED MORE LISTINGS THAN IT MATCHED, PAST WHAT ITS COUNTRY'S CHURN EVER REACHES.
+      # ONE BUILD'S CODE UNMATCHED MORE LISTINGS THAN IT MATCHED, PAST WHAT ITS COUNTRY'S CHURN EVER REACHES.
       #
+      # Only `cause="code"`: the worker reads each take change's cause off what the take stood on
+      # (services.identity.TakeCauses) -- `evidence` when a listing it rested on left or was re-published
+      # otherwise, or an answer was filed; `code` when none of that moved and the decision did (a build's
+      # first projections, or its own decision replaced on the same inputs); `regrouped` when the store
+      # moved the listing. A take goes when its evidence goes, and that is no build's doing: on 2026-10-24
+      # 18:51Z PL build dbee52416 was blamed for 11 listings of "Kupilem motocykl, ktory jest wampirem"
+      # that rested on Kino Pionier 1907's one listing, which left when its screening passed; its parent
+      # and main replay the same takes. Those losses stay on the worker dashboard ("Lost takes by cause")
+      # and in the take-change lines (`cause:evidence`). The bars below were set on every loss; the code's
+      # alone churn less, so they are if anything loose.
       # Per build over its last 24h of take changes: listings it lost minus listings it gained. The
       # threshold is per country, from every build with a take change 2026-10-13..22 (the fields' whole history):
       # each build's net losses OUTSIDE any one film that lost 10+ under it -- the diffuse churn a
@@ -69,21 +79,21 @@ groups:
       # film alert's. `for: 15m` as above.
       - alert: IdentityBuildNetLosses
         expr: |
-          kinowo_identity_build_net_lost{country="de"} > 65
+          kinowo_identity_build_net_lost{cause="code",country="de"} > 65
           or
-          kinowo_identity_build_net_lost{country="uk"} > 25
+          kinowo_identity_build_net_lost{cause="code",country="uk"} > 25
           or
-          kinowo_identity_build_net_lost{country!~"de|uk"} > 10
+          kinowo_identity_build_net_lost{cause="code",country!~"de|uk"} > 10
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.country }}: build {{ $labels.build }} unmatched {{ $value }} more listings than it matched (most: '{{ $labels.title }}')"
+          summary: "{{ $labels.country }}: build {{ $labels.build }}'s code unmatched {{ $value }} more listings than it matched (most: '{{ $labels.title }}')"
           description: >-
             Over its last 24h in {{ $labels.country }}, build {{ $labels.build }} took the film away from
-            {{ $value }} more listings than it gave one to -- above the country's normal deploy churn
-            (DE 65, UK 25, elsewhere 10). The film that lost most: '{{ $labels.title }}' (tmdb
-            {{ $labels.tmdb }}). Dig in: `_time:24h country:{{ $labels.country }} build:={{ $labels.build }} kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)`
+            {{ $value }} more listings than it gave one to on inputs that did not move (cause code) -- above
+            the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most:
+            '{{ $labels.title }}' (tmdb {{ $labels.tmdb }}). Dig in: `_time:24h country:{{ $labels.country }} build:={{ $labels.build }} cause:code kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)`
             then the listings' `repro` lines. If the build is still deployed, CI's identity takes check
             for it should have listed these takes.
 

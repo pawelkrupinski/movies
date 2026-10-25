@@ -10,17 +10,23 @@ per-film / per-build / per-listing-pair gauges that identity-regressions.rules a
 
 WHAT IT READS. Every worker logs `identity take change: <kind> ...` with fields country, kind
 (lost / changed / gained), build, venue, listing, tmdb_before/tmdb_after, title_before/title_after
-(see .claude/skills/identity-investigation). This fetches the last 24h of them every few minutes
-(1-3k lines on an ordinary day) and computes:
+and cause (see .claude/skills/identity-investigation). This fetches the last 24h of them every few
+minutes (1-3k lines on an ordinary day) and computes:
 
   kinowo_identity_film_net_lost{country,tmdb,title,build}
       listings that held the film at the start of the last 6h and hold NO film now, minus listings
       that held no film then and hold this one now. "No matching gain elsewhere": a listing that
       moved to ANOTHER film (kind changed, net) is not a loss, and a film losing listings under one
       key while gaining them under another nets out. Only values >= PUBLISH_FLOOR are written.
-  kinowo_identity_build_net_lost{country,build,tmdb,title}
-      per build, over the last 24h: listings it unmatched (lost) minus listings it matched (gained).
-      `tmdb`/`title` name the film that lost most under it.
+  kinowo_identity_build_net_lost{country,build,cause,tmdb,title}
+      per build and cause, over the last 24h: listings it unmatched (lost) minus listings it matched
+      (gained). `tmdb`/`title` name the film that lost most under it. `cause` is the worker's
+      (services.identity.TakeCauses): `code` when nothing the take stood on moved and the decision did,
+      `evidence` when what it stood on moved (a listing it rested on left or was re-published otherwise,
+      an answer was filed: PL "Kupilem motocykl, ktory jest wampirem", 11 listings, 2026-10-24, lost
+      when Kino Pionier 1907's one screening passed -- right, and no build's doing), `regrouped` when
+      the store moved the listing. Only `code` alerts. A line from a build before the field counts as
+      `code`, as every loss did before it.
   kinowo_identity_listing_flips{country,tmdb_a,tmdb_b,title,build,venue}
       the most times one listing moved between the same two films (kind changed, either direction)
       in the last 24h, per film pair; `venue` is one listing doing it, `build` the latest flip's.
@@ -56,7 +62,10 @@ PUBLISH_FLOOR = 5  # film_net_lost below this is not written: it alerts at 10, a
 FLIP_FLOOR = 2
 
 FIELDS = ("_time", "country", "kind", "build", "venue", "listing",
-          "tmdb_before", "tmdb_after", "title_before", "title_after")
+          "tmdb_before", "tmdb_after", "title_before", "title_after", "cause")
+# The cause a line from a build that logged none counts as: every loss was the build's then.
+UNSTATED_CAUSE = "code"
+ALERTED_CAUSE = "code"
 
 # Mirrors identity-regressions.rules (pinned by test_identity_regressions.py). Build thresholds are per
 # country; any country not named uses "*".
@@ -123,6 +132,7 @@ def parse(lines, judgements=None):
         if r.get("kind") not in ("lost", "changed", "gained"):
             continue
         r["t"] = parse_time(r["_time"])
+        r["cause"] = r.get("cause") or UNSTATED_CAUSE
         r["cure"] = r["kind"] != "gained" and verdict(
             judgements, r.get("country", ""), r.get("venue", ""), r.get("listing", ""), r.get("tmdb_before")) == "wrong"
         out.append(r)
@@ -160,14 +170,15 @@ def film_net_lost(records, now, window=FILM_WINDOW):
 
 
 def build_net_lost(records, now, window=BUILD_WINDOW):
-    """{(country, build): {"count", "tmdb", "title"}} for builds that unmatched more than they matched."""
+    """{(country, build, cause): {"count", "tmdb", "title"}} for builds that unmatched more than they matched, per
+    cause: a gain offsets only a loss of its own cause."""
     lost, gained = collections.defaultdict(set), collections.defaultdict(set)
     films = collections.defaultdict(collections.Counter)
     titles = {}
     for r in records:
         if not (now - window < r["t"] <= now):
             continue
-        bk = (r.get("country", ""), r.get("build", ""))
+        bk = (r.get("country", ""), r.get("build", ""), r.get("cause") or UNSTATED_CAUSE)
         if r["kind"] == "lost":
             if r.get("cure"):
                 continue
@@ -237,10 +248,10 @@ def render(records, now):
     for (cc, tmdb), v in sorted(film_net_lost(records, now).items()):
         if v["count"] >= PUBLISH_FLOOR:
             out.append(f"kinowo_identity_film_net_lost{_labels(country=cc, tmdb=tmdb, title=v['title'], build=v['build'])} {v['count']}")
-    out.append("# HELP kinowo_identity_build_net_lost Listings a build unmatched minus listings it matched, over its last 24h of take changes.")
+    out.append("# HELP kinowo_identity_build_net_lost Listings a build unmatched minus listings it matched, over its last 24h of take changes, by cause (code / evidence / regrouped).")
     out.append("# TYPE kinowo_identity_build_net_lost gauge")
-    for (cc, build), v in sorted(build_net_lost(records, now).items()):
-        out.append(f"kinowo_identity_build_net_lost{_labels(country=cc, build=build, tmdb=v['tmdb'], title=v['title'])} {v['count']}")
+    for (cc, build, cause), v in sorted(build_net_lost(records, now).items()):
+        out.append(f"kinowo_identity_build_net_lost{_labels(country=cc, build=build, cause=cause, tmdb=v['tmdb'], title=v['title'])} {v['count']}")
     out.append("# HELP kinowo_identity_listing_flips Most moves one listing made between the same two films in 24h.")
     out.append("# TYPE kinowo_identity_listing_flips gauge")
     for (cc, a, b), v in sorted(listing_flips(records, now).items()):
@@ -307,7 +318,8 @@ def backtest(records, start, end, step):
     t = start
     while t <= end:
         a.append((t, {k: v for k, v in film_net_lost(records, t).items() if v["count"] >= THRESHOLDS["film_net_lost"]}))
-        b.append((t, {k: v for k, v in build_net_lost(records, t).items() if v["count"] > build_threshold(k[0])}))
+        b.append((t, {k: v for k, v in build_net_lost(records, t).items()
+                      if k[2] == ALERTED_CAUSE and v["count"] > build_threshold(k[0])}))
         c.append((t, {k: v for k, v in listing_flips(records, t).items() if v["count"] >= THRESHOLDS["listing_flips"]}))
         t += step
     return {

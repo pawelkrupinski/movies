@@ -90,6 +90,11 @@ EVENT_ONLY_VALUES = {
     # workers run it, then drop these.
     ("kinowo_worker_identity_take_changes_total", "kind", "decided"),
     ("kinowo_worker_identity_take_changes_total", "kind", "joined"),
+    # NOT PUBLISHED YET (2026-10-25): a take change's cause (services.identity.TakeCauses) is new -- the
+    # build gauge's `cause` label and the worker's take-cause counter -- so the fleet has no such series
+    # to snapshot. Re-snapshot once monitoring-1 and the workers run it, then drop these.
+    ("kinowo_identity_build_net_lost", "cause", "code"),
+    ("kinowo_worker_identity_take_causes_total", "kind", "lost"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

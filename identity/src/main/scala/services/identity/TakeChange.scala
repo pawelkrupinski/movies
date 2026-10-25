@@ -19,11 +19,13 @@ import java.util.Locale
  *  last reason, the rule that decided it, its runner-up) for the staging screen to say what the take was before and why;
  *  `basisAfter` the decision that holds it now; `published` the listing as the projection read it, and `formerly` as
  *  it was before its venue last re-published it with other facts ([[LiveProjectionIndex.formerly]]), for the staging
- *  screen to show every fact the decisions weighed and which of them moved; `trigger` what set the projection off. */
+ *  screen to show every fact the decisions weighed and which of them moved; `trigger` what set the projection off; `cause`,
+ *  for a move, whether its evidence moved or the code did ([[TakeCauses]]). */
 final case class TakeChange(listing: ListingKey, previousFilm: Option[String], before: Option[Int], after: Option[Int],
                             basisBefore: Option[ResolverDecision.Basis] = None, basisAfter: Option[ResolverDecision.Basis] = None,
                             joined: Boolean = false, prior: Option[TakeChange.Prior] = None,
-                            published: Option[Listing] = None, formerly: Option[Listing] = None, trigger: Option[String] = None) {
+                            published: Option[Listing] = None, formerly: Option[Listing] = None, trigger: Option[String] = None,
+                            cause: Option[TakeChange.Cause] = None) {
   def kind: TakeChange.Kind = (previousFilm, before, after) match {
     case (None, _, _) if joined => TakeChange.Kind.Joined
     case (None, _, _)           => TakeChange.Kind.Decided
@@ -45,6 +47,18 @@ object TakeChange {
   object Kind {
     /** The kinds a match change is: every one but a new listing's ([[Decided]], [[Joined]]). */
     val Moves: Seq[Kind] = Seq(Lost, Changed, Gained)
+  }
+
+  /** Why a take moved ([[TakeCauses.of]]): what the alert on a build's net losses tells apart, so that only the code's page.
+   *  - [[Evidence]]: what the take stood on moved — a listing it rested on left or was re-published otherwise, an answer
+   *    was filed, a stored film's TMDB record changed. No stickiness: a take goes when its evidence goes, and that is right;
+   *  - [[Code]]: nothing it stood on moved, and the decision did — on a build's first projections, or a decision of this
+   *    build replaced on the same inputs;
+   *  - [[Regrouped]]: nothing it stood on moved and no decision took another film: the store moved the listing between
+   *    films (a slot re-read, a film re-keyed). */
+  enum Cause {
+    case Evidence, Code, Regrouped
+    def label: String = toString.toLowerCase(Locale.ROOT)
   }
 
   /** The decision a listing's take came from before it moved: its basis, confidence and last reason, the rule that decided

@@ -28,9 +28,9 @@ RULES = os.path.join(INFRA, "nix", "files", "monitoring", "rules", "identity-reg
 H = 3600
 
 
-def line(t, kind, venue, listing, before=None, after=None, country="de", build="b1", title="T"):
+def line(t, kind, venue, listing, before=None, after=None, country="de", build="b1", title="T", cause="code"):
     r = {"_time": "2026-10-20T00:00:00Z", "country": country, "kind": kind, "build": build,
-         "venue": venue, "listing": listing, "title_before": title, "title_after": title}
+         "venue": venue, "listing": listing, "title_before": title, "title_after": title, "cause": cause}
     if before:
         r["tmdb_before"] = before
     if after:
@@ -47,6 +47,11 @@ class Parse(unittest.TestCase):
         recs = ir.parse(raw)
         self.assertEqual(len(recs), 1)
         self.assertAlmostEqual(recs[0]["t"], 1792582214.969, places=2)
+
+    def test_a_line_from_a_build_that_logged_no_cause_counts_as_the_codes(self):
+        raw = [json.dumps({"_time": "2026-10-24T18:51:00Z", "kind": "lost", "country": "pl", "cause": "evidence"}),
+               json.dumps({"_time": "2026-10-21T11:30:00Z", "kind": "lost", "country": "pl"})]
+        self.assertEqual([r["cause"] for r in ir.parse(raw)], ["code", "evidence"])
 
 
 class FilmNetLost(unittest.TestCase):
@@ -113,7 +118,7 @@ class Cures(unittest.TestCase):
         recs = ir.parse(lines, self.judged())
         now = recs[-1]["t"] + 1
         self.assertEqual(set(ir.film_net_lost(recs, now)), {("de", "1559083")})
-        self.assertEqual(set(ir.build_net_lost(recs, now)), {("de", "045d2fc")})
+        self.assertEqual(set(ir.build_net_lost(recs, now)), {("de", "045d2fc", "code")})
         self.assertEqual(ir.cures(recs, now)[("de", "1217647")]["count"], 31)
         self.assertIn('kinowo_identity_cures{country="de",tmdb="1217647",title="Iconic Movie",build="6450294"} 31',
                       ir.render(recs, now))
@@ -129,8 +134,23 @@ class BuildNetLost(unittest.TestCase):
         recs += [line(20, "gained", f"g{i}", "Other", after="5", country="pl", build="96fb23c") for i in range(3)]
         recs += [line(20, "lost", "w", "Other", before="5", country="pl", build="other")]
         out = ir.build_net_lost(recs, now=100)
-        self.assertEqual(out[("pl", "96fb23c")], {"count": 123, "tmdb": "1778515", "title": "T"})
-        self.assertEqual(out[("pl", "other")]["count"], 1)
+        self.assertEqual(out[("pl", "96fb23c", "code")], {"count": 123, "tmdb": "1778515", "title": "T"})
+        self.assertEqual(out[("pl", "other", "code")]["count"], 1)
+
+    def test_losses_whose_evidence_left_are_kept_apart_from_the_codes(self):
+        # PL "Kupilem motocykl, ktory jest wampirem", 2026-10-24 18:51Z: 11 listings rested on Kino Pionier 1907's year
+        # and director; its one screening passed, the scrape dropped it and the take went -- under build dbee52416,
+        # which replays the same takes as its parent. Beside it, two listings the build itself unmatched.
+        recs = [line(10, "lost", f"v{i}", "Kupilem motocykl", before="41153", country="pl", build="dbee52416",
+                     cause="evidence") for i in range(11)]
+        recs += [line(20, "lost", f"w{i}", "Other", before="5", country="pl", build="dbee52416") for i in range(2)]
+        recs += [line(30, "gained", "g", "Third", after="6", country="pl", build="dbee52416", cause="evidence")]
+        out = ir.build_net_lost(recs, now=100)
+        self.assertEqual(out[("pl", "dbee52416", "evidence")]["count"], 10)  # a gain offsets only its own cause
+        self.assertEqual(out[("pl", "dbee52416", "code")], {"count": 2, "tmdb": "5", "title": "T"})
+        text = ir.render(recs, now=100)
+        self.assertIn('kinowo_identity_build_net_lost{country="pl",build="dbee52416",cause="evidence",tmdb="41153",title="T"} 10', text)
+        self.assertIn('kinowo_identity_build_net_lost{country="pl",build="dbee52416",cause="code",tmdb="5",title="T"} 2', text)
 
     def test_a_build_that_gained_more_than_it_lost_is_not_published(self):
         recs = [line(10, "lost", "a", "X", before="1"), line(10, "gained", "b", "Y", after="2"),
@@ -176,6 +196,13 @@ class Backtest(unittest.TestCase):
         eps = ir.episodes(steps, hold=900)
         self.assertEqual([(e[0], e[1], e[2], e[3]["count"]) for e in eps], [("j", 900, 1800, 12)])
 
+    def test_only_the_codes_net_losses_fire_the_build_alert(self):
+        recs = [line(0, "lost", f"v{i}", "Kupilem motocykl", before="41153", country="pl", build="dbee52416",
+                     cause="evidence") for i in range(30)]
+        recs += [line(0, "lost", f"w{i}", "Peppa", before="1778515", country="pl", build="96fb23c") for i in range(30)]
+        eps = ir.backtest(recs, 300, 3600, 300)["IdentityBuildNetLosses"]
+        self.assertEqual([e[0] for e in eps], [("pl", "96fb23c", "code")])
+
 
 class ThresholdsMatchTheRules(unittest.TestCase):
     """The backtest replays THRESHOLDS; Prometheus alerts on the rule file. They must say the same."""
@@ -197,9 +224,10 @@ class ThresholdsMatchTheRules(unittest.TestCase):
     def test_build(self):
         r = self.rule("IdentityBuildNetLosses")
         t = ir.THRESHOLDS["build_net_lost"]
-        named = {cc: int(n) for cc, n in re.findall(r'kinowo_identity_build_net_lost\{country="([a-z]+)"\} > (\d+)', r)}
+        named = {cc: int(n) for cc, n in re.findall(
+            r'kinowo_identity_build_net_lost\{cause="' + ir.ALERTED_CAUSE + r'",country="([a-z]+)"\} > (\d+)', r)}
         self.assertEqual(named, {cc: n for cc, n in t.items() if cc != "*"})
-        rest = re.search(r'kinowo_identity_build_net_lost\{country!~"([a-z|]+)"\} > (\d+)', r)
+        rest = re.search(r'kinowo_identity_build_net_lost\{cause="' + ir.ALERTED_CAUSE + r'",country!~"([a-z|]+)"\} > (\d+)', r)
         self.assertEqual(set(rest.group(1).split("|")), set(named))
         self.assertEqual(int(rest.group(2)), t["*"])
         self.assertIn(f"for: {ir.THRESHOLDS['build_for_seconds'] // 60}m", r)

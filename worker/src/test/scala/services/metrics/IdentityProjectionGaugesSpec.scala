@@ -43,6 +43,21 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
     sample(text, "kinowo_worker_identity_take_changes_total", """basis="OwnMatch",country="pl",kind="gained"""") shouldBe Some(0.0)
   }
 
+  it should "count each move by its cause, a new listing's first take by none" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")
+    metrics.takesChanged(Seq(change("Kino Muza", "Diuna", Some(1), None).copy(cause = Some(TakeChange.Cause.Evidence)),
+      change("Rialto", "Diuna", Some(1), None).copy(cause = Some(TakeChange.Cause.Evidence)),
+      change("Helios", "Lalka", Some(3), None).copy(cause = Some(TakeChange.Cause.Code)),
+      TakeChange(ListingKey.Published("Amok", "Diuna", None, Nil), None, None, Some(2))))
+    val text = render(registry)
+    sample(text, "kinowo_worker_identity_take_causes_total", """cause="evidence",country="pl",kind="lost"""") shouldBe Some(2.0)
+    sample(text, "kinowo_worker_identity_take_causes_total", """cause="code",country="pl",kind="lost"""") shouldBe Some(1.0)
+    // every move and cause at 0 from boot, and nothing for a listing's first take
+    sample(text, "kinowo_worker_identity_take_causes_total", """cause="regrouped",country="pl",kind="gained"""") shouldBe Some(0.0)
+    sample(text, "kinowo_worker_identity_take_causes_total", """cause="code",country="pl",kind="decided"""") shouldBe None
+  }
+
   it should "never read a new listing's first take as a reversal" in {
     val registry = new PrometheusRegistry()
     val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")

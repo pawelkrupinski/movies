@@ -560,6 +560,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     lost("decided_by") shouldBe "pooled:no-film"
     lost("previous_decided_by") shouldBe "accept:joined"
     lost("trigger") shouldBe "periodic"
+    // nothing Lalka's take stood on moved and the decision did: the code's, what the build alert pages on
+    lost("cause") shouldBe "code"
     val summary = events.find(_.getFormattedMessage.startsWith("identity take change: summary")).get
     summary.getFormattedMessage should include("5 take changes (changed 2, lost 3)")
     fieldsOf(summary)("lost") shouldBe 3
@@ -574,6 +576,48 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.projection.tick()
     w.takes.map(_.kind).distinct shouldBe Seq(TakeChange.Kind.Gained)
     w.takes should have size 3
+  }
+
+  /** Why a take moved, for the build alert to page only on the code's: PL "Kupiłem motocykl, który jest wampirem"
+   *  (2026-10-24 18:51Z) — eleven listings rested on Kino Pionier 1907's year and director, its one screening passed, the
+   *  scrape dropped it and the take went with it: the evidence's, and right. The same inputs decided otherwise by a new
+   *  build's first projection are the code's. */
+  "A take change's cause" should "be the evidence's when a listing the take rested on leaves, the code's on unchanged inputs after a deploy" in {
+    var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
+    // Lalka's film rests on Helios's listing alone: without it, no film
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      val helios = read().exists(l => l.key.venue == Helios.displayName && l.key.rawTitle == "Lalka")
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
+        val title = d.members.head.rawTitle
+        val film  = if (title == "Lalka" && !helios) None else takes(title)
+        ResolverDecision(d.members, film, 0.9, if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)()
+      }))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
+    w.scrape(programme)
+    w.projection.tick()
+    w.takes.clear()
+
+    // Helios drops Lalka: the two Lalka listings left lose the film it rested on — written once the shrink guard's grace
+    // is spent, the listing's leaving read by a projection the guard held back
+    w.scrape(Map(Helios -> Seq(film(Helios, "Diuna", Some(2021), 5))))
+    val events = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(
+      Iterator.continually(w.projection.tick()).take(ProjectionGuard.Grace + 1).exists(_.refused.isEmpty) shouldBe true)
+    w.takes.filter(_.moved).map(t => (t.listing.venue, t.kind, t.cause)).sortBy(_._1) shouldBe Seq(
+      (KinoApollo.displayName, TakeChange.Kind.Lost, Some(TakeChange.Cause.Evidence)),
+      (Multikino.displayName, TakeChange.Kind.Lost, Some(TakeChange.Cause.Evidence)))
+    val lines = events.filter(_.getFormattedMessage.startsWith("identity take change: lost"))
+    lines should have size 2
+    lines.foreach(_.getFormattedMessage should include("; cause evidence"))
+    w.takes.clear()
+
+    // A new build over the same store and listings takes Obcy as another film: nothing it stood on moved
+    takes = takes + ("Obcy" -> Some(602))
+    val deployed = w.restarted
+    deployed.projection.tick().refused shouldBe None
+    deployed.takes.filter(_.moved).map(t => (t.listing.venue, t.kind, t.cause)).sortBy(_._1) shouldBe Seq(
+      (Rialto.displayName, TakeChange.Kind.Changed, Some(TakeChange.Cause.Code)),
+      (Multikino.displayName, TakeChange.Kind.Changed, Some(TakeChange.Cause.Code)))
   }
 
   /** A move the store declines is retried by the next projection: each change counted once, as the store took it — the
