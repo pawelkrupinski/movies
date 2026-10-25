@@ -157,6 +157,11 @@ object IdentitySlice {
                     /** Prod's state beside the recording — the stage's stored verdicts, the pins — from the local prod mirror, or
                      *  `ProdState.none` in a hermetic slice: no default, every reader says which. */
                     val prod: tools.ProdState) {
+    /** For a ref's OWN `IdentityDrift`, which this file replaces in the ref's tree without it (IdentityDrift is not a tool file:
+     *  it replays the ref's incremental model, which an older ref's code could not be reached for by name) and which predates
+     *  `prod`: its reads hold no prod state. Nothing in this checkout calls it. */
+    def this(country: Country, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, clock: Clock, filed: tools.FiledAnswers) =
+      this(country, fetch, gaps, clock, filed, tools.ProdState.none)
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
     val tmdb = OlderRefs.tmdbClient(fetch, settings.TmdbApiKey(StubTmdbKey), country.language)
     private val venueClock = new models.VenueClock(clock)
