@@ -54,8 +54,15 @@ object EnrichmentFreshness extends Logging {
    *  somewhere in the second half of `ttl`, fixed by the path so every run agrees. Never
    *  longer than `ttl`, so the staleness bound is unchanged; never shorter than half of it,
    *  so a fresh tree is never pruned on its next run. */
-  def lifetimeOf(relative: Path, ttl: FiniteDuration = Ttl): FiniteDuration = {
-    val spread = Math.floorMod(relative.toString.replace('\\', '/').hashCode, 1000) / 1000.0
+  def lifetimeOf(relative: Path, ttl: FiniteDuration = Ttl): FiniteDuration =
+    lifetimeOfKey(relative.toString.replace('\\', '/'), ttl)
+
+  /** The same spread for anything named by a key — a remembered answer of the `.enrichment-cache`, by its request
+   *  ([[FileEnrichmentCacheStore.loadAll]]): one recording's thousands of remembered 404s otherwise all expire in the
+   *  same run, which re-asks every one of them live (Germany, 2026-10-25: 2,207 of ~20,000 preloaded, Metacritic asked
+   *  9,523 times against 1,090, the rating phase 4,639 s against 576 — Record scrape fixtures #1542, #1476). */
+  def lifetimeOfKey(key: String, ttl: FiniteDuration = Ttl): FiniteDuration = {
+    val spread = Math.floorMod(key.hashCode, 1000) / 1000.0
     (ttl.toMillis - (ttl.toMillis / 2 * spread).toLong).millis
   }
 

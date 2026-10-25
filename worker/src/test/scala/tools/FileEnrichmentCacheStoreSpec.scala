@@ -83,6 +83,28 @@ class FileEnrichmentCacheStoreSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Record scrape fixtures #1542: a cache recorded in one run shared one fetchedAt and expired whole five days later --
+  // 2,207 of Germany's ~20,000 remembered answers preloaded, every other one re-asked live, the rating phase 4,639 s
+  // against 576. Each entry's lifetime is spread by its key, as the recorded files' are by their path.
+  it should "spread a cache recorded in ONE run over several runs rather than expiring it together" in {
+    withStore() { (root, _) =>
+      val dir  = root.resolve("00").resolve("00")
+      val keys = (1 to 200).map(n => s"GET https://www.metacritic.com/movie/film-$n")
+      Files.createDirectories(dir)
+      keys.zipWithIndex.foreach { case (key, n) =>
+        Files.write(dir.resolve(s"aged-$n${FileEnrichmentCacheStore.Extension}"),
+          FileEnrichmentCacheStore.encode(key, System.currentTimeMillis() - 4.days.toMillis,
+            CachedResponse.Failed(Some(404), "GET", "HTTP 404")))
+      }
+
+      val kept = new FileEnrichmentCacheStore(root).loadAll().size
+      withClue(s"$kept of ${keys.size} entries remembered at the same instant survived: ") {
+        kept should be > 0
+        kept should be < keys.size
+      }
+    }
+  }
+
   // A killed run leaves whatever it was mid-write. One unreadable entry should cost
   // one live fetch, not the entire preload it happens to sit in.
   it should "skip an undecodable entry rather than lose the whole preload" in {

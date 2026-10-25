@@ -48,16 +48,19 @@ class FileEnrichmentCacheStore(val root: Path, ttl: FiniteDuration = FileEnrichm
    * entry from a killed run should cost one live fetch, not the whole preload.
    */
   override def loadAll(): Map[String, CachedResponse] = {
-    val floor   = System.currentTimeMillis() - ttl.toMillis
+    // Each entry's own lifetime, spread over the TTL's second half by its key as the recorded files' are by their path
+    // ([[EnrichmentFreshness.lifetimeOfKey]]): a cache recorded in one run expires over several, never in one.
+    val now     = System.currentTimeMillis()
     var skipped = 0
     val entries = Using(Files.walk(root)) { walk =>
       walk.iterator().asScala
         .filter(path => Files.isRegularFile(path) && path.getFileName.toString.endsWith(FileEnrichmentCacheStore.Extension))
         .flatMap { path =>
           FileEnrichmentCacheStore.decode(Try(Files.readAllBytes(path)).toOption) match {
-            case Some((key, fetchedAt, response)) if fetchedAt >= floor => Some(key -> response)
-            case Some(_)                                               => None            // expired
-            case None                                                  => skipped += 1; None
+            case Some((key, fetchedAt, response)) if fetchedAt >= now - EnrichmentFreshness.lifetimeOfKey(key, ttl).toMillis =>
+              Some(key -> response)
+            case Some(_) => None // expired
+            case None    => skipped += 1; None
           }
         }.toMap
     }.getOrElse {
