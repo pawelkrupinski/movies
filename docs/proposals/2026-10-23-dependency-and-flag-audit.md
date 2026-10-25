@@ -15,7 +15,7 @@ that must be confirmed before acting. Measure before landing any performance ite
 2. **JVM:** retire `infra/jvm/jdk25-parity.options`, starting with compact object headers (done: file retired 2026-10-24); canary on one worker.
 3. **Android:** a Baseline Profile; posters on the app's shared OkHttp client; `AsyncImage` over
    `SubcomposeAsyncImage` in the grid.
-4. **Hosts:** zram swap and kubelet memory reserves on every host (landed 2026-10-24, apply owed: see Hosts).
+4. **Hosts:** zram swap and kubelet memory reserves on every host (landed and applied 2026-10-24: see Hosts).
 5. **iOS:** `@Observable` with a deployment-target bump (done 2026-10-24: iOS 18).
 6. **Page tests:** replace the remaining `waitForTimeout` sleeps.
 
@@ -251,7 +251,7 @@ Virtual threads already benefit from the 27 runtime (no pinning on `synchronized
   | Jobs | Period | Alert |
   |---|---|---|
   | Worker: scrape, detail, enrichment and chunk-scrape reapers; the claimed enqueuers (share-card budget, prune and city cards; content audits; OMDb backfill) | 1m to 24h | `WorkerScheduledTickStale` (new) |
-  | Worker: settle, TMDB store/changes sweeps, orphan-film-state sweep, venue closure, identity lookup refresh, drift-check tick | 1m to 24h | same (new) |
+  | Worker: settle, TMDB store/changes sweeps, orphan-film-state sweep, venue closure, identity lookup refresh (the drift-check tick was here until it left the worker, 84f8ffe3f) | 1m to 24h | same (new) |
   | Worker: corpus census and the four sampled censuses, side-rows cleanup, read-model prune and derivation pass, movie-cache cold retry and rehydrate, task-lease reaper, heartbeat, liveness watchdog, phase planner, Facebook re-scrape drain, env-config publish, uptime flush | 5s to 24h | same (new) |
   | Web: read-model backstop and cold retry, films-served sampler, Facebook fetch flush, uptime flush/poll/tag reload | 10s to 30m | `WebScheduledTickStale` (new) |
   | Host: registry prune (k3s-worker-1, daily) | 24h | `RegistryPruneStale` / `...MetricAbsent` (new) |
@@ -451,7 +451,8 @@ Linux lanes are pinned at 6.2 because that is the newest toolchain `swift-action
 
 ## Hosts, k3s, edge
 
-- **Swap and kubelet reserves: landed 2026-10-24, apply owed** (by hand, mongo-1 → monitoring-1 → k3s-worker-1:
+- **Swap and kubelet reserves: landed and applied 2026-10-24** (Prometheus 2026-10-25: zram swap on all three hosts,
+  k3s-worker-1 allocatable 14464Mi; applied by hand, mongo-1 → monitoring-1 → k3s-worker-1:
   the auto-applier refuses closures that start units or restart k3s; `modules/fleet/host-memory.nix`,
   numbers in `infra/nix/files/host-memory.json`). Before: no swap on any host, no kubelet reserves, and k3s's
   default `evictionHard` (imagefs/nodefs only) left `memory.available` with NO threshold, so k3s-worker-1's
