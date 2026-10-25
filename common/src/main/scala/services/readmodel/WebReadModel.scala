@@ -360,8 +360,12 @@ class WebReadModel(
    *  has, and while both streams are live, this costs two field reads: drift is the backstop's job.
    *
    *  A stream that ENDED is reopened here ([[reopenDeadStreams]]): an outage outlasting the
-   *  driver's one resume ends it for good, and nothing else opens it again. */
-  private[readmodel] def coldRetryTick(): Unit =
+   *  driver's one resume ends it for good, and nothing else opens it again.
+   *
+   *  [[TickRun.Incomplete]] when the read it made could not complete, or the reopen's checkpoint
+   *  could not be taken; a warm model with live streams, or a reopen held back by its backoff, is a
+   *  completed no-op. */
+  private[readmodel] def coldRetryTick(): TickRun =
     if (!streamsLive) reopenDeadStreams()
     else {
       reopenAttempts = 0
@@ -372,15 +376,16 @@ class WebReadModel(
         // what was written while the streams were down reached neither. Read again — anything
         // written from the checkpoint on, the live streams carry.
         logger.warn("WebReadModel: change streams are live again but the writes made while they were down are unread — reloading.")
-        reload()
+        val run = reloaded()
         if (lastReloadComplete) catchUpOwed = false
-      }
+        run
+      } else TickRun.Completed
     }
 
-  private def coldReload(): Unit = {
+  private def coldReload(): TickRun = {
     logger.warn(s"WebReadModel cold-retry: no complete read yet (serving ${movies.size} movie(s), " +
       s"$liveScreeningCount screening(s)) — the boot hydrate read failed; reloading.")
-    reload()
+    reloaded()
   }
 
   // The reopen backoff, in cold-retry ticks: a stream reopened into an outage that is still on
@@ -408,10 +413,10 @@ class WebReadModel(
   /** Reopen each stream that is not live — the way `start` opens them: checkpoint, read the
    *  corpus whole, then watch from the checkpoint, so what was written while the stream was down
    *  is in the read or the replay. On the backoff above; a cold model reloads every tick anyway. */
-  private def reopenDeadStreams(): Unit =
+  private def reopenDeadStreams(): TickRun =
     if (ticksUntilReopen > 0) {
       ticksUntilReopen -= 1
-      if (!_hydrated) coldReload()
+      if (!_hydrated) coldReload() else TickRun.Completed
     } else
       reader.streamCheckpoint() match {
         // No checkpoint is not "watch from now": the cursor opens asynchronously, once Mongo answers
@@ -424,7 +429,8 @@ class WebReadModel(
             logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down; " +
               s"retrying every tick${if (held > 0) s" ($held more failed since the last line)" else ""}.")
           }
-          if (!_hydrated) coldReload()
+          if (!_hydrated) { coldReload(); () }
+          TickRun.Incomplete
         case outcome =>
           checkpointFailureLog = freshCheckpointFailureLog()
           reopenAttempts += 1
@@ -432,7 +438,7 @@ class WebReadModel(
           logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
             s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
           val checkpoint = outcome.answered
-          reload()
+          val run        = reloaded()
           // Caught up only by a whole read AND a replay from before it; short of either, the next tick
           // that finds the streams live reads again (`catchUpOwed`).
           catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
@@ -442,6 +448,7 @@ class WebReadModel(
           if (!screeningWatch.exists(_.live))
             screeningWatch = reopened(screeningWatch, MongoReadModelRepository.ScreeningsCollection)(
               reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint))
+          run
       }
 
   /** A dead `watch` on `collection` closed and opened again, counted as a reopen. */

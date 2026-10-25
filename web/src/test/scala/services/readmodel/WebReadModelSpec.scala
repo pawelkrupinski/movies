@@ -676,6 +676,22 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.screeningsForCity("wroclaw").map(_._id) shouldBe Seq("s1")
   }
 
+  it should "complete its tick only when the read it made completed" in {
+    val repository = new UnreadableReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    val rm    = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    val ticks = new _root_.tools.RecordingTickRecorder
+    def tick(): Unit = _root_.tools.ScheduledTick.recorded("read-model-cold-retry", scala.concurrent.duration.FiniteDuration(30, "seconds"),
+      play.api.Logger(getClass), ticks)(rm.coldRetryTick())
+    tick()
+    ticks.completedRuns shouldBe empty   // the read failed again: logged, and not a completed run
+    repository.healReads()
+    tick()
+    ticks.completedRuns should have size 1
+    rm.hydrated shouldBe true
+  }
+
   // A boot whose films read but whose screenings did not serves every film with no showtimes,
   // and `movies` is not empty, so a cold retry gated on "no films" never looked again — the
   // site stayed showtime-less until the 30-minute backstop. Cold is "no complete read yet".
