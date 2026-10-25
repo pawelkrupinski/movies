@@ -1,6 +1,7 @@
 package services.movies
 
 import models.Cinema
+import org.bson.{BsonDocument, BsonInt32, BsonString}
 
 /** What the scrape-health guards remember about one venue between ticks.
  *
@@ -19,6 +20,24 @@ final case class ScrapeGuardState(
 
 object ScrapeGuardState {
   val Fresh: ScrapeGuardState = ScrapeGuardState()
+
+  /** A state as the venue's archive document stores it, under its `guard` field. */
+  def encode(state: ScrapeGuardState): BsonDocument = {
+    val guard = new BsonDocument()
+      .append("depthRejections", new BsonInt32(state.depthRejections))
+      .append("breadthRejections", new BsonInt32(state.breadthRejections))
+    state.sourceKey.foreach(key => guard.append("sourceKey", new BsonString(key)))
+    guard
+  }
+
+  /** A stored state; a missing count reads as none. */
+  def decode(guard: BsonDocument): ScrapeGuardState = {
+    def int(name: String) = Option(guard.get(name)).filter(_.isInt32).map(_.asInt32.getValue).getOrElse(0)
+    ScrapeGuardState(
+      sourceKey         = Option(guard.get("sourceKey")).filter(_.isString).map(_.asString.getValue),
+      depthRejections   = int("depthRejections"),
+      breadthRejections = int("breadthRejections"))
+  }
 }
 
 /**
@@ -45,8 +64,10 @@ trait ScrapeGuardLedger {
   def put(cinema: Cinema, state: ScrapeGuardState): Unit
 }
 
+/** The states as `MongoScrapeGuardLedger` would hold them: each written as its document to BSON and read back. */
 final class InMemoryScrapeGuardLedger extends ScrapeGuardLedger {
   private val byCinema = scala.collection.concurrent.TrieMap.empty[String, ScrapeGuardState]
   def get(cinema: Cinema): Option[ScrapeGuardState] = Some(byCinema.getOrElse(cinema.displayName, ScrapeGuardState.Fresh))
-  def put(cinema: Cinema, state: ScrapeGuardState): Unit = byCinema.update(cinema.displayName, state)
+  def put(cinema: Cinema, state: ScrapeGuardState): Unit =
+    byCinema.update(cinema.displayName, services.BsonRoundTrip.via(ScrapeGuardState.encode, ScrapeGuardState.decode)(state))
 }

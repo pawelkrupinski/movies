@@ -190,8 +190,23 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
 
   def waitingPages(country: String): Long =
     await(collection.countDocuments(Filters.and(Filters.eq("country", country), Filters.in("kind", RescrapeKind.Pages.map(_.name)*))).toFuture())
+}
 
-  private def entryOf(d: Document): RescrapeEntry = {
+object MongoFacebookRescrapeStore {
+  /** A waiting entry's document, as an `add` inserts it and a claim leaves it. */
+  def entryDocument(entry: RescrapeEntry, enqueuedAt: Instant): Document = {
+    val target = entry.target match {
+      case RescrapeTarget.FilmPages(_, filmId) => Document("filmId" -> filmId)
+      case RescrapeTarget.Page(url, _)         => Document("url" -> url)
+    }
+    Document("_id" -> entry.key, "country" -> entry.country, "kind" -> entry.kind.name, "notBefore" -> new Date(entry.notBefore.toEpochMilli),
+      "enqueuedAt" -> new Date(enqueuedAt.toEpochMilli), "attempts" -> entry.attempts) ++ target
+  }
+
+  /** When a stored entry was enqueued. */
+  def enqueuedAtOf(d: Document): Instant = d.get("enqueuedAt").map(v => Instant.ofEpochMilli(v.asDateTime().getValue)).getOrElse(Instant.EPOCH)
+
+  def entryOf(d: Document): RescrapeEntry = {
     def text(field: String) = d.get(field).map(_.asString().getValue).getOrElse("")
     val country = text("country")
     val target  = if (text("kind") == RescrapeKind.Film.name) RescrapeTarget.FilmPages(country, text("filmId"))
@@ -199,9 +214,7 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
     RescrapeEntry(country, target, d.get("notBefore").map(v => Instant.ofEpochMilli(v.asDateTime().getValue)).getOrElse(Instant.EPOCH),
       d.get("attempts").map(_.asInt32().getValue).getOrElse(0))
   }
-}
 
-object MongoFacebookRescrapeStore {
   private val AskedAgainAt = "askedAgainAt"
   private val Timeout = 10.seconds
   /** The claim index's first shape, the `notBefore` range before `enqueuedAt`'s sort. */

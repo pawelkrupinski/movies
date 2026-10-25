@@ -61,10 +61,15 @@ object ResolutionStore {
   /** The shared 24h freshness window for every resolution store — both the
    *  read-side expiry filter and the Mongo TTL index derive from it. */
   val Ttl: FiniteDuration = 24.hours
+
+  /** An entry as stored: `{ _id: <hintKey>, value, at }`. */
+  def encode(hintKey: String, value: String, at: Instant): Document =
+    Document("_id" -> hintKey, "value" -> value, "at" -> new java.util.Date(at.toEpochMilli))
 }
 
 /** In-memory `ResolutionStore` for tests and Mongo-less local dev. Honours the
- *  same TTL expiry as the Mongo store via an injectable clock. */
+ *  same TTL expiry as the Mongo store via an injectable clock, and keeps each entry as
+ *  [[MongoResolutionStore]] stores it, written to BSON and read back. */
 class InMemoryResolutionStore(
   clock: Clock,
   override val normalizer: services.movies.TitleNormalizer
@@ -77,7 +82,8 @@ class InMemoryResolutionStore(
     }
 
   override def put(hintKey: String, value: String): Unit = {
-    entries.put(hintKey, (value, clock.instant())); ()
+    val stored = services.BsonRoundTrip(ResolutionStore.encode(hintKey, value, clock.instant()))
+    entries.put(stored.getString("_id"), (stored.getString("value"), Instant.ofEpochMilli(stored.getDate("at").getTime))); ()
   }
 
   override def removeForFilm(cleanTitle: String): Int = {
@@ -143,7 +149,7 @@ class MongoResolutionStore(
     Try {
       c.replaceOne(
         Filters.eq("_id", hintKey),
-        Document("_id" -> hintKey, "value" -> value, "at" -> new java.util.Date(clock.instant().toEpochMilli)),
+        ResolutionStore.encode(hintKey, value, clock.instant()),
         new ReplaceOptions().upsert(true)
       ).subscribe(
         (_: org.mongodb.scala.result.UpdateResult) => (),

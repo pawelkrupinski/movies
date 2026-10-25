@@ -18,28 +18,27 @@ import scala.util.{Success, Try}
  * the running version as recorded, as [[ReadModelDerivationMarker.none]] does.
  */
 class MongoReadModelDerivationMarker(database: Option[MongoDatabase], clock: java.time.Clock) extends ReadModelDerivationMarker {
-  import MongoReadModelDerivationMarker.{PassId, ProjectionId, Timeout}
+  import MongoReadModelDerivationMarker.*
 
   private val collection: Option[MongoCollection[Document]] =
     database.map(_.getCollection[Document](MongoReadModelDerivationMarker.Collection))
 
   def recorded(): Try[Option[DerivationVersion]] = collection match {
     case None    => Success(Some(ReadModelDerivation.current))
-    case Some(c) => read(c, ProjectionId).map(_.flatMap(_.get("version")).map(v => DerivationVersion(v.asString().getValue)))
+    case Some(c) => read(c, ProjectionId).map(_.flatMap(versionOf))
   }
 
   def record(version: DerivationVersion): Unit =
-    write(ProjectionId, Document("version" -> version.value))
+    write(ProjectionId, encode(version))
 
   def progress(): Try[Option[DerivationProgress]] = collection match {
     case None    => Success(None)
     case Some(c) =>
-      read(c, PassId).map(_.map(doc =>
-        DerivationProgress(DerivationVersion(doc("version").asString().getValue), doc("nextSlice").asInt32().getValue)))
+      read(c, PassId).map(_.map(progressOf))
   }
 
   def recordProgress(progress: DerivationProgress): Unit =
-    write(PassId, Document("version" -> progress.version.value, "nextSlice" -> progress.nextSlice))
+    write(PassId, encode(progress))
 
   private def read(c: MongoCollection[Document], id: String): Try[Option[Document]] =
     Try(Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), Timeout)))
@@ -57,4 +56,13 @@ object MongoReadModelDerivationMarker {
   private val ProjectionId = "projection"
   private val PassId       = "pass"
   private val Timeout      = 10.seconds
+
+  /** The recorded version's fields. */
+  def encode(version: DerivationVersion): Document = Document("version" -> version.value)
+  def versionOf(document: Document): Option[DerivationVersion] = document.get("version").map(v => DerivationVersion(v.asString().getValue))
+
+  /** The pass's progress's fields. */
+  def encode(progress: DerivationProgress): Document = Document("version" -> progress.version.value, "nextSlice" -> progress.nextSlice)
+  def progressOf(document: Document): DerivationProgress =
+    DerivationProgress(DerivationVersion(document("version").asString().getValue), document("nextSlice").asInt32().getValue)
 }

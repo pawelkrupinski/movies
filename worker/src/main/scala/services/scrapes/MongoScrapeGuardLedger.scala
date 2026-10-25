@@ -1,7 +1,7 @@
 package services.scrapes
 
 import models.Cinema
-import org.mongodb.scala.bson.{BsonDocument, BsonInt32, BsonString}
+import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture}
 import play.api.Logging
@@ -37,22 +37,12 @@ class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuar
   def get(cinema: Cinema): Option[ScrapeGuardState] = coll.fold(Option(ScrapeGuardState.Fresh)) { c =>
     attempt(cinema, "get")(Await.result(
       c.find(Filters.eq("_id", cinema.displayName)).projection(Projections.include(Field)).headOption(),
-      10.seconds)).map(_.flatMap(_.get[BsonDocument](Field)).fold(ScrapeGuardState.Fresh) { g =>
-      def int(name: String) = Option(g.get(name)).filter(_.isInt32).map(_.asInt32.getValue).getOrElse(0)
-      ScrapeGuardState(
-        sourceKey         = Option(g.get("sourceKey")).filter(_.isString).map(_.asString.getValue),
-        depthRejections   = int("depthRejections"),
-        breadthRejections = int("breadthRejections"))
-    })
+      10.seconds)).map(_.flatMap(_.get[BsonDocument](Field)).fold(ScrapeGuardState.Fresh)(ScrapeGuardState.decode))
   }
 
   def put(cinema: Cinema, state: ScrapeGuardState): Unit = coll.foreach { c =>
-    val guard = new BsonDocument()
-      .append("depthRejections", BsonInt32(state.depthRejections))
-      .append("breadthRejections", BsonInt32(state.breadthRejections))
-    state.sourceKey.foreach(key => guard.append("sourceKey", BsonString(key)))
     attempt(cinema, "put")(Await.result(
-      c.updateOne(Filters.eq("_id", cinema.displayName), Updates.set(Field, guard))
+      c.updateOne(Filters.eq("_id", cinema.displayName), Updates.set(Field, ScrapeGuardState.encode(state)))
         .toFuture(),
       10.seconds))
   }

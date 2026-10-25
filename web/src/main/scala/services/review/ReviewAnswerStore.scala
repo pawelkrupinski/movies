@@ -19,9 +19,11 @@ trait ReviewAnswerStore {
   def all(): Seq[ReviewAnswer]
 }
 
+/** The answers as [[MongoReviewAnswerStore]] would hold them: each written through its codec to BSON and read back. */
 final class InMemoryReviewAnswerStore extends ReviewAnswerStore {
   private val kept = scala.collection.mutable.ArrayBuffer.empty[ReviewAnswer]
-  def append(answer: ReviewAnswer): Unit = synchronized(kept += answer)
+  private val stored = services.BsonRoundTrip.via(MongoReviewAnswerStore.encode, MongoReviewAnswerStore.decode)
+  def append(answer: ReviewAnswer): Unit = synchronized(kept += stored(answer))
   def all(): Seq[ReviewAnswer] = synchronized(kept.toList)
 }
 

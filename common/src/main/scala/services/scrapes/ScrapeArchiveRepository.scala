@@ -350,23 +350,27 @@ object ScrapeArchiveRepository {
 
 /** In-memory `ScrapeArchiveRepository` for tests and Mongo-less dev. Same
  *  semantics as the Mongo one: one row per cinema, content replaced only by
- *  content, barren markers applied only when newer than the stored listing. */
+ *  content, barren markers applied only when newer than the stored listing. Each row
+ *  is kept as written through the archive's codec to BSON and read back. */
 class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
 
   private val byCinema = scala.collection.mutable.Map.empty[String, ArchivedScrape]
+
+  private def stored(row: ArchivedScrape): ArchivedScrape =
+    StoredScrapeDto.toDomain(row.cinema, services.BsonRoundTrip.throughCodec(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto]))(StoredScrapeDto.of(row)))
 
   def enabled: Boolean = true
 
   protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit =
     byCinema.synchronized(byCinema.update(cinema.displayName,
-      ArchivedScrape(cinema, city, Some(scrape), lastBarren = None)))
+      stored(ArchivedScrape(cinema, city, Some(scrape), lastBarren = None))))
 
   protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit =
     byCinema.synchronized {
       val row = byCinema.getOrElse(cinema.displayName, ArchivedScrape(cinema, city, None, None))
       if (!row.contentAt.exists(_.isAfter(attempt.at)))
         byCinema.update(cinema.displayName,
-          row.copy(lastBarren = Some(BarrenAttempt.continuing(row.lastBarren, attempt))))
+          stored(row.copy(lastBarren = Some(BarrenAttempt.continuing(row.lastBarren, attempt)))))
     }
 
   def find(cinema: Cinema): Option[ArchivedScrape] =

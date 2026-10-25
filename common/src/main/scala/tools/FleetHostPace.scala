@@ -27,13 +27,16 @@ object FleetHostPace {
   private[tools] def slotOf(next: Option[Instant], now: Instant): Instant = next.filter(_.isAfter(now)).getOrElse(now)
 }
 
-/** The slots in this process — a test's, or a worker with no fleet database (it paces itself alone). */
+/** The slots in this process — a test's, or a worker with no fleet database (it paces itself alone) — each host's next
+ *  slot kept as [[MongoFleetHostPace]] would hold it, written as its document to BSON and read back. */
 final class InMemoryFleetHostPace extends FleetHostPace {
   private val next = new ConcurrentHashMap[String, Instant]()
+  private def stored(host: String, at: Instant) =
+    MongoFleetHostPace.nextOf(services.BsonRoundTrip(MongoFleetHostPace.encode(host, at))).getOrElse(at)
   def take(host: String, interval: FiniteDuration, horizon: Duration, now: Instant): Either[Instant, Instant] = synchronized {
     val slot = FleetHostPace.slotOf(Option(next.get(host)), now)
     if (horizon.isFinite && slot.isAfter(now.plusMillis(horizon.toMillis))) Left(slot)
-    else { next.put(host, slot.plusMillis(interval.toMillis)); Right(slot) }
+    else { next.put(host, stored(host, slot.plusMillis(interval.toMillis))); Right(slot) }
   }
 }
 
@@ -54,17 +57,23 @@ final class MongoFleetHostPace(db: MongoDatabase) extends FleetHostPace {
     try {
       val before = Await.result(collection.findOneAndUpdate(within, update,
         FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.BEFORE)).toFutureOption(), Timeout)
-      Right(FleetHostPace.slotOf(before.flatMap(_.get[BsonDateTime]("next")).map(at => Instant.ofEpochMilli(at.getValue)), now))
+      Right(FleetHostPace.slotOf(before.flatMap(MongoFleetHostPace.nextOf), now))
     } catch {
       // The host's document exists and its next slot is past the horizon: the upsert met its id.
       // A findAndModify's upsert reports the clash as a command error, not a write error.
       case e: com.mongodb.MongoException if e.getCode == 11000 =>
         Left(Await.result(collection.find(Filters.eq("_id", host)).headOption(), Timeout)
-          .flatMap(_.get[BsonDateTime]("next")).map(at => Instant.ofEpochMilli(at.getValue)).getOrElse(now))
+          .flatMap(MongoFleetHostPace.nextOf).getOrElse(now))
     }
   }
 }
 
 object MongoFleetHostPace {
   val Collection = "fleet_host_pace"
+
+  /** A host's document: its next free slot. */
+  def encode(host: String, next: Instant): Document = Document("_id" -> host, "next" -> BsonDateTime(next.toEpochMilli))
+
+  /** The next free slot a host's document holds, if any. */
+  def nextOf(document: Document): Option[Instant] = document.get[BsonDateTime]("next").map(at => Instant.ofEpochMilli(at.getValue))
 }

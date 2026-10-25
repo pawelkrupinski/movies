@@ -18,9 +18,12 @@ import scala.jdk.CollectionConverters._
  * Each row also carries the instant it last genuinely CHANGED, read from `clock` — the
  * in-memory twin of the Mongo rows' `updatedAt`, which the same no-op guards leave alone.
  *
+ * Each row is kept as its Mongo store would hand it back: `stored(filmId, slotKey, row)` writes it through the store's
+ * codec to BSON and reads it back ([[services.BsonRoundTrip]]), before the no-op guard compares it.
+ *
  * One monitor guards all mutations — fine at test/dev scale.
  */
-final class InMemorySlotRows[A](clock: Clock) {
+final class InMemorySlotRows[A](clock: Clock, stored: (String, String, A) => A) {
 
   private val byFilm    = scala.collection.mutable.Map.empty[String, Map[String, A]]
   private val stamps    = scala.collection.mutable.Map.empty[String, Instant]   // composite row id -> last change
@@ -32,7 +35,8 @@ final class InMemorySlotRows[A](clock: Clock) {
   def all(): Map[String, Map[String, A]] = lock.synchronized(byFilm.toMap)
 
   /** Set a film's rows to EXACTLY `rows` — an empty map removes the film. */
-  def replaceFilm(filmId: String, rows: Map[String, A]): Unit =
+  def replaceFilm(filmId: String, written: Map[String, A]): Unit = {
+    val rows = written.map { case (k, row) => k -> stored(filmId, k, row) }
     ringIf(filmId, lock.synchronized {
       val current = byFilm.getOrElse(filmId, Map.empty)
       if (current == rows) false
@@ -43,19 +47,22 @@ final class InMemorySlotRows[A](clock: Clock) {
         true
       }
     })
+  }
 
-  def upsert(filmId: String, slotKey: String, row: A): Unit =
+  def upsert(filmId: String, slotKey: String, written: A): Unit = {
+    val row = stored(filmId, slotKey, written)
     ringIf(filmId, lock.synchronized {
       val current = byFilm.getOrElse(filmId, Map.empty)
       if (current.get(slotKey).contains(row)) false
       else { byFilm.update(filmId, current + (slotKey -> row)); stamp(filmId, slotKey); true }
     })
+  }
 
   /** Replace an EXISTING row with `f` of it; an absent row stays absent. */
   def updateIfPresent(filmId: String, slotKey: String)(f: A => A): Unit =
     ringIf(filmId, lock.synchronized {
       val current = byFilm.getOrElse(filmId, Map.empty)
-      current.get(slotKey).map(f).filterNot(current.get(slotKey).contains) match {
+      current.get(slotKey).map(row => stored(filmId, slotKey, f(row))).filterNot(current.get(slotKey).contains) match {
         case Some(next) => byFilm.update(filmId, current + (slotKey -> next)); stamp(filmId, slotKey); true
         case None       => false
       }

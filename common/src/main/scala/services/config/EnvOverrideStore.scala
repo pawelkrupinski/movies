@@ -31,12 +31,17 @@ trait EnvOverrideStore {
   def refresh(): Boolean
 }
 
-/** In-memory override store — caching is trivial since there's one process. */
+/** In-memory override store — caching is trivial since there's one process. Each override is written as
+ *  [[MongoEnvOverrideStore]] stores it to BSON and read back. */
 class InMemoryEnvOverrideStore extends EnvOverrideStore {
   private val map = new java.util.concurrent.ConcurrentHashMap[String, String]()
   def lookup(key: String): Option[String] = Option(map.get(key))
   def all(): Map[String, String] = { import scala.jdk.CollectionConverters._; map.asScala.toMap }
-  def set(key: String, value: String): Unit = { map.put(key, value); () }
+  def set(key: String, value: String): Unit = {
+    val (k, v) = MongoEnvOverrideStore.decode(services.BsonRoundTrip(MongoEnvOverrideStore.encode(key, value)))
+      .getOrElse(throw new IllegalStateException(s"override $key does not read back as stored"))
+    map.put(k, v); ()
+  }
   def clear(key: String): Unit = { map.remove(key); () }
   def refresh(): Boolean = true
 }
@@ -48,6 +53,7 @@ class InMemoryEnvOverrideStore extends EnvOverrideStore {
  *  the local cache is updated synchronously on set/clear so the writing process
  *  sees its own flip without waiting for the next refresh. */
 class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverrideStore with Logging {
+  import MongoEnvOverrideStore.*
   private val coll: Option[MongoCollection[Document]] =
     sharedDb.map(_.getCollection[Document]("env_overrides"))
 
@@ -61,20 +67,15 @@ class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverride
     val read = Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds))
     read.fold(
       e => logger.warn(s"EnvOverrideStore.refresh failed, the overrides kept as last read: ${e.getMessage}"),
-      docs => cache = docs.flatMap { d =>
-        for { k <- str(d, "_id"); v <- str(d, "value") } yield k -> v
-      }.toMap)
+      docs => cache = docs.flatMap(decode).toMap)
     read.isSuccess
   }
-
-  private def str(d: Document, key: String): Option[String] =
-    d.get(key).filter(_.isString).map(_.asString().getValue)
 
   def set(key: String, value: String): Unit = {
     coll.foreach { c =>
       Try(Await.result(
         c.replaceOne(Filters.eq("_id", key),
-          Document("_id" -> key, "value" -> value), ReplaceOptions().upsert(true)).toFuture(),
+          encode(key, value), ReplaceOptions().upsert(true)).toFuture(),
         10.seconds))
         .recover { case e => logger.warn(s"EnvOverrideStore.set($key) failed: ${e.getMessage}") }
     }
@@ -88,4 +89,16 @@ class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverride
     }
     cache = cache - key
   }
+}
+
+object MongoEnvOverrideStore {
+  /** An override as stored: `{ _id: key, value }`. */
+  private[config] def encode(key: String, value: String): Document = Document("_id" -> key, "value" -> value)
+
+  /** A stored override; None for a malformed document. */
+  private[config] def decode(d: Document): Option[(String, String)] =
+    for { k <- str(d, "_id"); v <- str(d, "value") } yield k -> v
+
+  private def str(d: Document, key: String): Option[String] =
+    d.get(key).filter(_.isString).map(_.asString().getValue)
 }

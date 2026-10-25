@@ -55,7 +55,7 @@ import scala.util.{Failure, Success, Try}
  * `findOneAndUpdate` on the primary, not from the write concern.
  */
 class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = "tasks") extends TaskQueue with Logging {
-  import MongoTaskQueue.QueueWriteConcern
+  import MongoTaskQueue.*
 
   private val coll: Option[MongoCollection[Document]] =
     db.map(_.getCollection(collectionName).withWriteConcern(QueueWriteConcern))
@@ -87,21 +87,9 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     case None => EnqueueResult.Duplicate
     case Some(c) =>
       val filter = Filters.and(Filters.eq("dedupKey", dedupKey), Filters.eq("active", true))
-      // A `notBefore` holds the task back from `claim` until that instant — the same
-      // `nextEligibleAt` gate the release-backoff uses (see `claim`'s `eligible`).
-      val eligibility = notBefore.toSeq.map(t =>
-        Updates.setOnInsert("nextEligibleAt", new java.util.Date(t.toEpochMilli)))
-      val onInsert = Updates.combine((Seq(
-        Updates.setOnInsert("_id", UUID.randomUUID().toString),
-        Updates.setOnInsert("taskType", taskType.name),
-        Updates.setOnInsert("dedupKey", dedupKey),
-        Updates.setOnInsert("payload", payloadDocument(payload)),
-        Updates.setOnInsert("state", TaskState.Waiting),
-        Updates.setOnInsert("active", true),
-        Updates.setOnInsert("submittedAt", new java.util.Date(submittedAt.toEpochMilli - claimAhead.toMillis)),
-        Updates.setOnInsert("enqueuedAt", new java.util.Date(submittedAt.toEpochMilli)),
-        Updates.setOnInsert("attempts", 0)
-      ) ++ eligibility)*)
+      val onInsert = Updates.combine((Updates.setOnInsert("_id", UUID.randomUUID().toString) +:
+        inserted(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead).toSeq.map { case (field, value) =>
+          Updates.setOnInsert(field, value) })*)
       Try {
         val res = Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate
@@ -363,31 +351,50 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     enqueuedAt     = Option(document.getDate("enqueuedAt")).map(d => Instant.ofEpochMilli(d.getTime))
   )
 
-  private def payloadDocument(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {
+  private def toTask(document: Document, taskType: TaskType): Task =
+    Task(
+      id       = document.getString("_id"),
+      taskType = taskType,
+      dedupKey = document.getString("dedupKey"),
+      payload  = payloadOf(document),
+      attempts = document.getInteger("attempts", 0)
+    )
+}
+
+object MongoTaskQueue {
+  /** A new task's fields, `_id` aside, as an enqueue inserts them. A `notBefore` holds the task back from `claim` until
+   *  that instant — the same `nextEligibleAt` gate the release-backoff uses (see `claim`'s `eligible`). */
+  private[tasks] def inserted(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant,
+                              notBefore: Option[Instant], claimAhead: FiniteDuration): Document =
+    Document(
+      "taskType"    -> BsonString(taskType.name),
+      "dedupKey"    -> BsonString(dedupKey),
+      "payload"     -> payloadDocument(payload),
+      "state"       -> BsonString(TaskState.Waiting),
+      "active"      -> org.mongodb.scala.bson.BsonBoolean(true),
+      "submittedAt" -> org.mongodb.scala.bson.BsonDateTime(submittedAt.toEpochMilli - claimAhead.toMillis),
+      "enqueuedAt"  -> org.mongodb.scala.bson.BsonDateTime(submittedAt.toEpochMilli),
+      "attempts"    -> org.mongodb.scala.bson.BsonInt32(0)) ++
+      notBefore.fold(Document())(t =>
+        Document("nextEligibleAt" -> org.mongodb.scala.bson.BsonDateTime(t.toEpochMilli)))
+
+  /** A payload as stored: a sub-document whose field names are its keys. */
+  private[tasks] def payloadDocument(payload: Map[String, String]): org.mongodb.scala.bson.BsonDocument = {
     val bd = new org.mongodb.scala.bson.BsonDocument()
     payload.foreach { case (k, v) => bd.put(k, BsonString(v)) }
     bd
   }
 
-  private def toTask(document: Document, taskType: TaskType): Task = {
-    val payload = document.get("payload")
+  /** The payload a task's document holds; none without one. */
+  private[tasks] def payloadOf(document: Document): Map[String, String] =
+    document.get("payload")
       .filter(_.isDocument)
       .map { v =>
-        val document = v.asDocument()
-        document.keySet().asScala.iterator.map(k => k -> document.getString(k).getValue).toMap
+        val payload = v.asDocument()
+        payload.keySet().asScala.iterator.map(k => k -> payload.getString(k).getValue).toMap
       }
       .getOrElse(Map.empty[String, String])
-    Task(
-      id       = document.getString("_id"),
-      taskType = taskType,
-      dedupKey = document.getString("dedupKey"),
-      payload  = payload,
-      attempts = document.getInteger("attempts", 0)
-    )
-  }
-}
 
-object MongoTaskQueue {
   /** `{w:1, j:false}` — ack on primary apply, no journal-fsync/majority wait. The
    *  queue is recoverable bookkeeping, so the durability trade buys back the
    *  per-op cost that dominated the shared-cpu Mongo's load. See the class document. */

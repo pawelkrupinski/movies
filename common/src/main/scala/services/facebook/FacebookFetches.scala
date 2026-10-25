@@ -78,4 +78,10 @@ object MongoFacebookFetches {
   private val Timeout     = 10.seconds
   /** URLs per lookup: a film shows in at most a few hundred cities. */
   private val LookupBatch = 500
+
+  /** A page's document: its latest fetch. */
+  def encode(url: String, at: Instant): Document = Document("_id" -> url, FetchedAt -> new Date(at.toEpochMilli))
+
+  /** The latest fetch a page's document holds. */
+  def fetchedAtOf(document: Document): Option[Instant] = document.get(FetchedAt).map(at => Instant.ofEpochMilli(at.asDateTime.getValue))
 }

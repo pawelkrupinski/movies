@@ -88,11 +88,7 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   // into a duplicate key — that attempt's slice stands.
   def storeChunk(cinema: String, runId: String, key: String, chunk: StoredChunk, now: Instant): Unit = chunks.foreach { c =>
     val id = chunkId(cinema, runId, key)
-    val update = Updates.combine(
-      Updates.setOnInsert("_id", id),
-      Updates.set("cinema", cinema), Updates.set("runId", runId), Updates.set("key", key),
-      Updates.set("value", chunk.valueJson), Updates.set("complete", chunk.complete), Updates.set("attempt", chunk.attempt),
-      Updates.set("storedAt", new java.util.Date(now.toEpochMilli)))
+    val update = Updates.combine(Updates.setOnInsert("_id", id), services.MongoUpdates.setEach(chunkDoc(cinema, runId, key, chunk, now)))
     try {
       val _ = Await.result(c.updateOne(Filters.and(Filters.eq("_id", id), Filters.not(Filters.gt("attempt", chunk.attempt))), update,
         new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
@@ -111,10 +107,7 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   }.map(_.getString("key")).toSet
 
   def loadChunks(cinema: String, runId: String): Map[String, StoredChunk] =
-    loadDocs(cinema, runId).map(d => d.getString("key") -> StoredChunk(
-      valueJson = d.getString("value"),
-      complete  = d.get("complete").filter(_.isBoolean).forall(_.asBoolean().getValue),
-      attempt   = d.get("attempt").filter(_.isInt32).fold(0)(_.asInt32().getValue))).toMap
+    loadDocs(cinema, runId).map(d => d.getString("key") -> toChunk(d)).toMap
 
   private def loadDocs(cinema: String, runId: String): Seq[Document] = chunks.toSeq.flatMap { c =>
     Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
@@ -128,21 +121,31 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
     runs.foreach(c => Try(Await.result(c.deleteOne(Filters.and(Filters.eq("_id", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds)))
     chunks.foreach(c => Try(Await.result(c.deleteMany(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds)))
   }
-
-  private def runDoc(cinema: String, runId: String, expectedKeys: Seq[String], now: Instant): Document =
-    Document("_id" -> cinema, "runId" -> runId,
-      "expectedKeys" -> BsonArray.fromIterable(expectedKeys.map(BsonString(_))),
-      "createdAt" -> new java.util.Date(now.toEpochMilli))
-
-  private def toRun(d: Document): ChunkRun = ChunkRun(
-    cinema       = d.getString("_id"),
-    runId        = d.getString("runId"),
-    expectedKeys = d.get("expectedKeys").filter(_.isArray)
-      .map(_.asArray().getValues.asScala.iterator.map(_.asString().getValue).toVector).getOrElse(Vector.empty),
-    createdAt    = Instant.ofEpochMilli(d.getDate("createdAt").getTime))
 }
 
 object MongoChunkScrapeStore {
   private val TtlHours = 1L
   private def chunkId(cinema: String, runId: String, key: String): String = s"$cinema|$runId|$key"
+
+  private[tasks] def runDoc(cinema: String, runId: String, expectedKeys: Seq[String], now: Instant): Document =
+    Document("_id" -> cinema, "runId" -> runId,
+      "expectedKeys" -> BsonArray.fromIterable(expectedKeys.map(BsonString(_))),
+      "createdAt" -> new java.util.Date(now.toEpochMilli))
+
+  private[tasks] def toRun(d: Document): ChunkRun = ChunkRun(
+    cinema       = d.getString("_id"),
+    runId        = d.getString("runId"),
+    expectedKeys = d.get("expectedKeys").filter(_.isArray)
+      .map(_.asArray().getValues.asScala.iterator.map(_.asString().getValue).toVector).getOrElse(Vector.empty),
+    createdAt    = Instant.ofEpochMilli(d.getDate("createdAt").getTime))
+
+  /** A chunk's stored fields, `_id` aside. */
+  private[tasks] def chunkDoc(cinema: String, runId: String, key: String, chunk: StoredChunk, now: Instant): Document =
+    Document("cinema" -> cinema, "runId" -> runId, "key" -> key, "value" -> chunk.valueJson, "complete" -> chunk.complete,
+      "attempt" -> chunk.attempt, "storedAt" -> new java.util.Date(now.toEpochMilli))
+
+  private[tasks] def toChunk(d: Document): StoredChunk = StoredChunk(
+    valueJson = d.getString("value"),
+    complete  = d.get("complete").filter(_.isBoolean).forall(_.asBoolean().getValue),
+    attempt   = d.get("attempt").filter(_.isInt32).fold(0)(_.asInt32().getValue))
 }

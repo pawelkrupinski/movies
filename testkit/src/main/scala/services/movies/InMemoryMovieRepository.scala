@@ -57,8 +57,12 @@ class InMemoryMovieRepository(
   // catch-up read (`foreachRecordUpdatedSince`) is a range over it, and a fake that did not
   // keep one could only answer that read with everything or nothing.
   private val updatedAtById = mutable.Map.empty[String, java.time.Instant]
+  // Its record as `movies` would hand it back: written through the Mongo codec to BSON and read again
+  // (`services.BsonRoundTrip`); the row's title, year and key stay as written.
   private def put(id: String, row: StoredMovieRecord): Unit = {
-    store.put(id, row); updatedAtById.put(id, clock.instant()); ()
+    val at     = clock.instant()
+    val stored = services.BsonRoundTrip.throughCodec(MovieCodecs.registry.get(classOf[StoredMovieDto]))(StoredMovieDto.fromDomain(id, row.record, at))
+    store.put(id, row.copy(record = StoredMovieDto.toDomain(stored, normalizer).record)); updatedAtById.put(id, at); ()
   }
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
   val deletes         = mutable.ListBuffer.empty[(String, Option[Int])]

@@ -4,10 +4,15 @@ import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
 
 /** [[FacebookRescrapeStore]] in a map — what several simulated workers share in a spec, the way
- *  the fleet shares the Mongo collection. Same contract, pinned by `FacebookRescrapeStoreContractSpec`. */
+ *  the fleet shares the Mongo collection. Same contract, pinned by `FacebookRescrapeStoreContractSpec`. Each entry is
+ *  kept as [[MongoFacebookRescrapeStore]] stores it, written to BSON and read back. */
 class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
   // key -> (entry, enqueued at)
   private val entries  = collection.mutable.LinkedHashMap.empty[String, (RescrapeEntry, Instant)]
+  private def put(key: String, entry: RescrapeEntry, enqueued: Instant): Unit = {
+    val stored = services.BsonRoundTrip(MongoFacebookRescrapeStore.entryDocument(entry, enqueued))
+    entries(key) = (MongoFacebookRescrapeStore.entryOf(stored), MongoFacebookRescrapeStore.enqueuedAtOf(stored))
+  }
   private var nextSlot = Option.empty[Instant]
   // key -> the latest due time a request asked for since the entry was last claimed
   private val askedAgain = collection.mutable.Map.empty[String, Instant]
@@ -17,11 +22,11 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
       entries.get(e.key) match {
         case Some((waiting, enqueued)) =>
           val promoted = if (e.kind == RescrapeKind.Page) waiting.copy(target = e.target) else waiting
-          entries(e.key) = (if (e.notBefore.isAfter(waiting.notBefore)) promoted.copy(notBefore = e.notBefore) else promoted, enqueued)
+          put(e.key, if (e.notBefore.isAfter(waiting.notBefore)) promoted.copy(notBefore = e.notBefore) else promoted, enqueued)
           askedAgain(e.key) = askedAgain.get(e.key).filter(_.isAfter(e.notBefore)).getOrElse(e.notBefore)
           false
         case None =>
-          entries(e.key) = (e.copy(attempts = 0), e.notBefore)
+          put(e.key, e.copy(attempts = 0), e.notBefore)
           true
       }
     }
@@ -35,7 +40,7 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry] = synchronized {
     due(country, kind, now).toSeq.sortBy(_._2).headOption.map { case (e, enqueued) =>
       val claimed = e.copy(notBefore = now.plusMillis(lease.toMillis), attempts = e.attempts + 1)
-      entries(e.key) = (claimed, enqueued)
+      put(e.key, claimed, enqueued)
       askedAgain.remove(e.key)
       claimed
     }
@@ -46,14 +51,14 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
 
   def complete(claimed: RescrapeEntry): Unit = synchronized(ifStillClaimed(claimed) { enqueued =>
     askedAgain.remove(claimed.key) match {
-      case Some(at) => entries(claimed.key) = (claimed.copy(notBefore = at, attempts = 0), enqueued)
+      case Some(at) => put(claimed.key, claimed.copy(notBefore = at, attempts = 0), enqueued)
       case None     => entries.remove(claimed.key)
     }
   })
 
   def retry(claimed: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit = synchronized {
     ifStillClaimed(claimed)(enqueued =>
-      entries(claimed.key) = (claimed.copy(notBefore = at, attempts = if (countAttempt) claimed.attempts else claimed.attempts - 1), enqueued))
+      put(claimed.key, claimed.copy(notBefore = at, attempts = if (countAttempt) claimed.attempts else claimed.attempts - 1), enqueued))
   }
 
   def takeSlot(now: Instant, spacing: FiniteDuration, slack: FiniteDuration): Boolean = synchronized {

@@ -10,7 +10,8 @@ import scala.jdk.CollectionConverters._
  * In-memory `TaskQueue` for tests and Mongo-less dev. Mirrors
  * [[MongoTaskQueue]]'s semantics exactly: per-dedupKey idempotent enqueue,
  * FIFO atomic claim, ownership-guarded complete/release, lease reaping. All
- * mutations are guarded by one monitor — fine at test/dev scale.
+ * mutations are guarded by one monitor — fine at test/dev scale. What a task is written with — its payload and its
+ * instants — is written as [[MongoTaskQueue]] inserts it to BSON and read back ([[services.BsonRoundTrip]]).
  */
 class InMemoryTaskQueue extends TaskQueue {
 
@@ -45,9 +46,11 @@ class InMemoryTaskQueue extends TaskQueue {
       val active = rows.values.exists(_.dedupKey == dedupKey)
       if (active) EnqueueResult.Duplicate
       else {
-        val id = UUID.randomUUID().toString
-        rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting,
-          submittedAt.minusMillis(claimAhead.toMillis), 0, None, None, notBefore, Some(submittedAt)))
+        val id     = UUID.randomUUID().toString
+        val stored = services.BsonRoundTrip(MongoTaskQueue.inserted(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead))
+        def instant(field: String) = stored.get(field).map(at => Instant.ofEpochMilli(at.asDateTime.getValue))
+        rows.put(id, Row(id, taskType, dedupKey, MongoTaskQueue.payloadOf(stored), TaskState.Waiting,
+          instant("submittedAt").get, 0, None, None, instant("nextEligibleAt"), instant("enqueuedAt")))
         EnqueueResult.Added
       }
     }
@@ -61,7 +64,8 @@ class InMemoryTaskQueue extends TaskQueue {
     // "Amended" means MATCHED, as Mongo's matched count reports it: a waiting task that
     // already carries `fields` still runs the caller's request.
     fields.nonEmpty && rows.values.find(r => r.dedupKey == dedupKey && r.state == TaskState.Waiting).exists { r =>
-      rows.put(r.id, r.copy(payload = r.payload ++ fields)); true
+      val stored = services.BsonRoundTrip(org.mongodb.scala.Document("payload" -> MongoTaskQueue.payloadDocument(r.payload ++ fields)))
+      rows.put(r.id, r.copy(payload = MongoTaskQueue.payloadOf(stored))); true
     }
   }
 

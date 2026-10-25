@@ -151,11 +151,13 @@ object MongoUserRepository {
  * In-memory `UserRepository` for tests. Trivial map keyed by `id` plus an
  * index on `(provider, providerSub)` so the lookup signatures both
  * stay O(1). Never persists anything across instances — every spec
- * starts with a fresh empty store.
+ * starts with a fresh empty store. Each user is kept as `users` stores it: written
+ * through its codec to BSON and read back.
  */
 class InMemoryUserRepository extends UserRepository {
   private val byId  = scala.collection.mutable.Map.empty[String, User]
   private val bySub = scala.collection.mutable.Map.empty[(String, String), String]
+  private val stored = services.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[User]))
 
   def enabled: Boolean = true
 
@@ -165,7 +167,7 @@ class InMemoryUserRepository extends UserRepository {
     bySub.get((provider, providerSub)).flatMap(byId.get)
 
   def upsert(user: User): User = synchronized {
-    val kept = user.copy(sessionVersion = byId.get(user.id).map(_.sessionVersion).fold(user.sessionVersion)(_ max user.sessionVersion))
+    val kept = stored(user.copy(sessionVersion = byId.get(user.id).map(_.sessionVersion).fold(user.sessionVersion)(_ max user.sessionVersion)))
     // Account linking can change a user's (provider, providerSub) pair —
     // sweep out any stale entries pointing to this id before re-indexing.
     // Mongo's overwrite-on-upsert gives the same effect naturally; the
@@ -178,7 +180,7 @@ class InMemoryUserRepository extends UserRepository {
 
   def revokeSessions(id: String): Option[User] = synchronized {
     byId.get(id).map { stored =>
-      val revoked = stored.copy(sessionVersion = stored.sessionVersion + 1)
+      val revoked = this.stored(stored.copy(sessionVersion = stored.sessionVersion + 1))
       byId(id) = revoked
       revoked
     }

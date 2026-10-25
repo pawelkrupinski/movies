@@ -1,8 +1,8 @@
 package services.cadence
 
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.{Filters, Sorts, Updates}
+import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.model.{Filters, Sorts}
 import com.mongodb.client.model.UpdateOptions
 import play.api.Logging
 import services.movies.KeysetScan
@@ -50,11 +50,16 @@ trait RatingCadenceStore {
   def close(): Unit = ()
 }
 
-/** In-memory store for tests and Mongo-less local dev. */
+/** In-memory store for tests and Mongo-less local dev: each record written as [[MongoRatingCadenceStore]] stores it to BSON
+ *  and read back. */
 class InMemoryRatingCadenceStore extends RatingCadenceStore {
   private val stats = new ConcurrentHashMap[String, RatingChangeStats]()
   override def statsFor(key: String): Option[RatingChangeStats] = Option(stats.get(key))
-  override protected def persist(key: String, s: RatingChangeStats): Unit = { stats.put(key, s); () }
+  override protected def persist(key: String, s: RatingChangeStats): Unit = {
+    val stored = MongoRatingCadenceStore.decodeRecord(services.BsonRoundTrip(Document("_id" -> key) ++ MongoRatingCadenceStore.encodeRecord(s)))
+      .getOrElse(throw new IllegalStateException(s"rating cadence of $key does not read back as stored"))
+    stats.put(stored._1, stored._2); ()
+  }
   override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(stats)(_.lastCheckedAt)
 }
 
@@ -98,16 +103,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
       Try {
         c.updateOne(
           Filters.eq("_id", key),
-          Updates.combine(
-            Updates.set("backoffLevel", s.backoffLevel),
-            Updates.set("unchangedStreak", s.unchangedStreak),
-            Updates.set("windowChecks", s.windowChecks),
-            Updates.set("windowChanges", s.windowChanges),
-            Updates.set("windowStartedAt", new java.util.Date(s.windowStartedAt.toEpochMilli)),
-            Updates.set("lastCheckedAt", new java.util.Date(s.lastCheckedAt.toEpochMilli)),
-            Updates.set("lastChange", MongoRatingCadenceStore.encodeChange(s.lastChange)),
-            Updates.set("prevChange", MongoRatingCadenceStore.encodeChange(s.prevChange))
-          ),
+          services.MongoUpdates.setEach(MongoRatingCadenceStore.encodeRecord(s)),
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),
@@ -147,6 +143,17 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
 }
 
 object MongoRatingCadenceStore {
+  /** A record's stored fields, `_id` aside. */
+  private[cadence] def encodeRecord(s: RatingChangeStats): Document = Document(
+    "backoffLevel"    -> BsonInt32(s.backoffLevel),
+    "unchangedStreak" -> BsonInt32(s.unchangedStreak),
+    "windowChecks"    -> BsonInt32(s.windowChecks),
+    "windowChanges"   -> BsonInt32(s.windowChanges),
+    "windowStartedAt" -> BsonDateTime(s.windowStartedAt.toEpochMilli),
+    "lastCheckedAt"   -> BsonDateTime(s.lastCheckedAt.toEpochMilli),
+    "lastChange"      -> encodeChange(s.lastChange),
+    "prevChange"      -> encodeChange(s.prevChange))
+
   /** Encode a change as a `{at, from, to}` sub-document, or BSON null when absent. */
   private[cadence] def encodeChange(change: Option[RatingChange]): BsonValue = change match {
     case Some(c) => BsonDocument(

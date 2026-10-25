@@ -48,11 +48,14 @@ object EnvRegistryStore {
   }
 }
 
+/** The knobs as [[MongoEnvRegistryStore]] would hold them: each written as its document to BSON and read back. */
 class InMemoryEnvRegistryStore extends EnvRegistryStore {
   // keyed by app -> (key -> knob)
   private val byApp = new java.util.concurrent.ConcurrentHashMap[String, Map[String, RegisteredKnob]]()
+  private def stored(k: RegisteredKnob) = MongoEnvRegistryStore.fromDoc(services.BsonRoundTrip(MongoEnvRegistryStore.toDoc(k)))
+    .getOrElse(throw new IllegalStateException(s"knob ${k.app}|${k.key} does not read back as stored"))
   def publish(app: String, knobs: Seq[RegisteredKnob]): Boolean = {
-    byApp.put(app, knobs.map(k => k.key -> k).toMap); true
+    byApp.put(app, knobs.map(k => k.key -> stored(k)).toMap); true
   }
   def all(): Seq[RegisteredKnob] = {
     import scala.jdk.CollectionConverters._
@@ -61,6 +64,7 @@ class InMemoryEnvRegistryStore extends EnvRegistryStore {
 }
 
 class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistryStore with Logging {
+  import MongoEnvRegistryStore.*
   private val coll: Option[MongoCollection[Document]] =
     sharedDb.map(_.getCollection[Document]("env_registry"))
 
@@ -92,7 +96,9 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
   def all(): Seq[RegisteredKnob] =
     coll.fold(Seq.empty[RegisteredKnob])(c =>
       Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(fromDoc))
+}
 
+object MongoEnvRegistryStore {
   // Build the doc with only the fields that are present. A `null` value can't go
   // through the Scala Mongo `Document` builder (it throws), and an unset knob has
   // a None current (and a get-knob has a None default) — so the previous

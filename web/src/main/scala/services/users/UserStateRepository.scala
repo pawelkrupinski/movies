@@ -337,8 +337,11 @@ object MongoUserStateRepository {
     ).toBsonDocument)
 }
 
+/** The states as `userStates` would hold them: each written through its codec to BSON and read back. */
 class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
+  private val stored = services.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[UserState]))
+  private def put(state: UserState): UserState = { val kept = stored(state); store(kept.userId) = kept; kept }
   private val liveness = new ChangeStreamLiveness(clock)
   private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
 
@@ -349,18 +352,14 @@ class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepos
   /** Whole-row replace, for SEEDING a spec — deliberately not on the trait: production
    *  writes only through the atomic field-scoped pipelines. The Mongo-side equivalent
    *  is the test-support `UserStateRows.replace`. */
-  def upsert(state: UserState): Unit = {
-    synchronized(store(state.userId) = state)
-    published(state)
-  }
+  def upsert(state: UserState): Unit =
+    published(synchronized(put(state)))
 
   def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] = {
     val after = synchronized {
-      val stored = store.get(userId)
-      val next   = stored.getOrElse(UserState.empty(userId, now))
-        .copy(language = language, updatedAt = UserState.nextUpdatedAt(stored.map(_.updatedAt), now))
-      store(userId) = next
-      next
+      val current = store.get(userId)
+      put(current.getOrElse(UserState.empty(userId, now))
+        .copy(language = language, updatedAt = UserState.nextUpdatedAt(current.map(_.updatedAt), now)))
     }
     published(after)
     Some(after)
@@ -368,16 +367,14 @@ class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepos
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
     val (after, written) = synchronized {
-      val stored = store.get(userId)
-      val base   = stored.getOrElse(UserState.empty(userId, now))
+      val current = store.get(userId)
+      val base    = current.getOrElse(UserState.empty(userId, now))
       change.applyTo(base.hiddenFilmsByCountry.getOrElse(country, Set.empty)) match {
         case None         => (base, false)
         case Some(bucket) =>
-          val next = base.copy(
+          (put(base.copy(
             hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, bucket),
-            updatedAt            = UserState.nextUpdatedAt(stored.map(_.updatedAt), now))
-          store(userId) = next
-          (next, true)
+            updatedAt            = UserState.nextUpdatedAt(current.map(_.updatedAt), now))), true)
       }
     }
     if (written) published(after)

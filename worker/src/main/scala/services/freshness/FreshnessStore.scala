@@ -3,7 +3,7 @@ package services.freshness
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts}
 import play.api.Logging
 import services.movies.KeysetScan
 
@@ -78,11 +78,15 @@ trait FreshnessStore {
   def close(): Unit = ()
 }
 
-/** In-memory `FreshnessStore` for tests and Mongo-less local dev. */
+/** In-memory `FreshnessStore` for tests and Mongo-less local dev: each stamp kept as [[MongoFreshnessStore]] stores it,
+ *  written to BSON and read back. */
 class InMemoryFreshnessStore extends FreshnessStore {
   private val stamps = new ConcurrentHashMap[String, Instant]()
   override def lastFetchedAt(key: String): Option[Instant] = Option(stamps.get(key))
-  override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = { stamps.put(key, at); () }
+  override def markFresh(key: String, kind: FreshnessKind, at: Instant): Unit = {
+    val stored = services.BsonRoundTrip(org.mongodb.scala.bson.collection.immutable.Document("_id" -> key) ++ MongoFreshnessStore.encode(kind, at))
+    MongoFreshnessStore.stampOf(stored).foreach { case (k, stamp) => stamps.put(k, stamp) }
+  }
   override def invalidate(key: String): Unit = { stamps.remove(key); () }
   override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(stamps)(identity)
 }
@@ -158,10 +162,7 @@ class MongoFreshnessStore(
       Try {
         c.updateOne(
           Filters.eq("_id", key),
-          Updates.combine(
-            Updates.set("kind", kind.label),
-            Updates.set("lastFetchedAt", new java.util.Date(at.toEpochMilli))
-          ),
+          services.MongoUpdates.setEach(MongoFreshnessStore.encode(kind, at)),
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),
@@ -234,18 +235,24 @@ class MongoFreshnessStore(
         Await.result(c.find(paged).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), timeout)
       },
       onIncomplete   = exception => logger.warn(s"Freshness $label hydrate keyset scan failed: ${exception.getMessage}")
-    )(batch => batch.foreach { document =>
-      for {
-        key  <- Option(document.getString("_id"))
-        date <- Option(document.getDate("lastFetchedAt"))
-      } { mirror.put(key, Instant.ofEpochMilli(date.getTime)); count += 1 }
-    })
+    )(batch => batch.foreach(document => MongoFreshnessStore.stampOf(document).foreach { case (key, at) => mirror.put(key, at); count += 1 }))
     if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
     complete.isComplete
   }
 }
 
 object MongoFreshnessStore {
+  /** A stamp's stored fields, `_id` aside. */
+  def encode(kind: FreshnessKind, at: Instant): org.mongodb.scala.bson.collection.immutable.Document =
+    org.mongodb.scala.bson.collection.immutable.Document("kind" -> kind.label, "lastFetchedAt" -> new java.util.Date(at.toEpochMilli))
+
+  /** The key and stamp a stored document holds, if whole. */
+  def stampOf(document: org.mongodb.scala.Document): Option[(String, Instant)] =
+    for {
+      key  <- document.get("_id").filter(_.isString).map(_.asString.getValue)
+      date <- document.get("lastFetchedAt").filter(_.isDateTime).map(_.asDateTime.getValue)
+    } yield key -> Instant.ofEpochMilli(date)
+
   /** Boot hydrate in two phases. Load the scrape stamps (`loadScrape`, returning
    *  true once the read SUCCEEDS), then signal `scrapeReady` so the
    *  [[services.tasks.ScrapeReaper]] can start, then load the rest of the corpus

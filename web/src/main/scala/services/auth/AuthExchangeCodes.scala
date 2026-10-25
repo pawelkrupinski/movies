@@ -143,12 +143,16 @@ object AuthExchangeCodes {
  * use. Correct for the native-app handoff, which starts and finishes on the same
  * pod; NOT correct for the cross-domain one, where the pod that mints the code is
  * by definition not the pod that redeems it. Wiring picks this only when there is
- * no database to share.
+ * no database to share. Each code is kept as [[MongoAuthExchangeCodeStore]] stores it, written to BSON and read back.
  */
 class InMemoryAuthExchangeCodeStore extends AuthExchangeCodeStore {
   private val codes = new ConcurrentHashMap[String, PendingExchangeCode]()
 
-  override def put(pending: PendingExchangeCode): Unit = codes.put(pending.code, pending)
+  override def put(pending: PendingExchangeCode): Unit = {
+    val stored = MongoAuthExchangeCodeStore.decode(org.mongodb.scala.Document(services.BsonRoundTrip(MongoAuthExchangeCodeStore.encode(pending))))
+      .getOrElse(throw new IllegalStateException("an exchange code does not read back as stored"))
+    codes.put(stored.code, stored); ()
+  }
 
   override def remove(code: String): Option[PendingExchangeCode] = Option(codes.remove(code))
 

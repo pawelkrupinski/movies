@@ -86,8 +86,14 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   def countMovies():     tools.ReadOutcome[Long] = tools.ReadOutcome.Answered(lock.synchronized(moviesStore.size.toLong))
   def countScreenings(): tools.ReadOutcome[Long] = tools.ReadOutcome.Answered(lock.synchronized(screeningsStore.size.toLong))
 
-  def upsertMovie(m: ResolvedMovie): Unit = {
-    lock.synchronized { moviesStore.put(m._id, m); movieUpserts += m; writeOrder += s"movie:${m._id}"; history += Change(movies = true, m._id, deleted = false) }
+  // Each document as the read model's collections would hand it back: written through their codec to BSON and read
+  // again (`services.BsonRoundTrip`); the watchers get that, as the change stream decodes the stored document.
+  private val storedMovie     = services.BsonRoundTrip.throughCodec(ReadModelCodecs.registry.get(classOf[ResolvedMovie]))
+  private val storedScreening = services.BsonRoundTrip.throughCodec(ReadModelCodecs.registry.get(classOf[CityScreening]))
+
+  def upsertMovie(written: ResolvedMovie): Unit = {
+    val m = storedMovie(written)
+    lock.synchronized { moviesStore.put(m._id, m); movieUpserts += written; writeOrder += s"movie:${m._id}"; history += Change(movies = true, m._id, deleted = false) }
     movieWatcher.foreach { case (onUpsert, _) => onUpsert(m) }
   }
 
@@ -96,8 +102,9 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
     movieWatcher.foreach { case (_, onDelete) => onDelete(id) }
   }
 
-  def upsertScreening(s: CityScreening): Unit = {
-    lock.synchronized { screeningsStore.put(s._id, s); screeningUpserts += s; writeOrder += s"screening:${s._id}"; history += Change(movies = false, s._id, deleted = false) }
+  def upsertScreening(written: CityScreening): Unit = {
+    val s = storedScreening(written)
+    lock.synchronized { screeningsStore.put(s._id, s); screeningUpserts += written; writeOrder += s"screening:${s._id}"; history += Change(movies = false, s._id, deleted = false) }
     screeningWatcher.foreach { case (onUpsert, _) => onUpsert(s) }
   }
 

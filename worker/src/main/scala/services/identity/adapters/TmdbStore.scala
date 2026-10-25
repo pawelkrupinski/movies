@@ -90,6 +90,7 @@ object TmdbDocuments {
     }
 }
 
+/** The documents as [[MongoTmdbDocuments]] would hold them: each written to BSON and read back. */
 final class InMemoryTmdbDocuments extends TmdbDocuments with TmdbDocumentRetention {
   private val byKind = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, BsonDocument]()).toMap
   def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] =
@@ -101,7 +102,7 @@ final class InMemoryTmdbDocuments extends TmdbDocuments with TmdbDocumentRetenti
   }
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
     ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> _.clone())).toMap
-  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.foreach { case (id, d) => byKind(kind).put(id, d.clone()) }
+  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.foreach { case (id, d) => byKind(kind).put(id, services.BsonRoundTrip(d)) }
   def size(kind: TmdbKind): Int = byKind(kind).size
 }
 

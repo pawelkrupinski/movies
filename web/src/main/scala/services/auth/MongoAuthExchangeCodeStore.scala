@@ -44,13 +44,7 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDurat
   }
 
   override def put(pending: PendingExchangeCode): Unit = coll.foreach { c =>
-    val document = new BsonDocument()
-      .append("_id",      BsonString(pending.code))
-      .append("userId",   BsonString(pending.userId))
-      .append("issuedAt", BsonDateTime(pending.issuedAt.toEpochMilli))
-    pending.binding.foreach(binding => document.append("binding", BsonString(binding)))
-    pending.challenge.foreach(challenge => document.append("challenge", BsonString(challenge)))
-    Try(Await.result(c.insertOne(Document(document)).toFuture(), timeout))
+    Try(Await.result(c.insertOne(Document(MongoAuthExchangeCodeStore.encode(pending))).toFuture(), timeout))
       // WARN, not debug: the visitor lands signed out on the far side and has no
       // way to tell why, so this line is the only trace the handoff was even
       // attempted.
@@ -66,15 +60,8 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDurat
       .recover { case exception =>
         logger.warn(s"Auth exchange code lookup failed: ${exception.getMessage}"); None }
       .toOption.flatten
-      .flatMap(toPending)
+      .flatMap(MongoAuthExchangeCodeStore.decode)
   }
-
-  private def toPending(document: Document): Option[PendingExchangeCode] = for {
-    code     <- Option(document.getString("_id"))
-    userId   <- Option(document.getString("userId"))
-    issuedAt <- Option(document.getDate("issuedAt"))
-  } yield PendingExchangeCode(code, userId, Instant.ofEpochMilli(issuedAt.getTime), Option(document.getString("binding")),
-    Option(document.getString("challenge")))
 
   /** Housekeeping only — [[AuthExchangeCodes.redeem]] is what actually refuses an
    *  expired code, and it does so the instant the code is presented. Mongo's TTL
@@ -94,6 +81,25 @@ class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDurat
 
 object MongoAuthExchangeCodeStore {
   val CollectionName = "authExchangeCodes"
+
+  /** A pending code as stored. */
+  def encode(pending: PendingExchangeCode): BsonDocument = {
+    val document = new BsonDocument()
+      .append("_id",      BsonString(pending.code))
+      .append("userId",   BsonString(pending.userId))
+      .append("issuedAt", BsonDateTime(pending.issuedAt.toEpochMilli))
+    pending.binding.foreach(binding => document.append("binding", BsonString(binding)))
+    pending.challenge.foreach(challenge => document.append("challenge", BsonString(challenge)))
+    document
+  }
+
+  /** A stored pending code; None for a malformed document. */
+  def decode(document: Document): Option[PendingExchangeCode] = for {
+    code     <- Option(document.getString("_id"))
+    userId   <- Option(document.getString("userId"))
+    issuedAt <- Option(document.getDate("issuedAt"))
+  } yield PendingExchangeCode(code, userId, Instant.ofEpochMilli(issuedAt.getTime), Option(document.getString("binding")),
+    Option(document.getString("challenge")))
 
   /** Short: this sits on the redirect a visitor is watching, and a slow Mongo
    *  should drop them on a sign-in button rather than hang the hop. */

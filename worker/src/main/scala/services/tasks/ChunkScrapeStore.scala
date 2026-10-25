@@ -91,7 +91,8 @@ trait ChunkScrapeStore {
  * In-memory `ChunkScrapeStore` for tests, Mongo-less dev, and the deterministic
  * fixture harness. Mirrors [[MongoChunkScrapeStore]]'s semantics; one monitor
  * guards all state. runIds are a per-store counter (deterministic for tests);
- * the Mongo store uses UUIDs.
+ * the Mongo store uses UUIDs. Each run and chunk is kept as the Mongo store writes it,
+ * to BSON and read back.
  */
 class InMemoryChunkScrapeStore extends ChunkScrapeStore {
   private case class State(run: ChunkRun, chunks: Map[String, StoredChunk])
@@ -106,7 +107,8 @@ class InMemoryChunkScrapeStore extends ChunkScrapeStore {
         case _ =>
           counter += 1
           val runId = s"$cinema#$counter"
-          byCinema.put(cinema, State(ChunkRun(cinema, runId, expectedKeys, now), Map.empty))
+          val run = MongoChunkScrapeStore.toRun(services.BsonRoundTrip(MongoChunkScrapeStore.runDoc(cinema, runId, expectedKeys, now)))
+          byCinema.put(cinema, State(run, Map.empty))
           Some(runId)
       }
     }
@@ -117,7 +119,8 @@ class InMemoryChunkScrapeStore extends ChunkScrapeStore {
     lock.synchronized {
       byCinema.get(cinema).foreach { st =>
         if (st.run.runId == runId && st.chunks.get(key).forall(chunk.replaces))
-          byCinema.put(cinema, st.copy(chunks = st.chunks.updated(key, chunk)))
+          byCinema.put(cinema, st.copy(chunks = st.chunks.updated(key,
+            MongoChunkScrapeStore.toChunk(services.BsonRoundTrip(MongoChunkScrapeStore.chunkDoc(cinema, runId, key, chunk, now))))))
       }
     }
 

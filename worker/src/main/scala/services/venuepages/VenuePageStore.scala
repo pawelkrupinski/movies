@@ -55,14 +55,19 @@ trait VenuePageStore {
   def foreach(onPage: VenuePage => Unit): tools.ScanOutcome
 }
 
-/** In memory, for tests and Mongo-less wiring. */
+/** In memory, for tests and Mongo-less wiring: each page and landing kept as [[MongoVenuePageStore]] stores it, written to
+ *  BSON and read back. */
 final class InMemoryVenuePageStore extends VenuePageStore {
+  import MongoVenuePageStore.{detailDocument, detailOf, documentOf, pageOf}
   private val pages    = new ConcurrentHashMap[String, VenuePage]()
   private val landings = new ConcurrentHashMap[String, FilmDetail]()
   def get(key: VenuePageKey): Option[VenuePage] = Option(pages.get(key.id))
-  def put(page: VenuePage): Boolean = { pages.put(page.key.id, page); true }
+  def put(page: VenuePage): Boolean = {
+    val kept = pageOf(services.BsonRoundTrip(documentOf(page))).getOrElse(throw new IllegalStateException(s"page ${page.key.id} does not read back as stored"))
+    pages.put(kept.key.id, kept); true
+  }
   def stored(key: VenuePageKey): StoredVenuePage = StoredVenuePage(get(key), Option(landings.get(key.id)))
-  def land(key: VenuePageKey, detail: FilmDetail): Boolean = { landings.put(key.id, detail); true }
+  def land(key: VenuePageKey, detail: FilmDetail): Boolean = { landings.put(key.id, detailOf(services.BsonRoundTrip(detailDocument(detail)))); true }
   def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = { pages.values.asScala.toSeq.sortBy(_.key.id).foreach(onPage); tools.ScanOutcome.complete }
 }
 

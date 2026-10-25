@@ -1,6 +1,7 @@
 package services.tasks
 
 import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.bson.{BsonArray, BsonInt32}
 import org.mongodb.scala.model.{Filters, PushOptions, UpdateOptions, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture, documentToUntypedDocument}
 import play.api.Logging
@@ -33,11 +34,7 @@ final class MongoScrapeCostStore(db: MongoDatabase) extends ScrapeCostStore with
   // Not a KeyedDocStore: a write is a server-side `$push` + `$slice`, never a replace.
   def recent(): Map[String, Seq[ScrapeCost]] = {
     val costs = Map.newBuilder[String, Seq[ScrapeCost]]
-    MongoKeyedDocStore.scanDocuments(coll, "MongoScrapeCostStore.recent")(_.foreach { document =>
-      val tasks = document.get("tasks").filter(_.isArray).toSeq
-        .flatMap(_.asArray().getValues.asScala).filter(_.isNumber).map(v => ScrapeCost(v.asNumber().intValue()))
-      costs += document.getString("_id") -> tasks
-    }) match {
+    MongoKeyedDocStore.scanDocuments(coll, "MongoScrapeCostStore.recent")(_.foreach(costs += MongoScrapeCostStore.decode(_))) match {
       case ScanOutcome.Complete          => costs.result()
       case ScanOutcome.Incomplete(cause) => throw new IllegalStateException(s"${MongoScrapeCostStore.Collection} read incomplete", cause)
     }
@@ -46,4 +43,13 @@ final class MongoScrapeCostStore(db: MongoDatabase) extends ScrapeCostStore with
 
 object MongoScrapeCostStore {
   val Collection = "scrape_costs"
+
+  /** A cinema's document: its recent costs, oldest first, as the `$push` keeps them. */
+  def encode(dedupKey: String, costs: Seq[ScrapeCost]): Document =
+    Document("_id" -> dedupKey, "tasks" -> BsonArray.fromIterable(costs.map(c => BsonInt32(c.tasks))))
+
+  /** A cinema's key and recent costs. */
+  def decode(document: Document): (String, Seq[ScrapeCost]) =
+    document.getString("_id") -> document.get("tasks").filter(_.isArray).toSeq
+      .flatMap(_.asArray().getValues.asScala).filter(_.isNumber).map(v => ScrapeCost(v.asNumber().intValue()))
 }

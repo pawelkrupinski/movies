@@ -10,7 +10,7 @@ import tools.Env
  *  and leaving env_registry empty, so the /admin/config page showed nothing. */
 class MongoEnvRegistryStoreSpec extends AnyFlatSpec with Matchers {
 
-  private val store = new MongoEnvRegistryStore(None) // no Mongo needed for the doc mapping
+  private val store = MongoEnvRegistryStore
 
   "toDoc → fromDoc" should "round-trip a fully-populated knob" in {
     val k = RegisteredKnob("worker", "KINOWO_X", Env.Kind.Long, Some("60"), Some("15"))

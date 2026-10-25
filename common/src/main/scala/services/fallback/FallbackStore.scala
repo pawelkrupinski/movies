@@ -2,8 +2,8 @@ package services.fallback
 
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.bson.{BsonArray, BsonBoolean, BsonDateTime, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.model.Filters
 import play.api.Logging
 
 import java.time.Instant
@@ -27,11 +27,16 @@ trait FallbackStore {
   def close(): Unit = ()
 }
 
+/** The states as [[MongoFallbackStore]] would hold them: each written as its document to BSON and read back. */
 class InMemoryFallbackStore extends FallbackStore {
   private val map = new ConcurrentHashMap[String, FallbackState]()
   def get(cinema: String): Option[FallbackState] = Option(map.get(cinema))
   def findAll(): Seq[FallbackState] = map.values().asScala.toSeq
-  def put(state: FallbackState): Unit = { map.put(state.cinema, state); () }
+  def put(state: FallbackState): Unit = {
+    val stored = MongoFallbackStore.fromDocument(services.BsonRoundTrip(Document("_id" -> state.cinema) ++ MongoFallbackStore.toDocument(state)))
+      .getOrElse(throw new IllegalStateException(s"fallback state of ${state.cinema} does not read back as stored"))
+    map.put(stored.cinema, stored); ()
+  }
 }
 
 /**
@@ -92,7 +97,7 @@ class MongoFallbackStore(
     coll.foreach { c =>
       Try {
         Await.result(
-          c.updateOne(Filters.eq("_id", state.cinema), toUpdate(state), new UpdateOptions().upsert(true)).toFuture(),
+          c.updateOne(Filters.eq("_id", state.cinema), services.MongoUpdates.setEach(toDocument(state)), new UpdateOptions().upsert(true)).toFuture(),
           10.seconds
         )
       }.recover { case exception => logger.debug(s"Filmweb-fallback write failed for ${state.cinema}: ${exception.getMessage}") }
@@ -131,27 +136,29 @@ object MongoFallbackStore {
       case _                        => None
     }
 
-  private def date(i: Instant): java.util.Date = new java.util.Date(i.toEpochMilli)
-
-  private[fallback] def toUpdate(s: FallbackState): Bson = Updates.combine(
-    Updates.set("active", s.active),
-    Updates.set("fallbackSource", s.fallbackSource),
-    Updates.set("fallbackRef", s.fallbackRef.orNull),
-    Updates.set("failingSince", s.failingSince.map(date).orNull),
-    Updates.set("since", s.since.map(date).orNull),
-    Updates.set("lastReason", s.lastReason.orNull),
-    Updates.set("consecutiveFailures", s.consecutiveFailures),
-    Updates.set("lastPrimaryProbeAt", s.lastPrimaryProbeAt.map(date).orNull),
-    Updates.set("nextPrimaryProbeAt", s.nextPrimaryProbeAt.map(date).orNull),
-    Updates.set("updatedAt", date(s.updatedAt)),
-    Updates.set("history", s.history.map(eventToString).asJava),
-    Updates.set("failedRuns", s.failedRuns),
-    Updates.set("emptyFallbackSince", s.emptyFallback.map(spell => date(spell.since)).orNull),
-    Updates.set("emptyFallbackLastSeen", s.emptyFallback.map(spell => date(spell.lastSeen)).orNull),
-    Updates.set("droppedFallbackSince", s.droppedFallback.map(spell => date(spell.since)).orNull),
-    Updates.set("droppedFallbackLastSeen", s.droppedFallback.map(spell => date(spell.lastSeen)).orNull),
-    Updates.set("droppedFallbackError", s.droppedFallback.map(_.error).orNull)
-  )
+  /** A state's stored fields (`_id` aside): a missing value is stored as null, which the read takes as absent. */
+  private[fallback] def toDocument(s: FallbackState): Document = {
+    def dateOr(i: Option[Instant]): BsonValue = i.fold[BsonValue](BsonNull())(at => BsonDateTime(at.toEpochMilli))
+    def textOr(t: Option[String]): BsonValue  = t.fold[BsonValue](BsonNull())(BsonString(_))
+    Document(
+      "active"                  -> BsonBoolean(s.active),
+      "fallbackSource"          -> BsonString(s.fallbackSource),
+      "fallbackRef"             -> textOr(s.fallbackRef),
+      "failingSince"            -> dateOr(s.failingSince),
+      "since"                   -> dateOr(s.since),
+      "lastReason"              -> textOr(s.lastReason),
+      "consecutiveFailures"     -> BsonInt32(s.consecutiveFailures),
+      "lastPrimaryProbeAt"      -> dateOr(s.lastPrimaryProbeAt),
+      "nextPrimaryProbeAt"      -> dateOr(s.nextPrimaryProbeAt),
+      "updatedAt"               -> BsonDateTime(s.updatedAt.toEpochMilli),
+      "history"                 -> BsonArray.fromIterable(s.history.map(e => BsonString(eventToString(e)))),
+      "failedRuns"              -> BsonInt32(s.failedRuns),
+      "emptyFallbackSince"      -> dateOr(s.emptyFallback.map(_.since)),
+      "emptyFallbackLastSeen"   -> dateOr(s.emptyFallback.map(_.lastSeen)),
+      "droppedFallbackSince"    -> dateOr(s.droppedFallback.map(_.since)),
+      "droppedFallbackLastSeen" -> dateOr(s.droppedFallback.map(_.lastSeen)),
+      "droppedFallbackError"    -> textOr(s.droppedFallback.map(_.error)))
+  }
 
   private[fallback] def fromDocument(document: Document): Option[FallbackState] =
     Option(document.getString("_id")).map { id =>

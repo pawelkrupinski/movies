@@ -75,16 +75,16 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   private def roundTrip(s: FallbackState): Option[FallbackState] = {
-    val set = MongoFallbackStore.toUpdate(s)
+    val set = services.MongoUpdates.setEach(MongoFallbackStore.toDocument(s))
       .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
       .getDocument("$set")
     MongoFallbackStore.fromDocument(Document(set) + ("_id" -> s.cinema))
   }
 
-  // Pure write→read round-trip with no Mongo: render the $set toUpdate produces,
+  // Pure write→read round-trip with no Mongo: render the $set the write produces,
   // feed it back through fromDocument. Catches any field-name drift between the two
   // halves of the codec (a typo only a live Mongo would otherwise reveal).
-  "MongoFallbackStore write→read" should "round-trip a state through toUpdate + fromDocument" in {
+  "MongoFallbackStore write→read" should "round-trip a state through its written $set + fromDocument" in {
     val s = state("Kino Praha", active = true)
     roundTrip(s) shouldBe Some(s)
   }

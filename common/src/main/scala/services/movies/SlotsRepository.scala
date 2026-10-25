@@ -155,7 +155,9 @@ trait SlotsRepository extends SlotKeyedRows {
 class InMemorySlotsRepository(clock: java.time.Clock,
                               roster: VenueRoster = VenueRoster.Unrestricted) extends SlotsRepository {
 
-  private val rows = new InMemorySlotRows[SourceData](clock)
+  private val rows = new InMemorySlotRows[SourceData](clock, (filmId, slotKey, slot) =>
+    services.BsonRoundTrip.throughCodec(MovieCodecs.registry.get(classOf[StoredSlotDto]))(
+      StoredSlotDto.of(filmId, slotKey, slot, clock.instant())).slot)
 
   // An in-memory read cannot fail, so the checked forms always answer.
   def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] = tools.ReadOutcome.Answered(rows.forFilm(filmId))
