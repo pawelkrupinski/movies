@@ -4,7 +4,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.identity.{BsonFields, IdentityMeasures}
+import services.identity.{BsonFields, Dependency, IdentityMeasures}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -12,19 +12,20 @@ import scala.jdk.CollectionConverters._
 
 /** One cluster's agreement verdict as stored: the digest of its listings, its RECEIPT (`reads`: everything its decision
  *  read — every family question, the record of the film TMDB leans to, every TMDB lookup its fill made, the year — each
- *  by its id with the digest of the answer it got, none yet too), the film the families agreed on, if any, and else the
+ *  [[Dependency]] with the digest of the answer it got, none yet too; a model take's correction's, every question it
+ *  asked too), the film the families agreed on, if any, and else the
  *  film a selected FILL rule takes ([[services.identity.UnifiedRules]]). A cache of a function of its inputs: it stands
  *  exactly while its listings and receipt do, and a filing of anything it read decides it again (docs/design/identity-no-drift.md). */
-final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "",
+final case class StoredVerdict(id: String, listings: Long, reads: Map[Dependency, Long], agreed: Option[AgreedFilm], rules: String = "",
                                filled: Option[StoredFill] = None, correction: Option[StoredCorrection] = None,
                                /** Why no film was agreed on where a guard naming its reason refused the one the families
                                 *  would take ([[Agreement.weighed]]): the line the decision explains it by. */
                                refused: Option[String] = None)
 
 /** A model take's correction as stored ([[Correction]], under the id `correction|<cluster>`): the film it switched to
- *  and the line explaining it — `line` none where the evidence corrects nothing — the 64-bit digests of the question ids
- *  it read (a filing of one decides it again), and whether it was still waiting on an answer. */
-final case class StoredCorrection(film: Option[Int], line: Option[String], reads: scala.collection.immutable.ArraySeq[Long], waiting: Boolean) {
+ *  and the line explaining it — `line` none where the evidence corrects nothing — and whether it was still waiting on an
+ *  answer. What it read is its verdict's receipt (a filing of any of it decides it again). */
+final case class StoredCorrection(film: Option[Int], line: Option[String], waiting: Boolean) {
   def outcome: Option[Correction.Outcome] = line.map(Correction.Outcome(film, _))
 }
 
@@ -79,7 +80,7 @@ object AgreementVerdicts {
     .append("_id", BsonString(verdict.id))
     .append("listings", BsonInt64(verdict.listings))
     .append("rules", BsonString(verdict.rules))
-    .append("reads", new BsonDocument(verdict.reads.toSeq.sorted.map { case (q, digest) => new org.bson.BsonElement(q, BsonInt64(digest)) }.asJava))
+    .append("reads", receiptOf(verdict.reads))
     .append("agreed", verdict.agreed.fold[BsonValue](BsonNull()) { film =>
       val d = new BsonDocument("families", BsonArray.fromIterable(film.families.toSeq.map(_.label).sorted.map(BsonString(_))))
         .append("ids", strings(film.ids.map { case (family, id) => family.label -> id }))
@@ -94,7 +95,7 @@ object AgreementVerdicts {
       d
     })
     .append("correction", verdict.correction.fold[BsonValue](BsonNull()) { c =>
-      val d = new BsonDocument("reads", BsonArray.fromIterable(c.reads.map(BsonInt64(_)))).append("waiting", org.bson.BsonBoolean.valueOf(c.waiting))
+      val d = new BsonDocument("waiting", org.bson.BsonBoolean.valueOf(c.waiting))
       c.film.foreach(id => d.append("film", BsonInt32(id)))
       c.line.foreach(line => d.append("line", BsonString(line)))
       d
@@ -107,10 +108,27 @@ object AgreementVerdicts {
     })
     .append("refused", verdict.refused.fold[BsonValue](BsonNull())(BsonString(_)))
 
+  /** A receipt as BSON: its entries as `[dependency, digest]` pairs, each dependency by its one encoding
+   *  ([[Dependency.encode]]) — a value, never a field name, so no text a dependency names (a search's NUL, a listing
+   *  key's) can break the document. */
+  def receiptOf(reads: Map[Dependency, Long]): BsonArray =
+    BsonArray.fromIterable(reads.toSeq.map { case (read, digest) => Dependency.encode(read) -> digest }.sorted.map { case (id, digest) =>
+      BsonArray.fromIterable(Seq(BsonString(id), BsonInt64(digest)))
+    })
+
+  /** The receipt [[receiptOf]] stored, or one stored before it was (a document of the dependencies' ids, a correction's
+   *  digests apart): each id parsed by the one codec, one it no longer names kept as [[Dependency.Unparsed]]. */
+  def receipt(stored: BsonValue): Map[Dependency, Long] = stored match {
+    case pairs: BsonArray =>
+      pairs.getValues.asScala.map(_.asArray.getValues).map(pair => Dependency.parse(pair.get(0).asString.getValue) -> pair.get(1).asInt64.getValue).toMap
+    case legacy: BsonDocument => legacy.asScala.map { case (id, digest) => Dependency.parse(id) -> digest.asInt64.getValue }.toMap
+    case _                    => Map.empty
+  }
+
   def decode(d: BsonDocument): StoredVerdict = {
     val byLabel = VoterFamily.values.map(f => f.label -> f).toMap
     StoredVerdict(d.getString("_id").getValue, d.getInt64("listings").getValue,
-      d.getDocument("reads").asScala.map { case (q, digest) => q -> digest.asInt64.getValue }.toMap,
+      receipt(d.get("reads")),
       Option(d.get("agreed")).filter(_.isDocument).map(_.asDocument).map { a =>
         val film = Option(a.get("film")).filter(_.isDocument).fold(
           IdentityMeasures.Film(a.getString("title").getValue, None, Nil, Option(a.get("year")).map(_.asInt32.getValue), None, None, None, None))(
@@ -124,9 +142,7 @@ object AgreementVerdicts {
       Option(d.get("filled")).filter(_.isDocument).map(_.asDocument).map(f => StoredFill(f.getString("rule").getValue,
         Option(f.get("tmdb")).map(_.asInt32.getValue), Option(f.get("imdb")).map(_.asString.getValue), f.getString("line").getValue)),
       Option(d.get("correction")).filter(_.isDocument).map(_.asDocument).map(c => StoredCorrection(Option(c.get("film")).map(_.asInt32.getValue),
-        Option(c.get("line")).map(_.asString.getValue),
-        scala.collection.immutable.ArraySeq.unsafeWrapArray(c.getArray("reads").getValues.asScala.map(_.asInt64.getValue).toArray),
-        c.getBoolean("waiting").getValue)),
+        Option(c.get("line")).map(_.asString.getValue), c.getBoolean("waiting").getValue)),
       Option(d.get("refused")).filter(_.isString).map(_.asString.getValue))
   }
 }

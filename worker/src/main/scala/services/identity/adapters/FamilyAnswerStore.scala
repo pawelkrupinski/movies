@@ -93,12 +93,12 @@ object FamilyAnswerStore {
    *  (`tmdb_films:<id>`) as `tmdb|record|<id>` ([[Question.id]]) — only while `awaited` says the stage waits on that
    *  question, or `read` says a kept verdict or the last apply's takes read it: a take-up files thousands of records, and each counted
    *  would move the stage's version for nothing; any other TMDB question (a search) as
-   *  [[services.identity.agreement.AgreementStage.QueryFiled]] while a kept verdict read one. */
+   *  [[services.identity.Dependency.QueryFiled]] while a kept verdict read one. */
   def agreementKeyOf(key: String, awaited: Question => Boolean, read: String => Boolean = _ => false): Option[String] =
     if (key.startsWith(FindPrefix)) Some(Question.Find(key.substring(FindPrefix.length))).filter(q => awaited(q) || q.id.exists(read)).flatMap(_.id)
     else if (key.startsWith(FilmPrefix))
       key.substring(FilmPrefix.length).toIntOption.map(Question.Record(_)).filter(q => awaited(q) || q.id.exists(read)).flatMap(_.id)
-    else if (key.startsWith(QueryPrefix)) Some(services.identity.agreement.AgreementStage.QueryFiled).filter(read)
+    else if (key.startsWith(QueryPrefix)) Some(services.identity.Dependency.QueryFiled).filter(read)
     else AnswerFeed.agreementKeys(key)
 
   /** How long the answer filed under `id` is read before it is asked again, as [[QuestionPolicies]] sets it for the

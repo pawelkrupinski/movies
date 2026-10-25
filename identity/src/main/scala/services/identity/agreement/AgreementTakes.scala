@@ -25,7 +25,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). Everything it
    *  reads is noted in `reads`, the verdict's receipt. */
   private[agreement] def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
-                       thisYear: Int, version: Long, asked: mutable.Set[Question], reads: mutable.Map[String, Long]): Answer[Option[StoredFill]] =
+                       thisYear: Int, version: Long, asked: mutable.Set[Question], reads: mutable.Map[services.identity.Dependency, Long]): Answer[Option[StoredFill]] =
     looked.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
       val noting  = new AgreementStage.UnknownNoting(lookups)
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
@@ -35,7 +35,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
           productions = () => productionsOf(listings, measured, asked, Some(reads)), undated = { film =>
-            reads(s"${AgreementStage.TriedRead}|${AgreementStage.recordReadId(film)}") = AgreementStage.digest(Seq(Answer.Known((!waitsOn(film)).toString).toString))
+            reads(services.identity.Dependency.Attempted(Question.Record(film))) = AgreementStage.digest(Seq(Answer.Known((!waitsOn(film)).toString).toString))
             undatedOf(lookups)(film)
           })
         Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>

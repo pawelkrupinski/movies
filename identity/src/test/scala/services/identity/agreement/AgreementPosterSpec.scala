@@ -57,8 +57,8 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     val running = stageOver()
     running.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
     now = table
-    filed += AgreementStage.QueryFiled
-    running.reads(AgreementStage.QueryFiled) shouldBe true
+    filed += services.identity.Dependency.QueryFiled
+    running.reads(services.identity.Dependency.QueryFiled) shouldBe true
     val whole = stageOver().apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head
     (whole.film, whole.basis) shouldBe ((Some(1001), ResolverDecision.Basis.Poster))
     running.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head.film shouldBe whole.film

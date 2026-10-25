@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, Evidence, FallbackIds, IdentityLookups,
+import services.identity.{Answer, CandidateQuery, Dependency, Evidence, FallbackIds, IdentityLookups,
   IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Question}
 
 import scala.collection.mutable
@@ -38,12 +38,12 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits.
    *  `reads`, a verdict's receipt where it reads them, notes each. */
   private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.IdentityMeasures.Listing,
-                            asked: mutable.Set[Question], reads: Option[mutable.Map[String, Long]] = None): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
+                            asked: mutable.Set[Question], reads: Option[mutable.Map[Dependency, Long]] = None): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
     val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
       // a verdict's fill reads them: in its receipt, answered or not
-      reads.foreach(_(s"${family.label}|$question") = AgreementStage.digest(Seq(answer.toString)))
+      reads.foreach(_(Dependency.Answer(Question.Family(family, question))) = AgreementStage.digest(Seq(answer.toString)))
       if (answer == Answer.Unknown) {
         val gap = Question.Family(family, question)
         asked += gap
@@ -121,8 +121,8 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     }
     val now  = kept.getOrElse {
       var blind = false
-      val reads = mutable.Map.empty[String, Long]
-      val films = receipting(reads, listings)(looked.fold(Seq.empty[Int]) { lookups =>
+      val reads = mutable.Map.empty[Dependency, Long]
+      val films = receipting(reads)(looked.fold(Seq.empty[Int]) { lookups =>
         val found = searchedFilms(listings, lookups)
         blind = found.isEmpty
         found.getOrElse(Nil)
@@ -135,8 +135,11 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     }
     if (now.blindAt.isDefined) blindReads += 1
     // kept, its reads are this apply's too, and the receipt's being made
-    if (kept.isDefined) now.reads.keysIterator.foreach(read => AgreementStage.recordOf(AgreementStage.filedAs(read)).foreach(film => recordsReading.add(film)))
-    if (kept.isDefined && now.reads.keysIterator.exists(_.contains("|candidates|"))) queriedReading = true
+    if (kept.isDefined) now.reads.keysIterator.foreach {
+      case Dependency.Lookup(_, _, Question.FilmRecord(film)) => recordsReading.add(film)
+      case _                                                  => ()
+    }
+    if (kept.isDefined && now.reads.keysIterator.exists { case Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false }) queriedReading = true
     if (receipt != null) receipt ++= now.reads
     now.films
   }
@@ -144,7 +147,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   /** Does a kept read of a cluster's candidates still stand: checked at this version, else none of what it read filed since
    *  ([[AnswerChanges]]; one that cannot tell is read again)? */
   private[agreement] def standing(kept: AgreementStage.CandidateFilms): Boolean =
-    kept.checkedAt == applying || changes.changedSince(kept.checkedAt).exists(refiled => !kept.reads.keysIterator.exists(read => refiled(AgreementStage.filedAs(read))))
+    kept.checkedAt == applying || changes.changedSince(kept.checkedAt).exists(refiled => !kept.reads.keysIterator.exists(read => refiled(read.filing)))
 
   /** The TMDB films the listings' own title searches find ([[services.identity.IdentityMeasures.searchQueries]], of TMDB
    *  and IMDb's titled lists) — the candidates a poster may name against a model take, read off the answers the model

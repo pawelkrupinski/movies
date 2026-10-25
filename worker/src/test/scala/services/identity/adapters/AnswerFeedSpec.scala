@@ -121,9 +121,9 @@ class AnswerFeedSpec extends AnyFlatSpec with Matchers {
     families.version shouldBe 0   // neither read: nothing moves
     film(7, 2026)
     families.changedSince(0) shouldBe Some(Set(AgreementStage.recordReadId(7)))
-    read += AgreementStage.QueryFiled
+    read += services.identity.Dependency.QueryFiled
     tmdb.question(TmdbStore.titleSearchId("pl", "lalka"), Seq(Hit(10, "Lalka", None, Some(2026), 1.0)))
-    families.changedSince(1) shouldBe Some(Set(AgreementStage.QueryFiled))
+    families.changedSince(1) shouldBe Some(Set(services.identity.Dependency.QueryFiled))
     tmdb.question(TmdbStore.findId("tt3"), Nil)   // a find is the agreement's own question: counted only as one
     families.version shouldBe 2
   }

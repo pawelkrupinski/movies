@@ -27,7 +27,7 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
 
   /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementStage.Recording]] does. */
   def verdict(listings: Seq[Listing], answers: FamilyAnswers, asked: mutable.Set[services.identity.Question],
-              reads: mutable.Map[String, Long]): Answer[FamilyVerdict] = synchronized {
+              reads: mutable.Map[services.identity.Dependency, Long]): Answer[FamilyVerdict] = synchronized {
     val key = (answers.family, listings.map(_.key))
     kept.get(key).filter(k => k.listings == listings && k.read.forall(_.stands(answers, venues))) match {
       case Some(k) =>
@@ -64,12 +64,12 @@ private[agreement] object FamilyVerdicts {
   private sealed trait Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean
     /** Noted as a [[AgreementStage.Recording]] notes it: a venue page is in no receipt of a family's verdict. */
-    def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[String, Long]): Unit = ()
+    def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[services.identity.Dependency, Long]): Unit = ()
   }
   /** A family's answer to `question` (`title|…`, `director|…`, `record|…`, `showing|…`, as [[AgreementStage.Recording]] names it). */
   private final case class FamilyRead(question: String, digest: Long, unknown: Boolean) extends Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean = digestOf(ask(answers, question)) == digest
-    override def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[String, Long]): Unit =
+    override def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.Question], reads: mutable.Map[services.identity.Dependency, Long]): Unit =
       AgreementStage.noted(answers, question, digest, unknown, asked, reads)
   }
   private final case class DetailRead(listing: Listing, digest: Long) extends Read {

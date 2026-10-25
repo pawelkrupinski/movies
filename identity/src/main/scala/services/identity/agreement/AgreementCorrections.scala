@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, Evidence,
-  IdentityMeasures, Listing, ListingShape, PosterAnswers, PosterEvidence, Question, ResolverDecision}
+import services.identity.{Answer, Dependency, Evidence,
+  IdentityMeasures, Listing, ListingShape, PosterEvidence, Question, ResolverDecision}
 import services.movies.ListingKey
 
 import scala.collection.mutable
@@ -51,14 +51,15 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
             })
             // a receipt entry whose filing came is read again, as a verdict's is: every TMDB search is filed under one id
             // (QueryFiled), so any search filed anywhere reached every take that read one, and each was read afresh —
-            // 700 PL takes an apply, the budget never caught up (the drift replay timing out, run 1641)
-            refiled.exists(filed => !c.reads.exists(read => filed.contains(read)) && {
-              val refiledReads = v.reads.filter { case (read, _) => filed.contains(AgreementStage.digest(Seq(AgreementStage.filedAs(read)))) }
-              refiledReads.isEmpty || {
+            // 700 PL takes an apply, the budget never caught up (the drift replay timing out, run 1641). A family's answer,
+            // a poster or a question asked that was filed decides it again.
+            refiled.exists { filed =>
+              val refiledReads = v.reads.filter { case (read, _) => filed.contains(AgreementStage.digest(Seq(read.filing))) }
+              refiledReads.forall { case (read, _) => read.isInstanceOf[Dependency.Lookup] } && (refiledReads.isEmpty || {
                 val listings = sortedListings(decision, listingOf)
-                refiledReads.forall { case (question, answered) => read(question, listings).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
-              }
-            }) && {
+                refiledReads.forall { case (read, answered) => reread(read, listings).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
+              })
+            } && {
               checked(key) = (digest, version); true
             }
           }
@@ -67,9 +68,10 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
       val listings = sortedListings(decision, listingOf)
-      // its receipt: every TMDB record and search it read, so a filing of one reads it again ([[Noting]])
-      val receipt = mutable.Map.empty[String, Long]
-      val (correction, waits) = receipting(receipt, listings)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version))
+      // its receipt: every TMDB record and search, family answer and poster it read and every question it asked, so a
+      // filing of one reads it again ([[Noting]])
+      val receipt = mutable.Map.empty[Dependency, Long]
+      val (correction, waits) = receipting(receipt)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version))
       val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; file(verdict) }
       checked(key) = (digest, version)
@@ -105,7 +107,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
                            reading: AgreementStage.Read, version: Long): (StoredCorrection, Option[Set[Question]]) = {
     val listings = digested.listings
     val model    = decision.film.get
-    val reads    = mutable.Map.empty[String, Long]
+    val reads    = mutable.Map.empty[Dependency, Long]
     val asked    = mutable.Set.empty[Question]
     // a search or a record TMDB has not answered yet decides nothing: the correction is read again, not kept as final —
     // kept, a take decided while the model's own record or its candidates' searches were gaps stood uncorrected until its
@@ -169,22 +171,21 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     })
     // asked on every pass, the attempted ones too; waiting only on what was not attempted yet (the settle rule)
     val waits = Option.when(asked.nonEmpty)(asked.toSet)
-    // each question asked is read again when its answer is filed, under the id it is filed by ([[Question.id]])
-    val read  = (reads.keysIterator ++ asked.iterator.flatMap(_.id)).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
-    (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), scala.collection.immutable.ArraySeq.unsafeWrapArray(read),
-      asked.exists(question => !tried(question)) || blindReads != blindBefore), waits)
+    // in the receipt being made: what it read, and each question asked, read again when its answer is filed
+    if (receipt != null) { receipt ++= reads; asked.foreach(question => receipt(Dependency.Asked(question)) = 0L) }
+    (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), asked.exists(question => !tried(question)) || blindReads != blindBefore), waits)
   }
 
   /** The candidate a venue poster matches against the model's take ([[PosterEvidence.veto]]) — read first against the
    *  take's own posters: a venue poster within [[PosterEvidence.VetoBits]] of one of them vetoes nothing, so the other
    *  candidates' posters are hashed only for a take none of them comes near. `Unknown` while a poster is not hashed. */
-  private[agreement] def correctionPosters(digested: AgreementStage.Digested, model: Int, reads: mutable.Map[String, Long],
+  private[agreement] def correctionPosters(digested: AgreementStage.Digested, model: Int, reads: mutable.Map[Dependency, Long],
                                 asked: mutable.Set[Question], reading: AgreementStage.Read): Answer[Option[(Int, Int)]] = {
     val urls = PosterEvidence.urls(digested.listings)
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(None)
     else {
       def read[A](question: AgreementStage.PosterQuestion, answer: Answer[A], absent: A): Answer[A] = {
-        reads(PosterAnswers.idOf(question)) = 0L
+        reads(Dependency.Asked(Question.Poster(question))) = 0L
         posterRead(question, answer, absent, reading.posters, asked)
       }
       val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url), None))
@@ -200,7 +201,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
           // searched again whole for the few posters that might veto its take
           val showing = digested.listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.exists(far)).distinctBy(_.poster)
           val films   = titledFilms(showing)
-          films.foreach(film => reads(PosterAnswers.idOf(AgreementStage.PosterQuestion.Film(film))) = 0L)
+          films.foreach(film => reads(Dependency.Asked(Question.Poster(AgreementStage.PosterQuestion.Film(film)))) = 0L)
           posterDistances(digested.id, digested.digest, showing, Some(model), asked, (_, _, _) => films, reading.posters)
             .map(found => PosterEvidence.veto(Some(model), found))
         }
@@ -213,7 +214,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
    *  family's question, or TMDB's find of a taken IMDb id, is not answered yet — and not attempted: a family attempted and
    *  not answered is left out as no verdict, as a settled cluster leaves it (the settle rule). */
   private[agreement] def familiesAgainst(listings: Seq[Listing], model: Int, modelRecord: SourceRecord, reached: => Seq[Int], records: Int => Option[SourceRecord],
-                              uncounted: Option[VoterFamily], reads: mutable.Map[String, Long], asked: mutable.Set[Question]): Answer[Option[(Int, String)]] = {
+                              uncounted: Option[VoterFamily], reads: mutable.Map[Dependency, Long], asked: mutable.Set[Question]): Answer[Option[(Int, String)]] = {
     val gaps     = mutable.Set.empty[Question]
     val verdicts = verdictsOf(listings, gaps, reads)
     asked ++= gaps

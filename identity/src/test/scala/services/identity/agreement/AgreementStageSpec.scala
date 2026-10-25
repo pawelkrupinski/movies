@@ -730,7 +730,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // Filmweb's and RT's answers refiled after the restart (version 1 → 2): only a verdict that read them is decided again.
     val refiled = new AnswerChanges {
       def changedSince(version: Long): Option[Set[String]] =
-        Some(if (version < 2) verdicts.all().filter(_.correction.isEmpty).head.reads.keySet.filter(q => q.startsWith("filmweb|") || q.startsWith("rt|")) else Set.empty)
+        Some(if (version < 2) verdicts.all().filter(_.correction.isEmpty).head.reads.keySet.map(services.identity.Dependency.encode).filter(q => q.startsWith("filmweb|") || q.startsWith("rt|")) else Set.empty)
     }
     val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = refiled)

@@ -62,14 +62,14 @@ enum Question {
 
   /** The id an agreement question is asked under on the queue, the form its store files or names it by:
    *  `<family>|<question>` (`FamilyAnswerStore.questionId`), `find|<imdbId>` (`TmdbStore.findId`),
-   *  `tmdb|record|<tmdbId>` ([[agreement.AgreementStage.recordReadId]]), `poster|venue|<url>` and `poster|film|<tmdbId>`
+   *  `tmdb|record|<tmdbId>` (what a record's filing comes as), `poster|venue|<url>` and `poster|film|<tmdbId>`
    *  ([[PosterAnswers.idOf]]), `catalogue|<source>|<id>` and `catalogue-page|<url>` (`CatalogueAnswerStore.idOf`,
    *  `pageId`) — read back by [[Question.parse]]. None for a model question: its stores name it in the country's
    *  language. */
   def id: Option[String] = this match {
     case Family(family, question)                 => Some(s"${family.label}|$question")
     case Find(imdbId)                             => Some(s"find|$imdbId")
-    case Record(tmdbId)                           => Some(agreement.AgreementStage.recordReadId(tmdbId))
+    case Record(tmdbId)                           => Some(s"tmdb|record|$tmdbId")
     case Poster(question)                         => Some(PosterAnswers.idOf(question))
     case Catalogue(CatalogueQuestion.Id(of))      => Some(s"catalogue|${of.source}|${of.id}")
     case Catalogue(CatalogueQuestion.Page(url))   => Some(s"catalogue-page|$url")

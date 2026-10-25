@@ -2,19 +2,21 @@ package services.identity.agreement
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures
+import services.identity.{Dependency, IdentityMeasures, Question}
 
 /** A stored agreement verdict reads back as it was kept — the answers it read and the film agreed on, or none. */
 class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement {
+  private def read(id: String): Dependency = Dependency.parse(id)
+
   "a stored verdict" should "read back with its reads and its agreed film's families, leaning families, ids, cross-ids, title and year" in {
     val film    = IdentityMeasures.Film("Klondike", None, Nil, Some(2022), None, None, None, None)
-    val agreed  = StoredVerdict("k", 42L, Map("imdb|title|Klondike" -> 7L, "rt|record|klondike_2022" -> -3L),
+    val agreed  = StoredVerdict("k", 42L, Map(read("imdb|title|Klondike") -> 7L, read("rt|record|klondike_2022") -> -3L),
       Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.RottenTomatoes, VoterFamily.Metacritic), SourceRecord(film, Map("imdb" -> "tt16315948")),
         Map(VoterFamily.Imdb -> "tt16315948", VoterFamily.RottenTomatoes -> "klondike_2022", VoterFamily.Metacritic -> "klondike"))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(agreed)) shouldBe agreed
     val leaned = agreed.copy(agreed = agreed.agreed.map(_.copy(families = Set(VoterFamily.Imdb, VoterFamily.RottenTomatoes), leaning = Set(VoterFamily.Wiki), corroborated = Set(Agreement.ListingFacts))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(leaned)) shouldBe leaned
-    val none = StoredVerdict("k", 42L, Map("imdb|title|Klondike" -> 7L), None)
+    val none = StoredVerdict("k", 42L, Map(read("imdb|title|Klondike") -> 7L), None)
     AgreementVerdicts.decode(AgreementVerdicts.encode(none)) shouldBe none
     val filled = none.copy(filled = Some(StoredFill("venues.current", None, Some("tt46658626"), "filled by venues.current: …")))
     AgreementVerdicts.decode(AgreementVerdicts.encode(filled)) shouldBe filled
@@ -29,7 +31,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     val film = IdentityMeasures.Film("Roots", Some("Raíces"), Seq("Raices", "Wurzeln"), Some(1954), Some(83), Some(Seq("Benito Alazraki")),
       Some(Seq("MX")), Some(1.5), 47395, Some(java.time.LocalDate.of(1955, 4, 21)), Some("MXUS"), Seq(85, 80), Some("MX1955P"), 123,
       Some("US=PG"), Some("es"), 18, services.identity.FilmCast.ofPairs(Seq(Seq(1, 2), Seq(3))))
-    val agreed = StoredVerdict("r", 7L, Map("imdb|title|Raíces" -> 1L),
+    val agreed = StoredVerdict("r", 7L, Map(read("imdb|title|Raíces") -> 1L),
       Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb), SourceRecord(film, Map("imdb" -> "tt0047395", "tmdb" -> "122769")),
         Map(VoterFamily.Imdb -> "tt0047395", VoterFamily.Wiki -> "Q7366720", VoterFamily.Filmweb -> "100"))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(agreed)) shouldBe agreed
@@ -51,24 +53,64 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
       rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
       .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1)
     val verdict = stored.all().loneElement
-    verdict.reads.keys.exists(_.startsWith(s"${AgreementStage.TmdbRead}|candidates|")) shouldBe true
+    verdict.reads.keys.exists { case Dependency.Lookup(Dependency.Via.Tmdb, _, Question.Candidate(_)) => true; case _ => false } shouldBe true
     // as the driver writes it: every field name a BSON cstring
     val written = new org.bson.RawBsonDocument(AgreementVerdicts.encode(verdict), new org.bson.codecs.BsonDocumentCodec())
     AgreementVerdicts.decode(written.toBsonDocument) shouldBe verdict
   }
 
-  "a stored correction of a model take" should "read back with its film, its line, its reads' digests and whether it waits" in {
-    val reads     = scala.collection.immutable.ArraySeq(-5L, 3L, 9L)
-    val corrected = StoredVerdict(AgreementStage.correctionId("k"), 42L, Map.empty, None, "r",
-      correction = Some(StoredCorrection(Some(30497), Some("corrected from … by families and poster"), reads, waiting = false)))
+  "a stored correction of a model take" should "read back with its film, its line, its receipt and whether it waits" in {
+    val reads     = Map(read("imdb|title|Klondike") -> 7L, Dependency.Asked(Question.Find("tt1")) -> 0L,
+      Dependency.Asked(Question.Poster(AgreementStage.PosterQuestion.Venue("https://v/p.jpg"))) -> 0L)
+    val corrected = StoredVerdict(AgreementStage.correctionId("k"), 42L, reads, None, "r",
+      correction = Some(StoredCorrection(Some(30497), Some("corrected from … by families and poster"), waiting = false)))
     AgreementVerdicts.decode(AgreementVerdicts.encode(corrected)) shouldBe corrected
-    val standing  = corrected.copy(correction = Some(StoredCorrection(None, None, reads, waiting = true)))
+    val standing  = corrected.copy(correction = Some(StoredCorrection(None, None, waiting = true)))
     AgreementVerdicts.decode(AgreementVerdicts.encode(standing)) shouldBe standing
   }
 
-  // The NUL receipt passed every unit spec because the in-memory store kept the verdict it was handed: it writes as Mongo does now
-  "the in-memory verdicts" should "refuse a receipt Mongo cannot write" in {
-    val nul = StoredVerdict("k", 42L, Map("tmdb|candidates|a\u0000Pat Garrett & Billy the Kid" -> 7L), None)
-    an[org.bson.BsonSerializationException] should be thrownBy new InMemoryAgreementVerdicts().replace(Set.empty, Seq(nul))
+  // The NUL receipt passed every unit spec because the in-memory store kept the verdict it was handed: it writes as Mongo
+  // does. A receipt names its dependencies as values now, never field names: one naming a NUL writes and reads back.
+  "the in-memory verdicts" should "write a receipt naming a NUL, and read it back" in {
+    val nul = StoredVerdict("k", 42L, Map(Dependency.Unparsed("tmdb|candidates|a\u0000Pat Garrett & Billy the Kid") -> 7L), None)
+    val kept = new InMemoryAgreementVerdicts()
+    kept.replace(Set.empty, Seq(nul))
+    kept.all() shouldBe Seq(nul)
+  }
+
+  "a receipt" should "name every dependency by the one codec, and read each back as it was" in {
+    val key = services.movies.ListingKey.Published("Kino Muza", "Lalka | x", Some(2025), Seq("Maciej Kawalski"))
+    val every = Seq[Dependency](
+      Dependency.Answer(Question.Family(VoterFamily.Filmweb, "title|Lalka")),
+      Dependency.Answer(Question.Family(VoterFamily.RottenTomatoes, "record|lalka|x")),
+      Dependency.Attempted(Question.Record(913760)),
+      Dependency.Asked(Question.Find("tt0064570")),
+      Dependency.Asked(Question.Catalogue(services.identity.CatalogueQuestion.Page("https://a/b|c"))),
+      Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Answer, Question.VenuePage(key)),
+      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(services.identity.CandidateQuery.Title("Pat Garrett & Billy the Kid"))),
+      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Release, Question.FilmRecord(7)),
+      Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Answer, Question.FilmRecord(7)),
+      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Cast, Question.FilmRecord(7)),
+      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Overview, Question.FilmRecord(7)),
+      Dependency.Year)
+    every.foreach(dependency => Dependency.parse(Dependency.encode(dependency)) shouldBe dependency)
+    every.map(Dependency.encode).distinct should have size every.size.toLong
+    val receipt = every.zipWithIndex.map { case (dependency, i) => dependency -> i.toLong }.toMap
+    val written = new org.bson.RawBsonDocument(new org.bson.BsonDocument("reads", AgreementVerdicts.receiptOf(receipt)), new org.bson.codecs.BsonDocumentCodec())
+    AgreementVerdicts.receipt(written.toBsonDocument.get("reads")) shouldBe receipt
+  }
+
+  it should "read one stored before it was typed, its field names the dependencies' ids, an id it no longer names never standing" in {
+    val legacy = new org.bson.BsonDocument("imdb|title|Klondike", org.bson.BsonInt64(7L)).append("clock", org.bson.BsonInt64(1L))
+      .append("tmdb|film|9", org.bson.BsonInt64(2L)).append("venues|detail|0", org.bson.BsonInt64(3L))
+    AgreementVerdicts.receipt(legacy) shouldBe Map(read("imdb|title|Klondike") -> 7L, Dependency.Year -> 1L,
+      Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.FilmRecord(9)) -> 2L, Dependency.Unparsed("venues|detail|0") -> 3L)
+  }
+
+  "a dependency's filing" should "be the id its answer is filed under on the answers' changes" in {
+    read("imdb|title|Klondike").filing shouldBe "imdb|title|Klondike"
+    Dependency.Lookup(Dependency.Via.Venues, Dependency.Aspect.Cast, Question.FilmRecord(7)).filing shouldBe AgreementStage.recordReadId(7)
+    Dependency.Lookup(Dependency.Via.Tmdb, Dependency.Aspect.Answer, Question.Candidate(services.identity.CandidateQuery.Title("x"))).filing shouldBe Dependency.QueryFiled
+    Dependency.Asked(Question.Find("tt1")).filing shouldBe Question.Find("tt1").id.get
   }
 }

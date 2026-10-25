@@ -37,12 +37,12 @@ class ProdMirrorSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be the correction's film over the model's" in {
-    val corrected = verdict(correction = Some(StoredCorrection(Some(42), Some("imdb, wiki take tmdb 42"), scala.collection.immutable.ArraySeq.empty, waiting = false)))
+    val corrected = verdict(correction = Some(StoredCorrection(Some(42), Some("imdb, wiki take tmdb 42"), waiting = false)))
     ProdSide(panto, Some(unmatched.copy(film = Some(550), basis = "OwnMatch")), None, None, Some(corrected), Map.empty).take shouldBe ("tmdb:42", "Corrected")
   }
 
   it should "stay the model's when a correction corrects nothing" in {
-    val none = verdict(correction = Some(StoredCorrection(None, None, scala.collection.immutable.ArraySeq.empty, waiting = false)))
+    val none = verdict(correction = Some(StoredCorrection(None, None, waiting = false)))
     ProdSide(panto, Some(unmatched.copy(film = Some(550), basis = "OwnMatch")), None, None, Some(none), Map.empty).take shouldBe ("tmdb:550", "OwnMatch")
   }
 

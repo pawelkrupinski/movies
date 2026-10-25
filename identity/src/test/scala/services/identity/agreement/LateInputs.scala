@@ -227,8 +227,8 @@ object LateInputs {
         case Input.Record(id)                       => record(id)
         case Input.Cast(id)                         => record(id)
         case Input.Overview(id)                     => record(id)
-        case Input.NewFilm(id)                      => record(id) ++ Option.when(read(AgreementStage.QueryFiled))(AgreementStage.QueryFiled)
-        case Input.Search(_)                        => Option.when(read(AgreementStage.QueryFiled))(AgreementStage.QueryFiled)
+        case Input.NewFilm(id)                      => record(id) ++ Option.when(read(services.identity.Dependency.QueryFiled))(services.identity.Dependency.QueryFiled)
+        case Input.Search(_)                        => Option.when(read(services.identity.Dependency.QueryFiled))(services.identity.Dependency.QueryFiled)
         case Input.Agreement(q)                     => q.id
         case Input.Page(_)                          => None
       }
