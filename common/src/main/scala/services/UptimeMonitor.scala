@@ -56,7 +56,7 @@ class UptimeMonitor(
    *  DERIVED, NOT PASSED. `surfaceExternalWrites` already says which tier this is — the
    *  serving app sets it, the worker leaves it off — and a second boolean at the call site is
    *  one a future wiring can silently forget, with nothing failing. Both tiers write
-   *  `uptimeBuckets` and both authenticate as `kinowo_app`, so the serving app is perfectly
+   *  `uptimeBuckets` and both authenticate as the app's Mongo user, so the serving app is perfectly
    *  able to drop an index the worker depends on. It has nothing to gain by doing so: both
    *  compute the expiry from the same constant, so a disagreement the reader can see is one
    *  the owner sees too, rebuilds, and reports if it cannot. */

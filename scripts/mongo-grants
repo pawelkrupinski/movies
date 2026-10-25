@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# The Mongo access every database needs, checked against prod or granted: readWrite for the app's user on every
+# country's corpus and the fleet's database, read for the CI corpus reader on every country's corpus.
+#
+#   scripts/mongo-grants --check    list what is missing; exit 1 if anything is
+#   scripts/mongo-grants --apply    grant exactly what is missing (as root), then read it back; idempotent
+#
+# Run it after adding a country or a shared database, before the first deploy that needs it: a missing grant does
+# not fail a boot, it fails every read and write `not authorized` while the pods report healthy.
+#
+# The list: scripts/mongo-grants.tsv, generated from models.Country.all and services.FleetDatabase
+# (`sbt 'worker/Test/runMain deploy.MongoGrantsList'`; MongoGrantsListSpec fails when it is stale).
+# The users: read off the connection strings, never named here — the app's MONGODB_URI (user + authSource) and the
+# CI reader's URI (MONGO_CI_READ_URI, else the one scripts/ci builds for mongo-ci-read.nix's user).
+# The connection: scripts/with-prod-mongo.sh --both (one Touch ID, one tunnel). A missing user is reported, never
+# created. The logic and its details: scripts/mongo_grants.py; tests: scripts/mongo-grants-test.sh.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in
+  -h|--help) usage_from_header; exit 0 ;;
+  --check|--apply) [ $# -eq 1 ] || { usage_from_header >&2; exit 2; } ;;
+  *) usage_from_header >&2; exit 2 ;;
+esac
+HERE="$(cd "$(dirname "$0")" && pwd)"
+exec "$HERE/with-prod-mongo.sh" --both python3 -I "$HERE/mongo_grants.py" "$1"

@@ -11,7 +11,7 @@ class IntegrationMongoSpec extends AnyFlatSpec with Matchers {
 
   private val ciDocker  = "mongodb://127.0.0.1:27017/kinowo?directConnection=true"
   private val localRs   = "mongodb://127.0.0.1:28017/?directConnection=true"
-  private val prodTunnel = "mongodb://kinowo_app:s3cr3t@127.0.0.1:27017/kinowo?authSource=kinowo"
+  private val prodTunnel = "mongodb://kinowo_app_2:s3cr3t@127.0.0.1:27017/kinowo?authSource=kinowo"
   private val atlas     = "mongodb+srv://user:s3cr3t@cluster0.abcde.mongodb.net/kinowo"
 
   "the throwaway-Mongo guard" should "allow CI's docker Mongo, despite it using the prod DB NAME on the prod PORT" in {
@@ -44,7 +44,7 @@ class IntegrationMongoSpec extends AnyFlatSpec with Matchers {
     val thrown = the [IllegalStateException] thrownBy
       IntegrationMongo.requireThrowaway(prodTunnel, overrideSet = false)
     thrown.getMessage should not include "s3cr3t"
-    thrown.getMessage should include ("kinowo_app:***@")
+    thrown.getMessage should include ("kinowo_app_2:***@")
   }
 
   it should "redact an SRV password too" in {

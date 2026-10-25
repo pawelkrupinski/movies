@@ -127,7 +127,8 @@ echo "::add-mask::$USERINFO"
 # The timeouts are NOT set here: tools.TunnelTunedUri adds them and explicitly leaves
 # anything already present alone, so stating them twice would only create a second
 # place to change them.
-URI="mongodb://${USERINFO}@127.0.0.1:${PORT}/?authSource=admin&directConnection=true&maxPoolSize=8"
+# (mongo-tunnel-paths.sh spells the URI, so scripts/mongo-grants reads the same authSource.)
+URI="$(mongo_ci_read_uri "$USERINFO" "$PORT")"
 
 # socat is what turns "one ssh session per connection" into a local port. The runner image
 # lacks it, so convergence-setup starts installing it in the background at the top of the job

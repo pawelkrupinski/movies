@@ -292,19 +292,21 @@ into a sibling's pod will OOM or throttle it.
    with `not authorized on kinowo_<cc>` — and because it is an auth error rather
    than a connection error, both web and worker come up, pass their health check,
    and then do nothing. Grant it with the root credentials before the first
-   deploy:
+   deploy, with `scripts/mongo-grants` (regenerate its list first, below):
 
    ```
-   mongosh "$MONGO_ROOT_URI"   # tunnelled to mongo-1 on 127.0.0.1:27017, authSource=admin
-   db.getSiblingDB("kinowo").grantRolesToUser(
-     "kinowo_app", [{ role: "readWrite", db: "kinowo_<cc>" }])
+   scripts/mongo-grants --check    # lists each missing role; exit 1 if any
+   scripts/mongo-grants --apply    # grants exactly those, as root, then reads them back
    ```
 
-   **`getSiblingDB("kinowo")`, not `admin`** — `kinowo_app` authenticates against
-   `authSource=kinowo`, so the user record lives in the `kinowo` database and a
-   grant issued against `admin` fails with "User kinowo_app@admin not found".
-   Check it with `db.getSiblingDB("kinowo").getUser("kinowo_app")`; the roles
-   should read `readWrite@kinowo, @kinowo_de, @kinowo_uk, @kinowo_us, …`.
+   It reads the users off the connection strings rather than naming them: the app's
+   user and its auth database from `MONGODB_URI` (on 2026-10-25, `kinowo_app_2`
+   with `authSource=kinowo`, so its record lives in `kinowo`, not `admin`), and the
+   CI reader's from the URI the CI tunnel builds. What it requires is
+   `scripts/mongo-grants.tsv`, generated from `Country.all` and
+   `services.FleetDatabase`: run `sbt 'worker/Test/runMain deploy.MongoGrantsList'`
+   when you add the country, and commit the file (`MongoGrantsListSpec` fails until
+   you do). One Touch ID, one tunnel (`scripts/with-prod-mongo.sh --both`).
 
    This bit the UK and German rollouts in exactly the same way, and was still
    missing for the US on 2026-08-30 — the failure is silent, so nothing reminds
@@ -663,20 +665,14 @@ for itself. Nothing is red; the country simply never appears.
 **The order that actually works, and why each step precedes the next:**
 
 1. **Mongo grant** (phase 3) — nothing works without it and it fails silently.
-   TWO users need one: the application user (`kinowo_app`, readWrite) and the
-   CI corpus reader (`kinowo-ci-corpus`, read), whose grant list
-   `ConvergenceLegWiringSpec` pins against `Country.all` — so the nix role
-   documenting it has to name the new database or a test fails.
+   TWO users need one: the application user (readWrite) and the CI corpus reader
+   (`kinowo-ci-corpus`, read). `scripts/mongo-grants --check`, then `--apply`,
+   covers both (phase 3); its list is generated from `Country.all`, and
+   `ConvergenceLegWiringSpec` still pins the nix role's documented list too.
 
    **Naming the database in `roles/mongo-ci-read.nix` does NOT grant it.** That
-   list is documentation of a state a human has to produce; `db.createUser()`
-   ran once, and every country after the first is a `grantRolesToUser` issued by
-   hand against the running mongod with the root credentials:
-
-   ```
-   db.getSiblingDB("admin").grantRolesToUser(
-     "kinowo-ci-corpus", [ { role: "read", db: "kinowo_<cc>" } ])
-   ```
+   list is documentation; only `scripts/mongo-grants --apply` (or a hand-issued
+   `grantRolesToUser` with the root credentials) changes the running mongod.
 
    Spain merged with `kinowo_es` in the nix list and no grant on the host, so the
    first nightly `Record scrape fixtures` died with `not authorized on kinowo_es

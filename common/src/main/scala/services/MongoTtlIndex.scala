@@ -18,7 +18,7 @@ import scala.util.{Failure, Success, Try}
  *  callers used to fire it unconditionally on every construction and swallow the
  *  result at `logger.debug`, which hid two things at once:
  *
- *  1. `kinowo_app` holds `readWrite` on the country databases, and `readWrite`
+ *  1. The app's Mongo user holds `readWrite` on the country databases, and `readWrite`
  *     DOES NOT INCLUDE `collMod`. Every one of those commands came back
  *     `Unauthorized` (13), so the reconciliation the comments described has
  *     never once run in production, and nothing said so because `debug` is not
@@ -105,7 +105,7 @@ object MongoTtlIndex extends Logging {
    *  index when it is absent, and otherwise only SAY that it disagrees.
    *
    *  `uptimeBuckets` is written by both tiers — the worker records scrape outcomes, the
-   *  serving app flushes its own buckets — and both authenticate as `kinowo_app`, so the
+   *  serving app flushes its own buckets — and both authenticate as the app's Mongo user, so the
    *  read tier is perfectly able to drop an index the worker depends on. It should not be:
    *  a drop that succeeds and a create that fails is an unreaped collection either way, and
    *  a reader has no business being the one to cause it. Nor is there anything to gain,
@@ -174,7 +174,7 @@ object MongoTtlIndex extends Logging {
   /** DROP AND RECREATE, because `collMod` is the one operation `readWrite` does not
    *  carry. Asked directly (`db.getRole("readWrite", {showPrivileges: true})` on
    *  mongo-1), the role grants `listIndexes`, `createIndex` and `dropIndex` and NOT
-   *  `collMod` — so the in-place edit is unavailable to `kinowo_app` and the rebuild
+   *  `collMod` — so the in-place edit is unavailable to the app's Mongo user and the rebuild
    *  is the only reconciliation it can perform itself. That matters more than the
    *  elegance of the in-place edit: the alternative was a hand-granted role per
    *  country, and this repository has already shipped a country whose grant was

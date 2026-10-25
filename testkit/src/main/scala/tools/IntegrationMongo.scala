@@ -19,7 +19,7 @@ package tools
  *
  *   mongodb://127.0.0.1:27017/kinowo?directConnection=true        CI docker    ALLOW
  *   mongodb://127.0.0.1:28017/?directConnection=true              local RS     ALLOW
- *   mongodb://kinowo_app:secret@127.0.0.1:27017/kinowo            PROD tunnel  REFUSE
+ *   mongodb://kinowo_app_2:secret@127.0.0.1:27017/kinowo          PROD tunnel  REFUSE
  *   mongodb+srv://user:secret@cluster.mongodb.net/kinowo          Atlas        REFUSE
  *
  * Set `KINOWO_ALLOW_REMOTE_IT=1` to override, for the rare deliberate run against a

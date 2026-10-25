@@ -29,7 +29,7 @@ import scala.jdk.CollectionConverters._
  * code this replaced fired `collMod` on every construction and swallowed the
  * result at `debug`; against a local throwaway mongod (no auth, so the test user
  * may do anything) that succeeded and looked fine, while in production
- * `kinowo_app` holds `readWrite`, which does not carry `collMod`, so every one
+ * the app's Mongo user holds `readWrite`, which does not carry `collMod`, so every one
  * came back `Unauthorized` and counted as a mongod user assert. A command counter
  * is what separates those two worlds: the old behaviour sends one command per
  * boot regardless, the new one sends none once the index agrees.
@@ -145,10 +145,10 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     expiryOf(collection, "at") shouldBe Some(86400L)
     // DROP THEN CREATE, NOT collMod. `readWrite` carries dropIndex and createIndex and
     // not collMod (asked of the server: db.getRole("readWrite", {showPrivileges:true})),
-    // so the rebuild is the only reconciliation `kinowo_app` can perform itself. A spec
+    // so the rebuild is the only reconciliation the app's Mongo user can perform itself. A spec
     // that accepted a collMod here would pass locally — where the test user is
     // unrestricted — and describe something production cannot do.
-    withClue("the reconciler used collMod, which kinowo_app is not authorised for: ")(sent("collMod") shouldBe 0)
+    withClue("the reconciler used collMod, which the app's Mongo user is not authorised for: ")(sent("collMod") shouldBe 0)
     sent("dropIndexes")  shouldBe 1
     sent("createIndexes") shouldBe 1
     // The read-back after the rebuild is what would catch a drop that succeeded and a
@@ -203,7 +203,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   }
 
   /** THE READ TIER MUST NOT DROP AN INDEX THE WRITER DEPENDS ON. Both tiers write
-   *  `uptimeBuckets` and both authenticate as `kinowo_app`, so "it cannot" was never true —
+   *  `uptimeBuckets` and both authenticate as the app's Mongo user, so "it cannot" was never true —
    *  it is a choice this code has to make. `ensure` makes it: create when absent, report
    *  when it disagrees, never rebuild. Asserted beside `reconcile` on the SAME starting
    *  state, because the difference between them is the whole point. */
