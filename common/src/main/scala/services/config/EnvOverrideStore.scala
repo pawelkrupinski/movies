@@ -26,8 +26,9 @@ trait EnvOverrideStore {
   def set(key: String, value: String): Unit
   /** Remove an override ("reset to default / env"), visible immediately. */
   def clear(key: String): Unit
-  /** Reload the cache from the backing store (no-op for the in-memory impl). */
-  def refresh(): Unit
+  /** Reload the cache from the backing store (no-op for the in-memory impl): whether it could be read — the cache is
+   *  kept as it was when not. */
+  def refresh(): Boolean
 }
 
 /** In-memory override store — caching is trivial since there's one process. */
@@ -37,7 +38,7 @@ class InMemoryEnvOverrideStore extends EnvOverrideStore {
   def all(): Map[String, String] = { import scala.jdk.CollectionConverters._; map.asScala.toMap }
   def set(key: String, value: String): Unit = { map.put(key, value); () }
   def clear(key: String): Unit = { map.remove(key); () }
-  def refresh(): Unit = ()
+  def refresh(): Boolean = true
 }
 
 /** Mongo-backed override store. Document shape: `{ _id: key, value: String }`.
@@ -51,17 +52,19 @@ class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverride
     sharedDb.map(_.getCollection[Document]("env_overrides"))
 
   @volatile private var cache: Map[String, String] = Map.empty
-  refresh()
+  locally { refresh(); () }
 
   def lookup(key: String): Option[String] = cache.get(key)
   def all(): Map[String, String] = cache
 
-  def refresh(): Unit = coll.foreach { c =>
-    Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).toOption.foreach { docs =>
-      cache = docs.flatMap { d =>
+  def refresh(): Boolean = coll.forall { c =>
+    val read = Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds))
+    read.fold(
+      e => logger.warn(s"EnvOverrideStore.refresh failed, the overrides kept as last read: ${e.getMessage}"),
+      docs => cache = docs.flatMap { d =>
         for { k <- str(d, "_id"); v <- str(d, "value") } yield k -> v
-      }.toMap
-    }
+      }.toMap)
+    read.isSuccess
   }
 
   private def str(d: Document, key: String): Option[String] =

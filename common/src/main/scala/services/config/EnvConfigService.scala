@@ -4,7 +4,7 @@ import settings.ConfigRefreshInterval
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, Env, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, Env, ScheduledTick, TickRecorder, TickRun}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
@@ -50,13 +50,14 @@ class EnvConfigService(
     logger.info(s"EnvConfigService[$app] started: overrides installed, publishing every ${tickInterval.value.toSeconds}s.")
   }
 
-  /** Refresh overrides from the store, then republish this process's knobs. */
-  private[config] def publishTick(): Unit = {
-    overrides.refresh()
+  /** Refresh overrides from the store, then republish this process's knobs: [[TickRun.Incomplete]] when either store
+   *  failed (each logs it) — flips stop arriving, or the admin page stops seeing this process's knobs. */
+  private[config] def publishTick(): TickRun = {
+    val refreshed = overrides.refresh()
     val knobs = env.knobs.filterNot(k => isSecret(k.key)).map { k =>
       RegisteredKnob(app, k.key, k.kind, k.default, env.currentValue(k.key))
     }
-    registry.publish(app, knobs)
+    TickRun.completedWhen(registry.publish(app, knobs) && refreshed)
   }
 
   // ── admin (web) ──────────────────────────────────────────────────────────────

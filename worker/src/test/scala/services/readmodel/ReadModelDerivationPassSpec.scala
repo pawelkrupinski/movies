@@ -133,16 +133,24 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
     val marker     = new InMemoryReadModelDerivationMarker(Some("an-older-derivation"))
     val (projector, sweeper) = booted(repository, rm, marker)
 
+    // Each slice as its tick runs it: a slice that missed a row is not a completed run, so a pass failing every slice
+    // goes stale (it completed every one, and read-model-derivation-pass could never fire).
+    val ticks = new tools.RecordingTickRecorder
+    def slice(): Unit = tools.ScheduledTick.recorded("read-model-derivation-pass", scala.concurrent.duration.Duration(1, "minute"),
+      play.api.Logger(getClass), ticks)(sweeper.advanceDerivationPass())
     sweeper.pruneOrphans()
     repository.failing = true
-    (1 to 48).foreach(_ => sweeper.advanceDerivationPass())
+    (1 to 48).foreach(_ => slice())
     withClue("a pass that could not read every row has not re-projected the corpus: ") {
       marker.current shouldBe Some("an-older-derivation")
     }
+    ticks.completedRuns.size should be < 48
 
     repository.failing = false
     sweeper.pruneOrphans()
-    (1 to 48).foreach(_ => sweeper.advanceDerivationPass())
+    val before = ticks.completedRuns.size
+    (1 to 48).foreach(_ => slice())
+    ticks.completedRuns.size shouldBe before + 48
     staleCards(rm) shouldBe 0
     marker.current shouldBe Some(ReadModelDerivation.current.value)
     projector.stop()

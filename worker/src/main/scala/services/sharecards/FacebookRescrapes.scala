@@ -252,28 +252,39 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   private val brake = new FacebookUsageBrake(store, clock)
 
-  def tick(): Unit = {
-    expandFilms()
+  /** One drain tick: [[tools.TickRun.Incomplete]] when a film's pages could not be read (that film deferred or dropped,
+   *  logged) — a drain whose reads fail every tick must go stale. Facebook's own answers (refused, rate-limited) are its
+   *  word on a page, and the holds they bring are waits: they complete. */
+  def tick(): tools.TickRun = {
+    val expanded = expandFilms()
     sendPage()
     metrics.rescrapesWaiting(store.waitingPages(country))
+    expanded
   }
 
-  private def expandFilms(): Unit =
+  /** Expand the films due into their pages: [[tools.TickRun.Incomplete]] when one film's pages could not be read. */
+  private def expandFilms(): tools.TickRun =
     Iterator.continually(store.claim(country, RescrapeKind.Film, clock.instant(), Lease)).take(FilmsPerTick)
-      .takeWhile(_.isDefined).flatten.foreach { film =>
-        val filmId = film.target match { case RescrapeTarget.FilmPages(_, id) => id; case other => other.key }
-        Try(previewed(pages(filmId))) match {
-          case Success(urls) =>
-            store.add(urls.map { case (url, seen) => RescrapeEntry(country, RescrapeTarget.Page(url, seen), clock.instant()) })
-            store.complete(film)
-          case Failure(e) if film.attempts >= MaxAttempts =>
-            logger.warn(s"share card: re-scrape of $filmId dropped, its pages could not be read ${film.attempts} times: ${e.getMessage}")
-            store.complete(film)
-          case Failure(e) =>
-            logger.info(s"share card: re-scrape of $filmId deferred, its pages could not be read: ${e.getMessage}")
-            store.retry(film, clock.instant().plusMillis(backoff(film.attempts).toMillis), countAttempt = true)
-        }
-      }
+      .takeWhile(_.isDefined).flatten.map(expand)
+      .foldLeft(tools.TickRun.Completed)((all, one) => if (one == tools.TickRun.Incomplete) one else all)
+
+  private def expand(film: RescrapeEntry): tools.TickRun = {
+    val filmId = film.target match { case RescrapeTarget.FilmPages(_, id) => id; case other => other.key }
+    Try(previewed(pages(filmId))) match {
+      case Success(urls) =>
+        store.add(urls.map { case (url, seen) => RescrapeEntry(country, RescrapeTarget.Page(url, seen), clock.instant()) })
+        store.complete(film)
+        tools.TickRun.Completed
+      case Failure(e) if film.attempts >= MaxAttempts =>
+        logger.warn(s"share card: re-scrape of $filmId dropped, its pages could not be read ${film.attempts} times: ${e.getMessage}")
+        store.complete(film)
+        tools.TickRun.Incomplete
+      case Failure(e) =>
+        logger.info(s"share card: re-scrape of $filmId deferred, its pages could not be read: ${e.getMessage}")
+        store.retry(film, clock.instant().plusMillis(backoff(film.attempts).toMillis), countAttempt = true)
+        tools.TickRun.Incomplete
+    }
+  }
 
   /** Each of `urls` with whether Facebook holds a preview of it — fetched within its preview's lifetime. */
   private def previewed(urls: Seq[String]): Seq[(String, Boolean)] = {
@@ -341,7 +352,8 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
       val s = DaemonExecutors.scheduler(s"facebook-rescrapes-$country")
       ticks.started("facebook-rescrape-drain", TickEvery, TickEvery)
       s.scheduleWithFixedDelay(() => Try(tick()) match {
-        case Success(_) => ticks.completed("facebook-rescrape-drain", TickEvery)
+        case Success(tools.TickRun.Completed)  => ticks.completed("facebook-rescrape-drain", TickEvery)
+        case Success(tools.TickRun.Incomplete) => ()   // a film's pages unreadable: logged by the tick
         case Failure(e) => failures.admit().foreach(suppressed => logger.warn(
           s"share card: re-scrape drain failed (${e.getClass.getSimpleName}: ${e.getMessage}); $suppressed more since the last report"))
       }, TickEvery.toMillis, TickEvery.toMillis, TimeUnit.MILLISECONDS)

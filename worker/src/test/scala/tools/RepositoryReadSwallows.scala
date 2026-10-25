@@ -27,12 +27,6 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/UptimeSync.scala", "hydrate",
       "def hydrate(c: MongoCollection[Document]): Unit = Try {") ->
       "a boot hydrate of an in-memory map: a failed read leaves it as it was (empty = the documented cold start) and is logged",
-    ("common/src/main/scala/services/config/EnvOverrideStore.scala", "refresh",
-      "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).toOption.foreach { docs =>") ->
-      "keeps the overrides it already holds when the read fails — the opposite of reading the failure as 'no overrides'",
-    ("common/src/main/scala/services/config/EnvRegistryStore.scala", "publish",
-      "Try {") ->
-      "the Try is the write's failure log: a failed read throws before anything is reconciled or written",
     ("common/src/main/scala/services/movies/MongoMovieRepository.scala", "collidesWithAnother",
       "Try(Await.result(c.find(Filters.and(") ->
       "the collision pre-check only: a sibling holding the key or tmdbId is still refused by the unique index at the write (handled as IdentityHeld below)",

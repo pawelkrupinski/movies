@@ -8,7 +8,7 @@ import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClo
 import play.api.Logging
 import services.movies.{CacheKey, CinemaCorroboration, MovieCache, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.readmodel.ReadModelProjection
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -92,18 +92,20 @@ final class CorpusCensus(
 
   /** Derive the part of every film noted since the last drain, in place of its last one. A film whose derivation
    *  throws keeps its last part and stays noted, so the next drain tries it again rather than leaving it wrong until
-   *  its next write. Caller holds `parts`. */
-  private def drain(): Unit = dirty.keySet().asScala.toSeq.foreach { key =>
-    Option(dirty.remove(key)).foreach { film =>
+   *  its next write. Whether every film derived. Caller holds `parts`. */
+  private def drain(): Boolean = dirty.keySet().asScala.toSeq.foldLeft(true) { (whole, key) =>
+    Option(dirty.remove(key)).fold(whole) { film =>
       val prior = parts.get(key)
       Try(film.map(FilmCensus.of(_, cache.normalizer, prior))) match {
         case scala.util.Success(next) =>
           next.fold(parts.remove(key))(parts.put(key, _))
           prior.foreach(p => add(p.subsets, -1))
           next.foreach(n => add(n.subsets, +1))
+          whole
         case scala.util.Failure(e) =>
           dirty.putIfAbsent(key, film)
           logger.warn(s"corpus-census: could not count '${key.cleanTitle}' (${e.getMessage}) — it keeps its last count until the next tick.")
+          false
       }
     }
   }
@@ -112,9 +114,12 @@ final class CorpusCensus(
     StaticSubsets.indices.foreach(i => if ((subsets & (1 << i)) != 0) static(i) += by)
 
   /** The census as the films the cache holds now give it, against the clock now. */
-  def reading(): Reading = parts.synchronized {
-    drain()
-    tally(parts.valuesIterator, static.toSeq, cities, clock)
+  def reading(): Reading = drainedReading()._1
+
+  /** [[reading]], and whether every film noted since the last drain could be counted. */
+  private def drainedReading(): (Reading, Boolean) = parts.synchronized {
+    val whole = drain()
+    (tally(parts.valuesIterator, static.toSeq, cities, clock), whole)
   }
 
   /** Each city's [[WorkerCitySeasonMetrics]] verdict, off the clock alone — whatever the corpus holds. */
@@ -124,15 +129,17 @@ final class CorpusCensus(
   }
 
   /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. The
-   *  off-season verdicts are published either way: they read no corpus. */
-  def publish(): Unit = {
+   *  off-season verdicts are published either way: they read no corpus. [[TickRun.Incomplete]] for a miss (its gauges
+   *  keep old values), or a reading with a film it could not count. */
+  def publish(): TickRun = {
     publishSeasons()
     if (!seeded || !cache.hydrated) {
       metrics.recordIncompleteSample()
       logger.warn("corpus-census: the cache does not hold the whole corpus yet — census gauges keep their previous " +
         "values rather than publishing a partial count as if the corpus had shrunk.")
+      TickRun.Incomplete
     } else {
-      val now = reading()
+      val (now, whole) = drainedReading()
       now.corpus.foreach { case (subset, n) => corpus.labelValues(countryCode, subset).set(n.toDouble) }
       for (c <- cities) {
         WorkerSourceFilmsMetrics.Scope.all.foreach(scope =>
@@ -140,6 +147,7 @@ final class CorpusCensus(
         showtimes.labelValues(countryCode, c.slug).set(now.showtimes.getOrElse(c.slug, 0).toDouble)
       }
       widest.labelValues(countryCode).set(now.widest.toDouble)
+      TickRun.completedWhen(whole)
     }
   }
 

@@ -210,14 +210,20 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
       id => if (readable) pagesOf(id, 1) else throw new IllegalStateException("read-model card unreadable"),
       fetches, "us", ShareCardMetrics.noop, clock, _root_.tools.Stopwatch.System)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
-    drain.tick()
+    // A tick whose film pages could not be read caught that and completed facebook-rescrape-drain all the same, so a
+    // read model unreadable for hours never went stale. It is not a completed run now.
+    val ticks = new _root_.tools.RecordingTickRecorder
+    def tick(): Unit = _root_.tools.ScheduledTick.recorded("facebook-rescrape-drain", TickEvery, play.api.Logger(getClass), ticks)(drain.tick())
+    tick()
     store.waiting.map(_.key) shouldBe Seq("film|us|film")
     graph.sent shouldBe empty
+    ticks.completedRuns shouldBe empty
     readable = true
     clock.advance(java.time.Duration.ofMillis(backoff(1).toMillis))
-    drain.tick()
+    tick()
     graph.sent.map(_._2).toSeq shouldBe pagesOf("film", 1)
     store.waiting shouldBe empty
+    ticks.completedRuns should have size 1
   }
 
   it should "be dropped after the last attempt, not wait in the fleet's queue for good" in {

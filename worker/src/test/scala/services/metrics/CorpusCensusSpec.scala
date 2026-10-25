@@ -239,6 +239,35 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     census.reading().subset(Subset.Total) shouldBe 1
   }
 
+  // A census that published nothing (the cache never read the corpus) or a count missing a film it could not derive
+  // completed its tick all the same, so corpus-census never went stale while its gauges sat frozen or wrong.
+  it should "not complete its tick for a miss, or a reading missing a film it could not count" in {
+    val ticks = new tools.RecordingTickRecorder
+    def tick(census: CorpusCensus): Unit =
+      tools.ScheduledTick.recorded("corpus-census", CorpusCensus.DefaultPublishInterval, play.api.Logger(getClass), ticks)(census.publish())
+    val unreadable = new InMemoryMovieRepository(Seq(("Film", Some(2026), ready(Helios, 1, tomorrow))), normalizer = normalizer) {
+      override def findAllChecked(): tools.ReadOutcome[Seq[services.movies.StoredMovieRecord]] =
+        services.movies.UnreadableRepositories.failed
+    }
+    val missing = censusOver(cacheOver(unreadable), new PrometheusRegistry())
+    missing.seed()
+    tick(missing)
+    ticks.completedRuns shouldBe empty
+
+    val census = censusOver(cacheOver(splitRepository()), new PrometheusRegistry())
+    census.seed()
+    var broken = true
+    val film   = row("Flaky", ready(Helios, 1, tomorrow))
+    census.held(CacheKey("Flaky", Some(2026), normalizer), Some(film.copy(record = new MovieRecord(tmdbId = Some(1), data = film.record.data) {
+      override def readyToProject: Boolean = if (broken) throw new IllegalStateException("bug") else super.readyToProject
+    })))
+    tick(census)
+    ticks.completedRuns shouldBe empty
+    broken = false
+    tick(census)
+    ticks.completedRuns should have size 1
+  }
+
   // A scrape landing moves one slot of a film that can hold thousands: re-deriving every slot on each landing made a
   // film's landings cost the square of its venues.
   it should "re-derive only the slots a write moved" in {

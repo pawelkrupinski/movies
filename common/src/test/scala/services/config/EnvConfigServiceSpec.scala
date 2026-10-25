@@ -109,4 +109,21 @@ class EnvConfigServiceSpec extends AnyFlatSpec with Matchers {
     overrides.lookup("KINOWO_N") shouldBe None
     svc.reset("TELEGRAM_BOT_TOKEN") shouldBe false
   }
+
+  // Both stores swallowed their Mongo failures, so a tick that could neither read the overrides nor publish the knobs
+  // completed env-config-publish all the same: flips stopped arriving with no stale alert to say so.
+  "publishTick" should "not complete its tick when the stores could not be read or written" in {
+    val unreachable = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200&connectTimeoutMS=200")
+    try {
+      val db    = Some(unreachable.getDatabase("unreachable"))
+      val ticks = new tools.RecordingTickRecorder
+      def tick(svc: EnvConfigService): Unit = tools.ScheduledTick.recorded("env-config-publish",
+        scala.concurrent.duration.Duration(30, "seconds"), play.api.Logger(getClass), ticks)(svc.publishTick())
+      tick(service("worker", new MongoEnvOverrideStore(db), new InMemoryEnvRegistryStore))
+      tick(service("worker", new InMemoryEnvOverrideStore, new MongoEnvRegistryStore(db), envHaving(Seq("KINOWO_MINE"))))
+      ticks.completedRuns shouldBe empty
+      tick(service("worker", new InMemoryEnvOverrideStore, new InMemoryEnvRegistryStore))
+      ticks.completedRuns should have size 1
+    } finally unreachable.close()
+  }
 }

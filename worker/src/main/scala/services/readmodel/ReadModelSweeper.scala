@@ -526,8 +526,12 @@ class ReadModelSweeper(
    *  Each complete slice records the pass's progress, so a restart resumes rather than repeats.
    *  Only a pass that read and projected every row records the new version; one that did not
    *  leaves the old one, and the next sweep starts it again from the first slice that missed a
-   *  row. Nothing happens when the store's version is this process's. */
-  def advanceDerivationPass(): Unit = projection.exclusively {
+   *  row. Nothing happens when the store's version is this process's.
+   *
+   *  As a tick's run: [[TickRun.Incomplete]] when the slice missed a row, or its progress or the
+   *  pass's derivation could not be recorded (each logged) — a pass owed and failing every slice
+   *  must go stale. Nothing owed is a completed run. */
+  def advanceDerivationPass(): TickRun = projection.exclusively {
     derivationPass match {
       case running: DerivationPass.Running =>
         val (written, complete) = reprojectDerivationSlice(running)
@@ -535,12 +539,15 @@ class ReadModelSweeper(
                                 complete = running.complete && complete)
         // Only while every slice so far was complete: a restart then resumes after the last one,
         // and a pass that missed a row starts over from the first slice it missed one in.
-        if (next.complete && next.nextSlice < ContentSlices)
-          continuing("read-model derivation pass: recording its progress failed; a restart repeats this slice") {
-            derivationMarker.recordProgress(DerivationProgress(derivationHistory.last.version, next.nextSlice))
-          }
+        val progressRecorded =
+          if (next.complete && next.nextSlice < ContentSlices)
+            continuing("read-model derivation pass: recording its progress failed; a restart repeats this slice") {
+              derivationMarker.recordProgress(DerivationProgress(derivationHistory.last.version, next.nextSlice))
+            }.isDefined
+          else true
         derivationPass = if (next.nextSlice < ContentSlices) next else finishDerivationPass(next)
-      case _ => ()
+        TickRun.completedWhen(complete && progressRecorded && derivationPass != DerivationPass.Unchecked)
+      case _ => TickRun.Completed
     }
   }
 

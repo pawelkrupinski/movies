@@ -19,8 +19,8 @@ import scala.util.Try
  *
  *  Real impl: Mongo `env_registry`, `_id = "app|key"`. Test impl: in-memory. */
 trait EnvRegistryStore {
-  /** Replace this `app`'s published knob set (so a removed key disappears). */
-  def publish(app: String, knobs: Seq[RegisteredKnob]): Unit
+  /** Replace this `app`'s published knob set (so a removed key disappears): whether it was written. */
+  def publish(app: String, knobs: Seq[RegisteredKnob]): Boolean
   /** Every knob every app has published. Throws when the store cannot be read. */
   def all(): Seq[RegisteredKnob]
 }
@@ -51,8 +51,8 @@ object EnvRegistryStore {
 class InMemoryEnvRegistryStore extends EnvRegistryStore {
   // keyed by app -> (key -> knob)
   private val byApp = new java.util.concurrent.ConcurrentHashMap[String, Map[String, RegisteredKnob]]()
-  def publish(app: String, knobs: Seq[RegisteredKnob]): Unit = {
-    byApp.put(app, knobs.map(k => k.key -> k).toMap); ()
+  def publish(app: String, knobs: Seq[RegisteredKnob]): Boolean = {
+    byApp.put(app, knobs.map(k => k.key -> k).toMap); true
   }
   def all(): Seq[RegisteredKnob] = {
     import scala.jdk.CollectionConverters._
@@ -64,8 +64,8 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
   private val coll: Option[MongoCollection[Document]] =
     sharedDb.map(_.getCollection[Document]("env_registry"))
 
-  def publish(app: String, knobs: Seq[RegisteredKnob]): Unit = coll.foreach { c =>
-    Try {
+  def publish(app: String, knobs: Seq[RegisteredKnob]): Boolean = coll.forall { c =>
+    val written = Try {
       // Reconcile against what's already stored so an unchanged registry writes
       // nothing. Only rows that actually changed get an upsert, and a key no
       // longer read (or renamed) is deleted — the page stays correct without the
@@ -80,7 +80,9 @@ class MongoEnvRegistryStore(sharedDb: Option[MongoDatabase]) extends EnvRegistry
           10.seconds)
       }
       ()
-    }.recover { case e => logger.warn(s"EnvRegistryStore.publish($app) failed: ${e.getMessage}") }
+    }
+    written.failed.foreach(e => logger.warn(s"EnvRegistryStore.publish($app) failed: ${e.getMessage}"))
+    written.isSuccess
   }
 
   private def idOf(k: RegisteredKnob): String = s"${k.app}|${k.key}"
