@@ -99,6 +99,24 @@ class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
     ratchets.filterNot(b => b.floor < b.measured && b.measured < b.limit) shouldBe empty
   }
 
+  /** Under ~10 KB the JVM's allocation granularity moves a figure by more than the default band (an unfiltered
+   *  listing description read 2.9, 2.6 and 2.5 KB on three CI runs with no change). Such a budget is a ceiling, or
+   *  a ratchet whose band is wide: 1.5x above and 0.6x below at least. */
+  private val NoiseFloor = 10L * 1024
+  private def noiseSafe(b: PerformanceBudget): Boolean =
+    b.unit != PerformanceBudget.Measure.Bytes || b.measured >= NoiseFloor || b.floor == 0 ||
+      (b.limit >= b.measured * 1.5 && b.floor <= b.measured * 0.6)
+
+  "a small allocation figure" should "be a ceiling or carry a wide band, whatever it measured" in {
+    noiseSafe(bytes("path", measured = 7 * 1024)) shouldBe false
+    noiseSafe(bytes("path", measured = 7 * 1024, band = Band(upper = 1.5, lower = 0.6))) shouldBe true
+    noiseSafe(ceiling("bound", limit = 7 * 1024)) shouldBe true
+    noiseSafe(bytes("path", measured = 20 * 1024)) shouldBe true
+    withClue("a figure under 10 KB is noise-dominated: make it a `ceiling`, or give `bytes` a wide Band and say why: ")(
+      budgets.filterNot(noiseSafe).map(_.name) shouldBe empty
+    )
+  }
+
   "this spec's fixture figures" should "land in its own file, never in the real performance-budgets.tsv" in {
     fixtureRows(Fixtures) should contain("noisy path")
     fixtureRows(PerformanceBudget.Report.File).size shouldBe leftBefore

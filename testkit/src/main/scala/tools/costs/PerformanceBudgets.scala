@@ -10,7 +10,8 @@ import tools.costs.PerformanceBudget.{Band, bytes, ceiling, operations}
  * An allocation budget (`bytes`) is a two-sided RATCHET around `measured` (`PerformanceBudget.DefaultBand`,
  * 0.85x to 1.15x unless it names a wider band): its spec fails when the path costs MORE (a regression) and
  * when it costs LESS (a stale figure). So `measured` is always today's cost, never a number from months
- * ago that a regression can hide under. A `ceiling` only bounds from above; an `operations` count is exact.
+ * ago that a regression can hide under. A `ceiling` only bounds from above (and is what a figure under ~10 KB
+ * must be, or carry a wide `Band`: PerformanceBudgetsSpec, "small figures are noise"); an `operations` count is exact.
  *
  * HOW TO UPDATE ONE — deliberately, never to make a red build green:
  *  - It went red ABOVE its band (a regression):
@@ -64,8 +65,10 @@ object PerformanceBudgets {
   val ListingCold = bytes("listing render, cold caches", measured = mb(20.4))
   /** The city listing with the controller's caches full and the response blob missed (`?diag=`). */
   val ListingWarm = bytes("listing render, warm caches", measured = mb(1.33))
-  /** The city listing served from the gzipped blob. */
-  val ListingBlobHit = bytes("listing render, response blob hit", measured = kb(7.2))
+  /** The city listing served from the gzipped blob. A ceiling, not a ratchet: at 7.2 KB the JVM's allocation granularity
+   *  moves the figure more than the default band (the rule for every figure under 10 KB, PerformanceBudgetsSpec), and
+   *  what it guards against, a hit that rebuilds the page, is three orders of magnitude over. */
+  val ListingBlobHit = ceiling("listing render, response blob hit", limit = kb(10))
   /** The heaviest film page, cold and warm. */
   val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.61))
   val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.87))
