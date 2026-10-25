@@ -60,6 +60,7 @@ object CollectionRetention {
     "identity_model_families" -> Sweep("MongoIdentityModelStore"),
     "identity_model_meta"     -> KeptForever("the model store's meta documents, a fixed set"),
     "identity_agreements"     -> Sweep("MongoAgreementVerdicts"),
+    "identity_agreement_keys" -> Sweep("MongoAgreementKeys"),
     "fleet_host_pace"         -> KeptForever("one document per fleet-paced host, rewritten in place"),
     "identity_family_answers" -> Sweep("TmdbStoreSweep"),
     "identity_slot_fingerprints" -> Sweep("MongoVenueSlotFingerprints"),

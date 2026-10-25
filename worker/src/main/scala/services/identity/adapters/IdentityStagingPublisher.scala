@@ -41,9 +41,15 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
                                      takeMetrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded,
                                      /** A TMDB film's title where the resolution names none: a film only a later stage took
                                       *  (an agreement), read from the TMDB store's records, on this publisher's thread. */
-                                     filmTitle: Int => Option[String] = _ => None)
+                                     filmTitle: Int => Option[String] = _ => None,
+                                     /** A cluster's key: the agreement stage's ([[agreement.AgreementStage.keyOf]]), which
+                                      *  a listing sorting first, or leaving, does not move. */
+                                     clusterKey: ResolverDecision => String = decision => StoredFamily.idOf(decision.members))
     extends Stoppable with Logging {
   import IdentityStagingPublisher.*
+
+  /** A cluster's key on the screen: its key ([[clusterKey]]), hashed short. */
+  private def keyOf(decision: ResolverDecision): String = keyOfId(clusterKey(decision))
 
   /** A TMDB film's title: as the model's resolution has it, else as the TMDB store does (`filmTitle`). */
   private def titleIn(resolution: Resolution): Int => Option[String] =
@@ -86,6 +92,8 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
         case (m, _)                       => m
       }
       val endedOf = events.collect { case StagingEvent.Settled(cluster, at) => keyOfId(cluster) -> at }.toMap
+      // the clusters each merged cluster absorbed: a wait one of them began is the merged cluster's, since it began
+      val absorbedBy = events.collect { case StagingEvent.Merged(cluster, absorbed, _) => keyOfId(cluster) -> keyOfId(absorbed) }.groupMap(_._1)(_._2)
       val changed = events.collect { case c: StagingEvent.Changed => c }
 
       val waiting  = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
@@ -117,7 +125,8 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       val known = outcomes(waitingNow.iterator.flatMap(_._3.questions).toSet ++ betweenNow.iterator.flatMap(_._3.questions) ++
         resolvedQuestions)
       val nowStaging = waitingNow.map { case (key, decision, waits) =>
-        val since = wasStaging.get(key).map(_.since).orElse(startedOf.get(key).map(_.at)).getOrElse(now)
+        val since = (wasStaging.get(key).map(_.since).orElse(startedOf.get(key).map(_.at)) ++
+          absorbedBy.getOrElse(key, Nil).flatMap(wasStaging.get).map(_.since)).minOption.getOrElse(now)
         key -> stagedOf(key, decision, resolution, waits, since, known)
       }.toMap
       val settledNow = settled.result()
@@ -189,7 +198,7 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
                         resolution: Resolution): Seq[StagedCluster] =
     changed.groupBy { c =>
       val change = c.change
-      (c.projection, clusterOf.get(change.listing).fold(ListingKey.serialised(change.listing))(d => StoredFamily.idOf(d.members)),
+      (c.projection, clusterOf.get(change.listing).fold(ListingKey.serialised(change.listing))(clusterKey),
         change.kind, change.before)
     }.toSeq.map { case ((projection, cluster, kind, was), changes) =>
       val at       = changes.head.at
@@ -265,10 +274,7 @@ object IdentityStagingPublisher {
   val ExplanationShown = 6
   private val TickName = "identity-staging"
 
-  /** A cluster's key on the screen: its id ([[StoredFamily.idOf]], its smallest listing), hashed short. */
-  def keyOf(decision: ResolverDecision): String = keyOfId(StoredFamily.idOf(decision.members))
-
-  /** The screen's key of the cluster whose id is `id`. */
+  /** The screen's key of the cluster whose key ([[agreement.AgreementStage.keyOf]]) is `id`: hashed short. */
   def keyOfId(id: String): String = java.lang.Long.toHexString(agreement.AgreementStage.digest(Seq(id)))
 
 

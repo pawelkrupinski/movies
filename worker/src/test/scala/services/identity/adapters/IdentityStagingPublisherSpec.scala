@@ -58,10 +58,11 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
   }
 
   private def publisher(docs: StagingDocuments, stagingCap: Int = 500, metrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded,
-                        filmTitle: Int => Option[String] = _ => None) =
+                        filmTitle: Int => Option[String] = _ => None,
+                        clusterKey: ResolverDecision => String = d => StoredFamily.idOf(d.members)) =
     new IdentityStagingPublisher("pl", new IdentityStaging(docs, clock), () => taken, () => feed.drain(),
       d => waits.getOrElse(d.members.toSet, WaitingOn.model(d)), qs => outcomes.view.filterKeys(qs).toMap, clock, window = 6.hours,
-      stagingCap = stagingCap, takeMetrics = metrics, filmTitle = filmTitle)
+      stagingCap = stagingCap, takeMetrics = metrics, filmTitle = filmTitle, clusterKey = clusterKey)
 
   /** What the screen reads of the country: its staging clusters and its resolutions. */
   private def shown(docs: StagingDocuments): Seq[StagedCluster] =
@@ -233,6 +234,25 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     clock.advanceSeconds(15)
     publisher(docs).publish()
     shown(docs).map(c => (c.staging, c.since)) shouldBe Seq((true, began))
+  }
+
+  // The stage's merge keeps the older key and takes on the younger's memories (docs/design/identity-cluster-identity.md,
+  // the owner's choice): a wait the younger began is the merged cluster's, since it began.
+  it should "stage a merged cluster since the wait of the cluster it absorbed began, under the stage's key" in {
+    val docs  = new InMemoryStagingDocuments
+    val keyOf = Map[Set[ListingKey], String](Set(dune) -> "7", Set(dune2) -> "3", Set(dune, dune2) -> "3")
+    val live  = publisher(docs, clusterKey = d => keyOf(d.members.toSet))
+    waits = Map(Set(dune) -> WaitingOn(0, Set(search), onTmdb = false))
+    taken = Some(resolution(decision(Seq(dune)), decision(Seq(dune2), Some(438631), ResolverDecision.Basis.OwnMatch)))
+    val began = clock.millis()
+    feed.offer(Seq(StagingEvent.Waiting("7", began, Set(search))))
+    live.publish()
+    clock.advanceSeconds(60)
+    waits = Map(Set(dune, dune2) -> WaitingOn(0, Set(search), onTmdb = false))
+    taken = Some(resolution(decision(Seq(dune, dune2))))
+    feed.offer(Seq(StagingEvent.Waiting("3", clock.millis(), Set(search)), StagingEvent.Merged("3", "7", clock.millis())))
+    live.publish()
+    shown(docs).filter(_.staging).map(c => (c.listingCount, c.since)) shouldBe Seq((2, began))
   }
 
   // DE ZOO PALAST Berlin's "Gigi", 2026-10-24: staging, then Agreed on tmdb 17281 — shown as `settled`, which never

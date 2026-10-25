@@ -183,9 +183,11 @@ const families = db.identity_model_families.find({_id: {$in: traces.map(t => t.f
 const venues = db.identity_listings.find({_id: venue}).limit(40).toArray().map(v => ({_id: v._id,
   films: (v.films || []).filter(f => title.test((f.movie || {}).rawTitle || (f.movie || {}).title || ''))}))
   .filter(v => v.films.length > 0);
-// the agreement stage's stored verdict (keyed by the cluster: its family's id, else one naming the title) and pins
+// the agreement stage's stored verdict (filed under the cluster's key, whose first listing is its family's id; under the
+// family's id itself before keys, else one naming the title) and pins
 const ids = traces.map(t => t.family);
-const agreements = db.identity_agreements.find({$or: [{_id: {$in: ids}}, {_id: title}]}).limit(10).toArray()
+const keyed = db.identity_agreement_keys.find({first: {$in: ids}}).toArray().map(k => k._id.toString());
+const agreements = db.identity_agreements.find({$or: [{_id: {$in: ids.concat(keyed)}}, {_id: title}]}).limit(10).toArray()
   .map(a => ({_id: a._id, agreed: a.agreed, filled: a.filled, correction: a.correction, rules: a.rules}));
 const pins = db.identity_pins.find({'listings.rawTitle': title}).limit(10).toArray();
 print(EJSON.stringify({traces: traces, families: families, venues: venues, agreements: agreements, pins: pins},

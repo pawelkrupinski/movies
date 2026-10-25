@@ -104,7 +104,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
         stopwatch = stopwatch),
-      staging = Some(identityStagingEvents.offer))
+      staging = Some(identityStagingEvents.offer), keys = agreementKeys)
     familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
     stage
   }
@@ -127,7 +127,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val identityStagingPublisher: services.identity.adapters.IdentityStagingPublisher = managedResources.stopping(
     new services.identity.adapters.IdentityStagingPublisher(country.code, identityStaging,
       taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityStagingEvents.drain(),
-      waitingOn = agreementStage.waitingOn,
+      waitingOn = agreementStage.waitingOn, clusterKey = agreementStage.keyOf,
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
       filmTitle = { val records = storedLookups(); id => records.film(id).toOption.flatten.map(_.title) }))
@@ -141,7 +141,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
                         budgets: Boolean = true,
                         askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never,
-                        staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None)
+                        staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
+                        keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys)
       : services.identity.agreement.AgreementStage =
     new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
       venueDetailLookups(),
@@ -157,7 +158,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
       askNow = askNow, attempted = identityQuestionMemory.attempted,
-      attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging)
+      attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging, keyStore = keys)
 
   // The drift check (services.identity.adapters.IdentityDriftCheck) no longer runs on the worker: its whole resolve and
   // fresh agreement stage, beside the model's own state, filled worker-us's tenured gen and OOM-killed it at its first
@@ -186,6 +187,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val agreementVerdicts: services.identity.agreement.AgreementVerdicts =
     mongoConnection.database.fold[services.identity.agreement.AgreementVerdicts](new services.identity.agreement.InMemoryAgreementVerdicts)(
       new services.identity.agreement.MongoAgreementVerdicts(_))
+  /** The agreement's cluster keys (`identity_agreement_keys`), which its verdicts are kept under. */
+  lazy val agreementKeys: services.identity.agreement.AgreementKeys =
+    mongoConnection.database.fold[services.identity.agreement.AgreementKeys](new services.identity.agreement.InMemoryAgreementKeys)(
+      new services.identity.agreement.MongoAgreementKeys(_))
   /** The families' live sources the agreement fill asks. */
   lazy val familySources: Map[services.identity.agreement.VoterFamily, services.identity.adapters.FamilySource] = {
     val all: Seq[services.identity.adapters.FamilySource] = Seq(new services.identity.adapters.ImdbFamily(imdbClient),

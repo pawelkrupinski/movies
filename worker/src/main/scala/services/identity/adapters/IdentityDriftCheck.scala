@@ -124,7 +124,7 @@ object IdentityDriftCheck {
    *  again, and project — the live state then decides those listings as a worker with nothing kept does. */
   final class Adopt(model: IdentityModelService, stage: agreement.AgreementStage, trigger: EventTrigger) extends Response with Logging {
     def respond(drifted: Seq[Drift]): Unit = {
-      val clusters = drifted.flatMap(_.live).map(d => StoredFamily.idOf(d.members)).toSet
+      val clusters = drifted.flatMap(_.live).map(stage.keyOf).toSet
       stage.forget(clusters)
       val reResolved = model.reResolve(drifted.map(_.listing).toSet, AdoptTimeout)
       logger.info(s"identity drift check: adopting the whole resolve for ${drifted.size} listings (${clusters.size} clusters forgotten" +

@@ -1,4 +1,4 @@
-# A stable cluster identity (design, 2026-10-24; NOT implemented, one decision open)
+# A stable cluster identity (design, 2026-10-24; IMPLEMENTED 2026-10-25, the owner's decisions below)
 
 ## The problem
 
@@ -30,6 +30,21 @@ schedule, or when clusters merge — none of which need change the cluster's tak
   moved too), so this is the verdict case again: nothing extra is lost.
 
 So the real losses are the per-cluster MEMORIES (settle, inline ask, wait start), not the verdicts.
+
+## Status
+
+Implemented 2026-10-25 as decided below: `ClusterKeys` (the overlap rule), `AgreementKeys` (`identity_agreement_keys`,
+in-memory default), `AgreementStage.keying`/`adopt`/`keyOf`, `StagingEvent.Merged`, and `ProdMirror` reading the mirror's
+verdicts through the key store. Specs: `ClusterKeysSpec`, `AgreementKeyingSpec`, `IdentityStagingPublisherSpec` (a merged
+cluster's wait start).
+
+The owner's decisions (2026-10-25) on the three open questions:
+
+1. **Merge: UNION** the younger cluster's memories into the survivor (the "Alternative" below, not the "Proposed"), so a
+   merge never makes a settled half wait anew: its `unreached`, its inline-ask mark (`askedNow`), and its wait's start
+   (the earlier `since` is kept).
+2. **Verdict migration: adopt lazily**, no re-resolve at the deploy, as proposed.
+3. **Key: the stage's own counter**, not the projection's FilmId, as proposed.
 
 ## The design
 
@@ -77,19 +92,27 @@ The counter and each live cluster's key must outlive a restart, or the first app
 ### Merge and split
 
 - **Merge** (clusters A < B join): the merged cluster keeps A. A's verdict is decided again (its digest moved). A's
-  settle memory and inline-ask mark carry over; B's are RETIRED with B (open question 1 below). Staging: B's row
-  resolves as `regrouped`; A's row keeps its `since`.
+  settle memory and inline-ask mark carry over, and B's are UNIONED into them (the owner's decision 1): B's key is
+  retired but ABSORBED (`ClusterKeys.Assigned.absorbed`, by the next cluster holding most of its listings — which
+  always kept an older key), its `unreached` added to A's and its `askedNow` mark set on A. Staging: B's row resolves
+  as `regrouped`; the stage tells the screen `StagingEvent.Merged(A, B)`, and A's row is staged since the EARLIER of
+  its own wait's start and B's (the publisher reads B's from its published row, so this holds across a restart too).
 - **Split** (A splits into A₁ ⊇ larger half, A₂): A₁ keeps A, with A's memories; A₂ is fresh — asked inline as a new
   cluster (`newCluster` holds: nothing is held under its key), its own staging row.
 
 ### Verdict migration
 
-`identity_agreements` documents are keyed `_id = idOf` today. Proposed: MIGRATE LAZILY, deciding nothing again.
+`identity_agreements` documents were keyed `_id = idOf`. Decided: MIGRATE LAZILY, deciding nothing again.
 
 - The first apply under the new code keys every cluster (by overlap against nothing: every cluster fresh, numbered in
   order of its smallest listing). For each, it looks the verdict up under the new key, then, failing that, under its
-  legacy `idOf` (and `correction|<idOf>`); a legacy verdict whose digest still matches is ADOPTED: written under the
-  new key, the legacy document deleted in the same `replace`. A digest that does not match is decided again, as today.
+  legacy `idOf` (and `correction|<idOf>`); a legacy verdict is ADOPTED: written under the new key, the legacy document
+  deleted in the same `replace` (`AgreementStage.adopt`). One whose digest still matches stands, unread; one whose
+  digest does not is decided again under its key, as today. The legacy lookup runs on every first apply after a boot,
+  so a crash between the key write and the verdict write adopts on the next boot.
+- Note: the deploy that brings this in changes `AgreementStage.scala`, so `AgreementStage.RulesVersion` moves and every
+  verdict is decided again on its first pass anyway, as on any deploy touching the stage's sources. Adoption keeps
+  the verdicts' keyed memory for every later deploy and restart.
 - Every verdict the first pass does not adopt belongs to a cluster that no longer exists and is deleted by
   `forgetGone`, as today.
 - Cost: no resolve beyond what today's boot does (a verdict with an unchanged digest stands); one bulk write of every
@@ -119,14 +142,13 @@ holds identity-slice at c2974e3aa, title-trace at e90d2b498). The tool files tou
   `IdentitySlice.storedOf` loads prod verdicts by their stored `_id`. If keying stays INSIDE the stage (a constructor
   parameter with a default, the key store an `AgreementVerdicts`-like seam with an in-memory default), the tool files
   need no new member and compile into old refs unchanged.
-- `storedOf` reads a prod mirror's `identity_agreements`: after the deploy its `_id`s are counters. The slice must
-  hand the stage both the verdicts and the key store (`identity_agreement_keys`) read from the mirror; under an old
-  ref (no key store) the verdicts are keyed by counter its stage cannot look up, so a mirror slice under a pre-change
-  ref decides every verdict afresh. That is correct (a slice decides as that build would with nothing kept) but slower;
-  `OlderRefs` needs a by-name pass of the key store only where the ref's `AgreementStage` has the parameter
-  (`OlderRefs.passing`, as `NewerLookups` is passed).
-- The old-ref test gains no new floor: nothing the tool files read is newer than c2974e3aa unless the key store is
-  passed, and that goes through `OlderRefs`.
+- `storedOf` reads a prod mirror's `identity_agreements`: after the deploy its `_id`s are counters. IMPLEMENTED more
+  simply than proposed: `tools.ProdMirror` (a tool file) reads the mirror's `identity_agreement_keys` raw, by collection
+  name, and hands every verdict back under its cluster's FIRST LISTING (`first`), as a pre-change build stored it. A
+  pre-change ref's stage reads them as it always did; this build's stage adopts them on its first apply (above). No
+  `OlderRefs` member and no key store is passed; `ProdMirror.sides` finds a listing's verdict through the same
+  `first` → key lookup. `identity_agreement_keys` is in `debug-mirror-collections.json` so the mirror holds it.
+- The old-ref test gains no new floor: the tool files name nothing newer than c2974e3aa.
 
 ### Landing
 
@@ -134,14 +156,14 @@ The riskiest of the three steps: it touches what every verdict is looked up by. 
 `scripts/identity-landing-check --full` LANDABLE with 0 moved — keying alone moves no take (a verdict stands exactly
 while its digest does, under any key), so any moved take is a bug in the adoption.
 
-## Open questions (the owner's)
+## Open questions (the owner's) — DECIDED 2026-10-25 (see Status)
 
-1. **What a MERGE does with the younger cluster's memories.** Proposed: retired with its key (the merged cluster's
+1. **What a MERGE does with the younger cluster's memories.** DECIDED: union (the alternative). Proposed: retired with its key (the merged cluster's
    verdict is decided again anyway; its settle memory is the older cluster's). Alternative: union both clusters'
    `unreached` and inline-ask marks into the survivor, so a merge never makes a settled half wait anew.
-2. **Verdict migration: adopt lazily, or decide every verdict again at the deploy?** Proposed: adopt (above): no
+2. **Verdict migration: adopt lazily, or decide every verdict again at the deploy?** DECIDED: adopt. Proposed: adopt (above): no
    resolve, no take can move, one bulk rewrite. Deciding again is simpler code but is the boot pass that OOM-kills
    worker-us.
-3. **The stage's own counter, or the projection's FilmId?** Proposed: the stage's own (above, "Why"). Keying by FilmId
+3. **The stage's own counter, or the projection's FilmId?** DECIDED: the stage's own. Proposed: the stage's own (above, "Why"). Keying by FilmId
    means a provisional key for new clusters and split halves until the next written projection, and a shared key for
    two decisions of one TMDB film.

@@ -50,7 +50,7 @@ object ProdSide {
   /** The model's stored decision on a listing: its film, basis and the cluster's members. */
   final case class Model(film: Option[Int], basis: String, members: Seq[ListingKey])
 
-  /** The id the agreement stage files a cluster's verdict under: its smallest listing ([[StoredFamily.idOf]]). */
+  /** A cluster's first listing ([[StoredFamily.idOf]]): what its stored verdict is found by ([[ProdMirror.verdicts]]). */
   def clusterId(members: Seq[ListingKey]): String = StoredFamily.idOf(members)
 }
 
@@ -85,7 +85,23 @@ final class ProdMirror(client: MongoClient, val country: Country) extends AutoCl
       id -> d
     }.toMap
 
-  def verdicts(): Seq[StoredVerdict] = new MongoAgreementVerdicts(db).all()
+  /** Prod's stored verdicts, each under its cluster's first listing ([[ProdSide.clusterId]]): prod files them under its
+   *  stage's cluster keys (`identity_agreement_keys`, read by name — a ref the slice decides under may have no such
+   *  store), and the first listing is what every ref's stage finds a verdict by — adopted under its own key, or kept as
+   *  it was. */
+  def verdicts(): Seq[StoredVerdict] = { val firsts = firstsOf(Filters.empty()); new MongoAgreementVerdicts(db).all().map(underFirst(_, firsts)) }
+
+  /** Each cluster key's first listing, of the keys `filter` finds. */
+  private def firstsOf(filter: org.bson.conversions.Bson): Map[String, String] =
+    find(ProdMirror.Keys, filter).collect { case d if d.get("_id").isInt64 && d.containsKey("first") =>
+      d.getInt64("_id").getValue.toString -> d.getString("first").getValue }.toMap
+
+  /** `verdict`, its correction too, filed under its cluster's first listing where its id is a cluster key `firsts` holds. */
+  private def underFirst(verdict: StoredVerdict, firsts: Map[String, String]): StoredVerdict = {
+    val prefix  = AgreementStage.correctionId("")
+    val (head, key) = if (verdict.id.startsWith(prefix)) (prefix, verdict.id.stripPrefix(prefix)) else ("", verdict.id)
+    firsts.get(key).fold(verdict)(first => verdict.copy(id = head + first))
+  }
   def pins(): Seq[Pin] = new MongoPinStore(Some(db)).all()
 
   /** Each listing's prod side. */
@@ -100,9 +116,11 @@ final class ProdMirror(client: MongoClient, val country: Country) extends AutoCl
         d.members.map(_ -> model)
       }.toMap
     val clusters = keys.flatMap(models.get).map(m => ProdSide.clusterId(m.members)).distinct
+    val firsts = if (clusters.isEmpty) Map.empty[String, String] else firstsOf(Filters.in("first", clusters*))
+    val ids    = clusters ++ firsts.keys
     val stored = if (clusters.isEmpty) Map.empty[String, StoredVerdict]
-      else find(services.identity.agreement.AgreementVerdicts.Collection, Filters.in("_id", (clusters ++ clusters.map(AgreementStage.correctionId))*))
-        .map(services.identity.agreement.AgreementVerdicts.decode).map(v => v.id -> v).toMap
+      else find(services.identity.agreement.AgreementVerdicts.Collection, Filters.in("_id", (ids ++ ids.map(AgreementStage.correctionId))*))
+        .map(services.identity.agreement.AgreementVerdicts.decode).map(underFirst(_, firsts)).map(v => v.id -> v).toMap
     val named = (models.values.flatMap(_.film) ++ stored.values.flatMap(v => v.filled.flatMap(_.tmdb) ++ v.correction.flatMap(_.film))).toSeq.distinct
     val titles = if (named.isEmpty) Map.empty[Int, String]
       else find(TmdbKind.Film.collection, Filters.in("_id", named.map(_.toString)*)).flatMap { d =>
@@ -122,6 +140,10 @@ final class ProdMirror(client: MongoClient, val country: Country) extends AutoCl
 }
 
 object ProdMirror {
+  /** The agreement stage's cluster keys' collection (`AgreementKeys.Collection`), named here: a ref from before it has
+   *  no such object. */
+  val Keys = "identity_agreement_keys"
+
   /** The mirror at `uri` — the local loopback one only: a reader of prod's state goes through the mirror, never to prod. */
   def open(uri: String, country: Country): ProdMirror = {
     val host = scala.util.Try(new java.net.URI(uri.replaceFirst("^mongodb://", "http://")).getHost).getOrElse("")

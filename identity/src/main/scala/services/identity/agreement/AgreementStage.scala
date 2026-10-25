@@ -74,6 +74,13 @@ import scala.collection.mutable
  * the apply put to wait, one it stopped waiting on, and a new cluster whose families it asked inline and decided within
  * the one apply — the waits the staging screen would never see by sampling. Only an apply that reads anything tells it;
  * a quiet one changes no wait.
+ *
+ * Everything the stage keeps per cluster is kept under the cluster's KEY ([[keyOf]], docs/design/identity-cluster-identity.md):
+ * a counter of its own, assigned by overlap as the projection's film ids are ([[ClusterKeys]]), and kept in `keyStore`
+ * with each cluster's first listing, which a restart re-attaches it by. A listing that sorts first arriving, the first
+ * leaving, or a merge moves no key: a cluster's settle memory, inline ask and wait outlive them. A merge keeps the older
+ * key and takes on the younger's memories (its questions none answered, its inline ask, its wait's start); a split keeps
+ * the key on the larger half, the other a new cluster.
  */
 final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], private[agreement] val venues: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
                            private[agreement] val calibration: IdentityCalibration, private[agreement] val tmdbOf: String => Answer[Option[Int]], private[agreement] val stored: AgreementVerdicts,
@@ -87,7 +94,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
                            private[agreement] val attempted: Question => Boolean = _ => false,
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
-                           private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None)
+                           private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
+                           private[agreement] val keyStore: AgreementKeys = new InMemoryAgreementKeys)
     extends AgreementCorrections, AgreementTakes, AgreementCandidates {
 
   /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
@@ -107,7 +115,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   def waitingOn(decision: ResolverDecision): WaitingOn =
     if (decision.members.isEmpty) WaitingOn.model(decision)
     else {
-      val id         = StoredFamily.idOf(decision.members)
+      val id         = keyOf(decision)
       val cluster    = waiting.get(id)
       val correction = correctionWaits.get(AgreementStage.correctionId(id))
       if (cluster.isEmpty && correction.isEmpty) WaitingOn.model(decision)
@@ -117,6 +125,30 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.getOrElse(Set.empty)).filterNot(tried),
         onTmdb = cluster.exists(_.blindAt.isDefined))
     }
+
+  /** `decision`'s cluster key ([[ClusterKeys]]) as the last apply left it: of a model decision it was handed, or of what
+   *  it took one as. Read off maps no apply changes once built, from any thread, allocating nothing; a decision no apply
+   *  was handed is keyed by its first listing ([[StoredFamily.idOf]]), as nothing the stage keeps is. */
+  def keyOf(decision: ResolverDecision): String = {
+    val now = keyed.get(decision)
+    if (now != null) now
+    else {
+      val before = keyedBefore.get(decision)
+      if (before != null) before else StoredFamily.idOf(decision.members)
+    }
+  }
+
+  /** Each decision's cluster key: of the model's decisions the last apply that read anything was handed, and of what it
+   *  took them as. Built whole by that apply and never changed after, so [[keyOf]] reads it unlocked; the apply's before
+   *  stays readable beside it, since the projection's last written takes are that apply's until the projection writes. */
+  @volatile private var keyed       = new java.util.IdentityHashMap[ResolverDecision, String]()
+  @volatile private var keyedBefore = new java.util.IdentityHashMap[ResolverDecision, String]()
+  /** Each live key's model decision, as the last apply was handed it: those the model no longer hands over are the
+   *  clusters gone, whose keys the clusters overlapping them take ([[ClusterKeys]]). */
+  private val live    = mutable.HashMap.empty[Long, ResolverDecision]
+  /** Each live key's first listing as `keyStore` holds it, and the next key the counter hands out. */
+  private val firsts  = mutable.HashMap.empty[Long, String]
+  private var nextKey = 0L
 
   /** The families in their order: the order their verdicts and searches are read in. */
   private[agreement] val familiesInOrder: Seq[(VoterFamily, FamilyAnswers)] = families.toSeq.sortBy(_._1.ordinal)
@@ -227,8 +259,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   }
 
   private[agreement] def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
+    val started = tools.Stopwatch.start()
+    val pass    = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)))
+    val fresh   = keying(resolution, pass)
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
+      adopt(fresh)
       held.valuesIterator.filter(_.rules == decidedUnder).foreach { v =>
         checked(v.id) = (v.listings, version)
         // a verdict settled before the restart: what none answered then is asked on every pass again
@@ -236,11 +272,15 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         if (open.nonEmpty) unreached(v.id) = open
       }
     }
-    val started = tools.Stopwatch.start()
     applying = version
-    val pass      = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)))
     val waitedBefore = staging.map(_ => waitingClusters)
     val decisions = resolution.decisions.map(decide(_, listingOf, pass))
+    // what the stage took a decision as is keyed as the decision is: the projection's takes are these
+    resolution.decisions.iterator.zip(decisions).foreach { case (model, took) =>
+      if (!(took eq model)) { val key = pass.keys.get(model); if (key != null) pass.keys.put(took, key) }
+    }
+    keyedBefore = keyed
+    keyed = pass.keys
     forgetGone(resolution, pass)
     staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
@@ -251,6 +291,79 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     unread = pass.spent
     report(decisions, pass, started)
     resolution.copy(decisions = decisions)
+  }
+
+  /** Keys each decision of `resolution` with listings into `pass.keys` ([[ClusterKeys]]): one the last apply was handed
+   *  keeps its key; the rest take the keys of the clusters gone since by overlap — on the first apply, the stored key of
+   *  their first listing first ([[keyStore]]), every other fresh. A key a merge absorbed hands the survivor its memories
+   *  (the questions none answered, the inline ask; its wait's start goes to the staging screen as a
+   *  [[services.identity.staging.StagingEvent.Merged]]);
+   *  the keys that moved are stored. The decisions keyed afresh, each with its key and first listing. */
+  private[agreement] def keying(resolution: Resolution, pass: AgreementStage.Pass): Seq[(String, String)] = {
+    val before  = keyed
+    // on the first apply, every key stored: re-attached by first listing, else retired — and the counter past them all
+    val stored  = Option.when(loadedAt.isEmpty)(keyStore.all())
+    val unkeyed = mutable.ArrayBuffer.empty[ResolverDecision]
+    resolution.decisions.foreach { decision =>
+      if (decision.members.nonEmpty) { val key = before.get(decision); if (key != null) pass.keys.put(decision, key) else unkeyed += decision }
+    }
+    val gone    = mutable.ArrayBuffer.empty[(Long, Seq[ListingKey])]
+    live.foreachEntry((key, decision) => if (!pass.keys.containsKey(decision)) gone += key -> decision.members)
+    if (unkeyed.isEmpty && gone.isEmpty && stored.forall(_.keys.isEmpty)) Nil
+    else {
+      val storedFirsts = stored.fold[collection.Map[Long, String]](firsts)(held => held.keys.iterator.map(k => k.key -> k.first).toMap)
+      val counter      = stored.fold(nextKey)(_.next max nextKey)
+      val firstOf  = unkeyed.map(decision => StoredFamily.idOf(decision.members))
+      val attached = mutable.LongMap.empty[Int]
+      stored.foreach { held =>
+        val byFirst = held.keys.iterator.map(k => k.first -> k.key).toMap
+        unkeyed.indices.foreach(i => byFirst.get(firstOf(i)).foreach(key => attached(key) = i))
+      }
+      val open     = unkeyed.indices.filterNot(attached.valuesIterator.toSet)
+      val assigned = ClusterKeys.assign(gone, open.map(unkeyed(_).members), counter)
+      val keyOfIndex = Array.fill(unkeyed.size)(-1L)
+      attached.foreachEntry((key, i) => keyOfIndex(i) = key)
+      open.indices.foreach(j => keyOfIndex(open(j)) = assigned.keys(j))
+      val retired = (gone.iterator.map(_._1) ++ stored.iterator.flatMap(_.keys.map(_.key))).toSet -- keyOfIndex
+      val moved   = unkeyed.indices.collect { case i if !storedFirsts.get(keyOfIndex(i)).contains(firstOf(i)) => StoredKey(keyOfIndex(i), firstOf(i)) }
+      // stored first: a write that fails leaves the stage as it was, and the next apply keys the same decisions again
+      if (retired.nonEmpty || moved.nonEmpty || assigned.nextFresh != counter) keyStore.replace(retired, moved, assigned.nextFresh)
+      nextKey = assigned.nextFresh
+      stored.foreach { _ => firsts.clear(); firsts ++= storedFirsts }
+      firsts --= retired
+      moved.foreach(k => firsts(k.key) = k.first)
+      live --= retired
+      // a merge's younger half: its memories go to the cluster holding most of its listings, which kept the older key
+      assigned.absorbed.foreach { case (from, j) =>
+        val (was, into) = (from.toString, keyOfIndex(open(j)).toString)
+        unreached.get(was).foreach(questions => unreached(into) = unreached.getOrElse(into, Set.empty) ++ questions)
+        if (askedNow.contains(was)) askedNow(into) = ()
+        pass.merged += into -> was
+      }
+      unkeyed.indices.map { i =>
+        live(keyOfIndex(i)) = unkeyed(i)
+        pass.keys.put(unkeyed(i), keyOfIndex(i).toString)
+        keyOfIndex(i).toString -> firstOf(i)
+      }
+    }
+  }
+
+  /** The first apply's verdicts kept under a cluster's first listing — every one stored before clusters had keys
+   *  ([[StoredFamily.idOf]], and its correction's `correction|<id>`) — taken over under the key `fresh` gave it, and
+   *  stored so at once, the old document deleted in the same write: none decided again for it. A verdict whose listings
+   *  moved meanwhile is decided again under its key, as any is. */
+  private[agreement] def adopt(fresh: Seq[(String, String)]): Unit = {
+    val adopted = mutable.ArrayBuffer.empty[StoredVerdict]
+    val legacy  = mutable.Set.empty[String]
+    fresh.foreach { case (key, first) =>
+      Seq(first -> key, AgreementStage.correctionId(first) -> AgreementStage.correctionId(key)).foreach { case (was, now) =>
+        if (!held.contains(now)) held.remove(was).foreach { v =>
+          val under = v.copy(id = now)
+          held(now) = under; adopted += under; legacy += was
+        }
+      }
+    }
+    if (adopted.nonEmpty) stored.replace(legacy.toSet, adopted.toSeq)
   }
 
   /** The clusters the stage waits on now: on their families' questions or fill ([[waiting]]), or on their take's
@@ -277,6 +390,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     }
     (before -- after).toSeq.sorted.filter(id => pass.seen(id) || pass.correcting(AgreementStage.correctionId(id)))
       .foreach(id => events += StagingEvent.Settled(id, now))
+    pass.merged.sorted.foreach { case (into, from) => events += StagingEvent.Merged(into, from, now) }
     val told = events.result()
     if (told.nonEmpty) tell(told)
   }
@@ -286,7 +400,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  the model left it. What it reads and waits on is noted in `pass`. */
   private[agreement] def decide(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], pass: AgreementStage.Pass): ResolverDecision =
     if (correctable(decision) && eventOf(decision, listingOf).isEmpty) {
-      val key = AgreementStage.correctionId(StoredFamily.idOf(decision.members))
+      val key = AgreementStage.correctionId(pass.keys.get(decision))
       pass.correcting += key
       corrected(decision, listingOf, key, pass)
     }
@@ -296,7 +410,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         // an event no film database holds: no family is asked about it, no poster hashed, no verdict kept
         case Some(why) => taking(decision)(ResolverDecision.Basis.Event, s"event, not a film: $why")
         case None =>
-          val AgreementStage.Digested(id, listings, digest, lean) = digestedOf(decision, listingOf)
+          val AgreementStage.Digested(id, listings, digest, lean) = digestedOf(decision, pass.keys.get(decision), listingOf)
           pass.seen += id
           val verdict = verdictOf(decision, id, listings, digest, lean, pass)
           // the venue posters' distances to the cluster's candidates and to the film the families agree on
@@ -434,11 +548,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def sortedListings(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Seq[Listing] =
     decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
 
-  /** The decision's cluster id, its listings sorted and their digest, kept while the model hands the same decision over. */
-  private[agreement] def digestedOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): AgreementStage.Digested =
+  /** The decision's cluster key (`key`), its listings sorted and their digest, kept while the model hands the same
+   *  decision over — which keeps its key as long. */
+  private[agreement] def digestedOf(decision: ResolverDecision, key: String, listingOf: ListingKey => Option[Listing]): AgreementStage.Digested =
     Option(digested.get(decision)).getOrElse {
       val listings = sortedListings(decision, listingOf)
-      val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
+      val fresh    = AgreementStage.Digested(key, listings,
         AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
           PosterEvidence.urls(listings).mkString("\u0001"))), voteOf(decision))
       digested.put(decision, fresh); fresh
@@ -685,6 +800,9 @@ object AgreementStage {
     val correcting   = mutable.Set.empty[String]
     /** The new clusters whose families this apply asked inline ([[AgreementStage.askNow]]), with when and what. */
     val inline       = mutable.Map.empty[String, (Long, Set[Question])]
+    /** Each decision's cluster key ([[AgreementStage.keying]]), and the keys a merge absorbed, with the survivor's. */
+    val keys         = new java.util.IdentityHashMap[ResolverDecision, String]()
+    val merged       = mutable.ArrayBuffer.empty[(String, String)]
     /** The filings' ids since each version a stored correction was checked at, hashed once per apply. */
     val changedAt    = mutable.Map.empty[Long, Option[java.util.Set[java.lang.Long]]]
     /** How many clusters the resolver was asked about again — the apply's cost — and how many agreed films a poster vetoed. */
@@ -777,7 +895,7 @@ object AgreementStage {
     }
   }
 
-  /** A model decision's cluster id, its listings sorted, their digest with TMDB's vote on it, and that vote's record. */
+  /** A model decision's cluster key, its listings sorted, their digest with TMDB's vote on it, and that vote's record. */
   private[agreement] final case class Digested(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord])
 
   /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */

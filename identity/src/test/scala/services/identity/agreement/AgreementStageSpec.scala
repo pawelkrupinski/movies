@@ -528,9 +528,9 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
     asked = 0
-    stage.apply(resolution, listingOf, version = 1)
+    val again = stage.apply(resolution, listingOf, version = 1)
     asked shouldBe 0   // the same decisions, nothing filed: the verdict stands unread
-    val cluster = services.identity.StoredFamily.idOf(Seq(bare.key))
+    val cluster = stage.keyOf(again.decisions.head)
     stage.forget(Set(cluster))
     verdicts.all().map(_.id) should not contain cluster
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
@@ -741,7 +741,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     import services.identity.staging.StagingEvent
     val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-24T12:00:00Z"))
     val told  = scala.collection.mutable.ArrayBuffer.empty[StagingEvent]
-    val id    = services.identity.StoredFamily.idOf(Seq(bare.key))
+    var id    = ""
     def ofBare = told.toSeq.filter {
       case StagingEvent.Waiting(cluster, _, _) => cluster == id
       case StagingEvent.Settled(cluster, _)    => cluster == id
@@ -751,7 +751,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val rt = new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered)
     val waits = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = clock, staging = Some(told ++= _))
-    waits.apply(resolution, listingOf, version = 1)                                // RT unanswered: it waits
+    id = waits.keyOf(waits.apply(resolution, listingOf, version = 1).decisions.head)   // RT unanswered: it waits
     ofBare.collect { case StagingEvent.Waiting(_, began, questions) =>
       (began, questions.contains(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")))
     } shouldBe Seq((clock.millis(), true))
@@ -773,7 +773,9 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       askNow = (_, _) => { clock.advanceSeconds(2); inlineAnswered = true }, staging = Some(told ++= _))
     inline.apply(resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0)), listingOf, version = 1)
     val asked = clock.millis()
-    inline.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
+    val taken = inline.apply(resolution, listingOf, version = 2).decisions.head
+    taken.film shouldBe Some(913760)
+    id = inline.keyOf(taken)
     ofBare.map {
       case StagingEvent.Waiting(_, at, qs) => ("waiting", at, qs.contains(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")))
       case StagingEvent.Settled(_, at)     => ("settled", at, true)
