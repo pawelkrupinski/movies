@@ -9,7 +9,10 @@
 # dead ScrapeReaper empties the site a cinema at a time over a week; a dead census freezes every
 # rule that reads it.
 #
-# THE SERIES. `tools.ScheduledTick.recorded` stamps, after every run that RETURNED,
+# THE SERIES. `tools.ScheduledTick.recorded` stamps, after every run that RAN TO ITS END -- returned,
+# and not `tools.TickRun.Incomplete`, which a tick that catches its own failure (a failed write, an
+# incomplete corpus read) returns; a deliberate no-op (nothing due, not seeded yet, a window another
+# replica claimed) still completes, so a healthy standby never goes stale --
 #
 #   kinowo_<tier>_scheduled_tick_last_success_timestamp_seconds{country,tick}
 #   kinowo_<tier>_scheduled_tick_interval_seconds{country,tick}
