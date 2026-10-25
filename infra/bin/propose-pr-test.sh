@@ -4,6 +4,7 @@
 # Forgejo pulls API on a local port records what it is asked. Proves: the first run pushes the branch
 # as ci-bot and opens the PR against main; the next updates that PR in place; a branch carrying
 # someone else's commit is left alone; a shallow checkout (fetch-gitops' depth 1) is no false alarm;
+# a branch list that cannot be read fails the run instead of overwriting the branch;
 # an empty patch proposes nothing. No network.
 set -euo pipefail
 
@@ -121,6 +122,20 @@ clone_checkout
 propose >"${tmp}/run3" || fail "third run: $(cat "${tmp}/run3")"
 grep -q "left it alone" "${tmp}/run3" || fail "third run did not leave the branch alone: $(cat "${tmp}/run3")"
 [ "$(remote_branch rev-parse image-pins/all)" = "${before}" ] || fail "third run overwrote a person's commit"
+
+# 3b. the branch list cannot be read (the forge down for a moment): the run fails, and never takes the
+#     failed read for "no branch" and force-pushes over the person's commit
+mkdir -p "${tmp}/flaky-forge"
+real_git="$(command -v git)"
+cat >"${tmp}/flaky-forge/git" <<EOF
+#!/bin/sh
+for a in "\$@"; do [ "\$a" = ls-remote ] && { echo "fatal: unable to access the forge" >&2; exit 128; }; done
+exec "${real_git}" "\$@"
+EOF
+chmod +x "${tmp}/flaky-forge/git"
+clone_checkout
+if PATH="${tmp}/flaky-forge:${PATH}" propose >"${tmp}/run3b" 2>&1; then fail "an unreadable branch list did not fail the run: $(cat "${tmp}/run3b")"; fi
+[ "$(remote_branch rev-parse image-pins/all)" = "${before}" ] || fail "an unreadable branch list overwrote a person's commit"
 
 # 4. an empty patch proposes nothing
 : >"${tmp}/out/changes.patch"

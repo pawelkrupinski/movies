@@ -55,8 +55,10 @@ remote="${server}/${repo}.git"
 api="${server}/api/v1/repos/${repo}"
 
 # ls-remote first, so "no such branch" (the first week, or after a merge) is told apart from a
-# failed read, which must stop the run rather than read as "nothing to protect".
-if [ -n "$(auth_git ls-remote --heads "${remote}" "refs/heads/${branch}")" ]; then
+# failed read, which must stop the run rather than read as "nothing to protect". An assignment, not
+# `[ -n "$(...)" ]`: set -e ignores a substitution's failure inside a test's argument.
+existing="$(auth_git ls-remote --heads "${remote}" "refs/heads/${branch}")"
+if [ -n "${existing}" ]; then
   # A shallow checkout (infra/bin/fetch-gitops clones at depth 1) would read main's own older
   # commits as the branch's: deepen it first.
   if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
