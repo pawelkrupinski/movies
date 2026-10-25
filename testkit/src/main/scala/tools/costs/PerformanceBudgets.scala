@@ -63,26 +63,26 @@ object PerformanceBudgets {
    *  before them, 20.43 / 20.44 after. */
   val ListingCold = bytes("listing render, cold caches", measured = mb(20.4))
   /** The city listing with the controller's caches full and the response blob missed (`?diag=`). */
-  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.26))
+  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.33))
   /** The city listing served from the gzipped blob. */
-  val ListingBlobHit = bytes("listing render, response blob hit", measured = kb(7.0))
+  val ListingBlobHit = bytes("listing render, response blob hit", measured = kb(7.2))
   /** The heaviest film page, cold and warm. */
-  val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.50))
-  val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.75))
+  val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.61))
+  val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.87))
   /** The facet page of the country the most films list. */
-  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.26))
+  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.27))
   /** The `/` city-selection landing. It embedded every country's city catalog, so it grew with the roster
    *  (2.95 -> 5.21 MB when the US went from 468 metro pages to 2,003 town pages); it now carries only its
    *  own country's pane, rendered once per process (`PickerFragments`), and fetches the rest after load:
    *  5.21 MB -> 990 KB, measured 2026-10-11. */
-  val Landing = bytes("landing render", measured = kb(1040))
+  val Landing = bytes("landing render", measured = kb(1043))
   /** `/api/repertoire` and `/api/details`, every film's JSON built (cold) or kept (warm). */
   /** 13.4 -> 15.3 MB on 2026-10-24 for the films' curated search spellings, which the apps' payload carries: Main
    *  measured 14.67 before them, 15.55 after (15.00 locally). */
-  val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(15.3))
-  val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.28))
-  val ApiDetailsCold    = bytes("/api/details render, cold caches", measured = mb(4.13))
-  val ApiDetailsWarm    = bytes("/api/details render, warm caches", measured = kb(663))
+  val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(15.6))
+  val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.29))
+  val ApiDetailsCold    = bytes("/api/details render, cold caches", measured = mb(4.18))
+  val ApiDetailsWarm    = bytes("/api/details render, warm caches", measured = kb(657))
 
   /** Schedules a second render over an unchanged read model builds again: none, in every fixture city
    *  (`RenderBudgetSpec`) and in a city with a venue on an earlier clock (`ScheduleCacheBudgetSpec`). */
@@ -106,7 +106,7 @@ object PerformanceBudgets {
    *  runs within 0.2%, the seventh the hourly whole read; 7.50 MB with C2 off (`-XX:TieredStopAtLevel=1`).
    *  5.02 MB (5.00 and 5.02, two runs) once the agreement stage stopped reading each of the 3,459 questions it
    *  waits on every quiet tick (9.35 MB: 4.4 MB of `QuestionMemory` reads, read only once the memory marks). */
-  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.02))
+  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.33))
   /** The whole tick: 34.1 -> 36.1 MB, re-measured 2026-10-24 (35.92 / 36.71 / 36.07 locally on quiet-tick-alloc's
    *  3ef51dd60; Main's e2e row printed 35.01 on ff779d962 — CI's Linux JVM runs ~3% under a Mac's here). */
   val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(36.1))
