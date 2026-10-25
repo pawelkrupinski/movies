@@ -1,6 +1,7 @@
 package services
 
 import org.mongodb.scala.MongoClient
+import scala.concurrent.duration.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -169,6 +170,28 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val history = monitor.history("Kino Rialto").head
     history.successes shouldBe 1
     history.failures shouldBe 1
+  }
+
+  "the flush tick" should "not complete a flush whose write threw" in {
+    val monitor = new UptimeMonitor(Some(closedClientDb), clock = specClock)
+    val ticks   = new tools.RecordingTickRecorder
+    monitor.recordSuccess("Kino Rialto")
+    tools.ScheduledTick.recorded("uptime-flush", 10.seconds, play.api.Logger(getClass), ticks)(monitor.flushNow())
+    ticks.completedRuns shouldBe empty
+  }
+
+  it should "not complete the flush after one whose asynchronous write failed" in {
+    // No server: the write is accepted, and fails in its subscriber once server selection times out.
+    val client  = MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=100&connectTimeoutMS=100")
+    val monitor = new UptimeMonitor(Some(client.getDatabase("uptime-test")), clock = specClock)
+    val ticks   = new tools.RecordingTickRecorder
+    // Until a write's failure has landed: the flush after it is not completed.
+    try tools.Eventually.eventually {
+      val before = ticks.completedRuns.size
+      monitor.recordSuccess("Kino Rialto")
+      tools.ScheduledTick.recorded("uptime-flush", 10.seconds, play.api.Logger(getClass), ticks)(monitor.flushNow())
+      ticks.completedRuns should have size before.toLong
+    } finally client.close()
   }
 
   // Batched persistence (the fix for the /uptime change-stream overload): record*

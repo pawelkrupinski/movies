@@ -63,6 +63,8 @@ class UptimeMonitor(
   private val ownsIndexes: Boolean = !surfaceExternalWrites
 
   private val data = new BucketStore()
+  // Bucket writes that failed since the last flush reported them, synchronously or in their subscriber.
+  private val failedWrites = new AtomicInteger
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(UptimeMonitor.Collection))
@@ -98,7 +100,7 @@ class UptimeMonitor(
         val tick   = s"uptime-${job.name}"
         val period = scala.concurrent.duration.Duration(job.periodMs, TimeUnit.MILLISECONDS)
         ticks.started(tick, period, period)
-        exec.scheduleWithFixedDelay(() => tools.ScheduledTick.recorded(tick, period, logger, ticks)(job.task.run()),
+        exec.scheduleWithFixedDelay(() => tools.ScheduledTick.recorded(tick, period, logger, ticks)(job.task()),
           job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
       }
       if (surfaceExternalWrites)
@@ -138,16 +140,16 @@ class UptimeMonitor(
     bucketCollection: Option[MongoCollection[Document]],
     tagCollection: Option[MongoCollection[Document]]
   ): Seq[ScheduledJob] = {
-    val flushJob = bucketCollection.map(c => ScheduledJob("flush", FlushIntervalMs, () => { flush(c); () }))
+    val flushJob = bucketCollection.map(c => ScheduledJob("flush", FlushIntervalMs, () => flush(c)))
     val readerJobs =
       if (!surfaceExternalWrites) Seq.empty
       else Seq(
-        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => { sync.poll(c); () })),
+        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => { sync.poll(c); tools.TickRun.Completed })),
         // Re-read the tag collection so a cinema tagged by the worker after this
         // app booted still surfaces — but on its OWN, far slower period. The read
         // is unfiltered and the collection is no longer small (see
         // `TagReloadIntervalMs`), so it must not ride the 10s bucket poll.
-        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => { serviceTags.load(tc); () })),
+        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => { serviceTags.load(tc); tools.TickRun.Completed })),
       ).flatten
     flushJob.toSeq ++ readerJobs
   }
@@ -369,10 +371,20 @@ class UptimeMonitor(
     out.result()
   }
 
-  private def flush(c: MongoCollection[Document]): Unit = drainDirty().foreach(writeBucket(c, _))
+  /** Write every dirty bucket: [[tools.TickRun.Incomplete]] when a write failed — this flush's, or one of the last
+   *  flush's whose failure only arrived since (a write is asynchronous; its failure lands after the flush returned). */
+  private def flush(c: MongoCollection[Document]): tools.TickRun = {
+    drainDirty().foreach(writeBucket(c, _))
+    tools.TickRun.completedWhen(failedWrites.getAndSet(0) == 0)
+  }
 
   /** Force a flush now (used on shutdown + in tests). No-op without Mongo. */
-  private[services] def flushNow(): Unit = coll.foreach(flush)
+  private[services] def flushNow(): tools.TickRun = coll.fold(tools.TickRun.Completed)(flush)
+
+  private def writeFailed(exception: Throwable): Unit = {
+    failedWrites.incrementAndGet()
+    logger.debug(s"Uptime Mongo write failed: ${exception.getMessage}")
+  }
 
   // Best-effort: a Mongo write failure must never break the flusher thread. The
   // `.subscribe(onError)` only catches async delivery errors — but the driver
@@ -396,9 +408,9 @@ class UptimeMonitor(
       new UpdateOptions().upsert(true)
     ).subscribe(
       (_: org.mongodb.scala.result.UpdateResult) => (),
-      (exception: Throwable) => logger.debug(s"Uptime Mongo write failed: ${exception.getMessage}")
+      (exception: Throwable) => writeFailed(exception)
     )
-  }.recover { case exception => logger.debug(s"Uptime Mongo write failed: ${exception.getMessage}") }.getOrElse(())
+  }.recover { case exception => writeFailed(exception) }.getOrElse(())
 
   private def notifyListeners(service: String, bucket: Bucket): Unit =
     if (!listeners.isEmpty) {
@@ -505,7 +517,7 @@ object UptimeMonitor {
   /** One recurring background job: what it is, how often it runs, and the work.
    *  Exists so the cadences are inspectable data rather than arguments buried in
    *  a `scheduleWithFixedDelay` call. */
-  private[services] case class ScheduledJob(name: String, periodMs: Long, task: Runnable)
+  private[services] case class ScheduledJob(name: String, periodMs: Long, task: () => tools.TickRun)
 
   case class Bucket(timestamp: Long) {
     val successes = new AtomicInteger(0)
