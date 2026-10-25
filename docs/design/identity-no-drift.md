@@ -58,6 +58,57 @@ The model alone has its own property harness, `IncrementalResolverSpec`. It chec
 against `IdentityResolver.resolveWith`, plus every arrival order of the cross-family cases. The new harness drives that
 same model.
 
+### Per input kind: `LateInputEquivalenceSpec`
+
+`identity/src/test/scala/services/identity/agreement/LateInputEquivalenceSpec.scala` holds one input kind at a time to
+the principle. Its gates and runs are in `LateInputs.scala`, beside it. It decides without the input, lets the input
+arrive, and requires the incremental takes to equal a whole resolve with the input there from the start. The kinds:
+- family answers, TMDB finds and records;
+- searches, new hits included, and people (director searches);
+- posters, catalogue ids, venue pages, synopses (TMDB descriptions) and broadcast days;
+- pins, and listings joining and leaving.
+
+Every case runs:
+- under each ABSENCE its kind can have:
+  - not filed (`Unknown`, never asked);
+  - asked and failed (`Unknown` and attempted, so the stage settles without it);
+  - not existing yet (a `Known` empty answer, such as TMDB holding no such record or hit);
+- with no restart, a restart while the input is withheld, and a restart after it arrived.
+
+An arrival reaches the stage as it does in the worker:
+- The model is told what it asked (`AnswersChanged`).
+- The stage's version moves as `FamilyAnswerStore.agreementKeyOf` moves it:
+  - always for a family, poster or catalogue answer;
+  - for a find or a TMDB record only while the stage waits on it, or while a kept verdict read it (`AgreementStage.reads`);
+  - for a search only while a kept verdict read one;
+  - never for a venue page.
+- The stage's `changes` names each filing.
+
+Every case must have TEETH: the late input moves the whole resolve.
+
+The production drift rows are also cases in this spec. They come from `scripts.IdentityLiveDrift` over the 2026-10-25
+recording. Each keeps its row's titles, films and families, with its inputs reduced to what decides it. The prod
+captures are not in the repo.
+- Dolly ×10, Rental Family ×8, Ice Cream Man ×4, Jump Scare, Miss Mary, Karmele and I.K.U: the families agree, and the
+  IMDb id's find lands after the verdict (attempted first, or answered "none" first).
+- CBeebies Panto ×11: a film new in TMDB, filled by `venues.current`.
+- Ostrze ×2: evidence against a take that arrives after it (the venue's poster, hashed late).
+- Run 1530 is the "corrected Lalka, a cluster before it gone" listing case. The random histories' restarts also cover
+  it.
+
+A case the incremental path does not cure yet is marked `pendingUntilFixed`, and `LateInputEquivalenceSpec.Pending`
+names it with its root cause. On the no-drift-2 stack (e57becb42) there is one: a film new in TMDB (CBeebies). The
+model's decision is identical to the whole resolve's, yet after the film arrives the live stage takes no fill, where a
+fresh stage fills it. The verdict the live stage files then stands across a restart.
+
+**Teeth.** The spec was also run with the version moving by the pre-fix rule (finds and records only while waited on,
+searches never). It then fails on:
+- late finds answered "none" first;
+- late broadcast records and days;
+- late TMDB descriptions.
+
+**Runtime.** The whole spec takes about 3 s, inside the unit tier. No heavier variant needs an `it` tier yet.
+
 ## Audit: every piece of state the incremental path carries
 
 Each item has a verdict:
