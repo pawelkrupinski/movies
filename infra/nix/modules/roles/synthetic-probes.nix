@@ -242,7 +242,9 @@ in
       description = "Find a live film page and share card per country for the synthetic probes";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
-      path = [ pkgs.curl pkgs.jq pkgs.gnugrep pkgs.gnused pkgs.coreutils ];
+      # Every tool the script runs (it refuses to start without one); test_synthetic_probes.sh runs it
+      # with exactly this PATH.
+      path = [ pkgs.curl pkgs.jq pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.coreutils ];
       environment = {
         PROBE_USER_AGENT = cfg.userAgent;
         PROBE_TEXTFILE = "${config.fleet.observability.textfileDirectory}/synthetic-probes.prom";

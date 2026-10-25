@@ -8,16 +8,9 @@
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-root="$(git -C "$here" rev-parse --show-toplevel)"
 nix_flags=(--extra-experimental-features 'nix-command flakes')
-
-# A SHALLOW CLONE (CI's, and an agent worktree cut from one) cannot be read as `path/to/infra`: the
-# git fetcher wants a revCount it does not have. Asking for it shallow reads the same tracked files.
-if [ "$(git -C "$root" rev-parse --is-shallow-repository)" = true ]; then
-  flake="git+file://$root?dir=infra&shallow=1"
-else
-  flake="$here/.."
-fi
+. "$here/fleet-flake.sh"
+flake="$(fleet_flake "$here/..")"
 
 errors="$(mktemp)"
 trap 'rm -f "$errors"' EXIT

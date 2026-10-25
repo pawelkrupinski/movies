@@ -71,6 +71,14 @@
 #        PROBE_HOUR           (the cache key's hour, YYYYMMDDHH; default the current UTC hour)
 set -uo pipefail
 
+# EVERY TOOL IT RUNS, OR NONE OF IT: without -e a missing one is only a "command not found" on
+# stderr and an empty pipe, and the run goes on to write its targets. On 2026-10-21 the unit was
+# given no awk, so every discovery for days wrote film targets and no poster's, exited 0 and logged
+# "wrote 10 target(s)" -- PosterProbesMissing paging for all five countries while the unit was green.
+for tool in curl jq grep sed awk sort uniq cut tr head date mktemp mv chmod; do
+  command -v "$tool" >/dev/null 2>&1 || { echo "synthetic-probe-targets: $tool is not on PATH" >&2; exit 1; }
+done
+
 out="${1:?usage: synthetic-probe-targets.sh <output.json> <country>=<city url> ...}"
 shift
 ua="${PROBE_USER_AGENT:-kinowo-synthetic-probe/1}"

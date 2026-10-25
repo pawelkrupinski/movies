@@ -17,6 +17,8 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 infra="$(cd "$here/.." && pwd)"
 script="$infra/nix/files/synthetic-probe-targets.sh"
 . "$here/../../scripts/shell-spec.sh"
+. "$here/fleet-flake.sh"
+flake="$(fleet_flake "$infra")"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -52,11 +54,12 @@ serve_origin() { printf '%s' "$2" > "$tmp/pages/origin/$(printf '%s' "$1" | tr '
 refuse() { serve "$1" '<title>Just a moment...</title></html>'; printf 403 > "$tmp/pages/$(printf '%s' "$1" | tr '/:' '__').status"; }
 # SIGPIPE IGNORED, as systemd runs every service (`IgnoreSIGPIPE=yes`): a closed pipe is then an
 # EPIPE its writer reports on stderr rather than a silent death, which is how the journal filled
-# with "grep: write error: Broken pipe".
+# with "grep: write error: Broken pipe". The tools it finds are this shell's, or only those on
+# $RUN_TOOLS when it is set.
 run() {
   : > "$tmp/curl.log"
   (trap '' PIPE
-    PATH="$tmp/bin:$PATH" STUB_PAGES="$tmp/pages" STUB_LOG="$tmp/curl.log" PROBE_TEXTFILE="$tmp/probes.prom" \
+    PATH="$tmp/bin:${RUN_TOOLS:-$PATH}" STUB_PAGES="$tmp/pages" STUB_LOG="$tmp/curl.log" PROBE_TEXTFILE="$tmp/probes.prom" \
       exec bash "$script" "$@" 2>"$tmp/stderr")
 }
 field() { jq -r "$1" "$tmp/targets.json"; }
@@ -244,11 +247,24 @@ check "a country suffix keeps its name; a CDN's shards are one host" "acsta.net 
 check "a page with posters under the floor everywhere probes none (PosterProbesMissing's case)" "0" \
   "$(PROBE_POSTER_MIN=3 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/ >/dev/null; field '[.[] | select(.labels.kind == "poster")] | length')"
 
+echo "discovery: a tool it runs missing from PATH"
+# Every tool but awk, as the unit had them on 2026-10-21: the run must fail and keep the last good
+# targets, not write a film's and no poster's and log success.
+mkdir -p "$tmp/no-awk"
+for tool in bash env cat rm curl jq grep sed sort uniq cut tr head date mktemp mv chmod; do
+  found="$(command -v "$tool")"
+  [ -n "$found" ] && [ "$found" != "$tool" ] && ln -sf "$found" "$tmp/no-awk/$tool"
+done
+printf '[{"targets":["kept"]}]' > "$tmp/targets.json"
+RUN_TOOLS="$tmp/no-awk" run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/; status=$?
+check "the run fails, naming the tool" "1 synthetic-probe-targets: awk is not on PATH" "$status $(cat "$tmp/stderr")"
+check "...and the last good targets stand" '[{"targets":["kept"]}]' "$(cat "$tmp/targets.json")"
+
 # ── THE SCRAPE JOB monitoring-1 WOULD INSTALL ──────────────────────────────────────────────────
 echo "the blackbox job on monitoring-1"
 nix_flags=(--extra-experimental-features 'nix-command flakes')
 if ! job="$(nix "${nix_flags[@]}" eval --raw \
-  "$infra#nixosConfigurations.monitoring-1.config.environment.etc.\"prometheus/scrape.d/blackbox-targets.yaml\".text" \
+  "$flake#nixosConfigurations.monitoring-1.config.environment.etc.\"prometheus/scrape.d/blackbox-targets.yaml\".text" \
   2>"$tmp/eval.err")"; then
   check "monitoring-1's blackbox scrape job evaluates" "evaluated" "$(tail -3 "$tmp/eval.err")"
   spec_summary
@@ -278,26 +294,42 @@ check "the discovered posters go to the five-minute poster job, and only there" 
 check "...every five minutes" "5m" "$(jq -r '.scrape_configs[] | select(.job_name == "blackbox-poster") | .scrape_interval' <<<"$job")"
 
 discovery_env="$(nix "${nix_flags[@]}" eval --json \
-  "$infra#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.environment" 2>/dev/null)"
+  "$flake#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.environment" 2>/dev/null)"
 check "the discovery reads a refused page from k3s-worker-1's origin" "10.20.0.12" \
   "$(jq -r '.PROBE_ORIGIN_ADDRESS' <<<"$discovery_env")"
 check "...pinned to both zones' origin certificates" "kinowo.net.crt showtimes.cc.crt" \
   "$(nix "${nix_flags[@]}" eval --json \
-    "$infra#nixosConfigurations.monitoring-1.config.fleet.syntheticProbes.discoveryOrigin.certificates" 2>/dev/null |
+    "$flake#nixosConfigurations.monitoring-1.config.fleet.syntheticProbes.discoveryOrigin.certificates" 2>/dev/null |
     jq -r 'map(split("/") | last) | sort | join(" ")')"
 check "the discovery never picks a poster from a host that refuses datacentres" "multikino.pl biletyna.pl" \
   "$(jq -r '.PROBE_POSTER_SKIP' <<<"$discovery_env")"
 check "...bundled into the one file curl is told to trust" "synthetic-probe-origin-certificates.pem" \
   "$(jq -r '.PROBE_ORIGIN_CA | split("-") | .[1:] | join("-")' <<<"$discovery_env")"
 
-units="$(nix "${nix_flags[@]}" eval --json "$infra#nixosConfigurations.monitoring-1.config.fleet.autoApply.restartableUnits" 2>/dev/null)"
+# THE DISCOVERY WITH ITS UNIT'S PATH AND NOTHING ELSE: each package the unit is given, built for this
+# machine from the fleet's nixpkgs, and the shell its script is written for -- not systemd, which the
+# unit is given but the script never runs, and which no Mac builds.
+unit_packages="$(nix "${nix_flags[@]}" eval --json \
+  "$flake#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.path" \
+  --apply 'map (p: p.pname or (builtins.parseDrvName p.name).name)' 2>/dev/null |
+  jq -r '(. + ["bash"]) - ["systemd"] | unique | map("nixpkgs#" + .) | join(" ")')"
+# shellcheck disable=SC2086 # one installable per word
+unit_path="$(nix "${nix_flags[@]}" build --no-link --print-out-paths --inputs-from "$flake" $unit_packages 2>/dev/null |
+  sed 's|$|/bin|' | paste -sd: -)"
+rm -f "$tmp/targets.json"
+RUN_TOOLS="$unit_path" PROBE_POSTER_MIN=2 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/
+if [ -f "$tmp/targets.json" ]; then found="$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | unique | join(" ")')"
+else found="$(cat "$tmp/stderr")"; fi
+check "the discovery finds its posters with only the tools its unit is given" "acsta.net savoysystems.co.uk" "$found"
+
+units="$(nix "${nix_flags[@]}" eval --json "$flake#nixosConfigurations.monitoring-1.config.fleet.autoApply.restartableUnits" 2>/dev/null)"
 check "auto-apply may restart the exporter and the discovery once they exist" "3" \
   "$(jq '[.[] | select(. == "prometheus-blackbox-exporter.service" or . == "synthetic-probe-targets.service" or . == "synthetic-probe-targets.timer")] | length' <<<"$units")"
 
 # promtool from PATH, else from the fleet's pinned nixpkgs -- the same resolution, and the same
 # refusal to skip, as test_alert_rules.sh.
 if ! command -v promtool >/dev/null 2>&1; then
-  promtool_pkg="$(nix "${nix_flags[@]}" build --no-link --print-out-paths --inputs-from "$infra" 'nixpkgs#prometheus.cli' 2>/dev/null)"
+  promtool_pkg="$(nix "${nix_flags[@]}" build --no-link --print-out-paths --inputs-from "$flake" 'nixpkgs#prometheus.cli' 2>/dev/null)"
   PATH="$promtool_pkg/bin:$PATH"
 fi
 printf 'scrape_config_files: ["%s"]\n' "$tmp/blackbox-targets.yaml" > "$tmp/prometheus.yaml"
