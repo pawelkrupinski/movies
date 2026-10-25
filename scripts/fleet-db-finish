@@ -13,36 +13,26 @@
 # Run --drop only after the soak, after the step-8 code (kinowo_fleet as the default) is deployed everywhere, and after
 # a nightly dump that contains kinowo_fleet: everything else in kinowo is Poland's live corpus.
 #
-# One Touch ID, one tunnel: the script re-runs itself under scripts/with-prod-mongo.sh --both. Counts and drops run as
+# One Touch ID, one tunnel: the script re-runs itself under scripts/with-prod-mongo.sh --both (scripts/prod-ops.sh). Counts and drops run as
 # root (MONGO_ROOT_URI); the read probe runs as the app (MONGODB_URI). Tests: scripts/fleet-db-finish-test.sh.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=scripts/tool-conventions.sh
-. "$HERE/tool-conventions.sh" # usage_from_header
+# shellcheck source=scripts/prod-ops.sh
+. "$HERE/prod-ops.sh" # the prod-ops harness (docs/prod-ops-scripts.md)
+prod_ops_init fleet-db-finish
 
 COLLECTIONS=(facebook_rescrapes facebook_fetches fleet_host_pace)
 
 drop=0
+args=("$@")
 case "${1:-}" in
   -h|--help) usage_from_header; exit 0 ;;
   "") ;;
-  --drop)
-    shift
-    [ $# -eq 3 ] || { echo "--drop takes exactly the three names: ${COLLECTIONS[*]}" >&2; exit 2; }
-    for want in "${COLLECTIONS[@]}"; do
-      seen=0; for got in "$@"; do [ "$got" = "$want" ] && seen=$((seen + 1)); done
-      [ "$seen" -eq 1 ] || { echo "--drop takes exactly the three names, each once: ${COLLECTIONS[*]} (got: $*)" >&2; exit 2; }
-    done
-    drop=1 ;;
+  --drop) shift; prod_ops_exact_names --drop "${COLLECTIONS[*]}" "$@"; drop=1 ;;
   *) usage_from_header >&2; exit 2 ;;
 esac
 
-if [ -z "${FLEET_DB_FINISH_TUNNELLED:-}" ]; then
-  args=(); [ "$drop" -eq 0 ] || args=(--drop "${COLLECTIONS[@]}")
-  exec "$HERE/with-prod-mongo.sh" --both env FLEET_DB_FINISH_TUNNELLED=1 "$BASH" "$0" ${args[@]+"${args[@]}"}
-fi
-# shellcheck source=scripts/local-mirror/prod-tunnel.sh
-. "$HERE/local-mirror/prod-tunnel.sh" # mongosh_at
+prod_ops_session --both ${args[@]+"${args[@]}"} # one Touch ID, one tunnel; mongosh_at, as_root, as_app
 
 counts_js='
   const C = ["facebook_rescrapes", "facebook_fetches", "fleet_host_pace"], out = { counts: {}, newest: {} };
@@ -62,9 +52,8 @@ drop_js='
   if (!["facebook_rescrapes", "facebook_fetches", "fleet_host_pace"].includes(c)) { print("refused: " + c); quit(2); }
   print(c + " dropped from kinowo: " + db.getSiblingDB("kinowo").getCollection(c).drop());'
 
-last_line() { tail -n 1; }
-counts="$(mongosh_at "$MONGO_ROOT_URI" --quiet --eval "$counts_js" | last_line)"
-probe="$(mongosh_at "$MONGODB_URI" --quiet --eval "$app_probe_js" 2>&1 | last_line)" || true
+counts="$(as_root "$counts_js" | last_line)"
+probe="$(as_app "$app_probe_js" 2>&1 | last_line)" || true
 
 # Prints the table; exits 1 (with the reason) when a drop must not go ahead.
 verdict="$(python3 -I - "$counts" "$probe" "${COLLECTIONS[*]}" <<'PY'
@@ -97,9 +86,9 @@ if [ "$drop" -eq 0 ]; then
   echo "read-only; to drop the three from kinowo: scripts/fleet-db-finish --drop ${COLLECTIONS[*]}"
   exit 0
 fi
-[ "$safe" -eq 1 ] || { echo "[fleet-db-finish] not dropping anything" >&2; exit 1; }
+[ "$safe" -eq 1 ] || prod_ops_refuse "not dropping anything"
 for c in "${COLLECTIONS[@]}"; do
-  G_COLL="$c" mongosh_at "$MONGO_ROOT_URI" --quiet --eval "$drop_js"
+  G_COLL="$c" as_root "$drop_js"
 done
-echo "== after"
-mongosh_at "$MONGO_ROOT_URI" --quiet --eval "$counts_js" | last_line
+prod_ops_phase after
+as_root "$counts_js" | last_line

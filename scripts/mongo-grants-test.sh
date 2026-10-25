@@ -9,44 +9,23 @@ export PROD_TUNNEL_PORT=27017
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 
-SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mongo-grants.XXXXXX")"
-trap 'rm -rf "$SCRATCH"' EXIT
-FAKE="$SCRATCH/bin"; mkdir -p "$FAKE"
-export CALLS="$SCRATCH/calls" TUNNEL_UP="$SCRATCH/tunnel-up" USERS="$SCRATCH/users"
+. "$REPO_ROOT/scripts/prod-ops-fixture.sh"
+prod_ops_fixture_init mongo-grants
+export USERS="$SCRATCH/users"
 LIST="$REPO_ROOT/scripts/mongo-grants.tsv"
 
-# `secrets run movies SPEC... -- CMD`: records the call, sets each asked-for key from FAKE_<KEY>, runs CMD.
-cat > "$FAKE/secrets" <<'FAKE'
-#!/usr/bin/env bash
-echo "secrets $*" >> "$CALLS"
-shift 2
-while [ "$1" != "--" ]; do v="FAKE_$1"; export "$1=${!v}"; shift; done
-shift
-exec "$@"
-FAKE
-cat > "$FAKE/ssh" <<'FAKE'
-#!/usr/bin/env bash
-echo "ssh ${*: -1}" >> "$CALLS"; touch "$TUNNEL_UP"; exec sleep 30
-FAKE
-printf '#!/bin/sh\n[ -e "$TUNNEL_UP" ]\n' > "$FAKE/nc"
-cat > "$FAKE/mongosh" <<'FAKE'
-#!/usr/bin/env bash
-[ -e "$TUNNEL_UP" ] || exit 1
-as="$(python3 -I -c 'import sys,urllib.parse as u; print(u.unquote(u.urlsplit(sys.argv[1]).username or ""))' "$KINOWO_MONGOSH_URI")"
+# The fake mongosh keeps each user's roles in a JSON file and records every getUser and grant, with the user it ran as.
+fake_mongosh <<'BODY'
 f="$USERS/$G_DB.$G_USER.json"
 case "$*" in
-  *ping*) exit 0 ;;
   *getUser*) echo "getUser $G_USER@$G_DB as $as" >> "$CALLS"; if [ -f "$f" ]; then cat "$f"; else echo null; fi ;;
   *grantRolesToUser*)
     echo "grant $G_USER@$G_DB $G_ROLES as $as" >> "$CALLS"
     python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); d["roles"]+=json.loads(sys.argv[2]); json.dump(d,open(sys.argv[1],"w"))' "$f" "$G_ROLES" ;;
   *) echo "fake mongosh: unexpected $*" >&2; exit 3 ;;
 esac
-FAKE
-chmod +x "$FAKE"/*
+BODY
 
-APP_URI='mongodb://kinowo_app_2:pw@10.20.0.13:27017/kinowo?authSource=kinowo'
-ROOT_URI='mongodb://kinowo_root:rootpw@10.20.0.13:27017/admin?authSource=admin'
 
 # user <db> <name> <principal> [skip-db...]: the user holding every role the list gives <principal>, but those on skip-dbs
 user() {
@@ -58,12 +37,8 @@ rows = [l.rstrip("\n").split("\t") for l in open(path) if l.strip() and not l.st
 print(json.dumps({"roles": [{"role": r, "db": d} for w, r, d in rows if w == who and d not in skip]}))
 PY
 }
-fresh() { rm -rf "$USERS" "$CALLS" "$TUNNEL_UP"; mkdir -p "$USERS"; }
-grants() {
-  env -u MONGODB_URI -u MONGO_ROOT_URI -u MONGO_CI_READ_URI -u KINOWO_MONGO_SSH \
-    PATH="$FAKE:$PATH" FAKE_MONGODB_URI="${FAKE_MONGODB_URI:-$APP_URI}" FAKE_MONGO_ROOT_URI="$ROOT_URI" \
-    "$REPO_ROOT/scripts/mongo-grants" "$@" 2>&1
-}
+fresh() { rm -rf "$USERS"; mkdir -p "$USERS"; prod_ops_fixture_fresh; }
+grants() { prod_ops_run "$REPO_ROOT/scripts/mongo-grants" "$@"; }
 
 echo "[spec] the list"
 check "the app is asked for readWrite on the fleet's own database" "1" "$(grep -c $'^app\treadWrite\tkinowo_fleet$' "$LIST")"

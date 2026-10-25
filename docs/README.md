@@ -15,6 +15,8 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [fleet-database-migration.md](fleet-database-migration.md) — moving the fleet's shared collections out of Poland's
   `kinowo` into `kinowo_fleet`: what moves, what was run (steps 0–6, 2026-10-25), the soak, the default flip and
   `scripts/fleet-db-finish` for the drop.
+- [prod-ops-scripts.md](prod-ops-scripts.md) — writing a prod-ops script: the `scripts/prod-ops.sh` harness, `--check` /
+  `--apply`, refusals, the shared fake-mongosh test. A runbook is a script, never a doc snippet.
 - [heap-dumps.md](heap-dumps.md) — where JVM heap dumps land, what bounds them, how to fetch one.
 - [headlamp-identity-and-gate.md](headlamp-identity-and-gate.md) — decision record (2026-09-07): Headlamp sign-in
   through the fleet's oauth2-proxy and where the gate actually is.

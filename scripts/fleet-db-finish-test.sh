@@ -9,30 +9,14 @@ export PROD_TUNNEL_PORT=27017
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 
-SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-fleet-db-finish.XXXXXX")"
-trap 'rm -rf "$SCRATCH"' EXIT
-FAKE="$SCRATCH/bin"; mkdir -p "$FAKE"
-export CALLS="$SCRATCH/calls" TUNNEL_UP="$SCRATCH/tunnel-up" STATE="$SCRATCH/state.json" APP_DENIED="$SCRATCH/app-denied"
+. "$REPO_ROOT/scripts/prod-ops-fixture.sh"
+prod_ops_fixture_init fleet-db-finish
+export STATE="$SCRATCH/state.json" APP_DENIED="$SCRATCH/app-denied"
 
-cat > "$FAKE/secrets" <<'FAKE'
-#!/usr/bin/env bash
-echo "secrets $*" >> "$CALLS"
-shift 2
-while [ "$1" != "--" ]; do v="FAKE_$1"; export "$1=${!v}"; shift; done
-shift
-exec "$@"
-FAKE
-cat > "$FAKE/ssh" <<'FAKE'
-#!/usr/bin/env bash
-echo "ssh ${*: -1}" >> "$CALLS"; touch "$TUNNEL_UP"; exec sleep 30
-FAKE
-printf '#!/bin/sh\n[ -e "$TUNNEL_UP" ]\n' > "$FAKE/nc"
-cat > "$FAKE/mongosh" <<'FAKE'
-#!/usr/bin/env bash
-[ -e "$TUNNEL_UP" ] || exit 1
-as="$(python3 -I -c 'import sys,urllib.parse as u; print(u.unquote(u.urlsplit(sys.argv[1]).username or ""))' "$KINOWO_MONGOSH_URI")"
+# The fake mongosh answers the counts from a JSON state file, records every drop with the user it ran as and removes
+# the collection from the state.
+fake_mongosh <<'BODY'
 case "$*" in
-  *ping*) exit 0 ;;
   *appReads*)
     echo "probe as $as" >> "$CALLS"
     if [ -e "$APP_DENIED" ]; then echo "MongoServerError: not authorized on kinowo_fleet" >&2; exit 1; fi
@@ -48,20 +32,14 @@ print(json.dumps({"counts":{d:{c:s[d].get(c) for c in C} for d in s},"newest":{d
     echo "$G_COLL dropped from kinowo: true" ;;
   *) echo "fake mongosh: unexpected $*" >&2; exit 3 ;;
 esac
-FAKE
-chmod +x "$FAKE"/*
+BODY
 
 seed() {  # seed <kinowo_fleet's facebook_fetches count, or null for absent>
   printf '{"kinowo":{"facebook_rescrapes":12,"facebook_fetches":900,"fleet_host_pace":4},"kinowo_fleet":{"facebook_rescrapes":14,"facebook_fetches":%s,"fleet_host_pace":4},"kinowo_uk":{}}' \
     "${1:-950}" > "$STATE"
-  rm -f "$CALLS" "$TUNNEL_UP" "$APP_DENIED"
+  rm -f "$APP_DENIED"; prod_ops_fixture_fresh
 }
-finish() {
-  env -u MONGODB_URI -u MONGO_ROOT_URI -u KINOWO_MONGO_SSH -u FLEET_DB_FINISH_TUNNELLED PATH="$FAKE:$PATH" \
-    FAKE_MONGODB_URI='mongodb://kinowo_app_2:pw@10.20.0.13:27017/kinowo?authSource=kinowo' \
-    FAKE_MONGO_ROOT_URI='mongodb://kinowo_root:pw@10.20.0.13:27017/admin?authSource=admin' \
-    "$REPO_ROOT/scripts/fleet-db-finish" "$@" 2>&1
-}
+finish() { prod_ops_run "$REPO_ROOT/scripts/fleet-db-finish" "$@"; }
 drops() { grep '^drop' "$CALLS" 2>/dev/null; }
 
 echo "[spec] counts (no flag)"

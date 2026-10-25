@@ -12,15 +12,13 @@
 # (`sbt 'worker/Test/runMain deploy.MongoGrantsList'`; MongoGrantsListSpec fails when it is stale).
 # The users: read off the connection strings, never named here — the app's MONGODB_URI (user + authSource) and the
 # CI reader's URI (MONGO_CI_READ_URI, else the one scripts/ci builds for mongo-ci-read.nix's user).
-# The connection: scripts/with-prod-mongo.sh --both (one Touch ID, one tunnel). A missing user is reported, never
+# The connection and the arguments: scripts/prod-ops.sh (docs/prod-ops-scripts.md), over
+# scripts/with-prod-mongo.sh --both (one Touch ID, one tunnel). A missing user is reported, never
 # created. The logic and its details: scripts/mongo_grants.py; tests: scripts/mongo-grants-test.sh.
 set -euo pipefail
-# shellcheck source=scripts/tool-conventions.sh
-. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
-case "${1:-}" in
-  -h|--help) usage_from_header; exit 0 ;;
-  --check|--apply) [ $# -eq 1 ] || { usage_from_header >&2; exit 2; } ;;
-  *) usage_from_header >&2; exit 2 ;;
-esac
 HERE="$(cd "$(dirname "$0")" && pwd)"
-exec "$HERE/with-prod-mongo.sh" --both python3 -I "$HERE/mongo_grants.py" "$1"
+# shellcheck source=scripts/prod-ops.sh
+. "$HERE/prod-ops.sh" # prod_ops_mode, prod_ops_exec
+prod_ops_init mongo-grants
+prod_ops_mode "$@"
+prod_ops_exec --both python3 -I "$HERE/mongo_grants.py" "--$PROD_OPS_MODE"
