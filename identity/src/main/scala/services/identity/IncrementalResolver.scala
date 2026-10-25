@@ -242,7 +242,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     replaced.foreach(forget)
     // The rules behind each settled family's decisions go to the trace store — built there, off this thread, family
     // by family, from the family as resolved and each of its listings' venue and title — and the model keeps the
-    // decisions without them. One family's hand-over holds only its own: a store may drop it unbuilt, once a later
+    // decisions with only what a stage after it reads of them ([[DecisionTrace.kept]]). One family's hand-over holds only its own: a store may drop it unbuilt, once a later
     // update re-resolves the family. The canonical and search tiers are read once per cleaned title across the batch.
     val byClean = mutable.HashMap.empty[String, Seq[String]]
     val traced = settled.values.toSeq.map { family =>
@@ -252,7 +252,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
         titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
           byClean.synchronized(normalizer.firedRules(cinema, raw, byClean)) }, Some(calibration))
     }
-    clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(_.copy()(DecisionTrace.Empty))),
+    clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(d => d.copy()(DecisionTrace.kept(d)))),
       context.slice(family.reads).digest)))
     val added   = settled.values.toSeq.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
       .map(family => StoredFamily(family.storeId, family.resolved, family.digest))

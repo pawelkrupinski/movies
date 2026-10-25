@@ -172,6 +172,18 @@ object DecisionTrace {
   final case class Veto(reason: String, by: Option[String])
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
 
+  /** What of `decision`'s trace the model keeps with it, and stores: what a stage after the model reads of it
+   *  ([[UnifiedEvidence]]'s `rule.*` signals and the guards they lift, read by the fill of a no-match) — of a no-match, the
+   *  rule each member's node accepted its candidate by alone and the pooled rule; of a match, nothing. The whole trace goes
+   *  to the trace store. Kept, so the stage reads what a whole resolve hands it (docs/design/identity-no-drift.md: the
+   *  model kept no trace, so prod's fill never read a `rule.*` signal a whole resolve's did — UK "CBeebies Panto"). */
+  def kept(decision: ResolverDecision): DecisionTrace =
+    if (decision.film.isDefined) Empty
+    else {
+      val nodes = decision.trace.nodes.collect { case (key, node) if node.accepted.isDefined => key -> Node(node.accepted, Nil, Nil, candidate = node.candidate) }
+      if (nodes.isEmpty && decision.trace.pooled.isEmpty) Empty else DecisionTrace(decision.trace.pooled, None, nodes)
+    }
+
   /** A query as a trace shows it: `title "Manon (Ballet Live)"`, `director Polly Findlay`, `imdb "Manon"`. */
   def renderQuery(query: CandidateQuery): String = query match {
     case CandidateQuery.Title(text)    => s"title \"$text\""

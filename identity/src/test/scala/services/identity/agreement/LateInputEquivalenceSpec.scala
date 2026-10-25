@@ -65,18 +65,12 @@ object LateInputEquivalenceSpec {
   private val normalizer = LateInputs.normalizer
 
   /**
-   * The cases the incremental path does not cure yet (on the no-drift-2 stack, e57becb42), by name, each with its root
-   * cause — for the fix to take the mark off:
-   *
-   *  - a film NEW in TMDB (UK "CBeebies Panto: Treasure Island" ×11, the production drift row): the model weighs it once
-   *    TMDB's search returns it — its decision then the whole resolve's, object for object — but the live stage, which
-   *    decided the cluster while the search returned nothing, takes no fill where a fresh stage over the same stores and
-   *    inputs fills it by venues.current; the verdict it files then stands across a restart (found by the same digest).
-   *    Not the receipt alone: the arrival moves the model's candidate, so the digest, so the cluster is resolved again —
-   *    by a stage whose memory of the blind resolve still decides.
+   * The cases the incremental path does not cure yet, by name, each with its root cause — for the fix to take the mark
+   * off. None: the last, UK "CBeebies Panto: Treasure Island" ×11 (a film new in TMDB, filled by venues.current by a fresh
+   * stage, by no live one), was the model keeping its decisions without their trace, so the fill's `rule.*` signals read
+   * none in prod; it keeps what a stage reads of it now ([[services.identity.DecisionTrace.kept]]).
    */
-  val Pending: Map[String, String] = Map(
-    cbeebiesName -> "a film new in TMDB: the live stage's resolve after it arrives is not a fresh stage's")
+  val Pending: Map[String, String] = Map.empty
 
   private def silent: Map[VoterFamily, FamilyAnswers] =
     VoterFamily.values.map(family => family -> new HeldFamilyAnswers(family, Map.empty)).toMap
@@ -149,7 +143,7 @@ object LateInputEquivalenceSpec {
     val venues = Seq(KinoMuza, Multikino, KinoPalacowe, models.Rialto, models.Helios, models.KinoApollo, models.CinemaCityKinepolis,
       models.KinoAmok, models.KinoKijow, models.KinoPowisle, models.KinoTon)
     val listings = venues.map(FilmTable.listing(_, "CBeebies Panto: Treasure Island"))
-    Seq(Scenario("CBeebies ×11 (Panto: Treasure Island)", Kind.Search, listings, new FilmTable(Seq(panto), normalizer), silent,
+    Seq(Scenario(cbeebiesName, Kind.Search, listings, new FilmTable(Seq(panto), normalizer), silent,
       late = { case Input.NewFilm(id) => id == panto.id; case _ => false }, absence = Absence.Missing))
   }
 

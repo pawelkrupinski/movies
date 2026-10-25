@@ -119,6 +119,7 @@ Each item has a verdict:
 | # | State | Where | Verdict | Fix / proof |
 |---|---|---|---|---|
 | 1 | Stored families plus their slice digest | `IncrementalResolver.families`, `IdentityModelStore` | (a) cache | Reused only when the digest of every corpus fact the family read matches (`CorpusContext.slice`, a superset). On restore, nodes and claims are checked too. `IncrementalResolverSpec` checks every event against a whole resolve. |
+| 1b | The model's decisions kept WITHOUT their trace (`DecisionTrace.Empty`), restored so from the store | `IncrementalResolver.remember`, `ResolverDecisionBson` | **(b) fixed** | The stage's fill reads the model's trace (`UnifiedEvidence`'s `rule.*` signals and the guards they lift), so prod's fill never read what a whole resolve's did. This was UK "CBeebies Panto" ×11 and the 216-row 573 replay divergence. The model now keeps, and stores, what a stage reads of a no-match's trace (`DecisionTrace.kept`: each accepted node's rule and candidate). Cost: a few small nodes per no-match decision that a node accepted alone. Specs: `IncrementalResolverSpec` "hand a stage after it what a resolve ... hands it", `LateInputEquivalenceSpec` (CBeebies unmarked). |
 | 2 | Family ids, `freedIds` | `IncrementalResolver` | (a) name | Labels only. Decisions are sorted by first member. |
 | 3 | Rules version | `IncrementalResolver.rulesVersion` | (a) | The code digest is the compiler's closure of the resolver (`IdentityRulesSources`). The normalizer and its resources are reached, so they are covered. |
 | 4 | `LiveCorpus` memos (`heads`, `records`, candidates) | `LiveCorpus` | (a) cache, given the event feed | `LiveCorpusSpec` checks equality with `CorpusContext.of` after every event. Gap: a detail page or record filed WITHOUT its `AnswersChanged` event stays stale until a restart. That is a feed-delivery property, not stored state. |
@@ -152,7 +153,7 @@ The counts of the 27:
 | Verdict | Count | Items |
 |---|---|---|
 | (a) cannot affect a take | 17 | |
-| (b) fixed | 5 | 8, 8a, 9, 19, 20 |
+| (b) fixed | 6 | 1b, 8, 8a, 9, 19, 20 |
 | (c) fixed or deleted | 5 | 10–13, 23 |
 | Record carry-over, open | 1 | 7 |
 | Deleted (dead) | 1 | 27 |

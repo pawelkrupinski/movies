@@ -47,6 +47,36 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     IndependentCases.flatMap(Seeds)(divergence(_)) shouldBe empty
   }
 
+  /** What a stage after the model reads of each decision beside its take (docs/design/identity-no-drift.md): the film it
+   *  leans to, its best candidate, its questions unanswered and the trace it keeps ([[DecisionTrace.kept]]). */
+  private def handed(decisions: Seq[ResolverDecision]) =
+    decisions.map(d => (d.members.toSet, d.leaning, d.candidate, d.unanswered, DecisionTrace.kept(d), d.trace == DecisionTrace.kept(d))).toSet
+
+  /** The first event after which the model hands the stage other decisions than a resolve of what it holds would. */
+  private def handedDivergence(seed: Long): Option[String] = {
+    val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
+    val lookups = new FillingLookups(corpus.lookups, new Random(seed * 31))
+    val store   = new InMemoryIdentityModelStore
+    var model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store)
+    val random  = new RandomIdentityEvents(corpus.listings, lookups, seed)
+    random.events.zipWithIndex.flatMap { case (event, step) =>
+      event match {
+        case IdentityEvent.Seen(listings) => model.batch(seen = listings)
+        case IdentityEvent.Gone(keys)     => model.batch(gone = keys)
+        case IdentityEvent.Answered(c)    => model.batch(answered = c)
+      }
+      // a restart now and then: what the store keeps of a decision is what the stage reads of it
+      if (step % 7 == 6) { model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store); model.restore(random.held.values.toSeq) }
+      val expected = IdentityResolver.resolveWith(random.held.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
+      val (got, want) = (handed(model.decisions), handed(expected.decisions).map(h => h.copy(_6 = true)))
+      Option.when(got != want)(s"seed $seed, step $step (${event.label}): ${(got -- want).take(1)} vs ${(want -- got).take(1)}")
+    }.nextOption()
+  }
+
+  it should "hand a stage after it what a resolve of what it holds hands it — leaning, candidate, unanswered, kept trace — restarted too" in {
+    IndependentCases.flatMap(Seeds)(handedDivergence) shouldBe empty
+  }
+
   it should "equal it too when every update resolves in batches of a few listings" in {
     IndependentCases.flatMap(Seeds)(divergence(_, regionBatch = 3)) shouldBe empty
   }

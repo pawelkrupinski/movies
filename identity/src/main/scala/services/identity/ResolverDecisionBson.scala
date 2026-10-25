@@ -31,6 +31,33 @@ object ResolverDecisionBson {
       new BsonDocument("film", BsonInt32(best.film)).append("imdbNumber", BsonInt32(best.imdbNumber))))
     .append("unanswered", BsonInt32(decision.unanswered))
     .append("agreed", new BsonDocument(decision.agreed.toSeq.sorted.map { case (family, id) => new org.bson.BsonElement(family, BsonString(id)) }.asJava))
+    .append("trace", traceOf(decision))
+
+  /** What of the decision's trace the model keeps ([[DecisionTrace.kept]]): the pooled rule, and each member node's
+   *  accepted rule and candidate, by the member's place among the decision's members sorted. */
+  private def traceOf(decision: ResolverDecision): BsonValue = {
+    val kept = DecisionTrace.kept(decision)
+    if (kept == DecisionTrace.Empty) BsonNull()
+    else {
+      val sorted = decision.members.sorted(using services.movies.ListingKey.ordering)
+      val d = new BsonDocument("nodes", BsonArray.fromIterable(sorted.zipWithIndex.flatMap { case (key, at) =>
+        kept.nodes.get(key).map(node => new BsonDocument("at", BsonInt32(at)).append("accepted", BsonString(node.accepted.get))
+          .append("candidate", node.candidate.fold[BsonValue](BsonNull())(BsonInt32(_))))
+      }))
+      kept.pooled.foreach(rule => d.append("pooled", BsonString(rule)))
+      d
+    }
+  }
+
+  /** The kept trace [[traceOf]] wrote, of a decision with `members`. */
+  private def keptTrace(d: BsonDocument, members: Seq[services.movies.ListingKey]): DecisionTrace = {
+    val sorted = members.sorted(using services.movies.ListingKey.ordering)
+    val nodes  = d.getArray("nodes").asScala.map(_.asDocument).flatMap { node =>
+      sorted.lift(node.getInt32("at").getValue).map(key => key -> DecisionTrace.Node(Some(node.getString("accepted").getValue), Nil, Nil,
+        candidate = Option(node.get("candidate")).filter(_.isInt32).map(_.asInt32.getValue)))
+    }.toMap
+    DecisionTrace(Option(d.get("pooled")).filter(_.isString).map(_.asString.getValue), None, nodes)
+  }
 
   def decode(d: BsonDocument): ResolverDecision = read(new org.bson.BsonDocumentReader(d))
 
@@ -46,6 +73,7 @@ object ResolverDecisionBson {
     var leaning, candidate: Option[ResolverDecision.Leaning] = None
     var unanswered                                = 0
     var agreed                                    = Map.empty[String, String]
+    var trace: Option[BsonDocument]               = None
     BsonFields.document(reader) {
       case "members"        => members = {
                                  val all = Vector.newBuilder[services.movies.ListingKey]
@@ -61,6 +89,8 @@ object ResolverDecisionBson {
       case "leaning"        => leaning = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
       case "candidate"      => candidate = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
       case "unanswered"     => unanswered = BsonFields.when(reader, BsonType.INT32)(reader.readInt32()).getOrElse(0)
+      case "trace"          => trace = BsonFields.when(reader, BsonType.DOCUMENT)(
+                                 new org.bson.codecs.BsonDocumentCodec().decode(reader, org.bson.codecs.DecoderContext.builder().build()))
       case "agreed"         => agreed = BsonFields.when(reader, BsonType.DOCUMENT) {
                                  val all = Map.newBuilder[String, String]
                                  BsonFields.document(reader)(family => all += family -> reader.readString())
@@ -70,7 +100,8 @@ object ResolverDecisionBson {
     }
     ResolverDecision(BsonFields.required(members, "members"), film, BsonFields.required(confidence, "confidence").doubleValue,
       ResolverDecision.Basis.valueOf(BsonFields.required(basis, "basis")), BsonFields.required(explanation, "explanation"),
-      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate)()
+      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate)(
+      trace.fold(DecisionTrace.Empty)(keptTrace(_, BsonFields.required(members, "members"))))
   }
 
   private def readFallback(reader: org.bson.BsonReader): ResolverDecision.Fallback = {
