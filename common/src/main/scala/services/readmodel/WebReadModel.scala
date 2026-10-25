@@ -5,7 +5,7 @@ import play.api.Logging
 import services.Stoppable
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.jdk.CollectionConverters._
@@ -470,9 +470,9 @@ class WebReadModel(
    *  pay the O(corpus) reload only when a stream has died (full catch-up, the
    *  original backstop behaviour) or a count has drifted (a delivered event we
    *  failed to apply, or one missed by a silently-stalled stream). */
-  private[readmodel] def backstopTick(): Unit = {
-    if (!streamsLive) { reload(); return }
-    drift().foreach { first =>
+  private[readmodel] def backstopTick(): TickRun =
+    if (!streamsLive) reloaded()
+    else drift().fold(TickRun.Completed) { first =>
       // A COUNT TAKEN MID-WRITE IS NOT DRIFT. The count is read straight off the server, the
       // model only once the write's change event has been applied, so a count landing between
       // the two sees the database a row or two ahead. That was every drift reload web-us ever
@@ -484,12 +484,15 @@ class WebReadModel(
       drift() match {
         case Some(confirmed) =>
           logger.info(s"WebReadModel backstop: drift detected — reloading ($confirmed).")
-          reload()
+          reloaded()
         case None =>
           logger.info(s"WebReadModel backstop: count mismatch settled within ${driftSettle.value} ($first) — no reload.")
+          TickRun.Completed
       }
     }
-  }
+
+  /** [[reload]], as a tick's run: [[TickRun.Incomplete]] when the read could not complete (logged by the reload). */
+  private def reloaded(): TickRun = { reload(); TickRun.completedWhen(lastReloadComplete) }
 
   /** The mismatch between the server-side counts and the model, described, or `None` when they
    *  agree. A count that could not be taken is a mismatch: it is no evidence the model is right. */

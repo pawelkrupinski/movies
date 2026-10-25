@@ -624,6 +624,28 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2")
   }
 
+  "backstopTick" should "complete its tick only when its reload read the corpus whole" in {
+    @volatile var screeningsFail = false
+    val repository = new InMemoryReadModelRepository {
+      override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome =
+        if (!screeningsFail) super.foreachScreening(f)
+        else { super.findAllScreenings().take(1).foreach(f); tools.ScanOutcome.of(whole = false, "screenings fail on purpose") }
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    val rm    = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    val ticks = new _root_.tools.RecordingTickRecorder
+    // No stream was opened, so every backstop reloads.
+    def tick(): Unit = _root_.tools.ScheduledTick.recorded("read-model-backstop", scala.concurrent.duration.FiniteDuration(30, "minutes"), play.api.Logger(getClass), ticks)(
+      rm.backstopTick())
+    screeningsFail = true
+    tick()
+    ticks.completedRuns shouldBe empty   // an incomplete read: logged, and not a completed run
+    screeningsFail = false
+    tick()
+    ticks.completedRuns should have size 1
+  }
+
   // ── Cold retry: a failed boot read must not become an empty corpus ───────────
   //
   // The 2026-07-29 outage: prod Mongo was OOM-killed, the web tier restarted while it was

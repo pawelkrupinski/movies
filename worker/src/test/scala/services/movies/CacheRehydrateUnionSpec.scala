@@ -83,6 +83,19 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     cache.entries should have size 1
   }
 
+  it should "complete its tick only for a read that completed" in {
+    val repository = new FailingReadRepository(base)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val ticks = new _root_.tools.RecordingTickRecorder
+    def tick(): Unit = _root_.tools.ScheduledTick.recorded("movie-cache-cold-retry", 1.minute, play.api.Logger(getClass), ticks)(
+      cache.coldRetryTick())
+    tick()
+    ticks.completedRuns shouldBe empty   // the read failed again: logged, and not a completed run
+    repository.failing = false
+    tick()
+    ticks.completedRuns should have size 1
+  }
+
   it should "cost nothing once a read has completed" in {
     val repository = new FailingReadRepository(base)
     repository.failing = false

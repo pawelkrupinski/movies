@@ -7,7 +7,7 @@ import models.{MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.Stoppable
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.concurrent.duration.DurationInt
@@ -225,12 +225,12 @@ class CaffeineMovieCache(
     // yet as an empty store, so its pages are forgotten and the hydrate reads again.
     val offer: Seq[StoredMovieRecord] => Unit = page => bootReaders.foreach(_.bootPage(page))
     var attempt = 0
-    var read    = rehydrateFrom(offer)
+    var read    = rehydrateFrom(offer).getOrElse(0)
     while (read == 0 && attempt < bootHydrateMaxAttempts.value) {
       bootReaders.foreach(_.bootReadEnded(BootReadEnd.Retrying))
       attempt += 1
       Thread.sleep(bootHydrateRetry.value.toMillis) // an interrupt (shutdown mid-boot) ends the construction
-      read = rehydrateFrom(offer)
+      read = rehydrateFrom(offer).getOrElse(0)
     }
     bootReaders.foreach(_.bootReadEnded(if (read > 0) BootReadEnd.Whole else BootReadEnd.GaveUp))
   }
@@ -579,7 +579,10 @@ class CaffeineMovieCache(
   /** Put every stored row and evict the keys gone from the store; how many rows it put. An incomplete
    *  read (a page the scan could not read is skipped whole) changes nothing — no row put, none
    *  evicted: its missing films are not gone. The next backstop tick reads again. */
-  def rehydrate(): Int = rehydrateFrom(_ => ())
+  def rehydrate(): Int = rehydrateFrom(_ => ()).getOrElse(0)
+
+  /** [[rehydrate]], as a tick's run: [[TickRun.Incomplete]] when the read could not complete or was refused (logged). */
+  private def rehydrateTick(): TickRun = TickRun.completedWhen(rehydrateFrom(_ => ()).isDefined)
 
   /** [[rehydrate]], handing each page of its read to `onPage` as it is read.
    *
@@ -589,7 +592,7 @@ class CaffeineMovieCache(
    *  derivation after it: long enough at boot that the corpus's showtimes were promoted into the old
    *  generation only to die there (see [[BootCorpusReader]]). Nothing is put or evicted until the
    *  read is complete. */
-  private def rehydrateFrom(onPage: Seq[StoredMovieRecord] => Unit): Int = {
+  private def rehydrateFrom(onPage: Seq[StoredMovieRecord] => Unit): Option[Int] = {
     // Additive sync — never blank the cache mid-rehydrate. The backstop
     // tick (see `start()` below) runs while readers walk `snapshot()`;
     // an `invalidateAll()` window would briefly show them an empty corpus. Instead: put every Mongo row (cache's
@@ -601,9 +604,10 @@ class CaffeineMovieCache(
     // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
     // or the next backstop, reconciles it.
     val marks = repository.writeFence.markAll()
-    readByKey(onPage, findingAll).fold(0) { case (byKey, rows) =>
+    // None: a read that could not complete, or an empty answer refused — nothing put or evicted.
+    readByKey(onPage, findingAll).flatMap { case (byKey, rows) =>
       val tFindAllMs = findingAll.millis
-      if (refusesEmpty(rows, tFindAllMs)) 0
+      if (refusesEmpty(rows, tFindAllMs)) None
       else {
         val populating = tools.Stopwatch.start()
         val changed    = populate(byKey, marks)
@@ -617,7 +621,7 @@ class CaffeineMovieCache(
         if (rows > 0)
           logger.info(s"Hydrated $rows enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${populating.millis}ms.")
         touch()
-        rows
+        Some(rows)
       }
     }
   }
@@ -845,10 +849,11 @@ class CaffeineMovieCache(
    *  (Mongo slow, or briefly gone) left the cache empty, and only the change stream — rows written
    *  after boot — and the backstop hours later filled it: every quiescent row was invisible to the
    *  fold and the settle meanwhile. Once hydrated this is one field read. */
-  private[movies] def coldRetryTick(): Unit =
-    if (!wholeCorpusRead) {
+  private[movies] def coldRetryTick(): TickRun =
+    if (wholeCorpusRead) TickRun.Completed
+    else {
       logger.warn("MovieCache cold-retry: no corpus read has completed yet — reading again.")
-      rehydrate(); ()
+      rehydrateTick()
     }
 
   def start(): Unit = {
@@ -862,7 +867,7 @@ class CaffeineMovieCache(
       s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
     ticks.started("movie-cache-rehydrate", rehydrateInterval.value, rehydrateInterval.value)
     refreshScheduler.scheduleAtFixedRate(
-      () => ScheduledTick.recorded("movie-cache-rehydrate", rehydrateInterval.value, logger, ticks)(rehydrate()),
+      () => ScheduledTick.recorded("movie-cache-rehydrate", rehydrateInterval.value, logger, ticks)(rehydrateTick()),
       BackstopIntervalSeconds, BackstopIntervalSeconds, TimeUnit.SECONDS
     )
   }
