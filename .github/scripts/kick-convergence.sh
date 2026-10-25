@@ -39,7 +39,8 @@ failed=0
 # bounded (tool-conventions.sh, which dispatch.sh sources), not timeout(1): stock macOS has none, and there every read
 # of a suite's last run failed, so a local run dispatched every suite whatever the push touched.
 dispatch() {
-    dispatch_workflow "$1" "$ref" || { echo "::error::could not dispatch $1"; failed=1; }
+    # main's convergence takes the gate tier (identity-model-convergence.yml's `tier` input; RunnerClassSpec)
+    dispatch_workflow "$1" "$ref" -f tier=gate-lane || { echo "::error::could not dispatch $1"; failed=1; }
 }
 
 for workflow in "$@"; do

@@ -39,6 +39,14 @@ on:
                 required: false
                 type: string
                 default: ''
+            tier:
+                description: >-
+                    The ci-runner tier label this run's jobs take: Main's kick-convergence passes gate-lane; empty is a
+                    measurement's, measure. An input, not github.ref -- Forgejo evaluates a dispatched run's runs-on
+                    before github.ref is set (runs 1697, 1720, 1724 asked main's convergence onto measure).
+                required: false
+                type: string
+                default: ''
             takes-base:
                 description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
                 required: false
@@ -93,7 +101,7 @@ jobs:
     # had dropped, or a country with no pin). The ONLY job in front of the legs: one runner wait, not two (a second one
     # cost measure run 968 12.6 minutes of queue on 2026-10-22). (IdentityModelConvergenceWiringSpec)
     preflight:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || (github.ref == 'refs/heads/main' || github.ref == 'main') && 'gate-lane' || 'measure' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -211,7 +219,7 @@ jobs:
             # The run's tier off github.com (RunnerClassSpec) unless a dispatch names a runner: main's own runs gate every
             # push, so `gate-lane`; a measurement's, `measure`. The input defaults to empty -- with its old default of
             # ubuntu-24.04, `!inputs.runner` never held and main's legs never reached their lane.
-            runner:                        ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || (github.ref == 'refs/heads/main' || github.ref == 'main') && 'gate-lane' || 'measure' }}
+            runner:                        ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
             takes-countries:               ${{ inputs.takes-countries || '' }}
@@ -237,7 +245,7 @@ jobs:
     request-bisect:
         needs: [ leg ]
         if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || (github.ref == 'refs/heads/main' || github.ref == 'main') && 'gate-lane' || 'measure' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
         timeout-minutes: 5
         permissions:
             actions: write
@@ -259,7 +267,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && ((github.ref == 'refs/heads/main' || github.ref == 'main') && 'gate-lane' || 'measure') || '' }}
+            lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -272,7 +280,7 @@ jobs:
     drop-measure-branch:
         needs: [ preflight, leg, request-bisect, timings ]
         if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || (github.ref == 'refs/heads/main' || github.ref == 'main') && 'gate-lane' || 'measure' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: write

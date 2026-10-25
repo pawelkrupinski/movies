@@ -820,7 +820,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // ...and a hand-dispatched runner label reaches every leg, x64 unless asked; off github.com main's own runs take the
     // gate tier and a measurement's the measure tier (RunnerClassSpec).
     caller should include ("runner:                        ${{ inputs.runner || github.server_url == 'https://github.com' " +
-      "&& 'ubuntu-24.04' || (github.ref == 'refs/heads/main' || github.ref == 'main') && 'gate-lane' || 'measure' }}")
+      "&& 'ubuntu-24.04' || inputs.tier || 'measure' }}")
     leg should include ("runs-on: ${{ inputs.runner }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")

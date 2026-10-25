@@ -94,6 +94,13 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
   private val ShortMain = "main"
   private val Refs = Seq(Main, ShortMain, Branch)
 
+  /** The inputs main's own dispatch of `file` passes: Main's kick-convergence hands the convergence suite its tier
+   *  (`-f tier=…`), since Forgejo evaluates a dispatched run's `runs-on` before `github.ref` is set. Read off the
+   *  script, so a kick that stops passing it turns this spec red rather than parking main's run on `measure`. */
+  private def mainDispatch(file: String): Map[String, String] =
+    if (file != "identity-model-convergence.yml") Map.empty
+    else """-f tier=(\S+)""".r.findFirstMatchIn(RepoFile.read(".github/scripts/kick-convergence.sh")).map(m => "tier" -> m.group(1)).toMap
+
   "every workflow" should "be classed in exactly one tier, or be a reusable workflow its caller's tier runs" in {
     val files = RepoFile.workflows().map(_.getName).toSet
     withClue("workflows with no tier (class each one in Classes, or in Called if it is reusable): ") {
@@ -108,7 +115,7 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
       (file, classed) <- Classes.toSeq.sortBy(_._1)
       ref             <- Refs
       tier             = if (ref == Main || ref == ShortMain) classed.onMain else classed.elsewhere
-      jobs             = labels(file, Context(Forgejo, ref))
+      jobs             = labels(file, Context(Forgejo, ref, if (ref == Branch) Map.empty else mainDispatch(file)))
       _                = withClue(s"$file has no job to class: ")(jobs should not be empty)
       (job, label)    <- jobs
       if !tier.labels(label)
