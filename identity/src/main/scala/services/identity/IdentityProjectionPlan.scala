@@ -5,6 +5,7 @@ import services.movies.LatestTitleYear
 import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens,
   StoredMovieRecord, TitleNormalizer}
+import services.resolution.TmdbAttempt
 
 import java.time.Instant
 
@@ -133,11 +134,16 @@ object IdentityProjectionPlan {
    *  lookups are observations, re-asked on their own TTL), only that the verdict was reached. */
   val ResolverVerdict: String = "identity-resolver"
 
+  /** The no-match a film the resolver matched to no TMDB film records: its verdict, at no time — a record is worked out
+   *  from its inputs alone, and the time a verdict was first reached is none of them (a projection from scratch would
+   *  stamp its own). */
+  val ResolverAttempt: TmdbAttempt = TmdbAttempt(ResolverVerdict, Instant.EPOCH)
+
   def draft(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord], counters: FilmIdCounters,
-            normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens, at: Instant,
+            normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens,
             rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]], memo: VenueSlotMemo = VenueSlotMemo.none)(using LatestTitleYear): ProjectionDraft = {
     val whole = index(listings, resolution, stored, counters, normalizer)
-    draftOf(whole, whole.everything, normalizer, slots, tokens, at, rowsOf, memo)
+    draftOf(whole, whole.everything, normalizer, slots, tokens, rowsOf, memo)
   }
 
   /** What a projection reads off the whole listing set, the resolution and the stored films before it drafts any film:
@@ -204,8 +210,7 @@ object IdentityProjectionPlan {
     val members = decisions.iterator.flatMap(_.members).filter(published).toSet
     Option.when(members.nonEmpty)(id match {
       case ClusterId.Matched(film) => Cluster(members, Some(film))
-      case _                       => Cluster(members, None, decisions.iterator.flatMap(_.fallback).nextOption(), decisions.exists(_.unanswered > 0),
-                                        decisions.iterator.flatMap(_.leaning).nextOption())
+      case _                       => Cluster(members, None, decisions.iterator.flatMap(_.fallback).nextOption())
     })
   }
 
@@ -213,10 +218,10 @@ object IdentityProjectionPlan {
    *  everything that couples one film's draft to another's ([[ProjectionScope]]) — over `index`. Drafting a scope so
    *  closed gives each of its films exactly the draft the whole corpus would. */
   def draftOf(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
-              tokens: ScreeningTokens, at: Instant, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
+              tokens: ScreeningTokens, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
               memo: VenueSlotMemo = VenueSlotMemo.none, shapes: FilmShapes = FilmShapes.none,
               changed: Set[ListingKey] = Set.empty)(using LatestTitleYear): ProjectionDraft =
-    new ProjectionDrafting(index, scope, normalizer, slots, tokens, at, rowsOf, memo, shapes, changed).draft
+    new ProjectionDrafting(index, scope, normalizer, slots, tokens, rowsOf, memo, shapes, changed).draft
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
    *  whether an id is live already (a fresh id must not be one). */

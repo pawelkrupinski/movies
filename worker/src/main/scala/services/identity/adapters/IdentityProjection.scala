@@ -335,7 +335,7 @@ final class IdentityProjection(
     val reconcile   = moved.isDefined && reconciling
     val freed       = changes.fold(Set.empty[String])(_.keys)
     val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
-      changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
+      changes.fold(Set.empty[ListingKey])(_.listings), index, phases)
     IdentityProjection.Planned(resolution, at, updated, index, changes, moved, freed, reconciling, reconcile, scope, draft, detailed, plan)
   }
 
@@ -402,12 +402,12 @@ final class IdentityProjection(
   /** The drafts of `scope`, detailed and titled. A scope is closed again over every stored film outside it under one of
    *  its films' plain title keys, new or old — the older of two films of one title and year keeps the plain key, so
    *  their keys are decided together — until none is left outside. */
-  private def drafted(start: ProjectionScope, freed: Set[String], changed: Set[ListingKey], index: ProjectionIndex, at: java.time.Instant,
+  private def drafted(start: ProjectionScope, freed: Set[String], changed: Set[ListingKey], index: ProjectionIndex,
                       phases: ProjectionPhases): (ProjectionScope, ProjectionDraft, ProjectionDraft, ProjectionPlan) = {
     val storedIds = index.storedById.valuesIterator.map(_.id).toSet
     @scala.annotation.tailrec
     def loop(scope: ProjectionScope): (ProjectionScope, ProjectionDraft, ProjectionDraft, ProjectionPlan) = {
-      val draft    = phases("draft")(IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, at, rows, slotMemo, shapes, changed))
+      val draft    = phases("draft")(IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, rows, slotMemo, shapes, changed))
       val detailed = phases("details")(draft.copy(drafts = IdentityProjection.detailed(draft.drafts, details)))
       val plan     = phases("finish")(IdentityProjectionPlan.finish(detailed, normalizer, storedIds))
       (if (scope.whole) None else ProjectionScope.widened(index, scope, plan.films.map(_.key), freed, normalizer)) match {

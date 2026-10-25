@@ -26,6 +26,11 @@ import scala.util.Random
  * tick. After each tick their stores, FilmId maps, announcements and refusals must be identical — a film the scope
  * missed is a film the two stores disagree on. The whole world also checks each tick against the scope it would have
  * drafted, and must find no drift.
+ *
+ * With no other writer, a third world starts from scratch after every tick — no stored film, no FilmId map — over the
+ * listings the scoped world holds: each of its films' records must equal the scoped world's, field for field (the
+ * films' ids and keys are names, and differ). What a record holds is worked out from the inputs as they are now, never
+ * kept because an earlier projection wrote it.
  */
 class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
 
@@ -57,9 +62,29 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     var failing  = true
     /** The TMDB films the store refuses to write a film as: the projection parks it without its TMDB id, and retries. */
     var declining = Set.empty[Int]
+    /** Whether a group matched to no film is decided with what the projection links it by: a fallback film, a lean, a
+     *  question not answered yet — each drawn again as the group is matched again. Never a stand on Filmweb's id: the
+     *  Filmweb page of a film TMDB has no record of is also Filmweb's own search's (`TmdbLessRatingLinks`), which the
+     *  record does not tell apart, so a page a stand linked stays until that writer judges it again. */
+    var linked = false
+    val linkOf = scala.collection.mutable.Map.empty[Int, ResolverDecision => ResolverDecision]
+    /** Whether every listing prints its year and director. A venue slot carries a field its listing leaves out from the
+     *  slot it is built over (`CinemaSlotBuilder`'s prior slot): the venue slot code's, versioned on its own
+     *  (`VenueSlotMemo.codeVersion`), and not yet a function of current inputs alone. */
+    var fullRows = false
     private var groups = 0
 
-    def newGroup(): Int = { groups += 1; filmOf(groups) = pickFilm(); groups }
+    def newGroup(): Int = { groups += 1; filmOf(groups) = pickFilm(); if (linked) linkOf(groups) = pickLinks(); groups }
+    def pickLinks(): ResolverDecision => ResolverDecision = {
+      val fallback = rng.nextInt(3) match {
+        case 0 => Some(ResolverDecision.Fallback("imdb", s"tt00${1000 + rng.nextInt(3)}0", 0.4))
+        case 1 => Some(ResolverDecision.Fallback("wikidata", s"Q${100 + rng.nextInt(3)}", 1.0))
+        case _ => None
+      }
+      val leaning    = Option.when(rng.nextBoolean())(ResolverDecision.Leaning(51010, 1360887 + rng.nextInt(2)))
+      val unanswered = rng.nextInt(2)
+      d => d.copy(fallback = fallback, leaning = leaning, unanswered = unanswered)(DecisionTrace.Empty)
+    }
     def pickFilm(): Option[Int] = if (rng.nextInt(3) == 0) None else Some(1 + rng.nextInt(6))
     def group(l: Listing): Int = groupOf.getOrElse(l.key,
       defaultGroup.getOrElseUpdate(s"${normalizer.sanitize(l.cleanTitle)}|${l.year}|${l.directors.mkString}", newGroup()))
@@ -69,8 +94,9 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       val listings = read()
       val decisions = listings.distinctBy(_.key).groupBy(group).toSeq.map { case (g, ls) =>
         val film = filmOf(g)
-        ResolverDecision(ls.map(_.key).sorted, film, 0.9,
+        val decided = ResolverDecision(ls.map(_.key).sorted, film, 0.9,
           if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)()
+        if (film.isEmpty) linkOf.get(g).fold(decided)(_(decided)) else decided
       }.sortBy(_.members.head)(using ListingKey.ordering)
       Some(IdentityProjection.Resolved(Resolution(decisions, listings.size, decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap,
         Nil, Nil, 0, 0, 0, 0, 0, Map.empty), listings.map(_.key).toSet))
@@ -83,7 +109,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       }
 
     def listing(cinema: Cinema): CinemaMovie = {
-      val (title, year, director) = titles(rng.nextInt(titles.size))
+      val printed = if (fullRows) titles.filter { case (_, year, director) => year.isDefined && director.isDefined } else titles
+      val (title, year, director) = printed(rng.nextInt(printed.size))
       val page  = Option.when(rng.nextBoolean())(s"https://${cinema.pillName.toLowerCase(java.util.Locale.ROOT)}/${normalizer.sanitize(title)}-${year.getOrElse(0)}")
       val hours = (0 until 1 + rng.nextInt(4)).map(_ => rng.nextInt(24 * 6)).distinct.sorted
       CinemaMovie(Movie(title, releaseYear = year), cinema, None, page, None, Nil, director.toSeq, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
@@ -91,7 +118,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   }
 
   // Production's storage shape: showtimes in `screenings`, venue slots in `movie_slots`.
-  private def world(s: Scenario, scopedBetweenWhole: Int) =
+  private def world(s: Scenario, scopedBetweenWhole: Int, clock: Clock = clock) =
     new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
       slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer) {
         override def upsert(film: services.movies.FilmId, key: CacheKey, e: MovieRecord): services.movies.WriteOutcome =
@@ -163,14 +190,30 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   private def emitted(w: ProjectionWorld): Seq[String] =
     w.takes.toSeq.map(t => s"${t.kind.label} ${ListingKey.serialised(t.listing)} ${t.before} -> ${t.after}").sorted
 
+  /** Every film a world stores as its record, title and year, in no order: what a projection from scratch must store alike.
+   *  Less its search title, the first draft's, which the projection still carries (identity-no-drift.md, item 7). */
+  private def records(w: ProjectionWorld): Seq[(String, Option[Int], MovieRecord)] =
+    w.repository.findAll().map(r => (r.title, r.year, r.record.copy(searchTitle = None)))
+
+  private def shown(film: (String, Option[Int], MovieRecord)): String = {
+    val (title, year, record) = film
+    s"'$title' $year ${record.copy(data = Map.empty)} data: ${record.data.toSeq.map { case (k, v) => s"$k -> $v" }.sorted.mkString(", ")}"
+  }
+
   /** `declines`: the store refuses some TMDB films' writes for a while — the two worlds then write differently (a patch
-   *  where the whole world writes whole), so only each world's change list is held against its own store. */
-  private def run(seed: Int, ticks: Int, declines: Boolean = false): Int = {
+   *  where the whole world writes whole), so only each world's change list is held against its own store. `fresh`: no
+   *  other writer, no TMDB failure and no emptied venue, and a world from scratch after every tick (the class doc). */
+  private def run(seed: Int, ticks: Int, declines: Boolean = false, fresh: Boolean = false): Int = {
     var declined = 0
     val rng = new Random(seed)
     val s   = new Scenario(rng)
-    var scoped = world(s, IdentityProjection.ScopedBetweenWhole)
-    var whole  = world(s, 0)
+    s.linked = fresh
+    s.fullRows = fresh
+    if (fresh) s.failing = false
+    // Each tick a minute on: a record must not hold when it was first drafted.
+    val ticking = new _root_.tools.MutableClock(clock.instant())
+    var scoped = world(s, IdentityProjection.ScopedBetweenWhole, ticking)
+    var whole  = world(s, 0, ticking)
     def scrape(cinemas: Iterable[Cinema]): Unit = {
       val programmes = cinemas.map(c => c -> s.programme.getOrElse(c, Vector.empty)).toMap
       scoped.scrape(programmes); whole.scrape(programmes)
@@ -179,6 +222,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     scrape(venues)
     (1 to ticks).foreach { t =>
       s.tick = t
+      ticking.advanceSeconds(60)
       val touched = scala.collection.mutable.Set.empty[Cinema]
       val events  = scala.collection.mutable.ListBuffer.empty[String]
       (0 until 1 + rng.nextInt(3)).foreach { _ =>
@@ -199,7 +243,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
           case 5 if s.filmOf.nonEmpty =>
             // The resolver matches a group to another film, or to none.
             val g = s.filmOf.keys.toSeq.sorted.apply(rng.nextInt(s.filmOf.size)); s.filmOf(g) = s.pickFilm()
-          case 6 =>
+            if (s.linked) s.linkOf(g) = s.pickLinks()
+          case 6 if !fresh =>
             // Another writer changes a stored film — each change drawn once, so both worlds take the same write: one a whole
             // projection keeps (a rating, a chain's network slot), or one it puts back (detail pending again, a venue slot's
             // year or director — which can move a same-title listing to the other film — TMDB's title, TMDB's details gone).
@@ -222,7 +267,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
               }
               scoped.cache.putIfPresent(key, change); whole.cache.putIfPresent(key, change)
             }
-          case 9 =>
+          case 9 if !fresh =>
             // Another writer stores a film of its own — over a listing a projected film holds, or over none — or deletes one.
             val films = scoped.repository.findAll().sortBy(_.id.value)
             rng.nextInt(3) match {
@@ -244,7 +289,10 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
             // The store refuses one TMDB film's writes for a while, or takes them again.
             val film = 1 + rng.nextInt(6)
             s.declining = if (s.declining(film)) s.declining - film else s.declining + film
-          case 8 if rng.nextInt(4) == 0 => s.programme(cinema) = Vector.empty; touched += cinema
+          case 10 if s.linked && s.filmOf.nonEmpty =>
+            // The resolver decides a group matched to no film on other answers: another fallback, lean, or gap.
+            s.linkOf(s.filmOf.keys.toSeq.sorted.apply(rng.nextInt(s.filmOf.size))) = s.pickLinks()
+          case 8 if !fresh && rng.nextInt(4) == 0 => s.programme(cinema) = Vector.empty; touched += cinema
           case _ => ()
         }
       }
@@ -260,7 +308,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       def storesAlike(): Unit = {
         a.refused shouldBe b.refused
         val (mine, theirs) = (stored(scoped), stored(whole))
-        if (mine != theirs) fail(s"the stores differ —\n  scoped only: ${mine.diff(theirs).map(render).mkString("\n    ")}\n  whole only: " +
+        if (mine.diff(theirs).nonEmpty || theirs.diff(mine).nonEmpty) fail(s"the stores differ —\n  scoped only: ${mine.diff(theirs).map(render).mkString("\n    ")}\n  whole only: " +
           theirs.diff(mine).map(render).mkString("\n    "))
         scoped.filmIds.allChecked().required.sortBy(_.counter) shouldBe whole.filmIds.allChecked().required.sortBy(_.counter)
         scoped.announced.map(_.toString).sorted shouldBe whole.announced.map(_.toString).sorted
@@ -269,8 +317,18 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
         whole.drifts.filter(_ != 0) shouldBe empty
         scoped.drifts.filter(_ != 0) shouldBe empty
       }
+      def asFromScratch(): Unit = {
+        val anew = world(s, 0, ticking)
+        anew.scrape(scoped.intake.rowsOf(venues.toSet))
+        anew.projection.tick()
+        val (mine, theirs) = (records(scoped), records(anew))
+        if (mine.diff(theirs).nonEmpty || theirs.diff(mine).nonEmpty) fail(s"the records differ from a projection from scratch —\n  incremental only: " +
+          mine.diff(theirs).map(shown).mkString("\n    ") + "\n  from scratch only: " + theirs.diff(mine).map(shown).mkString("\n    "))
+      }
       withClue(s"seed $seed, tick $t (scoped: ${a.scoped}, refused: ${a.refused}; ${events.mkString(", ")}): ") {
         if (!declines) storesAlike()
+        // A refused projection leaves the store as it was, which a projection from scratch has nothing of.
+        if (fresh && a.refused.isEmpty) asFromScratch()
         // every listing's take transition in the change list exactly once: nothing dropped, nothing doubled — across a
         // declined write retried, a refusal and a restart
         Seq("scoped" -> (scoped, scopedBefore), "whole" -> (whole, wholeBefore)).foreach { case (name, (w, before)) =>
@@ -284,6 +342,10 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   "A projection of what moved" should "store, tick after tick, exactly what a projection of the whole corpus stores" in {
     (1 to 400).foreach(seed => run(seed, ticks = 24))
+  }
+
+  it should "store, tick after tick, exactly the records a projection from scratch over the same inputs stores" in {
+    (1 to 150).foreach(seed => run(seed, ticks = 24, fresh = true))
   }
 
   // Every listing's take transition is in the change list exactly once — what the staging screen and the take-change

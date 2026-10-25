@@ -20,7 +20,6 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val slots      = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
   private val tokens     = ScreeningTokens.of(Country.Poland)
-  private val at         = Instant.parse("2026-09-26T12:00:00Z")
   private val start      = LocalDateTime.of(2026, 9, 27, 18, 0)
 
   private def row(cinema: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
@@ -58,7 +57,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
 
   private def plan(listings: Seq[ProjectedListing], r: Resolution, stored: Seq[StoredMovieRecord] = Nil,
                    counters: FilmIdCounters = FilmIdCounters.empty, slots: CinemaSlotBuilder = slots): ProjectionPlan = {
-    val d = IdentityProjectionPlan.draft(listings, r, stored, counters, normalizer, slots, tokens, at, rowsOf(listings))
+    val d = IdentityProjectionPlan.draft(listings, r, stored, counters, normalizer, slots, tokens, rowsOf(listings))
     val p = IdentityProjectionPlan.finish(d, normalizer, id => stored.exists(_.id == id))
     p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record)))
   }
@@ -119,11 +118,11 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   "A film drafted again over its own lean slots" should "be drafted over the stored record's very map" in {
     val r      = resolution(decision(Some(1), lalka*), decision(None, obcy*))
     val memo   = new VenueSlotMemo(0L)
-    val first  = IdentityProjectionPlan.draft(lalka ++ obcy, r, Nil, FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(lalka ++ obcy), memo)
+    val first  = IdentityProjectionPlan.draft(lalka ++ obcy, r, Nil, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
     memo.endTick()
     val firstPlan = IdentityProjectionPlan.finish(first, normalizer, _ => false)
     val stored = firstPlan.films.map(f => StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)))
-    val again  = IdentityProjectionPlan.draft(lalka ++ obcy, r, stored, counters(firstPlan), normalizer, slots, tokens, at, rowsOf(lalka ++ obcy), memo)
+    val again  = IdentityProjectionPlan.draft(lalka ++ obcy, r, stored, counters(firstPlan), normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo)
     val byId   = stored.map(s => s.id -> s.record).toMap
     again.drafts.size shouldBe 2
     again.drafts.foreach(d => assert(d.record.data eq byId(d.inherited.get).data, s"${d.inherited}: the stored map was copied"))
@@ -135,7 +134,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val shapes = FilmShapes()
     def drafted(stored: Seq[StoredMovieRecord], counters: FilmIdCounters) = {
       val index = IdentityProjectionPlan.index(lalka ++ obcy, r, stored, counters, normalizer)
-      val d = IdentityProjectionPlan.draftOf(index, index.everything, normalizer, slots, tokens, at, rowsOf(lalka ++ obcy), memo, shapes)
+      val d = IdentityProjectionPlan.draftOf(index, index.everything, normalizer, slots, tokens, rowsOf(lalka ++ obcy), memo, shapes)
       memo.endTick(); shapes.commit(whole = true); d
     }
     val first     = drafted(Nil, FilmIdCounters.empty)
@@ -162,28 +161,53 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       data = Map(Tmdb -> SourceData(title = Some("Lalka")), slotOf(lalka.head))),
       FilmId("lalka|1968"), Some("lalka|1968"))
     val d = IdentityProjectionPlan.draft(lalka, resolution(decision(Some(1), lalka*)), Seq(stored), FilmIdCounters.empty,
-      normalizer, slots, tokens, at, rowsOf(lalka))
+      normalizer, slots, tokens, rowsOf(lalka))
     d.drafts.map(_.inherited) shouldBe Seq(Some(FilmId("lalka|1968")))
     d.drafts.head.record.imdbRating shouldBe None
     d.drafts.head.needsDetails shouldBe Some(1)
   }
 
-  /** "Tatarak" at Kino Domu Sztuki leans to Wajda's 2009 film below the rating cut, and the old pipeline gave its card
-   *  that film's IMDb id and ratings: right, kept. "Lalka" (2026) leans to the 2026 film, and its card held the 1968
-   *  film's: dropped, as every carried guess no lean names is. */
-  it should "keep an unmatched film's ratings when its listings lean to the film its IMDb id names, or a question is unanswered" in {
+  /** "Łowca androidów: Final Cut" leans to Ridley Scott's 2026 film, below every rule's cut: a lean is no link, so its
+   *  card links no IMDb id — not the lean's, and not one its stored record held for it ("Tatarak" held Wajda's 2009 film's,
+   *  "Lalka" (2026) the 1968 film's), which is no input. A fallback IMDb film the resolver took links that film, unrated
+   *  unless it is the one held, a gap included. */
+  it should "link an unmatched film by its fallback alone, never by the film its listings lean to" in {
     val carried = StoredMovieRecord("Obcy", Some(1979), MovieRecord(imdbId = Some("tt1360887"), imdbRating = Some(6.3),
       searchTitle = Some("Obcy"), data = Map(slotOf(obcy.head))), FilmId("obcy|1979"), Some("obcy|1979"))
     def leaning(imdbNumber: Int) = decision(None, obcy*).copy(leaning = Some(ResolverDecision.Leaning(51010, imdbNumber)))(DecisionTrace.Empty)
-    def drafted(d: ResolverDecision) =
-      IdentityProjectionPlan.draft(obcy, resolution(d), Seq(carried), FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(obcy)).drafts.head.record
-    val kept = drafted(leaning(1360887))
+    def fallback(id: String) = decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("imdb", id, 0.4)))(DecisionTrace.Empty)
+    def drafted(d: ResolverDecision, stored: Seq[StoredMovieRecord] = Seq(carried)) =
+      IdentityProjectionPlan.draft(obcy, resolution(d), stored, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
+    val lean = drafted(leaning(1360887))
+    (lean.imdbId, lean.imdbRating) shouldBe ((None, None))
+    drafted(leaning(1360887), stored = Nil).imdbId shouldBe None
+    val kept = drafted(fallback("tt1360887"))
     (kept.imdbId, kept.imdbRating) shouldBe ((Some("tt1360887"), Some(6.3)))
-    val other = drafted(leaning(64570))
-    (other.imdbId, other.imdbRating) shouldBe ((None, None))
-    // A no-match reached before every question was answered is a gap, not a verdict: the card keeps what it holds.
+    val other = drafted(fallback("tt0064570"))
+    (other.imdbId, other.imdbRating) shouldBe ((Some("tt0064570"), None))
+    drafted(fallback("tt0064570").copy(unanswered = 1)(DecisionTrace.Empty)).imdbId shouldBe Some("tt0064570")
     val gap = drafted(decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty))
-    (gap.imdbId, gap.imdbRating) shouldBe ((Some("tt1360887"), Some(6.3)))
+    (gap.imdbId, gap.imdbRating) shouldBe ((None, None))
+  }
+
+  /** What only an earlier projection wrote — a no-match stamped when first reached (or by the pipeline before), the
+   *  synopses a venue gone printed, the IMDb id and Wikidata item an earlier decision linked — is no input: a film is
+   *  drafted over its stored record exactly as from scratch. A matched film's IMDb id and Wikidata item are TMDB's
+   *  details', another writer's, so it holds none here. The search title its first listings read is the one field still
+   *  carried (item 7's open part), so both sides drop it. */
+  it should "be drafted over its stored record exactly as over none, matched or not, answered or not" in {
+    val written = MovieRecord(searchTitle = Some("Obcy 8 pasazer Nostromo"), imdbId = Some("tt0078748"), wikidataId = Some("Q103569"),
+      tmdbAttempt = Some(services.resolution.TmdbAttempt(IdentityProjectionPlan.ResolverVerdict, Instant.parse("2026-09-01T00:00:00Z"))),
+      retainedSynopses = Map(models.CinemaShowing.keyFor(Helios, "Obcy", normalizer) -> "Statek Nostromo."), data = Map(slotOf(obcy.head)))
+    val decisions = Seq(decision(None, obcy*), decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty), decision(Some(348), obcy*),
+      decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("wikidata", "Q141180912", 1.0)))(DecisionTrace.Empty))
+    decisions.foreach { d =>
+      val record = if (d.film.isEmpty) written else written.copy(tmdbId = d.film, imdbId = None, wikidataId = None)
+      val stored = StoredMovieRecord("Obcy", Some(1979), record, FilmId("obcy|1979"), Some("obcy|1979"))
+      def drafted(stored: Seq[StoredMovieRecord]) =
+        IdentityProjectionPlan.draft(obcy, resolution(d), stored, FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
+      withClue(s"$d: ")(drafted(Seq(stored)).copy(searchTitle = None) shouldBe drafted(Nil).copy(searchTitle = None))
+    }
   }
 
   it should "keep an unmatched film's record as it is when the resolver matched it to no film before" in {
@@ -202,7 +226,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       val stored = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1), data = Map(slotOf(lalka.head), network)),
         FilmId("lalka|2026"), Some("lalka|2026"))
       val d = IdentityProjectionPlan.draft(lalka, resolution(decision(film, lalka*)), Seq(stored), FilmIdCounters.empty,
-        normalizer, slots, tokens, at, rowsOf(lalka))
+        normalizer, slots, tokens, rowsOf(lalka))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(models.CinemaCityChain) shouldBe Some(network._2))
     }
   }
@@ -217,7 +241,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     Seq(None, Some(889389)).foreach { film =>
       val stored = StoredMovieRecord("Bunkier", None, MovieRecord(data = Map(enriched)), FilmId("bunkier"), Some("bunkier"))
       val d = IdentityProjectionPlan.draft(Seq(bunkier), resolution(decision(film, bunkier)), Seq(stored), FilmIdCounters.empty,
-        normalizer, slots, tokens, at, rowsOf(Seq(bunkier)))
+        normalizer, slots, tokens, rowsOf(Seq(bunkier)))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(enriched._1).flatMap(_.releaseYear) shouldBe Some(2021))
     }
   }
@@ -225,14 +249,14 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
   /** A film TMDB has no record of carries the IMDb id of the fallback film the resolver took for it, or none: the
    *  title-search guess it held — PL "Lalka" (2026) the 1968 film's id and its 6.9 — goes, with IMDb's rating and slot,
    *  while what other sources' own corroborated searches gave it (Filmweb's page, `TmdbLessRatingLinks`) stays. A
-   *  no-match reached before every question was answered is a gap: the record keeps what it holds. */
-  "A stored film no TMDB film was taken for" should "carry the fallback film's IMDb id, or none once every question was answered" in {
+   *  no-match reached before every question was answered is linked by what it names alike. */
+  "A stored film no TMDB film was taken for" should "carry the fallback film's IMDb id, or none, answered or not" in {
     val guessed = StoredMovieRecord("Obcy", Some(1979), MovieRecord(imdbId = Some("tt0064570"), imdbRating = Some(6.9),
       filmwebUrl = Some("https://www.filmweb.pl/film/x"), filmwebRating = Some(7.1), searchTitle = Some("Obcy"),
       data = Map(Imdb -> SourceData(title = Some("Lalka")), Filmweb -> SourceData(title = Some("Obcy")), slotOf(obcy.head))),
       FilmId("obcy|1979"), Some("obcy|1979"))
     def drafted(d: ResolverDecision) =
-      IdentityProjectionPlan.draft(obcy, resolution(d), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(obcy)).drafts.head.record
+      IdentityProjectionPlan.draft(obcy, resolution(d), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
     val none = drafted(decision(None, obcy*))
     (none.imdbId, none.imdbRating, none.data.contains(Imdb)) shouldBe ((None, None, false))
     (none.filmwebUrl, none.filmwebRating, none.data.contains(Filmweb)) shouldBe ((Some("https://www.filmweb.pl/film/x"), Some(7.1), true))
@@ -241,7 +265,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val same = drafted(decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("imdb", "tt0064570", 0.4)))(DecisionTrace.Empty))
     (same.imdbId, same.imdbRating, same.data.contains(Imdb)) shouldBe ((Some("tt0064570"), Some(6.9), true))
     val gap = drafted(decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty))
-    (gap.imdbId, gap.imdbRating) shouldBe ((Some("tt0064570"), Some(6.9)))
+    (gap.imdbId, gap.imdbRating, gap.filmwebUrl) shouldBe ((None, None, Some("https://www.filmweb.pl/film/x")))
   }
 
   /** PL "Płazy. Pionierzy życia na lądzie", DE "Jeder Acker, jede Fabrik": films neither TMDB nor IMDb holds, taken by
@@ -253,7 +277,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
       data = Map(Imdb -> SourceData(title = Some("Lalka")), Filmweb -> SourceData(title = Some("Obcy")), slotOf(obcy.head))),
       FilmId("obcy|1979"), Some("obcy|1979"))
     def drafted(fallback: ResolverDecision.Fallback) = IdentityProjectionPlan.draft(obcy, resolution(decision(None, obcy*).copy(fallback = Some(fallback))(
-      DecisionTrace.Empty)), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(obcy)).drafts.head.record
+      DecisionTrace.Empty)), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, rowsOf(obcy)).drafts.head.record
     val filmweb = drafted(ResolverDecision.Fallback("filmweb", "10105049", 1.0, Some("Płazy. Pionierzy życia na lądzie"), Some(2023)))
     (filmweb.filmwebUrl, filmweb.filmwebRating, filmweb.data.contains(Filmweb)) shouldBe
       ((Some("https://www.filmweb.pl/film/P%C5%82azy.+Pionierzy+%C5%BCycia+na+l%C4%85dzie-2023-10105049"), None, false))
@@ -367,7 +391,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val memo  = new VenueSlotMemo(0L)
     val r     = resolution(decision(Some(1968), has))
     def yearDrafted = {
-      val d = IdentityProjectionPlan.draft(Seq(has), r, Nil, FilmIdCounters.empty, normalizer, built, tokens, at, rowsOf(Seq(has)), memo)
+      val d = IdentityProjectionPlan.draft(Seq(has), r, Nil, FilmIdCounters.empty, normalizer, built, tokens, rowsOf(Seq(has)), memo)
       memo.endTick()
       d.drafts.head.record.data.values.flatMap(_.releaseYear).toSeq
     }

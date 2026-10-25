@@ -18,7 +18,7 @@ import services.movies.ListingKey
  *  - `fallback`, for no match, the film a fallback source holds that the cluster's evidence takes instead
  *    ([[Acceptance.fallback]]) — never a TMDB `film`.
  *  - `leaning`, for no match, the one TMDB film its members' own evidence leans to though no rule took it
- *    ([[Acceptance.leaning]]) — never a match, only what a no-match's card may keep an earlier answer's IMDb id of.
+ *    ([[Acceptance.leaning]]) — never a match, and no link on the card: the staging screen's and the take log's.
  *  - `unanswered`, how many of the cluster's candidate queries had no answer yet: a no-match with one is a gap, not a
  *    verdict on the film a card holds.
  *  - `candidate`, for no match, the best-ranked TMDB film its pooled evidence weighed and no member denies, with IMDb's

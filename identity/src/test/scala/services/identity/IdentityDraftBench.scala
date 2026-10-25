@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema}
 import services.movies.{CinemaSlotBuilder, ListingKey, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
 
-import java.time.{Instant, LocalDateTime}
+import java.time.LocalDateTime
 
 /** A steady identity-projection draft at worker-us's size (~100k listings, ~2.1k films, a skewed
  *  venue spread), timed and allocation-counted per tick: run with
@@ -21,7 +21,6 @@ object IdentityDraftBench {
   private val slots      = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
   private val tokens     = ScreeningTokens.of(Country.Poland)
   private val start      = LocalDateTime.of(2026, 10, 4, 12, 0)
-  private val at         = Instant.parse("2026-10-04T10:00:00Z")
 
   /** The bench's arguments: `[ticks] [rereads] [<dir>|-]`, the words `adopt` `decoded` `whole`, and `shifts=N` `churn=N`
    *  anywhere. (The identity module sits below testkit, so this reads them itself, as strictly as `tools.CommandLine`.) */
@@ -154,7 +153,7 @@ object IdentityDraftBench {
       }
       val (scope, scopeS, scopeMB) = timed(if (!lastOk || !scoped) ProjectionScope.Whole else
         ProjectionScope.close(index, changes ++ ProjectionScope.standing(index)))
-      val (undetailed, draftS, draftMB) = timed(IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, at, rowsOf, memo,
+      val (undetailed, draftS, draftMB) = timed(IdentityProjectionPlan.draftOf(index, scope, normalizer, slots, tokens, rowsOf, memo,
         shapes, changes.listings))
       // As the projection's details fetch: a film new to its record gets TMDB's details, once.
       val draft = undetailed.copy(drafts = undetailed.drafts.map(d => d.needsDetails.fold(d)(film =>

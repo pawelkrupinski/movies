@@ -4,18 +4,15 @@ import services.movies.LatestTitleYear
 
 import models.{Cinema, CinemaMovie, Filmweb, FilmwebPages, Imdb, MovieRecord, Source, SourceData}
 import services.movies.{CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens, ShowtimesDigest, TitleNormalizer}
-import services.resolution.TmdbAttempt
 
-import java.time.Instant
-
-import IdentityProjectionPlan.{RowBatch, ResolverVerdict, VenueGroup}
+import IdentityProjectionPlan.{RowBatch, ResolverAttempt, VenueGroup}
 
 /** One run of [[IdentityProjectionPlan.draftOf]]: the drafts of the films `scope` names over `index`, worked out in its
  *  steps — the films' ids by overlap ([[plannedFilms]]), the venue slots each film's venues need built
  *  ([[buildVenueSlots]]), each film's record ([[filmDraftOf]]) and the projection's draft as a whole ([[projectionDraft]]).
  *  The mutable state a run reads and writes — the memo of venue slots, the films' shapes — is written in that order. */
 private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer,
-                                                 slots: CinemaSlotBuilder, tokens: ScreeningTokens, at: Instant,
+                                                 slots: CinemaSlotBuilder, tokens: ScreeningTokens,
                                                  rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]], memo: VenueSlotMemo,
                                                  shapes: FilmShapes, changed: Set[ListingKey])(using LatestTitleYear) {
   import index.{byKey, storedById, covered}
@@ -148,17 +145,26 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
     val anchor   = plan.titles.toSeq.sortBy { case (t, n) => (-n, t) }.headOption.map(_._1).getOrElse("")
     val venueShapes = keptShapes(plan)
     val venueData = venueShapes.valuesIterator.flatMap(_.lean).toMap
-    val sameFilm = previous.exists(_.record.tmdbId == film)
-    val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
-      MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
+    // What other writers keep on the stored film — its ratings, TMDB's, IMDb's and Filmweb's slots and links — is theirs,
+    // kept while it is the same film. Everything the projection writes is worked out from the inputs as they are now,
+    // exactly as a projection from scratch over them would: nothing stands because an earlier projection wrote it.
+    val base = previous.filter(_.record.tmdbId == film).map(_.record).getOrElse(MovieRecord())
     val held     = heldLinks(members, base, anchor)
     val nonVenue = held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty }
     val networks = previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) })
     val previousNonVenue = previous.fold(Set.empty[Source])(_.record.data.keysIterator.filter(Source.cinemaOf(_).isEmpty).toSet)
     val record = held.copy(
       tmdbId        = film,
-      tmdbAttempt   = if (film.isDefined) None else base.tmdbAttempt.orElse(Some(TmdbAttempt(ResolverVerdict, at))),
+      tmdbAttempt   = Option.when(film.isEmpty)(ResolverAttempt),
+      // The one exception, still carried: the title its first draft read, while it is the same film. It decides no
+      // take, only what the IMDb id resolver searches for a film TMDB links no IMDb id for — and that id, kept with the
+      // film, would move with it ("Samson i Dalila" (2026) is found as its first listing's "Opera-samson i dalila", not
+      // as its later listings' title). It is current-inputs-only once that resolver searches every title the film's
+      // listings carry (identity-no-drift.md, item 7).
       searchTitle   = base.searchTitle.orElse(Some(normalizer.apiQuery(normalizer.recase(anchor)))),
+      // A synopsis kept after its venue stopped listing the film is no input any more: no writer files one since the
+      // landing's slot drop went, and a projection from scratch would not hold it.
+      retainedSynopses = Map.empty,
       // A chain's network detail slot is venue source data no listing is published at: kept from the
       // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.
       // The venue slots first, and the rest over them: no venue slot is a non-venue source or a chain's network one.
@@ -196,30 +202,29 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
     venueShapes
   }
 
-  /** The ids `base` links an unmatched film by: a film TMDB has no record of carries the IMDb id of the fallback film the
-   *  resolver took for it — else the one it held, when that is the TMDB film its listings' evidence leans to though no
-   *  rule took it ([[ResolverDecision.Leaning]]: "Tatarak", Wajda's 2009 film below the rating cut), else none: an id a
-   *  title search guessed (the pipeline's, the former TMDB-less enrichments') is not the resolver's answer — PL "Lalka"
-   *  (2026) held the 1968 film's, and its 6.9. The rating and IMDb's slot go with an id that goes. A no-match reached
-   *  before every question was answered is a gap, not a verdict: the record keeps what it holds.
+  /** The ids an unmatched film is linked by, from its cluster's decision alone: a film TMDB has no record of carries the
+   *  IMDb id of the fallback film the resolver took for it, else none. The TMDB film its listings' evidence leans to though
+   *  no rule took it ([[ResolverDecision.Leaning]]) links nothing: no rule took it — "Łowca androidów: Final Cut" leans to
+   *  Ridley Scott's 2026 film — and an id an earlier answer or a title search held for it is no input — PL "Lalka" (2026)
+   *  held the 1968 film's, and its 6.9. The rating and IMDb's slot go with an id that goes. A no-match reached before
+   *  every question was answered links what it names too: what an earlier decision linked is no input.
    *  One standing on Filmweb's or Wikidata's own id (the agreement's, where no record links an IMDb id) links that
    *  record instead: its Filmweb page — replacing a page a title search guessed, with its rating and slot — or its
-   *  Wikidata item. */
-  private def heldLinks(members: Set[ListingKey], base: MovieRecord, anchor: String): MovieRecord = {
-    val answered = unmatchedOf.get(members).filterNot(_.unanswered)
-    val imdb   = answered.map { cluster =>
-      cluster.fallback.filter(_.source == "imdb").map(_.id)
-        .orElse(base.imdbId.filter(id => cluster.leaning.exists(_.imdbNumber == IdentityMeasures.imdbNumber(id)))) }
-    val standsOn = answered.flatMap(_.fallback)
-    val linked = imdb.fold(base)(id => if (id == base.imdbId) base else base.copy(imdbId = id, imdbRating = None, data = base.data - Imdb))
-    standsOn.fold(linked) {
-      case ResolverDecision.Fallback("filmweb", id, _, title, year) if !linked.filmwebUrl.flatMap(FilmwebPages.idOf).map(_.toString).contains(id) =>
-        linked.copy(filmwebUrl = id.toIntOption.map(FilmwebPages.url(_, "film", title.getOrElse(anchor), year)), filmwebRating = None,
-          data = linked.data - Filmweb)
-      case ResolverDecision.Fallback("wikidata", id, _, _, _) => linked.copy(wikidataId = Some(id))
-      case _                                                  => linked
+   *  Wikidata item, which nothing but such a stand gives a film TMDB has no record of. Without a stand, its Filmweb page
+   *  is Filmweb's own search's (`TmdbLessRatingLinks`), which keeps or drops it. */
+  private def heldLinks(members: Set[ListingKey], base: MovieRecord, anchor: String): MovieRecord =
+    unmatchedOf.get(members).fold(base) { cluster =>
+      val imdb = cluster.fallback.filter(_.source == "imdb").map(_.id)
+      val linked = (if (imdb == base.imdbId) base else base.copy(imdbId = imdb, imdbRating = None, data = base.data - Imdb))
+        .copy(wikidataId = cluster.fallback.collect { case ResolverDecision.Fallback("wikidata", id, _, _, _) => id })
+      cluster.fallback match {
+        case Some(ResolverDecision.Fallback("filmweb", id, _, title, year))
+            if !linked.filmwebUrl.flatMap(FilmwebPages.idOf).map(_.toString).contains(id) =>
+          linked.copy(filmwebUrl = id.toIntOption.map(FilmwebPages.url(_, "film", title.getOrElse(anchor), year)), filmwebRating = None,
+            data = linked.data - Filmweb)
+        case _ => linked
+      }
     }
-  }
 
   /** The projection's draft of `planned` films drafted as `drafts`: the films retired and the regroupings. */
   private def projectionDraft(planned: Seq[Planned], drafts: Seq[FilmDraft]): ProjectionDraft = {

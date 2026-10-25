@@ -125,7 +125,7 @@ Each item has a verdict:
 | 4 | `LiveCorpus` memos (`heads`, `records`, candidates) | `LiveCorpus` | (a) cache, given the event feed | `LiveCorpusSpec` checks equality with `CorpusContext.of` after every event. Gap: a detail page or record filed WITHOUT its `AnswersChanged` event stays stale until a restart. That is a feed-delivery property, not stored state. |
 | 5 | FilmIds, `IdAssigner`, `FilmIdCounters` | projection | (a) name | The film and members come from the decision. The names are `StableNames`' (`StableNamesSpec`), and neither rules closure reaches the code that hands them out (`IdentityRulesVersionSpec` "leave out the projection's film ids"). |
 | 6 | `LiveProjectionIndex.previous`, prior takes | projection | (a) name / log | They feed the id label, slot priors and the change log, never the decision. |
-| 7 | Record carry-over (`heldLinks`, `retainedSynopses`, the `tmdbAttempt` stamp) | `ProjectionDrafting` | open, record content only | This is not a take or a grouping, but it is history in the record (IMDb link, synopses). Listed under gaps. |
+| 7 | Record carry-over (`heldLinks`, `retainedSynopses`, the `tmdbAttempt` stamp, the `searchTitle`) | `ProjectionDrafting` | **(c) fixed** but `searchTitle`, record content only | What the projection writes is worked out from current inputs alone: the no-match as a verdict at no time (`ResolverAttempt`), no retained synopses (no writer has filed one since the landing's slot drop went), an unmatched film's IMDb id and Wikidata item from its decision's fallback alone, a gap included. A lean (`ResolverDecision.leaning`, below every rule's cut) links nothing: linking it put Ridley Scott's 2026 "The Dog Stars" on "Łowca androidów: Final Cut", and the id a card held for a lean ("Tatarak") came from title-search enrichments that no longer exist. What other writers keep (ratings, TMDB/IMDb/Filmweb slots, a chain's network slot, a TMDB-less film's Filmweb page) is theirs, kept while it is the same film. Specs: `ScopedProjectionEquivalenceSpec` "...exactly the records a projection from scratch over the same inputs stores", `IdentityProjectionPlanSpec` "...exactly as over none" and "...never by the film its listings lean to". Open: (1) `searchTitle` is still the first draft's while it is the same film. It decides no take, but it is what `ImdbIdResolver` searches for a matched film TMDB links no IMDb id for, and that id stays with the film: derived afresh, "Samson i Dalila" (2026) is searched by its later title, which finds nothing, instead of its first listing's "Opera-samson i dalila" (`HardClusterConvergenceIntegrationSpec`, outage case). It becomes current-inputs-only once that resolver searches every title the film's listings carry, which is a change to the IMDb-id input, not to the projection. (2) A venue slot carries a field its listing leaves out from the slot it is built over (`CinemaSlotBuilder`'s prior slot), which is venue-slot versioned code. The spec's histories print every field. |
 | 8a | What a take reads afresh each apply (the poster vote's records, the broadcast join's, synopses, IMDb finds) | `AgreementTakes`, the last-apply shortcut | **(b) fixed** | These are not stored, but the quiet-apply shortcut handed back the last result until the version moved. Every TMDB read goes through `Noting`, and the last full apply's records, searches and finds are what `AgreementStage.reads` tells the feed (`FamilyAnswerStore.readBy`, finds included). |
 | 8 | Held verdicts: the receipt was incomplete | `AgreementStage.held`, `identity_agreements` | **(b) fixed** | The receipt lists only family answers. A verdict now records everything it read, each answered or not: every family answer (unanswered ones too), the record of the film TMDB leans to, every TMDB lookup its fill makes (searches, records, release days, cast, details), the fill's production searches, and the year. The full check re-reads each one (`AgreementStage.read`). The feed now counts a filing of any TMDB record or search a held verdict read (`FamilyAnswerStore.readBy`, `AgreementStage.reads`). Specs: `AgreementStageSpec` "...the record of the film TMDB leans to is filed..." (the Dolly class), `AnswerFeedSpec` "count a TMDB record or search a kept verdict read". |
 | 9 | Year read from the clock | `AgreementStage.resolved` | **(b) fixed** | The year is in the receipt, and a year turning clears `checked` and the last-apply shortcut. Spec: "decide a kept verdict again when the year turns". Cost: once a year, every verdict is read again; the ones whose year read moved are decided again. |
@@ -154,8 +154,7 @@ The counts of the 27:
 |---|---|---|
 | (a) cannot affect a take | 17 | |
 | (b) fixed | 6 | 1b, 8, 8a, 9, 19, 20 |
-| (c) fixed or deleted | 5 | 10–13, 23 |
-| Record carry-over, open | 1 | 7 |
+| (c) fixed or deleted | 6 | 7, 10–13, 23 |
 | Deleted (dead) | 1 | 27 |
 
 ## Backfill of prod's stored verdicts
@@ -304,11 +303,11 @@ On the incremental side, the order dependence is limited to interim states: batc
 > production reads, the lean record and `thisYear` are in the receipt; corrections and the candidates cache have
 > receipts too. Step 3 done for the `unreached` short-circuit, the merge transfer and `rereads`. `ClusterKeys.absorbed`
 > only names a merge to the staging screen now, and `askedNow` only spares a second inline ask (asking, never a take).
-> Steps 4 and 5 are not started.
+> Step 4 is not started. Step 5 is done but for the `searchTitle` and the venue slot's prior-slot carry (item 7).
 
 ## What still blocks retiring the checks
 
-1. Item 7 (record content carried by the projection), and receipts of the question memory's outcomes for a
+1. Item 7's open parts (the first draft's `searchTitle`, the venue slot's prior-slot carry), and receipts of the question memory's outcomes for a
    settled family question (an attempt swept from the memory leaves a settled verdict standing; a whole resolve would
    wait).
 2. The deploy's backfill, its progress metric (`state="incomplete"`) reaching 0 in every country.
