@@ -178,4 +178,13 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
     // budget doing it.
     automation should include("[skip ci]")
   }
+
+  // ghcr.io went with the GitHub suspension (2026-10-18): a policy still scanning it never sees a new tag again, and
+  // Flux only says so as an ImageRepository that is not Ready. filmowo's sat on its 2026-10-10 image, FluxObjectNotReady
+  // firing, until its CI moved to Forgejo.
+  "every ImageRepository" should "scan our own registry, the one CI publishes to, never ghcr.io" in {
+    val images = automation.linesIterator.map(_.trim).filter(_.startsWith("image: ")).map(_.stripPrefix("image: ").trim).toSeq
+    images should not be empty
+    every(images) should startWith("registry.kinowo.net/")
+  }
 }
