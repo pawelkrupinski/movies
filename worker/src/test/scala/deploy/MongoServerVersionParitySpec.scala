@@ -60,12 +60,13 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
   /** mongod 8.3 refuses to start on Linux 6.19 and newer ("Linux kernel versions 6.19 and newer has a
    *  known incompatibility", SERVER-121912), and the ubuntu-26.04 runner boots 7.0 — its first Main run
    *  (38781236870) died there. Until production's release starts on that kernel, every job that starts
-   *  the pinned mongod stays on ubuntu-24.04 (kernel 6.17): its own `runs-on:`, or, for a job running on
-   *  `${{ inputs.runner }}`, that input's default and every caller's fallback. A ci.yml job on
-   *  `${{ inputs.lane || 'ubuntu-24.04' }}` passes too: `lane` is set only off github.com, where every
-   *  ubuntu-* label and `main-lane` are one job image on ci-runner's kernel (MainLaneSpec). */
+   *  the pinned mongod stays on ubuntu-24.04 (kernel 6.17) ON GITHUB.COM: its `runs-on:` evaluated there (RunnerLabel),
+   *  or, for a job running on `${{ inputs.runner }}`, that input's default and every caller's `runner:` evaluated there.
+   *  Off github.com every label -- ubuntu-*, and each tier's (RunnerClassSpec) -- is one job image on ci-runner's
+   *  kernel, so `${{ inputs.lane || 'ubuntu-24.04' }}` and `... && 'ubuntu-24.04' || 'measure'` pass. */
   private val MongoStarts  = Seq("scripts/ci/start-mongo-replset.sh", "./.github/actions/convergence-setup")
   private val MongoRunner  = "ubuntu-24.04"
+  private val OnGitHub     = RunnerLabel.Context(RunnerLabel.GitHub, RunnerLabel.Main)
 
   "every CI job starting mongod" should s"run on $MongoRunner, whose kernel mongod $productionVersion starts on" in {
     val RunsOn = """runs-on:\s*(\$\{\{[^}]*}}|\S+)""".r.unanchored
@@ -76,15 +77,18 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
       if MongoStarts.exists(job.contains)
       runner       = job match { case RunsOn(r) => r.trim; case _ => "<none>" }
       ok           = if (runner.contains("inputs.runner")) RepoFile.block(yml, "runner").contains(s"default: $MongoRunner")
-                     else runner == MongoRunner || runner == s"$${{ inputs.lane || '$MongoRunner' }}"
+                     else RunnerLabel(runner, OnGitHub) == MongoRunner
       if !ok
     } yield s"${file.getName}: $name ($runner)"
 
-    val fallbacks = """inputs\.runner \|\| '([^']+)'""".r
-      .findAllMatchIn(RepoFile.workflows().map(f => RepoFile.read(f.getPath)).mkString("\n")).map(_.group(1)).toSeq
+    // Every caller's `runner:` for a leg, as github.com evaluates it (a dispatch naming none).
+    val fallbacks = """(?m)^[ \t]+runner:[ \t]+(\$\{\{.*}}|\S+)[ \t]*$""".r
+      .findAllMatchIn(RepoFile.workflows().map(f => RepoFile.withoutComments(RepoFile.read(f.getPath))).mkString("\n"))
+      .map(m => RunnerLabel(m.group(1), OnGitHub)).toSeq
 
     withClue(s"mongod $productionVersion will not start on kernel 6.19+ (ubuntu-26.04): ") {
       wrong shouldBe empty
+      fallbacks should not be empty
       all(fallbacks) shouldBe MongoRunner
     }
   }

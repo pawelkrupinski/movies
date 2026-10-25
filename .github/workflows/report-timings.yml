@@ -8,9 +8,9 @@ name: Report run timings
 # `workflow_call.secrets` block, which made this file invalid there on every event.
 on:
     workflow_call:
-        # THE PRODUCTION LANE (infra docs/forgejo-actions.md, "Lanes"): Main passes `main-lane` off github.com
-        # so its jobs never queue behind dispatched experiments on the shared ubuntu runner. Empty (every
-        # other caller, and github.com) keeps the ubuntu-* label each job names below. MainLaneSpec.
+        # THE CALLER'S TIER (infra forgejo.nix `ciTiers`): off github.com, Main passes `main-lane` so its jobs never
+        # queue behind dispatched experiments on the shared ubuntu runner, and a measurement or gate workflow its own
+        # label. Empty (a check-tier caller, and github.com) keeps the ubuntu-* label each job names below. RunnerClassSpec.
         inputs:
             lane:
                 description: The runner label for every job here; empty for the job's own ubuntu-* label.

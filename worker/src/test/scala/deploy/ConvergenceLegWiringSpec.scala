@@ -817,10 +817,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.withoutComments(leg).linesIterator.filter(_.trim.startsWith("sbt ")).foreach { line =>
       withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
     }
-    // ...and a hand-dispatched runner label reaches every leg, x64 unless asked; main's own runs take the production
-    // lane off github.com (MainLaneSpec).
-    caller should include ("runner:                        ${{ github.server_url != 'https://github.com' && " +
-      "github.ref == 'refs/heads/main' && !inputs.runner && 'main-lane' || inputs.runner || 'ubuntu-24.04' }}")
+    // ...and a hand-dispatched runner label reaches every leg, x64 unless asked; off github.com main's own runs take the
+    // gate tier and a measurement's the measure tier (RunnerClassSpec).
+    caller should include ("runner:                        ${{ inputs.runner || github.server_url == 'https://github.com' " +
+      "&& 'ubuntu-24.04' || github.ref == 'refs/heads/main' && 'gate-lane' || 'measure' }}")
     leg should include ("runs-on: ${{ inputs.runner }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")

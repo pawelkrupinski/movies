@@ -44,7 +44,7 @@ jobs:
         # A recording off main, or one that failed, records nothing the measurements replay.
         if: github.event_name != 'workflow_run' || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success')
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
-        runs-on: ubuntu-24.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
         timeout-minutes: 600
         permissions:
             contents: read
@@ -111,5 +111,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

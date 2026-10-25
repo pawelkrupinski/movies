@@ -90,7 +90,7 @@ jobs:
     # rather than hours into a leg. The tunnel key for each leg's corpus capture, the TMDB key for its enrichment recording. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -230,6 +230,8 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'forgejo-recording' || '' }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -243,7 +245,7 @@ jobs:
         name: report (scheduled run)
         needs: [ preflight, enrichment, verify, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
         timeout-minutes: 5
         permissions:
             contents: read

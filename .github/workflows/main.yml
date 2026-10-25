@@ -67,7 +67,7 @@ permissions:
 jobs:
     ci:
         uses: ./.github/workflows/ci.yml
-        # Off github.com, on the production lane (MainLaneSpec).
+        # Off github.com, on the production lane (RunnerClassSpec).
         with:
             lane: ${{ github.server_url != 'https://github.com' && 'main-lane' || '' }}
         secrets: inherit

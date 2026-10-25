@@ -39,7 +39,7 @@ permissions:
 
 jobs:
     discover:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 120
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -177,6 +177,8 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -188,7 +190,7 @@ jobs:
         name: report (scheduled run)
         needs: [ discover, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: read

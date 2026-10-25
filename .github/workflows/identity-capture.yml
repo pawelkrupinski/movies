@@ -60,7 +60,7 @@ permissions:
 jobs:
     # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -80,7 +80,7 @@ jobs:
         name: capture (${{ matrix.code }})
         needs: [ preflight ]
         if: ${{ !inputs.open-pr }}
-        runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         timeout-minutes: 300
         permissions:
             contents: read
@@ -144,7 +144,7 @@ jobs:
     publish:
         needs: [ preflight, capture ]
         if: ${{ always() && !cancelled() && needs.preflight.result == 'success' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 30
         permissions:
             contents: write
@@ -298,6 +298,8 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -309,7 +311,7 @@ jobs:
         name: report (scheduled run)
         needs: [ preflight, capture, publish, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: read

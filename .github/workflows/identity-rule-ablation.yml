@@ -55,7 +55,7 @@ jobs:
     ablate:
         name: ablate
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
-        runs-on: ubuntu-24.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
         # SHORT ROWS: a runner drain waits for its longest job (runs 850, 1050 held the ubuntu runner for hours). One
         # recording and one round fit in ~20 minutes; a row cut off here still uploads its state.json.
         timeout-minutes: 30
@@ -185,7 +185,7 @@ jobs:
         name: collect
         needs: [ ablate ]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-24.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
         timeout-minutes: 20
         permissions:
             contents: read
@@ -222,5 +222,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

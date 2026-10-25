@@ -48,7 +48,7 @@ permissions:
 
 jobs:
     compare:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 300
         permissions:
             contents: read
@@ -124,5 +124,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
+        with:
+            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

@@ -35,10 +35,10 @@ on:
                 type: string
                 default: ''
             runner:
-                description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm.
+                description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm. Empty for the run's tier.
                 required: false
                 type: string
-                default: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+                default: ''
             takes-base:
                 description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
                 required: false
@@ -93,7 +93,7 @@ jobs:
     # had dropped, or a country with no pin). The ONLY job in front of the legs: one runner wait, not two (a second one
     # cost measure run 968 12.6 minutes of queue on 2026-10-22). (IdentityModelConvergenceWiringSpec)
     preflight:
-        runs-on: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || 'ubuntu-26.04' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || github.ref == 'refs/heads/main' && 'gate-lane' || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -208,7 +208,10 @@ jobs:
             # false in an expression -- every takes-only measurement ran the whole suite (run 786, 2026-10-21).
             profile:                       ${{ inputs.profile == true || inputs.profile == 'true' }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
-            runner:                        ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && !inputs.runner && 'main-lane' || inputs.runner || 'ubuntu-24.04' }}
+            # The run's tier off github.com (RunnerClassSpec) unless a dispatch names a runner: main's own runs gate every
+            # push, so `gate-lane`; a measurement's, `measure`. The input defaults to empty -- with its old default of
+            # ubuntu-24.04, `!inputs.runner` never held and main's legs never reached their lane.
+            runner:                        ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || github.ref == 'refs/heads/main' && 'gate-lane' || 'measure' }}
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
             takes-countries:               ${{ inputs.takes-countries || '' }}
@@ -234,7 +237,7 @@ jobs:
     request-bisect:
         needs: [ leg ]
         if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}
-        runs-on: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || 'ubuntu-26.04' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || github.ref == 'refs/heads/main' && 'gate-lane' || 'measure' }}
         timeout-minutes: 5
         permissions:
             actions: write
@@ -256,7 +259,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && github.ref == 'refs/heads/main' && 'main-lane' || '' }}
+            lane: ${{ github.server_url != 'https://github.com' && (github.ref == 'refs/heads/main' && 'gate-lane' || 'measure') || '' }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -269,7 +272,7 @@ jobs:
     drop-measure-branch:
         needs: [ preflight, leg, request-bisect, timings ]
         if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || github.ref == 'refs/heads/main' && 'gate-lane' || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: write
