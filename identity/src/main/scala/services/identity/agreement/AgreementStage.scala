@@ -290,7 +290,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (year != yearNow) { yearNow = year; checked.clear(); last = None }
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
     val waited = attemptedSince
-    if (waited) checked.clear()   // an attempt is in receipts too ([[AgreementStage.TriedRead]]): every verdict read again
+    // an attempt is in receipts too ([[AgreementStage.TriedRead]]): every verdict naming one read again. Only those: a
+    // correction's receipt names none, and has no reading of it again but afresh — cleared on every attempt, no PL take's
+    // correction stood an apply, ~700 read afresh each against a budget of 200 (the drift replay timing out, run 1641)
+    if (waited) checked.filterInPlace((id, _) => !held.get(id).exists(_.reads.keysIterator.exists(_.startsWith(AgreementStage.TriedRead + "|"))))
     last.collect { case (was, at, came) if !reread && !waited && !unread && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
@@ -671,8 +674,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       }
     }
     // decided under other rules (a deploy's, or before receipts were whole): decided again while the apply's backfill
-    // budget lasts, standing as it was until a later apply's reaches it — a deploy's boot resolves no whole corpus
-    .orElse(held.filter(_ => !pass.backfill()))
+    // budget lasts, standing as it was until a later apply's reaches it — a deploy's boot resolves no whole corpus. One
+    // under these rules whose answers moved spends none of it: decided again now, never standing on a stale receipt
+    .orElse(held.filter(v => v.rules != decidedUnder && !pass.backfill()))
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
       case Some(w) => pass.asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
       case None    => resolved(decision, id, digest, listings, pass)

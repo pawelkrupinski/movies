@@ -613,6 +613,21 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     left shouldBe Seq(2, 1, 0)
   }
 
+  // the drift replay timing out (run 1641): a verdict under these rules whose answers moved spent the backfill's budget
+  // and, once it was spent, stood as it was — read again on every apply, the backlog never cleared
+  it should "decide a verdict under these rules whose answers moved again, whatever the backfill's budget" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
+    val dissent = agreeing() ++ Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, backfillPerApply = 0)
+    again.apply(resolution, listingOf, version = 1)
+    again.apply(resolution, listingOf, version = 2).decisions.head shouldBe resolution.decisions.head
+    verdicts.all().filter(_.correction.isEmpty).map(_.agreed) shouldBe Seq(None)
+    again.backlog shouldBe false
+  }
+
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {
     val verdicts = new InMemoryAgreementVerdicts
     new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)

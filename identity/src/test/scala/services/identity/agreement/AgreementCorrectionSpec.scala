@@ -176,6 +176,52 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
+  // Identity model convergence run 1641 (2026-10-25): every TMDB search is filed under one id, so a search filed for any
+  // other cluster reached every take whose receipt read one, and each was read afresh on every apply — ~700 PL takes an
+  // apply against a budget of 200, the backlog never cleared and the drift replay's settle ran out its rounds
+  it should "stand when a search was filed elsewhere and the ones it read answer as they did" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    val filed    = scala.collection.mutable.Set.empty[String]
+    var read     = 0
+    val counting = new PosterAnswers {
+      def venue(url: String): Answer[Option[PosterHash]] = { read += 1; hasPoster.venue(url) }
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = { read += 1; hasPoster.film(tmdbId) }
+    }
+    val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed.toSet), posters = counting, tmdb = Some(table()), correctionsPerApply = 0)
+    val fresh = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()))
+    decided(fresh).basis shouldBe ResolverDecision.Basis.Corrected
+    verdicts.all().flatMap(_.reads.keys).exists(_.contains("|candidates|")) shouldBe true   // its receipt names a search
+    decided(s, version = 1).basis shouldBe ResolverDecision.Basis.Corrected
+    filed += AgreementStage.QueryFiled
+    read = 0
+    decided(s, version = 2).basis shouldBe ResolverDecision.Basis.Corrected
+    s.backlog shouldBe false
+    read shouldBe 0
+  }
+
+  // the same run: a question another cluster waited on attempted (the queue's, every round) forgot every take's check,
+  // and a correction has no reading again but afresh — so none stood an apply, and the budget never caught up
+  it should "stand when a question another cluster waits on was attempted, its own receipt naming no attempt" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    decided(new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()))).basis shouldBe ResolverDecision.Basis.Corrected
+    val other  = FilmTable.listing(models.KinoMuza, "Akira")
+    val both   = Resolution(model.decisions :+ ResolverDecision(Seq(other.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)(), 2,
+      Map(listing.key -> 0, other.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val listed = Map(listing.key -> listing, other.key -> other).get
+    var tried  = false
+    val rtOpen = takingHas + (VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty, unanswered = true))
+    val s = new AgreementStage(rtOpen, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0, attempted = _ => tried)
+    s.apply(both, listed, 1).decisions.head.basis shouldBe ResolverDecision.Basis.Corrected
+    s.wanted should not be empty   // the other cluster waits on Rotten Tomatoes
+    tried = true
+    s.apply(both, listed, 1).decisions.head.basis shouldBe ResolverDecision.Basis.Corrected
+    s.backlog shouldBe false
+  }
+
   it should "read the takes its budget left unread on the next apply of the same decisions, until none is left" in {
     // US run 563 (2026-10-20): 2,024 model takes against a budget of 200 an apply. The boot read the first few hundred,
     // and every later projection handed the stage the same decisions, so it gave back the last apply's result unread;

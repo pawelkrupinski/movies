@@ -49,8 +49,16 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
               ids.foreach(id => hashed.add(AgreementStage.digest(Seq(id))))
               hashed
             })
-            refiled.exists(filed => !c.reads.exists(read => filed.contains(read)) &&
-              !v.reads.keysIterator.exists(read => filed.contains(AgreementStage.digest(Seq(AgreementStage.filedAs(read)))))) && {
+            // a receipt entry whose filing came is read again, as a verdict's is: every TMDB search is filed under one id
+            // (QueryFiled), so any search filed anywhere reached every take that read one, and each was read afresh —
+            // 700 PL takes an apply, the budget never caught up (the drift replay timing out, run 1641)
+            refiled.exists(filed => !c.reads.exists(read => filed.contains(read)) && {
+              val refiledReads = v.reads.filter { case (read, _) => filed.contains(AgreementStage.digest(Seq(AgreementStage.filedAs(read)))) }
+              refiledReads.isEmpty || {
+                val listings = sortedListings(decision, listingOf)
+                refiledReads.forall { case (question, answered) => read(question, listings).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
+              }
+            }) && {
               checked(key) = (digest, version); true
             }
           }
