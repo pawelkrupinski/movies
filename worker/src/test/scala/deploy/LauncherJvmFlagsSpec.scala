@@ -123,10 +123,10 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The worker's collector is the launcher's, whatever an overlay names: no country's JAVA_OPTS names one since
-  // 2026-10-24 (they all carried -XX:+UseSerialGC before), and the launcher's options come after them, so one an
-  // overlay brought back would be switched off for the Parallel collector. Two collectors left on refuse to start the
-  // JVM ("Multiple garbage collectors selected"), so this starts one under each country's real options. SerialGC paused each worker for every young and every full
+  // The worker's collector is the launcher's alone: no country's JAVA_OPTS names one since 2026-10-24 (they all carried
+  // -XX:+UseSerialGC before), and one an overlay brought back would sit beside the launcher's -XX:+UseParallelGC, two
+  // collectors the JVM refuses to start with ("Multiple garbage collectors selected") -- so this starts one under each
+  // country's real options, and the case below keeps the overlays collector-free. SerialGC paused each worker for every young and every full
   // collection on ONE thread: a full one took 3.1 s on worker-de and 3.5 s on worker-us over their ~420-450 MB live sets.
   /** The worker's parallel GC threads: see infra/jvm/worker.options for the measurement behind it. */
   private val WorkerParallelGcThreads = 4

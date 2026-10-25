@@ -38,10 +38,7 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
       val manifests = javaOpts(tier)
       manifests should not be empty
       manifests.foreach { case (path, opts) =>
-        // A collector the launcher switches off after it (`-XX:-UseSerialGC`) is inert, not an override:
-        // the overlays' -XX:+UseSerialGC from before the worker ran the Parallel collector (2026-10-24).
-        val switchedOff = baked(tier).collect { case s"-XX:-Use${name}GC" => s"-XX:+Use${name}GC" }
-        val overridden = (Collector.findAllIn(opts) ++ Speculation.findAllIn(opts) ++ HeaderMode.findAllIn(opts)).toSet -- baked(tier) -- switchedOff
+        val overridden = (Collector.findAllIn(opts) ++ Speculation.findAllIn(opts) ++ HeaderMode.findAllIn(opts)).toSet -- baked(tier)
         withClue(s"$path overrides infra/jvm/$tier.options, which the AOT cache is trained under: ")(overridden shouldBe empty)
       }
     }

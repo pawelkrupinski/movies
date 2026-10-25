@@ -18,9 +18,8 @@
 # native GC structures. Four threads -- 72% less pause at Serial's CPU -- so ten JVMs on k3s-worker-1's
 # eight cores do not each take all of them in a pause; their GC structures are 29 MB of native memory
 # (NMT) against Serial's 3. The AOT cache maps under it as under Serial (its archived heap is loaded).
-# Every overlay still names -XX:+UseSerialGC: switched off here, after it on the command line (two
-# collectors left on refuse to start the JVM), until the overlays drop it (LauncherJvmFlagsSpec).
--XX:-UseSerialGC
+# No overlay names a collector (LauncherJvmFlagsSpec): one that did would start a second collector
+# beside this one, which the JVM refuses.
 -XX:+UseParallelGC
 -XX:ParallelGCThreads=4
 -XX:-UseTypeSpeculation
