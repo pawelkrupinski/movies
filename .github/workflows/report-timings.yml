@@ -30,11 +30,13 @@ jobs:
         runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         timeout-minutes: 5
         steps:
+            # The workflows too: each job's `timeout-minutes` goes out beside its time (ci_timings.py `workflow_ceilings`).
             - uses: actions/checkout@v5
               with:
                   sparse-checkout: |
                       scripts/ci
                       .github/actions/report-timings
+                      .github/workflows
                   sparse-checkout-cone-mode: false
             - uses: ./.github/actions/report-timings
               with:

@@ -1,0 +1,204 @@
+# HAS A BUILD GOT SLOWER, IS A JOB NEAR ITS CEILING, IS MAIN WAITING FOR A RUNNER -- asked of the build timings every
+# workflow pushes as its last job (scripts/ci/ci_timings.py), so nobody first hears of a slowdown when a job hits its
+# `timeout-minutes` and goes red.
+#
+# WHY. 4b2e9cb04 made the convergence `takes` rows slower -- Poland 19-33 min to past its 55-minute ceiling, the UK
+# 34-42 to past it, the US 27-35 to 46.5 -- and the first anyone heard was run 1641 timing out. Main's own end to end
+# went from 28 to 42 minutes over a few days, and a recording's Germany leg from 18 to 125, with no word either. The
+# "CI — build timings" dashboard drew all of it; nobody was looking.
+#
+# THE SERIES (ci_timings.py's header), one sample per run, every one stamped at the RUN'S START and pushed when the run
+# ends -- hours later for a convergence leg. So nothing here reads a raw selector (its 5-minute lookback would never see
+# a sample): every read is a range function over a window wider than the longest run.
+#
+#   kinowo_ci_job_seconds{workflow,ref,ci_job,conclusion}     a job's wall clock
+#   kinowo_ci_step_seconds{workflow,ref,ci_job,step}          a step's
+#   kinowo_ci_run_seconds{workflow,ref,measure,conclusion}    `wall` (first job start to last job end), `runner_wait`
+#   kinowo_ci_job_timeout_seconds{workflow,ref,ci_job}        the job's own `timeout-minutes`
+#   kinowo_ci_run_number{workflow,ref}                        the run's index, the number in its URL
+#
+# `ref` is "main" or "branch". No commit SHA is a label (one series per run); the run number is a sample VALUE, and the
+# regression alerts read it to name the runs a regression started between: the last run at baseline and the first slow
+# one after it. Their commits are the range.
+#
+# THE BASELINE is each series' own: the median of its SUCCESSFUL main runs from 16 to 2 days ago, given at least three.
+# Successful only: a failed or cancelled job stopped early, and its short time would drag the median down. Ending two
+# days back keeps the runs being judged out of the baseline that judges them, and a regression that lasts becomes the
+# new baseline once it is half of the fortnight -- by then it has been reported for a week.
+#
+# A REGRESSION is a run over baseline + max(40%, 5 minutes): the ratio because legs vary +-25% run to run (Poland's
+# takes 19-33 around 26), the floor so a 40-second job taking a minute is not news. It fires when the LATEST successful
+# run and at least one other in the last two days are over it -- two runs, so one slow runner is not a regression, and
+# the latest, so a fix clears it with its first run -- or at once for one run over twice its baseline and 10 minutes
+# more (Germany's 18 -> 125). Against the motivating runs: US takes 46.5 over a 31 median fires (threshold 43.4), Main
+# 42 over 28 fires (39.2), Poland's 33 over 26 does not (36.4).
+#
+# COUNTING RUNS INSIDE A WINDOW. `count_over_time((last_over_time(x[1m]) > t)[2d:1m])` counts each sample once: a
+# subquery step of one minute over a one-minute left-open range sees every sample in exactly one step (a raw `x` would
+# repeat each for five, its lookback). The threshold is read `@ end()` -- today's, for every step -- so it is looked
+# up once rather than once a minute.
+groups:
+  - name: ci-build-times
+    # Every rule reads days of a sparse series; nothing here needs to be fresher than a run is long.
+    interval: 5m
+    rules:
+      - record: ci:job_seconds:baseline
+        expr: >-
+          quantile_over_time(0.5, kinowo_ci_job_seconds{ref="main",conclusion="success"}[14d] offset 2d)
+          and count_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[14d] offset 2d) >= 3
+      - record: ci:job_seconds:regression_threshold
+        expr: ci:job_seconds:baseline + clamp_min(0.4 * ci:job_seconds:baseline, 300)
+
+      - record: ci:step_seconds:baseline
+        expr: >-
+          quantile_over_time(0.5, kinowo_ci_step_seconds{ref="main"}[14d] offset 2d)
+          and count_over_time(kinowo_ci_step_seconds{ref="main"}[14d] offset 2d) >= 3
+      - record: ci:step_seconds:regression_threshold
+        expr: ci:step_seconds:baseline + clamp_min(0.4 * ci:step_seconds:baseline, 300)
+
+      - record: ci:run_wall_seconds:baseline
+        expr: >-
+          quantile_over_time(0.5, kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[14d] offset 2d)
+          and count_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[14d] offset 2d) >= 3
+      - record: ci:run_wall_seconds:regression_threshold
+        expr: ci:run_wall_seconds:baseline + clamp_min(0.4 * ci:run_wall_seconds:baseline, 300)
+
+      # A WHOLE RUN, first job start to last job end: Main's 28 -> 42 minutes.
+      - alert: CiRunWallClockRegressed
+        expr: >-
+          (
+            last_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[2d])
+              > ci:run_wall_seconds:regression_threshold
+            and
+            count_over_time((last_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[1m])
+              > ci:run_wall_seconds:regression_threshold @ end())[2d:1m]) >= 2
+          )
+          or
+          (
+            last_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[2d])
+              > 2 * ci:run_wall_seconds:baseline
+            and
+            last_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[2d])
+              - ci:run_wall_seconds:baseline > 600
+          )
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.workflow }} on main got slower: {{ $value | humanizeDuration }} end to end"
+          description: >-
+            The latest successful main run of {{ $labels.workflow }} took {{ $value | humanizeDuration }} from its first
+            job's start to its last job's end, against a median of
+            {{ with printf `ci:run_wall_seconds:baseline{workflow=%q}` $labels.workflow | query }}{{ . | first | value | humanizeDuration }}{{ end }}
+            over the fortnight before the last two days.
+            {{ with printf `max_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",measure="wall",conclusion="success"}[5m]) <= ci:run_wall_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $labels.workflow | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) > %f and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",measure="wall",conclusion="success"}[5m]) > ci:run_wall_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $good $labels.workflow | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in 16 days was at baseline.{{ end }}
+            Compare the two runs' jobs on the "CI — build timings" dashboard; the job and step alerts beside this one name
+            which part grew.
+
+      # A JOB: the convergence `takes` rows, a capture leg, a CI shard.
+      - alert: CiJobDurationRegressed
+        expr: >-
+          (
+            last_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[2d])
+              > ci:job_seconds:regression_threshold
+            and
+            count_over_time((last_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[1m])
+              > ci:job_seconds:regression_threshold @ end())[2d:1m]) >= 2
+          )
+          or
+          (
+            last_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[2d]) > 2 * ci:job_seconds:baseline
+            and
+            last_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[2d]) - ci:job_seconds:baseline > 600
+          )
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} on main got slower: {{ $value | humanizeDuration }}"
+          description: >-
+            The latest successful main run of {{ $labels.ci_job }} ({{ $labels.workflow }}) took
+            {{ $value | humanizeDuration }}, against a median of
+            {{ with printf `ci:job_seconds:baseline{workflow=%q,ci_job=%q}` $labels.workflow $labels.ci_job | query }}{{ . | first | value | humanizeDuration }}{{ end }}
+            over the fortnight before the last two days.
+            {{ with printf `max_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",conclusion="success",ci_job=%q}[5m]) <= ci:job_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $labels.workflow $labels.ci_job | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) > %f and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",conclusion="success",ci_job=%q}[5m]) > ci:job_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $good $labels.workflow $labels.ci_job | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in 16 days was at baseline.{{ end }}
+            Every job of a workflow slowing at once is the runner host, not a commit. A job that times out has no
+            successful run to judge: CiJobNearTimeout is the alert for that.
+
+      # A STEP, which says what inside the job grew. Every step is a candidate; the 5-minute floor keeps the setup and
+      # upload steps out unless one really grows.
+      - alert: CiStepDurationRegressed
+        expr: >-
+          (
+            last_over_time(kinowo_ci_step_seconds{ref="main"}[2d]) > ci:step_seconds:regression_threshold
+            and
+            count_over_time((last_over_time(kinowo_ci_step_seconds{ref="main"}[1m])
+              > ci:step_seconds:regression_threshold @ end())[2d:1m]) >= 2
+          )
+          or
+          (
+            last_over_time(kinowo_ci_step_seconds{ref="main"}[2d]) > 2 * ci:step_seconds:baseline
+            and
+            last_over_time(kinowo_ci_step_seconds{ref="main"}[2d]) - ci:step_seconds:baseline > 600
+          )
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} step `{{ $labels.step }}` on main got slower: {{ $value | humanizeDuration }}"
+          description: >-
+            The latest main run of the step `{{ $labels.step }}` in {{ $labels.ci_job }} ({{ $labels.workflow }}) took
+            {{ $value | humanizeDuration }}, against a median of
+            {{ with printf `ci:step_seconds:baseline{workflow=%q,ci_job=%q,step=%q}` $labels.workflow $labels.ci_job $labels.step | query }}{{ . | first | value | humanizeDuration }}{{ end }}
+            over the fortnight before the last two days.
+            {{ with printf `max_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) and on () (last_over_time(kinowo_ci_step_seconds{workflow=%q,ref="main",ci_job=%q,step=%q}[5m]) <= ci:step_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $labels.workflow $labels.ci_job $labels.step | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) > %f and on () (last_over_time(kinowo_ci_step_seconds{workflow=%q,ref="main",ci_job=%q,step=%q}[5m]) > ci:step_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $good $labels.workflow $labels.ci_job $labels.step | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in 16 days was at baseline.{{ end }}
+
+      # WITHIN 80% OF ITS CEILING, whatever the job's conclusion: a job that hit its `timeout-minutes` is cancelled or
+      # failed, and that is the run this has to see -- before it, ideally, as US takes at 46.5 of 55 would have been.
+      # Main's jobs, and the identity landing checks' (Identity model convergence on measure/ branches), whose takes
+      # rows are the ones that timed out; other branch runs are experiments, slow on purpose as often as not.
+      # The latest run only: a job's samples of every conclusion, newest first, so a later run back under it clears it.
+      - alert: CiJobNearTimeout
+        expr: >-
+          last_over_time(max without (conclusion) (
+              last_over_time(kinowo_ci_job_seconds{ref="main"}[1m])
+              or last_over_time(kinowo_ci_job_seconds{ref="branch",workflow="Identity model convergence"}[1m])
+            )[1d:1m])
+          >= 0.8 * last_over_time(kinowo_ci_job_timeout_seconds[1d])
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} ({{ $labels.ref }}) took {{ $value | humanizeDuration }}, within 80% of its timeout"
+          description: >-
+            {{ $labels.ci_job }} ({{ $labels.workflow }}, {{ $labels.ref }}) took {{ $value | humanizeDuration }} in
+            {{ with printf `last_over_time(kinowo_ci_run_number{workflow=%q,ref=%q}[1d])` $labels.workflow $labels.ref | query }}run #{{ . | first | value | printf "%.0f" }}{{ else }}its latest run{{ end }},
+            against a `timeout-minutes` of
+            {{ with printf `last_over_time(kinowo_ci_job_timeout_seconds{workflow=%q,ref=%q,ci_job=%q}[1d])` $labels.workflow $labels.ref $labels.ci_job | query }}{{ . | first | value | humanizeDuration }}{{ end }}.
+            The next slowdown times it out and turns the run red. Find what grew (CiJobDurationRegressed, or the job's
+            steps and phases on the "CI — build timings" dashboard) before raising the ceiling: a leg near its limit is
+            a signal to re-measure, not to raise the number again (country-convergence-leg.yml).
+
+      # MAIN'S FIRST JOB WAITING FOR A RUNNER, not for the run ahead of it (Main runs one at a time; ci_timings.py
+      # `ready_at`). The `main-lane` tier is Main's alone and the target is under 2 minutes: over 5 on two runs in six
+      # hours, or 15 once, is the tier short of runners or a runner down.
+      - alert: MainCiRunnerWaitHigh
+        expr: >-
+          (
+            last_over_time(max without (conclusion) (
+                last_over_time(kinowo_ci_run_seconds{workflow="Main",ref="main",measure="runner_wait"}[1m])
+              )[6h:1m]) > 300
+            and
+            count_over_time((max without (conclusion) (
+                last_over_time(kinowo_ci_run_seconds{workflow="Main",ref="main",measure="runner_wait"}[1m])
+              ) > 300)[6h:1m]) >= 2
+          )
+          or
+          last_over_time(max without (conclusion) (
+              last_over_time(kinowo_ci_run_seconds{workflow="Main",ref="main",measure="runner_wait"}[1m])
+            )[6h:1m]) > 900
+        labels:
+          severity: warning
+        annotations:
+          summary: "Main's first job waited {{ $value | humanizeDuration }} for a runner"
+          description: >-
+            {{ with query `last_over_time(kinowo_ci_run_number{workflow="Main",ref="main"}[6h])` }}Run #{{ . | first | value | printf "%.0f" }}{{ else }}Main's latest run{{ end }}
+            waited {{ $value | humanizeDuration }} from when it could start to its first job starting, against a
+            target of under 2 minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one
+            down, or a job from another workflow holding the label.

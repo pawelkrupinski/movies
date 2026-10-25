@@ -95,6 +95,14 @@ EVENT_ONLY_VALUES = {
     # to snapshot. Re-snapshot once monitoring-1 and the workers run it, then drop these.
     ("kinowo_identity_build_net_lost", "cause", "code"),
     ("kinowo_worker_identity_take_causes_total", "kind", "lost"),
+    # NOT SNAPSHOTTED YET (2026-10-25): CI's build timings carried `ref` from the start, but only the dashboards'
+    # templated `ref=~"$ref"` read it, which the snapshot does not record; ci-build-times.rules is its first literal
+    # matcher. `runner_wait` and `kinowo_ci_run_number` are new with it (scripts/ci/ci_timings.py). Re-snapshot, then
+    # drop these.
+    *{(metric, "ref", value) for metric in ("kinowo_ci_job_seconds", "kinowo_ci_run_seconds", "kinowo_ci_step_seconds",
+                                           "kinowo_ci_run_number")
+      for value in ("main", "branch")},
+    ("kinowo_ci_run_seconds", "measure", "runner_wait"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

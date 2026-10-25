@@ -30,9 +30,25 @@ dashboard is a reading aid, not a gate.
     # TYPE kinowo_ci_job_seconds gauge
     # TYPE kinowo_ci_step_seconds gauge
     # TYPE kinowo_ci_phase_seconds gauge
+    # TYPE kinowo_ci_job_timeout_seconds gauge
+    # TYPE kinowo_ci_run_number gauge
 
 A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.name`, kinowo-ci.
 (The `# TYPE` lines are what GrafanaMetricCoverageSpec reads to know these families exist.)
+
+For the build-time alerts (infra/nix/files/monitoring/rules/ci-build-times.rules):
+
+- `kinowo_ci_job_timeout_seconds` is each job's own `timeout-minutes`, beside its duration, so an alert can say a job
+  came within 80% of its ceiling BEFORE it hits it. A literal one is read off the workflow file (and the workflows it
+  calls); an expression one -- a convergence row's, picked per phase from the caller's matrix -- off the
+  `ci-job-ceiling <n> minutes` line the job echoes, since only the job knows what its expression came to. A job with
+  none has github.com's 360. WorkflowCeilingSpec (in the test) holds every job to one of the three.
+- `kinowo_ci_run_number` is the run's index (the number in its URL), so an alert can name the runs a regression
+  started between -- a commit SHA would be a label of its own per run.
+- `kinowo_ci_run_seconds{measure="runner_wait"}` is how long the run's first job waited for a runner once nothing
+  else held it back: from the run's creation, or from the end of the same workflow's run on its branch it queued
+  behind (Main runs one at a time), to its first job's start. `queued` counts from `run_started_at`, which Forgejo
+  sets as the run leaves its concurrency queue: a Main run's reads seconds there, whatever it waited.
 
 Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push]
       (by hand, too: re-pushing a finished run backfills it)
@@ -45,6 +61,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -59,6 +76,12 @@ ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 SERVICE_NAME = "kinowo-ci"
 # No job this short prints a phase; skipping its log keeps a run's API calls bounded.
 PHASE_LOG_MIN_SECONDS = 60
+# What an expression `timeout-minutes` came to, echoed by its job (country-convergence-leg.yml); see the header.
+CEILING_LINE = re.compile(r"ci-job-ceiling ([0-9]+) minutes")
+# github.com's ceiling for a job that names none (Forgejo's runner caps every job at its own `timeout`, 3h by default).
+DEFAULT_TIMEOUT_MINUTES = 360
+EXPRESSION = re.compile(r"\$\{\{.*?\}\}")
+WORKFLOWS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".github", "workflows")
 
 
 def seconds_between(start, end):
@@ -76,8 +99,82 @@ def phase_times(log_text):
     return phases
 
 
+def indent(line):
+    return len(line) - len(line.lstrip(" "))
+
+
+def workflow_jobs(text):
+    """Every job of a workflow file: {key: (its top-level attributes, its whole block)}. Read by indentation, not a
+    YAML parser: the runners' python has no PyYAML, and a job's keys are the lines one level under its own."""
+    lines = text.splitlines()
+    try:
+        start = lines.index("jobs:") + 1
+    except ValueError:
+        return {}
+    body = []
+    for line in lines[start:]:
+        if line.strip() and not line.startswith((" ", "#")):
+            break
+        body.append(line)
+    content = [line for line in body if line.strip() and not line.lstrip().startswith("#")]
+    if not content:
+        return {}
+    job_indent = indent(content[0])
+    jobs, key, block = {}, None, []
+    for line in body + ["end:"]:
+        if line.strip() and not line.lstrip().startswith("#") and indent(line) <= job_indent:
+            if key:
+                inner = [l for l in block if l.strip() and not l.lstrip().startswith("#")]
+                level = indent(inner[0]) if inner else 0
+                attrs = {}
+                for l in inner:
+                    if indent(l) == level and ":" in l:
+                        name, _, value = l.strip().partition(":")
+                        attrs[name] = value.strip().strip("'\"")
+                jobs[key] = (attrs, "\n".join(block))
+            key, block = line.strip().rstrip(":"), []
+        else:
+            block.append(line)
+    return jobs
+
+
+def workflow_ceilings(path, root=WORKFLOWS, seen=()):
+    """(name pattern, its literal length, ceiling) for each job of a workflow and of the workflows it calls. The
+    ceiling is minutes, or None for a call (it runs no steps itself) or an expression (its job echoes it)."""
+    file = os.path.join(root, os.path.basename(path))
+    if file in seen or not os.path.isfile(file):
+        return []
+    with open(file, encoding="utf-8") as handle:
+        jobs = workflow_jobs(handle.read())
+    found = []
+    for key, (attrs, _) in jobs.items():
+        name = attrs.get("name") or key
+        literal = EXPRESSION.split(name)
+        pattern = re.compile(".+".join(re.escape(part) for part in literal))
+        uses = attrs.get("uses", "")
+        timeout = attrs.get("timeout-minutes")
+        if uses.startswith("./.github/workflows/"):
+            ceiling = None
+            found += workflow_ceilings(uses, root, seen + (file,))
+        elif timeout is None:
+            ceiling = DEFAULT_TIMEOUT_MINUTES
+        else:
+            ceiling = int(timeout) if timeout.isdigit() else None
+        found.append((pattern, sum(map(len, literal)), ceiling))
+    return found
+
+
+def ceiling_of(name, ceilings):
+    """A job's ceiling in minutes, from the most specific pattern its name matches: `leg (poland)` is the caller row
+    `leg (${{ matrix.country }})`, not the callee's `${{ matrix.phase }} (${{ inputs.country }})`. GitHub prefixes a
+    called job with its caller's name (`poland / takes (poland)`); Forgejo does not."""
+    matching = [(length, ceiling) for pattern, length, ceiling in ceilings
+                if pattern.fullmatch(name) or pattern.fullmatch(name.split(" / ")[-1])]
+    return max(matching, key=lambda match: match[0])[1] if matching else None
+
+
 class Job:
-    def __init__(self, job, log_for):
+    def __init__(self, job, log_for, ceilings=()):
         self.name = job["name"]
         self.conclusion = job.get("conclusion") or "unknown"
         self.started = job["started_at"]
@@ -89,13 +186,17 @@ class Job:
             if took is None or step.get("conclusion") == "skipped":
                 continue
             self.steps.append((step["name"], took))
-        self.phases = phase_times(log_for(job["id"])) if self.seconds >= PHASE_LOG_MIN_SECONDS else {}
+        log = log_for(job["id"]) if self.seconds >= PHASE_LOG_MIN_SECONDS else ""
+        self.phases = phase_times(log)
+        echoed = CEILING_LINE.search(log)
+        minutes_ = int(echoed.group(1)) if echoed else ceiling_of(self.name, ceilings)
+        self.ceiling = minutes_ * 60.0 if minutes_ else None
 
 
-def collect(jobs, log_for):
+def collect(jobs, log_for, ceilings=()):
     """The run's finished jobs, longest first: the in-run reporter, still in progress, is never one.
-    `log_for(job_id)` returns that job's log text."""
-    finished = [Job(job, log_for) for job in jobs
+    `log_for(job_id)` returns that job's log text; `ceilings` is workflow_ceilings() of the run's workflow."""
+    finished = [Job(job, log_for, ceilings) for job in jobs
                 if job.get("status") == "completed" and job.get("conclusion") != "skipped"
                 and job.get("started_at") and job.get("completed_at")]
     return sorted(finished, key=lambda job: -job.seconds)
@@ -105,14 +206,33 @@ def run_start(run):
     return run.get("run_started_at") or run["created_at"]
 
 
-def run_measures(run, jobs):
+def run_measures(run, jobs, ready=None):
     """Wall clock from the first job's start to the last job's end, and how long the run waited
-    (its own queue, then for a runner) before any job started."""
+    (its own queue, then for a runner) before any job started; with `ready` (ready_at), how long its
+    first job waited for a runner."""
     if not jobs:
         return {}
     first = min(job.started for job in jobs)
     last = max(job.completed for job in jobs)
-    return {"wall": seconds_between(first, last), "queued": max(0.0, seconds_between(run_start(run), first))}
+    measures = {"wall": seconds_between(first, last), "queued": max(0.0, seconds_between(run_start(run), first))}
+    if ready is not None:
+        measures["runner_wait"] = max(0.0, (parse_instant(first) - ready).total_seconds())
+    return measures
+
+
+def ready_at(run, others):
+    """When nothing but a runner held the run back: its creation, or the end of an earlier run of the same workflow on
+    its branch that was still going then -- the one it queued behind, for a workflow that runs one at a time (Main).
+    For one that runs side by side it reads late, which only ever understates the wait."""
+    created = parse_instant(run["created_at"])
+    ready = created
+    for other in others:
+        if (other.get("id") == run.get("id") or other.get("path") != run.get("path")
+                or other.get("head_branch") != run.get("head_branch") or other.get("status") != "completed"
+                or not other.get("updated_at") or parse_instant(other["created_at"]) >= created):
+            continue
+        ready = max(ready, parse_instant(other["updated_at"]))
+    return ready
 
 
 def conclusion_of(run, jobs):
@@ -167,7 +287,7 @@ def summary_markdown(run, jobs):
     return "\n".join(lines) + "\n"
 
 
-def otlp_payload(run, jobs):
+def otlp_payload(run, jobs, ready=None):
     """The run as OTLP/JSON gauges, every sample at the run's start (see the header)."""
     if not jobs:
         return None
@@ -185,13 +305,16 @@ def otlp_payload(run, jobs):
     metrics = [
         gauge("kinowo_ci_run_seconds",
               [point(value, measure=measure, conclusion=conclusion_of(run, jobs))
-               for measure, value in sorted(run_measures(run, jobs).items())]),
+               for measure, value in sorted(run_measures(run, jobs, ready).items())]),
         gauge("kinowo_ci_job_seconds",
               [point(job.seconds, ci_job=job.name, conclusion=job.conclusion) for job in jobs]),
         gauge("kinowo_ci_step_seconds",
               [point(took, ci_job=job.name, step=label) for job in jobs for label, took in merged(job.steps)]),
         gauge("kinowo_ci_phase_seconds",
               [point(took, ci_job=job.name, phase=label) for job in jobs for label, took in sorted(job.phases.items())]),
+        gauge("kinowo_ci_job_timeout_seconds",
+              [point(job.ceiling, ci_job=job.name) for job in jobs if job.ceiling]),
+        gauge("kinowo_ci_run_number", [point(run["run_number"])] if run.get("run_number") else []),
     ]
     return {"resourceMetrics": [{
         "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
@@ -241,8 +364,8 @@ class GitHub:
     def __init__(self, repo):
         self.repo = repo
 
-    def json(self, path):
-        out = subprocess.run(["gh", "api", "--paginate", "repos/%s/%s" % (self.repo, path)],
+    def json(self, path, paginate=True):
+        out = subprocess.run(["gh", "api"] + (["--paginate"] if paginate else []) + ["repos/%s/%s" % (self.repo, path)],
                              check=True, capture_output=True, text=True, timeout=GH_TIMEOUT_SECONDS).stdout
         # --paginate concatenates one JSON document per page.
         decoder, documents, index = json.JSONDecoder(), [], 0
@@ -260,6 +383,11 @@ class GitHub:
     @functools.lru_cache(maxsize=None)
     def workflow_name(self, workflow_id):
         return self.json("actions/workflows/%s" % workflow_id)[0]["name"]
+
+    def recent_runs(self, branch):
+        """The newest runs on the branch, one page: the one a run queued behind is among them."""
+        page = self.json("actions/runs?branch=%s&per_page=50" % urllib.parse.quote(branch), paginate=False)[0]
+        return page["workflow_runs"]
 
     def jobs(self, run_id):
         return [job for page in self.json("actions/runs/%s/jobs?per_page=100" % run_id) for job in page["jobs"]]
@@ -283,14 +411,19 @@ def named(github, run):
 
 def handle(github, run, args, out=sys.stdout):
     run = named(github, run)
-    jobs = collect(github.jobs(run["id"]), github.log)
+    jobs = collect(github.jobs(run["id"]), github.log, workflow_ceilings(run.get("path") or ""))
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     # Forgejo discards a job summary, and warns of each: the report above, in the log, is what it keeps.
     if summary and os.environ.get("GITHUB_SERVER_URL", "https://github.com") == "https://github.com":
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
-    payload = otlp_payload(run, jobs)
+    try:
+        ready = ready_at(run, github.recent_runs(run["head_branch"])) if run.get("head_branch") else None
+    except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
+        print("::warning::runner wait not measured: %s" % error, file=out)
+        ready = None
+    payload = otlp_payload(run, jobs, ready)
     if args.push and payload:
         print(push(payload, os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN")), file=out)
 

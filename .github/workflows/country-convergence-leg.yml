@@ -417,6 +417,12 @@ jobs:
             - name: Sample the job's memory
               shell: bash
               run: scripts/ci/cgroup-sampler.sh start 5
+            # THE ROW'S CEILING, in its log: its `timeout-minutes` is an expression the timings reporter cannot read off
+            # this file, so it reads this line instead, for the near-ceiling alert (scripts/ci/ci_timings.py
+            # `CEILING_LINE`, ci-build-times.rules). The same expression as the job's, which ci_timings_test.py holds it to.
+            - name: Report the row's ceiling
+              shell: bash
+              run: echo "ci-job-ceiling ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }} minutes"
             # Each row resolves the pinned pair here, once, and its suite and
             # any bisect it requests all replay that one (`steps.setup.outputs.hermetic-pair`)
             # even if the recorder pins a new pair while this row is running.

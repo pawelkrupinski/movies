@@ -1,0 +1,341 @@
+# UNIT TESTS FOR THE BUILD-TIME RULES. A CI sample is one point per run, stamped at the run's start, so every series
+# here is sparse: one value per run, six hours apart in the regression cases (index i is t = 6i hours), and the
+# eval_times are chosen against those indices. The noisy baseline cycles 20, 26, 33 and 25 minutes (Poland's takes,
+# 19-33 around a median of 25.5): what the rules must NOT call a regression. `kinowo_ci_run_number` counts 1000, 1001,
+# ... beside them, so the run at index i is #1000+i. The reporter's side (the ceiling, the run number, the runner wait
+# going out) is ci_timings_test.py.
+rule_files:
+  - ../../nix/files/monitoring/rules/ci-build-times.rules
+
+evaluation_interval: 30m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A REGRESSION THAT LASTS: from run #1070 the job takes 45 minutes (1.76x, under the 2x jump) where the fortnight
+  # before took a median of 25.5. One slow run is not enough (420h); the second fires (426h), naming the last run at
+  # baseline and the first slow one. The step inside it fires the same way.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 6h
+    name: a job slow for two runs fires and names the runs it started between
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Identity model convergence",ref="main"}'
+        values: '1000+1x72'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",conclusion="success"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 2700 2700 2700'
+      - series: 'kinowo_ci_step_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",step="Run the poland takes suite"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 2700 2700 2700'
+    alert_rule_test:
+      - eval_time: 420h
+        alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 426h
+        alertname: CiJobDurationRegressed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: main
+              ci_job: takes (poland)
+              conclusion: success
+            exp_annotations:
+              summary: 'Identity model convergence / takes (poland) on main got slower: 45m 0s'
+              description: >-
+                The latest successful main run of takes (poland) (Identity model convergence) took 45m 0s, against a
+                median of 25m 30s over the fortnight before the last two days. Last run at baseline #1069, first slow
+                run after it #1070: the regression is in the commits between them. Every job of a workflow slowing at
+                once is the runner host, not a commit. A job that times out has no successful run to judge:
+                CiJobNearTimeout is the alert for that.
+      - eval_time: 426h
+        alertname: CiStepDurationRegressed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: main
+              ci_job: takes (poland)
+              step: Run the poland takes suite
+            exp_annotations:
+              summary: 'Identity model convergence / takes (poland) step `Run the poland takes suite` on main got slower: 45m 0s'
+              description: >-
+                The latest main run of the step `Run the poland takes suite` in takes (poland) (Identity model
+                convergence) took 45m 0s, against a median of 25m 30s over the fortnight before the last two days. Last
+                run at baseline #1069, first slow run after it #1070: the regression is in the commits between them.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # NOISE: one 45-minute run among normal ones, then back to normal (quiet when it lands, at 408h, and after); the
+  # latest run slow but alone (quiet); a one-minute job taking three (3.3x, but 140 s under the 5-minute floor).
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 6h
+    name: one slow run, a slow run alone, and a tiny job's jump stay quiet
+    input_series:
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",conclusion="success"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700 1200 1560 1980 1500'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (germany)",conclusion="success"}'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="scope",conclusion="success"}'
+        values: '60x70 200 200'
+      - series: 'kinowo_ci_step_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="scope",step="Run actions/checkout@v5"}'
+        values: '60x70 200 200'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="wall",conclusion="success"}'
+        values: '1680x71 2520'
+      # A branch run is never judged, however slow.
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="branch",ci_job="takes (spain)",conclusion="success"}'
+        values: '1200x70 7200 7200'
+    alert_rule_test:
+      - eval_time: 408h
+        alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 432h
+        alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 432h
+        alertname: CiStepDurationRegressed
+        exp_alerts: []
+      - eval_time: 432h
+        alertname: CiRunWallClockRegressed
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A BIG JUMP FIRES ON ITS FIRST RUN: a recording's Germany leg from 18 minutes to 125 (over 2x and 10 minutes more).
+  # And Main's end to end from 28 minutes to 42 on two runs.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 6h
+    name: a jump fires at once, and Main's wall clock regresses over two runs
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Record scrape fixtures",ref="main"}'
+        values: '1000+1x72'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Record scrape fixtures",ref="main",ci_job="convergence (germany)",conclusion="success"}'
+        values: '1080x71 7500'
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Main",ref="main"}'
+        values: '1000+1x72'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="wall",conclusion="success"}'
+        values: '1680x70 2520 2520'
+    alert_rule_test:
+      - eval_time: 432h
+        alertname: CiJobDurationRegressed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Record scrape fixtures
+              ref: main
+              ci_job: convergence (germany)
+              conclusion: success
+            exp_annotations:
+              summary: 'Record scrape fixtures / convergence (germany) on main got slower: 2h 5m 0s'
+              description: >-
+                The latest successful main run of convergence (germany) (Record scrape fixtures) took 2h 5m 0s, against
+                a median of 18m 0s over the fortnight before the last two days. Last run at baseline #1071, first slow
+                run after it #1072: the regression is in the commits between them. Every job of a workflow slowing at
+                once is the runner host, not a commit. A job that times out has no successful run to judge:
+                CiJobNearTimeout is the alert for that.
+      - eval_time: 432h
+        alertname: CiRunWallClockRegressed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Main
+              ref: main
+              measure: wall
+              conclusion: success
+            exp_annotations:
+              summary: 'Main on main got slower: 42m 0s end to end'
+              description: >-
+                The latest successful main run of Main took 42m 0s from its first job's start to its last job's end,
+                against a median of 28m 0s over the fortnight before the last two days. Last run at baseline #1070,
+                first slow run after it #1071: the regression is in the commits between them. Compare the two runs' jobs
+                on the "CI — build timings" dashboard; the job and step alerts beside this one name which part grew.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # NEAR THE CEILING: US takes at 46.5 of 55 minutes fires (80% is 44); a landing check's takes row cancelled at its
+  # ceiling fires too. Quiet: 30 of 55; a dispatched experiment on a branch at 50 of 55; and a job that was near its
+  # ceiling but whose next run (another conclusion, so another series) came back under it.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1h
+    name: a job within 80% of its timeout fires, on main and on a landing check
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Identity model convergence",ref="main"}'
+        values: '1641'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (united-states)",conclusion="success"}'
+        values: '2790'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (united-states)"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (spain)",conclusion="success"}'
+        values: '1800'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (spain)"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="branch",ci_job="takes (poland)",conclusion="cancelled"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="branch",ci_job="takes (poland)"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity run",ref="branch",ci_job="run",conclusion="success"}'
+        values: '3000'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Identity run",ref="branch",ci_job="run"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="image-worker",conclusion="cancelled"}'
+        values: '1700 _ _'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="image-worker",conclusion="success"}'
+        values: '_ _ 600'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="image-worker"}'
+        values: '1800 _ 1800'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CiJobNearTimeout
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Main
+              ref: main
+              ci_job: image-worker
+            exp_annotations:
+              summary: 'Main / image-worker (main) took 28m 20s, within 80% of its timeout'
+              description: >-
+                image-worker (Main, main) took 28m 20s in its latest run, against a `timeout-minutes` of 30m 0s. The
+                next slowdown times it out and turns the run red. Find what grew (CiJobDurationRegressed, or the job's
+                steps and phases on the "CI — build timings" dashboard) before raising the ceiling: a leg near its limit
+                is a signal to re-measure, not to raise the number again (country-convergence-leg.yml).
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: branch
+              ci_job: takes (poland)
+            exp_annotations:
+              summary: 'Identity model convergence / takes (poland) (branch) took 55m 0s, within 80% of its timeout'
+              description: >-
+                takes (poland) (Identity model convergence, branch) took 55m 0s in its latest run, against a
+                `timeout-minutes` of 55m 0s. The next slowdown times it out and turns the run red. Find what grew
+                (CiJobDurationRegressed, or the job's steps and phases on the "CI — build timings" dashboard) before
+                raising the ceiling: a leg near its limit is a signal to re-measure, not to raise the number again
+                (country-convergence-leg.yml).
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: main
+              ci_job: takes (united-states)
+            exp_annotations:
+              summary: 'Identity model convergence / takes (united-states) (main) took 46m 30s, within 80% of its timeout'
+              description: >-
+                takes (united-states) (Identity model convergence, main) took 46m 30s in run #1641, against a
+                `timeout-minutes` of 55m 0s. The next slowdown times it out and turns the run red. Find what grew
+                (CiJobDurationRegressed, or the job's steps and phases on the "CI — build timings" dashboard) before
+                raising the ceiling: a leg near its limit is a signal to re-measure, not to raise the number again
+                (country-convergence-leg.yml).
+      - eval_time: 3h
+        alertname: CiJobNearTimeout
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: branch
+              ci_job: takes (poland)
+            exp_annotations:
+              summary: 'Identity model convergence / takes (poland) (branch) took 55m 0s, within 80% of its timeout'
+              description: >-
+                takes (poland) (Identity model convergence, branch) took 55m 0s in its latest run, against a
+                `timeout-minutes` of 55m 0s. The next slowdown times it out and turns the run red. Find what grew
+                (CiJobDurationRegressed, or the job's steps and phases on the "CI — build timings" dashboard) before
+                raising the ceiling: a leg near its limit is a signal to re-measure, not to raise the number again
+                (country-convergence-leg.yml).
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Identity model convergence
+              ref: main
+              ci_job: takes (united-states)
+            exp_annotations:
+              summary: 'Identity model convergence / takes (united-states) (main) took 46m 30s, within 80% of its timeout'
+              description: >-
+                takes (united-states) (Identity model convergence, main) took 46m 30s in run #1641, against a
+                `timeout-minutes` of 55m 0s. The next slowdown times it out and turns the run red. Find what grew
+                (CiJobDurationRegressed, or the job's steps and phases on the "CI — build timings" dashboard) before
+                raising the ceiling: a leg near its limit is a signal to re-measure, not to raise the number again
+                (country-convergence-leg.yml).
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ...AND ONLY THEN: well under the ceiling, a dispatched experiment near it, and a job back under it are all quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1h
+    name: a job well under its timeout, an experiment near it, and a job back under it stay quiet
+    input_series:
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (spain)",conclusion="success"}'
+        values: '1800'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (spain)"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity run",ref="branch",ci_job="run",conclusion="success"}'
+        values: '3000'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Identity run",ref="branch",ci_job="run"}'
+        values: '3300'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="image-worker",conclusion="cancelled"}'
+        values: '1700 _ _'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="image-worker",conclusion="success"}'
+        values: '_ _ 600'
+      - series: 'kinowo_ci_job_timeout_seconds{job="kinowo-ci",workflow="Main",ref="main",ci_job="image-worker"}'
+        values: '1800 _ 1800'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: CiJobNearTimeout
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # MAIN WAITING FOR A RUNNER: two runs over 5 minutes in six hours fire; one alone is quiet until a second comes; one
+  # over 15 minutes fires on its own. Another workflow's wait is not Main's.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1h
+    name: Main's first job waiting for a runner fires on two long waits or one very long one
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Main",ref="main"}'
+        values: '1677 1678 1679 1680 1681 1682 1683 1684 1685 1686 1687 1688 1689 1690 1691 1692 1693 1694 1695 1696'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="runner_wait",conclusion="success"}'
+        values: '30 400 _ 30 _ 400 _ _ _ _ _ _ _ _ _ _ 1000 _ _ _'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="runner_wait",conclusion="failure"}'
+        values: '_ _ _ _ 400 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Identity run",ref="main",measure="runner_wait",conclusion="success"}'
+        values: '2000x19'
+    alert_rule_test:
+      # 1h: one long wait.
+      - eval_time: 2h
+        alertname: MainCiRunnerWaitHigh
+        exp_alerts: []
+      # 4h: a second, under another conclusion; 5h: and a third, the latest.
+      - eval_time: 5h30m
+        alertname: MainCiRunnerWaitHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Main
+              ref: main
+              measure: runner_wait
+            exp_annotations:
+              summary: 'Main''s first job waited 6m 40s for a runner'
+              description: >-
+                Run #1682 waited 6m 40s from when it could start to its first job starting, against a target of under 2
+                minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one down, or a job
+                from another workflow holding the label.
+      # Nothing over 5 minutes in the six hours to 12h.
+      - eval_time: 12h
+        alertname: MainCiRunnerWaitHigh
+        exp_alerts: []
+      # 16h: one wait of 16 minutes.
+      - eval_time: 16h30m
+        alertname: MainCiRunnerWaitHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: kinowo-ci
+              workflow: Main
+              ref: main
+              measure: runner_wait
+            exp_annotations:
+              summary: 'Main''s first job waited 16m 40s for a runner'
+              description: >-
+                Run #1693 waited 16m 40s from when it could start to its first job starting, against a target of under 2
+                minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one down, or a job
+                from another workflow holding the label.

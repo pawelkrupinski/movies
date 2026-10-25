@@ -41,6 +41,7 @@ global:
 # is visible by eye against `ls /etc/prometheus/rules/`.
 rule_files:
   - "/etc/prometheus/rules/chain-fallback.rules"
+  - "/etc/prometheus/rules/ci-build-times.rules"
   - "/etc/prometheus/rules/ci-gates.rules"
   - "/etc/prometheus/rules/cinema-scrape.rules"
   - "/etc/prometheus/rules/enrichment-keys.rules"

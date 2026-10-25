@@ -152,6 +152,97 @@ class PayloadTest(unittest.TestCase):
         self.assertIn("phase    604.7s  replayCutover", out.getvalue())
 
 
+class CeilingTest(unittest.TestCase):
+    """Each job's `timeout-minutes` beside its time, for the near-ceiling alert (ci-build-times.rules)."""
+
+    CEILINGS = timings.workflow_ceilings(".github/workflows/identity-model-convergence.yml")
+
+    def test_a_literal_ceiling_is_read_off_the_workflow_and_the_ones_it_calls(self):
+        self.assertEqual(timings.ceiling_of("preflight", self.CEILINGS), 5)
+        self.assertEqual(timings.ceiling_of("report (timings)", self.CEILINGS), 5)  # report-timings.yml's
+
+    def test_a_caller_row_is_not_its_callee(self):
+        self.assertIsNone(timings.ceiling_of("leg (poland)", self.CEILINGS))
+
+    def test_an_expression_ceiling_is_read_off_the_line_its_job_echoes(self):
+        echoed = 'echo "ci-job-ceiling 55 minutes"\nci-job-ceiling 55 minutes\n'
+        [takes] = timings.collect([job(9, "takes (poland)", "2026-10-14T08:02:00Z", "2026-10-14T08:50:00Z", [])],
+                                  lambda _: echoed, self.CEILINGS)
+        self.assertEqual(takes.ceiling, 3300.0)
+
+    def test_without_its_line_an_expression_ceiling_is_unknown(self):
+        [takes] = timings.collect([job(9, "takes (poland)", "2026-10-14T08:02:00Z", "2026-10-14T08:50:00Z", [])],
+                                  lambda _: "", self.CEILINGS)
+        self.assertIsNone(takes.ceiling)
+
+    def test_a_job_naming_none_has_the_platform_default(self):
+        ceilings = timings.workflow_ceilings(".github/workflows/main.yml")
+        self.assertEqual(timings.ceiling_of("test (rest)", ceilings), timings.DEFAULT_TIMEOUT_MINUTES)
+        self.assertEqual(timings.ceiling_of("publish-web", ceilings), 10)
+
+    def test_the_ceiling_and_the_run_number_go_out_beside_the_times(self):
+        [pre] = timings.collect([JOBS[0]], lambda _: "", self.CEILINGS)
+        payload = timings.otlp_payload(dict(RUN, run_number=1641), [pre])
+        names = {m["name"]: m["gauge"]["dataPoints"] for m in payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]}
+        self.assertEqual([p["asDouble"] for p in names["kinowo_ci_job_timeout_seconds"]], [300.0])
+        self.assertEqual([p["asDouble"] for p in names["kinowo_ci_run_number"]], [1641.0])
+        self.assertEqual({p["timeUnixNano"] for p in names["kinowo_ci_run_number"]}, {STAMP})
+
+
+class WorkflowCeilingSpec(unittest.TestCase):
+    """EVERY JOB'S CEILING IS KNOWN: every job that runs steps names a literal `timeout-minutes`, names none (the
+    platform's default), or names an expression AND echoes what it came to -- the same expression, so the two cannot
+    drift apart. A job whose ceiling went unexported could reach it with no near-ceiling alert first."""
+
+    def test_every_job_of_every_workflow(self):
+        missing = []
+        for name in sorted(os.listdir(timings.WORKFLOWS)):
+            with open(os.path.join(timings.WORKFLOWS, name), encoding="utf-8") as handle:
+                jobs = timings.workflow_jobs(handle.read())
+            self.assertTrue(jobs, "%s: no jobs read" % name)
+            for key, (attrs, block) in jobs.items():
+                timeout = attrs.get("timeout-minutes")
+                if "uses" in attrs or timeout is None or timeout.isdigit():
+                    continue
+                if 'echo "ci-job-ceiling %s minutes"' % timeout not in block:
+                    missing.append("%s: %s" % (name, key))
+        self.assertEqual(missing, [], "expression ceilings with no `ci-job-ceiling` echo of the same expression")
+
+    def test_the_convergence_row_echoes_its_ceiling(self):
+        with open(os.path.join(timings.WORKFLOWS, "country-convergence-leg.yml"), encoding="utf-8") as handle:
+            attrs, block = timings.workflow_jobs(handle.read())["convergence"]
+        self.assertIn("${{", attrs["timeout-minutes"])
+        self.assertIn("ci-job-ceiling", block)
+
+
+class RunnerWaitTest(unittest.TestCase):
+    """How long the run's first job waited for a runner, not for the run ahead of it."""
+
+    MAIN = {"id": 20, "path": ".github/workflows/main.yml", "head_branch": "main", "created_at": "2026-10-14T07:56:00Z",
+            "run_started_at": "2026-10-14T08:00:00Z"}
+
+    def ahead(self, **fields):
+        return dict({"id": 19, "path": self.MAIN["path"], "head_branch": "main", "status": "completed",
+                     "created_at": "2026-10-14T07:30:00Z", "updated_at": "2026-10-14T07:59:30Z"}, **fields)
+
+    def wait(self, others):
+        return timings.run_measures(self.MAIN, jobs(), timings.ready_at(self.MAIN, others))["runner_wait"]
+
+    def test_from_the_end_of_the_run_it_queued_behind(self):
+        self.assertEqual(self.wait([self.ahead()]), 90.0)  # first job 08:01:00
+
+    def test_from_its_creation_when_nothing_was_ahead(self):
+        self.assertEqual(self.wait([self.ahead(updated_at="2026-10-14T07:50:00Z")]), 300.0)
+
+    def test_other_workflows_branches_and_later_runs_hold_nothing_back(self):
+        others = [self.ahead(path=".github/workflows/ios.yml"), self.ahead(head_branch="measure/x"),
+                  self.ahead(id=21, created_at="2026-10-14T07:57:00Z"), self.ahead(status="in_progress")]
+        self.assertEqual(self.wait(others), 300.0)
+
+    def test_never_negative(self):
+        self.assertEqual(self.wait([self.ahead(updated_at="2026-10-14T09:00:00Z")]), 0.0)
+
+
 class SummaryTest(unittest.TestCase):
     """The job summary is written where it is read: GitHub keeps it, Forgejo discards it and warns of each."""
 

@@ -303,6 +303,189 @@
    ]
   },
   {
+   "id": 17,
+   "title": "Latest run, share of its timeout (over half)",
+   "description": "Each job's newest duration over its own `timeout-minutes` (kinowo_ci_job_timeout_seconds), jobs past half only. CiJobNearTimeout (ci-build-times.rules) fires at 80% on main and on the identity landing checks: a job there is one slowdown from timing out and turning its run red.",
+   "type": "bargauge",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 9,
+    "x": 0,
+    "y": 14
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 0.8
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max without (conclusion) (last_over_time(kinowo_ci_job_seconds{ref=~\"$ref\"}[1d])) / last_over_time(kinowo_ci_job_timeout_seconds{ref=~\"$ref\"}[1d]) > 0.5",
+     "legendFormat": "{{workflow}} / {{ci_job}} ({{ref}})",
+     "instant": true,
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "title": "Main: first job's wait for a runner",
+   "description": "How long each Main run's first job waited for a runner once nothing else held it back: from the run's creation, or from the end of the Main run it queued behind, to its first job's start (ci_timings.py `ready_at`). The target is under 2 minutes; MainCiRunnerWaitHigh fires past 5 on two runs in six hours, or 15 once.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 9,
+    "x": 9,
+    "y": 14
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "points",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 300
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"Main\",ref=\"main\",measure=\"runner_wait\"}[$__interval])",
+     "legendFormat": "{{conclusion}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "title": "Latest run index, per build (main)",
+   "description": "The newest main run's index (the number in its URL; kinowo_ci_run_number), per build. The regression alerts name the last run at baseline and the first slow one by this number: the commits between them are the range to look in.",
+   "type": "stat",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 6,
+    "x": 18,
+    "y": 14
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "text"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "textMode": "value_and_name",
+    "colorMode": "none",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "last_over_time(kinowo_ci_run_number{ref=\"main\",workflow=~\"$workflow\"}[7d])",
+     "legendFormat": "{{workflow}}",
+     "instant": true,
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
    "type": "row",
    "title": "Identity model convergence — per country",
    "collapsed": false,
@@ -311,7 +494,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 14
+    "y": 23
    },
    "panels": []
   },
@@ -328,7 +511,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 15
+    "y": 24
    },
    "interval": "1m",
    "fieldConfig": {
@@ -404,7 +587,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 15
+    "y": 24
    },
    "interval": "1m",
    "fieldConfig": {
@@ -480,7 +663,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 24
+    "y": 33
    },
    "interval": "1m",
    "fieldConfig": {
@@ -556,7 +739,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 24
+    "y": 33
    },
    "interval": "1m",
    "fieldConfig": {
@@ -616,7 +799,7 @@
     "h": 12,
     "w": 24,
     "x": 0,
-    "y": 33
+    "y": 42
    },
    "interval": "1m",
    "fieldConfig": {
@@ -676,7 +859,7 @@
     "h": 8,
     "w": 24,
     "x": 0,
-    "y": 45
+    "y": 54
    },
    "fieldConfig": {
     "defaults": {
@@ -736,7 +919,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 53
+    "y": 62
    },
    "panels": []
   },
@@ -753,7 +936,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 54
+    "y": 63
    },
    "interval": "1m",
    "fieldConfig": {
@@ -822,7 +1005,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 54
+    "y": 63
    },
    "interval": "1m",
    "fieldConfig": {

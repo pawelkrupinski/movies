@@ -173,6 +173,9 @@ let
     # to its per-venue aggregator fallback individually -- no cinema bar went red, nothing paged,
     # found a day later by a human reading /uptime by hand. Alphabetically first.
     "chain-fallback"
+    # HAS A BUILD GOT SLOWER, OR NEAR ITS CEILING. CI's own build timings, after 4b2e9cb04 took the convergence takes
+    # rows past their 55-minute timeout and the first word of it was the red run (1641).
+    "ci-build-times"
     # IS A LANDING GATE RED ON MAIN. Main, Identity model convergence or the scrape recording's verify red for two
     # hours: every production push then needs a Fixes-Red trailer, read off the timings CI pushes over OTLP.
     "ci-gates"
