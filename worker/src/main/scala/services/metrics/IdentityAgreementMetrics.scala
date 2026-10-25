@@ -35,7 +35,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
 
   private val clusters: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_agreement_clusters")
-    .help("Agreement clusters after the stage's last pass: waiting on a family's answer, verdicts kept, agreed on a film.")
+    .help("Agreement clusters after the stage's last pass: waiting on a family's answer, verdicts kept, agreed on a film, verdicts still to decide again (incomplete).")
     .labelNames("country", "state").register(registry)
 
   private val taken: Gauge = Gauge.builder()
@@ -84,7 +84,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
 
   /** The stage's series for `country`, every label touched at 0. */
   def stage(country: String): AgreementStage.Metrics = {
-    Seq("waiting", "verdicts", "agreed", "poster-vetoed", "correcting", "event").foreach(clusters.labelValues(country, _))
+    Seq("waiting", "verdicts", "agreed", "poster-vetoed", "correcting", "event", "incomplete").foreach(clusters.labelValues(country, _))
     Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue", "withdrawn", "corrected").foreach(taken.labelValues(country, _))
     (families :+ CorrectionPoster).foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
@@ -98,6 +98,8 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       taken.labelValues(country, "corrected").set(applied.corrected.toDouble)
       open.labelValues(country, CorrectionPoster).set(applied.correctionPosters.toDouble)
       clusters.labelValues(country, "event").set(applied.events.toDouble)
+      // a deploy's backfill: the verdicts decided under other rules still to be decided again, down to 0
+      clusters.labelValues(country, "incomplete").set(applied.incomplete.toDouble)
       taken.labelValues(country, "poster").set(applied.takenPoster.toDouble)
       taken.labelValues(country, "broadcast").set(applied.takenBroadcast.toDouble)
       taken.labelValues(country, "filled").set(applied.takenFilled.toDouble)

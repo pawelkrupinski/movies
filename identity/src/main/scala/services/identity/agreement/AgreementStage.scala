@@ -93,6 +93,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val catalogue: CatalogueAnswers = CatalogueAnswers.Silent, private[agreement] val listedOn: Option[VoterFamily] = None,
                            private[agreement] val correctionPostersAtOnce: Int = AgreementStage.CorrectionPostersAtOnce,
                            private[agreement] val correctionsPerApply: Int = AgreementStage.CorrectionsPerApply,
+                           private[agreement] val backfillPerApply: Int = AgreementStage.BackfillPerApply,
                            private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
                            private[agreement] val attempted: Question => Boolean = _ => false,
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
@@ -327,7 +328,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   private[agreement] def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
     val started = tools.Stopwatch.start()
-    val pass    = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)))
+    val pass    = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)), backfillPerApply)
     keying(resolution, pass)
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
@@ -600,7 +601,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = catalogueOpen, undated = undated,
       withdrawn = decisions.count(_.basis == ResolverDecision.Basis.Withdrawn), corrected = decisions.count(_.basis == ResolverDecision.Basis.Corrected),
       correcting = pass.correcting.size, correctionPosters = pass.correctionPosters.size,
-      events = decisions.count(_.basis == ResolverDecision.Basis.Event)))
+      events = decisions.count(_.basis == ResolverDecision.Basis.Event),
+      incomplete = held.valuesIterator.count(_.rules != decidedUnder)))
   }
 
   /** `d` taken on `basis`, `line` explaining it — with the `film`, `fallback` and `agreed` ids it takes, where they move. */
@@ -669,7 +671,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val version = pass.version
     // settled without some families: their questions asked on every pass — one answered reads the verdict again
     unreached.get(id).foreach(pass.asked ++= _)
-    heldFor(id, digest, pass).filter(_.rules == decidedUnder).filter { kept =>
+    val held = heldFor(id, digest, pass)
+    held.filter(_.rules == decidedUnder).filter { kept =>
       checked.get(id).contains((digest, version)) || untouched(id, kept, digest, version) || {
         val stands = kept.reads.forall { case (question, answered) => read(question, listings).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
         // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
@@ -677,6 +680,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         stands
       }
     }
+    // decided under other rules (a deploy's, or before receipts were whole): decided again while the apply's backfill
+    // budget lasts, standing as it was until a later apply's reaches it — a deploy's boot resolves no whole corpus
+    .orElse(held.filter(_ => !pass.backfill()))
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
       case Some(w) => pass.asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
       case None    => resolved(decision, id, digest, listings, pass)
@@ -926,7 +932,7 @@ object AgreementStage {
   /** One apply at the families' `version`: where its takes and corrections note what they wait on (`asked`: the families'
    *  questions, the IMDb ids TMDB was not asked about, the posters, the catalogue questions and the records to read again
    *  for their day) with the verdicts it moved, the clusters and model takes it read, and its cost. */
-  private[agreement] final class Pass(val version: Long, corrections: Int, val reading: Read) {
+  private[agreement] final class Pass(val version: Long, corrections: Int, val reading: Read, backfills: Int = Int.MaxValue) {
     val asked        = mutable.Set.empty[Question]
     /** The posters the model takes' corrections wait on: handed to the queue a few at a time ([[wanted]]). */
     val correctionPosters = mutable.Set.empty[PosterQuestion]
@@ -947,8 +953,11 @@ object AgreementStage {
     private var budget = corrections
     /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
     def fresh(): Boolean = { val left = budget > 0; budget -= 1; left }
-    /** Did a take go unread for want of budget: asked once the budget was spent? */
-    def spent: Boolean = budget < 0
+    private var backfillsLeft = backfills
+    /** May one more verdict decided under other rules be decided again ([[BackfillPerApply]])? Each asking spends one. */
+    def backfill(): Boolean = { val left = backfillsLeft > 0; backfillsLeft -= 1; left }
+    /** Did a take or a verdict go unread for want of budget: asked once the budget was spent? */
+    def spent: Boolean = budget < 0 || backfillsLeft < 0
     /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
      *  take's posters draining behind every other task — those not `tried` yet first, so posters that keep failing hold
      *  no slot another poster could use. */
@@ -1002,6 +1011,10 @@ object AgreementStage {
   /** How many model takes one apply reads the evidence of afresh: a take not read yet beyond them stands as the model
    *  took it until a later apply — the first deploy's backfill of every take spread over applies, never one boot's spike. */
   val CorrectionsPerApply = 200
+  /** How many verdicts decided under other rules one apply decides again: a deploy's backfill of every stored verdict
+   *  (prod PL 2026-10-05: re-reading them all at boot was a 40 s, 514 MB pass; worker-us OOM-killed on a comparable
+   *  working set) spread over applies, the rest standing as they were meanwhile. */
+  val BackfillPerApply = 500
   /** How many of the posters the model takes' corrections wait on are handed to the queue at once: a one-off backfill of
    *  every take's posters (17.6k over the five corpora, 2026-10-06) drained a few at a time behind every other task. */
   val CorrectionPostersAtOnce = 64
@@ -1045,12 +1058,13 @@ object AgreementStage {
    *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet; and the
    *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]), a fill rule took
    *  ([[ResolverDecision.Basis.Filled]]) and the listings' catalogue ids took ([[ResolverDecision.Basis.Catalogue]]), with
-   *  the catalogue questions still open, and the TMDB records the broadcast take waits on to read again. */
+   *  the catalogue questions still open, and the TMDB records the broadcast take waits on to read again; and the verdicts
+   *  decided under other rules still to be decided again (`incomplete`: a deploy's backfill, [[BackfillPerApply]]). */
   final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
                            finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
                            takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0, undated: Int = 0,
                            withdrawn: Int = 0, corrected: Int = 0, correcting: Int = 0, correctionPosters: Int = 0,
-                           events: Int = 0)
+                           events: Int = 0, incomplete: Int = 0)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

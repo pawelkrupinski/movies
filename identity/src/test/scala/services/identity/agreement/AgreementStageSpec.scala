@@ -614,6 +614,28 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     verdicts.all().filter(_.correction.isEmpty).map(_.rules) shouldBe Seq(s"${AgreementStage.RulesVersion}|${services.identity.UnifiedRules.resolver.version}")
   }
 
+  // the owner (2026-10-25): every verdict prod stored before receipts were whole is decided again, but a budget an apply
+  // at a time — a whole-corpus resolve at the deploy's boot is what OOM-killed worker-us — the rest standing meanwhile,
+  // the backlog said until none is left, and how many are left reported
+  it should "decide verdicts stored under other rules again a budget an apply at a time, the rest standing meanwhile" in {
+    val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "Klondike", year = Some(2022)))
+    val model = Resolution(listings.map(l => ResolverDecision(Seq(l.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 3,
+      listings.zipWithIndex.map { case (l, i) => l.key -> i }.toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val byKey    = listings.map(l => l.key -> l).toMap
+    val verdicts = new InMemoryAgreementVerdicts
+    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned).apply(model, byKey.get, version = 1).decisions.map(_.film) shouldBe Seq.fill(3)(Some(913760))
+    verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "an older build")))
+    val left  = scala.collection.mutable.ArrayBuffer.empty[Int]
+    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete, backfillPerApply = 1)
+    (1 to 3).foreach { i =>
+      stage.apply(model, byKey.get, version = 1).decisions.map(_.film) shouldBe Seq.fill(3)(Some(913760))   // standing meanwhile
+      stage.backlog shouldBe (i < 3)
+    }
+    left shouldBe Seq(2, 1, 0)
+  }
+
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {
     val verdicts = new InMemoryAgreementVerdicts
     new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)

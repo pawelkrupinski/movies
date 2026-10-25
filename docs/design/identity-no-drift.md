@@ -109,18 +109,21 @@ The counts of the 27:
 ## Backfill of prod's stored verdicts
 
 The change edits `AgreementStage.scala`, so `AgreementStage.RulesVersion` moves. On the first apply after the deploy,
-no stored verdict stands (`v.rules == decidedUnder`).
+no stored verdict stands: `v.rules == decidedUnder` fails for all of them. Every one of them was cached with an
+incomplete receipt, and every one is decided again with its full receipt, a budget at a time:
 
-- Every agreement verdict is decided again, with its full receipt. This is unbounded, as on every deploy that touches
-  the stage today.
-- Corrections are read again within `CorrectionsPerApply` per apply. Until an apply's budget reaches one, it stands as
-  last decided.
+- Agreement verdicts: `BackfillPerApply` (500) an apply, in the resolution's order. Until a later apply's budget
+  reaches one, it stands as it was, and the stage reports a backlog so the next apply goes on. Before this change,
+  every deploy touching the stage decided every agreement verdict again on its first apply, unbounded: the boot pass
+  that OOM-killed worker-us.
+- Corrections: `CorrectionsPerApply` (200) an apply, as before. Until then each stands as last decided.
 
-So nothing with an incomplete receipt survives the deploy.
+Progress shows as `kinowo_worker_identity_agreement_clusters{state="incomplete"}`, the verdicts decided under other
+rules still to decide again. It reaches 0 per country once the backfill is done. Spec: `AgreementStageSpec` "decide
+verdicts stored under other rules again a budget an apply at a time".
 
-OPEN (owner, 2026-10-25): the agreement backfill should be BOUNDED. That means a verdict budget per apply,
-oldest-incomplete first, with progress logged as remaining incomplete verdicts per country, and the US peak heap
-measured on CI. It is not built yet.
+Takes move where prod's stored verdicts were wrong; the landing check lists them. Not measured yet: peak heap on the US
+corpus during the backfill (CI, `identity-measure` on the US recording with a stored-verdict boot).
 
 ## Simplifications
 
@@ -145,7 +148,7 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
 1. Item 7 (record content carried by the projection), and receipts of the question memory's outcomes for a
    settled family question (an attempt swept from the memory leaves a settled verdict standing; a whole resolve would
    wait).
-2. The bounded backfill, with its progress metric reaching 0 in every country.
+2. The deploy's backfill, its progress metric (`state="incomplete"`) reaching 0 in every country.
 3. Input kinds the harness does not generate yet:
    - venue detail pages that move;
    - catalogue ids and pages;

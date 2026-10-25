@@ -158,6 +158,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
       correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
+      backfillPerApply = if (budgets) services.identity.agreement.AgreementStage.BackfillPerApply else Int.MaxValue,
       askNow = askNow, attempted = identityQuestionMemory.attempted,
       attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging, keyStore = keys)
 
