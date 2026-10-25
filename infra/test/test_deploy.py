@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for bin/deploy's pure logic: the stale-tree verdict, the ssh target choice, the probe and
-dry-activate parsing, the preview and the post-switch verdict. No network, no nix, no host.
+dry-activate parsing, the preview and the post-switch verdict, and the APPLY / VERIFY_STATES remote
+scripts under stub sudo, systemd-run and systemctl. No network, no nix, no host.
 
     python3 infra/test/test_deploy.py   (also run by infra/bin/check and nix-stage-closures.yml)
 """
@@ -213,83 +214,81 @@ class Verify(unittest.TestCase):
 
 
 class ApplyScript(unittest.TestCase):
-    """The APPLY script itself, run under a systemd-run that, like the real one, hands its transient
-    unit systemd's own PATH and not the login shell's: a bare `nix-env` is not found there, and every
+    """The APPLY and VERIFY_STATES scripts themselves, under stub sudo / systemd-run / systemctl and a
+    stub candidate closure. The systemd-run stub, like the real one, can hand its transient unit
+    systemd's own PATH and not the login shell's: a bare `nix-env` is not found there, and every
     --apply exited 127 with the host unchanged (mongo-1, 2026-10-24)."""
 
-    def test_the_switch_finds_nix_env_without_the_login_path(self):
-        import shutil, subprocess, tempfile
+    def setUp(self):
+        import shutil, tempfile
         work = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, work)
-        stubs, cand, log = os.path.join(work, "bin"), os.path.join(work, "system"), os.path.join(work, "log")
-        os.makedirs(stubs); os.makedirs(os.path.join(cand, "bin")); os.makedirs(os.path.join(cand, "sw", "bin"))
+        self.work, self.stubs = work, os.path.join(work, "bin")
+        self.cand, self.log = os.path.join(work, "system"), os.path.join(work, "log")
+        for d in (self.stubs, os.path.join(self.cand, "bin"), os.path.join(self.cand, "sw", "bin")):
+            os.makedirs(d)
+        self.stub(os.path.join(self.stubs, "sudo"), '[ "$1" = -n ] && shift; exec "$@"')
 
-        def script(path, body):
-            with open(path, "w") as f:
-                f.write("#!/bin/sh\n" + body + "\n")
-            os.chmod(path, 0o755)
+    def stub(self, path, body):
+        with open(path, "w") as f:
+            f.write("#!/bin/sh\n" + body + "\n")
+        os.chmod(path, 0o755)
 
-        script(os.path.join(stubs, "sudo"), '[ "$1" = -n ] && shift; exec "$@"')
+    def run_script(self, script, *args):
+        import subprocess
+        return subprocess.run(["/bin/sh", "-c", script, "script", *args], capture_output=True, text=True,
+                              env={"PATH": self.stubs + ":/usr/bin:/bin"})
+
+    def logged(self):
+        with open(self.log) as f:
+            return f.read().splitlines()
+
+    def test_the_switch_finds_nix_env_without_the_login_path(self):
         # systemd-run: skip its options up to `--`, then run the command with systemd's bare PATH.
-        script(os.path.join(stubs, "systemd-run"),
-               'while [ "$1" != -- ]; do shift; done; shift; exec env -i PATH=/usr/bin:/bin "$@"')
-        script(os.path.join(cand, "sw", "bin", "nix-env"), 'echo "nix-env $*" >> ' + log)
-        script(os.path.join(cand, "bin", "switch-to-configuration"), 'echo "switch $*" >> ' + log)
+        self.stub(os.path.join(self.stubs, "systemd-run"),
+                  'while [ "$1" != -- ]; do shift; done; shift; exec env -i PATH=/usr/bin:/bin "$@"')
+        self.stub(os.path.join(self.cand, "sw", "bin", "nix-env"), 'echo "nix-env $*" >> ' + self.log)
+        self.stub(os.path.join(self.cand, "bin", "switch-to-configuration"), 'echo "switch $*" >> ' + self.log)
 
-        out = subprocess.run(["/bin/sh", "-c", deploy.APPLY, "apply", cand], capture_output=True, text=True,
-                             env={"PATH": stubs + ":/usr/bin:/bin"})
+        out = self.run_script(deploy.APPLY, self.cand)
         self.assertIn("@@ SWITCH rc=0", out.stdout, out.stdout + out.stderr)
-        with open(log) as f:
-            self.assertEqual(f.read().splitlines(),
-                             ["nix-env --profile /nix/var/nix/profiles/system --set " + cand, "switch switch"])
+        self.assertEqual(self.logged(), ["nix-env --profile /nix/var/nix/profiles/system --set " + self.cand,
+                                         "switch switch"])
+
+    def lock_held_for(self, failures):
+        """A switch-to-configuration that exits 11, "Could not acquire lock", `failures` times."""
+        self.stub(os.path.join(self.stubs, "sleep"), "exit 0")
+        self.stub(os.path.join(self.stubs, "systemd-run"), 'while [ "$1" != -- ]; do shift; done; shift; exec "$@"')
+        self.stub(os.path.join(self.cand, "sw", "bin", "nix-env"), "exit 0")
+        self.stub(os.path.join(self.cand, "bin", "switch-to-configuration"),
+                  'echo switch >> ' + self.log + '; [ "$(wc -l < ' + self.log + ')" -gt ' + str(failures)
+                  + ' ] && exit 0; echo "Could not acquire lock" >&2; exit 11')
 
     def test_a_switch_lock_held_by_the_applier_is_waited_out(self):
         # Writing the pin wakes nixos-auto-apply, which holds switch-to-configuration's lock for a
         # second while it judges the pin: the deploy's own switch exited 11, "Could not acquire lock".
-        import shutil, subprocess, tempfile
-        work = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, work)
-        stubs, cand, log = os.path.join(work, "bin"), os.path.join(work, "system"), os.path.join(work, "log")
-        os.makedirs(stubs); os.makedirs(os.path.join(cand, "bin")); os.makedirs(os.path.join(cand, "sw", "bin"))
-
-        def script(path, body):
-            with open(path, "w") as f:
-                f.write("#!/bin/sh\n" + body + "\n")
-            os.chmod(path, 0o755)
-
-        script(os.path.join(stubs, "sudo"), '[ "$1" = -n ] && shift; exec "$@"')
-        script(os.path.join(stubs, "sleep"), "exit 0")
-        script(os.path.join(stubs, "systemd-run"), 'while [ "$1" != -- ]; do shift; done; shift; exec "$@"')
-        script(os.path.join(cand, "sw", "bin", "nix-env"), "exit 0")
-        held = os.path.join(work, "held")
-        open(held, "w").close()
-        script(os.path.join(cand, "bin", "switch-to-configuration"),
-               'echo switch >> ' + log + '; if [ -e ' + held + ' ]; then rm ' + held
-               + '; echo "Could not acquire lock" >&2; exit 11; fi; exit 0')
-
-        out = subprocess.run(["/bin/sh", "-c", deploy.APPLY, "apply", cand], capture_output=True, text=True,
-                             env={"PATH": stubs + ":/usr/bin:/bin"})
+        self.lock_held_for(1)
+        out = self.run_script(deploy.APPLY, self.cand)
         self.assertIn("@@ SWITCH rc=0", out.stdout, out.stdout + out.stderr)
-        with open(log) as f:
-            self.assertEqual(f.read().splitlines(), ["switch", "switch"])
+        self.assertEqual(self.logged(), ["switch", "switch"])
+
+    def test_a_lock_that_stays_held_is_reported_not_retried_for_ever(self):
+        # The retry waits out a moment's lock; one held past it is the switch's own exit code, for
+        # the verdict to judge, never a success.
+        self.lock_held_for(1000)
+        out = self.run_script(deploy.APPLY, self.cand)
+        self.assertIn("@@ SWITCH rc=11", out.stdout, out.stdout + out.stderr)
+        self.assertEqual(len(self.logged()), 21)
 
     def test_the_unit_states_are_read_in_the_order_the_verdict_expects(self):
         # `systemctl show -p A,B,C --value` prints systemd's own property order (ActiveState, Type,
         # Result), not the order asked for: a oneshot that had exited cleanly read as unhealthy.
-        import shutil, subprocess, tempfile
-        work = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, work)
-        stubs = os.path.join(work, "bin")
-        os.makedirs(stubs)
-        with open(os.path.join(stubs, "systemctl"), "w") as f:
-            f.write('#!/bin/sh\n'
-                    'case "$3" in\n'
-                    '  ActiveState) echo inactive ;; Result) echo success ;; Type) echo oneshot ;;\n'
-                    '  *) printf "inactive\\noneshot\\nsuccess\\n" ;;\n'
-                    'esac\n')
-        os.chmod(os.path.join(stubs, "systemctl"), 0o755)
-        out = subprocess.run(["/bin/sh", "-c", deploy.VERIFY_STATES, "verify", "systemd-fsck-root.service"],
-                             capture_output=True, text=True, env={"PATH": stubs + ":/usr/bin:/bin"})
+        self.stub(os.path.join(self.stubs, "systemctl"),
+                  'case "$3" in\n'
+                  '  ActiveState) echo inactive ;; Result) echo success ;; Type) echo oneshot ;;\n'
+                  '  *) printf "inactive\\noneshot\\nsuccess\\n" ;;\n'
+                  'esac')
+        out = self.run_script(deploy.VERIFY_STATES, "systemd-fsck-root.service")
         line = next(l for l in out.stdout.splitlines() if l.startswith("unit "))
         self.assertTrue(deploy.unit_ok(line.split()[2:]), line)
 
