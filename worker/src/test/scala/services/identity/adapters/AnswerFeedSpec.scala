@@ -103,6 +103,31 @@ class AnswerFeedSpec extends AnyFlatSpec with Matchers {
     families.version shouldBe 2
   }
 
+  // the no-drift principle (docs/design/identity-no-drift.md): a verdict is a cache of everything it read, so a filing of
+  // anything one read — a TMDB record, a search — must reach the stage, waited on or not (DE "Dolly": the record of the
+  // film TMDB leaned to, filed after the verdict, never reopened it)
+  it should "count a TMDB record or search a kept verdict read, as its receipt names it, waited on or not" in {
+    val clock    = new MutableClock(Instant.parse("2026-10-24T00:00:00Z"))
+    val docs     = new InMemoryTmdbDocuments
+    val feed     = new FiledAnswerFeed
+    val tmdb     = new TmdbStore(docs, clock, feed)
+    val families = new FamilyAnswerStore(docs, clock, feed)
+    val read     = mutable.Set[String](AgreementStage.recordReadId(7))
+    families.readBy(read.contains)
+    def film(id: Int, year: Int): Unit =
+      tmdb.filmPartial(id, TmdbStore.Partial.Local, play.api.libs.json.Json.obj("id" -> id, "release_date" -> s"$year-01-01"))
+    film(8, 2000)
+    tmdb.question(TmdbStore.titleSearchId("pl", "lalka"), Seq(Hit(9, "Lalka", None, Some(1968), 1.0)))
+    families.version shouldBe 0   // neither read: nothing moves
+    film(7, 2026)
+    families.changedSince(0) shouldBe Some(Set(AgreementStage.recordReadId(7)))
+    read += AgreementStage.QueryFiled
+    tmdb.question(TmdbStore.titleSearchId("pl", "lalka"), Seq(Hit(10, "Lalka", None, Some(2026), 1.0)))
+    families.changedSince(1) shouldBe Some(Set(AgreementStage.QueryFiled))
+    tmdb.question(TmdbStore.findId("tt3"), Nil)   // a find is the agreement's own question: counted only as one
+    families.version shouldBe 2
+  }
+
   "a view" should "count only the keys it accepts, each view on its own" in {
     val feed   = new FiledAnswerFeed
     val agreed = feed.view(services.identity.agreement.AnswerFeed.agreementKeys)

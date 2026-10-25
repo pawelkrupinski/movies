@@ -25,17 +25,23 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFee
 
   /** Which TMDB finds and records the agreement stage waits on ([[awaitedBy]]): none until a stage says. */
   @volatile private var awaited: Question => Boolean = _ => false
+  /** Which TMDB records and searches a verdict the stage keeps read, by the ids its receipts file them as ([[readBy]]). */
+  @volatile private var read: String => Boolean = _ => false
 
   /** The agreement's view of the feed ([[agreementKeyOf]]): every answer this store files, every other one an agreement
-   *  question names that is published there, and the TMDB store's filing of a find or a record the stage waits on, under
-   *  the question's id — the stage's verdicts hold while its version does not move. */
-  val changes: AnswerFeed.View = feed.view(key => agreementKeyOf(key, awaited))
+   *  question names that is published there, and the TMDB store's filing of a find or a record the stage waits on, or of
+   *  a record or search a kept verdict read, under the id the stage reads it by — the stage's verdicts hold while its
+   *  version does not move. */
+  val changes: AnswerFeed.View = feed.view(key => agreementKeyOf(key, awaited, read))
   /** How many agreement answers were filed since this store was made. */
   def version: Long = changes.version
 
   /** The agreement stage whose waits decide which TMDB finds and records move [[changes]]: `waitsOn` asked of each
    *  find or record the TMDB store files, on the filing thread. Set once by the live stage's wiring. */
   def awaitedBy(waitsOn: Question => Boolean): Unit = awaited = waitsOn
+  /** The agreement stage whose kept verdicts' receipts decide which TMDB records and searches move [[changes]]
+   *  ([[services.identity.agreement.AgreementStage.reads]]), on the filing thread. Set once by the live stage's wiring. */
+  def readBy(reads: String => Boolean): Unit = read = reads
 
   /** Announces a filing under `id` that another store made: counted only when an agreement question names `id`. */
   def noteFiled(id: String): Unit = feed.publish(id)
@@ -80,15 +86,19 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFee
 object FamilyAnswerStore {
   private val FindPrefix = TmdbStore.keyOf(TmdbKind.Query, TmdbStore.findId(""))
   private val FilmPrefix = TmdbStore.keyOf(TmdbKind.Film, "")
+  private val QueryPrefix = TmdbStore.keyOf(TmdbKind.Query, "")
 
   /** The id the agreement reads a filing `key` under, or None for one it does not read: a key an agreement question names
    *  as itself; the TMDB store's find of an IMDb id (`tmdb_queries:find|<imdbId>`) as `find|<imdbId>` and its film record
    *  (`tmdb_films:<id>`) as `tmdb|record|<id>` ([[Question.id]]) — only while `awaited` says the stage waits on that
-   *  question: a take-up files thousands of records, and each counted would move the stage's version, re-reading every
-   *  verdict filed since. */
-  def agreementKeyOf(key: String, awaited: Question => Boolean): Option[String] =
+   *  question, or (a record) `read` says a kept verdict read it: a take-up files thousands of records, and each counted
+   *  would move the stage's version for nothing; any other TMDB question (a search) as
+   *  [[services.identity.agreement.AgreementStage.QueryFiled]] while a kept verdict read one. */
+  def agreementKeyOf(key: String, awaited: Question => Boolean, read: String => Boolean = _ => false): Option[String] =
     if (key.startsWith(FindPrefix)) Some(Question.Find(key.substring(FindPrefix.length))).filter(awaited).flatMap(_.id)
-    else if (key.startsWith(FilmPrefix)) key.substring(FilmPrefix.length).toIntOption.map(Question.Record(_)).filter(awaited).flatMap(_.id)
+    else if (key.startsWith(FilmPrefix))
+      key.substring(FilmPrefix.length).toIntOption.map(Question.Record(_)).filter(q => awaited(q) || q.id.exists(read)).flatMap(_.id)
+    else if (key.startsWith(QueryPrefix)) Some(services.identity.agreement.AgreementStage.QueryFiled).filter(read)
     else AnswerFeed.agreementKeys(key)
 
   /** How long the answer filed under `id` is read before it is asked again, as [[QuestionPolicies]] sets it for the

@@ -35,12 +35,15 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   /** The house productions the families hold of the works the listings bill, as their searches by the listings' own
    *  titles find them — each search's first [[FamilyLookups.Records]] hits whose title bills a house beside a work, their
    *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
-   *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits. */
+   *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits.
+   *  `reads`, a verdict's receipt where it reads them, notes each. */
   private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.IdentityMeasures.Listing,
-                            asked: mutable.Set[Question]): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
+                            asked: mutable.Set[Question], reads: Option[mutable.Map[String, Long]] = None): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
     val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
+      // a verdict's fill reads them: in its receipt, answered or not
+      reads.foreach(_(s"${family.label}|$question") = AgreementStage.digest(Seq(answer.toString)))
       if (answer == Answer.Unknown) {
         val gap = Question.Family(family, question)
         asked += gap

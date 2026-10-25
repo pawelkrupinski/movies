@@ -35,7 +35,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
   private[agreement] def corrected(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], key: String, pass: AgreementStage.Pass): ResolverDecision = {
     val version = pass.version
     val digest = correctionDigest(decision, listingOf)
-    val kept = held.get(key).filter(v => v.listings == digest && v.rules == decidedUnder).flatMap(v => v.correction.filter { c =>
+    val kept = heldFor(key, digest, pass).filter(_.rules == decidedUnder).flatMap(v => v.correction.filter { c =>
       val waits = correctionWaits.get(key)
       // one waiting on an answer is read again unless what it asks is known — after a restart it is not — and once all
       // it waits on was attempted (the settle rule: decided on what it has); a TMDB find it waits on is filed among the
@@ -56,9 +56,9 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
       val listings = sortedListings(decision, listingOf)
-      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest, None), pass.reading, version)
+      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version)
       val verdict = StoredVerdict(key, digest, Map.empty, None, decidedUnder, correction = Some(correction))
-      if (!held.get(key).contains(verdict)) { pass.moved += verdict; held(key) = verdict }
+      if (!held.get(key).contains(verdict)) { pass.moved += verdict; file(verdict) }
       checked(key) = (digest, version)
       waits.fold(correctionWaits -= key)(w => correctionWaits(key) = w)
       correction
@@ -67,7 +67,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // stands as last decided over the same listings, never as the model took it: else the boot's whole projection put
       // the model's take back and a later apply corrected it again, a flip per deploy (UK Chichester's "The Ties That Bind
       // Us", 18 of them). Left unchecked, it is read afresh once an apply's budget reaches it.
-      held.get(key).filter(_.listings == digest).flatMap(_.correction))
+      heldFor(key, digest, pass).flatMap(_.correction))
     correctionWaits.get(key).foreach(_.foreach {
       case Question.Poster(poster) => pass.correctionPosters += poster
       case question                => pass.asked += question

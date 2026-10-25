@@ -13,14 +13,16 @@ import scala.util.Random
  *    beside its original, a title contained in another ("Faust" / "Zärtlich kreist die Faust");
  *  - programme banners and decorations ("Filmowy Klub Seniora - X", "Oficjalna premiera: X"),
  *    bracketed re-release years ("X (2026)"), shouted titles;
- *  - films the database has no entry for (a broadcast), venues publishing a random subset of
+ *  - films the database has no entry for (a broadcast; `tmdbShare` the share it holds), venues publishing a random subset of
  *    year, director and runtime — some only on a detail page;
  *  - GAPS: a deterministic share of queries and film records the source cannot answer, as the
  *    recorded trees cannot.
  *
- * `truth` maps each listing key to the film it really is — a test label, never an input.
+ * `truth` maps each listing key to the film it really is — a test label, never an input; `films` the films drawn, which
+ * another source's answers may be made of.
  */
-final case class GeneratedIdentityCorpus(listings: Seq[Listing], lookups: IdentityLookups, truth: Map[ListingKey, Int])
+final case class GeneratedIdentityCorpus(listings: Seq[Listing], lookups: IdentityLookups, truth: Map[ListingKey, Int],
+                                         films: Seq[GeneratedIdentityCorpus.Film] = Nil)
 
 object GeneratedIdentityCorpus {
 
@@ -34,13 +36,13 @@ object GeneratedIdentityCorpus {
     "Andrzej Żuławski", "F.W. Murnau", "Danny DeVito", "Wong Kar Wai", "Justin Baldoni", "Alexander Ullom", "George Cukor")
   private val Years = Seq(1926, 1954, 1976, 1990, 2013, 2018, 2021, 2025, 2026)
 
-  def generate(seed: Long, normalizer: TitleNormalizer, films: Int = 10, listings: Int = 40): GeneratedIdentityCorpus = {
+  def generate(seed: Long, normalizer: TitleNormalizer, films: Int = 10, listings: Int = 40, tmdbShare: Double = 0.85): GeneratedIdentityCorpus = {
     val rnd = new Random(seed)
     val universe = (1 to films).map { i =>
       val base  = Bases(rnd.nextInt(Bases.size))
       val title = if (rnd.nextDouble() < 0.12) s"$base 2" else base
       Film(i, title, Years(rnd.nextInt(Years.size)), Directors(rnd.nextInt(Directors.size)), 80 + rnd.nextInt(100),
-        Option.when(rnd.nextDouble() < 0.85)(1000 + i), math.round(rnd.nextDouble() * 1000) / 10.0)
+        Option.when(rnd.nextDouble() < tmdbShare)(1000 + i), math.round(rnd.nextDouble() * 1000) / 10.0)
     }.distinctBy(f => (f.title, f.year))
     val detailVenues = Venues.zipWithIndex.collect { case (v, i) if i % 3 == 0 => v.displayName }.toSet
     val made = (1 to listings).map { _ =>
@@ -68,7 +70,7 @@ object GeneratedIdentityCorpus {
       override def detail(l: Listing): Answer[Option[DetailFacts]] =
         Answer.Known(byKey.get(l.key).map(f => DetailFacts(None, Seq(f.director), None, None)))
     }
-    GeneratedIdentityCorpus(made.map(_._1), lookups, truth)
+    GeneratedIdentityCorpus(made.map(_._1), lookups, truth, universe)
   }
 
   /** A film database over `universe`: TMDB's search (every film whose title holds all the query's

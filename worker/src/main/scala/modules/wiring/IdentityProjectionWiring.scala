@@ -106,6 +106,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         stopwatch = stopwatch),
       staging = Some(identityStagingEvents.offer), keys = agreementKeys)
     familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
+    familyAnswerStore.readBy(stage.reads)
     stage
   }
   /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */

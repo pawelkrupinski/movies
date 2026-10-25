@@ -16,7 +16,7 @@ import scala.collection.mutable
  *   - every next cluster left over gets a fresh key, in order of its smallest listing;
  *   - a previous key no next cluster took is RETIRED, never handed out again. One a next cluster overlaps is a merge's
  *     younger half: it is ABSORBED by the next cluster holding most of its listings (equal: the one holding the smallest
- *     listing), which takes on its memories (the owner's choice: a merge never makes a settled half wait anew).
+ *     listing) — named so to the staging screen, never a memory carried (docs/design/identity-no-drift.md).
  */
 object ClusterKeys {
 

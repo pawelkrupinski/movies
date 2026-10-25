@@ -32,7 +32,10 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [design/identity-slice.md](design/identity-slice.md) — `scripts/identity-slice`: one listing's identity reproduced
   in seconds; design and limits.
 - [design/identity-cluster-identity.md](design/identity-cluster-identity.md) — a stable cluster identity for the
-  agreement stage's verdicts, waits and staging rows: design and the owner's decisions (implemented 2026-10-25).
+  agreement stage's verdicts, waits and staging rows: design and the owner's decisions (implemented 2026-10-25; keys name only since identity-no-drift.md).
+- [design/identity-no-drift.md](design/identity-no-drift.md) — no drift by construction: the owner's principle (every
+  change re-evaluates everything as if all data had been there from the start), the audit of every carried state, the
+  equivalence harness, and what still blocks retiring the drift checks.
 - [design/convergence-fixture-fill.md](design/convergence-fixture-fill.md) — how a hermetic convergence leg's
   missing fixtures get recorded, and what that does to a verdict.
 - [design/identity-known-wrongs-and-todos.md](design/identity-known-wrongs-and-todos.md) — SUPERSEDED snapshot of

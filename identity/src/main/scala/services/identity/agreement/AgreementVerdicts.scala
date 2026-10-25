@@ -10,10 +10,11 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
-/** One cluster's agreement verdict as stored: the digest of its listings, every family question it read with the
- *  digest of the answer it got, the film the families agreed on, if any, and else the film a selected FILL rule takes
- *  ([[services.identity.UnifiedRules]]) — all the stage needs, after a restart or a new answer elsewhere, to tell
- *  whether the verdict still stands without asking the resolver again. */
+/** One cluster's agreement verdict as stored: the digest of its listings, its RECEIPT (`reads`: everything its decision
+ *  read — every family question, the record of the film TMDB leans to, every TMDB lookup its fill made, the year — each
+ *  by its id with the digest of the answer it got, none yet too), the film the families agreed on, if any, and else the
+ *  film a selected FILL rule takes ([[services.identity.UnifiedRules]]). A cache of a function of its inputs: it stands
+ *  exactly while its listings and receipt do, and a filing of anything it read decides it again (docs/design/identity-no-drift.md). */
 final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "",
                                filled: Option[StoredFill] = None, correction: Option[StoredCorrection] = None,
                                /** Why no film was agreed on where a guard naming its reason refused the one the families

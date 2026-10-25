@@ -1,5 +1,11 @@
 # A stable cluster identity (design, 2026-10-24; IMPLEMENTED 2026-10-25, the owner's decisions below)
 
+> **Superseded in part, 2026-10-25 ([identity-no-drift.md](identity-no-drift.md)):** under the owner's no-drift
+> principle a key only NAMES a cluster. Decision 1 (merge unions memories) and decision 2 (adopt verdicts under the
+> key) are withdrawn: a verdict is found by its listings' digest under whichever key filed it, a merge carries no
+> memory, and a cluster settles on the question memory alone. The counter, the overlap rule, the key store and the
+> restart re-attach stay, for naming (the staging screen, the drift check).
+
 ## The problem
 
 Everything the identity system keeps per CLUSTER is keyed by the cluster's alphabetically first listing,

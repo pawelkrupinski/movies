@@ -112,6 +112,34 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stored.all().flatMap(_.filled).map(_.imdb) shouldBe Seq(Some("tt46658626"))
   }
 
+  // the no-drift principle (docs/design/identity-no-drift.md): the year a verdict reads "current" by is an input — a
+  // verdict decided in December stood into January, filled by a rule a whole resolve then no longer fired
+  it should "decide a kept verdict again when the year turns, as a whole resolve in the new year would" in {
+    val tour     = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2025), None, None, None, None)
+    val families = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "SEVENTEEN World Tour 'NEW_'"))
+    val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
+      listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    var now   = java.time.Instant.parse("2026-12-31T12:00:00Z")
+    val clock = new java.time.Clock {
+      def getZone: java.time.ZoneId = java.time.ZoneOffset.UTC
+      override def withZone(zone: java.time.ZoneId): java.time.Clock = this
+      def instant(): java.time.Instant = now
+    }
+    def stageOn(stored: AgreementVerdicts) = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      stored, clock = clock, tmdb = Some(NoVenueDetails), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+    val byKey  = listings.map(l => l.key -> l).toMap
+    val stored = new InMemoryAgreementVerdicts
+    val stage  = stageOn(stored)
+    stage.apply(model, byKey.get, version = 1).decisions.head.basis shouldBe ResolverDecision.Basis.Filled
+    now = java.time.Instant.parse("2027-01-01T12:00:00Z")
+    val whole = stageOn(new InMemoryAgreementVerdicts).apply(model, byKey.get, version = 1).decisions.head.basis
+    whole shouldBe ResolverDecision.Basis.BelowThreshold
+    stage.apply(model, byKey.get, version = 1).decisions.head.basis shouldBe whole
+    stageOn(stored).apply(model, byKey.get, version = 1).decisions.head.basis shouldBe whole   // and after a restart
+  }
+
   it should "take, by the pinned families.current rule, a current release two families take at one venue" in {
     // PL "TAJNY AGENT" (fixture identity-unmatched): IMDb and Filmweb take Mendonça Filho's 2025 film; one venue bills it
     val agent    = IdentityMeasures.Film("Tajny agent", None, Seq("The Secret Agent"), Some(2025), Some(158), Some(Seq("Kleber Mendonça Filho")), None, None)
@@ -324,6 +352,36 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val taken = decided(Some(ResolverDecision.Leaning(913760, 0)))
     (taken.film, taken.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
     taken.explanation.last should include ("corroborated by tmdb")
+  }
+
+  // DE "Dolly" ×10 (live drift, 2026-10-25): the verdict was decided while TMDB's record of the film the model leaned to
+  // was not filed — two families and an unfacted vote agree on nothing — and kept with only the families' answers among
+  // its reads, so the record's filing never reopened it. A verdict is a cache of everything it read: the record filed
+  // reopens it, and it comes to what a resolve with the record there from the start comes to
+  it should "decide a kept verdict again once the record of the film TMDB leans to is filed, as if it had been there all along" in {
+    val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map.empty), VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty))
+    var filed = false
+    val tmdb = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = if (!filed) Answer.Unknown else Answer.Known(Option.when(tmdbId == 913760)(klondike))
+    }
+    val model = resolution.copy(decisions = resolution.decisions.updated(0,
+      ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = Some(ResolverDecision.Leaning(913760, 0)))()))
+    def stageOver(stored: AgreementVerdicts) = new AgreementStage(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      stored, clock = _root_.tools.SpecClock.Pinned)
+    val stored = new InMemoryAgreementVerdicts
+    val stage  = stageOver(stored)
+    stage.apply(model, listingOf, version = 1).decisions.head.film shouldBe None
+    // the record is in its receipt, so its filing moves the stage's answers ([[AgreementStage.reads]])
+    stage.reads(AgreementStage.recordReadId(913760)) shouldBe true
+    filed = true
+    val whole = stageOver(new InMemoryAgreementVerdicts).apply(model, listingOf, version = 2).decisions.head
+    (whole.film, whole.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
+    stage.apply(model, listingOf, version = 2).decisions.head.film shouldBe whole.film
+    stageOver(stored).apply(model, listingOf, version = 2).decisions.head.film shouldBe whole.film   // and after a restart
   }
 
   it should "read the year, director and running time the venue's own page states as the listing's facts, as the model does" in {

@@ -220,7 +220,9 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   // cluster keys. Numbered afresh, a take's key was no longer the one its stored correction is filed under once the
   // counter had moved (a cluster gone, a split), and the boot's budget-spent apply put the model's take back: PL Kino
   // Oaza's "Ktoś całkiem obcy", UK's relays, US "NT Live: Hamlet"
-  it should "stand as last decided after a deploy that hands the stage its cluster keys, though the counter moved" in {
+  // and the owner's no-drift goal (docs/design/identity-no-drift.md): a stored verdict is found by its listings, so no
+  // key can move a take — a restart that lost its keys, or numbered them otherwise, stands as one that kept them
+  it should "stand as last decided after a deploy, whether or not it hands the stage its cluster keys" in {
     val verdicts = new InMemoryAgreementVerdicts
     val keys     = new InMemoryAgreementKeys
     def stageOver(perApply: Int, keyStore: AgreementKeys) =
@@ -234,8 +236,8 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     running.apply(both, Map(before.key -> before, listing.key -> listing).get, 1)
     decided(running).basis shouldBe ResolverDecision.Basis.Corrected
     decided(stageOver(0, keys), version = 1).basis shouldBe ResolverDecision.Basis.Corrected
-    // keys numbered afresh: the stored correction is another key's, and a deploy's spent budget reads none
-    decided(stageOver(0, new InMemoryAgreementKeys), version = 1).basis shouldBe ResolverDecision.Basis.OwnMatch
+    // keys numbered afresh: the stored correction is filed under another key, and found by its listings all the same
+    decided(stageOver(0, new InMemoryAgreementKeys), version = 1).basis shouldBe ResolverDecision.Basis.Corrected
   }
 
   // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so its poster was never hashed and the

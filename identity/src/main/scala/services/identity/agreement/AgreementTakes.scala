@@ -22,18 +22,20 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
    *  ([[services.identity.UnifiedRules.filled]] over [[services.identity.UnifiedEvidence.contenders]]: the cluster's own
    *  TMDB candidates, none denied, and the films the families took or lean to) — `Unknown` while a TMDB answer the
-   *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). */
+   *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). Everything it
+   *  reads is noted in `reads`, the verdict's receipt. */
   private[agreement] def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
-                       thisYear: Int, version: Long, asked: mutable.Set[Question]): Answer[Option[StoredFill]] =
-    tmdb.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
-      val noting = new AgreementStage.UnknownNoting(lookups)
+                       thisYear: Int, version: Long, asked: mutable.Set[Question], reads: mutable.Map[String, Long]): Answer[Option[StoredFill]] =
+    tmdb.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { tmdbLookups =>
+      val lookups = new AgreementStage.Receipted(tmdbLookups, AgreementStage.TmdbRead, listings, reads)
+      val noting  = new AgreementStage.UnknownNoting(lookups)
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
       if (noting.unknown) Answer.Unknown
       else {
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
-          productions = () => productionsOf(listings, measured, asked), undated = undatedOf(lookups))
+          productions = () => productionsOf(listings, measured, asked, Some(reads)), undated = undatedOf(lookups))
         Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
           StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
       }

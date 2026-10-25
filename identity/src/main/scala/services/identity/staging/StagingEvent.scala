@@ -16,8 +16,8 @@ enum StagingEvent {
   /** The stage stopped waiting on `cluster` at `at`: every question it waited on answered or attempted, its take
    *  decided. */
   case Settled(cluster: String, at: Long)
-  /** The stage's cluster `absorbed` merged into `cluster` at `at`, which kept the older key and took on the absorbed
-   *  one's memories: a wait the absorbed cluster began is the merged cluster's, since it began. */
+  /** The stage's cluster `absorbed` merged into `cluster` at `at`, which kept the older key: the screen shows a wait the
+   *  absorbed cluster began as the merged cluster's, since it began — display only, nothing the stage decides by. */
   case Merged(cluster: String, absorbed: String, at: Long)
   /** Projection number `projection` (counted from the worker's start), written at `at`, changed a listing's take (an
    *  entry of its change list, [[TakeChange]]). */

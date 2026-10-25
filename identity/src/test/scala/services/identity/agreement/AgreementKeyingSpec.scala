@@ -7,9 +7,10 @@ import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasur
 import services.identity.staging.StagingEvent
 import services.movies.{ListingKey, SingleCountryNormalizer}
 
-/** What the stage keeps per cluster is kept under the cluster's key (docs/design/identity-cluster-identity.md): a listing
- *  sorting first, a merge or a split moves no memory a cluster keeps, a restart re-attaches each key by its first listing,
- *  and the verdicts stored under first listings before keys are taken over under the keys, none decided again for it. */
+/** A cluster's key NAMES it (docs/design/identity-cluster-identity.md, docs/design/identity-no-drift.md): a listing
+ *  sorting first, a merge or a split keeps a key on the cluster overlapping it, a restart re-attaches each key by its
+ *  first listing — and none of it moves a take: a cluster is decided as a whole resolve of the inputs decides it, no
+ *  memory carried with its key, and a verdict is found by its listings, under whichever key it was filed. */
 class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   import FilmTable.listing
@@ -54,18 +55,26 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     def apply(resolution: Resolution, version: Long): Seq[ResolverDecision] = stage.apply(resolution, listingOf, version).decisions
   }
 
-  "a settled cluster a listing sorting first joins" should "keep its key, and settle again rather than wait anew" in {
+  /** What a fresh stage — nothing kept, RT not attempted — takes the clusters of `resolution` as. */
+  private def whole(resolution: Resolution): Seq[Option[Int]] = {
+    val fresh = new Stage
+    fresh.tried = false
+    fresh.apply(resolution, version = 2).map(_.film)
+  }
+
+  "a settled cluster a listing sorting first joins" should "keep its key, and be decided as a whole resolve decides it, its past settle no input" in {
     val s       = new Stage
     val settled = s.apply(model(unmatched(second)), version = 1).head
     settled.film shouldBe Some(913760)
     s.tried = false
     val joined = s.apply(model(unmatched(first, second)), version = 2).head
     s.stage.keyOf(joined) shouldBe s.stage.keyOf(settled)
-    joined.film shouldBe Some(913760)   // keyed by its first listing, it waited anew on RT and fell back to the model's take
-    s.stage.waitingOn(joined).settled shouldBe true
+    // RT's question for the joined cluster not attempted: it waits, as a whole resolve's does, the model's take standing
+    Seq(joined.film) shouldBe whole(model(unmatched(first, second)))
+    s.stage.waitingOn(joined).settled shouldBe false
   }
 
-  "a merge" should "keep the older key and take on the younger's settle memory, its wait's start told to the staging screen" in {
+  "a merge" should "keep the older key, told to the staging screen, and take on none of the younger's memories" in {
     val s     = new Stage
     // the older cluster the model took (nothing settled), the younger one settled on the families without RT
     val Seq(took, settled) = s.apply(model(modelTook(first), unmatched(second)), version = 1)
@@ -76,12 +85,12 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     s.told.clear()
     val merged = s.apply(model(unmatched(first, second)), version = 2).head
     s.stage.keyOf(merged) shouldBe older
-    merged.film shouldBe Some(913760)   // retired with its key, the younger's memory left the merged cluster waiting anew
-    s.stage.waitingOn(merged).settled shouldBe true
+    Seq(merged.film) shouldBe whole(model(unmatched(first, second)))   // its settle is the question memory's, not a half's past
+    s.stage.waitingOn(merged).settled shouldBe false
     s.told.collect { case m: StagingEvent.Merged => (m.cluster, m.absorbed) } shouldBe Seq((older, younger))
   }
 
-  it should "take on the younger's inline ask: the merged cluster is not asked inline again" in {
+  it should "carry no inline ask: the merged cluster, new under its key, is asked inline as a new cluster is" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val s     = new Stage(askNow = (questions, _) => asked += questions)
     s.tried = false
@@ -89,7 +98,7 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     s.apply(model(modelTook(first), unmatched(second)), version = 2)            // a new cluster: asked inline once
     asked should have size 1
     s.apply(model(unmatched(first, second)), version = 3)                       // merged into the older key, nothing held under it
-    asked should have size 1
+    asked should have size 2
   }
 
   "a split" should "keep the key on the larger half, the other a new cluster asked inline" in {
