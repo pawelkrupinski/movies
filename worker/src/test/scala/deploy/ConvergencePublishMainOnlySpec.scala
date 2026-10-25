@@ -46,7 +46,7 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
     record should include("corpus-green-${{ inputs.code }}.txt")
     RepoFile.read(".github/actions/convergence-setup/action.yml") should include("corpus-green-${{ inputs.code }}.txt")
     val leg = RepoFile.read(".github/workflows/country-convergence-leg.yml")
-    leg.split("\\n").count(_.contains("green: ${{ steps.suite.outcome == 'success' }}")) shouldBe 1
+    leg.split("\\n").count(_.contains("green: ${{ steps.suite.outcome == 'success' && steps.suite.outputs.failed != 'true' }}")) shouldBe 1
   }
 
   "every recording write" should "also run on a Forgejo scheduled run, whose ref is the bare branch name" in {

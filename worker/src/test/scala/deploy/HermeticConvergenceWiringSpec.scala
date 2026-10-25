@@ -202,7 +202,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("inputs.mode == 'hermetic' && inputs.takes-row && ',\"takes\"' || ''")
     convergence should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}")
-    convergence should include("if: \"!startsWith(matrix.phase, 'takes')\"\n              continue-on-error: ${{ inputs.mode == 'record' }}\n              shell: bash")
+    convergence should include("if: \"!startsWith(matrix.phase, 'takes')\"\n              shell: bash")
     convergence should include("- name: Publish convergence test report\n              if: always() && !startsWith(matrix.phase, 'takes')")
   }
 

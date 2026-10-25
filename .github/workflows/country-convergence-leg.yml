@@ -699,14 +699,13 @@ jobs:
             # pipeline would otherwise report `tee`'s exit status and pass a failing
             # suite.
             #
-            # A RECORDING'S SUITE JUDGES NOTHING (`continue-on-error` in record mode): it is how the capture boots the
+            # A RECORDING'S SUITE JUDGES NOTHING (exits 0 in record mode, `failed` saying how it ended): it is how the capture boots the
             # corpus and fills its tree live, and what it asserts over live fallbacks is no verdict on code. Whether the
             # capture worked is "Fail the capture unless its boot completed" below; whether the code holds on what it
             # captured is the hermetic replay of it, `Verify scrape recording`.
             - name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite
               id: suite
               if: "!startsWith(matrix.phase, 'takes')"
-              continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
@@ -729,8 +728,15 @@ jobs:
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   scripts/ci/mongo-exec.sh du -sh /data/db || true
                   scripts/ci/mongo-top.sh report || true
+                  # Not `continue-on-error: <expression>`: Forgejo refuses an expression there and the whole leg with it.
+                  if [ "${suite:-0}" != 0 ] && [ "$RECORDING" = true ]; then
+                      echo "failed=true" >> "$GITHUB_OUTPUT"
+                      echo "::warning::the recording's suite failed (exit $suite) -- no verdict over live fallbacks; Verify scrape recording judges the code on this recording"
+                      exit 0
+                  fi
                   exit "${suite:-0}"
               env:
+                  RECORDING:        ${{ inputs.mode == 'record' }}
                   # The spec builds this country's TitleNormalizer itself; naming the
                   # country here too means anything that reads the environment
                   # directly (`Country.fromEnv`) agrees with it rather than
@@ -1040,7 +1046,7 @@ jobs:
               with:
                   code: ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  green: ${{ steps.suite.outcome == 'success' }}
+                  green: ${{ steps.suite.outcome == 'success' && steps.suite.outputs.failed != 'true' }}
                   mode: ${{ inputs.mode }}
                   complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}
                   pin: ${{ inputs.pin-hermetic }}
@@ -1094,7 +1100,7 @@ jobs:
               if: always() && inputs.mode == 'record' && matrix.phase == 'convergence'
               shell: bash
               env:
-                  SUITE: ${{ steps.suite.outcome }}
+                  SUITE: ${{ steps.suite.outputs.failed == 'true' && 'failure' || steps.suite.outcome }}
               run: |
                   if grep -q "^\[${{ inputs.code }}\] boot complete" convergence.log 2>/dev/null; then
                       [ "$SUITE" = success ] || echo "::warning::${{ inputs.country }}'s recording suite ended $SUITE after a complete boot -- a live-fallback run, no verdict: Verify scrape recording replays this recording hermetically and judges the code"
