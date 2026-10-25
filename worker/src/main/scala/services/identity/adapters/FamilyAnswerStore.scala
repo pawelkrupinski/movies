@@ -91,11 +91,11 @@ object FamilyAnswerStore {
   /** The id the agreement reads a filing `key` under, or None for one it does not read: a key an agreement question names
    *  as itself; the TMDB store's find of an IMDb id (`tmdb_queries:find|<imdbId>`) as `find|<imdbId>` and its film record
    *  (`tmdb_films:<id>`) as `tmdb|record|<id>` ([[Question.id]]) — only while `awaited` says the stage waits on that
-   *  question, or (a record) `read` says a kept verdict read it: a take-up files thousands of records, and each counted
+   *  question, or `read` says a kept verdict or the last apply's takes read it: a take-up files thousands of records, and each counted
    *  would move the stage's version for nothing; any other TMDB question (a search) as
    *  [[services.identity.agreement.AgreementStage.QueryFiled]] while a kept verdict read one. */
   def agreementKeyOf(key: String, awaited: Question => Boolean, read: String => Boolean = _ => false): Option[String] =
-    if (key.startsWith(FindPrefix)) Some(Question.Find(key.substring(FindPrefix.length))).filter(awaited).flatMap(_.id)
+    if (key.startsWith(FindPrefix)) Some(Question.Find(key.substring(FindPrefix.length))).filter(q => awaited(q) || q.id.exists(read)).flatMap(_.id)
     else if (key.startsWith(FilmPrefix))
       key.substring(FilmPrefix.length).toIntOption.map(Question.Record(_)).filter(q => awaited(q) || q.id.exists(read)).flatMap(_.id)
     else if (key.startsWith(QueryPrefix)) Some(services.identity.agreement.AgreementStage.QueryFiled).filter(read)

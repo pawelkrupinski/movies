@@ -240,6 +240,29 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     decided(stageOver(0, new InMemoryAgreementKeys), version = 1).basis shouldBe ResolverDecision.Basis.Corrected
   }
 
+  // the no-drift principle (docs/design/identity-no-drift.md): a correction is a cache of everything it read — TMDB's
+  // records too, not only the families' answers and posters — so a record filed again with other facts decides it again
+  it should "be decided again when a TMDB record it read is filed again, as a stage reading it from the start decides it" in {
+    var record = table(hasDirector = "Maciej Kawalski")   // Has's film's record crediting the take's director: no correction
+    val filed  = scala.collection.mutable.Set.empty[String]
+    val lookups = new services.identity.IdentityLookups {
+      def hasDetail(l: Listing): Boolean = record.hasDetail(l)
+      def detail(l: Listing) = record.detail(l)
+      def candidates(q: CandidateQuery) = record.candidates(q)
+      def film(id: Int) = record.film(id)
+    }
+    def stageOver(stored: AgreementVerdicts) = new AgreementStage(takingHas, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      stored, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(lookups), changes = _ => Some(filed.toSet))
+    val running = stageOver(new InMemoryAgreementVerdicts)
+    decided(running).basis shouldBe ResolverDecision.Basis.OwnMatch
+    record = table()
+    filed += AgreementStage.recordReadId(1002)
+    running.reads(AgreementStage.recordReadId(1002)) shouldBe true
+    val whole = decided(stageOver(new InMemoryAgreementVerdicts), version = 2)
+    (whole.basis, whole.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
+    decided(running, version = 2).basis shouldBe whole.basis
+  }
+
   // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so its poster was never hashed and the
   // correction of "Ktoś całkiem obcy" waited on it for ever. A poster given up on is no evidence: the rest is read
   // as for a take a poster questions, and decides only what it decides without the poster.

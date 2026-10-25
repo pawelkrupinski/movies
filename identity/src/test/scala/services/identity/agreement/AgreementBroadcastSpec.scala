@@ -272,6 +272,26 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
   }
 
+  // the no-drift principle (docs/design/identity-no-drift.md): whether a year-only record still holds the day's take is
+  // the question memory's to say — read again, it waits no more — never whether THIS stage asked it: a stage that never
+  // did (a whole resolve, a restart) waited on it for good
+  "a year-only record read again and still holding its year alone" should "hold no take, in a stage that never asked it too" in {
+    val listing = screening("Samson i Dalila", "2027-03-02")   // the RBO's broadcast day
+    val stored  = new YearOnlyRecords(table, Set(metSamson.id))
+    var reread  = false
+    def stageOver() = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
+      attempted = { case Question.Record(id) => reread && id == metSamson.id; case _ => false })
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val running = stageOver()
+    running.apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None   // the Met's day first
+    reread = true
+    val whole = stageOver().apply(resolution, Map(listing.key -> listing).get, version = 2).decisions.head
+    (whole.film, whole.basis) shouldBe ((Some(rboSamson.id), ResolverDecision.Basis.Broadcast))
+    running.apply(resolution, Map(listing.key -> listing).get, version = 2).decisions.head.film shouldBe whole.film
+  }
+
   "a stage relay whose days could not be read" should "wait, asking nothing, and be taken once a read gives its days" in {
     val unread  = FilmTable.listing(Multikino, "Samson i Dalila").copy(screenings = ScreeningDays.Unknown)
     val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
@@ -288,28 +308,28 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     (ScreeningDays.Unknown ++ ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5)))).isUnknown shouldBe true
   }
 
-  "a stored record of the billed work holding only its year" should "be read again once only: a record TMDB still dates by its year is then taken as dating none" in {
+  "a stored record of the billed work holding only its year" should "be read again until the memory says it was: a record TMDB still dates by its year is then taken as dating none" in {
     val listing = screening("Samson i Dalila", "2026-12-05")
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))   // never gains its day
-    val filed   = scala.collection.mutable.Set.empty[String]
+    var reread  = false
     val asked   = scala.collection.mutable.Buffer.empty[Set[Question]]
     val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
-      changes = _ => Some(filed.toSet))
+      attempted = { case Question.Record(id) => reread && id == metSamson.id; case _ => false })
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     def apply(version: Long) = stage.apply(resolution, Map(listing.key -> listing).get, version).decisions.head
     apply(1).film shouldBe None
-    // other answers filed meanwhile: still waiting on the read, and not asked twice
-    filed += "imdb|title|Samson i Dalila"
+    // other answers filed meanwhile: still waiting on the read, asked for again (the queue's memory spares a second ask)
     apply(2).film shouldBe None
     stage.wanted.collect { case Question.Record(id) => id } shouldBe Set(metSamson.id)
-    // the read filed, the record still year-only: waited on no more, and never asked again
-    filed += AgreementStage.recordReadId(metSamson.id)
+    // the read answered (the asker marks it so), the record still year-only: waited on no more, and asked no more
+    reread = true
+    asked.clear()
     apply(3).film shouldBe None
     apply(4).film shouldBe None
     stage.wanted.collect { case Question.Record(id) => id } shouldBe empty
-    asked.flatMap(_.collect { case Question.Record(id) => id }) shouldBe Seq(metSamson.id)
+    asked.flatMap(_.collect { case Question.Record(id) => id }) shouldBe empty
   }
 
   // The settle rule (docs/design/identity-questions.md, step 4): no clock ends a wait. A record's read is waited on until it

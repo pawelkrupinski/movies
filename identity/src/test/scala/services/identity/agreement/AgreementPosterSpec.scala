@@ -37,6 +37,33 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     decided.explanation.last should include ("matches 'Lalka' (2026) (3 bits)")
   }
 
+  // the no-drift principle (docs/design/identity-no-drift.md): a cluster's candidates are a cache of the TMDB searches
+  // they were read from, so a search filed again with a film it did not find before reads them again: a film that
+  // appears later is the candidate it would have been from the start
+  it should "take a candidate a search filed again finds, as a stage reading it from the start does" in {
+    val only1968 = new FilmTable(Seq(FilmTable.F(1002, "Lalka", 1968, "Wojciech Has", 159)), normalizer)
+    var now: FilmTable = only1968
+    val filed  = scala.collection.mutable.Set.empty[String]
+    val lookups = new services.identity.IdentityLookups {
+      def hasDetail(l: Listing): Boolean = now.hasDetail(l)
+      def detail(l: Listing) = now.detail(l)
+      def candidates(q: services.identity.CandidateQuery) = now.candidates(q)
+      def film(id: Int) = now.film(id)
+    }
+    val posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))))
+    def stageOver() = new AgreementStage(silentFamilies, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(lookups), changes = _ => Some(filed.toSet))
+    val listing = lalka()
+    val running = stageOver()
+    running.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
+    now = table
+    filed += AgreementStage.QueryFiled
+    running.reads(AgreementStage.QueryFiled) shouldBe true
+    val whole = stageOver().apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head
+    (whole.film, whole.basis) shouldBe ((Some(1001), ResolverDecision.Basis.Poster))
+    running.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head.film shouldBe whole.film
+  }
+
   it should "take none when two candidates' posters are as near, or none is near enough" in {
     val listing = lalka()
     def decidedWith(films: Map[Int, Seq[PosterHash]]) =

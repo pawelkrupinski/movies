@@ -60,13 +60,11 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     if (unknown) Answer.Unknown else Answer.Known(found)
   }
 
-  /** Does the take still wait on a record's day: never asked for again, or asked and its read neither filed since
-   *  (`changes`; none it can tell of counts as filed) nor attempted (`attempted`: a read that failed)? No clock: the
-   *  settle rule's (docs/design/identity-questions.md, step 4). A record TMDB still dates by its year once read again is
-   *  taken as dating none: one read, never a loop. */
-  private[agreement] def waitsOn(film: Int): Boolean = rereads.get(film).forall { askedAt =>
-    !changes.changedSince(askedAt).forall(_(AgreementStage.recordReadId(film))) && !attempted(Question.Record(film))
-  }
+  /** Does the take still wait on a record's day: its read again not attempted yet — the question memory's say (an answer
+   *  filed is marked as one), never whether this stage asked it (docs/design/identity-no-drift.md)? No clock: the settle
+   *  rule's (docs/design/identity-questions.md, step 4). A record TMDB still dates by its year once read again is taken as
+   *  dating none: one read, never a loop. */
+  private[agreement] def waitsOn(film: Int): Boolean = !attempted(Question.Record(film))
 
   /** `answer`, `hashes`' to the poster `question`, the question noted in `asked` while it is `Unknown` or stale: a stale
    *  answer is read, and asked again; one attempted and not answered is read as `absent` ([[settled]]). */
@@ -94,7 +92,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
         if (shown.isEmpty) Answer.Known(Nil)
         else {
           val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
-          def apart(film: Int) = tmdb.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
+          def apart(film: Int) = looked.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
           val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
           val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), Nil, hashes, asked))
           if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
@@ -113,25 +111,40 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     Option.unless(noting.unknown)(found)
   }
 
-  /** The TMDB films the cluster's own evidence reaches, none denied — read once per listings' digest; none, read again
-   *  once something is filed (another `version`), while a TMDB question of theirs has no answer. */
-  private[agreement] def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] =
-    candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying)).map { kept =>
-      if (kept.blindAt.isDefined) blindReads += 1
-      kept.films
-    }.getOrElse {
+  /** The TMDB films the cluster's own evidence reaches, none denied — a cache of its listings and of every TMDB answer
+   *  the read took (its receipt): kept while its listings' digest stands and none of those answers was filed since; none,
+   *  read again once something is filed (another `version`), while a TMDB question of theirs has no answer. What it read
+   *  goes into the receipt being made, if any, kept or read afresh. */
+  private[agreement] def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] = {
+    val kept = candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying) && standing(kept)).map { kept =>
+      if (kept.checkedAt == applying) kept else { val now = kept.copy(checkedAt = applying); candidateFilms(id) = now; now }
+    }
+    val now  = kept.getOrElse {
       var blind = false
-      val films = tmdb.fold(Seq.empty[Int]) { lookups =>
+      val reads = mutable.Map.empty[String, Long]
+      val films = receipting(reads, listings)(looked.fold(Seq.empty[Int]) { lookups =>
         val found = searchedFilms(listings, lookups)
         blind = found.isEmpty
-        if (blind) blindReads += 1
         found.getOrElse(Nil)
-      }
+      })
       // read blind — a search with no answer — it is kept only while nothing is filed: the digest does not move when TMDB
       // answers, so kept for good, "none" stood for good; kept for no pass, every pass searched live TMDB again
-      candidateFilms(id) = AgreementStage.CandidateFilms(digest, films, Option.when(blind)(applying))
-      films
+      val fresh = AgreementStage.CandidateFilms(digest, films, Option.when(blind)(applying), reads.toMap, applying)
+      candidateFilms(id) = fresh
+      fresh
     }
+    if (now.blindAt.isDefined) blindReads += 1
+    // kept, its reads are this apply's too, and the receipt's being made
+    if (kept.isDefined) now.reads.keysIterator.foreach(read => AgreementStage.recordOf(AgreementStage.filedAs(read)).foreach(film => recordsReading.add(film)))
+    if (kept.isDefined && now.reads.keysIterator.exists(_.contains("|candidates|"))) queriedReading = true
+    if (receipt != null) receipt ++= now.reads
+    now.films
+  }
+
+  /** Does a kept read of a cluster's candidates still stand: checked at this version, else none of what it read filed since
+   *  ([[AnswerChanges]]; one that cannot tell is read again)? */
+  private[agreement] def standing(kept: AgreementStage.CandidateFilms): Boolean =
+    kept.checkedAt == applying || changes.changedSince(kept.checkedAt).exists(refiled => !kept.reads.keysIterator.exists(read => refiled(AgreementStage.filedAs(read))))
 
   /** The TMDB films the listings' own title searches find ([[services.identity.IdentityMeasures.searchQueries]], of TMDB
    *  and IMDb's titled lists) — the candidates a poster may name against a model take, read off the answers the model
@@ -139,7 +152,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  the five corpora (2026-10-06). Read, never kept; none while one of the searches has no answer — or, `answeredOnly`,
    *  the films the answered ones find (the synopsis evidence's namesakes, [[synopsisAgainst]]). */
   private[agreement] def titledFilms(listings: Seq[Listing], answeredOnly: Boolean = false): Seq[Int] =
-    tmdb.fold(Seq.empty[Int]) { lookups =>
+    looked.fold(Seq.empty[Int]) { lookups =>
       val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(Evidence.of(listing, None).measured)).distinct
         .flatMap(text => Seq(CandidateQuery.Title(text), CandidateQuery.ImdbTitled(text)))
       val found = queries.map(lookups.candidates)
@@ -152,7 +165,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  title search's most popular hit, a tie picking none: TMDB's evidence of the title alone, which no feed's facts
    *  enter ([[Catalogue.take]]). An answer not held picks nothing. */
   private[agreement] def titlePicks(listings: Seq[Listing]): Set[Int] =
-    tmdb.fold(Set.empty[Int]) { lookups =>
+    looked.fold(Set.empty[Int]) { lookups =>
       listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(_.trim).filter(_.nonEmpty).distinct.flatMap { text =>
         lookups.candidates(CandidateQuery.Title(text)).toOption.flatMap { hits =>
           val named = hits.filterNot(hit => FallbackIds.isFallback(hit.tmdbId))

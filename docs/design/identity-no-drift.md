@@ -74,6 +74,7 @@ Each item has a verdict:
 | 5 | FilmIds, `IdAssigner`, `FilmIdCounters` | projection | (a) name | The film and members come from the decision. `IdAssignerSpec`. |
 | 6 | `LiveProjectionIndex.previous`, prior takes | projection | (a) name / log | They feed the id label, slot priors and the change log, never the decision. |
 | 7 | Record carry-over (`heldLinks`, `retainedSynopses`, the `tmdbAttempt` stamp) | `ProjectionDrafting` | open, record content only | This is not a take or a grouping, but it is history in the record (IMDb link, synopses). Listed under gaps. |
+| 8a | What a take reads afresh each apply (the poster vote's records, the broadcast join's, synopses, IMDb finds) | `AgreementTakes`, the last-apply shortcut | **(b) fixed** | These are not stored, but the quiet-apply shortcut handed back the last result until the version moved. Every TMDB read goes through `Noting`, and the last full apply's records, searches and finds are what `AgreementStage.reads` tells the feed (`FamilyAnswerStore.readBy`, finds included). |
 | 8 | Held verdicts: the receipt was incomplete | `AgreementStage.held`, `identity_agreements` | **(b) fixed** | The receipt lists only family answers. A verdict now records everything it read, each answered or not: every family answer (unanswered ones too), the record of the film TMDB leans to, every TMDB lookup its fill makes (searches, records, release days, cast, details), the fill's production searches, and the year. The full check re-reads each one (`AgreementStage.read`). The feed now counts a filing of any TMDB record or search a held verdict read (`FamilyAnswerStore.readBy`, `AgreementStage.reads`). Specs: `AgreementStageSpec` "...the record of the film TMDB leans to is filed..." (the Dolly class), `AnswerFeedSpec` "count a TMDB record or search a kept verdict read". |
 | 9 | Year read from the clock | `AgreementStage.resolved` | **(b) fixed** | The year is in the receipt, and a year turning clears `checked` and the last-apply shortcut. Spec: "decide a kept verdict again when the year turns". Cost: once a year, every verdict is read again; the ones whose year read moved are decided again. |
 | 10 | Verdict found by cluster key | `verdictOf`, `corrected` (and its budget-spent fallback) | **(c) removed** | A verdict is now found by its listings' digest, under whichever key filed it (`heldFor`, `heldByDigest`). Specs: `AgreementCorrectionSpec` "stand as last decided after a deploy, whether or not it hands the stage its cluster keys", and harness property 3. |
@@ -85,11 +86,11 @@ Each item has a verdict:
 | 16 | `askedNow` (inline ask once) | `AgreementStage` | (a) asking only | The answers it files are inputs. It only stops a second 5-second inline wait. |
 | 17 | `checked` (digest, version) | `AgreementStage` | (a) cache validity | Sound once every receipt entry's filing moves the version (8) and the year clears it (9). |
 | 18 | `waiting`, `blindAt` | `AgreementStage` | (a) | A waiting cluster takes the model's take, as a whole resolve with the same gaps does. It is resolved again when due. |
-| 19 | `candidateFilms` (digest, blindAt) | `AgreementCandidates` | **(b) open** | It caches TMDB searches by listing digest, so a re-asked search with a new candidate stays unread. Fix: the receipt rule for the cache (record its searches, drop it on their filing). |
-| 20 | Correction verdicts' receipt | `AgreementCorrections` | **(b) open** | The receipt holds family reads and asked ids, but not the TMDB records (`named`) or candidates it reads. Fix: the same `Receipted` seam, with ids as `filedAs`. |
+| 19 | `candidateFilms` (digest, blindAt) | `AgreementCandidates` | **(b) fixed** | It cached TMDB searches by listing digest, so a re-asked search with a new candidate stayed unread. The cache now keeps its receipt and stands only while none of it was filed since (`standing`). Its reads also join the receipt being made. Spec: `AgreementPosterSpec` "take a candidate a search filed again finds". |
+| 20 | Correction verdicts' receipt | `AgreementCorrections` | **(b) fixed** | The receipt held family reads and asked ids, but not the TMDB records or candidates it reads. Every TMDB and venue read now goes into `StoredVerdict.reads` through the one seam (`Noting`, `receipting`), and a filing of one decides the correction again. Spec: `AgreementCorrectionSpec` "be decided again when a TMDB record it read is filed again". |
 | 21 | Budget-spent correction fallback (stands as last decided, under any rules) | `corrected` | (a) at quiescence | A deliberate cost bound (`CorrectionsPerApply`). It equals the whole resolve once `backlog` is false (harness property 2). |
 | 22 | `correctionWaits` | `AgreementCorrections` | (a) at quiescence | Cleared when a verdict is found under another key (10). It decides only whether a waiting correction is read again. |
-| 23 | `rereads` (a record asked once in the stage's life) plus `waitsOn` | `AgreementCandidates` | **(c) open** | Whether a year-only record still waits depends on whether THIS stage instance asked. Fix: derive it from the question memory (the read was attempted). |
+| 23 | `rereads` (a record asked once in the stage's life) plus `waitsOn` | `AgreementCandidates` | **(c) fixed, deleted** | Whether a year-only record still waits depended on whether THIS stage instance asked. It now depends on the question memory (the read was attempted; the asker marks an answer as one), and it is in the fill's receipt (`tried|...`). An attempt marked since the last apply reads every receipt again. Spec: `AgreementBroadcastSpec` "...hold no take, in a stage that never asked it too". |
 | 24 | `last`, `takenAs`, `digested`, `events`, `keyed` | `AgreementStage` | (a) cache / name | Identity caches of the same decision objects. |
 | 25 | Staging events, `Merged` wait start | publisher | (a) display | The screen only. |
 | 26 | Question memory (`attempted`) | worker | (b) input | It is read by the whole resolve too (`newAgreementStage`, harness `World.tried`). |
@@ -100,10 +101,8 @@ The counts of the 27:
 | Verdict | Count | Items |
 |---|---|---|
 | (a) cannot affect a take | 17 | |
-| (b) fixed | 2 | 8, 9 |
-| (c) fixed or deleted | 4 | 10–13 |
-| (b) open | 2 | 19, 20 |
-| (c) open | 1 | 23 |
+| (b) fixed | 5 | 8, 8a, 9, 19, 20 |
+| (c) fixed or deleted | 5 | 10–13, 23 |
 | Record carry-over, open | 1 | 7 |
 | Dead | 1 | 27 |
 
@@ -143,7 +142,9 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
 
 ## What still blocks retiring the checks
 
-1. The open items 19, 20 and 23 (searches cached by digest, correction receipts, `rereads`), and 7 (record content).
+1. Item 7 (record content carried by the projection), and receipts of the question memory's outcomes for a
+   settled family question (an attempt swept from the memory leaves a settled verdict standing; a whole resolve would
+   wait).
 2. The bounded backfill, with its progress metric reaching 0 in every country.
 3. Input kinds the harness does not generate yet:
    - venue detail pages that move;

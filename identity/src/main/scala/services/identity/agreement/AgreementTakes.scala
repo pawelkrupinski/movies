@@ -26,8 +26,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  reads is noted in `reads`, the verdict's receipt. */
   private[agreement] def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
                        thisYear: Int, version: Long, asked: mutable.Set[Question], reads: mutable.Map[String, Long]): Answer[Option[StoredFill]] =
-    tmdb.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { tmdbLookups =>
-      val lookups = new AgreementStage.Receipted(tmdbLookups, AgreementStage.TmdbRead, listings, reads)
+    looked.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
       val noting  = new AgreementStage.UnknownNoting(lookups)
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
       if (noting.unknown) Answer.Unknown
@@ -35,7 +34,10 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
-          productions = () => productionsOf(listings, measured, asked, Some(reads)), undated = undatedOf(lookups))
+          productions = () => productionsOf(listings, measured, asked, Some(reads)), undated = { film =>
+            reads(s"${AgreementStage.TriedRead}|${AgreementStage.recordReadId(film)}") = AgreementStage.digest(Seq(Answer.Known((!waitsOn(film)).toString).toString))
+            undatedOf(lookups)(film)
+          })
         Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
           StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
       }
@@ -124,7 +126,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  descriptions are read as the cast is, never waited on. The venue's words are those of its listings and their detail
    *  pages, none of a listing whose facts a feed catalogue states, as [[venueNames]] reads them. */
   private[agreement] def synopsisAgainst(id: String, digest: Long, listings: Seq[Listing], film: Int): Option[String] =
-    tmdb.flatMap { lookups =>
+    looked.flatMap { lookups =>
       val venue = venueStated(listings).foldLeft(ProseWords.None) { case (words, (listing, page)) =>
         words ++ listing.words ++ page.fold(ProseWords.None)(_.words)
       }
@@ -159,7 +161,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private[agreement] def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
-      val named = tmdb.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(_.titled)
+      val named = looked.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(_.titled)
       taking(decision)(ResolverDecision.Basis.Poster,
         s"the venue's poster matches $named ($bits bits), no other candidate's within ${PosterEvidence.VoteBits}", film = Some(film))
     }
@@ -170,7 +172,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  read again. */
   private[agreement] def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing],
                         version: Long, asked: mutable.Set[Question]): Option[ResolverDecision] =
-    tmdb.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
+    looked.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
       val records = (candidatesOf(id, digest, listings) ++ uncatalogued(listings, lookups)).distinct.map(film => film -> lookups.film(film))
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>

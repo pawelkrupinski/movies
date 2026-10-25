@@ -49,15 +49,20 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
               ids.foreach(id => hashed.add(AgreementStage.digest(Seq(id))))
               hashed
             })
-            refiled.exists(filed => !c.reads.exists(read => filed.contains(read))) && { checked(key) = (digest, version); true }
+            refiled.exists(filed => !c.reads.exists(read => filed.contains(read)) &&
+              !v.reads.keysIterator.exists(read => filed.contains(AgreementStage.digest(Seq(AgreementStage.filedAs(read)))))) && {
+              checked(key) = (digest, version); true
+            }
           }
         }
     })
     val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
       val listings = sortedListings(decision, listingOf)
-      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version)
-      val verdict = StoredVerdict(key, digest, Map.empty, None, decidedUnder, correction = Some(correction))
+      // its receipt: every TMDB record and search it read, so a filing of one reads it again ([[Noting]])
+      val receipt = mutable.Map.empty[String, Long]
+      val (correction, waits) = receipting(receipt, listings)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version))
+      val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; file(verdict) }
       checked(key) = (digest, version)
       waits.fold(correctionWaits -= key)(w => correctionWaits(key) = w)
@@ -98,10 +103,10 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
     // kept, a take decided while the model's own record or its candidates' searches were gaps stood uncorrected until its
     // listings moved or a deploy read it again (UK Chichester's "The Ties That Bind Us", identity-slice --drift on 573)
     val blindBefore = blindReads
-    def record(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
+    def record(id: Int) = venuesLooked.film(id).toOption.flatten.orElse(looked.flatMap(_.film(id).toOption.flatten))
     def named(id: Int) = {
       val found = record(id)
-      if (found.isEmpty && tmdb.fold(venues.film(id))(_.film(id)) == Answer.Unknown) blindReads += 1
+      if (found.isEmpty && looked.fold(venuesLooked.film(id))(_.film(id)) == Answer.Unknown) blindReads += 1
       found
     }
     def title(id: Int) = record(id).fold(s"tmdb $id")(_.titled)
@@ -118,7 +123,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // a correction reads no film database's productions; a record of the billed work stored with its year alone is read
       // again before the day decides, as the stage's own take reads it (UK Theatr Gwaun Fishguard's bare "Romeo and
       // Juliet" on the RBO relay's day stood as Zeffirelli's film while the relay's record held only 2027)
-      tmdb.flatMap(lookups => Broadcast.take(listings, measured, known)(undatedOf(lookups)).left.map(asked ++= _.map(Question.Record(_))).toOption.flatten)
+      looked.flatMap(lookups => Broadcast.take(listings, measured, known)(undatedOf(lookups)).left.map(asked ++= _.map(Question.Record(_))).toOption.flatten)
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
     val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
       val modelRecord = SourceRecord.ofTmdb(model, film)

@@ -174,7 +174,53 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** Does a verdict the stage keeps read the TMDB record or search a filing under `id` comes as? Then that filing must
    *  reach the stage, as every answer it read does: the verdict is a cache of what it read. Read from any thread. */
-  def reads(id: String): Boolean = readCounts.containsKey(id)
+  def reads(id: String): Boolean = readCounts.containsKey(id) || (id match {
+    case AgreementStage.QueryFiled => queriedNow
+    case _ if id.startsWith(AgreementStage.FindPrefix) => findsNow.contains(id)
+    case _ => AgreementStage.recordOf(id).exists(film => recordsNow.contains(film))
+  })
+
+  /** The receipt the decision being made notes what it reads in ([[Noting]]), and that decision's listings, sorted: set
+   *  by [[receipting]] on the applying thread. */
+  private[agreement] var receipt: mutable.Map[String, Long] = null
+  private[agreement] var receiptOf: Seq[Listing]           = Nil
+  /** `decide`, everything it reads through the stage's lookups noted in `into`, a receipt of `listings`' decision. */
+  private[agreement] def receipting[A](into: mutable.Map[String, Long], listings: Seq[Listing])(decide: => A): A = {
+    val (was, of) = (receipt, receiptOf)
+    receipt = into; receiptOf = listings
+    try decide finally { receipt = was; receiptOf = of }
+  }
+  /** What the current apply's takes read of TMDB — its records, whether a search, the IMDb ids found — and what the last
+   *  apply's did ([[reads]]): what a take reads afresh on every apply must reach it when filed, as a verdict's receipt
+   *  does. */
+  private[agreement] var recordsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[Integer]()
+  private[agreement] var findsReading   = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+  private[agreement] var queriedReading = false
+  @volatile private var recordsNow: java.util.Set[Integer] = java.util.Collections.emptySet()
+  @volatile private var findsNow: java.util.Set[String]    = java.util.Collections.emptySet()
+  @volatile private var queriedNow = false
+
+  /** TMDB's and the venues' lookups as the stage reads them: each read noted ([[Noting]]). */
+  private[agreement] lazy val looked: Option[IdentityLookups] = tmdb.map(new Noting(_, AgreementStage.TmdbRead))
+  private[agreement] lazy val venuesLooked: IdentityLookups   = new Noting(venues, AgreementStage.VenuesRead)
+
+  /** `inner`, each read noted: among what the current apply read ([[reads]]), and in the [[receipt]] being made, if any —
+   *  under `<source>|<kind>|<argument>` (a listing by its place among the decision's), with the digest of what it read,
+   *  nothing there yet too ([[AgreementStage.Receipt.reread]] reads it again). */
+  private[agreement] final class Noting(inner: IdentityLookups, source: String) extends services.identity.ForwardingIdentityLookups(inner) {
+    private def noted[A](kind: String, argument: => String, answer: Answer[A]): Answer[A] = {
+      if (receipt != null) receipt(s"$source|$kind|$argument") = AgreementStage.digest(Seq(answer.toString))
+      answer
+    }
+    private def record[A](kind: String, tmdbId: Int, answer: Answer[A]): Answer[A] = { recordsReading.add(tmdbId); noted(kind, tmdbId.toString, answer) }
+    private def placeOf(listing: Listing): String = { val at = receiptOf.indexWhere(_.key == listing.key); if (at >= 0) at.toString else listing.key.toString }
+    override def detail(listing: Listing): Answer[Option[DetailFacts]]               = noted("detail", placeOf(listing), inner.detail(listing))
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { queriedReading = true; noted("candidates", query.sortKey, inner.candidates(query)) }
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]            = record("film", tmdbId, inner.film(tmdbId))
+    override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]        = record("release", tmdbId, inner.releaseDay(tmdbId))
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                      = record("cast", tmdbId, inner.cast(tmdbId))
+    override def overview(tmdbId: Int): Answer[Option[services.identity.ProseWords]] = record("overview", tmdbId, inner.overview(tmdbId))
+  }
   /** The `version` the stored verdicts were loaded at: what this worker's families answered cannot have moved while it
    *  was down — it alone files them — so a verdict kept under these rules, its listings as they were, stands then without
    *  a single answer read again (prod PL 2026-10-05: re-reading every verdict's answers at boot was a 40 s, 514 MB pass). */
@@ -210,11 +256,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  hands nothing. */
   private[agreement] var handed   = Set.empty[Question]
   private[agreement] var handedAt = -1L
-  /** Each TMDB record handed to `ask` to read again for its day, with the version it was handed at — asked
-   *  ONCE in the stage's life: a record still holding its year after the read was filed ([[AgreementStage.recordReadId]]),
-   *  or once the read was attempted and failed (`attempted`), is waited on no more. One entry per stage-work record, a few
-   *  hundred. */
-  private[agreement] val rereads = TrieMap.empty[Int, Long]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
   private[agreement] val candidateFilms = TrieMap.empty[String, AgreementStage.CandidateFilms]
   /** The `version` the current [[apply]] runs at. */
@@ -248,6 +289,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (year != yearNow) { yearNow = year; checked.clear(); last = None }
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
     val waited = attemptedSince
+    if (waited) checked.clear()   // an attempt is in receipts too ([[AgreementStage.TriedRead]]): every verdict read again
     last.collect { case (was, at, came) if !reread && !waited && !unread && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
@@ -300,6 +342,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     }
     applying = version
     val waitedBefore = staging.map(_ => waitingClusters)
+    recordsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[Integer](); findsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+    queriedReading = false
     val decisions = resolution.decisions.map(decide(_, listingOf, pass))
     // what the stage took a decision as is keyed as the decision is: the projection's takes are these
     resolution.decisions.iterator.zip(decisions).foreach { case (model, took) =>
@@ -309,6 +353,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     keyed = pass.keys
     forgetGone(resolution, pass)
     staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
+    recordsNow = recordsReading; findsNow = findsReading; queriedNow = queriedReading
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
     handOver(version)
     // read before the questions are: a mark landing while they are read moves it, and the next apply reads them again
@@ -526,15 +571,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       counts.merge(id, by, (a, b) => { val n = a + b; if (n == 0) null else n })
     }
 
-  /** Hands `ask` what the last apply met unanswered and was not handed at `version` yet — a record to read again for
-   *  its day ONCE in the stage's life ([[rereads]]). */
+  /** Hands `ask` what the last apply met unanswered and was not handed at `version` yet. */
   private[agreement] def handOver(version: Long): Unit = {
     if (handedAt != version) { handed = Set.empty; handedAt = version }
-    val open = (wantedNow -- handed).filterNot { case Question.Record(film) => rereads.contains(film); case _ => false }
-    if (open.nonEmpty) {
-      ask(open); handed = handed ++ open
-      open.foreach { case Question.Record(film) => rereads(film) = version; case _ => () }
-    }
+    val open = wantedNow -- handed
+    if (open.nonEmpty) { ask(open); handed = handed ++ open }
   }
 
   /** What the apply came to, for [[metrics]]. */
@@ -664,7 +705,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val version = pass.version
     pass.resolves += 1
     // the verdict's receipt: everything its decision reads, each by its id with the digest of what it read — nothing
-    // there yet too — so a filing of any of it reads the verdict again ([[AgreementStage.Receipted]])
+    // there yet too — so a filing of any of it reads the verdict again ([[Noting]])
     val reads = mutable.Map.empty[String, Long]
     val gaps  = mutable.Set.empty[Question]
     val verdicts = {
@@ -692,12 +733,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         reads(AgreementStage.YearRead) = AgreementStage.digest(Seq(thisYear.toString))
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
-        val lean     = voteOf(decision, new AgreementStage.Receipted(venues, AgreementStage.VenuesRead, listings, reads))
-        val weighed  = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
+        val (weighed, fill) = receipting(reads, listings) {
+          val lean    = voteOf(decision, venuesLooked)
+          val weighed = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
+          // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
+          weighed -> (if (weighed.agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None)
+            else filledOf(decision, listings, known, stated, thisYear, version, pass.asked, reads))
+        }
         val agreed   = weighed.agreed
-        // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
-        val fill     = if (agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None)
-          else filledOf(decision, listings, known, stated, thisYear, version, pass.asked, reads)
         // settled: what none answered is in the receipt as unanswered ([[Recording]]), so its answer, once filed, reads
         // the verdict again
         val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten, refused = weighed.refused)
@@ -758,11 +801,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   }
 
   /** A stored read's answer now: a family's `<family>|<kind>|<text>`, as [[Recording]] notes it; TMDB's and the venues'
-   *  lookups', as [[AgreementStage.Receipted]] notes them, of `listings` (the cluster's, sorted); the year. */
+   *  lookups', as [[Noting]] notes them, of `listings` (the cluster's, sorted); the year. */
   private[agreement] def read(question: String, listings: Seq[Listing] = Nil): Option[Answer[?]] = question.split("\\|", 3) match {
     case Array(AgreementStage.YearRead) => Some(Answer.Known(yearNow.toString))
-    case Array(AgreementStage.VenuesRead, kind, arg) => AgreementStage.Receipted.reread(venues, kind, arg, listings)
-    case Array(AgreementStage.TmdbRead, kind, arg)   => tmdb.flatMap(AgreementStage.Receipted.reread(_, kind, arg, listings))
+    case Array(AgreementStage.TriedRead, rest*) => services.identity.Question.parse(rest.mkString("|")).map(q => Answer.Known(attempted(q).toString))
+    case Array(AgreementStage.VenuesRead, kind, arg) => AgreementStage.Receipt.reread(venues, kind, arg, listings)
+    case Array(AgreementStage.TmdbRead, kind, arg)   => tmdb.flatMap(AgreementStage.Receipt.reread(_, kind, arg, listings))
     case Array(label, kind, text) =>
       families.collectFirst { case (family, answers) if family.label == label => answers }.flatMap { answers =>
         kind match {
@@ -779,7 +823,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
    *  not answered yet, the IMDb id then noted in `finding`. */
   private[agreement] def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[Question]): Answer[Option[Int]] =
-    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(Agreement.tmdbFound(tmdbOf, _, finding, attempted)))(film => Answer.Known(Some(film)))
+    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None)) { id =>
+      findsReading.add(AgreementStage.FindPrefix + id)
+      Agreement.tmdbFound(tmdbOf, id, finding, attempted)
+    })(film => Answer.Known(Some(film)))
 
   /** A family's answers that note every question still a gap, and the digest of every answer read. */
   private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[String, Long]) extends FamilyAnswers {
@@ -817,13 +864,20 @@ object AgreementStage {
   val Unanswered: Long = digest(Seq(Answer.Unknown.toString))
 
   /** What a TMDB record read again for its day is filed as among the answers' changes ([[AnswerChanges]]). */
-  def recordReadId(tmdbId: Int): String = s"tmdb|record|$tmdbId"
+  def recordReadId(tmdbId: Int): String = s"$RecordPrefix$tmdbId"
+  private val RecordPrefix = "tmdb|record|"
+  /** The TMDB record a [[recordReadId]] names. */
+  def recordOf(id: String): Option[Int] = Option.when(id.startsWith(RecordPrefix))(id.substring(RecordPrefix.length)).flatMap(_.toIntOption)
+  /** What TMDB's find of an IMDb id is filed as ([[services.identity.Question.Find]]'s id). */
+  val FindPrefix = "find|"
   /** What any other TMDB question (a search, IMDb's suggestions) is filed as among the answers' changes: one id for all —
    *  a verdict that read any search is read again on a search's filing. */
   val QueryFiled = "tmdb|query"
 
-  /** A receipt's ids beside the families': the year, and the venues' and TMDB's lookups ([[Receipted]]). */
+  /** A receipt's ids beside the families': the year, and the venues' and TMDB's lookups ([[AgreementStage.Noting]]). */
   val YearRead   = "clock"
+  /** A receipt's entry for whether a question was attempted (the question memory's say): `tried|<question id>`. */
+  val TriedRead  = "tried"
   val VenuesRead = "venues"
   val TmdbRead   = "tmdb"
 
@@ -835,24 +889,8 @@ object AgreementStage {
     case _                                                                       => read
   }
 
-  /** `inner`, noting each answer read in `reads` — under `<source>|<kind>|<argument>`, a listing by its place among
-   *  `listings` (the cluster's, sorted) — with the digest of what it read, nothing there yet too: a decision's receipt
-   *  ([[StoredVerdict.reads]]), which [[reread]] reads again to tell whether the decision still stands. */
-  private[agreement] final class Receipted(inner: IdentityLookups, source: String, listings: Seq[Listing], reads: mutable.Map[String, Long])
-      extends services.identity.ForwardingIdentityLookups(inner) {
-    private def noted[A](kind: String, argument: String, answer: Answer[A]): Answer[A] = {
-      reads(s"$source|$kind|$argument") = digest(Seq(answer.toString)); answer
-    }
-    private def placeOf(listing: Listing): String = { val at = listings.indexWhere(_.key == listing.key); if (at >= 0) at.toString else listing.key.toString }
-    override def detail(listing: Listing): Answer[Option[DetailFacts]]          = noted("detail", placeOf(listing), inner.detail(listing))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]            = noted("candidates", query.sortKey, inner.candidates(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]       = noted("film", tmdbId.toString, inner.film(tmdbId))
-    override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]   = noted("release", tmdbId.toString, inner.releaseDay(tmdbId))
-    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                 = noted("cast", tmdbId.toString, inner.cast(tmdbId))
-    override def overview(tmdbId: Int): Answer[Option[services.identity.ProseWords]] = noted("overview", tmdbId.toString, inner.overview(tmdbId))
-  }
-  object Receipted {
-    /** The answer a receipt's `<kind>|<argument>` names, read from `lookups` now. */
+  object Receipt {
+    /** The answer a receipt's `<kind>|<argument>` names (as [[AgreementStage.Noting]] notes it), read from `lookups` now. */
     def reread(lookups: IdentityLookups, kind: String, argument: String, listings: Seq[Listing]): Option[Answer[?]] = kind match {
       case "detail"     => argument.toIntOption.flatMap(listings.lift).map(lookups.detail)
       case "candidates" => CandidateQuery.fromSortKey(argument).map(lookups.candidates)
@@ -1020,8 +1058,8 @@ object AgreementStage {
    *  only its fill's TMDB answers were missing (`blindAt`), resolved again once something is filed. */
   private[agreement] final case class Waiting(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None)
   /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had
-   *  no answer, to be read again at another. */
-  private[agreement] final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long])
+   *  no answer, to be read again at another — with what the read took (its receipt) and the version it was read at. */
+  private[agreement] final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long], reads: Map[String, Long], checkedAt: Long)
   /** Asks families' questions now, on the calling thread, for at most `within`, filing what they answer: a cluster with a
    *  newly scraped listing reads its families' answers in its first take (docs/design/identity-questions.md, step 3, the
    *  owner's choice). A question not answered by then is handed to the queue as every other is. */
