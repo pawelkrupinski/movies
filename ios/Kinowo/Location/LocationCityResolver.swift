@@ -33,8 +33,13 @@ extension CLLocationManager: LocationRequesting {}
 /// The pure pick (`City.nearestWithin100km`) lives in `City.swift` and is
 /// unit-tested cross-platform; what this class owns, and what
 /// `LocationCityResolverTests` covers, is the ORDER and the DEADLINES.
+///
+/// An `ObservableObject` though it publishes nothing: so a view holds it as a
+/// `@StateObject`, whose autoclosure builds it once per view identity. Held as
+/// `@State`, its initial value ran on every view-struct init — a fresh
+/// `CLLocationManager` and delegate each time, thrown away.
 @MainActor
-final class LocationCityResolver: NSObject, CLLocationManagerDelegate {
+final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerDelegate {
     enum Outcome: Equatable {
         /// A fix landed inside a known city's 100 km radius.
         case city(City)

@@ -84,7 +84,7 @@ struct CityGate: View {
 struct CityResolverView: View {
     @Environment(UserPreferences.self) var prefs
     @Environment(CatalogStore.self) var catalog
-    @State private var resolver = LocationCityResolver()
+    @StateObject private var resolver = LocationCityResolver()
     @State private var detected: City?
     @State private var showChoice = false
 
@@ -205,7 +205,7 @@ struct CityChoiceView: View {
     /// The "use my location" toolbar button's own resolver — separate from the
     /// gate's `CityResolverView`, since this button re-runs the same check on
     /// demand rather than once on first launch.
-    @State private var locateResolver = LocationCityResolver()
+    @StateObject private var locateResolver = LocationCityResolver()
     /// A fix is in flight for the toolbar button — disables it and swaps its
     /// icon for a spinner so a second tap can't stack a second request.
     @State private var locating = false

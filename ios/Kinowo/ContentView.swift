@@ -83,7 +83,7 @@ struct ContentView: View {
     /// alert when non-nil. The resolver is held as state so it survives
     /// across the async fix.
     @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
-    @State private var locationResolver = LocationCityResolver()
+    @StateObject private var locationResolver = LocationCityResolver()
 
     /// Run after the carousel commits a day change (it has already advanced
     /// `dateFilter`): flash the new day's name and retire the onboarding hint.

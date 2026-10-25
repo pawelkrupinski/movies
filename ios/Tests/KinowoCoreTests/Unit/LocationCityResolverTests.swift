@@ -6,6 +6,7 @@
 #if canImport(CoreLocation)
 import CoreLocation
 import os
+import SwiftUI
 import XCTest
 @testable import KinowoCore
 
@@ -391,6 +392,22 @@ final class LocationCityResolverTests: XCTestCase {
 
         XCTAssertNil(coordinate)
         XCTAssertEqual(requester.locationRequests, 1)
+    }
+
+    /// The views hold the resolver as a `@StateObject`: its autoclosure builds the resolver once per view
+    /// identity, never on a view-struct init that SwiftUI throws away (a `@State` initial value is built on
+    /// every one — a fresh `CLLocationManager` each time). The views themselves are in no test target; this
+    /// pins what they rely on.
+    @MainActor
+    func testHeldAsAStateObjectTheResolverIsNotBuiltByAViewInit() {
+        var built = 0
+        func make() -> LocationCityResolver {
+            built += 1
+            return LocationCityResolver(requester: RecordingLocationRequester(status: .notDetermined), authorizationTimeout: 30, fixTimeout: 30)
+        }
+        _ = StateObject(wrappedValue: make())
+        _ = StateObject(wrappedValue: make())
+        XCTAssertEqual(built, 0)
     }
 }
 #endif
