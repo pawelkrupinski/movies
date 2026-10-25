@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityMeasures
 
 /** A stored agreement verdict reads back as it was kept — the answers it read and the film agreed on, or none. */
-class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
+class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement {
   "a stored verdict" should "read back with its reads and its agreed film's families, leaning families, ids, cross-ids, title and year" in {
     val film    = IdentityMeasures.Film("Klondike", None, Nil, Some(2022), None, None, None, None)
     val agreed  = StoredVerdict("k", 42L, Map("imdb|title|Klondike" -> 7L, "rt|record|klondike_2022" -> -3L),
@@ -33,6 +33,28 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
       Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb), SourceRecord(film, Map("imdb" -> "tt0047395", "tmdb" -> "122769")),
         Map(VoterFamily.Imdb -> "tt0047395", VoterFamily.Wiki -> "Q7366720", VoterFamily.Filmweb -> "100"))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(agreed)) shouldBe agreed
+  }
+
+  // HardClusterConvergenceIntegrationSpec on land-all (2026-10-25): a receipt naming a TMDB search by its query's sort
+  // key ("a\u0000Pat Garrett & Billy the Kid") was no field name Mongo writes — a NUL ends a BSON cstring
+  it should "write to Mongo with a receipt naming TMDB's searches, and read them again" in {
+    val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
+    val tour     = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val families = Map[VoterFamily, FamilyAnswers](VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    val listings = Seq(models.KinoMuza, models.Multikino, models.KinoPalacowe).map(services.identity.FilmTable.listing(_, "SEVENTEEN World Tour 'NEW_'"))
+    val model = services.identity.Resolution(Seq(services.identity.ResolverDecision(listings.map(_.key), None, 0.2,
+      services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val stored = new InMemoryAgreementVerdicts
+    new AgreementStage(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.Answer.Known(None),
+      stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
+      rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+      .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1)
+    val verdict = stored.all().loneElement
+    verdict.reads.keys.exists(_.startsWith(s"${AgreementStage.TmdbRead}|candidates|")) shouldBe true
+    // as the driver writes it: every field name a BSON cstring
+    val written = new org.bson.RawBsonDocument(AgreementVerdicts.encode(verdict), new org.bson.codecs.BsonDocumentCodec())
+    AgreementVerdicts.decode(written.toBsonDocument) shouldBe verdict
   }
 
   "a stored correction of a model take" should "read back with its film, its line, its reads' digests and whether it waits" in {

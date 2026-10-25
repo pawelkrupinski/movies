@@ -216,7 +216,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     private def record[A](kind: String, tmdbId: Int, answer: Answer[A]): Answer[A] = { recordsReading.add(tmdbId); noted(kind, tmdbId.toString, answer) }
     private def placeOf(listing: Listing): String = { val at = receiptOf.indexWhere(_.key == listing.key); if (at >= 0) at.toString else listing.key.toString }
     override def detail(listing: Listing): Answer[Option[DetailFacts]]               = noted("detail", placeOf(listing), inner.detail(listing))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { queriedReading = true; noted("candidates", query.sortKey, inner.candidates(query)) }
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]                 = { queriedReading = true; noted("candidates", AgreementStage.Receipt.queryId(query), inner.candidates(query)) }
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]            = record("film", tmdbId, inner.film(tmdbId))
     override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]]        = record("release", tmdbId, inner.releaseDay(tmdbId))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]                      = record("cast", tmdbId, inner.cast(tmdbId))
@@ -886,10 +886,16 @@ object AgreementStage {
   }
 
   object Receipt {
+    /** A search as a receipt names it: its sort key with the kind's NUL a colon — a receipt is a document whose field
+     *  names Mongo writes as C strings, which a NUL ends (HardClusterConvergenceIntegrationSpec, 2026-10-25). */
+    def queryId(query: CandidateQuery): String = query.sortKey.replaceFirst("\u0000", ":")
+    /** The search a [[queryId]] names. */
+    def queryOf(id: String): Option[CandidateQuery] = CandidateQuery.fromSortKey(id.replaceFirst(":", "\u0000"))
+
     /** The answer a receipt's `<kind>|<argument>` names (as [[AgreementStage.Noting]] notes it), read from `lookups` now. */
     def reread(lookups: IdentityLookups, kind: String, argument: String, listings: Seq[Listing]): Option[Answer[?]] = kind match {
       case "detail"     => argument.toIntOption.flatMap(listings.lift).map(lookups.detail)
-      case "candidates" => CandidateQuery.fromSortKey(argument).map(lookups.candidates)
+      case "candidates" => Receipt.queryOf(argument).map(lookups.candidates)
       case "film"       => argument.toIntOption.map(lookups.film)
       case "release"    => argument.toIntOption.map(lookups.releaseDay)
       case "cast"       => argument.toIntOption.map(lookups.cast)
