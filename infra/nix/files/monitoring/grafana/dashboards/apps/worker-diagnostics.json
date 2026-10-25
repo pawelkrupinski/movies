@@ -114,7 +114,7 @@
     {
       "id": 3,
       "title": "CPU breakdown — centi-cores (process / JIT / GC)",
-      "description": "The worker's own CPU, split three ways: total process, the slice spent JIT-compiling, and the slice spent in GC (100 = one full core). GC climbing toward the process line is the SerialGC full-GC thrash signature — heap pressure, not work. JIT should be a burst after every restart and near-zero afterwards; a JIT line that never settles means the process keeps restarting. There is no credit-breakeven line any more: that was a property of Fly's shared-cpu billing, and this worker now has a whole k3s node's cores available. Note the host's CPU on the fleet dashboard will always read higher than this — k3s itself runs there too.",
+      "description": "The worker's own CPU, split three ways: total process, the slice spent JIT-compiling, and the slice spent in GC (100 = one full core). GC climbing toward the process line is the full-GC thrash signature — heap pressure, not work. JIT should be a burst after every restart and near-zero afterwards; a JIT line that never settles means the process keeps restarting. There is no credit-breakeven line any more: that was a property of Fly's shared-cpu billing, and this worker now has a whole k3s node's cores available. Note the host's CPU on the fleet dashboard will always read higher than this — k3s itself runs there too.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

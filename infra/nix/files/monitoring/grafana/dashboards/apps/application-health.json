@@ -2437,7 +2437,7 @@
         {
           "id": 43,
           "title": "Worker (k3s) — JVM heap against -Xmx, and RAM left on the host",
-          "description": "The worker runs SerialGC, so 'Old gen (tenured)' sitting near the -Xmx cap at rest is the danger sign: a whole-corpus reprojection's transient allocation then tips it into full-GC thrash, and the VM thread eats a core. 'Host free' is k3s-worker-1's remaining RAM — read it as the ceiling on raising -Xmx, NOT as the worker's own footprint, because the k3s agent and every other pod on that node share it. RSS and native memory (the other half of the story, and the half that caused the old OOM restarts) are on the worker-diagnostics dashboard.",
+          "description": "The worker runs the Parallel collector (SerialGC until 2026-10-24), so 'Old gen (tenured)' sitting near the -Xmx cap at rest is the danger sign: a whole-corpus reprojection's transient allocation then tips it into full-GC thrash, and the VM thread eats a core. 'Host free' is k3s-worker-1's remaining RAM — read it as the ceiling on raising -Xmx, NOT as the worker's own footprint, because the k3s agent and every other pod on that node share it. RSS and native memory (the other half of the story, and the half that caused the old OOM restarts) are on the worker-diagnostics dashboard.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2555,7 +2555,7 @@
         {
           "id": 44,
           "title": "Web (k3s) — JVM heap against -Xmx, and process RSS",
-          "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than SerialGC so a full old gen is far less alarming. RSS is this process's own footprint; how close the MACHINE is to full is the panel below, which reads /proc/meminfo directly now that Fly's host metrics are gone. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
+          "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than the workers' Parallel collector so a full old gen is far less alarming. RSS is this process's own footprint; how close the MACHINE is to full is the panel below, which reads /proc/meminfo directly now that Fly's host metrics are gone. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2816,7 +2816,7 @@
         {
           "id": 9026,
           "title": "Both tiers — full GCs per hour (worker Serial old, web G1 old)",
-          "description": "How many FULL collections each JVM ran over the last hour: the worker's MarkSweepCompact (Serial old generation, every one a stop-the-world pass over the whole heap) and the web's G1 Old Generation. A worker whose old generation sits close to its live set runs them back to back — worker-pl on 448m ran 24 an hour with no boot among them (2026-10-07). A rollout's boot adds a burst of its own.",
+          "description": "How many FULL collections each JVM ran over the last hour: the worker's PS MarkSweep (Parallel old generation; MarkSweepCompact under SerialGC until 2026-10-24 -- every one a stop-the-world pass over the whole heap) and the web's G1 Old Generation. A worker whose old generation sits close to its live set runs them back to back — worker-pl on 448m ran 24 an hour with no boot among them (2026-10-07). A rollout's boot adds a burst of its own.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2869,7 +2869,7 @@
         {
           "id": 9027,
           "title": "Both tiers — share of wall time in GC per hour, by collector (%)",
-          "description": "The share of the last hour each collector spent collecting: pause time for Copy, MarkSweepCompact and G1's young and old (G1 Concurrent GC runs beside the application). Young and full apart, so a smaller young generation's extra young collections can be weighed against the full ones it saves.",
+          "description": "The share of the last hour each collector spent collecting: pause time for the workers' PS Scavenge and PS MarkSweep (Copy and MarkSweepCompact under SerialGC until 2026-10-24) and G1's young and old (G1 Concurrent GC runs beside the application). Young and full apart, so a smaller young generation's extra young collections can be weighed against the full ones it saves.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",

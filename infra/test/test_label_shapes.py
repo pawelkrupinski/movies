@@ -95,10 +95,12 @@ EVENT_ONLY_VALUES = {
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).
     ("kinowo_worker_readmodel_write_burst_seconds_count", "trigger", ""),
     ("kinowo_worker_readmodel_write_burst_seconds_sum", "trigger", ""),
-    # COLLECTORS THIS FLEET DOES NOT RUN (yet): the GC alerts (jvm-heap.rules) name every HotSpot
+    # COLLECTORS ABSENT FROM THE SNAPSHOT: the GC alerts (jvm-heap.rules) name every HotSpot
     # collector's old-generation bean and pool, so a collector change in infra/jvm/<tier>.options
-    # keeps them covering the tier instead of silently matching nothing. The fleet runs SerialGC
-    # (workers) and G1 (web); each value below appears the day a tier runs that collector.
+    # keeps them covering the tier instead of silently matching nothing. The snapshot predates the
+    # workers' move from SerialGC to Parallel (2026-10-24, `PS MarkSweep` / `PS Old Gen`, which prod
+    # does publish now); web runs G1. Re-snapshot, then drop the PS values here: ZGC and Shenandoah
+    # stay until a tier runs them.
     *{(metric, "gc", value) for metric in ("jvm_gc_collection_seconds_count", "jvm_gc_collection_seconds_sum")
       for value in ("PS MarkSweep", "ZGC Major Cycles", "ZGC Cycles", "ZGC Minor Cycles", "Shenandoah Cycles")},
     *{(metric, "pool", value) for metric in ("jvm_memory_pool_collection_used_bytes", "jvm_memory_pool_max_bytes", "jvm_memory_pool_used_bytes")

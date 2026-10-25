@@ -1,8 +1,9 @@
 # UNIT TESTS FOR THE GARBAGE-COLLECTION ALERTS: JvmFullGcRateHigh, JvmGcTimeShareHigh and
 # JvmOldGenAfterGcNearCap (nix/files/monitoring/rules/jvm-heap.rules).
 #
-# Each is collector-agnostic, so each is tested on BOTH tiers' collectors: the workers' SerialGC
-# (`MarkSweepCompact`, `Copy`, `Tenured Gen`) and web's G1 (`G1 Old Generation`, `G1 Young
+# Each is collector-agnostic, so each is tested on BOTH tiers' collectors: the workers' Parallel
+# collector (`PS MarkSweep`, `PS Scavenge`, `PS Old Gen`; since 2026-10-24) and SerialGC before it
+# (`MarkSweepCompact`, `Copy`, `Tenured Gen`), and web's G1 (`G1 Old Generation`, `G1 Young
 # Generation`, `G1 Concurrent GC`, `G1 Old Gen`), and each owes a healthy pod's silence, a boot's
 # silence, and a firing that rides out a worker restart's gap. Series are shaped like the fleet's:
 # labelled by instance, job, country, gc / pool.
@@ -113,6 +114,62 @@ tests:
                 JvmStringDedupTableLarge and JvmResidentNearContainerLimit beside it: the native memory a thrash
                 grows is what gets a worker OOM-killed. Raising -Xmx only buys time if something retains more than
                 it should.
+
+  # THE COLLECTOR THE WORKERS RUN (Parallel, since 2026-10-24): a full-GC thrash on `PS MarkSweep`
+  # with `PS Old Gen` at 95% after every one pages both rules; `PS Scavenge`'s young collections,
+  # however many, are not full ones and do not count.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-de",job="kinowo-worker",country="de",gc="PS MarkSweep"}'
+        values: '0+5x50'
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-de",job="kinowo-worker",country="de",gc="PS Scavenge"}'
+        values: '0+30x50'
+      - series: 'jvm_memory_pool_collection_used_bytes{instance="kinowo-worker-de",job="kinowo-worker",country="de",pool="PS Old Gen"}'
+        values: '570000000+0x50'
+      - series: 'jvm_memory_pool_max_bytes{instance="kinowo-worker-de",job="kinowo-worker",country="de",pool="PS Old Gen"}'
+        values: '600000000+0x50'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: JvmFullGcRateHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: de}
+            exp_annotations:
+              summary: "kinowo-worker de runs 300 full GCs an hour"
+              description: >-
+                This JVM is running full (old-generation) collections back to back: each one stops it for seconds,
+                and a run of them means the old generation has almost nothing left to reclaim. Read
+                `jvm_memory_pool_collection_used_bytes` for its old-gen pool (Tenured Gen, PS Old Gen, G1 Old Gen)
+                against `jvm_memory_pool_max_bytes`: near 1.0 after every collection is a live set that no longer
+                fits, so take a class histogram NOW (`kubectl -n kinowo exec deploy/<tier>-<country> -- jcmd 1
+                GC.class_histogram`) before the pod is killed and the evidence with it. Watch
+                JvmStringDedupTableLarge and JvmResidentNearContainerLimit beside it: the native memory a thrash
+                grows is what gets a worker OOM-killed. Raising -Xmx only buys time if something retains more than
+                it should.
+      - eval_time: 45m
+        alertname: JvmOldGenAfterGcNearCap
+        exp_alerts:
+          - exp_labels: {severity: warning, job: kinowo-worker, country: de, pool: 'PS Old Gen'}
+            exp_annotations:
+              summary: "kinowo-worker de PS Old Gen is 95% full after collections"
+              description: >-
+                What the collector leaves in the old generation has stayed above 90% of its cap for half an hour:
+                the next allocation burst has almost nowhere to go, and full collections that reclaim nothing come
+                next (JvmFullGcRateHigh). Take a class histogram before anything restarts the pod (`jcmd 1
+                GC.class_histogram`), and compare the live set with NodeMemoryBudgetSpec's MeasuredLiveSetMaxMib for
+                the country: a live set that grew with the corpus wants the heap re-sized there; one that jumped
+                wants the structure found.
+
+  # Parallel's young collections alone, at any rate, are no full-GC thrash.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-pl",job="kinowo-worker",country="pl",gc="PS Scavenge"}'
+        values: '0+60x50'
+      - series: 'jvm_gc_collection_seconds_count{instance="kinowo-worker-pl",job="kinowo-worker",country="pl",gc="PS MarkSweep"}'
+        values: '0+0x50'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: JvmFullGcRateHigh
+        exp_alerts: []
 
   # ── JvmGcTimeShareHigh ─────────────────────────────────────────────────────────────────────────
   # worker-uk paused 20% of the time (young 6 s and full 6 s a minute), through a restart at 20m:
