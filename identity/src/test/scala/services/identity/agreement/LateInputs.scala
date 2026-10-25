@@ -191,7 +191,11 @@ object LateInputs {
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys) =
       new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf, stored, clock = _root_.tools.SpecClock.Pinned,
         changes = changes, posters = posters, tmdb = Some(lookups), identities = s.identities, rules = s.rules, catalogue = catalogue,
-        correctionsPerApply = Int.MaxValue, correctionPostersAtOnce = Int.MaxValue, attempted = tried, keyStore = keyStore)
+        correctionsPerApply = Int.MaxValue, correctionPostersAtOnce = Int.MaxValue, attempted = tried, keyStore = keyStore,
+        metrics = applied => drifted += applied.drifted, fullValidationEvery = 1)
+    /** The kept verdicts the stage's dirty index called standing whose receipt had moved, every apply a full validation
+     *  ([[services.identity.Memo]]): none, or the index is unsound. */
+    var drifted = 0
 
     private val held  = mutable.LinkedHashMap.from((s.listings.filterNot(s.joining.contains) ++ s.leaving).map(l => l.key -> l))
     private var model = newModel()
@@ -268,9 +272,12 @@ object LateInputs {
   }
 
   /** The first difference between the incremental path and the whole resolve, named. */
-  def divergence(s: Scenario, restartAt: Restart): Option[String] =
-    IncrementalWholeEquivalenceSpec.difference(new Run(s).incremental(restartAt), new Run(s).whole())
+  def divergence(s: Scenario, restartAt: Restart): Option[String] = {
+    val run = new Run(s)
+    IncrementalWholeEquivalenceSpec.difference(run.incremental(restartAt), new Run(s).whole())
+      .orElse(Option.when(run.drifted > 0)(s"${run.drifted} kept verdict(s) the dirty index called standing had moved"))
       .map(d => s"${s.name}, restart ${restartAt}: $d")
+  }
 
   /** Does the late input move the whole resolve at all — the case has teeth? */
   def matters(s: Scenario): Boolean = takes(new Run(s).whole(withLate = false)) != takes(new Run(s).whole())

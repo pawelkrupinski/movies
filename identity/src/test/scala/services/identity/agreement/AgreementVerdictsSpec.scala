@@ -72,7 +72,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
   // The NUL receipt passed every unit spec because the in-memory store kept the verdict it was handed: it writes as Mongo
   // does. A receipt names its dependencies as values now, never field names: one naming a NUL writes and reads back.
   "the in-memory verdicts" should "write a receipt naming a NUL, and read it back" in {
-    val nul = StoredVerdict("k", 42L, Map(Dependency.Unparsed("tmdb|candidates|a\u0000Pat Garrett & Billy the Kid") -> 7L), None)
+    val nul = StoredVerdict("k", 42L, Map(Dependency.Unparsed("venues|detail|a\u0000Pat Garrett & Billy the Kid") -> 7L), None)
     val kept = new InMemoryAgreementVerdicts()
     kept.replace(Set.empty, Seq(nul))
     kept.all() shouldBe Seq(nul)

@@ -25,6 +25,9 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  *    backlog asked;
  *  - `kinowo_worker_identity_agreement_resolves_total` / `_seconds` — clusters the stage resolved again, and its last
  *    pass's wall time: what it costs a projection (a quiet tick resolves none);
+ *  - `kinowo_worker_identity_agreement_validated_total{result}` — kept verdicts the stage's full validation read again
+ *    (`read`), and of them those the dirty index called standing whose receipt had moved (`drifted`: ZERO IS THE HEALTHY
+ *    READING, the proof the index equals full validation; `services.identity.Memo`);
  *  - `kinowo_worker_identity_agreement_enqueued_total{family,result}` — questions put on the task queue (`added`, or
  *    `duplicate`: one already queued);
  *  - `kinowo_worker_identity_agreement_answers_total{family,outcome}` — questions asked: answered, nothing (filed as no
@@ -52,6 +55,11 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
     .name("kinowo_worker_identity_agreement_resolves_total")
     .help("Clusters the agreement stage resolved again over the families' answers; a quiet projection resolves none.")
     .labelNames("country").register(registry)
+
+  private val validated: Counter = Counter.builder()
+    .name("kinowo_worker_identity_agreement_validated_total")
+    .help("Kept agreement verdicts the stage's full validation read again (read), and those of them the dirty index called standing whose receipt had moved (drifted). Drifted must stay 0.")
+    .labelNames("country", "result").register(registry)
 
   private val daysUnreadTotal: Counter = Counter.builder()
     .name("kinowo_worker_identity_relay_days_unread_total")
@@ -88,6 +96,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
     Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue", "withdrawn", "corrected").foreach(taken.labelValues(country, _))
     (families :+ CorrectionPoster).foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
+    Seq("read", "drifted").foreach(validated.labelValues(country, _))
     applied => {
       clusters.labelValues(country, "waiting").set(applied.waiting.toDouble)
       clusters.labelValues(country, "verdicts").set(applied.verdicts.toDouble)
@@ -112,6 +121,8 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       open.labelValues(country, AgreementQuestionMetrics.TmdbFind).set(applied.finds.toDouble)
       open.labelValues(country, AgreementQuestionMetrics.TmdbRecord).set(applied.undated.toDouble)
       resolves.labelValues(country).inc(applied.resolves.toDouble)
+      validated.labelValues(country, "read").inc(applied.validated.toDouble)
+      validated.labelValues(country, "drifted").inc(applied.drifted.toDouble)
       seconds.labelValues(country).set(applied.seconds)
     }
   }

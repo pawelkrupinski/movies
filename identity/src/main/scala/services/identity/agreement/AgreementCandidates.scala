@@ -116,9 +116,8 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  read again once something is filed (another `version`), while a TMDB question of theirs has no answer. What it read
    *  goes into the receipt being made, if any, kept or read afresh. */
   private[agreement] def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] = {
-    val kept = candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying) && standing(kept)).map { kept =>
-      if (kept.checkedAt == applying) kept else { val now = kept.copy(checkedAt = applying); candidateFilms(id) = now; now }
-    }
+    val kept = candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying) &&
+      candidateFilms.clean(id, digest, applying, changes.changedSince))
     val now  = kept.getOrElse {
       var blind = false
       val reads = mutable.Map.empty[Dependency, Long]
@@ -129,8 +128,8 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
       })
       // read blind — a search with no answer — it is kept only while nothing is filed: the digest does not move when TMDB
       // answers, so kept for good, "none" stood for good; kept for no pass, every pass searched live TMDB again
-      val fresh = AgreementStage.CandidateFilms(digest, films, Option.when(blind)(applying), reads.toMap, applying)
-      candidateFilms(id) = fresh
+      val fresh = AgreementStage.CandidateFilms(digest, films, Option.when(blind)(applying), reads.toMap)
+      candidateFilms.put(id, fresh); candidateFilms.check(id, digest, applying)
       fresh
     }
     if (now.blindAt.isDefined) blindReads += 1
@@ -143,11 +142,6 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     if (receipt != null) receipt ++= now.reads
     now.films
   }
-
-  /** Does a kept read of a cluster's candidates still stand: checked at this version, else none of what it read filed since
-   *  ([[AnswerChanges]]; one that cannot tell is read again)? */
-  private[agreement] def standing(kept: AgreementStage.CandidateFilms): Boolean =
-    kept.checkedAt == applying || changes.changedSince(kept.checkedAt).exists(refiled => !kept.reads.keysIterator.exists(read => refiled(read.filing)))
 
   /** The TMDB films the listings' own title searches find ([[services.identity.IdentityMeasures.searchQueries]], of TMDB
    *  and IMDb's titled lists) — the candidates a poster may name against a model take, read off the answers the model

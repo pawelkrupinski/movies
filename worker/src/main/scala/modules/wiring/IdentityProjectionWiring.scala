@@ -169,7 +169,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
       backfillPerApply = if (budgets) services.identity.agreement.AgreementStage.BackfillPerApply else Int.MaxValue,
       askNow = askNow, attempted = identityQuestionMemory.attempted,
-      attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging, keyStore = keys)
+      attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging, keyStore = keys,
+      pressed = () => tools.HeapPressure.pressed())
 
   // No drift check runs on the worker: the one it had (deleted) resolved everything whole beside the model's own state, filled
   // worker-us's tenured gen and OOM-killed it at its first nightly check two nights running (2026-10-23/24, 525 -> 768 of

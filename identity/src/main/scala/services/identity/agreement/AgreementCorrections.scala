@@ -40,30 +40,17 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // one waiting on an answer is read again unless what it asks is known — after a restart it is not — and once all
       // it waits on was attempted (the settle rule: decided on what it has); a TMDB find it waits on is filed among the
       // answers' changes as the families' answers are, and read again below like them
-      !(c.waiting && (waits.isEmpty || waits.exists(_.forall(tried)))) &&
-        checked.get(key).collect { case (listed, at) if listed == digest => at }.exists { at =>
-          at == version || {
-            // stands when none of its reads was filed since: the filings' ids hashed once per version they are read from
-            val refiled = pass.changedAt.getOrElseUpdate(at, changes.changedSince(at).map { ids =>
-              val hashed = new java.util.HashSet[java.lang.Long](ids.size * 2)
-              ids.foreach(id => hashed.add(AgreementStage.digest(Seq(id))))
-              hashed
-            })
-            // a receipt entry whose filing came is read again, as a verdict's is: every TMDB search is filed under one id
-            // (QueryFiled), so any search filed anywhere reached every take that read one, and each was read afresh —
-            // 700 PL takes an apply, the budget never caught up (the drift replay timing out, run 1641). A family's answer,
-            // a poster or a question asked that was filed decides it again.
-            refiled.exists { filed =>
-              val refiledReads = v.reads.filter { case (read, _) => filed.contains(AgreementStage.digest(Seq(read.filing))) }
-              refiledReads.forall { case (read, _) => read.isInstanceOf[Dependency.Lookup] } && (refiledReads.isEmpty || {
-                val listings = sortedListings(decision, listingOf)
-                refiledReads.forall { case (read, answered) => reread(read, listings).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
-              })
-            } && {
-              checked(key) = (digest, version); true
-            }
-          }
-        }
+      // stands when none of its reads was filed since it was checked ([[Memo.clean]]) — a TMDB lookup's filing read again
+      // and compared, as a verdict's is: every TMDB search is filed under one id (QueryFiled), so any search filed anywhere
+      // reached every take that read one, and each was read afresh — 700 PL takes an apply, the budget never caught up (the
+      // drift replay timing out, run 1641). A family's answer, a poster or a question asked that was filed decides it again.
+      !(c.waiting && (waits.isEmpty || waits.exists(_.forall(tried)))) && {
+        lazy val listings = sortedListings(decision, listingOf)
+        held.clean(key, digest, version, changes.changedSince, again = {
+          case (read: Dependency.Lookup, answered) => digestNow(read, listingIn(listings)).contains(answered)
+          case _                                   => false
+        })
+      }
     })
     val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
@@ -74,7 +61,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       val (correction, waits) = receipting(receipt)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version))
       val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; file(verdict) }
-      checked(key) = (digest, version)
+      held.check(key, digest, version)
       waits.fold(correctionWaits -= key)(w => correctionWaits(key) = w)
       correction
     }).orElse(
