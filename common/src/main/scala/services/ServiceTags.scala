@@ -123,15 +123,20 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
     // that did not arrive are simply not refreshed this cycle, and the next one
     // picks them up. That is why an incomplete scan stays at debug here rather than
     // warning like the staging read, where a short result silences an alarm.
+    //
+    // Paged by `service`, not `_id`: `tagService` upserts by `service` and never sets `_id`, so
+    // Mongo makes it an ObjectId, and reading it as a string threw on the first document —
+    // every load from 2026-10-08 read nothing. `service` is the collection's unique key and
+    // indexed, so it pages the same way; a document without one is no tag and is skipped.
     val outcome = KeysetScan.scan[Document](
       label          = "UptimeMonitor tag load",
       batchSize      = 1000,
       maxAttempts    = 2,
       initialBackoff = 500.millis,
-      keyOf          = _.getString("_id"),
-      fetchPage      = (afterId, limit) => {
-        val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
-        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), UptimeMonitor.HydrateTimeout)
+      keyOf          = _.getString("service"),
+      fetchPage      = (afterService, limit) => {
+        val filter = afterService.fold(Filters.exists("service"))(a => Filters.gt("service", a))
+        Await.result(c.find(filter).sort(Sorts.ascending("service")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), UptimeMonitor.HydrateTimeout)
       },
     ) { documents =>
       documents.foreach { document =>
