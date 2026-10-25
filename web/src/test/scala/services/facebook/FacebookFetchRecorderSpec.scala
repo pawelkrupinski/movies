@@ -78,4 +78,23 @@ class FacebookFetchRecorderSpec extends AnyFlatSpec with Matchers {
     rig.recorder.stop()
     store.recorded.keySet shouldBe Set(Page)
   }
+
+  "A flush" should "complete the flush tick only when its write landed" in {
+    @volatile var down = true
+    val store = new FacebookFetches {
+      private val inner = new InMemoryFacebookFetches
+      def record(fetched: Map[String, Instant]): Unit = if (down) throw new IllegalStateException("fleet database unreachable") else inner.record(fetched)
+      def fetchedSince(urls: Seq[String], since: Instant): Set[String] = inner.fetchedSince(urls, since)
+    }
+    val rig   = new Rig(store)
+    val ticks = new _root_.tools.RecordingTickRecorder
+    def tick(): Unit = _root_.tools.ScheduledTick.recorded("facebook-fetch-flush", FacebookFetchRecorder.FlushEvery,
+      play.api.Logger(getClass), ticks)(rig.recorder.flush())
+    rig.recorder.served(Crawler, Page)
+    tick()
+    ticks.completedRuns shouldBe empty   // the write failed: logged, and not a completed run
+    down = false
+    tick()
+    ticks.completedRuns should have size 1
+  }
 }

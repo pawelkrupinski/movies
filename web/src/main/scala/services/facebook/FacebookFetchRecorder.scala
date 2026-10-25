@@ -1,7 +1,7 @@
 package services.facebook
 
 import play.api.Logging
-import tools.{DaemonExecutors, LogThrottle, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, LogThrottle, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -38,19 +38,21 @@ final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock, stopwatc
     if (userAgent.exists(FacebookFetches.isFacebookCrawler) && (pending.size < MaxPending || pending.containsKey(url)))
       pending.put(url, clock.instant())
 
-  /** Write the batch held so far. */
-  def flush(): Unit = {
+  /** Write the batch held so far: [[TickRun.Incomplete]] when the write failed (logged, throttled). */
+  def flush(): TickRun = {
     val batch = pending.asScala.toMap
     batch.foreach { case (url, at) => pending.remove(url, at) }
-    Try(store.record(batch)).failed.foreach { e =>
+    val written = Try(store.record(batch))
+    written.failed.foreach { e =>
       failures.admit().foreach(suppressed => logger.warn(
         s"facebook fetches: ${batch.size} not recorded (${e.getClass.getSimpleName}: ${e.getMessage}); $suppressed more failures since the last report"))
     }
+    TickRun.completedWhen(written.isSuccess)
   }
 
   def stop(): Unit = {
     scheduler.shutdownNow()
-    flush()
+    flush(); ()
   }
 }
 

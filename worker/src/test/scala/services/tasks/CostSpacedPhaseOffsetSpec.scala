@@ -97,6 +97,24 @@ class ScrapePhasePlannerSpec extends AnyFlatSpec with Matchers {
     roster.map(phases.millis(_, period.toMillis)) shouldBe planned
     estimates.costOf("scrape|A") shouldBe 40.0
   }
+
+  "A replan" should "complete the plan tick only when the costs could be read" in {
+    @volatile var readable = false
+    val costs = new ScrapeCostStore {
+      def record(dedupKey: String, cost: ScrapeCost): Unit = ()
+      def recent(): Map[String, Seq[ScrapeCost]] = if (readable) Map.empty else throw new IllegalStateException("Mongo down")
+    }
+    val planner = new ScrapePhasePlanner(Seq("scrape|A"), costs, _ => 1.hour, new CostSpacedPhaseOffset,
+      new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1)))
+    val ticks = new tools.RecordingTickRecorder
+    def tick(): Unit = tools.ScheduledTick.recorded("scrape-phase-plan", ScrapePhasePlanner.ReplanInterval,
+      play.api.Logger(getClass), ticks)(planner.replan())
+    tick()
+    ticks.completedRuns shouldBe empty   // the last plan kept: logged, and not a completed run
+    readable = true
+    tick()
+    ticks.completedRuns should have size 1
+  }
 }
 
 class InMemoryScrapeCostStoreSpec extends AnyFlatSpec with Matchers {

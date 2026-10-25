@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, TickRecorder, ScheduledTick}
+import tools.{DaemonExecutors, TickRecorder, TickRun, ScheduledTick}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
@@ -27,13 +27,15 @@ final class ScrapePhasePlanner(
 
   private val scheduler = DaemonExecutors.scheduler("scrape-phase-plan")
 
-  def replan(): Unit =
+  /** Plan the phases from the recorded costs: [[TickRun.Incomplete]] when they could not be read (the last plan kept). */
+  def replan(): TickRun =
     Try(costs.recent()).fold(
-      e => logger.warn(s"Scrape phase plan kept: costs unreadable (${e.getMessage})"),
+      e => { logger.warn(s"Scrape phase plan kept: costs unreadable (${e.getMessage})"); TickRun.Incomplete },
       recent => {
         estimates.update(recent.collect { case (key, runs) if runs.nonEmpty => key -> runs.map(_.tasks.toDouble).sum / runs.size })
         phases.plan(CostSpacedPhaseOffset.fractions(roster, estimates.costOf, key => periodFor(key).toMillis))
         logger.info(s"Scrape phase plan: ${roster.size} cinema(s), ${estimates.measuredCount(roster)} with a measured cost, typical ${estimates.typical} task(s).")
+        TickRun.Completed
       })
 
   def start(): Unit = {

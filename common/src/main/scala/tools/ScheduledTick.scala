@@ -11,20 +11,41 @@ import scala.util.control.NonFatal
  * coming but dropped the exception unlogged: a reaper failing on every tick looked exactly like
  * one with nothing to do. Fatal errors and interrupts still escape, as they did through `Try`.
  *
- * [[recorded]] also tells a [[TickRecorder]] each run that RETURNED, which is what the
+ * [[recorded]] also tells a [[TickRecorder]] each run that ran to its end, which is what the
  * `ScheduledTickStale` alerts (infra/nix/files/monitoring/rules/scheduled-ticks.rules) read: a loop
  * whose scheduler died, whose tick hangs, or whose tick throws every time stops completing, and
- * nothing else it publishes says so.
+ * nothing else it publishes says so. A tick that catches its own failure says so by returning
+ * [[TickRun.Incomplete]].
  */
 object ScheduledTick {
   def logged[A](name: String, logger: Logger)(tick: => A): Unit =
     try { tick; () }
     catch { case NonFatal(e) => logger.warn(s"$name tick failed: $e", e) }
 
-  /** [[logged]], and `ticks.completed(name, interval)` when the run returned rather than threw. */
+  /** [[logged]], and `ticks.completed(name, interval)` when the run returned rather than threw — and did not return
+   *  [[TickRun.Incomplete]]. */
   def recorded[A](name: String, interval: => FiniteDuration, logger: Logger, ticks: TickRecorder)(tick: => A): Unit =
-    try { tick; ticks.completed(name, interval) }
+    try {
+      tick match {
+        case TickRun.Incomplete => ()
+        case _                  => ticks.completed(name, interval)
+      }
+    }
     catch { case NonFatal(e) => logger.warn(s"$name tick failed: $e", e) }
+}
+
+/**
+ * What a tick that handles its own failure says of a run to [[ScheduledTick.recorded]]. A failure it caught and
+ * logged, a read that could not complete, a write that failed: [[TickRun.Incomplete]], not a completed run. A
+ * deliberate no-op (nothing due, not seeded yet, the window claimed by another replica) is [[TickRun.Completed]]: the
+ * loop ran, and a healthy standby must not go stale.
+ */
+enum TickRun {
+  case Completed, Incomplete
+}
+
+object TickRun {
+  def completedWhen(complete: Boolean): TickRun = if (complete) Completed else Incomplete
 }
 
 /**
