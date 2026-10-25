@@ -6,7 +6,8 @@ import org.scalatest.matchers.should.Matchers
 import tools.costs.PerformanceBudget.{Band, bytes, ceiling, operations}
 import tools.costs.{PerformanceBudget, PerformanceBudgets}
 
-import java.nio.file.Paths
+import java.nio.file.{Files, Path, Paths}
+import scala.jdk.CollectionConverters.*
 
 /**
  * `tools.costs.PerformanceBudgets` holds no budget nothing reads: a spec deleted or rewritten without its
@@ -42,10 +43,15 @@ class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
     budgets.filter(b => b.unit == PerformanceBudget.Measure.Bytes && b.limit <= 0) shouldBe empty
   }
 
-  /** The failure `check` raises on `actual`, or None when it passes. */
+  private val Fixtures = Files.createTempFile("performance-budgets-fixture", ".tsv")
+
+  /** The failure `check` raises on `actual`, or None when it passes. The made-up figures of this spec are
+   *  recorded to a temp file: the real report is what CI uploads and `adopt-ci-budgets` reads. */
   private def verdict(budget: PerformanceBudget, actual: Long): Option[String] =
-    try { budget.check(actual); None }
-    catch { case e: TestFailedException => Some(e.getMessage) }
+    PerformanceBudget.Report.isolated(Fixtures) {
+      try { budget.check(actual); None }
+      catch { case e: TestFailedException => Some(e.getMessage) }
+    }
 
   "an allocation budget" should "fail above measured times its upper factor, as a regression" in {
     val b = bytes("path", measured = 1000)
@@ -86,5 +92,12 @@ class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
     val ratchets = budgets.filter(b => b.unit == PerformanceBudget.Measure.Bytes && b.floor > 0)
     ratchets should not be empty
     ratchets.filterNot(b => b.floor < b.measured && b.measured < b.limit) shouldBe empty
+  }
+
+  "this spec's fixture figures" should "land in its own file, never in the real performance-budgets.tsv" in {
+    val names = Set("path", "noisy path", "bound", "count", "none")
+    val rows = (f: Path) => if (Files.exists(f)) Files.readAllLines(f).asScala.toSeq.map(_.split('\t').head) else Nil
+    rows(Fixtures) should contain("noisy path")
+    rows(PerformanceBudget.Report.File).filter(names) shouldBe empty
   }
 }

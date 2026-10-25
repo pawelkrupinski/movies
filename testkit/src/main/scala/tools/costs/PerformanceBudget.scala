@@ -4,7 +4,7 @@ import org.scalatest.Assertion
 import org.scalatest.Assertions.{fail, succeed}
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Files, Paths, StandardOpenOption}
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import scala.util.Try
 
 /**
@@ -101,15 +101,26 @@ object PerformanceBudget {
 
   /** Every check appends `name<TAB>actual<TAB>measured<TAB>floor<TAB>limit` (raw numbers) to
    *  `target/performance-budgets.tsv` under the test JVM's working directory, so one run lists every
-   *  figure beside its budget — what re-measuring them reads. Best effort: it never fails a check. */
+   *  figure beside its budget — what re-measuring them reads. Best effort: it never fails a check.
+   *  A spec of the budget machinery itself checks made-up figures inside [[isolated]], so they never reach it. */
   object Report {
     val File = Paths.get("target", "performance-budgets.tsv")
 
+    private val redirect = new ThreadLocal[Path]
+
+    /** Runs `body` with this thread's checks recorded to `to` instead of [[File]]. */
+    def isolated[A](to: Path)(body: => A): A = {
+      redirect.set(to)
+      try body
+      finally redirect.remove()
+    }
+
     def record(budget: PerformanceBudget, actual: Long): Unit = {
       val line = Seq(budget.name, actual, budget.measured, budget.floor, budget.limit).mkString("", "\t", "\n")
+      val file = Option(redirect.get).getOrElse(File)
       Try {
-        Files.createDirectories(File.getParent)
-        Files.write(File, line.getBytes(UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+        Files.createDirectories(file.toAbsolutePath.getParent)
+        Files.write(file, line.getBytes(UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
       }
       ()
     }
