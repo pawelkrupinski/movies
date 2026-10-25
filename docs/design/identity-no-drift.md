@@ -134,9 +134,9 @@ Each item has a verdict:
 | 12 | Merge carried memories: union of `unreached` and `askedNow` | `keying` | **(c) deleted** | A merge names the survivor and carries nothing. `AgreementKeyingSpec` "a merge ... take on none of the younger's memories". |
 | 13 | Settled because it settled before (`unreached.contains`) | `resolved` | **(c) fixed** | A cluster settles when every question it waits on was attempted, which is the question memory's to say. `AgreementKeyingSpec` "decided as a whole resolve decides it". |
 | 14 | Cluster keys, counter, key store, restart re-attach | `StableNames`, `AgreementKeys` | (a) name | Nothing is found by a key (10). Harness property 3 restarts with keys kept, lost and renumbered. The harness's twin property runs a second stage whose keys count from elsewhere and are lost, renumbered or permuted on every restart: groupings, takes, waits (`waitingOn`) and the backlog stay identical. |
-| 15 | `unreached` (questions none answered, asked every pass) | `AgreementStage` | (a) asking only | It no longer decides a take (13). It can be derived from the receipts' unanswered entries; see Simplifications. It is the one place a name still reaches the asking: a restart seeds it under the key each verdict was filed by, so with keys lost or renumbered a cluster's never-answered questions go unasked (or another's are asked). The twin's "ask what the twin asks" is pending on it. |
+| 15 | `unreached` (questions none answered, asked every pass) | `AgreementStage` | (a) asking only | It no longer decides a take (13). **Derived** from the found verdict's receipt (its Unanswered entries) since 1613e6f6a: the key-keyed map seeded at boot under each verdict's filed key asked the wrong cluster's questions once keys were lost or renumbered. |
 | 16 | `askedNow` (inline ask once) | `AgreementStage` | (a) asking only | The answers it files are inputs. It only stops a second 5-second inline wait. |
-| 17 | `checked` (digest, version) | `AgreementStage` | (a) cache validity | Sound once every receipt entry's filing moves the version (8) and the year clears it (9). |
+| 17 | `checked` (digest, version) | `AgreementStage` | (a) cache validity | Now the `Memo`'s check (603c81e77): one dirty index (checked at a version, no dependency filed since) for verdicts, corrections and candidates, proven by full validation every 12th apply (`validated_total{result="drifted"}`, zero). Its LateInputs run found the year read back as `Known(<year>)` against a recorded digest of its text (no verdict read again ever stood; fixed on main as 9627359ec). |
 | 18 | `waiting`, `blindAt` | `AgreementStage` | (a) | A waiting cluster takes the model's take, as a whole resolve with the same gaps does. It is resolved again when due. |
 | 19 | `candidateFilms` (digest, blindAt) | `AgreementCandidates` | **(b) fixed** | It cached TMDB searches by listing digest, so a re-asked search with a new candidate stayed unread. The cache now keeps its receipt and stands only while none of it was filed since (`standing`). Its reads also join the receipt being made. Spec: `AgreementPosterSpec` "take a candidate a search filed again finds". |
 | 20 | Correction verdicts' receipt | `AgreementCorrections` | **(b) fixed** | The receipt held family reads and asked ids, but not the TMDB records or candidates it reads. Every TMDB and venue read now goes into `StoredVerdict.reads` through the one seam (`Noting`, `receipting`), and a filing of one decides the correction again. Spec: `AgreementCorrectionSpec` "be decided again when a TMDB record it read is filed again". |
@@ -222,7 +222,7 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
 
 | Item | Change | Est. net lines |
 |---|---|---|
-| `unreached` | Derive it from the held verdict's receipt (its unanswered entries); the load-time rebuild goes too | −25 |
+| `unreached` | Derived from the found verdict's receipt (its unanswered entries); the load-time rebuild goes (1613e6f6a) | −3 (done) |
 | Fill blind wait (`Waiting.blindAt` for a fill) | Subsumed by the receipt: an unanswered TMDB read is in it and reopens the verdict. It stays only for the staging screen's `onTmdb` | −20 |
 | Family-only `unanswered` list | Deleted in this change: every family read, unanswered too, is in the receipt | −4 (done) |
 | `adopt` (legacy verdicts by first listing) | Deleted in this change: found by digest | −20 (done) |
@@ -230,9 +230,32 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
 | `IdentityDriftCheck` (unwired since the OOM) and `AgreementStage.forget` | Deleted (ddd1c1951) | −309 (done) |
 | Stage-life `rereads` | Deleted (f28034e6d): the question memory says | −12 (done) |
 | `StoredAsWritten.Keys` and the drift replay's key plumbing (91cfbe7e8) | Keys decide nothing now, so the replay need not keep them | −20 |
-| Correction receipt as `Map[String, Long]` like the verdicts' | One receipt type, one validity rule, one "read again when filed" path (items 19, 20 and 23 too) | ≈ −40 |
+| Correction receipt as the verdicts' | One typed receipt (`Map[Dependency, Long]`, one codec), one validity rule (`Memo.clean`) for verdicts, corrections and candidates (141b3f2db, 603c81e77) | done |
 | `IncrementalResolver` as the whole resolve plus a dependency-keyed cache | NOT recommended now. It already is a digest-keyed cache over slices (item 1); its update algorithm only decides which caches to re-check, and `IncrementalResolverSpec` holds it equal every event | — |
 | Staging events derived from waits | Possible once waits derive from receipts plus memory. A later step | — |
+
+## Unifications (2026-10-25)
+
+1. **Every external read a typed `Question`, every receipt typed** (fd1c1bda1, 141b3f2db). `ObservationReads` names a
+   model question by `Question`. A receipt is `Map[Dependency, Long]`: a family `Answer`, an `Attempted` question, a
+   `Lookup` of a `Candidate` / `VenuePage` / `FilmRecord` aspect through the venues' or TMDB's lookups, a question `Asked`,
+   the `Year` — one codec (`Dependency.encode`/`parse`, total; stored as `[id, digest]` pairs, never field names). A
+   correction's receipt is its verdict's. The receipt key is `(Question, how it was read)` rather than the bare Question:
+   the stage reads one TMDB record through two lookups (the venues' store and TMDB's store-else-live) and in four aspects
+   (record, release day, cast, description), whose answers may differ until a filing; collapsing them would miss an
+   invalidation or read TMDB live for an aspect the decision never read. The worker's filing feed still names filings by
+   string (`Dependency.filing` maps a dependency to it).
+2. **One dependency-keyed `Memo[K, V]`** (603c81e77): verdicts, corrections and the candidates cache. Not moved, and why:
+   - `IncrementalResolver`'s families: their dependencies are `CorpusContext` slice keys digested together (one `Long` a
+     family), not Questions; moving them needs a digest per key (worker-us heap) or a combined-digest memo, and
+     `resolve(listings, memo)` means replacing the expansion loop (Single path step 4) — not done. `IncrementalResolverSpec`
+     still holds it equal to a whole resolve every event.
+   - `LiveCorpus`: a materialised view with its own fact graph, not a cache of outcomes; `LiveCorpusSpec` checks it equal to
+     `CorpusContext.of` every event.
+   - `VenueSlotMemo`: content-addressed (its key is the digest of everything a slot is built from): already keyed by its
+     dependency set, nothing to invalidate. Its priors (the previous slots) are an input it reads — see item 7.
+   - Poster distances: read per apply (`AgreementStage.Read`), never kept.
+3. **One stable-name assigner**: `StableNames` names FilmIds and cluster keys; `ClusterKeys` deleted (2232a8c6a).
 
 ## Single path
 
