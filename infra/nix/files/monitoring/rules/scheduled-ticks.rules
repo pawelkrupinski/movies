@@ -11,8 +11,10 @@
 #
 # THE SERIES. `tools.ScheduledTick.recorded` stamps, after every run that RAN TO ITS END -- returned,
 # and not `tools.TickRun.Incomplete`, which a tick that catches its own failure (a failed write, an
-# incomplete corpus read) returns; a deliberate no-op (nothing due, not seeded yet, a window another
-# replica claimed) still completes, so a healthy standby never goes stale --
+# enqueue the queue could not take, an incomplete corpus read, a minute TMDB refused) returns; a
+# deliberate no-op (nothing due, not seeded yet, a window another replica claimed) still completes, so
+# a healthy standby never goes stale. A loop that only hands its run elsewhere (the lookup fill's
+# rounds, the scrape reaper's spread slices) is stamped by that work when it ends, not at the hand-off --
 #
 #   kinowo_<tier>_scheduled_tick_last_success_timestamp_seconds{country,tick}
 #   kinowo_<tier>_scheduled_tick_interval_seconds{country,tick}
