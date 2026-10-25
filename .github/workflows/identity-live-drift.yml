@@ -2,17 +2,22 @@
 # that itself, nightly (IdentityDriftCheck), until the whole resolve beside its model's state OOM-killed worker-us two
 # nights running (442cff245). A recording holds both sides of the same moment -- the scrape corpus, and the films prod
 # was screening as it was recorded (prod-films-<cc>.json.gz) -- so this runs the comparison on a runner's heap instead:
-# scripts.IdentityLiveDrift resolves the recording whole (the model and a fresh agreement stage asked to its fixpoint,
-# over the checkout's capture of prod's filed family answers) and names each listing whose TMDB film differs from the
-# one prod screened it as.
+# scripts.IdentityLiveDrift resolves the recording whole (the model over prod's pins and a fresh agreement stage asked to
+# its fixpoint over prod's filed family answers, both as the recording captured them -- tools.ProdIdentityInputs -- the
+# checkout's capture beneath for what they lack) and names each listing whose TMDB film differs from the one prod screened
+# it as. What the whole side still reads otherwise is listed in each TSV's `# differs:` header lines and the JSON's
+# `inputs`.
 #
 # THE RESULT IS A METRIC, not the run's colour: scripts/ci/identity_live_drift.py pushes the counts as
 # kinowo_identity_drift_* (Prometheus, via the token-gated OTLP path the build timings use), which the
 # IdentityIncrementalDrift alert and worker-diagnostics' "Identity drift" panel read; the drifted listings are the
-# `identity-live-drift` artifact's live-drift-<cc>.tsv. Red only when a country could not be compared or the push failed.
+# `identity-live-drift` artifact's live-drift-<cc>.tsv. Red when a country could not be compared, the push failed, or
+# there was no recording to compare.
 # Prod itself is never read: the recording already holds what it read, read-only, when it was made.
 #
-# After each recording on main, and by hand (`run-id`: any recording's run).
+# After each recording on main -- one that FAILED is passed over for the newest successful recording on main, and the run
+# is red when none is newer than 48 h (scripts/ci/live_drift_recording.py): never a skipped job showing green, as run 1493
+# did after recording 1476 failed -- and by hand (`run-id`: any recording's run, whatever its age).
 name: Identity live drift
 
 on:
@@ -43,8 +48,6 @@ permissions:
 
 jobs:
     compare:
-        # A recording off main, or one that failed, is not prod's moment.
-        if: github.event_name != 'workflow_run' || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success')
         runs-on: ubuntu-26.04
         timeout-minutes: 300
         permissions:
@@ -52,16 +55,29 @@ jobs:
             actions: read
         steps:
             - uses: actions/checkout@v5
+            # A recording off main, or one that failed, is not prod's moment: the newest successful one stands in for it.
+            - name: Choose the recording
+              id: recording
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  KINOWO_REPO: ${{ github.repository }}
+                  TRIGGER: ${{ inputs.run-id || github.event.workflow_run.id }}
+                  CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+                  BRANCH: ${{ github.event.workflow_run.head_branch || 'main' }}
+              run: |
+                  set -euo pipefail
+                  run=$(python3 scripts/ci/live_drift_recording.py --trigger "$TRIGGER" --conclusion "$CONCLUSION" --branch "$BRANCH")
+                  echo "run=$run" >> "$GITHUB_OUTPUT"
             - name: Lay out the recording
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RECORDING: ${{ inputs.run-id || github.event.workflow_run.id }}
+                  RECORDING: ${{ steps.recording.outputs.run }}
                   COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
                   KINOWO_REPO: ${{ github.repository }}
               run: |
                   set -euo pipefail
-                  [[ "$RECORDING" =~ ^[0-9]+$ ]] || { echo "::error::run-id is a run id, not $RECORDING"; exit 1; }
                   IFS=, read -r -a ccs <<< "$COUNTRIES"
                   scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" "${ccs[@]}"
                   rm -rf "$RUNNER_TEMP/recording/archive"
