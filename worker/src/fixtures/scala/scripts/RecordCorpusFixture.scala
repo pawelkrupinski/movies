@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, TunnelTunedUri}
+import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, ProdIdentityInputs, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -58,6 +58,8 @@ object RecordCorpusFixture {
       val database = client.getDatabase(databaseName)
       val read     = tools.Stopwatch.start()
       val now      = clock.instant()
+      // prod's identity inputs at the same moment, for the live drift check's whole resolve (ProdIdentityInputs)
+      val inputs   = Alongside.start(s"prod-identity-inputs-${country.code}")(ProdIdentityInputs.read(database))
       val (rows, prodFilms) = Alongside(
         archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
         ProdCoverage.films(database, now))
@@ -87,6 +89,14 @@ object RecordCorpusFixture {
       // The same read per film, for a leg that drifts from the band to name the films it drifted on (FilmCoverageDiff).
       val filmsPath = ProdFilms.write(country.code, prodFilms)
       println(f"[corpus] wrote $filmsPath%s — prod's ${prodFilms.size}%d screening films, ${java.nio.file.Files.size(filmsPath) / 1024.0}%.0f KB")
+      // Not the corpus's to fail over: a recording without them is refused by the drift check alone, which says so.
+      scala.util.Try(inputs.join(ProdIdentityInputs.ReadTimeout)).fold(
+        failed => println(s"::warning::[corpus] ${country.displayName}: prod's pins and family answers not recorded (${failed.getMessage}); " +
+          "the live drift check will refuse this recording"),
+        captured => {
+          val inputsPaths = ProdIdentityInputs.write(ProdIdentityInputs.Root, country.code, captured)
+          println(s"[corpus] wrote ${inputsPaths.mkString(", ")} — prod's ${captured.pins.size} pin(s) and ${captured.families.size} filed family answer(s)")
+        })
 
       // …and the same pair again over a ~100-film slice, for the fast leg that runs
       // ahead of the full matrix. The draw happens HERE, once, and the files pin it:

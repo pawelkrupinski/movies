@@ -490,13 +490,20 @@ jobs:
               run: |
                   set -euo pipefail
                   mkdir -p scrape-archive
+                  # prod's pins and filed family answers (ProdIdentityInputs), for the live drift check's whole resolve:
+                  # packed when the recorder read them, which it does not fail the corpus over
+                  inputs=()
+                  for f in "prod-pins-${{ inputs.code }}.json" "prod-family-answers-${{ inputs.code }}.json.gz"; do
+                      [ ! -f "test/resources/fixtures/corpus/$f" ] || inputs+=("test/resources/fixtures/corpus/$f")
+                  done
                   tar -czf "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
                       "test/resources/fixtures/corpus/cinema-scrapes-${{ inputs.code }}.json.gz" \
                       "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}.json" \
                       "test/resources/fixtures/corpus/prod-films-${{ inputs.code }}.json.gz" \
                       "test/resources/fixtures/corpus/cinema-scrapes-${{ inputs.code }}-sample.json.gz" \
                       "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}-sample.json" \
-                      "test/resources/fixtures/corpus/prod-films-${{ inputs.code }}-sample.json.gz"
+                      "test/resources/fixtures/corpus/prod-films-${{ inputs.code }}-sample.json.gz" \
+                      ${inputs[@]+"${inputs[@]}"}
                   ls -l scrape-archive/
 
             # Every later leg's corpus: the hermetic legs replay a pinned run's

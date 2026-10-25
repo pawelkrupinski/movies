@@ -96,7 +96,8 @@ object FiledAnswers {
 
   /** `filed` with `families` — prod's own, read from the local prod mirror ([[ProdMirror]]) — in preference to its own. */
   def preferring(filed: FiledAnswers, families: Map[String, BsonDocument], source: String): FiledAnswers =
-    FiledAnswers(filed.capture.copy(families = filed.families ++ families), if (filed.source.isEmpty) source else s"$source (over ${filed.source})")
+    FiledAnswers(filed.capture.copy(families = filed.families ++ families), if (filed.source.isEmpty) source else s"$source (over ${filed.source})",
+      filed.live)
 
   /** Two reads' answers together. */
   def merge(a: FiledAnswers, b: FiledAnswers): FiledAnswers =

@@ -154,8 +154,9 @@ object IdentitySlice {
   final class Reads(val country: Country, val fetch: tools.HttpFetch, val gaps: TmdbIdentityLookups.Gaps, val clock: Clock,
                     /** The answers no recording holds — prod's filed family answers, the capture's live TMDB ones — read where the recording has none ([[tools.FiledAnswers]]). */
                     val filed: tools.FiledAnswers,
-                    /** Prod's state beside the recording — the stage's stored verdicts, the pins — from the local prod mirror; none in a hermetic slice. */
-                    val prod: tools.ProdState = tools.ProdState.none) {
+                    /** Prod's state beside the recording — the stage's stored verdicts, the pins — from the local prod mirror, or
+                     *  `ProdState.none` in a hermetic slice: no default, every reader says which. */
+                    val prod: tools.ProdState) {
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
     val tmdb = OlderRefs.tmdbClient(fetch, settings.TmdbApiKey(StubTmdbKey), country.language)
     private val venueClock = new models.VenueClock(clock)
@@ -229,12 +230,13 @@ object IdentitySlice {
                            changed: Set[String] => Resolution = _ => Resolution(Nil, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty))
 
   def decide(core: Seq[Listing], context: Seq[Listing], reads: Reads, label: String): Decided =
-    agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer, pins = PinConstraints(reads.prod.pins)), core, reads, label)
+    agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer, OlderRefs.resolveInputs(reads.prod.pins)), core, reads, label)
 
   /** The slice's listings handed to the INCREMENTAL model in a shuffled order, a few batches at a time — as scrapes reach
    *  the worker's model — and its decisions on the core: what P1 says equals [[IdentitySlicing.resolve]]'s. */
   def incrementally(core: Seq[Listing], context: Seq[Listing], reads: Reads, seed: Long): Seq[ResolverDecision] = {
-    val model = new IncrementalResolver(reads.lookups, reads.normalizer, IdentityCalibration.resolver)
+    val (calibration, pins, decorations) = OlderRefs.resolveInputs(reads.prod.pins)
+    val model = new IncrementalResolver(reads.lookups, reads.normalizer, calibration, pins, decorations)
     val all   = new scala.util.Random(seed).shuffle(core ++ context)
     all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, services.identity.AnswersChanged.Empty))
     val coreKeys = core.map(_.key).toSet
@@ -661,7 +663,7 @@ object IdentitySlice {
   }
 
   def readsOf(opened: RecordedCorpus.Opened, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, at: Instant,
-              filed: Option[tools.FiledAnswers] = None, prod: tools.ProdState = tools.ProdState.none): Reads =
+              filed: Option[tools.FiledAnswers], prod: tools.ProdState): Reads =
     new Reads(opened.country, fetch, gaps, Clock.fixed(at, ZoneOffset.UTC), filed.getOrElse(tools.FiledAnswers.of(opened.country)), prod)
 
   /** The recording's whole-corpus index at this ref: read from `path`, else resolved (minutes) and kept there. */
@@ -670,7 +672,7 @@ object IdentitySlice {
     else {
       val started = tools.Stopwatch.start()
       System.err.println(s"[identity-slice] resolving the recording's ${listings.size} listings whole, once (kept in $path)")
-      val reads = readsOf(opened, opened.fetch, opened.gaps, Instant.EPOCH)
+      val reads = readsOf(opened, opened.fetch, opened.gaps, Instant.EPOCH, None, tools.ProdState.none)
       val index = IdentitySlicing.index(listings, OlderRefs.passing(classOf[IdentityLookups], new MemoLookups(reads.lookups), reads.lookups, OlderRefs.NewerLookups), reads.normalizer)
       writeIndex(path, index)
       System.err.println(f"[identity-slice] indexed in ${started.seconds}%.1fs")
@@ -876,7 +878,7 @@ object IdentitySlice {
   def takesOf(dir: Path): Map[(String, String), String] = {
     val slice     = readSlice(dir)
     val replaying = new SliceHttp.Replaying(slice.http)
-    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed)
+    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed, tools.ProdState.none)
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     require(replaying.lacking.isEmpty, s"the slice $dir lacks answers: ${replaying.lacking.asScala.map(_.render).toSeq.sorted.take(5).mkString("; ")}")
     slice.seeds.toSeq.flatMap(key => decided.agreed.decisionOf.get(key).map(d => (key.venue, key.rawTitle) -> filmOf(d))).toMap

@@ -79,7 +79,7 @@ object ModelTakeAnswersFill {
     val c       = l.c
     val code    = c.country.code
     val started = tools.Stopwatch.start()
-    val resolution = IdentityResolver.resolve(l.listings, l.lookups, c.normalizer, IdentityCalibration.resolver)
+    val resolution = IdentityResolver.resolve(l.listings, l.lookups, c.normalizer, ResolveInputs.Unpinned)
     val byKey   = l.listings.map(x => x.key -> x).toMap
     val clusters = resolution.decisions.filter(d => d.film.isDefined && d.basis != ResolverDecision.Basis.Pinned)
       .map(_.members.flatMap(byKey.get)).filter(_.nonEmpty)

@@ -66,7 +66,7 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val listings = listingsOf(w, c.normalizer)
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
         language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, new CountedGaps(c.misses))
-      val (resolution, seconds) = timed(IdentityResolver.resolve(listings, new Memo(source), c.normalizer, IdentityCalibration.resolver))
+      val (resolution, seconds) = timed(IdentityResolver.resolve(listings, new Memo(source), c.normalizer, ResolveInputs.Unpinned))
       val clusters = resolution.decisions.map(_.listings)
       val review   = IdSeeding.review(films, clusters)
       // A review over unanswered lookups is a review of nothing: every cluster without a film, every

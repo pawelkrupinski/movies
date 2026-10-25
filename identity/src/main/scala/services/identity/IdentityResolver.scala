@@ -124,14 +124,12 @@ object IdentityResolver {
   /** Thrown when `count` edges cross a family: a rule was added without its block key. */
   final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
 
-  /** `pins` are the curation's hard constraints (`PinConstraints`): a pinned film
-   *  replaces a listing's own match, a denied one is never eligible, a pinned group is must-linked
-   *  above every derived tier, and a derived edge the pins contradict is dropped. */
-  def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-              calibration: IdentityCalibration = IdentityCalibration.resolver,
-              pins: PinConstraints = PinConstraints(Nil),
-              decorations: TitleDecorations = TitleDecorations.resolver): Resolution =
-    resolveWith(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
+  /** The whole resolve of `listings` over `inputs` ([[ResolveInputs]], no default: every caller says whose pins it
+   *  reads). Its pins are the curation's hard constraints (`PinConstraints`): a pinned film replaces a listing's own
+   *  match, a denied one is never eligible, a pinned group is must-linked above every derived tier, and a derived edge
+   *  the pins contradict is dropped. */
+  def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs): Resolution =
+    resolveWith(listings, lookups, normalizer, inputs.calibration, Mutation.None, inputs.pins, inputs.decorations)
 
   /** Stage A of a resolve — candidate generation, scoring and families — wired once, for the resolve
    *  and for [[candidatesOf]]. */

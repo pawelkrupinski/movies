@@ -222,12 +222,16 @@ object IdentityDrift {
 
   // ── the whole resolve ────────────────────────────────────────────────────────────────────
 
+  /** The resolve's inputs over `reads`: prod's pins where they are read (the local mirror, a recording's capture of
+   *  them), as the worker builds its own ([[ResolveInputs.of]]). */
+  def inputsOf(reads: Reads): ResolveInputs = ResolveInputs.of(reads.prod.pins)
+
   /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint — what a worker with
    *  nothing kept would take. */
   def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock): Resolution = {
     val answers  = new Answers(reads, new tools.FiledAnswers.Noting(reads.filed), clock)
     val lookups  = memo(reads)
-    val model    = UnmatchedClusters.resolutionOf(IdentityResolver.resolve(listings, lookups, reads.normalizer, IdentityCalibration.resolver).decisions)
+    val model    = UnmatchedClusters.resolutionOf(IdentityResolver.resolve(listings, lookups, reads.normalizer, inputsOf(reads)).decisions)
     val stage    = answers.stage(lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
     settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, clock, _ => false)
@@ -262,7 +266,8 @@ object IdentityDrift {
     /** The stage's cluster keys, kept across deploys as the worker's `identity_agreement_keys` keeps them. */
     private val keys     = new StoredAsWritten.Keys
     private var rules    = "rules-1"
-    private def newModel() = new IncrementalResolver(gate, reads.normalizer, IdentityCalibration.resolver, store = families, rules = rules)
+    private val inputs   = inputsOf(reads)
+    private def newModel() = inputs.incremental(gate, reads.normalizer, families, rules, IdentityTraceSink.Discard)
     var model: IncrementalResolver = newModel()
     var stage: AgreementStage = answers.stage(gate, verdicts, budgets = true, keys)
     /** The intake's listings by key: what a projection hands the stage. */
@@ -356,7 +361,8 @@ object IdentityDrift {
     System.err.println(s"[identity-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
     val divergences = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)).flatMap { seed =>
       val clock = new MutableClock(recording.recordedAt)
-      def readsAt(c: java.time.Clock) = new Reads(country, opened.fetch, opened.gaps, c, filed)
+      // hermetic: no prod pins nor stored verdicts beside the CI gate's recording, on both sides of its comparison alike
+      def readsAt(c: java.time.Clock) = new Reads(country, opened.fetch, opened.gaps, c, filed, tools.ProdState.none)
       val checkpoints = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())

@@ -18,7 +18,7 @@ class ProgrammeSpellingsSpec extends AnyFlatSpec with Matchers {
     // Their pages give 93 and 90 minutes: as decorated titles that overlap, three minutes apart cut them.
     val piast  = listing(KinoMikro, "Egon Schiele. Poza tabu | FKS", runtime = Some(93))
     val rialto = listing(Rialto, "Wielka Sztuka w Kinoteatrze Rialto - Egon Schiele. Poza tabu", runtime = Some(90))
-    val r = IdentityResolver.resolve(Seq(piast, rialto), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(piast, rialto), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(r.decisionOf(piast.key).render)(r.decisionOf(piast.key) shouldBe theSameInstanceAs(r.decisionOf(rialto.key)))
   }
 }

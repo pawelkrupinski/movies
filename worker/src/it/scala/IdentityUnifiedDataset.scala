@@ -115,7 +115,7 @@ object IdentityUnifiedDataset {
     val c        = l.c
     val code     = c.country.code
     val started  = tools.Stopwatch.start()
-    val resolution = IdentityResolver.resolve(l.listings, l.lookups, c.normalizer, IdentityCalibration.resolver)
+    val resolution = IdentityResolver.resolve(l.listings, l.lookups, c.normalizer, ResolveInputs.Unpinned)
     val nodeOf   = IdentityResolver.evidenceOf(l.listings, l.lookups, c.normalizer)(_ => true).flatMap(n => n.keys.map(_ -> n)).toMap
     val byKey    = l.listings.map(x => x.key -> x).toMap
     val capture  = Some(UnmatchedClusters.fixturePath(c.country)).filter(Files.exists(_)).map(UnmatchedClusters.read)

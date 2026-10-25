@@ -110,7 +110,7 @@ object LeanWholeGuard {
     val w       = wiring(target, c, storages, root, configuration.env)
     val lookups = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps))
-    def resolved(listings: Seq[Listing]) = reads(IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver), listings)
+    def resolved(listings: Seq[Listing]) = reads(IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned), listings)
     val lean  = ModelRead.corpus(w.archivedListings, c.normalizer)
     val found = differences(resolved(lean), resolved(ModelRead.whole(w.archivedListings, c.normalizer)))
     Files.createDirectories(dir)

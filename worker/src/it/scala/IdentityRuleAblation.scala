@@ -92,7 +92,7 @@ object IdentityRuleAblation {
     def resolve(config: Config): (Seq[Listing], Map[ListingKey, Take], Resolution) = {
       val normalizer = new TitleNormalizer(TitleRuleSet(every.filterNot(r => config.titleRules(r.id))), facts = c.country.titleFacts)
       val listings   = listingsOf(w, normalizer)
-      val resolution = RuleAblation.disabling(config.identityRules)(IdentityResolver.resolve(listings, lookups, normalizer, IdentityCalibration.resolver))
+      val resolution = RuleAblation.disabling(config.identityRules)(IdentityResolver.resolve(listings, lookups, normalizer, ResolveInputs.Unpinned))
       val takes      = listings.map { l =>
         val d = resolution.decisionOf(l.key)
         l.key -> Take(d.film, d.film.flatMap(resolution.films.get).map(f => s"${f.title} (${f.year.getOrElse("?")})"), d.basis.toString)

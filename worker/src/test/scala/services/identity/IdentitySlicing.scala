@@ -39,9 +39,11 @@ object IdentitySlicing {
     lazy val nodesOfKey: Map[String, Seq[String]] = keysOf.toSeq.flatMap { case (node, keys) => keys.map(_ -> node) }.groupMap(_._1)(_._2)
   }
 
-  /** The whole-corpus index of `listings`, read through `lookups` (memoised: the resolve and the node pass ask alike). */
+  /** The whole-corpus index of `listings`, read through `lookups` (memoised: the resolve and the node pass ask alike): its
+   *  families as an unpinned resolve forms them, by `resolveWith`, which every ref this file is dropped into has alike. */
   def index(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer): Index = {
-    val resolution = IdentityResolver.resolve(listings, lookups, normalizer)
+    val resolution = IdentityResolver.resolveWith(listings, lookups, normalizer, IdentityCalibration.resolver, IdentityResolver.Mutation.None,
+      PinConstraints(Nil), TitleDecorations.resolver)
     val nodes      = nodesOf(listings, lookups, normalizer)
     Index(listings, resolution.familyOf,
       nodes.flatMap(node => node.listings.map(_.key -> node.id)).toMap,
@@ -74,10 +76,10 @@ object IdentitySlicing {
   }
 
   /** The model's decisions on `core`, its corpus context derived from `core` and `context` — as the incremental model
-   *  decides a family against the whole corpus's context. */
+   *  decides a family against the whole corpus's context — over the resolve's inputs (`OlderRefs.resolveInputs`). */
   def resolve(core: Seq[Listing], context: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-              calibration: IdentityCalibration = IdentityCalibration.resolver, pins: PinConstraints = PinConstraints(Nil)): Seq[ResolverDecision] = {
-    val decorations = TitleDecorations.resolver
+              inputs: (IdentityCalibration, PinConstraints, TitleDecorations)): Seq[ResolverDecision] = {
+    val (calibration, pins, decorations) = inputs
     val corpus      = IdentityResolver.contextOf(core ++ context, lookups, normalizer, pins, decorations)
     IdentityResolver.resolveRegion(core, lookups, normalizer, calibration, pins, decorations, corpus).flatMap(_.decisions)
   }

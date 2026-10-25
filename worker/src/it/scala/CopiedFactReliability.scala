@@ -73,7 +73,7 @@ object CopiedFactReliability {
     val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
-    val resolution = IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver)
+    val resolution = IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned)
     val byTitle    = judged.groupBy(_.rawTitle)
     val calibration = IdentityCalibration.resolver
     def opt[A](a: Option[A])(f: A => JsValue): JsValue = a.fold[JsValue](JsNull)(f)

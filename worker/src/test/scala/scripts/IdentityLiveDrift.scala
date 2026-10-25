@@ -1,10 +1,10 @@
 package scripts
 
 import models.Country
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, JsString, Json}
 import services.identity._
 import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
-import tools.{MutableClock, ProdFilm, ProdFilms}
+import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs}
 
 import java.nio.file.{Files, Path}
 
@@ -16,8 +16,14 @@ import java.nio.file.{Files, Path}
  *
  *  - LIVE: the films prod was screening when the corpus was recorded (`corpus/prod-films-<cc>.json.gz`, [[ProdFilm]]),
  *    each with the venue slots it screens in — what the identity projection last wrote, its TMDB film or none;
- *  - WHOLE: the recording's listings resolved whole with nothing kept — the model's resolve and a fresh agreement stage
- *    asked to its fixpoint over prod's filed family answers ([[IdentityDrift.whole]], the CI gate's own whole resolve).
+ *  - WHOLE: the recording's listings resolved whole with nothing kept — the model's resolve over prod's pins and a fresh
+ *    agreement stage asked to its fixpoint over prod's filed family answers ([[IdentityDrift.whole]], the CI gate's own
+ *    whole resolve), both as the recording captured them at its moment ([[tools.ProdIdentityInputs]]); the capture
+ *    (`--families`) lends only what prod's answers lack, its live TMDB answers above all.
+ *
+ * What the whole side still reads otherwise than the worker did is named in the TSV's header and the JSON's `inputs`
+ * ([[Differences]]), never left implicit. A recording without prod's inputs, or a `--families` file that is not there,
+ * is refused (exit 2): an unpinned resolve over a capture's week-old answers compared nothing but the inputs.
  *
  * Each listing is joined to prod's film through its slot key — the page's own slot where prod keeps a page apart
  * (`VenueSlots.slotKey`), else the venue's slot for its title. A listing in no screening slot, a slot two of prod's films
@@ -28,8 +34,10 @@ import java.nio.file.{Files, Path}
  * model keeps only some of them.
  *
  * {{{
- *   IdentityLiveDrift <cc> --recording DIR [--families CAPTURE|none] [--out DIR]
+ *   IdentityLiveDrift <cc> --recording DIR --families CAPTURE|none [--inputs DIR] [--out DIR]
  * }}}
+ * `--inputs DIR`: where prod's inputs were captured (`corpus/prod-pins-<cc>.json`, `corpus/prod-family-answers-<cc>.json.gz`
+ * under it), the recording's own by default.
  * Writes `live-drift-<cc>.tsv` (every drifted listing) and `live-drift-<cc>.json` (the counts
  * scripts/ci/identity_live_drift.py pushes as `kinowo_identity_drift_*`). Exit: 0 compared, whatever drifted — the count
  * is the finding, and the `IdentityIncrementalDrift` alert reads it; 2 it could not compare.
@@ -37,20 +45,23 @@ import java.nio.file.{Files, Path}
 object IdentityLiveDrift {
   import IdentitySlice.Recording
 
-  final case class Options(country: String = "", recording: Option[Path] = None, families: Option[Path] = None,
+  final case class Options(country: String = "", recording: Option[Path] = None,
+                           /** `--families`: Some(None) is `none`, said outright; None is not said, refused. */
+                           families: Option[Option[Path]] = None, inputs: Option[Path] = None,
                            out: Path = Path.of("target/identity-live-drift"))
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                        => o
     case "--recording" :: v :: rest => parse(rest, o.copy(recording = Some(Path.of(v))))
-    case "--families" :: v :: rest  => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
+    case "--families" :: v :: rest  => parse(rest, o.copy(families = Some(Option.when(v != "none")(Path.of(v)))))
+    case "--inputs" :: v :: rest    => parse(rest, o.copy(inputs = Some(Path.of(v))))
     case "--out" :: v :: rest       => parse(rest, o.copy(out = Path.of(v)))
     case cc :: rest if !cc.startsWith("--") && o.country.isEmpty => parse(rest, o.copy(country = cc.toLowerCase(java.util.Locale.ROOT)))
     case other :: _                 => usage(s"unknown argument $other")
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityLiveDrift: $why\n  IdentityLiveDrift <cc> --recording DIR [--families CAPTURE|none] [--out DIR]")
+    System.err.println(s"IdentityLiveDrift: $why\n  IdentityLiveDrift <cc> --recording DIR --families CAPTURE|none [--inputs DIR] [--out DIR]")
     sys.exit(2)
   }
 
@@ -95,6 +106,32 @@ object IdentityLiveDrift {
     Report(listings.size, compared.size, unsettled.size, drifted.sortBy(d => (d.listing.venue, d.listing.rawTitle)))
   }
 
+  /** The `--families` capture's answers: refused when the file is not there — never an empty set read as "prod filed
+   *  nothing" — and none only when said outright. */
+  def filedOf(families: Option[Path], country: Country): Either[String, tools.FiledAnswers] = families match {
+    case None                              => Right(tools.FiledAnswers.of(country))
+    case Some(path) if Files.exists(path) => Right(tools.FiledAnswers.ofCapture(path))
+    case Some(path)                        => Left(s"no --families capture at $path")
+  }
+
+  /** What the whole side read of prod's inputs, and what it still reads otherwise than the worker did: the TSV's header
+   *  lines (`# …`) and the JSON's `inputs`, so a drift count never stands on an input difference nobody named. */
+  final case class Differences(pins: Int, familyAnswers: Int, capture: String) {
+    def inputs: String = s"prod's $pins pin(s) and $familyAnswers family answer(s) as recorded, the capture ${if (capture.isEmpty) "none" else capture} beneath"
+    def header: Seq[String] = s"# inputs: $inputs" +: Differences.Otherwise.map { case (input, why) => s"# differs: $input — $why" }
+    def json: JsObject = Json.obj("pins" -> pins, "familyAnswers" -> familyAnswers, "capture" -> capture,
+      "differs" -> JsObject(Differences.Otherwise.map { case (input, why) => input -> JsString(why) }))
+  }
+  object Differences {
+    /** The inputs the whole side reads otherwise than the worker, by design or for want of a capture. */
+    val Otherwise: Seq[(String, String)] = Seq(
+      "stored verdicts" -> "none: a whole resolve keeps nothing, which is what the check compares against",
+      "TMDB and IMDb answers" -> "the recording's enrichment tree and the capture's live answers, not the worker's TMDB store",
+      "venue pages" -> "the recording's, not venue_pages",
+      "question memory" -> "a question the recording cannot answer is attempted at once, not after the worker's retries",
+      "clock" -> "the recording's moment")
+  }
+
   def main(args: Array[String]): Unit = {
     val o         = parse(args.toList)
     val country   = Country.all.find(_.code == o.country).getOrElse(usage(s"no country '${o.country}'"))
@@ -102,22 +139,34 @@ object IdentityLiveDrift {
     val prodFilms = recording.root.resolve("corpus").resolve(s"prod-films-${country.code}.json.gz")
     if (!Files.exists(prodFilms)) usage(s"no $prodFilms: the recording holds no prod films to compare with")
     val started   = tools.Stopwatch.start()
-    val filed     = o.families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
+    val capture   = filedOf(o.families.getOrElse(usage("--families CAPTURE|none: the capture whose answers prod's do not hold")), country)
+      .fold(usage, identity)
+    val inputsDir = o.inputs.getOrElse(recording.root)
+    val prod      = ProdIdentityInputs.readFrom(inputsDir, country.code).getOrElse(usage(
+      s"no ${ProdIdentityInputs.pinsPath(inputsDir, country.code)} and ${ProdIdentityInputs.familiesPath(inputsDir, country.code)}: " +
+        "the recording holds no capture of prod's pins and family answers (recorded before 2026-10-25, or the recorder could not read them)"))
+    val filed     = tools.FiledAnswers.preferring(capture, prod.families, s"prod's family answers at $inputsDir")
     val opened    = IdentitySlice.openRecording(recording, filed)
     val listings  = IdentitySlice.listingsOf(recording, opened.rows)
     val normalizer = TitleNormalizer.forCountry(country)
     val venues    = tools.CountryScrapeCorpus.cinemasOf(country).toSet
     val slots     = opened.rows.filter(r => venues(r.cinema)).flatMap(r => r.films.map(cm => ListingKey.of(r.cinema, cm) -> slotKeys(r.cinema, cm, normalizer)))
       .distinctBy(_._1)
-    System.err.println(s"[identity-live-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
+    val differences = Differences(prod.pins.size, prod.families.size, capture.source)
+    System.err.println(s"[identity-live-drift] ${country.code}: ${listings.size} listings, ${filed.render}; ${differences.inputs}")
     val clock     = new MutableClock(recording.recordedAt)
-    val whole     = IdentityDrift.whole(new IdentitySlice.Reads(country, opened.fetch, opened.gaps, clock, filed), listings, clock)
+    // prod's pins as the worker reads them; its stored verdicts not: a whole resolve keeps nothing (Differences)
+    val reads     = new IdentitySlice.Reads(country, opened.fetch, opened.gaps, clock, filed,
+      tools.ProdState(s"recording ${recording.root}", Nil, prod.pins, _ => Map.empty))
+    val whole     = IdentityDrift.whole(reads, listings, clock)
     val report    = compare(slots, liveBySlot(ProdFilms.readFrom(prodFilms)), whole.decisionOf)
     Files.createDirectories(o.out)
-    Files.writeString(o.out.resolve(s"live-drift-${country.code}.tsv"), (Header +: report.drifted.map(_.tsv(country.code))).mkString("", "\n", "\n"))
+    Files.writeString(o.out.resolve(s"live-drift-${country.code}.tsv"),
+      ((differences.header :+ Header) ++ report.drifted.map(_.tsv(country.code))).mkString("", "\n", "\n"))
     Files.writeString(o.out.resolve(s"live-drift-${country.code}.json"), Json.stringify(Json.obj(
       "country" -> country.code, "recordedAt" -> recording.recordedAt.toString, "listings" -> report.listings, "compared" -> report.compared,
-      "unsettled" -> report.unsettled, "drifted" -> Json.toJson(Seq("lost", "gained", "changed").map(k => k -> report.byKind.getOrElse(k, 0)).toMap))))
+      "unsettled" -> report.unsettled, "drifted" -> Json.toJson(Seq("lost", "gained", "changed").map(k => k -> report.byKind.getOrElse(k, 0)).toMap),
+      "inputs" -> differences.json)))
     println(f"## ${country.code}: ${report.drifted.size} of ${report.compared} compared listings drifted from a whole resolve " +
       f"(${report.listings} recorded, ${report.unsettled} unsettled; ${report.byKind.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")}) " +
       f"in ${started.seconds}%.0fs")

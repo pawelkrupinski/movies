@@ -108,7 +108,7 @@ object IdentityDriftCheck {
    *  never attempted stays open. */
   def wholeResolve(live: Live, lookups: IdentityLookups, normalizer: services.movies.TitleNormalizer, pins: PinConstraints,
                    stage: java.time.Clock => agreement.AgreementStage, version: Long, clock: java.time.Clock): Whole = {
-    val model = IdentityResolver.resolve(live.listings.values, lookups, normalizer, IdentityCalibration.resolver, pins)
+    val model = IdentityResolver.resolve(live.listings.values, lookups, normalizer, ResolveInputs(pins, IdentityCalibration.resolver, TitleDecorations.resolver))
     val fresh = stage(clock)
     Whole(fresh.apply(model, live.listings.get, version, None), fresh.waitingOn)
   }

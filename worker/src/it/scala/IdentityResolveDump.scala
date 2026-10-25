@@ -79,7 +79,7 @@ object IdentityResolveDump {
     val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
-    val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver))
+    val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned))
     val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
     // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
     val suspects  = {

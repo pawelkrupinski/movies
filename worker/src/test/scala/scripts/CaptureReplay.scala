@@ -53,7 +53,7 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
     answering { (answeredCapture, lookups) =>
       val cap      = answeredCapture.copy(listings = listings)
       val keys     = touched.flatMap(_.members)
-      val resolved = IdentityResolver.resolve(listings.filter(l => keys(l.key)), lookups, n)
+      val resolved = IdentityResolver.resolve(listings.filter(l => keys(l.key)), lookups, n, ResolveInputs.Unpinned)
       val outcome  = UnmatchedClusters.replay(cap, capture.decisions.filterNot(touched) ++ resolved.decisions, normalizer = Some(n))
       (UnmatchedClusters.takes(cap, outcome), outcome.missingQueries, outcome.missingFilms)
     }
@@ -61,7 +61,7 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
   /** Every listing of the capture resolved again under `calibration` — alone, without the rest of the corpus its
    *  captured decisions were made beside, so only compared with another such resolve ([[spliced]]). */
   def resolved(calibration: IdentityCalibration): Seq[ResolverDecision] =
-    IdentityResolver.resolve(capture.listings, new UnmatchedClusters.Replay(answered), normalizer, calibration).decisions
+    IdentityResolver.resolve(capture.listings, new UnmatchedClusters.Replay(answered), normalizer, ResolveInputs.Unpinned.copy(calibration = calibration)).decisions
 
   /** A calibration measured as the ratchet measures it: `base` (the captured decisions, else those a kept change left)
    *  with every cluster the capture's resolve under `calibration` decides otherwise than under the control (`was`) taken
@@ -71,7 +71,7 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
     var decisions = base
     var now       = was
     val (takes, gaps) = answering { (cap, lookups) =>
-      now       = IdentityResolver.resolve(capture.listings, lookups, normalizer, calibration).decisions
+      now       = IdentityResolver.resolve(capture.listings, lookups, normalizer, ResolveInputs.Unpinned.copy(calibration = calibration)).decisions
       decisions = spliced(base, was, now)
       val outcome = UnmatchedClusters.replay(cap, decisions, calibration = calibration)
       (UnmatchedClusters.takes(cap, outcome), outcome.missingQueries, outcome.missingFilms)

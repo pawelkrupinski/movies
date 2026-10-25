@@ -81,7 +81,7 @@ object UnmatchedClustersCapture {
     val source   = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps)
     val lookups  = new Memo(source)
-    val whole     = IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver)
+    val whole     = IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned)
     val decisions = whole.decisions.filter(d => d.film.isEmpty && d.fallback.isEmpty && d.unanswered == 0)
     val unmatched = decisions.flatMap(_.members).toSet
     val subset    = listings.filter(l => unmatched(l.key))

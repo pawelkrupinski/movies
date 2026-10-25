@@ -40,7 +40,7 @@ object ModelTakeCorrectionCost {
         if (Files.exists(file)) docs.put(TmdbKind.Family, Files.readAllLines(file).asScala.toSeq.filter(_.nonEmpty).map { line =>
           val d = org.bson.BsonDocument.parse(line); d.remove("_id").asString.getValue -> d })
         val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
-        val resolution = IdentityResolver.resolve(l.listings, l.lookups, l.c.normalizer, IdentityCalibration.resolver)
+        val resolution = IdentityResolver.resolve(l.listings, l.lookups, l.c.normalizer, ResolveInputs.Unpinned)
         // the stage as it was: every model take passed by, as a pin is
         val pinned = resolution.copy(decisions = resolution.decisions.map(d =>
           if (d.film.isDefined && (d.basis == ResolverDecision.Basis.OwnMatch || d.basis == ResolverDecision.Basis.PooledMatch))

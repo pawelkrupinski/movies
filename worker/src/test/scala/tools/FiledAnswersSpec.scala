@@ -87,4 +87,14 @@ class FiledAnswersSpec extends AnyFlatSpec with Matchers {
     back.capture.queries shouldBe Map(CandidateQuery.Title("Treasure Island") -> Seq(treasure))
     FiledAnswers.readFrom(Files.createTempDirectory("none"), uk).isEmpty shouldBe true
   }
+
+  "Prod's own family answers" should "stand over the capture's, the capture's live HTTP answers kept beneath them" in {
+    val live      = filed.copy(live = Map("GET https://v3.sg.media-imdb.com/suggestion/t/treasure%20island.json" -> "{}"))
+    val preferred = FiledAnswers.preferring(live, Map("rt|title|Treasure Island" -> doc("tt1")), "prod mirror")
+    preferred.families("rt|title|Treasure Island") shouldBe doc("tt1")
+    preferred.families("imdb|title|Treasure Island") shouldBe doc("tt1")
+    preferred.live shouldBe live.live
+    preferred.source shouldBe "prod mirror (over uk.json.gz)"
+  }
 }
+

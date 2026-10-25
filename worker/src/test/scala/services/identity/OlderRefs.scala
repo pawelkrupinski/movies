@@ -63,6 +63,24 @@ object OlderRefs {
       .flatMap(read => call(read, "corpus", byCinema, normalizer)).map(_.asInstanceOf[Seq[Listing]])
       .getOrElse(Listing.corpus(byCinema, normalizer))
 
+  /** The resolve's inputs over `pins` (its calibration, pins and title decorations) as production builds them:
+   *  `ResolveInputs.of` where the ref has it (2026-10-25), the one builder the worker and the drift checks use, else as an
+   *  older ref's resolve defaulted them. An input this tool does not pass on (a field of `ResolveInputs` beyond these
+   *  three) is refused, never dropped: the slice would decide without it while the worker decides with it. */
+  def resolveInputs(pins: Seq[Pin]): (IdentityCalibration, PinConstraints, TitleDecorations) =
+    scala.util.Try(Class.forName("services.identity.ResolveInputs$").getField("MODULE$").get(null)).toOption
+      .fold((IdentityCalibration.resolver, PinConstraints(pins), TitleDecorations.resolver)) { builder =>
+        val inputs = call(builder, "of", pins).getOrElse(throw new IllegalStateException("ResolveInputs.of no longer takes the pins alone: " +
+          "pass its new input in OlderRefs.resolveInputs")).asInstanceOf[Product]
+        val unread = inputs.productElementNames.toSet -- ResolvedInputs
+        require(unread.isEmpty, s"ResolveInputs holds ${unread.mkString(", ")}, which OlderRefs.resolveInputs does not pass on: pass it")
+        (field(inputs, "calibration").get.asInstanceOf[IdentityCalibration], field(inputs, "pins").get.asInstanceOf[PinConstraints],
+          field(inputs, "decorations").get.asInstanceOf[TitleDecorations])
+      }
+
+  /** The inputs [[resolveInputs]] passes on. */
+  val ResolvedInputs: Set[String] = Set("calibration", "pins", "decorations")
+
   /** A TMDB client over `fetch` that never sleeps: an older ref's client retries a failure itself and takes the pause
    *  between tries as `retrySleep` (gone 2026-10-24, the wire's `RetryingHttpFetch` retries since), passed a no-op here;
    *  a newer one has no such parameter. Every other parameter at its default (a fresh `JsonBodies` where the ref has one). */

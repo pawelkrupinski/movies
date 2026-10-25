@@ -19,7 +19,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   import FilmTable.{F, listing}
 
   private def resolve(listings: Seq[Listing], films: Seq[F]): Resolution =
-    IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, weights)
+    IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = weights))
 
   private def together(r: Resolution, a: Listing, b: Listing) = r.decisionOf(a.key) eq r.decisionOf(b.key)
 
@@ -194,7 +194,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // The Met's record reached the family through another venue's search only; as evidence it names
     // the banner's house by its words (`MetSeasonHouseCase`).
     import MetSeasonHouseCase.*
-    val r = IdentityResolver.resolve(Seq(cosi, carmen, other), lookups(normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(cosi, carmen, other), lookups(normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(Seq(cosi, carmen, other).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(carmen.key).film should not be Some(RboCarmen)
       r.decisionOf(cosi.key).film should not be Some(RboCosi)
@@ -340,7 +340,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val plain     = Seq(Multikino, Helios).map(listing(_, "Shrek", Some(2001), Some("Andrew Adamson")))
     val decorated = Seq(KinoApollo, KinoMuza).map(listing(_, "(Retro Rewind) Shrek"))
     val learned   = TitleDecorations(Set(Seq("retro", "rewind")), Set.empty)
-    def run(d: TitleDecorations) = IdentityResolver.resolve(plain ++ decorated, new FilmTable(films, normalizer), normalizer, weights, decorations = d)
+    def run(d: TitleDecorations) = IdentityResolver.resolve(plain ++ decorated, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = weights, decorations = d))
     val r = run(learned)
     withClue((plain ++ decorated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       (plain ++ decorated).map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(4)(Some(808))
@@ -361,7 +361,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val plain     = Seq(Multikino, Helios, Rialto).map(listing(_, "Mistyczka", Some(2026), Some("Jan Sobierajski")))
     val decorated = listing(KinoApollo, "Mistyczka 2D PL")
     val learned   = TitleDecorations(Set.empty, Set(Seq("2d", "pl")))
-    val r = IdentityResolver.resolve(plain :+ decorated, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver, decorations = learned)
+    val r = IdentityResolver.resolve(plain :+ decorated, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(decorations = learned))
     withClue((plain :+ decorated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(plain.head.key).film shouldBe Some(1731866)
       r.decisionOf(decorated.key).film shouldBe Some(1731866)
@@ -378,7 +378,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val season  = Seq(Multikino, Helios).map(listing(_, "Horror Season 2026 Dracula", director = Some("Terence Fisher"), runtime = Some(82)))
     val besson  = listing(KinoApollo, "Dracula", Some(2025), Some("Luc Besson"), Some(130))
     val learned = TitleDecorations(Set(Seq("horror", "season", "2026")), Set.empty)
-    val r = IdentityResolver.resolve(season :+ besson, new FilmTable(films, normalizer), normalizer, weights, decorations = learned)
+    val r = IdentityResolver.resolve(season :+ besson, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = weights, decorations = learned))
     withClue((season :+ besson).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       season.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(11868), Some(11868))
       r.decisionOf(besson.key).film shouldBe Some(1246049)
@@ -396,7 +396,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       F(92499, "Spellbound", 2011, "Hwang In-ho", 100, 8))
     val l       = listing(KinoApollo, "Hitchcock & Chabrol: Spellbound")
     val learned = TitleDecorations(Set(Seq("hitchcock", "chabrol")), Set.empty)
-    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver, decorations = learned).decisionOf(l.key)
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(decorations = learned)).decisionOf(l.key)
     withClue(d.render)(d.film shouldBe Some(4174))
   }
 
@@ -496,7 +496,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films     = Seq(F(1329016, "Tony", 2026, "Matt Johnson", 106, 5), F(2, "Tony", 2003, "Someone Else", 90, 8))
     val decorated = Seq(Multikino, KinoMuza).map(listing(_, "Kino bez barier: Tony (AD + CC)", Some(2026), Some("Matt Johnson")))
     val bare      = listing(Helios, "Tony")
-    val r = IdentityResolver.resolve(decorated :+ bare, new FilmTable(films, normalizer), normalizer, strictPairCut)
+    val r = IdentityResolver.resolve(decorated :+ bare, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = strictPairCut))
     withClue((decorated :+ bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
       r.decisionOf(bare.key).film shouldBe Some(1329016)
@@ -509,7 +509,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films     = Seq(F(1329016, "Tony", 2026, "Matt Johnson", 106, 5), F(2, "Tony", 2003, "Someone Else", 90, 8))
     val decorated = Seq(Multikino, KinoMuza).map(listing(_, "Kino bez barier: Tony (AD + CC)", Some(2026), Some("Matt Johnson")))
     val dated     = listing(Helios, "Tony", Some(2003))
-    val r = IdentityResolver.resolve(decorated :+ dated, new FilmTable(films, normalizer), normalizer, strictPairCut)
+    val r = IdentityResolver.resolve(decorated :+ dated, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = strictPairCut))
     r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
     together(r, decorated.head, dated) shouldBe false
     r.decisionOf(dated.key).film should not be Some(1329016)
@@ -524,7 +524,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val hagen   = Seq(Multikino, Helios).map(listing(_, "Billie", Some(2025), Some("Sheri Hagen"), Some(101)))
     val erskine = Seq(KinoMuza, Rialto).map(listing(_, "Billie – Legende des Jazz", Some(2020), Some("James Erskine"), Some(98)))
     for (cut <- Seq(weights, strictPairCut)) {
-      val r = IdentityResolver.resolve(hagen ++ erskine, new FilmTable(Nil, normalizer), normalizer, cut)
+      val r = IdentityResolver.resolve(hagen ++ erskine, new FilmTable(Nil, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = cut))
       together(r, hagen.head, hagen(1)) shouldBe true
       together(r, erskine.head, erskine(1)) shouldBe true
       together(r, hagen.head, erskine.head) shouldBe false
@@ -536,7 +536,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val plain     = listing(Helios, "Lalka")
     val decorated = listing(KinoMuza, "Astra Seniora - Lalka")
     for (cut <- Seq(weights, strictPairCut)) {
-      val r = IdentityResolver.resolve(Seq(plain, decorated), new FilmTable(Nil, normalizer), normalizer, cut)
+      val r = IdentityResolver.resolve(Seq(plain, decorated), new FilmTable(Nil, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = cut))
       together(r, plain, decorated) shouldBe true
       r.violations shouldBe 0
     }
@@ -810,7 +810,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       F(609, "Poltergeist", 1982, "Tobe Hooper", 114, 30))
     val sequel = Seq(Multikino, Helios, KinoApollo, KinoMuza).map(listing(_, "The Texas Chainsaw Massacre 2", None, Some("Tobe Hooper"), Some(101)))
     // The title search finds the sequel; the director's filmography reaches the original.
-    val r = IdentityResolver.resolve(sequel, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(sequel, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(r.decisionOf(sequel.head.key).render) {
       sequel.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(16337))
     }
@@ -890,7 +890,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       .map(listing(_, "Royal Ballet and Opera Sezon Kinowy 2026-27: Manon"))
     val met  = listing(CinemaCityKorona, "The Metropolitan Opera 2026/27: Manon")
     val bare = listing(KinoMuza, "Manon")
-    val r = IdentityResolver.resolve(rbo ++ Seq(met, bare), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(rbo ++ Seq(met, bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue((Seq(rbo.head, met, bare)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(rbo.head.key).film shouldBe Some(1702757)
       r.decisionOf(met.key).film shouldBe Some(1703631)
@@ -1013,7 +1013,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = F(1, "Solo", 2019, "Hugo Stuven", 98, 0.2) +:
       (2 to 10).map(i => F(i, "Solo", 1960 + 6 * i, s"Director $i", 80 + 5 * i, 10.0 * i))
     val credited = listing(Rialto, "Solo", director = Some("Hugo Stuven"))
-    val d = IdentityResolver.resolve(Seq(credited), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(credited.key)
+    val d = IdentityResolver.resolve(Seq(credited), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(credited.key)
     withClue(d.render) {
       d.film shouldBe Some(1)
       d.basis shouldBe ResolverDecision.Basis.OwnMatch
@@ -1028,7 +1028,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1, "Solo", 2019, "Hugo Stuven", 98, 0.2), F(2, "Solo", 2019, "Someone Else", 90, 0.3),
       F(3, "Solo", 1996, "Norberto Barba", 94, 30), F(4, "Solo", 1972, "A Third", 88, 20))
     val dated = listing(Rialto, "Solo", year = Some(2019))
-    val d = IdentityResolver.resolve(Seq(dated), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(dated.key)
+    val d = IdentityResolver.resolve(Seq(dated), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(dated.key)
     withClue(d.render)(d.film shouldBe None)
   }
 
@@ -1061,7 +1061,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (FallbackIds.isFallback(id)) Answer.Unknown else table.film(id)
     }
     val bare = listing(KinoMuza, "Kuźma", year = Some(2025))
-    val d = IdentityResolver.resolve(Seq(bare), unanswered, normalizer, weights).decisionOf(bare.key)
+    val d = IdentityResolver.resolve(Seq(bare), unanswered, normalizer, ResolveInputs.Unpinned.copy(calibration = weights)).decisionOf(bare.key)
     withClue(d.render)((d.film, d.fallback) shouldBe ((None, None)))
   }
 
@@ -1074,7 +1074,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val seasons = Seq(F(1482356, "Royal Ballet & Opera 2025/26: Tosca", 2025, "Oliver Mears", 195, 0.3, searched = false),
       F(1702784, "Royal Ballet & Opera 2026/27: Tosca", 2027, "Oliver Mears", 205, 0.3, searched = false))
     val d = IdentityResolver.resolve(Seq(listing(KinoMuza, "Royal Ballet and Opera: Tosca", director = Some("Oliver Mears"), runtime = Some(210))),
-      new FilmTable(imdbs +: seasons, normalizer), normalizer, IdentityCalibration.resolver).decisions.head
+      new FilmTable(imdbs +: seasons, normalizer), normalizer, ResolveInputs.Unpinned).decisions.head
     withClue(d.render)((d.film, d.fallback) shouldBe ((None, None)))
   }
 
@@ -1088,7 +1088,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val lean   = listing(KinoMuza, "Tatarak")
     val tie    = listing(KinoMuza, "Lalka")
     val bill   = listing(KinoMuza, "Tatarak + Lalka")
-    val r      = IdentityResolver.resolve(Seq(lean, tie, bill), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r      = IdentityResolver.resolve(Seq(lean, tie, bill), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     def of(l: Listing) = { val d = r.decisionOf(l.key); withClue(d.render)(d.film shouldBe None); d }
     of(lean).leaning shouldBe Some(ResolverDecision.Leaning(1, 1))
     of(tie).leaning shouldBe None
@@ -1104,7 +1104,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 0.5))
     val carmen = listing(KinoMuza, "Carmen | metropolitan opera: live in hd 2026/27")
     val makbet = listing(KinoMuza, "Makbet | metropolitan opera: live in hd 2026/27")
-    val r = IdentityResolver.resolve(Seq(carmen, makbet), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(carmen, makbet), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(r.decisionOf(makbet.key).render)(r.decisionOf(makbet.key).film shouldBe Some(1703622))
     withClue(r.decisionOf(carmen.key).render)(r.decisionOf(carmen.key).film shouldBe None)
   }
@@ -1119,7 +1119,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   }
 
   private def shipped(listings: Seq[Listing], films: Seq[F]): Resolution =
-    IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
 
   "A bare listing that no fact of its own corroborates" should "keep its exact title's film when nothing speaks against it" in {
     // PL "Eliminacja" at small venues billing nothing but the title: the current release, the take the venues mean
@@ -1166,7 +1166,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bare   = listing(Multikino, "Avatar").copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "1m")))
     val sequel = Seq(listing(Helios, "Avatar", Some(2025), Some("James Cameron"), Some(197)), listing(KinoApollo, "Avatar", Some(2025), None, Some(197)))
     def take(tmdbNumbered: Boolean) = {
-      val r = IdentityResolver.resolve(bare +: sequel, new FilmTable(films, normalizer, tmdbNumbered), normalizer, IdentityCalibration.resolver)
+      val r = IdentityResolver.resolve(bare +: sequel, new FilmTable(films, normalizer, tmdbNumbered), normalizer, ResolveInputs.Unpinned)
       withClue(r.decisionOf(bare.key).render)(r.decisionOf(bare.key).film)
     }
     take(tmdbNumbered = true) shouldBe Some(1) // TMDB's numbers: the feed's link is the bare title's own fact
@@ -1788,7 +1788,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(372058, "Twoje imię.", 2016, "Makoto Shinkai", 106, 30, Seq("Twoje imię", "Your Name", "Kimi no Na wa.")))
     val nh = Listing(KinoMuza, ListingKey.Published(KinoMuza.displayName, "Twoje imię", None, Seq("Makoto Shinkai")), "Twoje imię",
       "Twoje imię", "Twoje imię", None, Seq("Makoto Shinkai"), Some(83), None, Some("Your Name (re-release)"))
-    val d = IdentityResolver.resolve(Seq(nh), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(nh.key)
+    val d = IdentityResolver.resolve(Seq(nh), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(nh.key)
     withClue(d.render)(d.film shouldBe Some(372058))
   }
 
@@ -1798,7 +1798,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // another film, so it scores against the film but never vetoes it.
     val films = Seq(F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
     val dated = Seq(Multikino, Helios).map(listing(_, "Diabły", Some(2026), Some("Ken Russell"), Some(114)))
-    val r = IdentityResolver.resolve(dated, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(dated, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     dated.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(31767)))
   }
 
@@ -1809,7 +1809,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(8076, "Tuvalu", 1999, "Veit Helmer", 101, 5), F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
     val tuvalu = listing(Multikino, "Tuvalu", Some(2026), Some("Veit Helmer"), Some(101))
     val devils = listing(Helios, "Diabły | Splat!FilmFest", Some(2026), Some("Ken Russell"), Some(111)).copy(originalTitle = Some("The Devils"))
-    val r = IdentityResolver.resolve(Seq(tuvalu, devils), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(tuvalu, devils), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(r.decisionOf(tuvalu.key).render)(r.decisionOf(tuvalu.key).film shouldBe Some(8076))
     withClue(r.decisionOf(devils.key).render)(r.decisionOf(devils.key).film shouldBe Some(31767))
   }
@@ -1822,7 +1822,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(634598, "Basia", 2018, "Marcin Wasilewski", 0, 1))
     val bill  = listing(Multikino, "Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi", Some(2026),
       Some("Marcin Wasilewski"), Some(53))
-    val d = IdentityResolver.resolve(Seq(bill), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(bill.key)
+    val d = IdentityResolver.resolve(Seq(bill), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(bill.key)
     withClue(d.render)(d.film shouldBe None)
   }
 
@@ -1835,7 +1835,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       F(1483477, "Dyrygent", 2025, "Ondřej Provazník", 104, 2.5, alternatives = Seq("Broken Voices")))
     val patria   = listing(Multikino, "Dyrygent", None, Some("Ondřej Provazník"), Some(106))
     val marzenie = listing(Helios, "DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO", Some(1980), Some("Andrzej Wajda"), Some(97))
-    val r = IdentityResolver.resolve(Seq(patria, marzenie), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(patria, marzenie), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(Seq(patria, marzenie).map(l => r.decisionOf(l.key).render).mkString("\n")) {
       together(r, patria, marzenie) shouldBe false
       r.decisionOf(patria.key).film shouldBe Some(1483477)
@@ -1849,7 +1849,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // "Gabinet doktora Caligari z muzyką Jozefa van Wissema na żywo" takes 234 in prod
     val films = Seq(F(234, "Gabinet doktora Caligari", 1920, "Robert Wiene", 77, 3.5, alternatives = Seq("The Cabinet of Dr. Caligari")))
     val l = listing(Multikino, "PANTEON - Gabinet Doktora Caligari | muzyka na żywo", Some(1920), Some("Robert Wiene"), Some(100))
-    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     withClue(d.render)(d.film shouldBe Some(234))
   }
 
@@ -1860,7 +1860,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1694947, "Najlepsi przyjaciele", 2026, "Roman Kraiński", 14, 2.5), F(171658, "Kacper i Emma: Najlepsi przyjaciele", 2013,
       "Arne Lindtner Næss", 74, 0.8))
     val l = listing(Multikino, "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty")
-    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     withClue(d.render)(d.film should not be Some(1694947))
   }
 
@@ -1873,11 +1873,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       "„Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)"
     val cleaned = "Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”"
     val lecture = listing(Multikino, cleaned, Some(1917), Some("Aleksander Hertz")).copy(rawTitle = raw)
-    val d = IdentityResolver.resolve(Seq(lecture), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(lecture.key)
+    val d = IdentityResolver.resolve(Seq(lecture), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(lecture.key)
     withClue(d.render)(d.film shouldBe None)
     // one quoted work is that work
     val one = listing(Multikino, cleaned, Some(1917), Some("Aleksander Hertz")).copy(rawTitle = "Akademia Polskiego Filmu: „Bestia”, reż. Aleksander Hertz (1917)")
-    IdentityResolver.resolve(Seq(one), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(one.key).film shouldBe Some(319754)
+    IdentityResolver.resolve(Seq(one), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(one.key).film shouldBe Some(319754)
     // a quoted programme beside one dated work bills that work (PL Wajda retrospective „10 na 10”: „Pan Tadeusz” (1999))
     BillingParse("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)").quotesSeveralDated shouldBe false
   }
@@ -1888,7 +1888,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(11219, "Immer Ärger mit Harry", 1955, "Alfred Hitchcock", 99), F(509, "Notting Hill", 1999, "Roger Michell", 124),
       F(1503762, "Rozważna i romantyczna", 2026, "Joanna Kos", 110), F(1585, "It's a Wonderful Life", 1946, "Frank Capra", 131))
     def decided(l: Listing, also: Listing*) =
-      IdentityResolver.resolve(l +: also, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(l +: also, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     def billed(raw: String, year: Option[Int] = None) = listing(KinoMuza, raw, year)
     val reading = decided(billed("Jens Wawrczeck - Immer Ärger mit Harry"))
     withClue(reading.render)(reading.film shouldBe None)
@@ -1899,7 +1899,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val terra = Seq(F(378112, "Salma w krainie dusz", 2019, "Carlos Gutiérrez Medrano", 95, original = Some("Día de Muertos")))
     def festival(raw: String) = {
       val l = listing(KinoMuza, raw)
-      IdentityResolver.resolve(Seq(l), new FilmTable(terra, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(terra, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     festival("Dia de Muertos").film shouldBe Some(378112)
     festival("24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH").film shouldBe None
@@ -1922,7 +1922,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     def sahel(also: Seq[String]) = {
       val l = billed("Épines du Sahel - Die Dornen der Sahelzone")
       IdentityResolver.resolve(Seq(l), new FilmTable(Seq(F(1216084, "Épines du Sahel", 2023, "Boubakar Diallo", 90, imdbTitles = also)), normalizer),
-        normalizer, IdentityCalibration.resolver).decisionOf(l.key).film
+        normalizer, ResolveInputs.Unpinned).decisionOf(l.key).film
     }
     sahel(Nil) shouldBe None
     sahel(Seq("Die Dornen der Sahelzone")) shouldBe Some(1216084)
@@ -1935,9 +1935,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val kosmos = Seq(F(51857, "Nakarmić kruki", 1976, "Carlos Saura", 107), F(891, "Wszyscy ludzie prezydenta", 1976, "Alan J. Pakula", 138))
     val crows  = listing(KinoMuza, "Nakarmić kruki | Złote gody")
     val golden = IdentityResolver.resolve(Seq(crows, listing(KinoMuza, "Wszyscy ludzie prezydenta | Złote gody")),
-      new FilmTable(kosmos, normalizer), normalizer, IdentityCalibration.resolver)
+      new FilmTable(kosmos, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(golden.decisionOf(crows.key).render)(golden.decisionOf(crows.key).film shouldBe Some(51857))
-    IdentityResolver.resolve(Seq(crows), new FilmTable(kosmos, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(crows.key)
+    IdentityResolver.resolve(Seq(crows), new FilmTable(kosmos, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(crows.key)
       .film shouldBe None
   }
 
@@ -1946,7 +1946,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // a 1962 Turkish film billed with the venue's own German title
     def decided(raw: String, film: F, screened: Option[Int] = Some(2026)) = {
       val l = listing(KinoMuza, raw).copy(screenings = ScreeningDays.of(screened.map(java.time.LocalDate.of(_, 10, 16)).toSeq))
-      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(film), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(film), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     val unterbiberger = F(1559083, "Über Unterbiberger", 2026, "Lukas Schöffel", 92)
     val current = decided("Über Unterbiberger - Vom Woid in die Welt", unterbiberger)
@@ -1956,7 +1956,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // as prod's model reads it (ModelRead: lean, its season and first day's year alone): read off its first DAY, the
     // current-release test never passed in prod and its ten venues kept no film (LeanWholeGuard, recording 528, 10-21)
     val lean = listing(KinoMuza, "Über Unterbiberger - Vom Woid in die Welt").copy(screenings = ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 16)))
-    val leanly = IdentityResolver.resolve(Seq(lean), new FilmTable(Seq(unterbiberger), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(lean.key)
+    val leanly = IdentityResolver.resolve(Seq(lean), new FilmTable(Seq(unterbiberger), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(lean.key)
     withClue(leanly.render)(leanly.film shouldBe Some(1559083))
     ScreeningDays.ofSeason(java.time.LocalDate.of(2027, 2, 1)).firstYear shouldBe Some(2027)
     val bread = F(1140985, "Ekmek Parası", 1962, "Atıf Yılmaz", 80, countries = Seq("TR"), original = Some("Ekmek Parası"))
@@ -1983,7 +1983,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val oz = F(630, "The Wizard of Oz", 1939, "Victor Fleming", 102, countries = Seq("US"), original = Some("The Wizard of Oz"))
     def inUk(raw: String) = {
       val l = listing(uk, raw).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 12, 16))))
-      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(oz), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(oz), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     inUk("The Wizard Of Oz - Hot Rock").film shouldBe None
     // nor is a current release one when the piece beside it names a pantomime, a staging: UK "CBeebies Panto 2026: Treasure
@@ -1992,7 +1992,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val treasure = F(1710881, "Treasure Island", 2027, "Ridley Scott", 120, countries = Seq("US"), original = Some("Treasure Island"))
     def panto(raw: String, year: Option[Int] = None) = {
       val l = listing(uk, raw, year = year).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 21))))
-      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(treasure), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(treasure), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     val bbc = panto("CBeebies Panto 2026: Treasure Island")
     withClue(bbc.render)(bbc.film shouldBe None)
@@ -2009,7 +2009,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val show = F(1785679, "Cbeebies Panto: Treasure Island", 2026, "", 75, 0.4, original = Some("Cbeebies Panto: Treasure Island"))
     def staged(raw: String, year: Option[Int], runtime: Int) = {
       val l = listing(uk, raw, year = year, runtime = Some(runtime)).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 21))))
-      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(show), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(show), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     val hertford = staged("CBeebies Panto: Treasure Island", Some(2026), 60)
     withClue(hertford.render)(hertford.film shouldBe None)
@@ -2024,7 +2024,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       alternatives = Seq("Lest We Forget"))
     def inGermany(raw: String, film: F) = {
       val l = listing(germany, raw).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 8))))
-      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(film), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(film), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     val local = inGermany("Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", forgetting)
     withClue(local.render)(local.film shouldBe None)
@@ -2040,7 +2040,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val crows  = listing(KinoMuza, "Nakarmić kruki | Złote gody")
     val corpus = Seq(crows, listing(KinoMuza, "Wszyscy ludzie prezydenta | Złote gody"), listing(Helios, "Nakarmić kruki", Some(1976)),
       listing(Helios, "Wszyscy ludzie prezydenta", Some(1976)))
-    val golden = IdentityResolver.resolve(corpus, new FilmTable(kosmos, normalizer), normalizer, IdentityCalibration.resolver)
+    val golden = IdentityResolver.resolve(corpus, new FilmTable(kosmos, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(golden.decisionOf(crows.key).render)(golden.decisionOf(crows.key).film shouldBe Some(51857))
   }
 
@@ -2052,7 +2052,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val danish = F(1579323, "Giv os en chance", 2025, "", 0, popularity = 1.0, countries = Seq("DK"), alternatives = Seq("Writing life"))
     val germany = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.Germany)).get
     val l = listing(germany, "Ecrire la vie - Writing Life").copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 2))))
-    val d = IdentityResolver.resolve(Seq(l), new FilmTable(Seq(ernaux, danish), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(Seq(ernaux, danish), normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     withClue(d.render)(d.film should not be Some(1579323))
     def bills(raw: String, film: F) = IdentityMeasures.billsWorksOfTwoTitles(Evidence.of(listing(germany, raw), None).measured,
       IdentityMeasures.Film(film.title, alternativeTitles = film.alternatives))
@@ -2069,7 +2069,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // the venue states both works' directors, the year and running time of the second
     def decided(raw: String) = {
       val l = listing(Multikino, raw, Some(1970), Some("Věra Chytilová"), Some(109)).copy(directors = Seq("Jan Švankmajer", "Věra Chytilová"))
-      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key)
     }
     val bill = decided("„Mieszkanie” i „Owoce rajskich drzew spożywamy”")
     withClue(bill.render)(bill.film shouldBe None)
@@ -2084,7 +2084,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "still take the same director's film of the listing's year when both are there" in {
     val films = Seq(F(10234, "Funny Games", 1997, "Michael Haneke", 108, 8), F(8461, "Funny Games", 2007, "Michael Haneke", 111, 9))
     val dated = listing(Multikino, "Funny Games", Some(2007), Some("Michael Haneke"), Some(111))
-    IdentityResolver.resolve(Seq(dated), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    IdentityResolver.resolve(Seq(dated), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
       .decisionOf(dated.key).film shouldBe Some(8461)
   }
 
@@ -2095,14 +2095,14 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // year, not the 2019 film's screening year.
     val films = Seq(F(616147, "The Metropolitan Opera: Manon", 2019, "Laurent Pelly", 232, 1))
     val revival = Seq(Multikino, Helios).map(listing(_, "MET Opera Live im Kino: Manon", Some(2027), Some("Laurent Pelly"), Some(264)))
-    val r = IdentityResolver.resolve(revival, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(revival, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     revival.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
   }
 
   it should "still veto a film of that title another director made decades before" in {
     val films = Seq(F(31767, "Diabły", 1971, "Ken Russell", 111, 5))
     val other = listing(Multikino, "Diabły", Some(2026), Some("Someone Else"), Some(95))
-    IdentityResolver.resolve(Seq(other), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    IdentityResolver.resolve(Seq(other), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
       .decisionOf(other.key).film shouldBe None
   }
 
@@ -2115,7 +2115,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val credited = Seq(Multikino, Helios, KinoApollo, Rialto).map(listing(_, "Terminator 2: Judgment Day", director = Some("James Cameron"), runtime = Some(137)))
     val title    = "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day"
     val echo     = listing(KinoMuza, title).copy(originalTitle = Some("Cellar Door x ThoughtBubble Presents: Terminator 2: Judgment Day"))
-    val r = IdentityResolver.resolve(credited :+ echo, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(credited :+ echo, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     (credited :+ echo).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(218)))
     credited.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(280)))
     r.violations shouldBe 0
@@ -2128,7 +2128,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(280, "Terminator 2: Judgment Day", 1991, "James Cameron", 137, 40), F(218, "The Terminator", 1984, "James Cameron", 108, 35))
     val echo  = listing(KinoMuza, "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day")
       .copy(originalTitle = Some("Cellar Door x ThoughtBubble Presents: Terminator 2: Judgment Day"))
-    val d = IdentityResolver.resolve(Seq(echo), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(echo.key)
+    val d = IdentityResolver.resolve(Seq(echo), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(echo.key)
     withClue(d.render)(d.basis should not be ResolverDecision.Basis.Vetoed)
   }
 
@@ -2139,7 +2139,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1770237, "BTS World Tour 'Arirang' in Buenos Aires: Live Viewing", 2026, "", 0, 20))
     val relay = listing(KinoMuza, "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", director = Some("Jungjae HA"), runtime = Some(195))
       .copy(originalTitle = Some("BTS World Tour 'ARIRANG' In Buenos Aires: Live"))
-    val d = IdentityResolver.resolve(Seq(relay), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(relay.key)
+    val d = IdentityResolver.resolve(Seq(relay), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(relay.key)
     withClue(d.render)(d.film shouldBe Some(1770237))
   }
 
@@ -2160,7 +2160,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val venues = Seq(Multikino, Helios, KinoApollo, KinoMuza)
     val buenosAires = venues.map(listing(_, "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING", director = Some("Jungjae HA"), runtime = Some(195)))
     val saoPaulo    = venues.map(listing(_, "BTS WORLD TOUR 'ARIRANG' IN SAO PAULO: LIVE VIEWING", director = Some("Jungjae HA"), runtime = Some(195)))
-    val r = IdentityResolver.resolve(buenosAires ++ saoPaulo, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(buenosAires ++ saoPaulo, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue((buenosAires ++ saoPaulo).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       buenosAires.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770237))
       saoPaulo.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1770234))
@@ -2175,7 +2175,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(770, "Gone with the Wind", 1939, "Victor Fleming", 238, 20))
     val credited = Seq(Multikino, Helios).map(listing(_, "Gone with the Wind", director = Some("Victor Fleming"), runtime = Some(238)))
     val dated    = Seq(KinoApollo, Rialto).map(listing(_, "Gone With The Wind (2026)"))
-    val r = IdentityResolver.resolve(credited ++ dated, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(credited ++ dated, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     (credited ++ dated).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(770)))
     r.violations shouldBe 0
   }
@@ -2232,10 +2232,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   "A bare exact title TMDB returns first" should "take that film on its evidence class's measured probability" in {
     val films = Seq(F(39264, "Godzilla vs. Megalon", 1973, "Jun Fukuda", 82, 0.6), F(2, "Godzilla vs. Mothra", 1964, "Ishirō Honda", 89, 30))
     val bare  = listing(Rialto, "Godzilla vs. Megalon")
-    val before = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, withoutClasses).decisionOf(bare.key)
+    val before = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withoutClasses)).decisionOf(bare.key)
     before.film shouldBe None
     before.basis shouldBe ResolverDecision.Basis.BelowThreshold
-    val after = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, withTopHitClass(0.5)).decisionOf(bare.key)
+    val after = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5))).decisionOf(bare.key)
     after.film shouldBe Some(39264)
     after.basis shouldBe ResolverDecision.Basis.OwnMatch
     after.confidence shouldBe 0.99
@@ -2246,7 +2246,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val megalon = F(39264, "Godzilla vs. Megalon", 1973, "Jun Fukuda", 82, 0.6)
     val remake  = F(7, "Godzilla vs. Megalon", 2031, "Someone Else", 120, 0.5)
     def film(l: Listing, films: Seq[F], rivals: Double) =
-      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, withTopHitClass(rivals)).decisionOf(l.key).film
+      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(rivals))).decisionOf(l.key).film
     // A rival the class was not measured with.
     film(listing(Rialto, "Godzilla vs. Megalon"), Seq(megalon, remake), rivals = 0.5) shouldBe None
     // A banner segment's first hit IS the bare title's exact top hit when the banner names no film
@@ -2266,7 +2266,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val released = F(923171, "Obcy w domu", 1986, "", 0, 3, releaseCountries = Some("PL"))
     val namesake = F(56669, "Obcy w domu", 1989, "", 0, 1, releaseCountries = Some("CAUS"))
     val bare = listing(Rialto, "Obcy w domu")
-    val d = IdentityResolver.resolve(Seq(bare), new FilmTable(Seq(released, namesake), normalizer), normalizer, withTopHitClass(0.5)).decisionOf(bare.key)
+    val d = IdentityResolver.resolve(Seq(bare), new FilmTable(Seq(released, namesake), normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5))).decisionOf(bare.key)
     withClue(d.render) {
       d.film shouldBe Some(923171)
       // the explanation names the rival the veto took out, and why
@@ -2281,7 +2281,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val unreleased = F(1325178, "Stan wyjątkowy", 2024, "", 0, 3, releaseCountries = Some("CZ"))
     val released   = F(581759, "Stan wyjątkowy", 2018, "", 0, 1, releaseCountries = Some("PLHR"))
     val bare = listing(Rialto, "Stan wyjątkowy")
-    val d = IdentityResolver.resolve(Seq(bare), new FilmTable(Seq(unreleased, released), normalizer), normalizer, withoutClasses).decisionOf(bare.key)
+    val d = IdentityResolver.resolve(Seq(bare), new FilmTable(Seq(unreleased, released), normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withoutClasses)).decisionOf(bare.key)
     withClue(d.render) {
       d.film shouldBe None
       d.explanation.mkString should include ("vetoed: not released in PL, as namesake 581759 is")
@@ -2308,7 +2308,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val released = F(923171, "Obcy w domu", 1986, "", 0, 3, releaseCountries = Some("PL"))
     val namesake = F(56669, "Obcy w domu", 1989, "", 0, 1, releaseCountries = Some("CAUS"))
     def film(l: Listing, films: Seq[F]) =
-      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, withTopHitClass(0.5)).decisionOf(l.key).film
+      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5))).decisionOf(l.key).film
     // The year the venue states is the unreleased namesake's: it is not vetoed, and stays a rival.
     film(listing(Rialto, "Obcy w domu", year = Some(1989)), Seq(released, namesake)) should not be Some(923171)
     // A namesake whose release dates are unknown vetoes nothing.
@@ -2319,8 +2319,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // listing is decided as if TMDB had dated no release at all.
     val banner = listing(Rialto, "Kino Nocne: Obcy w domu")
     val vetoFree = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake).map(_.copy(releaseCountries = None)), normalizer),
-      normalizer, withTopHitClass(0.5)).decisionOf(banner.key)
-    val withDates = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake), normalizer), normalizer, withTopHitClass(0.5))
+      normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5))).decisionOf(banner.key)
+    val withDates = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake), normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5)))
       .decisionOf(banner.key)
     withClue(withDates.render)((withDates.film, withDates.render.contains("vetoed")) shouldBe ((vetoFree.film, false)))
   }
@@ -2330,7 +2330,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val season = listing(Multikino, "Samson i dalila | metropolitan opera: live in hd 2026/27")
     val bare   = Seq(Helios, KinoApollo).map(listing(_, "Samson i Dalila"))
     // On the case's own weights, where the sibling's season denies the film: the class must not undo that.
-    val r = IdentityResolver.resolve(season +: bare, new FilmTable(films, normalizer), normalizer, withTopHitClass(0.5, weights))
+    val r = IdentityResolver.resolve(season +: bare, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5, weights)))
     (season +: bare).foreach(l => withClue(l.title)(r.decisionOf(l.key).film should not be Some(29993)))
     r.violations shouldBe 0
   }
@@ -2422,8 +2422,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val bare  = listing(Multikino, "Opętanie | klasyka w 4k")
     val dated = listing(Helios, "Opętanie", Some(1981), Some("Andrzej Żuławski"))
     val other = listing(KinoMuza, "Possession")
-    def withPins(ps: Pin*) = IdentityResolver.resolve(Seq(bare, dated, other), new FilmTable(films, normalizer), normalizer, weights,
-      pins = PinConstraints(ps))
+    def withPins(ps: Pin*) = IdentityResolver.resolve(Seq(bare, dated, other), new FilmTable(films, normalizer), normalizer, ResolveInputs.of(ps).copy(calibration = weights))
 
     val none = withPins()
     none.decisionOf(dated.key).film shouldBe Some(1)
@@ -2452,11 +2451,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 50))
     val met   = listing(Multikino, "Samson i Dalila", Some(2026), Some("Darko Tresnjak"))
     val bare  = listing(Helios, "Samson i Dalila")
-    val r = IdentityResolver.resolve(Seq(met, bare), new FilmTable(films, normalizer), normalizer, withRule)
+    val r = IdentityResolver.resolve(Seq(met, bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withRule))
     r.decisionOf(met.key).film should not be Some(1)
     r.decisionOf(met.key).basis shouldBe ResolverDecision.Basis.Vetoed
     // The bare listing publishes neither a year nor a director: nothing to veto on.
-    val alone = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, withRule)
+    val alone = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withRule))
     alone.edges.filterNot(_.must) shouldBe empty
     val bareMeasures = IdentityMeasures.listingFilm(IdentityMeasures.Listing("Samson i Dalila"),
       IdentityMeasures.Film("Samson i Dalila", year = Some(1949), directors = Some(Seq("Cecil B. DeMille"))), None, 0, 0)
@@ -2514,7 +2513,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val events = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Radiohead X Nosferatu: A Symphony of Horror", None, Some("F.W. Murnau"), Some(94)))
     val work   = listing(KinoMuza, "Nosferatu (1922)", None, Some("F.W. Murnau"))
     // The production calibration: its director veto is what denied the edition's record.
-    val r = IdentityResolver.resolve(events :+ work, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(events :+ work, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue((events :+ work).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       events.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1489665))
       r.decisionOf(work.key).film shouldBe Some(653)
@@ -2575,7 +2574,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(1429348, "Obcy", 2025, "Zuzanna Grajcewska", 90, 3), F(126889, "Obcy: Przymierze", 2017, "Ridley Scott", 122, 30),
       F(945961, "Obcy: Romulus", 2024, "Fede Alvarez", 119, 60), F(348, "Obcy - 8. pasażer Nostromo", 1979, "Ridley Scott", 117, 50))
     val bannered = listing(KinoMuza, "Tani wtorek: Obcy", Some(2025), Some("Zuzanna Grajcewska"))
-    val r = IdentityResolver.resolve(Seq(bannered), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(bannered), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(r.decisionOf(bannered.key).render) { r.decisionOf(bannered.key).film shouldBe Some(1429348) }
   }
 
@@ -2597,7 +2596,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val plain = scraped(StacjaFalenica, "Pieśni lasu").copy(directors = Seq("Vincent Munier")) +:
       Seq(KinoMikro, KinoCytadela).map(scraped(_, "Pieśni lasu"))
     val all = decorated +: plain
-    val r = IdentityResolver.resolve(all, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(all, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(decorated.key).film shouldBe Some(1309373)
       plain.foreach(l => r.decisionOf(l.key).film shouldBe Some(1309373))
@@ -2629,7 +2628,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       "\"Kumotry\" - film, V FESTIWAL WAPI 2026", "\"Niesamowite przygody skarpetek 3. Ale kosmos!\" - film, V FESTIWAL WAPI 2026")
       .map(scraped(KinoOaza, _))
     val all = plain ++ festival
-    val r = IdentityResolver.resolve(all, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(all, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(plain(0).key).film shouldBe Some(1127625)
       r.decisionOf(plain(2).key).film shouldBe Some(1454157)
@@ -3355,7 +3354,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
     val filed = Seq(KinoMuza, Helios).map(venue => Listing.of(venue, models.CinemaMovie(models.Movie("Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die"),
       venue, None, None, None, Nil, Nil, Seq(models.Showtime(java.time.LocalDateTime.of(2099, 3, 1, 18, 0), None))), normalizer))
-    val r = IdentityResolver.resolve(filed, lookups, normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(filed, lookups, normalizer, ResolveInputs.Unpinned)
     withClue(filed.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(filed.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(131634)))
     filed.head.title shouldBe "Die Tribute von Panem - Mockingjay Teil 2 (WA: 2026)"
     filed.head.rawTitle shouldBe "Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die"

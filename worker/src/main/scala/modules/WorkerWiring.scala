@@ -149,13 +149,13 @@ class WorkerWiring(
     var tracked  = Option.empty[TrackedLookups]
     val model = new IdentityModelService(
       newModel   = () => {
-        val pins = services.identity.PinConstraints(pinStore.all())
+        // the one builder of a resolve's inputs, the drift checks' and the identity slice's too
+        val inputs = ResolveInputs.of(pinStore.all())
         val lookupsNow = new TrackedLookups(cutoverLookups(identityReads), identityReads, Some(identityPrefetchPool))
         tracked = Some(lookupsNow)
-        new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
+        inputs.incremental(lookupsNow, titleNormalizer,
           store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-          rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
-          traces = identityTraces)
+          rules = inputs.rulesVersion(IdentityRules.codeVersion), traces = identityTraces)
       },
       reads      = identityReads,
       archive    = () => Listing.distinct(Listing.all(identityListingIntake.identities(liveCinemas), titleNormalizer)),

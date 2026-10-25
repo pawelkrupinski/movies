@@ -41,7 +41,7 @@ final class DecorationCorpora(configuration: settings.ProcessConfiguration, stor
   /** Every listing's film under `decorations`, by country and key. */
   def resolveAll(decorations: TitleDecorations): Map[(String, ListingKey), Taken] = loaded.flatMap { l =>
     val started = System.nanoTime()
-    val r = IdentityResolver.resolve(l.listings, l.lookups, l.c.normalizer, IdentityCalibration.resolver, decorations = decorations)
+    val r = IdentityResolver.resolve(l.listings, l.lookups, l.c.normalizer, ResolveInputs.Unpinned.copy(decorations = decorations))
     println(f"[${l.c.label}] resolved ${l.listings.size} listings in ${(System.nanoTime() - started) / 1e9}%.1fs; unanswered ${r.unknownQueries}")
     val clusterOf = r.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
     l.listings.map { x =>

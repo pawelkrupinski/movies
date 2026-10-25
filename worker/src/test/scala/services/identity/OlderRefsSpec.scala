@@ -61,4 +61,16 @@ class OlderRefsSpec extends AnyFlatSpec with Matchers {
     OlderRefs.call(OlderRefs.projectionWiring, "identities", "pl") shouldBe Some(modules.wiring.IdentityProjectionWiring.identities("pl"))
     OlderRefs.call(OlderRefs.projectionWiring, "listedOn", "de") shouldBe Some(None)
   }
+
+  "the resolve's inputs, read by name" should "be the ones the worker's builder makes, its pins among them" in {
+    val pin = Pin(Seq(services.movies.ListingKey.Published("Kino Muza", "Lalka", None, Nil)), PinClaim.IsFilm(1081010), "pawel", "a spec",
+      java.time.Instant.EPOCH)
+    val built = ResolveInputs.of(Seq(pin))
+    OlderRefs.resolveInputs(Seq(pin)) shouldBe ((built.calibration, built.pins, built.decorations))
+  }
+
+  they should "pass on every input the builder makes: a new one fails here before the slice decides without it" in {
+    ResolveInputs.Unpinned.productElementNames.toSet shouldBe OlderRefs.ResolvedInputs
+  }
 }
+

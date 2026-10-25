@@ -12,7 +12,7 @@ class RuleAblationSpec extends AnyFlatSpec with Matchers {
 
   private val lynch = Seq(F(1018, "Mulholland Drive", 2001, "David Lynch", 146), F(2, "Mulholland Falls", 1996, "Lee Tamahori", 107, 4))
   private def resolve(listings: Seq[Listing], films: Seq[F] = lynch) =
-    IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
 
   "a rule name" should "switch off that rule alone, or a family of them by a trailing *" in {
     RuleAblation.disabling(Set("veto:a-b", "accept:c*")) {

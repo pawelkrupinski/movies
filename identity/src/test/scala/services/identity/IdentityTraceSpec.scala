@@ -18,7 +18,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
   private val bare     = listing(KinoApollo, "Mulholland Drive")
 
   "a decision" should "name the rule each member was accepted by and what joined it" in {
-    val r = IdentityResolver.resolve(Seq(credited, bare), new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(credited, bare), new FilmTable(lynch, normalizer), normalizer, ResolveInputs.Unpinned)
     val decision = r.decisionOf(credited.key)
     decision.film shouldBe Some(1018)
     val rules = decision.trace.rulesOf(credited.key)
@@ -29,7 +29,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
 
   it should "name the member whose own evidence vetoed the cluster's film" in {
     val wrongDirector = listing(Multikino, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
-    val r = IdentityResolver.resolve(Seq(wrongDirector), new FilmTable(lynch.take(1), normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(wrongDirector), new FilmTable(lynch.take(1), normalizer), normalizer, ResolveInputs.Unpinned)
     val decision = r.decisionOf(wrongDirector.key)
     withClue(decision.render) {
       decision.basis shouldBe ResolverDecision.Basis.Vetoed
@@ -44,7 +44,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     val wrongDirector = listing(Multikino, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
     val again         = listing(Rialto, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
     def by(listings: Seq[Listing]) =
-      IdentityResolver.resolve(listings, new FilmTable(lynch.take(1), normalizer), normalizer, IdentityCalibration.resolver)
+      IdentityResolver.resolve(listings, new FilmTable(lynch.take(1), normalizer), normalizer, ResolveInputs.Unpinned)
         .decisionOf(wrongDirector.key).trace.vetoed.flatMap(_.by)
     by(Seq(wrongDirector)) shouldBe defined
     by(Seq(wrongDirector, again)) shouldBe by(Seq(wrongDirector))
@@ -54,7 +54,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     // two films of one title and nothing published: no rule can tell them apart
     val films = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))
     val bare  = listing(Rialto, "Tatarak")
-    val r = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(bare), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     val rules = r.decisionOf(bare.key).trace.rulesOf(bare.key)
     withClue(rules.mkString("\n")) {
       // taken, if at all, only by the cluster's pooled vote — each rule that could take it alone says why it did not
@@ -80,24 +80,24 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     node.candidates.map(_.takeWhile(_ != ' ')).toSet shouldBe Set("1", "2")
     // a listing a rule took names no refusal
     val credited2 = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
-    val taken = IdentityResolver.resolve(Seq(credited2), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    val taken = IdentityResolver.resolve(Seq(credited2), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     taken.decisionOf(credited2.key).trace.rulesOf(credited2.key).filter(_.startsWith("refused:")) shouldBe empty
   }
 
   "a listing left with no film" should "say whether its searches found nothing, or every candidate was vetoed" in {
     val nothing = listing(Rialto, "Zupełnie nieznany tytuł")
-    val none = IdentityResolver.resolve(Seq(nothing), new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(nothing.key)
+    val none = IdentityResolver.resolve(Seq(nothing), new FilmTable(lynch, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(nothing.key)
     none.film shouldBe None
     none.trace.nodes(nothing.key).blocker shouldBe Some("search:found-nothing")
     none.trace.nodes(nothing.key).candidates shouldBe empty
     val wrongDirector = listing(Multikino, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
-    val vetoed = IdentityResolver.resolve(Seq(wrongDirector), new FilmTable(lynch.take(1), normalizer), normalizer, IdentityCalibration.resolver)
+    val vetoed = IdentityResolver.resolve(Seq(wrongDirector), new FilmTable(lynch.take(1), normalizer), normalizer, ResolveInputs.Unpinned)
       .decisionOf(wrongDirector.key)
     withClue(vetoed.render)(vetoed.trace.nodes(wrongDirector.key).blocker.getOrElse("") should startWith ("veto:"))
     // and a listing a rule took names no blocker, only the runner-up it beat
     val tatarak  = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))
     val wajdas   = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
-    val taken = IdentityResolver.resolve(Seq(wajdas), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(wajdas.key)
+    val taken = IdentityResolver.resolve(Seq(wajdas), new FilmTable(tatarak, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(wajdas.key)
     taken.film shouldBe Some(1)
     taken.trace.nodes(wajdas.key).blocker shouldBe None
     taken.trace.nodes(wajdas.key).candidates.map(_.takeWhile(_ != ' ')) shouldBe Seq("2")
@@ -106,7 +106,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
   "a listing's node" should "keep its own score of the film it weighed and the runner-up's, as numbers a take-change line names" in {
     val tatarak = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))
     val wajdas  = listing(Rialto, "Tatarak", Some(2009), Some("Andrzej Wajda"), Some(85))
-    val taken   = IdentityResolver.resolve(Seq(wajdas), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(wajdas.key)
+    val taken   = IdentityResolver.resolve(Seq(wajdas), new FilmTable(tatarak, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(wajdas.key)
     val node    = taken.trace.nodes(wajdas.key)
     node.candidate shouldBe Some(1)
     node.runnerUp.map(_.film) shouldBe Some(2)
@@ -116,7 +116,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     node.candidates.head should include (ResolverDecision.percent(rival))
     // and a listing no rule took weighs its best candidate against the next
     val bare = listing(Rialto, "Tatarak")
-    val open = IdentityResolver.resolve(Seq(bare), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(bare.key)
+    val open = IdentityResolver.resolve(Seq(bare), new FilmTable(tatarak, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(bare.key)
     val both = open.trace.nodes(bare.key)
     (both.candidate.toSet ++ both.runnerUp.map(_.film)) shouldBe Set(1, 2)
   }
@@ -127,7 +127,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     val tatarak = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85))
     val bare    = listing(Rialto, "Tatarak")
     val denying = listing(KinoApollo, "Tatarak", Some(1961), Some("Lee Tamahori"), Some(62))
-    val r = IdentityResolver.resolve(Seq(bare, denying), new FilmTable(tatarak, normalizer), normalizer, IdentityCalibration.resolver)
+    val r = IdentityResolver.resolve(Seq(bare, denying), new FilmTable(tatarak, normalizer), normalizer, ResolveInputs.Unpinned)
     val node = r.decisionOf(bare.key).trace.nodes(bare.key)
     withClue(r.decisionOf(bare.key).render + "\n" + node.refusals.mkString("\n")) {
       if (r.decisionOf(bare.key).film.isEmpty) {

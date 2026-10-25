@@ -85,7 +85,6 @@ private[identity] object ProjectionWorld {
    *  incremental model. */
   val unmatched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => {
     val listings = read()
-    Some(IdentityProjection.Resolved(IdentityResolver.resolve(listings, NoFilmLookups, normalizer, IdentityCalibration.resolver,
-      PinConstraints(new InMemoryPinStore().all())), listings.map(_.key).toSet))
+    Some(IdentityProjection.Resolved(IdentityResolver.resolve(listings, NoFilmLookups, normalizer, ResolveInputs.of(new InMemoryPinStore().all())), listings.map(_.key).toSet))
   }
 }

@@ -63,7 +63,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
     def expected: Set[(Set[ListingKey], Option[Int])] =
-      decided(IdentityResolver.resolve(listingsOf(scrapes), lookups, normalizer, calibration).decisions)
+      decided(IdentityResolver.resolve(listingsOf(scrapes), lookups, normalizer, ResolveInputs.Unpinned.copy(calibration = calibration)).decisions)
   }
 
   "the model service" should "decide as a whole resolve after each drain of venues' scrapes, and sweep a film a venue stopped listing" in {

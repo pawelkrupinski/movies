@@ -58,4 +58,23 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers {
       ProdFilm("b", "rose|2025", None, None, None, Set.empty, Seq("muza|rose")))
     IdentityLiveDrift.liveBySlot(films) shouldBe Map("helios|rose" -> Some(1176962))
   }
+
+  "filedOf" should "refuse a --families capture that is not there, never read it as no answers filed" in {
+    val missing = java.nio.file.Files.createTempDirectory("live-drift").resolve("de.json.gz")
+    IdentityLiveDrift.filedOf(Some(missing), models.Country.Germany) shouldBe Left(s"no --families capture at $missing")
+    IdentityLiveDrift.filedOf(None, models.Country.Germany).map(_.isEmpty) shouldBe Right(true)
+  }
+
+  "parse" should "tell --families none apart from no --families at all" in {
+    IdentityLiveDrift.parse(List("de", "--families", "none")).families shouldBe Some(None)
+    IdentityLiveDrift.parse(List("de")).families shouldBe None
+  }
+
+  "Differences" should "name in the TSV's header what prod's inputs were and every input the whole side reads otherwise" in {
+    val differences = IdentityLiveDrift.Differences(pins = 2, familyAnswers = 77132, capture = "de.json.gz")
+    differences.header.head shouldBe "# inputs: prod's 2 pin(s) and 77132 family answer(s) as recorded, the capture de.json.gz beneath"
+    differences.header.tail.map(_.takeWhile(_ != '—').stripPrefix("# differs: ").trim) shouldBe
+      IdentityLiveDrift.Differences.Otherwise.map(_._1)
+    (differences.json \ "differs" \ "stored verdicts").as[String] should include("keeps nothing")
+  }
 }

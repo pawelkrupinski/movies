@@ -1,6 +1,6 @@
 package tools
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ModelRead, ObservationReads, TrackedLookups}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver, Listing, ModelRead, ObservationReads, ResolveInputs, TrackedLookups}
 import services.identity.adapters.TmdbIdentityLookups
 import services.movies.TitleNormalizer
 
@@ -58,7 +58,7 @@ object IdentityLookupSweep {
           onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.resolver,
           pool: Option[java.util.concurrent.ExecutorService] = None): Summary = {
     val named = new Named(pool.fold(lookups)(threads => new TrackedLookups(lookups, ObservationReads.Untracked, Some(threads))), onLookup)
-    val r = IdentityResolver.resolve(listings, named, normalizer, calibration)
+    val r = IdentityResolver.resolve(listings, named, normalizer, ResolveInputs.Unpinned.copy(calibration = calibration))
     Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms)
   }
 
