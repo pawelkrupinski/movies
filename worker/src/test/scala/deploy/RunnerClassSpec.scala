@@ -49,7 +49,8 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
     "main.yml"                       -> always(Deploy),
     "nix-stage-closures.yml"         -> Classed(onMain = Deploy, elsewhere = Check),
     "identity-model-convergence.yml" -> Classed(onMain = Gate, elsewhere = Measure),
-    "record-scrape-fixtures.yml"     -> always(Gate)
+    "record-scrape-fixtures.yml"     -> always(Gate),
+    "verify-scrape-recording.yml"    -> always(Gate)
   ) ++ Seq(
     "android.yml", "archive-recording.yml", "branch-ci.yml", "convergence-daily.yml", "country-fixture-artifact.yml",
     "discover-cinemas.yml", "filmweb-diff.yml", "identity-ci-staleness.yml", "identity-findings-report.yml", "ios.yml",

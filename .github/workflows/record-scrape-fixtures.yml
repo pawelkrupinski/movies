@@ -197,7 +197,7 @@ jobs:
     verify:
         needs: [ preflight, enrichment ]
         if: ${{ !cancelled() && needs.preflight.result == 'success' && (github.ref == 'refs/heads/main' || github.ref == 'main') }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
         timeout-minutes: 5
         permissions:
             actions: write
