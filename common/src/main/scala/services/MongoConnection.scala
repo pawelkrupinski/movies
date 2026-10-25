@@ -140,6 +140,7 @@ class MongoConnection(
     val client = sharedClient.getOrElse(
       MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout, maxPoolSize.value, applicationName)))
     val db     = client.getDatabase(dbName.value)
+    MongoWriteErrors.opened(dbName.value)
     // Touch the database to surface connectivity errors at boot
     // (same `countDocuments`-against-a-known-collection probe the
     // old per-repository init used). Picking `movies` here because it
@@ -149,7 +150,7 @@ class MongoConnection(
     try {
       Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout.value)
       onConnected(db)
-    } catch { case e: Throwable => if (sharedClient.isEmpty) client.close(); throw e }
+    } catch { case e: Throwable => MongoWriteErrors.observeRead(dbName.value, e); if (sharedClient.isEmpty) client.close(); throw e }
     logger.info(s"MongoConnection connected to ${dbName.value}")
     (client, db)
   }

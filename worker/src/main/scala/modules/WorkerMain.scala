@@ -123,6 +123,8 @@ object WorkerMain extends Logging {
       // and ALL of them surface on the single /metrics endpoint.
       val metrics = boot.step("metrics bundle")(new services.metrics.WorkerMetrics(
         countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize)))
+      // Every country's stores report their failed writes and refused grants here: one client, one count.
+      services.MongoWriteErrors.bind(metrics.mongoWriteErrors)
       // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
       // memory cgroup with every country's renders.
       val gate = boot.step("poster shrink gate")(services.sharecards.VipsPosterShrinker.newGate())

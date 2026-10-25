@@ -263,22 +263,22 @@ class MongoReadModelRepository(
 
   override def upsertScreenings(batch: Seq[CityScreening]): Unit =
     if (batch.sizeIs == 1) upsertScreening(batch.head)
-    else if (batch.nonEmpty) screenings.foreach(c => write("upsertScreenings", s"${batch.size} screening(s) from ${batch.head._id}")(
+    else if (batch.nonEmpty) screenings.foreach(c => write(c, "upsertScreenings", s"${batch.size} screening(s) from ${batch.head._id}")(
       c.bulkWrite(batch.map(s => ReplaceOneModel(Filters.eq("_id", s._id), s, new ReplaceOptions().upsert(true)))).toFuture()))
 
   def deleteMovie(id: String): Unit     = removeById(movies, id, "deleteMovie")
   def deleteScreening(id: String): Unit = removeById(screenings, id, "deleteScreening")
 
   private def replace[T](coll: Option[MongoCollection[T]], id: String, document: T, op: String): Unit =
-    coll.foreach(c => write(op, id)(c.replaceOne(Filters.eq("_id", id), document, new ReplaceOptions().upsert(true)).toFuture()))
+    coll.foreach(c => write(c, op, id)(c.replaceOne(Filters.eq("_id", id), document, new ReplaceOptions().upsert(true)).toFuture()))
 
   private def removeById[T](coll: Option[MongoCollection[T]], id: String, op: String): Unit =
-    coll.foreach(c => write(op, id)(c.deleteOne(Filters.eq("_id", id)).toFuture()))
+    coll.foreach(c => write(c, op, id)(c.deleteOne(Filters.eq("_id", id)).toFuture()))
 
   /** Await one write, and THROW when it failed — see [[ReadModelWriter]]. Only the shutdown
    *  race (the client closed under an in-flight write) is swallowed: nothing will read the memo. */
-  private def write(op: String, id: String)(body: => scala.concurrent.Future[?]): Unit =
-    try { Await.result(body, 10.seconds); () }
+  private def write(coll: MongoCollection[?], op: String, id: String)(body: => scala.concurrent.Future[?]): Unit =
+    try { services.MongoWriteErrors.counted(coll)(Await.result(body, 10.seconds)); () }
     catch {
       case exception: Throwable if RepositoryWrite.isClientClosed(exception) => ()
       case exception: Throwable =>

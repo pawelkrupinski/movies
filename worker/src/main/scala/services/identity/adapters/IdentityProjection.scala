@@ -38,11 +38,11 @@ final case class ProjectionPhase(name: String, seconds: Double, allocatedBytes: 
 
 /** The phases of one projection, in the order they ran. */
 private[identity] final class ProjectionPhases {
-  private val done = Vector.newBuilder[ProjectionPhase]
+  private var done = Vector.empty[ProjectionPhase]
 
   def apply[A](name: String)(body: => A): A = {
     val (timed, allocated) = tools.ThreadAllocation.of(tools.Stopwatch.timed(body))
-    done += ProjectionPhase(name, timed.seconds, allocated)
+    done :+= ProjectionPhase(name, timed.seconds, allocated)
     timed.value
   }
 
@@ -51,7 +51,7 @@ private[identity] final class ProjectionPhases {
   /** A fact about the projection the log line carries beside its phases. */
   def note(text: String): Unit = notes :+= text
 
-  def all: Seq[ProjectionPhase] = done.result()
+  def all: Seq[ProjectionPhase] = done
   def render: String            = (all.map(_.render) ++ notes).mkString(", ")
 }
 
@@ -67,6 +67,9 @@ trait IdentityProjectionMetrics {
   /** A written projection's change list ([[TakeChange]]): the listings whose TMDB film it moved — the live alarm on match
    *  changes — and those it decided first, each with its basis. */
   def takesChanged(changes: Seq[TakeChange]): Unit
+  /** One projection's agreement phase, by its mode ([[IdentityProjection.Mode]]'s label): what it took and allocated on the
+   *  projecting thread — the cost the `IdentityAgreementCostRegression` alert compares with its week. */
+  def agreementPhase(mode: String, phase: ProjectionPhase): Unit
 }
 
 object IdentityProjectionMetrics {
@@ -82,6 +85,7 @@ object IdentityProjectionMetrics {
     def drifted(films: Int): Unit = ()
     def reconciled(measured: Boolean): Unit = ()
     def takesChanged(changes: Seq[TakeChange]): Unit = ()
+    def agreementPhase(mode: String, phase: ProjectionPhase): Unit = ()
   }
 }
 
@@ -315,6 +319,7 @@ final class IdentityProjection(
     // to a projection with nothing to build on, whose index is read afresh
     val republished = run.previous.map(_ => live.republished(run.byVenue))
     val resolution  = phases("agreement")(agreement(modelResolution, key => run.decided.get(key), republished))
+    phases.all.lastOption.foreach(metrics.agreementPhase(run.mode.label, _))
     lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution, { val venues = run.venues
       () => venues.iterator.flatMap(_._2).map(_.listing) }))
     val at          = clock.instant()

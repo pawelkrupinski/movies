@@ -1,0 +1,36 @@
+# IS A LANDING GATE RED ON MAIN? -- the three workflows the pre-push red gate reads (`check_redgate`, `agentctl
+# ci-why`): Main, Identity model convergence, and the scrape recording's verdict, which is the verify phase
+# (`Verify scrape recording`, gated since daceaa602; the capture, `Record scrape fixtures`, is not a gate any more and
+# was red for 17-37 h stretches on live data). While one is red, every production push needs a `Fixes-Red:` trailer or waits; a red nobody is fixing
+# blocks everyone, and nothing said so but the next refused push. (CI build-time regressions are not this file's.)
+#
+# THE SERIES: `kinowo_ci_run_seconds{workflow,ref,measure,conclusion}`, which every workflow's last job (`timings`,
+# `if: !cancelled()`, scripts/ci/ci_timings.py) pushes over OTLP once per run, stamped at the RUN'S START, with the
+# run's conclusion (its jobs' worst while it is still running). One sample per run, hours apart, so an instant
+# selector sees nothing: `timestamp()` over a 5-minute-step subquery reads each run's start back, and the newest
+# failed run on main is compared with the newest successful one. A cancelled run decides nothing, as in the gate.
+groups:
+  - name: ci-gates
+    rules:
+      # THE NEWEST DECIDED RUN OF A GATE ON MAIN FAILED, AND NO LATER ONE PASSED, FOR TWO HOURS. A run still going
+      # pushes nothing until it ends, so a fix in flight keeps this firing until it lands green -- what the gate does.
+      # The 3-day window bounds the subquery; a gate red for longer than that is long past an alert.
+      - alert: LandingGateRed
+        expr: |
+          max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="failure",workflow=~"Main|Identity model convergence|Verify scrape recording"})[3d:5m]))
+            >
+          (
+            max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success",workflow=~"Main|Identity model convergence|Verify scrape recording"})[3d:5m]))
+            or
+            0 * max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="failure",workflow=~"Main|Identity model convergence|Verify scrape recording"})[3d:5m]))
+          )
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.workflow }} has been red on main for 2 hours"
+          description: >-
+            The newest finished {{ $labels.workflow }} run on main failed and no later one has passed, for two
+            hours. Every production push now needs a `Fixes-Red:` trailer naming that run, or waits for green.
+            `~/bin/agentctl ci-why` names the run, its failed jobs and whether the failure is a test or the CI
+            itself.

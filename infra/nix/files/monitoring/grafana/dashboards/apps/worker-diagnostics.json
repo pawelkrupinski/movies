@@ -4247,6 +4247,132 @@
         }
       ],
       "interval": "1h"
+    },
+    {
+      "id": 78,
+      "title": "Identity agreement phase — median seconds per hour, by mode, against its week",
+      "description": "`kinowo_worker_identity_agreement_phase_seconds{mode}`: each projection's agreement phase (the \"agreement 69.1s/9579MB\" of its `identity projection:` log line), by mode (`periodic`, `whole`, `changed`). The first line is the hour's median, the second its week's; `IdentityAgreementCostRegression` (identity-agreement.rules) fires when it passes twice its week's median and an absolute floor, outside the hour after a worker start.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 428
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (country, mode, le) (rate(kinowo_worker_identity_agreement_phase_seconds_bucket{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{country}} {{mode}} p50 1h"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "quantile_over_time(0.5, kinowo:identity_agreement_phase_seconds:p50_1h{country=~\"$country\"}[7d])",
+          "legendFormat": "{{country}} {{mode}} 7d median"
+        }
+      ]
+    },
+    {
+      "id": 79,
+      "title": "Identity agreement phase — median bytes allocated per hour, by mode, against its week",
+      "description": "`kinowo_worker_identity_agreement_phase_allocated_bytes{mode}`: what each projection's agreement phase allocated on the projecting thread, by mode. The first line is the hour's median, the second its week's median, which `IdentityAgreementAllocationRegression` compares it with.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 428
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (country, mode, le) (rate(kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{country}} {{mode}} p50 1h"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "quantile_over_time(0.5, kinowo:identity_agreement_phase_allocated_bytes:p50_1h{country=~\"$country\"}[7d])",
+          "legendFormat": "{{country}} {{mode}} 7d median"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

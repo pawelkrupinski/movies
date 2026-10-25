@@ -180,7 +180,7 @@ class MongoUserStateRepository(
       case Some(c) =>
         val options = new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)
         def attempt(): UserState =
-          Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds)
+          services.MongoWriteErrors.counted(c)(Await.result(c.findOneAndUpdate(Filters.eq("userId", userId), update, options).toFuture(), 10.seconds))
         val written = Try(attempt() -> Outcome.Ok).recover {
           // Two first-ever writes for one user both upserting: the unique `userId`
           // index turns the loser's insert away. The row exists now, so the retry
@@ -195,7 +195,7 @@ class MongoUserStateRepository(
 
   def delete(userId: String): Unit = coll.foreach { c =>
     Try {
-      Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds)
+      services.MongoWriteErrors.counted(c)(Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds))
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"UserStateRepository.delete($userId) failed: ${exception.getMessage}")

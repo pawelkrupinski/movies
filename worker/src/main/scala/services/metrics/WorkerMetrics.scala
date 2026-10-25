@@ -32,6 +32,10 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // registered once, no country label.
   JvmProcessMetrics.register(registry)
 
+  // Failed Mongo writes and refused grants, process-level like the one client they go through
+  // (services.MongoWriteErrors); WorkerMain binds it as the process's sink.
+  val mongoWriteErrors: services.MongoWriteErrors.Series = services.MongoWriteErrors.Series.worker(registry)
+
   // Native-memory + vitals sampler — one JVM, so a single process-level sampler.
   val jvmVitals: JvmVitalsSampler = new JvmVitalsSampler(registry)
 

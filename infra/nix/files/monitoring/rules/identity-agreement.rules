@@ -1,0 +1,95 @@
+# IS THE AGREEMENT STAGE KEEPING UP, AND IS IT STILL AS CHEAP AS IT WAS? -- the identity projection's agreement
+# phase (services.identity.agreement.AgreementStage), and the staging publisher beside it.
+#
+#   - `kinowo_worker_identity_agreement_clusters{state}` -- clusters by agreement state, as the last stage run left
+#     them; `incomplete` is a cluster whose verdict is still to be read, the backfill's backlog.
+#   - `kinowo_worker_identity_agreement_phase_seconds{mode}` / `..._allocated_bytes{mode}` -- every projection's
+#     agreement phase, by projection mode (periodic, whole, changed): the "agreement 69.1s/9579MB" of its
+#     `identity projection:` log line, as histograms.
+#   - `kinowo_worker_identity_staging_dropped_total` -- staging events the publisher let go unwritten.
+groups:
+  - name: identity-agreement-recorded
+    rules:
+      # Each hour's median agreement phase per country and mode: what the regressions below compare with its own
+      # week, read back through `quantile_over_time` (a histogram's quantile cannot be taken over 7 days of buckets
+      # directly without summing a week of rates at every evaluation).
+      - record: kinowo:identity_agreement_phase_seconds:p50_1h
+        expr: histogram_quantile(0.5, sum by (country, mode, le) (rate(kinowo_worker_identity_agreement_phase_seconds_bucket[1h])))
+      - record: kinowo:identity_agreement_phase_allocated_bytes:p50_1h
+        expr: histogram_quantile(0.5, sum by (country, mode, le) (rate(kinowo_worker_identity_agreement_phase_allocated_bytes_bucket[1h])))
+
+  - name: identity-agreement
+    rules:
+      # THE BACKFILL HAS LEFT CLUSTERS INCOMPLETE FOR SIX HOURS. A healthy backlog drains within a few projections;
+      # one that never reaches 0 is a stage reading nothing (an answer store refusing, a budget spent every time).
+      # `last_over_time(...[10m])` bridges a worker restart's scrape gap, which would otherwise reset the hold.
+      - alert: IdentityAgreementBackfillStalled
+        expr: max by (country) (last_over_time(kinowo_worker_identity_agreement_clusters{state="incomplete"}[10m])) > 0
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value }} agreement clusters have stayed incomplete for 6 hours"
+          description: >-
+            The agreement stage has had clusters with unread verdicts for six hours without draining them. Its
+            per-projection progress is in VictoriaLogs `country:<cc> "agreement"`; the worker diagnostics
+            dashboard draws the clusters by state.
+
+      # THE AGREEMENT PHASE COSTS TWICE ITS WEEK. The hour's median wall clock above twice the week's median of that
+      # hourly median, and above 20 s (a scoped projection's phase is about a second: doubling it is noise). Not in
+      # the hour after a worker start: a deploy's first projection is a whole one and runs cold. The 10-minute hold
+      # also lets that projection's sample leave the 1h window before anything can fire.
+      - alert: IdentityAgreementCostRegression
+        expr: |
+          (
+            kinowo:identity_agreement_phase_seconds:p50_1h
+              > 2 * quantile_over_time(0.5, kinowo:identity_agreement_phase_seconds:p50_1h[7d])
+            and
+            kinowo:identity_agreement_phase_seconds:p50_1h > 20
+          )
+          unless on (country)
+          (time() - max by (country) (last_over_time(process_start_time_seconds{job="kinowo-worker"}[10m]))) < 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the {{ $labels.mode }} agreement phase's hourly median is {{ $value | humanizeDuration }}, over twice its week"
+          description: >-
+            The identity projection's agreement phase has doubled its weekly median. Find the build and the
+            projections: VictoriaLogs `country:<cc> "identity projection:"`, whose phase list names each phase's
+            seconds and MB; the worker diagnostics dashboard draws the hour against the week.
+
+      # THE SAME, FOR WHAT IT ALLOCATES: steadier than the wall clock, which CPU contention on the node moves, and the
+      # first to show a change that copies a corpus per verdict. Floor 2 GB.
+      - alert: IdentityAgreementAllocationRegression
+        expr: |
+          (
+            kinowo:identity_agreement_phase_allocated_bytes:p50_1h
+              > 2 * quantile_over_time(0.5, kinowo:identity_agreement_phase_allocated_bytes:p50_1h[7d])
+            and
+            kinowo:identity_agreement_phase_allocated_bytes:p50_1h > 2e9
+          )
+          unless on (country)
+          (time() - max by (country) (last_over_time(process_start_time_seconds{job="kinowo-worker"}[10m]))) < 3600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the {{ $labels.mode }} agreement phase's hourly median allocation is {{ $value | humanize }}B, over twice its week"
+          description: >-
+            The identity projection's agreement phase allocates twice its weekly median. VictoriaLogs
+            `country:<cc> "identity projection:"` names each projection's phases with their MB; compare the
+            build before and after.
+
+      # A STAGING EVENT WAS DROPPED. The staging publisher let a take change or a wait go unwritten: the local
+      # /debug/identity/staging page misses it. Zero always; the counter is seeded at 0 per country.
+      - alert: IdentityStagingEventsDropped
+        expr: sum by (country) (increase(kinowo_worker_identity_staging_dropped_total[30m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the identity staging publisher dropped events"
+          description: >-
+            Identity staging events (take changes, waits) were let go before a publish wrote them -- the feed let
+            them go, or publishes kept failing -- so the staging screen misses them. VictoriaLogs
+            `country:<cc> "identity staging"` has the WARN line per drop and the failed publishes before it.

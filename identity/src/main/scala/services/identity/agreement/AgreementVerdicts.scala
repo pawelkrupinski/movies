@@ -58,7 +58,7 @@ final class MongoAgreementVerdicts(db: MongoDatabase) extends AgreementVerdicts 
   def all(): Seq[StoredVerdict] =
     Await.result(collection.find().batchSize(tools.MongoReplies.Default).map(d => decode(d.toBsonDocument)).toFuture(), Timeout)
 
-  def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = {
+  def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = services.MongoWriteErrors.counted(collection) {
     if (removed.nonEmpty) removed.toSeq.grouped(WriteBatch).foreach(ids => Await.result(collection.deleteMany(Filters.in("_id", ids*)).toFuture(), Timeout))
     added.grouped(WriteBatch).foreach(batch => Await.result(collection.bulkWrite(batch.map(verdict =>
       ReplaceOneModel(Filters.equal("_id", verdict.id), Document(encode(verdict)), ReplaceOptions().upsert(true)))).toFuture(), Timeout))

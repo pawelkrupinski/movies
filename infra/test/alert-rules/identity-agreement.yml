@@ -1,0 +1,121 @@
+# UNIT TESTS FOR THE AGREEMENT STAGE ALERTS.
+#
+# IdentityAgreementBackfillStalled fires for DE's 510 incomplete clusters held six hours across a worker restart, and
+# stays quiet for ES's backlog that drained. The cost regressions fire for DE's periodic agreement phase going from 30 s
+# and 1.5 GB a projection to 85 s and 6 GB, and stay quiet for the same move in the hour after a worker start.
+# IdentityStagingEventsDropped fires for PL dropping three events and stays quiet for UK, seeded at 0.
+rule_files:
+  - ../../nix/files/monitoring/rules/identity-agreement.rules
+
+evaluation_interval: 1m
+
+tests:
+  # DE never drains its backlog, the worker restarting at minute 120; ES drains its in under two hours.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_agreement_clusters{job="kinowo-worker",instance="kinowo-worker-de",country="de",state="incomplete"}'
+        values: '510x120 stale _x2 510x300'
+      - series: 'kinowo_worker_identity_agreement_clusters{job="kinowo-worker",instance="kinowo-worker-es",country="es",state="incomplete"}'
+        values: '50x100 0x322'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: IdentityAgreementBackfillStalled
+        exp_alerts: []
+      - eval_time: 6h30m
+        alertname: IdentityAgreementBackfillStalled
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de }
+            exp_annotations:
+              summary: "de: 510 agreement clusters have stayed incomplete for 6 hours"
+              description: "The agreement stage has had clusters with unread verdicts for six hours without draining them. Its per-projection progress is in VictoriaLogs `country:<cc> \"agreement\"`; the worker diagnostics dashboard draws the clusters by state."
+
+  # A projection every 10 minutes: a day at 30 s / 1.5 GB (the (20,40] and (1e9,2e9] buckets), then 4 hours at
+  # 85 s / 6 GB ((60,90] and (4e9,8e9]). The worker has run since epoch 0.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="20"}'
+        values: '0x168'
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="40"}'
+        values: '0+1x144 144x23'
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="60"}'
+        values: '0+1x144 144x23'
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="90"}'
+        values: '0+1x144 145+1x23'
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="+Inf"}'
+        values: '0+1x144 145+1x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="1e+09"}'
+        values: '0x168'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="2e+09"}'
+        values: '0+1x144 144x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="4e+09"}'
+        values: '0+1x144 144x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="8e+09"}'
+        values: '0+1x144 145+1x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="+Inf"}'
+        values: '0+1x144 145+1x23'
+      - series: 'process_start_time_seconds{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '0x168'
+    alert_rule_test:
+      - eval_time: 23h
+        alertname: IdentityAgreementCostRegression
+        exp_alerts: []
+      - eval_time: 25h30m
+        alertname: IdentityAgreementCostRegression
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de, mode: periodic }
+            exp_annotations:
+              summary: "de: the periodic agreement phase's hourly median is 1m 15s, over twice its week"
+              description: "The identity projection's agreement phase has doubled its weekly median. Find the build and the projections: VictoriaLogs `country:<cc> \"identity projection:\"`, whose phase list names each phase's seconds and MB; the worker diagnostics dashboard draws the hour against the week."
+      - eval_time: 23h
+        alertname: IdentityAgreementAllocationRegression
+        exp_alerts: []
+      - eval_time: 25h30m
+        alertname: IdentityAgreementAllocationRegression
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de, mode: periodic }
+            exp_annotations:
+              summary: "de: the periodic agreement phase's hourly median allocation is 6GB, over twice its week"
+              description: "The identity projection's agreement phase allocates twice its weekly median. VictoriaLogs `country:<cc> \"identity projection:\"` names each projection's phases with their MB; compare the build before and after."
+
+  # The same move, but the worker restarted at 24h50m (a deploy): its first hour is not judged.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="40"}'
+        values: '0+1x144 144x23'
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="90"}'
+        values: '0+1x144 145+1x23'
+      - series: 'kinowo_worker_identity_agreement_phase_seconds_bucket{job="kinowo-worker",country="de",mode="periodic",le="+Inf"}'
+        values: '0+1x144 145+1x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="2e+09"}'
+        values: '0+1x144 144x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="8e+09"}'
+        values: '0+1x144 145+1x23'
+      - series: 'kinowo_worker_identity_agreement_phase_allocated_bytes_bucket{job="kinowo-worker",country="de",mode="periodic",le="+Inf"}'
+        values: '0+1x144 145+1x23'
+      - series: 'process_start_time_seconds{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '0x148 89400x19'
+    alert_rule_test:
+      - eval_time: 25h30m
+        alertname: IdentityAgreementCostRegression
+        exp_alerts: []
+      - eval_time: 25h30m
+        alertname: IdentityAgreementAllocationRegression
+        exp_alerts: []
+
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: '0x10 3x30'
+      - series: 'kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",instance="kinowo-worker-uk",country="uk"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: IdentityStagingEventsDropped
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: IdentityStagingEventsDropped
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl }
+            exp_annotations:
+              summary: "pl: the identity staging publisher dropped events"
+              description: "Identity staging events (take changes, waits) were let go before a publish wrote them -- the feed let them go, or publishes kept failing -- so the staging screen misses them. VictoriaLogs `country:<cc> \"identity staging\"` has the WARN line per drop and the failed publishes before it."

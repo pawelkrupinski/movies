@@ -85,7 +85,9 @@
     "G1 Concurrent GC",
     "G1 Old Generation",
     "G1 Young Generation",
-    "MarkSweepCompact"
+    "MarkSweepCompact",
+    "PS MarkSweep",
+    "PS Scavenge"
    ],
    "job": {
     "same_as": "jvm_buffer_pool_capacity_bytes"
@@ -117,6 +119,9 @@
     "G1 Eden Space",
     "G1 Old Gen",
     "G1 Survivor Space",
+    "PS Eden Space",
+    "PS Old Gen",
+    "PS Survivor Space",
     "Survivor Space",
     "Tenured Gen"
    ]
@@ -133,6 +138,9 @@
     "G1 Old Gen",
     "G1 Survivor Space",
     "Metaspace",
+    "PS Eden Space",
+    "PS Old Gen",
+    "PS Survivor Space",
     "Survivor Space",
     "Tenured Gen"
    ]
@@ -185,6 +193,7 @@
     "Identity decorations",
     "Identity findings report",
     "Identity lean vs whole",
+    "Identity live drift",
     "Identity measure",
     "Identity model convergence",
     "Identity rule ablation",
@@ -201,6 +210,7 @@
     "Scala Steward",
     "Security headers (live)",
     "Stage NixOS closures",
+    "Verify scrape recording",
     "iOS"
    ]
   },
@@ -211,7 +221,8 @@
     "Identity run",
     "Main",
     "Order independence",
-    "Record scrape fixtures"
+    "Record scrape fixtures",
+    "Verify scrape recording"
    ]
   },
   "kinowo_ci_run_seconds": {
@@ -221,6 +232,10 @@
    "measure": [
     "queued",
     "wall"
+   ],
+   "ref": [
+    "branch",
+    "main"
    ],
    "workflow": {
     "same_as": "kinowo_ci_job_seconds"
@@ -274,6 +289,7 @@
     "Check the TMDB key is set",
     "Check which listings the code moved to another film",
     "Close the tunnel to prod Mongo",
+    "Compare each country's live takes with a whole resolve",
     "Complete job",
     "Compute an orderable image tag",
     "Convert xcresult to JUnit",
@@ -291,8 +307,10 @@
     "Enable KVM",
     "Every XCUITest class alone",
     "Every androidTest class alone, in that order",
+    "Every host has zram, a low swappiness and (on k3s) kubelet memory reserves",
     "Every host in the flake evaluates",
     "Every leg's recorded pair is there",
+    "Every leg's recording is there",
     "Every swift test case alone, in a seeded order",
     "Fail the leg on the recording's health",
     "Fail the leg on the sample's verdict",
@@ -384,9 +402,11 @@
     "Publish rolling tune APK release",
     "Publish test report",
     "Publish the image ci built under the tags that ship it",
+    "Push the counts to Prometheus",
     "Push the history to Prometheus",
     "Put the countries' fixtures back",
     "Race harnesses, many times over",
+    "Reach fleetkit",
     "Record ${{ inputs.country }}'s corpus",
     "Record germany's corpus",
     "Record poland's corpus",
@@ -543,6 +563,7 @@
     "Upload release APK",
     "Upload test report",
     "Upload the instrumented test report",
+    "Upload the performance budget figures",
     "Upload the result bundles",
     "Upload the test report",
     "Upload tune APK",
@@ -551,6 +572,7 @@
     "Wait for the worker distribution ci's e2e corpus row stages",
     "What is the web tier actually running?",
     "What is the worker tier actually running?",
+    "Which countries the recording captured complete",
     "Which order-independence rows can this ref move?",
     "Which rows can this push move?",
     "Workflows pass actionlint, and composite actions' run blocks pass shellcheck",
@@ -563,6 +585,7 @@
     "actions/download-artifact@v6",
     "actions/setup-node@v5",
     "actions/upload-artifact@v6",
+    "bin/deploy refuses a stale tree and parses its preview",
     "browser-actions/setup-chrome@v1",
     "cachix/install-nix-action@v27",
     "docker/login-action@v3",
@@ -9364,6 +9387,7 @@
     "img: all.web.img.acsta.net · fallback",
     "img: alternatywy.art",
     "img: api-sf.artmuseum.pl",
+    "img: arthousecrouchend.savoysystems.co.uk",
     "img: bck.systembiletowy.pl · fallback",
     "img: bilety.ck105.koszalin.pl",
     "img: bilety.ckchojnice.pl",
@@ -9373,6 +9397,7 @@
     "img: bilety.kinomikro.pl · fallback",
     "img: bilety.kinoparadox.pl",
     "img: bilety.kinoparadox.pl · fallback",
+    "img: bilety.kinospektrum.pl",
     "img: bilety.kinospektrum.pl · fallback",
     "img: bilety.mgok.janikowo.com.pl · fallback",
     "img: biletyick.miastoilawa.pl · fallback",
@@ -9383,6 +9408,7 @@
     "img: cms-assets.webediamovies.pro",
     "img: cms-assets.webediamovies.pro · fallback",
     "img: cms.cinemas.bfi.org.uk",
+    "img: d1bry8u3byci8.cloudfront.net",
     "img: d235gwso45fsgz.cloudfront.net",
     "img: d32qys9a6wm9no.cloudfront.net",
     "img: d32qys9a6wm9no.cloudfront.net · fallback",
@@ -9393,6 +9419,7 @@
     "img: dksokol.eu · fallback",
     "img: dksrodaslaska.pl",
     "img: dkswit.com.pl",
+    "img: dm7lxewn39lms.cloudfront.net",
     "img: es.web.img2.acsta.net",
     "img: es.web.img2.acsta.net · fallback",
     "img: es.web.img3.acsta.net",
@@ -9430,6 +9457,7 @@
     "img: kinomuranow.pl · fallback",
     "img: kinopalacowe.pl",
     "img: kinopalacowe.pl · fallback",
+    "img: kinoparadox.pl",
     "img: kinopodbaranami.pl",
     "img: kinosokolnia.org · fallback",
     "img: kinosztumbilety.pl",
@@ -9458,6 +9486,7 @@
     "img: static.kinoheld.de",
     "img: static.kinoheld.de · fallback",
     "img: system.spektrix.com",
+    "img: terrazas.artesiete.es",
     "img: u-jazdowski.pl",
     "img: www.arsenal-berlin.de",
     "img: www.bilety.chojnow.eu · fallback",
@@ -9640,6 +9669,8 @@
     "/:city/sitemap.xml",
     "/admin/config",
     "/admin/identity",
+    "/admin/identity/staging",
+    "/admin/identity/staging/data",
     "/admin/share-cards",
     "/api/catalog",
     "/api/client-support",
@@ -9695,6 +9726,8 @@
     "/es/api/catalog",
     "/es/api/client-support",
     "/es/api/me",
+    "/es/api/me/:country/hidden-films",
+    "/es/api/me/state",
     "/es/api/picker/:country",
     "/es/assets/:file",
     "/es/auth/:provider/start",
@@ -9723,6 +9756,8 @@
     "/uk/:city/movie/og-image",
     "/uk/:city/movies",
     "/uk/:city/sitemap.xml",
+    "/uk/admin/identity/staging",
+    "/uk/admin/identity/staging/data",
     "/uk/admin/share-cards",
     "/uk/api/catalog",
     "/uk/api/client-support",
@@ -9811,6 +9846,8 @@
     "/:city/sitemap.xml",
     "/admin/config",
     "/admin/identity",
+    "/admin/identity/staging",
+    "/admin/identity/staging/data",
     "/admin/share-cards",
     "/api/catalog",
     "/api/client-support",
@@ -9866,6 +9903,8 @@
     "/es/api/catalog",
     "/es/api/client-support",
     "/es/api/me",
+    "/es/api/me/:country/hidden-films",
+    "/es/api/me/state",
     "/es/api/picker/:country",
     "/es/assets/:file",
     "/es/auth/:provider/start",
@@ -9894,6 +9933,8 @@
     "/uk/:city/movie/og-image",
     "/uk/:city/movies",
     "/uk/:city/sitemap.xml",
+    "/uk/admin/identity/staging",
+    "/uk/admin/identity/staging/data",
     "/uk/admin/share-cards",
     "/uk/api/catalog",
     "/uk/api/client-support",
@@ -10027,6 +10068,31 @@
    "phase": [
     "enrich",
     "scrape"
+   ],
+   "service": [
+    "cinema",
+    "cinemeta",
+    "filmweb",
+    "imdb",
+    "letterboxd",
+    "metacritic",
+    "omdb",
+    "other",
+    "rottentomatoes",
+    "telegram",
+    "tmdb",
+    "wikidata"
+   ]
+  },
+  "kinowo_worker_identity_agreement_clusters": {
+   "state": [
+    "agreed",
+    "correcting",
+    "event",
+    "incomplete",
+    "poster-vetoed",
+    "verdicts",
+    "waiting"
    ]
   },
   "kinowo_worker_identity_agreement_enqueued_total": {
@@ -10038,7 +10104,9 @@
   "kinowo_worker_identity_take_changes_total": {
    "kind": [
     "changed",
+    "decided",
     "gained",
+    "joined",
     "lost"
    ]
   },
@@ -10055,6 +10123,7 @@
   "kinowo_worker_native_memory_bytes": {
    "category": [
     "Arena Chunk",
+    "Arguments",
     "Class",
     "Code",
     "Compiler",
@@ -10483,11 +10552,23 @@
     "acme-setup.service",
     "alertmanager.service",
     "basic.target",
+    "bin-deploy-1792834797-1.service",
     "caddy.service",
     "chronyd.service",
     "cryptsetup.target",
     "dbus-broker.service",
     "dbus.socket",
+    "dev-disk-by\\x2ddiskseq-12.swap",
+    "dev-disk-by\\x2ddiskseq-13.swap",
+    "dev-disk-by\\x2ddiskseq-4.swap",
+    "dev-disk-by\\x2ddiskseq-5.swap",
+    "dev-disk-by\\x2dlabel-zram0.swap",
+    "dev-disk-by\\x2duuid-0183b289\\x2d068c\\x2d4656\\x2d882c\\x2d9f1b0b8fa2cb.swap",
+    "dev-disk-by\\x2duuid-6271edf4\\x2d02c8\\x2d4fff\\x2da611\\x2d644478eeb8d4.swap",
+    "dev-disk-by\\x2duuid-905b49ec\\x2da4b3\\x2d4fd8\\x2d9273\\x2d196f39971dc9.swap",
+    "dev-disk-by\\x2duuid-d61e6859\\x2d6b99\\x2d4929\\x2d9fb0\\x2d5b3f9694556b.swap",
+    "dev-disk-by\\x2duuid-e302f813\\x2decf9\\x2d493c\\x2da0b2\\x2d3308adedaff6.swap",
+    "dev-zram0.swap",
     "docker-registry.service",
     "emergency.service",
     "emergency.target",
@@ -10530,6 +10611,8 @@
     "modprobe@fuse.service",
     "mongodb-exporter.service",
     "mongodb-init-replicaset.service",
+    "mongodb-offbox-pull.service",
+    "mongodb-offbox-pull.timer",
     "mongodb.service",
     "mongodump.service",
     "mongodump.timer",
@@ -10622,6 +10705,7 @@
     "systemd-rfkill.socket",
     "systemd-soft-reboot.service",
     "systemd-sysctl.service",
+    "systemd-timedated.service",
     "systemd-tmpfiles-clean.service",
     "systemd-tmpfiles-clean.timer",
     "systemd-tmpfiles-resetup.service",
@@ -10638,6 +10722,7 @@
     "systemd-update-utmp.service",
     "systemd-user-sessions.service",
     "systemd-vconsole-setup.service",
+    "systemd-zram-setup@zram0.service",
     "time-set.target",
     "time-sync.target",
     "timers.target",
@@ -10645,11 +10730,13 @@
     "umount.target",
     "user-runtime-dir@0.service",
     "user-runtime-dir@1000.service",
+    "user-runtime-dir@991.service",
     "user-runtime-dir@996.service",
     "user-runtime-dir@998.service",
     "user-runtime-dir@999.service",
     "user@0.service",
     "user@1000.service",
+    "user@991.service",
     "user@996.service",
     "user@998.service",
     "user@999.service",
@@ -10676,6 +10763,7 @@
     "country-root",
     "film",
     "front-door",
+    "poster",
     "share-card"
    ]
   },
@@ -10721,6 +10809,7 @@
     "alertmanager",
     "blackbox",
     "blackbox-city",
+    "blackbox-poster",
     "flux",
     "grafana",
     "kinowo-web",

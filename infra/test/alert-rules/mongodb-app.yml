@@ -1,0 +1,49 @@
+# UNIT TESTS FOR THE APPLICATION'S MONGO ALERTS.
+#
+# MongoWriteErrors fires for DE's agreement verdicts failing to encode on every write (the NUL receipt keys), and
+# stays quiet for a single failed write that its retry healed and for a web collection that never failed.
+# MongoUnauthorized fires on ES web's first refused command, and stays quiet for the databases seeded at 0.
+rule_files:
+  - ../../nix/files/monitoring/rules/mongodb-app.rules
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_mongo_write_errors_total{job="kinowo-worker",instance="kinowo-worker-de",database="kinowo_de",collection="identity_agreements",kind="serialization"}'
+        values: '0x10 1+1x40'
+      - series: 'kinowo_worker_mongo_write_errors_total{job="kinowo-worker",instance="kinowo-worker-pl",database="kinowo",collection="task_queue",kind="failed"}'
+        values: '0x10 1x40'
+      - series: 'kinowo_web_mongo_write_errors_total{job="kinowo-web",instance="kinowo-web-uk",database="kinowo_uk",collection="userStates",kind="rejected"}'
+        values: '0x50'
+      - series: 'kinowo_web_mongo_unauthorized_total{job="kinowo-web",instance="kinowo-web-es",database="kinowo_es"}'
+        values: '0x10 1x40'
+      - series: 'kinowo_worker_mongo_unauthorized_total{job="kinowo-worker",instance="kinowo-worker-de",database="kinowo_de"}'
+        values: '0x50'
+    alert_rule_test:
+      # Failing since minute 11: pending, not yet held for 10 minutes.
+      - eval_time: 15m
+        alertname: MongoWriteErrors
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: MongoWriteErrors
+        exp_alerts:
+          - exp_labels: { severity: warning, job: kinowo-worker, database: kinowo_de, collection: identity_agreements, kind: serialization }
+            exp_annotations:
+              summary: "kinowo-worker: writes to kinowo_de.identity_agreements keep failing (serialization)"
+              description: "Mongo writes to this collection have thrown for 10 minutes. `serialization`: the driver could not encode the document (a NUL or a dot in a field name, a codec missing) and the same write will fail every time until the code changes. `rejected`: the server refused the document (a validator, a write concern). `failed`: the write command failed. The writer's WARN lines carry the exception; VictoriaLogs `tier:<worker|web> \"<collection>\"`."
+      - eval_time: 9m
+        alertname: MongoUnauthorized
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: MongoUnauthorized
+        exp_alerts:
+          - exp_labels: { severity: critical, job: kinowo-web, database: kinowo_es }
+            exp_annotations:
+              summary: "kinowo-web is not authorized on Mongo database kinowo_es"
+              description: "Mongo answered \"not authorized on kinowo_es\" (code 13): the application's user lacks its per-database grant. The pod stays healthy and does nothing with that database. Grant it with scripts/mongo-grants (docs/adding-a-country.md), then restart the pod."
+      # The refusal has left the 15-minute window: one refusal pages, it does not page for ever.
+      - eval_time: 30m
+        alertname: MongoUnauthorized
+        exp_alerts: []

@@ -26,11 +26,21 @@ trait MongoWiring { self: Wiring =>
   // own, exactly as before. Owned by the root: `stop()` closes it after the
   // connections that borrowed it, since their own close() deliberately leaves it
   // alone.
-  protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] =
+  protected lazy val mongoSharedClient: Option[org.mongodb.scala.MongoClient] = {
+    mongoWriteErrors
     MongoConnection.sharedClientAt(mongoAddress, mongoTuning)
+  }
 
   lazy val mongoConnection: MongoConnection =
     MongoConnection.forDatabase(mongoAddress.uri, mongoAddress.databaseFor(country), mongoRequired, mongoTuning, sharedClient = mongoSharedClient)
+
+  /** Where every store of this process counts a failed write or a refused grant ([[services.MongoWriteErrors]]), bound
+   *  before the client exists, on the tier's one registry. */
+  protected lazy val mongoWriteErrors: services.MongoWriteErrors.Series = {
+    val series = services.MongoWriteErrors.Series.web(webJvmMetrics.registry)
+    services.MongoWriteErrors.bind(series)
+    series
+  }
 
   /** How every connection this deployment opens dials (`MONGODB_PROBE_TIMEOUT_SECONDS`,
    *  `KINOWO_MONGO_MAX_POOL_SIZE`). */

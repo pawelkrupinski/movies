@@ -63,6 +63,7 @@ private[identity] final class ProjectionWorld(
       def drifted(films: Int): Unit = { drifts += films; () }
       def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
       def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
+      def agreementPhase(mode: String, phase: services.identity.adapters.ProjectionPhase): Unit = ()
     }, clock = clock, fingerprints = fingerprints, takeLines = new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
     scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,
     suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () })

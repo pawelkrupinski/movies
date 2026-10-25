@@ -1,0 +1,53 @@
+# DID THE APPLICATION'S MONGO WRITES LAND, AND MAY IT WRITE AT ALL? -- the application's side of Mongo, where
+# mongodb.rules watches the database. Both failures here leave every pod healthy and every queue moving:
+#
+#   - a write that throws inside a store whose caller logs and carries on. Receipt keys holding a NUL made every
+#     agreement verdict that named a TMDB search fail to encode (BsonSerializationException) until 260904c36, and
+#     nothing counted it;
+#   - a missing per-database grant: the pod authenticates, then every command on that database answers "not
+#     authorized on <db>". UK, DE, US and ES each started that way (docs/adding-a-country.md, scripts/mongo-grants).
+#
+# THE COUNTERS: `kinowo_{worker,web}_mongo_write_errors_total{database,collection,kind}` and
+# `kinowo_{worker,web}_mongo_unauthorized_total{database}`, written by services.MongoWriteErrors from the shared
+# write paths (keyed stores, guarded writes, the task queue, the read model, the agreement verdicts, user states) and
+# the connection's probe. A collection is seeded at 0 for every kind on its first write and a database's refusals
+# when a connection opens it, so `increase()` sees the first failure. The corpus writes (movies, movie_slots,
+# screenings) are RepositoryWritesFailing's (worker-pipeline.rules).
+groups:
+  - name: mongodb-app
+    rules:
+      # A COLLECTION'S WRITES HAVE THROWN IN EVERY 10 MINUTES FOR 10 MINUTES. Sustained rather than any: a stepdown
+      # fails a write or two, and its retry lands. `increase(...[10m])` holds the old pod's samples across a restart's
+      # scrape gap, so a rollout does not reset the hold.
+      - alert: MongoWriteErrors
+        expr: |
+          sum by (job, database, collection, kind) (increase(kinowo_worker_mongo_write_errors_total[10m])) > 0
+          or
+          sum by (job, database, collection, kind) (increase(kinowo_web_mongo_write_errors_total[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }}: writes to {{ $labels.database }}.{{ $labels.collection }} keep failing ({{ $labels.kind }})"
+          description: >-
+            Mongo writes to this collection have thrown for 10 minutes. `serialization`: the driver could not
+            encode the document (a NUL or a dot in a field name, a codec missing) and the same write will fail
+            every time until the code changes. `rejected`: the server refused the document (a validator, a write
+            concern). `failed`: the write command failed. The writer's WARN lines carry the exception;
+            VictoriaLogs `tier:<worker|web> "<collection>"`.
+
+      # A COMMAND WAS REFUSED FOR WANT OF A GRANT. Pages on the first: there is no benign refusal, and the pod that
+      # gets one stays up doing nothing until a human adds the role.
+      - alert: MongoUnauthorized
+        expr: |
+          sum by (job, database) (increase(kinowo_worker_mongo_unauthorized_total[15m])) > 0
+          or
+          sum by (job, database) (increase(kinowo_web_mongo_unauthorized_total[15m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is not authorized on Mongo database {{ $labels.database }}"
+          description: >-
+            Mongo answered "not authorized on {{ $labels.database }}" (code 13): the application's user lacks
+            its per-database grant. The pod stays healthy and does nothing with that database. Grant it with
+            scripts/mongo-grants (docs/adding-a-country.md), then restart the pod.

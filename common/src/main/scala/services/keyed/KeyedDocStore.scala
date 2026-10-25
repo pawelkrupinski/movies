@@ -141,12 +141,14 @@ final class MongoKeyedDocStore[T](collection: MongoCollection[Document], codec: 
   private def replace(key: String, value: T) =
     collection.replaceOne(Filters.eq("_id", key), KeyedDocStore.stored(codec, key, value), ReplaceOptions().upsert(true))
 
-  def put(key: String, value: T): Unit = { Await.result(replace(key, value).toFuture(), Timeout); () }
+  def put(key: String, value: T): Unit = services.MongoWriteErrors.counted(collection) { Await.result(replace(key, value).toFuture(), Timeout); () }
 
   def putDetached(key: String, value: T)(onFailure: Throwable => Unit): Unit =
-    Try(replace(key, value).subscribe((_: org.mongodb.scala.result.UpdateResult) => (), onFailure)).failed.foreach(onFailure)
+    Try(replace(key, value).subscribe((_: org.mongodb.scala.result.UpdateResult) => (), { (failure: Throwable) =>
+      services.MongoWriteErrors.observe(collection.namespace.getDatabaseName, collection.namespace.getCollectionName, failure); onFailure(failure)
+    })).failed.foreach(onFailure)
 
-  def delete(key: String): Unit = { Await.result(collection.deleteOne(Filters.eq("_id", key)).toFuture(), Timeout); () }
+  def delete(key: String): Unit = services.MongoWriteErrors.counted(collection) { Await.result(collection.deleteOne(Filters.eq("_id", key)).toFuture(), Timeout); () }
 
   def retention: StampedRows = codec.stampField.fold(StampedRows.Unswept)(StampedRows.inMongo(collection, _))
 }

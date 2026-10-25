@@ -173,11 +173,16 @@ let
     # to its per-venue aggregator fallback individually -- no cinema bar went red, nothing paged,
     # found a day later by a human reading /uptime by hand. Alphabetically first.
     "chain-fallback"
+    # IS A LANDING GATE RED ON MAIN. Main, Identity model convergence or the scrape recording's verify red for two
+    # hours: every production push then needs a Fixes-Red trailer, read off the timings CI pushes over OTLP.
+    "ci-gates"
     # IS EVERY CINEMA STILL BEING SCRAPED. The application's own roster-freshness census, and the
     # only file here that watches the product rather than the machines it runs on. Its failure is
     # the silent kind: a cinema nobody scrapes emits no series at all, so every traffic counter
     # stays clean while the roster goes dark.
     "cinema-scrape"
+    # DOES TMDB OR OMDB STILL TAKE OUR KEY. 401s and no success for an hour: ratings and new matches stop quietly.
+    "enrichment-keys"
     "filesystem-capacity"
     # IS THE DEPLOY PATH STILL RUNNING. Flux owns the rollout now, and its failure mode is not an
     # outage -- it is the cluster serving the last image it received while every CI run stays
@@ -188,6 +193,9 @@ let
     # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
     # the host agent's view with one of these three machines.
     "host-health"
+    # IS THE AGREEMENT STAGE KEEPING UP, AND AS CHEAP AS IT WAS. A backfill left incomplete for 6h, the agreement
+    # phase's hourly median at twice its week, and staging events dropped.
+    "identity-agreement"
     # DID THE SITE STOP KNOWING WHICH FILM A LISTING IS. A burst of published listings whose TMDB
     # film the identity projection lost or changed -- the live half of the identity takes check CI
     # runs on code. Alphabetically after host-health and before jvm-heap.
@@ -205,6 +213,9 @@ let
     # says so at length rather than writing rules against series nothing produces.
     "k3s"
     "mongodb"
+    # DID THE APPLICATION'S MONGO WRITES LAND, AND MAY IT WRITE AT ALL. Writes throwing per collection (the NUL receipt
+    # keys, 260904c36) and "not authorized on <db>" (a missing per-database grant), counted by the apps themselves.
+    "mongodb-app"
     "monitoring-self"
     # Whether the fleet is still deploying itself. The failure this covers is completely silent:
     # an applier that has stopped leaves every service running and every other alert green.

@@ -46,6 +46,22 @@ allow:
       Reads only flux:resource_info, which did not exist before the 2026-09-24 movies-gitops
       kube-state-metrics change; FluxObjectStateAbsent is the warning that said so meanwhile.
 
+  # FIRING IS THE CONDITION ITSELF, NOT A MISREADING OF IT.
+  LandingGateRed:
+    noisy: true
+    reason: >-
+      Every firing is a gate genuinely red on main for over two hours, read off the conclusion each run
+      pushes. The fortnight it was written against (2026-10-12..25) had Identity model convergence red
+      for 4-9 h stretches seven times and Main twice: the alert reports a red main, which is its job, and
+      the budget measures how often main was red rather than how wrong the rule is.
+  EnrichmentApiKeyRefused:
+    noisy: true
+    reason: >-
+      OMDb's free key answers 401 for a spent daily quota as well as a bad key, and CI's recording legs
+      spend that quota alongside production: 2026-10-20..25 had five stretches of two hours and more with
+      401s and no success. Each one stopped the OMDb backfill, so each is worth the warning; drop this
+      entry once the key's quota is raised or CI stops sharing it.
+
 # Metrics a rule reads that are published ONLY in an exceptional state, so their absence over the
 # whole window is the healthy case, not a dead selector. They are excluded from the dead-alert
 # check and from rollout clipping.

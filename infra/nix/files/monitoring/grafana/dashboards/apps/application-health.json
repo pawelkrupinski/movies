@@ -4720,6 +4720,149 @@
           "description": "Primary posters visitors' browsers reported failing (POST /uptime/img-event, the uptime page's `img:` rows). Charted, deliberately not alerted: a country sees 0-10 such loads per half hour, and their failure share swings 0-100% on a healthy day (2026-10-07..21). Read it beside the probes: a host red here and green there is a browser-side failure the probe does not reproduce."
         }
       ]
+    },
+    {
+      "id": 9035,
+      "type": "row",
+      "title": "Mongo — writes that threw, and grants refused",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 326
+      },
+      "panels": []
+    },
+    {
+      "id": 9036,
+      "title": "Mongo writes that threw, per collection and kind — worker and web",
+      "description": "`kinowo_{worker,web}_mongo_write_errors_total{database,collection,kind}` per bar (services.MongoWriteErrors): `serialization` the driver could not encode the document (the NUL in an agreement receipt's field name, 260904c36), `rejected` the server refused it (a validator, a write concern; never an expected duplicate key), `failed` the write command failed. Zero is the healthy reading; `MongoWriteErrors` (mongodb-app.rules) fires on 10 minutes of any. The corpus writes (movies, movie_slots, screenings) are counted by `kinowo_worker_repository_write_failed_total` instead.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 327
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (database, collection, kind) (increase(kinowo_worker_mongo_write_errors_total[$__interval])) > 0",
+          "legendFormat": "worker {{database}}.{{collection}} {{kind}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (database, collection, kind) (increase(kinowo_web_mongo_write_errors_total[$__interval])) > 0",
+          "legendFormat": "web {{database}}.{{collection}} {{kind}}"
+        }
+      ],
+      "interval": "5m"
+    },
+    {
+      "id": 9037,
+      "title": "Mongo commands refused as not authorized, per database — worker and web",
+      "description": "`kinowo_{worker,web}_mongo_unauthorized_total{database}` per bar: a command Mongo answered \"not authorized on <db>\" (code 13). A missing per-database grant leaves the pod healthy and doing nothing (UK, DE, US and ES each had one: docs/adding-a-country.md, scripts/mongo-grants). `MongoUnauthorized` pages on the first.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 327
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (database) (increase(kinowo_worker_mongo_unauthorized_total[$__interval]))",
+          "legendFormat": "worker {{database}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (database) (increase(kinowo_web_mongo_unauthorized_total[$__interval]))",
+          "legendFormat": "web {{database}}"
+        }
+      ],
+      "interval": "5m"
     }
   ],
   "description": "One screen for the whole application, all of it on k3s: five scraping workers (pl, uk, de, us, es) and five web deployments (pl, uk, de, us, es), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare them all. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

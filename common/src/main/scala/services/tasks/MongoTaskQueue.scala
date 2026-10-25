@@ -91,7 +91,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         inserted(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead).toSeq.map { case (field, value) =>
           Updates.setOnInsert(field, value) })*)
       Try {
-        val res = Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
+        val res = services.MongoWriteErrors.counted(c)(Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds))
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate
       }.recover {
         // Losing the race on the unique index IS the dedup working: another writer
@@ -146,7 +146,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Filters.or(
           Filters.exists("nextEligibleAt", false),
           Filters.lte("nextEligibleAt", new java.util.Date(now.toEpochMilli))))
-      Try(Await.result(c.findOneAndUpdate(eligible, update, opts).headOption(), 10.seconds)) match {
+      Try(services.MongoWriteErrors.counted(c)(Await.result(c.findOneAndUpdate(eligible, update, opts).headOption(), 10.seconds))) match {
         case Failure(exception) =>
           logger.warn(s"TaskQueue.claim failed: ${exception.getMessage}")
           None

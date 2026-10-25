@@ -46,13 +46,13 @@ object MongoGuard {
    *  Anything else thrown propagates. */
   def updateIfUnchanged[T](collection: MongoCollection[T], guard: Bson, update: Bson, timeout: FiniteDuration,
                            insert: Boolean): Boolean =
-    landed(Await.result(collection.updateOne(guard, update, new UpdateOptions().upsert(insert)).toFuture(), timeout))
+    landed(MongoWriteErrors.counted(collection)(Await.result(collection.updateOne(guard, update, new UpdateOptions().upsert(insert)).toFuture(), timeout)))
 
   /** `document` in place of the row only where `guard` matches — whether it landed; `insert` as for
    *  [[updateIfUnchanged]]. */
   def replaceIfUnchanged[T](collection: MongoCollection[T], guard: Bson, document: T, timeout: FiniteDuration,
                             insert: Boolean): Boolean =
-    landed(Await.result(collection.replaceOne(guard, document, new ReplaceOptions().upsert(insert)).toFuture(), timeout))
+    landed(MongoWriteErrors.counted(collection)(Await.result(collection.replaceOne(guard, document, new ReplaceOptions().upsert(insert)).toFuture(), timeout)))
 
   private def landed(write: => com.mongodb.client.result.UpdateResult): Boolean =
     try {

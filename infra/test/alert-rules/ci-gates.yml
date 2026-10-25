@@ -1,0 +1,34 @@
+# UNIT TESTS FOR THE LANDING GATE ALERT.
+#
+# Each run is ONE sample, stamped at its start, as scripts/ci/ci_timings.py pushes it. LandingGateRed fires for Main
+# red since its 30-minute run with nothing green after it, and stays quiet for Identity model convergence, whose red
+# run was followed by a green one, and for a workflow outside the gate.
+rule_files:
+  - ../../nix/files/monitoring/rules/ci-gates.rules
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="wall",conclusion="success"}'
+        values: '900 _x60'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="wall",conclusion="failure"}'
+        values: '_x6 1200 _x54'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",measure="wall",conclusion="failure"}'
+        values: '_x6 3000 _x54'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",measure="wall",conclusion="success"}'
+        values: '_x12 2800 _x48'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Nightly stress",ref="main",measure="wall",conclusion="failure"}'
+        values: '_x6 600 _x54'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: LandingGateRed
+        exp_alerts: []
+      - eval_time: 2h45m
+        alertname: LandingGateRed
+        exp_alerts:
+          - exp_labels: { severity: warning, workflow: Main }
+            exp_annotations:
+              summary: "Main has been red on main for 2 hours"
+              description: "The newest finished Main run on main failed and no later one has passed, for two hours. Every production push now needs a `Fixes-Red:` trailer naming that run, or waits for green. `~/bin/agentctl ci-why` names the run, its failed jobs and whether the failure is a test or the CI itself."

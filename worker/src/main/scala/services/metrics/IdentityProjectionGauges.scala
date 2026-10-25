@@ -1,6 +1,6 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.{Counter, Gauge}
+import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.identity.{Regroupings, ResolverDecision, SuspectTakes}
 import services.identity.adapters.IdentityProjectionMetrics
@@ -55,6 +55,11 @@ import services.identity.adapters.IdentityProjectionMetrics
  *    ([[services.identity.adapters.RuleFiringCount]]); `kinowo_worker_identity_rule_counted_listings_total` the listings
  *    those counts were over, so a rule's share of the corpus is the ratio of the two's increases. A rule with no series,
  *    or no increase over a week, fired on no live listing: dead in prod. Rule ids only, a few hundred series a country;
+ *  - `kinowo_worker_identity_agreement_phase_seconds{mode}` / `kinowo_worker_identity_agreement_phase_allocated_bytes{mode}` —
+ *    every projection's agreement phase ([[services.identity.adapters.ProjectionPhase]], the "agreement 69.1s/9579MB" of
+ *    its log line), by its mode (`periodic`, `whole`, `changed`): the distribution `kinowo_worker_identity_agreement_seconds`,
+ *    the last stage run's wall clock alone, cannot give. `IdentityAgreementCostRegression` compares its hour's median with
+ *    its week's;
  *  - `kinowo_worker_identity_projection_reconciles_total{measured}` — hourly projections of the whole corpus, `measured`
  *    when an earlier projection gave one a scope to check drift against: an hour of `false` alone is drift not measured.
  *
@@ -134,6 +139,22 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     .labelNames("country", "signal")
     .register(registry)
 
+  private val agreementSeconds: Histogram = Histogram.builder()
+    .name("kinowo_worker_identity_agreement_phase_seconds")
+    .help("Wall clock of each identity projection's agreement phase, by projection mode (periodic, whole, changed).")
+    .labelNames("country", "mode")
+    .classicUpperBounds(IdentityProjectionGauges.AgreementSecondsBuckets*)
+    .classicOnly()
+    .register(registry)
+
+  private val agreementBytes: Histogram = Histogram.builder()
+    .name("kinowo_worker_identity_agreement_phase_allocated_bytes")
+    .help("Bytes each identity projection's agreement phase allocated on the projecting thread, by projection mode (periodic, whole, changed).")
+    .labelNames("country", "mode")
+    .classicUpperBounds(IdentityProjectionGauges.AgreementBytesBuckets*)
+    .classicOnly()
+    .register(registry)
+
   private val ruleFires: Counter = Counter.builder()
     .name("kinowo_worker_identity_rule_fires_total")
     .help("Live listings each identity rule fired on (title rule, model rule, later stage's rule), added up over each written whole-corpus projection.")
@@ -190,10 +211,20 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     }
     def refused(reason: IdentityProjectionMetrics.Refusal): Unit = refusals.labelValues(country, reason.label).inc()
     def drifted(films: Int): Unit = drift.labelValues(country).inc(films.toDouble)
+    def agreementPhase(mode: String, phase: services.identity.adapters.ProjectionPhase): Unit = {
+      agreementSeconds.labelValues(country, mode).observe(phase.seconds)
+      agreementBytes.labelValues(country, mode).observe(phase.allocatedBytes.toDouble)
+    }
   }
 }
 
 object IdentityProjectionGauges {
   /** The `basis` of a change no decision names. */
   val NoDecision = "none"
+
+  /** The agreement phase's seconds: a scoped projection's is about a second, a whole one's past a minute on a large corpus. */
+  val AgreementSecondsBuckets: Seq[Double] = Seq(0.25, 0.5, 1, 2.5, 5, 10, 20, 40, 60, 90, 120, 180, 300, 600)
+
+  /** Its allocation: tens of MB scoped, ~10 GB for a large whole corpus (prod, 2026-10-25: "agreement 69.1s/9579MB"). */
+  val AgreementBytesBuckets: Seq[Double] = Seq(1e7, 3e7, 1e8, 3e8, 1e9, 2e9, 4e9, 8e9, 16e9, 32e9, 64e9)
 }

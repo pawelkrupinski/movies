@@ -1,0 +1,29 @@
+# DOES TMDB OR OMDB STILL TAKE OUR KEY? -- a refused key fails every read of that service and nothing else: the
+# queue moves, films resolve from what is cached, and ratings and new matches quietly stop.
+#
+# THE SERIES: `kinowo_worker_http_total{service,outcome}`, every outbound call the worker makes (WorkerHttpMetrics),
+# seeded at 0 per outcome. OMDb answers a refused key with HTTP 401, and OMDbClient stops asking for 30 minutes after
+# five in a row ("OMDb refused its key N times in a row"), so a dead key is a 401 every half hour and nothing between.
+# OMDb's free key answers 401 for a SPENT DAILY QUOTA too, and CI's recording legs share that quota with production
+# (the "CI's outbound calls" panel on the HTTP dashboard): this alert cannot tell the two apart, and both stop the
+# backfill. The 2026-10-20..25 data had five spent-quota stretches of over two hours.
+groups:
+  - name: enrichment-keys
+    rules:
+      # 401s AND NOT ONE SUCCESS, IN EVERY HOUR FOR AN HOUR. Any answered call in the hour clears it: a flaky 401 beside
+      # working reads is not a dead key. `[1h]` spans the breaker's 30-minute pause, which makes no call at all.
+      - alert: EnrichmentApiKeyRefused
+        expr: |
+          sum by (service) (increase(kinowo_worker_http_total{service=~"omdb|tmdb",outcome="http_401"}[1h])) > 0
+          unless on (service)
+          sum by (service) (increase(kinowo_worker_http_total{service=~"omdb|tmdb",outcome="success"}[1h])) > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} has refused every worker call with HTTP 401 for over an hour"
+          description: >-
+            The workers' {{ $labels.service }} calls have drawn HTTP 401s and not one success in every hour for
+            over an hour. For TMDB that is the key (TMDB_API_KEY) revoked or wrong. For OMDb it is the key
+            or its spent daily quota (shared with CI's recording legs), which resets daily; a 401 right after
+            the reset is the key. VictoriaLogs `tier:worker "refused its key"`.

@@ -1,0 +1,31 @@
+# UNIT TESTS FOR THE ENRICHMENT KEY ALERT.
+#
+# EnrichmentApiKeyRefused fires for OMDb refusing the key: five 401s, then the breaker's 30-minute pause with no call,
+# then five more, and no success. It stays quiet for TMDB's stray 401 among working calls, and for OMDb before the hour.
+rule_files:
+  - ../../nix/files/monitoring/rules/enrichment-keys.rules
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_http_total{job="kinowo-worker",country="pl",phase="enrich",path="enrich",service="omdb",outcome="http_401"}'
+        values: '0x10 5x30 10x30 15x30 20x30 25x30'
+      - series: 'kinowo_worker_http_total{job="kinowo-worker",country="pl",phase="enrich",path="enrich",service="omdb",outcome="success"}'
+        values: '100x160'
+      - series: 'kinowo_worker_http_total{job="kinowo-worker",country="uk",phase="enrich",path="enrich",service="tmdb",outcome="http_401"}'
+        values: '0x10 1x150'
+      - series: 'kinowo_worker_http_total{job="kinowo-worker",country="uk",phase="enrich",path="enrich",service="tmdb",outcome="success"}'
+        values: '0+10x160'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: EnrichmentApiKeyRefused
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: EnrichmentApiKeyRefused
+        exp_alerts:
+          - exp_labels: { severity: warning, service: omdb }
+            exp_annotations:
+              summary: "omdb has refused every worker call with HTTP 401 for over an hour"
+              description: "The workers' omdb calls have drawn HTTP 401s and not one success in every hour for over an hour. For TMDB that is the key (TMDB_API_KEY) revoked or wrong. For OMDb it is the key or its spent daily quota (shared with CI's recording legs), which resets daily; a 401 right after the reset is the key. VictoriaLogs `tier:worker \"refused its key\"`."

@@ -51,6 +51,7 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     new WebDecodeFailureMetrics(registry, "pl")
     new services.metrics.WebReadModelStreamMetrics(registry, "pl", _ => true)
     new services.metrics.WebRenderMetrics(registry, "pl")
+    services.MongoWriteErrors.Series.web(registry)
     new services.metrics.WebRouteUsageMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     new services.metrics.LegacyAddressMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     registry
