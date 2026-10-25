@@ -170,7 +170,7 @@
     {
       "id": 7,
       "title": "Heap used against -Xmx",
-      "description": "Healthy is a sawtooth with a flat floor, comfortably under the cap. A floor that rises collection after collection is a heap leak; a sawtooth whose peaks graze the cap means the next reprojection will thrash SerialGC. The cap is plotted from jvm_memory_max_bytes rather than written into this text, so it stays right when -Xmx is retuned.",
+      "description": "Healthy is a sawtooth with a flat floor, comfortably under the cap. A floor that rises collection after collection is a heap leak; a sawtooth whose peaks graze the cap means the next reprojection will thrash the collector with back-to-back full GCs. The cap is plotted from jvm_memory_max_bytes rather than written into this text, so it stays right when -Xmx is retuned.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -640,7 +640,7 @@
       "id": 18,
       "type": "timeseries",
       "title": "GC — collections per second by collector",
-      "description": "How often each collector runs, per country. Young ('Copy') climbing with a flat old-gen line is normal churn; 'MarkSweepCompact' climbing is the shape that precedes a heap-exhaustion death, and pairs with the GC centi-cores line on the CPU panel.",
+      "description": "How often each collector runs, per country. Young ('PS Scavenge'; 'Copy' under SerialGC until 2026-10-24) climbing with a flat old-gen line is normal churn; the full one ('PS MarkSweep'; 'MarkSweepCompact' under SerialGC) climbing is the shape that precedes a heap-exhaustion death, and pairs with the GC centi-cores line on the CPU panel.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"

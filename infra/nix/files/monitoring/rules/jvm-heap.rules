@@ -41,7 +41,7 @@
 # ⚠️ ON THE WORKERS (SerialGC until 2026-10-24, Parallel since: both reclaim tenured only in a full
 # collection) THE FLOOR IS WEAKER STILL, and reading it as retention sent the
 # 2026-09-05 worker-pl investigation off in the wrong direction for a while. G1 marks concurrently
-# and collects often, so its floor tracks the live set loosely but continuously. SerialGC only ever
+# and collects often, so its floor tracks the live set loosely but continuously. Serial and Parallel only ever
 # reclaims tenured at a FULL collection, and these workers do very few -- worker-pl did 2 in 24h
 # while healthy. Between two full GCs the floor is simply "everything tenured since the last one",
 # which is garbage and live data indistinguishable, so a floor that has climbed says nothing about
