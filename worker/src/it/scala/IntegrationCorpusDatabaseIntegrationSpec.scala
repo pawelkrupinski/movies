@@ -81,12 +81,14 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
       val orphan = s"${mongoTarget.databasePrefix.value}_sweep-probe_pid${ended.pid()}"
       val live   = IntegrationCorpusDatabase.named(mongoTarget, "sweep-probe-live")
       Seq(orphan, live).foreach(seed(client, _))
+      // Only `live` is this test's to drop: the orphan's pid is dead, so every parallel suite's scope sweeps it too, and
+      // a drop racing that sweep's failed with DatabaseDropPending. A sweep never takes `live`; one left over takes the orphan.
       try {
         IntegrationCorpusDatabase.withDatabase(mongoTarget, "sweep-probe") { _ => () }
         val names = databaseNames(client)
         withClue(s"$orphan belongs to an ended run: ")(names should not contain orphan)
         withClue(s"$live belongs to this, live, run: ")(names should contain(live))
-      } finally Seq(orphan, live).foreach(name => Await.result(client.getDatabase(name).drop().toFuture(), SpecTimeouts.Io))
+      } finally Await.result(client.getDatabase(live).drop().toFuture(), SpecTimeouts.Io)
     } finally client.close()
   }
 }
