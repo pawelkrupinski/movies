@@ -71,17 +71,19 @@ class StrandedSideRowsCleanup(
     ticks.started("side-rows-cleanup", RunEveryHours.hours, StartupDelaySeconds.seconds)
     scheduler.scheduleAtFixedRate(
       () => {
-        Try(if (strandedDue()) { removeStranded(); () }).recover {
-          case exception => logger.warn(s"Stranded side-row cleanup tick failed: ${exception.getMessage}")
-        }
-        Try(removeRetiredVenues()).recover {
-          case exception => logger.warn(s"Retired-venue side-row cleanup tick failed: ${exception.getMessage}")
-        }
-        Try(afterSweeps()).recover {
-          case exception => logger.warn(s"Side-row cleanup's after-sweep report failed: ${exception.getMessage}")
-        }
-        // Each step's own failure is logged above and does not stop the next; the tick itself ran.
-        ticks.completed("side-rows-cleanup", RunEveryHours.hours)
+        val steps = Seq(
+          Try(if (strandedDue()) { removeStranded(); () }).recover {
+            case exception => logger.warn(s"Stranded side-row cleanup tick failed: ${exception.getMessage}"); throw exception
+          },
+          Try { removeRetiredVenues(); () }.recover {
+            case exception => logger.warn(s"Retired-venue side-row cleanup tick failed: ${exception.getMessage}"); throw exception
+          },
+          Try(afterSweeps()).recover {
+            case exception => logger.warn(s"Side-row cleanup's after-sweep report failed: ${exception.getMessage}"); throw exception
+          })
+        // Each step's own failure is logged above and does not stop the next; only a tick whose every step succeeded is
+        // completed, so a cleanup failing each day goes stale (`ScheduledTickStale`) instead of looking healthy.
+        if (steps.forall(_.isSuccess)) ticks.completed("side-rows-cleanup", RunEveryHours.hours)
       },
       StartupDelaySeconds, RunEveryHours * 3600, TimeUnit.SECONDS
     )
