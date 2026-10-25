@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.Stoppable
-import tools.{DaemonExecutors, TickRecorder, ScheduledTick}
+import tools.{DaemonExecutors, TickRecorder, TickRun, ScheduledTick}
 
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
@@ -44,18 +44,20 @@ class WorkerHeartbeat(
   /** Wall-clock millis of the most recent heartbeat firing (or construction). */
   def lastTickMillis: Long = lastBeatMillis
 
-  /** One heartbeat firing: stamp the liveness pulse, then log the queue depth.
+  /** One heartbeat firing: stamp the liveness pulse, then log the queue depth —
+   *  [[TickRun.Incomplete]] when the depth could not be read (logged as UNKNOWN).
    *  Package-private so the test can drive it without the scheduler. */
-  private[tasks] def beat(): Unit = {
+  private[tasks] def beat(): TickRun = {
     lastBeatMillis = now()
-    Try(logger.info(statusLine()))
-    ()
+    val counts = Try(queue.countByState())
+    Try(logger.info(statusLine(counts)))
+    TickRun.completedWhen(counts.isSuccess)
   }
 
   /** The one-line queue-depth summary. Package-private so the test can assert it
    *  without driving the scheduler. */
-  private[tasks] def statusLine(): String =
-    Try(queue.countByState()) match {
+  private[tasks] def statusLine(counts: Try[Map[String, Long]] = Try(queue.countByState())): String =
+    counts match {
       case scala.util.Success(counts) =>
         val waiting  = counts.getOrElse(TaskState.Waiting, 0L)
         val workedOn = counts.getOrElse(TaskState.WorkedOn, 0L)

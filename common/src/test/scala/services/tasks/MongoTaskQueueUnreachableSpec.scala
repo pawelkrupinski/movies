@@ -48,4 +48,10 @@ class MongoTaskQueueUnreachableSpec extends AnyFlatSpec with Matchers with Befor
   "MongoTaskQueue.monitor" should "throw on a Mongo failure rather than answer an empty queue" in {
     an[Exception] should be thrownBy queue.monitor(10)
   }
+
+  // A failed reap came back as 0 — nothing expired — so the lease reaper's tick completed while Mongo refused every
+  // reap, and no lost lease ever came back with no alert to say so.
+  "MongoTaskQueue.reapExpiredLeases" should "throw on a Mongo failure rather than answer that none expired" in {
+    an[Exception] should be thrownBy queue.reapExpiredLeases(t0)
+  }
 }

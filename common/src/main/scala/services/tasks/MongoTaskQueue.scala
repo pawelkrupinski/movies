@@ -215,15 +215,11 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Updates.unset("workerId"),
         Updates.unset("leaseExpiresAt")
       )
-      val reaped = Try {
-        Await.result(c.updateMany(filter, update).toFuture(), 10.seconds).getModifiedCount.toInt
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"TaskQueue.reapExpiredLeases failed: ${exception.getMessage}")
-          0
-      }.getOrElse(0)
+      // A failed reap THROWS (after the retired-type sweep, which stands alone): answered as 0 it read as nothing
+      // expired, and the lease reaper's tick completed while no lease came back.
+      val reaped = Try(Await.result(c.updateMany(filter, update).toFuture(), 10.seconds).getModifiedCount.toInt)
       dropRetiredTypes(c, now)
-      reaped
+      reaped.get
   }
 
   /** The same pass's other sweep: a row of a type this build does not know, waiting past
