@@ -278,6 +278,20 @@ on:
                 required: false
                 type: string
                 default: ''
+            # The countries a VERIFY run judges (verify-scrape-recording.yml): those its recording captured complete. A
+            # country the capture left incomplete is the capture's red, so its leg runs no row here. Empty is every country.
+            countries:
+                description: Comma-separated codes whose legs run at all; empty runs every country's.
+                required: false
+                type: string
+                default: ''
+            # The `takes` row (base against head) is the push verdict's (identity-model-convergence.yml); a verify run
+            # judges one commit against one recording and has no base to diff, so it passes false.
+            takes-row:
+                description: A hermetic leg also runs its identity takes row.
+                required: false
+                type: boolean
+                default: true
             # Resolve both sides afresh, neither reusing nor storing a result (identity-takes-check.sh's TAKES_STORE
             # empty): how scripts/identity-measure --no-store proves the store changes no verdict.
             takes-no-store:
@@ -359,11 +373,12 @@ jobs:
         # the caller's `<country> / ` prefix github.com adds, so a bare phase left five countries' rows indistinguishable.
         name: ${{ matrix.phase }} (${{ inputs.country }})
         # A takes-only measurement of some countries (scripts/identity-measure --countries) skips the others' legs whole.
-        if: ${{ !inputs.takes-only || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code)) }}
+        # A verify run skips the countries its recording did not capture complete (`countries`).
+        if: ${{ (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) && (!inputs.takes-only || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code))) }}
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
+                phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -556,6 +571,9 @@ jobs:
             # suite reports, never a red row. TMDB's key is this step's alone among the fill's steps
             # (`FillCredentials` signs the TMDB gaps listed with it masked); nothing it records carries it.
             #
+            # A NAMED RECORDING IS REPLAYED BARE (`corpus-run`: a verify run, an identity measure's --recording): its own
+            # tree and nothing fetched, so a gap is the named failure the verdict is about, never quietly filled.
+            #
             # THE CONVERGENCE ROW ALONE FILLS. Every other row (order-independence, takes) replays the pair's
             # published fills that setup laid over its tree, and asks nothing: three rows asking one list was the
             # same paid egress three times a run. A gap the fill was refused (anything but a 404) is published as
@@ -563,7 +581,7 @@ jobs:
             # refusing CI for good is asked once every few runs, not every run.
             - name: Fill the gaps the last leg listed, before the suite
               id: fill
-              if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'
+              if: inputs.mode == 'hermetic' && matrix.phase == 'convergence' && inputs.corpus-run == ''
               continue-on-error: true
               timeout-minutes: 5
               shell: bash
@@ -603,7 +621,7 @@ jobs:
             # Off main nothing is published and no bisect is asked for, so the fill is laid over regardless.
             - uses: ./.github/actions/convergence-publish
               id: publish-fill
-              if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'
+              if: inputs.mode == 'hermetic' && matrix.phase == 'convergence' && inputs.corpus-run == ''
               with:
                   code:         ${{ inputs.code }}
                   token:        ${{ secrets.GITHUB_TOKEN }}
@@ -613,7 +631,7 @@ jobs:
                   refused-list: fill-upload-source/refused.tsv
 
             - name: Lay the fill over the tree the suite replays
-              if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'
+              if: inputs.mode == 'hermetic' && matrix.phase == 'convergence' && inputs.corpus-run == ''
               shell: bash
               env:
                   PUBLISHED: ${{ steps.publish-fill.outputs.fill-asset }}
@@ -680,13 +698,21 @@ jobs:
             # explicitly, because the default shell is `bash -e` without it and the
             # pipeline would otherwise report `tee`'s exit status and pass a failing
             # suite.
+            #
+            # A RECORDING'S SUITE JUDGES NOTHING (`continue-on-error` in record mode): it is how the capture boots the
+            # corpus and fills its tree live, and what it asserts over live fallbacks is no verdict on code. Whether the
+            # capture worked is "Fail the capture unless its boot completed" below; whether the code holds on what it
+            # captured is the hermetic replay of it, `Verify scrape recording`.
             - name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite
               id: suite
               if: "!startsWith(matrix.phase, 'takes')"
+              continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
                   set -o pipefail
+                  # When the suite started, for "Say whether the suite ran out of time" below.
+                  date +%s > "$RUNNER_TEMP/suite-started"
                   # A recording's shape specs, above, wrote their JUnit XML here; the report below is this suite's.
                   rm -rf target/test-reports/unit
                   # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh), and which
@@ -777,6 +803,25 @@ jobs:
                   # Absent, the suite runs in memory and says which it chose — a suite that
                   # can silently fall back is one that quietly stops testing what it claims.
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+
+            # A SUITE STOPPED AT ITS CEILING IS NOT A TEST FAILURE, and said so: the leg names the ceiling and the runner's
+            # load at that moment (/proc/loadavg is the host's, so other jobs' CPU shows in it), so a row starved by CPU
+            # contention reads "timed out under load" -- an infra verdict, rerun it -- rather than a red like any other.
+            - name: Say whether the suite ran out of time, and under what load
+              if: always() && !startsWith(matrix.phase, 'takes') && steps.suite.outcome != 'success' && steps.suite.outcome != 'skipped'
+              shell: bash
+              env:
+                  LEG: ${{ matrix.phase }} (${{ inputs.country }})
+                  LIMIT_MINUTES: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
+              run: |
+                  started=$(cat "$RUNNER_TEMP/suite-started" 2>/dev/null) || exit 0
+                  elapsed=$(( $(date +%s) - started ))
+                  # Within a minute of the ceiling: the step was stopped there, not failed on its own.
+                  [ "$elapsed" -ge $(( LIMIT_MINUTES * 60 - 60 )) ] || exit 0
+                  read -r load1 load5 load15 _ < /proc/loadavg
+                  cores=$(nproc)
+                  echo "::error title=${LEG} timed out under load::${LEG} reached its ${LIMIT_MINUTES}-minute suite ceiling after $(( elapsed / 60 )) min; runner load ${load1} / ${load5} / ${load15} (1/5/15 min) on ${cores} cores -- an infra verdict, not a test failure: rerun it when the runner is not contended"
+                  echo "### ${LEG} timed out under load (load ${load1} / ${load5} / ${load15} on ${cores} cores, ceiling ${LIMIT_MINUTES} min)" >> "$GITHUB_STEP_SUMMARY"
 
             # WHAT THIS JOB ASKED THE OUTSIDE WORLD: the live calls of a recording's suite, or of a hermetic leg's
             # pre-suite fill, per external service and outcome -- the worker's own `kinowo_worker_http_total`, dumped by
@@ -1039,6 +1084,23 @@ jobs:
               shell: bash
               run: |
                   echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table on the summary"
+                  exit 1
+
+            # THE CAPTURE'S OWN VERDICT: a recording's convergence row is red only when it captured nothing usable -- no
+            # `[<code>] boot complete` in its log means the boot never answered every request the corpus makes, so no
+            # complete recording exists for verify to replay (convergence-publish.sh pins and marks prod-latest on the same
+            # line). A suite that failed after a complete boot is reported, not failed: Verify scrape recording judges it.
+            - name: Fail the capture unless its boot completed
+              if: always() && inputs.mode == 'record' && matrix.phase == 'convergence'
+              shell: bash
+              env:
+                  SUITE: ${{ steps.suite.outcome }}
+              run: |
+                  if grep -q "^\[${{ inputs.code }}\] boot complete" convergence.log 2>/dev/null; then
+                      [ "$SUITE" = success ] || echo "::warning::${{ inputs.country }}'s recording suite ended $SUITE after a complete boot -- a live-fallback run, no verdict: Verify scrape recording replays this recording hermetically and judges the code"
+                      exit 0
+                  fi
+                  echo "::error::${{ inputs.country }}'s capture is incomplete: its boot never finished (suite $SUITE), so tonight has no complete ${{ inputs.code }} recording to verify"
                   exit 1
 
             - name: Report the job's memory and disk writes

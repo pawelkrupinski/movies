@@ -31,6 +31,13 @@
 # rescraped — so a divergence found in one run could not be re-examined in the
 # next. A recorded fixture makes a failing corpus keepable.
 #
+# CAPTURE ONLY (docs/forgejo-ci.md, "Capture, then verify"). This run goes red only when the capture
+# itself failed -- the corpus could not be read, a country's boot never completed, an origin refused most
+# of the recording -- never on what its suites assert: a recording's suite runs with live fallback, so
+# its asserts are no verdict on code (country-convergence-leg.yml, `continue-on-error` in record mode).
+# Its last job, `verify`, dispatches `Verify scrape recording` with this run's id: the hermetic replay
+# of exactly what was captured, which judges the code and is what the pre-push red gate reads.
+#
 name: Record scrape fixtures
 
 on:
@@ -182,9 +189,42 @@ jobs:
         # Mongo" step's env and no other.
         secrets: inherit
 
+    # THE VERIFY PHASE, handed off: `Verify scrape recording` replays this run's recording hermetically for every
+    # country it captured complete (scripts/ci/recorded-countries.sh) and judges main's code against it. A separate
+    # run, so its verdict is a workflow of its own for the red gate to read, and it can be dispatched again on the
+    # same recording once a fix lands. Main only: a branch's recording publishes no tree to replay. None captured
+    # complete, none dispatched -- the capture is red, and there is nothing to judge.
+    verify:
+        needs: [ preflight, enrichment ]
+        if: ${{ !cancelled() && needs.preflight.result == 'success' && (github.ref == 'refs/heads/main' || github.ref == 'main') }}
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            actions: write
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Dispatch the hermetic verify of this recording
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+              run: |
+                  set -euo pipefail
+                  countries=$(scripts/ci/recorded-countries.sh "$GITHUB_RUN_ID")
+                  if [ -z "$countries" ]; then
+                      echo "::warning::no country captured complete in run $GITHUB_RUN_ID -- no verify dispatched"
+                      exit 0
+                  fi
+                  gh workflow run verify-scrape-recording.yml --ref main -f recording="$GITHUB_RUN_ID" -f countries="$countries"
+                  echo "dispatched Verify scrape recording on recording $GITHUB_RUN_ID for: $countries" | tee -a "$GITHUB_STEP_SUMMARY"
+
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ preflight, enrichment ]
+        needs: [ preflight, enrichment, verify ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
@@ -201,7 +241,7 @@ jobs:
     # commit status the moment it ended (.github/actions/leg-verdict, LegVerdictWiringSpec).
     report:
         name: report (scheduled run)
-        needs: [ preflight, enrichment, timings ]
+        needs: [ preflight, enrichment, verify, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5

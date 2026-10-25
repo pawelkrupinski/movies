@@ -53,7 +53,7 @@
 # checkout (e.g. the DevPanel's `sbt web/run`): two compilers over one classes dir race.
 #
 # RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
-# gating workflow (Main, Identity model convergence, Record scrape fixtures; a cancelled run says nothing
+# gating workflow (Main, Identity model convergence, Verify scrape recording; a cancelled run says nothing
 # and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
 # `Fixes-Red: <run id>` trailer naming one of the red runs — except a commit touching no production path
 # (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile): tools — scripts, docs,
@@ -369,9 +369,13 @@ need_jvm() { # <check>
 }
 
 # ── Red builds gate the push ────────────────────────────────────────────────────────────────────
-GatingWorkflows=("Main" "Identity model convergence" "Record scrape fixtures")
+# The nightly data's verdict is VERIFY's, never the capture's (docs/forgejo-ci.md, "Capture, then verify"): Record scrape
+# fixtures goes red when it could not scrape or record a country -- a fact about the night, not about any push -- and is
+# watched by its own issue and identity-ci-staleness's recording-stale; Verify scrape recording replays what it captured,
+# hermetically, and goes red when the code does not hold on it.
+GatingWorkflows=("Main" "Identity model convergence" "Verify scrape recording")
 # The same workflows by file: Forgejo's runs API filters on the workflow file, not its name.
-GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "record-scrape-fixtures.yml")
+GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "verify-scrape-recording.yml")
 GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 
 # Where the push goes decides whose runs are read (GitHub suspended the account on 2026-10-19; main's CI runs on Forgejo

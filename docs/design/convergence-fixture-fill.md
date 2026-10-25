@@ -111,3 +111,35 @@ like TMDB's key, reach only the fetching step; without them a refused request st
 A hermetic leg takes no fleet-wide pace slots (`ArchiveReplayWiring.pacingFleet`): on its frozen
 clock the fleet pacer's slots never came round, and from Wikidata's fifth request on it answered
 "circuit open" above the leaf, so those gaps were never named and never filled.
+
+## Capture, then verify (2026-10-25)
+
+The nightly `Record scrape fixtures` used to capture live data **and** judge code in one red: its legs ran their
+suites in record mode, live fallback included. Three reds in one day had three causes — CPU contention starving
+Germany's leg into its 120-minute ceiling (1476), a venue's `-AUSVERKAUFT!-` billing splitting a pair the next day
+(1542, a code-against-data finding, fixed by a title rule), live sites timing out inside a suite — and every one
+of them held every production landing. Now each phase owns one question:
+
+| Phase | Workflow | Red means | Gates landings |
+|---|---|---|---|
+| **Capture** | `Record scrape fixtures` (nightly) | a country could not be captured: the corpus read failed, its boot never completed (`[<cc>] boot complete` missing — "Fail the capture unless its boot completed"), or an origin refused most of the recording (recording health). A suite that failed after a complete boot is a warning: its asserts ran over live fallbacks. | **No** — a fact about the night, watched by its scheduled-run issue and `identity-ci-staleness`'s `recording-stale` |
+| **Verify** | `Verify scrape recording` (dispatched by the capture's last job, or by hand) | main's code does not hold on what was captured: the whole suite — boot, convergence, order-independence, **the next-day test** — replayed **hermetically** over that run's corpus and tree, bare (no pinned pair, no fills, no fetch). A request the recording cannot answer fails naming the missing fixture. | **Yes** (`scripts/hooks/pre-push`'s `GatingWorkflows`) |
+| Push verdict | `Identity model convergence` | a commit moved takes or broke convergence on the landing bar (the pinned pair, 573) | Yes, unchanged |
+
+- **Only what was captured is verified.** `scripts/ci/recorded-countries.sh <run>` names the countries whose pinned
+  copy `enrichment-<cc>-<run>` the capture published (only on a complete boot); verify runs those legs alone, and the
+  capture dispatches no verify when it names none. A partial night verifies the countries it has.
+- **Next-day stability is verify's.** The next-day test takes the next day's listings over the booted corpus of the
+  same recording (1542's Logemann pair reproduced on recording 2582 hermetically), so it runs, bounded, in verify.
+- **Bounded.** Verify uses the identity lane's ceilings (row 55, suite 30 minutes), sized from green hermetic rows,
+  on the recorder's own runner (`forgejo-recording`), right behind the capture. Any leg whose suite stops at its
+  ceiling says **"timed out under load"** with the runner's load average — infra, rerun it — instead of a plain red.
+- **Clearing a verify red** takes a later green verify on main: tonight's, or one dispatched on the **same**
+  recording once the fix has landed (`forgejo-gh workflow run verify-scrape-recording.yml --ref main -f
+  recording=<capture run id>`), ~30 minutes rather than another night.
+- **Unchanged:** `prod-latest` and `scripts/identity-repro --recording prod-latest` still read the capture's
+  complete recordings; the landing bar (573) still moves only on a `pin-hermetic` dispatch. A verify run is the
+  same leg `identity-measure --recording` replays, without the takes row (`takes-row: false`: a takes diff needs a
+  base, a verify judges one commit against one recording).
+- **Left in the capture:** the UK's record-mode order row (a gap-filled replay with no capture purpose, now
+  non-failing) — verify runs the UK's order passes hermetically, so it can go.

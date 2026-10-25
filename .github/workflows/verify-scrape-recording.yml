@@ -1,0 +1,156 @@
+#
+# THE VERIFY PHASE of the nightly recording: main's code judged, hermetically, against what one
+# `Record scrape fixtures` run captured (docs/forgejo-ci.md, "Capture, then verify").
+#
+# The recorder used to capture AND judge in one go: its legs ran their suites in record mode, with live
+# fallback, so one red meant any of "the scrape or tunnel failed", "the runner was starved" (1476: Germany at
+# its 120-minute ceiling), "a live site timed out" or "the code mishandles tonight's data" (1542: a sold-out
+# billing splitting a pair the next day). Now the recorder only captures and goes red only when it could not
+# (its legs' "Fail the capture unless its boot completed"); its last job dispatches this run with its own run
+# id, and this run replays that recording the way every verdict leg replays a pair:
+#
+#   - HERMETIC: `mode: hermetic` with the recording named (`corpus-run`), so each leg restores that run's corpus
+#     and the tree recorded over it, bare -- no pinned pair, no fills, no pre-suite fetch. A request the
+#     recording cannot answer fails the leg naming the missing fixture.
+#   - THE WHOLE SUITE: boot, convergence, order-independence and the next-day test (the stability check 1542
+#     tripped: the next day's listings taken over the same booted corpus), as the identity lane runs them. No
+#     takes row (`takes-row: false`): that diffs a base commit against a head over one pair, the push verdict's
+#     job (identity-model-convergence.yml), not a verdict on one commit against one recording.
+#   - ONLY WHAT WAS CAPTURED: a country whose capture did not complete is the capture's red, so it runs no leg
+#     here (scripts/ci/recorded-countries.sh, `countries`).
+#   - BOUNDED: the identity lane's own ceilings (row 55, suite 30 minutes), sized from green hermetic rows, not
+#     the recorder's cold-recording ones. A suite stopped at its ceiling says "timed out under load" with the
+#     runner's load, so contention reads as infra, not as a test failure.
+#
+# GATING: this workflow, not the recorder, is what the pre-push red gate reads for the nightly data
+# (scripts/hooks/pre-push's GatingWorkflows). A red here clears with a later green run on main -- tonight's,
+# or one dispatched by hand on the SAME recording once a fix has landed, which takes this run's ~30 minutes
+# rather than another night:
+#
+#   forgejo-gh workflow run verify-scrape-recording.yml --ref main -f recording=<Record scrape fixtures run id>
+#
+name: Verify scrape recording
+
+on:
+    workflow_dispatch:
+        inputs:
+            recording:
+                description: The `Record scrape fixtures` run (its run id, GITHUB_RUN_ID) whose recording every leg replays.
+                required: true
+                type: string
+            countries:
+                description: The countries (pl,de,uk,es,us) to judge; empty judges every country the recording captured complete.
+                required: false
+                type: string
+                default: ''
+
+concurrency:
+    group: verify-scrape-recording-${{ github.ref }}
+    # A verdict half-way through is kept: a cancelled run says nothing to the red gate, so cancelling one for the
+    # next would only delay the verdict both are asked for.
+    cancel-in-progress: false
+
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
+jobs:
+    # Seconds, before any leg takes a runner: which countries the recording holds complete, and that each one's
+    # corpus and tree are there (convergence-preflight.sh, the identity lane's check for a named recording).
+    preflight:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        outputs:
+            countries: ${{ steps.countries.outputs.countries }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Which countries the recording captured complete
+              id: countries
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  RECORDING: ${{ inputs.recording }}
+                  ASKED: ${{ inputs.countries || '' }}
+              run: |
+                  set -euo pipefail
+                  countries=$(scripts/ci/recorded-countries.sh "$RECORDING" "$ASKED")
+                  if [ -z "$countries" ]; then
+                      echo "::error::recording $RECORDING holds no complete country${ASKED:+ among $ASKED} -- nothing to verify (a capture failure is Record scrape fixtures' red, not this run's)"
+                      exit 1
+                  fi
+                  echo "verifying recording $RECORDING for: $countries"
+                  echo "countries=$countries" >> "$GITHUB_OUTPUT"
+            - name: Every leg's recording is there
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+              run: scripts/ci/convergence-preflight.sh "${{ steps.countries.outputs.countries }}" "${{ inputs.recording }}"
+
+    # THE IDENTITY LANE'S ROWS (identity-model-convergence.yml's `leg` matrix: aliases, splits, heaps, Mongo), replaying
+    # the named recording instead of the pinned pair. EVERY ROW CARRIES EVERY KEY THE JOB READS, for Forgejo's strict
+    # reads of `matrix.<key>` in a reusable call's `with:`.
+    leg:
+        needs: [ preflight ]
+        name: verify (${{ matrix.country }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 55, suite: 30, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-split: false, next-day: '' }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, job: 55, suite: 30, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-split: true, next-day: '' }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, job: 55, suite: 30, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceUkOrder, order-split: true, next-day: '' }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 55, suite: 30, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-split: false, next-day: '' }
+                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, sample: convergenceUsSample, job: 55, suite: 30, heap: 10g, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false', order: convergenceUsOrder, order-split: true, next-day: convergenceUsNextDay }
+        uses: ./.github/workflows/country-convergence-leg.yml
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        with:
+            country:                       ${{ matrix.country }}
+            code:                          ${{ matrix.code }}
+            sample-command:                ${{ matrix.sample }}
+            command:                       ${{ matrix.cmd }}
+            job-timeout-minutes:           ${{ matrix.job }}
+            suite-timeout-minutes:         ${{ matrix.suite }}
+            order-command:                 ${{ matrix.order }}
+            order-job-timeout-minutes:     ${{ matrix.job }}
+            order-suite-timeout-minutes:   ${{ matrix.suite }}
+            order-split:                   ${{ matrix.order-split == true }}
+            next-day-command:              ${{ matrix.next-day || '' }}
+            heap:                          ${{ matrix.heap }}
+            mongo-tmpfs:                   ${{ matrix.mongo-tmpfs || '' }}
+            mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
+            mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
+            mode:                          hermetic
+            corpus-run:                    ${{ inputs.recording }}
+            countries:                     ${{ needs.preflight.outputs.countries }}
+            takes-row:                     false
+            # The nightly pipeline's own runner, as the recorder's legs: verify runs right behind the capture it judges,
+            # on the lane the capture just left, not on the push lane (main-lane).
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
+        # The GITHUB_TOKEN the setup and publish actions read; nothing here fetches, so no key is used.
+        secrets: inherit
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
+    timings:
+        needs: [ preflight, leg ]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
+        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
+        # every event). `inherit` reads the same on github.com and declares nothing.
+        secrets: inherit

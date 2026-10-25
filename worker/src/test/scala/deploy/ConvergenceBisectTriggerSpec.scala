@@ -23,11 +23,14 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
 
   /** The workflows that run a HERMETIC pipeline convergence leg — the only kind that requests a
    *  bisect — found by what they call, not listed. A recording leg (`mode: record`) has nothing to
-   *  bisect. */
+   *  bisect. Nor does `Verify scrape recording`: it judges main's head, which Identity model convergence has already
+   *  judged commit by commit, against one night's recording -- a red there is code meeting new data, answered by a
+   *  fix and a re-dispatch on the same recording, not by a range of commits. */
   private val convergenceWorkflows =
     RepoFile.workflows().map(_.getPath).filter { p =>
       val yml = RepoFile.read(p)
-      yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty
+      yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty &&
+      !p.endsWith("verify-scrape-recording.yml")
     }
 
   private def nameOf(yml: String) =

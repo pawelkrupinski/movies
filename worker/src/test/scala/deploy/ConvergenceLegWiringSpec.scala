@@ -440,7 +440,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
-        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
+        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes"' || '')) }}""")
   }
 
   /** OFF MAIN, ONE SPLIT ORDER ROW (scripts/ci/order-phases.sh, 2026-10-23): only when the preflight positively says

@@ -200,9 +200,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // suite), and its row runs no suite and reports none.
   it should "run in a `takes` row of every hermetic leg, beside the suite, and nowhere else" in {
     val convergence = RepoFile.block(leg, "convergence")
-    convergence should include("inputs.mode == 'hermetic' && ',\"takes\"' || ''")
+    convergence should include("inputs.mode == 'hermetic' && inputs.takes-row && ',\"takes\"' || ''")
     convergence should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}")
-    convergence should include("if: \"!startsWith(matrix.phase, 'takes')\"\n              shell: bash")
+    convergence should include("if: \"!startsWith(matrix.phase, 'takes')\"\n              continue-on-error: ${{ inputs.mode == 'record' }}\n              shell: bash")
     convergence should include("- name: Publish convergence test report\n              if: always() && !startsWith(matrix.phase, 'takes')")
   }
 

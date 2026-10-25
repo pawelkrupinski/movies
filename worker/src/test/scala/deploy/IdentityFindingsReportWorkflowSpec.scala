@@ -57,7 +57,8 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
   it should "not be one of the red-build gate's workflows" in {
     val gating = """GatingWorkflows=\(([^)]*)\)""".r.findFirstMatchIn(RepoFile.read("scripts/hooks/pre-push"))
       .getOrElse(fail("scripts/hooks/pre-push names no GatingWorkflows")).group(1)
-    gating should include("\"Record scrape fixtures\"")
+    gating should include("\"Verify scrape recording\"")
+    withClue("nor the capture, whose red is the night's, not a push's: ")(gating should not include "\"Record scrape fixtures\"")
     gating should not include RepoFile.workflowName(workflow)
   }
 }

@@ -63,7 +63,7 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   `build.sbt`, `project/` or test trees — dashboards, scripttests incl. the Linux leg when Docker is up, actionlint,
   shellcheck on added warnings, oldrefs, ios compile, judgements lint).
 - **Red gate:** before the path checks, the hook reads the newest COMPLETED run on main of Main, Identity model
-  convergence and Record scrape fixtures (one bounded `gh run list` each; gh unreachable → warned, not blocked).
+  convergence and Verify scrape recording (the nightly capture's hermetic replay; one bounded `gh run list` each; gh unreachable → warned, not blocked).
   While one is red, every pushed commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`,
   `project/`, `infra/nix/`, `Dockerfile`) carries `Fixes-Red: <run id>` naming a red run. Tools-only commits
   (scripts, docs, skills, tests, fixtures, `test/resources/`, `.github/`) land without one. The Identity findings

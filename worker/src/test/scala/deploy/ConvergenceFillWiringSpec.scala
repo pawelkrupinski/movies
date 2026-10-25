@@ -38,7 +38,8 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   // In the CONVERGENCE row alone — three rows asking one list was the same paid egress three times a run; the other
   // rows replay what is published.
   "a hermetic convergence row" should "fetch the previous leg's gaps after setup and before its suite, alone of the rows" in {
-    fillStep should include("if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'\n")
+    // A named recording (a verify run, identity-measure --recording) is replayed bare: nothing fetched over it.
+    fillStep should include("if: inputs.mode == 'hermetic' && matrix.phase == 'convergence' && inputs.corpus-run == ''\n")
     fillStep should include("convergence-fill.sh gaps")
     fillStep should include("scripts.FillMissingFixtures")
     val at = RepoFile.positionOf(rows, s"- name: $FillStep")
@@ -66,7 +67,7 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   // published under the name the bisect request carries.
   it should "publish its fill before laying it over the tree its suite replays" in {
     val publishFill = rows.substring(RepoFile.positionOf(rows, "id: publish-fill"))
-    publishFill should include("if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'\n")
+    publishFill should include("if: inputs.mode == 'hermetic' && matrix.phase == 'convergence' && inputs.corpus-run == ''\n")
     publishFill should include("fill-archive: fill-upload-source/fill.tar.zst")
     publishFill should include("fill-row:     convergence")
     publishFill should include("refused-list: fill-upload-source/refused.tsv")

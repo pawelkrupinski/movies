@@ -20,7 +20,7 @@ export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from
 . "$REPO_ROOT/scripts/scratch-git.sh"
 
 # Every case below runs the hook as a push to main, which reads the gating workflows' verdicts first: a stub `gh`
-# answers `gh run list --workflow W` from $GH_MAIN / $GH_IMC / $GH_REC (JSON, default none) through the hook's own
+# answers `gh run list --workflow W` from $GH_MAIN / $GH_IMC / $GH_REC (Verify scrape recording; JSON, default none) through the hook's own
 # --jq filter, so no case reads the real repository's runs.
 # One temporary root for everything below, removed however the spec exits.
 testroot="$(mktemp -d)"
@@ -50,7 +50,7 @@ while [ $# -gt 0 ]; do
   case "$1" in --workflow) workflow="$2"; shift ;; --jq) jqexpr="$2"; shift ;; esac; shift
 done
 case "$workflow" in
-  Main) runs="${GH_MAIN:-[]}" ;; "Identity model convergence") runs="${GH_IMC:-[]}" ;; "Record scrape fixtures") runs="${GH_REC:-[]}" ;;
+  Main) runs="${GH_MAIN:-[]}" ;; "Identity model convergence") runs="${GH_IMC:-[]}" ;; "Verify scrape recording") runs="${GH_REC:-[]}" ;;
   *) echo "unknown workflow $workflow" >&2; exit 1 ;;
 esac
 printf '%s' "$runs" | jq -r "$jqexpr"
@@ -76,7 +76,7 @@ case "$url" in
 esac
 case "$url" in
   *workflow_id=main.yml\&*) runs="${FJ_MAIN:-[]}" ;; *workflow_id=identity-model-convergence.yml\&*) runs="${FJ_IMC:-[]}" ;;
-  *workflow_id=record-scrape-fixtures.yml\&*) runs="${FJ_REC:-[]}" ;; *) echo '{}' > "$out"; printf 404; exit 0 ;;
+  *workflow_id=verify-scrape-recording.yml\&*) runs="${FJ_REC:-[]}" ;; *) echo '{}' > "$out"; printf 404; exit 0 ;;
 esac
 printf '{"workflow_runs":%s,"total_count":0}' "$runs" > "$out"; printf 200
 STUB
@@ -479,7 +479,7 @@ check "a red Identity model convergence refuses an undeclared commit" "1" "$(GH_
 check "...naming the red run" "1" "$(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
 check "...and the commit without the trailer" "1" "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err")"
 check "a red Main refuses it too" "1" "$(GH_MAIN="[$red]" push "$gbase..$plain")"
-check "a red nightly recording refuses it too" "1" "$(GH_REC="[$red]" push "$gbase..$plain")"
+check "a red verify of the nightly recording refuses it too" "1" "$(GH_REC="[$red]" push "$gbase..$plain")"
 check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"
 check "every pushed commit must name it, not just one" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
 check "a Fixes-Red: naming another run is no declaration" "1" "$(GH_IMC="[$(run_json 1 completed failure 1)]" push "$gbase..$fixing")"
@@ -541,7 +541,7 @@ check "Forgejo: a red Identity model convergence refuses an undeclared commit" "
 check "...naming the red run by its number in the run's URL" "1" \
   "$(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/38520439037' "$gate/err")"
 check "Forgejo: a red Main refuses it too" "1" "$(FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
-check "Forgejo: a red nightly recording refuses it too" "1" "$(FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
+check "Forgejo: a red verify of the nightly recording refuses it too" "1" "$(FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
 check "Forgejo: a commit naming the red run in Fixes-Red: lands" "0" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$fixing")"
 check "Forgejo: a commit naming the red run by its API run id (forge-gh's) lands too" "0" \
   "$(FJ_IMC="[$fjred]" fjpush "$fixing..$fixing_by_id")"
