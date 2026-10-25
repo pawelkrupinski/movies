@@ -43,7 +43,12 @@ class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
     budgets.filter(b => b.unit == PerformanceBudget.Measure.Bytes && b.limit <= 0) shouldBe empty
   }
 
-  private val Fixtures = Files.createTempFile("performance-budgets-fixture", ".tsv")
+  private val Fixtures     = Files.createTempFile("performance-budgets-fixture", ".tsv")
+  private val FixtureNames = Set("path", "noisy path", "bound", "count", "none")
+  private def fixtureRows(f: Path): Seq[String] =
+    if (Files.exists(f)) Files.readAllLines(f).asScala.toSeq.map(_.split('\t').head).filter(FixtureNames) else Nil
+  /** What an older local run left in the real report, before this spec checked anything: not this run's doing. */
+  private val leftBefore = fixtureRows(PerformanceBudget.Report.File).size
 
   /** The failure `check` raises on `actual`, or None when it passes. The made-up figures of this spec are
    *  recorded to a temp file: the real report is what CI uploads and `adopt-ci-budgets` reads. */
@@ -95,9 +100,7 @@ class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
   }
 
   "this spec's fixture figures" should "land in its own file, never in the real performance-budgets.tsv" in {
-    val names = Set("path", "noisy path", "bound", "count", "none")
-    val rows = (f: Path) => if (Files.exists(f)) Files.readAllLines(f).asScala.toSeq.map(_.split('\t').head) else Nil
-    rows(Fixtures) should contain("noisy path")
-    rows(PerformanceBudget.Report.File).filter(names) shouldBe empty
+    fixtureRows(Fixtures) should contain("noisy path")
+    fixtureRows(PerformanceBudget.Report.File).size shouldBe leftBefore
   }
 }
