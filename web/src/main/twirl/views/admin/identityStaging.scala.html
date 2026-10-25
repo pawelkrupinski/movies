@@ -211,9 +211,21 @@
             (resolved.length > SHOWN ? "<div class=\"empty\">… and " + (resolved.length - SHOWN) + " older</div>" : "") : "<div class=\"empty\">none lately</div>") +
           "</section>";
       }).join("");
+      // unchanged since the last poll: the rows stay as they are, a click on one in flight included
+      if (html === shown) return;
+      shown = html;
       document.getElementById("countries").innerHTML = html;
     }
+    var shown = null;
 
+    // A click's toggle event fires after the click, a poll's render may land between the two and redraw the row closed:
+    // the row's new state is noted on the click itself, before any render can read it.
+    document.addEventListener("click", function (e) {
+      var summary = e.target.closest && e.target.closest("details.cluster > summary");
+      if (!summary) return;
+      var el = summary.parentElement;
+      if (el.open) delete open[el.dataset.id]; else open[el.dataset.id] = true;
+    }, true);
     document.addEventListener("toggle", function (e) {
       var el = e.target;
       if (el.matches && el.matches("details.cluster")) {
