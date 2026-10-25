@@ -250,7 +250,9 @@ reads every country's through the prod mirror:
   and the decision's trace of each listing shown (its measures against the film, score, runner-up, the rules that took
   or refused it). A move also lists the take BEFORE (`before`): the film it held and the replaced decision
   (`TakeChange.Prior`, `LiveProjectionIndex.priorTake`) — its basis, confidence, last reason, deciding rule,
-  runner-up and its trace of each listing. Casts are held only as hashed name pairs, so their sizes are shown, and
+  runner-up and its trace of each listing — what set the projection off (`trigger`), and each listing's facts before
+  its venue last re-published it with others (`formerly`: `LiveProjectionIndex.formerly`, the newest 5,000 kept, its
+  screenings, names and words off; a re-publish of its days alone is none). Casts are held only as hashed name pairs, so their sizes are shown, and
   how many names they share is the `cast` measure. Nothing is capped: events the feed let
   go, or failed publishes past the 20,000 they keep, are counted in the beat (`dropped`, shown on the page) and
   `kinowo_worker_identity_staging_dropped_total`. A publish that fails keeps what it drained for the next. At most 500
@@ -262,7 +264,9 @@ reads every country's through the prod mirror:
   the page follows prod as the mirror tails it, TTL deletes included.
 - **Web** (`IdentityStagingController`, wired in `DebugWiring` over the per-country mirror connections): every
   country's section on the same page, each cluster a `<details>` row opening onto its questions and what its take
-  was decided on — the first listing's facts beside the film's (before and now, for a move; values that differ
+  was decided on — for a move first WHAT CHANGED (the trigger; each listing's facts its venue re-published, before →
+  now, or none seen; film, basis and deciding rule before → now), then the first listing's facts (before and now)
+  beside the film's (before and now, for a move; values that differ
   marked), each listing's trace before beside now, the other listings' facts; a row of type filters (staging and each
   resolution, kept in `#only=`) lists only the types picked; the page polls
   `/debug/identity/staging/data` every 5 s with each country's cursor, so a poll carries only the clusters written

@@ -51,10 +51,14 @@ object StagedEvidence {
     "cast billed"        -> f.cast.map(c => s"${c.pairs.size} names"),
     "popularity"         -> f.popularity.map(p => f"$p%.1f"))
 
-  /** The trace of `key` in `decision`, its films titled by `titleOf`. */
-  def node(key: services.movies.ListingKey, n: DecisionTrace.Node, titleOf: Int => Option[String]): StagedNode = {
+  /** A decision's trace of `key`, its films titled by `titleOf`: the rule that decided it (`decidedBy`) and the stage
+   *  (`stage`) when known, then the node's own. */
+  def node(key: services.movies.ListingKey, n: DecisionTrace.Node, titleOf: Int => Option[String],
+           decidedBy: Option[String] = None, stage: Option[String] = None): StagedNode = {
     def film(id: Int) = s"tmdb $id${titleOf(id).fold("")(" " + _)}"
     StagedNode(key.venue, key.rawTitle, facts(
+      "decided by" -> decidedBy,
+      "stage"      -> stage,
       "candidate"  -> n.candidate.map(film),
       "score"      -> n.score.map(ResolverDecision.percent),
       "runner-up"  -> n.runnerUp.map(r => s"${film(r.film)} at ${ResolverDecision.percent(r.score)}"),

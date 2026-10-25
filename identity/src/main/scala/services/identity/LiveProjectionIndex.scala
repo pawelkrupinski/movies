@@ -50,8 +50,13 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   private var clusters      = Map.empty[ClusterId, Cluster]
   // Of the listings whose decision the last update replaced with one taking another film, the decision replaced: the
   // take before, which the take-change log names beside the new one. As many as the tick's moved takes — none on a
-  // quiet tick — and only its basis, confidence and last reason, never the decision itself.
+  // quiet tick — and only its basis, confidence, last reason and its trace of the listing, never the decision itself.
   private var replaced      = Map.empty[ListingKey, TakeChange.Prior]
+  // Of the listings whose venue re-published them with other facts (a runtime, an original title, a page's), each one's
+  // facts before the last such change ([[formerly]]): the newest FormerlyKept, without its screenings, names and words.
+  private val former = new java.util.LinkedHashMap[ListingKey, Listing](256, 0.75f, false) {
+    override def removeEldestEntry(eldest: java.util.Map.Entry[ListingKey, Listing]): Boolean = size > LiveProjectionIndex.FormerlyKept
+  }
 
   import LiveProjectionIndex.{Entry, Slot}
 
@@ -107,6 +112,11 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   /** The decision the last [[update]] replaced for `key` with one taking another film: the take before, as far as this
    *  index saw it — none after it was built afresh, or when the film moved without the decision taking another. */
   def priorTake(key: ListingKey): Option[TakeChange.Prior] = replaced.get(key)
+
+  /** The listing published under `key` before its venue last re-published it with other facts, as far as this index
+   *  saw it ([[LiveProjectionIndex.FormerlyKept]] the newest) — none after it was built afresh, or when only its
+   *  screenings, names or words moved. */
+  def formerly(key: ListingKey): Option[Listing] = Option(former.get(key))
 
   /** The index as it stands, over `counters`: its listings, previous films and listings' clusters are views of this
    *  index, which read what the next [[update]] or [[written]] moves — a projection's, read before the two. */
@@ -205,6 +215,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       val was = listingAt(k)
       if (listing != was) {
         republished += k
+        for (old <- was; now <- listing) {
+          val before = LiveProjectionIndex.factsOf(old.listing)
+          if (before != LiveProjectionIndex.factsOf(now.listing) || old.listing.poster != now.listing.poster) former.put(k, before)
+        }
         was.foreach { old =>
           val at = StoredFilmSlots.slotOf(old.listing, normalizer)
           slots.get(at).foreach { slot => slot.keys -= k; tidySlot(at) }
@@ -459,6 +473,13 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
 }
 
 private object LiveProjectionIndex {
+  /** How many listings' former facts [[LiveProjectionIndex.formerly]] keeps: a listing held so is a shallow copy
+   *  (its strings shared), ~200 bytes. */
+  val FormerlyKept = 5000
+
+  /** `l`'s facts alone: its screenings, names and words (what re-publishes it daily, and most of its weight) off. */
+  def factsOf(l: Listing): Listing = l.copy(screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None)
+
   /** What the index knows of one listing key: the listing published under it, its previous film, its cluster and the
    *  decision naming it (each null for none), and the stored films whose slot it is. */
   private final class Entry(var key: ListingKey) {

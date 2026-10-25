@@ -117,6 +117,23 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     again.foreach(l => withClue(l.listing.rawTitle)(byKey(l.listing.key) should be theSameInstanceAs l))
   }
 
+  it should "keep a listing's facts before its venue last re-published it with others, not with only its days" in {
+    val live  = new LiveProjectionIndex(normalizer)
+    val key   = ListingKey.Published(Rialto.displayName, "Belle", None, Nil)
+    val first = Listing(Rialto, key, "Belle", "Belle", "Belle", None, Nil, None, None, None)
+    def publish(l: Listing, showtimes: Int = 1) = live.update(Seq(Rialto.displayName -> Seq(ProjectedListing(l, 0, showtimes))), Seq(key),
+      Seq(ResolverDecision(Seq(key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)()), Nil)
+    publish(first)
+    live.formerly(key) shouldBe None
+    val timed = first.copy(runtime = Some(121), originalTitle = Some("竜とそばかすの姫"))
+    publish(timed)
+    live.formerly(key).map(l => (l.runtime, l.originalTitle)) shouldBe Some((None, None))
+    publish(timed, showtimes = 4)   // re-published with more screenings: the facts' last change stands
+    live.formerly(key).map(l => (l.runtime, l.originalTitle)) shouldBe Some((None, None))
+    publish(timed.copy(poster = Some("https://rialto.example/belle.jpg")))
+    live.formerly(key).map(l => (l.runtime, l.poster)) shouldBe Some((Some(121), None))
+  }
+
   it should "name the listings a venue re-published with another poster, days or names — equal, the model's decisions unmoved" in {
     val live    = new LiveProjectionIndex(normalizer)
     val rows    = Seq(row(new Random(1), Multikino), row(new Random(3), Multikino)).distinctBy(_.movie.title)

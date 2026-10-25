@@ -234,8 +234,9 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     clock.advanceSeconds(20)
     taken = Some(resolution(ResolverDecision(Seq(belle), Some(2), 0.92, ResolverDecision.Basis.OwnMatch, Nil)(
       DecisionTrace(None, None, Map(belle -> node(2, 0))))))
-    projected(moved(belle, Some(1), Some(2)).copy(published = Some(published(belle, 2021, "Mamoru Hosoda")),
-      prior = Some(TakeChange.Prior(ResolverDecision.Basis.OwnMatch, 0.71, None, node = Some(node(1, 8))))))
+    val now = published(belle, 2021, "Mamoru Hosoda")
+    projected(moved(belle, Some(1), Some(2)).copy(published = Some(now), formerly = Some(now.copy(runtime = None)), trigger = Some("scrape"),
+      prior = Some(TakeChange.Prior(ResolverDecision.Basis.OwnMatch, 0.71, None, Some("resolver:title"), node = Some(node(1, 8))))))
     live.publish()
     val changed = shown(docs).find(_.resolution.contains(StagedCluster.Changed)).get
     def facts(fs: Seq[StagedFact]) = fs.map(f => f.name -> f.value).toMap
@@ -251,6 +252,12 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
       "runner-up" -> "tmdb 3 at 4.0%", "accepted" -> "title-year", "measure year.gap" -> "0", "measure director" -> "same_person",
       "refused" -> "sole-work: below the cut (tmdb 3) — p 4.0% < 40.0%")
     facts(changed.before.get.nodes.head.facts) should contain allOf ("candidate" -> "tmdb 1 Belle", "measure year.gap" -> "8")
+    facts(changed.before.get.nodes.head.facts) should contain ("decided by" -> "resolver:title")
+    facts(changed.take.nodes.head.facts).keySet should contain allOf ("decided by", "stage")
+    // what moved: the listing's runtime, which it billed none of before; set off by a scrape
+    changed.trigger shouldBe Some("scrape")
+    facts(changed.listings.head.formerly).get("runtime") shouldBe None
+    facts(changed.listings.head.formerly) should contain ("year" -> "2021")
   }
 
   it should "list a staging cluster's listings' facts as the projection last read them, and keep them while it reads others" in {

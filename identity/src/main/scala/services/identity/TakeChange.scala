@@ -17,12 +17,13 @@ import java.util.Locale
  *  and a re-key or merge that keeps the TMDB film changes no take: neither is one. `basisBefore` is the decision the
  *  projection replaced, when it saw it ([[LiveProjectionIndex.priorTake]]), and `prior` that decision whole (its confidence,
  *  last reason, the rule that decided it, its runner-up) for the staging screen to say what the take was before and why;
- *  `basisAfter` the decision that holds it now; `published` the listing as the projection read it, for the staging
- *  screen to show every fact the decisions weighed. */
+ *  `basisAfter` the decision that holds it now; `published` the listing as the projection read it, and `formerly` as
+ *  it was before its venue last re-published it with other facts ([[LiveProjectionIndex.formerly]]), for the staging
+ *  screen to show every fact the decisions weighed and which of them moved; `trigger` what set the projection off. */
 final case class TakeChange(listing: ListingKey, previousFilm: Option[String], before: Option[Int], after: Option[Int],
                             basisBefore: Option[ResolverDecision.Basis] = None, basisAfter: Option[ResolverDecision.Basis] = None,
                             joined: Boolean = false, prior: Option[TakeChange.Prior] = None,
-                            published: Option[Listing] = None) {
+                            published: Option[Listing] = None, formerly: Option[Listing] = None, trigger: Option[String] = None) {
   def kind: TakeChange.Kind = (previousFilm, before, after) match {
     case (None, _, _) if joined => TakeChange.Kind.Joined
     case (None, _, _)           => TakeChange.Kind.Decided

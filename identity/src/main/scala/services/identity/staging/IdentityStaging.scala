@@ -20,8 +20,9 @@ object StagedFact {
 }
 
 /** One listing of a staged cluster, as its venue bills it, and its facts as the identity model read them (none when the
- *  projection the worker last read did not read it, or in a document written before they were kept). */
-final case class StagedListing(venue: String, rawTitle: String, facts: Seq[StagedFact] = Nil)
+ *  projection the worker last read did not read it, or in a document written before they were kept); for a moved take,
+ *  `formerly` its facts before its venue last re-published it with others (none when the worker saw no such change). */
+final case class StagedListing(venue: String, rawTitle: String, facts: Seq[StagedFact] = Nil, formerly: Seq[StagedFact] = Nil)
 
 /** A decision's trace of one of its listings ([[services.identity.DecisionTrace.Node]]): its measures against the film,
  *  its score, the runner-up, the rules that took or refused it. */
@@ -67,7 +68,8 @@ object StagedTake {
  * publishes, `since` its start), `regrouped` (its listings moved to another cluster, or left),
  * `decided` (a cluster of new listings that settled between two publishes, never seen waiting: most new films, asked
  * inline), or a settled cluster whose listings' film moved between two publishes — a late answer or new data — `gained`
- * (had none), `lost` (has none now) or `changed`; `was` is the TMDB film its listings held before, and `before` the take
+ * (had none), `lost` (has none now) or `changed`, `trigger` what set the projection off (a scrape, an answer, the hourly
+ * reconcile, a deploy); `was` is the TMDB film its listings held before, and `before` the take
  * they held — that film titled, the basis and confidence of the decision it came from, and why it was taken — beside
  * `take`, what they hold now and why (none in a document written before it was kept, nor for a new listing's).
  *
@@ -77,7 +79,7 @@ object StagedTake {
 final case class StagedCluster(key: String, listings: Seq[StagedListing], listingCount: Int, take: StagedTake,
                                modelGaps: Int, onTmdb: Boolean, questions: Seq[StagedQuestion], questionCount: Int,
                                attempted: Int, since: Long, resolvedAt: Option[Long] = None, resolution: Option[String] = None,
-                               was: Option[Int] = None, before: Option[StagedTake] = None) {
+                               was: Option[Int] = None, before: Option[StagedTake] = None, trigger: Option[String] = None) {
   def staging: Boolean = resolvedAt.isEmpty
 }
 

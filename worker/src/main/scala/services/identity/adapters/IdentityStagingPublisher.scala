@@ -217,9 +217,11 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       }(reading.take(_, shown))
       val key      = keyOfId(cluster)
       val priors   = changes.flatMap(c => c.change.prior.map(c.change.listing -> _)).distinctBy(_._1)
-      StagedCluster(s"$key@$projection/${kind.label}${was.fold("")("/" + _)}", reading.listings(shown), listings.size, take, 0,
+      val formerly = changes.iterator.flatMap(c => c.change.formerly.map(c.change.listing -> _)).toMap
+      val listed   = shown.zip(reading.listings(shown)).map { case (k, l) => formerly.get(k).fold(l)(f => l.copy(formerly = StagedEvidence.listing(f))) }
+      StagedCluster(s"$key@$projection/${kind.label}${was.fold("")("/" + _)}", listed, listings.size, take, 0,
         onTmdb = false, Nil, 0, 0, at, resolvedAt = Some(at), resolution = Some(kind.label), was = was,
-        before = Option.when(changes.head.change.moved)(reading.prior(was, priors, take.film)))
+        before = Option.when(changes.head.change.moved)(reading.prior(was, priors, take.film)), trigger = changes.head.change.trigger)
     }
 
   /** `earlier`: the cluster as the last publish staged it, whose listings' facts stand for those the projection did not
@@ -312,7 +314,8 @@ object IdentityStagingPublisher {
         leaning, leaning.flatMap(title),
         decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"), decision.explanationShown(ExplanationShown),
         filmFacts = filmFacts(decision.film.orElse(leaning)),
-        nodes = shown.flatMap(k => decision.trace.nodes.get(k).map(StagedEvidence.node(k, _, title))))
+        nodes = shown.flatMap(k => decision.trace.nodes.get(k).map(StagedEvidence.node(k, _, title,
+          Some(DecidedBy.of(decision, k)), Some(DecidedBy.stage(decision, k))))))
     }
 
     /** The take moved listings held: film `was`, and the decision it came from (`priors`, each listing's, when the
@@ -327,7 +330,7 @@ object IdentityStagingPublisher {
       StagedTake(was, was.flatMap(title), first.fold("unknown")(_.basis.toString), first.fold(0.0)(_.confidence),
         explanation = first.toSeq.flatMap(p => p.reason.toSeq ++ p.decidedBy.map("decided by " + _)) ++ runnerUp,
         filmFacts = filmFacts(was),
-        nodes = priors.take(ListingsShown).flatMap { case (k, p) => p.node.map(StagedEvidence.node(k, _, title)) })
+        nodes = priors.take(ListingsShown).flatMap { case (k, p) => p.node.map(StagedEvidence.node(k, _, title, p.decidedBy)) })
     }
   }
 

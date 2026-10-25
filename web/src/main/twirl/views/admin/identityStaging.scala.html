@@ -181,7 +181,7 @@
       var moved = isMove(cl);
       var from = moved ? "<div class=\"line from\"><span class=\"label\">from</span> <span class=\"move-from\">" + esc(beforeText(cl)) +
         "</span></div>" + (cl.before ? why(cl.before, "why then") : "") : "";
-      return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" + from +
+      return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" + (moved ? whatChanged(cl) : "") + from +
         "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> " + esc(takeText(cl.take)) + "</div>" +
         why(cl.take, moved ? "why now" : "why") + evidence(cl, moved) +
         "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
@@ -211,7 +211,8 @@
     function evidence(cl, moved) {
       var first = cl.listings[0];
       var columns = [];
-      if (first) columns.push({ head: "listing", facts: first.facts });
+      if (first && moved && first.formerly && first.formerly.length) columns.push({ head: "listing before", facts: first.formerly });
+      if (first) columns.push({ head: moved && first.formerly && first.formerly.length ? "listing now" : "listing", facts: first.facts });
       if (moved && cl.before) columns.push({ head: filmHead(cl.before, "before"), facts: cl.before.filmFacts });
       columns.push({ head: filmHead(cl.take, moved ? "now" : "film"), facts: cl.take.filmFacts });
       var html = factsTable(columns, true);
@@ -228,6 +229,37 @@
       if (others.length) html += "<details class=\"listing-facts\"><summary>the other " + others.length + " listings' facts</summary>" +
         others.map(function (l) { return factsTable([{ head: l.rawTitle + " @@ " + l.venue, facts: l.facts }], false); }).join("") + "</details>";
       return html;
+    }
+    function factOf(facts, name) { var f = (facts || []).filter(function (x) { return x.name === name; })[0]; return f ? f.value : null; }
+    /** What a move's facts say changed: what set the projection off, each listing's facts its venue re-published, and
+     *  the decision — film, basis and the rule that decided it — before and now. */
+    function whatChanged(cl) {
+      var lines = [];
+      if (cl.trigger) lines.push("set off by: " + esc(cl.trigger));
+      var anyFormer = false;
+      cl.listings.forEach(function (l) {
+        if (!l.formerly || !l.formerly.length) return;
+        anyFormer = true;
+        var names = [];
+        l.formerly.concat(l.facts || []).forEach(function (f) { if (names.indexOf(f.name) < 0) names.push(f.name); });
+        var moved = names.filter(function (n) { return factOf(l.formerly, n) !== factOf(l.facts, n); }).map(function (n) {
+          return esc(n) + " <span class=\"move-from\">" + esc(factOf(l.formerly, n) || "—") + "</span> → " + esc(factOf(l.facts, n) || "—");
+        });
+        lines.push("listing " + esc(l.rawTitle) + " @@ " + esc(l.venue) + ": " + (moved.length ? moved.join("; ") : "its facts as before"));
+      });
+      if (!anyFormer) lines.push("listing: no change of its own facts seen — the move came from the films' records, answers or the cluster");
+      var b = cl.before, t = cl.take;
+      if (b) {
+        var node = function (take) { return ((take.nodes || [])[0] || {}).facts; };
+        var dated = function (take) { var y = factOf(take.filmFacts, "year"); return filmText(take) + (take.film != null && y ? " (" + y + ")" : ""); };
+        var parts = ["film <span class=\"move-from\">" + esc(dated(b)) + "</span> → " + esc(dated(t)),
+          "basis <span class=\"move-from\">" + esc(b.basis) + "</span> → " + esc(t.basis)];
+        var byThen = factOf(node(b), "decided by"), byNow = factOf(node(t), "decided by");
+        if (byThen || byNow) parts.push("decided by <span class=\"move-from\">" + esc(byThen || "—") + "</span> → " + esc(byNow || "—"));
+        lines.push("decision: " + parts.join("; "));
+      }
+      return "<div class=\"line changed\"><span class=\"label\">what changed</span><ul class=\"why\">" +
+        lines.map(function (line) { return "<li>" + line + "</li>"; }).join("") + "</ul></div>";
     }
     /** A resolution's label. */
     function change(cl) {

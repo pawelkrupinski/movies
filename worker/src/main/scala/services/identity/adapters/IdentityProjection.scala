@@ -514,7 +514,7 @@ final class IdentityProjection(
       val changes   = changed.map { t =>
         val prior = live.priorTake(t.listing)
         t.copy(basisBefore = prior.map(_.basis), basisAfter = decisions.get(t.listing).map(_.basis), prior = prior,
-          published = live.listing(t.listing))
+          published = live.listing(t.listing), formerly = live.formerly(t.listing), trigger = Some(trigger))
       }
       metrics.takesChanged(changes)
       changeFeed(changes)
