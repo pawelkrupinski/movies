@@ -61,6 +61,8 @@
     .why { list-style: none; margin: 2px 0 4px; color: #aaa; }
     .why li { margin: 1px 0; padding-left: 10px; text-indent: -10px; word-break: break-word; }
     .why li::before { content: "· "; color: #555; }
+    .why .key { display: block; padding-left: 12px; text-indent: 0; }
+    .why .key .label { display: inline-block; min-width: 5.5em; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .filter { font: inherit; font-size: 11px; color: #aaa; background: #151515; border: 1px solid #262626; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
     .filter:hover { border-color: #3a3a3a; }
@@ -173,7 +175,28 @@
     function why(t, label) {
       if (!t.explanation || !t.explanation.length) return "";
       return "<div class=\"line\"><span class=\"label\">" + (label || "why") + "</span><ul class=\"why\">" +
-        t.explanation.map(function (line) { return "<li>" + esc(line) + "</li>"; }).join("") + "</ul></div>";
+        t.explanation.map(function (line) { return "<li>" + keyed(line) + "</li>"; }).join("") + "</ul></div>";
+    }
+    /** The fields of a listing key a line ends with, by name: a venue page's key (venue, page, title) or a published
+     *  one's (venue, title, year, directors). The resolver's last explanation line names its cluster's first listing so
+     *  (`node Native(venue,page,title)`, the key's case-class text), and the documents hold it as text. */
+    function keyFields(text) {
+      var at = text.search(/(Native|Published)\(.*\)$/);
+      if (at < 0) return null;
+      var kind = text.slice(at).match(/^(Native|Published)/)[1], inner = text.slice(at + kind.length + 1, -1), m;
+      if (kind === "Native" && (m = inner.match(/^(.*?),((?:https?:\/\/)[^,]*),(.*)$/) || inner.match(/^([^,]*),([^,]*),(.*)$/)))
+        return { at: at, fields: [["venue", m[1]], [/^https?:/.test(m[2]) ? "page" : "id", m[2]], ["title", m[3]]] };
+      if (kind === "Published" && (m = inner.match(/^(.*?),(.*),(?:Some\((\d+)\)|None),\w*\((.*)\)$/)))
+        return { at: at, fields: [["venue", m[1]], ["title", m[2]]].concat(m[3] ? [["year", m[3]]] : [], m[4] ? [["directors", m[4]]] : []) };
+      return null;
+    }
+    function keyed(line) {
+      var k = keyFields(line);
+      if (!k) return esc(line);
+      return esc(line.slice(0, k.at).trim()) + k.fields.map(function (f) {
+        var value = f[0] === "page" ? "<a href=\"" + esc(f[1]) + "\" target=\"_blank\" rel=\"noopener\">" + esc(f[1]) + "</a>" : esc(f[1]);
+        return "<span class=\"key\"><span class=\"label\">" + f[0] + "</span> " + value + "</span>";
+      }).join("");
     }
     function body(cl) {
       var listings = cl.listings.map(function (l) { return esc(l.rawTitle) + " @@ " + esc(l.venue); }).join("<br>") +

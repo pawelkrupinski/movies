@@ -95,6 +95,30 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     }
   }
 
+  // The UK saw "node Native(Southsea Cinema & Arts Centre,https://southseacinema.savoysystems.co.uk/…,Legend)": the
+  // resolver's last explanation line names its cluster's first listing by the key's case-class text.
+  it should "name a listing key's fields one per line where a why line ends with one" in {
+    val page = "https://southseacinema.savoysystems.co.uk/SouthseaCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_687.TcsWebTab_688.TcsProgramme_174366"
+    val take = StagedTake(Some(1), Some("Legend"), "OwnMatch", 0.9, explanation = Seq("own match 1 at 90.0%",
+      s"node Native(Southsea Cinema & Arts Centre,$page,Legend)", "node Published(Kino Muza,Belle, the film,Some(2013),List(Amma Asante))"))
+    staging.publish("es", Nil, Nil, beat(0), resolved = Seq(cluster("k1", "Southsea Cinema & Arts Centre", "Legend", Nil, resolvedAt = Some(clock.millis()))
+      .copy(take = take, resolution = Some(StagedCluster.Decided))), keptFor = java.time.Duration.ofDays(7))
+    onPage { page_ =>
+      val row = "section[data-country=es] details.cluster[data-id=\"es|k1\"]"
+      page_.waitFor(s"document.querySelector('$row') !== null")
+      page_.eval(s"document.querySelector('$row > summary').click()")
+      page_.waitFor(s"document.querySelector('$row').open")
+      def item(i: Int) = page_.evalString(s"""Array.from(document.querySelectorAll('$row ul.why')[0].children[$i].querySelectorAll('.key'))
+        .map(e => e.textContent).join('\\n')""")
+      item(1).linesIterator.toSeq shouldBe Seq("venue Southsea Cinema & Arts Centre", s"page $page", "title Legend")
+      page_.evalString(s"document.querySelectorAll('$row ul.why')[0].children[1].querySelector('.key a').getAttribute('href')") shouldBe page
+      item(2).linesIterator.toSeq shouldBe Seq("venue Kino Muza", "title Belle, the film", "year 2013", "directors Amma Asante")
+      // one per line: each field its own block
+      page_.evalString(s"getComputedStyle(document.querySelector('$row ul.why .key')).display") shouldBe "block"
+      item(0) shouldBe ""   // a line naming no key is left as it is
+    }
+  }
+
   it should "show why a decided cluster was matched, and no question counts when it asked none" in {
     val take = StagedTake(Some(1234), Some("Groundswell"), "OwnMatch", 0.96,
       explanation = Seq("Ojai Playhouse/Groundswell: best tmdb 1234 at 96.0%", "kept apart: tmdb 99 (year 1987)", "… and 3 more"))
