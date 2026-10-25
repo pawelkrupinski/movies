@@ -70,11 +70,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "record a tick completed only when every step of it succeeded" in {
-    val completions = new java.util.concurrent.atomic.AtomicInteger
-    val ticks = new _root_.tools.TickRecorder {
-      def started(tick: String, interval: scala.concurrent.duration.FiniteDuration, firstRunIn: scala.concurrent.duration.FiniteDuration): Unit = ()
-      def completed(tick: String, interval: scala.concurrent.duration.FiniteDuration): Unit = { completions.incrementAndGet(); () }
-    }
+    val ticks = new _root_.tools.RecordingTickRecorder
     var retiredFails = true
     val (repository, _) = repositoryWithStrandedRow()
     val scheduler = new HeldScheduler
@@ -84,10 +80,10 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     try {
       cleanup.start()
       scheduler.ticks.head._1.run()
-      completions.get shouldBe 0   // a failed step: the loop ran but did not complete its work
+      ticks.completedRuns shouldBe empty   // a failed step: the loop ran but did not complete its work
       retiredFails = false
       scheduler.ticks.head._1.run()
-      completions.get shouldBe 1
+      ticks.completedRuns should have size 1
     } finally cleanup.stop()
   }
 
