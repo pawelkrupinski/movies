@@ -167,6 +167,20 @@ class TmdbChangesSweepSpec extends AnyFlatSpec with Matchers {
     ticks.map(_._2).sum should be <= 6 * 60 * 50
     days.checked.size should be > 0
   }
+
+  // TMDB overloaded or unreachable paused the minute's work with an info line, and the tick still completed: a sweep
+  // TMDB refused for hours never went stale.
+  it should "not complete a minute TMDB paused" in {
+    @volatile var down = true
+    val recorded = new Recorded
+    val w = new World(new Tmdb {
+      def answer(path: String, url: String): String =
+        if (down) throw new tools.HttpStatusException(503, "GET", url, None) else recorded.answer(path, url)
+    })
+    w.current.tick().run shouldBe tools.TickRun.Incomplete
+    down = false
+    w.current.tick().run shouldBe tools.TickRun.Completed
+  }
 }
 
 object TmdbChangesSweepSpec {

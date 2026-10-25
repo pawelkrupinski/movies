@@ -11,7 +11,8 @@ import java.time.Clock
  * hands them to `ask` again (`AgreementQuestions.enqueue`, which queues none already queued). Run by a periodic task
  * ([[OutstandingQuestions.Interval]]); a quiet tick, nothing open, reads nothing.
  */
-final class OutstandingQuestions(open: () => Set[Question], memory: QuestionMemory, ask: Set[Question] => Unit, clock: Clock) {
+final class OutstandingQuestions(open: () => Set[Question], memory: QuestionMemory, ask: Set[Question] => services.tasks.Enqueued,
+                                 clock: Clock) {
 
   /** The open questions never attempted, or failed and due again. */
   def outstanding(): Set[Question] = {
@@ -27,15 +28,18 @@ final class OutstandingQuestions(open: () => Set[Question], memory: QuestionMemo
     }
   }
 
-  /** Asks the outstanding questions again; how many there were. */
-  def reask(): Int = {
+  /** Asks the outstanding questions again: how many there were, and what their enqueues came to. */
+  def reask(): OutstandingQuestions.Reasked = {
     val lost = outstanding()
-    if (lost.nonEmpty) ask(lost)
-    lost.size
+    OutstandingQuestions.Reasked(lost.size, if (lost.nonEmpty) ask(lost) else services.tasks.Enqueued.Zero)
   }
 }
 
 object OutstandingQuestions {
+  /** One [[OutstandingQuestions.reask]]: `outstanding` questions found, `enqueued` what asking them came to — a run
+   *  whose enqueue failed is not a completed one ([[services.tasks.Enqueued.run]]). */
+  final case class Reasked(outstanding: Int, enqueued: services.tasks.Enqueued)
+
   /** How often the outstanding questions are asked again: a lost task holds its cluster this long at most. */
   val Interval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, java.util.concurrent.TimeUnit.MINUTES)
 }

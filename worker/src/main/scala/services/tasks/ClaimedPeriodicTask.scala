@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -14,9 +14,10 @@ import scala.concurrent.duration._
  * and, on a multi-machine worker, only by the machine that wins the window's occurrence claim
  * (`ScheduledRunStore`, keyed `name`). Self-rescheduling: each tick reads `interval` afresh, so an
  * `/admin/config` flip applies on the next cycle without a restart. A failing run never stops the
- * schedule. The settle and the identity shadow run each ride their own.
+ * schedule. `run` says how a run went: one that caught its own failure is [[TickRun.Incomplete]], and does not count
+ * as completed. The settle and the identity shadow run each ride their own.
  */
-class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDuration, initialDelay: FiniteDuration,
+class ClaimedPeriodicTask(name: String, run: () => TickRun, interval: => FiniteDuration, initialDelay: FiniteDuration,
                           runStore: ScheduledRunStore, clock: Clock,
                           ticks: TickRecorder,
                           // Builds the task's scheduler from its name; a spec hands in a stepped one.
@@ -33,7 +34,10 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
 
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.recorded(name, intervalOr(delay), logger, ticks)(tickIfClaimed()); scheduleNext(intervalOr(delay)) }
+      def run(): Unit = {
+        ScheduledTick.recorded(name, intervalOr(delay), logger, ticks)(tickIfClaimed().getOrElse(TickRun.Completed))
+        scheduleNext(intervalOr(delay))
+      }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
@@ -50,10 +54,11 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
         logger.warn(s"$name: interval unreadable, next run in ${fallback.toMillis}ms: $e", e); fallback
     }
 
-  /** Run only if this machine wins the current window's claim. True when it ran. */
-  def tickIfClaimed(): Boolean = {
+  /** Run only if this machine wins the current window's claim: how the run went, or `None` when another replica holds
+   *  the window (a no-op, which completes). */
+  def tickIfClaimed(): Option[TickRun] = {
     val key = OccurrenceKey.at(name, clock.millis(), interval, 0.seconds)
-    if (runStore.claim(key)) { run(); true } else false
+    Option.when(runStore.claim(key))(run())
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }

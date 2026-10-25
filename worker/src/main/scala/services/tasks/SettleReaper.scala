@@ -25,7 +25,8 @@ class SettleReaper(
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
   ticks:        tools.TickRecorder = tools.TickRecorder.Unrecorded
-) extends ClaimedPeriodicTask("settle", settle, interval.value, initialDelay.value, runStore, clock, ticks)
+) extends ClaimedPeriodicTask("settle", () => { settle(); tools.TickRun.Completed }, interval.value, initialDelay.value, runStore,
+    clock, ticks)
 
 object SettleReaper {
 

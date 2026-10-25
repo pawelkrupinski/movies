@@ -98,7 +98,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  move its answers' version as the TMDB store files them, whoever asked: the agreement's asker or the model's fill. */
   lazy val agreementStage: services.identity.agreement.AgreementStage = {
     val stage = newAgreementStage(agreementVerdicts, clock,
-      ask = enqueueAgreementQuestions,
+      ask = questions => { enqueueAgreementQuestions(questions); () },
       metrics = workerMetrics.identityAgreement.stage(country.code),
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
@@ -109,7 +109,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     stage
   }
   /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */
-  private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): Unit =
+  private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): services.tasks.Enqueued =
     services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
   /** The questions the live stage waits on that a lost task left unattempted, or that failed and are due again, queued
    *  again: under the settle rule an unattempted question holds its cluster. */
@@ -117,7 +117,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     new services.identity.adapters.OutstandingQuestions(() => agreementStage.wanted, identityQuestionMemory, enqueueAgreementQuestions, clock)
   /** Runs [[outstandingQuestions]] every [[services.identity.adapters.OutstandingQuestions.Interval]]. */
   lazy val outstandingQuestionsSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => { outstandingQuestions.reask(); () },
+    new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => outstandingQuestions.reask().enqueued.run,
       services.identity.adapters.OutstandingQuestions.Interval, services.identity.adapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks))
   /** The staging screen's store (`identity_staging`), in this country's database, which the local screen reads beside
    *  every other country's; in memory without one. */
@@ -221,8 +221,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  queued, and a fill round for the model's gaps ([[services.identity.adapters.HostRecovery]]). */
   lazy val identityHostRecovery: services.identity.adapters.HostRecovery =
     new services.identity.adapters.HostRecovery(identityQuestionMemory, () => agreementStage.wanted,
-      askAgain = questions => services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
-        agreementQuestionMetrics),
+      askAgain = questions => { enqueueAgreementQuestions(questions); () },
       fill = () => identityFillTrigger.request())
   /** What the enrichment chain's host breakers tell the identity questions: a host back is handed to
    *  [[identityHostRecovery]] on a thread of its own, off the request that brought the news. */

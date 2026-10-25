@@ -21,14 +21,14 @@ class OutstandingQuestionsSpec extends AnyFlatSpec with Matchers {
     memory.answered(Seq(answered)); memory.unanswered(Seq(absent)); memory.failed(Seq(failed))
     var open  = Set[Question](lost, answered, absent, failed, Question.FilmRecord(7))   // a model question is not the reaper's
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    val reaper = new OutstandingQuestions(() => open, memory, asked += _, clock)
-    reaper.reask() shouldBe 1
+    val reaper = new OutstandingQuestions(() => open, memory, q => { asked += q; services.tasks.Enqueued(1, 0) }, clock)
+    reaper.reask().outstanding shouldBe 1
     asked.toSeq shouldBe Seq(Set(lost))                       // the failed find still inside its 5-minute wait
     clock.advance(Duration.ofMinutes(5))
     reaper.outstanding() shouldBe Set(lost, failed)           // past its retry: asked again too
     open = Set.empty
     asked.clear()
-    reaper.reask() shouldBe 0                                 // a quiet tick asks nothing
+    reaper.reask().outstanding shouldBe 0                                 // a quiet tick asks nothing
     asked shouldBe empty
   }
 
@@ -45,5 +45,18 @@ class OutstandingQuestionsSpec extends AnyFlatSpec with Matchers {
     queue = new services.tasks.InMemoryTaskQueue              // the queue wiped, its task lost: nothing attempted — asked again
     reaper.reask()
     queued() shouldBe Seq(lost)
+  }
+
+  // AgreementQuestions.enqueue dropped the queue's answer, so a re-ask whose every enqueue the queue could not take
+  // (EnqueueResult.Failed) completed the tick, and the question held its cluster with no alert to say so.
+  it should "say a re-ask whose enqueue failed did not complete" in {
+    val clock  = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val queue  = new services.tasks.FailingEnqueueTaskQueue
+    val reaper = new OutstandingQuestions(() => Set(lost), memory, AgreementQuestions.enqueue(queue, _, memory, clock), clock)
+    reaper.reask() shouldBe OutstandingQuestions.Reasked(1, services.tasks.Enqueued(added = 0, failed = 1))
+    reaper.reask().enqueued.run shouldBe tools.TickRun.Incomplete
+    queue.failing = false
+    reaper.reask().enqueued.run shouldBe tools.TickRun.Completed
   }
 }

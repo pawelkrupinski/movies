@@ -37,7 +37,9 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
                    clock: Clock)
   extends Logging {
 
-  def sweep(): Unit = {
+  /** Judge every candidate from the scrape archive: [[tools.TickRun.Incomplete]] when the archive could not be read
+   *  in full (nothing judged). */
+  def sweep(): tools.TickRun = {
     val now     = clock.instant()
     val byName  = candidates().map(c => c.cinema.displayName -> c).toMap
     val drops   = collection.mutable.Map.empty[String, Either[String, SourceDrop]]
@@ -45,8 +47,8 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
       byName.get(row.cinema.displayName).foreach(c =>
         drops(c.cinema.displayName) = VenueClosure.sourceDropped(row, fallbacks.get(c.cinema.displayName), c.hasFallback, c.cinema.opening, now))
     })
-    if (!complete.isComplete) logger.warn("Closure sweep skipped: the scrape archive could not be read in full.")
-    else settle(byName, drops.toMap, now)
+    if (!complete.isComplete) { logger.warn("Closure sweep skipped: the scrape archive could not be read in full."); tools.TickRun.Incomplete }
+    else { settle(byName, drops.toMap, now); tools.TickRun.Completed }
   }
 
   private def settle(byName: Map[String, ClosureCandidate], drops: Map[String, Either[String, SourceDrop]], now: Instant): Unit = {

@@ -227,7 +227,7 @@ final class LookupFill(
   def schedule(interval: => FiniteDuration, initialDelay: FiniteDuration, runStore: services.schedule.ScheduledRunStore,
                newScheduler: String => java.util.concurrent.ScheduledExecutorService = tools.DaemonExecutors.scheduler(_))
       : services.tasks.ClaimedPeriodicTask =
-    new services.tasks.ClaimedPeriodicTask(LookupFill.Tick, () => start(), interval, initialDelay, runStore, clock,
+    new services.tasks.ClaimedPeriodicTask(LookupFill.Tick, () => { start(); tools.TickRun.Completed }, interval, initialDelay, runStore, clock,
       tools.TickRecorder.completedByTheWork(ticks), newScheduler)
 
   /** Start a round in the background unless one is running. A worker's shutdown interrupts a round

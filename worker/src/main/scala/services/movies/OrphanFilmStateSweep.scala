@@ -40,21 +40,21 @@ final class OrphanFilmStateSweep(
 ) extends Logging {
   import OrphanFilmStateSweep._
 
-  /** Rows deleted per store; empty when the corpus read was incomplete. */
-  def sweep(): Map[String, Int] = {
+  /** Rows deleted per store; `None` when the corpus read was incomplete (nothing deleted, and not a completed run). */
+  def sweep(): Option[Map[String, Int]] = {
     val cutoff  = clock.instant().minusMillis(keepFor.toMillis)
     val scanned = stores.map { case (name, rows) => (name, rows, rows.stampedBefore(cutoff)) }
     liveTmdbIds() match {
       case None =>
         logger.warn("orphan film-state sweep: the corpus read was incomplete — nothing deleted")
-        Map.empty
+        None
       case Some(live) =>
         val deleted = scanned.map { case (name, rows, stamped) =>
           name -> rows.deleteIfStill(stamped.filter { case (key, _) => tmdbIdOf(key).exists(id => !live(id)) })
         }.toMap
         logger.info(s"orphan film-state sweep: ${deleted.toSeq.sortBy(_._1).map { case (n, c) => s"$n $c" }.mkString(", ")} " +
           s"deleted (TMDB-keyed rows of films gone from the corpus, unwritten for ${keepFor.toDays}d)")
-        deleted
+        Some(deleted)
     }
   }
 }

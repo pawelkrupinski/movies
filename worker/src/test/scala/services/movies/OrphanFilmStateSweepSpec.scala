@@ -31,7 +31,7 @@ class OrphanFilmStateSweepSpec extends AnyFlatSpec with Matchers {
   "a sweep" should "delete the old rows of films the corpus no longer holds, and nothing else" in {
     val (freshness, attempts) = stores()
     new OrphanFilmStateSweep(Seq("freshness" -> freshness.retention, "attempts" -> attempts.retention),
-      () => Some(Set(1)), clock).sweep() shouldBe Map("freshness" -> 1, "attempts" -> 1)
+      () => Some(Set(1)), clock).sweep() shouldBe Some(Map("freshness" -> 1, "attempts" -> 1))
     freshness.lastFetchedAt("imdb|tmdb:2") shouldBe None
     Seq("imdb|tmdb:1", "imdb|tmdb:3", "imdb|Lalka|1968", "scrape|Kino Muza").foreach(k => freshness.lastFetchedAt(k) should not be None)
     attempts.all() shouldBe empty
@@ -40,7 +40,7 @@ class OrphanFilmStateSweepSpec extends AnyFlatSpec with Matchers {
   it should "delete nothing when the corpus read was incomplete" in {
     val (freshness, attempts) = stores()
     new OrphanFilmStateSweep(Seq("freshness" -> freshness.retention, "attempts" -> attempts.retention), () => None, clock)
-      .sweep() shouldBe empty
+      .sweep() shouldBe None
     freshness.lastFetchedAt("imdb|tmdb:2") should not be None
     attempts.all() should have size 1
   }
@@ -49,7 +49,7 @@ class OrphanFilmStateSweepSpec extends AnyFlatSpec with Matchers {
     val (freshness, _) = stores()
     val sweep = new OrphanFilmStateSweep(Seq("freshness" -> freshness.retention),
       () => { freshness.markFresh("imdb|tmdb:2", FreshnessKind.ImdbRating, now); Some(Set(1)) }, clock)
-    sweep.sweep() shouldBe Map("freshness" -> 0)
+    sweep.sweep() shouldBe Some(Map("freshness" -> 0))
     freshness.lastFetchedAt("imdb|tmdb:2") shouldBe Some(now)
   }
 

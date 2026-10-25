@@ -3,7 +3,7 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.schedule.InMemoryScheduledRunStore
-import tools.{LogCapture, ManualScheduler, MutableClock, TickRecorder}
+import tools.{LogCapture, ManualScheduler, MutableClock, RecordingTickRecorder, TickRecorder, TickRun}
 
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicInteger
@@ -38,7 +38,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
     @volatile var broken = false
     // Unreadable once, right after the first run: the read that picks the next run's delay.
     def interval: FiniteDuration = if (broken) { broken = false; throw new IllegalStateException("config unreadable") } else 20.millis
-    val task = new ClaimedPeriodicTask("unread-interval", () => { if (runs.incrementAndGet() == 1) broken = true },
+    val task = new ClaimedPeriodicTask("unread-interval", () => { if (runs.incrementAndGet() == 1) broken = true; TickRun.Completed },
       interval, 20.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, _ => scheduler)
     val logged = LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
@@ -61,7 +61,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
       if (!broken) 1.hour
       else if (reads.incrementAndGet() >= 100) 1.hour
       else throw new IllegalStateException("config unreadable")
-    val task = new ClaimedPeriodicTask("zero-initial-delay", () => (), interval, 0.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, _ => scheduler)
+    val task = new ClaimedPeriodicTask("zero-initial-delay", () => TickRun.Completed, interval, 0.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, _ => scheduler)
     LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
       broken = true
@@ -83,7 +83,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
       def completed(tick: String, interval: FiniteDuration): Unit = events.add(s"completed $tick every ${interval.toMillis}ms")
     }
     val runs = new AtomicInteger
-    val task = new ClaimedPeriodicTask("recorded-job", () => { if (runs.incrementAndGet() == 2) throw new IllegalStateException("boom") },
+    val task = new ClaimedPeriodicTask("recorded-job", () => { if (runs.incrementAndGet() == 2) throw new IllegalStateException("boom"); TickRun.Completed },
       20.millis, 5.millis, new InMemoryScheduledRunStore, clock, ticks, _ => scheduler)
     LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
@@ -94,5 +94,23 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
     import scala.jdk.CollectionConverters.*
     events.asScala.toList shouldBe List(
       "started recorded-job every 20ms, first in 5ms", "completed recorded-job every 20ms", "completed recorded-job every 20ms")
+  }
+
+  // A run that caught its own failure (an incomplete corpus read, a failed TMDB minute, a failed enqueue) returned
+  // like any other and counted as completed, so the sweeps on this schedule could never go stale.
+  "A periodic task whose run ended incomplete" should "not complete its tick" in {
+    val clock     = new MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
+    val scheduler = new ManualScheduler(clock)
+    val ticks     = new RecordingTickRecorder
+    @volatile var outcome: TickRun = TickRun.Incomplete
+    val task = new ClaimedPeriodicTask("incomplete-job", () => outcome, 20.millis, 5.millis, new InMemoryScheduledRunStore, clock,
+      ticks, _ => scheduler)
+    task.start()
+    scheduler.advance(Duration.ofMillis(5))
+    ticks.completedRuns shouldBe empty
+    outcome = TickRun.Completed
+    scheduler.advance(Duration.ofMillis(20))
+    task.stop()
+    ticks.completedRuns.map(_._1) shouldBe Seq("incomplete-job")
   }
 }

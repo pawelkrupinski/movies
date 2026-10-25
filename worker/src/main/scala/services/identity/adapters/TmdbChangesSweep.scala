@@ -47,17 +47,20 @@ final class TmdbChangesSweep(store: TmdbStore, docs: TmdbDocuments, fetch: HttpF
 
   private val languages = Set(language.takeWhile(_ != '-'), "en")
 
-  /** One minute's worth of the sweep: how many requests it made, and the window (from, to) it worked on. */
+  /** One minute's worth of the sweep: how many requests it made, the window (from, to) it worked on, and whether it
+   *  got through the minute's work — one TMDB overloaded or unreachable for paused it, not a completed run. */
   def tick(): Tick = synchronized(tools.HttpPath.within(tools.HttpPath.Sweep) {
     val counted = new CountingFetch(fetch)
     val client  = tmdb(counted)
     val window  = pending.orElse(nextWindow)
-    try window.foreach(w => if (w.listed) check(w, client, counted) else list(w, client, counted))
-    catch {
-      case e if NonFatal(e) && LookupFillLiveFetch.isOverload(e) =>
-        logger.info(s"identity store: TMDB changes sweep paused this minute (${e.getClass.getSimpleName})")
-    }
-    Tick(counted.asked, window.map(w => w.from -> w.to))
+    val run =
+      try { window.foreach(w => if (w.listed) check(w, client, counted) else list(w, client, counted)); tools.TickRun.Completed }
+      catch {
+        case e if NonFatal(e) && LookupFillLiveFetch.isOverload(e) =>
+          logger.info(s"identity store: TMDB changes sweep paused this minute (${e.getClass.getSimpleName})")
+          tools.TickRun.Incomplete
+      }
+    Tick(counted.asked, window.map(w => w.from -> w.to), run)
   })
 
   /** Reads the window's change-list pages, one request each, persisting each; read to the last, it
@@ -138,7 +141,7 @@ final class TmdbChangesSweep(store: TmdbStore, docs: TmdbDocuments, fetch: HttpF
 
 object TmdbChangesSweep {
   /** What one tick asked TMDB, and the window (from, to) it worked on. */
-  final case class Tick(asked: Int, window: Option[(LocalDate, LocalDate)])
+  final case class Tick(asked: Int, window: Option[(LocalDate, LocalDate)], run: tools.TickRun)
 
   /**
    * When and how fast a country sweeps. Its day starts `phase` past midnight UTC; a window's films are

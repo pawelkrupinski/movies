@@ -559,7 +559,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       }
     }
     wiring.lookupFill.effectiveRate shouldBe WorkerWiring.DefaultLookupFillRate
-    wiring.identityLookupRefreshSchedule.tickIfClaimed() shouldBe true
+    wiring.identityLookupRefreshSchedule.tickIfClaimed() shouldBe Some(tools.TickRun.Completed)
     rounds.get shouldBe 1
     wiring.stop()
     new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW_LOOKUP_RATE" -> "12"))

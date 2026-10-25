@@ -116,10 +116,10 @@ class WorkerWiring(
       "rating_cadence" -> ratingCadenceStore.retention),
     services.movies.OrphanFilmStateSweep.liveTmdbIds(movieRepository), clock)
   lazy val orphanFilmStateSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("orphan-film-state-sweep", () => { orphanFilmStateSweep.sweep(); () },
+    new services.tasks.ClaimedPeriodicTask("orphan-film-state-sweep", () => tools.TickRun.completedWhen(orphanFilmStateSweep.sweep().isDefined),
       services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock, ticks))
   lazy val identityTmdbSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); () },
+    new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); tools.TickRun.Completed },
       services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks))
   lazy val identityTmdbStore: services.identity.adapters.TmdbStore = identityTmdbLayer.store
   lazy val identityTmdbNormalizer: services.identity.adapters.TmdbNormalizer = new services.identity.adapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
@@ -131,7 +131,7 @@ class WorkerWiring(
       country.language.toLanguageTag, services.identity.adapters.TmdbChangesSweep.Schedule.forCountry(country.code), clock)
   /** The sweep's minute ticks, each spending a minute's allowance. */
   lazy val identityTmdbChangesSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => { identityTmdbChanges.tick(); () },
+    new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => identityTmdbChanges.tick().run,
       services.identity.adapters.TmdbChangesSweep.TickInterval,
       configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
   /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and

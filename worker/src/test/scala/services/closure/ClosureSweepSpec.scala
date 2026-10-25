@@ -281,8 +281,13 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
       new InMemoryScrapeArchiveRepository { override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.of(whole = false, "unreadable on purpose") },
       h.fallbacks, new VenueChecks(VenueWebsites(Map.empty), new GetOnlyHttpFetch { def get(url: String): String = fail(url) }),
       h.ledger, h.pages += _, h.dispatch, Clock.fixed(now, ZoneOffset.UTC))
-    broken.sweep()
+    // Skipped, it is not a completed run: an archive unreadable every day must go stale.
+    val ticks = new tools.RecordingTickRecorder
+    tools.ScheduledTick.recorded("venue-closure", scala.concurrent.duration.Duration(1, "day"), play.api.Logger(getClass), ticks)(broken.sweep())
     h.ledger.entries().keySet shouldBe Set(hochland.displayName)
     h.pages shouldBe empty
+    ticks.completedRuns shouldBe empty
+    tools.ScheduledTick.recorded("venue-closure", scala.concurrent.duration.Duration(1, "day"), play.api.Logger(getClass), ticks)(h.sweep.sweep())
+    ticks.completedRuns should have size 1
   }
 }
