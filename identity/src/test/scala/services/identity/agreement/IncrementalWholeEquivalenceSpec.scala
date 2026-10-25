@@ -11,6 +11,7 @@ import tools.IndependentCases
 
 import scala.collection.mutable
 import scala.util.Random
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.hashing.MurmurHash3
 
 /**
@@ -24,7 +25,8 @@ import scala.util.hashing.MurmurHash3
  * tolerance, no allowed difference.
  *
  * Under production's correction budget the stage reads only so many model takes an apply, so a budgeted stage is held to
- * the whole resolve once it has no backlog left; and a restart alone, whatever keys it is handed, moves no take.
+ * the whole resolve once it has no backlog left; a restart alone, whatever keys it is handed, moves no take; and a twin
+ * stage whose names run otherwise groups, takes and waits as the stage does.
  *
  * The cases: generated corpora ([[GeneratedIdentityCorpus]], with family records and venue posters of the films drawn),
  * and the shapes production met ([[IncrementalWholeEquivalenceSpec.Recorded]]): a fill of a widely billed current
@@ -51,6 +53,20 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   it should "move no take on a restart alone, whatever cluster keys it is handed and however little of the budget is left" in {
     every(Budget.Production)(_.restartsAlone()) shouldBe empty
+  }
+
+  it should "group, take and wait as a twin whose names run otherwise does: counted from elsewhere, then lost, renumbered or permuted" in {
+    val parted = new java.util.concurrent.atomic.AtomicInteger
+    every(Budget.Production)(_.namesReadByNothing(asking = false, parted = () => parted.incrementAndGet())) shouldBe empty
+    withClue("histories whose names parted from the twin's: ") { parted.get should be > cases.size * Seeds.size / 2 }
+  }
+
+  // Pending: a restart seeds `AgreementStage.unreached` (a settled verdict's never-answered questions, asked every pass)
+  // under the key each verdict was FILED by, and a cluster reads it under its key now — a verdict found by its digest under
+  // a renumbered or lost key leaves its questions unasked, or another cluster's asked. Asking only (no take or wait moves);
+  // deriving them from the receipt's unanswered entries (docs/design/identity-no-drift.md, audit row 15) cures it.
+  it should "ask what the twin asks" in pendingUntilFixed {
+    every(Budget.Production)(_.namesReadByNothing(asking = true, parted = () => ())) shouldBe empty
   }
 
   "its cases" should "reach the stage's takes — agreed, filled, corrected — and the model's matches" in {
@@ -334,8 +350,60 @@ object IncrementalWholeEquivalenceSpec {
         } else { event(); applied(); None }
       }.nextOption()
 
+    /** After every event, a twin stage over stores of its own groups, takes and waits as the stage does, though no name is
+     *  the same: its counter starts elsewhere, and on every restart its keys are lost, numbered otherwise or permuted (the
+     *  oldest made the youngest), its first apply then reading no model take afresh. Names only NAME
+     *  (docs/design/identity-no-drift.md): a grouping, take or wait that read one would part the two; with `asking`, so
+     *  would the questions it wants asked. `parted` hears of a history whose names did part. */
+    def namesReadByNothing(asking: Boolean, parted: () => Unit, steps: Int = 30): Option[String] = {
+      val shuffle      = new Random(seed * 31)
+      val twinVerdicts = new InMemoryAgreementVerdicts
+      var twinKeys: AgreementKeys = counted(new InMemoryAgreementKeys, from = 1000000L)
+      var twin   = newStage(twinVerdicts, twinKeys, budget.perApply)
+      var named  = false
+      def waits(on: AgreementStage, resolution: Resolution) =
+        resolution.decisions.filter(_.members.nonEmpty).map(d => d.members.sorted(using ListingKey.ordering) -> on.waitingOn(d))
+          .sortBy(_._1.head)(using ListingKey.ordering)
+      (Iterator.range(0, steps).map(_ => event()) ++ Iterator(()).map(_ => finish())).zipWithIndex.flatMap { case (label, step) =>
+        val restarted = Option.when(label == "restart") {
+          twinKeys = shuffle.nextInt(3) match {
+            case 0 => new InMemoryAgreementKeys
+            case 1 => renumbered(twinKeys)
+            case _ => permuted(twinKeys)
+          }
+          // its first apply reading no model take afresh, as a deploy's spent budget: its takes stand on what it keeps alone
+          val spent = newStage(twinVerdicts, twinKeys, Budget.Spent.perApply)
+          twin = newStage(twinVerdicts, twinKeys, budget.perApply)
+          spent.apply(model.resolution, listingOf, world.round)
+        }
+        val resolution = model.resolution
+        val (own, other) = (stage.apply(resolution, listingOf, world.round), twin.apply(resolution, listingOf, world.round))
+        named ||= resolution.decisions.exists(d => d.members.nonEmpty && stage.keyOf(d) != twin.keyOf(d))
+        def at(what: String) = s"seed $seed, step $step ($label): $what"
+        restarted.flatMap(difference(_, own)).map(d => at(s"takes on the restart's spent apply: twin $d"))
+          .orElse(difference(other, own).map(d => at(s"takes: twin $d")))
+          .orElse(Option.when(waits(twin, resolution) != waits(stage, resolution))(at("waits differ")))
+          .orElse(Option.when(asking && twin.wanted != stage.wanted)(at(s"wanted: twin ${(twin.wanted -- stage.wanted).take(2)}, stage ${(stage.wanted -- twin.wanted).take(2)}")))
+          .orElse(Option.when(twin.backlog != stage.backlog)(at("backlog differs")))
+      }.nextOption().tap(_ => if (named) parted())
+    }
+
     /** The whole resolve at the end of the history, settled: what the cases' reach is read off. */
     def wholeAtEnd(): Resolution = { finish(); whole(settled = true) }
+  }
+
+  /** An empty key store whose counter starts at `from`. */
+  private def counted(keys: InMemoryAgreementKeys, from: Long): AgreementKeys = { keys.replace(Set.empty, Nil, from); keys }
+
+  /** `keys` permuted: the oldest key made the youngest and so on, so every merge and split the stage meets next is decided
+   *  between names ranked the other way round. */
+  private def permuted(keys: AgreementKeys): AgreementKeys = {
+    val held   = keys.all()
+    val sorted = held.keys.map(_.key).sorted
+    val swap   = sorted.zip(sorted.reverse).toMap
+    val out    = new InMemoryAgreementKeys
+    out.replace(Set.empty, held.keys.map(k => StoredKey(swap(k.key), k.first)), held.next)
+    out
   }
 
   /** `keys` numbered otherwise: every key moved past the counter — a restart's keys none of the stored verdicts are under. */

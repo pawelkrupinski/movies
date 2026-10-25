@@ -43,6 +43,15 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
     digested should not contain "common/src/main/scala/models/VenueClock.scala"
   }
 
+  // A film id only NAMES a film (docs/design/identity-no-drift.md): neither the resolver nor the agreement stage reaches the
+  // code that hands one out, so no grouping or take can read one.
+  it should "leave out the projection's film ids, which neither the resolver nor the agreement stage may read" in {
+    val ids = Set("IdAssigner", "FilmIdCounters", "IdSeeding").map(name => s"identity/src/main/scala/services/identity/$name.scala")
+    ids.filterNot(path => Files.exists(main.resolve(path))) shouldBe empty
+    digested.filter(ids) shouldBe empty
+    resource("/agreement-rules-sources.txt").linesIterator.filter(ids).toSeq shouldBe empty
+  }
+
   private def read(edit: (String, String => String)*)(path: String): Array[Byte] = {
     val bytes = Files.readAllBytes(main.resolve(path))
     edit.find(_._1 == path).fold(bytes)(e => e._2(new String(bytes, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8))
