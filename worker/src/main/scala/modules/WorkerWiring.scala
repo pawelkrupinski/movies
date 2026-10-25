@@ -278,7 +278,8 @@ class WorkerWiring(
       metrics     = workerMetrics.identityLookupFill.lookupsForCountry(country.code),
       executor    = lookupFillExecutor,
       sleep       = lookupFillSleep,
-      clock       = clock)
+      clock       = clock,
+      ticks       = ticks)
 
   /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
    *  due, gaps remembered as unanswered). A round asks what the rate allows since the last. */
@@ -290,8 +291,8 @@ class WorkerWiring(
     configuration.identityLookupFillInterval(WorkerWiring.DefaultLookupFillInterval)
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => lookupFill.start(), identityLookupFillInterval.value,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
+    lookupFill.schedule(identityLookupFillInterval.value,
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def lookupFillSleep: Long => Unit = Thread.sleep

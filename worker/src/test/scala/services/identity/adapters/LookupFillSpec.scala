@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
 import settings.{IdentityLookupFillInterval, IdentityLookupFillRate}
-import tools.{DaemonExecutors, HttpFetch, HttpStatusException, PacedHttpFetch, TestWiring}
+import tools.{DaemonExecutors, HttpFetch, HttpStatusException, PacedHttpFetch, TestWiring, TickRecorder}
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable
@@ -48,12 +48,14 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
                    rounds: mutable.Buffer[LookupFillRound] = mutable.Buffer.empty,
                    renewals: () => Seq[Question] = () => Nil,
                    gaps: TmdbStore => AnswersChanged = modelGaps, memory: Option[QuestionMemory] = None,
-                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
+                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
+                   ticks: TickRecorder = TickRecorder.Unrecorded,
+                   executor: java.util.concurrent.ExecutorService = DaemonExecutors.directExecutor()) =
     new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, renewals,
+      executor, sleeps += _, renewals,
       // a memory of its own unless the test shares one: nothing remembered, every gap due
-      memory.getOrElse(new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock)
+      memory.getOrElse(new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock, ticks)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {

@@ -149,7 +149,9 @@ final class LookupFill(
   sleep:       Long => Unit,
   renewals:    () => Seq[Question],
   memory:      QuestionMemory,
-  clock:       java.time.Clock
+  clock:       java.time.Clock,
+  // Where the fill's schedule ([[schedule]]) reports its runs (`ScheduledTickStale`, tick [[LookupFill.Tick]]).
+  ticks:       tools.TickRecorder
 ) extends Logging {
   // When the last round began: a round's allowance is the rate over the time since, never more than a `window` —
   // rounds run as the model finds gaps (`EventTrigger`), not only once a window, and must not ask more for it.
@@ -218,6 +220,13 @@ final class LookupFill(
     r
   }
 
+  /** The fill's own claimed schedule: [[start]] every `interval`, first after `initialDelay`, on the replica that wins
+   *  the window's claim. */
+  def schedule(interval: => FiniteDuration, initialDelay: FiniteDuration, runStore: services.schedule.ScheduledRunStore,
+               newScheduler: String => java.util.concurrent.ScheduledExecutorService = tools.DaemonExecutors.scheduler(_))
+      : services.tasks.ClaimedPeriodicTask =
+    new services.tasks.ClaimedPeriodicTask(LookupFill.Tick, () => start(), interval, initialDelay, runStore, clock, ticks, newScheduler)
+
   /** Start a round in the background unless one is running. A worker's shutdown interrupts a round
    *  mid-sleep or mid-fetch: that ends it, interrupt re-asserted, rather than escaping `NonFatal` as an
    *  uncaught exception Sentry reports as FATAL on every restart. */
@@ -233,6 +242,9 @@ final class LookupFill(
 }
 
 object LookupFill {
+  /** The fill's tick, as its [[LookupFill.schedule]] reports it. */
+  val Tick = "identity-lookup-refresh"
+
   /** What one asked gap came to in a round. */
   private[identity] sealed trait Asked
   private[identity] object Asked {
