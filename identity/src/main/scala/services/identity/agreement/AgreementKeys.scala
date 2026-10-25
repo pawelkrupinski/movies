@@ -1,6 +1,7 @@
 package services.identity.agreement
 
 import org.mongodb.scala.bson.collection.immutable.Document
+import org.bson.BsonDocument
 import org.mongodb.scala.bson.{BsonInt64, BsonString}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
@@ -39,16 +40,14 @@ final class MongoAgreementKeys(db: MongoDatabase) extends AgreementKeys {
 
   def all(): Held = {
     val docs = Await.result(collection.find().batchSize(tools.MongoReplies.Default).map(_.toBsonDocument).toFuture(), Timeout)
-    Held(docs.collect { case d if d.get("_id").isInt64 => StoredKey(d.getInt64("_id").getValue, d.getString("first").getValue) },
-      docs.collectFirst { case d if d.get("_id").isString => d.getInt64("next").getValue }.getOrElse(0L))
+    Held(docs.collect { case d if d.get("_id").isInt64 => decode(d) }, docs.collectFirst { case d if d.get("_id").isString => d.getInt64("next").getValue }.getOrElse(0L))
   }
 
   def replace(retired: Set[Long], moved: Seq[StoredKey], next: Long): Unit = {
     retired.toSeq.grouped(AgreementVerdicts.WriteBatch).foreach(keys =>
       Await.result(collection.deleteMany(Filters.in("_id", keys.map(java.lang.Long.valueOf)*)).toFuture(), Timeout))
     moved.grouped(AgreementVerdicts.WriteBatch).foreach(batch => Await.result(collection.bulkWrite(batch.map(k =>
-      ReplaceOneModel(Filters.equal("_id", k.key), Document("_id" -> BsonInt64(k.key), "first" -> BsonString(k.first)),
-        ReplaceOptions().upsert(true)))).toFuture(), Timeout))
+      ReplaceOneModel(Filters.equal("_id", k.key), Document(encode(k)), ReplaceOptions().upsert(true)))).toFuture(), Timeout))
     Await.result(collection.replaceOne(Filters.equal("_id", CounterId), Document("_id" -> BsonString(CounterId), "next" -> BsonInt64(next)),
       ReplaceOptions().upsert(true)).toFuture(), Timeout)
   }
@@ -60,4 +59,8 @@ object AgreementKeys {
   val CounterId = "next"
   /** Every live cluster's key, and the next key the counter hands out. */
   final case class Held(keys: Seq[StoredKey], next: Long)
+
+  /** A key as its document: `_id` the key, `first` its cluster's first listing. */
+  def encode(key: StoredKey): BsonDocument = new BsonDocument("_id", BsonInt64(key.key)).append("first", BsonString(key.first))
+  def decode(d: BsonDocument): StoredKey  = StoredKey(d.getInt64("_id").getValue, d.getString("first").getValue)
 }

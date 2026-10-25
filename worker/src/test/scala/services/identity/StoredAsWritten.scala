@@ -2,10 +2,10 @@ package services.identity
 
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{DecoderContext, EncoderContext}
-import services.identity.agreement.{AgreementVerdicts, StoredVerdict}
+import services.identity.agreement.{AgreementKeys, AgreementVerdicts, StoredKey, StoredVerdict}
 
 /**
- * The model's families and the agreement's verdicts kept as the worker's Mongo stores keep them: each one written as
+ * The model's families and the agreement's verdicts and cluster keys kept as the worker's Mongo stores keep them: each one written as
  * its BSON document and read back from it, so what a restart takes up is what the store could hold — a field the
  * codec drops is dropped here too. What `scripts.IdentityDrift` deploys from (package `services.identity` for the
  * model store's codec).
@@ -21,6 +21,17 @@ object StoredAsWritten {
 
   /** `verdict` through [[AgreementVerdicts.encode]] and back. */
   def verdict(verdict: StoredVerdict): StoredVerdict = AgreementVerdicts.decode(AgreementVerdicts.encode(verdict))
+
+  /** `key` through [[AgreementKeys.encode]] and back. */
+  def key(key: StoredKey): StoredKey = AgreementKeys.decode(AgreementKeys.encode(key))
+
+  /** The cluster keys a deploy's stage re-attaches its clusters by: without them, every stored verdict is under a key the
+   *  restarted stage numbers otherwise, and a model take's stored correction stands no more. */
+  final class Keys extends AgreementKeys {
+    private val inner = new agreement.InMemoryAgreementKeys
+    def all(): AgreementKeys.Held = inner.all()
+    def replace(retired: Set[Long], moved: Seq[StoredKey], next: Long): Unit = inner.replace(retired, moved.map(key), next)
+  }
 
   final class Families extends IdentityModelStore {
     private val inner = new InMemoryIdentityModelStore

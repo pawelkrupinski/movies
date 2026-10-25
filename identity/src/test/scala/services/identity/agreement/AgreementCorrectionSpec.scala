@@ -216,6 +216,28 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     (whole.basis, whole.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
   }
 
+  // Identity model convergence run 1530 (2026-10-25): the drift replay's deploys handed the stage its verdicts but not its
+  // cluster keys. Numbered afresh, a take's key was no longer the one its stored correction is filed under once the
+  // counter had moved (a cluster gone, a split), and the boot's budget-spent apply put the model's take back: PL Kino
+  // Oaza's "Ktoś całkiem obcy", UK's relays, US "NT Live: Hamlet"
+  it should "stand as last decided after a deploy that hands the stage its cluster keys, though the counter moved" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    val keys     = new InMemoryAgreementKeys
+    def stageOver(perApply: Int, keyStore: AgreementKeys) =
+      new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+        clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = perApply, keyStore = keyStore)
+    // a cluster sorting before the take's, keyed first, then gone: the take's key is the counter's second
+    val before  = FilmTable.listing(Multikino, "Akira")
+    val both    = Resolution(ResolverDecision(Seq(before.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)() +: model.decisions, 2,
+      Map(before.key -> 0, listing.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val running = stageOver(AgreementStage.CorrectionsPerApply, keys)
+    running.apply(both, Map(before.key -> before, listing.key -> listing).get, 1)
+    decided(running).basis shouldBe ResolverDecision.Basis.Corrected
+    decided(stageOver(0, keys), version = 1).basis shouldBe ResolverDecision.Basis.Corrected
+    // keys numbered afresh: the stored correction is another key's, and a deploy's spent budget reads none
+    decided(stageOver(0, new InMemoryAgreementKeys), version = 1).basis shouldBe ResolverDecision.Basis.OwnMatch
+  }
+
   // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so its poster was never hashed and the
   // correction of "Ktoś całkiem obcy" waited on it for ever. A poster given up on is no evidence: the rest is read
   // as for a take a poster questions, and decides only what it decides without the poster.

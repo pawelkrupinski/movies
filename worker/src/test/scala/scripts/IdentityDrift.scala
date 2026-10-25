@@ -27,7 +27,7 @@ import scala.util.control.NonFatal
  *    ([[Gate]], [[GatedDocuments]]): what a worker meets after a deploy brought new questions;
  *  - TICKS: answers filed a part at a time (each an [[AnswersChanged]] event, as the fill files them), new venues'
  *    scrapes, a re-scrape of half the venues (the changed projection's `republished`), listings that leave and return;
- *  - DEPLOYS: the model and the stage made anew from their stores — each family and verdict written as BSON and read
+ *  - DEPLOYS: the model and the stage made anew from their stores — each family, verdict and cluster key written as BSON and read
  *    back ([[StoredAsWritten]]) — once under the same rules and once under others (every family and verdict outruled);
  *  - SETTLE: every answer filed and the stage applied until it asks nothing and has no backlog.
  *
@@ -185,13 +185,14 @@ object IdentityDrift {
       case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(found => Answer.Known(found))
       case known          => known
     }
-    def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean): AgreementStage =
+    def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
+              keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys): AgreementStage =
       new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, lookups, reads.normalizer, IdentityCalibration.resolver,
         tmdbOf = tmdbOf, stored = verdicts, clock = clock, changes = store, posters = posters, tmdb = Some(lookups),
         identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code), catalogue = catalogue.answers,
         listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code),
         correctionPostersAtOnce = if (budgets) AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
-        correctionsPerApply = if (budgets) AgreementStage.CorrectionsPerApply else Int.MaxValue, attempted = attempted)
+        correctionsPerApply = if (budgets) AgreementStage.CorrectionsPerApply else Int.MaxValue, attempted = attempted, keyStore = keys)
     /** The family questions the stage's last apply left open, none given up as unreachable. */
     def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
       Question.families(stage.wanted) -- unreachable
@@ -258,10 +259,12 @@ object IdentityDrift {
     val answers          = new Answers(reads, docs, clock)
     private val families = new StoredAsWritten.Families
     private val verdicts = new StoredAsWritten.Verdicts
+    /** The stage's cluster keys, kept across deploys as the worker's `identity_agreement_keys` keeps them. */
+    private val keys     = new StoredAsWritten.Keys
     private var rules    = "rules-1"
     private def newModel() = new IncrementalResolver(gate, reads.normalizer, IdentityCalibration.resolver, store = families, rules = rules)
     var model: IncrementalResolver = newModel()
-    var stage: AgreementStage = answers.stage(gate, verdicts, budgets = true)
+    var stage: AgreementStage = answers.stage(gate, verdicts, budgets = true, keys)
     /** The intake's listings by key: what a projection hands the stage. */
     var held: Map[ListingKey, Listing] = Map.empty
     /** Nothing built on yet: the next projection reads every cluster again (its `republished` is `None`). */
@@ -291,7 +294,7 @@ object IdentityDrift {
       if (outrule) { rules = s"$rules+"; verdicts.outrule() }
       model = newModel()
       model.restore(held.values.toSeq.sorted)
-      stage = answers.stage(gate, verdicts, budgets = true)
+      stage = answers.stage(gate, verdicts, budgets = true, keys)
       fresh = true
     }
     /** Every answer filed, and the stage asked until it settles. */
