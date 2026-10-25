@@ -30,8 +30,8 @@ private[services] final class UptimeSync(
 
   /** Read the recently-changeable `uptimeBuckets` and merge them in. One bounded
    *  query per interval — cost scales with the number of services in the window,
-   *  not with the full 24h of retained history. */
-  def poll(c: MongoCollection[Document]): Unit = Try {
+   *  not with the full 24h of retained history. [[tools.TickRun.Incomplete]] when the read failed (logged). */
+  def poll(c: MongoCollection[Document]): tools.TickRun = Try {
     val documents = Await.result(c.find(pollFilter(clock.millis())).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
     documents.foreach { document =>
       for {
@@ -57,7 +57,8 @@ private[services] final class UptimeSync(
           )
       }
     }
-  }.recover { case exception => logger.warn(s"Uptime poll failed: ${exception.getMessage}") }
+  }.fold(exception => { logger.warn(s"Uptime poll failed: ${exception.getMessage}"); tools.TickRun.Incomplete },
+    _ => tools.TickRun.Completed)
 
   /** Load the retained display window into the in-memory map at boot. The fetch
    *  is wrapped in `RetryWithBackoff`: a single 10s timeout used to STRAND the

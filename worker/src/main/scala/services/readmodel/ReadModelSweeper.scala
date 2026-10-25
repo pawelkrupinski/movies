@@ -1,6 +1,6 @@
 package services.readmodel
 
-import tools.{ScheduledTick, TickRecorder}
+import tools.{ScheduledTick, TickRecorder, TickRun}
 
 import play.api.Logging
 import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
@@ -432,13 +432,15 @@ class ReadModelSweeper(
   def reconcile(): Boolean = sweep(reproject = true)._2
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
-   *  for the rows a silent change stream failed to deliver (see `sweep`). */
-  def pruneOrphans(): Unit = {
+   *  for the rows a silent change stream failed to deliver (see `sweep`). [[TickRun.Incomplete]] when the sweep's
+   *  scan, a projection or the prune failed (logged by the sweep): the prune it skipped is not a completed run. */
+  def pruneOrphans(): TickRun = {
     projection.exclusively { appliedSinceSweep = Some(scala.collection.mutable.Set.empty); sweepDrift.clear() }
-    val (healed, rewritten) =
-      try { val healed = sweep(reproject = false)._1; projection.exclusively((healed, sweepDrift.toSeq)) }
+    val (healed, complete, rewritten) =
+      try { val (healed, complete) = sweep(reproject = false); projection.exclusively((healed, complete, sweepDrift.toSeq)) }
       catch { case exception: Throwable => projection.exclusively { appliedSinceSweep = None }; throw exception }
     verdictOnSweep(healed, rewritten)
+    TickRun.completedWhen(complete)
   }
 
   /** Caller holds the projection lock. Re-project every row of `rowIds` in content slice `slice`, each `read` by

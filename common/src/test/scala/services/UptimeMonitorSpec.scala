@@ -395,6 +395,14 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     tagJob.periodMs  should be > pollJob.periodMs
   }
 
+  "the reader's poll and tag reload" should "not complete a run whose read failed" in {
+    val collection = closedClientDb.getCollection("uptimeServiceTags")
+    val monitor = new UptimeMonitor(surfaceExternalWrites = true, clock = specClock)
+    val runs = monitor.backgroundSchedule(Some(collection), Some(collection))
+      .filter(job => job.name == "poll-buckets" || job.name == "reload-tags")
+    runs.map(job => job.name -> job.task()) shouldBe Seq("poll-buckets" -> tools.TickRun.Incomplete, "reload-tags" -> tools.TickRun.Incomplete)
+  }
+
   it should "schedule the interval it was constructed with" in {
     val collection = closedClientDb.getCollection("uptimeServiceTags")
     val monitor = new UptimeMonitor(surfaceExternalWrites = true, tagReloadIntervalMs = 1234L, clock = specClock)

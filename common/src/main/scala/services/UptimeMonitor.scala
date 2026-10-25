@@ -144,12 +144,12 @@ class UptimeMonitor(
     val readerJobs =
       if (!surfaceExternalWrites) Seq.empty
       else Seq(
-        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => { sync.poll(c); tools.TickRun.Completed })),
+        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => sync.poll(c))),
         // Re-read the tag collection so a cinema tagged by the worker after this
         // app booted still surfaces — but on its OWN, far slower period. The read
         // is unfiltered and the collection is no longer small (see
         // `TagReloadIntervalMs`), so it must not ride the 10s bucket poll.
-        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => { serviceTags.load(tc); tools.TickRun.Completed })),
+        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => serviceTags.load(tc))),
       ).flatten
     flushJob.toSeq ++ readerJobs
   }

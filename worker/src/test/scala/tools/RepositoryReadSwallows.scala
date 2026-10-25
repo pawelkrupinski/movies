@@ -19,11 +19,11 @@ object RepositoryReadSwallows {
       "Try(Await.result(database.getCollection[Document](collection).listIndexes().toFuture(), Timeout)).toOption.exists(_.exists { spec =>") ->
       "asked only after a conversion attempt failed, as 'did a sibling pod convert it meanwhile?': false retries the conversion, which is idempotent",
     ("common/src/main/scala/services/ServiceTags.scala", "load",
-      "def load(c: MongoCollection[Document]): Unit = Try {") ->
-      "a periodic refresh of an in-memory map: a failed read leaves every entry as it was and the next cycle retries; logged",
+      "def load(c: MongoCollection[Document]): tools.TickRun = Try {") ->
+      "a periodic refresh of an in-memory map: a failed read leaves every entry as it was and the next cycle retries; logged, and the run is TickRun.Incomplete",
     ("common/src/main/scala/services/UptimeSync.scala", "poll",
-      "def poll(c: MongoCollection[Document]): Unit = Try {") ->
-      "a periodic refresh of an in-memory map: a failed read leaves every entry as it was and the next cycle retries; logged",
+      "def poll(c: MongoCollection[Document]): tools.TickRun = Try {") ->
+      "a periodic refresh of an in-memory map: a failed read leaves every entry as it was and the next cycle retries; logged, and the run is TickRun.Incomplete",
     ("common/src/main/scala/services/UptimeSync.scala", "hydrate",
       "def hydrate(c: MongoCollection[Document]): Unit = Try {") ->
       "a boot hydrate of an in-memory map: a failed read leaves it as it was (empty = the documented cold start) and is logged",

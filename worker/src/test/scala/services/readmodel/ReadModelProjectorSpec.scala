@@ -173,6 +173,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     // here the very first batch dies, so none do).
     override def foreachRecord(f: StoredMovieRecord => Unit): tools.ScanOutcome =
       if (failScan) tools.ScanOutcome.of(whole = false, "the scan fails on purpose") else super.foreachRecord(f)
+    // The prune's slots-only scan, failing alike.
+    override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome =
+      if (failScan) tools.ScanOutcome.of(whole = false, "the scan fails on purpose") else super.foreachRecordWithSlots(f)
   }
 
   "reconcile" should "NOT prune live read-model rows when the source scan failed mid-way (incomplete)" in {
@@ -193,6 +196,21 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
       rm.movieDeletes.size          shouldBe deletesBefore // no prune happened
       rm.findAllMovies().map(_._id) should contain(fid)    // Foo still served
     }
+  }
+
+  "pruneOrphans" should "not complete its tick when the source scan was incomplete and the prune skipped" in {
+    val repository = new IncompleteScanRepository(Seq(("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))))
+    val rm         = new InMemoryReadModelRepository()
+    val sweeper    = new ReadModelSweeper(new ReadModelProjector(repository, rm, rm, clock = specClock).projection)
+    val ticks      = new _root_.tools.RecordingTickRecorder
+    def tick(): Unit = _root_.tools.ScheduledTick.recorded("read-model-prune", scala.concurrent.duration.FiniteDuration(30, "minutes"),
+      play.api.Logger(getClass), ticks)(sweeper.pruneOrphans())
+    repository.failScan = true
+    tick()
+    ticks.completedRuns shouldBe empty   // the prune skipped: logged, and not a completed run
+    repository.failScan = false
+    tick()
+    ticks.completedRuns should have size 1
   }
 
   it should "report a row whose projection failed, so a caller asserting on the read model reconciles again" in {

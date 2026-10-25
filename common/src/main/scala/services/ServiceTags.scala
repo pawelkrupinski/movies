@@ -109,8 +109,8 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
    *  why the reader schedules it on `UptimeMonitor.TagReloadIntervalMs` (5 min)
    *  rather than the 10s bucket poll it once shared. `$set` semantics make
    *  re-loading idempotent, so a slower cadence only delays a newly tagged cinema
-   *  appearing, never corrupts the map. */
-  def load(c: MongoCollection[Document]): Unit = Try {
+   *  appearing, never corrupts the map. [[tools.TickRun.Incomplete]] when the read failed or was incomplete. */
+  def load(c: MongoCollection[Document]): tools.TickRun = Try {
     // Keyset-paged rather than one cursor. The comment above already counts 2,687
     // documents for Poland alone and says it grows with every cinema in every
     // country — which is precisely the size at which an unbounded `find()` stops
@@ -144,7 +144,8 @@ final class ServiceTags(collection: Option[MongoCollection[Document]]) extends L
     }
     if (!outcome.isComplete)
       logger.debug(s"Uptime tag load ${outcome.explain} — the services not read keep their tags until the next load")
-  }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
+    tools.TickRun.completedWhen(outcome.isComplete)
+  }.fold(exception => { logger.debug(s"Uptime tag load failed: ${exception.getMessage}"); tools.TickRun.Incomplete }, identity)
 }
 
 object ServiceTags {
