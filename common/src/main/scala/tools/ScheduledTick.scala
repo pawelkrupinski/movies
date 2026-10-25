@@ -44,4 +44,11 @@ object TickRecorder {
     def started(tick: String, interval: FiniteDuration, firstRunIn: FiniteDuration): Unit = ()
     def completed(tick: String, interval: FiniteDuration): Unit = ()
   }
+
+  /** `ticks`' `started` only: for a schedule that merely hands its run elsewhere (an executor), whose work reports its
+   *  own completion. Recorded at the hand-off, a run that hangs or fails every time would never go stale. */
+  def completedByTheWork(ticks: TickRecorder): TickRecorder = new TickRecorder {
+    def started(tick: String, interval: FiniteDuration, firstRunIn: FiniteDuration): Unit = ticks.started(tick, interval, firstRunIn)
+    def completed(tick: String, interval: FiniteDuration): Unit = ()
+  }
 }

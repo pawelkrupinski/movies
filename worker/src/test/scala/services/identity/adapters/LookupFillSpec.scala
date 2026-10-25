@@ -283,4 +283,38 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     LookupFillLiveFetch.isOverload(new java.io.FileNotFoundException("no fixture")) shouldBe false
     LookupFillLiveFetch.isOverload(new IllegalArgumentException("bad json")) shouldBe false
   }
+
+  "the fill's schedule" should "complete its tick only for a round that ran to its end, never at the hand-off" in {
+    // The schedule only hands a round to the fill's executor: completed there, a round throwing or hanging every time
+    // kept identity-lookup-refresh fresh, and ScheduledTickStale could never fire for it.
+    val runs  = new java.util.concurrent.ConcurrentLinkedQueue[(String, FiniteDuration)]
+    val ticks = new TickRecorder {
+      def started(tick: String, interval: FiniteDuration, firstRunIn: FiniteDuration): Unit = ()
+      def completed(tick: String, interval: FiniteDuration): Unit = { runs.add(tick -> interval); () }
+    }
+    def scheduled(fill: LookupFill)(during: => Unit): Unit = {
+      val clock     = new tools.MutableClock(TestWiring.FixedInstant)
+      val scheduler = new tools.ManualScheduler(clock)
+      val schedule  = fill.schedule(30.minutes, 1.milli, new services.schedule.InMemoryScheduledRunStore, _ => scheduler)
+      schedule.start()
+      try { scheduler.advance(java.time.Duration.ofMillis(1)); during } finally schedule.stop()
+    }
+
+    scheduled(fill(store(), new Service, gaps = _ => throw new RuntimeException("model unreadable"), ticks = ticks))(())
+    runs.isEmpty shouldBe true                                            // a round that threw
+
+    val entered = new java.util.concurrent.CountDownLatch(1)
+    val release = new java.util.concurrent.CountDownLatch(1)
+    val pool    = java.util.concurrent.Executors.newSingleThreadExecutor()
+    val hanging = fill(store(), new Service, ticks = ticks, executor = pool,
+      gaps = s => { entered.countDown(); release.await(); modelGaps(s) })
+    try scheduled(hanging) {
+      entered.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+      runs.isEmpty shouldBe true                                          // a round still running
+      release.countDown()
+      pool.shutdown()
+      pool.awaitTermination(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    } finally { release.countDown(); pool.shutdownNow(); () }
+    runs.toArray.toSeq shouldBe Seq(LookupFill.Tick -> 30.minutes)        // and once it ran to its end
+  }
 }
