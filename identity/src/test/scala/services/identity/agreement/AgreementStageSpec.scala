@@ -816,12 +816,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val beforeScrape = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 3, republished = None).decisions.head.film shouldBe Some(913760)
     resolves should be > beforeScrape
-    stage.unreached.values.flatten.collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
+    stage.held.values.flatMap(stage.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
     filmwebAnswered = true
     val beforeAnswer = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 4).decisions.head.film shouldBe Some(913760)   // its answer came: read again
     resolves should be > beforeAnswer
-    stage.unreached shouldBe empty
+    stage.held.values.flatMap(stage.unreached).toSeq shouldBe empty
   }
 
   // A quiet apply (nothing filed) reads what it waits on again only once the memory behind `attempted` marked something:

@@ -244,9 +244,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] val waiting = TrieMap.empty[String, AgreementStage.Waiting]
   /** The new clusters whose families were asked inline ([[askNow]]): each asked so once in the stage's life. */
   private[agreement] val askedNow = TrieMap.empty[String, Unit]
-  /** Each settled cluster's questions none answered when it settled ([[settles]]): asked on every pass. Its verdict reads
-   *  them as unanswered ([[AgreementStage.Unanswered]]), so the first answered reads it again, after a restart too. */
-  private[agreement] val unreached = TrieMap.empty[String, Set[Question]]
   /** The questions the last [[apply]] waited on that were not attempted yet: one attempted since — a failed ask files
    *  nothing — is what reads the same decisions at the same version again ([[attemptedSince]]). */
   private[agreement] var awaiting = Set.empty[Question]
@@ -341,10 +338,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       val year = AgreementStage.yearDigest(yearNow)
       held.values.filter(v => v.rules == decidedUnder && v.reads.get(Dependency.Year).forall(_ == year)).foreach { v =>
         held.check(v.id, v.listings, version)
-        // a verdict settled before the restart: what none answered then is asked on every pass again (asking only: the
-        // receipt reopens it once one is answered)
-        val open = v.reads.iterator.collect { case (read, AgreementStage.Unanswered) => read }.flatMap(staleOf).toSet
-        if (open.nonEmpty) unreached(v.id) = open
       }
     }
     applying = version
@@ -550,7 +543,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val removed    = held.keys.toSet -- pass.seen -- pass.correcting ++ superseded
     val moved      = pass.moved.filterNot(verdict => superseded(verdict.id))
     waiting --= waiting.keySet.toSet -- pass.seen
-    unreached --= unreached.keySet.toSet -- pass.seen
     askedNow --= askedNow.keySet.toSet -- pass.seen
     (candidateFilms.keys.toSet -- pass.seen).foreach(candidateFilms.remove)   // a correction's candidates are read, never kept
     correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
@@ -681,9 +673,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def verdictOf(decision: ResolverDecision, id: String, listings: Seq[Listing], digest: Long,
                         pass: AgreementStage.Pass): Option[StoredVerdict] = {
     val version = pass.version
-    // settled without some families: their questions asked on every pass — one answered reads the verdict again
-    unreached.get(id).foreach(pass.asked ++= _)
     val found = heldFor(id, digest, pass)
+    // settled without some families: their questions asked on every pass — one answered reads the verdict again
+    found.foreach(v => pass.asked ++= unreached(v))
     found.filter(_.rules == decidedUnder).filter { kept =>
       val clean = held.clean(id, digest, version, changes.changedSince)
       if (clean && pass.validating()) {
@@ -760,7 +752,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (unknown && !settling) { waiting(id) = AgreementStage.Waiting(digest, gaps.toSet); None }
     else {
       waiting -= id
-      if (settling) unreached(id) = gaps.toSet else unreached -= id
       Some {
         val thisYear = yearNow
         reads(Dependency.Year) = AgreementStage.yearDigest(thisYear)
@@ -826,6 +817,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  the question asked all the same, so it is asked on every pass and read again once answered. */
   private[agreement] def settled[A](question: Question, answer: Answer[A], absent: => A): Answer[A] =
     if (answer == Answer.Unknown && attempted(question)) Answer.Known(absent) else answer
+
+  /** The questions a settled verdict's families never answered ([[settles]]): its receipt's unanswered entries
+   *  ([[AgreementStage.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's
+   *  keys lost or renumbered ask each cluster's own. */
+  private[agreement] def unreached(verdict: StoredVerdict): Iterator[Question] =
+    verdict.reads.iterator.collect { case (read, AgreementStage.Unanswered) => read }.flatMap(staleOf)
 
   /** A family's answer a receipt holds that is stale, as the question to ask again. */
   private[agreement] def staleOf(read: Dependency): Option[Question] = read match {
