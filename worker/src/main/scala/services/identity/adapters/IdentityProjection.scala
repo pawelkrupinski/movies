@@ -182,7 +182,7 @@ final class IdentityProjection(
   /** What one projection read before resolving — the venues' listings and the stored films — and how it reports;
    *  `previous` is what the last projection left. */
   private final class Run(val mode: IdentityProjection.Mode, val previous: Option[Last], val started: tools.Stopwatch.Started,
-                          val phases: ProjectionPhases, venues: Seq[(Cinema, Seq[ProjectedListing])],
+                          val phases: ProjectionPhases, val venues: Seq[(Cinema, Seq[ProjectedListing])],
                           val stored: Seq[StoredMovieRecord]) {
     val listed: Int = venues.iterator.map(_._2.size).sum
     // the listings read, and by venue name: each worked out once, when first asked for
@@ -310,7 +310,8 @@ final class IdentityProjection(
     // to a projection with nothing to build on, whose index is read afresh
     val republished = run.previous.map(_ => live.republished(run.byVenue))
     val resolution  = phases("agreement")(agreement(modelResolution, key => run.decided.get(key), republished))
-    lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution))
+    lastTaken = Some(IdentityProjection.Projected(modelResolution, resolution, { val venues = run.venues
+      () => venues.iterator.flatMap(_._2).map(_.listing) }))
     val at          = clock.instant()
     phases("seed")(seedSlotMemo())
     if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
@@ -512,7 +513,8 @@ final class IdentityProjection(
       val decisions = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
       val changes   = changed.map { t =>
         val prior = live.priorTake(t.listing)
-        t.copy(basisBefore = prior.map(_.basis), basisAfter = decisions.get(t.listing).map(_.basis), prior = prior)
+        t.copy(basisBefore = prior.map(_.basis), basisAfter = decisions.get(t.listing).map(_.basis), prior = prior,
+          published = live.listing(t.listing))
       }
       metrics.takesChanged(changes)
       changeFeed(changes)
@@ -669,8 +671,10 @@ object IdentityProjection {
     }
   }
 
-  /** What a projection read of the model (`model`) and took after the agreement (`taken`). */
-  final case class Projected(model: Resolution, taken: Resolution)
+  /** What a projection read of the model (`model`) and took after the agreement (`taken`); `read`: the listings it read
+   *  (a scoped one's, its scope's), walked afresh by each caller off the projection's thread — the projection's own,
+   *  shared, nothing copied. */
+  final case class Projected(model: Resolution, taken: Resolution, read: () => Iterator[Listing] = () => Iterator.empty)
 
   /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
   final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil)

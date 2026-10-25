@@ -12,8 +12,24 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 
-/** One listing of a staged cluster, as its venue bills it. */
-final case class StagedListing(venue: String, rawTitle: String)
+/** One named value of what a take was decided on, as the screen lists it ("year" → "2013", "measure year.gap" → "0"). */
+final case class StagedFact(name: String, value: String)
+
+object StagedFact {
+  given OFormat[StagedFact] = Json.format[StagedFact]
+}
+
+/** One listing of a staged cluster, as its venue bills it, and its facts as the identity model read them (none when the
+ *  projection the worker last read did not read it, or in a document written before they were kept). */
+final case class StagedListing(venue: String, rawTitle: String, facts: Seq[StagedFact] = Nil)
+
+/** A decision's trace of one of its listings ([[services.identity.DecisionTrace.Node]]): its measures against the film,
+ *  its score, the runner-up, the rules that took or refused it. */
+final case class StagedNode(venue: String, rawTitle: String, facts: Seq[StagedFact])
+
+object StagedNode {
+  given OFormat[StagedNode] = Json.format[StagedNode]
+}
 
 /**
  * One question a staged cluster waits on, and what the worker's memory of asking it says (`QuestionMemory.outcome`):
@@ -34,10 +50,11 @@ object StagedQuestion {
 
 /** A cluster's take as the projection last wrote it: its film (and title, when the resolve read its record), basis and
  *  confidence; the film a no-match leans to; a fallback film's `source:id title`; why — the first lines of the decision's
- *  explanation (`ResolverDecision.explanationShown`), none in a document written before it was kept. */
+ *  explanation (`ResolverDecision.explanationShown`), none in a document written before it was kept; the film's facts as
+ *  its TMDB record states them (`filmFacts`), and the decision's trace of each listing shown (`nodes`). */
 final case class StagedTake(film: Option[Int], title: Option[String], basis: String, confidence: Double,
                             leaning: Option[Int] = None, leaningTitle: Option[String] = None, fallback: Option[String] = None,
-                            explanation: Seq[String] = Nil)
+                            explanation: Seq[String] = Nil, filmFacts: Seq[StagedFact] = Nil, nodes: Seq[StagedNode] = Nil)
 
 object StagedTake {
   given OFormat[StagedTake] = Json.using[Json.WithDefaultValues].format[StagedTake]
@@ -72,7 +89,7 @@ object StagedCluster {
   val Gained    = "gained"
   val Lost      = "lost"
   val Changed   = "changed"
-  given OFormat[StagedListing] = Json.format[StagedListing]
+  given OFormat[StagedListing] = Json.using[Json.WithDefaultValues].format[StagedListing]
   given OFormat[StagedCluster] = Json.format[StagedCluster]
 }
 

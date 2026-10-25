@@ -67,6 +67,12 @@
     .filter.on { color: #fff; background: #23232e; border-color: #5a5a8a; }
     .filter .n { color: #777; margin-left: 4px; font-variant-numeric: tabular-nums; }
     .move-from { color: #a08f7a; }
+    table.facts { margin: 4px 0 8px; font-size: 11px; table-layout: fixed; }
+    table.facts td { word-break: break-word; }
+    table.facts td.name { color: #777; width: 9em; }
+    table.facts td.differs { color: #e0b26a; }
+    table.facts td.none { color: #444; }
+    .listing-facts > summary { color: #777; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -177,9 +183,51 @@
         "</span></div>" + (cl.before ? why(cl.before, "why then") : "") : "";
       return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" + from +
         "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> " + esc(takeText(cl.take)) + "</div>" +
-        why(cl.take, moved ? "why now" : "why") +
+        why(cl.take, moved ? "why now" : "why") + evidence(cl, moved) +
         "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
         " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
+    }
+    /** Named values side by side, a column each ({ head, facts }), a row for every name any column states, in the order
+     *  first stated; a value no other column shares is marked where `compared`. */
+    function factsTable(columns, compared) {
+      var names = [], at = columns.map(function () { return {}; });
+      columns.forEach(function (c, i) {
+        (c.facts || []).forEach(function (f) { if (names.indexOf(f.name) < 0) names.push(f.name); at[i][f.name] = f.value; });
+      });
+      if (!names.length) return "";
+      var head = "<tr><th></th>" + columns.map(function (c) { return "<th>" + esc(c.head) + "</th>"; }).join("") + "</tr>";
+      var rows = names.map(function (n) {
+        var values = at.map(function (m) { return m[n]; });
+        var differs = compared && values.filter(function (v) { return v != null; }).some(function (v, _, all) { return v !== all[0]; });
+        return "<tr><td class=\"name\">" + esc(n) + "</td>" + values.map(function (v) {
+          return v == null ? "<td class=\"none\">—</td>" : "<td" + (differs ? " class=\"differs\"" : "") + ">" + esc(v) + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+      return "<table class=\"facts\">" + head + rows + "</table>";
+    }
+    function filmHead(t, label) { return label + ": " + (t.film != null ? (t.title || "tmdb " + t.film) : (t.leaning != null ? "leans " + (t.leaningTitle || "tmdb " + t.leaning) : "no film")); }
+    /** Everything the take was decided on: the first listing's facts beside the films' (before and now, for a move), each
+     *  listing's trace against them, and the other listings' facts. */
+    function evidence(cl, moved) {
+      var first = cl.listings[0];
+      var columns = [];
+      if (first) columns.push({ head: "listing", facts: first.facts });
+      if (moved && cl.before) columns.push({ head: filmHead(cl.before, "before"), facts: cl.before.filmFacts });
+      columns.push({ head: filmHead(cl.take, moved ? "now" : "film"), facts: cl.take.filmFacts });
+      var html = factsTable(columns, true);
+      html = html ? "<div class=\"line\"><span class=\"label\">facts</span>" + html + "</div>" : "";
+      var nodesOf = function (t) { var m = {}; ((t && t.nodes) || []).forEach(function (n) { m[n.venue + "|" + n.rawTitle] = n.facts; }); return m; };
+      var now = nodesOf(cl.take), then = nodesOf(moved ? cl.before : null);
+      cl.listings.forEach(function (l) {
+        var k = l.venue + "|" + l.rawTitle;
+        if (!now[k] && !then[k]) return;
+        var cols = moved ? [{ head: "before", facts: then[k] }, { head: "now", facts: now[k] }] : [{ head: "trace", facts: now[k] }];
+        html += "<div class=\"line trace\"><span class=\"label\">trace · " + esc(l.rawTitle) + " @@ " + esc(l.venue) + "</span>" + factsTable(cols, moved) + "</div>";
+      });
+      var others = cl.listings.slice(1).filter(function (l) { return l.facts && l.facts.length; });
+      if (others.length) html += "<details class=\"listing-facts\"><summary>the other " + others.length + " listings' facts</summary>" +
+        others.map(function (l) { return factsTable([{ head: l.rawTitle + " @@ " + l.venue, facts: l.facts }], false); }).join("") + "</details>";
+      return html;
     }
     /** A resolution's label. */
     function change(cl) {

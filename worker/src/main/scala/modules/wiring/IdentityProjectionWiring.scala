@@ -131,7 +131,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       waitingOn = agreementStage.waitingOn, clusterKey = agreementStage.keyOf,
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
-      filmTitle = { val records = storedLookups(); id => records.film(id).toOption.flatten.map(_.title) }))
+      storedFilm = { val records = storedLookups(); id => records.film(id).toOption.flatten },
+      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read())))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps

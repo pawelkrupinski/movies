@@ -17,10 +17,12 @@ import java.util.Locale
  *  and a re-key or merge that keeps the TMDB film changes no take: neither is one. `basisBefore` is the decision the
  *  projection replaced, when it saw it ([[LiveProjectionIndex.priorTake]]), and `prior` that decision whole (its confidence,
  *  last reason, the rule that decided it, its runner-up) for the staging screen to say what the take was before and why;
- *  `basisAfter` the decision that holds it now. */
+ *  `basisAfter` the decision that holds it now; `published` the listing as the projection read it, for the staging
+ *  screen to show every fact the decisions weighed. */
 final case class TakeChange(listing: ListingKey, previousFilm: Option[String], before: Option[Int], after: Option[Int],
                             basisBefore: Option[ResolverDecision.Basis] = None, basisAfter: Option[ResolverDecision.Basis] = None,
-                            joined: Boolean = false, prior: Option[TakeChange.Prior] = None) {
+                            joined: Boolean = false, prior: Option[TakeChange.Prior] = None,
+                            published: Option[Listing] = None) {
   def kind: TakeChange.Kind = (previousFilm, before, after) match {
     case (None, _, _) if joined => TakeChange.Kind.Joined
     case (None, _, _)           => TakeChange.Kind.Decided
@@ -45,7 +47,8 @@ object TakeChange {
   }
 
   /** The decision a listing's take came from before it moved: its basis, confidence and last reason, the rule that decided
-   *  it ([[DecidedBy.of]]) and the runner-up its node weighed beside it (its TMDB id). */
+   *  it ([[DecidedBy.of]]), the runner-up its node weighed beside it (its TMDB id) and that node whole — its measures,
+   *  score and refusals against the film it held. */
   final case class Prior(basis: ResolverDecision.Basis, confidence: Double, reason: Option[String], decidedBy: Option[String] = None,
-                         runnerUp: Option[Int] = None)
+                         runnerUp: Option[Int] = None, node: Option[DecisionTrace.Node] = None)
 }

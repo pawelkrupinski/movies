@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers.{contentAsString, defaultAwaitTimeout, status}
 import play.api.test.{FakeRequest, Helpers}
-import services.identity.staging.{IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedListing, StagedQuestion, StagedTake, StagingBeat}
+import services.identity.staging.{IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact, StagedListing, StagedNode, StagedQuestion, StagedTake, StagingBeat}
 import tools.{CdpPage, Chrome, MutableClock, TestHttpServer}
 
 import java.nio.charset.StandardCharsets
@@ -127,6 +127,36 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.evalString(s"${title("d1")}.textContent") should include ("Royal Ballet: Swan Lake")
       page.evalInt(s"Math.round(${title("d1")}.getBoundingClientRect().width)") should be > 100
       page.evalString(s"${title("d2")}.textContent") should include ("(no listings) Royal Ballet & Opera 2026/27: Swan Lake")
+    }
+  }
+
+  it should "lay every fact a move was decided on side by side: the listing's, each film's, each trace before and now" in {
+    def facts(named: (String, String)*) = named.map(StagedFact.apply)
+    val listing = StagedListing("Kino Amok", "Belle", facts("year" -> "2021", "directors" -> "Mamoru Hosoda", "poster" -> "https://kino.example/belle.jpg"))
+    val other   = StagedListing("Rialto", "Belle", facts("year" -> "2021"))
+    val before  = StagedTake(Some(1), Some("Belle"), "OwnMatch", 0.71, filmFacts = facts("tmdb" -> "1", "year" -> "2013", "directors" -> "Amma Asante"),
+      nodes = Seq(StagedNode("Kino Amok", "Belle", facts("score" -> "71.0%", "measure year.gap" -> "8"))))
+    val after   = StagedTake(Some(2), Some("Belle"), "OwnMatch", 0.92, filmFacts = facts("tmdb" -> "2", "year" -> "2021", "directors" -> "Mamoru Hosoda"),
+      nodes = Seq(StagedNode("Kino Amok", "Belle", facts("score" -> "92.0%", "measure year.gap" -> "0"))))
+    val moved   = cluster("f1@4/changed/1", "Kino Amok", "Belle", Nil, resolvedAt = Some(clock.millis()))
+      .copy(listings = Seq(listing, other), listingCount = 2, take = after, resolution = Some(StagedCluster.Changed), was = Some(1), before = Some(before))
+    staging.publish("pl", Nil, Nil, beat(0), resolved = Seq(moved), keptFor = java.time.Duration.ofDays(7))
+    onPage { page =>
+      val row = "section[data-country=pl] details.cluster[data-id=\"pl|f1@4/changed/1\"]"
+      page.waitFor(s"document.querySelector('$row') !== null")
+      page.eval(s"document.querySelector('$row > summary').click()")
+      page.waitFor(s"document.querySelector('$row').open")
+      def table(i: Int) = page.evalString(s"""Array.from(document.querySelectorAll('$row table.facts')[$i].rows)
+        .map(r => Array.from(r.cells).map(c => c.textContent + (c.classList.contains('differs') ? '*' : '')).join('|')).join('\\n')""")
+      table(0).linesIterator.toSeq shouldBe Seq(
+        "|listing|before: Belle|now: Belle",
+        "year|2021*|2013*|2021*",
+        "directors|Mamoru Hosoda*|Amma Asante*|Mamoru Hosoda*",
+        "poster|https://kino.example/belle.jpg|—|—",
+        "tmdb|—|1*|2*")
+      page.evalString(s"document.querySelector('$row .line.trace .label').textContent") should include ("trace · Belle @ Kino Amok")
+      table(1).linesIterator.toSeq shouldBe Seq("|before|now", "score|71.0%*|92.0%*", "measure year.gap|8*|0*")
+      page.evalString(s"document.querySelector('$row details.listing-facts summary').textContent") should include ("the other 1 listings' facts")
     }
   }
 

@@ -3,7 +3,7 @@ package adapters
 
 import play.api.Logging
 import services.Stoppable
-import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagedListing, StagedQuestion, StagedTake, StagingBeat, StagingEvent}
+import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagedFact, StagedListing, StagedQuestion, StagedTake, StagingBeat, StagingEvent}
 import services.movies.ListingKey
 import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
 
@@ -39,9 +39,13 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
                                      stagingCap: Int = IdentityStagingPublisher.StagingCap,
                                      ticks: TickRecorder = TickRecorder.Unrecorded,
                                      takeMetrics: IdentityStagingPublisher.TakeMetrics = IdentityStagingPublisher.TakeMetrics.Unrecorded,
-                                     /** A TMDB film's title where the resolution names none: a film only a later stage took
-                                      *  (an agreement), read from the TMDB store's records, on this publisher's thread. */
-                                     filmTitle: Int => Option[String] = _ => None,
+                                     /** A TMDB film's record where the resolution holds none: a film only a later stage took
+                                      *  (an agreement), or the one a moved listing held, read from the TMDB store, on this
+                                      *  publisher's thread. */
+                                     storedFilm: Int => Option[IdentityMeasures.Film] = _ => None,
+                                     /** The listings the projection last read, for their facts: walked on this publisher's
+                                      *  thread ([[IdentityProjection.Projected.read]]). */
+                                     read: () => Iterator[Listing] = () => Iterator.empty,
                                      /** A cluster's key: the agreement stage's ([[agreement.AgreementStage.keyOf]]), which
                                       *  a listing sorting first, or leaving, does not move. */
                                      clusterKey: ResolverDecision => String = decision => StoredFamily.idOf(decision.members))
@@ -51,9 +55,6 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
   /** A cluster's key on the screen: its key ([[clusterKey]]), hashed short. */
   private def keyOf(decision: ResolverDecision): String = keyOfId(clusterKey(decision))
 
-  /** A TMDB film's title: as the model's resolution has it, else as the TMDB store does (`filmTitle`). */
-  private def titleIn(resolution: Resolution): Int => Option[String] =
-    id => resolution.films.get(id).map(_.title).orElse(filmTitle(id))
 
   /** What the last publish left in the store, by key; read back from it once, on the first publish after a boot. */
   private var published: Option[Map[String, StagedCluster]] = None
@@ -95,6 +96,10 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       // the clusters each merged cluster absorbed: a wait one of them began is the merged cluster's, since it began
       val absorbedBy = events.collect { case StagingEvent.Merged(cluster, absorbed, _) => keyOfId(cluster) -> keyOfId(absorbed) }.groupMap(_._1)(_._2)
       val changed = events.collect { case c: StagingEvent.Changed => c }
+      // each listing's facts: as a change carried it, else as the projection last read it, walked only when asked
+      val carried = changed.iterator.flatMap(c => c.change.published.map(c.change.listing -> _)).toMap
+      lazy val lastRead = read().map(l => l.key -> l).toMap
+      val reading = new Reading(resolution, storedFilm, key => carried.get(key).orElse(lastRead.get(key)).fold(Nil)(StagedEvidence.listing))
 
       val waiting  = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
       val settled  = Map.newBuilder[String, ResolverDecision]
@@ -127,19 +132,19 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       val nowStaging = waitingNow.map { case (key, decision, waits) =>
         val since = (wasStaging.get(key).map(_.since).orElse(startedOf.get(key).map(_.at)) ++
           absorbedBy.getOrElse(key, Nil).flatMap(wasStaging.get).map(_.since)).minOption.getOrElse(now)
-        key -> stagedOf(key, decision, resolution, waits, since, known)
+        key -> stagedOf(key, decision, reading, waits, since, known, wasStaging.get(key))
       }.toMap
       val settledNow = settled.result()
-      val changeDocs = changesOf(changed, clusterOf, resolution)
+      val changeDocs = changesOf(changed, clusterOf, reading)
       val changedClusters = changeDocs.groupBy(_.key.takeWhile(_ != '@'))
       // A cluster that stopped waiting and whose listings' take the projection changed is that change — gained, lost,
       // changed, decided or joined — after its wait (since it began, with its questions); `settled` only when no take
       // moved. Each written once, under its own key (the cluster's and when it was published, or what changed).
       val waited = wasStaging.collect { case (key, was) if !nowStaging.contains(key) =>
-        resolvedOf(was, settledNow.get(key), resolution, endedOf.getOrElse(key, now), known)
+        resolvedOf(was, settledNow.get(key), reading, endedOf.getOrElse(key, now), known)
       } ++ betweenNow.map { case (key, decision, w) =>
         // never seen waiting: its take, and the questions it waited on as the memory tells them now
-        stagedOf(key, decision, resolution, WaitingOn(0, w.questions, onTmdb = false), w.at, known)
+        stagedOf(key, decision, reading, WaitingOn(0, w.questions, onTmdb = false), w.at, known, None)
           .copy(resolvedAt = Some(endedOf.getOrElse(key, now)), resolution = Some(StagedCluster.Settled))
       }
       val (waitedThenChanged, settledAlone) = waited.toSeq.partition(c => c.resolution.contains(StagedCluster.Settled) && changedClusters.contains(c.key))
@@ -196,7 +201,7 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
    *  listing in no cluster now is a document of its own, its take the change's film. Keyed by the projection and what
    *  changed, so a publish that fails and writes them with the next writes the same documents. */
   private def changesOf(changed: Seq[StagingEvent.Changed], clusterOf: collection.Map[ListingKey, ResolverDecision],
-                        resolution: Resolution): Seq[StagedCluster] =
+                        reading: Reading): Seq[StagedCluster] =
     changed.groupBy { c =>
       val change = c.change
       (c.projection, clusterOf.get(change.listing).fold(ListingKey.serialised(change.listing))(clusterKey),
@@ -204,29 +209,36 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
     }.toSeq.map { case ((projection, cluster, kind, was), changes) =>
       val at       = changes.head.at
       val listings = changes.map(_.change.listing).distinct.sorted
+      val shown    = listings.take(ListingsShown)
       val take     = clusterOf.get(listings.head).fold {
         val first = changes.head.change
-        StagedTake(first.after, first.after.flatMap(titleIn(resolution)), first.basisAfter.fold("none")(_.toString), 0.0, None, None, None)
-      }(takeOf(_, titleIn(resolution)))
+        StagedTake(first.after, first.after.flatMap(reading.title), first.basisAfter.fold("none")(_.toString), 0.0, None, None, None,
+          filmFacts = reading.filmFacts(first.after))
+      }(reading.take(_, shown))
       val key      = keyOfId(cluster)
-      StagedCluster(s"$key@$projection/${kind.label}${was.fold("")("/" + _)}", listings.iterator.map(k => StagedListing(k.venue, k.rawTitle))
-        .toSeq.take(ListingsShown), listings.size, take, 0, onTmdb = false, Nil, 0, 0, at, resolvedAt = Some(at),
-        resolution = Some(kind.label), was = was,
-        before = Option.when(changes.head.change.moved)(priorOf(was, changes.flatMap(_.change.prior).headOption, take.film, titleIn(resolution))))
+      val priors   = changes.flatMap(c => c.change.prior.map(c.change.listing -> _)).distinctBy(_._1)
+      StagedCluster(s"$key@$projection/${kind.label}${was.fold("")("/" + _)}", reading.listings(shown), listings.size, take, 0,
+        onTmdb = false, Nil, 0, 0, at, resolvedAt = Some(at), resolution = Some(kind.label), was = was,
+        before = Option.when(changes.head.change.moved)(reading.prior(was, priors, take.film)))
     }
 
-  private def stagedOf(key: String, decision: ResolverDecision, resolution: Resolution, waits: WaitingOn, since: Long,
-                       known: Map[Question, QuestionMemory.Outcome]): StagedCluster = {
+  /** `earlier`: the cluster as the last publish staged it, whose listings' facts stand for those the projection did not
+   *  read this time (a scoped one's, outside its scope). */
+  private def stagedOf(key: String, decision: ResolverDecision, reading: Reading, waits: WaitingOn, since: Long,
+                       known: Map[Question, QuestionMemory.Outcome], earlier: Option[StagedCluster]): StagedCluster = {
     val questions = waits.questions.toSeq.map(questionOf(_, known)).sortBy(q => (StagedQuestion.Outcomes.indexOf(q.outcome), q.kind, q.text))
-    StagedCluster(key, listingsOf(decision), decision.members.size, takeOf(decision, titleIn(resolution)), waits.modelGaps, waits.onTmdb,
+    val shown     = reading.shown(decision.members)
+    val heldFacts = earlier.fold(Map.empty[(String, String), Seq[StagedFact]])(_.listings.map(l => (l.venue, l.rawTitle) -> l.facts).toMap)
+    val listings  = reading.listings(shown).map(l => if (l.facts.nonEmpty) l else l.copy(facts = heldFacts.getOrElse((l.venue, l.rawTitle), Nil)))
+    StagedCluster(key, listings, decision.members.size, reading.take(decision, shown), waits.modelGaps, waits.onTmdb,
       questions.take(QuestionsShown), questions.size, questions.count(_.outcome != StagedQuestion.NotAttempted), since)
   }
 
   /** A cluster that stopped waiting: its questions as the memory last tells them — answered, or left out. */
-  private def resolvedOf(was: StagedCluster, settled: Option[ResolverDecision], resolution: Resolution, now: Long,
+  private def resolvedOf(was: StagedCluster, settled: Option[ResolverDecision], reading: Reading, now: Long,
                          known: Map[Question, QuestionMemory.Outcome]): StagedCluster = {
     val questions = was.questions.map(q => Question.parse(q.text).fold(q)(questionOf(_, known)))
-    was.copy(take = settled.fold(was.take)(takeOf(_, titleIn(resolution))), questions = questions,
+    was.copy(take = settled.fold(was.take)(d => reading.take(d, reading.shown(d.members))), questions = questions,
       attempted = was.attempted.max(questions.count(_.outcome != StagedQuestion.NotAttempted)),
       resolvedAt = Some(now), resolution = Some(if (settled.isDefined) StagedCluster.Settled else StagedCluster.Regrouped))
   }
@@ -280,26 +292,43 @@ object IdentityStagingPublisher {
   def keyOfId(id: String): String = java.lang.Long.toHexString(agreement.AgreementStage.digest(Seq(id)))
 
 
-  /** The take a moved listing held: film `was`, titled by `titleOf`, and the decision it came from (`prior`, when the
-   *  projection saw it) — its basis and confidence, and as why its last reason, the rule that decided it, and the
-   *  runner-up it weighed beside it, said to be the film taken `now` when that one is. */
-  private def priorOf(was: Option[Int], prior: Option[TakeChange.Prior], now: Option[Int], titleOf: Int => Option[String]): StagedTake = {
-    val runnerUp = prior.flatMap(_.runnerUp).map { id =>
-      s"runner-up then: tmdb $id${titleOf(id).fold("")(" " + _)}" + (if (now.contains(id)) " — the film taken now" else "")
+  /** What one publish reads its takes against: the films of the model's resolution, else of the TMDB store
+   *  (`storedFilm`), and each listing's facts (`factsOf`, none when it is not known). */
+  private final class Reading(resolution: Resolution, storedFilm: Int => Option[IdentityMeasures.Film],
+                              factsOf: ListingKey => Seq[StagedFact]) {
+    def film(id: Int): Option[IdentityMeasures.Film] = resolution.films.get(id).orElse(storedFilm(id))
+    def title(id: Int): Option[String]                = film(id).map(_.title)
+    def filmFacts(id: Option[Int]): Seq[StagedFact]   = id.flatMap(i => film(i).map(StagedEvidence.film(i, _))).getOrElse(Nil)
+
+    /** The listings a cluster lists of `keys`: one per venue and title, the first [[ListingsShown]]. */
+    def shown(keys: Seq[ListingKey]): Seq[ListingKey] =
+      keys.distinctBy(k => (k.venue, k.rawTitle)).sortBy(k => (k.venue, k.rawTitle)).take(ListingsShown)
+    def listings(keys: Seq[ListingKey]): Seq[StagedListing] = keys.map(k => StagedListing(k.venue, k.rawTitle, factsOf(k)))
+
+    /** `decision`'s take as the screen shows it: its films titled, the film's facts, and its trace of each of `shown`. */
+    def take(decision: ResolverDecision, shown: Seq[ListingKey]): StagedTake = {
+      val leaning = decision.leaning.orElse(decision.candidate).map(_.film)
+      StagedTake(decision.film, decision.film.flatMap(title), decision.basis.toString, decision.confidence,
+        leaning, leaning.flatMap(title),
+        decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"), decision.explanationShown(ExplanationShown),
+        filmFacts = filmFacts(decision.film.orElse(leaning)),
+        nodes = shown.flatMap(k => decision.trace.nodes.get(k).map(StagedEvidence.node(k, _, title))))
     }
-    StagedTake(was, was.flatMap(titleOf), prior.fold("unknown")(_.basis.toString), prior.fold(0.0)(_.confidence),
-      explanation = prior.toSeq.flatMap(p => p.reason.toSeq ++ p.decidedBy.map("decided by " + _)) ++ runnerUp)
-  }
 
-  private def listingsOf(decision: ResolverDecision): Seq[StagedListing] =
-    decision.members.iterator.map(key => StagedListing(key.venue, key.rawTitle)).toSeq.distinct.sortBy(l => (l.venue, l.rawTitle)).take(ListingsShown)
-
-  /** `decision`'s take as the screen shows it, each TMDB film titled by `titleOf`. */
-  private def takeOf(decision: ResolverDecision, titleOf: Int => Option[String]): StagedTake = {
-    val leaning = decision.leaning.orElse(decision.candidate).map(_.film)
-    StagedTake(decision.film, decision.film.flatMap(titleOf), decision.basis.toString, decision.confidence,
-      leaning, leaning.flatMap(titleOf),
-      decision.fallback.map(f => s"${f.source}:${f.id}${f.title.fold("")(" " + _)}"), decision.explanationShown(ExplanationShown))
+    /** The take moved listings held: film `was`, and the decision it came from (`priors`, each listing's, when the
+     *  projection saw it) — its basis and confidence; as why its last reason, the rule that decided it and the runner-up
+     *  it weighed beside it, said to be the film taken `now` when that one is; that film's facts, and each listing's
+     *  trace against it. */
+    def prior(was: Option[Int], priors: Seq[(ListingKey, TakeChange.Prior)], now: Option[Int]): StagedTake = {
+      val first    = priors.headOption.map(_._2)
+      val runnerUp = first.flatMap(_.runnerUp).map { id =>
+        s"runner-up then: tmdb $id${title(id).fold("")(" " + _)}" + (if (now.contains(id)) " — the film taken now" else "")
+      }
+      StagedTake(was, was.flatMap(title), first.fold("unknown")(_.basis.toString), first.fold(0.0)(_.confidence),
+        explanation = first.toSeq.flatMap(p => p.reason.toSeq ++ p.decidedBy.map("decided by " + _)) ++ runnerUp,
+        filmFacts = filmFacts(was),
+        nodes = priors.take(ListingsShown).flatMap { case (k, p) => p.node.map(StagedEvidence.node(k, _, title)) })
+    }
   }
 
   /** Who a question is asked of: the family it names, else the part of the identity system that asks it. */

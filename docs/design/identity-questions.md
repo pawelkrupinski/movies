@@ -243,7 +243,15 @@ reads every country's through the prod mirror:
   that stopped waiting and whose take moved is that change, after its wait (since it began, with its questions: "waited
   3m"); `settled` only for a wait that ended with no take moved (its `Settled` event's time, or between two publishes,
   never seen staging), `regrouped` when a staging cluster's listings no longer form it. A take's title is the model's
-  resolution's, else the TMDB store's record (a film only the agreement took). Nothing is capped: events the feed let
+  resolution's, else the TMDB store's record (a film only the agreement took). Every take lists what it was decided on
+  (`StagedEvidence`): each listing's facts as the model read them (title forms, year, runtime, directors, countries,
+  certificate, catalogue ids, page, poster — a change's as the projection read it, a staging cluster's off the
+  listings the projection last read, kept while a scoped one reads others), the film's as its TMDB record states them,
+  and the decision's trace of each listing shown (its measures against the film, score, runner-up, the rules that took
+  or refused it). A move also lists the take BEFORE (`before`): the film it held and the replaced decision
+  (`TakeChange.Prior`, `LiveProjectionIndex.priorTake`) — its basis, confidence, last reason, deciding rule,
+  runner-up and its trace of each listing. Casts are held only as hashed name pairs, so their sizes are shown, and
+  how many names they share is the `cast` measure. Nothing is capped: events the feed let
   go, or failed publishes past the 20,000 they keep, are counted in the beat (`dropped`, shown on the page) and
   `kinowo_worker_identity_staging_dropped_total`. A publish that fails keeps what it drained for the next. At most 500
   staging clusters (the longest waiting) are listed; 60 questions each; the per-country beat counts them all. Each
@@ -253,7 +261,10 @@ reads every country's through the prod mirror:
   the country's beat. Mirrored locally (`DebugMirror.IdentityStaging`, `debug-mirror-collections.json`), so
   the page follows prod as the mirror tails it, TTL deletes included.
 - **Web** (`IdentityStagingController`, wired in `DebugWiring` over the per-country mirror connections): every
-  country's section on the same page, each cluster a `<details>` row opening onto its questions; the page polls
+  country's section on the same page, each cluster a `<details>` row opening onto its questions and what its take
+  was decided on — the first listing's facts beside the film's (before and now, for a move; values that differ
+  marked), each listing's trace before beside now, the other listings' facts; a row of type filters (staging and each
+  resolution, kept in `#only=`) lists only the types picked; the page polls
   `/debug/identity/staging/data` every 5 s with each country's cursor, so a poll carries only the clusters written
   since (and those written at the cursor, once more). A beat older than two minutes is shown stale: that worker
   stopped publishing, or the mirror stopped following.

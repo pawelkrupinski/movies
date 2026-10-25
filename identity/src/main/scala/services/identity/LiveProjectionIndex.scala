@@ -256,7 +256,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     replaced = if (gone.isEmpty) Map.empty else gone.iterator.flatMap { d =>
       d.members.iterator.filter(k => entries.get(k).exists(e => e.decision != null && e.decision.film != d.film))
         .map(k => k -> TakeChange.Prior(d.basis, d.confidence, d.explanation.lastOption, Some(DecidedBy.of(d, k)),
-          d.trace.nodes.get(k).flatMap(_.runnerUp).map(_.film)))
+          d.trace.nodes.get(k).flatMap(_.runnerUp).map(_.film), d.trace.nodes.get(k)))
     }.toMap
     republished.foreach(k => entries.get(k).flatMap(e => Option(e.decision)).foreach(d => touched += decisions.get(d)))
     regroup(touched)
