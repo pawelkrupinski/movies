@@ -89,7 +89,10 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
       }
     }
 
-  private val Refs = Seq(Main, Branch)
+  /** Forgejo hands a dispatched run's `github.ref` to `runs-on` as the short `main` (run 1697 on 2026-10-25 asked main's
+   *  convergence onto `measure` behind six measurements), a pushed one's as `refs/heads/main`: both are main. */
+  private val ShortMain = "main"
+  private val Refs = Seq(Main, ShortMain, Branch)
 
   "every workflow" should "be classed in exactly one tier, or be a reusable workflow its caller's tier runs" in {
     val files = RepoFile.workflows().map(_.getName).toSet
@@ -104,7 +107,7 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
     val off = for {
       (file, classed) <- Classes.toSeq.sortBy(_._1)
       ref             <- Refs
-      tier             = if (ref == Main) classed.onMain else classed.elsewhere
+      tier             = if (ref == Main || ref == ShortMain) classed.onMain else classed.elsewhere
       jobs             = labels(file, Context(Forgejo, ref))
       _                = withClue(s"$file has no job to class: ")(jobs should not be empty)
       (job, label)    <- jobs
