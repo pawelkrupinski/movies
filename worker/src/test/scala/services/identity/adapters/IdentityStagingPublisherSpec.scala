@@ -194,6 +194,25 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
       (Some(StagedCluster.Changed), Some(1), "OwnMatch"), (Some(StagedCluster.Lost), Some(2), "Vetoed"))
   }
 
+  it should "say what a moved take was before and why — its film titled, basis, confidence, reason, rule and runner-up" in {
+    val docs = new InMemoryStagingDocuments
+    val live = publisher(docs, filmTitle = Map(1 -> "Belle (2013)", 2 -> "Belle (2021)").get)
+    taken = Some(resolution(decision(Seq(belle), Some(1), ResolverDecision.Basis.OwnMatch)))
+    live.publish()
+    clock.advanceSeconds(20)
+    taken = Some(resolution(decision(Seq(belle), Some(2), ResolverDecision.Basis.Agreed)))
+    projected(moved(belle, Some(1), Some(2)).copy(basisAfter = Some(ResolverDecision.Basis.Agreed), prior = Some(TakeChange.Prior(
+      ResolverDecision.Basis.OwnMatch, 0.71, Some("best tmdb 1 at 71.0%"), Some("resolver:title-year"), runnerUp = Some(2)))))
+    projected(decidedOn(dune, Some(438631)))
+    live.publish()
+    val changed = shown(docs).find(_.resolution.contains(StagedCluster.Changed)).get
+    changed.before.map(b => (b.film, b.title, b.basis, b.confidence)) shouldBe Some((Some(1), Some("Belle (2013)"), "OwnMatch", 0.71))
+    changed.before.get.explanation shouldBe Seq("best tmdb 1 at 71.0%", "decided by resolver:title-year",
+      "runner-up then: tmdb 2 Belle (2021) — the film taken now")
+    (changed.take.film, changed.take.title, changed.take.basis) shouldBe ((Some(2), Some("Belle (2021)"), "Agreed"))
+    shown(docs).find(_.resolution.contains(StagedCluster.Decided)).get.before shouldBe None   // a new listing held nothing
+  }
+
   it should "list a new listing re-keying a cluster as joined, and none of its listings decided or moved" in {
     val docs = new InMemoryStagingDocuments
     val live = publisher(docs)

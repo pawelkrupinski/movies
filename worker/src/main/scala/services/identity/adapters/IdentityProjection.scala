@@ -510,8 +510,10 @@ final class IdentityProjection(
     if (changed.nonEmpty) {
       val wanted    = changed.iterator.map(_.listing).toSet
       val decisions = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
-      val changes   = changed.map(t => t.copy(basisBefore = live.priorTake(t.listing).map(_.basis),
-        basisAfter = decisions.get(t.listing).map(_.basis)))
+      val changes   = changed.map { t =>
+        val prior = live.priorTake(t.listing)
+        t.copy(basisBefore = prior.map(_.basis), basisAfter = decisions.get(t.listing).map(_.basis), prior = prior)
+      }
       metrics.takesChanged(changes)
       changeFeed(changes)
       val takes     = changes.filter(_.moved)

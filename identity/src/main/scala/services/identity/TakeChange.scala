@@ -15,10 +15,12 @@ import java.util.Locale
  *  stored film already (a re-scraped venue's "NAZA" joining the NAZA match), else a new cluster's. A listing that left
  *  the schedule has no cluster,
  *  and a re-key or merge that keeps the TMDB film changes no take: neither is one. `basisBefore` is the decision the
- *  projection replaced, when it saw it ([[LiveProjectionIndex.priorTake]]); `basisAfter` the one that holds it now. */
+ *  projection replaced, when it saw it ([[LiveProjectionIndex.priorTake]]), and `prior` that decision whole (its confidence,
+ *  last reason, the rule that decided it, its runner-up) for the staging screen to say what the take was before and why;
+ *  `basisAfter` the decision that holds it now. */
 final case class TakeChange(listing: ListingKey, previousFilm: Option[String], before: Option[Int], after: Option[Int],
                             basisBefore: Option[ResolverDecision.Basis] = None, basisAfter: Option[ResolverDecision.Basis] = None,
-                            joined: Boolean = false) {
+                            joined: Boolean = false, prior: Option[TakeChange.Prior] = None) {
   def kind: TakeChange.Kind = (previousFilm, before, after) match {
     case (None, _, _) if joined => TakeChange.Kind.Joined
     case (None, _, _)           => TakeChange.Kind.Decided

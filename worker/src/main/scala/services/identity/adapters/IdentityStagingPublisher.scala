@@ -191,7 +191,8 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
   /** The projections' change lists as RESOLUTIONS, every change in exactly one: one document per projection, cluster,
    *  kind and film before — a cluster `decided` (its listings all new), listings that `joined` a cluster already on the
    *  films, or listings whose film was `gained`, `lost` or `changed` (`was` the film they held) — listing the listings
-   *  that changed (the first [[ListingsShown]], `listingCount` all of them), its cluster's take as it stands now. A
+   *  that changed (the first [[ListingsShown]], `listingCount` all of them), its cluster's take as it stands now and,
+   *  for a move, the take before ([[priorOf]]). A
    *  listing in no cluster now is a document of its own, its take the change's film. Keyed by the projection and what
    *  changed, so a publish that fails and writes them with the next writes the same documents. */
   private def changesOf(changed: Seq[StagingEvent.Changed], clusterOf: collection.Map[ListingKey, ResolverDecision],
@@ -210,7 +211,8 @@ final class IdentityStagingPublisher(country: String, staging: IdentityStaging, 
       val key      = keyOfId(cluster)
       StagedCluster(s"$key@$projection/${kind.label}${was.fold("")("/" + _)}", listings.iterator.map(k => StagedListing(k.venue, k.rawTitle))
         .toSeq.take(ListingsShown), listings.size, take, 0, onTmdb = false, Nil, 0, 0, at, resolvedAt = Some(at),
-        resolution = Some(kind.label), was = was)
+        resolution = Some(kind.label), was = was,
+        before = Option.when(changes.head.change.moved)(priorOf(was, changes.flatMap(_.change.prior).headOption, take.film, titleIn(resolution))))
     }
 
   private def stagedOf(key: String, decision: ResolverDecision, resolution: Resolution, waits: WaitingOn, since: Long,
@@ -277,6 +279,17 @@ object IdentityStagingPublisher {
   /** The screen's key of the cluster whose key ([[agreement.AgreementStage.keyOf]]) is `id`: hashed short. */
   def keyOfId(id: String): String = java.lang.Long.toHexString(agreement.AgreementStage.digest(Seq(id)))
 
+
+  /** The take a moved listing held: film `was`, titled by `titleOf`, and the decision it came from (`prior`, when the
+   *  projection saw it) — its basis and confidence, and as why its last reason, the rule that decided it, and the
+   *  runner-up it weighed beside it, said to be the film taken `now` when that one is. */
+  private def priorOf(was: Option[Int], prior: Option[TakeChange.Prior], now: Option[Int], titleOf: Int => Option[String]): StagedTake = {
+    val runnerUp = prior.flatMap(_.runnerUp).map { id =>
+      s"runner-up then: tmdb $id${titleOf(id).fold("")(" " + _)}" + (if (now.contains(id)) " — the film taken now" else "")
+    }
+    StagedTake(was, was.flatMap(titleOf), prior.fold("unknown")(_.basis.toString), prior.fold(0.0)(_.confidence),
+      explanation = prior.toSeq.flatMap(p => p.reason.toSeq ++ p.decidedBy.map("decided by " + _)) ++ runnerUp)
+  }
 
   private def listingsOf(decision: ResolverDecision): Seq[StagedListing] =
     decision.members.iterator.map(key => StagedListing(key.venue, key.rawTitle)).toSeq.distinct.sortBy(l => (l.venue, l.rawTitle)).take(ListingsShown)

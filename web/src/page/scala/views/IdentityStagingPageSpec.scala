@@ -130,6 +130,47 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     }
   }
 
+  it should "list only the picked types, and say what a moved take was before and why, beside what it is now and why" in {
+    val before = StagedTake(Some(1), Some("Belle (2013)"), "OwnMatch", 0.71,
+      explanation = Seq("best tmdb 1 at 71.0%", "decided by resolver:title-year", "runner-up then: tmdb 2 Belle (2021) — the film taken now"))
+    val after  = StagedTake(Some(2), Some("Belle (2021)"), "Agreed", 0.92, explanation = Seq("agreed: imdb, wiki name tmdb 2"))
+    val moved  = cluster("e1@3/changed/1", "Kino Amok", "Belle", Nil, resolvedAt = Some(clock.millis()))
+      .copy(take = after, resolution = Some(StagedCluster.Changed), was = Some(1), before = Some(before))
+    val decided = cluster("e2@3/decided", "Babylon", "Oppenheimer", Nil, resolvedAt = Some(clock.millis()))
+      .copy(take = StagedTake(Some(872585), Some("Oppenheimer"), "OwnMatch", 0.97), resolution = Some(StagedCluster.Decided))
+    staging.publish("de", Seq(cluster("e3", "Babylon", "Der Pate", Seq(question("imdb|title|Der Pate", StagedQuestion.NotAttempted)))), Nil,
+      beat(1), resolved = Seq(moved, decided), keptFor = java.time.Duration.ofDays(7))
+    onPage { page =>
+      val section = "section[data-country=de]"
+      def rows = page.evalInt(s"document.querySelectorAll('$section details.cluster').length")
+      def titles = page.evalString(s"Array.from(document.querySelectorAll('$section details.cluster summary .title')).map(e => e.textContent).join('|')")
+      page.waitFor(s"document.querySelector('$section details.cluster[data-id=\"de|e1@3/changed/1\"]') !== null")
+      titles should (include ("Belle") and include ("Oppenheimer") and include ("Der Pate"))
+      val all = rows
+
+      page.eval("document.querySelector('#filters button.filter[data-type=changed]').click()")
+      page.waitFor(s"document.querySelectorAll('$section details.cluster').length === 1")
+      titles should include ("Belle")
+      page.evalString(s"document.querySelector('$section').textContent") should include ("none of the picked types")
+      page.evalString("location.hash") shouldBe "#only=changed"
+      page.evalString(s"document.querySelector('$section details.cluster summary > .meta').textContent") should include (
+        "changed · Belle (2013) → Belle (2021) · Agreed 92%")
+
+      page.eval(s"document.querySelector('$section details.cluster summary').click()")
+      page.waitFor(s"document.querySelector('$section details.cluster').open")
+      page.evalString(s"document.querySelector('$section details.cluster .line.from').textContent") should include ("Belle (2013) (tmdb 1) · OwnMatch 71%")
+      page.evalString(s"document.querySelector('$section details.cluster .line.to').textContent") should include ("Belle (2021) · Agreed 92%")
+      val whys = page.evalString(s"Array.from(document.querySelectorAll('$section details.cluster ul.why')).map(e => e.textContent).join('|')")
+      whys should (include ("decided by resolver:title-year") and include ("the film taken now") and include ("agreed: imdb, wiki name tmdb 2"))
+
+      page.eval("document.querySelector('#filters button.filter[data-type=staging]').click()")   // a second type picked beside it
+      page.waitFor(s"document.querySelectorAll('$section details.cluster').length >= 2")
+      titles should (include ("Belle") and include ("Der Pate") and not include ("Oppenheimer"))
+      page.eval("document.querySelector('#filters button.filter[data-type=\"\"]').click()")       // all
+      page.waitFor(s"document.querySelectorAll('$section details.cluster').length === $all")
+    }
+  }
+
   it should "list listings joining a match quietly, as joined, and say how many events the worker was never told" in {
     val joined = cluster("c1@7/joined", "Abbeygate Bury St Edmunds", "NAZA", Nil, resolvedAt = Some(clock.millis()))
       .copy(listingCount = 86, resolution = Some(StagedCluster.Joined))

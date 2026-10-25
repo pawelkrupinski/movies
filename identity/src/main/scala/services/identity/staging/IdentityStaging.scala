@@ -50,7 +50,9 @@ object StagedTake {
  * publishes, `since` its start), `regrouped` (its listings moved to another cluster, or left),
  * `decided` (a cluster of new listings that settled between two publishes, never seen waiting: most new films, asked
  * inline), or a settled cluster whose listings' film moved between two publishes — a late answer or new data — `gained`
- * (had none), `lost` (has none now) or `changed`; `was` is the TMDB film its listings held before.
+ * (had none), `lost` (has none now) or `changed`; `was` is the TMDB film its listings held before, and `before` the take
+ * they held — that film titled, the basis and confidence of the decision it came from, and why it was taken — beside
+ * `take`, what they hold now and why (none in a document written before it was kept, nor for a new listing's).
  *
  * `listings` and `questions` are capped for the page; `listingCount`, `questionCount` and `attempted` (asked and come to
  * an answer, a durable non-answer or a failure: `QuestionMemory.attempted`) count them all. Times are epoch millis.
@@ -58,7 +60,7 @@ object StagedTake {
 final case class StagedCluster(key: String, listings: Seq[StagedListing], listingCount: Int, take: StagedTake,
                                modelGaps: Int, onTmdb: Boolean, questions: Seq[StagedQuestion], questionCount: Int,
                                attempted: Int, since: Long, resolvedAt: Option[Long] = None, resolution: Option[String] = None,
-                               was: Option[Int] = None) {
+                               was: Option[Int] = None, before: Option[StagedTake] = None) {
   def staging: Boolean = resolvedAt.isEmpty
 }
 
