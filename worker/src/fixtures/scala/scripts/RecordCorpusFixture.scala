@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, ProdIdentityInputs, TunnelTunedUri}
+import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -72,6 +72,12 @@ object RecordCorpusFixture {
           "read far more likely than an empty archive — refusing to write a fixture from it.")
         sys.exit(1)
       }
+      // the listings prod's model reads (ProdListings), and its TMDB store, question memory and venue pages as it reads
+      // them for those (ProdLookupInputs)
+      val lookups  = Alongside.start(s"prod-lookup-inputs-${country.code}") {
+        val accepted = ProdListings.read(database, known)
+        (accepted, ProdLookupInputs.read(database, ProdListings.merged(rows, accepted).map(row => row.cinema -> row.films), country, clock))
+      }
 
       val written = tools.Stopwatch.start()
       val CorpusFixture.Written(path, raw) = CorpusFixture.write(country.code, rows)
@@ -96,6 +102,13 @@ object RecordCorpusFixture {
         captured => {
           val inputsPaths = ProdIdentityInputs.write(ProdIdentityInputs.Root, country.code, captured)
           println(s"[corpus] wrote ${inputsPaths.mkString(", ")} — prod's ${captured.pins.size} pin(s) and ${captured.families.size} filed family answer(s)")
+        })
+      scala.util.Try(lookups.join(ProdLookupInputs.ReadTimeout)).fold(
+        failed => println(s"::warning::[corpus] ${country.displayName}: prod's accepted listings, TMDB store and venue pages not recorded (${failed.getMessage}); " +
+          "the live drift check will refuse this recording"),
+        { case (accepted, captured) =>
+          println(s"[corpus] wrote ${ProdListings.write(ProdLookupInputs.Root, country.code, accepted)} — prod's ${accepted.size} accepted listing(s)")
+          println(s"[corpus] wrote ${ProdLookupInputs.write(ProdLookupInputs.Root, country.code, captured)} — prod's ${captured.render}")
         })
 
       // …and the same pair again over a ~100-film slice, for the fast leg that runs

@@ -71,8 +71,10 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers {
   }
 
   "Differences" should "name in the TSV's header what prod's inputs were and every input the whole side reads otherwise" in {
-    val differences = IdentityLiveDrift.Differences(pins = 2, familyAnswers = 77132, capture = "de.json.gz")
-    differences.header.head shouldBe "# inputs: prod's 2 pin(s) and 77132 family answer(s) as recorded, the capture de.json.gz beneath"
+    val differences = IdentityLiveDrift.Differences(pins = 2, familyAnswers = 77132, acceptedListings = 1237,
+      lookups = "9 TMDB answer(s), 2 whole document(s), 84 venue page(s)", capture = "de.json.gz")
+    differences.header.head shouldBe "# inputs: prod's 2 pin(s), 77132 family answer(s), 1237 accepted listing(s) and 9 TMDB answer(s), " +
+      "2 whole document(s), 84 venue page(s) as recorded, the capture de.json.gz beneath"
     differences.header.tail.map(_.takeWhile(_ != '—').stripPrefix("# differs: ").trim) shouldBe
       IdentityLiveDrift.Differences.Otherwise.map(_._1)
     (differences.json \ "differs" \ "stored verdicts").as[String] should include("keeps nothing")

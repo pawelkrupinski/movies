@@ -167,7 +167,9 @@ object IdentityDrift {
 
   /** What one stage reads its answers from, and how its open questions get answered: the capture's filed answers first,
    *  the recording's sites for the rest — as identity-slice's `agree` reads them. */
-  final class Answers(reads: Reads, docs: TmdbDocuments, clock: java.time.Clock) {
+  final class Answers(reads: Reads, docs: TmdbDocuments, clock: java.time.Clock,
+                      /** An IMDb id's TMDB film as a store holds its find, ahead of the recording's ([[WholeLookups.found]]). */
+                      found: String => Option[Option[Int]]) {
     val store     = new FamilyAnswerStore(docs, clock)
     val posters   = new PosterAnswerStore(store, clock)
     val catalogue = new CatalogueFill(store, clock, reads.fetch)
@@ -181,10 +183,10 @@ object IdentityDrift {
       case _                              => false
     }
     def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
-    def tmdbOf(imdb: String): Answer[Option[Int]] = reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
+    def tmdbOf(imdb: String): Answer[Option[Int]] = found(imdb).fold(reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
       case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(found => Answer.Known(found))
       case known          => known
-    }
+    })(Answer.Known(_))
     def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
               keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys): AgreementStage =
       new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, lookups, reads.normalizer, IdentityCalibration.resolver,
@@ -226,11 +228,20 @@ object IdentityDrift {
    *  them), as the worker builds its own ([[ResolveInputs.of]]). */
   def inputsOf(reads: Reads): ResolveInputs = ResolveInputs.of(reads.prod.pins)
 
+  /** What a whole resolve answers its questions from: `lookups`, the model's and the stage's, and `found`, the stage's IMDb
+   *  finds ahead of the recording's — the CI gate's the recording's alone ([[WholeLookups.recorded]]), the live drift
+   *  check's prod's store first, as the worker's are (`tools.ProdLookupInputs`). */
+  final case class WholeLookups(lookups: IdentityLookups, found: String => Option[Option[Int]])
+  object WholeLookups {
+    /** The recording's answers, each read once ([[memo]]), and its finds. */
+    def recorded(reads: Reads): WholeLookups = WholeLookups(memo(reads), _ => None)
+  }
+
   /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint — what a worker with
-   *  nothing kept would take. */
-  def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock): Resolution = {
-    val answers  = new Answers(reads, new tools.FiledAnswers.Noting(reads.filed), clock)
-    val lookups  = memo(reads)
+   *  nothing kept would take — answered from `answering`. */
+  def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock, answering: WholeLookups): Resolution = {
+    val answers  = new Answers(reads, new tools.FiledAnswers.Noting(reads.filed), clock, answering.found)
+    val lookups  = answering.lookups
     val model    = UnmatchedClusters.resolutionOf(IdentityResolver.resolve(listings, lookups, reads.normalizer, inputsOf(reads)).decisions)
     val stage    = answers.stage(lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
@@ -260,7 +271,7 @@ object IdentityDrift {
     private val share    = new Share(seed, gatePercent)
     val gate             = new Gate(memo(reads), share)
     val docs             = new GatedDocuments(new tools.FiledAnswers.Noting(reads.filed), share)
-    val answers          = new Answers(reads, docs, clock)
+    val answers          = new Answers(reads, docs, clock, _ => None)
     private val families = new StoredAsWritten.Families
     private val verdicts = new StoredAsWritten.Verdicts
     /** The stage's cluster keys, kept across deploys as the worker's `identity_agreement_keys` keeps them. */
@@ -366,7 +377,8 @@ object IdentityDrift {
       val checkpoints = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())
-      val reference  = takesOf(whole(readsAt(wholeClock), listings, wholeClock))
+      val wholeReads = readsAt(wholeClock)
+      val reference  = takesOf(whole(wholeReads, listings, wholeClock, WholeLookups.recorded(wholeReads)))
       println(s"[${country.code} seed $seed] the whole resolve's takes by basis: " +
         reference.values.groupMapReduce(_.basis)(_ => 1)(_ + _).toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", "))
       checkpoints.flatMap { case (name, resolution) =>

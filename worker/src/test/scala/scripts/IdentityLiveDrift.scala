@@ -4,7 +4,8 @@ import models.Country
 import play.api.libs.json.{JsObject, JsString, Json}
 import services.identity._
 import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
-import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs}
+import services.identity.adapters.TmdbStore
+import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs}
 
 import java.nio.file.{Files, Path}
 
@@ -16,10 +17,12 @@ import java.nio.file.{Files, Path}
  *
  *  - LIVE: the films prod was screening when the corpus was recorded (`corpus/prod-films-<cc>.json.gz`, [[ProdFilm]]),
  *    each with the venue slots it screens in — what the identity projection last wrote, its TMDB film or none;
- *  - WHOLE: the recording's listings resolved whole with nothing kept — the model's resolve over prod's pins and a fresh
- *    agreement stage asked to its fixpoint over prod's filed family answers ([[IdentityDrift.whole]], the CI gate's own
- *    whole resolve), both as the recording captured them at its moment ([[tools.ProdIdentityInputs]]); the capture
- *    (`--families`) lends only what prod's answers lack, its live TMDB answers above all.
+ *  - WHOLE: the listings prod's model read resolved whole with nothing kept — the model's resolve over prod's pins and a
+ *    fresh agreement stage asked to its fixpoint over prod's filed family answers ([[IdentityDrift.whole]], the CI gate's
+ *    own whole resolve), answered as the worker answers its model: prod's TMDB store, venue pages and question memory
+ *    first, the recording's live answers only where the worker would ask live ([[tools.ProdLookupInputs.lookups]]). All
+ *    of it as the recording captured it at its moment ([[tools.ProdIdentityInputs]], [[tools.ProdListings]],
+ *    [[tools.ProdLookupInputs]]); the capture (`--families`) lends only what prod's answers lack.
  *
  * What the whole side still reads otherwise than the worker did is named in the TSV's header and the JSON's `inputs`
  * ([[Differences]]), never left implicit. A recording without prod's inputs, or a `--families` file that is not there,
@@ -36,8 +39,8 @@ import java.nio.file.{Files, Path}
  * {{{
  *   IdentityLiveDrift <cc> --recording DIR --families CAPTURE|none [--inputs DIR] [--out DIR]
  * }}}
- * `--inputs DIR`: where prod's inputs were captured (`corpus/prod-pins-<cc>.json`, `corpus/prod-family-answers-<cc>.json.gz`
- * under it), the recording's own by default.
+ * `--inputs DIR`: where prod's inputs were captured (`corpus/prod-pins-<cc>.json`, `corpus/prod-family-answers-<cc>.json.gz`,
+ * `corpus/prod-listings-<cc>.json.gz`, `corpus/prod-lookups-<cc>.json.gz` under it), the recording's own by default.
  * Writes `live-drift-<cc>.tsv` (every drifted listing) and `live-drift-<cc>.json` (the counts
  * scripts/ci/identity_live_drift.py pushes as `kinowo_identity_drift_*`). Exit: 0 compared, whatever drifted — the count
  * is the finding, and the `IdentityIncrementalDrift` alert reads it; 2 it could not compare.
@@ -116,20 +119,21 @@ object IdentityLiveDrift {
 
   /** What the whole side read of prod's inputs, and what it still reads otherwise than the worker did: the TSV's header
    *  lines (`# …`) and the JSON's `inputs`, so a drift count never stands on an input difference nobody named. */
-  final case class Differences(pins: Int, familyAnswers: Int, capture: String) {
-    def inputs: String = s"prod's $pins pin(s) and $familyAnswers family answer(s) as recorded, the capture ${if (capture.isEmpty) "none" else capture} beneath"
+  final case class Differences(pins: Int, familyAnswers: Int, acceptedListings: Int, lookups: String, capture: String) {
+    def inputs: String = s"prod's $pins pin(s), $familyAnswers family answer(s), $acceptedListings accepted listing(s) and $lookups as recorded, " +
+      s"the capture ${if (capture.isEmpty) "none" else capture} beneath"
     def header: Seq[String] = s"# inputs: $inputs" +: Differences.Otherwise.map { case (input, why) => s"# differs: $input — $why" }
-    def json: JsObject = Json.obj("pins" -> pins, "familyAnswers" -> familyAnswers, "capture" -> capture,
-      "differs" -> JsObject(Differences.Otherwise.map { case (input, why) => input -> JsString(why) }))
+    def json: JsObject = Json.obj("pins" -> pins, "familyAnswers" -> familyAnswers, "acceptedListings" -> acceptedListings, "lookups" -> lookups,
+      "capture" -> capture, "differs" -> JsObject(Differences.Otherwise.map { case (input, why) => input -> JsString(why) }))
   }
   object Differences {
-    /** The inputs the whole side reads otherwise than the worker, by design or for want of a capture. */
+    /** What the whole side still reads otherwise than the worker: each by design, none for want of a capture. */
     val Otherwise: Seq[(String, String)] = Seq(
       "stored verdicts" -> "none: a whole resolve keeps nothing, which is what the check compares against",
-      "TMDB and IMDb answers" -> "the recording's enrichment tree and the capture's live answers, not the worker's TMDB store",
-      "venue pages" -> "the recording's, not venue_pages",
-      "question memory" -> "a question the recording cannot answer is attempted at once, not after the worker's retries",
-      "clock" -> "the recording's moment")
+      "live asks" -> ("the recording's answer where the worker would ask TMDB or IMDb live (prod's store holding none, its question " +
+        "memory having the question due), and a candidate's cast and overview, which only the agreement stage reads whole"),
+      "agreement questions" -> "a family question prod filed no answer to is asked of the recording's sites until the stage settles, not after the queue's backoff",
+      "clock" -> "the recording's moment, the capture's within minutes of it")
   }
 
   def main(args: Array[String]): Unit = {
@@ -145,20 +149,29 @@ object IdentityLiveDrift {
     val prod      = ProdIdentityInputs.readFrom(inputsDir, country.code).getOrElse(usage(
       s"no ${ProdIdentityInputs.pinsPath(inputsDir, country.code)} and ${ProdIdentityInputs.familiesPath(inputsDir, country.code)}: " +
         "the recording holds no capture of prod's pins and family answers (recorded before 2026-10-25, or the recorder could not read them)"))
+    val (accepted, prodLookups) = ProdListings.readFrom(inputsDir, country.code).zip(ProdLookupInputs.readFrom(inputsDir, country.code)).getOrElse(usage(
+      s"no ${ProdListings.path(inputsDir, country.code)} and ${ProdLookupInputs.path(inputsDir, country.code)}: the recording holds no capture of " +
+        "the listings prod's model read and its TMDB store, venue pages and question memory (recorded before 2026-10-26, or the recorder could not read them)"))
     val filed     = tools.FiledAnswers.preferring(capture, prod.families, s"prod's family answers at $inputsDir")
     val opened    = IdentitySlice.openRecording(recording, filed)
-    val listings  = IdentitySlice.listingsOf(recording, opened.rows)
+    // the listings prod's model read: each venue's accepted listing, the recording's scrape where it accepted none
+    val rows      = ProdListings.merged(opened.rows, accepted)
+    val listings  = IdentitySlice.listingsOf(recording, rows)
     val normalizer = TitleNormalizer.forCountry(country)
     val venues    = tools.CountryScrapeCorpus.cinemasOf(country).toSet
-    val slots     = opened.rows.filter(r => venues(r.cinema)).flatMap(r => r.films.map(cm => ListingKey.of(r.cinema, cm) -> slotKeys(r.cinema, cm, normalizer)))
+    val slots     = rows.filter(r => venues(r.cinema)).flatMap(r => r.films.map(cm => ListingKey.of(r.cinema, cm) -> slotKeys(r.cinema, cm, normalizer)))
       .distinctBy(_._1)
-    val differences = Differences(prod.pins.size, prod.families.size, capture.source)
+    val differences = Differences(prod.pins.size, prod.families.size, accepted.size, prodLookups.render, capture.source)
     System.err.println(s"[identity-live-drift] ${country.code}: ${listings.size} listings, ${filed.render}; ${differences.inputs}")
     val clock     = new MutableClock(recording.recordedAt)
     // prod's pins as the worker reads them; its stored verdicts not: a whole resolve keeps nothing (Differences)
     val reads     = new IdentitySlice.Reads(country, opened.fetch, opened.gaps, clock, filed,
       tools.ProdState(s"recording ${recording.root}", Nil, prod.pins, _ => Map.empty))
-    val whole     = IdentityDrift.whole(reads, listings, clock)
+    // answered as the worker answers its model: prod's store first, the recording only where the worker would ask live
+    val held      = new ProdLookupInputs.Held(prodLookups)
+    val answering = IdentityDrift.WholeLookups(
+      ProdLookupInputs.lookups(held, prodLookups.pages, reads.enrichers, IdentityDrift.memo(reads), country, clock), new TmdbStore(held, clock).foundFirst)
+    val whole     = IdentityDrift.whole(reads, listings, clock, answering)
     val report    = compare(slots, liveBySlot(ProdFilms.readFrom(prodFilms)), whole.decisionOf)
     Files.createDirectories(o.out)
     Files.writeString(o.out.resolve(s"live-drift-${country.code}.tsv"),

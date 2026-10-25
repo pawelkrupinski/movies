@@ -127,8 +127,10 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
         "prod-films-${{ inputs.code }}-sample.json.gz").foreach { file =>
       RepoFile.step(convergence, Pack) should include(s"\"test/resources/fixtures/corpus/$file\"")
     }
-    // prod's identity inputs, which the live drift check's whole resolve reads (tools.ProdIdentityInputs)
-    Seq("prod-pins-${{ inputs.code }}.json", "prod-family-answers-${{ inputs.code }}.json.gz").foreach { file =>
+    // prod's identity inputs, which the live drift check's whole resolve reads (tools.ProdIdentityInputs, tools.ProdListings,
+    // tools.ProdLookupInputs)
+    Seq("prod-pins-${{ inputs.code }}.json", "prod-family-answers-${{ inputs.code }}.json.gz",
+        "prod-listings-${{ inputs.code }}.json.gz", "prod-lookups-${{ inputs.code }}.json.gz").foreach { file =>
       RepoFile.step(convergence, Pack) should include(s"\"$file\"")
     }
     // The artifact is the one copy readers read (hermetic legs, the provenance diff, restore-country-corpus.sh);
