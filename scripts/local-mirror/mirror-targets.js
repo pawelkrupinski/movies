@@ -3,9 +3,10 @@
 // Loaded via mongosh's `--file` list BEFORE the script that uses it, so these
 // names are plain globals — mongosh has no module system.
 //
-// The list itself lives in ONE place, `common/src/main/resources/debug-mirror-collections.json`,
-// with each collection's rationale beside it: `services.DebugMirror.Collections` reads the
-// same file, so a collection is added in one edit and the Scala readers and this sync
+// The list is `common/src/main/resources/debug-mirror-collections.json`, with each collection's
+// rationale beside it, GENERATED from the Scala registry `services.MongoCollections` (the
+// entries marked mirrored; `sbt 'worker/Test/runMain deploy.DebugMirrorList'`), which
+// `services.DebugMirror.Collections` derives from too, so the Scala readers and this sync
 // cannot disagree. This script re-reads the file every time it runs, so a RUNNING mirror
 // notices an edit (targets-fingerprint.js digests the names; mirror.sh polls it).
 //

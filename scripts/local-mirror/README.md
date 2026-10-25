@@ -20,9 +20,10 @@ costs three sequential reads — the row, its enrichment attempts, its rating
 cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
 **~0.5ms**: the corpus lands in ~200ms and a row expand in single-digit ms.
 
-**What's mirrored** — `common/src/main/resources/debug-mirror-collections.json`, the single
-source of truth for both halves (`mirror-targets.js` reads it for the sync, `services.DebugMirror.Collections` for the
-app; each collection carries its rationale there, and adding one is that one edit):
+**What's mirrored** — the collections `services.MongoCollections` marks mirrored, each with its rationale, written out
+as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirror-targets.js` reads it;
+`services.DebugMirror.Collections` derives the same set for the app). Adding one is one edit to the registry, then
+`sbt 'worker/Test/runMain deploy.DebugMirrorList'` (`DebugMirrorListSpec` fails until the file is regenerated):
 
 - **Collections:** `movies`, `screenings`, `movie_slots`,
   `enrichment_attempts`, `rating_cadence`, `web_movies`, `web_screenings` (plus

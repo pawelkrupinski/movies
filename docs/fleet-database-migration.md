@@ -13,7 +13,8 @@ The fleet moves to its own database, `kinowo_fleet`.
 
 ## What moves and what does not
 
-Every collection opened through `fleetConnection` (web) or `fleetMongoConnection` (worker):
+Every collection opened through `fleetConnection` (web) or `fleetMongoConnection` (worker), the ones
+`services.MongoCollections` registers in the fleet database (`RegisteredCollectionListsSpec` holds this table to them):
 
 | Collection | Writers / readers | Moves |
 |---|---|---|

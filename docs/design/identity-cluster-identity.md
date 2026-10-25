@@ -152,7 +152,7 @@ holds identity-slice at c2974e3aa, title-trace at e90d2b498). The tool files tou
   name, and hands every verdict back under its cluster's FIRST LISTING (`first`), as a pre-change build stored it. A
   pre-change ref's stage reads them as it always did; this build's stage adopts them on its first apply (above). No
   `OlderRefs` member and no key store is passed; `ProdMirror.sides` finds a listing's verdict through the same
-  `first` → key lookup. `identity_agreement_keys` is in `debug-mirror-collections.json` so the mirror holds it.
+  `first` → key lookup. `identity_agreement_keys` is marked mirrored in `services.MongoCollections` so the mirror holds it.
 - The old-ref test gains no new floor: the tool files name nothing newer than c2974e3aa.
 
 ### Landing

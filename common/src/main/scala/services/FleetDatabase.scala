@@ -4,7 +4,7 @@ import settings.{FleetDatabaseName, MongoDatabaseName}
 
 /** The database every country's deployment shares: the fleet's Facebook re-scrape queue and
  *  quota (`facebook_rescrapes`), the film pages Facebook has fetched (`facebook_fetches`) and the
- *  fleet-wide host paces (`fleet_host_pace`).
+ *  fleet-wide host paces (`fleet_host_pace`) — the [[MongoCollections]] entries in [[CollectionDatabase.Fleet]].
  *
  *  WHICH DATABASE: `MONGODB_FLEET_DB` when set, else [[Dedicated]], `kinowo_fleet`. The fleet
  *  started in Poland's own `kinowo`, because the deployments' Mongo user held rights only on the

@@ -1,13 +1,12 @@
 package services
 
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{JsString, Json}
 
 /**
  * The collections the dev-only `/debug*` pages read through the local read-mirror
  * (`MONGODB_MOVIES_MIRROR_URI`), and therefore the collections
- * `scripts/local-mirror/mirror-targets.js` has to sync. The list is ONE file,
- * `common/src/main/resources/debug-mirror-collections.json`, which the sync reads too and which
- * states why each collection is there.
+ * `scripts/local-mirror/mirror-targets.js` has to sync: the [[MongoCollections]] entries marked mirrored, each with
+ * why, written out for the sync as `common/src/main/resources/debug-mirror-collections.json`.
  *
  * Why this exists: web's `Wiring` points EVERY reader in a `/debug` country stack
  * at the mirror connection, and a collection the sync doesn't carry reads as
@@ -19,12 +18,12 @@ import play.api.libs.json.{JsObject, Json}
  * collection list and the app's readers were only ever linked by a hand-written
  * literal in a spec, which drifted.
  *
- * So: every reader Wiring points at the mirror has its collection in that file, and
- * `MongoConnectionSpec` fails when one is missing. ADD A READER TO A `/debug` STACK ⇒ ADD ITS COLLECTION TO THE FILE.
+ * So: every reader Wiring points at the mirror has its collection marked mirrored, and
+ * `MongoConnectionSpec` fails when one is missing. ADD A READER TO A `/debug` STACK ⇒ MARK ITS COLLECTION MIRRORED.
  *
  * The reverse does not hold: an entry here need not back a page. `cinema_scrapes`
  * is mirrored for INSPECTION and local replay rather than for a reader, and
- * `uptimeBuckets` and `filmwebFallback` for the white-cinema sweep — see their notes in the file. The rule is "a reader implies an entry", not "an entry implies a
+ * `uptimeBuckets` and `filmwebFallback` for the white-cinema sweep — see their notes in the registry. The rule is "a reader implies an entry", not "an entry implies a
  * reader".
  *
  * `tasks` is deliberately absent: it is a WRITE path (the /debug row's ↻
@@ -49,16 +48,32 @@ object DebugMirror {
    *  name): the staging screen's, `/debug/identity/staging`. */
   val IdentityStaging  = "identity_staging"
 
-  /** The collection list itself, with a rationale for each: one checked-in file that the sync reads too
-   *  (`scripts/local-mirror/mirror-targets.js`), so a collection is added in ONE edit. */
+  /** The collection list the sync reads (`scripts/local-mirror/mirror-targets.js`), with a rationale for each: GENERATED
+   *  from [[MongoCollections]] by `sbt 'worker/Test/runMain deploy.DebugMirrorList'` ([[rendered]]), which
+   *  `DebugMirrorListSpec` holds it to. */
   val ListResource = "debug-mirror-collections.json"
 
-  /** Every collection the sync carries, read from [[ListResource]]. The specs hold the stores' own collection names
+  /** Every collection the sync carries: the registry's mirrored ones. The specs hold the stores' own collection names
    *  (`MongoConnectionSpec`, identity's `MirroredStoresSpec`) to this set. */
-  val Collections: Set[String] = {
-    val in = Option(getClass.getClassLoader.getResourceAsStream(ListResource))
-      .getOrElse(throw new IllegalStateException(s"$ListResource is missing from the classpath"))
-    try (Json.parse(in) \ "collections").as[Seq[JsObject]].map(c => (c \ "name").as[String]).toSet
-    finally in.close()
+  val Collections: Set[String] = MongoCollections.mirrored.map(_.name).toSet
+
+  private val About =
+    "THE list of collections the local prod mirror syncs (scripts/local-mirror reads it through mirror-targets.js; " +
+      "services.DebugMirror reads it as DebugMirror.Collections). One entry per collection, each with why it is mirrored. A " +
+      "collection missing here reads as permanently EMPTY on a /debug page, not slowly-from-prod. A running mirror notices an " +
+      "edit within a minute and restarts its tailers. `tasks` is deliberately absent: it is a WRITE path (the /debug row's " +
+      "re-enrich enqueues for the real worker), so mirroring it would strand the work locally."
+
+  /** [[ListResource]]'s content, as generated from the registry. */
+  def rendered: String = {
+    def text(s: String) = Json.stringify(JsString(s))
+    val entries = MongoCollections.mirrored.map(c => s"""    { "name": ${text(c.name)}, "why": ${text(c.mirrored.get)} }""")
+    s"""{
+       |  "_about": ${text(About)},
+       |  "collections": [
+       |${entries.mkString(",\n")}
+       |  ]
+       |}
+       |""".stripMargin
   }
 }
