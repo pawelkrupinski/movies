@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Step 9 of docs/fleet-database-migration.md: the fleet's three old collections in Poland's `kinowo`, counted, and
+# dropped only on an explicit, exact request.
+#
+#   scripts/fleet-db-finish
+#       read-only: each of facebook_rescrapes, facebook_fetches and fleet_host_pace in kinowo and in kinowo_fleet
+#       (document counts, the newest facebook_fetches.fetchedAt in each), and whether the app's user reads kinowo_fleet
+#   scripts/fleet-db-finish --drop facebook_rescrapes facebook_fetches fleet_host_pace
+#       the same, then drops those three collections FROM kinowo. All three names, spelled exactly, in any order;
+#       nothing else is accepted (no pattern, no other collection, no other database). Refused when kinowo_fleet
+#       lacks any of the three or holds no documents in one, or when the app's user cannot read kinowo_fleet.
+#
+# Run --drop only after the soak, after the step-8 code (kinowo_fleet as the default) is deployed everywhere, and after
+# a nightly dump that contains kinowo_fleet: everything else in kinowo is Poland's live corpus.
+#
+# One Touch ID, one tunnel: the script re-runs itself under scripts/with-prod-mongo.sh --both. Counts and drops run as
+# root (MONGO_ROOT_URI); the read probe runs as the app (MONGODB_URI). Tests: scripts/fleet-db-finish-test.sh.
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/tool-conventions.sh
+. "$HERE/tool-conventions.sh" # usage_from_header
+
+COLLECTIONS=(facebook_rescrapes facebook_fetches fleet_host_pace)
+
+drop=0
+case "${1:-}" in
+  -h|--help) usage_from_header; exit 0 ;;
+  "") ;;
+  --drop)
+    shift
+    [ $# -eq 3 ] || { echo "--drop takes exactly the three names: ${COLLECTIONS[*]}" >&2; exit 2; }
+    for want in "${COLLECTIONS[@]}"; do
+      seen=0; for got in "$@"; do [ "$got" = "$want" ] && seen=$((seen + 1)); done
+      [ "$seen" -eq 1 ] || { echo "--drop takes exactly the three names, each once: ${COLLECTIONS[*]} (got: $*)" >&2; exit 2; }
+    done
+    drop=1 ;;
+  *) usage_from_header >&2; exit 2 ;;
+esac
+
+if [ -z "${FLEET_DB_FINISH_TUNNELLED:-}" ]; then
+  args=(); [ "$drop" -eq 0 ] || args=(--drop "${COLLECTIONS[@]}")
+  exec "$HERE/with-prod-mongo.sh" --both env FLEET_DB_FINISH_TUNNELLED=1 "$BASH" "$0" ${args[@]+"${args[@]}"}
+fi
+# shellcheck source=scripts/local-mirror/prod-tunnel.sh
+. "$HERE/local-mirror/prod-tunnel.sh" # mongosh_at
+
+counts_js='
+  const C = ["facebook_rescrapes", "facebook_fetches", "fleet_host_pace"], out = { counts: {}, newest: {} };
+  for (const d of ["kinowo", "kinowo_fleet"]) {
+    const s = db.getSiblingDB(d), names = s.getCollectionNames();
+    out.counts[d] = {};
+    for (const c of C) out.counts[d][c] = names.includes(c) ? s.getCollection(c).countDocuments({}) : null;
+    const top = s.facebook_fetches.find({}, { fetchedAt: 1 }).sort({ fetchedAt: -1 }).limit(1).toArray();
+    out.newest[d] = top.length ? String(top[0].fetchedAt) : null;
+  }
+  print(JSON.stringify(out));'
+# As the app: the fleet database it now runs on must be readable by it before its old copy goes.
+app_probe_js='print(JSON.stringify({ appReads: db.getSiblingDB("kinowo_fleet").getCollection("fleet_host_pace").countDocuments({}) }))'
+# The collection name arrives in G_COLL and is checked against the three AGAIN here, beside the drop.
+drop_js='
+  const c = process.env.G_COLL;
+  if (!["facebook_rescrapes", "facebook_fetches", "fleet_host_pace"].includes(c)) { print("refused: " + c); quit(2); }
+  print(c + " dropped from kinowo: " + db.getSiblingDB("kinowo").getCollection(c).drop());'
+
+last_line() { tail -n 1; }
+counts="$(mongosh_at "$MONGO_ROOT_URI" --quiet --eval "$counts_js" | last_line)"
+probe="$(mongosh_at "$MONGODB_URI" --quiet --eval "$app_probe_js" 2>&1 | last_line)" || true
+
+# Prints the table; exits 1 (with the reason) when a drop must not go ahead.
+verdict="$(python3 -I - "$counts" "$probe" "${COLLECTIONS[*]}" <<'PY'
+import json, sys
+counts, probe, names = json.loads(sys.argv[1]), sys.argv[2], sys.argv[3].split()
+show = lambda n: "absent" if n is None else str(n)
+print(f"{'collection':<20} {'kinowo':>10} {'kinowo_fleet':>13}")
+for c in names:
+    print(f"{c:<20} {show(counts['counts']['kinowo'][c]):>10} {show(counts['counts']['kinowo_fleet'][c]):>13}")
+for d in ("kinowo", "kinowo_fleet"):
+    print(f"newest facebook_fetches.fetchedAt in {d}: {counts['newest'][d]}")
+try:
+    reads = json.loads(probe)["appReads"]
+    print(f"the app's user reads kinowo_fleet ({reads} fleet_host_pace docs)")
+except (ValueError, KeyError, TypeError):
+    reads = None
+    print(f"the app's user could NOT read kinowo_fleet: {probe}")
+empty = [c for c in names if not counts["counts"]["kinowo_fleet"][c]]
+if empty:
+    print("REFUSE: kinowo_fleet lacks or holds nothing in " + ", ".join(empty))
+    sys.exit(1)
+if reads is None:
+    print("REFUSE: the app's user cannot read kinowo_fleet")
+    sys.exit(1)
+PY
+)" && safe=1 || safe=0
+printf '%s\n' "$verdict"
+
+if [ "$drop" -eq 0 ]; then
+  echo "read-only; to drop the three from kinowo: scripts/fleet-db-finish --drop ${COLLECTIONS[*]}"
+  exit 0
+fi
+[ "$safe" -eq 1 ] || { echo "[fleet-db-finish] not dropping anything" >&2; exit 1; }
+for c in "${COLLECTIONS[@]}"; do
+  G_COLL="$c" mongosh_at "$MONGO_ROOT_URI" --quiet --eval "$drop_js"
+done
+echo "== after"
+mongosh_at "$MONGO_ROOT_URI" --quiet --eval "$counts_js" | last_line
