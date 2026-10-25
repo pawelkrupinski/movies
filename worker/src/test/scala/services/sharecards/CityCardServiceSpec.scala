@@ -67,19 +67,19 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
   "The reaper" should "enqueue the cities with no card first, at most the cap a tick, and never twice" in new Setup(cap = 5) {
     val withCard = Country.Poland.cities.take(3)
     withCard.foreach(city => card(city, clock.instant()))
-    service.enqueueDue() shouldBe 5
+    service.enqueueDue().added shouldBe 5
     val asked = waitingKeys
     asked should have size 5
     asked.intersect(withCard.map(CityCardService.dedupKey).toSet) shouldBe empty
-    service.enqueueDue() shouldBe 0 // the same five still wait: duplicates
+    service.enqueueDue().added shouldBe 0 // the same five still wait: duplicates
   }
 
   it should "give every city in the catalog a card, renders following the queue" in new Setup(cap = 1000) {
-    service.enqueueDue() shouldBe Country.Poland.cities.size
+    service.enqueueDue().added shouldBe Country.Poland.cities.size
     drain(queue).foreach(handler.handle)
     Country.Poland.cities.filterNot(city => Files.exists(store.cityCardPath(city))) shouldBe empty
     series.cityCoverageFor("pl") shouldBe 0.0 // published at the tick, before the renders
-    service.enqueueDue() shouldBe 0
+    service.enqueueDue().added shouldBe 0
     series.cityCoverageFor("pl") shouldBe 1.0
   }
 
@@ -92,19 +92,19 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
 
   it should "not ask again every tick for a city whose render was refused, backing off until it draws" in new Setup(cap = 1000, roomFull = true) {
     val all = Country.Poland.cities.size
-    service.enqueueDue() shouldBe all
+    service.enqueueDue().added shouldBe all
     drain(queue).foreach(handler.handle) // every one refused: the directory is over its budget
-    service.enqueueDue() shouldBe 0       // a minute later: each still inside its wait
-    clock.advance(Duration.ofMinutes(1)); service.enqueueDue() shouldBe 0
-    clock.advance(FirstWait); service.enqueueDue() shouldBe all
+    service.enqueueDue().added shouldBe 0       // a minute later: each still inside its wait
+    clock.advance(Duration.ofMinutes(1)); service.enqueueDue().added shouldBe 0
+    clock.advance(FirstWait); service.enqueueDue().added shouldBe all
     drain(queue).foreach(handler.handle) // refused again: the wait doubles
-    clock.advance(FirstWait.plusMinutes(1)); service.enqueueDue() shouldBe 0
-    clock.advance(FirstWait); service.enqueueDue() shouldBe all
+    clock.advance(FirstWait.plusMinutes(1)); service.enqueueDue().added shouldBe 0
+    clock.advance(FirstWait); service.enqueueDue().added shouldBe all
     // Room again: the renders draw, and a city with its card is due only at its weekly phase.
     store.room.measured(overBudget = false)
     drain(queue).foreach(handler.handle)
     Country.Poland.cities.filterNot(city => Files.exists(store.cityCardPath(city))) shouldBe empty
-    clock.advance(MaxWait); service.enqueueDue() should be < all
+    clock.advance(MaxWait); service.enqueueDue().added should be < all
   }
 
   it should "back off a city whose render fails, and never wait longer than the cap" in new Setup(cap = 1000, reads = new UnreadableReadModelRepository) {
@@ -142,7 +142,7 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
     val renders = collection.mutable.Buffer.empty[(String, Instant)]
     (1 to 7 * 24).foreach { _ =>
       clock.advance(Duration.ofHours(1))
-      service.enqueueDue() should be <= CityCardService.MaxEnqueuePerTick
+      service.enqueueDue().added should be <= CityCardService.MaxEnqueuePerTick
       drain(queue).foreach { t =>
         val slug = t.payload(CityCardService.CityKey)
         renders += slug -> clock.instant()

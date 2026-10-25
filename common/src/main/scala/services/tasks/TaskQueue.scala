@@ -104,6 +104,24 @@ object EnqueueResult {
   case class Failed(reason: String) extends EnqueueResult
 }
 
+/** What a run's enqueues came to: how many tasks were [[EnqueueResult.Added]], and how many enqueues the queue could
+ *  not answer ([[EnqueueResult.Failed]]). A periodic enqueuer any of whose enqueues failed did not do its work: as a
+ *  tick's run it is [[tools.TickRun.Incomplete]] ([[run]]), so its stale alert fires while the queue keeps failing. */
+final case class Enqueued(added: Int, failed: Int) {
+  def +(that: Enqueued): Enqueued = Enqueued(added + that.added, failed + that.failed)
+  def run: tools.TickRun = tools.TickRun.completedWhen(failed == 0)
+}
+
+object Enqueued {
+  val Zero: Enqueued = Enqueued(0, 0)
+
+  def of(result: EnqueueResult): Enqueued = result match {
+    case EnqueueResult.Added     => Enqueued(1, 0)
+    case EnqueueResult.Duplicate => Zero
+    case EnqueueResult.Failed(_) => Enqueued(0, 1)
+  }
+}
+
 /** What a handler decided about a claimed task. */
 sealed trait HandlerOutcome
 object HandlerOutcome {

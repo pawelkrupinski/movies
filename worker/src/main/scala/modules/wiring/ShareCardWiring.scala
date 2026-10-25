@@ -6,7 +6,7 @@ import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
 import services.{MongoConnection, MongoRequirement, MongoTuning}
-import services.tasks.{ClaimedEnqueueReaper, TaskHandler, TaskType}
+import services.tasks.{ClaimedEnqueueReaper, Enqueued, TaskHandler, TaskType}
 
 import scala.concurrent.duration.*
 
@@ -140,8 +140,8 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] = managedResources.stoppingEach(
     if (!shareCardsEnabled) Nil
     else {
-      def enqueue(taskType: TaskType, key: String, payload: Map[String, String]): () => Unit =
-        () => { taskQueue.enqueue(taskType, key, payload, submittedAt = clock.instant()); () }
+      def enqueue(taskType: TaskType, key: String, payload: Map[String, String]): () => Enqueued =
+        () => Enqueued.of(taskQueue.enqueue(taskType, key, payload, submittedAt = clock.instant()))
       Seq(
         new ClaimedEnqueueReaper("share-card-budget",
           enqueue(TaskType.PruneShareCards, "share-card-budget", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)),
@@ -150,7 +150,7 @@ trait ShareCardWiring { self: WorkerWiring =>
           enqueue(TaskType.PruneShareCards, "share-card-prune", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Daily)),
           24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt), ticks),
         // The city cards' weekly spread, ticked every minute like the scrape reaper.
-        new ClaimedEnqueueReaper("city-card", () => { cityCardService.enqueueDue(); () }, 1.minute, 3.minutes, scheduledRunStore, clock, ticks = ticks))
+        new ClaimedEnqueueReaper("city-card", () => cityCardService.enqueueDue(), 1.minute, 3.minutes, scheduledRunStore, clock, ticks = ticks))
     })
 }
 

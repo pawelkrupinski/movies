@@ -115,7 +115,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     val h = new Harness(new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25)))))
     val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
     h.chunkH.handle(Task("t", TaskType.ScrapeChunk, "d", ChunkScrapeKeys.chunkPayload(cinemaName,runId, "a"), 1)) shouldBe Done
-    h.coord.maybeReduce(cinemaName, runId) shouldBe false // only 1 of 2 chunks
+    h.coord.maybeReduce(cinemaName, runId) shouldBe Enqueued.Zero // only 1 of 2 chunks
     h.queue.waitingCount(TaskType.ScrapeChunkReduce) shouldBe 0
   }
 
@@ -206,7 +206,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.drain()                 // 'a' stores; 'b' fails (rescheduled, held back); not complete
     h.published shouldBe empty
     val past = now.plusSeconds(16 * 60)
-    h.reaper(Clock.fixed(past, ZoneOffset.UTC)).sweep() shouldBe 1 // abandoned → enqueue partial reduce
+    h.reaper(Clock.fixed(past, ZoneOffset.UTC)).sweep().added shouldBe 1 // abandoned → enqueue partial reduce
     h.drain(past)
     h.published should have size 1
     h.published.head.map(_.movie.title) shouldBe Seq("X") // partial: only the chunk that landed

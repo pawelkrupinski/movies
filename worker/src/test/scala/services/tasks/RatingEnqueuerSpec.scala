@@ -28,7 +28,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
 
-    enqueuer(queue).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now, limit = 2) shouldBe 2
+    enqueuer(queue).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now, limit = 2).added shouldBe 2
 
     queue.waitingCount(TaskType.ImdbRating)    shouldBe 1
     queue.waitingCount(TaskType.FilmwebRating) shouldBe 1
@@ -39,7 +39,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
   it should "enqueue all four eligible sources when the cap allows" in {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
-    enqueuer(queue).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now) shouldBe 4
+    enqueuer(queue).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now).added shouldBe 4
     Seq(TaskType.ImdbRating, TaskType.FilmwebRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)
   }
@@ -55,9 +55,9 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
       .foreach(k => freshness.markFresh(RatingTasks.dedupKey(k, key, row.tmdbId), k, now))
 
     // The normal, cadence-gated enqueue does nothing — every source reads fresh.
-    enq.enqueueDueFor(key, row, now) shouldBe 0
+    enq.enqueueDueFor(key, row, now).added shouldBe 0
     // Forcing drops the stamps and re-enqueues all four regardless.
-    enq.enqueueDueFor(key, row, now, force = true) shouldBe 4
+    enq.enqueueDueFor(key, row, now, force = true).added shouldBe 4
     Seq(TaskType.ImdbRating, TaskType.FilmwebRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)
   }
@@ -80,13 +80,13 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
       .foreach(k => freshness.markFresh(RatingTasks.dedupKey(k, key, row.tmdbId), k, now))
 
     // Only the three tmdbId-gated sources can be enqueued now — IMDb has no id yet.
-    enq.enqueueDueFor(key, row, now, force = true) shouldBe 3
+    enq.enqueueDueFor(key, row, now, force = true).added shouldBe 3
     queue.waitingCount(TaskType.ImdbRating) shouldBe 0
 
     // ...but IMDb's stamp is gone all the same, so the moment the id lands the
     // ordinary cadence-gated pass enqueues it instead of waiting out the backoff.
     freshness.lastFetchedAt(RatingTasks.dedupKey(FreshnessKind.ImdbRating, key, row.tmdbId)) shouldBe None
-    enq.enqueueDueFor(key, row.copy(imdbId = Some("tt1")), now) shouldBe 1
+    enq.enqueueDueFor(key, row.copy(imdbId = Some("tt1")), now).added shouldBe 1
     queue.waitingCount(TaskType.ImdbRating) shouldBe 1
   }
 
@@ -94,7 +94,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
     // Fully resolved: eligible for all four sources, cap unbounded — yet UK drops Filmweb.
-    enqueuer(queue, Country.UnitedKingdom).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now) shouldBe 3
+    enqueuer(queue, Country.UnitedKingdom).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now).added shouldBe 3
     queue.waitingCount(TaskType.FilmwebRating) shouldBe 0
     Seq(TaskType.ImdbRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)

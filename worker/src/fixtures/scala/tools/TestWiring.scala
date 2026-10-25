@@ -390,7 +390,7 @@ trait TestWiring extends WorkerWiring {
   /** One detail pass — the reaper's tick (capped at its `maxEnqueuePerTick`) and the tasks it
    *  enqueued worked — answering how many it enqueued. */
   private def enrichDetailsOnce(): Int = {
-    val enqueued = detailReaper.tick()
+    val enqueued = detailReaper.tick().added
     // A handler that asks for its task again (`Reschedule`: a page venue_pages did not take) has it queued for the
     // next pass, as production's TaskWorker returns it to waiting — never worked again within this pass.
     val again = new java.util.concurrent.ConcurrentLinkedQueue[services.tasks.Task]()

@@ -20,13 +20,13 @@ class ChunkScrapeCoordinator(store: ChunkScrapeStore, queue: TaskQueue, clock: j
   }
 
   /** Enqueue the reduce iff `runId` is still the cinema's active run AND every
-   *  expected key has stored. Returns true when it actually enqueued (a fresh
-   *  task). Package-private so the backstop reaper and tests can drive it. */
-  private[tasks] def maybeReduce(cinema: String, runId: String): Boolean =
-    store.activeRun(cinema).filter(_.runId == runId).exists { run =>
-      val complete = run.expectedKeys.toSet.subsetOf(store.storedKeys(cinema, runId))
-      complete && queue.enqueue(TaskType.ScrapeChunkReduce,
+   *  expected key has stored. Returns what the enqueue came to: [[Enqueued.Zero]] when
+   *  the run is not ready, or its reduce is already queued. Package-private so the
+   *  backstop reaper and tests can drive it. */
+  private[tasks] def maybeReduce(cinema: String, runId: String): Enqueued =
+    store.activeRun(cinema).filter(_.runId == runId)
+      .filter(run => run.expectedKeys.toSet.subsetOf(store.storedKeys(cinema, runId)))
+      .fold(Enqueued.Zero)(_ => Enqueued.of(queue.enqueue(TaskType.ScrapeChunkReduce,
         ChunkScrapeKeys.reduceDedup(cinema, runId),
-        ChunkScrapeKeys.reducePayload(cinema, runId), submittedAt = clock.instant()) == EnqueueResult.Added
-    }
+        ChunkScrapeKeys.reducePayload(cinema, runId), submittedAt = clock.instant())))
 }

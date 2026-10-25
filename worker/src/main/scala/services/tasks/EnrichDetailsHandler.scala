@@ -46,22 +46,15 @@ object EnrichDetailsTasks {
    *  waiting listing needs (`VenuePageWait`). */
   def pageAttempted(group: String, page: String): String = s"detail-page|$group|$page|attempted"
 
-  /** Enqueue a detail task only when it's DUE under `dueWindow` — the phase-spread
-   *  gate the periodic [[DetailReaper]] enqueues on and [[EnrichDetailsHandler]]
-   *  re-gates on (shared instance). The phase offset, hashed from `dk`, scatters a
-   *  synchronized cohort (a re-key wave that orphans a whole batch's stamps at
-   *  once) across the period instead of dumping it in one tick. Returns true iff
-   *  newly enqueued. */
-  def enqueueIfDue(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
-                   enricher: DetailEnricher, key: CacheKey, ref: String, now: Instant): Boolean =
-    enqueueIfDueAs(queue, freshness, dueWindow, enricher, key, ref, dedupKey(enricher.detailGroup, key), now)
-
-  /** [[enqueueIfDue]] under the dedup key `dk` the task is due, deduplicated and stamped by. */
+  /** Enqueue a detail task under the dedup key `dk` it is due, deduplicated and stamped by, only when it's DUE under
+   *  `dueWindow` — the phase-spread gate the periodic [[DetailReaper]] enqueues on and [[EnrichDetailsHandler]]
+   *  re-gates on (shared instance). The phase offset, hashed from `dk`, scatters a synchronized cohort (a re-key wave
+   *  that orphans a whole batch's stamps at once) across the period instead of dumping it in one tick. What the
+   *  enqueue came to: [[Enqueued.Zero]] when not due. */
   def enqueueIfDueAs(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
-                     enricher: DetailEnricher, key: CacheKey, ref: String, dk: String, now: Instant): Boolean = {
-    dueWindow.isDue(dk, freshness.lastFetchedAt(dk), now) &&
-      queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref), submittedAt = now) == EnqueueResult.Added
-  }
+                     enricher: DetailEnricher, key: CacheKey, ref: String, dk: String, now: Instant): Enqueued =
+    if (!dueWindow.isDue(dk, freshness.lastFetchedAt(dk), now)) Enqueued.Zero
+    else Enqueued.of(queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref), submittedAt = now))
 }
 
 /**

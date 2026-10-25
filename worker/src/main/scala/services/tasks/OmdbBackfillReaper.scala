@@ -25,7 +25,7 @@ import scala.concurrent.duration._
  * ([[ScheduledRunStore]]) so exactly one machine enqueues per window.
  */
 class OmdbBackfillReaper(
-  enqueueSweep: () => Unit,
+  enqueueSweep: () => Enqueued,
   // Daily by default. BY-NAME so an `/admin/config` flip applies next cycle.
   interval:     => OmdbBackfillInterval = OmdbBackfillInterval(OmdbBackfillReaper.DefaultInterval),
   // A small spacing before the first enqueue so the synchronous hydrate has

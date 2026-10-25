@@ -106,7 +106,7 @@ class EnrichmentReaper(
    *  would freeze the boot-time value). */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.recorded("enrichment-reaper", tickInterval.value, logger, ticks)(tickIfClaimed()); scheduleNext(tickInterval.value) }
+      def run(): Unit = { ScheduledTick.recorded("enrichment-reaper", tickInterval.value, logger, ticks)(tickIfClaimed().run); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
@@ -114,29 +114,31 @@ class EnrichmentReaper(
   /** Tick only if this machine wins the current tick window's occurrence claim —
    *  otherwise another machine is walking the corpus for this window, so skip.
    *  Package-private for tests. */
-  private[tasks] def tickIfClaimed(): Int = {
+  private[tasks] def tickIfClaimed(): Enqueued = {
     // Same boot-hydrate gate as DetailReaper: the rating stamps load in the rest
     // phase, so until they land an empty mirror reads as "every row's rating stale"
     // and re-enqueues up to maxEnqueuePerTick rating tasks (×4 sources) on every
     // deploy. All rating kinds share the one rest-hydrate signal, so any one of
     // them answers "are the rating stamps loaded"; an in-memory store is ready now.
-    if (!freshness.isReady(FreshnessKind.ImdbRating)) return 0
+    if (!freshness.isReady(FreshnessKind.ImdbRating)) return Enqueued.Zero
     val key = OccurrenceKey.at("enrich-sweep", clock.millis(), tickInterval.value, 0.seconds)
-    if (runStore.claim(key)) tick() else 0
+    if (runStore.claim(key)) tick() else Enqueued.Zero
   }
 
-  /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`.
-   *  Package-private, with an injectable `nowMillis`, so tests can drive time. */
-  private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
+  /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`: how many were added, and how many
+   *  enqueues failed (logged by the queue; a run with any is not a completed one). Package-private, with an
+   *  injectable `nowMillis`, so tests can drive time. */
+  private[tasks] def tick(nowMillis: Long = clock.millis()): Enqueued = {
     val cap      = maxEnqueuePerTick.value
     val now      = Instant.ofEpochMilli(nowMillis)
-    var enqueued = 0
+    var enqueued = Enqueued.Zero
     val rows = cache.entries.iterator
-    while (rows.hasNext && enqueued < cap) {
+    while (rows.hasNext && enqueued.added < cap) {
       val (key, record) = rows.next()
-      enqueued += ratingEnqueuer.enqueueDueFor(key, record, now, cap - enqueued)
+      enqueued += ratingEnqueuer.enqueueDueFor(key, record, now, cap - enqueued.added)
     }
-    if (enqueued > 0) logger.info(s"EnrichmentReaper enqueued $enqueued due rating-refresh task(s).")
+    if (enqueued.added > 0) logger.info(s"EnrichmentReaper enqueued ${enqueued.added} due rating-refresh task(s).")
+    if (enqueued.failed > 0) logger.warn(s"EnrichmentReaper: ${enqueued.failed} rating-refresh enqueue(s) failed this tick.")
     enqueued
   }
 

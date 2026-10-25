@@ -3,7 +3,7 @@ package services.tasks
 import play.api.Logging
 import services.Stoppable
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{DaemonExecutors, ScheduledTick, TickRecorder}
+import tools.{DaemonExecutors, ScheduledTick, TickRecorder, TickRun}
 
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
@@ -16,7 +16,8 @@ import scala.concurrent.duration._
  * itself runs on the TaskWorker with the rest of the pipeline's metrics, retries and pool bound;
  * this only decides WHEN.
  *
- * `interval` is BY-NAME so an `/admin/config` flip applies on the next cycle.
+ * `interval` is BY-NAME so an `/admin/config` flip applies on the next cycle. `enqueue` says what its enqueues came
+ * to: a run one of whose enqueues the queue could not answer is not a completed one ([[Enqueued.run]]).
  *
  * `timing` says when the ticks after the boot tick fire: `interval` after the last one
  * (`FromBoot`), or at the start of each window, `Aligned(offset)` past the epoch-aligned boundary —
@@ -25,17 +26,19 @@ import scala.concurrent.duration._
  */
 class ClaimedEnqueueReaper(
   occurrence:   String,
-  enqueue:      () => Unit,
+  enqueue:      () => Enqueued,
   interval:     => FiniteDuration,
   initialDelay: FiniteDuration,
   runStore:     ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:        Clock,
   timing:       ClaimedEnqueueReaper.Timing = ClaimedEnqueueReaper.Timing.FromBoot,
   // Where each completed run is reported (`ScheduledTickStale`).
-  ticks: TickRecorder = TickRecorder.Unrecorded
+  ticks: TickRecorder = TickRecorder.Unrecorded,
+  // Builds the reaper's scheduler from its name; a spec hands in a stepped one.
+  newScheduler: String => ScheduledExecutorService = DaemonExecutors.scheduler(_)
 ) extends Stoppable with Logging {
 
-  private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler(s"$occurrence-reaper")
+  private val scheduler: ScheduledExecutorService = newScheduler(s"$occurrence-reaper")
 
   def start(): Unit = {
     scheduleNext(initialDelay)
@@ -46,16 +49,19 @@ class ClaimedEnqueueReaper(
   /** Self-rescheduling tick: enqueue, then schedule the next reading `interval` afresh. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.recorded(occurrence, interval, logger, ticks)(tickIfClaimed()); scheduleNext(nextDelay()) }
+      def run(): Unit = {
+        ScheduledTick.recorded(occurrence, interval, logger, ticks)(tickIfClaimed().getOrElse(TickRun.Completed))
+        scheduleNext(nextDelay())
+      }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
 
-  /** Enqueue only if this machine wins the current window's occurrence claim. Returns true when
-   *  it enqueued. Package-private so tests can drive it directly. */
-  private[tasks] def tickIfClaimed(): Boolean = {
+  /** Enqueue only if this machine wins the current window's occurrence claim: the run, or `None` when another
+   *  replica holds the window (a no-op, which completes). Package-private so tests can drive it directly. */
+  private[tasks] def tickIfClaimed(): Option[TickRun] = {
     val key = OccurrenceKey.at(occurrence, clock.millis(), interval, offset)
-    if (runStore.claim(key)) { enqueue(); true } else false
+    Option.when(runStore.claim(key))(enqueue().run)
   }
 
   /** How long until the tick after this one. Package-private so tests can read it. */

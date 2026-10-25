@@ -45,7 +45,8 @@ class RatingEnqueuer(
   val sourceCount: Int = sources.size
 
   /** Enqueue up to `limit` of `record`'s eligible, now-due rating sources, returning
-   *  how many were NEWLY added (a not-due or already-queued source doesn't count).
+   *  how many were NEWLY added (a not-due or already-queued source doesn't count) and how
+   *  many enqueues the queue could not answer.
    *  `limit` lets the reaper honour its per-tick cap across rows; the newcomer path
    *  leaves it unbounded — one row enqueues at most the four sources.
    *
@@ -58,10 +59,10 @@ class RatingEnqueuer(
    *  the ineligible sources puts the row in the same schedule state as a film
    *  resolving for the FIRST time (no stamps at all), which is the whole intent of a
    *  forced re-enrich. */
-  def enqueueDueFor(key: CacheKey, record: MovieRecord, now: Instant, limit: Int = Int.MaxValue, force: Boolean = false): Int = {
-    var enqueued = 0
+  def enqueueDueFor(key: CacheKey, record: MovieRecord, now: Instant, limit: Int = Int.MaxValue, force: Boolean = false): Enqueued = {
+    var enqueued = Enqueued.Zero
     val it = sources.iterator
-    while (it.hasNext && enqueued < limit) {
+    while (it.hasNext && enqueued.added < limit) {
       val s         = it.next()
       val dedupKey  = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
       val legacyKey = RatingTasks.dedupKey(s.kind, key)
@@ -80,9 +81,8 @@ class RatingEnqueuer(
         // tmdbId-keyed freshness doesn't re-queue a row that's fresh under its old
         // key. (Drop the fallback once no legacy stamps remain — see EnrichmentReaper.)
         val lastFetched = freshness.lastFetchedAt(dedupKey).orElse(freshness.lastFetchedAt(legacyKey))
-        if (dueWindow.isDue(dedupKey, lastFetched, now) &&
-            queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key), submittedAt = now) == EnqueueResult.Added)
-          enqueued += 1
+        if (dueWindow.isDue(dedupKey, lastFetched, now))
+          enqueued += Enqueued.of(queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key), submittedAt = now))
       }
     }
     enqueued

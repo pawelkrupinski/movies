@@ -8,7 +8,7 @@ import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
 import services.enrichment.{FilmwebRatings, ImdbRatings, MetascoreRatings, MongoOmdbAttemptStore, OmdbAttemptStore, OmdbBackfill, RottenTomatoesRatings}
 import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
-import services.tasks.{BulkCadenceRecorder, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler, TaskType}
+import services.tasks.{BulkCadenceRecorder, Enqueued, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler, TaskType}
 
 
 /** Rating refresh: the four `*Ratings` sources, the queue handlers that run
@@ -60,7 +60,7 @@ trait RatingsWiring { self: WorkerWiring =>
     configuration.omdbBackfillInterval(OmdbBackfillInterval(OmdbBackfillReaper.DefaultInterval))
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] = managedResources.stoppingEach(
     omdbBackfill.map(_ => new OmdbBackfillReaper(
-      () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant()); () },
+      () => Enqueued.of(taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant())),
       interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock, ticks = ticks)))
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's

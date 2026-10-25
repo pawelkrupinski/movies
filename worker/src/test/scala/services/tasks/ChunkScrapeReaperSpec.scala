@@ -30,16 +30,17 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     override def activeRuns(): Seq[ChunkRun] = { sweeps.incrementAndGet(); super.activeRuns() }
   }
 
-  private class Rig(start: Instant = t0) {
+  private class Rig(start: Instant = t0, val queue: InMemoryTaskQueue = new InMemoryTaskQueue) {
     val clock     = new MutableClock(start)
     val scheduler = new ManualScheduler(clock)
     val store     = new CountingStore
-    val queue     = new InMemoryTaskQueue
     val coord     = new ChunkScrapeCoordinator(store, queue, _root_.tools.SpecClock.Pinned)
     val runStore  = new InMemoryScheduledRunStore
     /** A reaper as a freshly booted process builds it: nothing armed in memory. */
+    val ticks     = new tools.RecordingTickRecorder
     def reaper(): ChunkScrapeReaper =
-      new ChunkScrapeReaper(store, queue, coord, staleAfter = timeout, runStore = runStore, clock = clock, scheduler = scheduler)
+      new ChunkScrapeReaper(store, queue, coord, staleAfter = timeout, runStore = runStore, clock = clock, scheduler = scheduler,
+        ticks = ticks)
     def reduces: Int = queue.waitingCount(TaskType.ScrapeChunkReduce)
     def advanceTo(at: Instant): Unit = scheduler.advance(Duration.between(clock.instant(), at))
   }
@@ -171,6 +172,25 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     reaper.start()
     rig.scheduler.advance(Duration.ofMinutes(16)) // the boot-armed deadline fires
     reaper.sweep()                                 // and a sweep finds the same stale run
+    rig.reduces shouldBe 1
+  }
+
+  // The partial reduce's enqueue answered EnqueueResult.Failed (the queue's write failed) and the sweep counted it as
+  // queued already: an hourly sweep whose every reduce failed completed, and its stale alert could never fire.
+  "A sweep whose reduce the queue could not take" should "not complete its tick until a reduce lands" in {
+    val queue = new FailingEnqueueTaskQueue
+    val rig   = new Rig(queue = queue)
+    rig.store.startRun(cinema, Seq("a", "b"), t0, timeout.value)
+    val reaper = rig.reaper()
+    tools.LogCapture.capture(classOf[ChunkScrapeReaper].getName) {
+      reaper.start()
+      rig.advanceTo(t0.plusSeconds(45 + 60 * 60))   // the boot sweep, the deadline, then the hourly sweep: all failing
+      rig.ticks.completedRuns shouldBe empty
+      queue.failing = false
+      rig.advanceTo(t0.plusSeconds(45 + 2 * 60 * 60)) // the next hourly sweep reduces the abandoned run
+      rig.ticks.completedRuns.map(_._1) shouldBe Seq("chunk-scrape-reaper")
+      reaper.stop()
+    }
     rig.reduces shouldBe 1
   }
 }

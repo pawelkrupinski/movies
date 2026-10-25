@@ -5,7 +5,7 @@ import settings.{ReadModelAuditSample, ShareCardAuditSample}
 import modules.WorkerWiring
 import services.readmodel.ReadModelContentAudit
 import services.sharecards.ShareCardAudit
-import services.tasks.{ClaimedEnqueueReaper, RecheckedAudit, RecheckedAuditHandler, TaskHandler, TaskType}
+import services.tasks.{ClaimedEnqueueReaper, Enqueued, RecheckedAudit, RecheckedAuditHandler, TaskHandler, TaskType}
 
 import scala.concurrent.duration.*
 
@@ -37,8 +37,8 @@ trait InvariantAuditWiring { self: WorkerWiring =>
 
   /** Hourly each, the first well after boot so it never lands on the boot heal. */
   lazy val auditReapers: Seq[ClaimedEnqueueReaper] = managedResources.stoppingEach({
-    def enqueue(taskType: TaskType, key: String): () => Unit =
-      () => { taskQueue.enqueue(taskType, key, submittedAt = clock.instant()); () }
+    def enqueue(taskType: TaskType, key: String): () => Enqueued =
+      () => Enqueued.of(taskQueue.enqueue(taskType, key, submittedAt = clock.instant()))
     Seq(new ClaimedEnqueueReaper("read-model-content-audit",
       enqueue(TaskType.AuditReadModelContent, "read-model-content-audit"), 1.hour, 20.minutes, scheduledRunStore, clock, ticks = ticks)) ++
     Option.when(shareCardsEnabled)(new ClaimedEnqueueReaper("share-card-audit",

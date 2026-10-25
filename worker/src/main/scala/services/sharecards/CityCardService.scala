@@ -3,7 +3,7 @@ package services.sharecards
 import models.{City, Country}
 import play.api.Logging
 import services.readmodel.ReadModelReader
-import services.tasks.{DueWindow, EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.{DueWindow, Enqueued, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
 import tools.{CityCardRenderer, Digest, OgCardRenderer, PosterDecode}
 
 import java.nio.file.{Files, Path}
@@ -58,8 +58,8 @@ class CityCardService(
   private val backoff = new CityCardBackoff(clock)
 
   /** The reaper's tick: enqueue the cities with no card, then those due, up to the cap; publish
-   *  the coverage gauge. Returns how many renders it added. */
-  def enqueueDue(): Int = {
+   *  the coverage gauge. Returns what its enqueues came to: how many renders it added, and how many failed. */
+  def enqueueDue(): Enqueued = {
     val now     = clock.instant()
     val written = country.cities.map(city => city -> store.written(store.cityCardPath(city)))
     if (written.nonEmpty)
@@ -67,8 +67,8 @@ class CityCardService(
     val ready   = written.iterator.filterNot { case (city, _) => backoff.holds(city.slug, now) }.toVector
     val missing = ready.iterator.collect { case (city, None) => city }
     val due     = ready.iterator.collect { case (city, at @ Some(_)) if schedule.isDue(dedupKey(city), at, now) => city }
-    (missing ++ due).take(maxEnqueuePerTick).count { city =>
-      queue.enqueue(TaskType.RenderCityCard, dedupKey(city), Map(CityKey -> city.slug), submittedAt = now) == EnqueueResult.Added
+    (missing ++ due).take(maxEnqueuePerTick).foldLeft(Enqueued.Zero) { (sum, city) =>
+      sum + Enqueued.of(queue.enqueue(TaskType.RenderCityCard, dedupKey(city), Map(CityKey -> city.slug), submittedAt = now))
     }
   }
 

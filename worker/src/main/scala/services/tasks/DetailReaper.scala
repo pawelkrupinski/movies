@@ -101,50 +101,52 @@ class DetailReaper(
    *  afresh, so an interval flip applies on the next cycle. */
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.recorded("detail-reaper", tickInterval.value, logger, ticks)(tickIfClaimed()); scheduleNext(tickInterval.value) }
+      def run(): Unit = { ScheduledTick.recorded("detail-reaper", tickInterval.value, logger, ticks)(tickIfClaimed().run); scheduleNext(tickInterval.value) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
 
   /** Run the detail tick only if this machine wins the
    *  current window's occurrence claim — otherwise another machine is handling
-   *  this window, so skip. Returns the number of detail tasks enqueued (0 when
+   *  this window, so skip. Returns what the tick's enqueues came to (none when
    *  the claim was lost). Package-private so tests can drive it directly. */
-  private[tasks] def tickIfClaimed(): Int = {
+  private[tasks] def tickIfClaimed(): Enqueued = {
     // Hold ALL ticks until the detail freshness stamps have hydrated from Mongo.
     // They load in the rest phase (after the scrape stamps), so a tick against the
     // not-yet-hydrated mirror reads every detail as never-fresh and re-enqueues the
     // whole deferred-detail corpus on EVERY deploy (the recurring post-deploy spike).
     // The scrape analogue is ScrapeReaper.awaitReadyThenStart; an in-memory /
     // Mongo-less store is ready at once.
-    if (!freshness.isReady(FreshnessKind.DetailEnrich)) return 0
+    if (!freshness.isReady(FreshnessKind.DetailEnrich)) return Enqueued.Zero
     val key = OccurrenceKey.at("detail", clock.millis(), tickInterval.value, 0.seconds)
-    if (runStore.claim(key)) { val n = tick(); forgetGone(); n } else 0
+    if (runStore.claim(key)) { val n = tick(); forgetGone(); n } else Enqueued.Zero
   }
 
   /** Enqueue every now-due `(deferred-cinema, film)` detail, keyed off the row's
    *  CURRENT CacheKey (so it's robust to a row that was re-keyed since it was
    *  scraped), up to `maxEnqueuePerTick`. Public so tests / the
    *  fixture harness can drive one pass directly, with an injectable `nowMillis`
-   *  so tests can advance time. Returns how many tasks were enqueued. */
-  def tick(nowMillis: Long = clock.millis()): Int = {
+   *  so tests can advance time. Returns how many tasks were enqueued, and how many
+   *  enqueues failed (a run with any is not a completed one). */
+  def tick(nowMillis: Long = clock.millis()): Enqueued = {
     val now      = Instant.ofEpochMilli(nowMillis)
     val cap      = maxEnqueuePerTick.value
-    var enqueued = 0
+    var enqueued = Enqueued.Zero
     val rows = cache.entries.iterator
-    while (rows.hasNext && enqueued < cap) {
+    while (rows.hasNext && enqueued.added < cap) {
       val (key, record) = rows.next()
       // Drive off the row's OWN venues, not the whole enricher list — see
       // `enrichersByCinema` — remembered per row while the cache holds the same record: asking
       // every film each tick re-derived its venues (`cinemaData`, a sort and a Map rebuild) though
       // almost none had changed — 2.6% of the UK worker's CPU (JFR 2026-10-01).
       val asks = asksOf(key, record).iterator
-      while (asks.hasNext && enqueued < cap) {
+      while (asks.hasNext && enqueued.added < cap) {
         val (e, ref, dk) = asks.next()
-        if (EnrichDetailsTasks.enqueueIfDueAs(queue, freshness, dueWindow, e, key, ref, dk, now)) enqueued += 1
+        enqueued += EnrichDetailsTasks.enqueueIfDueAs(queue, freshness, dueWindow, e, key, ref, dk, now)
       }
     }
-    if (enqueued > 0) logger.info(s"DetailReaper enqueued $enqueued due detail(s).")
+    if (enqueued.added > 0) logger.info(s"DetailReaper enqueued ${enqueued.added} due detail(s).")
+    if (enqueued.failed > 0) logger.warn(s"DetailReaper: ${enqueued.failed} detail enqueue(s) failed this tick.")
     enqueued
   }
 
