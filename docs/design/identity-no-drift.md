@@ -88,13 +88,13 @@ Each item has a verdict:
 | 18 | `waiting`, `blindAt` | `AgreementStage` | (a) | A waiting cluster takes the model's take, as a whole resolve with the same gaps does. It is resolved again when due. |
 | 19 | `candidateFilms` (digest, blindAt) | `AgreementCandidates` | **(b) fixed** | It cached TMDB searches by listing digest, so a re-asked search with a new candidate stayed unread. The cache now keeps its receipt and stands only while none of it was filed since (`standing`). Its reads also join the receipt being made. Spec: `AgreementPosterSpec` "take a candidate a search filed again finds". |
 | 20 | Correction verdicts' receipt | `AgreementCorrections` | **(b) fixed** | The receipt held family reads and asked ids, but not the TMDB records or candidates it reads. Every TMDB and venue read now goes into `StoredVerdict.reads` through the one seam (`Noting`, `receipting`), and a filing of one decides the correction again. Spec: `AgreementCorrectionSpec` "be decided again when a TMDB record it read is filed again". |
-| 21 | Budget-spent correction fallback (stands as last decided, under any rules) | `corrected` | (a) at quiescence | A deliberate cost bound (`CorrectionsPerApply`). It equals the whole resolve once `backlog` is false (harness property 2). |
+| 21 | Budget-spent correction fallback (stands as last decided), `CorrectionsPerApply` | `corrected` | interim only, accepted | The budget (200 corrections an apply), like the backfill's, only DELAYS a decision. The interim takes depend on read order, but the final result does not: once `backlog` is false it equals the whole resolve (harness property 2). A restart keeps the takes it had (property 3). It is a deliberate memory bound on worker-us, named here as the one place the principle holds at quiescence rather than at every tick. |
 | 22 | `correctionWaits` | `AgreementCorrections` | (a) at quiescence | Cleared when a verdict is found under another key (10). It decides only whether a waiting correction is read again. |
 | 23 | `rereads` (a record asked once in the stage's life) plus `waitsOn` | `AgreementCandidates` | **(c) fixed, deleted** | Whether a year-only record still waits depended on whether THIS stage instance asked. It now depends on the question memory (the read was attempted; the asker marks an answer as one), and it is in the fill's receipt (`tried|...`). An attempt marked since the last apply reads every receipt again. Spec: `AgreementBroadcastSpec` "...hold no take, in a stage that never asked it too". |
 | 24 | `last`, `takenAs`, `digested`, `events`, `keyed` | `AgreementStage` | (a) cache / name | Identity caches of the same decision objects. |
 | 25 | Staging events, `Merged` wait start | publisher | (a) display | The screen only. |
 | 26 | Question memory (`attempted`) | worker | (b) input | It is read by the whole resolve too (`newAgreementStage`, harness `World.tried`). |
-| 27 | `IdentityDriftCheck` (`Adopt` → `forget`) | worker adapters | dead | Not wired since the OOM. Delete it (movies-80; see Simplifications). |
+| 27 | `IdentityDriftCheck` (`Adopt` → `forget`) | worker adapters | **deleted** | Not wired since the OOM; deleted with `AgreementStage.forget`, `IncrementalResolver.reResolve`, `TakeChangeLines.drift` and the repair setting (ddd1c1951, −309 net). |
 
 The counts of the 27:
 
@@ -104,7 +104,7 @@ The counts of the 27:
 | (b) fixed | 5 | 8, 8a, 9, 19, 20 |
 | (c) fixed or deleted | 5 | 10–13, 23 |
 | Record carry-over, open | 1 | 7 |
-| Dead | 1 | 27 |
+| Deleted (dead) | 1 | 27 |
 
 ## Backfill of prod's stored verdicts
 
@@ -137,11 +137,91 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
 | Family-only `unanswered` list | Deleted in this change: every family read, unanswered too, is in the receipt | −4 (done) |
 | `adopt` (legacy verdicts by first listing) | Deleted in this change: found by digest | −20 (done) |
 | Merge union | Deleted in this change | −6 (done) |
-| `IdentityDriftCheck` (unwired since the OOM) and `AgreementStage.forget` | Delete | ≈ −200 |
+| `IdentityDriftCheck` (unwired since the OOM) and `AgreementStage.forget` | Deleted (ddd1c1951) | −309 (done) |
+| Stage-life `rereads` | Deleted (f28034e6d): the question memory says | −12 (done) |
 | `StoredAsWritten.Keys` and the drift replay's key plumbing (91cfbe7e8) | Keys decide nothing now, so the replay need not keep them | −20 |
 | Correction receipt as `Map[String, Long]` like the verdicts' | One receipt type, one validity rule, one "read again when filed" path (items 19, 20 and 23 too) | ≈ −40 |
 | `IncrementalResolver` as the whole resolve plus a dependency-keyed cache | NOT recommended now. It already is a digest-keyed cache over slices (item 1); its update algorithm only decides which caches to re-check, and `IncrementalResolverSpec` holds it equal every event | — |
 | Staging events derived from waits | Possible once waits derive from receipts plus memory. A later step | — |
+
+## Single path
+
+**Verdict: feasible with caveats.** Running a literal whole resolve on every tick costs far too much. But the incremental model is already nearly "whole resolve, sharded by family, with a cache". So the one-algorithm design means tightening that cache's keys and deleting the memories that are not caches. It does not mean replacing the model.
+
+### 1. Where the incremental path differs from `IdentityResolver.resolve`
+
+- **The decision code is the same.** `IncrementalResolver.update` calls `IdentityResolver.resolveRegion` (IncrementalResolver.scala:222 → IdentityResolver.scala:367), which runs the same `Stages`/`ResolverRun` against the shared `CorpusContext`.
+- **Grouping differs.**
+  - The whole resolve gets its families from a single `FamilyClosure` over every node's block keys.
+  - The incremental path gets them by expansion: re-resolve the touched and stale families, then pull in any family that now shares a key (`joined`/`back`, :225-240), and repeat until nothing changes. In practice that takes at most 2 rounds.
+- **Restore trusts stored families.** A stored family is reused if all its listings are still held, its node keys are the same and its slice digest matches (:124-128). `storeId` (the smallest listing, IdentityModelStore.scala:20) only names the document.
+- **Agreement memories that are not caches** (AgreementStage.scala):
+  - `unreached`: the "settled before, settles again" short-circuit (:636), and its transfer on merge (:337-341);
+  - `askedNow`: asked once per stage life (:178);
+  - `rereads`: asked once per stage life (:193-197);
+  - the correction budget of 200 per apply (`CorrectionsPerApply`, :92), which makes interim takes depend on read order.
+- **Gaps in the verdict cache key.** `held` is keyed by the listings digest, the rules and the family-read digests (:584-590). The key leaves out:
+  - the fill's TMDB reads (`filledOf` → `IdentityResolver.evidenceOf`, AgreementTakes.scala:30; the code says "its reads are the families' only", :656);
+  - `thisYear` (:642).
+- **Projection.**
+  - `IdAssigner`/`FilmIdCounters` hand out ids by path, on purpose.
+  - `ProjectionDrafting` keeps the previous record's data (:146-157), and `heldLinks` keeps what it holds (:204).
+  - VenueSlots reads the previous film's slots.
+  - `LiveProjectionIndex` is already a proven cache (`ScopedProjectionEquivalenceSpec`).
+
+### 2. What has to be cached, and the cost
+
+Measured costs without caches:
+
+| What | Cost |
+|---|---|
+| US boot, whole resolve | 342–583 s |
+| Agreement, first apply with no stored verdicts | 3.8 GB |
+| Same, with corrections | 7.6 s / 5.0 GB |
+| PL agreement phase, re-resolving every waiting cluster | 24–48 s / 540 MB |
+| Whole projection tick | 36 MB |
+| Quiet projection tick | 5.3 MB |
+
+Clustering is cheap (near-linear union-find). The cost is per-family scoring and acceptance, plus `Agreement.verdict` and poster distances. Use `IncrementalResolver.Timings` to get a per-phase breakdown.
+
+The caches needed:
+- **Model:** `RegionFamily` keyed by (sorted listing set and node keys, Slice digest, `rulesVersion`).
+- **Corpus context:** `LiveCorpus` keyed by the node set.
+- **Agreement verdict:** keyed by (listings digest, every read's digest including the fill's TMDB reads, cast and productions, `decidedUnder`, year).
+
+The dirty indexes (`readersOf`, `askersOf`, `filmReadersOf`) stay as a speed-up that must be proven equal to full validation: a periodic full-validation tick with a drift counter, like the projection's "every 12th tick is whole".
+
+### 3. Is grouping order-dependent?
+
+The whole resolve is not. `ConstraintSolver` sorts its input; `FamilyClosure` numbers families by their smallest listing; `Stages` takes the smallest listing per key; `pack` breaks ties by smallest listing.
+
+On the incremental side, the order dependence is limited to interim states: batches of a large title component (:212), and restore trusting stored families. `--drift` found no grouping divergence. Ids depend on the path, which is acceptable only as a persisted input that never feeds a take.
+
+### 4. Migration, step by step
+
+1. **Delete the dead adopt path (0 moved takes):** `IdentityDriftCheck.scala` (139), its spec (80), `IncrementalResolver.reResolve`, `AgreementStage.forget`.
+2. **Close the verdict key gaps:** record the fill's TMDB, cast and production reads, and add the year. Moved takes are listed.
+3. **Remove the agreement memories that affect takes:**
+   - the `unreached` short-circuit;
+   - the merge transfer and `ClusterKeys.absorbed`;
+   - key `rereads`/`askedNow` by question and answer state.
+   The owner HAS signed off: the no-stickiness principle reverses the earlier "a merge never makes a settled half wait anew". List the clusters that wait again.
+4. **One entry point:** `IncrementalResolver.update` becomes `resolve(listings, memo)`, where the partition is computed by closure over the memo's block keys and a memo entry is valid only if its key compares equal. Event invalidation becomes an index over the memo, with a full-validation tick and a drift counter. `restore` becomes memo validation. Gated by `--drift` and `IdentityLiveDrift`.
+5. **Projection record stickiness:** derive `heldLinks` and the base record from current inputs only. Keep `IdAssigner`/`FilmIdCounters` as documented persisted inputs.
+
+**What can be deleted:** about 150 of `IncrementalResolver`'s 414 lines, `IdentityDriftCheck` and its spec (219), about 40 lines of `AgreementStage`, and `ClusterKeys.absorbed`.
+
+### 5. Risks
+
+- The full-validation tick on US could cause OOM: budget it like `WholeProjectionTick` and skip it under `HeapPressure`.
+- `CorpusContext.Reads.of` (IdentityResolver.scala:382) coverage must be complete. Mutation teeth must cover every new key component.
+- Step 3 produces interim no-matches after merges.
+
+> Status against this plan (no-drift agent, 2026-10-25): step 1 done (ddd1c1951). Step 2 done: the fill's TMDB, cast and
+> production reads, the lean record and `thisYear` are in the receipt; corrections and the candidates cache have
+> receipts too. Step 3 done for the `unreached` short-circuit, the merge transfer and `rereads`. `ClusterKeys.absorbed`
+> only names a merge to the staging screen now, and `askedNow` only spares a second inline ask (asking, never a take).
+> Steps 4 and 5 are not started.
 
 ## What still blocks retiring the checks
 
