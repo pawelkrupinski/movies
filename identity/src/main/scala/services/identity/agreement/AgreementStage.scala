@@ -1,7 +1,8 @@
 package services.identity.agreement
 
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision, StoredFamily, WaitingOn}
+  IdentityMeasures, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision, StableNames, StoredFamily,
+  WaitingOn}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.concurrent.TrieMap
@@ -76,7 +77,7 @@ import scala.collection.mutable
  * a quiet one changes no wait.
  *
  * Each cluster is NAMED by its KEY ([[keyOf]], docs/design/identity-cluster-identity.md): a counter of its own, assigned
- * by overlap as the projection's film ids are ([[ClusterKeys]]), and kept in `keyStore` with each cluster's first
+ * by overlap as the projection's film ids are ([[StableNames]]), and kept in `keyStore` with each cluster's first
  * listing, which a restart re-attaches it by — what the staging screen and the drift check name a cluster by. A key
  * decides nothing (docs/design/identity-no-drift.md: every change re-evaluates everything as if all the data had been
  * there from the start): a verdict is found by its listings under whichever key it was filed ([[heldFor]]), and stands
@@ -131,7 +132,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         onTmdb = cluster.exists(_.blindAt.isDefined))
     }
 
-  /** `decision`'s cluster key ([[ClusterKeys]]) as the last apply left it: of a model decision it was handed, or of what
+  /** `decision`'s cluster key ([[StableNames]]) as the last apply left it: of a model decision it was handed, or of what
    *  it took one as. Read off maps no apply changes once built, from any thread, allocating nothing; a decision no apply
    *  was handed is keyed by its first listing ([[StoredFamily.idOf]]), as nothing the stage keeps is. */
   def keyOf(decision: ResolverDecision): String = {
@@ -149,7 +150,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   @volatile private var keyed       = new java.util.IdentityHashMap[ResolverDecision, String]()
   @volatile private var keyedBefore = new java.util.IdentityHashMap[ResolverDecision, String]()
   /** Each live key's model decision, as the last apply was handed it: those the model no longer hands over are the
-   *  clusters gone, whose keys the clusters overlapping them take ([[ClusterKeys]]). */
+   *  clusters gone, whose keys the clusters overlapping them take ([[StableNames]]). */
   private val live    = mutable.HashMap.empty[Long, ResolverDecision]
   /** Each live key's first listing as `keyStore` holds it, and the next key the counter hands out. */
   private val firsts  = mutable.HashMap.empty[Long, String]
@@ -371,7 +372,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     resolution.copy(decisions = decisions)
   }
 
-  /** Keys each decision of `resolution` with listings into `pass.keys` ([[ClusterKeys]]): one the last apply was handed
+  /** Keys each decision of `resolution` with listings into `pass.keys` ([[StableNames]]): one the last apply was handed
    *  keeps its key; the rest take the keys of the clusters gone since by overlap — on the first apply, the stored key of
    *  their first listing first ([[keyStore]]), every other fresh. A key a merge absorbed is told the staging screen
    *  ([[services.identity.staging.StagingEvent.Merged]]); the keys that moved are stored. A key only NAMES a cluster:
@@ -396,10 +397,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         unkeyed.indices.foreach(i => byFirst.get(firstOf(i)).foreach(key => attached(key) = i))
       }
       val open     = unkeyed.indices.filterNot(attached.valuesIterator.toSet)
-      val assigned = ClusterKeys.assign(gone, open.map(unkeyed(_).members), counter)
+      val assigned = StableNames.assign(gone, open.map(unkeyed(_).members), counter)
       val keyOfIndex = Array.fill(unkeyed.size)(-1L)
       attached.foreachEntry((key, i) => keyOfIndex(i) = key)
-      open.indices.foreach(j => keyOfIndex(open(j)) = assigned.keys(j))
+      open.indices.foreach(j => keyOfIndex(open(j)) = assigned.names(j))
       val retired = (gone.iterator.map(_._1) ++ stored.iterator.flatMap(_.keys.map(_.key))).toSet -- keyOfIndex
       val moved   = unkeyed.indices.collect { case i if !storedFirsts.get(keyOfIndex(i)).contains(firstOf(i)) => StoredKey(keyOfIndex(i), firstOf(i)) }
       // stored first: a write that fails leaves the stage as it was, and the next apply keys the same decisions again

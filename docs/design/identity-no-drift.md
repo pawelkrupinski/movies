@@ -120,7 +120,7 @@ Each item has a verdict:
 |---|---|---|---|---|
 | 1 | Stored families plus their slice digest | `IncrementalResolver.families`, `IdentityModelStore` | (a) cache | Reused only when the digest of every corpus fact the family read matches (`CorpusContext.slice`, a superset). On restore, nodes and claims are checked too. `IncrementalResolverSpec` checks every event against a whole resolve. |
 | 1b | The model's decisions kept WITHOUT their trace (`DecisionTrace.Empty`), restored so from the store | `IncrementalResolver.remember`, `ResolverDecisionBson` | **(b) fixed** | The stage's fill reads the model's trace (`UnifiedEvidence`'s `rule.*` signals and the guards they lift), so prod's fill never read what a whole resolve's did. This was UK "CBeebies Panto" ×11 and the 216-row 573 replay divergence. The model now keeps, and stores, what a stage reads of a no-match's trace (`DecisionTrace.kept`: each accepted node's rule and candidate). Cost: a few small nodes per no-match decision that a node accepted alone. Specs: `IncrementalResolverSpec` "hand a stage after it what a resolve ... hands it", `LateInputEquivalenceSpec` (CBeebies unmarked). Keeping the trace then made prod's fill take what the whole resolve's always took, wrongly: the 11 CBeebies listings and Hot Rock gained a film the model had decided apart as none (a node's title rule took it, `BilledPiece` refused it), the overruled rule lifting the fill's guards. A decision apart (`DecisionTrace.decidedApart`: bills both works, billed as one piece, an uncorroborated namesake) now lends the fill no rule, whole or incremental, and keeps none. Spec: `LateInputEquivalenceSpec` "...a pantomime TMDB holds a record of". |
-| 2 | Family ids, `freedIds` | `IncrementalResolver` | (a) name | Labels only. Decisions are sorted by first member. |
+| 2 | Family ids, `freedIds` | `IncrementalResolver` | (a) name | Labels only. Decisions are sorted by first member. Not `StableNames`: they are in-memory slot numbers, reused through the free list, never stored or shown, and overlap naming would cost a pass per update for nothing. The stored family's document name (`StoredFamily.idOf`, its smallest listing) is not either: a restore finds a family's document from its listings alone, with no previous names to overlap. The staging screen's rows are named by the cluster key, so they are `StableNames`' already. |
 | 3 | Rules version | `IncrementalResolver.rulesVersion` | (a) | The code digest is the compiler's closure of the resolver (`IdentityRulesSources`). The normalizer and its resources are reached, so they are covered. |
 | 4 | `LiveCorpus` memos (`heads`, `records`, candidates) | `LiveCorpus` | (a) cache, given the event feed | `LiveCorpusSpec` checks equality with `CorpusContext.of` after every event. Gap: a detail page or record filed WITHOUT its `AnswersChanged` event stays stale until a restart. That is a feed-delivery property, not stored state. |
 | 5 | FilmIds, `IdAssigner`, `FilmIdCounters` | projection | (a) name | The film and members come from the decision. The names are `StableNames`' (`StableNamesSpec`), and neither rules closure reaches the code that hands them out (`IdentityRulesVersionSpec` "leave out the projection's film ids"). |
@@ -133,7 +133,7 @@ Each item has a verdict:
 | 11 | Verdicts adopted under a key (by first listing) | `AgreementStage.adopt` | **(c) deleted** | Subsumed by 10: a legacy verdict is found by its digest. `AgreementKeyingSpec`. |
 | 12 | Merge carried memories: union of `unreached` and `askedNow` | `keying` | **(c) deleted** | A merge names the survivor and carries nothing. `AgreementKeyingSpec` "a merge ... take on none of the younger's memories". |
 | 13 | Settled because it settled before (`unreached.contains`) | `resolved` | **(c) fixed** | A cluster settles when every question it waits on was attempted, which is the question memory's to say. `AgreementKeyingSpec` "decided as a whole resolve decides it". |
-| 14 | Cluster keys, counter, key store, restart re-attach | `ClusterKeys`, `AgreementKeys` | (a) name | Nothing is found by a key (10). Harness property 3 restarts with keys kept, lost and renumbered. The harness's twin property runs a second stage whose keys count from elsewhere and are lost, renumbered or permuted on every restart: groupings, takes, waits (`waitingOn`) and the backlog stay identical. |
+| 14 | Cluster keys, counter, key store, restart re-attach | `StableNames`, `AgreementKeys` | (a) name | Nothing is found by a key (10). Harness property 3 restarts with keys kept, lost and renumbered. The harness's twin property runs a second stage whose keys count from elsewhere and are lost, renumbered or permuted on every restart: groupings, takes, waits (`waitingOn`) and the backlog stay identical. |
 | 15 | `unreached` (questions none answered, asked every pass) | `AgreementStage` | (a) asking only | It no longer decides a take (13). It can be derived from the receipts' unanswered entries; see Simplifications. It is the one place a name still reaches the asking: a restart seeds it under the key each verdict was filed by, so with keys lost or renumbered a cluster's never-answered questions go unasked (or another's are asked). The twin's "ask what the twin asks" is pending on it. |
 | 16 | `askedNow` (inline ask once) | `AgreementStage` | (a) asking only | The answers it files are inputs. It only stops a second 5-second inline wait. |
 | 17 | `checked` (digest, version) | `AgreementStage` | (a) cache validity | Sound once every receipt entry's filing moves the version (8) and the year clears it (9). |
@@ -293,13 +293,13 @@ On the incremental side, the order dependence is limited to interim states: batc
 2. **Close the verdict key gaps:** record the fill's TMDB, cast and production reads, and add the year. Moved takes are listed.
 3. **Remove the agreement memories that affect takes:**
    - the `unreached` short-circuit;
-   - the merge transfer and `ClusterKeys.absorbed`;
+   - the merge transfer and `StableNames.absorbed`;
    - key `rereads`/`askedNow` by question and answer state.
    The owner HAS signed off: the no-stickiness principle reverses the earlier "a merge never makes a settled half wait anew". List the clusters that wait again.
 4. **One entry point:** `IncrementalResolver.update` becomes `resolve(listings, memo)`, where the partition is computed by closure over the memo's block keys and a memo entry is valid only if its key compares equal. Event invalidation becomes an index over the memo, with a full-validation tick and a drift counter. `restore` becomes memo validation. Gated by `--drift` and `IdentityLiveDrift`.
 5. **Projection record stickiness:** derive `heldLinks` and the base record from current inputs only. Keep `IdAssigner`/`FilmIdCounters` as documented persisted inputs.
 
-**What can be deleted:** about 150 of `IncrementalResolver`'s 414 lines, `IdentityDriftCheck` and its spec (219), about 40 lines of `AgreementStage`, and `ClusterKeys.absorbed`.
+**What can be deleted:** about 150 of `IncrementalResolver`'s 414 lines, `IdentityDriftCheck` and its spec (219), about 40 lines of `AgreementStage`, and `StableNames.absorbed`.
 
 ### 5. Risks
 
@@ -309,7 +309,7 @@ On the incremental side, the order dependence is limited to interim states: batc
 
 > Status against this plan (no-drift agent, 2026-10-25): step 1 done (ddd1c1951). Step 2 done: the fill's TMDB, cast and
 > production reads, the lean record and `thisYear` are in the receipt; corrections and the candidates cache have
-> receipts too. Step 3 done for the `unreached` short-circuit, the merge transfer and `rereads`. `ClusterKeys.absorbed`
+> receipts too. Step 3 done for the `unreached` short-circuit, the merge transfer and `rereads`. `StableNames.absorbed`
 > only names a merge to the staging screen now, and `askedNow` only spares a second inline ask (asking, never a take).
 > Step 4 is not started. Step 5 is done but for the `searchTitle` and the venue slot's prior-slot carry (item 7).
 

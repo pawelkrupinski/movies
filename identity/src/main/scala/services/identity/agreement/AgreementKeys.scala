@@ -9,7 +9,7 @@ import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Sing
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-/** One live cluster's key as stored: the stage's counter ([[ClusterKeys]]) and the cluster's first listing
+/** One live cluster's key as stored: the stage's counter ([[services.identity.StableNames]]) and the cluster's first listing
  *  ([[services.identity.StoredFamily.idOf]]) — what a restart re-attaches the key by. */
 final case class StoredKey(key: Long, first: String)
 

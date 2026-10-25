@@ -38,9 +38,9 @@ So the real losses are the per-cluster MEMORIES (settle, inline ask, wait start)
 
 ## Status
 
-Implemented 2026-10-25 as decided below: `ClusterKeys` (the overlap rule), `AgreementKeys` (`identity_agreement_keys`,
+Implemented 2026-10-25 as decided below: `StableNames` (the overlap rule, the projection's film ids' too), `AgreementKeys` (`identity_agreement_keys`,
 in-memory default), `AgreementStage.keying`/`adopt`/`keyOf`, `StagingEvent.Merged`, and `ProdMirror` reading the mirror's
-verdicts through the key store. Specs: `ClusterKeysSpec`, `AgreementKeyingSpec`, `IdentityStagingPublisherSpec` (a merged
+verdicts through the key store. Specs: `StableNamesSpec`, `AgreementKeyingSpec`, `IdentityStagingPublisherSpec` (a merged
 cluster's wait start).
 
 The owner's decisions (2026-10-25) on the three open questions:
@@ -98,7 +98,7 @@ The counter and each live cluster's key must outlive a restart, or the first app
 
 - **Merge** (clusters A < B join): the merged cluster keeps A. A's verdict is decided again (its digest moved). A's
   settle memory and inline-ask mark carry over, and B's are UNIONED into them (the owner's decision 1): B's key is
-  retired but ABSORBED (`ClusterKeys.Assigned.absorbed`, by the next cluster holding most of its listings — which
+  retired but ABSORBED (`StableNames.Named.absorbed`, by the next cluster holding most of its listings — which
   always kept an older key), its `unreached` added to A's and its `askedNow` mark set on A. Staging: B's row resolves
   as `regrouped`; the stage tells the screen `StagingEvent.Merged(A, B)`, and A's row is staged since the EARLIER of
   its own wait's start and B's (the publisher reads B's from its published row, so this holds across a restart too).
