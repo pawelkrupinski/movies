@@ -13,9 +13,7 @@ import services.FleetDatabase
  *  `mongo-ci-read` endpoint), because the user names are what drifted (`kinowo_app` in every doc while prod ran
  *  `kinowo_app_2`, 2026-10-25).
  *
- *  - `app`: `readWrite` on every country's corpus and on the fleet's own database. Both the setting's fallback
- *    ([[FleetDatabase.Legacy]], Poland's corpus) and [[FleetDatabase.Dedicated]] are covered, so the grant holds
- *    on either side of the move.
+ *  - `app`: `readWrite` on every country's corpus and on the fleet's own database ([[FleetDatabase.Dedicated]]).
  *  - `ci-read`: `read` on every country's corpus (the nightly fixture recorder), and nothing else.
  *
  *  Checked in as `scripts/mongo-grants.tsv` so the tool needs no JVM; [[MongoGrantsListSpec]] fails when the

@@ -185,7 +185,7 @@ groups:
             drawn: <exception>`. After a deploy, suspect the template, the fonts or libvips.
 
       # THE FACEBOOK RE-SCRAPE QUEUE CANNOT CLEAR IN 36 HOURS. Every country's worker drains ONE fleet
-      # queue (kinowo.facebook_rescrapes) at one page per 20 s until Facebook refuses the app -- after
+      # queue (kinowo_fleet.facebook_rescrapes) at one page per 20 s until Facebook refuses the app -- after
       # 45-105 pages (2026-10-11/12) -- and the whole fleet waits an hour: ~50 an hour in practice,
       # in bursts. So the SIZE of the queue says nothing on its own; what pages is its DRAIN TIME:
       # the pages waiting over the pages actually sent per hour across the last six hours (three or

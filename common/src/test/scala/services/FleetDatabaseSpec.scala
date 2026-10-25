@@ -5,9 +5,9 @@ import org.scalatest.matchers.should.Matchers
 import settings.{FleetDatabaseName, MongoDatabaseName, ProcessConfiguration}
 import tools.Env
 
-/** Where every country's web and worker keep the fleet's shared state. The fallback to Poland's
- *  `kinowo` is what lets this ship before the fleet's collections are copied out of it; the
- *  setting is what moves them, and the refusal keeps them from landing beside another corpus. */
+/** Where every country's web and worker keep the fleet's shared state: `kinowo_fleet` by default
+ *  since the move out of Poland's `kinowo` (docs/fleet-database-migration.md), and never a
+ *  country's corpus database, Poland's included. */
 class FleetDatabaseSpec extends AnyFlatSpec with Matchers {
 
   private def fromEnv(pairs: (String, String)*): MongoDatabaseName =
@@ -17,22 +17,20 @@ class FleetDatabaseSpec extends AnyFlatSpec with Matchers {
     fromEnv("MONGODB_FLEET_DB" -> "kinowo_fleet") shouldBe MongoDatabaseName("kinowo_fleet")
   }
 
-  it should "stay on Poland's database while MONGODB_FLEET_DB is unset, so a deploy before the copy changes nothing" in {
-    fromEnv("KINOWO_COUNTRY" -> "uk") shouldBe MongoDatabaseName("kinowo")
+  it should "default to the fleet's own database when MONGODB_FLEET_DB is unset" in {
+    fromEnv("KINOWO_COUNTRY" -> "uk") shouldBe MongoDatabaseName("kinowo_fleet")
   }
 
   // Blank is how a ConfigMap switches a setting off: the key stays, the value empties.
   it should "treat a blank value as unset and trim a padded one" in {
-    FleetDatabase.name(Some(FleetDatabaseName("   "))) shouldBe FleetDatabase.Legacy
+    FleetDatabase.name(Some(FleetDatabaseName("   "))) shouldBe FleetDatabase.Dedicated
     FleetDatabase.name(Some(FleetDatabaseName(" kinowo_fleet "))) shouldBe FleetDatabase.Dedicated
   }
 
-  it should "accept Poland's database by name, the rollback while the move is pending" in {
-    FleetDatabase.name(Some(FleetDatabaseName("kinowo"))) shouldBe FleetDatabase.Legacy
-  }
-
-  it should "refuse any other country's corpus database" in {
-    models.Country.all.filterNot(_ == models.Country.Poland).foreach { country =>
+  // `kinowo` was the rollback while the move was pending; after it, naming it would split the
+  // fleet's queue and quota between two databases, so it fails the boot like every other corpus.
+  it should "refuse every country's corpus database, Poland's included" in {
+    models.Country.all.foreach { country =>
       withClue(country.code) {
         an[IllegalArgumentException] should be thrownBy FleetDatabase.name(Some(FleetDatabaseName(country.mongoDb)))
       }

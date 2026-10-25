@@ -71,7 +71,7 @@ trait ShareCardWiring { self: WorkerWiring =>
     MongoConnection.forDatabase(mongoAddress.uri, fleetDatabaseName, MongoRequirement.Optional,
       MongoTuning.from(configuration, settings.ProcessTier.Worker), sharedMongoClient)
 
-  /** `MONGODB_FLEET_DB`, else Poland's `kinowo` ([[services.FleetDatabase]]). */
+  /** `MONGODB_FLEET_DB`, else `kinowo_fleet` ([[services.FleetDatabase]]). */
   lazy val fleetDatabaseName: settings.MongoDatabaseName = services.FleetDatabase.name(configuration.fleetDatabase)
 
   private lazy val facebookGraph: Option[FacebookGraph] = FacebookGraph.fromConfiguration(configuration, tlsContext)

@@ -6,28 +6,25 @@ import settings.{FleetDatabaseName, MongoDatabaseName}
  *  quota (`facebook_rescrapes`), the film pages Facebook has fetched (`facebook_fetches`) and the
  *  fleet-wide host paces (`fleet_host_pace`).
  *
- *  WHICH DATABASE: `MONGODB_FLEET_DB` when set, else [[Legacy]], Poland's own `kinowo`. The fleet
- *  started there because the deployments' Mongo user held rights only on the country databases,
- *  so a new database failed every write `Unauthorized` until the server granted it. Beside the
- *  Polish corpus, a cleanup of a fleet collection is one wrong database away from deleting
- *  Poland's live data (2026-10-24), so the fleet moves to [[Dedicated]]: grant, copy, then set
- *  `MONGODB_FLEET_DB`. The ordered steps are in `docs/fleet-database-migration.md`. Unset, every
- *  process keeps reading `kinowo`, which is what makes this code safe to deploy before the copy.
+ *  WHICH DATABASE: `MONGODB_FLEET_DB` when set, else [[Dedicated]], `kinowo_fleet`. The fleet
+ *  started in Poland's own `kinowo`, because the deployments' Mongo user held rights only on the
+ *  country databases. Beside the Polish corpus, a cleanup of a fleet collection was one wrong
+ *  database away from deleting Poland's live data (2026-10-24), so the fleet moved: granted,
+ *  copied, and switched by setting on 2026-10-25 (`docs/fleet-database-migration.md`), then made
+ *  the default here once the soak was over.
  *
- *  A COUNTRY'S CORPUS IS REFUSED, Poland's excepted while the move is pending: pointing the fleet
- *  at `kinowo_uk` would put the fleet's state beside another corpus, the very shape being undone. */
+ *  A COUNTRY'S CORPUS IS REFUSED, Poland's included: pointing the fleet at one would put the
+ *  fleet's state back beside a corpus, the very shape that was undone. `MONGODB_FLEET_DB=kinowo`,
+ *  the rollback while the move was pending, now fails the boot rather than splitting the queue. */
 object FleetDatabase {
 
-  /** Where the fleet lived before it had a database of its own, and still lives while `MONGODB_FLEET_DB` is unset. */
-  val Legacy: MongoDatabaseName = MongoDatabaseName(models.Country.Poland.mongoDb)
-
-  /** The fleet's own database, which `MONGODB_FLEET_DB` names once the collections are copied. */
+  /** The fleet's own database, and the default. */
   val Dedicated: MongoDatabaseName = MongoDatabaseName("kinowo_fleet")
 
-  /** The fleet database `configured` (`MONGODB_FLEET_DB`) names, or [[Legacy]] when it names none. */
+  /** The fleet database `configured` (`MONGODB_FLEET_DB`) names, or [[Dedicated]] when it names none. */
   def name(configured: Option[FleetDatabaseName]): MongoDatabaseName =
-    configured.map(_.value.trim).filter(_.nonEmpty).fold(Legacy) { value =>
-      require(value == Legacy.value || !models.Country.all.exists(_.mongoDb == value),
+    configured.map(_.value.trim).filter(_.nonEmpty).fold(Dedicated) { value =>
+      require(!models.Country.all.exists(_.mongoDb == value),
         s"MONGODB_FLEET_DB=$value is a country's corpus database; the fleet's state does not belong beside one " +
           s"(use ${Dedicated.value})")
       MongoDatabaseName(value)
