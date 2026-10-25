@@ -246,6 +246,12 @@ trait TestWiring extends WorkerWiring {
     moved
   }
 
+  // A projection that outwaits production's 10 minutes is refused, and the harness's first one is the whole corpus's
+  // take-up: 256-364 s on a free runner, past 600 s on a saturated one (Identity model convergence run 1680: germany's
+  // order-independence rows projected 0 films, `Vector() was empty`). It waits the take-up out; the suite's own step
+  // timeout bounds it.
+  override def identityModelTimeout: scala.concurrent.duration.FiniteDuration = TestWiring.ModelTimeout
+
   // The harness projects by hand (`projectIdentity`): the trigger production runs on a timer never runs here.
   override protected lazy val identityProjectionTriggerScheduler: java.util.concurrent.ScheduledExecutorService =
     new tools.ManualScheduler(new tools.MutableClock(TestWiring.FixedInstant))
@@ -446,6 +452,10 @@ trait TestWiring extends WorkerWiring {
 }
 
 object TestWiring {
+  /** How long a harness projection waits on the model: past any take-up a starved runner can take, inside every suite's
+   *  step timeout. */
+  val ModelTimeout: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(2, "hours")
+
   /** The instant every harness clock starts at. */
   val FixedInstant: java.time.Instant = java.time.Instant.parse("2026-06-08T12:00:00Z")
 

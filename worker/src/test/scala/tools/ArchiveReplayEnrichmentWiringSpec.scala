@@ -172,6 +172,12 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // An unconfigured run is the EMPTY case of a configured one, not a second mode. It used
   // to be a second mode — no directory meant a fetch that refused every call, which took
   // TMDB's key away with it — and the leg then ran to completion having enriched nothing.
+  // Identity model convergence run 1680: on a saturated runner germany's whole-corpus take-up ran past production's
+  // 10 minutes, the projection was refused as "not ready", and the order-independence rows compared 0 films
+  "the archive replay wiring's projection" should "wait the model's take-up out past production's wait" in {
+    wiringWith(None, new CountingLeaf).identityModelTimeout should be > modules.wiring.IdentityProjectionWiring.ModelTimeout
+  }
+
   "the archive replay directory" should "be named after the country when nothing points it elsewhere" in {
     ArchiveReplayWiring.fixtureDirectory(Country.Poland, new settings.ProcessConfiguration(Env.of()))  shouldBe "enrichment-pl"
     ArchiveReplayWiring.fixtureDirectory(Country.Germany, new settings.ProcessConfiguration(Env.of())) shouldBe "enrichment-de"

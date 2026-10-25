@@ -21,6 +21,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     new MongoScrapeArchiveRepository(mongoConnection.database, IdentityListingIntake.Collection,
       daysUnread = workerMetrics.identityAgreement.daysUnread(country.code, "accepted"))
 
+  /** How long a projection waits on the model ([[IdentityProjectionWiring.ModelTimeout]]); a harness that must see the
+   *  take-up through, however starved its runner, waits longer. */
+  def identityModelTimeout: scala.concurrent.duration.FiniteDuration = IdentityProjectionWiring.ModelTimeout
+
   /** The persisted FilmId map (`identity_film_ids`), in memory without a database. */
   lazy val filmIdCounterStore: FilmIdCounterStore =
     mongoConnection.database.fold[FilmIdCounterStore](new InMemoryFilmIdCounterStore)(new MongoFilmIdCounterStore(_))
@@ -37,7 +41,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       listings    = () => identityListingIntake.projectedByVenue(liveCinemas),
       changedListings = () => identityListingIntake.projectedChanged(liveCinemas),
       rows        = identityListingIntake.rowsOf,
-      resolve     = IdentityProjection.modelled(identityModel, IdentityProjectionWiring.ModelTimeout),
+      resolve     = IdentityProjection.modelled(identityModel, identityModelTimeout),
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
       details     = movieService.withFilmDetails,
