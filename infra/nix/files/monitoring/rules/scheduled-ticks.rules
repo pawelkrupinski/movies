@@ -52,8 +52,10 @@ groups:
           summary: "{{ $labels.country }} worker loop {{ $labels.tick }} has not completed a run in over three of its periods"
           description: >-
             The value is how many seconds ago the loop last completed a run (or was due to run its
-            first). Its scheduler thread died, its tick is hanging, or every tick is throwing:
-            search the worker's logs for `{{ $labels.tick }} tick failed`, and take a thread dump
+            first). Its scheduler thread died, its tick is hanging, or every tick is throwing or
+            ending incomplete (a failure the tick caught and logged itself: a failed read or write):
+            search the worker's logs for `{{ $labels.tick }} tick failed` and for the loop's own
+            warnings, and take a thread dump
             (`jcmd 1 Thread.print` in the pod) for a tick that is stuck rather than failing. A
             restart re-arms every loop, which clears this; take the dump first, or the cause goes
             with the process.
@@ -73,8 +75,9 @@ groups:
             first). `read-model-backstop` / `read-model-cold-retry` stale means the served listing
             is no longer being re-read and may be frozen; `web-movie-metrics` stale means the
             films-served gauges (and every alert reading them) are repeating an old sample. Search
-            the web pod's logs for `{{ $labels.tick }} tick failed`, and take a thread dump (`jcmd 1
-            Thread.print`) before restarting.
+            the web pod's logs for `{{ $labels.tick }} tick failed` and, for a run that ended
+            incomplete (a failed read or write it caught), the loop's own warnings; take a thread
+            dump (`jcmd 1 Thread.print`) before restarting.
 
       # THE COMPANIONS. The two rules above are comparisons and cannot fire without their series,
       # so a tier that stops publishing the family altogether -- a wiring that lost its recorder, a

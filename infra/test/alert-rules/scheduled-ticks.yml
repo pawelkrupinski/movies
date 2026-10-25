@@ -69,10 +69,11 @@ tests:
               description: >-
                 The value is how many seconds ago the loop last completed a run (or was due to run
                 its first). Its scheduler thread died, its tick is hanging, or every tick is
-                throwing: search the worker's logs for `scrape-reaper tick failed`, and take a
-                thread dump (`jcmd 1 Thread.print` in the pod) for a tick that is stuck rather than
-                failing. A restart re-arms every loop, which clears this; take the dump first, or
-                the cause goes with the process.
+                throwing or ending incomplete (a failure the tick caught and logged itself: a failed
+                read or write): search the worker's logs for `scrape-reaper tick failed` and for the
+                loop's own warnings, and take a thread dump (`jcmd 1 Thread.print` in the pod) for a
+                tick that is stuck rather than failing. A restart re-arms every loop, which clears
+                this; take the dump first, or the cause goes with the process.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # AN HOURLY LOOP IS HELD TO THREE HOURS, NOT THE FLOOR: two hours stale is quiet, past three
@@ -105,10 +106,11 @@ tests:
               description: >-
                 The value is how many seconds ago the loop last completed a run (or was due to run
                 its first). Its scheduler thread died, its tick is hanging, or every tick is
-                throwing: search the worker's logs for `settle tick failed`, and take a thread dump
-                (`jcmd 1 Thread.print` in the pod) for a tick that is stuck rather than failing. A
-                restart re-arms every loop, which clears this; take the dump first, or the cause
-                goes with the process.
+                throwing or ending incomplete (a failure the tick caught and logged itself: a failed
+                read or write): search the worker's logs for `settle tick failed` and for the
+                loop's own warnings, and take a thread dump (`jcmd 1 Thread.print` in the pod) for a
+                tick that is stuck rather than failing. A restart re-arms every loop, which clears
+                this; take the dump first, or the cause goes with the process.
       - eval_time: 1h
         alertname: WebScheduledTickStale
         exp_alerts: []
@@ -126,8 +128,9 @@ tests:
                 its first). `read-model-backstop` / `read-model-cold-retry` stale means the served
                 listing is no longer being re-read and may be frozen; `web-movie-metrics` stale
                 means the films-served gauges (and every alert reading them) are repeating an old
-                sample. Search the web pod's logs for `read-model-backstop tick failed`, and take a
-                thread dump (`jcmd 1 Thread.print`) before restarting.
+                sample. Search the web pod's logs for `read-model-backstop tick failed` and, for a
+                run that ended incomplete (a failed read or write it caught), the loop's own
+                warnings; take a thread dump (`jcmd 1 Thread.print`) before restarting.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A LOOP ARMED WITH A LONG FIRST DELAY is seeded with its due time, in the future: not stale.
