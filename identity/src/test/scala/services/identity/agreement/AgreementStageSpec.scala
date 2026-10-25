@@ -573,29 +573,6 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     (restarted.film, restarted.explanation.last) shouldBe ((fresh.film, fresh.explanation.last))
   }
 
-  it should "decide a cluster it forgot as a stage with nothing kept, its stored verdict dropped (the drift check's adopt)" in {
-    val verdicts = new InMemoryAgreementVerdicts
-    var asked = 0
-    val counting = agreeing().map { case (family, answers) => family -> new FamilyAnswers {
-      val family: VoterFamily = answers.family
-      def titled(text: String)     = { asked += 1; answers.titled(text) }
-      def directedBy(name: String) = { asked += 1; answers.directedBy(name) }
-      def record(id: String)       = { asked += 1; answers.record(id) }
-    } }
-    val stage = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
-      clock = _root_.tools.SpecClock.Pinned)
-    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
-    asked = 0
-    val again = stage.apply(resolution, listingOf, version = 1)
-    asked shouldBe 0   // the same decisions, nothing filed: the verdict stands unread
-    val cluster = stage.keyOf(again.decisions.head)
-    stage.forget(Set(cluster))
-    verdicts.all().map(_.id) should not contain cluster
-    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
-    asked should be > 0   // read again, as a fresh stage reads it
-    verdicts.all().map(_.id) should contain (cluster)
-  }
-
   it should "decide again a verdict stored under other rules" in {
     val verdicts = new InMemoryAgreementVerdicts
     new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,

@@ -151,17 +151,6 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     } shouldBe empty
   }
 
-  it should "resolve the families holding the listings asked again, deciding as a whole resolve (the drift check's adopt)" in {
-    val c     = GeneratedIdentityCorpus.generate(Seeds.head, normalizer, films = 12, listings = 48)
-    val model = new IncrementalResolver(c.lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.batch(seen = c.listings)
-    val before = model.familiesResolved
-    model.reResolve(c.listings.take(5).map(_.key))
-    model.familiesResolved should be > before
-    ResolutionSignature.of(model) shouldBe ResolutionSignature.of(IdentityResolver.resolveWith(c.listings, c.lookups, normalizer, calibration,
-      IdentityResolver.Mutation.None))
-  }
-
   it should "decide as a whole resolve when a full build splits the corpus into small batches" in {
     val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
       .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily

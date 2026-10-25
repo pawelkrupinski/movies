@@ -101,11 +101,6 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     update((left ++ arrived.map(_.key)).flatMap(familyOf).toSet ++ asked, arrived.map(_.key).toSet, moved)
   }
 
-  /** The families holding `keys` resolved again, as if an answer each read had just been filed — what a drift check
-   *  adopting a whole resolve's takes asks (`IdentityDriftCheck.Adopt`); a family that decides as it did moves nothing. */
-  def reResolve(keys: Iterable[ListingKey]): Unit =
-    update(keys.iterator.flatMap(familyOf).toSet, Set.empty, CorpusContext.Changed.None)
-
   /** Take up the model `store` kept, over the listings held now: every stored family whose listings
    *  are all still held and still the same nodes, claimed by no other stored family, and whose
    *  corpus facts read the same (its slice's digest) stands as it was; every other listing — one

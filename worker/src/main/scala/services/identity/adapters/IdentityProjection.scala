@@ -193,8 +193,8 @@ final class IdentityProjection(
       venues.iterator.flatMap(_._2).map(projected => projected.listing.key -> projected.listing).toMap
   }
   private var scopedSinceWhole = 0
-  /** The model's resolution the last projection read, and what the agreement made of it: the live takes the drift check
-   *  compares with a whole resolve ([[IdentityDriftCheck]]). Both are shared with the model and the stage, nothing copied. */
+  /** The model's resolution the last projection read, and what the agreement made of it: the live takes the staging
+   *  publisher reads. Both are shared with the model and the stage, nothing copied. */
   @volatile private var lastTaken: Option[IdentityProjection.Projected] = None
   def lastProjected: Option[IdentityProjection.Projected] = lastTaken
   /** The index, kept from one projection to the next and moved where its inputs moved — afresh after any projection that

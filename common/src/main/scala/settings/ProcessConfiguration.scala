@@ -221,9 +221,6 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_RATING_GATE` (`1` or `true`) — confidence-gated ratings, forced on for a country
    *  that is not in `ReadModelWiring.RatingGateCountries` (those are gated whatever it says). */
   def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
-  /** `KINOWO_IDENTITY_DRIFT_REPAIR` (`1` or `true`) — the nightly identity drift check adopts a whole resolve's takes where
-   *  the live ones drifted from them; unset, it only reports (`IdentityDriftCheck`). */
-  def identityDriftRepair: IdentityDriftRepair = IdentityDriftRepair(env.flag("KINOWO_IDENTITY_DRIFT_REPAIR"))
   // The lookup fill's three settings keep their `KINOWO_IDENTITY_SHADOW_*` env names from when
   // the fill rode the retired shadow run: the deploy manifests (movies-gitops'
   // `worker/overlays/<cc>/patch.yaml` sets `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` for every

@@ -151,11 +151,6 @@ final class IdentityModelService(
     model.map(snapshotOf)
   }
 
-  /** The families holding `keys` resolved again on the model's thread ([[IncrementalResolver.reResolve]]): whether it ran
-   *  within `timeout`. */
-  def reResolve(keys: Set[services.movies.ListingKey], timeout: FiniteDuration): Boolean =
-    onModel(timeout) { catchUp(); model.map(_.reResolve(keys)) }.isDefined
-
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.
   private def snapshotOf(engine: IncrementalResolver) =

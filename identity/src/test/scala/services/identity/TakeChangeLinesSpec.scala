@@ -77,21 +77,6 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
     decided(ResolverDecision.Basis.Poster) shouldBe "poster:vote"
   }
 
-  "A drift line" should "say the live take and the whole resolve's, with a take change's fields, the live one as the take before" in {
-    val live  = ResolverDecision(Seq(muza), Some(122769), 0.4, ResolverDecision.Basis.Agreed, Seq("model why", "imdb, rt agree on 'Roots'"))()
-    val whole = ResolverDecision(Seq(muza), None, 0.4, ResolverDecision.Basis.BelowThreshold, Seq("model why", "no film: one piece of the billing"))()
-    val line  = lines.drift(muza, Some(live), Some(whole), None)
-    val fields = line.fields.toMap
-    line.message should startWith("identity drift: lost Kino Muza | Ojciec chrzestny '72: tmdb 122769 -> none")
-    (fields("kind"), fields("tmdb_before"), fields("tmdb_after"), fields("basis")) shouldBe (("lost", Some(122769), None, Some("BelowThreshold")))
-    (fields("previous_basis"), fields("previous_reason"), fields("reason_last")) shouldBe
-      ((Some("Agreed"), Some("imdb, rt agree on 'Roots'"), Some("no film: one piece of the billing")))
-    fields("drift") shouldBe true
-    (fields("trigger"), fields("previous_decided_by")) shouldBe ((Some("drift-check"), Some("agreed:families")))
-    fields.contains("film_before") shouldBe false
-    fields("repro") shouldBe "scripts/identity-slice pl --key 'Kino Muza|Ojciec chrzestny '\\''72' --ref 0e41a4812"
-  }
-
   "A tick's summary" should "count every take by kind and basis, and say how many were not logged a line each" in {
     val agreed = Some(ResolverDecision.Basis.Agreed)
     val takes  = Seq(TakeChange(muza, Some("f-1"), Some(1), None), TakeChange(muza.copy(venue = "Helios"), Some("f-1"), Some(1), Some(2), basisAfter = agreed),

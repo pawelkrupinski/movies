@@ -15,9 +15,9 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
 2. **One "waiting on" view**: model gaps ∪ agreement unknowns per listing and family, counted as unsettled by the drift
    check. Done 2026-10-24: `services.identity.WaitingOn`, read off the stage's kept waits by
    `AgreementStage.waitingOn` (a cluster's family questions, its fill's TMDB answers, its take's correction's questions);
-   `IdentityDriftCheck` counts a listing waiting on any of them unsettled, and logs how many waited on the agreement
-   alone (`waitingOnAgreement`). The explain page reads the production mirror, which holds no agreement wait: showing it
-   there needs the waits stored, left for when step 4 stores them.
+   the drift check counted a listing waiting on any of them unsettled (the worker's check was deleted; the off-worker
+   one, `scripts.IdentityLiveDrift`, counts it so still). The explain page reads the production mirror, which holds no
+   agreement wait: showing it there needs the waits stored, left for when step 4 stores them.
 3. **One asker with priorities**: new film (inline, small per-tick budget) > agreement > refresh and sweep, spread
    across the day; a non-answer remembered for every kind; an age backstop for what the changes feed misses. It
    builds on the `path` label of `kinowo_worker_http_total` (`tools.HttpPath`) and the paced changes sweep
@@ -185,8 +185,9 @@ A take waits on a model question by the lookup fill's rounds, and on every agree
 
 ## What the table shows (the holes steps 2-4 close)
 
-- **The drift check sees only the model** (verified): `IdentityDriftCheck` counts a key unsettled when
-  `ResolverDecision.unanswered > 0`, the resolver's unanswered candidate queries. An agreement unknown is not counted.
+- **The drift check saw only the model** (verified): the worker's `IdentityDriftCheck`, since deleted (the off-worker
+  check is `scripts.IdentityLiveDrift`), counted a key unsettled when `ResolverDecision.unanswered > 0`, the resolver's
+  unanswered candidate queries. An agreement unknown was not counted.
 - **Three stop-waiting rules**: fill rounds, GapHold's 2 h (reverted), `PartialAfter`'s 10 min with its
   at-least-one-answer condition. Since step 4 the agreement's is one, with no clock: until attempted.
 - **Non-answer memory was partial**: until step 3 only the fill wrote gap markers, and a live miss at take-up left

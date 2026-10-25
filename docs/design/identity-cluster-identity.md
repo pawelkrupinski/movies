@@ -15,7 +15,6 @@ Everything the identity system keeps per CLUSTER is keyed by the cluster's alpha
 |---|---|---|
 | the agreement's verdict, its correction (`correction|<id>`) | `AgreementStage.held`, `identity_agreements` (`MongoAgreementVerdicts`, `_id`) | `idOf` |
 | the stage's waits, checks, settle memory, inline asks | `waiting`, `checked`, `unreached`, `askedNow`, `candidateFilms`, `correctionWaits` | `idOf` |
-| what the drift check forgets on adopt | `IdentityDriftCheck.Adopt` → `AgreementStage.forget` | `idOf` |
 | staging rows | `IdentityStagingPublisher.keyOf` (`identity_staging`) | hash of `idOf` |
 | the model's stored families | `IncrementalResolver` (`storeId`) | `idOf` (out of scope here) |
 
@@ -131,10 +130,10 @@ The counter and each live cluster's key must outlive a restart, or the first app
 ### What reads the key
 
 - `AgreementStage`: `held`, `checked`, `waiting`, `unreached`, `askedNow`, `candidateFilms`, `correctionWaits`, the
-  `correction|<key>` ids, `forget`, and the staging events (`StagingEvent.Waiting/Settled.cluster`).
-- `IdentityDriftCheck.Adopt`: forgets the live decisions' keys, read from the live stage (`stage.keyOf(decision)`).
-  The drift check's WHOLE resolve keys its fresh stage from nothing; it compares takes by listing, so its keys never
-  meet the live ones.
+  `correction|<key>` ids, and the staging events (`StagingEvent.Waiting/Settled.cluster`).
+- The worker's drift check (`IdentityDriftCheck`, with its `Adopt` and `AgreementStage.forget`) was deleted. The
+  off-worker check, `scripts.IdentityLiveDrift`, keys its fresh stage from nothing and compares takes by listing, so its
+  keys never meet the live ones.
 - `IdentityStagingPublisher.keyOf`: the stage's key (hashed short, as now). Rows already in `identity_staging` under
   `idOf` hashes resolve once as `regrouped` at the deploy; resolutions expire in 7 days as ever.
 - Model families (`IncrementalResolver.storeId`) keep `idOf`: they are the model's, read by the model alone.
