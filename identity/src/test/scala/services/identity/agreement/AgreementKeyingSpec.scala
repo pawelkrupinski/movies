@@ -132,6 +132,15 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     restartedRead should be < read   // the re-attached cluster's verdict stood unread: only the new cluster was resolved
   }
 
+  it should "hand out no key retired before it, though its first apply has no cluster to key" in {
+    val keys = new InMemoryAgreementKeys
+    keys.replace(Set.empty, Nil, 9)   // every key below 9 handed out and retired
+    val s = new Stage(keys = keys)
+    s.apply(model(), version = 1)
+    val Seq(cluster) = s.apply(model(unmatched(first)), version = 2)
+    s.stage.keyOf(cluster).toLong should be >= 9L
+  }
+
   "a verdict stored under its cluster's first listing" should "be taken over under the cluster's key, unread, and its old document deleted" in {
     val verdicts = new InMemoryAgreementVerdicts
     val decided  = new Stage(verdicts).apply(model(unmatched(second)), version = 1).head

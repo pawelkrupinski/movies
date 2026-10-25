@@ -381,6 +381,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val before  = keyed
     // on the first apply, every key stored: re-attached by first listing, else retired — and the counter past them all
     val stored  = Option.when(loadedAt.isEmpty)(keyStore.all())
+    stored.foreach(held => nextKey = nextKey max held.next)   // a retired key is never handed out again, keyed now or not
     val unkeyed = mutable.ArrayBuffer.empty[ResolverDecision]
     resolution.decisions.foreach { decision =>
       if (decision.members.nonEmpty) { val key = before.get(decision); if (key != null) pass.keys.put(decision, key) else unkeyed += decision }
@@ -389,7 +390,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     live.foreachEntry((key, decision) => if (!pass.keys.containsKey(decision)) gone += key -> decision.members)
     if (unkeyed.nonEmpty || gone.nonEmpty || stored.exists(_.keys.nonEmpty)) {
       val storedFirsts = stored.fold[collection.Map[Long, String]](firsts)(held => held.keys.iterator.map(k => k.key -> k.first).toMap)
-      val counter      = stored.fold(nextKey)(_.next max nextKey)
+      val counter      = nextKey
       val firstOf  = unkeyed.map(decision => StoredFamily.idOf(decision.members))
       val attached = mutable.LongMap.empty[Int]
       stored.foreach { held =>
