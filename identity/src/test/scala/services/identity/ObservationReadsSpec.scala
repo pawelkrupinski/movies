@@ -10,7 +10,7 @@ class ObservationReadsSpec extends AnyFlatSpec with Matchers {
 
   private val (earlier, filer, later) = (CandidateQuery.Title("Before"), CandidateQuery.Title("Filer"), CandidateQuery.Title("After"))
   private def asked(reads: ObservationReads, query: CandidateQuery)(body: => Unit = ()) =
-    reads.asking(ObservationReads.Question.Query(query)) { reads.read("k"); body }
+    reads.asking(Question.Candidate(query)) { reads.read("k"); body }
 
   "a change a question filed" should "wake every earlier reader but its filer, and no later one" in {
     val reads = new ObservationReads

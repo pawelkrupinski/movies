@@ -1,7 +1,5 @@
 package services.identity
 
-import services.movies.ListingKey
-
 import scala.collection.mutable
 
 /**
@@ -16,7 +14,7 @@ import scala.collection.mutable
  * when its question is next asked ([[forget]]).
  */
 class ObservationReads {
-  import ObservationReads.{Asked, Change, Question}
+  import ObservationReads.{Asked, Change}
   private val asking  = new ThreadLocal[Option[Question]] { override def initialValue() = None }
   private val readers = mutable.HashMap.empty[String, Set[Question]]
   private val keysOf  = mutable.HashMap.empty[Question, Asked]
@@ -62,9 +60,9 @@ class ObservationReads {
 
   private def answersOf(questions: Set[Question]): AnswersChanged =
     AnswersChanged(
-      questions.collect { case ObservationReads.Question.Query(query) => query },
-      questions.collect { case ObservationReads.Question.Record(id) => id },
-      questions.collect { case ObservationReads.Question.Detail(listing) => listing })
+      questions.collect { case Question.Candidate(query) => query },
+      questions.collect { case Question.FilmRecord(id) => id },
+      questions.collect { case Question.VenuePage(listing) => listing })
 
   /** How many keys it tracks: the index a model's questions keep over the store. */
   def keys: Int = synchronized(readers.size)
@@ -83,12 +81,6 @@ object ObservationReads {
     def merge(other: Change): Change = Change(at max other.at, filers ++ other.filers, filed && other.filed)
   }
 
-  enum Question {
-    case Query(query: CandidateQuery)
-    case Record(id: Int)
-    case Detail(listing: ListingKey)
-  }
-
   /** Reads nothing: a reader nobody tracks. */
   val Untracked: ObservationReads = new ObservationReads { override def read(key: String): Unit = () }
 }
@@ -99,7 +91,6 @@ object ObservationReads {
  *  what it fetched; a prefetch drops whatever the last one fetched and nobody asked. */
 final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
                            pool: Option[java.util.concurrent.ExecutorService] = None) extends ForwardingIdentityLookups(inner) {
-  import ObservationReads.Question
   private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
   private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
   private val details = new java.util.concurrent.ConcurrentHashMap[services.movies.ListingKey, Answer[Option[DetailFacts]]]()
@@ -124,9 +115,9 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
 
   private def single[A](ask: => A): A = oneByOne(ask)
   private def served[A](held: A): A = { servedAsks.incrementAndGet(); held }
-  private def askQuery(query: CandidateQuery) = reads.asking(Question.Query(query))(inner.candidates(query))
-  private def askFilm(id: Int)                = reads.asking(Question.Record(id))(inner.film(id))
-  private def askDetail(listing: Listing)     = reads.asking(Question.Detail(listing.key))(inner.detail(listing))
+  private def askQuery(query: CandidateQuery) = reads.asking(Question.Candidate(query))(inner.candidates(query))
+  private def askFilm(id: Int)                = reads.asking(Question.FilmRecord(id))(inner.film(id))
+  private def askDetail(listing: Listing)     = reads.asking(Question.VenuePage(listing.key))(inner.detail(listing))
 
   // Every other question (the hasDetail check, the cast and overview the agreement stage reads, the release day, how the
   // source numbers its films) is forwarded untracked: no read of the model's is tracked by it.
@@ -137,9 +128,9 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   override def prefetchAnswered(): Unit = ()
 
   override def released(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit = {
-    asked.foreach(query => reads.forget(Question.Query(query)))
-    records.foreach(id => reads.forget(Question.Record(id)))
-    pages.foreach(key => reads.forget(Question.Detail(key)))
+    asked.foreach(query => reads.forget(Question.Candidate(query)))
+    records.foreach(id => reads.forget(Question.FilmRecord(id)))
+    pages.foreach(key => reads.forget(Question.VenuePage(key)))
   }
 
   override def prefetch(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[Listing]): Unit = pool.foreach { threads =>

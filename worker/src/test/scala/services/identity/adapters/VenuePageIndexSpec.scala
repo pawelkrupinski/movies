@@ -189,9 +189,9 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val listing  = Listing.of(KinoApollo, CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = Some(Page),
       synopsis = None, cast = Seq.empty, director = Seq.empty, showtimes = Nil), titleNormalizer)
 
-    reads.asking(ObservationReads.Question.Detail(listing.key))(lookups.detail(listing)) shouldBe Answer.Unknown
+    reads.asking(Question.VenuePage(listing.key))(lookups.detail(listing)) shouldBe Answer.Unknown
     world.store(Group, Page, VenuePage.Read(Full)); world.index.settle()
-    reads.asking(ObservationReads.Question.Detail(listing.key))(lookups.detail(listing)) shouldBe
+    reads.asking(Question.VenuePage(listing.key))(lookups.detail(listing)) shouldBe
       Answer.Known(Some(DetailFacts(Some(2021), Seq("Denis Villeneuve"), Some(155), Some("Dune"), Seq("US"), Some("Sand."))))
     reads.changedBy(Seq(VenuePageIndex.keyOf(Group, Page))).details shouldBe Set(listing.key)
   }
