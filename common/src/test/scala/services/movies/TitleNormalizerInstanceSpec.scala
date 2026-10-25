@@ -102,8 +102,14 @@ class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
   }
 
   "the rules a normalizer exposes" should "be that country's filtered set" in {
-    // Poland carries the three country-scoped rules the others drop.
-    pl.rules.rules.size should be > de.rules.rules.size
-    de.rules.rules.size shouldBe uk.rules.rules.size
+    // Every country carries the same unscoped rules, and of the scoped ones only its own: Poland's three, Germany's
+    // trailing AUSVERKAUFT. Read off the rules' own scopes, so a new scoped rule needs no count moved here.
+    val unscoped = uk.rules.rules.filter(_.countries.isEmpty)
+    for ((normalizer, country) <- Seq(pl -> Country.Poland, de -> Country.Germany, uk -> Country.UnitedKingdom)) {
+      normalizer.rules.rules.filter(_.countries.isEmpty) shouldBe unscoped
+      normalizer.rules.rules.filterNot(_.appliesTo(country)) shouldBe empty
+    }
+    pl.rules.rules.size should be > unscoped.size
+    de.rules.rules.size should be > unscoped.size
   }
 }
