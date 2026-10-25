@@ -84,6 +84,29 @@ check "--root asks the vault for MONGO_ROOT_URI" \
 check "…and exports it as MONGODB_URI" \
   "URI=mongodb://u:p@127.0.0.1:27017/kinowo?authSource=MONGO_ROOT_URI&directConnection=true DB=kinowo" "$out"
 
+show_both() { printf 'APP=%s ROOT=%s' "$MONGODB_URI" "$MONGO_ROOT_URI"; }
+export -f show_both
+out="$(run "$REPO_ROOT/scripts/with-prod-mongo.sh" --both bash -c show_both 2>/dev/null)"
+check "--both asks the vault for both keys in ONE run (one Touch ID)" \
+  "secrets run movies MONGODB_URI MONGO_ROOT_URI -- $BASH $REPO_ROOT/scripts/with-prod-mongo.sh --both bash -c show_both" \
+  "$(grep '^secrets' "$CALLS")"
+check "…exports the app's URI as MONGODB_URI and the root's as MONGO_ROOT_URI, both through the tunnel" \
+  "APP=mongodb://u:p@127.0.0.1:27017/kinowo?authSource=MONGODB_URI&directConnection=true ROOT=mongodb://u:p@127.0.0.1:27017/kinowo?authSource=MONGO_ROOT_URI&directConnection=true" \
+  "$out"
+check "…over one tunnel" "1" "$(grep -c '^ssh' "$CALLS")"
+
+out="$(run MONGODB_URI='mongodb://app:pw@10.20.0.13:27017/kinowo?authSource=kinowo' \
+  "$REPO_ROOT/scripts/with-prod-mongo.sh" --both bash -c show_both 2>/dev/null)"
+check "--both with the app's URI already set asks the vault for the root's only" \
+  "secrets run movies MONGO_ROOT_URI -- $BASH $REPO_ROOT/scripts/with-prod-mongo.sh --both bash -c show_both" \
+  "$(grep '^secrets' "$CALLS")"
+
+# Unpinned, the tunnel takes a free port of its own: both URIs must name that same one.
+out="$(run env -u PROD_TUNNEL_PORT "$REPO_ROOT/scripts/with-prod-mongo.sh" --both bash -c show_both 2>/dev/null)"
+ports="$(printf '%s' "$out" | grep -oE '127\.0\.0\.1:[0-9]+' | sort -u)"
+check "--both on a free port puts both URIs on the one port the tunnel took" "1" "$(printf '%s\n' "$ports" | grep -c .)"
+check "…and that port is not the pinned default" "" "$(printf '%s' "$ports" | grep ':27017$')"
+
 run "$REPO_ROOT/scripts/with-prod-mongo.sh" bash -c 'exit 7' >/dev/null 2>&1
 check "the command's exit status is the wrapper's" "7" "$?"
 sleep 0.2
