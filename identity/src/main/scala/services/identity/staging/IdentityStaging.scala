@@ -219,11 +219,7 @@ final class MongoStagingDocuments(collection: MongoCollection[Document]) extends
   def put(docs: Seq[StagingDoc]): Unit =
     docs.grouped(Batch).foreach { batch =>
       expiring
-      val writes = batch.map { doc =>
-        val fields = Document("_id" -> doc.id, Country -> doc.country, Kind -> doc.kind, UpdatedAt -> new Date(doc.updatedAt.toEpochMilli), Body -> doc.body)
-        new ReplaceOneModel[Document](Filters.eq("_id", doc.id),
-          doc.expireAt.fold(fields)(at => fields + (ExpireAt -> new Date(at.toEpochMilli))), new ReplaceOptions().upsert(true))
-      }
+      val writes = batch.map(doc => new ReplaceOneModel[Document](Filters.eq("_id", doc.id), encode(doc), new ReplaceOptions().upsert(true)))
       Await.result(collection.bulkWrite(writes, new BulkWriteOptions().ordered(false)).toFuture(), Timeout)
     }
 
@@ -239,13 +235,27 @@ object MongoStagingDocuments {
   private val ExpireAt  = "expireAt"
   private val Timeout   = 10.seconds
   private val Batch     = 500
+
+  /** A staging document as stored. */
+  def encode(doc: StagingDoc): Document = {
+    val fields = Document("_id" -> doc.id, Country -> doc.country, Kind -> doc.kind, UpdatedAt -> new Date(doc.updatedAt.toEpochMilli), Body -> doc.body)
+    doc.expireAt.fold(fields)(at => fields + (ExpireAt -> new Date(at.toEpochMilli)))
+  }
+
+  /** A stored staging document. */
+  def decode(d: Document): StagingDoc =
+    StagingDoc(d("_id").asString.getValue, d(Country).asString.getValue, d(Kind).asString.getValue,
+      Instant.ofEpochMilli(d(UpdatedAt).asDateTime.getValue), d(Body).asString.getValue,
+      d.get(ExpireAt).map(v => Instant.ofEpochMilli(v.asDateTime.getValue)))
 }
 
-/** [[StagingDocuments]] in memory: a spec's, and a worker's or web's with no database. */
+/** [[StagingDocuments]] in memory, each written as [[MongoStagingDocuments]] stores it to BSON and read back: a spec's, and a
+ *  worker's or web's with no database. */
 final class InMemoryStagingDocuments extends StagingDocuments {
   private val held = TrieMap.empty[String, StagingDoc]
+  private def stored(doc: StagingDoc) = MongoStagingDocuments.decode(services.BsonRoundTrip(MongoStagingDocuments.encode(doc)))
   def index(): Seq[StagingEntry]                    = held.values.toSeq.map(d => StagingEntry(d.id, d.country, d.kind, d.updatedAt))
   def bodies(ids: Seq[String]): Map[String, String] = ids.flatMap(id => held.get(id).map(id -> _.body)).toMap
-  def put(docs: Seq[StagingDoc]): Unit              = docs.foreach(d => held.update(d.id, d))
+  def put(docs: Seq[StagingDoc]): Unit              = docs.foreach(d => held.update(d.id, stored(d)))
   def remove(ids: Seq[String]): Unit                = ids.foreach(held.remove)
 }

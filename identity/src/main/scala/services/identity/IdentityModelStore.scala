@@ -34,11 +34,13 @@ trait IdentityModelStore {
   def recordRulesVersion(version: String): Unit
 }
 
+/** The families as [[MongoIdentityModelStore]] would hold them: each written through its codec to BSON and read back. */
 final class InMemoryIdentityModelStore extends IdentityModelStore {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[String, StoredFamily]
   @volatile private var rules: Option[String] = None
+  private val stored = services.BsonRoundTrip.via(MongoIdentityModelStore.encode, MongoIdentityModelStore.decode)
   def families(): Seq[StoredFamily] = synchronized(kept.values.toSeq)
-  def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = synchronized { kept --= removed; added.foreach(f => kept(f.id) = f) }
+  def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = synchronized { kept --= removed; added.foreach(f => kept(f.id) = stored(f)) }
   def rulesVersion: Option[String] = rules
   def recordRulesVersion(version: String): Unit = rules = Some(version)
 }

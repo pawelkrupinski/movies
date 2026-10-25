@@ -24,10 +24,12 @@ trait VenueSlotFingerprints {
   def update(added: Set[Long], removed: Set[Long]): Unit
 }
 
+/** The fingerprints as [[MongoVenueSlotFingerprints]] would hold them: each written as its document to BSON and read back. */
 final class InMemoryVenueSlotFingerprints extends VenueSlotFingerprints {
   private var kept = Set.empty[Long]
+  private val stored = services.BsonRoundTrip.via(MongoVenueSlotFingerprints.encode, MongoVenueSlotFingerprints.decode)
   def all(): Set[Long] = synchronized(kept)
-  def update(added: Set[Long], removed: Set[Long]): Unit = synchronized { kept = kept -- removed ++ added }
+  def update(added: Set[Long], removed: Set[Long]): Unit = synchronized { kept = kept -- removed ++ added.map(stored) }
 }
 
 /** One document per fingerprint, the fingerprint its `_id`: a projection writes only the ones that moved. */
@@ -37,12 +39,12 @@ final class MongoVenueSlotFingerprints(db: MongoDatabase) extends VenueSlotFinge
 
   def all(): Set[Long] =
     Await.result(collection.find().projection(Projections.include("_id")).batchSize(tools.MongoReplies.Default)
-      .map(_.toBsonDocument.getInt64("_id").getValue).toFuture(), Timeout).toSet
+      .map(d => decode(d.toBsonDocument)).toFuture(), Timeout).toSet
 
   def update(added: Set[Long], removed: Set[Long]): Unit = {
     removed.toSeq.grouped(Batch).foreach(ids => Await.result(collection.deleteMany(Filters.in("_id", ids*)).toFuture(), Timeout))
     added.toSeq.grouped(Batch).foreach { ids =>
-      try Await.result(collection.insertMany(ids.map(id => Document("_id" -> BsonInt64(id))), InsertManyOptions().ordered(false)).toFuture(),
+      try Await.result(collection.insertMany(ids.map(id => Document(encode(id))), InsertManyOptions().ordered(false)).toFuture(),
         Timeout)
       catch {
         // Already there (a write retried, or a worker beside this one wrote it): the fact stands either way.
@@ -57,4 +59,8 @@ object MongoVenueSlotFingerprints {
   private val Timeout      = 60.seconds
   private val Batch        = 10_000
   private val DuplicateKey = 11000
+
+  /** A fingerprint's document: the fingerprint its `_id`. */
+  def encode(fingerprint: Long): org.bson.BsonDocument = new org.bson.BsonDocument("_id", BsonInt64(fingerprint))
+  def decode(document: org.bson.BsonDocument): Long   = document.getInt64("_id").getValue
 }

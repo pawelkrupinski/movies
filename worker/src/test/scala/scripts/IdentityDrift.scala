@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
  *  - TICKS: answers filed a part at a time (each an [[AnswersChanged]] event, as the fill files them), new venues'
  *    scrapes, a re-scrape of half the venues (the changed projection's `republished`), listings that leave and return;
  *  - DEPLOYS: the model and the stage made anew from their stores — each family, verdict and cluster key written as BSON and read
- *    back ([[StoredAsWritten]]) — once under the same rules and once under others (every family and verdict outruled);
+ *    back, as every in-memory store does ([[services.BsonRoundTrip]]) — once under the same rules and once under others (every family and verdict outruled);
  *  - SETTLE: every answer filed and the stage applied until it asks nothing and has no backlog.
  *
  * CHECKPOINTS, each compared listing by listing with the WHOLE resolve ([[IdentityResolver.resolve]] and a fresh stage
@@ -272,10 +272,10 @@ object IdentityDrift {
     val gate             = new Gate(memo(reads), share)
     val docs             = new GatedDocuments(new tools.FiledAnswers.Noting(reads.filed), share)
     val answers          = new Answers(reads, docs, clock, _ => None)
-    private val families = new StoredAsWritten.Families
+    private val families = new InMemoryIdentityModelStore
     private val verdicts = new StoredAsWritten.Verdicts
     /** The stage's cluster keys, kept across deploys as the worker's `identity_agreement_keys` keeps them. */
-    private val keys     = new StoredAsWritten.Keys
+    private val keys     = new agreement.InMemoryAgreementKeys
     private var rules    = "rules-1"
     private val inputs   = inputsOf(reads)
     private def newModel() = inputs.incremental(gate, reads.normalizer, families, rules, IdentityTraceSink.Discard)

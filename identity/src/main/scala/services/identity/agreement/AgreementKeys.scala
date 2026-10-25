@@ -21,12 +21,14 @@ trait AgreementKeys {
   def replace(retired: Set[Long], moved: Seq[StoredKey], next: Long): Unit
 }
 
+/** The keys as [[MongoAgreementKeys]] would hold them: each written through [[AgreementKeys.encode]] to BSON and read back. */
 final class InMemoryAgreementKeys extends AgreementKeys {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[Long, StoredKey]
   private var next = 0L
+  private val stored = services.BsonRoundTrip.via(AgreementKeys.encode, AgreementKeys.decode)
   def all(): AgreementKeys.Held = synchronized(AgreementKeys.Held(kept.values.toSeq, next))
   def replace(retired: Set[Long], moved: Seq[StoredKey], next: Long): Unit = synchronized {
-    kept --= retired; moved.foreach(k => kept(k.key) = k); this.next = next
+    kept --= retired; moved.foreach(k => kept(k.key) = stored(k)); this.next = next
   }
 }
 

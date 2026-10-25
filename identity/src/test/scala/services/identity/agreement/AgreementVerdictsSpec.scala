@@ -65,4 +65,10 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     val standing  = corrected.copy(correction = Some(StoredCorrection(None, None, reads, waiting = true)))
     AgreementVerdicts.decode(AgreementVerdicts.encode(standing)) shouldBe standing
   }
+
+  // The NUL receipt passed every unit spec because the in-memory store kept the verdict it was handed: it writes as Mongo does now
+  "the in-memory verdicts" should "refuse a receipt Mongo cannot write" in {
+    val nul = StoredVerdict("k", 42L, Map("tmdb|candidates|a\u0000Pat Garrett & Billy the Kid" -> 7L), None)
+    an[org.bson.BsonSerializationException] should be thrownBy new InMemoryAgreementVerdicts().replace(Set.empty, Seq(nul))
+  }
 }

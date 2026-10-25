@@ -39,10 +39,13 @@ trait AgreementVerdicts {
   def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit
 }
 
+/** The verdicts as [[MongoAgreementVerdicts]] would hold them: each written through [[AgreementVerdicts.encode]] to BSON and
+ *  read back. */
 final class InMemoryAgreementVerdicts extends AgreementVerdicts {
   private val kept = scala.collection.mutable.LinkedHashMap.empty[String, StoredVerdict]
+  private val stored = services.BsonRoundTrip.via(AgreementVerdicts.encode, AgreementVerdicts.decode)
   def all(): Seq[StoredVerdict] = synchronized(kept.values.toSeq)
-  def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = synchronized { kept --= removed; added.foreach(v => kept(v.id) = v) }
+  def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = synchronized { kept --= removed; added.foreach(v => kept(v.id) = stored(v)) }
 }
 
 /** The verdicts in `identity_agreements`, one document per cluster (`_id` its smallest listing). Every call is awaited

@@ -96,6 +96,7 @@ trait FilmIdCounterStore {
   def insert(entries: Seq[FilmIdCounter]): Int
 }
 
+/** The map as [[MongoFilmIdCounterStore]] would hold it: each entry written as its document to BSON and read back. */
 final class InMemoryFilmIdCounterStore extends FilmIdCounterStore {
   private val stored = scala.collection.mutable.LinkedHashMap.empty[String, Long]
   def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]] =
@@ -103,7 +104,7 @@ final class InMemoryFilmIdCounterStore extends FilmIdCounterStore {
   def insert(entries: Seq[FilmIdCounter]): Int = synchronized {
     entries.count { e =>
       val free = !stored.contains(e.filmId) && !stored.valuesIterator.contains(e.counter)
-      if (free) stored.update(e.filmId, e.counter)
+      if (free) MongoFilmIdCounterStore.decode(Seq(services.BsonRoundTrip(MongoFilmIdCounterStore.encode(e)))).foreach(s => stored.update(s.filmId, s.counter))
       free
     }
   }
@@ -140,7 +141,7 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
     if (entries.isEmpty) 0
     else try {
       counterIndex
-      Await.result(coll.insertMany(entries.map(e => Document("_id" -> e.filmId, "counter" -> e.counter)),
+      Await.result(coll.insertMany(entries.map(e => Document(MongoFilmIdCounterStore.encode(e))),
         InsertManyOptions().ordered(false)).toFuture(), 120.seconds).getInsertedIds.size()
     } catch {
       case bulk: com.mongodb.MongoBulkWriteException if MongoFilmIdCounterStore.onlyAlreadyMapped(bulk) =>
@@ -151,6 +152,10 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
 
 object MongoFilmIdCounterStore extends Logging {
   val Collection = "identity_film_ids"
+
+  /** An entry's document: `{_id: filmId, counter}`. */
+  private[identity] def encode(entry: FilmIdCounter): org.bson.BsonDocument =
+    new org.bson.BsonDocument("_id", new org.bson.BsonString(entry.filmId)).append("counter", new org.bson.BsonInt64(entry.counter))
 
   /** The entries `docs` hold, one by one. A document that does not decode is logged and skipped —
    *  failing the whole read on it stopped every film id being assigned until someone edited the

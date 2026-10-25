@@ -81,7 +81,8 @@ object KeyedDocStore {
   }
 }
 
-/** The documents in a map: tests, and a process without Mongo. */
+/** The documents in a map, each written to BSON bytes and read back as Mongo would ([[services.BsonRoundTrip]]):
+ *  tests, and a process without Mongo. */
 final class InMemoryKeyedDocStore[T](codec: DocCodec[T]) extends KeyedDocStore[T] {
   private val documents = new ConcurrentHashMap[String, Document]()
 
@@ -94,7 +95,7 @@ final class InMemoryKeyedDocStore[T](codec: DocCodec[T]) extends KeyedDocStore[T
     each(documents.asScala.toSeq.sortBy(_._1).flatMap(decoded))
     ScanOutcome.complete
   }
-  def put(key: String, value: T): Unit = { documents.put(key, KeyedDocStore.stored(codec, key, value)); () }
+  def put(key: String, value: T): Unit = { documents.put(key, services.BsonRoundTrip(KeyedDocStore.stored(codec, key, value))); () }
   def putDetached(key: String, value: T)(onFailure: Throwable => Unit): Unit = put(key, value)
   def delete(key: String): Unit = { documents.remove(key); () }
   def retention: StampedRows = codec.stampField.fold(StampedRows.Unswept) { field =>
