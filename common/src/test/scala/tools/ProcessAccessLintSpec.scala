@@ -46,6 +46,8 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
       "writes a policy the JDK itself reads (jdk.http.auth.tunneling.disabledSchemes); applied once by each main",
     "common/src/main/scala/tools/IssuerCertificateFetching.scala" ->
       "writes a policy the JDK itself reads (com.sun.security.enableAIAcaIssuers + allowedAIALocations); applied once by each main",
+    "worker/src/test/scala/tools/NoRuntimeLookupsInIdentitySpec.scala" ->
+      "a lint's own fixtures: process reads quoted in strings it feeds its checker, never executed",
   )
 
   /** file → why it may read an Env key. */
