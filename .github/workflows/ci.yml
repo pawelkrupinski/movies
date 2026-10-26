@@ -508,6 +508,14 @@ jobs:
             # ceiling, so the next run compiles only the rest) or a tool set the restored tree was not compiled for. Under
             # a key of its own (a cache key is written once), restored by the prefix above; main's alone
             # (CacheSavePolicySpec).
+            # NOTHING WRITES THE REF'S TREE WHILE THE SAVE READS IT: the verdict's wait gives up at its ceiling with the
+            # compile still running (in-background.sh leaves a chore to the job's end), so a red verdict's save stored
+            # class files mid-write beside an analysis that no longer describes them, for every later restore. Its JVMs
+            # (and any kept --serve JVM) run in the refs tree, so ending every JVM there ends exactly them.
+            - name: End the old-ref compile's JVMs before its tree is kept
+              if: ${{ !cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' }}
+              run: '[ ! -d "$RUNNER_TEMP/kinowo-identity/refs" ] || scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"'
+
             - name: Keep identity-slice's compiled old ref, red or green
               if: ${{ !cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' && (steps.old-ref-verdict.outcome != 'success' || !startsWith(steps.old-ref-cache.outputs.cache-matched-key, steps.old-ref-cache.outputs.cache-primary-key)) }}
               uses: actions/cache/save@v5

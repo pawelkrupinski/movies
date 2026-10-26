@@ -78,6 +78,20 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     ci.indexOf("Keep identity-slice's compiled old ref") should be > ci.indexOf("wait old-ref-compile")
   }
 
+  /** The verdict's wait gives up at its ceiling with the compile still running, and a red verdict is exactly when the
+   *  tree is kept: saved mid-write, its class files and zinc analysis disagree for every later restore (as convergence
+   *  run #1880's abandoned sbt compiled beside the suite's). */
+  it should "end the compile's JVMs before the tree is kept, whenever it is kept" in {
+    val ci   = RepoFile.read(".github/workflows/ci.yml")
+    val stop = RepoFile.step(ci, "End the old-ref compile's JVMs before its tree is kept")
+    stop should include("""scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"""")
+    stop should include("!cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'")
+    stop should not include ("old-ref-verdict")
+    ci.indexOf("End the old-ref compile's JVMs") should be > ci.indexOf("wait old-ref-compile")
+    ci.indexOf("End the old-ref compile's JVMs") should be < ci.indexOf("Keep identity-slice's compiled old ref")
+    ScriptTests.runInCi("scripts/ci/stop-stray-sbt-test.sh") shouldBe true
+  }
+
   /** The job's checkout is shallow, so a floor the old-ref test compiles into but the start step does not fetch fails
    *  as "no commit … in this SHALLOW clone": 68370c42d added 9bb54c1a4 to the test only, and Main went red (1807). */
   it should "fetch every floor the old-ref test compiles into" in {
