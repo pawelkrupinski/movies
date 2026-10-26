@@ -798,6 +798,7 @@ check_shellcheck() {
     local f before after rc=0
     for f in $(changed_matching '(\.sh$|^scripts/hooks/)'); do
         [ -f "$f" ] || continue
+        case "$f" in *.txt) continue ;; esac # scripts/hooks/local-tests.txt: the hook's test list, no shell
         after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
         if git cat-file -e "$base_sha:$f" 2>/dev/null; then
             git show "$base_sha:$f" > "$tmp/base.sh"

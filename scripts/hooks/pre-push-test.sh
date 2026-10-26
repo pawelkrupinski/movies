@@ -113,6 +113,7 @@ check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint
 check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
 check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
+check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
 check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and the self-tests, its own among them" "scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
 check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "scripttests shellcheck sbt scripttests shellcheck sbt" \
@@ -256,6 +257,13 @@ if command -v shellcheck >/dev/null; then
   printf '#!/usr/bin/env bash\nunused=1\necho "$1"\n' > "$repo/a.sh"
   (cd "$repo" && bash scripts/hooks/pre-push --range "$base..$fixed" >/dev/null 2>&1); code=$?
   check "passes a clean pushed commit whatever the working tree holds" "0" "$code"
+  # the hook's test list lives beside it but is no shell script: shellcheck skips it (SC2148 on its prose otherwise)
+  scratch_git "$repo" checkout -q -- a.sh
+  echo '# prose, no shebang' > "$repo/scripts/hooks/local-tests.txt"
+  scratch_git "$repo" add scripts/hooks/local-tests.txt; scratch_git "$repo" commit -qm "a test list"
+  (cd "$repo" && PREPUSH_SKIP="scripttests sbt" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1); code=$?
+  check "shellcheck skips scripts/hooks/local-tests.txt" "0" "$code"
+  scratch_git "$repo" reset -q --hard HEAD~1
   check "...and removes its temporary worktree on success too" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
   scratch_git "$repo" checkout -q -- a.sh
 
