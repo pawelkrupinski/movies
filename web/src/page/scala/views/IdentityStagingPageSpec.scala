@@ -112,6 +112,8 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
         .map(e => e.textContent).join('\\n')""")
       item(1).linesIterator.toSeq shouldBe Seq("venue Southsea Cinema & Arts Centre", s"page $page", "title Legend")
       page_.evalString(s"document.querySelectorAll('$row ul.why')[0].children[1].querySelector('.key a').getAttribute('href')") shouldBe page
+      // a link reads quietly: the page's steel blue, not the browser's bright default
+      page_.evalString(s"getComputedStyle(document.querySelector('$row ul.why .key a')).color") shouldBe "rgb(127, 151, 173)"
       item(2).linesIterator.toSeq shouldBe Seq("venue Kino Muza", "title Belle, the film", "year 2013", "directors Amma Asante")
       // one per line: each field its own block
       page_.evalString(s"getComputedStyle(document.querySelector('$row ul.why .key')).display") shouldBe "block"
@@ -224,6 +226,9 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
 
       page.eval(s"document.querySelector('$section details.cluster summary').click()")
       page.waitFor(s"document.querySelector('$section details.cluster').open")
+      // each kind of data its own hue: the listing's title, its venue, the film it takes now, the one it took before
+      def color(selector: String) = page.evalString(s"getComputedStyle(document.querySelector('$section details.cluster $selector')).color")
+      Seq("summary .title", "summary .venue", "summary .film", "summary .move-from").map(color).distinct should have size 4
       page.evalString(s"document.querySelector('$section details.cluster .line.from').textContent") should include ("Belle (2013) (tmdb 1) · OwnMatch 71%")
       page.evalString(s"document.querySelector('$section details.cluster .line.to').textContent") should include ("Belle (2021) · Agreed 92%")
       val whys = page.evalString(s"Array.from(document.querySelectorAll('$section details.cluster ul.why')).map(e => e.textContent).join('|')")

@@ -6,15 +6,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Identity staging — @current.brandName</title>
   <style>
+    /* One hue per kind of data, so a listing, its venue, the film it takes and what it took before read apart. */
+    :root {
+      --bg: #0d0d0d; --panel: #121212; --text: #c8c8c8; --muted: #6f7782; --faint: #4a4f55;
+      --listing: #ece4d4;   /* a listing's billed title: warm white */
+      --venue: #a99bd0;     /* where it is billed: lavender */
+      --film: #6cc2b0;      /* the film taken now: teal */
+      --before: #d2a467;    /* what it held before: amber */
+      --differs: #ef8a72;   /* a value no other column shares: coral */
+      --why: #b8b4a6;       /* the evidence lines */
+      --question: #8fb8de;  /* what was asked: sky */
+      --link: #7f97ad;      /* links: a quiet steel blue */
+      --link-hover: #a9bfd2;
+      --country: #8fb3d6;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    body { font: 13px/1.4 monospace; background: var(--bg); color: var(--text); padding: 24px; }
+    a { color: var(--link); text-decoration: underline; text-decoration-color: rgba(127, 151, 173, 0.35); text-underline-offset: 2px; }
+    a:hover { color: var(--link-hover); text-decoration-color: currentColor; }
+    .venue { color: var(--venue); }
+    .film { color: var(--film); }
     h1 { font-size: 16px; font-weight: 600; color: #fff; }
     .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
     .sub { color: #666; font-size: 11px; margin-bottom: 18px; }
     .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2ecc40; margin-right: 5px; vertical-align: middle; }
     .sub.stale .dot { background: #c0392b; }
     #countries { display: flex; flex-direction: column; gap: 18px; }
-    .country { background: #121212; border: 1px solid #1f1f1f; border-radius: 6px; padding: 12px; min-width: 0; }
+    .country { background: var(--panel); border: 1px solid #1f1f1f; border-radius: 6px; padding: 12px; min-width: 0; }
     .country h2 { font-size: 14px; color: #fff; display: flex; gap: 10px; align-items: baseline; }
     .country h2 .age { font-size: 10px; color: #666; font-weight: 400; }
     .country h2 .age.stale { color: #e07a6a; }
@@ -32,18 +50,18 @@
     summary::before { content: "▸"; color: #555; }
     details[open] > summary::before { content: "▾"; }
     summary:hover { background: #171717; }
-    .title { color: #ddd; flex: 1 1 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .meta { color: #777; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .title { color: var(--listing); flex: 1 1 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { color: var(--muted); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
     /* The take shrinks too: unshrinkable, a long one squeezed the listing's title to nothing. */
     summary > .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .progress { color: #4aa3df; }
     .body { padding: 4px 4px 10px 18px; font-size: 12px; }
     .body .line { margin: 2px 0; }
-    .body .label { color: #666; }
+    .body .label { color: var(--muted); }
     table { width: 100%; border-collapse: collapse; margin-top: 4px; }
     td, th { padding: 2px 6px; border-bottom: 1px solid #161616; vertical-align: top; text-align: left; }
     th { font-size: 10px; color: #666; font-weight: 600; }
-    .q-text { word-break: break-all; color: #9bb3c9; }
+    .q-text { word-break: break-all; color: var(--question); }
     .o-not-attempted { color: #888; }
     .o-failed { color: #e07a6a; }
     .o-absent { color: #c8a45a; }
@@ -58,23 +76,23 @@
     .r-lost { color: #d67a6a; }
     .r-changed { color: #d6a35c; }
     .empty { color: #555; padding: 6px 2px; }
-    .why { list-style: none; margin: 2px 0 4px; color: #aaa; }
+    .why { list-style: none; margin: 2px 0 4px; color: var(--why); }
     .why li { margin: 1px 0; padding-left: 10px; text-indent: -10px; word-break: break-word; }
-    .why li::before { content: "· "; color: #555; }
+    .why li::before { content: "· "; color: var(--faint); }
     .why .key { display: block; padding-left: 12px; text-indent: 0; }
     .why .key .label { display: inline-block; min-width: 5.5em; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .filter { font: inherit; font-size: 11px; color: #aaa; background: #151515; border: 1px solid #262626; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
     .filter:hover { border-color: #3a3a3a; }
     .filter.on { color: #fff; background: #23232e; border-color: #5a5a8a; }
-    .cc { font-size: 10px; color: #8fb3d6; background: #16202b; border-radius: 3px; padding: 0 5px; flex: none; }
+    .cc { font-size: 10px; color: var(--country); background: #16202b; border-radius: 3px; padding: 0 5px; flex: none; }
     .filter .n { color: #777; margin-left: 4px; font-variant-numeric: tabular-nums; }
-    .move-from { color: #a08f7a; }
+    .move-from { color: var(--before); }
     table.facts { margin: 4px 0 8px; font-size: 11px; table-layout: fixed; }
     table.facts td { word-break: break-word; }
-    table.facts td.name { color: #777; width: 9em; }
-    table.facts td.differs { color: #e0b26a; }
-    table.facts td.none { color: #444; }
+    table.facts td.name { color: var(--muted); width: 9em; }
+    table.facts td.differs { color: var(--differs); }
+    table.facts td.none { color: var(--faint); }
     .listing-facts > summary { color: #777; font-size: 11px; }
   </style>
 </head>
@@ -164,6 +182,8 @@
         .map(function (code) { return code + ":" + state[code].cursor; }).join(",");
     }
 
+    /** A listing as a line names it: its billed title, and the venue billing it. */
+    function atVenue(l) { return esc(l.rawTitle) + " <span class=\"venue\">@@ " + esc(l.venue) + "</span>"; }
     function takeText(t) {
       if (t.film != null) return (t.title ? t.title : "tmdb " + t.film) + " · " + t.basis + " " + Math.round(t.confidence * 100) + "%";
       if (t.fallback) return t.fallback + " · " + t.basis;
@@ -174,7 +194,7 @@
       if (!l) return "(no listings) " + esc(cl.take.title || cl.take.leaningTitle || "") + " <span class=\"meta\">" + esc(cl.key) + "</span>";
       var more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) : "";
       if (cl.resolution === "joined") more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) + " joined" : "";
-      return esc(l.rawTitle) + " <span class=\"meta\">@@ " + esc(l.venue) + more + "</span>";
+      return esc(l.rawTitle) + " <span class=\"meta venue\">@@ " + esc(l.venue) + more + "</span>";
     }
     function outcomeText(q) {
       if (q.outcome === "failed") {
@@ -221,13 +241,13 @@
       }).join("");
     }
     function body(cl) {
-      var listings = cl.listings.map(function (l) { return esc(l.rawTitle) + " @@ " + esc(l.venue); }).join("<br>") +
+      var listings = cl.listings.map(atVenue).join("<br>") +
         (cl.listingCount > cl.listings.length ? "<br>… and " + (cl.listingCount - cl.listings.length) + " more" : "");
       var moved = isMove(cl);
       var from = moved ? "<div class=\"line from\"><span class=\"label\">from</span> <span class=\"move-from\">" + esc(beforeText(cl)) +
         "</span></div>" + (cl.before ? why(cl.before, "why then") : "") : "";
       return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" + (moved ? whatChanged(cl) : "") + from +
-        "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> " + esc(takeText(cl.take)) + "</div>" +
+        "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> <span class=\"film\">" + esc(takeText(cl.take)) + "</span></div>" +
         why(cl.take, moved ? "why now" : "why") + evidence(cl, moved) +
         "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
         " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
@@ -268,7 +288,7 @@
         var k = l.venue + "|" + l.rawTitle;
         if (!now[k] && !then[k]) return;
         var cols = moved ? [{ head: "before", facts: then[k] }, { head: "now", facts: now[k] }] : [{ head: "trace", facts: now[k] }];
-        html += "<div class=\"line trace\"><span class=\"label\">trace · " + esc(l.rawTitle) + " @@ " + esc(l.venue) + "</span>" + factsTable(cols, moved) + "</div>";
+        html += "<div class=\"line trace\"><span class=\"label\">trace · " + atVenue(l) + "</span>" + factsTable(cols, moved) + "</div>";
       });
       var others = cl.listings.slice(1).filter(function (l) { return l.facts && l.facts.length; });
       if (others.length) html += "<details class=\"listing-facts\"><summary>the other " + others.length + " listings' facts</summary>" +
@@ -290,14 +310,14 @@
         var moved = names.filter(function (n) { return factOf(l.formerly, n) !== factOf(l.facts, n); }).map(function (n) {
           return esc(n) + " <span class=\"move-from\">" + esc(factOf(l.formerly, n) || "—") + "</span> → " + esc(factOf(l.facts, n) || "—");
         });
-        lines.push("listing " + esc(l.rawTitle) + " @@ " + esc(l.venue) + ": " + (moved.length ? moved.join("; ") : "its facts as before"));
+        lines.push("listing " + atVenue(l) + ": " + (moved.length ? moved.join("; ") : "its facts as before"));
       });
       if (!anyFormer) lines.push("listing: no change of its own facts seen — the move came from the films' records, answers or the cluster");
       var b = cl.before, t = cl.take;
       if (b) {
         var node = function (take) { return ((take.nodes || [])[0] || {}).facts; };
         var dated = function (take) { var y = factOf(take.filmFacts, "year"); return filmText(take) + (take.film != null && y ? " (" + y + ")" : ""); };
-        var parts = ["film <span class=\"move-from\">" + esc(dated(b)) + "</span> → " + esc(dated(t)),
+        var parts = ["film <span class=\"move-from\">" + esc(dated(b)) + "</span> → <span class=\"film\">" + esc(dated(t)) + "</span>",
           "basis <span class=\"move-from\">" + esc(b.basis) + "</span> → " + esc(t.basis)];
         var byThen = factOf(node(b), "decided by"), byNow = factOf(node(t), "decided by");
         if (byThen || byNow) parts.push("decided by <span class=\"move-from\">" + esc(byThen || "—") + "</span> → " + esc(byNow || "—"));
@@ -336,7 +356,7 @@
       var quiet = cl.resolution === "joined" ? " quiet" : "";
       return "<details class=\"cluster" + quiet + "\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary>" + (tagged ? "<span class=\"cc\">" + esc(code) + "</span>" : "") + "<span class=\"title\">" +
         headline(cl) + "</span><span class=\"meta\">" + (cl.resolvedAt == null ? "" : change(cl) + " · ") +
-        (isMove(cl) ? "<span class=\"move-from\">" + esc(cl.before ? filmText(cl.before) : beforeText(cl)) + "</span> → " : "") + esc(takeText(cl.take)) +
+        (isMove(cl) ? "<span class=\"move-from\">" + esc(cl.before ? filmText(cl.before) : beforeText(cl)) + "</span> → " : "") + "<span class=\"film\">" + esc(takeText(cl.take)) + "</span>" +
         "</span></summary>" +
         "<div class=\"body line meta\">" + meta + "</div>" + body(cl) + "</details>";
     }
