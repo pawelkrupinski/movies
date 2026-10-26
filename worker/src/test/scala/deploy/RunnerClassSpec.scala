@@ -124,7 +124,22 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
    *  script, so a kick that stops passing it turns this spec red rather than parking main's run on `measure`. */
   private def mainDispatch(file: String): Map[String, String] =
     if (file != "identity-model-convergence.yml") Map.empty
-    else """-f tier=(\S+)""".r.findFirstMatchIn(RepoFile.read(".github/scripts/kick-convergence.sh")).map(m => "tier" -> m.group(1)).toMap
+    else MainConvergenceDispatches.head._2.map("tier" -> _).toMap
+
+  /** Every dispatch of main's convergence, with the tier it passes: Main's kick, and each workflow that runs it on main
+   *  (convergence-daily.yml). Main's runs share one lane, so a dispatch without the tier both waits on `measure` and
+   *  replaces the push's gate-lane run (run 2829, 2026-10-26). */
+  private lazy val MainConvergenceDispatches: Seq[(String, Option[String])] = {
+    val Tier  = """-f tier=(\S+)""".r.unanchored
+    def tier(line: String) = line match { case Tier(t) => Some(t); case _ => None }
+    val kick  = RepoFile.read(".github/scripts/kick-convergence.sh").linesIterator.filter(_.trim.startsWith("dispatch_workflow "))
+    val calls = for {
+      f    <- RepoFile.workflows().toSeq.sortBy(_.getName)
+      line <- code(f.getName).linesIterator
+      if line.contains("workflow run identity-model-convergence.yml --ref main")
+    } yield f.getName -> tier(line)
+    kick.map(l => "kick-convergence.sh" -> tier(l)).toSeq ++ calls
+  }
 
   "every workflow" should "be classed in exactly one tier, or be a reusable workflow its caller's tier runs" in {
     val files = RepoFile.workflows().map(_.getName).toSet
@@ -146,6 +161,13 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
       if !tier.labels(label)
     } yield s"$file on $ref: $job asks for `$label`, not $tier (${tier.labels.toSeq.sorted.mkString(", ")})"
     withClue("jobs that would take another tier's share of ci-runner, or hold its slots: ")(off shouldBe empty)
+  }
+
+  "every dispatch of main's convergence" should "pass main's tier" in {
+    MainConvergenceDispatches.map(_._1) should contain ("convergence-daily.yml")
+    withClue("dispatches of main's convergence without the gate tier: ") {
+      MainConvergenceDispatches.filterNot(_._2.contains("gate-lane")) shouldBe empty
+    }
   }
 
   "every job on github.com" should "ask for a runner github.com has" in {

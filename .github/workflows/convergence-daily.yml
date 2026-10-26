@@ -29,7 +29,9 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              run: gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow
+              # Main's run, so main's tier, as Main's kick passes it (RunnerClassSpec): without it the run asked for
+              # `measure`, and as main's lane's newest it replaced the push's gate-lane run (run 2829, 2026-10-26).
+              run: gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f tier=gate-lane
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
