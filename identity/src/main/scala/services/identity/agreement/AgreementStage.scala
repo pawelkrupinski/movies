@@ -364,6 +364,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     awaitingMarks = attemptsMarked.map(_())
     awaiting = wantedNow.filterNot(tried)
     unread = pass.spent
+    familyVerdicts.applied()
     report(decisions, pass, started)
     resolution.copy(decisions = decisions)
   }
@@ -694,9 +695,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** Every family's verdict on `listings`, in the families' order — each question read noted in `reads`, each gap in
    *  `gaps`. */
   private[agreement] def verdictsOf(listings: Seq[Listing], gaps: mutable.Set[Question], reads: mutable.Map[String, Long]): Seq[Answer[FamilyVerdict]] =
-    familiesInOrder.map { case (_, answers) =>
-      Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
-    }
+    familiesInOrder.map { case (_, answers) => familyVerdicts.verdict(listings, answers, gaps, reads) }
+
+  /** The families' verdicts the last applies resolved, each handed back while all it read reads alike ([[FamilyVerdicts]]). */
+  private[agreement] val familyVerdicts = new FamilyVerdicts(venues, normalizer, calibrations)
 
   /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
    *  waiting on its questions, while one is a gap. */
@@ -827,15 +829,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       findsReading.add(AgreementStage.FindPrefix + id)
       Agreement.tmdbFound(tmdbOf, id, finding, attempted)
     })(film => Answer.Known(Some(film)))
+}
 
+object AgreementStage {
   /** A family's answers that note every question still a gap, and the digest of every answer read. */
   private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[String, Long]) extends FamilyAnswers {
     val family: VoterFamily = answers.family
     private def noted[A](question: String, answer: Answer[A]): Answer[A] = {
-      // read, answered or not: an answer filed where none was reads the verdict again as one that moved does
-      reads(s"${family.label}|$question") = AgreementStage.digest(Seq(answer.toString))
-      if (answer == Answer.Unknown) asked += Question.Family(family, question)
-      else if (!answers.fresh(question)) asked += Question.Family(family, question)   // read, and asked again
+      AgreementStage.noted(answers, question, AgreementStage.digest(Seq(answer.toString)), answer == Answer.Unknown, asked, reads)
       answer
     }
     def titled(text: String): Answer[Seq[SourceHit]]     = noted(s"title|$text", answers.titled(text))
@@ -843,14 +844,21 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     def record(id: String): Answer[Option[SourceRecord]] = noted(s"record|$id", answers.record(id))
     override def showing(venue: String): Answer[Seq[Showing]] = noted(s"showing|$venue", answers.showing(venue))
   }
-}
 
-object AgreementStage {
   /** A fallback film standing on `source`'s `id`: one standing on another database's id than IMDb's carries its `title`
    *  and `year`, that a link to its page is built of. */
   private[agreement] def fallbackOn(source: String, id: String, title: Option[String], year: Option[Int]): ResolverDecision.Fallback = {
     val named = source != VoterFamily.Imdb.database
     ResolverDecision.Fallback(source, id, 1.0, title.filter(_ => named), year.filter(_ => named))
+  }
+
+  /** A family's answer to `question` read, as its digest and whether it was a gap: in the receipt `reads` — answered or
+   *  not, so an answer filed where none was reads the verdict again as one that moved does — and among the questions
+   *  `asked` when a gap, or read and stale (asked again). */
+  private[agreement] def noted(answers: FamilyAnswers, question: String, digest: Long, unknown: Boolean, asked: mutable.Set[Question],
+                               reads: mutable.Map[String, Long]): Unit = {
+    reads(s"${answers.family.label}|$question") = digest
+    if (unknown || !answers.fresh(question)) asked += Question.Family(answers.family, question)
   }
 
   /** 64 bits of `parts`' text, two MurmurHash3 seeds: stable across runs, as a stored digest must be. */

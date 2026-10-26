@@ -147,7 +147,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       val questioned = vetoed.isDefined || unread
       // (e) the venues' own programmes on `listedOn`'s site, asked only of a take a poster questions: a few venues' a day
       val listed = reading.programmes.filter(_ => questioned).fold[Answer[Option[SourceRecord]]](Answer.Known(None))(answers =>
-        VenueListings.listed(listings, new Recording(answers, asked, reads)))
+        VenueListings.listed(listings, new AgreementStage.Recording(answers, asked, reads)))
       val programme = listed.toOption.flatten.filter(record => !Agreement.sameFilm(record, modelRecord) && Correction.contradicts(record.film, film))
       // (b) the families, asked only of a take another kind of evidence questions
       // the TMDB films the take's evidence reaches besides it: what a family's or the programme's record is matched to
