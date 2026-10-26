@@ -67,7 +67,8 @@ class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
 
   it should "re-check the judged branch on demand and open its PR then, without capturing again" in {
     RepoFile.block(workflow, "on") should include("open-pr:")
-    capture should include("if: ${{ !inputs.open-pr }}")
+    capture should include("if: ${{ needs.preflight.outputs.capture == 'true' }}")
+    RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include("capture: ${{ !inputs.open-pr }}")
     publish should include(s"inputs.open-pr && '$Branch' || 'main'")
     RepoFile.step(workflow, "Put the countries' fixtures back") should include("if: ${{ !inputs.open-pr }}")
     RepoFile.step(workflow, "Drop the old branch") should include("!inputs.open-pr")

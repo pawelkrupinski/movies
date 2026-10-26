@@ -46,6 +46,9 @@ jobs:
         timeout-minutes: 2
         outputs:
             codes: ${{ steps.codes.outputs.codes }}
+            # The fill rows' runner, evaluated HERE: their matrix reads this job's outputs, so Forgejo re-parses them
+            # with these outputs and no `github` -- a `github.server_url` read there is empty (WorkflowPlanSpec).
+            fill-runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         steps:
             - id: codes
               env:
@@ -67,7 +70,7 @@ jobs:
             fail-fast: false
             matrix:
                 code: ${{ fromJson(needs.countries.outputs.codes) }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ${{ needs.countries.outputs.fill-runs-on }}
         # `minutes` (at most 30) plus the grace for requests in flight, the pack and the publish.
         timeout-minutes: 40
         permissions:

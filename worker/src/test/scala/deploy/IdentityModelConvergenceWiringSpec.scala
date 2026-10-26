@@ -123,9 +123,9 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
    *  through its API, so the laptop's clean-up cannot be trusted to outlive it); never a branch of anyone else. */
   it should "delete a measurement's own measure/ branch as its last job, on Forgejo only" in {
     val drop = RepoFile.jobs(workflow)("drop-measure-branch")
-    drop should include("startsWith(github.ref, 'refs/heads/measure/')")
-    drop should include("github.server_url != 'https://github.com'")
-    drop should include("always()")
+    drop should include("if: ${{ always() && needs.preflight.outputs.drop-branch == 'true' }}")
+    RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include(
+      "drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}")
     drop should include("BRANCH: ${{ github.ref_name }}")
   }
 

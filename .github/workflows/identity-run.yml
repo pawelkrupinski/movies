@@ -61,6 +61,13 @@ jobs:
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
         # The longest green run took 162 min (run 965, five countries); the mean is 10. CiRowTimeoutSpec.
         timeout-minutes: 200
+        # THE PLAN (WorkflowPlanSpec): this run's root, so the one job that reads `inputs` and `github` whole; the jobs
+        # after it read its outputs. Expressions only, so they are set however the job ends. A job asking `runs-on` an
+        # output falls back to a label both forges have, in case this one never ran.
+        outputs:
+            tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
+            timings-lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
+            drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
         permissions:
             contents: read
             actions: read
@@ -130,14 +137,14 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
+            lane: ${{ needs.run.outputs.timings-lane }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit
     # The run's own measure/ branch, deleted last (Forgejo only: no API cancels a run there; identity-model-convergence.yml)
     drop-measure-branch:
         needs: [ run, timings ]
-        if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
+        if: ${{ always() && needs.run.outputs.drop-branch == 'true' }}
+        runs-on: ${{ needs.run.outputs.tier || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: write

@@ -92,6 +92,26 @@ jobs:
     preflight:
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
         timeout-minutes: 5
+        # THE PLAN: every decision the other jobs make, evaluated HERE, where `inputs` and `github` are whole, and read
+        # by them as outputs (WorkflowPlanSpec). The legs' matrix call reads them through `with:`, which Forgejo then
+        # re-parses with these outputs and nothing else -- an `inputs.` or `github.` read there is empty.
+        outputs:
+            # Every scheduled run records the resolver's query set too (a schedule has no inputs, so it cannot read
+            # the dispatch default): the gate is kept met, not met once.
+            identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
+            # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair.
+            pin-hermetic: ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}
+            # ONE RATE BUDGET FOR ALL LEGS OFF github.com: Forgejo's runners (CI since the GitHub suspension) share one
+            # IP, and TMDB and IMDb limit per IP -- six legs at once, each pacing only itself, drew ~70k 429s (run
+            # 322). The `forgejo-recording` runner sets FORGEJO_RATE_PERMITS, and every leg's live wire asks that one
+            # permit service before each request (tools.RatePermits). github.com keeps the leg's default runner.
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
+            # Germany's recording ran out of its 4g twice off github.com, in GC thrash from ~20 min into the suite
+            # (runs 322, 408); 8g still fits the runner beside mongod (ConvergenceRunnerMemorySpec). Empty on
+            # github.com, which keeps the row's own heap.
+            germany-heap: ${{ github.server_url != 'https://github.com' && '8g' || '' }}
+            # Only main's recording hands its run to the hermetic verify (a dispatched run's ref reads `main`).
+            on-main: ${{ github.ref == 'refs/heads/main' || github.ref == 'main' }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -165,12 +185,10 @@ jobs:
             statuses: write
         with:
             mode:           record
-            corpus-run:     ${{ github.run_id }}
-            # Every scheduled run records the resolver's query set too (a schedule has no
-            # inputs, so it cannot read the dispatch default): the gate is kept met, not met once.
-            identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
-            # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair.
-            pin-hermetic:   ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}
+            # No `corpus-run`: a `with:` is baked before the run has an id (run 408), so a recording leg names its own
+            # run inside the leg (`inputs.mode == 'record' && github.run_id`). The rest is the plan's (preflight).
+            identity-lookups: ${{ needs.preflight.outputs.identity-lookups == 'true' }}
+            pin-hermetic:   ${{ needs.preflight.outputs.pin-hermetic == 'true' }}
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}
             command:        ${{ matrix.cmd }}
@@ -181,16 +199,8 @@ jobs:
             order-command:  ${{ matrix.order || '' }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
-            # Germany's recording ran out of its 4g twice off github.com, in GC thrash from ~20 min into the suite
-            # (runs 322, 408 -- Forgejo, CI since the GitHub suspension); 8g still fits the runner beside
-            # mongod (ConvergenceRunnerMemorySpec). github.com keeps the row's own heap.
-            heap: ${{ github.server_url != 'https://github.com' && matrix.code == 'de' && '8g' || matrix.heap }}
-            # ONE RATE BUDGET FOR ALL LEGS OFF github.com: Forgejo's runners (CI since the GitHub suspension) share
-            # one IP, and TMDB and IMDb limit per IP — six legs at once, each pacing only itself, drew ~70k 429s
-            # (run 322). The `forgejo-recording` runner sets FORGEJO_RATE_PERMITS, and every leg's live wire asks
-            # that one permit service before each request (tools.RatePermits), so the legs run side by side under
-            # one per-service budget. github.com keeps the leg's default runner, its own IP and no permits.
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
+            heap: ${{ matrix.code == 'de' && needs.preflight.outputs.germany-heap || matrix.heap }}
+            runner: ${{ needs.preflight.outputs.runner }}
         # TMDB_API_KEY / OMDB_API_KEY for the live fills, the GITHUB_TOKEN the setup reads, and
         # MONGO_CI_SSH_KEY / MONGO_CI_SSH_HOST_KEY — which the leg maps into its "Tunnel to prod
         # Mongo" step's env and no other.
@@ -203,7 +213,7 @@ jobs:
     # complete, none dispatched -- the capture is red, and there is nothing to judge.
     verify:
         needs: [ preflight, enrichment ]
-        if: ${{ !cancelled() && needs.preflight.result == 'success' && (github.ref == 'refs/heads/main' || github.ref == 'main') }}
+        if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.preflight.outputs.on-main == 'true' }}
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
         timeout-minutes: 5
         permissions:

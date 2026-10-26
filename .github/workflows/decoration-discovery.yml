@@ -80,6 +80,7 @@ jobs:
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -o pipefail
                   sbt "worker/Test/runMain scripts.DecorationDiscovery --apply --report decoration-report.md" 2>&1 | tee discovery.log
                   cat decoration-report.md >> "$GITHUB_STEP_SUMMARY"
@@ -110,6 +111,7 @@ jobs:
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   rm -f test/resources/fixtures/08-06-2026/expected-schedules.txt test/resources/fixtures/08-06-2026/read-model-snapshot.json
                   sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec" || true
                   sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec"
@@ -126,11 +128,16 @@ jobs:
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   rm -f test/resources/fixtures/08-06-2026/expected-index.html test/resources/fixtures/08-06-2026/expected-wroclaw-index.html \
                       test/resources/fixtures/08-06-2026/expected-warszawa-index.html
                   sbt "web/PageTest/testOnly views.PageSnapshotSpec" || true
                   sbt "web/PageTest/testOnly views.PageSnapshotSpec"
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - uses: actions/upload-artifact@v6
               if: always()
               with:

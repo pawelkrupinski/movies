@@ -81,8 +81,12 @@ class ConvergenceBisectConcurrencySpec extends AnyFlatSpec with Matchers {
 
   it should "be started only for a red leg on main, so only a newer red run can supersede it" in {
     Seq(".github/workflows/identity-model-convergence.yml").foreach { path =>
-      withClue(s"$path: ")(RepoFile.jobs(RepoFile.read(path))("request-bisect") should include(
-        "if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}"))
+      val jobs = RepoFile.jobs(RepoFile.read(path))
+      withClue(s"$path: ") {
+        jobs("request-bisect") should include(
+          "if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}")
+        RepoFile.block(jobs("preflight"), "outputs") should include("on-main: ${{ github.ref == 'refs/heads/main' }}")
+      }
     }
   }
 }

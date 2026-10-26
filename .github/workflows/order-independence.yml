@@ -328,6 +328,7 @@ jobs:
             - name: Every XCUITest class alone
               timeout-minutes: 120
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -uo pipefail
                   mkdir -p build/alone
                   classes=$(grep -hoE 'class[[:space:]]+[A-Za-z0-9_]+[[:space:]]*:[[:space:]]*XCTestCase' ios/KinowoUITests/*.swift \
@@ -362,6 +363,10 @@ jobs:
                       exit 1
                   fi
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - name: Upload the result bundles
               if: failure()
               uses: actions/upload-artifact@v6

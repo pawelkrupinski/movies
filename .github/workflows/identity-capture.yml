@@ -62,6 +62,9 @@ jobs:
     preflight:
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 5
+        # THE PLAN (WorkflowPlanSpec): the other jobs' decisions, evaluated where `inputs` and `github` are whole.
+        outputs:
+            capture: ${{ !inputs.open-pr }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -79,7 +82,7 @@ jobs:
     capture:
         name: capture (${{ matrix.code }})
         needs: [ preflight ]
-        if: ${{ !inputs.open-pr }}
+        if: ${{ needs.preflight.outputs.capture == 'true' }}
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         timeout-minutes: 300
         permissions:
@@ -105,7 +108,9 @@ jobs:
             # The CI end of the read-only route to prod Mongo; it exports KINOWO_CONVERGENCE_SCRAPES_URI.
             - name: Tunnel to prod Mongo
               timeout-minutes: 5
-              run: scripts/ci/wait-for-mongo-tunnel.sh 27018
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  scripts/ci/wait-for-mongo-tunnel.sh 27018
               env:
                   MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
@@ -118,10 +123,15 @@ jobs:
                   KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY: ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -o pipefail
                   export KINOWO_IDENTITY_FAMILY_URI="$KINOWO_CONVERGENCE_SCRAPES_URI"
                   scripts/identity-capture.sh --parallel 1 --heap 11g "$CC" 2>&1 | tee "identity-capture-$CC.txt"
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - name: Close the tunnel to prod Mongo
               if: always()
               run: scripts/ci/close-mongo-tunnel.sh 27018

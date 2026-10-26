@@ -66,7 +66,9 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
     RepoFile.step(action, "Mark this recording as prod-latest") should include("""convergence-publish.sh latest "$CODE"""")
     RepoFile.step(action, "Mark this recording as prod-latest") should not include "inputs.pin"
     RepoFile.read(".github/workflows/country-convergence-leg.yml") should include("pin: ${{ inputs.pin-hermetic }}")
-    RepoFile.read(".github/workflows/record-scrape-fixtures.yml") should include(
-      "pin-hermetic:   ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}")
+    val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
+    // Decided in the recorder's plan job (WorkflowPlanSpec), handed to the legs as its output.
+    recorder should include("pin-hermetic: ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}")
+    recorder should include("pin-hermetic:   ${{ needs.preflight.outputs.pin-hermetic == 'true' }}")
   }
 }

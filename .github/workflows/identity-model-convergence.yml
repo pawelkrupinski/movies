@@ -144,6 +144,12 @@ jobs:
             # github.com unless a dispatch names a runner: main's own runs gate every push, so `gate-lane`; a
             # measurement's, `measure`.
             runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
+            # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
+            # they are set however this job ends. A `runs-on` read of one falls back to a label both forges have.
+            tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
+            timings-lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
+            on-main: ${{ github.ref == 'refs/heads/main' }}
+            drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
         steps:
             # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
             - uses: actions/checkout@v5
@@ -337,9 +343,9 @@ jobs:
     # A separate run rather than a reusable call, so the bisect holds none of this suite's lane. The leg
     # leaves a request only when it ran hermetic (ConvergenceBisectTriggerSpec).
     request-bisect:
-        needs: [ leg ]
-        if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
+        needs: [ preflight, leg ]
+        if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}
+        runs-on: ${{ needs.preflight.outputs.tier || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             actions: write
@@ -361,7 +367,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
+            lane: ${{ needs.preflight.outputs.timings-lane }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -373,8 +379,8 @@ jobs:
     # the rows concluded. github.com keeps the script's own clean-up (it can cancel there).
     drop-measure-branch:
         needs: [ preflight, leg, request-bisect, timings ]
-        if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
+        if: ${{ always() && needs.preflight.outputs.drop-branch == 'true' }}
+        runs-on: ${{ needs.preflight.outputs.tier || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: write

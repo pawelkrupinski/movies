@@ -98,6 +98,9 @@ jobs:
             by-country: ${{ steps.requests.outputs.by-country }}
             head-sha: ${{ steps.requests.outputs.head-sha }}
             red-run:  ${{ steps.requests.outputs.red-run }}
+            # The bisect rows' runner, evaluated HERE: their matrix reads this job's outputs, so Forgejo re-parses them
+            # with these outputs and no `github` -- a `github.server_url` read there is empty (WorkflowPlanSpec).
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         steps:
             - uses: actions/checkout@v5
               with:
@@ -151,7 +154,7 @@ jobs:
             # row is skipped by the `if:` above, as github.com skips the whole job. (ConvergenceBisectEmptyPlanSpec)
             matrix:
                 country: ${{ fromJson(needs.plan.outputs.countries != '[]' && needs.plan.outputs.countries || '["none"]') }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ${{ needs.plan.outputs.runner }}
         # Above everything the script may spend, so its own cap is what stops it and the
         # verdict it has so far still reaches the summary: up to two replays before bisecting
         # (the red commit when only the full leg failed, and the last green one under this

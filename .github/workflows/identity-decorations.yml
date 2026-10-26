@@ -72,10 +72,15 @@ jobs:
               env:
                   RECORDING: ${{ inputs.recording }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -o pipefail
                   CORPORA=test/resources/fixtures/corpus FIXTURES=test/resources/fixtures VERSION="decorations-$RECORDING" \
                       scripts/identity-calibrate.sh --decorations-only 2>&1 | tee decorations.log
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - uses: actions/upload-artifact@v6
               if: always()
               with:

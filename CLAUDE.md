@@ -260,6 +260,13 @@ CI runs on the self-hosted Forgejo since the GitHub suspension (2026-10-19), and
 github.com. Every Forgejo difference these workflows hit and how they were adapted: infra
 `docs/forgejo-actions.md` (`~/bitcashier/infra/docs/forgejo-actions.md`).
 
+**Writing a workflow (WorkflowPlanSpec, ForgejoParse):** inputs, refs, run ids, tiers and skip decisions are evaluated
+in ONE plan job (a root: `preflight`/`plan`) and every other job reads `needs.<plan>.outputs.<name>` -- a job whose
+matrix, `runs-on` or `with:` reads a needed output is re-parsed by Forgejo with NO `inputs`/`github`/`vars`, and a
+`with:` is baked before the run has an id. A step with its own `timeout-minutes` starts `. scripts/ci/bounded-step.sh`
+and an `if: always()` `scripts/ci/bounded-step.sh --reap` step precedes whatever runs after it fails: the runner
+abandons a timed-out step's processes, it does not end them.
+
 Before an ad-hoc test or a full convergence leg (10–90 min), use the local tools that answer in seconds —
 `scripts/identity-slice` (`--explain`, `--ref A --ref B`, `--bisect`, `--batch`, `--prod-mirror`),
 `scripts/title-trace`, `scripts/venue-replay`, `scripts/recording-diff`, `scripts/listing-history`,

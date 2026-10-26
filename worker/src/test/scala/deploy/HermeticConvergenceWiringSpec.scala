@@ -108,7 +108,10 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val enrichment = RepoFile.block(recorder, "enrichment")
     enrichment should include("uses: ./.github/workflows/country-convergence-leg.yml")
     enrichment should include("mode:           record")
-    enrichment should include("corpus-run:     ${{ github.run_id }}")
+    // Its own run, named inside the leg: a `with:` is baked before the run has an id (run 408).
+    enrichment should not include "corpus-run:"
+    RepoFile.read(".github/workflows/country-convergence-leg.yml") should include(
+      "corpus-run:    ${{ inputs.corpus-run || (inputs.mode == 'record' && github.run_id || '') }}")
     val codes = """code:\s*(\w+)""".r.findAllMatchIn(RepoFile.block(enrichment, "matrix")).map(_.group(1)).toSet
     codes shouldBe Country.all.map(_.code).toSet
   }

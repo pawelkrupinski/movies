@@ -64,8 +64,13 @@ jobs:
         permissions:
             contents: read
             actions: read
+        # THE PLAN (WorkflowPlanSpec): the legs' matrix call reads `needs.preflight.outputs`, so Forgejo re-parses it
+        # once this job is done, with these outputs and NOTHING ELSE -- `inputs.recording` read in its `with:` was
+        # empty, and every verify replayed the pinned pair instead of the recording it was dispatched for.
         outputs:
             countries: ${{ steps.countries.outputs.countries }}
+            recording: ${{ inputs.recording }}
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -133,12 +138,12 @@ jobs:
             mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             mode:                          hermetic
-            corpus-run:                    ${{ inputs.recording }}
+            corpus-run:                    ${{ needs.preflight.outputs.recording }}
             countries:                     ${{ needs.preflight.outputs.countries }}
             takes-row:                     false
             # The nightly pipeline's own runner, as the recorder's legs: verify runs right behind the capture it judges,
             # on the lane the capture just left, not on the push lane (main-lane).
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
+            runner: ${{ needs.preflight.outputs.runner }}
         # The GITHUB_TOKEN the setup and publish actions read; nothing here fetches, so no key is used.
         secrets: inherit
 

@@ -78,7 +78,7 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
 
   private val RunsOn    = """runs-on:\s*(\$\{\{[^}]*}}|\S+)""".r.unanchored
   private val LocalCall = """uses:\s*\./\.github/workflows/(\S+)""".r.unanchored
-  private val Passed    = """^\s+(lane|runner):\s*(.+?)\s*$""".r
+  private val Passed    = """^\s+(lane|runner|runs-on):\s*(.+?)\s*$""".r
 
   private val Needs     = """^\s*needs:\s*\[?([^\]]*)]?\s*$""".r
   private val NeedsRead = """needs\.([\w-]+)\.outputs\.([\w-]+)""".r
@@ -96,27 +96,29 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
           val at     = callContext(job, passed, jobs, ctx)
           val inputs = passed.linesIterator.collect { case Passed(key, value) => key -> RunnerLabel(value, at) }.toMap
           labels(called, at.copy(inputs = inputs)).map { case (inner, label) => s"$name / $inner" -> label }
-        case RunsOn(runner) => Seq(name -> RunnerLabel(runner, ctx))
+        // A `runs-on` reading a needed job's output (a plan's) is evaluated, like a call's `with:`, at the re-parse.
+        case RunsOn(runner) => Seq(name -> RunnerLabel(runner, callContext(job, s"  runs-on: $runner", jobs, ctx)))
         case _              => fail(s"$file: job `$name` has neither `runs-on:` nor a local `uses:`")
       }
     }
   }
 
-  /** What Forgejo evaluates a reusable call's `with:` in. A MATRIX call that needs another job is expanded only once
-   *  that job is done, and that re-parse (services/actions/job_emitter.go, `tryHandleIncompleteMatrix`) hands it the
-   *  needed jobs' outputs and nothing else: no `inputs`, no `github` -- run 2783 on 2026-10-26 sent main's convergence
-   *  legs to `measure` through an `inputs.tier` that read empty there. Such a call takes its tier from a needed job's
-   *  output, evaluated in that job, where `inputs` and `github` are whole. */
+  /** What Forgejo evaluates a job's `runs-on` or a reusable call's `with:` in. A job whose matrix, `runs-on` or `with:`
+   *  reads a needed job's output is completed only once that job is done, and that re-parse (ForgejoParse;
+   *  services/actions/job_emitter.go, `tryHandleIncompleteMatrix`) hands it the needed jobs' outputs and nothing else:
+   *  no `inputs`, no `github` -- run 2783 on 2026-10-26 sent main's convergence legs to `measure` through an
+   *  `inputs.tier` that read empty there. Such a job takes its tier from a needed job's output, evaluated in that job,
+   *  where `inputs` and `github` are whole. */
   private def callContext(job: String, passed: String, jobs: Map[String, String], ctx: Context): Context = {
     val needs = job.linesIterator.collectFirst { case Needs(list) => list.split(",").map(_.trim).filter(_.nonEmpty).toSet }
     val labelReads = passed.linesIterator.collect { case Passed(_, value) => value }.mkString("\n")
     val outputs = NeedsRead.findAllMatchIn(labelReads).map { m =>
       val (needed, key) = (m.group(1), m.group(2))
       withClue(s"`with:` reads $needed's `$key` but does not need $needed: ")(needs.toSeq.flatten should contain (needed))
-      val declared = RepoFile.block(jobs(needed), "outputs").linesIterator.collect { case Output(k, v) => k -> v }.toMap
+      val declared = RepoFile.block(jobs(needed), "outputs").linesIterator.collect { case Output(k, v) => k -> ForgejoParse.stripComment(v) }.toMap
       s"$needed.$key" -> RunnerLabel(declared.getOrElse(key, fail(s"$needed declares no output `$key`")), ctx)
     }.toMap
-    val reparsed = ctx.server != GitHub && needs.nonEmpty && job.linesIterator.exists(_.trim == "matrix:")
+    val reparsed = ctx.server != GitHub && ForgejoParse.reparsed(job)
     if (reparsed) Context(server = "", ref = "", outputs = outputs) else ctx.copy(outputs = outputs)
   }
 

@@ -476,7 +476,9 @@ jobs:
               if: inputs.mode == 'record' && matrix.phase == 'convergence'
               timeout-minutes: 5
               shell: bash
-              run: scripts/ci/wait-for-mongo-tunnel.sh 27018
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  scripts/ci/wait-for-mongo-tunnel.sh 27018
               env:
                   MONGO_CI_SSH_KEY:      ${{ secrets.MONGO_CI_SSH_KEY }}
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
@@ -493,6 +495,7 @@ jobs:
               timeout-minutes: 10
               shell: bash
               run: |
+                  . scripts/ci/bounded-step.sh
                   # As every sbt run of a leg: the runner's whole CPU beside it (cpu-sampler.sh).
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
                   read -ra jvm <<< "$JVM_OPTIONS"
@@ -502,6 +505,10 @@ jobs:
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - name: Close the tunnel to prod Mongo
               if: always() && inputs.mode == 'record' && matrix.phase == 'convergence'
               shell: bash
@@ -565,6 +572,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -euo pipefail
                   scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "convergence (${{ inputs.country }})" 1080
                   gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive
@@ -610,6 +618,7 @@ jobs:
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   FILL_SECONDS:     90
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -uo pipefail
                   . scripts/tool-conventions.sh # bounded
                   started=$(date +%s)
@@ -633,6 +642,10 @@ jobs:
                   sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} $list $fixtures $out/test/resources/fixtures $until fill-upload-source/refused.tsv"
                   .github/scripts/convergence-fill.sh pack "$out" fill-upload-source/fill.tar.zst
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             # PUBLISHED BEFORE IT IS REPLAYED, so the pair a bisect replays is exactly the tree that decides the
             # verdict: on main the fill is laid over this row's tree only once it is published under its own name
             # (`fill-<code>-<corpus>-<run>-<attempt>-convergence`), and the bisect request names it. A publish that
@@ -728,6 +741,7 @@ jobs:
               shell: bash
               timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -o pipefail
                   # When the suite started, for "Say whether the suite ran out of time" below.
                   date +%s > "$RUNNER_TEMP/suite-started"
@@ -833,6 +847,10 @@ jobs:
                   # can silently fall back is one that quietly stops testing what it claims.
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             # A SUITE STOPPED AT ITS CEILING IS NOT A TEST FAILURE, and said so: the leg names the ceiling and the runner's
             # load at that moment (/proc/loadavg is the host's, so other jobs' CPU shows in it), so a row starved by CPU
             # contention reads "timed out under load" -- an infra verdict, rerun it -- rather than a red like any other.
@@ -951,6 +969,7 @@ jobs:
                   TAKES_BASE_JOB: takes-base (${{ inputs.country }})
                   TAKES_SKIP_MODE: ${{ inputs.takes-skip }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
                   case $code in 0) state=success ;; 1) state=failure ;; *) state=error ;; esac
@@ -983,6 +1002,7 @@ jobs:
                   HEAP: ${{ inputs.heap }}
                   DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
                   case $code in
                       0) ;;
@@ -990,6 +1010,10 @@ jobs:
                       *) echo "::error title=identity drift (${{ inputs.code }})::the drift replay could not run, so nothing was judged -- see the step log" ;;
                   esac
                   exit "$code"
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - uses: actions/upload-artifact@v6
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
               with:
@@ -1019,8 +1043,14 @@ jobs:
                   SHAPE_COMMAND: ${{ inputs.shape-command }}
                   TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.FIXTURE_RELEASE_TAG || '' }}
                   TAKES_SIDE: base
-              run: scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes"
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes"
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             # THE TAKES ROW'S BUILD, for the next takes row to restore (convergence-setup's `takes`): the check compiled
             # worker/Test and worker/It, which no other row does, and the job-end entry under the convergence key is
             # whichever row finishes first -- a suite row's, without them (run 38693633421: Spain's, 60 MB). On main

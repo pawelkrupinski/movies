@@ -163,6 +163,7 @@ jobs:
               continue-on-error: true
               timeout-minutes: 50
               run: |
+                  . scripts/ci/bounded-step.sh
                   xcodebuild test \
                       -project ios/Kinowo.xcodeproj \
                       -scheme Kinowo \
@@ -173,6 +174,10 @@ jobs:
                       -maximum-test-execution-time-allowance 300 \
                       CODE_SIGNING_ALLOWED=NO
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             # Turn the binary XCUITest result bundle into JUnit XML so a
             # failure is readable on the run page without Xcode. The
             # upload below keeps the full bundle for deep inspection.

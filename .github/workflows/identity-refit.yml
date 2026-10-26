@@ -181,7 +181,9 @@ jobs:
                   MONGODB_DB: kinowo
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   MERGE: ${{ steps.shards.outputs.merge }}
-              run: scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"} ${THREADS:+--threads "$THREADS"} ${MERGE:+--merge "$MERGE"}
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"} ${THREADS:+--threads "$THREADS"} ${MERGE:+--merge "$MERGE"}
 
             - name: Check for kept changes
               id: changed
@@ -192,6 +194,10 @@ jobs:
                       echo "kept=true" >> "$GITHUB_OUTPUT"
                   fi
 
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - uses: actions/upload-artifact@v6
               if: always()
               with:

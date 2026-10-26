@@ -68,14 +68,24 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
   private val MongoRunner  = "ubuntu-24.04"
   private val OnGitHub     = RunnerLabel.Context(RunnerLabel.GitHub, RunnerLabel.Main)
 
+  /** A `runs-on` that reads its plan job's output (WorkflowPlanSpec) is that output's expression, as the plan declares it. */
+  private def planned(jobs: Map[String, String], runner: String): String = runner match {
+    case s"$${{ needs.$job.outputs.$key }}" if jobs.contains(job.trim) =>
+      RepoFile.block(jobs(job.trim), "outputs").linesIterator.map(_.trim)
+        .collectFirst { case line if line.startsWith(s"${key.trim}:") => ForgejoParse.stripComment(line.drop(key.trim.length + 1).trim) }
+        .getOrElse(runner)
+    case other => other
+  }
+
   "every CI job starting mongod" should s"run on $MongoRunner, whose kernel mongod $productionVersion starts on" in {
     val RunsOn = """runs-on:\s*(\$\{\{[^}]*}}|\S+)""".r.unanchored
     val wrong = for {
       file        <- RepoFile.workflows()
       yml          = RepoFile.withoutComments(RepoFile.read(file.getPath))
-      (name, job) <- RepoFile.jobs(yml)
+      jobs         = RepoFile.jobs(yml)
+      (name, job) <- jobs
       if MongoStarts.exists(job.contains)
-      runner       = job match { case RunsOn(r) => r.trim; case _ => "<none>" }
+      runner       = planned(jobs, job match { case RunsOn(r) => r.trim; case _ => "<none>" })
       ok           = if (runner.contains("inputs.runner")) RepoFile.block(yml, "runner").contains(s"default: $MongoRunner")
                      else RunnerLabel(runner, OnGitHub) == MongoRunner
       if !ok

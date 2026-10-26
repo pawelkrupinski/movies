@@ -115,7 +115,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
 
   // The leg's own throwaway Mongo holds 27017; the tunnel must stay off it.
   it should "open and close the tunnel on 27018, clear of the leg's own database on 27017" in {
-    RepoFile.step(convergence, Tunnel) should include("run: scripts/ci/wait-for-mongo-tunnel.sh 27018")
+    RepoFile.step(convergence, Tunnel) should include(". scripts/ci/bounded-step.sh\n                  scripts/ci/wait-for-mongo-tunnel.sh 27018")
     RepoFile.step(convergence, Suite) should include("MONGODB_URI: mongodb://127.0.0.1:27017/")
   }
 
