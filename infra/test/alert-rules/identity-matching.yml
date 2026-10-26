@@ -171,3 +171,39 @@ tests:
             exp_annotations:
               summary: "uk: 'rbo cinema season 2026 27 macbeth' moved back to a film it held, in 3 hours of the last 24"
               description: "Two identity rules or stages keep undoing each other on one billing: its listings were taken from film A to B and back to A within three projections, in three or more separate hours today. Treat it as a bug in the rules, never churn. Which listings and why: `scripts/listing-history <cc> --title '<billing>' --since 1d` (each change's basis, projection_mode and deploy)."
+
+  # IdentityAgreementBackfillStalled / IdentityAgreementBackfillGaugeAbsent: DE's backfill falling by 500 an apply is
+  # quiet, as is UK at 0 from boot; PL stuck at 43 for the whole window fires. With no series at all the gauge-absent
+  # alert fires after 30m, and with one it stays quiet.
+  - interval: 30m
+    input_series:
+      - series: 'kinowo_worker_identity_agreement_clusters{country="de",state="incomplete",instance="w1"}'
+        values: '1597 1097 597 97 0 0 0 0 0 0 0 0'
+      - series: 'kinowo_worker_identity_agreement_clusters{country="uk",state="incomplete",instance="w1"}'
+        values: '0x11'
+      - series: 'kinowo_worker_identity_agreement_clusters{country="pl",state="incomplete",instance="w1"}'
+        values: '43x11'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: IdentityAgreementBackfillStalled
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl, instance: w1, state: incomplete }
+            exp_annotations:
+              summary: "pl: 43 agreement verdicts still to decide again, none in 3 hours"
+              description: "The agreement backfill after a rules change decides a budget of stored verdicts an apply, and the count of those left has not fallen in three hours. Worker diagnostics, the agreement panels; is the projection running (IdentityProjectionStale), and does the worker log an agreement apply error?"
+      - eval_time: 5h
+        alertname: IdentityAgreementBackfillGaugeAbsent
+        exp_alerts: []
+
+  - interval: 30m
+    input_series:
+      - series: 'kinowo_worker_identity_agreement_clusters{country="de",state="agreed",instance="w1"}'
+        values: '94x11'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: IdentityAgreementBackfillGaugeAbsent
+        exp_alerts:
+          - exp_labels: { severity: warning, state: incomplete }
+            exp_annotations:
+              summary: "no worker reports the agreement backfill's incomplete count"
+              description: "`kinowo_worker_identity_agreement_clusters{state=\"incomplete\"}` is exported at 0 from boot by every worker, so none at all means the workers are not scraped or the series was renamed."

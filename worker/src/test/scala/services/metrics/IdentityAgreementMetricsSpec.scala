@@ -52,4 +52,16 @@ class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
     sample(text, "kinowo_worker_identity_agreement_enqueued_total", """country="pl",family="imdb",result="duplicate"""") shouldBe Some(1.0)
     sample(text, "kinowo_worker_identity_agreement_answers_total", """country="pl",family="rt",outcome="nothing"""") shouldBe Some(1.0)
   }
+
+  it should "export the backfill's incomplete count at 0 from boot, carry it down and keep it at 0 once done" in {
+    val registry   = new PrometheusRegistry()
+    val stage      = new IdentityAgreementMetrics(registry).stage("de")
+    val incomplete = """country="de",state="incomplete""""
+    def pass(left: Int) = AgreementStage.Applied(0, 0, 0, 0, 0, Map.empty, 0, 0, 0.0, incomplete = left)
+    sample(render(registry), "kinowo_worker_identity_agreement_clusters", incomplete) shouldBe Some(0.0)
+    stage.applied(pass(1597))
+    sample(render(registry), "kinowo_worker_identity_agreement_clusters", incomplete) shouldBe Some(1597.0)
+    stage.applied(pass(0))
+    sample(render(registry), "kinowo_worker_identity_agreement_clusters", incomplete) shouldBe Some(0.0)
+  }
 }

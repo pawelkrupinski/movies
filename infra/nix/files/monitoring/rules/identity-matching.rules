@@ -206,3 +206,37 @@ groups:
             A to B and back to A within three projections, in three or more separate hours today. Treat it as a bug
             in the rules, never churn. Which listings and why: `scripts/listing-history <cc> --title '<billing>'
             --since 1d` (each change's basis, projection_mode and deploy).
+
+      # THE AGREEMENT BACKFILL STOPPED SHORT OF 0.
+      #
+      # `kinowo_worker_identity_agreement_clusters{state="incomplete"}` (worker IdentityAgreementMetrics) is the number of
+      # stored agreement verdicts decided under other rules and still to decide again after a deploy that moved
+      # `AgreementStage.RulesVersion`. The stage decides `BackfillPerApply` (500) of them an apply, so it falls every
+      # projection until 0, and stays at 0 once done (the series is exported at 0 from boot). Above 0 and not lower
+      # than three hours ago is a backfill that is not going on: the verdicts stand as they were, with their
+      # incomplete receipts.
+      - alert: IdentityAgreementBackfillStalled
+        expr: |
+          min_over_time(kinowo_worker_identity_agreement_clusters{state="incomplete"}[3h]) > 0
+          and
+          delta(kinowo_worker_identity_agreement_clusters{state="incomplete"}[3h]) >= 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value }} agreement verdicts still to decide again, none in 3 hours"
+          description: >-
+            The agreement backfill after a rules change decides a budget of stored verdicts an apply, and the count of
+            those left has not fallen in three hours. Worker diagnostics, the agreement panels; is the projection
+            running (IdentityProjectionStale), and does the worker log an agreement apply error?
+
+      # THE BACKFILL'S GAUGE IS GONE: "REACHED 0" CANNOT BE TOLD FROM "NOT REPORTED".
+      - alert: IdentityAgreementBackfillGaugeAbsent
+        expr: absent(kinowo_worker_identity_agreement_clusters{state="incomplete"})
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "no worker reports the agreement backfill's incomplete count"
+          description: >-
+            `kinowo_worker_identity_agreement_clusters{state="incomplete"}` is exported at 0 from boot by every worker,
+            so none at all means the workers are not scraped or the series was renamed.
