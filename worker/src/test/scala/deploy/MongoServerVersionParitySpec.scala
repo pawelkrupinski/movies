@@ -81,10 +81,13 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
       if !ok
     } yield s"${file.getName}: $name ($runner)"
 
-    // Every caller's `runner:` for a leg, as github.com evaluates it (a dispatch naming none).
+    // Every caller's `runner:` for a leg, as github.com evaluates it (a dispatch naming none). One that passes a needed
+    // job's output on is that job's `runner:` output, a line of its own here.
     val fallbacks = """(?m)^[ \t]+runner:[ \t]+(\$\{\{.*}}|\S+)[ \t]*$""".r
       .findAllMatchIn(RepoFile.workflows().map(f => RepoFile.withoutComments(RepoFile.read(f.getPath))).mkString("\n"))
-      .map(m => RunnerLabel(m.group(1), OnGitHub)).toSeq
+      .map(_.group(1))
+      .filterNot(_.contains("needs."))
+      .map(RunnerLabel(_, OnGitHub)).toSeq
 
     withClue(s"mongod $productionVersion will not start on kernel 6.19+ (ubuntu-26.04): ") {
       wrong shouldBe empty

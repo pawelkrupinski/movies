@@ -5,7 +5,7 @@ package deploy
  * `lane:` / `runner:` that the called workflow's `runs-on:` reads back as `inputs.<name>`.
  *
  * Only the subset of GitHub's expression language those lines use: string literals, `github.server_url`,
- * `github.ref`, `inputs.<name>`, `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
+ * `github.ref`, `inputs.<name>`, `needs.<job>.outputs.<name>`, `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
  * expression, rather than being read as some label -- a spec that guessed would pass on a line it never understood.
  */
 object RunnerLabel {
@@ -15,8 +15,14 @@ object RunnerLabel {
   val Main    = "refs/heads/main"
   val Branch  = "refs/heads/measure/agent/0000000-test"
 
-  /** Where a workflow runs: the forge (`github.server_url`), the ref, and the inputs a caller passed. */
-  final case class Context(server: String, ref: String, inputs: Map[String, String] = Map.empty)
+  /** Where a workflow runs: the forge (`github.server_url`), the ref, the inputs a caller passed, and the outputs of
+   *  the jobs it needs, keyed `<job>.<name>`. */
+  final case class Context(
+      server: String,
+      ref: String,
+      inputs: Map[String, String] = Map.empty,
+      outputs: Map[String, String] = Map.empty
+  )
 
   private enum Value {
     case Str(s: String)
@@ -101,6 +107,7 @@ object RunnerLabel {
       case "github.server_url"                => Str(ctx.server)
       case "github.ref"                       => Str(ctx.ref)
       case s"inputs.$name"                    => ctx.inputs.get(name).fold(Null)(Str(_))
+      case s"needs.$job.outputs.$name"        => ctx.outputs.get(s"$job.$name").fold(Null)(Str(_))
       case b @ ("true" | "false")             => Bool(b == "true")
       case other                              => fail(s"`$other` is outside the subset")
     }

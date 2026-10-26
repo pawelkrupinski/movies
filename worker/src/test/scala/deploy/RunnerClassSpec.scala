@@ -74,20 +74,45 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
   private val LocalCall = """uses:\s*\./\.github/workflows/(\S+)""".r.unanchored
   private val Passed    = """^\s+(lane|runner):\s*(.+?)\s*$""".r
 
+  private val Needs     = """^\s*needs:\s*\[?([^\]]*)]?\s*$""".r
+  private val NeedsRead = """needs\.([\w-]+)\.outputs\.([\w-]+)""".r
+  private val Output    = """^\s+([\w-]+):\s*(.+?)\s*$""".r
+
   /** Every job `file` runs in `ctx` with the label it asks for, reusable calls followed into the called workflow
    *  with the caller's `lane:` / `runner:` evaluated as its inputs. */
-  private def labels(file: String, ctx: Context): Seq[(String, String)] =
-    RepoFile.jobs(code(file)).toSeq.sortBy(_._1).flatMap { case (name, job) =>
+  private def labels(file: String, ctx: Context): Seq[(String, String)] = {
+    val jobs = RepoFile.jobs(code(file))
+    jobs.toSeq.sortBy(_._1).flatMap { case (name, job) =>
       job match {
         case LocalCall(called) =>
           // A call passing nothing (a check-tier workflow's timings) leaves the called jobs on their own label.
           val passed = if (job.linesIterator.exists(_.trim == "with:")) RepoFile.block(job, "with") else ""
-          val inputs = passed.linesIterator.collect { case Passed(key, value) => key -> RunnerLabel(value, ctx) }.toMap
-          labels(called, ctx.copy(inputs = inputs)).map { case (inner, label) => s"$name / $inner" -> label }
+          val at     = callContext(job, passed, jobs, ctx)
+          val inputs = passed.linesIterator.collect { case Passed(key, value) => key -> RunnerLabel(value, at) }.toMap
+          labels(called, at.copy(inputs = inputs)).map { case (inner, label) => s"$name / $inner" -> label }
         case RunsOn(runner) => Seq(name -> RunnerLabel(runner, ctx))
         case _              => fail(s"$file: job `$name` has neither `runs-on:` nor a local `uses:`")
       }
     }
+  }
+
+  /** What Forgejo evaluates a reusable call's `with:` in. A MATRIX call that needs another job is expanded only once
+   *  that job is done, and that re-parse (services/actions/job_emitter.go, `tryHandleIncompleteMatrix`) hands it the
+   *  needed jobs' outputs and nothing else: no `inputs`, no `github` -- run 2783 on 2026-10-26 sent main's convergence
+   *  legs to `measure` through an `inputs.tier` that read empty there. Such a call takes its tier from a needed job's
+   *  output, evaluated in that job, where `inputs` and `github` are whole. */
+  private def callContext(job: String, passed: String, jobs: Map[String, String], ctx: Context): Context = {
+    val needs = job.linesIterator.collectFirst { case Needs(list) => list.split(",").map(_.trim).filter(_.nonEmpty).toSet }
+    val labelReads = passed.linesIterator.collect { case Passed(_, value) => value }.mkString("\n")
+    val outputs = NeedsRead.findAllMatchIn(labelReads).map { m =>
+      val (needed, key) = (m.group(1), m.group(2))
+      withClue(s"`with:` reads $needed's `$key` but does not need $needed: ")(needs.toSeq.flatten should contain (needed))
+      val declared = RepoFile.block(jobs(needed), "outputs").linesIterator.collect { case Output(k, v) => k -> v }.toMap
+      s"$needed.$key" -> RunnerLabel(declared.getOrElse(key, fail(s"$needed declares no output `$key`")), ctx)
+    }.toMap
+    val reparsed = ctx.server != GitHub && needs.nonEmpty && job.linesIterator.exists(_.trim == "matrix:")
+    if (reparsed) Context(server = "", ref = "", outputs = outputs) else ctx.copy(outputs = outputs)
+  }
 
   /** Forgejo hands a dispatched run's `github.ref` to `runs-on` as the short `main` (run 1697 on 2026-10-25 asked main's
    *  convergence onto `measure` behind six measurements), a pushed one's as `refs/heads/main`: both are main. */
@@ -155,6 +180,8 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
     RunnerLabel(s"$${{ inputs.runner || 'x' }}", Context(Forgejo, Main, Map("runner" -> "arm"))) shouldBe "arm"
     RunnerLabel(s"$${{ inputs.runner || 'x' }}", Context(Forgejo, Main, Map("runner" -> ""))) shouldBe "x"
     RunnerLabel(s"$${{ !inputs.runner && 'a' || 'b' }}", Context(Forgejo, Main)) shouldBe "a"
+    RunnerLabel(s"$${{ needs.preflight.outputs.runner }}", Context("", "", outputs = Map("preflight.runner" -> "gate-lane"))) shouldBe
+      "gate-lane"
     RunnerLabel("ubuntu-26.04", Context(GitHub, Main)) shouldBe "ubuntu-26.04"
     an[AssertionError] should be thrownBy RunnerLabel(s"$${{ matrix.os }}", Context(GitHub, Main))
   }

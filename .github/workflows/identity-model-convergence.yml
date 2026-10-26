@@ -108,6 +108,12 @@ jobs:
             actions: read
         outputs:
             order-phases: ${{ steps.order.outputs.phases || 'both' }}
+            # The legs' runner, evaluated HERE: Forgejo expands the matrix `leg` call only once this job is done, and
+            # that re-parse hands its `with:` this job's outputs and nothing else -- `inputs` and `github` read empty
+            # there, which sent main's legs to `measure` (run 2783, 2026-10-26; RunnerClassSpec). The run's tier off
+            # github.com unless a dispatch names a runner: main's own runs gate every push, so `gate-lane`; a
+            # measurement's, `measure`.
+            runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -216,10 +222,8 @@ jobs:
             # false in an expression -- every takes-only measurement ran the whole suite (run 786, 2026-10-21).
             profile:                       ${{ inputs.profile == true || inputs.profile == 'true' }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
-            # The run's tier off github.com (RunnerClassSpec) unless a dispatch names a runner: main's own runs gate every
-            # push, so `gate-lane`; a measurement's, `measure`. The input defaults to empty -- with its old default of
-            # ubuntu-24.04, `!inputs.runner` never held and main's legs never reached their lane.
-            runner:                        ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
+            # The preflight's choice (its `runner` output): this `with:` cannot read `inputs` or `github` on Forgejo.
+            runner:                        ${{ needs.preflight.outputs.runner }}
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
             takes-countries:               ${{ inputs.takes-countries || '' }}
