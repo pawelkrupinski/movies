@@ -3583,6 +3583,61 @@
       ]
     },
     {
+      "id": 81,
+      "type": "timeseries",
+      "title": "Identity agreement — backfill: clusters still to decide under the current rules",
+      "description": "kinowo_worker_identity_agreement_clusters{state=\"incomplete\"} per country: stored verdicts not yet decided again under the current rules version (agreement.AgreementStage backfill, BackfillPerApply a pass). It jumps when a deploy moves a rules version, then must drain to 0 within a few hours; until it does, prod serves a mix of old- and new-rules takes. IdentityAgreementBackfillStalled pages when it stays above 0 without falling for 3 h; IdentityAgreementBackfillGaugeAbsent when a country stops reporting it.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 353
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "max by (country) (kinowo_worker_identity_agreement_clusters{country=~\"$country\", state=\"incomplete\"})",
+          "legendFormat": "{{country}}"
+        }
+      ]
+    },
+    {
       "id": 61,
       "title": "Identity agreement — answers by outcome",
       "description": "`kinowo_worker_identity_agreement_answers_total{family,outcome}` per hour: questions asked — `answered`; `nothing` (a refused query or a missing page, filed as no film); `fresh` (an answer already filed, skipped); `deferred` (the host's breaker open: the attempt given back); `failed` (asked again on the queue's backoff). Failed or deferred climbing for one family is that site throttling or down; the others go on.",
@@ -3595,7 +3650,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 353
+        "y": 361
       },
       "fieldConfig": {
         "defaults": {
@@ -3646,7 +3701,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 353
+        "y": 361
       },
       "fieldConfig": {
         "defaults": {
@@ -3706,7 +3761,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 361
+        "y": 369
       },
       "fieldConfig": {
         "defaults": {
@@ -3770,7 +3825,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 369
+        "y": 377
       },
       "fieldConfig": {
         "defaults": {
@@ -3821,7 +3876,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 369
+        "y": 377
       },
       "fieldConfig": {
         "defaults": {
@@ -3872,7 +3927,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 377
+        "y": 385
       },
       "fieldConfig": {
         "defaults": {
@@ -3941,7 +3996,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 377
+        "y": 385
       },
       "fieldConfig": {
         "defaults": {
@@ -3992,7 +4047,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 385
+        "y": 393
       },
       "fieldConfig": {
         "defaults": {
@@ -4083,7 +4138,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 393
+        "y": 401
       },
       "fieldConfig": {
         "defaults": {
@@ -4169,7 +4224,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 401
+        "y": 409
       },
       "fieldConfig": {
         "defaults": {
@@ -4228,7 +4283,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 401
+        "y": 409
       },
       "fieldConfig": {
         "defaults": {
@@ -4287,7 +4342,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 410
+        "y": 418
       },
       "fieldConfig": {
         "defaults": {
@@ -4352,7 +4407,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 419
+        "y": 427
       },
       "fieldConfig": {
         "defaults": {
@@ -4408,7 +4463,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 428
+        "y": 436
       },
       "fieldConfig": {
         "defaults": {
@@ -4471,7 +4526,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 428
+        "y": 436
       },
       "fieldConfig": {
         "defaults": {
