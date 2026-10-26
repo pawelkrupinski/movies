@@ -18,6 +18,7 @@ class InMemoryStoresRoundTripSpec extends AnyFlatSpec with Matchers {
 
   /** Stand-ins with nothing to round-trip, and why. */
   private val Exempt = Map(
+    "InMemoryOmdbBudget"        -> "counts permits it grants itself: no caller hands it a value, so nothing to write",
     "InMemoryReviewSource"      -> "read-only: it holds what its spec constructs it with, and nothing writes through it",
     "InMemoryScheduledRunStore" -> "holds only the claimed occurrence ids, never a document")
 

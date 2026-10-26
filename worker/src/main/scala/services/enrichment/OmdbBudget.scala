@@ -63,7 +63,7 @@ object OmdbBudget {
   /** The most of the day a bulk sweep may use, by the day's end; at any moment, that share of the day elapsed. */
   val BulkShare: Double = 0.60
 
-  val DayZone: ZoneId = ZoneId.of("America/Chicago")
+  val DayZone: ZoneId = models.TimeZones.UsCentral
 
   def dayOf(now: Instant): LocalDate = now.atZone(DayZone).toLocalDate
   def nextReset(now: Instant): Instant = dayOf(now).plusDays(1).atStartOfDay(DayZone).toInstant
