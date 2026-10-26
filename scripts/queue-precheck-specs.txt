@@ -1,0 +1,13 @@
+# The merge queue's cheap LOCAL pre-check (~/bin/agentctl queue): run on a batch tip before the CI landing check; a
+# failure is bisected locally over the batch and only the culprit is rejected, with no CI spent. Files a check writes
+# are shown as a diff and discarded, never kept.
+# Lines: `sbt <command>` (one scripts/sbt-warm call) or `sh <command>`; blank and # lines are skipped; first failure
+# stops. What belongs here: deterministic, self-contained checks that cost seconds and cost CI hours when they slip
+# through -- compiles, checked-in/generated artefacts, CI/deploy wiring. Nothing that needs Mongo, the network beyond
+# what the drift script fetches, or the movies-gitops checkout (the excluded deploy specs read infra/kubernetes, which
+# CI checks out and the queue's work tree does not have). Budget: under ~5 min with a warm sbt.
+sh scripts/ci/generated-artefacts-drift.sh
+sbt Test/compile
+sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
+sbt e2e/testOnly services.movies.FilmScheduleEndToEndSpec tools.ReadModelSnapshotSpec
+sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.* -deploy.AotCacheOptionsSpec -deploy.ChangeStreamSilenceAlertSpec -deploy.CinemaScrapeStalenessAlertSpec -deploy.FleetDatabaseConfigSpec -deploy.FluxImageAutomationSpec -deploy.K8sTierPathGatingSpec -deploy.LauncherJvmFlagsSpec -deploy.NodeCpuBudgetSpec -deploy.NodeMemoryBudgetSpec -deploy.PrometheusNodePortAgreementSpec -deploy.SharedUsersDatabaseConfigSpec -deploy.WebRolloutAvailabilitySpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec
