@@ -169,11 +169,21 @@ class ScrapeReaper(
    *  not `venuesPerTick`. Both budgets floor at this — falling under it means the
    *  roster ages without bound, which is not "backing off", it is falling behind. */
   //
-  // Re-read each tick: it is priced at the TYPICAL venue's measured cost, which moves as
-  // costs are re-measured.
+  // Re-read each tick: it is priced at the MEAN venue's measured cost, which moves as costs
+  // are re-measured. Not the median ([[typicalVenueCost]]): a window's work is the SUM of
+  // the roster's costs, and on a chunked country the median sits far under the mean. US
+  // 2026-10-20..26 ran on a median-priced floor of 6 x 5 x 17 = 510 tasks against the ~930
+  // its mean of 30.2 needs, with the pool half idle: ~210 chunked venues finished an hour
+  // against the 297 a 14h sweep of 4,161 needs, so the sweep took ~16h. Each pass fell ~2h
+  // further behind the boundaries, and once a venue's scrape landed more than half a period
+  // late, nearest-boundary counting ([[services.cadence.DueBoundary.NearestBoundary]]) took it
+  // for an EARLY scrape for the next boundary, so the venue skipped a whole period. Every ~3
+  // days that turned a whole cohort of chunked venues un-due at once: their chunks drained,
+  // the freed room let the backlog of cheap unchunked venues through 40 a tick (~600 in
+  // 20 minutes), and then ~3h with almost nothing due (10-20, 10-23, 10-26 near midday UTC).
   private def cadenceTaskFloor: Int = {
     val spreadTicks = math.max(1L, chunkSpread.value.toMillis / math.max(1L, interval.value.toMillis))
-    cadenceVenuesPerTick * spreadTicks.toInt * typicalVenueCost
+    cadenceVenuesPerTick * spreadTicks.toInt * math.max(1, math.ceil(costs.mean).toInt)
   }
 
   /** The outstanding-task budget actually used: at least enough for the venues that

@@ -14,6 +14,14 @@ import scala.util.Try
  * [[CostSpacedPhaseOffset]] from them: once at start,
  * then every [[ScrapePhasePlanner.ReplanInterval]]. An unreadable store keeps the plan
  * already in place — an unknown cost is not a zero one.
+ *
+ * Each replan logs how many phases it moved, and the largest move
+ * ([[CostSpacedPhaseOffset.moves]]). A replan that moves a block of phases by hours would
+ * show as a burst or a hole in the sweep; when US had both on 2026-10-26 right after the
+ * 11:32 replan, rebuilding the plans from `scrape_costs` showed the replan had moved
+ * nothing: the costs barely move (a 5-run mean, run-to-run spread 1-3 tasks, no venue over
+ * 0.1% of the load), and the cause was a sweep running slower than its window (see
+ * `ScrapeReaper.cadenceTaskFloor`).
  */
 final class ScrapePhasePlanner(
   roster:    Seq[String],
@@ -33,8 +41,13 @@ final class ScrapePhasePlanner(
       e => { logger.warn(s"Scrape phase plan kept: costs unreadable (${e.getMessage})"); TickRun.Incomplete },
       recent => {
         estimates.update(recent.collect { case (key, runs) if runs.nonEmpty => key -> runs.map(_.tasks.toDouble).sum / runs.size })
-        phases.plan(CostSpacedPhaseOffset.fractions(roster, estimates.costOf, key => periodFor(key).toMillis))
-        logger.info(s"Scrape phase plan: ${roster.size} cinema(s), ${estimates.measuredCount(roster)} with a measured cost, typical ${estimates.typical} task(s).")
+        val before = phases.current
+        val after  = CostSpacedPhaseOffset.fractions(roster, estimates.costOf, key => periodFor(key).toMillis)
+        phases.plan(after)
+        val moved = CostSpacedPhaseOffset.moves(before, after, key => periodFor(key).toMillis)
+        logger.info(s"Scrape phase plan: ${roster.size} cinema(s), ${estimates.measuredCount(roster)} with a measured cost, " +
+          s"typical ${estimates.typical} task(s); ${moved.earlier} phase(s) moved earlier and ${moved.later} later " +
+          s"by over a minute, the most by ${moved.maxMinutes} min.")
         TickRun.Completed
       })
 

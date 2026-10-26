@@ -40,6 +40,9 @@ final class CostSpacedPhaseOffset extends PhaseOffset {
 
   /** Install a new plan: each key's phase as a fraction of its period. */
   def plan(fractionsByKey: Map[String, Double]): Unit = fractions.set(fractionsByKey)
+
+  /** The plan in place, as [[plan]] installed it (empty before the first). */
+  def current: Map[String, Double] = fractions.get()
 }
 
 object CostSpacedPhaseOffset {
@@ -53,4 +56,23 @@ object CostSpacedPhaseOffset {
     if (total <= 0) Map.empty
     else ordered.zip(loads.scanLeft(0.0)(_ + _)).map { case (key, before) => key -> before / total }.toMap
   }
+
+  /** How far a replan moved the phases: how many keys moved more than a minute earlier or
+   *  later, and the largest move. A block of phases moved by hours is what turns a replan
+   *  into a burst (moved earlier: due at once) or a hole (moved later: idle for the move),
+   *  so the planner logs this on every replan. */
+  final case class Moves(earlier: Int, later: Int, maxMinutes: Long)
+
+  /** The [[Moves]] from `before` to `after`, over the keys both plans place. A phase is a
+   *  point on a circle, so each move is taken the short way round. */
+  def moves(before: Map[String, Double], after: Map[String, Double], periodMillisOf: String => Long): Moves = {
+    val shifts = after.iterator.collect { case (key, to) if before.contains(key) =>
+      val turn = (to - before(key) + 1.5) % 1.0 - 0.5
+      (turn * periodMillisOf(key).toDouble).toLong
+    }.filter(shift => math.abs(shift) > MovedMillis).toVector
+    Moves(shifts.count(_ < 0), shifts.count(_ > 0), if (shifts.isEmpty) 0L else shifts.map(math.abs).max / 60000L)
+  }
+
+  /** Below this a move is noise — a cost re-measured by a task or two. */
+  private val MovedMillis: Long = 60000L
 }

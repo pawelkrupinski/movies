@@ -1,6 +1,6 @@
 # US chunked scrapes go idle for ~3 h every ~3 days (2026-10-26), open for pickup
 
-**Status.** Diagnosed down to the scheduler, but the root cause is NOT proven. Nothing user-visible is broken. This
+**Status.** Root cause found and fixed 2026-10-26 (see Resolution at the end). Below that line, the brief as written. Nothing user-visible is broken. This
 note is a brief for whoever picks it up. Everything below was read from Prometheus (`monitoring-1`, `10.20.0.11:9090`)
 and VictoriaLogs (`10.20.0.11:9428`, via `ssh mongo-1 "curl ..."`). Nothing in prod was changed.
 
@@ -93,3 +93,24 @@ LATER (a hole).
 - The worker being down, deploys, or queue budget starvation: the queue was empty.
 - Upstream fetch failures: no scrape WARN/ERROR lines and no guard rejects.
 - Time of day: on 10-24 and 10-25 the change-apply rate at the same hours was normal.
+
+## Resolution (2026-10-26)
+
+The replan hypothesis is wrong: the replan moved nothing. US `scrape_costs` has no venue over 0.1% of the load and a
+run-to-run spread of 1-3 tasks, so no hourly replan can shift a phase by more than minutes. Rebuilding the plan from
+those costs and placing each `Refreshed` line (10-25 00:00 to 10-26 20:00) against its boundary shows instead:
+
+- Before 11:30 on 10-26, scrapes landed 4-9 h AFTER their boundaries (unchunked ~4 h, chunked 8-9 h), and the lag grew
+  by ~2 h a pass. Most venues' gap was ~16 h against a 14 h window. After the burst, every scrape landed within an
+  hour of its boundary.
+- The sweep was too slow: ~210 chunked venues finished an hour against the 297 that a 14 h sweep of 4,161 needs, with
+  the pool about half busy (~1.9 of 4 worker-seconds per second). The reaper was held by its outstanding-task budget:
+  its cadence floor was priced at the MEDIAN venue cost (6 venues a tick x 5 spread ticks x 17 = 510 tasks), while the
+  roster's work is the sum of its costs (mean 30.2, so ~930 needed). ~350 held chunks filled most of that budget.
+- Once the lag passed half a period (7 h), `NearestBoundary` counted each late scrape toward the NEXT boundary, so that
+  venue skipped a whole period. About 14 h after the chunked cohort's lag crossed 7 h (10-25 ~20:00), that cohort was
+  un-due at once (the hole). Its chunks drained, and the freed budget let the backlog of cheap unchunked venues through
+  at the 40-a-tick cap (the burst). The lag grows from 0 to 7 h in ~3 passes, which gives the ~3-day spacing.
+
+Fix: `ScrapeReaper.cadenceTaskFloor` is priced at `ScrapeCostEstimates.mean`. Each replan now also logs how many
+phases moved by more than a minute, earlier and later, and the largest move.

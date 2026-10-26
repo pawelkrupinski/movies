@@ -633,6 +633,26 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 5
   }
 
+  // The floor is the roster's work per window, which is the SUM of its venues' costs, so
+  // it must be priced at the mean venue, not the median. Priced at the median it starved
+  // US (median 17, mean 30): the sweep took ~16h against a 14h window, fell behind a little
+  // more each pass, and every ~3 days the lag crossed half a period and left a cohort of
+  // chunked venues un-due for hours at once (2026-10-20, 10-23, 10-26).
+  it should "price the cadence floor at the mean venue's cost, not the median's" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new StubCinemaScraper(c, movieAt(c)))
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(1))
+    // Median 1, mean 9: one chunked venue among four unchunked ones.
+    estimates.update(scrapers.map(s => ScrapeCinemaHandler.dedupKey(s.cinema) -> (if (s.cinema == Multikino) 41.0 else 1.0)).toMap)
+    // 3 venues per tick over a 3-tick spread = 9 in flight: 9 tasks at the median, which
+    // cannot take the 45 the five due venues cost; 81 at the mean, which can.
+    val reaper = new ScrapeReaper(scrapers, new InMemoryTaskQueue, new InMemoryFreshnessStore,
+      dueWindow = new DueWindow(2.minutes), interval = services.tasks.ScrapeReaper.TickInterval(1.minute),
+      maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(1),
+      costs = estimates, chunkSpread = settings.ScrapeChunkSpread(3.minutes), clock = _root_.tools.SpecClock.Pinned)
+
+    reaper.tick() shouldBe 5
+  }
+
   it should "leave a cinema whose scrape is already running out of the due set" in {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new StubCinemaScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue

@@ -56,6 +56,16 @@ class CostSpacedPhaseOffsetSpec extends AnyFlatSpec with Matchers {
     phases.millis(key, 2 * period) shouldBe (2 * phases.millis(key, period) +- 1L)
   }
 
+  // What each replan logs, so a replan that shifts a block of phases shows in the logs.
+  it should "count how far a new plan moves the phases, the short way round the period" in {
+    val before = Map("scrape|A" -> 0.1, "scrape|B" -> 0.5, "scrape|C" -> 0.95)
+    val after  = Map("scrape|A" -> 0.1, "scrape|B" -> 0.45, "scrape|C" -> 0.05, "scrape|New" -> 0.3)
+    // B moves 3 min earlier; C 6 min later across the wrap, not 54 min earlier; A doesn't
+    // move and New had no planned phase to move from.
+    CostSpacedPhaseOffset.moves(before, after, _ => period) shouldBe CostSpacedPhaseOffset.Moves(earlier = 1, later = 1, maxMinutes = 6)
+    CostSpacedPhaseOffset.moves(Map.empty, after, _ => period) shouldBe CostSpacedPhaseOffset.Moves(0, 0, 0)
+  }
+
   it should "fall back to the hashed phase for a key the plan doesn't know" in {
     spaced(cost).millis("scrape|Opened Today", period) shouldBe HashedPhaseOffset.millis("scrape|Opened Today", period)
     new CostSpacedPhaseOffset().millis(heavy.head, period) shouldBe HashedPhaseOffset.millis(heavy.head, period)
@@ -140,5 +150,12 @@ class ScrapeCostEstimatesSpec extends AnyFlatSpec with Matchers {
     estimates.costOf("scrape|C")      shouldBe 80.0
     estimates.costOf("scrape|Unseen") shouldBe 10.0
     estimates.typical                 shouldBe 10.0
+  }
+
+  it should "give the mean of the measured costs, and the prior until anything is measured" in {
+    val estimates = new ScrapeCostEstimates(settings.ScrapeTasksPerVenue(36))
+    estimates.mean shouldBe 36.0
+    estimates.update(Map("scrape|A" -> 2.0, "scrape|B" -> 10.0, "scrape|C" -> 81.0))
+    estimates.mean shouldBe 31.0
   }
 }
