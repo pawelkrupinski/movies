@@ -29,6 +29,7 @@ Exact commands, module scoping and `testOnly` / `-z` narrowing: `test-layers` sk
 **The pre-push hook** (`scripts/hooks/pre-push`; install once per clone with `scripts/install-hooks.sh`) runs, in
 seconds, the checks that otherwise fail CI, selected by the paths the push changes; its header lists every check.
 It complements the layers above and replaces none of them. Dry-run it with `scripts/hooks/pre-push --range A..B`.
+Step by step, with every refusal and what to do: `docs/landing-process.md`.
 Bypasses — `PREPUSH_SKIP="<checks>"`, `git push --no-verify` — must be named in your report.
 A check's local tool missing (sbt or a working java, shellcheck, actionlint, npm, python3 / timezonefinder, gh, curl,
 jq) BLOCKS the push with the fix, never a skip: for sbt, `. "$HOME/.sdkman/bin/sdkman-init.sh"` (or put
@@ -135,6 +136,10 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   shows where agents' time went.
 
 ## Agent tooling: `~/bin/agentctl` (laptop only; reference `~/bin/AGENTCTL.md`)
+
+The whole path from commit to main — `land`, the merge queue, every pre-push step, the gate, each refusal and what
+to do — is in `docs/landing-process.md`.
+
 
 1. `eval "$(~/bin/agentctl env --print)"`: puts sbt and java on PATH. A locked vault prints the `! secrets unlock` line for the user.
 2. Work and commit in your own worktree.

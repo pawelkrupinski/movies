@@ -20,6 +20,8 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [heap-dumps.md](heap-dumps.md) — where JVM heap dumps land, what bounds them, how to fetch one.
 - [headlamp-identity-and-gate.md](headlamp-identity-and-gate.md) — decision record (2026-09-07): Headlamp sign-in
   through the fleet's oauth2-proxy and where the gate actually is.
+- [landing-process.md](landing-process.md) — commit to main: `agentctl land`, the merge queue, every pre-push hook
+  step, `identity-landing-check`, the red gate, each refusal and what to do, the rules.
 - [agent-workflow-history.md](agent-workflow-history.md) — the dated incidents behind the agent rules in `CLAUDE.md`
   (stranded WIP, PR breaches, pkill, CI waits, push batching, the red gate, no reruns).
 

@@ -159,7 +159,8 @@ Project conventions for working on this codebase (test layers, the
 commit gate, snapshots, worktree and landing flow, design rules) live in
 [`CLAUDE.md`](./CLAUDE.md), with task-specific detail in the skills
 under [`.claude/skills/`](.claude/skills). Every other document is
-indexed in [`docs/README.md`](docs/README.md).
+indexed in [`docs/README.md`](docs/README.md). How a change lands on main:
+[`docs/landing-process.md`](docs/landing-process.md).
 
 ## License
 
