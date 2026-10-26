@@ -155,7 +155,7 @@ class JudgeTest(unittest.TestCase):
 
 class RowsTest(unittest.TestCase):
     def test_main_runs_every_country_with_both_order_phases_next_day_and_takes(self):
-        self.assertEqual(len(ROWS), 17)
+        self.assertEqual(len(ROWS), 27)
         for row in ("convergence (poland)", "takes (spain)", "order-independence-p01 (germany)",
                     "order-independence-p12 (united-kingdom)", "next-day (united-states)",
                     "order-independence-p12 (united-states)"):

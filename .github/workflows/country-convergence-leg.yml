@@ -348,8 +348,8 @@ permissions:
 jobs:
     # THE RUN — one PHASE per row: `convergence` for every country, plus `order-independence` (or its two split
     # rows) for a corpus whose replays no longer fit beside the boot, plus `next-day` for a leg its next-day test keeps
-    # past 10 minutes, plus `takes` (the identity takes check) in every hermetic leg. No row runs the sample (see the
-    # header).
+    # past 10 minutes, plus `takes` (the identity takes check) and `takes-drift-1` / `takes-drift-2` (the incremental =
+    # whole gate, a seed each) in every hermetic leg. No row runs the sample (see the header).
     #
     # A ROW rather than a job of its own, because "a job that exists only sometimes" is
     # not something GitHub can express. A job carrying `if: inputs.order-command != ''`
@@ -385,7 +385,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes"' || '')) }}
+                phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -955,13 +955,17 @@ jobs:
             # filed late, new venues, re-scrapes, listings leaving and returning, two deploys through the stores' BSON) and
             # every listing whose take at a checkpoint differs from the whole resolve's fails the row, unless
             # identity-drift-allow.tsv names it with why. A property of one commit, not a base-vs-head move: red means this
-            # code drifts. Main's rows only, not a takes-only measurement's.
+            # code drifts. Main's rows only, not a takes-only measurement's (its phases are takes and takes-base).
+            # ONE SEED A ROW (`takes-drift-<seed>`), beside the takes check rather than after it: in the takes row the check
+            # and the two seeds ran in turn, 30-55 minutes on main (runs 2683-2809), the 55-minute ceiling cancelling
+            # half of them.
             - name: Check that the incremental state ends where a whole resolve does
-              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && !inputs.takes-only }}
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
               shell: bash
               timeout-minutes: 75
               env:
                   HEAP: ${{ inputs.heap }}
+                  DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}
               run: |
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
                   case $code in
@@ -971,11 +975,11 @@ jobs:
                   esac
                   exit "$code"
             - uses: actions/upload-artifact@v6
-              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && !inputs.takes-only }}
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: identity-drift-${{ inputs.code }}
+                  name: identity-drift-${{ inputs.code }}-${{ matrix.phase }}
                   path: ${{ runner.temp }}/identity-drift/
                   if-no-files-found: ignore
                   retention-days: 7

@@ -71,7 +71,7 @@ PHASES_EXPRESSION = (
     "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',\"order-independence-p01\"' || "
     "',\"order-independence-p01\",\"order-independence-p12\"') || ',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
-    "',\"takes\"' || '')) }}"
+    "',\"takes\",\"takes-drift-1\",\"takes-drift-2\"' || '')) }}"
 )
 GH_SECONDS = 60
 STATUS_PAGES = 4
@@ -146,7 +146,7 @@ def matrix_rows(workflow_text):
 
 def expected_rows(workflow_text):
     """`<phase> (<country>)` of every row main's run expands to: PHASES_EXPRESSION with takes-only false, hermetic, the
-    takes row on and both order phases (main's order-phases.sh answer)."""
+    takes rows on (the check's and a drift seed's each) and both order phases (main's order-phases.sh answer)."""
     out = []
     for row in matrix_rows(workflow_text):
         phases = ["convergence"]
@@ -155,7 +155,7 @@ def expected_rows(workflow_text):
             phases += ["order-independence-p01", "order-independence-p12"] if split else ["order-independence"]
         if row.get("next-day", ""):
             phases.append("next-day")
-        phases.append("takes")
+        phases += ["takes", "takes-drift-1", "takes-drift-2"]
         out += [f"{p} ({row['country']})" for p in phases]
     if not out:
         raise Unproven("no `leg` matrix rows in the workflow")

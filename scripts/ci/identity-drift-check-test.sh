@@ -17,6 +17,7 @@ cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$work/repo/scripts/ci/"
 cat > "$work/bin/sbt" <<'EOF'
 #!/usr/bin/env bash
 out=$(printf '%s\n' "$@" | grep -oE -- '--out [^ ]+' | tail -1 | cut -d' ' -f2)
+printf '%s\n' "$@" | grep -oE -- '--seeds? [0-9]+' > "$out.seeds"
 [ "${FAKE_REPORT:-}" = none ] && { echo "[error] compilation failed"; exit 1; }
 mkdir -p "$out"; printf 'country\tseed\n' > "$out/drift-pl.tsv"
 echo "## pl: 10804 listings, 2 seed(s), $FAKE_FOUND divergence(s) (1 listings), $FAKE_ALLOWED allow-listed, in 191s"
@@ -34,5 +35,9 @@ check "divergences the allow-list does not name fail" "1" "$(FAKE_FOUND=3 FAKE_A
 check "...and the report names their class" "1" "$(grep -c 'incremental-only take' "$work/out/report.txt")"
 check "divergences the allow-list names all pass" "0" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 run)"
 check "a replay that never reported is no verdict" "2" "$(FAKE_REPORT=none run)"
+FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
+check "both seeds by default" "--seeds 2" "$(cat "$work/out.seeds")"
+DRIFT_SEED=2 FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
+check "a row's one seed alone" "--seed 2" "$(cat "$work/out.seeds")"
 
 spec_summary

@@ -440,7 +440,18 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
-        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes"' || '')) }}""")
+        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}""")
+  }
+
+  /** THE INCREMENTAL = WHOLE GATE, ONE SEED A ROW (2026-10-26): the takes row ran the takes check and then both drift seeds,
+   *  30-55 minutes on main (runs 2683-2809) against a 55-minute ceiling. Each seed is a `takes-drift-<seed>` row of its
+   *  own beside the check, a takes-only measurement running none. */
+  "the incremental = whole gate" should "replay each seed in a row of its own, never in the takes check's row" in {
+    val drift = RepoFile.step(leg, "Check that the incremental state ends where a whole resolve does")
+    drift should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}")
+    drift should include("DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}")
+    leg should include("name: identity-drift-${{ inputs.code }}-${{ matrix.phase }}")
+    RepoFile.read("scripts/ci/identity-drift-check.sh") should include("""[ -n "${DRIFT_SEED:-}" ] && seeds=(--seed "$DRIFT_SEED")""")
   }
 
   /** OFF MAIN, ONE SPLIT ORDER ROW (scripts/ci/order-phases.sh, 2026-10-23): only when the preflight positively says

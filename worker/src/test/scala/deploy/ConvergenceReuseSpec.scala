@@ -82,9 +82,9 @@ class ConvergenceReuseSpec extends AnyFlatSpec with Matchers {
   "the rows main expects" should "be the leg's own expansion of main's matrix" in {
     // The judgement models the leg's `phase:` expression; a change to it must change the model with it.
     RepoFile.block(leg, "matrix") should include("phase: " + Seq("python3", Script, "phases-expression").!!.trim)
-    rows should have size 17
+    rows should have size 27
     rows should contain allOf ("order-independence-p01 (germany)", "order-independence-p12 (germany)",
-      "next-day (united-states)", "takes (poland)", "convergence (spain)")
+      "next-day (united-states)", "takes (poland)", "takes-drift-2 (poland)", "convergence (spain)")
   }
 
   // Forgejo expands the matrix `leg` call only once preflight is done and hands its `with:` that job's outputs and nothing
