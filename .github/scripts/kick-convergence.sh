@@ -17,7 +17,8 @@
 # is cheap next to a pipeline change that never gets one.
 #
 # Usage: kick-convergence.sh <head-sha> <ref> <workflow name>...
-# KICK_CONVERGENCE_GH_TIMEOUT (60 s) bounds the read of each suite's last run.
+# KICK_CONVERGENCE_GH_TIMEOUT (60 s) bounds the read of each suite's last run, KICK_CONVERGENCE_REUSE_TIMEOUT (180 s) the
+# search for a run to reuse.
 # Tested by ConvergenceDispatchGateSpec and .github/scripts/kick-convergence-test.sh against a scratch repository and a
 # stub `gh`.
 set -uo pipefail
@@ -38,9 +39,21 @@ failed=0
 . "$here/../../scripts/ci/dispatch.sh"
 # bounded (tool-conventions.sh, which dispatch.sh sources), not timeout(1): stock macOS has none, and there every read
 # of a suite's last run failed, so a local run dispatched every suite whatever the push touched.
+# A VERDICT ALREADY PROVEN (scripts/ci/convergence_reuse.py): the identity model's suite is dispatched naming the newest
+# green run whose facts carry this commit's tree key -- a landing check's, usually of this very commit -- and that run's
+# preflight decides whether it holds; this is only the hint. No hint, a failed or slow search: the plain dispatch.
+reuse_hint() {
+    [ "$1" = "Identity model convergence" ] || return 0
+    # allow-silenced: no hint is the full suite, the safe direction
+    bounded "${KICK_CONVERGENCE_REUSE_TIMEOUT:-180}" "${CONVERGENCE_REUSE_FINDER:-$here/../../scripts/ci/convergence_reuse.py}" find --sha "$head_sha" 2>/dev/null || true
+}
 dispatch() {
+    local reuse
+    reuse=$(reuse_hint "$1")
+    case $reuse in *[!0-9]*) reuse="" ;; esac
+    [ -z "$reuse" ] || echo "$1: run $reuse ran this tree's whole suite -- dispatching it as reuse-run=$reuse (the run's preflight checks it)"
     # main's convergence takes the gate tier (identity-model-convergence.yml's `tier` input; RunnerClassSpec)
-    dispatch_workflow "$1" "$ref" -f tier=gate-lane || { echo "::error::could not dispatch $1"; failed=1; }
+    dispatch_workflow "$1" "$ref" -f tier=gate-lane ${reuse:+-f reuse-run="$reuse"} || { echo "::error::could not dispatch $1"; failed=1; }
 }
 
 for workflow in "$@"; do

@@ -20,7 +20,7 @@ cat > "$work/bin/gh" <<'STUB'
 case "$1 $2" in
   "run list") [ -e "$STUB/hang" ] && { echo $$ >> "$STUB/hang"; exec sleep 86400; } # never answers: blocks until killed
               cat "$STUB/last" 2>/dev/null ;;
-  "workflow run") echo "$3" >> "$STUB/dispatched" ;;
+  "workflow run") echo "$3" >> "$STUB/dispatched"; echo "$*" >> "$STUB/dispatch-args" ;;
 esac
 STUB
 # timeout(1) as stock macOS has it: not at all
@@ -45,7 +45,7 @@ kick() { # <head> [matcher] -> the suites dispatched, one line; the exit status 
   rm -f "$work/dispatched"
   (cd "$repo" && spec_bounded env STUB="$work" PATH="$work/bin:$PATH" CONVERGENCE_PATHS_FILE="$work/paths" DISPATCH_RETRY_SECONDS=0 \
      KICK_CONVERGENCE_GH_TIMEOUT="${GH_BOUND:-30}" ${2:+"CHANGED_PATHS_MATCHER=$2"} \
-     bash "$REPO_ROOT/.github/scripts/kick-convergence.sh" "$1" main "Country convergence" > "$work/out" 2>&1)
+     bash "$REPO_ROOT/.github/scripts/kick-convergence.sh" "$1" main "${SUITE:-Country convergence}" > "$work/out" 2>&1)
   echo $? > "$work/status"
   tr '\n' ' ' 2>/dev/null < "$work/dispatched" | sed 's/ $//'
 }
@@ -71,6 +71,23 @@ check "...once the read's bound cuts it off: the gate exits 0, no gh left runnin
   "$(cat "$work/status") $(spec_still_running "$work/hang")"
 rm -f "$work/hang"
 
+# THE REUSE HINT (scripts/ci/convergence_reuse.py find): a run it names goes out as reuse-run, for the run's preflight to
+# check; no run, or an answer that is no run id, is the plain dispatch.
+printf '#!/usr/bin/env bash\necho "${FOUND:-}"\n' > "$work/finder"; chmod +x "$work/finder"
+echo "$base" > "$work/last"
+rm -f "$work/dispatch-args"
+reuse_args() { # <finder's answer> [suite] -> the dispatch's arguments
+  rm -f "$work/dispatch-args"
+  FOUND=$1 SUITE=${2:-Identity model convergence} CONVERGENCE_REUSE_FINDER="$work/finder" kick "$pipeline" > /dev/null
+  cat "$work/dispatch-args"
+}
+check "a run the finder names goes out as reuse-run" "workflow run Identity model convergence --ref main -f tier=gate-lane -f reuse-run=2821" \
+  "$(reuse_args 2821)"
+check "no run found: the plain dispatch" "workflow run Identity model convergence --ref main -f tier=gate-lane" "$(reuse_args "")"
+check "an answer that is no run id: the plain dispatch" "workflow run Identity model convergence --ref main -f tier=gate-lane" \
+  "$(reuse_args "2821 -f takes-only=true")"
+check "another suite is never handed a reuse-run" "workflow run Country convergence --ref main -f tier=gate-lane" \
+  "$(reuse_args 2821 "Country convergence")"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$work/broken-matcher"; chmod +x "$work/broken-matcher"
 check "a diff that cannot be matched is not 'nothing changed': dispatched" "Country convergence" "$(kick "$docs" "$work/broken-matcher")"
 

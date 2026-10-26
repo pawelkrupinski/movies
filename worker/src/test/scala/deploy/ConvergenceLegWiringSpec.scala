@@ -462,7 +462,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val suite = RepoFile.read(".github/workflows/identity-model-convergence.yml")
     RepoFile.block(leg, "takes-skip") should include("default: shadow")
     RepoFile.block(suite, "takes-skip") should include("default: shadow")
-    suite should include("takes-skip:                    ${{ inputs.takes-skip || 'shadow' }}")
+    suite should include("takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}")
+    suite should include("takes-skip: ${{ steps.legs.outputs.takes-skip }}")
+    RepoFile.read("scripts/ci/convergence_reuse.py") should include(""""takes-skip": ("INPUT_TAKES_SKIP", "shadow"),""")
     RepoFile.step(leg, "Check which listings the code moved to another film") should include("TAKES_SKIP_MODE: ${{ inputs.takes-skip }}")
     val daily = RepoFile.read(".github/workflows/convergence-daily.yml")
     daily should include("cron:")
@@ -474,7 +476,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  tool to classify. */
   "a takes-only dispatch" should "run only the takes rows, the takes row uploading the check's output" in {
     RepoFile.read(".github/workflows/identity-model-convergence.yml") should include(
-      "takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}")
+      "takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}")
     RepoFile.block(leg, "takes-only") should include("default: false")
     val suite = RepoFile.block(leg, "convergence")
     suite should include("name: identity-takes-${{ inputs.code }}")
@@ -805,12 +807,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {
-    caller should include ("profile:                       ${{ inputs.profile == true || inputs.profile == 'true' }}")
+    caller should include ("profile:                       ${{ needs.preflight.outputs.profile == 'true' }}")
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
     leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
     leg should include ("if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
-    caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
+    caller should include ("jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}")
     // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report.
     leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 4
     leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 4

@@ -10,6 +10,11 @@
 # (`.github/convergence-paths.txt`); it can still be run by hand. A red HERMETIC leg on main asks
 # `convergence-bisect.yml` which commit did it (`request-bisect`). It has no schedule, so no failure-report job.
 #
+# A VERDICT ALREADY PROVEN IS NOT RUN AGAIN: when a landing check (scripts/identity-landing-check --full) already ran this
+# suite over the same tree, Main's kick names that run (`reuse-run`); the preflight checks it -- tree key, pairs, the legs'
+# inputs, every row green, the takes bases (scripts/ci/convergence_reuse.py) -- and, only when all hold, every leg skips
+# and the run is green, its summary naming the source. Otherwise the whole suite runs. (ConvergenceReuseSpec)
+#
 # `mode: hermetic`: every leg replays the pair `Record scrape fixtures` pinned for its country
 # (`hermetic-<code>.txt`) and touches no network, so a red leg means the code changed — and is
 # bisected. Every pair pinned since run 37216285654 (2026-10-04, main 971ccd34e) was recorded by the
@@ -77,6 +82,14 @@ on:
                 required: false
                 type: string
                 default: shadow
+            reuse-run:
+                description: >-
+                    An earlier run of this workflow whose verdict this commit may reuse (Main's kick names a landing check's
+                    run over the same tree): the preflight checks it (scripts/ci/convergence_reuse.py) and, only when every
+                    check holds, skips every leg. Empty, or anything it cannot prove, runs the whole suite.
+                required: false
+                type: string
+                default: ''
 
 # Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. Every
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
@@ -106,8 +119,25 @@ jobs:
         permissions:
             contents: read
             actions: read
+            # a reused verdict's statuses, copied onto this commit when the source ran another (convergence_reuse.py)
+            statuses: write
         outputs:
             order-phases: ${{ steps.order.outputs.phases || 'both' }}
+            # The run whose verdict this one reuses (`reuse-run`, proven by the step below), else empty: every leg skips
+            # its rows when it names one.
+            reused-from: ${{ steps.reuse.outputs.reused-from || '' }}
+            # EVERY INPUT THE LEGS READ, evaluated HERE and handed on as outputs, for the reason `runner` is (below): the
+            # matrix re-parse hands the legs' `with:` this job's outputs and nothing else, so an `inputs.<name>` read there
+            # was empty -- since 2026-10-23 every takes-only measurement ran the whole suite and every takes-base was
+            # dropped. The same values are this run's reuse facts. (ConvergenceReuseSpec)
+            profile: ${{ steps.legs.outputs.profile }}
+            jvm-options: ${{ steps.legs.outputs.jvm-options }}
+            takes-base: ${{ steps.legs.outputs.takes-base }}
+            takes-only: ${{ steps.legs.outputs.takes-only }}
+            recording: ${{ steps.legs.outputs.recording }}
+            takes-countries: ${{ steps.legs.outputs.takes-countries }}
+            takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
+            takes-skip: ${{ steps.legs.outputs.takes-skip }}
             # The legs' runner, evaluated HERE: Forgejo expands the matrix `leg` call only once this job is done, and
             # that re-parse hands its `with:` this job's outputs and nothing else -- `inputs` and `github` read empty
             # there, which sent main's legs to `measure` (run 2783, 2026-10-26; RunnerClassSpec). The run's tier off
@@ -115,12 +145,31 @@ jobs:
             # measurement's, `measure`.
             runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
         steps:
+            # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
             - uses: actions/checkout@v5
               with:
+                  fetch-depth: 300
+                  filter: blob:none
                   sparse-checkout: |
                       scripts/ci
-                      .github/order-independence-paths.txt
+                      .github/*-paths.txt
+                      .github/workflows/identity-model-convergence.yml
+                      .github/scripts/convergence-setup.sh
+                      .github/scripts/convergence-fill.sh
                   sparse-checkout-cone-mode: false
+            - name: What every leg is handed
+              id: legs
+              env:
+                  INPUT_PROFILE: ${{ inputs.profile }}
+                  INPUT_JVM_OPTIONS: ${{ inputs.jvm-options }}
+                  INPUT_RUNNER: ${{ inputs.runner }}
+                  INPUT_TAKES_BASE: ${{ inputs.takes-base }}
+                  INPUT_TAKES_ONLY: ${{ inputs.takes-only }}
+                  INPUT_RECORDING: ${{ inputs.recording }}
+                  INPUT_TAKES_COUNTRIES: ${{ inputs.takes-countries }}
+                  INPUT_TAKES_NO_STORE: ${{ inputs.takes-no-store }}
+                  INPUT_TAKES_SKIP: ${{ inputs.takes-skip }}
+              run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
             - name: Secrets present
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -144,6 +193,45 @@ jobs:
                   CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
                   RECORDING: ${{ inputs.recording || '' }}
               run: scripts/ci/convergence-preflight.sh "$CODES" "$RECORDING"
+            # REUSE ONLY WHAT IS PROVEN (scripts/ci/convergence_reuse.py): the named run covered every row this one would,
+            # over the same tree, pairs, inputs and takes bases, and every row passed. Anything else -- this step failing
+            # included -- names no run, and the whole suite runs. The daily full run never names one.
+            - name: Does the named run's verdict hold for this commit?
+              id: reuse
+              if: ${{ inputs.reuse-run != '' }}
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  REUSE_RUN: ${{ inputs.reuse-run }}
+                  ORDER_PHASES: ${{ steps.order.outputs.phases || 'both' }}
+              run: |
+                  python3 scripts/ci/convergence_reuse.py verify --source "$REUSE_RUN" --sha "$GITHUB_SHA" \
+                      --inputs "$RUNNER_TEMP/leg-inputs.json" --order-phases "$ORDER_PHASES" >> "$GITHUB_OUTPUT"
+            # What a later run of this commit's tree needs to reuse this one's verdict: its key, pairs and legs' inputs.
+            - name: This run's reuse facts
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  ORDER_PHASES: ${{ steps.order.outputs.phases || 'both' }}
+                  REUSED_FROM: ${{ steps.reuse.outputs.reused-from || '' }}
+              run: |
+                  mkdir -p "$RUNNER_TEMP/reuse-facts"
+                  python3 scripts/ci/convergence_reuse.py facts --sha "$GITHUB_SHA" --inputs "$RUNNER_TEMP/leg-inputs.json" \
+                      --order-phases "$ORDER_PHASES" --reused-from "$REUSED_FROM" > "$RUNNER_TEMP/reuse-facts/facts.json"
+            - uses: actions/upload-artifact@v6
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              with:
+                  overwrite: true
+                  name: convergence-reuse-facts
+                  path: ${{ runner.temp }}/reuse-facts/
+                  if-no-files-found: ignore
+                  retention-days: 7
 
     # One row per country; `fail-fast: false`, so every country reports on its own. A hermetic row
     # runs no sample — it replays a slice of the corpus the suite replays, so it only failed sooner, for
@@ -220,19 +308,21 @@ jobs:
             mode:                          hermetic
             # `== 'true'` too: Forgejo hands a dispatch's boolean inputs over as STRINGS ("true"), and "true" == true is
             # false in an expression -- every takes-only measurement ran the whole suite (run 786, 2026-10-21).
-            profile:                       ${{ inputs.profile == true || inputs.profile == 'true' }}
-            jvm-options:                   ${{ inputs.jvm-options || '' }}
+            profile:                       ${{ needs.preflight.outputs.profile == 'true' }}
+            jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}
             # The preflight's choice (its `runner` output): this `with:` cannot read `inputs` or `github` on Forgejo.
             runner:                        ${{ needs.preflight.outputs.runner }}
-            takes-base:                    ${{ inputs.takes-base || '' }}
-            takes-only:                    ${{ inputs.takes-only == true || inputs.takes-only == 'true' }}
-            takes-countries:               ${{ inputs.takes-countries || '' }}
-            takes-no-store:                ${{ inputs.takes-no-store == true || inputs.takes-no-store == 'true' }}
+            takes-base:                    ${{ needs.preflight.outputs.takes-base }}
+            takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}
+            takes-countries:               ${{ needs.preflight.outputs.takes-countries }}
+            takes-no-store:                ${{ needs.preflight.outputs.takes-no-store == 'true' }}
             # The skip gate's mode (a push's kick dispatches with none: shadow). The daily full run (convergence-daily.yml)
             # always passes shadow, so whatever main's pushes do, one run a day takes every take in full.
-            takes-skip:                    ${{ inputs.takes-skip || 'shadow' }}
+            takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
-            corpus-run:                    ${{ inputs.recording || '' }}
+            corpus-run:                    ${{ needs.preflight.outputs.recording }}
+            # A proven reuse (the preflight's `reused-from`): every row of the leg skips.
+            reused-from:                   ${{ needs.preflight.outputs.reused-from }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
         # fill asks what an origin refuses CI again through the residential proxy), and the GITHUB_TOKEN the setup
         # and publish actions read.

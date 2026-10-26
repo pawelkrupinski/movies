@@ -315,6 +315,13 @@ on:
                 required: false
                 type: boolean
                 default: true
+            # A run whose verdict the caller proved this commit may reuse (identity-model-convergence.yml's `reuse-run`,
+            # scripts/ci/convergence_reuse.py): every row skips. Empty on every run that judges the commit itself.
+            reused-from:
+                description: The run whose verdict this leg reuses; every row skips.
+                required: false
+                type: string
+                default: ''
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -373,8 +380,8 @@ jobs:
         # the caller's `<country> / ` prefix github.com adds, so a bare phase left five countries' rows indistinguishable.
         name: ${{ matrix.phase }} (${{ inputs.country }})
         # A takes-only measurement of some countries (scripts/identity-measure --countries) skips the others' legs whole.
-        # A verify run skips the countries its recording did not capture complete (`countries`).
-        if: ${{ (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) && (!inputs.takes-only || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code))) }}
+        # A verify run skips the countries its recording did not capture complete (`countries`), a proven reuse every row.
+        if: ${{ inputs.reused-from == '' && (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) && (!inputs.takes-only || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code))) }}
         strategy:
             fail-fast: false
             matrix:

@@ -150,6 +150,9 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
       ".github/workflows/report-timings.yml",                 // ...as the run's last job, `timings`
       "scripts/ci/ci_http_calls.py",                          // reports the external services a job called
     )
+    // Read as data, not run: the paths list names every file above, and the reuse check (convergence_reuse.py) keys a
+    // commit by it -- what IT names is held by this test, not run by the workflows.
+    val readAsData = Set(".github/convergence-paths.txt")
     val Reference = """(?:\./)?((?:\.github|scripts)/[\w./-]*\w)""".r
     def referencedBy(file: String): Set[String] =
       RepoFile.read(file).linesIterator.filterNot(_.trim.startsWith("#"))
@@ -162,7 +165,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
         }
     val roots = Set(".github/workflows/identity-model-convergence.yml", ".github/workflows/country-convergence-leg.yml")
     val run = Iterator.iterate((roots, roots)) { case (seen, frontier) =>
-      val next = (frontier -- afterTheVerdict).flatMap(referencedBy) -- seen
+      val next = (frontier -- afterTheVerdict -- readAsData).flatMap(referencedBy) -- seen
       (seen ++ next, next)
     }.dropWhile(_._2.nonEmpty).next()._1
 

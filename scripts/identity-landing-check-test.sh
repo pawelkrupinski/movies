@@ -77,7 +77,7 @@ check "...every group's run in the check tier, a landing check blocking work (Ru
 rm -f "$work/logs/commands"
 check "a judgements-only change skips the e2e rows, as Main's scope does" "0 2" \
   "$(landing --head "$judged" --base "$code") $(wc -l < "$work/logs/commands" | tr -d ' ')"
-check "--full asks the full measure" "--head $judged --base $code --tier ubuntu-24.04" "$(landing --head "$judged" --base "$code" --full > /dev/null; cat "$work/logs/measure-args")"
+check "--full asks the full measure, over the whole suite" "--head $judged --base $code --tier ubuntu-24.04 --full" "$(landing --head "$judged" --base "$code" --full > /dev/null; cat "$work/logs/measure-args")"
 check "--footprint-only asks only the footprint" "true" \
   "$(landing --head "$judged" --base "$code" --footprint-only > /dev/null; grep -q -- '--footprint-only' "$work/logs/measure-args" && echo true || echo false)"
 check "--no-cache reaches the measure" "true" \

@@ -15,7 +15,9 @@
 #   --base           default the commit's merge-base with <remote>/main (identity-measure's)
 #   (no mode flag)   the measure: `identity-measure --footprint` -- the footprint measure when the change is title rules
 #                    alone and provably moves no take, otherwise the full measure (identity-measure falls back itself)
-#   --full           the full measure, never the footprint (what a change LANDS on: the footprint is for iterating)
+#   --full           the full measure, never the footprint (what a change LANDS on: the footprint is for iterating),
+#                    over the whole convergence suite (identity-measure --full): every row Main's run has, so Main's run
+#                    of the same tree reuses its verdict instead of running it again (scripts/ci/convergence_reuse.py)
 #   --footprint-only the footprint measure or nothing (no dispatch): a measure it cannot answer is BLOCKED, said so
 #   --local          the specs on the laptop (scripts/sbt-warm; the hard-cluster convergence through scripts/it-local.sh),
 #                    one group after another -- run the whole command under the heavy-run slot wrapper. Default: on CI,
@@ -135,7 +137,7 @@ if [ -n "$specs" ]; then
 fi
 if [ -n "$measure" ]; then
   flags=(--head "$commit" --base "$base" --tier "$landing_tier")
-  case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; esac
+  case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; full) flags+=(--full) ;; esac
   [ -z "$no_cache" ] || flags+=(--no-cache)
   say "measure: identity-measure ${flags[*]:6}"
   "${IDENTITY_LANDING_MEASURE:-$here/identity-measure}" "${flags[@]}" > "$out/measure.txt" 2> "$out/measure.log" &

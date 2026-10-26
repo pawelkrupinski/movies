@@ -149,7 +149,9 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
 
   "the identity lane" should "run no fill job of its own any more" in {
     RepoFile.jobs(lane).keySet should not contain "fill"
-    RepoFile.withoutComments(lane) should not include "convergence-fill"
+    // The preflight checks out the fill script only to LIST the fills a reuse's pair names (convergence_reuse.py).
+    RepoFile.withoutComments(lane).linesIterator.filterNot(_.trim == ".github/scripts/convergence-fill.sh")
+      .mkString("\n") should not include "convergence-fill"
   }
 
   "the manual fill" should "be dispatched by hand only, per country, through the fill action" in {
