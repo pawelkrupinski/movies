@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (28 runs, 2026-06-25 → 2026-10-23). Before
+> **Summary.** An append-only log, newest run first (29 runs, 2026-06-25 → 2026-10-27). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
 > dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
 > before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -312,6 +312,139 @@ print(JSON.stringify(out));
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-10-27
+
+**Thirteenth all-five-country sweep**, read from the local prod mirror. The newest bucket is 2026-10-26 23:00 UTC,
+a **Monday night**, so weekend-only venues that played on Sunday read white. That accounts for most of the PL and US
+rise. The sweep is the checked-in script, unchanged.
+
+Cuts:
+- **PL:** fully probed.
+- **UK / DE / ES:** non-seasonal whites with an archive of 10 days or less.
+- **US:** non-seasonal whites with an archive of 3 days or less **and at least 3 films archived**. The 3-day cut alone
+  left 258, almost all one-film small-town venues dark after the weekend.
+
+**No code fixes this run.** No parser bug and no gap was found in any country. Red is 1 in UK and 1 in ES, and
+neither is a showtime outage that a code change could fix (below).
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 545 | **19** | 3.5% | 0 | 3 | 0 | 61 | 4 (Filmweb), 2 active | all 19 + 2 on the fallback |
+| `kinowo_uk` | 857 | **40** | 4.7% | 1 | 0 | 1 | 20 | 1 | 12 (arch≤10d) |
+| `kinowo_de` | 1,551 | **297** | 19.1% | 0 | 0 | 117 | 15 | 19 (kinoprogramm.com) | 16 (arch≤10d) |
+| `kinowo_us` | 5,010 | **1,113** | 22.2% | 0 | 0 | 275 | 0 | 0 | 23 (arch≤3d, ≥3 films) |
+| `kinowo_es` | 606 | **188** | 31.0% | 1 | 0 | 24 | 17 | 0 | 28 (arch≤10d) |
+
+Compared with 10-23 (a Friday morning):
+- **White:** PL 12 → 19, UK 29 → 40, DE 289 → 297, US 816 → 1,113, ES 172 → 188.
+- **The rise is the weekday.** No chain or client clusters among the probed venues. The four US multiplexes in the
+  cut (Malco Wolfchase 8, AMC CLASSIC Mount Lebanon 6, Parkside Main 8, Regency London 8) each carry Flicks' own
+  `no-streaming-sessions` block. Re-compare the next run against a similar weekday before reading anything into
+  these ratios.
+- **PL `thin`** went from 43 to 61, the same Monday effect (the next 72 h hold no screenings). Not probed.
+
+### Filmweb-fallback sweep (PL only): 2 active, both covered, no scraper bug
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| Wybrzeże (Kołobrzeg, MSI `bilety.rck.kolobrzeg.pl`) | 10-23 14:57 UTC (failing since 07:57) | primary returned no screenings (60 probes) | **intentionally-dormant: cinema closed.** RCK's `/repertuar-kina` says "KINO WYBRZEŻE NIECZYNNE DO ODWOŁANIA" (closed until further notice). The MSI cinema portal (`/MSI/mvc/pl`) lists zero events; the control portal `bilety.mok.com.pl` lists 12. The one film left is "Lalka (Kino RCK)", 30.09–29.10, sold at the RCK box office and on kupbilet.pl, and Filmweb 276 covers it (10-27..29). RCK's other portal, `/Imprezy/mvc/pl`, carries a DKF screening ("Pieśni lasu", 10-28) among stage events. **Re-check next run**: once Lalka ends, Filmweb goes empty too and the venue reads white. If it is still closed then, `needs-human: retire Kino Wybrzeże?` |
+| Kino Domu Sztuki (Warszawa, biletyna) | 10-25 18:23 UTC | primary returned no screenings | **`needs-human: move permanently onto Filmweb?`** The biletyna place page has no `ScreeningEvent`. It lists a DKF **season pass** ("Dyskusyjny Klub Filmowy Domu Sztuki SMB Jary", 24.09–17.12, one `Event`) and two stage shows. Filmweb 27 lists the actual screening (Zniknięcia, 10-28, 1 seance), and the fallback serves it. This is the 10-11..13 flapper. Its films are now sold as a pass, so the own source will stay empty. The control (Kameralne Cafe) had 7 `ScreeningEvent`s. |
+
+ENTER→RECOVERED since 10-23, all **transient** and green again:
+- **Chemik and Kino Twierdza:** shared MOK host `bilety.mok.com.pl`, 10-26 05:48–09:49 UTC, a 45 s budget timeout then a circuit-open.
+- **Kino MCSW Elektrownia:** 10-25 07:08–12:08, a 45 s budget timeout.
+- **Kino Charlie, Cinema N 3D and Kino Plon** (all on the fallback on 10-23) **RECOVERED** on 10-23 between 07:30 and 08:12. Charlie's DB-error outage is over, and 10-23's throw-on-error fix has had no further trigger.
+
+### Poland: 19 white, all dormant
+
+There are 3 green→white transitions (Krobia, Strzegom, Maków), each a weekend-only venue that went white after its
+Sunday show.
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Kino Krobia | bilety24 1643 | **intentionally-dormant** (new). Only the concert "Czerwone Gitary" is listed, and no `/kino/` events. |
+| Kino MDK Maków Mazowiecki | bilety24 1485 | **intentionally-dormant** (new). Only "XV Zaduszki Muzyczne" (a concert). |
+| Kino SCK Strzegom | biletyna | **intentionally-dormant** (new). The JSON-LD holds only a `Place`, with 0 events. |
+| Kino Książka (Stara Błotnica) | biletyna | **intentionally-dormant** (new). The JSON-LD holds only a `Place`. |
+| Kino Panorama (Barlinek) | bilety24 1052 | **intentionally-dormant** (new). "Brak wydarzeń"; Filmweb 1634 `dates: []`; the newest post on its own site's repertoire page is dated 1 Apr. |
+| Kinoteatr Harmonia (Nowe Miasto Lubawskie) | bilety24 1291 | **intentionally-dormant** (new). "Brak wydarzeń". |
+| Kino Milenium (Milejów) | ekobilet | **intentionally-dormant** (new). "brak dostępnych wydarzeń". |
+| Kino Tatry (Łódź) | own site | **intentionally-dormant** (as before). "Obecnie nie mamy zaplanowanych żadnych seansów." |
+| Kino MCK Radłów / Baszta | Filmweb 2408 / 2352 | **intentionally-dormant** (as 10-23). `dates: []`. |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant** (as 10-23). "Brak wydarzeń". |
+| Nowotomyski OK, Drawieński OK, MGOK Recz, Choszczeński DK, CKiS Sępólno, OK Jastrowie, GOK Lipka, Kino na Szekspirowskim | biletyna | **intentionally-dormant** (as 10-23). Each has 0 `ScreeningEvent`; the other events are 12/0/0/3/3/1/1/0. |
+
+For the six new bilety24, biletyna and ekobilet venues, only the ticketing source was checked, not the venue's own
+website. "Moved elsewhere" is not ruled out for them. Re-check any still white next run against its own site.
+
+### UK: 40 white, 12 probed, 0 bugs; 1 red that is not a cinema
+
+All 12 probed whites are EMPTY: `no-streaming-sessions` and no `data-date` tabs. The control, Finsbury Park
+Picturehouse, is populated.
+
+**Red: `folkestonecinema.com`**, 14 red buckets with "HTTP/1.1 header parser received no bytes", then a circuit-open.
+- This is a host row, not a venue. VictoriaLogs (via the mongo-1 hop) shows it is the UK worker's **share-card poster
+  fetch** ("share card: poster for … from folkestonecinema.com failed: network"). The Savoy posters for Silver Screen
+  Folkestone are hosted there.
+- The venue itself (Savoy feed `silverscreenfolkestone.savoysystems.co.uk`) is **green**.
+- From the laptop the host answers 200 in 0.2–1.3 s, Java user agent included. The cluster egress (`k3s-worker-1`)
+  gets a dropped connection, most likely SiteGround blocking the datacenter IP.
+- Verdict: **`needs-human` (low priority)**. Users still see every showtime; only share cards lose the poster. To fix it,
+  route that host's poster fetches through the residential proxy seam, or fall back to the TMDB poster.
+
+### DE: 297 white, 16 probed, 0 bugs
+
+Of the 16:
+- **13 EMPTY.** Each reads `data-showtimes-dates="[]"`, except Forum Velbert. Capitol Hohenstein-Ernstthal, Kino
+  Klappe, Eck's Kino and Kino im Alten Kino had showings when `venue-sources.json` was measured (10-11); their
+  listings have lapsed since.
+- **Forum Velbert** (`kinoheld:3581`, not filmstarts) is also EMPTY. Its kinoheld page has an empty "Programm" and no
+  dated shows. It is a stage venue that also screens films; its last archive was 3.4 d ago, with 2 films.
+- **2 LAG:** Starlight Kinos A1149 (10-30/31) and Blitz-Lichtspiele Schönberg A1318 (10-29..11-01).
+- **Guckloch Furtwangen:** EMPTY now (10-23 found its `movie: null` slot).
+
+The control, CinemaxX Kiel, shows about 12 days.
+
+### US: 1,113 white, 23 probed, 0 bugs
+
+Of the 23:
+- **18 EMPTY.** These include the four multiplexes above.
+- **5 LAG:** Tioga Theatre Owego (10-30..11-05), Cinema 66 Tell City (10-28..30), CineStars Hood River (10-29..11-01),
+  Coyote Entertainment Center (10-29) and McCurtain Cinema Idabel (10-26 only, so effectively EMPTY).
+
+The control, AMC Empire 25, is populated.
+
+### ES: 188 white, 28 probed, 0 bugs; 1 red that looks like a closure
+
+Of the 28:
+- **27 EMPTY.**
+- **1 tail:** Cineapolis El Teler, dates 10-26/27 only.
+- **Sala d'actes Ajuntament E0985** (10-23's `movie: null` gap): EMPTY now.
+
+**Megarama Salamanca and Granada** (10-23's `needs-human: source gap`) are not in this run's arch≤10d cut. Their archives
+are older now. They are still un-rostered on taquilla, so the 10-23 note stands.
+
+**Red: Artesiete Alhsur E0722** (`ArtesieteClient`, `https://www.artesiete.es/Cine/26/Artesiete-Alhsur`), 4 red buckets.
+Each failed on the 45 s adaptive budget, and the last content was 12.3 d ago.
+- The page **hangs**, giving 0 bytes in 25–60 s from the laptop too, while the chain's other venue pages answer in about 1 s.
+- Alhsur is **no longer in the cinema list on `www.artesiete.es`'s home page**. Ten cinemas are listed and Cine/26 is
+  not among them.
+- `alhsur.artesiete.es` serves a bare Plesk default page.
+- SensaCine E0722 reads `data-showtimes-dates="[]"`, and eCartelera has no sessions.
+- No closure news was found.
+- Verdict: **`needs-human: probably closed — retire E0722`** via `data/scripts/retire_venues.py`, following the
+  09-26/27 precedent, once a closure is confirmed. Nothing is covering it. Its users were already seeing nothing for 12 days.
+
+### Left for next run
+- Wybrzeże after Lalka ends on 10-29: retire, or does it reopen?
+- Kino Domu Sztuki: a decision on whether to move it permanently onto Filmweb.
+- Artesiete Alhsur: confirm the closure and retire it.
+- folkestonecinema.com share-card posters: route them through the proxy.
+- Re-check the six new PL dormants against their own sites.
+- Compare white ratios against a Monday-night or similar sweep.
 
 ---
 
