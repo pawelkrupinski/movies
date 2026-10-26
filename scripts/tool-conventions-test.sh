@@ -16,7 +16,7 @@ mkdir -p "$work/bin"
 
 # shellcheck disable=SC2016 # the lines are run by the library's shell, expanded there
 lib() { # <shell line> -> its stdout and stderr, then "exit=<status>"; run with the library sourced, as a tool named demo
-  STUB="$work" PATH="$work/bin:$PATH" bounded 20 bash -c '. "$1"; TOOL_NAME=demo; eval "$2"' _ "$REPO_ROOT/scripts/tool-conventions.sh" "$1" 2>&1
+  STUB="$work" PATH="$work/bin:$PATH" bounded "$SPEC_HANG_BOUND" bash -c '. "$1"; TOOL_NAME=demo; eval "$2"' _ "$REPO_ROOT/scripts/tool-conventions.sh" "$1" 2>&1
   echo "exit=$?"
 }
 
@@ -130,11 +130,14 @@ case "$(sed -n "${n}p" "$STUB/answers")" in
 esac
 STUB
 chmod +x "$work/bin/gh"
+# Every call bounded generously (SPEC_HANG_BOUND), as the in_terminal cases are: a bound a loaded runner reaches turns a
+# transient answer into a timed-out, non-transient one, ending its retries early (Main #1849: a 503 series stopped at
+# the 4th call, "1 4" for "1 10"). Only the hung-gh case sets a tight one (DOWNLOAD_BOUND).
 download() { # <answers, space-separated> <gh download args...> -> "<status> <calls>"
   rm -f "$work/n" "$work/calls"
   # shellcheck disable=SC2086 # one answer a word
   printf '%s\n' $1 > "$work/answers"; shift
-  local out; out=$(lib "GH_DOWNLOAD_BACKOFF=0 gh_download 2 $*" | tail -1)
+  local out; out=$(lib "GH_DOWNLOAD_BACKOFF=0 gh_download ${DOWNLOAD_BOUND:-$SPEC_HANG_BOUND} $*" | tail -1)
   echo "${out#exit=} $(wc -l < "$work/calls" | tr -d ' ')"
 }
 check "downloaded at once: 0, one call" "0 1" "$(download ok release download t --pattern a --dir "$work/d1")"
@@ -150,10 +153,12 @@ check "...but not forever: GH_DOWNLOAD_TRANSIENT_ATTEMPTS (10) and it fails (1)"
   "$(download "egress egress egress egress egress egress egress egress egress egress ok" run download 1 --name a --dir "$work/d11")"
 rm -f "$work/n" "$work/calls"; echo egress > "$work/answers"
 check "gh's own error is printed, not a guess at it" "yes" \
-  "$(lib "GH_DOWNLOAD_BACKOFF=0 GH_DOWNLOAD_TRANSIENT_ATTEMPTS=1 gh_download 2 run download 1 --name a --dir $work/d12" | grep -c 'HTTP 503: 503 Egress is over the account limit' | sed 's/^[1-9][0-9]*$/yes/')"
-check "a hung gh is ended by the bound (2 s here) and asked again" "0 2" "$(download "hang ok" release download t --pattern a --dir "$work/d6")"
+  "$(lib "GH_DOWNLOAD_BACKOFF=0 GH_DOWNLOAD_TRANSIENT_ATTEMPTS=1 gh_download $SPEC_HANG_BOUND run download 1 --name a --dir $work/d12" | grep -c 'HTTP 503: 503 Egress is over the account limit' | sed 's/^[1-9][0-9]*$/yes/')"
+# The `ok` after the hang runs under the same 5 s bound, so a spare `ok` answers one a loaded runner times out too.
+check "a hung gh is ended by the bound (5 s here) and asked again" "0 asked again" \
+  "$(DOWNLOAD_BOUND=5 download "hang ok ok" release download t --pattern a --dir "$work/d6" | awk '{ print $1, ($2 >= 2 ? "asked again" : "asked " $2 " time(s)") }')"
 rm -f "$work/n" "$work/calls"; printf 'stdout\n' > "$work/answers"
-lib 'gh_download 2 release download t --pattern a --output - 2> "$STUB/stderr"' > "$work/stdout"
+lib "gh_download $SPEC_HANG_BOUND release download t --pattern a --output - 2> \"\$STUB/stderr\"" > "$work/stdout"
 check "gh's stdout passes through (--output -), never read as its messages" "the asset, on stdout|exit=0" "$(paste -sd'|' - < "$work/stdout")"
 check "...its stderr said on stderr" "a warning" "$(cat "$work/stderr")"
 check "only gh's stderr says absent: an 'absent' phrase on stdout is a failed read, asked again" "1 3" \
