@@ -176,9 +176,15 @@ class CeilingTest(unittest.TestCase):
         self.assertIsNone(takes.ceiling)
 
     def test_a_job_naming_none_has_the_platform_default(self):
+        ceilings = timings.workflow_ceilings(".github/workflows/nix-stage-closures.yml")
+        self.assertEqual(timings.ceiling_of("nix-evaluate", ceilings), timings.DEFAULT_TIMEOUT_MINUTES)
+        self.assertEqual(timings.ceiling_of("publish-web", timings.workflow_ceilings(".github/workflows/main.yml")), 10)
+
+    def test_a_ceiling_with_a_comment_after_it_is_the_number(self):
+        # ci.yml's rows: `timeout-minutes: 40 # longest green row 31 min`, read whole, was an expression no job echoed
         ceilings = timings.workflow_ceilings(".github/workflows/main.yml")
-        self.assertEqual(timings.ceiling_of("test (rest)", ceilings), timings.DEFAULT_TIMEOUT_MINUTES)
-        self.assertEqual(timings.ceiling_of("publish-web", ceilings), 10)
+        self.assertEqual(timings.ceiling_of("test (rest)", ceilings), 40)
+        self.assertEqual(timings.scalar(' "40 # not a comment" # one'), "40 # not a comment")
 
     def test_the_ceiling_and_the_run_number_go_out_beside_the_times(self):
         [pre] = timings.collect([JOBS[0]], lambda _: "", self.CEILINGS)

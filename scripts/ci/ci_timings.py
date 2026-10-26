@@ -103,6 +103,15 @@ def indent(line):
     return len(line) - len(line.lstrip(" "))
 
 
+def scalar(value):
+    """A plain or quoted YAML scalar without its trailing comment: `40 # longest green row 31 min` is 40, as YAML reads
+    it; a quoted one keeps a ` #` inside its quotes."""
+    value = value.strip()
+    if value[:1] in ("'", '"') and value.find(value[0], 1) > 0:
+        return value[1:value.find(value[0], 1)]
+    return re.sub(r"(^|\s)#.*$", "", value).strip()
+
+
 def workflow_jobs(text):
     """Every job of a workflow file: {key: (its top-level attributes, its whole block)}. Read by indentation, not a
     YAML parser: the runners' python has no PyYAML, and a job's keys are the lines one level under its own."""
@@ -130,7 +139,7 @@ def workflow_jobs(text):
                 for l in inner:
                     if indent(l) == level and ":" in l:
                         name, _, value = l.strip().partition(":")
-                        attrs[name] = value.strip().strip("'\"")
+                        attrs[name] = scalar(value)
                 jobs[key] = (attrs, "\n".join(block))
             key, block = line.strip().rstrip(":"), []
         else:
