@@ -23,6 +23,8 @@
 #        leaves the terminal's group, a Ctrl-C reaches it — passed on to the group, then to the caller as the signal.
 #        Run in a terminal's foreground with it on stdin, the command's group holds the foreground while it runs, so
 #        one touching the terminal (stty, a prompt) is not stopped, and a Ctrl-C there reaches the caller too.
+#        BOUNDED_ON_TIMEOUT=<executable>: run at the deadline with the group's id, BEFORE the group is ended, to say
+#        what it was stuck on (scripts/stall-report.sh). This call's alone: the command does not inherit it.
 #   usage_from_header [file]        -> the header comment of <file> (default the running script, $0): from line 2 to the
 #        first `set ` line, the `# ` stripped, a leading blank line dropped
 #   KINOWO_COUNTRIES                -> the country codes every tool loops over, in one order (kinowo_countries_csv: "pl,de,…")
@@ -61,6 +63,7 @@ bounded() {
   perl -e '
     use POSIX ":sys_wait_h";
     my $seconds = shift;
+    my $on_timeout = delete $ENV{BOUNDED_ON_TIMEOUT}; # for this bound alone, never one the command sets itself
     # The terminal: when bounded runs in its foreground with it on stdin, the command'"'"'s group is handed the foreground
     # while it runs, and it is taken back after -- a group of its own in the background is stopped (SIGTTOU/SIGTTIN)
     # the moment it touches the terminal (stty, a password prompt, a JLine sbt client), until the deadline.
@@ -89,7 +92,7 @@ bounded() {
       if ($signal) { $SIG{$signal} = "DEFAULT"; kill $signal, $$; }
       exit $code;
     };
-    $SIG{ALRM} = sub { $stop->(124) };
+    $SIG{ALRM} = sub { system($on_timeout, $pid) if $on_timeout; $stop->(124) };
     $SIG{INT} = sub { $stop->(130, "INT") };
     $SIG{TERM} = sub { $stop->(143, "TERM") };
     alarm $seconds;

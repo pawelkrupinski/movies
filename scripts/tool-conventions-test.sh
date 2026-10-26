@@ -14,10 +14,19 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin"
 
+# Every case takes well under a second (0.04-1 s on a laptop, ~2x that on a loaded runner), so CASE_BOUND, not the
+# runner's 600 s for the whole test, ends one that stalls: Main #1873 spent all 600 s in the lone-comma case and the log
+# said only TIMEOUT. A stalled case names itself and says what it was stuck on (scripts/stall-report.sh) on stderr.
+CASE_BOUND=${CASE_BOUND:-120}
 # shellcheck disable=SC2016 # the lines are run by the library's shell, expanded there
 lib() { # <shell line> -> its stdout and stderr, then "exit=<status>"; run with the library sourced, as a tool named demo
-  STUB="$work" PATH="$work/bin:$PATH" bounded "$SPEC_HANG_BOUND" bash -c '. "$1"; TOOL_NAME=demo; eval "$2"' _ "$REPO_ROOT/scripts/tool-conventions.sh" "$1" 2>&1
-  echo "exit=$?"
+  local status
+  rm -f "$work/stall"
+  STUB="$work" PATH="$work/bin:$PATH" STALL_REPORT_FILE="$work/stall" BOUNDED_ON_TIMEOUT="$REPO_ROOT/scripts/stall-report.sh" \
+    bounded "$CASE_BOUND" bash -c '. "$1"; TOOL_NAME=demo; eval "$2"' _ "$REPO_ROOT/scripts/tool-conventions.sh" "$1" 2>&1
+  status=$?
+  [ ! -e "$work/stall" ] || { echo "lib: stalled past ${CASE_BOUND}s: $1"; cat "$work/stall"; } >&2
+  echo "exit=$status"
 }
 
 # ── die / usage_error ─────────────────────────────────────────────────────────────────────────────
@@ -167,5 +176,16 @@ mkdir -p "$work/d7"; echo stale > "$work/d7/got"
 download "partial ok" run download 1 --name a --dir "$work/d7" > /dev/null
 check "a run download cut short is retried into an emptied --dir (gh will not overwrite what it left)" "payload" "$(cat "$work/d7/got")"
 check "...whose files of before the retry are gone" "1" "$(find "$work/d7" -type f | wc -l | tr -d ' ')"
+
+# ── a stall says what it was stuck on ─────────────────────────────────────────────────────────────
+# shellcheck disable=SC2016 # expanded by the bounded command's shell
+inherited=$(BOUNDED_ON_TIMEOUT=/bin/echo bounded "$SPEC_HANG_BOUND" sh -c 'echo "${BOUNDED_ON_TIMEOUT:-unset}"'); rc=$?
+check "BOUNDED_ON_TIMEOUT is that bound's alone: the command does not inherit it" "unset rc=0" "$inherited rc=$rc"
+BOUNDED_ON_TIMEOUT="$REPO_ROOT/scripts/stall-report.sh" bounded 1 sh -c 'exec sleep 30' 2> "$work/report"; rc=$?
+check "at the deadline it reports the group, still alive, before ending it (124)" "rc=124 report sleep" \
+  "rc=$rc $(grep -c '── stall report: process group' "$work/report" | sed 's/^1$/report/') $(grep -q 'sleep 30' "$work/report" && echo sleep)"
+stalled_exit=$(CASE_BOUND=1 lib 'sleep 30' 2> "$work/stalled" | tail -1)
+check "a stalled lib case names itself (CASE_BOUND, 1 s here) and carries the report" "named report exit=124" \
+  "$(grep -q 'lib: stalled past 1s: sleep 30' "$work/stalled" && printf named) $(grep -q 'stall report: process group' "$work/stalled" && printf report) $stalled_exit"
 
 spec_summary

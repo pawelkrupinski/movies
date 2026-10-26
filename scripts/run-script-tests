@@ -45,6 +45,7 @@ Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra
 PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+stall_report="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-report.sh" # this script's own, whatever --root
 jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" linux=0 filters=()
 usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
 # A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
@@ -268,7 +269,8 @@ fi
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
   local i="$1" path="$2" start=$SECONDS code interpreter=bash
   case "$path" in *.py) interpreter=python3 ;; esac
-  bounded "$timeout_s" "$interpreter" "$path" < /dev/null > "$work/$i.log" 2>&1
+  # a test that times out says what it was stuck on, in its own log (the report's tail shows it)
+  BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null > "$work/$i.log" 2>&1
   code=$?
   echo "$((SECONDS - start))" > "$work/$i.seconds"
   echo "$code" > "$work/$i.rc"
