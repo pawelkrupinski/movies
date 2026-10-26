@@ -151,6 +151,10 @@ final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTr
       node.toSeq.flatMap(_.joins.map("join:" + _)) ++ node.toSeq.flatMap(_.apart.map(reason => "apart:" + DecisionTrace.id(reason))) ++
       node.toSeq.flatMap(_.refusals.map(_.ruleId))).toSeq.distinct
   }
+
+  /** Did the model decide its members APART, as none of the film their cluster took ([[DecisionTrace.Apart]])? Then a
+   *  rule its nodes accepted that film by alone was overruled by the model itself, and lends a stage after it nothing. */
+  def decidedApart: Boolean = vetoed.exists(veto => veto.by.isEmpty && DecisionTrace.Apart(veto.reason))
 }
 
 object DecisionTrace {
@@ -170,15 +174,22 @@ object DecisionTrace {
     def ruleId: String = s"refused:$rule:${DecisionTrace.id(why)}"
   }
   final case class Veto(reason: String, by: Option[String])
+  /** The vetoes of members the model decides apart, as none of their cluster's film (`ResolverRun`): billing several
+   *  works, billing the film as one piece beside another thing, a namesake nothing of their own corroborates. */
+  val BillsBoth: String      = "bills both works"
+  val BilledAsPiece: String  = "billed as one piece"
+  val Uncorroborated: String = "uncorroborated namesake"
+  val Apart: Set[String]     = Set(BillsBoth, BilledAsPiece, Uncorroborated)
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
 
   /** What of `decision`'s trace the model keeps with it, and stores: what a stage after the model reads of it
    *  ([[UnifiedEvidence]]'s `rule.*` signals and the guards they lift, read by the fill of a no-match) — of a no-match, the
    *  rule each member's node accepted its candidate by alone and the pooled rule; of a match, nothing. The whole trace goes
    *  to the trace store. Kept, so the stage reads what a whole resolve hands it (docs/design/identity-no-drift.md: the
-   *  model kept no trace, so prod's fill never read a `rule.*` signal a whole resolve's did — UK "CBeebies Panto"). */
+   *  model kept no trace, so prod's fill never read a `rule.*` signal a whole resolve's did). Of members the model decided
+   *  apart, nothing either: the rules their nodes accepted the film by are the model's own overruled ([[decidedApart]]). */
   def kept(decision: ResolverDecision): DecisionTrace =
-    if (decision.film.isDefined) Empty
+    if (decision.film.isDefined || decision.trace.decidedApart) Empty
     else {
       val nodes = decision.trace.nodes.collect { case (key, node) if node.accepted.isDefined => key -> Node(node.accepted, Nil, Nil, candidate = node.candidate) }
       if (nodes.isEmpty && decision.trace.pooled.isEmpty) Empty else DecisionTrace(decision.trace.pooled, None, nodes)

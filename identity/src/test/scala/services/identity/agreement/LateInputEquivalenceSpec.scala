@@ -58,6 +58,13 @@ class LateInputEquivalenceSpec extends AnyFlatSpec with Matchers {
   }
 
   Drift.all.foreach(row => holds(s"drift row ${row.name}", "take what a whole resolve over the same inputs takes", Seq(row), Pending.contains(row.name)))
+
+  "UK \"CBeebies Panto: Treasure Island\" ×11, a pantomime TMDB holds a record of" should
+    "stay no film, whole or incremental: the model decided it apart, and the fill takes what the model refused no more" in {
+    val s = cbeebies.head
+    LateInputs.takes(new LateInputs.Run(s).whole()).flatMap(_._2) shouldBe empty
+    Restart.values.foreach(restart => LateInputs.takes(new LateInputs.Run(s).incremental(restart)).flatMap(_._2) shouldBe empty)
+  }
 }
 
 object LateInputEquivalenceSpec {
@@ -68,7 +75,8 @@ object LateInputEquivalenceSpec {
    * The cases the incremental path does not cure yet, by name, each with its root cause — for the fix to take the mark
    * off. None: the last, UK "CBeebies Panto: Treasure Island" ×11 (a film new in TMDB, filled by venues.current by a fresh
    * stage, by no live one), was the model keeping its decisions without their trace, so the fill's `rule.*` signals read
-   * none in prod; it keeps what a stage reads of it now ([[services.identity.DecisionTrace.kept]]).
+   * none in prod; it keeps what a stage reads of it now ([[services.identity.DecisionTrace.kept]]) — and, since the model's
+   * decision apart lends the fill no rule ([[services.identity.DecisionTrace.decidedApart]]), both take none.
    */
   val Pending: Map[String, String] = Map.empty
 
@@ -135,8 +143,9 @@ object LateInputEquivalenceSpec {
   val pins: Seq[Scenario] = Seq(Scenario("Lalka pinned", Kind.Pin, Seq(bareLalka), lalkas, silent,
     pins = Seq(Pin(Seq(bareLalka.key), PinClaim.IsFilm(1002), "curator", "Has's", java.time.Instant.parse("2026-10-25T00:00:00Z")))))
 
-  /** UK "CBeebies Panto: Treasure Island" ×11: a film new in TMDB (1785679), billed widely; a fresh stage fills it by
-   *  venues.current, prod's stage — its verdict decided before TMDB held the film — none. */
+  /** UK "CBeebies Panto: Treasure Island" ×11: a record new in TMDB (1785679), billed widely — the pantomime's own, which
+   *  the model's title rule takes and [[services.identity.BilledPiece]] decides apart as no film. A fresh stage filled it
+   *  by venues.current, the overruled rule lifting the fill's guards, until the model's decision apart lent it none. */
   private lazy val cbeebiesName = "CBeebies ×11 (Panto: Treasure Island)"
   val cbeebies: Seq[Scenario] = {
     val panto = FilmTable.F(1785679, "Cbeebies Panto: Treasure Island", 2026, "", 0, popularity = 1.0)

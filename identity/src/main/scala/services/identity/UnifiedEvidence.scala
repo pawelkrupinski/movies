@@ -199,7 +199,10 @@ object UnifiedEvidence {
     private val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))
     private val venues      = c.listings.map(_.venue).distinct.size
     private val stageWork   = c.listings.exists(ListingShape.stagesAWork)
-    private val traced      = c.decision.trace.nodes.values.toSeq
+    // the rules the model's nodes accepted a film by alone — none where the model decided its members apart as none of
+    // that film: its own no-film, which no rule it overruled lifts a guard against (UK "CBeebies Panto: Treasure Island",
+    // a pantomime's own TMDB record, which a title rule took and [[BilledPiece]] refused)
+    private val traced      = if (c.decision.trace.decidedApart) Nil else c.decision.trace.nodes.values.toSeq
     // the one TMDB film the listings' TMDB-keyed feeds link, where they link one ([[PinnedSignals]]' family.feedLink)
     private val feedLinked = FeedLink.linked(c.listings).map(_._2)
     // the CURRENT film (released this year or last) TMDB's search ranked first for a title naming it, which a node denied

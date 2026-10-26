@@ -132,9 +132,9 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
         Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
       else
         restDecided(rest, film) ++
-          Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), "bills both works")) ++
-          Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece")) ++
-          Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated namesake"))
+          Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), DecisionTrace.BillsBoth)) ++
+          Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, DecisionTrace.BilledAsPiece)) ++
+          Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, DecisionTrace.Uncorroborated))
     }
 
     /** The members of `unbilled` billing `film` as one piece beside another thing, or beside their screening, with why. */
