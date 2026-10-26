@@ -588,7 +588,32 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 0)
     asked should be > 0
-    verdicts.all().filter(_.correction.isEmpty).map(_.rules) shouldBe Seq(s"${AgreementStage.RulesVersion}|${services.identity.UnifiedRules.resolver.version}")
+    verdicts.all().filter(_.correction.isEmpty).map(_.rules) shouldBe Seq(new AgreementStage(counting, NoVenueDetails, normalizer,
+      IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned).decidedUnder)
+  }
+
+  // The worker picks the families a country asks in code no rules version digests (`IdentityProjectionWiring.FilmwebVoting`),
+  // and a receipt names only the answers its verdict read: a verdict decided before Filmweb was asked stood once it was,
+  // never reading Filmweb's answer, where a whole resolve with Filmweb asked reads it.
+  it should "decide a kept verdict again when the stage is configured with other families, as a whole resolve with them would" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    def stageOf(families: Map[VoterFamily, FamilyAnswers]) = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
+    val withoutFilmweb = agreeing() - VoterFamily.Filmweb
+    stageOf(withoutFilmweb).apply(resolution, listingOf, version = 1)
+    verdicts.all() should not be empty
+    var filmwebAsked = 0
+    val filmweb      = agreeing()(VoterFamily.Filmweb)
+    val counted      = new FamilyAnswers {
+      val family: VoterFamily = filmweb.family
+      def titled(text: String)     = { filmwebAsked += 1; filmweb.titled(text) }
+      def directedBy(name: String) = { filmwebAsked += 1; filmweb.directedBy(name) }
+      def record(id: String)       = { filmwebAsked += 1; filmweb.record(id) }
+    }
+    stageOf(withoutFilmweb + (VoterFamily.Filmweb -> counted)).apply(resolution, listingOf, version = 1)
+    filmwebAsked should be > 0
+    stageOf(withoutFilmweb).decidedUnder should not be stageOf(agreeing()).decidedUnder
+    stageOf(withoutFilmweb).decidedUnder shouldBe stageOf(withoutFilmweb).decidedUnder
   }
 
   // the owner (2026-10-25): every verdict prod stored before receipts were whole is decided again, but a budget an apply
