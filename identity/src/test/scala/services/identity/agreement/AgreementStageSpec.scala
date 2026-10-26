@@ -985,4 +985,24 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     found = Answer.Known(Some(913760))
     stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
   }
+
+  // worker-de and -uk from 2026-10-25 19:00Z: ~58 s and 11 GB an agreement phase. The fill notes an attempt for nearly
+  // every verdict, and an attempt marked anywhere read again every verdict whose receipt named one
+  it should "read again, on an attempt, only the verdicts whose receipt read that question as not attempted" in {
+    var tried = Set.empty[Question]
+    val stage = new AgreementStage(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = q => tried(q))
+    val (record, other) = (Question.Record(913760), Question.Record(7))
+    def verdict(id: String, reads: (services.identity.Dependency, Long)*) = StoredVerdict(id, 1L, reads.toMap, None, stage.decidedUnder)
+    val waiting  = verdict("waiting", services.identity.Dependency.Attempted(record) -> AgreementStage.attemptedDigest(false))
+    val read     = verdict("read", services.identity.Dependency.Attempted(record) -> AgreementStage.attemptedDigest(true))
+    val elsewise = verdict("elsewise", services.identity.Dependency.Attempted(other) -> AgreementStage.attemptedDigest(false))
+    val none     = verdict("none", services.identity.Dependency.Year -> AgreementStage.yearDigest(2026))
+    Seq(waiting, read, elsewise, none).foreach { v => stage.held.put(v.id, v); stage.held.check(v.id, 1L, 1L) }
+    tried = Set(record)
+    stage.uncheckAttempted()
+    stage.held.isChecked("waiting") shouldBe false
+    Seq("read", "elsewise", "none").foreach(id => withClue(id)(stage.held.isChecked(id) shouldBe true))
+    stage.attemptUnchecked shouldBe 1
+  }
 }

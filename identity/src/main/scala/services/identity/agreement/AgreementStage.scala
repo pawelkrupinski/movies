@@ -289,10 +289,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (year != yearNow) { yearNow = year; held.uncheckAll(); last = None }
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
     val waited = attemptedSince
-    // an attempt is in receipts too ([[Dependency.Attempted]]): every verdict naming one read again. Only those: a
-    // correction's receipt names none, and has no reading of it again but afresh — cleared on every attempt, no PL take's
-    // correction stood an apply, ~700 read afresh each against a budget of 200 (the drift replay timing out, run 1641)
-    if (waited) held.uncheckWhere(_.reads.keysIterator.exists(_.isInstanceOf[Dependency.Attempted]))
+    if (waited) uncheckAttempted()
     last.collect { case (was, at, came) if !reread && !waited && !unread && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
@@ -300,6 +297,25 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       came
     }
   }
+
+  /** An attempt marked since the last apply: the verdicts whose receipt read a question's attempt as it no longer reads
+   *  ([[Dependency.Attempted]]) are read again — those alone. A receipt naming an attempt is not enough: the fill notes
+   *  one for nearly every verdict, and unchecking every such verdict on any attempt anywhere read ~all receipts again
+   *  (worker-de and -uk from 2026-10-25 19:00Z: ~58 s and 11 GB an agreement phase). A correction's receipt names none,
+   *  and has no reading of it again but afresh (run 1641). How many it unchecked: [[attemptUnchecked]]. */
+  private[agreement] def uncheckAttempted(): Unit = {
+    var unchecked = 0
+    held.uncheckWhere(v => v.reads.exists {
+      case (Dependency.Attempted(question), recorded) =>
+        val moved = recorded != AgreementStage.attemptedDigest(attempted(question))
+        if (moved) unchecked += 1
+        moved
+      case _ => false
+    })
+    attemptUnchecked = unchecked
+  }
+  /** How many verdicts the last attempt marked read again ([[uncheckAttempted]]). */
+  private[agreement] var attemptUnchecked = 0
 
   /** Was a question the last apply waited on attempted since, though nothing was filed — a cluster's wait settling, a
    *  take's evidence read as none? */
@@ -894,6 +910,9 @@ object AgreementStage {
     val text = parts.mkString("\u0000")
     (scala.util.hashing.MurmurHash3.stringHash(text, 0x2f1d7a3b).toLong << 32) | (scala.util.hashing.MurmurHash3.stringHash(text, 0x6c8e9cf5).toLong & 0xffffffffL)
   }
+
+  /** What a receipt reads whether a question was attempted as ([[Dependency.Attempted]]). */
+  def attemptedDigest(attempted: Boolean): Long = digest(Seq(Answer.Known(attempted.toString).toString))
 
   /** What a settled verdict reads a question none answered as ([[AgreementStage.settles]]): the digest of no answer, which
    *  an answer filed no longer matches. */
