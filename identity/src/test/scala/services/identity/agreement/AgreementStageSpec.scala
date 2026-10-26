@@ -505,6 +505,24 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     (agreedPass.waiting, agreedPass.verdicts, agreedPass.agreed, agreedPass.takenTmdb, agreedPass.takenFallback) shouldBe ((0, 1, 1, 1, 0))
   }
 
+  // prod DE 2026-10-26: the receipt held the year's bare text, its re-reading `Known(2026)`, so no kept verdict stood a
+  // re-read and every apply after a filing resolved all ~1,750 again (58 s, 11 GB)
+  it should "let a kept verdict stand when its receipt is read again after a filing elsewhere, and across a restart" in {
+    val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
+    val stored = new InMemoryAgreementVerdicts
+    def stage() = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), stored, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned)
+    val live = stage()
+    live.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
+    passes.last.resolves shouldBe 1
+    live.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)   // its receipt read again
+    passes.last.resolves shouldBe 0
+    val restarted = stage()
+    restarted.apply(resolution, listingOf, version = 2)
+    restarted.apply(resolution, listingOf, version = 3).decisions.head.film shouldBe Some(913760)
+    passes.takeRight(2).map(_.resolves) shouldBe Seq(0, 0)
+  }
+
   it should "take the agreed IMDb id as its fallback film when TMDB holds none" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.fallback shouldBe Some(ResolverDecision.Fallback("imdb", "tt16315948", 1.0))

@@ -337,7 +337,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     keying(resolution, pass)
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
-      val year = AgreementStage.digest(Seq(yearNow.toString))
+      val year = AgreementStage.yearDigest(yearNow)
       held.valuesIterator.filter(v => v.rules == decidedUnder && v.reads.get(AgreementStage.YearRead).forall(_ == year)).foreach { v =>
         checked(v.id) = (v.listings, version)
         // a verdict settled before the restart: what none answered then is asked on every pass again (asking only: the
@@ -744,7 +744,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (settling) unreached(id) = gaps.toSet else unreached -= id
       Some {
         val thisYear = yearNow
-        reads(AgreementStage.YearRead) = AgreementStage.digest(Seq(thisYear.toString))
+        reads(AgreementStage.YearRead) = AgreementStage.yearDigest(thisYear)
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
         val (weighed, fill) = receipting(reads, listings) {
@@ -896,6 +896,10 @@ object AgreementStage {
 
   /** A receipt's ids beside the families': the year, and the venues' and TMDB's lookups ([[AgreementStage.Noting]]). */
   val YearRead   = "clock"
+  /** The year's digest in a receipt: of the answer the stage's `read` gives for [[YearRead]], as every read is
+   *  digested. The year's bare text never read equal, so no verdict stood a re-read: every apply that read the held
+   *  verdicts again resolved them all (prod DE 2026-10-26: ~1,750 resolves, 58 s and 11 GB an apply). */
+  def yearDigest(year: Int): Long = digest(Seq(Answer.Known(year.toString).toString))
   /** A receipt's entry for whether a question was attempted (the question memory's say): `tried|<question id>`. */
   val TriedRead  = "tried"
   val VenuesRead = "venues"
