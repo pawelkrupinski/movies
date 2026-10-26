@@ -47,7 +47,7 @@ object StagedEvidence {
     "countries"          -> f.countries.flatMap(list),
     "release countries"  -> f.releaseCountries.filter(_.nonEmpty).map(_.grouped(2).mkString(" ")),
     "certificates"       -> f.certificates,
-    "genres"             -> list(f.genreIds.toSeq.sorted.map(_.toString)),
+    "genres"             -> list(f.genreIds.toSeq.map(id => IdentityMeasures.Film.GenreNames.getOrElse(id, id.toString)).sorted),
     "cast billed"        -> f.cast.map(c => s"${c.pairs.size} names"),
     "popularity"         -> f.popularity.map(p => f"$p%.1f"))
 

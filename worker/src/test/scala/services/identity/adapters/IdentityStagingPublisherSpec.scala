@@ -227,7 +227,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     val docs   = new InMemoryStagingDocuments
     val films  = Map(1 -> IdentityMeasures.Film("Belle", year = Some(2013), directors = Some(Seq("Amma Asante")), runtime = Some(104), imdbNumber = 2404639),
       2 -> IdentityMeasures.Film("Belle", originalTitle = Some("竜とそばかすの姫"), year = Some(2021), directors = Some(Seq("Mamoru Hosoda")),
-        runtime = Some(121), countries = Some(Seq("JP"))))
+        runtime = Some(121), countries = Some(Seq("JP")), genreBits = IdentityMeasures.Film.genreBitsOf(Seq(16, 14))))
     val live   = publisher(docs, storedFilm = films.get)
     taken = Some(resolution(decision(Seq(belle), Some(1), ResolverDecision.Basis.OwnMatch)))
     live.publish()
@@ -244,7 +244,7 @@ class IdentityStagingPublisherSpec extends AnyFlatSpec with Matchers {
     facts(changed.listings.head.facts) should contain allOf ("year" -> "2021", "directors" -> "Mamoru Hosoda", "runtime" -> "111 min",
       "poster" -> "https://kino.example/Belle.jpg")
     facts(changed.take.filmFacts) should contain allOf ("tmdb" -> "2", "year" -> "2021", "original title" -> "竜とそばかすの姫",
-      "directors" -> "Mamoru Hosoda", "countries" -> "JP", "runtime" -> "121 min")
+      "directors" -> "Mamoru Hosoda", "countries" -> "JP", "runtime" -> "121 min", "genres" -> "Animation, Fantasy")
     facts(changed.before.get.filmFacts) should contain allOf ("tmdb" -> "1", "year" -> "2013", "directors" -> "Amma Asante", "imdb" -> "tt2404639")
     // each trace of the listing: against the film it holds now, and against the one it held, a year gap of 8 then
     changed.take.nodes.map(n => (n.venue, n.rawTitle)) shouldBe Seq(("Kino Amok", "Belle"))
