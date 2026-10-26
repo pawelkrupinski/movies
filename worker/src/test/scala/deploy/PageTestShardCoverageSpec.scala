@@ -48,11 +48,20 @@ class PageTestShardCoverageSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  private def shardsOf(projectSet: String): Vector[String] =
-    selections.filter(_.project == projectSet).map(_.shard).filter(_.nonEmpty)
-
   private lazy val phoneSets: Vector[String] =
     selections.map(_.project).filter(_.contains(",")).distinct
+
+  /** Covered when unsharded in exactly one row, or sharded `i/N` with one row for every `i` in `1..N`. */
+  private def coverShards(rows: Vector[Selection]): Unit = {
+    val shards = rows.map(_.shard).filter(_.nonEmpty)
+    if (shards.isEmpty) rows should have size 1
+    else {
+      val total = shards.head.split("/")(1).toInt
+      shards should have size rows.size.toLong
+      shards.map(_.split("/")(1).toInt).distinct shouldBe Vector(total)
+      shards.map(_.split("/")(0).toInt).sorted shouldBe (1 to total).toVector
+    }
+  }
 
   "the page-test matrix" should "have parsed some selections at all (guards this spec's own reader)" in {
     selections should not be empty
@@ -61,25 +70,21 @@ class PageTestShardCoverageSpec extends AnyFlatSpec with Matchers {
 
   it should "cover every shard of every sharded project set, and run an unsharded one exactly once" in {
     phoneSets.foreach { set =>
-      val rows   = selections.filter(_.project == set)
-      val shards = shardsOf(set)
-      withClue(s"$set: ") {
-        if (shards.isEmpty) rows should have size 1
-        else {
-          val total = shards.head.split("/")(1).toInt
-          shards should have size rows.size.toLong
-          shards.map(_.split("/")(1).toInt).distinct shouldBe Vector(total)
-          shards.map(_.split("/")(0).toInt).sorted shouldBe (1 to total).toVector
-        }
-      }
+      withClue(s"$set: ")(coverShards(selections.filter(_.project == set)))
     }
   }
 
+  /** Once per engine: on one project, in one row or in every shard of it (WebKit's, one worker a row, is split). */
   it should "run the viewport-independent specs exactly once per engine" in {
     val agnosticRows = selections.filter(_.grep == "@agnostic")
-    agnosticRows should have size 2
-    agnosticRows.map(_.project).count(_.startsWith("chromium-")) shouldBe 1
-    agnosticRows.map(_.project).count(_.startsWith("webkit-")) shouldBe 1
+    Vector("chromium-", "webkit-").foreach { engine =>
+      val rows = agnosticRows.filter(_.project.startsWith(engine))
+      withClue(s"$engine: ") {
+        rows.map(_.project).distinct should have size 1
+        coverShards(rows)
+      }
+    }
+    agnosticRows.map(_.project).filterNot(p => p.startsWith("chromium-") || p.startsWith("webkit-")) shouldBe empty
   }
 
   /**

@@ -8,10 +8,10 @@ import org.scalatest.matchers.should.Matchers
  * vCPUs; on the ci-runner the JVMs' ActiveProcessorCount=4). The container itself sees the whole 32-core host, so
  * `PW_WORKERS` in `.github/actions/run-page-test` is the only thing sizing it.
  *
- * WebKit gets half the budget. Its workers are each a WebProcess, a NetworkProcess and the test runner, beside the
- * fixture server's JVM: at 5 workers, once the ci-runner shared CPU by tier (2026-10-25), a WebKit test's p50 went
- * 4.4s -> 17-21s, its max past the 30s timeout, and `page tests (safari / pw behaviour)` failed 9 of 18 Main runs
- * (#1838, #1843), each time on different tests.
+ * WebKit gets one worker. Its workers are each a WebProcess, a NetworkProcess and the test runner, beside the fixture
+ * server's JVM, and since the ci-runner shared CPU by tier (2026-10-25) a busy host leaves a Main job container about
+ * one core. At 5 workers a WebKit test's p50 went 4.4s -> 17-21s and its max past the 30s timeout (#1838, #1843); at
+ * 2, p50 9.7s and a 37.8s timeout (#1862). More rows, not more workers, are what buy WebKit CPU (ci.yml's shards).
  */
 class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
   private val BudgetCpus = 4
@@ -30,9 +30,9 @@ class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
     Pattern.findFirstMatchIn(workersExpr).map(_.group(1).toInt).getOrElse(fail(s"no `$condition && '<n>'` in $workersExpr"))
   }
 
-  "run-page-test" should "give a WebKit row half the job's CPUs, on every host" in {
+  "run-page-test" should "give a WebKit row one worker, on every host" in {
     workersExpr should startWith("PW_WORKERS: ${{ inputs.browsers == 'webkit' &&")
-    workersFor("inputs.browsers == 'webkit'") shouldBe BudgetCpus / 2
+    workersFor("inputs.browsers == 'webkit'") shouldBe 1
   }
 
   it should "give any other row no more than Playwright's own CI default, 125% of the budget" in {

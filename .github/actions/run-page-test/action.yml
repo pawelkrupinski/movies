@@ -284,17 +284,19 @@ runs:
         # (32 cores → '125%' = 40 workers per job, several jobs at once), so pin
         # the 5 workers a 4-vCPU GitHub runner gets. Empty on github.com.
         #
-        # A WebKit-only row gets 2, half the 4-CPU budget, on any host. A WebKit
-        # worker is a WebProcess plus a NetworkProcess plus the test runner, and the
-        # fixture server's JVM shares the same CPUs, so 5 of them only queue on each
-        # other: once the ci-runner shared CPU by tier (2026-10-25) the WebKit rows
-        # got a few cores of a busy host, a test's p50 went 4.4s -> 17-21s and its max
-        # past the 30s timeout (Main #1838, #1843: a different set of tests each run),
-        # and `pw behaviour` failed 9 of its 18 Main runs. Under that contention the
-        # wall time is the same with fewer workers (the CPU is the limit) and each
-        # test 2.5x faster; on an idle host the row runs ~1.5-3 min longer, inside its
-        # pre-tiering p95 (549s). PlaywrightWorkerBudgetSpec.
-        PW_WORKERS: ${{ inputs.browsers == 'webkit' && '2' || github.server_url != 'https://github.com' && '5' || '' }}
+        # A WebKit-only row runs ONE worker, on any host. A WebKit worker is a
+        # WebProcess plus a NetworkProcess plus the test runner, beside the fixture
+        # server's JVM, and since the ci-runner shared CPU by tier (2026-10-25) a
+        # Main job container gets about one core of a busy host: one of ~16 Main jobs
+        # in the deploy slice while the gate tier holds CCD0. A test's time is then
+        # its CPU times the workers sharing that core. At 5 workers the p50 went
+        # 4.4s -> 17-21s, its max past the 30s timeout (Main #1838, #1843); at 2,
+        # p50 9.7s and one test at 37.8s (#1862: hidden-films-bulk, ~4x the p50 on
+        # every run). The CPU sets the wall time either way; fewer workers only make
+        # each test shorter, so the row that carries the most tests is sharded
+        # instead (ci.yml's `pw behaviour 1/2, 2/2`): a second container is a second
+        # share of the CPU. PlaywrightWorkerBudgetSpec.
+        PW_WORKERS: ${{ inputs.browsers == 'webkit' && '1' || github.server_url != 'https://github.com' && '5' || '' }}
       run: |
         cd page-tests-playwright
         # `set -f` so the shell never glob-expands a project pattern

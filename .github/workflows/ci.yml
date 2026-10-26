@@ -40,7 +40,7 @@ env:
 #   integration-test × 2 ───────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
-#   page-tests × 6 ─────────────────┘
+#   page-tests × 7 ─────────────────┘
 #
 # RUNNER BUDGET — 15 here, and no more. GitHub Free allows 20 concurrent jobs
 # ACROSS THE ACCOUNT. On a push to main, `main.yml` adds one more at t=0 (its
@@ -58,7 +58,7 @@ env:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 4 test + 2 integration + 2 e2e + 1 mobile + 6 page-tests.
+# Current split: 4 test + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -572,11 +572,21 @@ jobs:
                     # phones, so it just joins their project set and gets sharded
                     # with them; the largest shard is 184 either way, so those rows
                     # absorb it for free and this one keeps only its 52.
-                    - variant: pw behaviour
+                    #
+                    # In two shards since each WebKit row runs one worker (PW_WORKERS in
+                    # run-page-test): a contended host gives each job container about one
+                    # core, so a second row is a second core for its ~156 tests, where one
+                    # row ran 1144s (#1862).
+                    - variant: pw behaviour 1/2
                       kind: playwright
                       browsers: webkit
-                      label: webkit-behaviour
-                      runs: 'webkit-iphone-13 ; @agnostic ; axe-core ;'
+                      label: webkit-behaviour-1-2
+                      runs: 'webkit-iphone-13 ; @agnostic ; axe-core ; 1/2'
+                    - variant: pw behaviour 2/2
+                      kind: playwright
+                      browsers: webkit
+                      label: webkit-behaviour-2-2
+                      runs: 'webkit-iphone-13 ; @agnostic ; axe-core ; 2/2'
         runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:

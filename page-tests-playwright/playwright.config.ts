@@ -115,7 +115,7 @@ export default defineConfig({
   // about its budget: a Forgejo job container sees the whole 32-core host
   // (→ 40 workers) while several page-test jobs share it, and every slice
   // timed out (run 315). The action pins it to the GitHub-runner figure there,
-  // and a WebKit row to 2 on every host (see PW_WORKERS in run-page-test).
+  // and a WebKit row to 1 on every host (see PW_WORKERS in run-page-test).
   workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : process.env.CI ? '125%' : '100%',
   // Hand out single tests, not whole files, to the workers (and to `--shard`). Every test opens
   // its own context and the fixture server is read-only, so no test leans on a sibling's state.
