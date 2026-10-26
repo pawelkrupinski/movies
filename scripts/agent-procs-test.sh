@@ -96,6 +96,14 @@ sleep 300 & toolwork=$!
 } > "$work/lsof.txt"
 export AGENT_PROCS_PS_COMMAND="cat $work/ps.txt" AGENT_PROCS_CWD_COMMAND="cat $work/lsof.txt"
 
+# alive_after_term <pid> -> "no" once a SIGTERMed process is gone, "yes" if it outlives a grace of up to 10 s. A fixed
+# 0.3 s nap read the last pid the tool signalled before this shell had reaped it, on a loaded CI runner (Main #1936).
+alive_after_term() {
+  local _
+  for _ in $(seq 1 100); do kill -0 "$1" 2>/dev/null || { echo no; return; }; command sleep 0.1; done
+  echo yes
+}
+
 listing="$(cd "$root" && "$TOOL")"
 suggestion() { printf '%s\n' "$listing" | sed -n "s|^\([A-Z-]*\) *$work/$1\$|\1|p"; }
 block() { printf '%s\n' "$listing" | sed -n "\|^[A-Z-]* *$work/$1\$|,/^[A-Z-]* *\//p"; }
@@ -139,15 +147,15 @@ check "kill --dry-run names the victim" "1" "$(printf '%s\n' "$dry" | grep -c "w
 check "kill --dry-run kills nothing" "yes" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
 check "kill --dry-run never offers the caller's shell" "0" "$(printf '%s\n' "$dry" | grep -c "pid $$ ")"
 (cd "$work/wt-orphan" && "$TOOL" kill --mine > /dev/null)
-sleep 0.3
-check "kill --mine ends the current worktree's process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
+check "kill --mine ends the current worktree's process" "no" "$(alive_after_term "$victim")"
+toolwork_alive="$(alive_after_term "$toolwork")" # every signal has landed before the spared ones are asked after
 check "...and leaves another worktree's process alone" "yes" "$(kill -0 "$bystander" 2>/dev/null && echo yes || echo no)"
 # 2026-10-19: a subagent ran `kill --mine` after its worktree was removed, from the root checkout, where every
 # session's `claude` and its MCP servers sit: it SIGTERMed one. An agent session or shell is never a victim, and
 # --mine refuses the root checkout outright: no one owns what runs there.
 check "...and never an agent session sitting in it" "yes" "$(kill -0 "$session" 2>/dev/null && echo yes || echo no)"
 check "...nor the MCP servers it started, though they run node" "yes" "$(kill -0 "$mcp" 2>/dev/null && echo yes || echo no)"
-check "...but still the work its tool calls' shells run" "no" "$(kill -0 "$toolwork" 2>/dev/null && echo yes || echo no)"
+check "...but still the work its tool calls' shells run" "no" "$toolwork_alive"
 kill "$mcp" "$toolshell" 2>/dev/null
 refused="$(cd "$root" && "$TOOL" kill --mine 2>&1; echo "exit=$?")"
 check "kill --mine refuses the shared root checkout" "1" "$(printf '%s\n' "$refused" | grep -c 'root checkout')"
@@ -163,22 +171,19 @@ chmod +x "$work/bin/ps"
 (cd "$work/wt-orphan" && exec sleep 300) & victim=$!
 survived="$(cd "$work/wt-orphan" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND PATH="$work/bin:$PATH" \
   sh -c '"$1" kill --mine > /dev/null; echo survived' sh "$TOOL")"
-sleep 0.3
 check "kill --mine spares its calling shell when ps -p fails" "survived" "$survived"
-check "...and still ends the worktree's own process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
+check "...and still ends the worktree's own process" "no" "$(alive_after_term "$victim")"
 # ...nor the other commands of the caller's own pipeline: `agent-procs kill --mine | tail -3`, run from the worktree,
 # SIGTERMed its `tail` (a sibling under the same shell, not an ancestor) and the pipeline exited 143 (2026-10-19).
 (cd "$work/wt-orphan" && exec sleep 300) & victim=$!
 piped="$(cd "$work/wt-orphan" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND \
   sh -c '"$1" kill --mine | tail -1; echo "exit=$?"' sh "$TOOL")"
-sleep 0.3
 check "kill --mine spares the other commands of its own pipeline" "exit=0" "$(printf '%s\n' "$piped" | tail -1)"
-check "...and still ends the worktree's own process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
+check "...and still ends the worktree's own process" "no" "$(alive_after_term "$victim")"
 check "kill --worktree refuses a path that is no worktree" "1" \
   "$(cd "$root" && "$TOOL" kill --worktree "$work" > /dev/null 2>&1; echo $?)"
 (cd "$root" && "$TOOL" kill --worktree "$work/wt-other" > /dev/null)
-sleep 0.3
-check "kill --worktree ends that worktree's process" "no" "$(kill -0 "$bystander" 2>/dev/null && echo yes || echo no)"
+check "kill --worktree ends that worktree's process" "no" "$(alive_after_term "$bystander")"
 
 # prune: a plan without --yes, then the removal — worktrees and fully merged branches only.
 (cd "$root" && "$TOOL" prune > /dev/null)
