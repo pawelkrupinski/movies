@@ -95,6 +95,11 @@ EVENT_ONLY_VALUES = {
     # to snapshot. Re-snapshot once monitoring-1 and the workers run it, then drop these.
     ("kinowo_identity_build_net_lost", "cause", "code"),
     ("kinowo_worker_identity_take_causes_total", "kind", "lost"),
+    # NOT PUBLISHED YET (2026-10-26): the agreement stage's full-validation counter is new
+    # (IdentityAgreementMetrics, `result` = `read` or `drifted`), so the fleet has no series to snapshot.
+    # Re-snapshot once the workers run it, then drop these.
+    ("kinowo_worker_identity_agreement_validated_total", "result", "read"),
+    ("kinowo_worker_identity_agreement_validated_total", "result", "drifted"),
     # NOT SNAPSHOTTED YET (2026-10-25): CI's build timings carried `ref` from the start, but only the dashboards'
     # templated `ref=~"$ref"` read it, which the snapshot does not record; ci-build-times.rules is its first literal
     # matcher. `runner_wait` and `kinowo_ci_run_number` are new with it (scripts/ci/ci_timings.py). Re-snapshot, then
