@@ -43,4 +43,34 @@ class HeliosClientEventRoomSpec extends AnyFlatSpec with Matchers {
     movies.find(_.movie.title.contains("All You Need Is Kill")) shouldBe defined
     reads.failed.map(_.getMessage).filter(_.contains("screen lookup down")) shouldBe empty
   }
+
+  // An event entry of `/event` names the film it screens (`items[].movieId`): its `/api/movie/{id}` body holds what
+  // the repertoire page never says of an event — the director, the cast, the year. Radom's "Kręciołek - AF" event
+  // named no director though its page does (Jan Rahbek): the event's film body was never asked for.
+  it should "take an event's director, cast, year and original title from the film the event names" in {
+    val aynik = client.fetch().find(_.movie.title.contains("All You Need Is Kill")).get
+    aynik.director shouldBe Seq("Ken'ichirô Akimoto")
+    aynik.cast should contain ("Natsuki Hanae")
+    aynik.movie.releaseYear shouldBe Some(2026)
+    aynik.movie.originalTitle shouldBe Some("All You Need Is Killl")
+    aynik.movie.countries shouldBe Seq("Japonia")
+  }
+
+  it should "list the film an event names only as the event, never as a film of its own beside it" in {
+    client.fetch().map(_.movie.title).filter(_.toLowerCase(java.util.Locale.ROOT).contains("all you need")) should have size 1
+  }
+
+  // The event comes from the repertoire page, not the film's body: a body that fails costs its details, never the event,
+  // and leaves the listing complete.
+  it should "keep the event, and the listing complete, when the film it names cannot be read" in {
+    val recorded = new FakeHttpFetch("helios/event-room")
+    val failingFilm = new tools.GetOnlyHttpFetch {
+      override def get(url: String): String =
+        if (url.contains("/movie/590c78c8")) throw new java.io.IOException("film lookup down") else recorded.get(url)
+    }
+    val (movies, reads) = services.cinemas.common.ListingReads.during(
+      new HeliosClient(failingFilm, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch())
+    movies.find(_.movie.title.contains("All You Need Is Kill")).map(_.director) shouldBe Some(Nil)
+    reads.failed.map(_.getMessage).filter(_.contains("film lookup down")) shouldBe empty
+  }
 }

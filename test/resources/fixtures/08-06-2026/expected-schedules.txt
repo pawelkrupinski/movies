@@ -3253,7 +3253,7 @@ cinemaScrapes:
   Helios Biała / Mandalorian & Grogu / 2025
   Helios Bielsko-Biała / Mandalorian & Grogu / 2025
   Helios Blue City / Mandalorian & Grogu / 2025
-  Helios Bydgoszcz / Mandalorian & Grogu / —
+  Helios Bydgoszcz / Mandalorian & Grogu / 2025
   Helios Dąbrowa Górnicza / Mandalorian & Grogu / 2025
   Helios Forum / Mandalorian & Grogu / 2025
   Helios Gorzów Wielkopolski / Mandalorian & Grogu / 2025
@@ -4500,12 +4500,12 @@ cinemaScrapes:
   Helios Forum / Kurozając i Świątynia Świstaka / 2025
   Helios Gorzów Wielkopolski / Kurozając i Świątynia Świstaka / 2025
   Helios Krosno / Kurozając i Świątynia Świstaka / —
-  Helios Magnolia Park / Kurozając i Świątynia Świstaka / —
-  Helios Olsztyn / Kurozając i Świątynia Świstaka / —
+  Helios Magnolia Park / Kurozając i Świątynia Świstaka / 2025
+  Helios Olsztyn / Kurozając i Świątynia Świstaka / 2025
   Helios Outlet Park / Kurozając i Świątynia Świstaka / 2025
-  Helios Rzeszów / Kurozając i Świątynia Świstaka / —
+  Helios Rzeszów / Kurozając i Świątynia Świstaka / 2025
   Helios Tczew / Kurozając i Świątynia Świstaka / —
-  Helios Żory / Kurozając i Świątynia Świstaka / —
+  Helios Żory / Kurozając i Świątynia Świstaka / 2025
   Kino Bajka / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
   Kino Bajka Kluczbork / Kurozając i świątynia Świstaka / —
   Kino Kijów / Kurozając i świątynia świstaka / —
@@ -4851,7 +4851,7 @@ cinemaScrapes:
   Helios Kalisz / Michael / 2026
   Helios Karolinka / Michael / 2026
   Helios Katowice / Michael / 2026
-  Helios Kielce / Michael / —
+  Helios Kielce / Michael / 2026
   Helios Konin / Michael / 2026
   Helios Koszalin / Michael / 2026
   Helios Krosno / Michael / 2026
@@ -6032,11 +6032,11 @@ cinemaScrapes:
   Cinema City / — / —
   Cinema City Poznań Plaza / Niezwykły chłopak / 2026
   Helios Alfa / Niezwykły chłopak / 2025
-  Helios Bielsko-Biała / Niezwykły chłopak / —
-  Helios Forum / Niezwykły chłopak / —
+  Helios Bielsko-Biała / Niezwykły chłopak / 2025
+  Helios Forum / Niezwykły chłopak / 2025
   Helios Koszalin / Niezwykły chłopak / 2025
-  Helios Magnolia Park / Niezwykły chłopak / —
-  Helios Metropolia / Niezwykły chłopak / —
+  Helios Magnolia Park / Niezwykły chłopak / 2025
+  Helios Metropolia / Niezwykły chłopak / 2025
   Helios Ostrów Wlkp. / Niezwykły chłopak / —
 showings:
   2026-06-10  Cinema City Poznań Plaza      10:00 Sala 2 2D/DUB
@@ -6866,10 +6866,10 @@ cinemaTitles:      PIEP*ZYĆ MICKIEWICZA 3 | Piep*zyć Mickiewicza 3
 runtimeMinutes:    89
 releaseYear:       2026
 countries:         Polska
-posterUrl:         https://img.helios.pl/pliki/film/piep-zyc-mickiewicza-3/piep-zyc-mickiewicza-3-plakat-22608.jpeg
-synopsis.length:   285
+posterUrl:         https://movies.helios.pl/images/pm3plakat.jpg
+synopsis.length:   656
 cast:              Hugo Tarres, Wiktoria Koprowska, Igor Pawłowski, Krystian Embradora, Karol Rot, Ada Grodzka, Aldona Jankowska, Dawid Ogrodnik
-director:          Sara Bustamante-Drozdek
+director:          Sara Bustamente-Drozdek
 tmdbId:            1483055
 imdbId:            tt39747930
 originalTitle:     Piep*zyć Mickiewicza 3
@@ -6885,10 +6885,10 @@ cinemaFilmUrls:
 cinemaScrapes:
   Cinema City / — / —
   Cinema City Bydgoszcz / Piep*zyć Mickiewicza 3 / 2026
-  Helios Bielsko-Biała / Piep*zyć Mickiewicza 3 / —
-  Helios Gorzów Wielkopolski / Piep*zyć Mickiewicza 3 / —
+  Helios Bielsko-Biała / Piep*zyć Mickiewicza 3 / 2025
+  Helios Gorzów Wielkopolski / Piep*zyć Mickiewicza 3 / 2025
   Helios Kędzierzyn-Koźle / Piep*zyć Mickiewicza 3 / —
-  Helios Posnania / Piep*zyć Mickiewicza 3 / —
+  Helios Posnania / Piep*zyć Mickiewicza 3 / 2025
   Helios Solaris / Piep*zyć Mickiewicza 3 / 2025
   Kino Pionier 1907 / PIEP*ZYĆ MICKIEWICZA 3 / 2026
 showings:
@@ -8008,7 +8008,7 @@ cinemaScrapes:
   Cinema City Rybnik / Pucio / 2026
   Cinema City Wroclavia / Pucio / 2026
   Cinema City Zakopianka / Pucio / 2026
-  Helios Koszalin / Pucio / —
+  Helios Koszalin / Pucio / 2026
   Helios Przemyśl / Pucio / 2026
   Helios Starachowice / Pucio / 2026
   Kino Bułgarska 19 / PUCIO / 2026
@@ -8476,12 +8476,12 @@ cinemaScrapes:
   Helios Karolinka / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Katowice / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kielce / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Konin / Tom i Jerry: Przygoda w muzeum / —
+  Helios Konin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Koszalin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Krosno / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kupiec / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kędzierzyn-Koźle / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Legnica / Tom i Jerry: Przygoda w muzeum / —
+  Helios Legnica / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Lubin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Magnolia Park / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Metropolia / Tom i Jerry: Przygoda w muzeum / 2026
@@ -8589,7 +8589,7 @@ cinemaScrapes:
   Cinema City Rybnik / Pucio / 2026
   Cinema City Wroclavia / Pucio / 2026
   Cinema City Zakopianka / Pucio / 2026
-  Helios Koszalin / Pucio / —
+  Helios Koszalin / Pucio / 2026
   Helios Przemyśl / Pucio / 2026
   Helios Starachowice / Pucio / 2026
   Kino Bułgarska 19 / PUCIO / 2026
@@ -9774,12 +9774,12 @@ cinemaScrapes:
   Helios Karolinka / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Katowice / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kielce / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Konin / Tom i Jerry: Przygoda w muzeum / —
+  Helios Konin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Koszalin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Krosno / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kupiec / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Kędzierzyn-Koźle / Tom i Jerry: Przygoda w muzeum / 2026
-  Helios Legnica / Tom i Jerry: Przygoda w muzeum / —
+  Helios Legnica / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Lubin / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Magnolia Park / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Metropolia / Tom i Jerry: Przygoda w muzeum / 2026

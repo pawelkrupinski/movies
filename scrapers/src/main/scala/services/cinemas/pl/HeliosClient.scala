@@ -132,15 +132,22 @@ class HeliosClient(
     // lists in Cyrillic) is emitted only from its body, so one that fails can drop a film and
     // leaves the listing incomplete. A screen body only names a showtime's room: one that fails
     // drops nothing, and must not keep the venue from pruning.
-    val movieBodies    = ListingPages.readMore("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct,
+    val filmIds        = regular.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct
+    val movieBodies    = ListingPages.readMore("helios-movies", filmIds,
       (id: String) => s"$ApiBase/movie/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _)).toMap
+    // The film an event names only describes the event the repertoire page already lists: one that fails costs its
+    // details, never a row, and leaves the listing complete.
+    val eventFilmBodies = ListingPages.readEnrichment("helios-event-films",
+      eventScreenings.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct.filterNot(filmIds.contains),
+      (id: String) => s"$ApiBase/movie/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _))
+      .flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
     val screenBodies   = ListingPages.readEnrichment("helios-screens", screeningsById.values.map(_.screenId).toSeq.distinct,
       (id: String) => s"$ApiBase/cinema/$sourceId/screen/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _))
       .flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
 
     RestData(
       screeningsById = screeningsById,
-      movieDetails   = movieBodies.flatMap { case (id, body) => parseApiMovieBody(body).map(id -> _) },
+      movieDetails   = (movieBodies ++ eventFilmBodies).flatMap { case (id, body) => parseApiMovieBody(body).map(id -> _) },
       screenNames    = screenBodies.flatMap { case (id, body) =>
         Try((Json.parse(body) \ "name").asOpt[String]).toOption.flatten.map(id -> _)
       }
@@ -149,12 +156,14 @@ class HeliosClient(
 
   // ── REST parsing ──────────────────────────────────────────────────────────
 
+  /** One REST screening; `event` when `/event` listed it, `movieId` then the one film the event names (or empty). */
   private case class ApiScreening(
     id:       String,
     movieId:  String,
     screenId: String,
     release:  String,
-    dateTime: Option[LocalDateTime]
+    dateTime: Option[LocalDateTime],
+    event:    Boolean = false
   )
 
   private def parseApiScreenings(body: String): Map[String, ApiScreening] =
@@ -175,9 +184,10 @@ class HeliosClient(
 
   // The `/event` endpoint returns one entry per event screening (a flat array),
   // each with its `screeningId`, `screenId` and `release`. We map them
-  // into the same ApiScreening shape used for room/format enrichment. `movieId` is
-  // left empty — events already arrive fully described via NUXT, so they neither need
-  // nor have a REST movie body to fetch (the empty id is filtered out before fetching).
+  // into the same ApiScreening shape used for room/format enrichment. Each entry also
+  // names the film(s) it screens (`items[].movieId`): an event of ONE film takes that
+  // film's REST body — the director, cast and year the repertoire page never states for
+  // an event; a pack of several (a marathon) names none of them, `movieId` empty.
   private def parseEventScreenings(body: String): Map[String, ApiScreening] =
     Try(Json.parse(body).as[JsArray]).map { array =>
       array.value.flatMap { e =>
@@ -188,7 +198,8 @@ class HeliosClient(
           val release  = (e \ "release").asOpt[String].getOrElse("")
           val dateTime = (e \ "timeFrom").asOpt[String]
             .flatMap(timestamp => Try(ZonedDateTime.parse(timestamp, OffsetDtf).withZoneSameInstant(WarsawZone).toLocalDateTime).toOption)
-          id -> ApiScreening(id, movieId = "", screenId, release, dateTime)
+          val films = (e \ "items").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap(i => (i \ "movieId").asOpt[String]).distinct
+          id -> ApiScreening(id, movieId = films match { case Seq(only) => only; case _ => "" }, screenId, release, dateTime, event = true)
         }
       }.toMap
     }.getOrElse(Map.empty)
@@ -278,14 +289,15 @@ class HeliosClient(
   private def enrichFromRest(movies: Seq[CinemaMovie], rest: RestData): Seq[CinemaMovie] =
     movies.map { cm =>
       // Match REST screening → REST movie body via the shared screening UUID. Only
-      // accept the enrichment when the REST title matches the NUXT title (after
+      // accept a film's enrichment when the REST title matches the NUXT title (after
       // cleaning) — Cyrillic vs Latin variants of the same Ukrainian film share a
-      // booking UUID but are listed separately in the output.
+      // booking UUID but are listed separately in the output. An event's is the film
+      // the event itself names, whatever either is titled ("… w Helios Anime" screens
+      // a body titled "All You Need Is Killl").
       val restInfo = cm.showtimes
         .flatMap(_.bookingUrl).flatMap(extractScreeningId)
         .flatMap(rest.screeningsById.get).headOption
-        .flatMap(s => rest.movieDetails.get(s.movieId))
-        .filter(_.title.map(cleanTitle(_, titles)).contains(cm.movie.title))
+        .flatMap(s => rest.movieDetails.get(s.movieId).filter(info => s.event || info.title.map(cleanTitle(_, titles)).contains(cm.movie.title)))
 
       cm.copy(
         movie     = cm.movie.copy(
@@ -311,7 +323,8 @@ class HeliosClient(
   // movie whose (cleaned) title is not represented in the NUXT-derived list.
   private def restOnlyMovies(nuxtCovered: Seq[CinemaMovie], rest: RestData): Seq[CinemaMovie] = {
     val nuxtTitles = nuxtCovered.map(_.movie.title).toSet
-    rest.screeningsById.values.toSeq
+    // an event's film is listed as the event, from the repertoire page — never as a film of its own
+    rest.screeningsById.values.toSeq.filterNot(_.event)
       .groupBy(_.movieId).toSeq
       .flatMap { case (movieId, screenings) =>
         rest.movieDetails.get(movieId)
