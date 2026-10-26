@@ -8,6 +8,7 @@ is a stub `gh` on the PATH. Then tool-conventions.sh's gh_download over it: an a
 """
 import importlib.machinery
 import importlib.util
+import datetime
 import io
 import json
 import os
@@ -44,6 +45,12 @@ RUN = {"id": 528, "index_in_repo": 193, "workflow_id": "record-scrape-fixtures.y
        "created": "2026-10-20T10:15:24Z", "started": "2026-10-20T10:21:08Z", "updated": "2026-10-20T10:52:08Z",
        "html_url": "http://forgejo.test/o/movies/actions/runs/193", "title": "Record scrape fixtures"}
 OLDER = dict(RUN, id=500, index_in_repo=170, status="failure", created="2026-10-19T10:00:00Z", commit_sha="b" * 40)
+# Forgejo's `failure` the moment a run's first job failed, while its takes row still runs (measure run 2848)
+FAILING = dict(RUN, id=2848, index_in_repo=1788, status="failure", workflow_id="identity-model-convergence.yml")
+# the CI's actions API (port 3010): each run's jobs in GitHub's shape
+JOBS = {"2848": [{"name": "order-independence-p01 (germany)", "status": "completed", "conclusion": "failure"},
+                 {"name": "takes (germany)", "status": "in_progress", "conclusion": None}],
+        "500": [{"name": "takes (germany)", "status": "completed", "conclusion": "failure"}]}
 
 
 class Fake(BaseHTTPRequestHandler):
@@ -74,9 +81,19 @@ class Fake(BaseHTTPRequestHandler):
         base = "/api/v1/repos/o/movies"
         if path == f"{base}/actions/runs/528":
             return self.send(200, RUN)
+        if path == f"{base}/actions/runs/2848":
+            return self.send(200, FAILING)
+        jobs = "/repos/o/movies/actions/runs/"
+        if path.startswith(jobs) and path.endswith("/jobs"):
+            got = JOBS.get(path[len(jobs):-len("/jobs")])
+            if got is None:
+                return self.send(404, {"message": "no such run"})
+            return self.send(200, {"total_count": len(got), "jobs": got if "page=1" in query else []})
         if path == f"{base}/actions/runs":
             runs = [RUN, OLDER]
-            if "workflow_id=record-scrape-fixtures.yml" not in query:
+            if "workflow_id=identity-model-convergence.yml" in query:
+                runs = [FAILING]
+            elif "workflow_id=record-scrape-fixtures.yml" not in query:
                 runs = []
             if "status=success" in query:
                 runs = [r for r in runs if r["status"] == "success"]
@@ -149,6 +166,7 @@ class ForgeGhTest(unittest.TestCase):
     def setUp(self):
         self.work = tempfile.mkdtemp()
         self.env = dict(os.environ, KINOWO_FORGE="forgejo", KINOWO_FORGEJO_URL=self.url, FORGEJO_API_TOKEN=TOKEN,
+                        KINOWO_FORGEJO_ACTIONS_URL=self.url,
                         KINOWO_REPO="o/movies")
         self.env.pop("GITHUB_ACTIONS", None)
 
@@ -258,6 +276,43 @@ class ForgeGhTest(unittest.TestCase):
         self.assertEqual("528 193 a744eff38 completed success 2026-10-20T10:15:24Z\n", done.stdout, done.stderr)
         done = self.gh("api", "repos/o/movies/actions/runs/528", "--jq", ".run_started_at")
         self.assertEqual("2026-10-20T10:21:08Z\n", done.stdout, done.stderr)
+
+    def test_a_failed_run_whose_jobs_still_run_is_in_progress_until_they_end(self):
+        # measure run 2848: Forgejo said `failure` at its first failed job; identity-measure took it for done and
+        # collected an hour before any takes row had uploaded its artifact
+        view = ("run", "view", "2848", "--json", "status,conclusion", "-q", '"\\(.status) \\(.conclusion)"')
+        done = self.gh(*view)
+        self.assertEqual("in_progress \n", done.stdout, done.stderr)
+        done = self.gh("api", "repos/o/movies/actions/runs/2848", "--jq", '"\\(.status) \\(.conclusion)"')
+        self.assertEqual("in_progress null\n", done.stdout, done.stderr)
+        done = self.gh("run", "list", "--workflow", "identity-model-convergence.yml", "--json", "status", "-q", ".[].status")
+        self.assertEqual("in_progress\n", done.stdout, done.stderr)
+        JOBS["2848"][1].update(status="completed", conclusion="success")
+        try:
+            self.assertEqual("completed failure\n", self.gh(*view).stdout)
+        finally:
+            JOBS["2848"][1].update(status="in_progress", conclusion=None)
+
+    def test_a_failed_runs_queued_job_is_waiting_while_the_run_is_recent_and_dead_once_it_is_quiet(self):
+        fj = forge_gh.Forgejo("o/movies", self.env)
+        queued = [{"name": "takes (spain)", "status": "queued", "completed_at": None},
+                  {"name": "order-independence-p01 (germany)", "status": "completed", "completed_at": "2026-10-26T04:58:19Z"}]
+        run = dict(FAILING, updated="2026-10-26T04:58:19Z")
+        at = lambda t: datetime.datetime.fromisoformat(t + "+00:00")  # noqa: E731
+        JOBS["2848"], kept = queued, JOBS["2848"]
+        try:
+            self.assertEqual("running", fj.settled(run, now=at("2026-10-26T05:05:00"))["status"])
+            # 2848's timings and drop-measure-branch: queued, never to start, the run quiet since 06:01
+            self.assertEqual("failure", fj.settled(run, now=at("2026-10-26T05:30:00"))["status"])
+        finally:
+            JOBS["2848"] = kept
+
+    def test_a_failed_runs_unreadable_jobs_are_no_answer(self):
+        env = dict(self.env, KINOWO_FORGEJO_ACTIONS_URL=self.url + "/nowhere")
+        done = self.gh("run", "view", "2848", "--json", "status", env=env)
+        self.assertNotEqual(0, done.returncode)
+        self.assertIn("HTTP 404", done.stderr)
+        self.assertEqual("", done.stdout)
 
     def test_runs_listed_by_workflow_name_and_status(self):
         done = self.gh("run", "list", "--workflow", "Record scrape fixtures", "--status", "success", "-L", "100",

@@ -32,6 +32,10 @@ when that vault is already unlocked (never a Touch ID prompt; the repository is 
         updatedAt, url, event, workflowName) from GET /repos/{repo}/actions/runs. A run id is Forgejo's run id (528),
         the package registry's version; its URL shows the run's number in the repository (#193). A workflow named by
         its name is found by the `name:` of .github/workflows/*.yml (Forgejo filters runs by file).
+        A FAILED RUN STILL RUNNING: Forgejo marks a run `failure`, and stops its clock, the moment its FIRST job fails,
+        while the others still run (measure run 2848: `failure` at 04:58, its last takes row ended at 06:00). gh says
+        such a run is in_progress, with no conclusion, until every job has ended -- read from the CI's actions API
+        ($KINOWO_FORGEJO_ACTIONS_URL, default the tunnel's port 3010), which a failed read fails, never guesses.
   api repos/{repo}/actions/runs/{id}[/artifacts] [-q/--jq EXPR] [--paginate]
         GitHub's shapes (run_started_at, head_sha, ...; artifacts[].name/expired/size_in_bytes); any other path is
         Forgejo's own /api/v1/<path>, as Forgejo answers it.
@@ -46,6 +50,7 @@ so gh_download tells a failed read from an absent one the same on both forges. -
 
 from __future__ import annotations
 
+import datetime
 import fnmatch
 import json
 import os
@@ -95,6 +100,17 @@ def forge(env=os.environ, remotes=None) -> str:
 # ── Forgejo's API ──────────────────────────────────────────────────────────────────────────────
 def server(env=os.environ) -> str:
     return (env.get("KINOWO_FORGEJO_URL") or "http://forgejo.internal:3000").rstrip("/")
+
+
+# A failed run's queued job counts as waiting for a runner while the run's last job ended under this long ago.
+QUEUED_LIVE_SECONDS = 15 * 60
+
+
+def actions_server(env=os.environ) -> str:
+    """The CI's actions API (infra nix/files/forgejo-actions/actions_api.py): GitHub's jobs shape, on the tunnel's 3010."""
+    if env.get("KINOWO_FORGEJO_ACTIONS_URL"):
+        return env["KINOWO_FORGEJO_ACTIONS_URL"].rstrip("/")
+    return re.sub(r":\d+$", "", server(env)) + ":3010"
 
 
 def token(env=os.environ) -> str:
@@ -185,6 +201,38 @@ class Forgejo:
     # runs
     def run(self, run_id: str) -> dict:
         return self.get(f"repos/{self.repo}/actions/runs/{run_id}")
+
+    def jobs(self, run_id) -> list:
+        """The run's jobs, GitHub's shape ({name, status, conclusion, ...}), from the CI's actions API."""
+        out, page, base = [], 1, actions_server(self.env)
+        while True:
+            query = urllib.parse.urlencode({"per_page": 100, "page": page})
+            with self.open(f"{base}/repos/{self.repo}/actions/runs/{run_id}/jobs?{query}") as r:
+                got = json.load(r)
+            batch = got.get("jobs") or []
+            out += batch
+            if not batch or len(out) >= got.get("total_count", 0):
+                return out
+            page += 1
+
+    def settled(self, run: dict, now=None) -> dict:
+        """The run, `running` when Forgejo calls it failed while a job of it still runs (A FAILED RUN STILL RUNNING):
+        one in progress, or one queued for a runner while the run's last job ended under QUEUED_LIVE_SECONDS ago. A
+        failed run can hold queued jobs that never start (measure run 2848's timings and drop-measure-branch, which the
+        API cannot tell from ones waiting for a runner), so a queue that long quiet is taken for dead."""
+        if run.get("status") != "failure":
+            return run
+        jobs = self.jobs(run["id"])
+        if any(j.get("status") == "in_progress" for j in jobs):
+            return dict(run, status="running")
+        if any(j.get("status") != "completed" for j in jobs):
+            ended = [t for t in [j.get("completed_at") for j in jobs] + [run.get("updated")] if t]
+            last = max(datetime.datetime.fromisoformat(t.replace("Z", "+00:00")) for t in ended) if ended else None
+            now = now or datetime.datetime.now(datetime.timezone.utc)
+            quiet = int(self.env.get("KINOWO_FORGEJO_QUEUED_LIVE_SECONDS", QUEUED_LIVE_SECONDS))
+            if last is None or (now - last).total_seconds() < quiet:
+                return dict(run, status="running")
+        return run
 
     def runs(self, query: dict, limit: int) -> list:
         out, page = [], 1
@@ -438,7 +486,7 @@ def run_view(fj: Forgejo, opts, pos):
                    "or name what you need from it directly, e.g. --recording)")
     if not pos:
         raise Fail("gh (forgejo): run view needs a run id")
-    emit(gh_run(fj.run(pos[0]), workflows_by_file()), opts.get("json"), opts.get("jq"))
+    emit(gh_run(fj.settled(fj.run(pos[0])), workflows_by_file()), opts.get("json"), opts.get("jq"))
 
 
 def run_list(fj: Forgejo, opts, pos):
@@ -453,14 +501,15 @@ def run_list(fj: Forgejo, opts, pos):
     want = opts.get("status")
     if want in ("success", "failure", "cancelled", "skipped"):
         query["status"] = want
-    runs = [gh_run(r, wfs) for r in fj.runs(query, 10 ** 6 if want else int(opts.get("limit") or 20))]
-    if want:  # gh's --status names a status or a conclusion; Forgejo filters on its one status, checked here too
-        runs = [r for r in runs if want in (r["status"], r["conclusion"])]
-    if opts.get("commit"):
-        runs = [r for r in runs if r["headSha"].startswith(opts["commit"])]
-    if opts.get("event"):
-        runs = [r for r in runs if r["event"] == opts["event"]]
-    emit(runs[: int(opts.get("limit") or 20)], opts.get("json"), opts.get("jq"))
+    def kept(run):
+        g = gh_run(run, wfs)
+        return ((not want or want in (g["status"], g["conclusion"])) and g["headSha"].startswith(opts.get("commit") or "")
+                and (not opts.get("event") or g["event"] == opts["event"]))
+    # gh's --status names a status or a conclusion; Forgejo filters on its one status, checked here too. Only the runs
+    # shown are settled (one jobs read per failed run), and checked again: a settled run may no longer be `failure`.
+    runs = [r for r in fj.runs(query, 10 ** 6 if want else int(opts.get("limit") or 20)) if kept(r)]
+    runs = [r for r in map(fj.settled, runs[: int(opts.get("limit") or 20)]) if kept(r)]
+    emit([gh_run(r, wfs) for r in runs], opts.get("json"), opts.get("jq"))
 
 
 def api(fj: Forgejo, opts, pos):
@@ -477,7 +526,7 @@ def api(fj: Forgejo, opts, pos):
                      "archive_download_url": fj.artifact_url(m.group(2), a["name"])} for a in fj.artifacts(m.group(2))]
             obj = {"total_count": len(arts), "artifacts": arts}
         else:
-            obj = api_run(fj.run(m.group(2)), workflows_by_file())
+            obj = api_run(fj.settled(fj.run(m.group(2))), workflows_by_file())
     else:
         obj = fj.get(path, dict(urllib.parse.parse_qsl(query)) or None)
     emit(obj, None, opts.get("jq"))
