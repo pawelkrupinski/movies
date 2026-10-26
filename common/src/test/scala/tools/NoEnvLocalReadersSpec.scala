@@ -4,8 +4,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import testsupport.RepoRoot
 
-import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters._
+import java.io.IOException
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.{FileVisitResult, Files, NoSuchFileException, Path, SimpleFileVisitor}
 
 /**
  * Nothing reads `.env.local` any more. The file was deleted on 2026-10-09 after a credential
@@ -43,12 +44,27 @@ class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
     else "(?s)\"\"\".*?\"\"\"".r.replaceAllIn(text, found =>
       scala.util.matching.Regex.quoteReplacement(found.matched.filter(_ == '\n')))
 
-  private def sources(root: Path): Seq[Path] =
-    Files.walk(root).iterator().asScala
-      .filter(Files.isRegularFile(_))
-      .filterNot(path => root.relativize(path).iterator().asScala.exists(part => SkippedDirectories(part.toString)))
-      .filter(path => Extensions.exists(path.getFileName.toString.endsWith))
-      .toSeq
+  /** The skipped directories are pruned, never entered: a build running beside this spec (Zinc
+   *  backing `classes` up into `classes.bak` and deleting it) changes `target` while it is walked,
+   *  and `Files.walk` then fails on an entry gone between listing and reading it. For the same
+   *  reason an entry that vanishes elsewhere is passed over rather than failing the walk. */
+  private def sources(root: Path): Seq[Path] = {
+    val found = Seq.newBuilder[Path]
+    Files.walkFileTree(root, new SimpleFileVisitor[Path] {
+      override def preVisitDirectory(dir: Path, attributes: BasicFileAttributes): FileVisitResult =
+        if (dir != root && SkippedDirectories(dir.getFileName.toString)) FileVisitResult.SKIP_SUBTREE
+        else FileVisitResult.CONTINUE
+      override def visitFile(file: Path, attributes: BasicFileAttributes): FileVisitResult = {
+        if (attributes.isRegularFile && Extensions.exists(file.getFileName.toString.endsWith)) found += file
+        FileVisitResult.CONTINUE
+      }
+      override def visitFileFailed(file: Path, failure: IOException): FileVisitResult = failure match {
+        case _: NoSuchFileException => FileVisitResult.CONTINUE
+        case other                  => throw other
+      }
+    })
+    found.result()
+  }
 
   "the repository" should "have no code that reads .env.local" in {
     val root = RepoRoot.dir.toPath
