@@ -37,6 +37,15 @@
 #                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
 #                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
 #                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
+#   `basic`       NOT a check of its own: scripts/hooks/local-tests.txt's `basic` lines (all test configs compiled, the
+#                 IntegrationTest compiles, FilmScheduleEndToEnd + ReadModelSnapshot, the worker's DocCommentPlacement,
+#                 RegisteredCollectionLists and deploy specs) ride the `sbt` check's one sbt run, whenever it runs --
+#                 the basic tests before every merge (once the merge queue's pre-check list)
+#   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path): the identity
+#                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
+#                 are main's CI's. Through scripts/sbt-warm, warm
+#   `page`        local-tests.txt's `page` lines, on a change to the page paths (is_page_path): the page specs and the
+#                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
 #   `ios`         scripts/ios-compile-check.sh (app target + XCUITests, Mac and Linux SwiftPM; fails on a concurrency
 #                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
@@ -155,11 +164,15 @@ root_warning=""
 case "${1:-}" in --plan|--compile-plan|--lint-plan) root_check="" ;; esac
 [ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
 [ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
-tree=""
+tree="" area_tests=""
 on_exit() {
     local now
     cd "$root" || return # a temporary checkout is about to go; git has to run somewhere that stays
-    if [ -n "$tree" ]; then git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune; fi
+    if [ -n "$tree" ]; then
+        # the area tests' kept sbt server, started in the temporary checkout, goes with it
+        [ -n "$area_tests" ] && [ -x "$tree/scripts/sbt-warm" ] && (cd "$tree" && scripts/sbt-warm --stop) >/dev/null 2>&1
+        git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune
+    fi
     now="$(hooks_path_now)"
     if [ "$now" != "$hooks_path_at_start" ]; then
         printf '\033[31m! pre-push\033[0m core.hooksPath moved from "%s" to "%s" WHILE this hook ran — restoring it. Candidates:\n' "$hooks_path_at_start" "$now" >&2
@@ -191,10 +204,44 @@ read_by_lint_specs() { # <path>
     return 1
 }
 
+# ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
+# NO PRE-MERGE CI (the owner, 2026-10-26): "only run the basic tests before merging and merge on green (main not green
+# branch); if some specific area (browser / page, identity) is touched, run tests specific to that locally (unless it
+# takes longer than 15 mins), then merge to main and test everything there". scripts/hooks/local-tests.txt is the ONE
+# definition of those tests: `<set> sbt <command>` (one scripts/sbt-warm call per set, its sbt commands in order) or
+# `<set> sh <command>`. The sets:
+#   basic     rides the `sbt` check's one sbt run, whenever that runs (any Scala, build, script, test or workflow change)
+#   identity  the `identity` check, on a change to the identity paths below
+#   page      the `page` check, on a change to the page paths below
+# Each area's set holds only what runs in under 15 min on the laptop, warm (measured, in local-tests.txt); the rest
+# (convergence, the takes measure, WebKit) is main's CI's. scripts/identity-landing-check is an optional manual tool now:
+# nothing requires its LANDABLE.
+LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
+has_local_tests() { # <set>
+    [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh)[[:space:]]" "$LocalTests"
+}
+# The identity paths: the resolver, its worker adapters and tests, title rules, the identity fixtures.
+is_identity_path() { # <path>
+    case "$1" in
+        identity/*|worker/src/main/scala/services/identity/*|worker/src/test/scala/services/identity/*|\
+        common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
+        common/src/main/scala/services/titlerules/*|test/resources/fixtures/identity-*) return 0 ;;
+    esac
+    return 1
+}
+# The page paths: the browser JS and CSS, the templates that render what it reads, the page specs and the Playwright suite.
+is_page_path() { # <path>
+    case "$1" in
+        web/src/main/assets/*|web/src/main/twirl/*|web/src/page/*|page-tests-playwright/*) return 0 ;;
+    esac
+    return 1
+}
+
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
+    local identity=0 page=0
     local tools
     tools=" $(tool_files | tr '\n' ' ') "
     while IFS= read -r path; do
@@ -239,7 +286,14 @@ plan() {
             scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
         esac
         case "$tools" in *" $path "*) oldrefs=1 ;; esac
+        is_identity_path "$path" && identity=1
+        is_page_path "$path" && page=1
     done
+    # an area runs only when local-tests.txt (beside this hook) names tests for it
+    has_local_tests identity || identity=0
+    has_local_tests page || page=0
+    [ $identity = 1 ] && sbt=1
+    [ $page = 1 ] && sbt=1
     [ $judgements = 1 ] && echo judgements
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
@@ -249,6 +303,8 @@ plan() {
     [ $actionlint = 1 ] && echo actionlint
     [ $shellcheck = 1 ] && echo shellcheck
     [ $sbt = 1 ] && echo sbt
+    [ $identity = 1 ] && echo identity
+    [ $page = 1 ] && echo page
     [ $oldrefs = 1 ] && echo oldrefs
     [ $ios = 1 ] && echo ios
     return 0
@@ -781,6 +837,8 @@ check_sbt() {
     for module in common scrapers worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
+    # the basic tests (local-tests.txt's `basic sbt` lines) ride the same run, after the compiles and lints
+    while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines basic sbt)
     local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")
     if [ "$sbt_client" = 1 ]; then
         local line
@@ -793,6 +851,36 @@ check_sbt() {
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
     [ "$gitops_stale" = 0 ]
 }
+
+# The commands of <set> of <kind> (sbt|sh) in the CHECKED tree's local-tests.txt, one per line.
+local_test_lines() { # <set> <kind>
+    [ -f scripts/hooks/local-tests.txt ] || return 0
+    sed -nE "s/^$1[[:space:]]+$2[[:space:]]+//p" scripts/hooks/local-tests.txt
+}
+# An area's local tests: its sbt lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
+# compiler over its target/), then its sh lines. A failure shows the failing specs; the full log stays.
+run_local_tests() { # <set>
+    local cmds=() line rc=0
+    need_jvm "$1" || return 1
+    while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
+    if [ "${#cmds[@]}" -gt 0 ]; then
+        scripts/sbt-warm "${cmds[@]}" > "$tmp/$1.log" 2>&1 || rc=1
+    fi
+    if [ "$rc" = 0 ]; then
+        while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            bash -c "$line" >> "$tmp/$1.log" 2>&1 || { rc=1; break; }
+        done < <(local_test_lines "$1" sh)
+    fi
+    if [ "$rc" != 0 ]; then
+        grep -E '\*\*\* FAILED|\[error\]|✘|[0-9]+ failed|Error:' "$tmp/$1.log" | head -60 >&2
+        warn "full log: $tmp/$1.log"
+        return 1
+    fi
+    grep -E 'Tests: succeeded|All tests passed|[0-9]+ passed' "$tmp/$1.log" | tail -3
+}
+check_identity() { run_local_tests identity; }
+check_page() { run_local_tests page; }
 
 # The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an
 # incremental compile in the floor's cached tree, minutes only the first time a machine lays it out.
@@ -880,7 +968,7 @@ live_sbt_in_checkout() {
 isolate_reason="" sbt_client=0
 if ! in_place; then
     isolate_reason="the working tree is not ${head_sha:0:9}"
-elif printf '%s\n' "$checks" | grep -qx sbt && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
+elif printf '%s\n' "$checks" | grep -qxE 'sbt|identity|page' && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
     # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
     # it is the one compiler: the check runs through it (by scripts/sbt-warm), in place and warm
     if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then
@@ -890,6 +978,10 @@ elif printf '%s\n' "$checks" | grep -qx sbt && ! skipped sbt && live_pid="$(live
         isolate_reason="a live sbt (pid $live_pid) shares this checkout's target/"
     fi
 fi
+# The area tests run through scripts/sbt-warm: in place, the sbt check joins them in the checkout's kept server (one warm
+# JVM for both) instead of a JVM of its own.
+area_tests="$(printf '%s\n' "$checks" | grep -xE 'identity|page' | tr '\n' ' ')"
+if [ -z "$isolate_reason" ] && [ -n "$area_tests" ]; then sbt_client=1; fi
 if [ -n "$isolate_reason" ]; then
     tree="$tmp/tree"
     git worktree add -q --detach "$tree" "$head_sha" || { warn "cannot check out ${head_sha:0:9} to check it"; exit 1; }
@@ -901,11 +993,6 @@ fi
 failed=""
 started=$SECONDS
 log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
-# ADVICE ONLY, never run here (it dispatches CI runs): an identity change passes these checks and still reddens Main on
-# specs neither they nor identity-measure run -- six Main reds on 2026-10-22 had been measured LANDABLE.
-if printf '%s\n' "$changed" | grep -qE '^(identity/|worker/src/main/scala/services/identity/|common/src/main/(resources/title-(rules|words)\.tsv|scala/services/titlerules/)|test/resources/fixtures/identity-)'; then
-    log "identity change: did scripts/identity-landing-check say LANDABLE for ${head_sha:0:9}? It runs the measure AND the identity specs Main runs (MatchedTakesLabel, IdentitySliceCases, the ratchets, title rules, hard clusters, e2e) -- this hook runs neither" >&2
-fi
 for check in $checks; do
     if skipped "$check"; then warn "$check SKIPPED (PREPUSH_SKIP)"; continue; fi
     t0=$SECONDS

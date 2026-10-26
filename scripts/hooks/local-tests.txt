@@ -1,0 +1,30 @@
+# THE LOCAL TESTS BEFORE A MERGE (scripts/hooks/pre-push runs them; the owner, 2026-10-26): no pre-merge CI -- the basic
+# tests on every push to main, plus an AREA's own tests when the push touches it and they run in under 15 min on the
+# laptop; main's CI tests everything after the merge. This file is their one definition.
+# Lines: `<set> sbt <command>` (a set's sbt lines go to sbt in order: the basic ones inside the `sbt` check's run, an
+# area's in one scripts/sbt-warm call) or `<set> sh <command>` (run by bash from the checkout's root, after the set's
+# sbt lines). Blank and # lines are skipped. Sets:
+#   basic     rides the hook's `sbt` check, whenever that runs. Deterministic, self-contained, seconds to a few minutes
+#             warm: compiles, checked-in/generated artefacts, CI/deploy wiring. Nothing needing Mongo or the network;
+#             the deploy specs needing the movies-gitops manifests stay out (the `sbt` check's lint plan runs them once
+#             infra/bin/fetch-gitops has fetched them). The generated-artefacts drift is the path-selected `drift` check.
+#   identity  the `identity` check, on a change to the hook's identity paths (is_identity_path)
+#   page      the `page` check, on a change to the hook's page paths (is_page_path)
+# An area line costs its measured warm time on the laptop (2026-10-26); an area's whole set stays under 15 min.
+basic sbt Test/compile
+basic sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
+basic sbt e2e/testOnly services.movies.FilmScheduleEndToEndSpec tools.ReadModelSnapshotSpec
+basic sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.* -deploy.AotCacheOptionsSpec -deploy.ChangeStreamSilenceAlertSpec -deploy.CinemaScrapeStalenessAlertSpec -deploy.FleetDatabaseConfigSpec -deploy.FluxImageAutomationSpec -deploy.K8sTierPathGatingSpec -deploy.LauncherJvmFlagsSpec -deploy.NodeCpuBudgetSpec -deploy.NodeMemoryBudgetSpec -deploy.PrometheusNodePortAgreementSpec -deploy.SharedUsersDatabaseConfigSpec -deploy.WebRolloutAvailabilitySpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec
+
+# identity: the identity module whole (agreement/equivalence specs included: IncrementalWholeEquivalence,
+# LateInputEquivalence, Memo...; 1095 tests, 52 s), then every services.identity.* / services.titlerules.* / worker
+# scripts.* spec of every module plus the hard-cluster ratchet (Main's `test (worker-identity)` / `(worker-scripts)`
+# identity parts; 651 tests, ~4 min). ~5 min warm, measured 2026-10-26 under a load of 17-130. NOT here (main's CI):
+# HardClusterConvergenceIntegrationSpec (IntegrationTest, Mongo), the convergence suite, the takes measure.
+identity sbt identity/test
+identity sbt testOnly services.identity.* services.titlerules.* scripts.* tools.HardClusterRatchetSpec
+# page: the Scala page specs over real Chrome (405 tests, ~2.7 min), then CI's Playwright rows -- Chromium phones,
+# the @agnostic set, chrome-desktop (~1.5 min), WebKit's phones (~7 min, one worker) -- against a fixture server
+# (scripts/page-tests-local). ~11 min warm, measured 2026-10-26 under a load of 17-130: inside the 15-min bound.
+page sbt web/PageTest/test
+page sh scripts/page-tests-local all

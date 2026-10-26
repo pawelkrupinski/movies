@@ -97,8 +97,8 @@ printf '\033[36m▸\033[0m pre-push --plan\n'
 # plan <path>... -> the selected checks, space-separated
 plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\n' ' ' | sed 's/ $//'; }
 
-check "production JS runs ESLint" "eslint" "$(plan web/src/main/assets/js/shared.js)"
-check "a page spec's JS runs ESLint" "eslint" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
+check "production JS runs ESLint, and the page area's tests" "eslint sbt page" "$(plan web/src/main/assets/js/shared.js)"
+check "a page spec's JS runs ESLint, and the page area's tests" "eslint sbt page" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a roster source runs the generated-artefact drift check, and the roster generators' self-tests" "drift scripttests" "$(plan data/pl/venues.json)"
@@ -123,19 +123,35 @@ check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scr
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "eslint snapshot scripttests actionlint shellcheck sbt" \
+check "checks come out once each, in run order" "eslint snapshot scripttests actionlint shellcheck sbt page" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
-check "a judgements change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-judgements.tsv)"
-check "an expected match runs it" "judgements" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
+check "a judgements change runs the judgements lint, and the identity area's tests" "judgements sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
+check "an expected match runs them" "judgements sbt identity" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
+
+# THE AREAS (the owner, 2026-10-26: no pre-merge CI; the basic tests, plus an area's own local tests when it is touched).
+check "the resolver runs the identity area's tests" "sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
+check "a worker identity adapter runs them" "sbt identity" "$(plan worker/src/main/scala/services/identity/Adapter.scala)"
+check "a title rule runs them" "sbt identity|sbt identity" \
+  "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titlerules/Rule.scala)"
+check "an identity spec runs them" "sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
+check "a template runs the page area's tests" "sbt page" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
+check "a stylesheet runs them" "sbt page" "$(plan web/src/main/assets/css/main.css)"
+check "a Playwright spec runs ESLint and them" "eslint sbt page" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
+check "a page spec runs them" "sbt page" "$(plan web/src/page/scala/views/PageJsBehaviourSpec.scala)"
+check "a change in both areas runs both" "eslint sbt identity page" \
+  "$(plan identity/src/main/scala/services/identity/R.scala web/src/main/assets/js/a.js)"
+check "a web controller is neither area: the basic sbt check only" "sbt" "$(plan web/src/main/scala/controllers/MovieController.scala)"
+check "a worker source outside identity is neither" "sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
+check "docs run nothing, no area" "" "$(plan docs/landing-process.md docs/design/x.md)"
 check "the lint itself runs it, the judgements' reader and the take files'" "judgements scripttests sbt judgements scripttests sbt judgements scripttests sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
-check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
+check "an unmatched-cluster capture runs the identity area's tests, not the lint" "sbt identity" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 # A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
 check "a file identity-slice drops into old refs compiles the tools into their floors" "sbt oldrefs" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
-check "...and one title-trace drops in" "sbt oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
+check "...and one title-trace drops in (an identity test: the identity area's tests too)" "sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
 check "a fixtures-config file neither tool drops in does not" "sbt" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
@@ -210,6 +226,8 @@ for mode in --plan --compile-plan --lint-plan; do
   (cd "$planrepo" && printf 'scripts/x.sh\n' | scripts/hooks/pre-push "$mode" > /dev/null 2>&1)
 done
 check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/root-checked" 2>/dev/null | wc -l | tr -d ' ')"
+check "with no local-tests.txt beside the hook, no area is selected" "sbt" \
+  "$(cd "$planrepo" && printf 'identity/src/main/scala/A.scala\n' | scripts/hooks/pre-push --plan | tr '\n' ' ' | sed 's/ $//')"
 
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
 if command -v shellcheck >/dev/null; then
@@ -383,6 +401,64 @@ else
   printf '  (shellcheck not installed — scratch-repository cases skipped)\n'
 fi
 
+# ── THE BASIC AND AREA TESTS RUN (scripts/hooks/local-tests.txt), AND NO LANDING CHECK IS ASKED FOR ───────────────
+# The owner, 2026-10-26: no pre-merge CI. An identity change runs the identity set, a page change the page set, a docs
+# change neither (nor the basic set, which rides the sbt check); identity-landing-check's LANDABLE is required nowhere.
+# A fake scripts/sbt-warm records each call; a fake sbt and java stand in for need_jvm.
+printf '\033[36m▸\033[0m pre-push basic and area tests\n'
+area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
+scratch_repo "$area"
+for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
+# a comment
+basic sbt Test/compile
+identity sbt identity/test
+identity sbt worker/testOnly services.identity.*
+page sbt web/PageTest/test
+page sh echo playwright-chromium >> "$AREA_CALLS"
+TESTS
+cat > "$area/scripts/sbt-warm" <<'STUB'
+#!/usr/bin/env bash
+printf 'sbt-warm' >> "$AREA_CALLS"; printf ' [%s]' "$@" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"
+case "$*" in *"${SBTWARM_FAILS:-no such}"*) echo "[error] Failed: Total 3, Failed 1"; exit 1 ;; esac
+echo "[info] All tests passed."
+STUB
+printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n' > "$areabin/sbt"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$areabin/java"
+chmod +x "$area/scripts/sbt-warm" "$areabin/sbt" "$areabin/java"
+scratch_git "$area" add -A; scratch_git "$area" commit -qm base
+export AREA_CALLS="$testroot/area-calls"
+area_push() { # <path> [env...]: commits <path>, runs the hook over that commit; prints the exit code
+  local path="$1"; shift
+  mkdir -p "$area/$(dirname "$path")"; echo "x $RANDOM" >> "$area/$path"
+  scratch_git "$area" add -A; scratch_git "$area" commit -qm "touches $path"
+  : > "$AREA_CALLS"
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+     bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
+}
+calls() { grep -c -- "$1" "$AREA_CALLS"; }
+basic_ran() { grep -cE '(\[|; )Test/compile(\]|;)' "$AREA_CALLS"; } # the basic line, in the sbt check's run (plain or warm)
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala)"
+check "an identity change runs the identity set in one sbt-warm call, and the basic set in the sbt check's run" "0 1 1 0 0" \
+  "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\*\]') $(basic_ran) $(calls PageTest) $(calls playwright)"
+check "...and no longer asks whether identity-landing-check said LANDABLE" "0 0" \
+  "$(grep -c 'LANDABLE' "$testroot/area-out") $(grep -c 'identity-landing-check' "$testroot/area-out")"
+code="$(area_push web/src/main/assets/js/a.js)"
+check "a page change runs the page set -- its sbt lines, then its sh lines -- and the basic set, not the identity set" \
+  "0 1 1 1 0" "$code $(calls '\[web/PageTest/test\]') $(calls playwright-chromium) $(basic_ran) $(calls identity/test)"
+code="$(area_push docs/landing-process.md)"
+check "a docs change runs neither area nor the basic set" "0 0" "$code $(wc -l < "$AREA_CALLS" | tr -d ' ')"
+code="$(area_push worker/src/main/scala/services/movies/A.scala)"
+check "a code change outside the areas runs the basic set only" "0 1 0 0" \
+  "$code $(basic_ran) $(calls identity/test) $(calls PageTest)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_FAILS=identity/test)"
+check "a failing identity set blocks the push, naming the check and the failure" "1 1 1" \
+  "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'Failed 1' "$testroot/area-out")"
+code="$(area_push web/src/main/twirl/views/x.scala.html PREPUSH_SKIP="eslint lintspecs page")"
+check "PREPUSH_SKIP=page skips the page set, said out loud" "0 0 1" \
+  "$code $(calls PageTest) $(grep -c 'page SKIPPED' "$testroot/area-out")"
+unset AREA_CALLS
+
 # ── AN ABSOLUTE core.hooksPath STILL RUNS THE PUSHING WORKTREE'S OWN HOOK ──────────────────────────
 # core.hooksPath=scripts/hooks is relative, so each worktree runs its own checkout's hook. Something (very likely an
 # IDE's git integration) rewrote it to the ROOT checkout's absolute path three times on 2026-10-14, and every worktree's
@@ -508,14 +584,6 @@ check "...naming only the production commit" "1 0" \
   "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err") $(grep -c "${tools:0:9} carries no Fixes-Red" "$gate/err")"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
-# An identity change is pointed at scripts/identity-landing-check (advice: the hook never runs it), a web change is not.
-before_idc="$(scratch_git "$grepo" rev-parse HEAD)"
-idc="$(commit_paths "a judgement" -- test/resources/fixtures/identity-judgements.tsv)"
-check "an identity change is pointed at identity-landing-check, which the hook does not run" "0 1" \
-  "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$before_idc..$idc") $(grep -c 'did scripts/identity-landing-check say LANDABLE' "$gate/err")"
-check "...a change outside identity is not" "0 0" \
-  "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain") $(grep -c 'identity-landing-check' "$gate/err")"
-scratch_git "$grepo" reset -q --hard "$before_idc"
 check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
 # gh hanging: the stub never ends on its own, so the hook gets past it only by its own bound cutting gh off. That
 # mechanism is the proof -- each workflow's gh cut off (bounded's 124) and said so, no stub left running -- never

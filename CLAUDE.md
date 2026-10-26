@@ -120,11 +120,11 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   workflow, movies-gitops' image-pin bumps (weekly, one PR there on `image-pins/all`); an agent may push judged verdicts to that bot's `chore/identity-capture`
   branch (`identity-investigation` skill); and `scripts/mobile-ship.sh` pushes only the release commit it cut in its
   own detached worktree.
-- **Landing:** rebase onto main → all relevant layers green → land → remove the worktree and delete your own
-  merged branch with `git branch -d` (refuses an unmerged branch; never `-D`). While GitHub is
-  suspended, land with `git merge --ff-only <branch>` in the clean root checkout on `main`; when it is back, fetch,
-  rebase, and push `<sha>:main` from your own worktree — never `HEAD` mid-rebase.
-- **Subagents** commit, rebase and hand back; they land only if every gate is already green, and never wait on CI.
+- **Landing:** all relevant layers green → `~/bin/agentctl land` from your own worktree (it rebases; the hook runs
+  the basic tests and the touched area's tests locally; no pre-merge CI) → remove the worktree and delete your own
+  merged branch with `git branch -d` (refuses an unmerged branch; never `-D`).
+- **Subagents** land with `agentctl land` in the background and act on its watch verdict (`WATCH RED` → fix forward);
+  they never wait on a branch CI run.
 - **Never finish or yield with a dirty tree you own:** commit, or `git stash push -u -m "<what + why>"`. An
   interrupted task still owes a checkpoint (`wip: <state>` commit on your own branch, or a labelled stash).
 - **Don't strand work on a stale base:** behind main → rebase before piling on.
@@ -137,13 +137,24 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
 
 ## Agent tooling: `~/bin/agentctl` (laptop only; reference `~/bin/AGENTCTL.md`)
 
-The whole path from commit to main — `land`, the merge queue, every pre-push step, the gate, each refusal and what
+The whole path from commit to main — `land`, every pre-push step, the area tests, the gate, each refusal and what
 to do — is in `docs/landing-process.md`.
+
+**No pre-merge CI** (the owner, 2026-10-26): "only run the basic tests before merging and merge on green (main not
+green branch); if some specific area (browser / page, identity) is touched, run tests specific to that locally (unless
+it takes longer than 15 mins), then merge to main and test everything there". So every change — identity included —
+lands with `agentctl land`: the pre-push hook runs the basic tests (path-selected lints, generated artefacts, every
+test config compiled, the snapshot and deploy specs) and, when the push touches an AREA, that area's local tests
+(`scripts/hooks/local-tests.txt`: `identity`, `page`; each under 15 min warm). Merge on green means MAIN green: the
+red gate below. Nothing waits for a branch CI run; `scripts/identity-landing-check` and `identity-measure` are optional
+tools for your own confidence, not merge requirements. The merge queue (`agentctl queue`) is retired.
 
 
 1. `eval "$(~/bin/agentctl env --print)"`: puts sbt and java on PATH. A locked vault prints the `! secrets unlock` line for the user.
 2. Work and commit in your own worktree.
-3. `~/bin/agentctl land`: fetch, rebase, push through the pre-push hook, verify. Ends `LANDED <sha>` or `NOT LANDED: <why>`.
+3. `~/bin/agentctl land` (Bash `run_in_background=true` when an area's tests will run): waits for the repository's
+   landing lock, fetches, rebases, runs the pre-push hook as a dry run (basic + area tests), pushes, verifies. Ends
+   `LANDED <sha>` or `NOT LANDED: <why>`.
 4. `~/bin/agentctl wait run <id> [--until landable]`: run it in the background, then end your turn. It prints only the verdict.
 5. `~/bin/agentctl ci-why`: when main is red or the gate refused. It shows the failed jobs, infra vs test, and how to clear it.
 
@@ -252,7 +263,7 @@ Before an ad-hoc test or a full convergence leg (10–90 min), use the local too
 `scripts/identity-slice` (`--explain`, `--ref A --ref B`, `--bisect`, `--batch`, `--prod-mirror`),
 `scripts/title-trace`, `scripts/venue-replay`, `scripts/recording-diff`, `scripts/listing-history`,
 `scripts/label-lookup`, `scripts/identity-ratchet-report`, `scripts/identity-judge-cards`,
-`scripts/identity-measure` (whole-corpus, before landing any resolver change), `scripts/identity-refit`. Which tool
+`scripts/identity-measure` (whole-corpus; optional before landing, main's convergence runs it after), `scripts/identity-refit`. Which tool
 answers which question, flags, speed and data sources: `identity-investigation` skill. **Name these tools in every
 subagent brief.**
 
@@ -263,15 +274,15 @@ heavy sbt command over a cached recording (a resolve dump, an ablation, a simula
 local heavy runs are a fallback only, for what the CI route cannot do yet, and only under the shared 3-slot heavy-run
 wrapper; say so in the report.
 
-**Will it land green? `scripts/identity-landing-check`** before pushing any identity change (resolver, title rules,
-judgements, slice cases, captures): ONE verdict, `LANDABLE` or `BLOCKED` with the failing spec, its test and a hint. It
-runs the measure (`identity-measure --footprint`, falling back to the full measure; `--full` for the landing gate,
+**Optional: `scripts/identity-landing-check`** — no longer a merge requirement (2026-10-26: the hook's `identity` area
+tests run before the merge, main's CI runs the rest after). For your own confidence on a risky identity change: ONE
+verdict, `LANDABLE` or `BLOCKED` with the failing spec, its test and a hint. It runs the measure (`identity-measure --footprint`, falling back to the full measure; `--full` for the landing gate,
 `--footprint-only` while iterating) AND, in parallel on CI (one `identity-ci-run` per group; `--local` = sbt-warm under
 heavy-run), exactly the identity specs Main's rows run and the measure never does: every `services.identity.*`
 (MatchedTakesLabel, UnmatchedClustersRatchet, IdentitySliceCases), the title-rule golden/examples/mutation specs, the
 worker `scripts.*` re-resolves, DocCommentPlacement, the hard-cluster ratchet and convergence, and -- when Main's scope
 runs the e2e rows -- FilmScheduleEndToEnd, SearchQueryMarkers, IdentityCutoverEndToEnd. On 2026-10-22 at least six Main
-reds were changes `identity-measure` alone had called LANDABLE. The pre-push hook only points at it; it never runs it.
+reds were changes `identity-measure` alone had called LANDABLE. Nothing requires its LANDABLE; the hook never runs it.
 
 **Measuring cheaply** (2026-10-22: measurements averaged 37 min queued + 66 min wall for ~12 min of compute):
 - **Let the footprint pick:** without `--countries`, identity-measure measures only the countries the change can move
@@ -293,8 +304,8 @@ reds were changes `identity-measure` alone had called LANDABLE. The pre-push hoo
   change touches only `title-rules.tsv`, `services/titlerules/` (not `TitleRulePlaceholders.scala`) or
   `TitleNormalizer.scala`, it replays every title reading the base's stored resolve made under your rules, in ~1
   minute and no dispatch: all alike is `measure: footprint` LANDABLE, no take can move (a rule refactor, a merge of
-  rows that fold alike). Rely on it while iterating, never to land: **landing needs the full measure** (no
-  `--footprint`). Anything else -- a matcher, scoring or BillingParse change, no stored trace, a reading that reads
+  rows that fold alike). Rely on it while iterating; for a whole-corpus verdict use the full measure (no
+  `--footprint`) -- optional before landing (2026-10-26), main's convergence runs it after. Anything else -- a matcher, scoring or BillingParse change, no stored trace, a reading that reads
   otherwise (listed: takes may move) -- falls back to the full measure by itself, saying why.
 - **The convergence `takes` rows' skip gate** (`scripts/ci/takes-skip-gate.sh`, CI's side of the same proof): a takes row
   may leave out its takes diff only when ALL hold -- every changed file a title-rule file (as above) or inert (docs/,

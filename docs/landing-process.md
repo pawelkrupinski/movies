@@ -1,38 +1,49 @@
 # Landing a change on main
 
-How a commit gets from an agent's worktree onto `forgejo/main`, as the code stands on 2026-10-26 (main at
-`fddbc8fcd`). The sources are authoritative; this page cites them and says nothing they do not:
+How a commit gets from an agent's worktree onto `forgejo/main`, as the code stands on 2026-10-26 (after the owner's
+"drop the landing pipeline" decision). The sources are authoritative; this page cites them and says nothing they do not:
 
-- the pre-push hook, `scripts/hooks/pre-push` (its header lists every check);
-- `~/bin/agentctl` (`land`, `queue`, `ci-why`, `prepush-check`) and its reference `~/bin/AGENTCTL.md` (laptop only,
-  not in this repo);
-- `scripts/identity-landing-check`, `scripts/identity-measure`;
-- `scripts/queue-precheck-specs.txt`, the merge queue's local pre-check list.
+- the pre-push hook, `scripts/hooks/pre-push` (its header lists every check), and its test list
+  `scripts/hooks/local-tests.txt` (the basic and area tests);
+- `~/bin/agentctl` (`land`, `ci-why`, `prepush-check`) and its reference `~/bin/AGENTCTL.md` (laptop only, not in this
+  repo).
 
 There are no PRs and no other branches on the remote: the only ref that lands is `main` (the `measure/` branches the
 identity tools push are run refs, never merged).
+
+## The policy
+
+The owner, 2026-10-26: "drop the landing pipeline altogether, only run the basic tests before merging and merge on
+green (main not green branch), if some specific area (browser / page, identity) is touched, run tests specific to that
+locally (unless it takes longer than 15 mins) then / otherwise merge to main and test everything there".
+
+- **No pre-merge CI.** Nothing waits for a branch run. `scripts/identity-landing-check` and `scripts/identity-measure`
+  stay as optional tools; no LANDABLE is required anywhere. The merge queue (`agentctl queue`) is retired.
+- **Before merging: the basic tests**, locally, by the pre-push hook: the path-selected lints and checks (stage 3) and
+  `local-tests.txt`'s `basic` set, riding the `sbt` check.
+- **An area touched: its local tests**, if they fit in 15 minutes on the laptop, warm: `identity` and `page` (measured
+  times in stage 3). What does not fit (convergence, the takes measure, the integration suites) is main's.
+- **Merge on green = main green**: the red gate (stage 3, step 3). Tools-only commits and `Fixes-Red:` fixes land
+  while red, as before.
+- **After merging, main's CI tests everything** (Main, the convergence on its lane, verify), and `agentctl land`
+  watches Main and the convergence for your commit and tells you if they go red (stage 4).
 
 ## The flow
 
 ```mermaid
 flowchart TD
-    C[commit in your own worktree] --> K{identity change?}
-    K -- no --> L["agentctl land"]
-    K -- yes --> Q["agentctl queue add<br/>agentctl queue wait (background)"]
-    L --> F[fetch + rebase onto forgejo/main]
+    C[commit in your own worktree] --> L["agentctl land<br/>(run_in_background)"]
+    L --> K[landing lock: one lander per repo]
+    K --> F[fetch + rebase onto forgejo/main]
     F --> P[agentctl prepush-check: squash guard]
-    P --> H["git push forgejo SHA:refs/heads/main<br/>→ scripts/hooks/pre-push"]
-    Q --> B[batch: rebase entries onto forgejo/main,<br/>prepush-check each]
-    B --> G1{gate red and<br/>production entries?}
-    G1 -- yes --> HOLD1[held until the gate is green]
-    G1 -- no --> PC["local pre-check: queue-precheck-specs.txt<br/>+ pre-push --range main..tip"]
-    PC -- fails --> BIS[local bisect → reject the culprit]
-    PC -- passes --> LC["identity-landing-check --full TIP (CI)"]
-    LC -- BLOCKED --> BL[check bare main → MAIN RED hold,<br/>or bisect → reject / FLAKY hold]
-    LC -- LANDABLE --> H
-    H --> RG[1. red gate]
-    RG --> PATH[2. path-selected checks, or reuse of a passed run]
-    PATH --> M[on forgejo/main; land verifies with a fetch]
+    P --> D["scripts/hooks/pre-push --range forgejo/main..SHA<br/>red gate, path checks, basic + area tests"]
+    D -- fails --> N[NOT LANDED + the tail]
+    D -- passes --> H["git push forgejo SHA:refs/heads/main<br/>→ the hook again: the stored pass is reused"]
+    H --> V[LANDED SHA; lock released]
+    V --> W["watch: Main run for SHA + first convergence run containing it"]
+    W --> R{verdict}
+    R -- green --> OK[WATCH OK]
+    R -- red --> RED["WATCH RED + ci-why → fix forward with Fixes-Red"]
 ```
 
 ## Stage 1: commit in your own worktree
@@ -52,86 +63,34 @@ that checkout's copy.
 Before landing: `git diff --stat forgejo/main...HEAD` lists only your files, and the test layers your change touches
 are green locally (CLAUDE.md, "Run the relevant test layers").
 
-## Stage 2a: a non-identity change — `agentctl land`
+## Stage 2: `agentctl land` — every change, identity included
 
 ```sh
-~/bin/agentctl land          # from the worktree; under heavy-run when the hook will start sbt
+~/bin/agentctl land          # from the worktree; Bash run_in_background=true, then end your turn
 ```
 
-`cmd_land` / `land_loop` in `~/bin/agentctl`, in order:
+`cmd_land` / `land_loop` / `watch_landed` in `~/bin/agentctl`, in order:
 
 1. refuses when `PREPUSH_SKIP` is set in the environment, or the tree is dirty (`--stash` sets changes aside);
-2. `git fetch forgejo main` (one retry after 15 s);
-3. `git rebase forgejo/main` (a conflict aborts the rebase and names the files);
-4. `prepush-check` (the squash guard): refuses when `forgejo/main...HEAD` returns more than 2 files to an older main
+2. takes the repository's **landing lock** (an flock per git common dir, `~/.cache/agentctl/land/`), waiting while
+   another lander holds it (one line names the holder; 4 h bound). One lander at a time means nobody runs minutes of
+   area tests on a base that is about to move, and the laptop runs one landing hook's JVM at a time;
+3. `git fetch forgejo main` (one retry after 15 s);
+4. `git rebase forgejo/main` (a conflict aborts the rebase and names the files);
+5. `prepush-check` (the squash guard): refuses when `forgejo/main...HEAD` returns more than 2 files to an older main
    version — what `git reset --soft` onto a moved main does (`git revert` commits are exempt for their own files);
-5. `git push forgejo <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`), which runs the
-   pre-push hook (stage 3) with sdkman's sbt/java first on PATH;
-6. on a push race (`non-fast-forward`, `fetch first`, …) refetch, rebase and retry, up to 3 retries;
-7. fetch and verify the commit is on main (ancestor, or patch-equivalent per `git cherry`).
+6. **check first**: `scripts/hooks/pre-push --range forgejo/main..<sha>` — the whole hook (stage 3) over exactly what
+   will be pushed, pushing nothing. A failure is `NOT LANDED: the pre-push checks failed` and nothing is pushed;
+7. `git push forgejo <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`): the hook runs again
+   and reuses step 6's stored pass in seconds, so the push's ssh connection is never held open through minutes of
+   tests;
+8. on a push race (`non-fast-forward`, `fetch first`, …) refetch, rebase and retry from step 6, up to 3 retries;
+9. fetch and verify the commit is on main (ancestor, or patch-equivalent per `git cherry`): `LANDED <sha>`. The lock
+   is released;
+10. **the watch** (stage 4), unless `--no-watch`.
 
-The last line is `LANDED <sha>` or `NOT LANDED: <why>`; a red-gate refusal is followed by the `ci-why` summary. The
-hook's full output is in the scratchpad's `agentctl-land-<worktree>-<pid>.log`.
-
-## Stage 2b: an identity change — the merge queue
-
-An identity change is one touching `identity/`, `worker/src/main/scala/services/identity/`,
-`common/src/main/resources/title-{rules,words}.tsv`, `common/src/main/scala/services/titlerules/` or
-`test/resources/fixtures/identity-*` (the hook's list); `queue add` also counts identity, matcher, resolver,
-resolution or projection code outside `scripts/`, `docs/`, `.claude/` and the CI trees, and `--identity` forces it.
-Iterate with `scripts/identity-measure --footprint`; when ready:
-
-```sh
-~/bin/agentctl queue add                    # committed work only; one open entry per worktree
-~/bin/agentctl queue wait <entry>           # Bash run_in_background=true, then end your turn
-~/bin/agentctl queue status                 # the batch, the processor's phase, every hold
-```
-
-Do not run `identity-landing-check --full` yourself and do not take a `/tmp/movies-landing-slot-*`: the queue does
-both. The processor (`queue run`, started detached by `queue add`; one per repo, held by an flock; state in
-`~/.cache/agentctl/queue/movies`) works one batch at a time:
-
-1. **Batch.** Every queued entry, in order; entries added meanwhile go to the next batch.
-2. **Gate.** When `ci-why` says main is red, production entries without `Fixes-Red:` are held; tools-only and
-   `Fixes-Red:` entries go ahead (the hook's rule). The gate is read again right before any check is dispatched.
-3. **Build.** Each entry is rebased (`git rebase --onto`) onto the tip so far and prepush-checked. A conflict or a
-   refusal rejects that entry alone.
-4. **Local pre-check** (no CI spent): the tip's `scripts/queue-precheck-specs.txt`, run in the queue's work tree —
-   `sbt` lines through `scripts/sbt-warm`, `sh` lines in the shell, first failure stops. Today: the
-   generated-artefacts drift, `Test/compile`, the IntegrationTest compiles of web and worker,
-   `FilmScheduleEndToEndSpec` + `ReadModelSnapshotSpec`, and the worker's `DocCommentPlacementSpec`,
-   `RegisteredCollectionListsSpec` and `deploy.*` specs minus those needing the GitOps manifests (budget ~5 min
-   warm). Then the hook itself, `scripts/hooks/pre-push --range <main>..<tip>`. A red gate, a tunnel failure or stale
-   manifests count as "could not judge", not as a failure. If the tip fails, bare main is pre-checked: fails too →
-   hold `MAIN RED pre-check …`; otherwise the entries are bisected locally, the failing boundary re-run once, and only
-   the culprit rejected (with the output and the diff of any file the check wrote, which is discarded). Unsure → the
-   CI check decides. Results are cached per tree.
-5. **Landing check.** One `scripts/identity-landing-check --full <tip>` for the whole batch (stage 4), in its own
-   process group, holding a landing slot. Verdicts are cached by (main, tree).
-6. **BLOCKED.** Blame needs proof. The same check on bare main (cached per main sha): any red there → hold
-   `MAIN RED <signature> at <sha>`, nobody rejected. Green main → bisect to the first red prefix, re-check it once:
-   same signature → reject that entry, push the green prefix, requeue the rest; green or a different signature →
-   `FLAKY` hold, nobody rejected, nothing lands, logged to `flaky.log`. No verdict (exit 2) is never an entry's
-   fault: hold `no-verdict`, retry with backoff, after 5 in a row wait for `queue resume`.
-7. **Main moved during the check.** If every new main commit touches none of the paths the check covers (the
-   identity landing paths and `.github/convergence-paths.txt` as of the new main), the batch is rebased and pushed
-   under the verdict it has, given a clean rebase and a passing pre-check on the new tip. Anything else rebuilds and
-   rechecks.
-8. **Push** `git push forgejo <tip>:refs/heads/main` from the work tree, through the hook. A hook failure on a
-   multi-entry batch is bisected locally with `pre-push --range`; only the culprit is rejected and the rest pushed
-   under the verdict already taken (it covered a superset). A single entry's hook failure rejects it with the tail.
-
-**No abandoned runs.** When a check returns, times out, or the processor is stopped, it kills the check's process
-group, cancels every unfinished run on the `measure/` branches that check pushed, and deletes those branches. A
-processor killed with SIGKILL leaves `active-check.json`; the next one cleans up from it. Other branches' runs are
-never touched.
-
-**Owner actions.** `queue hold [--reason R]` pauses persistently (a running check is stopped within 15 s, its runs
-cancelled, the batch requeued); `queue resume` lifts a hold and refreshes the processor's Forgejo token;
-`queue cancel <entry>` drops an entry, even one in the running batch (its check is stopped and the rest rebuilt);
-`queue requeue <entry> [--last]` puts a wrongly rejected entry back.
-
-`queue wait` exits 0 `LANDED <sha>`, 1 `REJECTED <why>`, 2 timeout (12 h), 3 `HELD <why>`.
+The hook's full output is in the scratchpad's `agentctl-land-<worktree>-<pid>.log`. Exit: 0 landed and watched
+green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's CI red.
 
 ## Stage 3: the pre-push hook
 
@@ -161,8 +120,12 @@ cancelled, the batch requeued); `queue resume` lifts a hold and refreshes the pr
 7. **Where**: in place when HEAD is the pushed commit and nothing it changed differs in the working tree; through the
    checkout's kept `scripts/sbt-warm` server if one is live; otherwise in a temporary worktree of the pushed commit
    (cold: an sbt check there takes minutes). A non-kept live sbt in the checkout also forces the temporary worktree.
-8. **Identity advice.** For a change on the identity paths it prints: "identity change: did
-   scripts/identity-landing-check say LANDABLE for <sha>?" — advice only; the hook never runs the landing check.
+8. **Area selection.** A change on the identity paths (`is_identity_path`: `identity/`,
+   `worker/src/{main,test}/scala/services/identity/`, `common/src/main/resources/title-{rules,words}.tsv`,
+   `common/src/main/scala/services/titlerules/`, `test/resources/fixtures/identity-*`) selects `identity`; one on the
+   page paths (`is_page_path`: `web/src/main/assets/`, `web/src/main/twirl/`, `web/src/page/`,
+   `page-tests-playwright/`) selects `page`. Each also selects `sbt` (so the basic tests run). The hook no longer asks
+   for an identity-landing-check LANDABLE.
 9. **The path checks**, in this order; a failure is recorded and the rest still run:
 
 | Check | Runs when the push changes | What it runs | Typical time |
@@ -175,7 +138,9 @@ cancelled, the batch requeued); `queue resume` lifts a hold and refreshes the pr
 | `scripttests` | `scripts/`, `.github/scripts`, `.github/actions`, `android/scripts`, `ios/scripts`, `infra/bin`, `data/` | `scripts/run-script-tests --changed <base>`; beside it the same on Linux in Docker (`linux`); on a Mac again under `/bin/bash` 3.2 | seconds to minutes |
 | `actionlint` | workflow files, composite actions | actionlint (+ shellcheck on `run:` blocks) | seconds |
 | `shellcheck` | `*.sh`, `scripts/hooks/*` | shellcheck; fails only on warnings the push adds | seconds |
-| `sbt` | Scala/Java, `build.sbt`, `project/`, Grafana dashboards, scripts/workflows under `scripts/`, `.github/`, `infra/`; and anything the lint specs read (`scripts/`, `.github/`, `.claude/`, `CLAUDE.md`, `build.sbt`, `project/`, `*/src/test/`, `*/src/it/`, page specs, worker fixtures, `testkit/`) | one sbt run: the Test/It/Page compiles of every touched module and its dependants (`--compile-plan`), the five standing lints, and on a repo-read change every `deploy/*Spec` and `tools/{No*,*Lint*}Spec` (`--lint-plan`) bar the server-booting ones; GitOps-reading specs only after `infra/bin/fetch-gitops` succeeds | well under a minute warm (lint plan ~30 s); minutes cold |
+| `sbt` (+ basic) | Scala/Java, `build.sbt`, `project/`, Grafana dashboards, scripts/workflows under `scripts/`, `.github/`, `infra/`; and anything the lint specs read (`scripts/`, `.github/`, `.claude/`, `CLAUDE.md`, `build.sbt`, `project/`, `*/src/test/`, `*/src/it/`, page specs, worker fixtures, `testkit/`) | one sbt run: the Test/It/Page compiles of every touched module and its dependants (`--compile-plan`), the five standing lints, and on a repo-read change every `deploy/*Spec` and `tools/{No*,*Lint*}Spec` (`--lint-plan`) bar the server-booting ones; GitOps-reading specs only after `infra/bin/fetch-gitops` succeeds; then THE BASIC TESTS, `local-tests.txt`'s `basic` lines, in the same run | lints ~30 s + basic ~5 min warm; more cold |
+| `identity` | the identity paths (step 8) | `scripts/hooks/local-tests.txt`'s `identity` lines, one `scripts/sbt-warm` call | ~5 min warm (`identity/test` 52 s; the services.identity.*/titlerules.*/scripts.* aggregate ~4 min) |
+| `page` | the page paths (step 8) | `local-tests.txt`'s `page` lines: `web/PageTest/test` through `scripts/sbt-warm`, then `scripts/page-tests-local all` (fixture server + CI's Chromium and WebKit Playwright rows) | ~11 min warm (`web/PageTest/test` ~2.7 min, Chromium rows ~1.5 min, WebKit ~7 min) |
 | `oldrefs` | a file in `identity-slice`'s or `title-trace`'s `TOOL_FILES` | `scripts/identity-slice-old-ref-test.sh` | incremental; minutes the first time |
 | `ios` | `ios/` | `scripts/ios-compile-check.sh` | minutes |
 
@@ -194,28 +159,22 @@ that cannot be fetched block (the checkout left behind is stale).
 that follows reuses the pass. Use it before a manual push that may run long: `scripts/hooks/pre-push --range
 forgejo/main..HEAD`. `--plan` and `--compile-plan` read paths on stdin and print the plan only.
 
-## Stage 4: `scripts/identity-landing-check`
+## Stage 4: the watch after landing
 
-"Will this identity change land green?" — one verdict over the measure and the identity specs Main runs. The queue
-runs it as `--full <tip>`; by hand it is for iterating only (default mode: `identity-measure --footprint`).
+With no pre-merge CI, main's CI is where a change is tested in full, so `land` keeps running after `LANDED` (the lock
+already released) and watches it for the landed sha (`watch_landed`):
 
-- **Spec groups**, by default each its own `scripts/identity-ci-run` (identity-run.yml) on CI at the commit, all at
-  once, on the check tier (`ubuntu-24.04`); `--local` runs them on the laptop through `scripts/sbt-warm`:
-  - `unit`: `testOnly services.identity.* services.titlerules.* scripts.* tools.DocCommentPlacementSpec
-    tools.HardClusterRatchetSpec` (root testOnly: every module);
-  - `it`: `worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec`;
-  - `e2e-corpus` (`FilmScheduleEndToEndSpec`) and `e2e-rest` (`SearchQueryMarkersSpec`,
-    `IdentityCutoverEndToEndSpec`), only when `scripts/ci/ci-row-scope.sh e2e` says Main would run the e2e rows.
-  The sbt log decides a group, not the run's conclusion.
-- **The measure**, in parallel: `scripts/identity-measure --head <commit> --base <base> --tier landing` plus
-  `--footprint` (default), `--footprint-only`, or `--full`. `--full` currently runs the whole convergence suite
-  (identity-measure: "run the whole convergence suite, not only the takes rows"; ~22 rows on ci-runner's 3-slot
-  `landing` runner), so Main's convergence run on the same tree can reuse the verdict
-  (`scripts/ci/convergence_reuse.py`). A change to make the landing measure takes-only is in progress and **had not
-  landed** at `fddbc8fcd`; re-read `scripts/identity-landing-check` and `scripts/identity-measure` when it does.
-- **Verdict**, last on stdout: `LANDABLE` (exit 0); `BLOCKED` (exit 1) with each failing spec, its test and a hint;
-  `NO VERDICT` (exit 2) when a group or the measure could not run. Output under
-  `target/identity-landing-check/<sha>/` (the queue sets `IDENTITY_LANDING_OUT`).
+- **Main**: the `main.yml` run whose head is the sha; if it was cancelled or never came (a newer push superseded it),
+  the newest Main run whose head contains the sha.
+- **Convergence**: the FIRST `identity-model-convergence.yml` run on main created after the push whose head contains
+  the sha — its own kick, a later push's, or the daily run (a cancelled one, replaced on the lane, passes to the next).
+  None within 60 min (kick-convergence skips pushes outside `.github/convergence-paths.txt`):
+  `convergence: none started within 60 min`, not waited for.
+- **Verdict**: `WATCH OK: Main #n green, convergence #m green`; `WATCH RED: <workflow> #n <failed jobs>` plus the
+  `ci-why` summary, the moment either is red; `WATCH UNKNOWN` after 3 h undecided or 10 failed reads.
+
+`WATCH RED` names a run that contains your commit, not proof that your commit broke it: read the summary. If it is
+yours, fix forward at once with a `Fixes-Red: <run>` trailer (stage 5). `--no-watch` exits at `LANDED` (scripts).
 
 ## Stage 5: the gate after landing
 
@@ -243,25 +202,25 @@ turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final t
 | `blocked by: <checks>` | a path check failed | read the tail (and the land log), fix forward, commit, land again |
 | push dies after `all clear` ("closed by remote host", "Broken pipe") | the tunnel dropped under a long hook | push/land again: the pass is reused |
 | `NOT LANDED: still racing after 3 retries` | main is busy | land again in a minute |
-| `REJECTED <why>` (queue) | your entry conflicts, failed the pre-check, the hook, or the landing check (bisected) | yours: fix forward, commit, `queue add` again |
-| `HELD flaky <spec>` (queue, exit 3) | a red that did not reproduce; nothing landed | not yours unless your change touches that spec: report it and stop. Never rerun, never `queue resume` — the owner's call |
-| `MAIN RED …` hold | main itself fails the check or pre-check | keep `queue wait` running: it resumes once main moves and the gate is green |
-| `held: main went red for the gate` | production entry, gate red | as above; resumes by itself |
-| `HELD no-token: run secrets unlock movies, then agentctl queue resume` | the processor has no Forgejo token | the user unlocks; then `queue resume` |
-| `HELD no-verdict … (n/5)` | infra or dispatch trouble | retries by itself; after 5, the owner resumes |
-| `PAUSED by the owner: <reason>` | `queue hold` | wait; the owner resumes |
-| hook says `identity change: did scripts/identity-landing-check say LANDABLE …` | advice | an identity change goes through the queue, not `land` |
+| `waiting for the landing lock (…), held by: …` | another agent is landing | nothing: land continues once it is free |
+| `NOT LANDED: timed out waiting for the landing lock` | a lander held it 4 h | `agentctl land` again; if it repeats, report the holder |
+| `NOT LANDED: the pre-push checks failed` | the dry run (basic or area tests, a path check) failed | read the tail and the land log, fix forward, commit, land again |
+| `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |
+| `WATCH RED: <workflow> #n …` (exit 3) | main's CI is red on a run containing your commit | read the ci-why summary; yours → fix forward now with `Fixes-Red: <n>`; not yours → say so in your report |
+| `WATCH UNKNOWN …` (exit 2) | undecided after 3 h, or Forgejo unreadable | `agentctl ci-why` later; report it |
+| `agentctl queue …` prints `NOT QUEUED: the merge queue is RETIRED` | an old brief | use `agentctl land` |
 
 ## The rules
 
 - **No bypass flags.** `PREPUSH_SKIP="<checks>"` (names: every check above, plus `redgate`, `lintspecs`, `linux`)
   and `git push --no-verify` exist in the hook for a person; agents never use them, on any commit or push, `measure/`
-  branches included. `agentctl land` and the queue processor refuse to run with `PREPUSH_SKIP` set and assert no
-  `--no-verify` in their push argv. A missing tool is fixed, not skipped.
+  branches included. `agentctl land` refuses to run with `PREPUSH_SKIP` set and asserts no `--no-verify` in its push
+  argv. A missing tool is fixed, not skipped.
 - **`Fixes-Red:` only for a real fix** of the named run. A tools-only commit needs none.
 - **Never rerun to green.** A red is investigated to its cause (CLAUDE.md, "Investigate every red"); a test that
-  passes on a second run is flaky and gets fixed. The queue never picks a winner between a red and a green run: it
-  holds `FLAKY`.
-- **Rebase onto current `forgejo/main` before any landing check**; never `reset --soft` onto a moved main.
+  passes on a second run is flaky and gets fixed.
+- **Rebase onto current `forgejo/main` before any local check** (`land` does); never `reset --soft` onto a moved main.
+- **Area tests are local and bounded.** A set in `local-tests.txt` joins an area only if it runs in under 15 min on the
+  laptop, warm; anything longer is main's CI's. Add a new area by adding its lines and its path test to the hook.
 - **Never edit `identity-drift-allow.tsv` to get green**; performance budgets move only for a deliberate trade.
 - Cancel your own superseded CI runs (`forgejo-gh run cancel <run id>`); never another agent's.

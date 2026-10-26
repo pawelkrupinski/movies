@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# PAGE TESTS, LOCALLY: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this
+# checkout's kept sbt server -- the pre-push hook's `page` area tests (scripts/hooks/local-tests.txt), so a page change
+# is tested before it merges (the owner, 2026-10-26: no pre-merge CI; an area's local tests when they fit in 15 min).
+#
+# usage: scripts/page-tests-local [chromium|webkit|all]      (default all)
+#   chromium  CI's `pw phones` (chromium) and `pw behaviour + desktop` rows: the three Chromium phones' viewport
+#             specs, the @agnostic specs once on mobile Chromium, chrome-desktop's viewport specs     (~1.5 min warm)
+#   webkit    CI's two `pw phones` WebKit shards in one run, one worker (WebKit rows run one on every host) (~7 min)
+# Measured 2026-10-26 on the laptop under a load of 17-130: the page set (web/PageTest/test ~2.7 min + both rows
+# + the server's boot) ~11 min, inside the 15-min bound. axe-core stays CI's (continue-on-error there).
+#
+# THE SERVER: `scripts/sbt-warm --serve 'web/PageTest/runMain tools.FixtureServerMain <port file>'` through
+# .github/scripts/fixture-server.sh (relaunch on an early exit, 600 s ceiling), stopped on exit with the checkout's kept
+# server (`sbt-warm --stop`): a serving runMain holds it. Needs Node (npm ci once per worktree) and Playwright's
+# browsers (`npx playwright install chromium webkit`; Google Chrome for chrome-desktop).
+# PAGE_TESTS_SBT_WARM / PAGE_TESTS_NPX / PAGE_TESTS_NPM stand in for scripts/sbt-warm, npx, npm (the self-test's fakes).
+set -euo pipefail
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$root"
+which=${1:-all}
+case "$which" in chromium|webkit|all) ;; *) echo "usage: scripts/page-tests-local [chromium|webkit|all]" >&2; exit 2 ;; esac
+sbt_warm=${PAGE_TESTS_SBT_WARM:-scripts/sbt-warm}
+npx=${PAGE_TESTS_NPX:-npx}
+npm=${PAGE_TESTS_NPM:-npm}
+
+state=$(mktemp -d)
+stop() {
+    .github/scripts/fixture-server.sh stop "$state" || true
+    "$sbt_warm" --stop >/dev/null 2>&1 || true
+    rm -rf "$state"
+}
+trap stop EXIT
+.github/scripts/fixture-server.sh launch "$state" "$sbt_warm" --serve "web/PageTest/runMain tools.FixtureServerMain $state/port"
+.github/scripts/fixture-server.sh await "$state"
+KINOWO_BASE_URL="http://127.0.0.1:$(cat "$state/port")"
+export KINOWO_BASE_URL
+
+cd page-tests-playwright
+[ -x node_modules/.bin/playwright ] || "$npm" ci --no-audit --no-fund --silent
+rc=0
+row() { # <name> <playwright args...>
+    local name=$1 t0=$SECONDS
+    shift
+    echo "==> $name: playwright test $*"
+    if "$npx" playwright test "$@"; then echo "==> $name ok ($((SECONDS - t0))s)"
+    else echo "==> $name FAILED ($((SECONDS - t0))s)"; rc=1; fi
+}
+if [ "$which" != webkit ]; then
+    row "chromium phones" --project 'chromium-galaxy-s10*' --project 'chromium-galaxy-s25*' --project 'chromium-pixel-9-pro*' \
+        --grep-invert 'axe-core|@agnostic'
+    row "chromium behaviour" --project chromium-galaxy-s10 --grep '@agnostic' --grep-invert 'axe-core'
+    row "chrome desktop" --project chrome-desktop --grep-invert 'axe-core|@agnostic'
+fi
+if [ "$which" != chromium ]; then
+    PW_WORKERS=1 row "webkit phones" --project 'webkit-iphone-se*' --project 'webkit-iphone-13*' \
+        --project 'webkit-iphone-17-pro-max*' --project webkit-desktop --grep-invert 'axe-core|@agnostic'
+fi
+exit "$rc"
