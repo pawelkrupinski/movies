@@ -101,7 +101,7 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     asked should have size 2
   }
 
-  "a split" should "keep the key on the larger half, the other a new cluster asked inline" in {
+  "a split" should "keep the key on the larger half, and ask each half inline: the larger reshaped, the other new" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val s     = new Stage(askNow = (questions, _) => asked += questions)
     s.tried = false
@@ -109,7 +109,8 @@ class AgreementKeyingSpec extends AnyFlatSpec with Matchers {
     val Seq(small, large) = s.apply(model(unmatched(first), unmatched(second, third)), version = 2)
     s.stage.keyOf(large) shouldBe s.stage.keyOf(whole)
     s.stage.keyOf(small) should not be s.stage.keyOf(whole)
-    asked shouldBe Seq(Set(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")))
+    // the whole cluster met on the first pass asks nothing inline; each half is a shape met for the first time
+    asked shouldBe Seq.fill(2)(Set(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")))
   }
 
   "a restart" should "re-attach each cluster's key by its first listing, its verdict standing unread, and retire the keys of clusters gone" in {

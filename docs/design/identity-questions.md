@@ -31,8 +31,9 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    (the owner's choice): a cluster the live stage meets for the first time since it started, past its first pass, has
    its families asked inline (`AgreementStage.askNow`, `InlineFamilyAsks`) for at most `AgreementStage.AskNowWithin`
    (5 s), then resolved again on what they filed; what is not answered by then is the queue's, as before, and an
-   answer that comes later is filed and asks for a projection. Each cluster is asked so once; the drift check's stage
-   never asks.
+   answer that comes later is filed and asks for a projection. Each cluster is asked so once per shape (its listings'
+   digest): a scrape reshaping a known cluster under its kept key asks its new questions inline as a new cluster's (PL
+   "Bez końca" ×7, published lost for half a minute, 2026-10-26); the drift check's stage never asks.
    C1, fewer abstractions (2026-10-24): `Set[Question]` is the one currency for the agreement's questions asked, open
    and waited on. Gone: `AgreementStage.Open`, `AgreementStage.CorrectionWaits`, `Question.ofOpen` / `toOpen`, the
    accessors `wantedFinds` / `wantedPosters` / `wantedCatalogue` / `wantedRecords` and the `Pass`'s five accumulators.

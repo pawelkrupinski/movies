@@ -242,8 +242,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
    *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
   private[agreement] val waiting = TrieMap.empty[String, AgreementStage.Waiting]
-  /** The new clusters whose families were asked inline ([[askNow]]): each asked so once in the stage's life. */
-  private[agreement] val askedNow = TrieMap.empty[String, Unit]
+  /** The clusters whose families were asked inline ([[askNow]]), with the digest of the listings they were asked for:
+   *  each shape of a cluster asked so once. */
+  private[agreement] val askedNow = TrieMap.empty[String, Long]
   /** The questions the last [[apply]] waited on that were not attempted yet: one attempted since — a failed ask files
    *  nothing — is what reads the same decisions at the same version again ([[attemptedSince]]). */
   private[agreement] var awaiting = Set.empty[Question]
@@ -544,11 +545,15 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (now eq decision) decision else takenAsBefore(decision, now)
     }
 
-  /** A cluster the stage meets for the first time since it started — none of its verdict, check or wait held — past its
-   *  first pass, which meets every cluster: what [[askNow]] asks inline. */
-  private[agreement] def newCluster(id: String, version: Long): Boolean =
+  /** A cluster the stage meets in this SHAPE (its listings digesting to `digest`) for the first time since it started —
+   *  no verdict, check, wait or inline ask of it held at that digest — past its first pass, which meets every cluster:
+   *  what [[askNow]] asks inline. A new key and a known key a scrape reshaped alike: under its kept key, PL "Bez końca" ×7
+   *  (2026-10-23, 10-26) gained a listing whose title no family had been asked, waited on the queue, and was published
+   *  lost until the answers came in half a minute later — where a cluster new to its key would have read them. */
+  private[agreement] def newCluster(id: String, digest: Long, version: Long): Boolean =
     (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
-      !held.contains(id) && !held.isChecked(id) && !waiting.contains(id) && !askedNow.contains(id)
+      !held.get(id).exists(_.listings == digest) && !held.checked(id).exists(_._1 == digest) &&
+      !waiting.get(id).exists(_.listings == digest) && !askedNow.get(id).contains(digest)
 
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
    *  corrections and the model's decisions — and store the verdicts `pass` moved. */
@@ -751,10 +756,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val gaps  = mutable.Set.empty[Question]
     val verdicts = {
       val first = verdictsOf(listings, gaps, reads)
-      if (!first.contains(Answer.Unknown) || !newCluster(id, version)) first
+      if (!first.contains(Answer.Unknown) || !newCluster(id, digest, version)) first
       else {
         // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers
-        askedNow(id) = ()
+        askedNow(id) = digest
         pass.inline(id) = (clock.millis(), gaps.toSet)
         askNow(gaps.toSet, AgreementStage.AskNowWithin)
         gaps.clear(); reads.clear()

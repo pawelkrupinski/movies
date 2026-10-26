@@ -777,6 +777,15 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     override def fresh(question: String) = held.fresh(question)
   }
 
+  /** `inner`, its title searches answered only for the titles in `answered`, every other one not asked yet. */
+  private final class TitledOnly(inner: FamilyAnswers, answered: scala.collection.Set[String]) extends FamilyAnswers {
+    val family: VoterFamily = inner.family
+    def titled(text: String)     = if (answered(text)) inner.titled(text) else Answer.Unknown
+    def directedBy(name: String) = inner.directedBy(name)
+    def record(id: String)       = inner.record(id)
+    override def fresh(question: String) = !question.startsWith("title|") || answered(question.stripPrefix("title|"))
+  }
+
   // The settle rule (docs/design/identity-questions.md, step 4, the owner's, 2026-10-24): no clock. A cluster settles once
   // every question it waits on was attempted — answered, durably unanswered or failed — and is decided on what answered.
   it should "resolve a waiting cluster again only once all its questions are answered, or settle it once every one is attempted" in {
@@ -900,6 +909,30 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val once = asked.size
     stage.apply(resolution, listingOf, version = 3)
     asked.size shouldBe once
+  }
+
+  // PL "Bez końca" ×7 (2026-10-23 16:27, 10-26 10:43): a scrape reshaped a cluster the families agreed on, under the key it
+  // kept, and its new listing's title had not been asked. Inline asks went only to a cluster KEY never met, so the reshaped
+  // one waited on the queue: its take was published lost, then retaken half a minute later once the answers came in.
+  it should "ask a reshaped cluster's new questions inline too, and take what they answer in its first take after the scrape" in {
+    val answeredTitles = scala.collection.mutable.Set("Klondike")
+    val families = agreeing().map { case (family, answers) => family -> new TitledOnly(answers, answeredTitles) }
+    val askNow: AgreementStage.AskNow = (questions, _) => questions.foreach {
+      case Question.Family(_, question) if question.startsWith("title|") => answeredTitles += question.stripPrefix("title|")
+      case _                                                             => ()
+    }
+    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the first pass: agreed
+    stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
+    // a scrape adds a listing billed under a title no family was asked about: the cluster keeps its key
+    val joined   = listing(models.Multikino, "Klondike: wojna w Donbasie", year = Some(2022))
+    val reshaped = Resolution(Seq(
+      ResolverDecision(Seq(bare.key, joined.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)(),
+      resolution.decisions(1)), 3, Map(bare.key -> 0, joined.key -> 0, matched.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val taken = stage.apply(reshaped, Map(bare.key -> bare, joined.key -> joined, matched.key -> matched).get, version = 3).decisions.head
+    taken.film shouldBe Some(913760)
+    answeredTitles should contain ("Klondike: wojna w Donbasie")
   }
 
   // The staging screen sampled the stage's waits every 20 s: a wait begun and ended in between was never seen.
