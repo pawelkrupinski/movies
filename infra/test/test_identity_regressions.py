@@ -188,6 +188,15 @@ class Render(unittest.TestCase):
         self.assertIn("kinowo_identity_regressions_last_success_timestamp_seconds 100", text)
         self.assertIn("kinowo_identity_regressions_lines 9", text)
 
+    def test_the_flips_gauge_is_zero_not_absent_when_no_listing_flips(self):
+        once = [line(1, "changed", "Na Starowce", "Ktos calkiem obcy", country="pl", before="7183", after="1193128")]
+        self.assertIn("\nkinowo_identity_listing_flips 0\n", ir.render(once, now=10))
+        twice = once + [line(2, "changed", "Na Starowce", "Ktos calkiem obcy", country="pl", before="1193128",
+                             after="7183")]
+        text = ir.render(twice, now=10)
+        self.assertIn('kinowo_identity_listing_flips{country="pl",tmdb_a="1193128",tmdb_b="7183"', text)
+        self.assertNotIn("kinowo_identity_listing_flips 0", text)
+
 
 class Backtest(unittest.TestCase):
     def test_an_episode_shorter_than_the_hold_does_not_fire(self):

@@ -116,6 +116,24 @@ groups:
             and {{ $labels.tmdb_b }} {{ $value }} times in the last 24h, the latest under build {{ $labels.build }}:
             two rules undoing each other. Dig in: `_time:24h country:{{ $labels.country }} kind:changed (tmdb_before:={{ $labels.tmdb_a }} or tmdb_before:={{ $labels.tmdb_b }}) | fields _time, venue, listing, tmdb_before, tmdb_after, basis, projection_mode, build, repro`
 
+      # THE FLIP GAUGE IS GONE WHILE THE WATCH RUNS. The script once wrote no kinowo_identity_listing_flips sample
+      # when no pair reached its floor of 2, so the gauge was absent 2026-10-24 06Z..10-25 16Z and from 10-26 14Z
+      # with the watch succeeding every 5 minutes: IdentityListingFlipFlop could not tell "nothing flips" from
+      # "nothing is counted". It now writes an unlabelled 0 then; absent means the script stopped writing it. A
+      # stopped watch is IdentityRegressionWatchStale's, so this stays quiet while that gauge is gone too.
+      - alert: IdentityListingFlipsAbsent
+        expr: absent(kinowo_identity_listing_flips) unless on() absent(kinowo_identity_regressions_last_success_timestamp_seconds)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The identity regression watch runs but publishes no kinowo_identity_listing_flips"
+          description: >-
+            identity-regressions on monitoring-1 reads the take-change log (kinowo_identity_regressions_last_success_timestamp_seconds
+            is present) but its textfile has no kinowo_identity_listing_flips sample, so IdentityListingFlipFlop and the
+            fleet dashboard's flip-flop panel are blind. render() in nix/files/identity-regressions.py must write the gauge
+            every run (0 when nothing flips): `grep listing_flips /etc/node-exporter/textfile.d/identity-regressions.prom`.
+
       # PRODUCTION'S INCREMENTAL STATE DRIFTED FROM A WHOLE RESOLVE OF THE SAME LISTINGS.
       #
       # After each nightly "Record scrape fixtures" run, .github/workflows/identity-live-drift.yml resolves each
@@ -160,7 +178,7 @@ groups:
             {{ $labels.country }}, so IdentityIncrementalDrift reads nothing new. `agentctl ci-why` or the
             "Identity live drift" run's log.
 
-      # THE WATCH ITSELF STOPPED. The three gauges above are a file node_exporter keeps serving whatever
+      # THE WATCH ITSELF STOPPED. The gauges above are a file node_exporter keeps serving whatever
       # its age: a dead timer would freeze them, firing or silent, forever.
       - alert: IdentityRegressionWatchStale
         expr: |

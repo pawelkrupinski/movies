@@ -29,7 +29,8 @@ minutes (1-3k lines on an ordinary day) and computes:
       `code`, as every loss did before it.
   kinowo_identity_listing_flips{country,tmdb_a,tmdb_b,title,build,venue}
       the most times one listing moved between the same two films (kind changed, either direction)
-      in the last 24h, per film pair; `venue` is one listing doing it, `build` the latest flip's.
+      in the last 24h, per film pair; `venue` is one listing doing it, `build` the latest flip's. Pairs
+      under FLIP_FLOOR are not written; when none reaches it, one unlabelled 0 is, so the gauge is never absent.
   kinowo_identity_regressions_last_success_timestamp_seconds / _lines
       when a run last read the log, and how many lines it read.
 
@@ -254,9 +255,13 @@ def render(records, now):
         out.append(f"kinowo_identity_build_net_lost{_labels(country=cc, build=build, cause=cause, tmdb=v['tmdb'], title=v['title'])} {v['count']}")
     out.append("# HELP kinowo_identity_listing_flips Most moves one listing made between the same two films in 24h.")
     out.append("# TYPE kinowo_identity_listing_flips gauge")
-    for (cc, a, b), v in sorted(listing_flips(records, now).items()):
-        if v["count"] >= FLIP_FLOOR:
-            out.append(f"kinowo_identity_listing_flips{_labels(country=cc, tmdb_a=a, tmdb_b=b, title=v['title'], build=v['build'], venue=v['venue'])} {v['count']}")
+    flips = [(k, v) for k, v in sorted(listing_flips(records, now).items()) if v["count"] >= FLIP_FLOOR]
+    for (cc, a, b), v in flips:
+        out.append(f"kinowo_identity_listing_flips{_labels(country=cc, tmdb_a=a, tmdb_b=b, title=v['title'], build=v['build'], venue=v['venue'])} {v['count']}")
+    if not flips:
+        # ALWAYS A SAMPLE: with no pair at the floor the gauge went absent (2026-10-24..25 and from 10-26), and an
+        # absent gauge is a blind panel and an alert that cannot tell "nothing flips" from "nothing is counted".
+        out.append("kinowo_identity_listing_flips 0")
     out.append("# HELP kinowo_identity_cures Listings that lost, in 24h, a take judged wrong in identity-judgements.tsv (a fix; never alerted).")
     out.append("# TYPE kinowo_identity_cures gauge")
     for (cc, tmdb), v in sorted(cures(records, now).items()):

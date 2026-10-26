@@ -129,6 +129,45 @@ tests:
             exp_annotations:
               summary: "The identity regression watch has not read the take-change log for over 30 minutes"
               description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."
+  # The flip gauge gone while the watch runs (2026-10-24..26: no pair at the floor of 2 wrote no sample) fires once the
+  # 15-minute hold passes; the script's 0 when nothing flips is quiet, and so is a stopped watch with both gauges gone
+  # (IdentityRegressionWatchStale's, above).
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_identity_regressions_last_success_timestamp_seconds{host="monitoring-1"}'
+        values: '0+60x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: IdentityListingFlipsAbsent
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: IdentityListingFlipsAbsent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "The identity regression watch runs but publishes no kinowo_identity_listing_flips"
+              description: "identity-regressions on monitoring-1 reads the take-change log (kinowo_identity_regressions_last_success_timestamp_seconds is present) but its textfile has no kinowo_identity_listing_flips sample, so IdentityListingFlipFlop and the fleet dashboard's flip-flop panel are blind. render() in nix/files/identity-regressions.py must write the gauge every run (0 when nothing flips): `grep listing_flips /etc/node-exporter/textfile.d/identity-regressions.prom`."
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_identity_regressions_last_success_timestamp_seconds{host="monitoring-1"}'
+        values: '0+60x30'
+      - series: 'kinowo_identity_listing_flips{host="monitoring-1"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IdentityListingFlipsAbsent
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: IdentityListingFlipFlop
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",host="monitoring-1"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IdentityListingFlipsAbsent
+        exp_alerts: []
   # The nightly drift check (.github/workflows/identity-live-drift.yml), one pushed sample per country and kind a night:
   # DE's 7 drifted listings (4 lost, 3 changed) fire once the 5-minute hold passes and hold through the day with no
   # newer sample; PL's 3 stay under the bar of 5. The next night's push of 0 clears DE.

@@ -2343,7 +2343,7 @@
       "id": 40,
       "type": "timeseries",
       "title": "Identity regressions — listing flip-flops (24h) and the watch's age",
-      "description": "kinowo_identity_listing_flips: the most times one listing moved between the same two films in 24h (alert: IdentityListingFlipFlop at 3). Minutes since kinowo_identity_regressions_last_success_timestamp_seconds (alert: IdentityRegressionWatchStale at 30), and kinowo_identity_regressions_lines, the take-change lines its last run read.",
+      "description": "kinowo_identity_listing_flips: the most times one listing moved between the same two films in 24h, per film pair, named by country, one venue doing it and title (alert: IdentityListingFlipFlop at 3); pairs under 2 are not drawn. \"most flips\" is the largest, 0 when nothing flips; a gap in it means the watch stopped publishing the gauge (alert: IdentityListingFlipsAbsent). Minutes since kinowo_identity_regressions_last_success_timestamp_seconds (alert: IdentityRegressionWatchStale at 30), and kinowo_identity_regressions_lines, the take-change lines its last run read.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -2385,8 +2385,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_identity_listing_flips",
-          "legendFormat": "{{country}} {{title}} {{tmdb_a}}<->{{tmdb_b}}",
+          "expr": "kinowo_identity_listing_flips > 0",
+          "legendFormat": "{{country}} {{venue}} | {{title}} {{tmdb_a}}<->{{tmdb_b}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "max(kinowo_identity_listing_flips)",
+          "legendFormat": "most flips, any listing (0: none; a gap: not published)",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
