@@ -47,8 +47,12 @@ DIE_STATUS=2
 # A LANDING CHECK BLOCKS WORK, so its CI runs take the CHECK tier (ci-runner's ci-check slice, CPUWeight 300), not the
 # measurements' `measure` (CPUWeight 100), where on 2026-10-26 they queued for hours behind bisects and ablations.
 # ubuntu-24.04, where mongod starts (MongoServerVersionParitySpec). Passed to identity-ci-run and identity-measure as
-# --tier, their workflows' `tier` input (RunnerClassSpec reads it here).
+# --tier, their workflows' `tier` input (RunnerClassSpec reads both here).
+# THE CONVERGENCE RUN TAKES `landing`, ci-runner's own 3-slot check-tier runner (infra forgejo.nix `landing`,
+# 2026-10-26), not ubuntu-24.04: a --full run is 22 rows, which filled the check tier's slots. Forgejo 15 ignores
+# `strategy.max-parallel`, so that runner's capacity is the cap on how many rows run at once. The same job image.
 landing_tier=ubuntu-24.04
+landing_convergence_tier=landing
 ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -136,7 +140,7 @@ if [ -n "$specs" ]; then
   fi
 fi
 if [ -n "$measure" ]; then
-  flags=(--head "$commit" --base "$base" --tier "$landing_tier")
+  flags=(--head "$commit" --base "$base" --tier "$landing_convergence_tier")
   case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; full) flags+=(--full) ;; esac
   [ -z "$no_cache" ] || flags+=(--no-cache)
   say "measure: identity-measure ${flags[*]:6}"
