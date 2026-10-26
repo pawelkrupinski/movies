@@ -43,7 +43,7 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
       // the whole store: the pages past it stay gaps only until the next settle scans again, which
       // reports every answer it moved — a page the model found a gap is re-asked then.
       if (scanned) (read.keySet ++ answers.keySet).foreach { key =>
-        if (read.get(key) != answers.get(key)) changed(keyOf(key._1, key._2))
+        if (read.get(key) != answers.get(key)) { moved.add(key); changed(keyOf(key._1, key._2)) }
       }
       answers  = read
       scanned  = true
@@ -58,10 +58,19 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
                   catch { case scala.util.control.NonFatal(e) => pending.add(key); throw e }
         if (now != answers.get(key)) {
           answers = now.fold(answers - key)(a => answers + (key -> a))
+          moved.add(key)
           changed(keyOf(group, page))
         }
       }
     }
+  }
+
+  /** The pages (detail group, page) whose answer moved since the last [[takeMoved]], each taken once: what a venue slot
+   *  built from the page is built from too ([[IndexedVenuePageFacts.takeMoved]]). */
+  def takeMoved(): Set[(String, String)] = {
+    val taken = moved.asScala.toSet
+    taken.foreach(moved.remove)
+    taken
   }
 
   @volatile private var answers: Map[(String, String), Option[FilmDetail]] = Map.empty
@@ -69,6 +78,7 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
   @volatile private var scanned  = false
   @volatile private var complete = false
   private val pending = ConcurrentHashMap.newKeySet[(String, String)]()
+  private val moved   = ConcurrentHashMap.newKeySet[(String, String)]()
 }
 
 object VenuePageIndex {
@@ -121,6 +131,13 @@ final class IndexedVenuePageFacts(enrichers: Seq[DetailEnricher], index: VenuePa
   private val ownSlot: Map[models.Cinema, DetailEnricher] =
     enrichers.iterator.filter(e => e.detailTarget == e.cinema).map(e => e.cinema -> e).toMap
 
+  private val cinemasOf: Map[String, Seq[models.Cinema]] = ownSlot.toSeq.groupMap(_._2.detailGroup)(_._1)
+
   def of(cinema: models.Cinema, page: String): Option[models.SourceData] =
     ownSlot.get(cinema).flatMap(index.answer(_, page)).flatten.map(_.landed(enrichmentLanguage).pageFields)
+
+  /** Each venue page whose answer moved since the last call, as the venue and the page a listing's key names
+   *  (`ListingKey.Native`): a slot built from it is built otherwise now, though nothing of its listing moved. */
+  def takeMoved(): Seq[(models.Cinema, String)] =
+    index.takeMoved().toSeq.flatMap { case (group, page) => cinemasOf.getOrElse(group, Nil).map(_ -> page) }
 }

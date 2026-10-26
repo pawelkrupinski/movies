@@ -148,7 +148,11 @@ final class IdentityProjection(
   suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => (),
   /** Handed each written projection's change list, as [[IdentityProjectionMetrics.takesChanged]] is: what the staging
    *  screen is told ([[staging.ChangeFeed]]), which must return at once. */
-  changeFeed:  Seq[TakeChange] => Unit = _ => ()
+  changeFeed:  Seq[TakeChange] => Unit = _ => (),
+  /** The venue pages (venue, page) whose read moved since the last call, each given once (`IndexedVenuePageFacts.takeMoved`):
+   *  a venue slot is built from its listing's page ([[CinemaSlotBuilder.pages]]), so a listing whose page moved is a change
+   *  like one re-scraped — left out, only the hourly projection of the whole corpus rebuilt its slot. */
+  pagesMoved:  () => Seq[(Cinema, String)] = () => Nil
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -327,7 +331,7 @@ final class IdentityProjection(
     if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
     // Exactly the listings the resolution decided: one that reached the intake after the
     // model's snapshot is projected by the next tick, never left out of its film by this one.
-    val updated = phases("index")(live.update(run.byVenue, held, resolution.decisions, run.stored))
+    val updated = phases("index")(live.update(run.byVenue, held, resolution.decisions, run.stored) ++ pageChanges(run))
     val index   = live.index(counters)
     // What moved since the last projection, closed over every film a moved one's draft can move: what a projection
     // of the scope drafts. None when the last one did not write all it planned, the FilmId map is not the one it
@@ -342,6 +346,19 @@ final class IdentityProjection(
     val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
       changes.fold(Set.empty[ListingKey])(_.listings), index, phases)
     IdentityProjection.Planned(resolution, at, updated, index, changes, moved, freed, reconciling, reconcile, scope, draft, detailed, plan)
+  }
+
+  /** The listings whose venue page moved since the last projection took them ([[pagesMoved]]): each one's slot is built
+   *  from the page as it is read now. Taken before the draft reads a page, so a page moving after is the next one's. */
+  private def pageChanges(run: Run): ProjectionScope.Changes = {
+    val moved = pagesMoved().groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+    if (moved.isEmpty) ProjectionScope.Changes.none
+    else ProjectionScope.Changes(run.venues.iterator.flatMap { case (cinema, listings) =>
+      moved.get(cinema).fold(Iterator.empty[ListingKey])(pages => listings.iterator.map(_.listing.key).filter {
+        case ListingKey.Native(_, page, _) => pages(page)
+        case _                             => false
+      })
+    }.toSet, Set.empty)
   }
 
   /** The planned projection, held back by the shrink guard or written. */
@@ -388,7 +405,7 @@ final class IdentityProjection(
     if (p.scope.whole && run.mode.periodic) Try(suspects(p.resolution, run.read)).failed.foreach(e =>
       logger.warn("identity projection: handing the suspect takes to their count failed", e))
     if (p.reconciling) metrics.reconciled(measured = p.reconcile)
-    if (p.reconcile) p.moved.foreach(drift(_, p.freed, p.index, tick))
+    if (p.reconcile) p.moved.foreach(drift(_, p.freed, p.index, tick, run.stored))
     // The index holds what was written: a film written counts as moved next time only if another writer moves it. After a
     // declined write the next projection builds it afresh, so it is moved here only to read the change list off it.
     val written = tick.changed.filterNot(f => lastUnwritten(f.id)) ++ lastParked
@@ -425,8 +442,10 @@ final class IdentityProjection(
 
   /** A reconciling projection of the whole corpus, checked against the scope its changes alone gave it — closed over key
    *  collisions too, read off this projection's own keys, which the scope's drafts would have had — so a film it wrote
-   *  or retired outside that scope is one a scoped projection would have left wrong: counted and named. */
-  private def drift(moved: ProjectionScope, freed: Set[String], index: ProjectionIndex, tick: ProjectionTick): Unit = tick.plan.foreach { plan =>
+   *  or retired outside that scope is one a scoped projection would have left wrong: counted and named, each film written
+   *  with what of it moved ([[IdentityProjection.moved]]) — the input the scope did not see. */
+  private def drift(moved: ProjectionScope, freed: Set[String], index: ProjectionIndex, tick: ProjectionTick,
+                    stored: Seq[StoredMovieRecord]): Unit = tick.plan.foreach { plan =>
     def inside(scope: ProjectionScope, f: ProjectedFilm) = scope.films(f.id.value) || f.members.exists(scope.listings)
     @scala.annotation.tailrec
     def closed(scope: ProjectionScope): ProjectionScope =
@@ -435,10 +454,12 @@ final class IdentityProjection(
         case None        => scope
       }
     val scope  = closed(moved)
-    val missed = tick.changed.filterNot(inside(scope, _)).map(_.id.value) ++ plan.retired.map(_.value).filterNot(scope.films)
+    val before = stored.iterator.filter(r => !scope.films(r.id.value)).map(r => r.id -> r).toMap
+    val missed = tick.changed.filterNot(inside(scope, _)).map(f => f.id.value -> before.get(f.id).fold("new")(s =>
+      IdentityProjection.moved(s.record, f.record))) ++ plan.retired.map(_.value).filterNot(scope.films).map(_ -> "retired")
     metrics.drifted(missed.size)
     if (missed.nonEmpty) logger.warn(s"identity projection drift: the whole projection changed ${missed.size} film(s) the scoped one " +
-      s"would have left: ${missed.sorted.take(20).mkString(", ")}")
+      s"would have left: ${missed.sortBy(_._1).take(20).map { case (id, what) => s"$id ($what)" }.mkString(", ")}")
   }
 
   /** [[tick]] — the boot's first projection, of the whole corpus — for a caller that must keep running whatever one
@@ -598,6 +619,19 @@ object IdentityProjection {
                                              moved: Option[ProjectionScope], freed: Set[String], reconciling: Boolean,
                                              reconcile: Boolean, scope: ProjectionScope, draft: ProjectionDraft,
                                              detailed: ProjectionDraft, plan: ProjectionPlan)
+  /** What of a film moved from `was` to `now`, briefly: its own fields (by name), and the sources whose slots differ
+   *  ([[LeanRecords.slotsEqual]]), the first few named, else its key — what a drift line names each film it missed by. */
+  private[identity] def moved(was: MovieRecord, now: MovieRecord): String = {
+    val fields  = was.productElementNames.zip(was.productIterator.zip(now.productIterator))
+      .collect { case (name, (a, b)) if name != "data" && a != b => name }.toSeq
+    val sources = (was.data.keySet ++ now.data.keySet).toSeq.filterNot(s => (was.data.get(s), now.data.get(s)) match {
+      case (Some(a), Some(b)) => LeanRecords.slotsEqual(a, b)
+      case _                  => false
+    }).map(_.toString).sorted
+    val named   = fields ++ sources.take(3) ++ Option.when(sources.size > 3)(s"+${sources.size - 3} slots")
+    if (named.isEmpty) "key" else named.mkString(" ")
+  }
+
   /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
   private[identity] def awaitsDetails(record: MovieRecord): Boolean = record.tmdbId.isDefined && !record.data.contains(models.Tmdb)
 

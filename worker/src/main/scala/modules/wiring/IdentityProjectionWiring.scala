@@ -35,6 +35,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       ScrapeHealth.maxRejectionsFor(scrapeFreshness), clock, taskMetrics,
       published = (cinema, films) => identityModel.venueScraped(cinema, films))
 
+  // The venue pages as a venue slot is built from them, and as which of them moved since the projection last asked.
+  private lazy val venuePageFacts =
+    new services.identity.adapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language)
+
   // The projection reads the model's resolution.
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
@@ -47,8 +51,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       details     = movieService.withFilmDetails,
       announce    = movieService.announceReidentified,
       normalizer  = titleNormalizer,
-      slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool,
-        new services.identity.adapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language)),
+      slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool, venuePageFacts),
       tokens      = screeningTokens,
       metrics     = workerMetrics.identityProjection.forCountry(country.code),
       clock       = clock,
@@ -63,7 +66,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         changes => {
           val (projection, at) = (projections.incrementAndGet(), clock.millis())
           identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_, projection, at)))
-        } })
+        } },
+      pagesMoved  = venuePageFacts.takeMoved)
 
   /** What the staging publisher drains as it happens: each written projection's change list, and the live agreement
    *  stage's waits starting and ending. */

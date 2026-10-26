@@ -142,6 +142,23 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     world.reported.size shouldBe 1
   }
 
+  // A slot is built from its listing's page: the projection drafts again the listings whose page moved (prod PL
+  // 2026-10-26: left to the hourly projection of the whole corpus, every one counted as drift).
+  it should "tell the projection each venue page whose answer moved at a settle, once" in {
+    val world = new World
+    val facts = new IndexedVenuePageFacts(Seq(new FakeDetailEnricher(KinoApollo, Group)), world.index, java.util.Locale.forLanguageTag("pl"))
+    world.store(Group, "http://arco", VenuePage.Read(Full))
+    world.index.settle()
+    facts.takeMoved() shouldBe empty                                             // the baseline moves nothing
+    world.store(Group, Page, VenuePage.Read(Full))
+    facts.takeMoved() shouldBe empty                                             // announced, not yet settled
+    world.index.settle()
+    facts.takeMoved() shouldBe Seq(KinoApollo -> Page)
+    facts.takeMoved() shouldBe empty
+    world.store(Group, Page, VenuePage.Read(Full)); world.index.settle()         // read again, unchanged
+    facts.takeMoved() shouldBe empty
+  }
+
   // Cinema City lists "Lalka" and "Ladies Night - Lalka" on one film row; their facts once shared one slot,
   // so neither could be told. By page, each answers its own.
   "Two pages of one chain" should "each answer their own page's facts" in {
