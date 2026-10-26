@@ -605,6 +605,8 @@ jobs:
                   FILL_SECONDS:     90
               run: |
                   set -uo pipefail
+                  . scripts/tool-conventions.sh # bounded
+                  started=$(date +%s)
                   until=$(( $(date +%s) + FILL_SECONDS ))
                   list="$RUNNER_TEMP/fill-refetch.tsv"
                   count=$(.github/scripts/convergence-fill.sh gaps "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN" "$list") || exit 1
@@ -618,6 +620,10 @@ jobs:
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
                   read -ra jvm <<< "$JVM_OPTIONS"
                   mkdir -p fill-upload-source
+                  # ENDED BY THE STEP ITSELF, inside its 5 minutes: the runner abandons a step at its timeout without
+                  # ending it, and this sbt compiled on beside the suite's in the same target/ (run #1880's germany row:
+                  # "value forCountry is not a member" of a class both had; scripts/ci/stop-stray-sbt.sh).
+                  bounded $(( started + 280 - $(date +%s) )) \
                   sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} $list $fixtures $out/test/resources/fixtures $until fill-upload-source/refused.tsv"
                   .github/scripts/convergence-fill.sh pack "$out" fill-upload-source/fill.tar.zst
 
@@ -721,6 +727,10 @@ jobs:
                   date +%s > "$RUNNER_TEMP/suite-started"
                   # A recording's shape specs, above, wrote their JUnit XML here; the report below is this suite's.
                   rm -rf target/test-reports/unit
+                  # This sbt the build's only writer: a JVM a timed-out step (the fill, a capture) left compiling into
+                  # the same target/ makes zinc's class files and analysis disagree, and the compile fails on members
+                  # the sources have (run #1880). Never a retry: whatever fails after this is the code's.
+                  scripts/ci/stop-stray-sbt.sh
                   # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh), and which
                   # collections Mongo's share of it goes to (mongo-top.sh).
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
@@ -1015,6 +1025,8 @@ jobs:
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && github.ref == 'refs/heads/main' }}
               shell: bash
               run: |
+                  # The check's JVMs ended before the entry is read: a step past its timeout is abandoned, not ended.
+                  scripts/ci/stop-stray-sbt.sh
                   if compgen -G 'worker/target/scala-*/test-classes/*' > /dev/null && compgen -G 'worker/target/scala-*/it-classes/*' > /dev/null; then
                       echo "compiled=true" >> "$GITHUB_OUTPUT"
                   fi
@@ -1119,6 +1131,14 @@ jobs:
                   fi
                   echo "::error::${{ inputs.country }}'s capture is incomplete: its boot never finished (suite $SUITE), so tonight has no complete ${{ inputs.code }} recording to verify"
                   exit 1
+
+            # NOTHING WRITES target/ WHILE THE JOB-END CACHE SAVE READS IT: a step past its timeout (the suite's,
+            # the takes check's) is abandoned with its sbt still compiling, and main's save would store its half-written
+            # classes beside an analysis that no longer describes them, for every later restore. (stop-stray-sbt.sh)
+            - name: End any JVM a timed-out step left running
+              if: always()
+              shell: bash
+              run: scripts/ci/stop-stray-sbt.sh
 
             - name: Report the job's memory and disk writes
               if: always()

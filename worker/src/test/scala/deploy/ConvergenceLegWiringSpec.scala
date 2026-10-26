@@ -817,6 +817,25 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.positionOf(suite, "scripts/ci/mongo-top.sh report") should be < RepoFile.positionOf(suite, "exit \"${suite:-0}\"")
   }
 
+  // Forgejo's runner abandons a step at its timeout without ending it. Run #1880's germany row: the fill's sbt, past
+  // its 5 minutes, compiled on beside the suite's into one target/, and the suite failed on a member both had.
+  it should "have the build to itself: no JVM a timed-out step left behind compiles beside it or under the cache save" in {
+    val suite = RepoFile.step(leg, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
+    RepoFile.positionOf(suite, "scripts/ci/stop-stray-sbt.sh") should be < RepoFile.positionOf(suite, "sbt -J-Xmx")
+    // ...the fill ends its own sbt inside its step, before the runner gives up on it.
+    val fill        = RepoFile.step(leg, "Fill the gaps the last leg listed, before the suite")
+    val stepSeconds = """timeout-minutes:\s*(\d+)""".r.findFirstMatchIn(fill).map(_.group(1).toInt * 60)
+    fill should include("bounded $(( started + 280 - $(date +%s) )) \\\n")
+    stepSeconds.getOrElse(fail("the fill step names no timeout-minutes")) should be > 280
+    // ...and nothing writes target/ while a cache save reads it: the takes row's own save, and the job-end one.
+    RepoFile.step(leg, "Did the takes check compile worker's test and it classes?") should include(
+      "scripts/ci/stop-stray-sbt.sh")
+    val end = RepoFile.step(leg, "End any JVM a timed-out step left running")
+    end should include("if: always()")
+    end should include("run: scripts/ci/stop-stray-sbt.sh")
+    ScriptTests.runInCi("scripts/ci/stop-stray-sbt-test.sh") shouldBe true
+  }
+
   "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {
     caller should include ("profile:                       ${{ needs.preflight.outputs.profile == 'true' }}")
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")

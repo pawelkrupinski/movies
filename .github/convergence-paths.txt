@@ -75,6 +75,7 @@ scripts/ci/wait-for-run-artifact.sh
 scripts/ci/install-apt-package.sh
 scripts/ci/sbt-sources-key.sh
 scripts/ci/sbt-invalidate-exporters.sh
+scripts/ci/stop-stray-sbt.sh
 scripts/ci/drop-microsoft-apt-sources.sh
 # A recording leg's corpus capture: the tunnel it opens and closes around the read.
 scripts/ci/wait-for-mongo-tunnel.sh
