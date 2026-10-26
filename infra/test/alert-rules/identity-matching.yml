@@ -207,3 +207,16 @@ tests:
             exp_annotations:
               summary: "no worker reports the agreement backfill's incomplete count"
               description: "`kinowo_worker_identity_agreement_clusters{state=\"incomplete\"}` is exported at 0 from boot by every worker, so none at all means the workers are not scraped or the series was renamed."
+
+  # IdentityAgreementBackfillStalled stays quiet while a backfill is going on: DE still above 0 every sample of the
+  # window but falling 500 an apply (the delta clause holds it), and UK at 0 from boot (the min clause holds it).
+  - interval: 30m
+    input_series:
+      - series: 'kinowo_worker_identity_agreement_clusters{country="de",state="incomplete",instance="w1"}'
+        values: '6000-500x11'
+      - series: 'kinowo_worker_identity_agreement_clusters{country="uk",state="incomplete",instance="w1"}'
+        values: '0x11'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: IdentityAgreementBackfillStalled
+        exp_alerts: []
