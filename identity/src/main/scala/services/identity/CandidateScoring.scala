@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.BillingPieces
+import services.billing.BillingParse
 
 import services.identity.IdentityMeasures.Measure
 import services.movies.ListingConstraints
@@ -102,7 +102,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  "Opening Night" (and Cassavetes' 1977 one) by its slot alone: the festival's opening night, an event. */
   def namesOnlyAProgrammeSlot(node: EvidenceNode, candidate: Candidate): Boolean = {
     val listing = node.evidence.published
-    BillingPieces.programmeSlot(listing.rawTitle.getOrElse(listing.title)).exists { slot =>
+    BillingParse(listing.rawTitle.getOrElse(listing.title)).programmeSlot.exists { slot =>
       val pieces = namingPieces(node, candidate)
       pieces.nonEmpty && pieces.forall(_ == services.movies.TitleContainment.tokens(slot).toSeq)
     }

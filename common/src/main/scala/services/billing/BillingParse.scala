@@ -104,7 +104,7 @@ final class BillingParse private (val text: String) {
 
   /** The programme slot it bills in place of a film under a festival's or season's banner
    *  ([[BillingPieces.programmeSlot]]): "Opening Night". */
-  def programmeSlot: Option[String] = BillingPieces.programmeSlot(text)
+  lazy val programmeSlot: Option[String] = BillingPieces.programmeSlot(text)
 
   // ── several works ──────────────────────────────────────────────────────────────────────────
 
@@ -118,13 +118,13 @@ final class BillingParse private (val text: String) {
   def slashPieces: Seq[String] = BillJoins.slashPieces(text)
 
   /** The "Triple:" or "Double:" banner heading it ([[BillJoins.headingBanner]]). */
-  def headingBanner: Option[String] = BillJoins.headingBanner(text)
+  lazy val headingBanner: Option[String] = BillJoins.headingBanner(text)
 
   /** The word by which its folded words bill several films beside other words ([[BillJoins.foldedMarker]]). */
-  def foldedMarker: Option[String] = BillJoins.foldedMarker(text)
+  lazy val foldedMarker: Option[String] = BillJoins.foldedMarker(text)
 
   /** The word billing several films: its heading banner, else its folded marker. */
-  def marker: Option[String] = headingBanner.orElse(foldedMarker)
+  lazy val marker: Option[String] = headingBanner.orElse(foldedMarker)
 
   /** The one title a programme word annotates after a dash ([[BillJoins.billedOne]]): "Inna Mamusia" of "Inna Mamusia -
    *  maraton". */
@@ -150,5 +150,23 @@ final class BillingParse private (val text: String) {
 }
 
 object BillingParse {
-  def apply(text: String): BillingParse = new BillingParse(text)
+  /** `text`'s parse — the one already made of the same text while it is held, so each part is read once however many
+   *  readers ask: the identity measures read a film's and a listing's titles in every resolve that weighs them, ~6% of a
+   *  drift replay's CPU re-running these regexes over the same few thousand strings (2026-10-26 profile). A parse is a
+   *  function of its text alone, its parts thread-safe lazy vals, so a held one reads as a new one would. */
+  def apply(text: String): BillingParse = {
+    val held = parses.get(text)
+    if (held != null) held
+    else {
+      // dropped whole when full, never grown past: a long-lived worker's corpus moves on, a replay's fits many times over
+      if (parses.size >= Held) parses.clear()
+      val made  = new BillingParse(text)
+      val raced = parses.putIfAbsent(text, made)
+      if (raced == null) made else raced
+    }
+  }
+
+  /** How many texts' parses are held at most. */
+  private[billing] val Held = 50000
+  private val parses = new java.util.concurrent.ConcurrentHashMap[String, BillingParse]()
 }

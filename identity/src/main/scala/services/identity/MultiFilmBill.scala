@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.{BillJoins, DecorationWords}
+import services.billing.{BillJoins, BillingParse, DecorationWords}
 import services.movies.{TitleContainment, TitleWords}
 
 /**
@@ -25,7 +25,7 @@ object MultiFilmBill {
    *  "Double:" banner heading any of them first, else the first one's word as its folded words read ("triple feature",
    *  "trilogy", "maraton"), when it bills one beside other words. */
   def marker(titles: Seq[String]): Option[String] =
-    titles.iterator.flatMap(BillJoins.headingBanner).nextOption().orElse(titles.iterator.flatMap(BillJoins.foldedMarker).nextOption())
+    titles.iterator.flatMap(BillingParse(_).headingBanner).nextOption().orElse(titles.iterator.flatMap(BillingParse(_).foldedMarker).nextOption())
 
   /** The one title a programme word annotates after a dash — "Inna Mamusia - maraton" ([[BillingParse.billedOne]]): a
    *  marathon of one title, which is one film's unless another film's title extends it (a franchise: "Piraci z Karaibów -
