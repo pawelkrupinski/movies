@@ -2,7 +2,7 @@ package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.enrichment.OMDbClient
+import services.enrichment.{InMemoryOmdbBudget, OMDbClient, OmdbAsk, OmdbBudget}
 import tools.GetOnlyHttpFetch
 
 class OMDbClientSpec extends AnyFlatSpec with Matchers {
@@ -262,5 +262,33 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     val (omdb, fetch, _) = gated(url => throw new tools.HttpStatusException(503, "GET", url, None))
     (1 to 20).foreach(_ => ask(omdb))
     fetch.urls.size shouldBe 20
+  }
+
+  // ── the fleet's OMDb budget ───────────────────────────────────────────────────
+
+  "a request the budget has no permit for" should "not be made, and say when to ask again rather than fail as OMDb" in {
+    val fetch  = new FnFetch(_ => """{"Title":"Sirat","Year":"2025","Director":"Oliver Laxe","imdbID":"tt32298285","Response":"True"}""")
+    val budget = new InMemoryOmdbBudget(limit = 1)
+    val omdb   = new OMDbClient(fetch, apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned, budget = budget)
+    omdb.findImdbId(Seq("Sirât"), Some(2025), Set.empty, OmdbAsk.NewFilm) shouldBe Some("tt32298285")
+    val spent = the [OMDbClient.BudgetSpentException] thrownBy omdb.findImdbId(Seq("Sirât"), Some(2025), Set.empty, OmdbAsk.NewFilm)
+    spent.retryAt shouldBe OmdbBudget.nextReset(tools.SpecClock.Pinned.instant())
+    fetch.urls should have size 1
+  }
+
+  "OMDb refusing a spent quota" should "spend the fleet's budget for the day, so nobody asks again until it turns" in {
+    val budget = new InMemoryOmdbBudget(limit = 1000)
+    val omdb = new OMDbClient(new FnFetch(url => throw new tools.HttpStatusException(401, "GET", url, None)),
+      apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned, budget = budget)
+    a [tools.HttpStatusException] should be thrownBy omdb.findImdbId(Seq("Sirât"), Some(2025), Set.empty, OmdbAsk.Bulk)
+    budget.take(OmdbAsk.NewFilm, tools.SpecClock.Pinned.instant()) shouldBe a [OmdbBudget.Spent]
+  }
+
+  it should "not spend it for a bad key, which no new day fixes" in {
+    val budget = new InMemoryOmdbBudget(limit = 1000)
+    val keyed = new OMDbClient(new FnFetch(_ => """{"Response":"False","Error":"Invalid API key!"}"""),
+      apiKey = Some(settings.OmdbApiKey("k")), clock = tools.SpecClock.Pinned, budget = budget)
+    an [Exception] should be thrownBy keyed.findImdbId(Seq("Sirât"), Some(2025), Set.empty, OmdbAsk.Bulk)
+    budget.take(OmdbAsk.NewFilm, tools.SpecClock.Pinned.instant()) shouldBe OmdbBudget.Granted
   }
 }

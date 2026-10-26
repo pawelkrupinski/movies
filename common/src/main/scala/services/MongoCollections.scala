@@ -192,6 +192,7 @@ object MongoCollections {
     RegisteredCollection("identity_model_meta", Corpus, KeptForever("the model store's meta documents, a fixed set"), Set(Worker))
       .resolveState("the rules version the stored families were decided under: their cache key"),
     RegisteredCollection("fleet_host_pace", Fleet, KeptForever("one document per fleet-paced host, rewritten in place"), Set(Worker)),
+    RegisteredCollection("omdb_budget", Fleet, KeptForever("one ~50-byte document per OMDb day, ~18 kB a year"), Set(Worker)),
     RegisteredCollection("identity_slot_fingerprints", Corpus, Sweep("MongoVenueSlotFingerprints"), Set(Worker))
       .resolveState("the projection's venue slots, a cache keyed by the venue-slot version and the slot's inputs (VenueSlotMemo)"),
     RegisteredCollection("identity_film_ids", Corpus, KeptForever("a film's id must never be reused, so its counter row outlives the film"), Set(Worker))

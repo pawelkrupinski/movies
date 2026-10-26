@@ -234,6 +234,15 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     ImdbIdResolver.retryDelay(0, throttled, random = 0.0) shouldBe scala.concurrent.duration.Duration(20, "minutes")
   }
 
+  it should "wait for a spent OMDb budget's reset, past the six-hour cap, when OMDb was the rung that could not ask" in {
+    import scala.concurrent.duration._
+    val spent  = new OMDbClient.BudgetSpentException(OmdbAsk.NewFilm, java.time.Instant.EPOCH, 14.hours)
+    val ladder = new RuntimeException("no rung answered")
+    ladder.addSuppressed(spent)
+    ImdbIdResolver.retryDelay(0, ladder, random = 0.0) shouldBe 14.hours
+    ImdbIdResolver.retryDelay(0, ladder, random = 1.0) shouldBe 14.hours + 30.seconds // the jitter, so films part
+  }
+
   it should "no-op when the suggestion endpoint returns nothing usable" in {
     val bus = new InProcessEventBus()
     val tmdbOnly = MovieRecord(

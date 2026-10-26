@@ -2,7 +2,7 @@ package modules.wiring
 
 import clients.TmdbClient
 import modules.WorkerWiring
-import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, OMDbClient, RottenTomatoesClient, WikidataClient}
+import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
 import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust}
 
@@ -132,7 +132,13 @@ trait HttpWiring { self: WorkerWiring =>
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
   // `pacingClock`: its dead-key pause runs in the time requests go out in.
-  lazy val omdbClient = new OMDbClient(enrichmentFetch, configuration.omdbApiKey, pacingClock)
+  // `omdbBudget`: the fleet's one daily OMDb budget, every country's requests counted together (OmdbBudget).
+  lazy val omdbClient = new OMDbClient(enrichmentFetch, configuration.omdbApiKey, pacingClock, omdbBudget)
+  /** OMDb's daily budget in the fleet database's `omdb_budget`. Without the fleet database -- a replay, a spec, a local
+   *  run -- nothing is metered: a recording's OMDb answers are replayed, not spent, and a replay's pinned clock must
+   *  not turn its bulk sweep's share into fewer lookups than prod made when it was recorded. */
+  lazy val omdbBudget: OmdbBudget =
+    fleetMongoConnection.database.fold[OmdbBudget](OmdbBudget.Unmetered)(new MongoOmdbBudget(_))
   // Letterboxd — an id-crosswalk resolution SOURCE (not a rating source): it
   // turns a known imdbId into the exact tmdbId (and vice versa) for the
   // arthouse/festival long tail TMDB's own indexes leave unmapped, by scraping

@@ -109,6 +109,11 @@ class ArchiveReplayWiring(
   override protected def pacingFleet: FleetHostPace =
     if (hermetic.isDefined) ArchiveReplayWiring.UnpacedFleet else super.pacingFleet
 
+  /** A replay or a recording spends no part of prod's OMDb day ([[services.enrichment.OmdbBudget]]): a hermetic leaf
+   *  asks no wire, and a recording asks with CI's own key. Metered, a run's frozen clock would also set how much of
+   *  the day its bulk sweep may use, and the takes would move with the hour the clock was pinned to. */
+  override lazy val omdbBudget: services.enrichment.OmdbBudget = services.enrichment.OmdbBudget.Unmetered
+
   /**
    * The scrape side: recorded DETAIL pages first, live behind them, and whatever the
    * live leg fetched written back into the same tree.

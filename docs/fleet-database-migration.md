@@ -21,6 +21,7 @@ Every collection opened through `fleetConnection` (web) or `fleetMongoConnection
 | `facebook_rescrapes` | worker `MongoFacebookRescrapeStore` (fleet queue + `_id: "quota"` pacing doc); web `MongoFacebookSlots` (holds the queue when a sign-in reads Facebook's X-App-Usage high) | yes |
 | `facebook_fetches` | web `FacebookFetchRecorder` writes; worker `MongoFacebookFetches` reads (TTL on `fetchedAt`, 30 d) | yes |
 | `fleet_host_pace` | worker `MongoFleetHostPace` (one doc per fleet-paced host) | yes |
+| `omdb_budget` | worker `MongoOmdbBudget` (one doc per OMDb day: permits granted, by every country's worker) | no: new, starts empty |
 
 Shared across countries but NOT in the fleet database, so not part of this move:
 

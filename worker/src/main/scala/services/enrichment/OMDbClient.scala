@@ -44,7 +44,12 @@ import scala.concurrent.duration._
  */
 // `apiKey` is OMDB_API_KEY — handed in: the worker wiring passes its resolved value, a spec its
 // stub. Unset turns the backfill off.
-class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Clock)
+//
+// `budget`: the fleet's daily OMDb budget ([[OmdbBudget]]) -- every request takes a permit for what it is for
+// ([[OmdbAsk]]) before it goes out, and a refused permit throws [[OMDbClient.BudgetSpentException]] with no request
+// made. When OMDb itself refuses the key as spent, the budget is marked spent for the day, fleet-wide.
+class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Clock,
+    budget: OmdbBudget = OmdbBudget.Unmetered)
     extends play.api.Logging {
   import OMDbClient._
 
@@ -59,14 +64,15 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
    *  unset (no HTTP) or nothing is corroborated. A read that FAILED — a block, a 5xx,
    *  OMDb's own "Request limit reached!" document, a body that is not OMDb's JSON —
    *  throws, so a dead source is never booked as a miss and backed off for days. */
-  def findImdbId(titles: Seq[String], year: Option[Int], directors: Set[String]): Option[String] =
+  def findImdbId(titles: Seq[String], year: Option[Int], directors: Set[String], ask: OmdbAsk = OmdbAsk.Routine): Option[String] =
     apiKey.map(_.value).flatMap { key =>
+      given OmdbAsk = ask
       titles.map(_.trim).filter(_.nonEmpty).distinct.iterator
         .flatMap(t => resolveTitle(t, year, directors, key).iterator)
         .nextOption()
     }
 
-  private def resolveTitle(title: String, year: Option[Int], directors: Set[String], key: String): Option[String] = {
+  private def resolveTitle(title: String, year: Option[Int], directors: Set[String], key: String)(using OmdbAsk): Option[String] = {
     // Cheap path: OMDb's single best MOVIE match, accepted only if corroborated.
     val best = byTitle(title, year, key).filter(c => corroborated(c, title, year, directors)).map(_.imdbId)
     // Director-walk backstop: when the cheap path abstains and we know a director,
@@ -75,10 +81,10 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
   }
 
   /** OMDb's single best `type=movie` match (`?t=`), with its director credits. */
-  private def byTitle(title: String, year: Option[Int], key: String): Option[Candidate] =
+  private def byTitle(title: String, year: Option[Int], key: String)(using OmdbAsk): Option[Candidate] =
     record(titleUrl(title, year, key)).flatMap(candidateFrom)
 
-  private def directorWalk(title: String, year: Option[Int], directors: Set[String], key: String): Option[String] = {
+  private def directorWalk(title: String, year: Option[Int], directors: Set[String], key: String)(using OmdbAsk): Option[String] = {
     val hits = record(searchUrl(title, year, key)).toSeq
       .flatMap(js => (js \ "Search").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
       .flatMap(h => (h \ "imdbID").asOpt[String].filter(_.startsWith("tt"))).distinct.take(MaxCandidates)
@@ -92,12 +98,12 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
   }
 
   /** Full record for an imdb id (director credits + title + year). */
-  private def detail(imdbId: String, key: String): Option[Candidate] =
+  private def detail(imdbId: String, key: String)(using OmdbAsk): Option[Candidate] =
     record(idUrl(imdbId, key)).flatMap(candidateFrom)
 
   /** One OMDb answer: its record, `None` when OMDb says it has none, and a throw for
    *  anything else (see [[OMDbClient.answer]]). */
-  private def record(url: String): Option[JsObject] = {
+  private def record(url: String)(using ask: OmdbAsk): Option[JsObject] = {
     // Still paused, or past the pause with another read already probing: fail fast, without a call.
     val probe = pausedUntil.get.exists { until =>
       if (clock.instant().isBefore(until) || !probing.compareAndSet(false, true))
@@ -106,6 +112,12 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
       true
     }
     try {
+      budget.take(ask, clock.instant()) match {
+        case OmdbBudget.Granted => ()
+        case OmdbBudget.Spent(retryAt) =>
+          val wait = java.time.Duration.between(clock.instant(), retryAt).toMillis.max(0L).millis
+          throw new BudgetSpentException(ask, retryAt, wait)
+      }
       val read = HttpRead.jsonObject(http, url)(answer(url, _)).toOptionOrThrow
       // An answer — this probe's, or a read in flight since before the pause — means the key works.
       refusals.set(0)
@@ -113,6 +125,9 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
       read
     } catch {
       case failure: Throwable if refusesKey(failure) =>
+        // OMDb says the day's quota is gone (its 401 or its "Request limit reached!" document): nobody in the fleet
+        // asks again until its day turns. A bad key ("Invalid API key!") is the pause's alone.
+        if (spentQuota(failure)) budget.markSpent(clock.instant())
         if (refusals.incrementAndGet() >= RefusalsBeforePause) {
           pausedUntil.set(Some(clock.instant().plusMillis(RefusalPause.toMillis)))
           logger.warn(s"OMDb refused its key ${refusals.get} times in a row — not asking it for ${RefusalPause.toMinutes} min " +
@@ -171,8 +186,18 @@ object OMDbClient {
       message.contains("Request limit reached!") || message.contains("Invalid API key!") || message.contains("HTTP 401 for ")
   }
 
+  /** A refusal that means the day's quota is spent rather than a bad key: OMDb's 401 (how it answers a spent quota) or its
+   *  "Request limit reached!" document. "Invalid API key!" is not: no new day fixes that. */
+  private[enrichment] def spentQuota(failure: Throwable): Boolean = refusesKey(failure) &&
+    !Option(failure.getMessage).getOrElse("").contains("Invalid API key!")
+
   /** A read not made because the key is paused — a failed read, as the refusals before it were. */
   final class KeyRefusedException(message: String) extends RuntimeException(message)
+
+  /** A read not made because the fleet's OMDb budget has no permit for `ask` until `retryAt` ([[OmdbBudget]]): not a
+   *  failure of OMDb, and never a "no such film". `retryAfter` is the wait from when it was refused. */
+  final class BudgetSpentException(val ask: OmdbAsk, val retryAt: Instant, val retryAfter: FiniteDuration)
+      extends RuntimeException(s"OMDb budget spent for $ask requests; ask again at $retryAt")
 
   private[enrichment] def answer(url: String, js: JsObject): ReadOutcome[JsObject] =
     (js \ "Response").asOpt[String] match {

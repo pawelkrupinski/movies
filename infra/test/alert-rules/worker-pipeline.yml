@@ -715,7 +715,7 @@ tests:
               severity: warning
             exp_annotations:
               summary: "de: omdb is refusing the worker (100% of calls 401/403)"
-              description: "Over the last 30 minutes most of the worker's calls to omdb were answered 401 or 403 -- an auth or quota problem, not an outage: the key was revoked or rotated, the plan's quota is spent (OMDb answers \"Request limit reached!\" as a 401 until its daily reset), or the service has started blocking the node's IP. Enrichment from it has stopped. The panel \"Calls per external service\" on the kinowo-http dashboard shows when it started; the key is in `worker-secrets`."
+              description: "Over the last 30 minutes most of the worker's calls to omdb were answered 401 or 403 -- an auth or quota problem, not an outage: the key was revoked or rotated, the plan's quota is spent, or the service has started blocking the node's IP. Enrichment from it has stopped. For OMDb a spent quota is not this alert's: the fleet's daily budget (`omdb_budget` in the fleet db, OmdbBudget) refuses the worker's requests before OMDb has to, and OMDb's first \"spent\" 401 marks the day spent fleet-wide, so the worker makes none until the reset (05:00 UTC). An OMDb 401 burst here is a bad key, or something else holding the same key (CI's recording should have its own). The panel \"Calls per external service\" on the kinowo-http dashboard shows when it started; the key is in `worker-secrets`."
 
   # ───────────────────────────────────────────────────────────────────────────────────────────
   # WorkerExternalServiceRateLimited. A third of TMDB's attempts 429, sustained -- and the worker

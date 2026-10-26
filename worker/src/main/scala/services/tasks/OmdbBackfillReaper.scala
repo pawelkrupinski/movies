@@ -8,7 +8,7 @@ import java.time.Clock
 import scala.concurrent.duration._
 
 /**
- * Daily, cluster-claimed ENQUEUER for the OMDb identifier backfill. The sweep
+ * Hourly, cluster-claimed ENQUEUER for the OMDb identifier backfill. The sweep
  * itself runs as a coarse worker task (`TaskType.RefreshAllOmdb`, handled by a
  * `BulkRefreshHandler` → [[services.enrichment.OmdbBackfill]]`.refreshAllNow`);
  * this reaper just puts ONE sweep task on the queue per window (the task's
@@ -26,7 +26,7 @@ import scala.concurrent.duration._
  */
 class OmdbBackfillReaper(
   enqueueSweep: () => Enqueued,
-  // Daily by default. BY-NAME so an `/admin/config` flip applies next cycle.
+  // Hourly by default. BY-NAME so an `/admin/config` flip applies next cycle.
   interval:     => OmdbBackfillInterval = OmdbBackfillInterval(OmdbBackfillReaper.DefaultInterval),
   // A small spacing before the first enqueue so the synchronous hydrate has
   // populated the cache (the sweep is a no-op on a cold one anyway). 0 in tests
@@ -42,9 +42,11 @@ object OmdbBackfillReaper {
   /** How long after `start()` the first sweep is enqueued. */
   final case class InitialDelay(value: FiniteDuration) extends AnyVal
 
-  /** Daily: OMDb is a slow-moving gap-filler — the unresolved tail only shrinks
-   *  as new films land, and the free key is capped at 1000 lookups/day. */
-  val DefaultInterval: FiniteDuration = 24.hours
+  /** Hourly: the sweep's OMDb requests are bulk asks, which the fleet's budget ([[services.enrichment.OmdbBudget]])
+   *  grants only as the day goes by, so a sweep takes the hour's share and stops; the rest of the tail waits for the
+   *  next. A daily sweep took the whole day's quota in one go, five countries at once after a deploy (2026-10-26). A
+   *  sweep with nothing to ask makes no request: identified rows and backed-off films are skipped in memory. */
+  val DefaultInterval: FiniteDuration = 1.hour
   /** First sweep a few minutes after boot, once the hydrate has populated the
    *  cache. OMDb work is network-bound (no big heap pass), so it needn't stagger
    *  off the memory-heavy reconcile/settle ticks the way SettleReaper does. */

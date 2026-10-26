@@ -64,8 +64,10 @@ class OmdbBackfill(
       else {
         // Original (production/English) title first — OMDb is an English DB; the
         // cinema display title is the fallback spelling.
+        // A sweep's ask is bulk (leftover budget only, paced); a single film's is one somebody is waiting on.
+        val ask = if (sweepBackoff.isDefined) OmdbAsk.Bulk else OmdbAsk.UserWaiting
         val foundImdbId =
-          omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle, normalizer)).distinct, key.year, e.director.toSet)
+          omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle, normalizer)).distinct, key.year, e.director.toSet, ask)
         foundImdbId match {
           // A miss backs off: the next sweep skips the film until the (doubling) window elapses.
           case None => recordMiss(key); None
@@ -109,19 +111,30 @@ class OmdbBackfill(
     sweepBackoff = Some(attempts.all())
     val changed = new AtomicInteger(0)
     val failed  = new AtomicInteger(0)
+    // The fleet's OMDb budget refused this sweep a permit: the rest of the rows wait for the next sweep, untouched --
+    // nothing asked, nothing recorded, nothing failed (OmdbBudget).
+    val spent    = new java.util.concurrent.atomic.AtomicReference[Option[OMDbClient.BudgetSpentException]](None)
+    val deferred = new AtomicInteger(0)
     try {
       logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
       BoundedParallel.foreach("OMDb-backfill", snapshot, refreshConcurrency) { case (key, e) =>
-        try refreshOne(key).foreach { v => recordCadenceChange(key, e.tmdbId, Some(v)); changed.incrementAndGet() }
+        if (spent.get.isDefined) { deferred.incrementAndGet(); () }
+        else try refreshOne(key).foreach { v => recordCadenceChange(key, e.tmdbId, Some(v)); changed.incrementAndGet() }
         catch {
+          case budget: OMDbClient.BudgetSpentException =>
+            spent.compareAndSet(None, Some(budget))
+            deferred.incrementAndGet()
           case NonFatal(t) =>
             logger.warn(s"OMDb backfill: '${key.cleanTitle}' (${key.year.getOrElse("?")}) not looked up — ${t.getClass.getSimpleName}: ${t.getMessage}")
             failed.incrementAndGet()
         }
       }
     } finally sweepBackoff = None
+    spent.get.foreach(b => logger.info(s"OMDb backfill: the fleet's OMDb budget has no bulk permit until ${b.retryAt}; " +
+      s"${deferred.get} row(s) wait for a later sweep."))
     BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = 0, failed = failed.get,
-      message = s"backfill done over ${snapshot.size} row(s) — ${changed.get} identifier(s) recovered, ${failed.get} lookup(s) failed.")
+      message = s"backfill done over ${snapshot.size} row(s) — ${changed.get} identifier(s) recovered, ${failed.get} lookup(s) failed" +
+        spent.get.fold(".")(_ => s", ${deferred.get} left for a later sweep (OMDb budget)."))
   }
 }
 

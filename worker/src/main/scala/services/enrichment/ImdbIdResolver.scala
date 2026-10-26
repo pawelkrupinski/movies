@@ -212,7 +212,8 @@ class ImdbIdResolver(
         // This is the id the once-daily OmdbBackfill sweep would have supplied
         // hours later; running it inline lands it now. A lookup OMDb could not answer
         // (down, quota spent) falls through to the next rung; nothing is recorded for it.
-        () => omdb.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year, directors)),
+        // A new film's ask: OMDb's budget keeps the day's last 10% for these alone (OmdbBudget).
+        () => omdb.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year, directors, OmdbAsk.NewFilm)),
         // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
         // film with no Filmweb entity page, search Wikidata's film items
         // by title and bind the first whose label + P577 year corroborate. Catches
@@ -297,8 +298,13 @@ object ImdbIdResolver {
   def retryDelay(attempt: Int, failure: Throwable, random: Double): FiniteDuration = {
     val backoff  = (FirstRetryDelay.toMillis << math.min(attempt, 20)).min(MaxRetryDelay.toMillis)
     val jittered = backoff / 2 + (backoff / 2 * random).toLong
-    val asked    = (failure +: failure.getSuppressed.toSeq).collect { case e: tools.HttpStatusException => e.retryAfter }.flatten
-    (jittered +: asked.map(_.toMillis)).max.min(MaxRetryDelay.toMillis).millis
+    val failures = failure +: failure.getSuppressed.toSeq
+    val asked    = failures.collect { case e: tools.HttpStatusException => e.retryAfter }.flatten
+    val waited   = (jittered +: asked.map(_.toMillis)).max.min(MaxRetryDelay.toMillis)
+    // A spent OMDb budget (OmdbBudget) names when it has permits again, and asking before then asks nothing: wait for
+    // it, past the cap, plus the jitter so the films it held do not all come back in the same second.
+    val budget = failures.collect { case e: OMDbClient.BudgetSpentException => e.retryAfter.toMillis }.maxOption
+    budget.fold(waited)(b => b.max(waited) + (backoff / 2 * random).toLong).millis
   }
 
   /** Whether a failed ladder is an ANSWER: every failure in it (the first and those suppressed beside it) one. */

@@ -245,4 +245,26 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     OmdbBackfill.backoffWindow(5) shouldBe 30.days // 32d capped
     OmdbBackfill.backoffWindow(9) shouldBe 30.days
   }
+
+  // ── the fleet's OMDb budget ───────────────────────────────────────────────────
+
+  "a sweep the OMDb budget runs out on" should "stop asking, fail nothing, back nothing off, and leave the rest for later" in {
+    val repository = new InMemoryMovieRepository(
+      (1 to 5).map(i => (s"F$i", None, MovieRecord(tmdbId = Some(600 + i)))), normalizer = titleNormalizer)
+    val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val attempts = new InMemoryOmdbAttemptStore
+    val asked    = new java.util.concurrent.atomic.AtomicInteger(0)
+    // Two permits for a sweep at this hour: 0.6 of a 1000/day budget is 600 a day, and the pinned clock is at 00:00 UTC,
+    // 19 h into OMDb's day -- so a 3-permit limit gives bulk floor(3 * 0.6 * 19/24) = 1. One request, then none.
+    val budget = new InMemoryOmdbBudget(limit = 3)
+    val omdb = new OMDbClient(
+      http = new GetOnlyHttpFetch {
+        def get(url: String): String = { asked.incrementAndGet(); """{"Response":"False","Error":"Movie not found!"}""" }
+      },
+      apiKey = Some(settings.OmdbApiKey("test-key")), clock = tools.SpecClock.Pinned, budget = budget)
+    val result = new OmdbBackfill(cache, omdb, attempts, clock = _root_.tools.SpecClock.Pinned).refreshAll()
+    asked.get shouldBe 1
+    result.failed shouldBe Some(0)
+    attempts.all() should have size 1 // the one film OMDb answered "not found" for; the rest untouched
+  }
 }
