@@ -59,7 +59,8 @@ jobs:
         name: run
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
-        timeout-minutes: 600
+        # The longest green run took 162 min (run 965, five countries); the mean is 10. CiRowTimeoutSpec.
+        timeout-minutes: 200
         permissions:
             contents: read
             actions: read

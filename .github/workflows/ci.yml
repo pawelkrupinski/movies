@@ -157,6 +157,7 @@ jobs:
                     - { shard: worker,          cmd: testUnitWorkerAndWeb, suites: rest }
                     - { shard: rest,            cmd: testUnitRest }
         runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
         env:
             WORKER_ROW: ${{ matrix.suites }}
@@ -332,185 +333,6 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 14
 
-    # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
-    # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
-    # the Playwright suite uses) once, then runs both the iOS `LocalServer*` XCTest
-    # cases and the Android `LocalServerApiTest` against it. Both decode the live
-    # /{city}/api/repertoire + /api/details (+ /api/cinemas on iOS) JSON through
-    # their production models — KinowoCore's `Codable` types with the stores'
-    # bare `JSONDecoder()`, Android's KinowoApi + kotlinx models. The
-    # cross-cutting gate: a MovieController JSON drift that would break either
-    # mobile client fails CI here, on the PR that introduces it.
-    #
-    # Was two separate jobs, each paying the SAME ~4-min FixtureServerMain boot to
-    # run a <20s test. Merged so the boot is shared and one runner slot is freed —
-    # keeps CI under the 20-runner cap without a job queueing. One JDK 21 serves
-    # everything: the Scala build emits Java 21 (`--release 21`) and runs on 21,
-    # Gradle 8.9 / AGP 8.6 run on 21, and Swift needs no JDK. Both junit publishes
-    # keep their original `iOS LocalServer` / `Android LocalServer` check-names.
-    #
-    # Pinned to 24.04, not `ubuntu-latest`: setup-swift@v2 refuses Ubuntu 26.04 (actions/runner-images#14748).
-    # Swift 6.2 is the newest setup-swift@v2 knows (ios/Package.swift is tools 6.0, Swift 6 mode); keep it
-    # in step with ios.yml's `swift:6.2` container. Locked by ActionPinningSpec.
-    mobile-local-server:
-        needs: scope
-        # The public pages, booted from the read-model snapshot: inert for identity's code (ci-row-scope.sh browsers).
-        if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
-        runs-on: ${{ inputs.lane || 'ubuntu-24.04' }}
-        permissions:
-            contents: read
-            checks: write
-        steps:
-            - uses: actions/checkout@v5
-
-            - uses: ./.github/actions/setup-sbt-build
-              with:
-                  java-version: 21
-                  # JDK-21 zinc cache, kept on its own key so cross-JDK class
-                  # artifacts don't mix with the other jobs' cache. Boots
-                  # web/PageTest FixtureServerMain → page scope (every module's
-                  # main + test + the web page sources).
-                  target-cache-key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
-                  target-cache-restore-keys: |
-                      sbt-target-android-ls-${{ runner.os }}-
-
-            # Kick the fixture-server compile off HERE, in the background, and
-            # collect it below — the Swift toolchain, the Android SDK and Gradle
-            # setups that follow are ~50s of download that has no reason to wait
-            # behind ~100s of sbt. The exit status is parked in a file so the
-            # collect step can still fail the job on a compile error, and the
-            # log is replayed there rather than interleaved with three actions'
-            # output.
-            - name: Start compiling the fixture server
-              run: |
-                  nohup bash -c 'sbt web/PageTest/compile > /tmp/compile.log 2>&1; echo $? > /tmp/compile.status' &
-
-            - uses: swift-actions/setup-swift@v2
-              with:
-                  swift-version: '6.2'
-
-            - uses: actions/cache@v5
-              with:
-                  path: ios/.build
-                  key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
-                  restore-keys: |
-                      spm-build-${{ runner.os }}-
-
-            # `packages: platform-tools` instead of the action's default
-            # `tools platform-tools`: the deprecated `tools` meta-package drags
-            # in the Android Emulator, which this JVM-only `testDebugUnitTest` +
-            # swift LocalServer job never uses and whose download flakily corrupts
-            # ("Error on ZipFile unknown archive"), failing the whole job before a
-            # single test runs. AGP auto-fetches platform-34 / build-tools.
-            - name: Set up Android SDK
-              uses: android-actions/setup-android@v3
-              with:
-                  packages: platform-tools
-
-            - name: Set up Gradle
-              uses: gradle/actions/setup-gradle@v4
-              with:
-                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
-
-            # Collect the background compile started above. Build BEFORE booting,
-            # as its own step, so the boot's ceiling only has to cover booting.
-            #
-            # The two were one step, and the 300s below had to stretch over both. That
-            # holds until the caches go cold together — a dependency bump
-            # invalidates coursier while a source change invalidates sbt-target — and
-            # then the runner spends the entire window fetching the sbt launcher and
-            # compiling, reaching only "set current project to movies" by the time it is
-            # killed. It reported as `FixtureServerMain never wrote a port file`, which
-            # points at the server rather than at the build that never finished making
-            # it. Split, a slow build is just a slow build, a compile error says so, and
-            # the ceiling below measures the one thing it names. Backgrounding the
-            # compile keeps that split — this step still names, times and fails on
-            # exactly the compile — while letting the toolchain downloads overlap it.
-            - name: Wait for the fixture-server compile
-              run: |
-                  set -uo pipefail
-                  # 900s: the compile is normally ~100s warm, but a cold coursier +
-                  # cold zinc cache together is minutes. Same generosity the boot
-                  # ceiling below has, and for the same reason.
-                  for _ in $(seq 1 450); do
-                      [ -f /tmp/compile.status ] && break
-                      sleep 2
-                  done
-                  cat /tmp/compile.log 2>/dev/null || true
-                  if [ ! -f /tmp/compile.status ]; then
-                      echo "::error::web/PageTest/compile did not finish within 900s"
-                      exit 1
-                  fi
-                  exit "$(cat /tmp/compile.status)"
-
-            # Through `.github/scripts/fixture-server.sh`, which relaunches a server
-            # that exits before writing its port (a boot-jar fetch timeout took a
-            # page-test shard down this way on 2026-09-06) — see its header.
-            - name: Boot FixtureServerMain
-              env:
-                  # 300s ceiling over ~110s of CPU-bound bootStartup (the whole
-                  # ~1000-film fixture corpus through scrape→enrich→fold against
-                  # in-memory fixtures — processing cost, not retries) plus sbt's own
-                  # startup. The compile is no longer inside this window.
-                  FIXTURE_BOOT_CEILING_SECONDS: 300
-              run: |
-                  set -euo pipefail
-                  .github/scripts/fixture-server.sh launch /tmp/fixture-server sbt "web/PageTest/runMain tools.FixtureServerMain /tmp/fixture-server/port"
-                  .github/scripts/fixture-server.sh await /tmp/fixture-server
-                  echo "KINOWO_LOCAL_URL=http://127.0.0.1:$(cat /tmp/fixture-server/port)" >> "$GITHUB_ENV"
-
-            # Both suites run against the one server; `set +e` + a combined exit
-            # status so an iOS failure still lets the Android suite run (and vice
-            # versa) — the always() publishes below then surface both. `--no-daemon`
-            # so Gradle inherits KINOWO_LOCAL_URL for the forked test JVM.
-            - name: Run LocalServer mobile tests (iOS + Android)
-              run: |
-                  set +e
-                  swift test --package-path ios --filter LocalServer --xunit-output ios-localserver.xml
-                  ios=$?
-                  ( cd android && ./gradlew --no-daemon testDebugUnitTest --tests 'pl.kinowo.localserver.*' )
-                  android=$?
-                  echo "iOS exit=$ios  Android exit=$android"
-                  [ $ios -eq 0 ] && [ $android -eq 0 ]
-
-            - name: Publish iOS test report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
-                  # SwiftPM writes `<base>.xml` (XCTest) and
-                  # `<base>-swift-testing.xml` (swift-testing); glob both.
-                  report_paths: 'ios-localserver*.xml'
-                  check_name: iOS LocalServer
-                  include_passed: false
-
-            - name: Publish Android test report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
-                  report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
-                  check_name: Android LocalServer
-                  include_passed: false
-
-            - name: Stop FixtureServerMain
-              if: always()
-              run: .github/scripts/fixture-server.sh stop /tmp/fixture-server
-
-            - name: Upload fixture-server log on failure
-              if: failure()
-              uses: actions/upload-artifact@v6
-              with:
-                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
-                  overwrite: true
-                  name: fixture-server-log-mobile
-                  path: /tmp/fixture-server/log
-                  if-no-files-found: ignore
-
     # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the
     # hard-cluster convergence, whose parallel boots fill a runner's cores; `rest` runs every other spec, by
     # exclusion. One runner running all of `itAll` was CPU-bound — 828 s of
@@ -525,6 +347,7 @@ jobs:
                     - { row: identity }
                     - { row: rest }
         runs-on: ${{ inputs.lane || 'ubuntu-24.04' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         # Every sbt step of the row sees the same filter.
         env:
             IT_ROW: ${{ matrix.row }}
@@ -675,6 +498,340 @@ jobs:
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
               run: scripts/ci/in-background.sh wait old-ref-compile 900
 
+    # DISPATCH ORDER. Forgejo hands a free runner the waiting job with the oldest `updated`, then the lowest id
+    # (models/actions/task.go GetAvailableJobsForRunner), and creates a workflow's jobs in this file's order. The
+    # needs-less rows above wait from t=0 and take the slots first; the `needs: scope` rows all turn waiting the
+    # moment scope ends, and then go in the order they are written here. So the longest of them come first: the
+    # page-test rows (safari ~6 min, chrome / stable ~6.5), then mobile and the e2e shards (3-4.5). Written the
+    # other way round, safari queued behind everything and ended last in 174 of 204 Main runs to 2026-10-26.
+    # (Matrix rows are created sorted by their values, not in `include:` order: jobparser getMatrixes.) CiDispatchOrderSpec.
+    page-tests-safari:
+        name: page tests (safari / ${{ matrix.variant }})
+        needs: scope
+        if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    # The ~13 viewport-INDEPENDENT spec files (localStorage, URL
+                    # round-trips, filter inclusion-sets, search, keyboard a11y —
+                    # tagged `@agnostic`) assert byte-identically on all three
+                    # portrait iPhone widths (375/390/440 all sit in one CSS
+                    # bucket), so running them per-phone was a 3× re-run. They
+                    # ride the single `behaviour` slice below; the phone shards
+                    # run only the viewport-SENSITIVE specs (navbar geometry,
+                    # landscape, zoomed-gaps).
+                    #
+                    # WebKit is ~3× slower per test than Chromium, so here the
+                    # test run — not the ~100s boot — is the bulk, and this tier
+                    # is the tier that gets the runners. All three phones run as
+                    # ONE project set sharded FOUR ways rather than per-phone: the
+                    # per-phone 2-way shards ranged 306-363s on a single run, and
+                    # sharding the combined list evens that out.
+                    #
+                    # Shard COUNT is not free to pick — Playwright splits by spec
+                    # file, and every row pays ~1.5 min of fixed setup before its
+                    # first test. Since the `@agnostic` sweeps moved to the
+                    # behaviour row, the phone set is small: `--list` sizes
+                    # (2026-10-01, runtime skips included — about half run) are
+                    # 3 → 144-170, 4 → 109-124, 5 → 82-103, 7 → 56-72. At seven,
+                    # each row ran ~45 s of tests behind its ~1.5 min of setup. Four
+                    # rows ran 2.2-3.2 min each (2026-10-15), well inside the unit and
+                    # integration rows; two carry about twice the tests behind the same
+                    # setup, ~3.8 min, still inside them, and give two runners to
+                    # splitting those rows (see RUNNER BUDGET at the top). Re-measure
+                    # with `--list` before changing this rather than
+                    # assuming more shards is faster. Coverage of every width is
+                    # unchanged. Firefox stays dropped from CI (the firefox-desktop
+                    # project remains in playwright.config.ts for local runs).
+                    - { variant: pw phones 1/2, kind: playwright, browsers: webkit, label: webkit-phones-1-2, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/2' }
+                    - { variant: pw phones 2/2, kind: playwright, browsers: webkit, label: webkit-phones-2-2, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/2' }
+                    # The viewport-independent specs once, on the representative
+                    # 390px portrait (matches the `iPhone 13` base in webkitUse).
+                    #
+                    # It ran the desktop-Safari set too, and that made it the long
+                    # pole at 296s — 144 WebKit tests on one runner while the shards
+                    # carried ~158 each. desktop-Safari is the same ENGINE as the
+                    # phones, so it just joins their project set and gets sharded
+                    # with them; the largest shard is 184 either way, so those rows
+                    # absorb it for free and this one keeps only its 52.
+                    - variant: pw behaviour
+                      kind: playwright
+                      browsers: webkit
+                      label: webkit-behaviour
+                      runs: 'webkit-iphone-13 ; @agnostic ; axe-core ;'
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/run-page-test
+              with:
+                  kind:          ${{ matrix.kind }}
+                  browsers:      ${{ matrix.browsers }}
+                  label:         ${{ matrix.label }}
+                  runs:          ${{ matrix.runs }}
+
+    page-tests-chrome:
+        name: page tests (chrome / ${{ matrix.variant }})
+        needs: scope
+        # `stable` is the Scala PageTest row (the review and identity admin pages render identity code): it runs on
+        # `pages`; the Playwright rows below it only on `browsers`, their steps skipped otherwise (a job `if:` cannot
+        # read the matrix).
+        if: ${{ !cancelled() && needs.scope.outputs.pages != 'false' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { variant: stable, kind: chrome, version: stable }
+
+                    # The three Chromium phones run as ONE project set, sharded
+                    # two ways, rather than one runner per phone. Three reasons.
+                    #
+                    # Balance: per-phone rows drifted badly apart (109s vs 207s
+                    # for the identical test count on the same run), and the
+                    # build waits on the slowest. Playwright shards the combined
+                    # list — measured 552/552 at two ways, dead even — so the
+                    # rows finish together.
+                    #
+                    # One row, not the three and then two it once was: since the
+                    # `@agnostic` sweeps left the phone rows a two-way row ran
+                    # ~2.5-2.7 min in all, most of it the ~1.5 min of setup, and
+                    # finished minutes before the unit tests did. One row runs the
+                    # whole set behind one setup, still inside the unit rows' time,
+                    # and gives its runner to the unit tests' second row.
+                    #
+                    # And they no longer re-run the `@agnostic` set. Those ~13
+                    # viewport-INDEPENDENT spec files were being executed at all
+                    # four viewport variants of all three phones — 12× what the
+                    # tag says is needed, and 208 of each row's 576 tests. They
+                    # ride the single `behaviour` row below now, exactly as the
+                    # WebKit phones have always done.
+                    #
+                    # chromium pixel-9 (360 px) stays out — same width as
+                    # galaxy-s10, redundant for catching layout breaks. The
+                    # project stays in playwright.config.ts so a local
+                    # `npx playwright test --project chromium-pixel-9` still runs.
+                    - variant: pw phones
+                      kind: playwright
+                      browsers: chromium
+                      label: chromium-phones
+                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ;'
+
+                    # Two cheap slices sharing one runner: the viewport-independent
+                    # specs once on mobile Chromium (touch emulation — `card-tap`
+                    # is @agnostic and needs a touch context, so this can't be the
+                    # desktop project), and the desktop-Chrome viewport-sensitive
+                    # set. Each is ~35s of testing behind a ~100s boot; separately
+                    # they burned two runners to save nothing.
+                    - variant: pw behaviour + desktop
+                      kind: playwright
+                      browsers: chromium chrome
+                      label: chromium-behaviour-desktop
+                      runs: |
+                          chromium-galaxy-s10 ; @agnostic ; axe-core ;
+                          chrome-desktop ; ; axe-core|@agnostic ;
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v5
+              if: matrix.kind == 'chrome' || needs.scope.outputs.browsers != 'false'
+            - uses: ./.github/actions/run-page-test
+              if: matrix.kind == 'chrome' || needs.scope.outputs.browsers != 'false'
+              with:
+                  kind:          ${{ matrix.kind }}
+                  version:       ${{ matrix.version }}
+                  browsers:      ${{ matrix.browsers }}
+                  label:         ${{ matrix.label }}
+                  runs:          ${{ matrix.runs }}
+
+    # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
+    # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
+    # the Playwright suite uses) once, then runs both the iOS `LocalServer*` XCTest
+    # cases and the Android `LocalServerApiTest` against it. Both decode the live
+    # /{city}/api/repertoire + /api/details (+ /api/cinemas on iOS) JSON through
+    # their production models — KinowoCore's `Codable` types with the stores'
+    # bare `JSONDecoder()`, Android's KinowoApi + kotlinx models. The
+    # cross-cutting gate: a MovieController JSON drift that would break either
+    # mobile client fails CI here, on the PR that introduces it.
+    #
+    # Was two separate jobs, each paying the SAME ~4-min FixtureServerMain boot to
+    # run a <20s test. Merged so the boot is shared and one runner slot is freed —
+    # keeps CI under the 20-runner cap without a job queueing. One JDK 21 serves
+    # everything: the Scala build emits Java 21 (`--release 21`) and runs on 21,
+    # Gradle 8.9 / AGP 8.6 run on 21, and Swift needs no JDK. Both junit publishes
+    # keep their original `iOS LocalServer` / `Android LocalServer` check-names.
+    #
+    # Pinned to 24.04, not `ubuntu-latest`: setup-swift@v2 refuses Ubuntu 26.04 (actions/runner-images#14748).
+    # Swift 6.2 is the newest setup-swift@v2 knows (ios/Package.swift is tools 6.0, Swift 6 mode); keep it
+    # in step with ios.yml's `swift:6.2` container. Locked by ActionPinningSpec.
+    mobile-local-server:
+        needs: scope
+        # The public pages, booted from the read-model snapshot: inert for identity's code (ci-row-scope.sh browsers).
+        if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
+        runs-on: ${{ inputs.lane || 'ubuntu-24.04' }}
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  java-version: 21
+                  # JDK-21 zinc cache, kept on its own key so cross-JDK class
+                  # artifacts don't mix with the other jobs' cache. Boots
+                  # web/PageTest FixtureServerMain → page scope (every module's
+                  # main + test + the web page sources).
+                  target-cache-key: sbt-target-android-ls-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-restore-keys: |
+                      sbt-target-android-ls-${{ runner.os }}-
+
+            # Kick the fixture-server compile off HERE, in the background, and
+            # collect it below — the Swift toolchain, the Android SDK and Gradle
+            # setups that follow are ~50s of download that has no reason to wait
+            # behind ~100s of sbt. The exit status is parked in a file so the
+            # collect step can still fail the job on a compile error, and the
+            # log is replayed there rather than interleaved with three actions'
+            # output.
+            - name: Start compiling the fixture server
+              run: |
+                  nohup bash -c 'sbt web/PageTest/compile > /tmp/compile.log 2>&1; echo $? > /tmp/compile.status' &
+
+            # The exact version the Forgejo job image bakes into the tool cache (infra forgejo-job-image/Dockerfile,
+            # SWIFT_DIR), so setup-swift finds it instead of a 47 s download; '6.2' resolved to this already.
+            - uses: swift-actions/setup-swift@v2
+              with:
+                  swift-version: '6.2.1'
+
+            - uses: actions/cache@v5
+              with:
+                  path: ios/.build
+                  key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
+                  restore-keys: |
+                      spm-build-${{ runner.os }}-
+
+            # `packages: platform-tools` instead of the action's default
+            # `tools platform-tools`: the deprecated `tools` meta-package drags
+            # in the Android Emulator, which this JVM-only `testDebugUnitTest` +
+            # swift LocalServer job never uses and whose download flakily corrupts
+            # ("Error on ZipFile unknown archive"), failing the whole job before a
+            # single test runs. AGP auto-fetches platform-34 / build-tools.
+            - name: Set up Android SDK
+              uses: android-actions/setup-android@v3
+              with:
+                  packages: platform-tools
+
+            - name: Set up Gradle
+              uses: gradle/actions/setup-gradle@v4
+              with:
+                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
+
+            # Collect the background compile started above. Build BEFORE booting,
+            # as its own step, so the boot's ceiling only has to cover booting.
+            #
+            # The two were one step, and the 300s below had to stretch over both. That
+            # holds until the caches go cold together — a dependency bump
+            # invalidates coursier while a source change invalidates sbt-target — and
+            # then the runner spends the entire window fetching the sbt launcher and
+            # compiling, reaching only "set current project to movies" by the time it is
+            # killed. It reported as `FixtureServerMain never wrote a port file`, which
+            # points at the server rather than at the build that never finished making
+            # it. Split, a slow build is just a slow build, a compile error says so, and
+            # the ceiling below measures the one thing it names. Backgrounding the
+            # compile keeps that split — this step still names, times and fails on
+            # exactly the compile — while letting the toolchain downloads overlap it.
+            - name: Wait for the fixture-server compile
+              run: |
+                  set -uo pipefail
+                  # 900s: the compile is normally ~100s warm, but a cold coursier +
+                  # cold zinc cache together is minutes. Same generosity the boot
+                  # ceiling below has, and for the same reason.
+                  for _ in $(seq 1 450); do
+                      [ -f /tmp/compile.status ] && break
+                      sleep 2
+                  done
+                  cat /tmp/compile.log 2>/dev/null || true
+                  if [ ! -f /tmp/compile.status ]; then
+                      echo "::error::web/PageTest/compile did not finish within 900s"
+                      exit 1
+                  fi
+                  exit "$(cat /tmp/compile.status)"
+
+            # Through `.github/scripts/fixture-server.sh`, which relaunches a server
+            # that exits before writing its port (a boot-jar fetch timeout took a
+            # page-test shard down this way on 2026-09-06) — see its header.
+            - name: Boot FixtureServerMain
+              env:
+                  # 300s ceiling over ~110s of CPU-bound bootStartup (the whole
+                  # ~1000-film fixture corpus through scrape→enrich→fold against
+                  # in-memory fixtures — processing cost, not retries) plus sbt's own
+                  # startup. The compile is no longer inside this window.
+                  FIXTURE_BOOT_CEILING_SECONDS: 300
+              run: |
+                  set -euo pipefail
+                  .github/scripts/fixture-server.sh launch /tmp/fixture-server sbt "web/PageTest/runMain tools.FixtureServerMain /tmp/fixture-server/port"
+                  .github/scripts/fixture-server.sh await /tmp/fixture-server
+                  echo "KINOWO_LOCAL_URL=http://127.0.0.1:$(cat /tmp/fixture-server/port)" >> "$GITHUB_ENV"
+
+            # Both suites run against the one server; `set +e` + a combined exit
+            # status so an iOS failure still lets the Android suite run (and vice
+            # versa) — the always() publishes below then surface both. `--no-daemon`
+            # so Gradle inherits KINOWO_LOCAL_URL for the forked test JVM.
+            - name: Run LocalServer mobile tests (iOS + Android)
+              run: |
+                  set +e
+                  swift test --package-path ios --filter LocalServer --xunit-output ios-localserver.xml
+                  ios=$?
+                  ( cd android && ./gradlew --no-daemon testDebugUnitTest --tests 'pl.kinowo.localserver.*' )
+                  android=$?
+                  echo "iOS exit=$ios  Android exit=$android"
+                  [ $ios -eq 0 ] && [ $android -eq 0 ]
+
+            - name: Publish iOS test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
+                  # SwiftPM writes `<base>.xml` (XCTest) and
+                  # `<base>-swift-testing.xml` (swift-testing); glob both.
+                  report_paths: 'ios-localserver*.xml'
+                  check_name: iOS LocalServer
+                  include_passed: false
+
+            - name: Publish Android test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
+                  annotate_only: true
+                  job_summary: false
+                  report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
+                  check_name: Android LocalServer
+                  include_passed: false
+
+            - name: Stop FixtureServerMain
+              if: always()
+              run: .github/scripts/fixture-server.sh stop /tmp/fixture-server
+
+            - name: Upload fixture-server log on failure
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: fixture-server-log-mobile
+                  path: /tmp/fixture-server/log
+                  if-no-files-found: ignore
+
     # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across two
     # parallel shards (see the e2eCorpus/e2eRest aliases in build.sbt):
     #
@@ -699,6 +856,7 @@ jobs:
                     - { shard: corpus,   cmd: e2eCorpus }
                     - { shard: rest,     cmd: e2eRest }
         runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read
             checks: write
@@ -909,146 +1067,3 @@ jobs:
     # `continue-on-error` because the site has known WCAG violations
     # (`color-contrast` on `.text-secondary` against the dark body
     # bg) that aren't worth blocking deploys over.
-
-    page-tests-chrome:
-        name: page tests (chrome / ${{ matrix.variant }})
-        needs: scope
-        # `stable` is the Scala PageTest row (the review and identity admin pages render identity code): it runs on
-        # `pages`; the Playwright rows below it only on `browsers`, their steps skipped otherwise (a job `if:` cannot
-        # read the matrix).
-        if: ${{ !cancelled() && needs.scope.outputs.pages != 'false' }}
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - { variant: stable, kind: chrome, version: stable }
-
-                    # The three Chromium phones run as ONE project set, sharded
-                    # two ways, rather than one runner per phone. Three reasons.
-                    #
-                    # Balance: per-phone rows drifted badly apart (109s vs 207s
-                    # for the identical test count on the same run), and the
-                    # build waits on the slowest. Playwright shards the combined
-                    # list — measured 552/552 at two ways, dead even — so the
-                    # rows finish together.
-                    #
-                    # One row, not the three and then two it once was: since the
-                    # `@agnostic` sweeps left the phone rows a two-way row ran
-                    # ~2.5-2.7 min in all, most of it the ~1.5 min of setup, and
-                    # finished minutes before the unit tests did. One row runs the
-                    # whole set behind one setup, still inside the unit rows' time,
-                    # and gives its runner to the unit tests' second row.
-                    #
-                    # And they no longer re-run the `@agnostic` set. Those ~13
-                    # viewport-INDEPENDENT spec files were being executed at all
-                    # four viewport variants of all three phones — 12× what the
-                    # tag says is needed, and 208 of each row's 576 tests. They
-                    # ride the single `behaviour` row below now, exactly as the
-                    # WebKit phones have always done.
-                    #
-                    # chromium pixel-9 (360 px) stays out — same width as
-                    # galaxy-s10, redundant for catching layout breaks. The
-                    # project stays in playwright.config.ts so a local
-                    # `npx playwright test --project chromium-pixel-9` still runs.
-                    - variant: pw phones
-                      kind: playwright
-                      browsers: chromium
-                      label: chromium-phones
-                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ;'
-
-                    # Two cheap slices sharing one runner: the viewport-independent
-                    # specs once on mobile Chromium (touch emulation — `card-tap`
-                    # is @agnostic and needs a touch context, so this can't be the
-                    # desktop project), and the desktop-Chrome viewport-sensitive
-                    # set. Each is ~35s of testing behind a ~100s boot; separately
-                    # they burned two runners to save nothing.
-                    - variant: pw behaviour + desktop
-                      kind: playwright
-                      browsers: chromium chrome
-                      label: chromium-behaviour-desktop
-                      runs: |
-                          chromium-galaxy-s10 ; @agnostic ; axe-core ;
-                          chrome-desktop ; ; axe-core|@agnostic ;
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
-        permissions:
-            contents: read
-            checks: write
-        steps:
-            - uses: actions/checkout@v5
-              if: matrix.kind == 'chrome' || needs.scope.outputs.browsers != 'false'
-            - uses: ./.github/actions/run-page-test
-              if: matrix.kind == 'chrome' || needs.scope.outputs.browsers != 'false'
-              with:
-                  kind:          ${{ matrix.kind }}
-                  version:       ${{ matrix.version }}
-                  browsers:      ${{ matrix.browsers }}
-                  label:         ${{ matrix.label }}
-                  runs:          ${{ matrix.runs }}
-
-    page-tests-safari:
-        name: page tests (safari / ${{ matrix.variant }})
-        needs: scope
-        if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    # The ~13 viewport-INDEPENDENT spec files (localStorage, URL
-                    # round-trips, filter inclusion-sets, search, keyboard a11y —
-                    # tagged `@agnostic`) assert byte-identically on all three
-                    # portrait iPhone widths (375/390/440 all sit in one CSS
-                    # bucket), so running them per-phone was a 3× re-run. They
-                    # ride the single `behaviour` slice below; the phone shards
-                    # run only the viewport-SENSITIVE specs (navbar geometry,
-                    # landscape, zoomed-gaps).
-                    #
-                    # WebKit is ~3× slower per test than Chromium, so here the
-                    # test run — not the ~100s boot — is the bulk, and this tier
-                    # is the tier that gets the runners. All three phones run as
-                    # ONE project set sharded FOUR ways rather than per-phone: the
-                    # per-phone 2-way shards ranged 306-363s on a single run, and
-                    # sharding the combined list evens that out.
-                    #
-                    # Shard COUNT is not free to pick — Playwright splits by spec
-                    # file, and every row pays ~1.5 min of fixed setup before its
-                    # first test. Since the `@agnostic` sweeps moved to the
-                    # behaviour row, the phone set is small: `--list` sizes
-                    # (2026-10-01, runtime skips included — about half run) are
-                    # 3 → 144-170, 4 → 109-124, 5 → 82-103, 7 → 56-72. At seven,
-                    # each row ran ~45 s of tests behind its ~1.5 min of setup. Four
-                    # rows ran 2.2-3.2 min each (2026-10-15), well inside the unit and
-                    # integration rows; two carry about twice the tests behind the same
-                    # setup, ~3.8 min, still inside them, and give two runners to
-                    # splitting those rows (see RUNNER BUDGET at the top). Re-measure
-                    # with `--list` before changing this rather than
-                    # assuming more shards is faster. Coverage of every width is
-                    # unchanged. Firefox stays dropped from CI (the firefox-desktop
-                    # project remains in playwright.config.ts for local runs).
-                    - { variant: pw phones 1/2, kind: playwright, browsers: webkit, label: webkit-phones-1-2, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/2' }
-                    - { variant: pw phones 2/2, kind: playwright, browsers: webkit, label: webkit-phones-2-2, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/2' }
-                    # The viewport-independent specs once, on the representative
-                    # 390px portrait (matches the `iPhone 13` base in webkitUse).
-                    #
-                    # It ran the desktop-Safari set too, and that made it the long
-                    # pole at 296s — 144 WebKit tests on one runner while the shards
-                    # carried ~158 each. desktop-Safari is the same ENGINE as the
-                    # phones, so it just joins their project set and gets sharded
-                    # with them; the largest shard is 184 either way, so those rows
-                    # absorb it for free and this one keeps only its 52.
-                    - variant: pw behaviour
-                      kind: playwright
-                      browsers: webkit
-                      label: webkit-behaviour
-                      runs: 'webkit-iphone-13 ; @agnostic ; axe-core ;'
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
-        permissions:
-            contents: read
-            checks: write
-        steps:
-            - uses: actions/checkout@v5
-            - uses: ./.github/actions/run-page-test
-              with:
-                  kind:          ${{ matrix.kind }}
-                  browsers:      ${{ matrix.browsers }}
-                  label:         ${{ matrix.label }}
-                  runs:          ${{ matrix.runs }}
