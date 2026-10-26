@@ -310,8 +310,11 @@ gone_within "${keeper:-0}"
 
 # the keeper starts the moment the JVM's process does, often before that process has exec'd java: a pid not YET an
 # IdentitySlice is the JVM still starting, not one gone (under load the keeper ended at once and the slot went free)
-starting() { CLASS=scripts.IdentitySlice bash -c 'until [ -e "$0" ]; do sleep 0.05; done; exec python3 -c "import time; time.sleep(60)" $CLASS' "$work/exec-now"; }
-rm -f "$work/exec-now"; starting & jvm=$!
+# (started directly, not through a function: $! must be the process that execs, not a subshell beside it, which never
+# becomes an IdentitySlice -- the wait below then ran its whole 30 s and, on a loaded runner, outlived the 60 s JVM)
+rm -f "$work/exec-now"
+CLASS=scripts.IdentitySlice bash -c 'until [ -e "$0" ]; do sleep 0.05; done; exec python3 -c "import time; time.sleep(60)" $CLASS' "$work/exec-now" &
+jvm=$!
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO_IDENTITY_SLICE_KEEPER_POLL=0.1 \
   "$repo/scripts/identity-slice" --keep-served "$jvm" 2> /dev/null & keeper=$!
 sleep 0.5; touch "$work/exec-now"
