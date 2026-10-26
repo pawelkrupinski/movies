@@ -23,7 +23,14 @@ import scala.util.control.NonFatal
  * live service for every one of those misses — the slowest part of the sweep and
  * the part whose answer is least stable. A remembered 404 is a remembered verdict.
  * The one failure NOT remembered is a [[CircuitOpenException]]: the request was never
- * sent, so there is nothing the host said to hold a later pass to.
+ * sent, so there is nothing the host said to hold a later pass to. Nor is a REFUSED KEY (an
+ * HTTP 401, however a fallback chain wrapped it): it is the credential's state that day, not the
+ * host's verdict on the URL. Main convergence run 2912's gap fill met OMDb's spent daily quota,
+ * remembered a 401 for every OMDb gap, and the hermetic suite replayed them: OMDbClient counted
+ * five refusals, paused for 30 minutes, every IMDb-id lookup retried into the pause, and Germany's
+ * three rows sat out their 30-minute ceilings unconverged. Unremembered, the gap stays a gap — named
+ * by the hermetic run, filled by the next fill whose key works — and one remembered before this is
+ * read as a miss.
  *
  * A cached failure is REVIVED, not merely reported: an [[HttpStatusException]]
  * comes back as an `HttpStatusException` carrying its original status, because
@@ -95,6 +102,7 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch,
             // window lasted the whole run — every deferred retry got the refusal back (run
             // 38251516862: 10,123 IMDb lookups refused in one second, unanswered for an hour).
             case refused: CircuitOpenException => throw refused
+            case refused if CachingEnrichmentFetch.refusesKey(refused) => throw refused
             case NonFatal(failure) =>
               cache.remember(key, CachedResponse.failureOf(failure, method))
               throw failure
@@ -111,6 +119,8 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch,
       // An open circuit's refusal that a recording made before refusals stopped being remembered
       // wrote down: no answer either, so a miss — the fetch below asks again and overwrites it.
       case Some(failed: CachedResponse.Failed) if CachingEnrichmentFetch.isRecordedRefusal(failed) => None
+      // A refused key a fill remembered before refusals stopped being remembered: no verdict either, so a miss.
+      case Some(failed: CachedResponse.Failed) if CachingEnrichmentFetch.isRememberedKeyRefusal(failed) => None
       case Some(failed: CachedResponse.Failed) =>
         val replayed = request(failed)
         replayedFailure(replayed)
@@ -130,6 +140,20 @@ object CachingEnrichmentFetch {
   /** A remembered failure that is our own breaker's refusal, in the shape `CachedResponse.failureOf` wrote it. */
   private[tools] def isRecordedRefusal(failed: CachedResponse.Failed): Boolean =
     failed.status.isEmpty && failed.message.startsWith(s"${classOf[CircuitOpenException].getName}: ")
+
+  /** A service refusing the request's credential -- a 401, bare or inside a fallback chain's "All N backends failed"
+   *  (`direct: HttpStatusException: HTTP 401 for GET ...`): what the key is worth today, not an answer about the URL. */
+  private[tools] def refusesKey(failure: Throwable): Boolean = failure match {
+    case status: HttpStatusException => status.code == 401
+    case other                       => Option(other.getMessage).exists(_.contains(KeyRefusalMark))
+  }
+
+  /** [[refusesKey]]'s failure, as `CachedResponse.failureOf` wrote it. */
+  private[tools] def isRememberedKeyRefusal(failed: CachedResponse.Failed): Boolean =
+    failed.status.contains(401) || failed.message.contains(KeyRefusalMark)
+
+  /** How [[HttpStatusException]] words a 401 -- in its own message, and in every chain's message that quotes it. */
+  private val KeyRefusalMark = "HTTP 401 for "
 
   /** The remembered shape a String-returning verb accepts as its answer. */
   private val asBody: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }

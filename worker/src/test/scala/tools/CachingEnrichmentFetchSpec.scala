@@ -104,6 +104,40 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     withClue("the 503 must have come from the cache, not a second live call: ") { delegate.calls shouldBe 1 }
   }
 
+  // Main convergence run 2912: the gap fill met OMDb's spent daily quota and remembered a 401 for every OMDb gap; the
+  // hermetic suite replayed them into OMDbClient's 30-minute pause and Germany's rows sat out their ceilings.
+  it should "not remember a refused key, bare or inside a fallback chain's failure: it says nothing about the URL" in {
+    val omdb    = "https://www.omdbapi.com/?t=Sonoma&apikey=k"
+    val wrapped = "https://www.omdbapi.com/?t=Manon&apikey=k"
+    val delegate = new ScriptedHttpFetch(Map(
+      omdb    -> (() => throw new HttpStatusException(401, "GET", omdb, None)),
+      wrapped -> (() => throw new RuntimeException(s"All 2 backends failed for get $wrapped:\n" +
+        s"  direct: HttpStatusException: HTTP 401 for GET $wrapped\n  proxy: IOException: WWW-Authenticate header missing"))))
+    val (fetch, _, store) = cacheOver(delegate)
+
+    for (url <- Seq(omdb, wrapped, omdb, wrapped)) an [Exception] should be thrownBy fetch.get(url)
+
+    withClue("each refusal must have been asked again, not replayed: ") { delegate.calls shouldBe 4 }
+    store.writes shouldBe 0
+  }
+
+  it should "read a refused key remembered before as a miss, and ask again" in {
+    val (bare, wrapped) = ("https://www.omdbapi.com/?t=Sonoma&apikey=k", "https://www.omdbapi.com/?t=Manon&apikey=k")
+    val store = new InMemoryEnrichmentCacheStore(Map(
+      CachingEnrichmentFetch.keyOf("GET", bare)    -> CachedResponse.Failed(Some(401), "GET", s"HTTP 401 for GET $bare"),
+      CachingEnrichmentFetch.keyOf("GET", wrapped) -> CachedResponse.Failed(None, "GET",
+        s"java.lang.RuntimeException: All 2 backends failed for get $wrapped:\n  direct: HttpStatusException: HTTP 401 for GET $wrapped")))
+    val delegate = new ScriptedHttpFetch(Map(bare -> (() => """{"Response":"True"}"""), wrapped -> (() => """{"Response":"True"}""")))
+    // a hermetic replay's cache: the one that loads what a recording or fill wrote down of its transient failures
+    val cache = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
+    val fetch = new CachingEnrichmentFetch(cache, delegate)
+
+    cache.preload() shouldBe 2
+    fetch.get(bare) shouldBe """{"Response":"True"}"""
+    fetch.get(wrapped) shouldBe """{"Response":"True"}"""
+    delegate.calls shouldBe 2
+  }
+
   it should "remember a network failure and replay it as a cache failure naming the original" in {
     val delegate = new ScriptedHttpFetch(Map(
       "https://example.test/dead" -> (() => throw new java.net.SocketTimeoutException("read timed out"))))
