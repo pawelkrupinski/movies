@@ -66,6 +66,10 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [investigations/2026-10-22-rule-consolidation.md](investigations/2026-10-22-rule-consolidation.md) — the title
   rules moved into one table (`title-rules.tsv`): the inventory by effect, prod firings and BillingParse overlap, the
   byte-identity checks, which row merges fold alike (2) and which change stacked titles (23, for review), never-fired rows.
+- [investigations/2026-10-26-us-chunk-scrape-hole.md](investigations/2026-10-26-us-chunk-scrape-hole.md) — OPEN:
+  US chunked scrapes go idle ~3 h every ~3 days (all venues fresh, no due work); the hypothesis that a phase replan
+  shifts a block of phases under nearest-boundary counting, how to prove it, the damping options, and the missing
+  due-set gauge.
 - [investigations/2026-10-22-footprint-measure.md](investigations/2026-10-22-footprint-measure.md) — the footprint
   measure (`identity-measure --footprint`): why a title-rule change can be proved to move no take by replaying the base's
   title readings, the ideas rejected as unsound, and its validation against eight full measures.
