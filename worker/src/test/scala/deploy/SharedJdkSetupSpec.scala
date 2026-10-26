@@ -72,10 +72,12 @@ class SharedJdkSetupSpec extends AnyFlatSpec with Matchers {
   }
 
   /** hashFiles walks every file a `**` reaches, and a convergence leg's workspace is a ~127,000-file
-   *  fixture tree: a workspace-wide glob in this key cost ~39 s twice a leg (restore and post step). */
+   *  fixture tree: a workspace-wide glob in this key cost ~39 s twice a leg (restore and post step).
+   *  Main's saving step and every other ref's restore-only step carry the same key. */
   it should "key the sbt dependency cache on the build's own files, not a workspace-wide glob" in {
     val key = RepoFile.read(sharedAction).linesIterator.map(_.trim).filter(_.startsWith("key: sbt-deps-")).toSeq
-    key should have size 1
+    key should not be empty
+    key.distinct should have size 1
     key.head should not include "'**/"
   }
 }

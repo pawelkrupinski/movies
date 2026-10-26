@@ -33,8 +33,10 @@ runs:
     # that burst with 403s (run 36807612216: "Error downloading org.scala-sbt:sbt:1.13.0 …
     # forbidden"). Same paths, same exact key shape, but a prefix restore-key: a changed build
     # starts from the previous cache and fetches only what actually changed.
+    # Saved by main only, like the sbt target cache (sbt-target-cache's header; CacheSavePolicySpec):
+    # 0.4 GB an entry, and every other ref restores the prefix.
     - name: Restore the sbt dependency cache
-      if: inputs.cache == 'sbt'
+      if: inputs.cache == 'sbt' && github.ref == 'refs/heads/main'
       uses: actions/cache@v5
       with:
         path: |
@@ -45,6 +47,18 @@ runs:
         # The build's own files by NAME, never `**/*.sbt`: hashFiles walks every file a `**` can reach,
         # and a convergence leg's workspace holds a ~127,000-file restored fixture tree — the walk cost
         # ~39 s at restore and again in the post step, on every leg.
+        key: sbt-deps-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
+        restore-keys: |
+          sbt-deps-${{ runner.os }}-
+    - name: Restore the sbt dependency cache (not main, restore only)
+      if: inputs.cache == 'sbt' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@v5
+      with:
+        path: |
+          ~/.ivy2/cache
+          ~/.sbt
+          ~/.cache/coursier
+          !~/.sbt/*.lock
         key: sbt-deps-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
         restore-keys: |
           sbt-deps-${{ runner.os }}-
