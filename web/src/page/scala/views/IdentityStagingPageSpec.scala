@@ -252,4 +252,38 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
         "rgb(138, 138, 138)"
     }
   }
+
+  it should "list the countries one under the other across the page, one alone when picked, or all in one list by time" in {
+    clock.advanceSeconds(60)
+    val older = cluster("t1", "Ojai Playhouse", "Anora", Nil, resolvedAt = Some(clock.millis())).copy(resolution = Some(StagedCluster.Decided))
+    staging.publish("us", Nil, Nil, beat(0), resolved = Seq(older), keptFor = java.time.Duration.ofDays(7))
+    clock.advanceSeconds(10)
+    val newer = cluster("t2", "Kino Muza", "Anora", Nil, resolvedAt = Some(clock.millis())).copy(resolution = Some(StagedCluster.Decided))
+    staging.publish("pl", Nil, Nil, beat(0), resolved = Seq(newer), keptFor = java.time.Duration.ofDays(7))
+    onPage { page =>
+      page.waitFor("document.querySelectorAll('section.country').length === " + models.Country.all.size)
+      page.waitFor("document.querySelector('section[data-country=pl] details.cluster[data-id=\"pl|t2\"]') !== null")
+      // one under the other, each the page's whole width
+      page.eval("""(() => { const all = Array.from(document.querySelectorAll('section.country')), width = document.getElementById('countries').clientWidth;
+        return all.every((s, i) => s.offsetWidth === width && (i === 0 || s.offsetTop >= all[i - 1].offsetTop + all[i - 1].offsetHeight)); })()""")
+        .as[Boolean] shouldBe true
+
+      page.eval("document.querySelector('#country-filters button.filter[data-country=us]').click()")
+      page.waitFor("document.querySelectorAll('section.country').length === 1")
+      page.evalString("document.querySelector('section.country').dataset.country") shouldBe "us"
+      page.evalString("location.hash") shouldBe "#country=us"
+
+      page.eval("document.querySelector('#country-filters button.filter[data-country=all]').click()")
+      page.waitFor("document.querySelector('section[data-country=all]') !== null")
+      page.evalInt("document.querySelectorAll('section.country').length") shouldBe 1
+      // every country's rows in one list, each tagged with its country: the waits, then the decisions newest first
+      def ids = page.evalString("Array.from(document.querySelectorAll('section[data-country=all] details.cluster')).map(e => e.dataset.id).join(' ')")
+      ids should include ("pl|t2 us|t1")
+      page.evalString("document.querySelector('section[data-country=all] details.cluster[data-id=\"pl|t2\"] summary .cc').textContent") shouldBe "pl"
+      page.evalString("location.hash") shouldBe "#country=all"
+
+      page.eval("document.querySelector('#country-filters button.filter[data-country=\"\"]').click()")   // by country
+      page.waitFor("document.querySelectorAll('section.country').length === " + models.Country.all.size)
+    }
+  }
 }

@@ -10,10 +10,10 @@
     body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
     h1 { font-size: 16px; font-weight: 600; color: #fff; }
     .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-    .sub { color: #666; font-size: 11px; margin-bottom: 18px; max-width: 900px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 18px; }
     .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2ecc40; margin-right: 5px; vertical-align: middle; }
     .sub.stale .dot { background: #c0392b; }
-    #countries { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; align-items: start; }
+    #countries { display: flex; flex-direction: column; gap: 18px; }
     .country { background: #121212; border: 1px solid #1f1f1f; border-radius: 6px; padding: 12px; min-width: 0; }
     .country h2 { font-size: 14px; color: #fff; display: flex; gap: 10px; align-items: baseline; }
     .country h2 .age { font-size: 10px; color: #666; font-weight: 400; }
@@ -67,6 +67,7 @@
     .filter { font: inherit; font-size: 11px; color: #aaa; background: #151515; border: 1px solid #262626; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
     .filter:hover { border-color: #3a3a3a; }
     .filter.on { color: #fff; background: #23232e; border-color: #5a5a8a; }
+    .cc { font-size: 10px; color: #8fb3d6; background: #16202b; border-radius: 3px; padding: 0 5px; flex: none; }
     .filter .n { color: #777; margin-left: 4px; font-variant-numeric: tabular-nums; }
     .move-from { color: #a08f7a; }
     table.facts { margin: 4px 0 8px; font-size: 11px; table-layout: fixed; }
@@ -84,8 +85,9 @@
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
     — every country's clusters whose take still waits on an answer, and every match decided or changed in the last
     7 days (decided: a new cluster's listings; joined: new listings joining a cluster already on the site; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
-    Pick types above the countries to list only those (hover one for what it means); open a row for its questions, and a move's row for what the
+    Pick a country above to list it alone, or "all" for every country's rows in one list by time; pick types to list only those (hover one for what it means); open a row for its questions, and a move's row for what the
     listings held before and why, beside what they hold now and why.</div>
+  <div class="filters" id="country-filters"></div>
   <div class="filters" id="filters"></div>
   <div id="countries"></div>
 
@@ -115,6 +117,14 @@
     var MOVES = ["gained", "lost", "changed"];
     var picked = {};         // type → true while picked; kept in the URL's #only= so a link keeps it
     (location.hash.match(/only=([a-z,]*)/) || [, ""])[1].split(",").forEach(function (t) { if (TYPES.indexOf(t) >= 0) picked[t] = true; });
+    // the countries listed: "" each in a section of its own, one under the other; "all" every country's rows in one list,
+    // by time; a code that country alone. Kept in the URL's #country= beside #only=.
+    var country = (location.hash.match(/country=([a-z]+)/) || [, ""])[1];
+    function keepInUrl() {
+      var only = TYPES.filter(function (k) { return picked[k]; }).join(",");
+      var parts = (only ? ["only=" + only] : []).concat(country ? ["country=" + country] : []);
+      history.replaceState(null, "", parts.length ? "#" + parts.join("&") : location.pathname + location.search);
+    }
     function typeOf(cl) { return cl.resolvedAt == null ? "staging" : cl.resolution; }
     function wanted(cl) { return !Object.keys(picked).length || picked[typeOf(cl)] === true; }
 
@@ -310,7 +320,7 @@
       return filmText(b) + (b.film != null && b.title ? " (tmdb " + b.film + ")" : "") +
         (b.basis === "unknown" ? " · its decision not seen" : " · " + b.basis + (b.film != null ? " " + Math.round(b.confidence * 100) + "%" : ""));
     }
-    function row(code, cl) {
+    function row(code, cl, tagged) {
       var id = code + "|" + cl.key;
       var meta;
       if (cl.resolvedAt == null) {
@@ -324,7 +334,7 @@
       }
       // a listing joining a match already on the site: most of the activity, listed quietly
       var quiet = cl.resolution === "joined" ? " quiet" : "";
-      return "<details class=\"cluster" + quiet + "\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary><span class=\"title\">" +
+      return "<details class=\"cluster" + quiet + "\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary>" + (tagged ? "<span class=\"cc\">" + esc(code) + "</span>" : "") + "<span class=\"title\">" +
         headline(cl) + "</span><span class=\"meta\">" + (cl.resolvedAt == null ? "" : change(cl) + " · ") +
         (isMove(cl) ? "<span class=\"move-from\">" + esc(cl.before ? filmText(cl.before) : beforeText(cl)) + "</span> → " : "") + esc(takeText(cl.take)) +
         "</span></summary>" +
@@ -333,7 +343,8 @@
 
     function render() {
       var counted = {};
-      order.forEach(function (code) {
+      // a type's count: of the countries listed
+      order.filter(function (code) { return !country || country === "all" || code === country; }).forEach(function (code) {
         Object.keys(state[code].clusters).forEach(function (k) { var t = typeOf(state[code].clusters[k]); counted[t] = (counted[t] || 0) + 1; });
       });
       var filters = "<button class=\"filter" + (Object.keys(picked).length ? "" : " on") + "\" data-type=\"\" title=\"" + MEANS[""] + "\">all</button>" +
@@ -341,39 +352,73 @@
           return "<button class=\"filter" + (picked[t] ? " on" : "") + "\" data-type=\"" + t + "\" title=\"" + esc(MEANS[t]) + "\"><span class=\"r-" + t + "\">" + t +
             "</span><span class=\"n\">" + (counted[t] || 0) + "</span></button>";
         }).join("");
-      var html = order.map(function (code) {
-        var c = state[code];
-        var all = Object.keys(c.clusters).map(function (k) { return c.clusters[k]; });
-        var staging = all.filter(function (cl) { return cl.resolvedAt == null; }).sort(function (a, b) { return a.since - b.since; });
-        var resolved = all.filter(function (cl) { return cl.resolvedAt != null; }).sort(function (a, b) { return b.resolvedAt - a.resolvedAt; });
-        var listedStaging = staging.filter(wanted), listedResolved = resolved.filter(wanted);
-        var beat = c.beat;
-        var age = beat ? serverNow() - beat.at : null;
-        var head = "<h2>" + esc(c.name) + " <span class=\"age" + (age != null && age > STALE_MS ? " stale" : "") + "\">" +
-          (beat ? "published " + dur(age) + " ago" : "no snapshot yet") + "</span></h2>";
-        var counts = "<div class=\"counts\"><span class=\"pill staging\"><span class=\"n\">" + (beat ? beat.staging : staging.length) +
-          "</span> staging" + (beat && beat.shown < beat.staging ? " (" + beat.shown + " shown)" : "") + "</span>" +
-          "<span class=\"pill resolved\"><span class=\"n\">" + resolved.length + "</span> decided or changed</span>" +
-          "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span>" +
-          (beat && beat.dropped ? "<span class=\"pill dropped\"><span class=\"n\">" + beat.dropped + "</span> events dropped</span>" : "") + "</div>";
-        var kinds = beat ? Object.keys(beat.openByKind).sort().map(function (k) {
-          return "<span class=\"kind\">" + esc(k) + " " + beat.openByKind[k] + "</span>";
-        }).join("") : "";
-        return "<section class=\"country\" data-country=\"" + esc(code) + "\">" + head + counts + "<div class=\"kinds\">" + kinds + "</div>" +
-          "<h3>Staging</h3>" + (listedStaging.length ? listedStaging.map(function (cl) { return row(code, cl); }).join("") :
-            "<div class=\"empty\">" + (staging.length ? "none of the picked types" : "nothing waits") + "</div>") +
-          "<h3>Decided and changed, last 7 days</h3>" + (listedResolved.length ? listedResolved.slice(0, SHOWN).map(function (cl) { return row(code, cl); }).join("") +
-            (listedResolved.length > SHOWN ? "<div class=\"empty\">… and " + (listedResolved.length - SHOWN) + " older</div>" : "") :
-            "<div class=\"empty\">" + (resolved.length ? "none of the picked types" : "none lately") + "</div>") +
-          "</section>";
-      }).join("");
+      var countryFilters = [["", "by country"], ["all", "all"]].concat(order.map(function (code) { return [code, state[code].name]; }))
+        .map(function (c) {
+          return "<button class=\"filter" + (country === c[0] ? " on" : "") + "\" data-country=\"" + esc(c[0]) + "\">" + esc(c[1]) + "</button>";
+        }).join("");
+      var html = country === "all" ? interspersed() :
+        order.filter(function (code) { return !country || code === country; }).map(section).join("");
       if (filters !== shownFilters) document.getElementById("filters").innerHTML = shownFilters = filters;
+      if (countryFilters !== shownCountryFilters) document.getElementById("country-filters").innerHTML = shownCountryFilters = countryFilters;
       // unchanged since the last poll: the rows stay as they are, a click on one in flight included
       if (html === shown) return;
       shown = html;
       document.getElementById("countries").innerHTML = html;
     }
-    var shown = null, shownFilters = null;
+    var shown = null, shownFilters = null, shownCountryFilters = null;
+    /** A country's clusters: those waiting, oldest wait first, and those decided or changed, newest first. */
+    function split(code) {
+      var c = state[code];
+      var all = Object.keys(c.clusters).map(function (k) { return { code: code, cl: c.clusters[k] }; });
+      return {
+        staging: all.filter(function (r) { return r.cl.resolvedAt == null; }),
+        resolved: all.filter(function (r) { return r.cl.resolvedAt != null; })
+      };
+    }
+    function byWait(a, b) { return a.cl.since - b.cl.since; }
+    function byNewest(a, b) { return b.cl.resolvedAt - a.cl.resolvedAt; }
+    /** The staging and the decided rows ({ code, cl } each), of the picked types alone, a row tagged with its country
+     *  where `tagged`. */
+    function lists(staging, resolved, tagged) {
+      var listedStaging = staging.filter(function (r) { return wanted(r.cl); }), listedResolved = resolved.filter(function (r) { return wanted(r.cl); });
+      var rows = function (rs) { return rs.map(function (r) { return row(r.code, r.cl, tagged); }).join(""); };
+      return "<h3>Staging</h3>" + (listedStaging.length ? rows(listedStaging) :
+          "<div class=\"empty\">" + (staging.length ? "none of the picked types" : "nothing waits") + "</div>") +
+        "<h3>Decided and changed, last 7 days</h3>" + (listedResolved.length ? rows(listedResolved.slice(0, SHOWN)) +
+          (listedResolved.length > SHOWN ? "<div class=\"empty\">… and " + (listedResolved.length - SHOWN) + " older</div>" : "") :
+          "<div class=\"empty\">" + (resolved.length ? "none of the picked types" : "none lately") + "</div>");
+    }
+    function section(code) {
+      var c = state[code], parts = split(code);
+      var beat = c.beat;
+      var age = beat ? serverNow() - beat.at : null;
+      var head = "<h2>" + esc(c.name) + " <span class=\"age" + (age != null && age > STALE_MS ? " stale" : "") + "\">" +
+        (beat ? "published " + dur(age) + " ago" : "no snapshot yet") + "</span></h2>";
+      var counts = "<div class=\"counts\"><span class=\"pill staging\"><span class=\"n\">" + (beat ? beat.staging : parts.staging.length) +
+        "</span> staging" + (beat && beat.shown < beat.staging ? " (" + beat.shown + " shown)" : "") + "</span>" +
+        "<span class=\"pill resolved\"><span class=\"n\">" + parts.resolved.length + "</span> decided or changed</span>" +
+        "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span>" +
+        (beat && beat.dropped ? "<span class=\"pill dropped\"><span class=\"n\">" + beat.dropped + "</span> events dropped</span>" : "") + "</div>";
+      var kinds = beat ? Object.keys(beat.openByKind).sort().map(function (k) {
+        return "<span class=\"kind\">" + esc(k) + " " + beat.openByKind[k] + "</span>";
+      }).join("") : "";
+      return "<section class=\"country\" data-country=\"" + esc(code) + "\">" + head + counts + "<div class=\"kinds\">" + kinds + "</div>" +
+        lists(parts.staging.sort(byWait), parts.resolved.sort(byNewest), false) + "</section>";
+    }
+    /** Every country's rows in one list: the waits oldest first, the decisions and changes newest first, each tagged. */
+    function interspersed() {
+      var staging = [], resolved = [];
+      order.forEach(function (code) { var parts = split(code); staging = staging.concat(parts.staging); resolved = resolved.concat(parts.resolved); });
+      return "<section class=\"country\" data-country=\"all\"><h2>Every country</h2>" + lists(staging.sort(byWait), resolved.sort(byNewest), true) + "</section>";
+    }
+
+    document.getElementById("country-filters").addEventListener("click", function (e) {
+      var button = e.target.closest && e.target.closest("button.filter");
+      if (!button) return;
+      country = button.dataset.country;
+      keepInUrl();
+      render();
+    });
 
     // A type's filter picks it, or lets it go; "all" lets every type go — the rows listed at once, not on the next poll.
     document.getElementById("filters").addEventListener("click", function (e) {
@@ -381,8 +426,7 @@
       if (!button) return;
       var t = button.dataset.type;
       if (!t) picked = {}; else if (picked[t]) delete picked[t]; else picked[t] = true;
-      var only = TYPES.filter(function (k) { return picked[k]; }).join(",");
-      history.replaceState(null, "", only ? "#only=" + only : location.pathname + location.search);
+      keepInUrl();
       render();
     });
 
