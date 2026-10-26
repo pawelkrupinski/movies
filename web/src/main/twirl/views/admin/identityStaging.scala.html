@@ -84,7 +84,7 @@
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
     — every country's clusters whose take still waits on an answer, and every match decided or changed in the last
     7 days (decided: a new cluster's listings; joined: new listings joining a cluster already on the site; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
-    Pick types above the countries to list only those; open a row for its questions, and a move's row for what the
+    Pick types above the countries to list only those (hover one for what it means); open a row for its questions, and a move's row for what the
     listings held before and why, beside what they hold now and why.</div>
   <div class="filters" id="filters"></div>
   <div id="countries"></div>
@@ -100,6 +100,18 @@
     var skew = 0;            // client now − server now
     // the row types a filter picks: a staging cluster's, else its resolution; none picked lists every type
     var TYPES = ["staging", "settled", "regrouped", "decided", "joined", "gained", "lost", "changed"];
+    // what each type means, shown on its filter's hover
+    var MEANS = {
+      "": "every type",
+      staging: "a cluster whose take still waits on an answer: a model gap, an open question or TMDB",
+      settled: "a cluster that waited and waits on nothing now, with the take it got",
+      regrouped: "a cluster that waited and whose listings no longer form it: they moved to another cluster, or left",
+      decided: "a cluster of new listings decided between two publishes, never seen waiting: most new films",
+      joined: "new listings joining a match already on the site",
+      gained: "listings that had no film and have one now: a late answer or new data",
+      lost: "listings that had a film and have none now",
+      changed: "listings whose film moved from one film to another: a late answer or new data"
+    };
     var MOVES = ["gained", "lost", "changed"];
     var picked = {};         // type → true while picked; kept in the URL's #only= so a link keeps it
     (location.hash.match(/only=([a-z,]*)/) || [, ""])[1].split(",").forEach(function (t) { if (TYPES.indexOf(t) >= 0) picked[t] = true; });
@@ -324,9 +336,9 @@
       order.forEach(function (code) {
         Object.keys(state[code].clusters).forEach(function (k) { var t = typeOf(state[code].clusters[k]); counted[t] = (counted[t] || 0) + 1; });
       });
-      var filters = "<button class=\"filter" + (Object.keys(picked).length ? "" : " on") + "\" data-type=\"\">all</button>" +
+      var filters = "<button class=\"filter" + (Object.keys(picked).length ? "" : " on") + "\" data-type=\"\" title=\"" + MEANS[""] + "\">all</button>" +
         TYPES.map(function (t) {
-          return "<button class=\"filter" + (picked[t] ? " on" : "") + "\" data-type=\"" + t + "\"><span class=\"r-" + t + "\">" + t +
+          return "<button class=\"filter" + (picked[t] ? " on" : "") + "\" data-type=\"" + t + "\" title=\"" + esc(MEANS[t]) + "\"><span class=\"r-" + t + "\">" + t +
             "</span><span class=\"n\">" + (counted[t] || 0) + "</span></button>";
         }).join("");
       var html = order.map(function (code) {

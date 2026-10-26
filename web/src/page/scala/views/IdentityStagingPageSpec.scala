@@ -191,7 +191,7 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     }
   }
 
-  it should "list only the picked types, and say what a moved take was before and why, beside what it is now and why" in {
+  it should "list only the picked types, each saying on hover what it means, and say what a moved take was before and why, beside what it is now and why" in {
     val before = StagedTake(Some(1), Some("Belle (2013)"), "OwnMatch", 0.71,
       explanation = Seq("best tmdb 1 at 71.0%", "decided by resolver:title-year", "runner-up then: tmdb 2 Belle (2021) — the film taken now"))
     val after  = StagedTake(Some(2), Some("Belle (2021)"), "Agreed", 0.92, explanation = Seq("agreed: imdb, wiki name tmdb 2"))
@@ -208,6 +208,11 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.waitFor(s"document.querySelector('$section details.cluster[data-id=\"de|e1@3/changed/1\"]') !== null")
       titles should (include ("Belle") and include ("Oppenheimer") and include ("Der Pate"))
       val all = rows
+      def hover(t: String) = page.evalString(s"document.querySelector('#filters button.filter[data-type=\"$t\"]').title")
+      hover("staging") should include ("still waits")
+      hover("changed") should include ("one film to another")
+      hover("joined") should include ("already on the site")
+      page.evalInt("Array.from(document.querySelectorAll('#filters button.filter')).filter(b => !b.title).length") shouldBe 0
 
       page.eval("document.querySelector('#filters button.filter[data-type=changed]').click()")
       page.waitFor(s"document.querySelectorAll('$section details.cluster').length === 1")
