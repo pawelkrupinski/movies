@@ -187,7 +187,9 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       "staging"     -> Inert("the staging screen"), "keyStore" -> Inert("names: no verdict is found by its key"),
       "correctionPostersAtOnce" -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "correctionsPerApply"     -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
-      "backfillPerApply"        -> Inert("a budget: delays a decision, never moves its result"))
+      "backfillPerApply"        -> Inert("a budget: delays a decision, never moves its result"),
+      "pressed"             -> Inert("when the full validation is put off: it only reads a kept verdict again"),
+      "fullValidationEvery" -> Inert("how often a kept verdict is read again whole: a drift found is decided again"))
   }
 
   "The agreement stage's parameters" should "each say how they can move a verdict" in {
