@@ -584,3 +584,40 @@ groups:
             `fleet_host_pace`) or check whether the provider cut the plan's limit; see the
             `external-api-rate-limits` skill in the movies repo and the panel "Calls per external
             service" on the kinowo-http dashboard.
+
+      # -----------------------------------------------------------------------------------------
+      # A HOST'S CIRCUIT BREAKER THAT WILL NOT CLOSE. 2026-10-25 22:18Z: Helios's API
+      # (restapi.helios.pl) timed out, HostCircuitBreakerHttpFetch opened its breaker, and every
+      # half-open probe failed until ~06:17Z. For eight hours all 52 Helios cinemas got incomplete
+      # listings (the ScrapeHealth breadth guard rejects the thin result, so nothing is pruned) and
+      # the only visible trace was the breadth-reject rate on worker-diag panel 25 -- an effect, not
+      # the cause. This alerts on the cause.
+      #
+      # `kinowo_worker_http_circuit_open{country,leg,host}` is 1 per host whose breaker has tripped
+      # and not yet been answered, and ABSENT otherwise (HttpBreakerMetrics), so it exists only for
+      # the outage and its cardinality is the outage's. It is deliberately not `breaker_open_hosts`:
+      # that counts hosts inside their cooldown and drops to 0 in every half-open gap, which would
+      # keep resetting a 1h `for:`. `last_over_time[10m]` bridges the ~3 minute scrape gap of a worker
+      # restart, which would otherwise restart the hold. A host that heals ends the series; 10m later
+      # the alert resolves.
+      #
+      # `warning`: scraping of the OTHER hosts is fine and listings are held rather than wrong. The
+      # name starts with `Worker`, so alertmanager routes it to telegram-and-email.
+      #
+      # NOT REPLAYED: the metric is new, so there is no history. A wide proxy outage (`leg=decodo`)
+      # can open many hosts at once and fires one alert per host.
+      - alert: WorkerHttpHostCircuitOpen
+        expr: max by (country, leg, host) (last_over_time(kinowo_worker_http_circuit_open[10m])) == 1
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $labels.host }} has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
+          description: >-
+            Every call to {{ $labels.host }} ({{ $labels.leg }} leg) has been fast-failing for an
+            hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped
+            from that host return incomplete listings, which the ScrapeHealth breadth guard rejects,
+            so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25
+            Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then
+            the "Circuit OPEN for {{ $labels.host }}" WARN lines for the last failure reason; the
+            breadth-reject rate on worker-diag panel 25 shows the listings being held.

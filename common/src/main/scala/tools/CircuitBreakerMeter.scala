@@ -11,6 +11,8 @@ package tools
 trait CircuitBreakerMeter {
   /** Read `openHosts` whenever the metric is sampled — called once, as the breaker is built. */
   def watch(openHosts: () => Int): Unit
+  /** Read the hosts whose breaker has not recovered whenever sampled — called once, as the breaker is built. */
+  def watchHosts(hosts: () => Seq[String]): Unit = ()
   /** A host's breaker opened (closed → open; a failed half-open probe is not a new opening). */
   def opened(): Unit
 }

@@ -9,6 +9,7 @@ import java.time.{Duration => JDuration, Instant}
 import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 /** Thrown — fast, with NO wire call — when a host's breaker is OPEN. An
  *  `IOException` so every caller that already degrades on a fetch failure (cinema
@@ -88,6 +89,13 @@ class HostCircuitBreakerHttpFetch(
     breakers.values.stream.filter(_.openUntil.exists(_.isAfter(at))).count().toInt
   }
   meter.watch(() => openHosts)
+
+  /** The hosts that have not recovered: tripped and not yet answered. Unlike [[openHosts]] this holds
+   *  through the half-open stretches between failed probes, so an outage the breaker keeps absorbing
+   *  reads as one unbroken spell. */
+  def unrecoveredHosts: Seq[String] =
+    breakers.asScala.collect { case (host, b) if b.openUntil.isDefined => host }.toSeq.sorted
+  meter.watchHosts(() => unrecoveredHosts)
 
   private def hostOf(url: String): Option[String] =
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))

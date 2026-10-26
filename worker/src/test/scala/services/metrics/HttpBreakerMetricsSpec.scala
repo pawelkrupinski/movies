@@ -39,4 +39,30 @@ class HttpBreakerMetricsSpec extends AnyFlatSpec with Matchers {
     clock.advanceSeconds(120)   // cooldown over: half-open, no longer open
     metrics.openHosts("uk", HttpBreakerMetrics.Leg.Decodo) shouldBe 0
   }
+
+  it should "name each unrecovered host, through the half-open gap, and drop it once it answers" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new HttpBreakerMetrics(Seq("pl"), registry)
+    var healthy  = false
+    val flaky: HttpFetch = new HttpFetch {
+      def get(url: String): String =
+        if (healthy) "ok" else throw new HttpStatusException(503, "GET", url, None)
+      def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val breaker = new HostCircuitBreakerHttpFetch(flaky, failureThreshold = 2, clock = clock, report = Some(_ => ()),
+      meter = metrics.meterFor("pl", HttpBreakerMetrics.Leg.Scrape))
+
+    PrometheusExposition.render(registry) should not include "kinowo_worker_http_circuit_open{"
+
+    (1 to 2).foreach(_ => intercept[Exception](breaker.get("https://restapi.helios.pl/x")))
+    PrometheusExposition.render(registry) should include (
+      """kinowo_worker_http_circuit_open{country="pl",host="restapi.helios.pl",leg="scrape"} 1""")
+
+    clock.advanceSeconds(120)   // cooldown over, no call since: half-open, but not recovered
+    PrometheusExposition.render(registry) should include ("""host="restapi.helios.pl"""")
+
+    healthy = true
+    breaker.get("https://restapi.helios.pl/x")
+    PrometheusExposition.render(registry) should not include "kinowo_worker_http_circuit_open{"
+  }
 }

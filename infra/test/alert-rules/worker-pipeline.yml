@@ -760,3 +760,26 @@ tests:
       - eval_time: 80m
         alertname: WorkerExternalServiceRateLimited
         exp_alerts: []
+
+  # A HOST'S BREAKER THAT WILL NOT CLOSE (the 2026-10-25 Helios outage). Helios's series exists from
+  # t=10m and never ends, across a worker-restart scrape gap at 40m that `last_over_time` must bridge:
+  # quiet before the hour is held, firing after. A second host's breaker opens at t=10m and heals at
+  # 40m (series stops): it never reaches an hour. A healthy fleet has no such series at all.
+  - interval: 1m
+    name: a breaker open for an hour fires across a restart gap, a short one does not
+    input_series:
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="restapi.helios.pl",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="blip.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale _x80'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: WorkerHttpHostCircuitOpen
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: WorkerHttpHostCircuitOpen
+        exp_alerts:
+          - exp_labels: { severity: warning, country: pl, leg: scrape, host: restapi.helios.pl }
+            exp_annotations:
+              summary: "pl: restapi.helios.pl has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
+              description: "Every call to restapi.helios.pl (scrape leg) has been fast-failing for an hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for restapi.helios.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."

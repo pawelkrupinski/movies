@@ -1362,7 +1362,7 @@
       "id": 22,
       "type": "timeseries",
       "title": "Circuit breakers \u2014 hosts open now, by leg",
-      "description": "kinowo_worker_http_breaker_open_hosts: hosts whose per-host breaker is OPEN (every call fast-fails). decodo = the residential-proxy leg failing for those destinations (calls fall straight through to direct); scrape = cinema sites down; enrich = metadata/rating APIs (TMDB, IMDb, \u2026) down.",
+      "description": "kinowo_worker_http_breaker_open_hosts: hosts whose per-host breaker is OPEN (every call fast-fails). decodo = the residential-proxy leg failing for those destinations (calls fall straight through to direct); scrape = cinema sites down; enrich = metadata/rating APIs (TMDB, IMDb, \u2026) down. kinowo_worker_http_circuit_open (by host): a host whose breaker has not recovered since it opened, half-open probes failing included \u2014 WorkerHttpHostCircuitOpen fires once one stays so for an hour.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -1394,6 +1394,15 @@
           "expr": "sum by (country, leg) (kinowo_worker_http_breaker_open_hosts{country=~\"$country\"})",
           "legendFormat": "{{country}} {{leg}}",
           "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "expr": "max by (country, leg, host) (kinowo_worker_http_circuit_open{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{leg}} {{host}} unrecovered",
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
