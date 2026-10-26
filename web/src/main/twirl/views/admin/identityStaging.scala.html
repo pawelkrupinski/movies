@@ -81,6 +81,12 @@
     .why li::before { content: "· "; color: var(--faint); }
     .why .key { display: block; padding-left: 12px; text-indent: 0; }
     .why .key .label { display: inline-block; min-width: 5.5em; }
+    .why .key.signal { padding-left: 24px; }
+    .why .key.signal .label { min-width: 13em; }
+    .weight { font-variant-numeric: tabular-nums; }
+    .weight.for { color: #7fbf8a; }
+    .weight.against { color: #d9826e; }
+    .out { margin-left: 6px; font-size: 11px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .filter { font: inherit; font-size: 11px; color: #aaa; background: #151515; border: 1px solid #262626; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
     .filter:hover { border-color: #3a3a3a; }
@@ -183,7 +189,10 @@
     }
 
     /** A listing as a line names it: its billed title, and the venue billing it. */
-    function atVenue(l) { return esc(l.rawTitle) + " <span class=\"venue\">@@ " + esc(l.venue) + "</span>"; }
+    function atVenue(l) {
+      var page = (l.facts || []).filter(function (f) { return f.name === "page"; })[0];
+      return (page ? out(page.value, l.rawTitle) : esc(l.rawTitle)) + " <span class=\"venue\">@@ " + esc(l.venue) + "</span>";
+    }
     function takeText(t) {
       if (t.film != null) return (t.title ? t.title : "tmdb " + t.film) + " · " + t.basis + " " + Math.round(t.confidence * 100) + "%";
       if (t.fallback) return t.fallback + " · " + t.basis;
@@ -207,7 +216,7 @@
       if (!cl.questions.length) return "<div class=\"line label\">no agreement question" +
         (cl.modelGaps ? "; the model waits on " + cl.modelGaps + " gap(s)" : "") + (cl.onTmdb ? "; the fill waits on TMDB" : "") + "</div>";
       var rows = cl.questions.map(function (q) {
-        return "<tr class=\"question\"><td>" + esc(q.kind) + "</td><td>" + esc(q.asker) + "</td><td class=\"q-text\">" + esc(q.text) +
+        return "<tr class=\"question\"><td>" + esc(q.kind) + "</td><td>" + esc(q.asker) + "</td><td class=\"q-text\">" + (answerUrl(q.text) ? out(answerUrl(q.text), q.text) : esc(q.text)) +
           "</td><td class=\"o-" + esc(q.outcome) + "\">" + outcomeText(q) + "</td></tr>";
       }).join("");
       var hidden = cl.questionCount > cl.questions.length ? "<div class=\"line label\">… and " + (cl.questionCount - cl.questions.length) + " more</div>" : "";
@@ -232,22 +241,79 @@
         return { at: at, fields: [["venue", m[1]], ["title", m[2]]].concat(m[3] ? [["year", m[3]]] : [], m[4] ? [["directors", m[4]]] : []) };
       return null;
     }
+    /** A link out, opened beside the page. */
+    function out(url, text) { return "<a href=\"" + esc(url) + "\" target=\"_blank\" rel=\"noopener\">" + esc(text) + "</a>"; }
+    function tmdbUrl(id) { return "https://www.themoviedb.org/movie/" + id; }
+    /** `text` escaped, each "tmdb N" in it a link to that film on TMDB. */
+    function tmdbLinked(text) {
+      return esc(text).replace(/tmdb (\d+)/g, function (all, id) { return out(tmdbUrl(id), all); });
+    }
+    /** The page a question asks (`family|kind|subject`): a record's own page — the ratings sites' pages, IMDb's, the
+     *  Wikidata item —, a title's search on that site, the poster itself; null where none is known. */
+    function answerUrl(text) {
+      var parts = text.split("|"), family = parts[0], kind = parts[1], subject = parts.slice(2).join("|"), q = encodeURIComponent(subject);
+      if (!subject) return null;
+      var records = {
+        imdb: "https://www.imdb.com/title/" + subject + "/", filmweb: "https://www.filmweb.pl/Film?id=" + subject,
+        rt: "https://www.rottentomatoes.com/m/" + subject, metacritic: "https://www.metacritic.com/movie/" + subject + "/",
+        wiki: "https://www.wikidata.org/wiki/" + subject, tmdb: tmdbUrl(subject)
+      };
+      var searches = {
+        imdb: "https://www.imdb.com/find/?s=tt&q=" + q, filmweb: "https://www.filmweb.pl/search#/film?query=" + q,
+        rt: "https://www.rottentomatoes.com/search?search=" + q, metacritic: "https://www.metacritic.com/search/" + q + "/?category=2",
+        wiki: "https://www.wikidata.org/w/index.php?search=" + q, tmdb: "https://www.themoviedb.org/search/movie?query=" + q
+      };
+      if (/^https?:\/\//.test(subject)) return subject;
+      if (kind === "record") return records[family] || null;
+      if (kind === "title") return searches[family] || null;
+      return null;
+    }
+    /** A named value as a facts table shows it: a film's id on TMDB, an IMDb id, a page or poster, a catalogue id, linked. */
+    function factValue(name, value) {
+      if (name === "tmdb" && /^\d+$/.test(value)) return out(tmdbUrl(value), value);
+      if (name === "imdb" && /^tt\d+$/.test(value)) return out("https://www.imdb.com/title/" + value + "/", value);
+      if (/^https?:\/\//.test(value)) return out(value, value);
+      if (name === "catalogue ids") return value.split(", ").map(function (c) {
+        var m = c.match(/^(\w+):(.+)$/), url = m && answerUrl(m[1] + "|record|" + m[2]);
+        return url ? out(url, c) : esc(c);
+      }).join(", ");
+      return tmdbLinked(value);
+    }
+    /** An own match's line, field by field: the listing as the resolver names it ('title' [year] {directors} ×listings),
+     *  the film it took and at what confidence, the rule that took it, and each signal's value and weight, one a line. */
+    function ownMatch(line) {
+      var m = line.match(/^'(.*)'(?: \[(\d{4})\])?(?: \{(.*?)\})?(?: ×(\d+))?: own match (\d+) at ([\d.]+%)(.*?)(?: by (\S+))? \(([^()]*(?:\([^()]*\)[^()]*)*)\)$/);
+      if (!m) return null;
+      var key = function (label, value, cls) { return "<span class=\"key" + (cls ? " " + cls : "") + "\"><span class=\"label\">" + label + "</span> " + value + "</span>"; };
+      var signals = [], sm, re = /(\S+?)=(\S*?)\(([+-]?[\d.]+)\)/g;
+      while ((sm = re.exec(m[9])) !== null) {
+        var w = parseFloat(sm[3]);
+        signals.push(key(esc(sm[1]), esc(sm[2]) + " <span class=\"weight " + (w >= 0 ? "for" : "against") + "\">" + esc(sm[3]) + "</span>", "signal"));
+      }
+      return "own match" + key("listing", "'" + esc(m[1]) + "'") + (m[2] ? key("year", esc(m[2])) : "") + (m[3] ? key("directors", esc(m[3])) : "") +
+        (m[4] ? key("listings", esc(m[4])) : "") + key("film", out(tmdbUrl(m[5]), "tmdb " + m[5]) + " at " + esc(m[6]) + esc(m[7])) +
+        (m[8] ? key("by", esc(m[8])) : "") + (signals.length ? key("signals", "") + signals.join("") : key("signals", esc(m[9])));
+    }
     function keyed(line) {
+      var matched = ownMatch(line);
+      if (matched) return matched;
       var k = keyFields(line);
-      if (!k) return esc(line);
-      return esc(line.slice(0, k.at).trim()) + k.fields.map(function (f) {
-        var value = f[0] === "page" ? "<a href=\"" + esc(f[1]) + "\" target=\"_blank\" rel=\"noopener\">" + esc(f[1]) + "</a>" : esc(f[1]);
+      if (!k) return tmdbLinked(line);
+      return tmdbLinked(line.slice(0, k.at).trim()) + k.fields.map(function (f) {
+        var value = f[0] === "page" ? out(f[1], f[1]) : esc(f[1]);
         return "<span class=\"key\"><span class=\"label\">" + f[0] + "</span> " + value + "</span>";
       }).join("");
     }
+    /** A link to `film` on TMDB beside a line naming it; none for no film. */
+    function onTmdb(film) { return film != null ? "<span class=\"out\">" + out(tmdbUrl(film), "TMDB ↗") + "</span>" : ""; }
     function body(cl) {
       var listings = cl.listings.map(atVenue).join("<br>") +
         (cl.listingCount > cl.listings.length ? "<br>… and " + (cl.listingCount - cl.listings.length) + " more" : "");
       var moved = isMove(cl);
       var from = moved ? "<div class=\"line from\"><span class=\"label\">from</span> <span class=\"move-from\">" + esc(beforeText(cl)) +
-        "</span></div>" + (cl.before ? why(cl.before, "why then") : "") : "";
+        "</span>" + onTmdb(cl.before ? cl.before.film : cl.was) + "</div>" + (cl.before ? why(cl.before, "why then") : "") : "";
       return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" + (moved ? whatChanged(cl) : "") + from +
-        "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> <span class=\"film\">" + esc(takeText(cl.take)) + "</span></div>" +
+        "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> <span class=\"film\">" + esc(takeText(cl.take)) + "</span>" + onTmdb(cl.take.film) + "</div>" +
         why(cl.take, moved ? "why now" : "why") + evidence(cl, moved) +
         "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
         " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
@@ -265,7 +331,7 @@
         var values = at.map(function (m) { return m[n]; });
         var differs = compared && values.filter(function (v) { return v != null; }).some(function (v, _, all) { return v !== all[0]; });
         return "<tr><td class=\"name\">" + esc(n) + "</td>" + values.map(function (v) {
-          return v == null ? "<td class=\"none\">—</td>" : "<td" + (differs ? " class=\"differs\"" : "") + ">" + esc(v) + "</td>";
+          return v == null ? "<td class=\"none\">—</td>" : "<td" + (differs ? " class=\"differs\"" : "") + ">" + factValue(n, v) + "</td>";
         }).join("") + "</tr>";
       }).join("");
       return "<table class=\"facts\">" + head + rows + "</table>";

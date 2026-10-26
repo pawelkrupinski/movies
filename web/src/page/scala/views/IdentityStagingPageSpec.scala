@@ -291,4 +291,36 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       page.waitFor("document.querySelectorAll('section.country').length === " + models.Country.all.size)
     }
   }
+
+  it should "split an own match's line into its fields and signals, one a line, and link each film, page and answer out" in {
+    val line = "'Ladies Night - Przepis na święta' [2026] {Magdalena Nieć} ×23: own match 1601776 at 94.6% by favoured-calibrated " +
+      "(venues.corroborating=29(+5.06) director=same_person(+4.22) search.rank=1(+3.48) year.delta=0(+3.40) popularity.log2=-1(-2.04))"
+    val page = "https://kino.example/ladies-night"
+    val take = StagedTake(Some(1601776), Some("Ladies Night"), "OwnMatch", 0.946, explanation = Seq(line),
+      filmFacts = Seq(StagedFact("tmdb", "1601776"), StagedFact("imdb", "tt3456789")))
+    val ladies = cluster("l1", "Kino Muza", "Ladies Night - Przepis na święta",
+      Seq(question("imdb|record|tt3456789", StagedQuestion.Answered), question("filmweb|title|Ladies Night", StagedQuestion.Answered)),
+      resolvedAt = Some(clock.millis()))
+      .copy(take = take, resolution = Some(StagedCluster.Decided),
+        listings = Seq(StagedListing("Kino Muza", "Ladies Night - Przepis na święta", facts = Seq(StagedFact("page", page)))))
+    staging.publish("uk", Nil, Nil, beat(0), resolved = Seq(ladies), keptFor = java.time.Duration.ofDays(7))
+    onPage { p =>
+      val row = "section[data-country=uk] details.cluster[data-id=\"uk|l1\"]"
+      p.waitFor(s"document.querySelector('$row') !== null")
+      p.eval(s"document.querySelector('$row > summary').click()")
+      p.waitFor(s"document.querySelector('$row').open")
+      val keys = p.evalString(s"Array.from(document.querySelector('$row ul.why li').querySelectorAll('.key')).map(e => e.textContent).join('\\n')")
+      keys.linesIterator.toSeq shouldBe Seq("listing 'Ladies Night - Przepis na święta'", "year 2026", "directors Magdalena Nieć",
+        "listings 23", "film tmdb 1601776 at 94.6%", "by favoured-calibrated", "signals ",
+        "venues.corroborating 29 +5.06", "director same_person +4.22", "search.rank 1 +3.48", "year.delta 0 +3.40", "popularity.log2 -1 -2.04")
+      p.evalString(s"document.querySelector('$row ul.why .key.signal:last-child .weight').className") shouldBe "weight against"
+      def hrefs(selector: String) =
+        p.evalString(s"Array.from(document.querySelectorAll('$row $selector a')).map(a => a.href).join(' ')")
+      hrefs("ul.why") should include ("https://www.themoviedb.org/movie/1601776")
+      hrefs(".line.to") should include ("https://www.themoviedb.org/movie/1601776")
+      hrefs("tr.question") should (include ("https://www.imdb.com/title/tt3456789/") and include ("https://www.filmweb.pl/search#/film?query=Ladies%20Night"))
+      hrefs("table.facts") should (include ("https://www.themoviedb.org/movie/1601776") and include ("https://www.imdb.com/title/tt3456789/") and include (page))
+      hrefs(".line:first-child") should include (page)   // the listing's own page
+    }
+  }
 }
