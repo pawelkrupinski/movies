@@ -61,11 +61,9 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     withClue("histories whose names parted from the twin's: ") { parted.get should be > cases.size * Seeds.size / 2 }
   }
 
-  // Pending: a restart seeds `AgreementStage.unreached` (a settled verdict's never-answered questions, asked every pass)
-  // under the key each verdict was FILED by, and a cluster reads it under its key now — a verdict found by its digest under
-  // a renumbered or lost key leaves its questions unasked, or another cluster's asked. Asking only (no take or wait moves);
-  // deriving them from the receipt's unanswered entries (docs/design/identity-no-drift.md, audit row 15) cures it.
-  it should "ask what the twin asks" in pendingUntilFixed {
+  // A settled verdict's never-answered questions are read off its receipt (`AgreementStage.unreached`), never kept by a key:
+  // a restart seeded them under the key each verdict was filed by until 2026-10-25, and a renumbered key asked another's.
+  it should "ask what the twin asks" in {
     every(Budget.Production)(_.namesReadByNothing(asking = true, parted = () => ())) shouldBe empty
   }
 
