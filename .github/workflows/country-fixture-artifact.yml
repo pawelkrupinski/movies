@@ -82,6 +82,9 @@ jobs:
                   cache: sbt
 
             - uses: sbt/setup-sbt@v1
+              with:
+                  sbt-runner-version: 2.0.10 # the job image's (SetupSbtRunnerPinSpec)
+                  disk-cache: 'false'
 
             # Share the same zinc/target cache shape as ci.yml so a cold compile
             # is the exception, not the rule.

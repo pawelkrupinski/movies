@@ -56,6 +56,7 @@ runs:
     # nothing is saved under any key until it moves to sbt 2; the restore is then a cheap miss.
     - uses: sbt/setup-sbt@v1
       with:
+        sbt-runner-version: 2.0.10 # the job image's (SetupSbtRunnerPinSpec)
         disk-cache: 'false'
     - name: Key the sbt disk cache
       id: sbt-disk-cache

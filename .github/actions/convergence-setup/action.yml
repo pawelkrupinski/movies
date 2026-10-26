@@ -215,6 +215,7 @@ runs:
     # leg in its key's workspace glob.
     - uses: sbt/setup-sbt@v1
       with:
+          sbt-runner-version: 2.0.10 # the job image's (SetupSbtRunnerPinSpec)
           disk-cache: false
 
     # The key is hashed HERE, in a step of its own: the runner re-evaluates a cache step's
