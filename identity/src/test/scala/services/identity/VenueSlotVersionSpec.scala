@@ -12,7 +12,7 @@ import services.identity.VersionedSources.{resource, unlexable}
  *  deploy from 2026-10-04 02:27 on moved it: no restart after one reused a slot (a US first tick 62–69 s, not ~14). */
 class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
 
-  private lazy val digested: Seq[String] = resource("/venue-slot-sources.txt").linesIterator.toSeq
+  private lazy val digested: Seq[String] = resource("/services/identity/venue-slot-sources.txt").linesIterator.toSeq
 
   "the venue slot version" should "digest the code that builds a slot" in {
     digested should contain allOf ("identity/src/main/scala/services/identity/VenueSlots.scala", "common/src/main/scala/services/movies/CinemaSlotBuilder.scala",
@@ -39,6 +39,6 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
 
   it should "be what the memo's environment is made under" in {
     VenueSlotMemo.codeVersion should not be "unknown"
-    VenueSlotMemo.codeVersion shouldBe resource("/venue-slot-version.txt")
+    VenueSlotMemo.codeVersion shouldBe resource("/services/identity/venue-slot-version.txt")
   }
 }

@@ -14,7 +14,7 @@ import java.nio.file.Files
  *  to anything it does reach must. */
 class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
 
-  private lazy val digested: Seq[String] = resource("/identity-rules-sources.txt").linesIterator.toSeq
+  private lazy val digested: Seq[String] = resource("/services/identity/identity-rules-sources.txt").linesIterator.toSeq
 
   "the rules version" should "digest the resolver, what it reaches and the data it reads" in {
     digested should contain allOf ("identity/src/main/scala/services/identity/IncrementalResolver.scala", "identity/src/main/scala/services/identity/IdentityModelStore.scala",
@@ -49,7 +49,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
     val ids = Set("IdAssigner", "FilmIdCounters", "IdSeeding").map(name => s"identity/src/main/scala/services/identity/$name.scala")
     ids.filterNot(path => Files.exists(main.resolve(path))) shouldBe empty
     digested.filter(ids) shouldBe empty
-    resource("/agreement-rules-sources.txt").linesIterator.filter(ids).toSeq shouldBe empty
+    resource("/services/identity/agreement-rules-sources.txt").linesIterator.filter(ids).toSeq shouldBe empty
   }
 
   private def read(edit: (String, String => String)*)(path: String): Array[Byte] = {

@@ -17,8 +17,19 @@ object ClasspathResource {
   /** A table's rows: its lines trimmed, blank lines and `#` comments left out. */
   def rows(lines: Iterator[String]): Iterator[String] = lines.map(_.trim).filter(line => line.nonEmpty && !line.startsWith("#"))
 
-  /** The build's version stamp at `path` (trimmed); "unknown" when it is missing. */
-  def version(path: String): String = read(path)(in => new String(in.readAllBytes(), StandardCharsets.UTF_8).trim).getOrElse("unknown")
+  /** Where the build writes its stamps (`build.sbt`): under the identity module's own package. At the classpath's root,
+   *  a stamp an older build left in another module's output (common's, which generated them until the resolver moved
+   *  into its own module) came first on the worker's classpath and shadowed the build's own: the rules versions read
+   *  stood still while the rules changed, and no stored family or verdict was decided again. */
+  val Stamps = "services/identity"
+
+  /** The build's version stamp `name` (`<name>-version.txt`, trimmed). Missing, it THROWS: a constant "unknown" would
+   *  keep every stored family and verdict across any change of the rules. */
+  def stamp(name: String): String = {
+    val path = s"$Stamps/$name-version.txt"
+    read(path)(in => new String(in.readAllBytes(), StandardCharsets.UTF_8).trim)
+      .getOrElse(throw new IllegalStateException(s"$path is not on the classpath: the build generates it (build.sbt)"))
+  }
 
   private def read[A](path: String)(f: java.io.InputStream => A): Option[A] =
     Option(getClass.getClassLoader.getResourceAsStream(path.stripPrefix("/"))).map(in => try f(in) finally in.close())

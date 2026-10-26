@@ -284,8 +284,10 @@ lazy val identity = (project in file("identity"))
         val sources   = IdentityRulesSources.of(modules, roots, leaves)
         val resources = IdentityRulesSources.resources(repo, modules.map(_.name), sources.filterNot(leaves))
         val paths     = sources ++ resources
-        val version = (Compile / resourceManaged).value / s"$name-version.txt"
-        val listed  = (Compile / resourceManaged).value / s"$name-sources.txt"
+        // under the module's own package (`ClasspathResource.Stamps`): a stale copy elsewhere can never shadow it
+        val stamps  = (Compile / resourceManaged).value / "services" / "identity"
+        val version = stamps / s"$name-version.txt"
+        val listed  = stamps / s"$name-sources.txt"
         IO.write(version, kinowo.build.SourceDigest.of(paths, path => IO.readBytes(repo / path)))
         IO.write(listed, paths.mkString("\n"))
         Seq(version, listed)

@@ -6,7 +6,7 @@ package services.identity
  *  the build: a deploy that changes none of them keeps every stored family. A source is digested as its code, not its
  *  comments or spare whitespace (`project/SourceDigest.scala`), so an edit to a comment re-resolves nothing. */
 object IdentityRules {
-  val Resource = "/identity-rules-version.txt"
+  val Resource = s"/${ClasspathResource.Stamps}/identity-rules-version.txt"
 
-  lazy val codeVersion: String = ClasspathResource.version(Resource)
+  lazy val codeVersion: String = ClasspathResource.stamp("identity-rules")
 }
