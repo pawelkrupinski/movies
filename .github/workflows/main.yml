@@ -7,21 +7,16 @@ on:
     # is nothing here to force.
     workflow_dispatch:
 
-# ONE RUNNING, ONE PENDING; NEVER CANCELLED (2026-10-22). A push's run finishes and publishes; a newer
-# push queues behind it, and a newer push replaces it while it waits (github.com does this itself; so does
-# our patched Forgejo, whose stock 15 queued the group FIFO: infra docs/forgejo-actions.md). So under a
-# burst of pushes the run in flight still lands, and the next run covers every
-# push since -- the tier gates measure from the deployed MARKER, so a skipped push's commits stay inside
-# the next run's interval.
-#
-# It used to cancel the run in flight (`cancel-in-progress: true`), for GitHub Free's 20-job budget.
-# With ~10 agents pushing to the self-hosted Forgejo that meant 39 of 51 runs on 2026-10-21 were
-# cancelled (906 runner-minutes thrown away) and only 8 completed: builds and deploys rarely landed.
-# The job-level `publish-*` lanes stay as a second guard against two publishes racing a tag.
+# A NEWER PUSH CANCELS THE RUN IN FLIGHT (2026-10-26, owner): only main's newest commit is worth testing and
+# deploying. Main cancelled once before (for GitHub Free's 20-job budget) and stopped on 2026-10-22, when ~10
+# agents pushed straight to main: 39 of 51 runs on 2026-10-21 were cancelled and deploys rarely landed. Agents now
+# collect their changes on one `waiting` branch while main is red and push it as one, so pushes are rare enough
+# again. A cancelled run's skipped commits are inside the next run's interval: the tier gates measure from the
+# deployed MARKER. The job-level `publish-*` lanes never cancel and still keep two publishes from racing a tag.
 # (WorkflowConcurrencyConventionSpec)
 concurrency:
     group: deploy-${{ github.ref }}
-    cancel-in-progress: false
+    cancel-in-progress: true
 
 # WHERE IMAGES GO, chosen by repository VARIABLES that exist only on the self-hosted Forgejo (set
 # 2026-10, after the GitHub suspension): IMAGE_REPO=registry.kinowo.net, REGISTRY_HOST=

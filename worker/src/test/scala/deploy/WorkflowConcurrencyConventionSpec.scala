@@ -23,7 +23,7 @@ import org.scalatest.matchers.should.Matchers
  *
  *  `cancel-in-progress` is NOT part of the convention: each workflow chooses it for its own reason and says so
  *  beside it (a recording's or a measurement's `false` keeps hours of paid-for work from being thrown away). The one
- *  fixed choice is Main's: it never cancels (below).
+ *  fixed choice is Main's: it cancels its run in flight (below).
  *
  *  A reusable workflow (`workflow_call`) declares none: the caller owns the lane, and a group named in the callee
  *  is shared by every call of it in one run, which then cancel each other (country-convergence-leg.yml).
@@ -34,10 +34,9 @@ import org.scalatest.matchers.should.Matchers
  *  Forgejo", live since 2026-10-22). So no workflow carries the retired self-supersede wiring any more: no
  *  `supersede` job, no `needs.supersede` gate, no .github/actions/supersede-check.
  *
- *  MAIN NEVER CANCELS (2026-10-22). It used to (`cancel-in-progress: true`, for GitHub Free's runner budget); on
- *  Forgejo with ~10 agents pushing, 39 of 51 Main runs on 2026-10-21 were cancelled (906 runner-minutes thrown
- *  away, 8 runs completed), so builds and deploys rarely landed. Now the run in flight finishes and publishes and
- *  only the newest waiting push runs next: github.com's one running, one pending.
+ *  MAIN CANCELS ITS RUN IN FLIGHT ON A NEWER PUSH (2026-10-26, owner): only main's newest commit is worth testing and
+ *  deploying. It did not from 2026-10-22 (with ~10 agents pushing straight to main, 39 of 51 Main runs on 2026-10-21
+ *  were cancelled and deploys rarely landed); agents now push one `waiting` branch at a time while main is red.
  *
  *  The one name outside the scheme is main.yml's `deploy-${{ github.ref }}`, older than the scheme: renaming it
  *  would buy nothing but a lane change under a queue. */
@@ -83,10 +82,10 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
     RepoFile.exists(".github/actions/supersede-check") shouldBe false
   }
 
-  /** Main's run in flight finishes and publishes; a newer push queues, and the server drops an older queued one. */
-  "Main" should "never cancel its run in flight" in {
+  /** A newer push to main cancels the Main run in flight: only the newest commit is tested and deployed. */
+  "Main" should "cancel its run in flight on a newer push" in {
     val main = workflows.collectFirst { case ("main", yml) => yml }.getOrElse(fail("no main.yml"))
-    nonCancelling(main) shouldBe true
+    nonCancelling(main) shouldBe false
   }
 
   /** NO JOB OF A MAIN RUN CANCELS ANOTHER RUN'S JOBS (2026-10-24). Our Forgejo creates a queued run's jobs `waiting`
