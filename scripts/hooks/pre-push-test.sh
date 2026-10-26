@@ -590,6 +590,11 @@ check "a tools-only push with one undeclared production commit in it is refused"
   "$(GH_IMC="[$red]" push "$gbase..$tools")"
 check "...naming only the production commit" "1 0" \
   "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err") $(grep -c "${tools:0:9} carries no Fixes-Red" "$gate/err")"
+# --checks-only (agentctl's `waiting` branch while main is red): every check, no red gate -- it is judged at the push.
+check "--checks-only runs the checks without the red gate, said out loud" "0 1 0" \
+  "$(cd "$grepo" && GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --checks-only "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?) $(grep -c 'red gate is not judged' "$gate/err") $(grep -c 'carries no Fixes-Red' "$gate/err")"
+check "...while --range over the same commits is refused" "1" \
+  "$(cd "$grepo" && GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>&1; echo $?)"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
 check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"

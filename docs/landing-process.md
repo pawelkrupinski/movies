@@ -24,7 +24,9 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
 - **An area touched: its local tests**, if they fit in 15 minutes on the laptop, warm: `identity` and `page` (measured
   times in stage 3). What does not fit (convergence, the takes measure, the integration suites) is main's.
 - **Merge on green = main green**: the red gate (stage 3, step 3). Tools-only commits and `Fixes-Red:` fixes land
-  while red, as before.
+  while red, as before. A production change while main is red WAITS: "when waiting for main to go green, merge all
+  waiting changes into one waiting branch (always use the same name) and merge it when main is green" (the owner,
+  2026-10-26) — `agentctl land` puts it on the local `waiting` branch and it lands with the others in one push (stage 2b).
 - **After merging, main's CI tests everything** (Main, the convergence on its lane, verify), and `agentctl land`
   watches Main and the convergence for your commit and tells you if they go red (stage 4).
 
@@ -36,7 +38,11 @@ flowchart TD
     L --> K[landing lock: one lander per repo]
     K --> F[fetch + rebase onto forgejo/main]
     F --> P[agentctl prepush-check: squash guard]
-    P --> D["scripts/hooks/pre-push --range forgejo/main..SHA<br/>red gate, path checks, basic + area tests"]
+    P --> G{main red and a production<br/>commit without Fixes-Red?}
+    G -- yes --> WB["cherry-pick onto the waiting branch<br/>pre-push --checks-only on the combined tip<br/>WAITING SHA"]
+    WB --> WP["processor: main green → rebuild waiting on main,<br/>dry run, ONE push, delete waiting"]
+    WP --> V
+    G -- no --> D["scripts/hooks/pre-push --range forgejo/main..SHA<br/>red gate, path checks, basic + area tests"]
     D -- fails --> N[NOT LANDED + the tail]
     D -- passes --> H["git push forgejo SHA:refs/heads/main<br/>→ the hook again: the stored pass is reused"]
     H --> V[LANDED SHA; lock released]
@@ -79,18 +85,39 @@ are green locally (CLAUDE.md, "Run the relevant test layers").
 4. `git rebase forgejo/main` (a conflict aborts the rebase and names the files);
 5. `prepush-check` (the squash guard): refuses when `forgejo/main...HEAD` returns more than 2 files to an older main
    version — what `git reset --soft` onto a moved main does (`git revert` commits are exempt for their own files);
-6. **check first**: `scripts/hooks/pre-push --range forgejo/main..<sha>` — the whole hook (stage 3) over exactly what
+6. **main red?** When ci-why's gate is red and a pushed commit touches a production path without a `Fixes-Red:`
+   naming a red run, the change goes onto the `waiting` branch instead (stage 2b) and land keeps running until it
+   lands. Tools-only and Fixes-Red changes go on, as the hook lets them;
+7. **check first**: `scripts/hooks/pre-push --range forgejo/main..<sha>` — the whole hook (stage 3) over exactly what
    will be pushed, pushing nothing. A failure is `NOT LANDED: the pre-push checks failed` and nothing is pushed;
-7. `git push forgejo <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`): the hook runs again
-   and reuses step 6's stored pass in seconds, so the push's ssh connection is never held open through minutes of
+8. `git push forgejo <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`): the hook runs again
+   and reuses step 7's stored pass in seconds, so the push's ssh connection is never held open through minutes of
    tests;
-8. on a push race (`non-fast-forward`, `fetch first`, …) refetch, rebase and retry from step 6, up to 3 retries;
-9. fetch and verify the commit is on main (ancestor, or patch-equivalent per `git cherry`): `LANDED <sha>`. The lock
+9. on a push race (`non-fast-forward`, `fetch first`, …) refetch, rebase and retry from step 6, up to 3 retries;
+10. fetch and verify the commit is on main (ancestor, or patch-equivalent per `git cherry`): `LANDED <sha>`. The lock
    is released;
-10. **the watch** (stage 4), unless `--no-watch`.
+11. **the watch** (stage 4), unless `--no-watch`.
 
 The hook's full output is in the scratchpad's `agentctl-land-<worktree>-<pid>.log`. Exit: 0 landed and watched
 green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's CI red.
+
+## Stage 2b: the `waiting` branch, while main is red
+
+`agentctl waiting status|cancel <id>|run` (`~/bin/AGENTCTL.md`, "waiting"):
+
+- **One branch, always `waiting`**, local to the main clone, in the worktree `~/projects/movies-wt-waiting`; it
+  exists only while changes wait.
+- **Joining it** (inside `land`, under the landing lock): the change's commits are cherry-picked onto `waiting`
+  (created from forgejo/main when missing) and `scripts/hooks/pre-push --checks-only forgejo/main..waiting` runs there
+  — every check but the red gate, over the combined tip: the basic tests and every touched area's. A conflict or a
+  failure rejects only that change, with the output; the others stay. Otherwise `WAITING <sha> (n changes queued on
+  waiting)`, the lock is released, and land waits for its change's verdict.
+- **Landing it**: one processor per repo (detached, locked) polls the gate. Once main is green it rebuilds `waiting` on
+  the current forgejo/main change by change (one that no longer applies is rejected alone), runs the hook's `--range`
+  dry run, pushes the whole branch in ONE push through the hook, and deletes the branch. Each waiting land then prints
+  `LANDED <sha>` and goes on to its watch (stage 4). A failing batch is searched prefix by prefix and only the first
+  failing change rejected.
+- **Not for**: tools-only changes and `Fixes-Red:` fixes (they land while red), or anything while main is green.
 
 ## Stage 3: the pre-push hook
 
@@ -154,6 +181,9 @@ timezonefinder, gh, curl, jq) **blocks** the push with the fix, never a skip. On
 install warns and passes: the gate's API unreachable, no Forgejo token, Docker or Xcode not running. GitOps manifests
 that cannot be fetched block (the checkout left behind is stale).
 
+**Checks without the gate.** `--checks-only A..B` is `--range A..B` minus the red gate (said in one line): what the
+`waiting` branch is checked with while main is red; the gate is judged when it is pushed.
+
 **Check-only mode.** `scripts/hooks/pre-push --range A..B` runs the whole hook — gate and checks — over the commits in
 `A..B`, judged as a push to main, pushing nothing. A `<remote>/main..HEAD` base reads that remote's runs, so the push
 that follows reuses the pass. Use it before a manual push that may run long: `scripts/hooks/pre-push --range
@@ -208,6 +238,10 @@ turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final t
 | `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |
 | `WATCH RED: <workflow> #n …` (exit 3) | main's CI is red on a run containing your commit | read the ci-why summary; yours → fix forward now with `Fixes-Red: <n>`; not yours → say so in your report |
 | `WATCH UNKNOWN …` (exit 2) | undecided after 3 h, or Forgejo unreadable | `agentctl ci-why` later; report it |
+| `WAITING <sha> (n changes queued on waiting)` | main is red; your production change waits on `waiting` | nothing: land keeps running and ends LANDED + the watch once main is green |
+| `NOT LANDED: main is red, and the change conflicts with the changes already waiting` | your change and a waiting one touch the same lines | rebase onto `waiting` (`git rebase waiting`) and land again, or wait for them to land |
+| `NOT LANDED: the checks failed on waiting` | the combined tip fails a check | yours: fix forward, land again |
+| `NOT LANDED: main moved while it waited and the change no longer applies` | main conflicts with your waiting change | rebase onto forgejo/main, land again |
 | `agentctl queue …` prints `NOT QUEUED: the merge queue is RETIRED` | an old brief | use `agentctl land` |
 
 ## The rules

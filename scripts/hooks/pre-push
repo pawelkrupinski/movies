@@ -99,7 +99,9 @@
 # hands over to the pushing worktree's own copy, so a stale root checkout never judges a worktree's push.
 #
 # DRY RUN / TEST: `scripts/hooks/pre-push --plan < paths` prints the checks a list of changed
-# paths selects, without running them (scripts/hooks/pre-push-test.sh). `--range A..B` runs the
+# paths selects, without running them (scripts/hooks/pre-push-test.sh). `--checks-only A..B` is `--range A..B` without
+# the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
+# `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
 set -uo pipefail
 # git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being
@@ -115,9 +117,9 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # absolute path (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran
 # the ROOT checkout's copy — an older hook, judging new work by stale checks. So a hook git runs for another
 # checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
-# the dry runs (--plan, --compile-plan, --range), which name the file they mean.
+# the dry runs (--plan, --compile-plan, --range, --checks-only), which name the file they mean.
 case "${1:-}" in
-    --plan|--compile-plan|--range) ;;
+    --plan|--compile-plan|--range|--checks-only) ;;
     *)
         if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
             hooks_path="$(git config --get core.hooksPath || true)"
@@ -441,7 +443,7 @@ GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 # of `<remote>/main..HEAD` is keyed like the push that follows it, which then REUSES its pass (CHECK FIRST, below).
 remote_url=""
 case "${1:-}" in
-    --range)
+    --range|--checks-only)
         remote_url="${PREPUSH_REMOTE_URL:-}"
         range_base="${2:-}"; range_base="${range_base%%..*}"
         case "$range_base" in
@@ -613,8 +615,10 @@ to_main=0
 # main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
 # when it is pushed there. Any other ref in the same push is checked as ever.
 measure_only="" other=""
-if [ "${1:-}" = "--range" ]; then
-    ranges+=("${2:?--range A..B}")
+checks_only=""
+if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ]; then
+    [ "$1" = "--checks-only" ] && checks_only=1
+    ranges+=("${2:?$1 A..B}")
     to_main=1   # a dry run is judged as a push to main
 else
     pushed=""
@@ -643,6 +647,8 @@ fi
 gate_state="not-main"
 if [ "$to_main" = 1 ]; then
     if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
+    elif [ -n "$checks_only" ]; then log "--checks-only: the red gate is not judged (it is when these commits are pushed)" >&2
+        gate_state="checks-only"
     else gate_state=""; check_redgate "${ranges[@]}" || exit 1
     fi
 fi
@@ -1022,6 +1028,6 @@ log "all clear ($((SECONDS - started))s)"
 # and then "Connection to localhost closed by remote host" / "Broken pipe" / "unexpected disconnect while reading
 # sideband packet". Nothing here can keep that connection; the re-push can be fast instead: this pass is stored (THE
 # REUSE), so the same push again skips the checks.
-if [ "${1:-}" != --range ] && [ "$SECONDS" -ge "${PREPUSH_LONG_SECONDS:-300}" ]; then
+if [ "${1:-}" != --range ] && [ "${1:-}" != --checks-only ] && [ "$SECONDS" -ge "${PREPUSH_LONG_SECONDS:-300}" ]; then
     warn "this hook ran ${SECONDS}s with the push's connection open (git connects first): if the push now dies with \"closed by remote host\" / \"Broken pipe\" / \"unexpected disconnect\", run the same git push again -- this pass is stored and is reused in seconds. Next time check first: scripts/hooks/pre-push --range ${1:-<remote>}/main..HEAD, then git push"
 fi
