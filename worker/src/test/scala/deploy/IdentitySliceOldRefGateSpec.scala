@@ -61,6 +61,18 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     ci.indexOf("Start identity-slice's old-ref compile") should be < ci.indexOf("run: sbt itAll")
   }
 
+  /** The job's checkout is shallow, so a floor the old-ref test compiles into but the start step does not fetch fails
+   *  as "no commit … in this SHALLOW clone": 68370c42d added 9bb54c1a4 to the test only, and Main went red (1807). */
+  it should "fetch every floor the old-ref test compiles into" in {
+    val start  = RepoFile.step(RepoFile.read(".github/workflows/ci.yml"),
+      "Start identity-slice's old-ref compile, in the background")
+    val floors = """(?m)^floor\(\)(.*)$""".r.findFirstMatchIn(RepoFile.read("scripts/identity-slice-old-ref-test.sh"))
+      .map(m => """\b[0-9a-f]{40}\b""".r.findAllIn(m.group(1)).toSeq).getOrElse(fail("the old-ref test defines no floor()"))
+    val fetch = start.linesIterator.find(_.trim.startsWith("git fetch")).getOrElse(fail("the start step fetches nothing"))
+    floors should not be empty
+    floors.filterNot(fetch.contains) shouldBe empty
+  }
+
   /** The compiled old tree is cached by the tool files: one the key missed would restore a tree compiled with its old
    *  copy as an EXACT hit — no save, and no difference for zinc to see beyond the file's own mtime. */
   it should "restore the compiled old ref before the compile, keyed by every tool file" in {

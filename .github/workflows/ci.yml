@@ -625,7 +625,9 @@ jobs:
             - name: Start identity-slice's old-ref compile, in the background
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
               run: |
-                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9 e90d2b498a0f7a26faa55b7d7cdea51d48285df8
+                  # every floor scripts/identity-slice-old-ref-test.sh compiles into: the checkout is shallow, so a
+                  # floor not fetched here fails by name (68370c42d added 9bb54c1a4 there, not here: Main 1807, 1814)
+                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9 9bb54c1a4912644383d5ed2f02686fe0ed720ece e90d2b498a0f7a26faa55b7d7cdea51d48285df8
                   KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
                       scripts/ci/in-background.sh start old-ref-compile bash scripts/identity-slice-old-ref-test.sh
 
