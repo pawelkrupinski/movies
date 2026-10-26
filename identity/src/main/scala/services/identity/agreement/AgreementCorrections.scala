@@ -35,6 +35,8 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
   private[agreement] def corrected(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], key: String, pass: AgreementStage.Pass): ResolverDecision = {
     val version = pass.version
     val digest = correctionDigest(decision, listingOf)
+    // what the correction waited on was read at one shape of the take: another's is no wait of this one
+    if (correctionWaits.get(key).exists(_.listings != digest)) correctionWaits -= key
     val kept = heldFor(key, digest, pass).filter(_.rules == decidedUnder).flatMap(v => v.correction.filter { c =>
       val waits = correctionWaits.get(key)
       // one waiting on an answer is read again unless what it asks is known — after a restart it is not — and once all
@@ -44,7 +46,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // and compared, as a verdict's is: every TMDB search is filed under one id (QueryFiled), so any search filed anywhere
       // reached every take that read one, and each was read afresh — 700 PL takes an apply, the budget never caught up (the
       // drift replay timing out, run 1641). A family's answer, a poster or a question asked that was filed decides it again.
-      !(c.waiting && (waits.isEmpty || waits.exists(_.forall(tried)))) && {
+      !(c.waiting && (waits.isEmpty || waits.exists(_.gaps.forall(tried)))) && {
         lazy val listings = sortedListings(decision, listingOf)
         held.clean(key, digest, version, changes.changedSince, again = {
           case (read: Dependency.Lookup, answered) => digestNow(read, listingIn(listings)).contains(answered)
@@ -62,7 +64,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; file(verdict) }
       held.check(key, digest, version)
-      waits.fold(correctionWaits -= key)(w => correctionWaits(key) = w)
+      waits.fold(correctionWaits -= key)(w => correctionWaits(key) = AgreementStage.Waiting(digest, w))
       correction
     }).orElse(
       // not read afresh this apply — its budget spent, a deploy's new rules having made every stored verdict stale — it
@@ -70,7 +72,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // the model's take back and a later apply corrected it again, a flip per deploy (UK Chichester's "The Ties That Bind
       // Us", 18 of them). Left unchecked, it is read afresh once an apply's budget reaches it.
       heldFor(key, digest, pass).flatMap(_.correction))
-    correctionWaits.get(key).foreach(_.foreach {
+    correctionWaits.get(key).foreach(_.gaps.foreach {
       case Question.Poster(poster) => pass.correctionPosters += poster
       case question                => pass.asked += question
     })

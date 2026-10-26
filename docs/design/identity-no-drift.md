@@ -116,6 +116,12 @@ Each item has a verdict:
 - (b) an input the whole resolve must read too;
 - (c) a dependence on history, which is removed.
 
+Every map, set or Memo the identity code keeps is reviewed in `NoDecisionKeyedByMutableIdSpec`: one keyed by a cluster,
+listing or family id carries the content digest it was decided for and compares it on read, or is a pure name index,
+one pass's scratch, or a store's rows. A new one fails the spec until it is reviewed. Its first sweep (2026-10-26) found
+two waits kept by cluster key alone: `waiting` outlived its shape when a cluster went back to one whose verdict stands,
+and `correctionWaits` when a reshaped take's budget left it unread. Both now carry `Waiting.listings`.
+
 | # | State | Where | Verdict | Fix / proof |
 |---|---|---|---|---|
 | 1 | Stored families plus their slice digest | `IncrementalResolver.families`, `IdentityModelStore` | (a) cache | Reused only when the digest of every corpus fact the family read matches (`CorpusContext.slice`, a superset). On restore, nodes and claims are checked too. `IncrementalResolverSpec` checks every event against a whole resolve. |

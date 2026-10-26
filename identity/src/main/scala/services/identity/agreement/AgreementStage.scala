@@ -130,7 +130,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       else WaitingOn(
         decision.unanswered,
         // a question attempted is waited on no more: asked still, the take decided without it
-        (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.getOrElse(Set.empty)).filterNot(tried),
+        (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.fold(Set.empty[Question])(_.gaps)).filterNot(tried),
         onTmdb = cluster.exists(_.blindAt.isDefined))
     }
 
@@ -264,9 +264,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The year the current [[apply]] reads a release as current by — an input every verdict's receipt names
    *  ([[Dependency.Year]]): a year turning reads every verdict again, as a whole resolve in it would. */
   private[agreement] var yearNow = -1
-  /** What a correction still waiting on an answer asks, by its stored id: a take's posters, families' questions and
-   *  finds while the backfill hashes them — none kept once its evidence is all answered. */
-  private[agreement] val correctionWaits = TrieMap.empty[String, Set[Question]]
+  /** What a correction still waiting on an answer asks, by its stored id, at the digest of the take's listings it was
+   *  read at: a take's posters, families' questions and finds while the backfill hashes them — none kept once its
+   *  evidence is all answered, nor once the take's listings move. */
+  private[agreement] val correctionWaits = TrieMap.empty[String, AgreementStage.Waiting]
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
@@ -476,7 +477,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** What the stage waits on for cluster `id`: its families' questions and its correction's. */
   private def questionsOf(id: String): Set[Question] =
-    waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.getOrElse(AgreementStage.correctionId(id), Set.empty)
+    waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps)
 
   /** Tell `staging` the waits this apply started and ended, against those it began with (`before`): a cluster put to
    *  wait (since its inline ask, when it had one), one asked inline and decided within the apply, and one still a cluster
@@ -694,6 +695,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def verdictOf(decision: ResolverDecision, id: String, listings: Seq[Listing], digest: Long,
                         pass: AgreementStage.Pass): Option[StoredVerdict] = {
     val version = pass.version
+    // a wait is decided for one shape of the cluster: one kept for another is no wait of this one, whatever decides it now
+    if (waiting.get(id).exists(_.listings != digest)) waiting -= id
     val found = heldFor(id, digest, pass)
     // settled without some families: their questions asked on every pass — one answered reads the verdict again
     found.foreach(v => pass.asked ++= unreached(v))
@@ -1141,7 +1144,7 @@ object AgreementStage {
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 
-  /** A cluster waiting on families' answers: its listings' digest and the families' questions it waits on — none where
+  /** A cluster (or a take's correction) waiting on answers: its listings' digest and the questions it waits on — none where
    *  only its fill's TMDB answers were missing (`blindAt`), resolved again once something is filed. */
   private[agreement] final case class Waiting(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None)
   /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had

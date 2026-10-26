@@ -476,4 +476,27 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     filed = rtAsked.flatMap(_.id)
     decided(s, version = 2).explanation.last should include ("imdb, rt, wiki take 'Lalka' (1968)")
   }
+
+  // A correction's waits are read at one shape of its take, as its verdict is: kept by the take's key alone, a reshaped
+  // take its budget left unread went on asking, and being reported waiting on, what the old shape waited on.
+  it should "wait on nothing a reshaped take's earlier shape waited on, while its budget leaves it unread" in {
+    val rt = new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("x" -> has), unanswered = true)
+    val s = new AgreementStage(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster,
+      tmdb = Some(table()), correctionsPerApply = 1)
+    val waited = decided(s)
+    s.waitingOn(waited).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
+    // a scrape adds a listing to the take, and another take, first in content order, spends the apply's one fresh read
+    val joined  = FilmTable.listing(Multikino, "Lalka", year = Some(2026)).copy(screenings = ScreeningDays.of(Seq(day)))
+    val other   = FilmTable.listing(Multikino, "Klondike").copy(screenings = ScreeningDays.of(Seq(day)))
+    val reshape = Resolution(Seq(
+      ResolverDecision(Seq(other.key), Some(1001), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match 1001"))(),
+      ResolverDecision(Seq(listing.key, joined.key), Some(1001), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match 1001"))()),
+      3, Map(other.key -> 0, listing.key -> 1, joined.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val byKey   = Map(listing.key -> listing, joined.key -> joined, other.key -> other)
+    val decisions = s.apply(reshape, byKey.get, version = 2).decisions
+    val unread  = decisions.find(_.members.contains(joined.key)).get
+    s.backlog shouldBe true                                              // the reshaped take left for a later apply
+    s.waitingOn(unread).questions shouldBe empty
+  }
 }

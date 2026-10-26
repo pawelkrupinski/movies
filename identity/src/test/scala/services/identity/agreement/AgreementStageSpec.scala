@@ -935,6 +935,29 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     answeredTitles should contain ("Klondike: wojna w Donbasie")
   }
 
+  // A wait is decided for one shape of its cluster, as a verdict is: kept by the cluster's key alone, a shape that waited
+  // went on being reported as waiting after the cluster went back to a shape whose verdict stands (NoDecisionKeyedByMutableIdSpec).
+  it should "wait on nothing of a cluster's earlier shape once it is back to a shape whose verdict stands" in {
+    val answeredTitles = scala.collection.mutable.Set("Klondike")
+    val families = agreeing().map { case (family, answers) => family -> new TitledOnly(answers, answeredTitles) }
+    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
+    // a scrape adds a listing billed under a title no family answered yet: the reshaped cluster waits on it
+    val joined   = listing(models.Multikino, "Klondike: wojna w Donbasie", year = Some(2022))
+    val reshaped = Resolution(Seq(
+      ResolverDecision(Seq(bare.key, joined.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)(),
+      resolution.decisions(1)), 3, Map(bare.key -> 0, joined.key -> 0, matched.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val waited = stage.apply(reshaped, Map(bare.key -> bare, joined.key -> joined, matched.key -> matched).get, version = 2).decisions.head
+    stage.waitingOn(waited).questions should contain (Question.Family(VoterFamily.RottenTomatoes, "title|Klondike: wojna w Donbasie"))
+    // the listing goes again: the first shape's verdict stands, and what the other shape waited on is no wait of this one
+    val back = stage.apply(resolution, listingOf, version = 3).decisions.head
+    back.film shouldBe Some(913760)
+    stage.keyOf(back) shouldBe stage.keyOf(waited)
+    stage.waitingOn(back).settled shouldBe true
+    stage.waitingClusters should not contain stage.keyOf(back)
+  }
+
   // The staging screen sampled the stage's waits every 20 s: a wait begun and ended in between was never seen.
   it should "tell the staging screen each wait as it starts and ends, a new cluster's inline wait too, and nothing on a quiet apply" in {
     import services.identity.staging.StagingEvent
