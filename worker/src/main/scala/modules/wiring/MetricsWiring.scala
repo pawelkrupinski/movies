@@ -50,9 +50,13 @@ trait MetricsWiring { self: WorkerWiring =>
   // gone longest without a successful scrape, plus the never-scraped count. Reads
   // the SAME freshness stamps the ScrapeReaper schedules from, so the metric and
   // the scheduler can't disagree about how overdue a cinema is (see CinemaScrapeCensus).
+  // The due count reads the reaper's own `scrapeDueWindow`, split direct vs chunked.
   lazy val cinemaScrapeCensus: CinemaScrapeCensus = managedResources.stopping(
     new CinemaScrapeCensus(cinemaScrapers, freshnessStore,
-      workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, country, clock = clock, ticks = ticks))
+      workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, workerMetrics.scrapeAgeQuantileGauge,
+      workerMetrics.scrapeDueVenuesGauge, scrapeDueWindow,
+      cinema => chunkScrapers.contains(services.tasks.ScrapeCinemaHandler.scraperKey(cinema)),
+      country, clock = clock, ticks = ticks))
   // The other half of that picture: cinemas that scrape FINE and produce nothing.
   // A drifted selector keeps its scrape fresh, so the census above reads it as
   // healthy — only the archive remembers when a cinema last had real content.

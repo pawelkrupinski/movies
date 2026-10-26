@@ -125,6 +125,8 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val cityOffSeasonGauge: Gauge      = WorkerCitySeasonMetrics.gauge(registry)
   val (ratingNotRunGauge, ratingOldestAgeGauge) = RatingRunCensus.gauges(registry)
   val (scrapeOldestAgeGauge, scrapeNeverScrapedGauge) = CinemaScrapeCensus.gauges(registry)
+  val scrapeAgeQuantileGauge: Gauge = CinemaScrapeCensus.ageQuantileGauge(registry)
+  val scrapeDueVenuesGauge: Gauge   = CinemaScrapeCensus.dueVenuesGauge(registry)
   val (contentOldestAgeGauge, neverContentGauge) = CinemaContentCensus.gauges(registry)
   val contentStaleVenuesGauge: Gauge = CinemaContentCensus.staleVenuesGauge(registry)
   val seasonalNotReopenedGauge: Gauge = CinemaContentCensus.notReopenedGauge(registry)

@@ -2013,6 +2013,153 @@
       ]
     },
     {
+      "id": 34,
+      "title": "Venues due for a scrape now — direct vs chunked, by country",
+      "interval": "1m",
+      "description": "`kinowo_worker_cinema_scrape_due_venues{mode}`: how many of the country's venues the scrape due schedule calls due at this minute — the SAME DueWindow the ScrapeReaper enqueues from, sampled once a minute beside it. direct = scraped in one ScrapeCinema task; chunked = fanned out over ScrapeChunk tasks. Never-scraped venues count as due, and so does a chunked venue whose run is still in flight (it is stamped when the run ends), which the reaper itself skips. Healthy is a low, ragged line: venues fall due across the window and are drained within a tick or two. A line at 0 for hours means nothing CAME due — quiet scrape tasks and a still read model (panel 33) are then the schedule, not a scrape or projection stall (no chunked US venue came due for ~3 h on 10-20, 10-23 and 10-26). A line that climbs and stays up is the opposite: venues are due and the reaper is not draining them.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 193
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*chunked.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "sum by (country, mode) (kinowo_worker_cinema_scrape_due_venues{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{mode}}"
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "title": "Scrape age across the roster — median, p90 and oldest, by country",
+      "interval": "1m",
+      "description": "Seconds since each venue last scraped successfully, summarised per country: `kinowo_worker_cinema_scrape_age_quantile_seconds{quantile}` (0.5 and 0.9) beside `kinowo_worker_cinema_scrape_oldest_age_seconds` (dashed). Never-scraped venues carry no age and are left out of all three (Application health counts them). Healthy is a sawtooth under the country's scrape window, the median about half of it. The oldest line alone cannot tell \"all fresh\" from \"one group going stale\": one venue that fails every scrape lifts only the oldest and leaves the median and p90 flat, while a whole group of venues that stops coming due (panel 34 at 0) lifts the p90 first, then the median. All three climbing in a straight diagonal is the reaper not draining anything.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 193
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*oldest.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "max by (country, quantile) (kinowo_worker_cinema_scrape_age_quantile_seconds{country=~\"$country\"})",
+          "legendFormat": "{{country}} p{{quantile}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "B",
+          "expr": "max by (country) (kinowo_worker_cinema_scrape_oldest_age_seconds{country=~\"$country\"})",
+          "legendFormat": "{{country}} oldest"
+        }
+      ]
+    },
+    {
       "id": 35,
       "title": "Repository writes that FAILED — by country, collection, op and exception",
       "description": "`kinowo_worker_repository_write_failed_total`: a movies / movie_slots / screenings write that THREW (every Mongo repository write goes through services.movies.RepositoryWrite). ZERO IS THE HEALTHY READING. Each failure is also a WARN line naming the film, and the cache rolls the row back so the next identical scrape retries the write — so a short blip heals itself, while a sustained line is a write that keeps failing (a codec that cannot encode a field, a validator, a full disk). Alerted by RepositoryWritesFailing (worker-pipeline.rules). Added 2026-09-24: a codec bug failed 34 upserts over ~6h with nothing counting it, and two new films never reached the site until a restart. The exception label is the class's simple name. Every known collection/op is seeded at 0 for the expected exception classes, so the first failure shows; any other class appears on its first failure and shows from its second.",
