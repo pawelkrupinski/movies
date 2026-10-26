@@ -164,11 +164,42 @@ The change edits `AgreementStage.scala`, so `AgreementStage.RulesVersion` moves.
 no stored verdict stands: `v.rules == decidedUnder` fails for all of them. Every one of them was cached with an
 incomplete receipt, and every one is decided again with its full receipt, a budget at a time:
 
-- Agreement verdicts: `BackfillPerApply` (500) an apply, in the resolution's order. Until a later apply's budget
-  reaches one, it stands as it was, and the stage reports a backlog so the next apply goes on. Before this change,
-  every deploy touching the stage decided every agreement verdict again on its first apply, unbounded: the boot pass
-  that OOM-killed worker-us.
+- Agreement verdicts: `BackfillPerApply` (500) an apply. Until a later apply's budget reaches one, it stands as it
+  was, and the stage reports a backlog so the next apply goes on. Before this change, every deploy touching the stage
+  decided every agreement verdict again on its first apply, unbounded: the boot pass that OOM-killed worker-us.
 - Corrections: `CorrectionsPerApply` (200) an apply, as before. Until then each stands as last decided.
+
+**Order.** Both budgets are spent in the clusters' content order: by the least listing key of each cluster, which no
+two clusters share (`AgreementStage.inContentOrder`). The model hands its decisions over in that order already, and
+the stage sorts any other order itself. Which verdicts an apply decides again, and so the interim takes, are a
+function of the current clusters. They never depend on the order the store's verdicts or the model's decisions were
+read in, or on arrival. Spec: `AgreementStageSpec` "decide again the same verdicts stored under other rules first,
+however they and the decisions are read".
+
+**A verdict decided again to a wait is dropped.** The new rules may decide a cluster to a wait (a family's question
+not answered yet). Its old verdict used to stay stored. On the next apply it then took the budget again ahead of the
+clusters behind it, or, with the budget spent before it, stood again and took its cluster back to the old take: a
+flip that depended on how far the budget reached. It also held the gauge above 0 for as long as the cluster waited.
+Now it is dropped with the apply that decided it again: a cache of nothing under these rules. Spec: `AgreementStageSpec`
+"drop a verdict stored under other rules once it is decided again to a wait, spending no later budget on it".
+
+**Prioritising the takes that would move: not done.** Whether the new rules change a take is known only by deciding
+it, and that is what the budget pays for. Every cheap signal (a verdict that takes a film, a short receipt) predicts
+nothing about the new rules. Spending part of the budget on a pre-check would only slow the backfill down. The
+lever that matters is how short the window is, so the stage keeps the window short.
+
+**Time to zero.** The projection applies the stage on every scrape, answer or stored-film change (debounced), and at
+the hourly reconcile. A projection the stage left a backlog is not settled (`IdentityProjection.settled`). It is tried
+again by `EventTrigger` after 1, 2, 4 and 8 min, then every 15 min (`RetryAfter`, doubling to `RetryAtMost`). Before
+this, a backlog was read on only as events came. For `N` verdicts stored under other rules in one country, the
+backfill takes `k = ceil(N / 500)` applies. With no event at all, that is about `15 + 15·(k − 5)` min once `k ≥ 5`:
+- 2,500 verdicts take 15 min;
+- 5,000 take ~1¼ h;
+- 10,000 take ~4 h;
+- 12,500 take the 6 h of the `IdentityAgreementBackfillStalled` alert (`for: 6h`, `> 0`).
+Scrapes and answers only shorten it, since every one is another apply. Prod reached 0 within hours the last time.
+
+The corrections drain alongside, 200 an apply. Each apply's cost is bounded by the two budgets, never by the corpus.
 
 Progress shows as `kinowo_worker_identity_agreement_clusters{state="incomplete"}`, the verdicts decided under other
 rules still to decide again. It reaches 0 per country once the backfill is done. Spec: `AgreementStageSpec` "decide

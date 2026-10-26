@@ -229,9 +229,11 @@ final class IdentityProjection(
   }
 
   /** Whether `tick` left nothing for another projection to do: not refused, every write taken, every written film's
-   *  TMDB details fetched. One that did not is tried again ([[EventTrigger.retry]]) — no five-minute period does. */
+   *  TMDB details fetched, its agreement's budget reaching every verdict and take (no `backlog`: a deploy's backfill
+   *  goes on by itself, not only as scrapes and answers come). One that did not is tried again ([[EventTrigger.retry]])
+   *  — no five-minute period does. */
   def settled(tick: ProjectionTick): Boolean =
-    tick.refused.isEmpty && tick.declined == 0 &&
+    tick.refused.isEmpty && tick.declined == 0 && !tick.backlog &&
       !tick.changed.exists(film => IdentityProjection.awaitsDetails(film.record))
 
   /** One projection, every line it logs on this thread carrying its id (`projection_id`, the clock's instant at its start),

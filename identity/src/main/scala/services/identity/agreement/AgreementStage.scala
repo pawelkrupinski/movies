@@ -348,7 +348,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val waitedBefore = staging.map(_ => waitingClusters)
     recordsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[Integer](); findsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     queriedReading = false
-    val decisions = resolution.decisions.map(decide(_, listingOf, pass))
+    val decisions = AgreementStage.inContentOrder(resolution.decisions)(decide(_, listingOf, pass))
     // what the stage took a decision as is keyed as the decision is: the projection's takes are these
     resolution.decisions.iterator.zip(decisions).foreach { case (model, took) =>
       if (!(took eq model)) { val key = pass.keys.get(model); if (key != null) pass.keys.put(took, key) }
@@ -522,16 +522,20 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
    *  corrections and the model's decisions — and store the verdicts `pass` moved. */
   private[agreement] def forgetGone(resolution: Resolution, pass: AgreementStage.Pass): Unit = {
-    val removed = held.keySet.toSet -- pass.seen -- pass.correcting
+    // a verdict under other rules decided again to a wait, none under these rules in its place: a cache of nothing now
+    val renewed    = pass.moved.iterator.filter(_.rules == decidedUnder).map(_.id).toSet
+    val superseded = pass.backfilled.toSet -- renewed
+    val removed    = held.keySet.toSet -- pass.seen -- pass.correcting ++ superseded
+    val moved      = pass.moved.filterNot(verdict => superseded(verdict.id))
     waiting --= waiting.keySet.toSet -- pass.seen
     unreached --= unreached.keySet.toSet -- pass.seen
     askedNow --= askedNow.keySet.toSet -- pass.seen
     candidateFilms --= candidateFilms.keySet.toSet -- pass.seen   // a correction's candidates are read, never kept
     correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
-    if (removed.nonEmpty || pass.moved.nonEmpty) {
-      stored.replace(removed, pass.moved.toSeq)
+    if (removed.nonEmpty || moved.nonEmpty) {
+      stored.replace(removed, moved.toSeq)
       removed.foreach(unfile); checked --= removed
-      pass.moved.foreach(file)
+      moved.foreach(file)
     }
     val current = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean]())
     resolution.decisions.foreach(current.add)
@@ -676,8 +680,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     }
     // decided under other rules (a deploy's, or before receipts were whole): decided again while the apply's backfill
     // budget lasts, standing as it was until a later apply's reaches it — a deploy's boot resolves no whole corpus. One
-    // under these rules whose answers moved spends none of it: decided again now, never standing on a stale receipt
-    .orElse(held.filter(v => v.rules != decidedUnder && !pass.backfill()))
+    // under these rules whose answers moved spends none of it: decided again now, never standing on a stale receipt.
+    // One decided again to a wait is dropped with the apply ([[forgetGone]]): it neither stands again nor spends a
+    // later apply's budget again while its cluster waits
+    .orElse(held.filter(_.rules != decidedUnder).filter { _ =>
+      val again = pass.backfill()
+      if (again) pass.backfilled += id
+      !again
+    })
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
       case Some(w) => pass.asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
       case None    => resolved(decision, id, digest, listings, pass)
@@ -962,6 +972,8 @@ object AgreementStage {
     /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
     def fresh(): Boolean = { val left = budget > 0; budget -= 1; left }
     private var backfillsLeft = backfills
+    /** The clusters whose verdict decided under other rules this apply decided again, by id. */
+    val backfilled = mutable.Set.empty[String]
     /** May one more verdict decided under other rules be decided again ([[BackfillPerApply]])? Each asking spends one. */
     def backfill(): Boolean = { val left = backfillsLeft > 0; backfillsLeft -= 1; left }
     /** Did a take or a verdict go unread for want of budget: asked once the budget was spent? */
@@ -1023,6 +1035,22 @@ object AgreementStage {
    *  (prod PL 2026-10-05: re-reading them all at boot was a 40 s, 514 MB pass; worker-us OOM-killed on a comparable
    *  working set) spread over applies, the rest standing as they were meanwhile. */
   val BackfillPerApply = 500
+
+  /** `decisions` each decided by `decide` in their content's order — by the least of their listings' keys, which no two
+   *  clusters share — and handed back in theirs: the budgets ([[BackfillPerApply]], [[CorrectionsPerApply]]) reach the
+   *  same clusters first however the resolution was read, never by an iteration or arrival order. The model hands them
+   *  over in that order already ([[services.identity.IncrementalResolver.decisions]]), so it is only checked. */
+  private[agreement] def inContentOrder(decisions: Seq[ResolverDecision])(decide: ResolverDecision => ResolverDecision): Seq[ResolverDecision] = {
+    val byFirst = Ordering.Option(using ListingKey.ordering)
+    val firsts  = decisions.iterator.map(_.members.minOption(using ListingKey.ordering)).toIndexedSeq
+    if (firsts.indices.drop(1).forall(i => byFirst.lteq(firsts(i - 1), firsts(i)))) decisions.map(decide)
+    else {
+      val all     = decisions.toIndexedSeq
+      val decided = new Array[ResolverDecision](all.size)
+      all.indices.sortBy(firsts)(using byFirst).foreach(i => decided(i) = decide(all(i)))
+      scala.collection.immutable.ArraySeq.unsafeWrapArray(decided)
+    }
+  }
   /** How many of the posters the model takes' corrections wait on are handed to the queue at once: a one-off backfill of
    *  every take's posters (17.6k over the five corpora, 2026-10-06) drained a few at a time behind every other task. */
   val CorrectionPostersAtOnce = 64

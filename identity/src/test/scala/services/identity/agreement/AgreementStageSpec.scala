@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Resolution, ResolverDecision}
+import services.identity.{Answer, Question, FilmTable, IdentityCalibration, IdentityMeasures, Listing, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
 /** The model's no-matches, on their way to the projection: one ≥3 families agree on takes that film — TMDB's when its
@@ -611,6 +611,57 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       stage.backlog shouldBe (i < 3)
     }
     left shouldBe Seq(2, 1, 0)
+  }
+
+  // the owner (2026-10-26): no order dependence — which stored verdicts an apply's budget decides again, and so the
+  // interim takes, are a function of the clusters, never of the order the model's decisions or the store's verdicts are
+  // read in
+  it should "decide again the same verdicts stored under other rules first, however they and the decisions are read" in {
+    val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "Klondike", year = Some(2022)))
+    val byKey    = listings.map(l => l.key -> l).toMap
+    def model(in: Seq[Listing]) = Resolution(in.map(l => ResolverDecision(Seq(l.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 3,
+      in.zipWithIndex.map { case (l, i) => l.key -> i }.toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val decided = new InMemoryAgreementVerdicts
+    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), decided,
+      clock = _root_.tools.SpecClock.Pinned).apply(model(listings), byKey.get, version = 1)
+    // stored under an older build, as taking nothing: one decided again takes the film
+    val older = decided.all().filter(_.correction.isEmpty).map(_.copy(rules = "an older build", agreed = None, filled = None))
+    def interim(order: Seq[Listing], stored: Seq[StoredVerdict]) = {
+      val verdicts = new InMemoryAgreementVerdicts
+      verdicts.replace(Set.empty, stored)
+      val left  = scala.collection.mutable.ArrayBuffer.empty[Int]
+      val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+        verdicts, clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete, backfillPerApply = 1)
+      val takes = stage.apply(model(order), byKey.get, version = 1).decisions.map(d => d.members -> d.film).toMap
+      (takes, left.toSeq)
+    }
+    val asRead = interim(listings, older)
+    asRead._1.values.count(_.isDefined) shouldBe 1
+    asRead._2 shouldBe Seq(2)
+    interim(listings.reverse, older.reverse) shouldBe asRead
+  }
+
+  // a verdict under other rules decided again to a wait stood again on the next apply, the budget spent before it, and
+  // spent the budget again on every apply while its cluster waited: the backfill never reached the verdicts behind it
+  it should "drop a verdict stored under other rules once it is decided again to a wait, spending no later budget on it" in {
+    val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "Klondike", year = Some(2022)))
+    val model = Resolution(listings.map(l => ResolverDecision(Seq(l.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 3,
+      listings.zipWithIndex.map { case (l, i) => l.key -> i }.toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val byKey    = listings.map(l => l.key -> l).toMap
+    val verdicts = new InMemoryAgreementVerdicts
+    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned).apply(model, byKey.get, version = 1)
+    verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "an older build")))
+    val left  = scala.collection.mutable.ArrayBuffer.empty[Int]
+    // Rotten Tomatoes not answered under the new rules: each cluster decided again waits on it
+    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete,
+      backfillPerApply = 1)
+    val takes = (1 to 3).map(_ => stage.apply(model, byKey.get, version = 1).decisions.count(_.film.isDefined))
+    left shouldBe Seq(2, 1, 0)
+    takes shouldBe Seq(2, 1, 0)   // one waiting is never taken by its old verdict again
+    stage.backlog shouldBe false
+    verdicts.all().filter(_.correction.isEmpty) shouldBe empty
   }
 
   // the drift replay timing out (run 1641): a verdict under these rules whose answers moved spent the backfill's budget

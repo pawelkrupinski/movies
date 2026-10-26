@@ -477,6 +477,14 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.announced should have size 3 // announced once, not again by a projection that changes nothing
   }
 
+  // the owner (2026-10-26): a deploy's backfill of the stored verdicts, a budget an apply at a time, goes on by itself —
+  // it read on only as scrapes and answers came, or at the hourly reconcile
+  "A projection whose agreement left a backlog" should "not be settled, so it is tried again" in {
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock)
+    w.projection.settled(ProjectionTick(None, None, 0, 0, 0, 0, None)) shouldBe true
+    w.projection.settled(ProjectionTick(None, None, 0, 0, 0, 0, None, backlog = true)) shouldBe false
+  }
+
   /** The live alarm's input: a listing still published whose TMDB film a projection moved — lost, changed or gained — is
    *  reported and logged once, naming its venue, title, both films and the decision's reason. A listing leaving the
    *  schedule, and a projection that keeps every listing's film, report nothing. */
