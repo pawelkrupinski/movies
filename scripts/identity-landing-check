@@ -42,6 +42,11 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/tool-conventions.sh
 . "$here/tool-conventions.sh"
 DIE_STATUS=2
+# A LANDING CHECK BLOCKS WORK, so its CI runs take the CHECK tier (ci-runner's ci-check slice, CPUWeight 300), not the
+# measurements' `measure` (CPUWeight 100), where on 2026-10-26 they queued for hours behind bisects and ablations.
+# ubuntu-24.04, where mongod starts (MongoServerVersionParitySpec). Passed to identity-ci-run and identity-measure as
+# --tier, their workflows' `tier` input (RunnerClassSpec reads it here).
+landing_tier=ubuntu-24.04
 ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -95,7 +100,7 @@ run_group() {
     if [ "$name" = it ]; then (cd "$(git rev-parse --show-toplevel)" && "$here/it-local.sh" "$command") > "$dir/sbt.log" 2>&1
     else "$here/sbt-warm" "$command" > "$dir/sbt.log" 2>&1; fi
   else
-    "${IDENTITY_LANDING_CI_RUN:-$here/identity-ci-run}" --head "$commit" --out "$dir/run" -- "$command" > "$dir/ci-run.log" 2>&1
+    "${IDENTITY_LANDING_CI_RUN:-$here/identity-ci-run}" --head "$commit" --tier "$landing_tier" --out "$dir/run" -- "$command" > "$dir/ci-run.log" 2>&1
     # the artifact's sbt.log (identity-run.yml tees it); a run that never made one is no answer
     [ ! -f "$dir/run/sbt.log" ] || cp "$dir/run/sbt.log" "$dir/sbt.log"
   fi
@@ -129,10 +134,10 @@ if [ -n "$specs" ]; then
   fi
 fi
 if [ -n "$measure" ]; then
-  flags=(--head "$commit" --base "$base")
+  flags=(--head "$commit" --base "$base" --tier "$landing_tier")
   case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; esac
   [ -z "$no_cache" ] || flags+=(--no-cache)
-  say "measure: identity-measure ${flags[*]:4}"
+  say "measure: identity-measure ${flags[*]:6}"
   "${IDENTITY_LANDING_MEASURE:-$here/identity-measure}" "${flags[@]}" > "$out/measure.txt" 2> "$out/measure.log" &
   measure_pid=$!
 fi

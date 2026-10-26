@@ -18,7 +18,8 @@ import RunnerLabel.{Branch, Context, Forgejo, GitHub, Main}
  *    #484 (a red-main fix) sat 40+ min behind ~39 identity jobs on 2026-10-22.
  *  - gate (`gate-lane`, `forgejo-recording`): identity model convergence ON MAIN, which gates every push
  *    (scripts/hooks/pre-push's red-build gate), and the nightly recording's legs.
- *  - check (`ubuntu-*`): branch CI, the nightly and housekeeping runs, bots.
+ *  - check (`ubuntu-*`): branch CI, the nightly and housekeeping runs, bots, and an identity landing check's
+ *    identity-run and convergence runs (`-f tier=ubuntu-24.04`): a landing check blocks work.
  *  - measure (`measure`): investigation -- measure-branch convergence, identity runs, ablations, bisects. It borrows idle
  *    CPU and never holds a deploy or gate slot.
  *
@@ -168,6 +169,38 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
     withClue("dispatches of main's convergence without the gate tier: ") {
       MainConvergenceDispatches.filterNot(_._2.contains("gate-lane")) shouldBe empty
     }
+  }
+
+  /** The tier a landing check's CI runs take, read off the scripts that dispatch them: identity-landing-check's
+   *  `landing_tier`, passed as `--tier` to identity-ci-run and identity-measure, which hand it to identity-run.yml and
+   *  identity-model-convergence.yml as their `tier` input. None when any link of that chain is missing -- a landing
+   *  check then lands on `measure`, behind bisects and ablations (hours of queue on 2026-10-26). */
+  private lazy val LandingTier: Option[String] = {
+    def shell(path: String) = RepoFile.read(path).linesIterator.filterNot(_.trim.startsWith("#")).toSeq
+    val check     = shell("scripts/identity-landing-check")
+    val defined   = check.collectFirst { case s"landing_tier=$label" if label.nonEmpty => label.trim }
+    val calls     = Seq("/identity-ci-run}\"", "flags=(--head").map(call => check.filter(_.contains(call)))
+    val passed    = calls.forall(lines => lines.nonEmpty && lines.forall(_.contains("--tier \"$landing_tier\"")))
+    val forwarded = Seq("scripts/identity-ci-run", "scripts/identity-measure").forall { script =>
+      val lines = shell(script)
+      lines.exists(_.trim.startsWith("--tier)")) && lines.exists(_.contains("-f tier=\"$tier\""))
+    }
+    defined.filter(_ => passed && forwarded)
+  }
+
+  "a landing check's runs" should "take the check tier, every job, and a plain measurement's the measure tier" in {
+    val tier = withClue("identity-landing-check passes no tier through identity-ci-run and identity-measure: ") {
+      LandingTier.getOrElse(fail("no landing tier"))
+    }
+    val off = for {
+      file              <- Seq("identity-model-convergence.yml", "identity-run.yml")
+      (expected, input) <- Seq(Check -> Map("tier" -> tier), Measure -> Map.empty[String, String])
+      jobs               = labels(file, Context(Forgejo, Branch, input))
+      _                  = withClue(s"$file has no job to class: ")(jobs should not be empty)
+      (job, label)      <- jobs
+      if !expected.labels(label)
+    } yield s"$file ${if (input.isEmpty) "measuring" else "landing"}: $job asks for `$label`, not $expected"
+    withClue("a landing check blocks work, so its jobs take the check tier; a measurement's take measure: ")(off shouldBe empty)
   }
 
   "every job on github.com" should "ask for a runner github.com has" in {

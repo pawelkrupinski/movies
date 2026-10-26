@@ -31,7 +31,7 @@ mkdir -p "$work/bin" "$work/logs"
 cat > "$work/bin/ci-run" <<'STUB'
 #!/usr/bin/env bash
 out="" cmd=""
-while [ "$#" -gt 0 ]; do case "$1" in --out) out=$2; shift 2 ;; --) shift; cmd="$*"; break ;; *) shift ;; esac; done
+while [ "$#" -gt 0 ]; do case "$1" in --out) out=$2; shift 2 ;; --tier) echo "$2" >> "$LOGS/tiers"; shift 2 ;; --) shift; cmd="$*"; break ;; *) shift ;; esac; done
 echo "$cmd" >> "$LOGS/commands"
 case "$cmd" in testOnly*) g=unit ;; worker/IntegrationTest*) g=it ;; *FilmSchedule*) g=e2e-corpus ;; *) g=e2e-rest ;; esac
 [ -f "$LOGS/$g.unreachable" ] && { cat "$LOGS/$g.unreachable" >&2; exit 2; }
@@ -65,17 +65,19 @@ has() { grep -qF -- "$1" "$work/out" && echo true || echo false; }
 check "every group passing and the measure LANDABLE is LANDABLE" "0" "$(landing --head "$code" --base "$base")"
 check "...the verdict last" "LANDABLE" "$(tail -1 "$work/out")"
 check "...the measure asked for the footprint when eligible, the full measure otherwise (identity-measure's own fallback)" \
-  "--head $code --base $base --footprint" "$(cat "$work/logs/measure-args")"
+  "--head $code --base $base --tier ubuntu-24.04 --footprint" "$(cat "$work/logs/measure-args")"
 check "...and every group Main's rows run for a resolver change, e2e included" "4" "$(wc -l < "$work/logs/commands" | tr -d ' ')"
 check "...the unit group naming the identity specs Main runs" "true" \
   "$(grep -q '^testOnly services.identity.\* services.titlerules.\* scripts.\* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec$' "$work/logs/commands" && echo true || echo false)"
 check "...the hard-cluster convergence among them" "true" \
   "$(grep -q 'integration.HardClusterConvergenceIntegrationSpec' "$work/logs/commands" && echo true || echo false)"
+check "...every group's run in the check tier, a landing check blocking work (RunnerClassSpec)" "ubuntu-24.04" \
+  "$(sort -u "$work/logs/tiers")"
 
 rm -f "$work/logs/commands"
 check "a judgements-only change skips the e2e rows, as Main's scope does" "0 2" \
   "$(landing --head "$judged" --base "$code") $(wc -l < "$work/logs/commands" | tr -d ' ')"
-check "--full asks the full measure" "--head $judged --base $code" "$(landing --head "$judged" --base "$code" --full > /dev/null; cat "$work/logs/measure-args")"
+check "--full asks the full measure" "--head $judged --base $code --tier ubuntu-24.04" "$(landing --head "$judged" --base "$code" --full > /dev/null; cat "$work/logs/measure-args")"
 check "--footprint-only asks only the footprint" "true" \
   "$(landing --head "$judged" --base "$code" --footprint-only > /dev/null; grep -q -- '--footprint-only' "$work/logs/measure-args" && echo true || echo false)"
 check "--no-cache reaches the measure" "true" \

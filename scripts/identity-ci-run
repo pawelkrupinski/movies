@@ -5,7 +5,7 @@
 # a local `scripts/it-local.sh 'worker/IntegrationTest/runMain …'` over a laid recording.
 #
 #   scripts/identity-ci-run [--recording RUN|prod-latest] [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
-#                           -- '<sbt command>'
+#                           [--tier LABEL] -- '<sbt command>'
 #
 #   the command's placeholders: {cc} the country (the command runs once per country when it names it, else once),
 #   {fixtures} the laid pair's test/resources/fixtures, {corpus} its corpus/, {out} what comes back (per country with {cc})
@@ -15,6 +15,8 @@
 #   --head     the commit run (default HEAD; uncommitted changes are NOT run). Pushed as measure/<user>/<sha>-<rand>, which
 #              the run deletes when it ends (identity-model-convergence.yml's drop-measure-branch, as scripts/identity-measure)
 #   --out      where the `identity-run` artifact lands (default target/identity-ci-run/<run>)
+#   --tier     the ci-runner tier label the run's jobs take (identity-run.yml's `tier` input): identity-landing-check
+#              passes the check tier, since a landing check blocks work; default empty, a measurement's `measure`
 #   --no-wait  dispatch, print the run, exit; fetch later with  scripts/forge-gh run download <run> -n identity-run -D DIR
 #
 # Typical wall time: ~5 min of setup (recording download, sbt) plus the command. Exit: the run's own (0 success, 1 not),
@@ -27,7 +29,7 @@ DIE_STATUS=2
 . "$here/ci/dispatch.sh"
 export DISPATCH_GH=$KINOWO_GH DISPATCH_GH_TIMEOUT=${IDENTITY_CI_RUN_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_CI_RUN_POLL:-30}
 workflow=identity-run.yml
-recording="" head=HEAD heap=8g out="" nowait="" countries="pl,de,uk,us,es" command=""
+recording="" head=HEAD heap=8g out="" tier="" nowait="" countries="pl,de,uk,us,es" command=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --recording) flag_value "$@"; recording=$2; shift 2 ;;
@@ -35,6 +37,7 @@ while [ "$#" -gt 0 ]; do
     --head) flag_value "$@"; head=$2; shift 2 ;;
     --heap) flag_value "$@"; heap=$2; shift 2 ;;
     --out) flag_value "$@"; out=$2; shift 2 ;;
+    --tier) flag_value "$@"; tier=$2; shift 2 ;;
     --no-wait) nowait=1; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
     --) shift; command="$*"; break ;;
@@ -79,7 +82,7 @@ identity_push_measure_branch "$remote" "$push" "$branch" || die "could not push 
 say "pushed $branch"
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 dispatch_workflow "$workflow" "$branch" -f recording="$recording" -f countries="$countries" -f command="$command" -f heap="$heap" \
-  || die "could not dispatch $workflow on $branch"
+  ${tier:+-f tier="$tier"} || die "could not dispatch $workflow on $branch"
 dispatched=1
 find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" || die "dispatched, but no run of $push on $branch was found"
 run=$DISPATCHED_RUN

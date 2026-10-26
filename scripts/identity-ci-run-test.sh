@@ -29,8 +29,9 @@ echo change > "$repo/change.txt" && scratch_git "$repo" add change.txt && scratc
 tip=$(scratch_git "$repo" rev-parse HEAD)
 
 mkdir -p "$work/bin" "$work/pushes/active"
-# gh: refuses every call (the dispatch fails after the push, and the run ends there: the push is what is under test)
-printf '#!/usr/bin/env bash\nexit 1\n' > "$work/bin/gh"
+# gh: refuses every call (the dispatch fails after the push, and the run ends there: the push is what is under test),
+# noting a dispatch's arguments
+printf '#!/usr/bin/env bash\n[ "$1 $2" != "workflow run" ] || echo "$*" >> "%s/dispatches"\nexit 1\n' "$work" > "$work/bin/gh"
 # git: the real one, but a measure/ push says when another push was under way meanwhile (an overlap), or -- with
 # $REJECT -- is rejected the way Forgejo rejected the racing ones
 real_git=$(command -v git)
@@ -56,10 +57,11 @@ exec "$real_git" "\$@"
 STUB
 chmod +x "$work/bin/gh" "$work/bin/git"
 
-ci_run() { # <name>: identity-ci-run of the tip; exit code in $work/<name>.rc, stderr in $work/<name>.err
+ci_run() { # <name> [flags...]: identity-ci-run of the tip; exit code in $work/<name>.rc, stderr in $work/<name>.err
+  local name=$1; shift
   ( cd "$repo" && KINOWO_GH="$work/bin/gh" KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_REMOTE=origin \
-      PATH="$work/bin:$PATH" "$REPO_ROOT/scripts/identity-ci-run" --head "$tip" -- 'Test/compile' > /dev/null 2> "$work/$1.err" )
-  echo $? > "$work/$1.rc"
+      PATH="$work/bin:$PATH" "$REPO_ROOT/scripts/identity-ci-run" --head "$tip" "$@" -- 'Test/compile' > /dev/null 2> "$work/$name.err" )
+  echo $? > "$work/$name.rc"
 }
 
 ci_run a & ci_run b & ci_run c & wait
@@ -72,5 +74,12 @@ REJECT=1 ci_run rejected
 check "a push the remote rejects is no run" "2" "$(cat "$work/rejected.rc")"
 check "...and says why, in the remote's words" "true" \
   "$(grep -qE '^identity-ci-run: could not push measure/[^ ]+: remote rejected \(unable to migrate objects to permanent storage\)$' "$work/rejected.err" && echo true || echo false)"
+
+check "a plain run asks no tier: its workflow's default, measure" "false" \
+  "$(grep -q -- '-f tier=' "$work/dispatches" && echo true || echo false)"
+rm -f "$work/dispatches"
+ci_run tiered --tier ubuntu-24.04
+check "--tier is the workflow's tier input (identity-landing-check's check tier)" "true" \
+  "$(grep -q -- '-f heap=8g -f tier=ubuntu-24.04$' "$work/dispatches" && echo true || echo false)"
 
 spec_summary

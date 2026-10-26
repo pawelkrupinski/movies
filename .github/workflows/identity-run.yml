@@ -36,6 +36,13 @@ on:
                 required: false
                 default: '8g'
                 type: string
+            tier:
+                description: >-
+                    The ci-runner tier label this run's jobs take: identity-landing-check passes the check tier's
+                    ubuntu-24.04 (a landing check blocks work); empty is a measurement's, measure. (RunnerClassSpec)
+                required: false
+                default: ''
+                type: string
 # Every branch's runs in a lane of their own off main (a measurement's form; identity-ci-run pushes a measure/ branch per
 # run): runs side by side, none replaced. Keyed by the branch, never github.run_id, which Forgejo leaves empty when it
 # evaluates `concurrency:`. On Forgejo a dispatch
@@ -51,7 +58,7 @@ jobs:
     run:
         name: run
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
         timeout-minutes: 600
         permissions:
             contents: read
@@ -122,14 +129,14 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit
     # The run's own measure/ branch, deleted last (Forgejo only: no API cancels a run there; identity-model-convergence.yml)
     drop-measure-branch:
         needs: [ run, timings ]
         if: ${{ always() && startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
         timeout-minutes: 5
         permissions:
             contents: write
