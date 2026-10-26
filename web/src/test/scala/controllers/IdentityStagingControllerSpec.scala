@@ -7,7 +7,7 @@ import play.api.Mode
 import play.api.libs.json.JsValue
 import play.api.test.Helpers.*
 import play.api.test.{FakeRequest, Helpers}
-import services.identity.staging.{IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedListing, StagedQuestion, StagedTake, StagingBeat}
+import services.identity.staging.{IdentityStaging, InMemoryStagingDocuments, StagedCluster, StagedFact, StagedListing, StagedQuestion, StagedTake, StagingBeat}
 import tools.MutableClock
 
 import java.time.Instant
@@ -68,6 +68,21 @@ class IdentityStagingControllerSpec extends AnyFlatSpec with Matchers {
       explanation = Seq("best tmdb 7 at 96.0%")))), Nil, beat(1))
     val ukNow = (data(None) \ "countries").as[Seq[JsValue]].find(c => (c \ "code").as[String] == "uk").get
     (ukNow \ "changed" \ 0 \ "take" \ "explanation").as[Seq[String]] shouldBe Seq("best tmdb 7 at 96.0%")
+  }
+
+  // The screen's title search matches as the city page's does (SearchTitles): besides the titles a row shows, each
+  // film's original and alternative titles, unaccented, an original in another script romanised.
+  it should "carry the spellings the title search matches besides a row's titles: originals, unaccented and romanised" in {
+    def film(facts: StagedFact*) = cluster("s1", "Lewiatan").copy(take = StagedTake(Some(265180), Some("Leviathan"), "OwnMatch", 0.9, filmFacts = facts))
+    // an original no source spells in Latin letters is romanised
+    IdentityStagingController.searchTitlesOf(film(StagedFact("original title", "Левиафан"))) should contain allOf ("Левиафан", "Leviafan")
+    // beside a Latin spelling it is not (a machine romanisation is the fallback); each Latin one also unaccented
+    val leviathan = film(StagedFact("original title", "Левиафан"), StagedFact("alternative titles", "Le Léviathan, Leviathan"))
+    val titles = IdentityStagingController.searchTitlesOf(leviathan)
+    titles shouldBe Seq("Левиафан", "Le Léviathan", "Le Leviathan")   // the title itself is matched as the title
+    uk.publish("uk", Seq(leviathan), Nil, beat(1))
+    val ukNow = (data(None) \ "countries").as[Seq[JsValue]].find(c => (c \ "code").as[String] == "uk").get
+    (ukNow \ "changed").as[Seq[JsValue]].find(c => (c \ "key").as[String] == "s1").map(c => (c \ "searchTitles").as[Seq[String]]) shouldBe Some(titles)
   }
 
   it should "read a malformed cursor as none" in {

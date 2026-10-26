@@ -88,6 +88,9 @@
     .weight.against { color: #d9826e; }
     .out { margin-left: 6px; font-size: 11px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .search { font: inherit; font-size: 12px; color: var(--listing); background: #151515; border: 1px solid #262626; border-radius: 5px;
+      padding: 4px 9px; width: 100%; max-width: 420px; margin-bottom: 10px; }
+    .search:focus { outline: none; border-color: #5a5a8a; }
     .filter { font: inherit; font-size: 11px; color: #aaa; background: #151515; border: 1px solid #262626; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
     .filter:hover { border-color: #3a3a3a; }
     .filter.on { color: #fff; background: #23232e; border-color: #5a5a8a; }
@@ -109,8 +112,9 @@
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
     — every country's clusters whose take still waits on an answer, and every match decided or changed in the last
     7 days (decided: a new cluster's listings; joined: new listings joining a cluster already on the site; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
-    Pick a country above to list it alone, or "all" for every country's rows in one list by time; pick types to list only those (hover one for what it means); open a row for its questions, and a move's row for what the
+    Search a title to list only the rows billing or taking it; pick a country to list it alone, or "all" for every country's rows in one list by time; pick types to list only those (hover one for what it means); open a row for its questions, and a move's row for what the
     listings held before and why, beside what they hold now and why.</div>
+  <input type="search" id="search" class="search" placeholder="search titles…" autocomplete="off">
   <div class="filters" id="country-filters"></div>
   <div class="filters" id="filters"></div>
   <div id="countries"></div>
@@ -144,13 +148,29 @@
     // the countries listed: "" each in a section of its own, one under the other; "all" every country's rows in one list,
     // by time; a code that country alone. Kept in the URL's #country= beside #only=.
     var country = (location.hash.match(/country=([a-z]+)/) || [, ""])[1];
+    // the title searched, matched as the city page's search matches it: a row is listed when one of its titles (a
+    // listing's, its film's now or before) or one of their other spellings (`searchTitles`: original and alternative
+    // titles, unaccented, romanised — the server's `SearchTitles`) holds it, case aside. Kept in the URL's #q=.
+    var query = decodeURIComponent((location.hash.match(/q=([^&]*)/) || [, ""])[1]);
+    function titled(cl) {
+      var q = query.trim().toLowerCase();
+      if (!q) return true;
+      var titles = cl.listings.map(function (l) { return l.rawTitle; })
+        .concat([cl.take.title, cl.take.leaningTitle, cl.before && cl.before.title], cl.searchTitles || []);
+      return titles.some(function (t) { return t && t.toLowerCase().includes(q); });
+    }
     function keepInUrl() {
       var only = TYPES.filter(function (k) { return picked[k]; }).join(",");
-      var parts = (only ? ["only=" + only] : []).concat(country ? ["country=" + country] : []);
+      var parts = (only ? ["only=" + only] : []).concat(country ? ["country=" + country] : [])
+        .concat(query.trim() ? ["q=" + encodeURIComponent(query.trim())] : []);
       history.replaceState(null, "", parts.length ? "#" + parts.join("&") : location.pathname + location.search);
     }
     function typeOf(cl) { return cl.resolvedAt == null ? "staging" : cl.resolution; }
-    function wanted(cl) { return !Object.keys(picked).length || picked[typeOf(cl)] === true; }
+    function wanted(cl) { return titled(cl) && (!Object.keys(picked).length || picked[typeOf(cl)] === true); }
+    /** What an empty list says: that the search or the picked types left out every row it had, or that it had none. */
+    function emptyText(had, none) {
+      return !had ? none : query.trim() && !Object.keys(picked).length ? "no title matching “" + esc(query.trim()) + "”" : "none of the picked types";
+    }
 
     function esc(s) {
       return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
@@ -431,7 +451,10 @@
       var counted = {};
       // a type's count: of the countries listed
       order.filter(function (code) { return !country || country === "all" || code === country; }).forEach(function (code) {
-        Object.keys(state[code].clusters).forEach(function (k) { var t = typeOf(state[code].clusters[k]); counted[t] = (counted[t] || 0) + 1; });
+        Object.keys(state[code].clusters).forEach(function (k) {
+          var cl = state[code].clusters[k];
+          if (titled(cl)) counted[typeOf(cl)] = (counted[typeOf(cl)] || 0) + 1;   // a type's count: of the rows the search keeps
+        });
       });
       var filters = "<button class=\"filter" + (Object.keys(picked).length ? "" : " on") + "\" data-type=\"\" title=\"" + MEANS[""] + "\">all</button>" +
         TYPES.map(function (t) {
@@ -469,10 +492,10 @@
       var listedStaging = staging.filter(function (r) { return wanted(r.cl); }), listedResolved = resolved.filter(function (r) { return wanted(r.cl); });
       var rows = function (rs) { return rs.map(function (r) { return row(r.code, r.cl, tagged); }).join(""); };
       return "<h3>Staging</h3>" + (listedStaging.length ? rows(listedStaging) :
-          "<div class=\"empty\">" + (staging.length ? "none of the picked types" : "nothing waits") + "</div>") +
+          "<div class=\"empty\">" + emptyText(staging.length, "nothing waits") + "</div>") +
         "<h3>Decided and changed, last 7 days</h3>" + (listedResolved.length ? rows(listedResolved.slice(0, SHOWN)) +
           (listedResolved.length > SHOWN ? "<div class=\"empty\">… and " + (listedResolved.length - SHOWN) + " older</div>" : "") :
-          "<div class=\"empty\">" + (resolved.length ? "none of the picked types" : "none lately") + "</div>");
+          "<div class=\"empty\">" + emptyText(resolved.length, "none lately") + "</div>");
     }
     function section(code) {
       var c = state[code], parts = split(code);
@@ -497,6 +520,10 @@
       order.forEach(function (code) { var parts = split(code); staging = staging.concat(parts.staging); resolved = resolved.concat(parts.resolved); });
       return "<section class=\"country\" data-country=\"all\"><h2>Every country</h2>" + lists(staging.sort(byWait), resolved.sort(byNewest), true) + "</section>";
     }
+
+    var search = document.getElementById("search");
+    search.value = query;
+    search.addEventListener("input", function () { query = search.value; keepInUrl(); render(); });
 
     document.getElementById("country-filters").addEventListener("click", function (e) {
       var button = e.target.closest && e.target.closest("button.filter");

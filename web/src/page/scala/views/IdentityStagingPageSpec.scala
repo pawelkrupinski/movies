@@ -323,4 +323,33 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
       hrefs(".line:first-child") should include (page)   // the listing's own page
     }
   }
+
+  it should "list only the rows whose title, or a spelling of it, holds what the search box says, as the city page searches" in {
+    val leviathan = cluster("q1", "Kino Muza", "Lewiatan", Nil, resolvedAt = Some(clock.millis())).copy(resolution = Some(StagedCluster.Decided),
+      take = StagedTake(Some(265180), Some("Leviathan"), "OwnMatch", 0.9, filmFacts = Seq(StagedFact("original title", "Левиафан"))))
+    val amelie = cluster("q2", "Kino Muza", "Amelia", Nil, resolvedAt = Some(clock.millis())).copy(resolution = Some(StagedCluster.Decided),
+      take = StagedTake(Some(194), Some("Amélie"), "OwnMatch", 0.9, filmFacts = Seq(StagedFact("original title", "Le Fabuleux Destin d'Amélie Poulain"))))
+    staging.publish("es", Nil, Nil, beat(0), resolved = Seq(leviathan, amelie), keptFor = java.time.Duration.ofDays(7))
+    onPage { p =>
+      val section = "section[data-country=es]"
+      def ids = p.evalString(s"Array.from(document.querySelectorAll('$section details.cluster')).map(e => e.dataset.id).sort().join(' ')")
+      def search(text: String) = p.eval(s"(() => { const s = document.getElementById('search'); s.value = ${play.api.libs.json.JsString(text)}; " +
+        "s.dispatchEvent(new Event('input')); })()")
+      p.waitFor(s"document.querySelector('$section details.cluster[data-id=\"es|q2\"]') !== null")
+      search("leviafan")   // the original's romanisation
+      p.waitFor(s"document.querySelectorAll('$section details.cluster').length === 1")
+      ids shouldBe "es|q1"
+      p.evalString("location.hash") shouldBe "#q=leviafan"
+      search("AMELIE POULAIN")   // the original unaccented, case aside
+      p.waitFor(s"document.querySelector('$section details.cluster').dataset.id === 'es|q2'")
+      ids shouldBe "es|q2"
+      search("Lewia")   // the listing's own title
+      p.waitFor(s"document.querySelector('$section details.cluster').dataset.id === 'es|q1'")
+      search("no such film")
+      p.waitFor(s"document.querySelectorAll('$section details.cluster').length === 0")
+      p.evalString(s"document.querySelector('$section').textContent") should include ("no title matching")
+      search("")
+      p.waitFor(s"document.querySelectorAll('$section details.cluster').length >= 2")
+    }
+  }
 }
