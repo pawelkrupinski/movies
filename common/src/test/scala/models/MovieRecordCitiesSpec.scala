@@ -39,8 +39,10 @@ class MovieRecordCitiesSpec extends AnyFlatSpec with Matchers {
   // That is ~450ms per call on this shape, and the read-model projector calls it
   // on every projection, which made it the worker's dominant CPU driver. The
   // reverse index (`City.forCinema`) makes the cost linear in the film's OWN
-  // venues; the bound below is ~10x the post-fix cost, so it stays green under
-  // a loaded machine and red only on a return to per-city rebuilding.
+  // venues. Held by what a call allocates, not by its wall time: a per-call
+  // millisecond bound measured the machine's load as much as the code, and failed
+  // a loaded CI runner (52 ms against 50) with the fix in place. Rebuilding per city
+  // allocates ~800 `cinemaData` builds; the bound is 10.
   it should "resolve a nationwide venue list without rebuilding cinemaData per city" in {
     val venues = City.all.filter(_.country == Country.UnitedStates).flatMap(_.cinemas).distinct.take(1000)
     venues.size should be >= 500
@@ -48,12 +50,13 @@ class MovieRecordCitiesSpec extends AnyFlatSpec with Matchers {
 
     record.cities shouldBe City.all.filter(c => venues.exists(c.cinemaSet.contains))
 
-    (1 to 3).foreach(_ => record.cities)
-    val started = System.nanoTime()
-    (1 to 10).foreach(_ => record.cities)
-    val perCallMillis = (System.nanoTime() - started) / 1e6 / 10
-    withClue(f"cities took $perCallMillis%.1f ms per call for ${venues.size} venues: ") {
-      perCallMillis should be < 50.0
-    }
+    assume(tools.ThreadAllocation.supported, "this JVM cannot say what a call allocated")
+    given services.movies.LatestTitleYear =
+      services.movies.LatestTitleYear(java.time.Clock.fixed(java.time.Instant.parse("2026-06-01T00:00:00Z"), java.time.ZoneOffset.UTC))
+    def allocated(work: => Any): Long = { work; tools.ThreadAllocation.of(work)._2 }
+    val oneBuild = allocated(record.cinemaData)
+    val cities   = allocated(record.cities)
+    info(s"cities allocated ${cities / 1000} kB for ${venues.size} venues; one cinemaData build ${oneBuild / 1000} kB")
+    cities should be < oneBuild * 10
   }
 }
