@@ -147,6 +147,14 @@ Each item has a verdict:
 | 25 | Staging events, `Merged` wait start | publisher | (a) display | The screen only. |
 | 26 | Question memory (`attempted`) | worker | (b) input | It is read by the whole resolve too (`newAgreementStage`, harness `World.tried`). |
 | 27 | `IdentityDriftCheck` (`Adopt` → `forget`) | worker adapters | **deleted** | Not wired since the OOM; deleted with `AgreementStage.forget`, `IncrementalResolver.reResolve`, `TakeChangeLines.drift` and the repair setting (ddd1c1951, −309 net). |
+| 28 | The agreement stage's configuration: the families asked, those a film may stand on, `listedOn`, the calibration | `IdentityProjectionWiring` (worker code, in no rules closure) | **(b) fixed** | In `decidedUnder` (`AgreementStage.configured`): a verdict decided before Filmweb was asked in a country stood once it was, its receipt naming only what it read. Spec: `AgreementStageSpec` "...configured with other families...". |
+| 29 | The rules version stamps read off the classpath | `ClasspathResource` | **(b) fixed** | Written under `services/identity/` (`ClasspathResource.Stamps`), and a missing one throws: at the root, an older build's copy in common's output came first on the worker's classpath and would have frozen the versions. |
+
+Runtime inputs are held structurally (2026-10-26): `IdentityRuntimeInputsSpec` fails on a collection the identity path
+opens with no `ResolveRole` in `services.MongoCollections` (an input and the key it is in, or state and why it decides
+nothing), a resource a closure source names that the closure does not digest, and a stage parameter neither versioned,
+receipted nor inert; `NoRuntimeLookupsInIdentitySpec` bans reflection, the environment, files and classpath reads
+outside `ClasspathResource` in identity code.
 
 The counts of the 27:
 

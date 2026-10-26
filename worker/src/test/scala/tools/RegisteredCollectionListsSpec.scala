@@ -40,8 +40,8 @@ class RegisteredCollectionListsSpec extends AnyFlatSpec with Matchers {
   private def captures(entry: Path): Seq[Path] =
     """\b(\w+)\.readFrom\(""".r.findAllMatchIn(codeOf(entry)).flatMap(m => fixtureObjects.get(m.group(1))).toSeq.distinct.flatMap(reached).distinct
 
-  "The collections the registry marks read by the resolve" should "be those the live drift check's resolve reads the captures of" in {
-    CollectionNames.openedFrom(captures(LiveDrift)) shouldBe MongoCollections.readByResolve
+  "The collections the registry marks read by the resolve" should "be those the live drift check's resolve reads the captures of, but those it names uncaptured" in {
+    CollectionNames.openedFrom(captures(LiveDrift)) shouldBe MongoCollections.capturedForDrift
   }
 
   "The reader of what a program opens" should "take a store's collection from its constructor's argument over the store's own" in {

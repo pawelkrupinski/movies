@@ -56,7 +56,10 @@ object CollectionNames {
 
   /** The names the program in `files` opens: its own, and for each store it constructs the collection its arguments name,
    *  else every name the file defining the store opens. */
-  def openedFrom(files: Seq[Path]): Set[String] = files.map(codeOf).flatMap { source =>
+  def openedFrom(files: Seq[Path]): Set[String] = openedIn(files.map(codeOf))
+
+  /** [[openedFrom]] over sources' text: a program's code, or the definitions of a wiring's values. */
+  def openedIn(code: Seq[String]): Set[String] = code.flatMap { source =>
     val stores = Store.findAllMatchIn(source).map { m =>
       val open = source.indexOf('(', m.start)
       m.group(1) -> ScalaSourceScan.argumentsAt(source, open)

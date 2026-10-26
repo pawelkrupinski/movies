@@ -155,7 +155,7 @@ class WorkerWiring(
         tracked = Some(lookupsNow)
         inputs.incremental(lookupsNow, titleNormalizer,
           store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-          rules = inputs.rulesVersion(IdentityRules.codeVersion), traces = identityTraces)
+          code = IdentityRules.codeVersion, traces = identityTraces)
       },
       reads      = identityReads,
       archive    = () => Listing.distinct(Listing.all(identityListingIntake.identities(liveCinemas), titleNormalizer)),

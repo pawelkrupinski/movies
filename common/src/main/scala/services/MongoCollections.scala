@@ -12,6 +12,22 @@ enum CollectionDatabase {
   case LocalReview
 }
 
+/**
+ * What the identity path (the model's resolve, its agreement stage, the projection that writes their takes) does with a
+ * collection it opens: under the no-drift principle (docs/design/identity-no-drift.md) its state may be only persisted
+ * inputs, or caches of a pure function of them keyed by their full dependency set. `IdentityRuntimeInputsSpec` fails on
+ * a collection the path opens that names neither.
+ */
+enum ResolveRole {
+  /** Its content can move a grouping or a take. `key` names where it is in the dependency key of what read it — a
+   *  family's slice digest, a verdict's receipt or listings' digest, the model's rules version — so a filing of it
+   *  reopens what read it. `uncaptured`: why the live drift check does not resolve over its capture, when it does not. */
+  case Input(key: String, uncaptured: Option[String] = None)
+  /** The path's own state, and why it decides nothing a whole resolve over the inputs would not: a cache keyed by its
+   *  full dependency set, a name, or what is only written (a log, a display). */
+  case State(why: String)
+}
+
 /** The tier whose main code writes a collection. */
 enum Tier {
   case Web, Worker
@@ -24,13 +40,17 @@ enum Tier {
  * @param writers       the tiers whose main code writes it
  * @param mirrored      why the local prod mirror syncs it, when it does (`debug-mirror-collections.json`)
  * @param recorded      whether the nightly recording captures it read-only from prod (`record-scrape-fixtures.yml`)
- * @param readByResolve whether production's identity resolve reads it, so the live drift check resolves over its capture
+ * @param resolve       what the identity path does with it, when it opens it ([[ResolveRole]])
  */
 final case class RegisteredCollection(name: String, database: CollectionDatabase, retention: Retention, writers: Set[Tier],
-                                      mirrored: Option[String] = None, recorded: Boolean = false, readByResolve: Boolean = false) {
+                                      mirrored: Option[String] = None, recorded: Boolean = false, resolve: Option[ResolveRole] = None) {
   def mirror(why: String): RegisteredCollection = copy(mirrored = Some(why))
   def record: RegisteredCollection               = copy(recorded = true)
-  def resolveInput: RegisteredCollection         = copy(readByResolve = true)
+  def resolveInput(key: String): RegisteredCollection = copy(resolve = Some(ResolveRole.Input(key)))
+  def resolveInputUncaptured(key: String, why: String): RegisteredCollection = copy(resolve = Some(ResolveRole.Input(key, Some(why))))
+  def resolveState(why: String): RegisteredCollection = copy(resolve = Some(ResolveRole.State(why)))
+  /** Whether production's identity resolve reads it as an input. */
+  def readByResolve: Boolean = resolve.exists { case ResolveRole.Input(_, _) => true; case ResolveRole.State(_) => false }
 }
 
 /**
@@ -55,6 +75,11 @@ object MongoCollections {
   import Tier.*
 
   private val OnePerVenue = KeptForever("one document per venue, rewritten in place")
+
+  // How each input of the identity path is in the dependency key of what read it ([[ResolveRole.Input]]).
+  private val ListingsKey = "the listings themselves: a family is kept under its listing set, a verdict under its listings' digest"
+  private val SliceKey    = "a family's slice digest of every corpus fact it read (CorpusContext.slice), and a verdict's receipt " +
+    "of every TMDB read its fill made (AgreementStage.reads)"
 
   val all: Seq[RegisteredCollection] = Seq(
     RegisteredCollection("movies", Corpus, Sweep("IdentityProjection"), Set(Worker))
@@ -81,51 +106,63 @@ object MongoCollections {
         " produced, before the corpus merge touched it, which is what you read when a scrape looks wrong " +
         "and the corpus a local replay replays. Over the tunnel that read is the latency this mirror " +
         "exists to remove.")
-      .record,
+      .record
+      .resolveInputUncaptured(ListingsKey, "the drift check resolves the intake's accepted listings (identity_listings) " +
+        "alone, where production falls back to this archive's last listing for a venue with none accepted " +
+        "(IdentityListingIntake.knownListing)"),
     RegisteredCollection("identity_model_families", Corpus, Sweep("MongoIdentityModelStore"), Set(Worker))
       .mirror("The identity review pages (/debug/review*): the model's decisions. ~190 MB over the five " +
-        "countries with the other review collections (2026-10-06)."),
+        "countries with the other review collections (2026-10-06).")
+      .resolveState("the model's families, a cache: one stands only under the same rules version and slice digest " +
+        "(IncrementalResolver.restore, no-drift item 1)"),
     RegisteredCollection("identity_listings", Corpus, OnePerVenue, Set(Worker))
       .mirror("Review pages: each venue's last scrape as the identity intake holds it (catalogue ids, " +
         "screenings).")
       .record
-      .resolveInput,
+      .resolveInput(ListingsKey),
     RegisteredCollection("venue_pages", Corpus, Unswept("one per venue detail page ever read; a gone page is flagged, never deleted. The rule would be 'no " +
       "current listing names (its group, page)', but listings name pages through each cinema's enricher group and no " +
       "complete read of them exists yet to sweep against"), Set(Worker))
       .mirror("Review pages: each listing's own film page at its venue.")
       .record
-      .resolveInput,
+      .resolveInput("a family's slice digest of the venue facts it read, and a verdict's listings' digest " +
+        "(AgreementStage.digestOf reads each listing's venue detail)"),
     RegisteredCollection("tmdb_films", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .mirror("Review pages: the resolver's own TMDB record of each candidate film, for the candidates the " +
         "corpus lacks.")
       .record
-      .resolveInput,
+      .resolveInput(SliceKey),
     RegisteredCollection("identity_family_answers", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .mirror("Review pages: what the other film databases answered, and each candidate's TMDB poster paths " +
         "filed beside the hashes (13 MB over the five countries, 2026-10-08).")
       .record
-      .resolveInput,
+      .resolveInput("a verdict's receipt of every family, poster and catalogue answer it read, unanswered ones too " +
+        "(StoredVerdict.reads)"),
     RegisteredCollection("identity_traces", Corpus, Sweep("MongoIdentityTraceStore"), Set(Worker))
       .mirror("Review pages: each listing's trace (the evidence for and against the film it weighed, every " +
-        "rule's refusal), read when a card's Why fold-out opens."),
+        "rule's refusal), read when a card's Why fold-out opens.")
+      .resolveState("the decisions' explanations, only written by the path"),
     RegisteredCollection("identity_agreements", Corpus, Sweep("MongoAgreementVerdicts"), Set(Worker))
       .mirror("Backs no page: the agreement stage's stored verdicts (the film each cluster's families agreed " +
         "on, or a fill rule took). Prod state no recording holds, which `scripts/identity-slice --prod-" +
-        "mirror` reads so a slice decides, and explains, as prod's stage does."),
+        "mirror` reads so a slice decides, and explains, as prod's stage does.")
+      .resolveState("the agreement's verdicts, a cache: one stands only under the same decidedUnder, listings' digest and " +
+        "receipt (no-drift items 8, 10)"),
     RegisteredCollection("identity_agreement_keys", Corpus, Sweep("MongoAgreementKeys"), Set(Worker))
       .mirror("Backs no page: the agreement stage's cluster keys, which its verdicts in `identity_agreements` " +
         "are filed under, each with its cluster's first listing. `scripts/identity-slice --prod-mirror` " +
-        "reads them to find each cluster's stored verdict."),
+        "reads them to find each cluster's stored verdict.")
+      .resolveState("names only: no verdict is found by its key (no-drift items 10, 14)"),
     RegisteredCollection("identity_pins", Corpus, KeptForever("operator pins, removed by hand"), Set(Web, Worker))
       .mirror("Backs no page: operator pins, read by `scripts/identity-slice --prod-mirror` beside the " +
         "agreements.")
       .record
-      .resolveInput,
+      .resolveInput("the model's rules version, which hashes the pins (ResolveInputs.rulesVersion)"),
     // the country's staging clusters (capped) and resolved ones (capped, aged out), deleted by its publisher
     RegisteredCollection("identity_staging", Corpus, Sweep("IdentityStagingPublisher"), Set(Worker))
       .mirror("The staging screen (/debug/identity/staging): each country's clusters still waiting on an answer" +
-        " and those resolved lately, capped by its publisher (at most 700 small documents a country)."),
+        " and those resolved lately, capped by its publisher (at most 700 small documents a country).")
+      .resolveState("the staging screen's display, only written by the path"),
     RegisteredCollection("uptimeBuckets", Corpus, Ttl("bucket"), Set(Web, Worker))
       .mirror("Backs no /debug page: ~24 h of 15-minute scrape outcomes per service (TTL-expired in prod; the " +
         "tailer carries those deletes). The scheduled white-cinema investigation (docs/white-cinema-" +
@@ -138,7 +175,8 @@ object MongoCollections {
         "fallback from one that is genuinely white."),
     RegisteredCollection("uptimeServiceTags", Corpus, KeptForever("one document per monitored service (unique index)"), Set(Worker)),
     RegisteredCollection("database_owner", Corpus, KeptForever("a handful of owner markers"), Set(Worker)),
-    RegisteredCollection("detail_cache", Corpus, Ttl("expireAt"), Set(Worker)),
+    RegisteredCollection("detail_cache", Corpus, Ttl("expireAt"), Set(Worker))
+      .resolveState("the venue detail fetches' cache: a page read files what it states into venue_pages, the input"),
     RegisteredCollection("facebook_fetches", Fleet, Ttl("fetchedAt"), Set(Web)),
     RegisteredCollection("resolve_imdb", Corpus, Ttl("at"), Set(Worker)),
     RegisteredCollection("resolve_rt", Corpus, Ttl("at"), Set(Worker)),
@@ -149,26 +187,32 @@ object MongoCollections {
     RegisteredCollection("read_model_derivation", Corpus, KeptForever("two fixed ids: the projection's and the pass's marker"), Set(Worker)),
     RegisteredCollection("change_stream_tokens", Corpus, KeptForever("one resume token per change stream"), Set(Worker)),
     // A gone film's TMDB-keyed rows are swept; its title-keyed ones (no tmdbId, venue detail stamps) are not.
-    RegisteredCollection("freshness", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker)),
-    RegisteredCollection("identity_model_meta", Corpus, KeptForever("the model store's meta documents, a fixed set"), Set(Worker)),
+    RegisteredCollection("freshness", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
+      .resolveState("when a venue page is due to be read: a listing's first resolve waits on it, its arrival in venue_pages reopens the family"),
+    RegisteredCollection("identity_model_meta", Corpus, KeptForever("the model store's meta documents, a fixed set"), Set(Worker))
+      .resolveState("the rules version the stored families were decided under: their cache key"),
     RegisteredCollection("fleet_host_pace", Fleet, KeptForever("one document per fleet-paced host, rewritten in place"), Set(Worker)),
-    RegisteredCollection("identity_slot_fingerprints", Corpus, Sweep("MongoVenueSlotFingerprints"), Set(Worker)),
-    RegisteredCollection("identity_film_ids", Corpus, KeptForever("a film's id must never be reused, so its counter row outlives the film"), Set(Worker)),
+    RegisteredCollection("identity_slot_fingerprints", Corpus, Sweep("MongoVenueSlotFingerprints"), Set(Worker))
+      .resolveState("the projection's venue slots, a cache keyed by the venue-slot version and the slot's inputs (VenueSlotMemo)"),
+    RegisteredCollection("identity_film_ids", Corpus, KeptForever("a film's id must never be reused, so its counter row outlives the film"), Set(Worker))
+      .resolveState("film ids name a film only: neither rules closure reaches the code handing them out (no-drift item 5)"),
     RegisteredCollection("tmdb_people", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .record
-      .resolveInput,
+      .resolveInput(SliceKey),
     RegisteredCollection("tmdb_queries", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .record
-      .resolveInput,
+      .resolveInput(SliceKey),
     RegisteredCollection("identity_question_markers", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .record
-      .resolveInput,
+      .resolveInput("the question memory: a verdict's receipt names each attempt it settled on (`tried|...`), and an " +
+        "attempt marked since the last apply reads every receipt again"),
     RegisteredCollection("env_overrides", Corpus, KeptForever("one per overridden setting, deleted on unset"), Set(Web)),
     RegisteredCollection("env_registry", Corpus, KeptForever("the fixed set of settings, republished whole"), Set(Web, Worker)),
     RegisteredCollection("authExchangeCodes", Users, Ttl("issuedAt"), Set(Web)),
     RegisteredCollection("users", Users, KeptForever("one per account, deleted with it"), Set(Web)),
     RegisteredCollection("userStates", Users, KeptForever("one per account"), Set(Web)),
-    RegisteredCollection("scheduled_runs", Corpus, Ttl("claimedAt"), Set(Worker)),
+    RegisteredCollection("scheduled_runs", Corpus, Ttl("claimedAt"), Set(Worker))
+      .resolveState("when the identity path's periodic work (sweeps, renewals) runs, never what it decides"),
     RegisteredCollection("scrape_runs", Corpus, Ttl("createdAt"), Set(Worker)),
     RegisteredCollection("scrape_chunks", Corpus, Ttl("storedAt"), Set(Worker)),
     RegisteredCollection("scrape_chunk_pages", Corpus, Ttl("at"), Set(Worker)),
@@ -197,6 +241,10 @@ object MongoCollections {
 
   /** The collections production's identity resolve reads besides what a recording replays. */
   def readByResolve: Set[String] = all.filter(_.readByResolve).map(_.name).toSet
+
+  /** Of [[readByResolve]], those the live drift check resolves over the captures of. */
+  def capturedForDrift: Set[String] =
+    all.filter(_.resolve.exists { case ResolveRole.Input(_, uncaptured) => uncaptured.isEmpty; case _ => false }).map(_.name).toSet
 
   /** The collections in `database`. */
   def in(database: CollectionDatabase): Set[String] = all.filter(_.database == database).map(_.name).toSet

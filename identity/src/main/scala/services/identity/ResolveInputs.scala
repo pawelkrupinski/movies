@@ -12,10 +12,12 @@ import services.movies.TitleNormalizer
  */
 final case class ResolveInputs(pins: PinConstraints, calibration: IdentityCalibration, decorations: TitleDecorations) {
 
-  /** The incremental model over these inputs, its families kept in `store` under `rules`. */
-  def incremental(lookups: IdentityLookups, normalizer: TitleNormalizer, store: IdentityModelStore, rules: String,
+  /** The incremental model over these inputs, its families kept in `store` under the rules version of `code` and these
+   *  very inputs ([[rulesVersion]]): built here, never handed in, so no caller can keep families under a version that
+   *  leaves out an input the model reads. */
+  def incremental(lookups: IdentityLookups, normalizer: TitleNormalizer, store: IdentityModelStore, code: String,
                   traces: IdentityTraceSink): IncrementalResolver =
-    new IncrementalResolver(lookups, normalizer, calibration, pins, decorations, store = store, rules = rules, traces = traces)
+    new IncrementalResolver(lookups, normalizer, calibration, pins, decorations, store = store, rules = rulesVersion(code), traces = traces)
 
   /** The rules version a model's stored families are kept under: the code's, and these inputs'. */
   def rulesVersion(code: String): String = IncrementalResolver.rulesVersion(code, calibration, decorations, pins)

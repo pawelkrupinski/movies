@@ -278,7 +278,7 @@ object IdentityDrift {
     private val keys     = new agreement.InMemoryAgreementKeys
     private var rules    = "rules-1"
     private val inputs   = inputsOf(reads)
-    private def newModel() = inputs.incremental(gate, reads.normalizer, families, rules, IdentityTraceSink.Discard)
+    private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard)
     var model: IncrementalResolver = newModel()
     var stage: AgreementStage = answers.stage(gate, verdicts, budgets = true, keys)
     /** The intake's listings by key: what a projection hands the stage. */
