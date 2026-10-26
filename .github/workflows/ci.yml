@@ -436,13 +436,18 @@ jobs:
             # this checkout's target/ (2.5-3 min, 166 s on run 38804880394), and beside itAll that doubled the
             # row's sbt run (143 s → 308 s on run 38821863769). Keyed by the tool files, so an unchanged set
             # restores an exact match; a changed set restores the newest tree and compiles the difference.
+            # Saved by its own step after the verdict (below): saved only by a green job, a cold tree that missed the
+            # step's ceiling was never kept, so every later run started cold again (Main 1820: no entry at all, c2974e3aa
+            # and 9bb54c1a4 both compiled from scratch beside itAll, past 900 s).
             - name: Restore identity-slice's compiled old ref
+              id: old-ref-cache
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
-              uses: actions/cache@v5
+              uses: actions/cache/restore@v5
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
                   key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
                   restore-keys: |
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}-
                       identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
 
             - name: Start identity-slice's old-ref compile, in the background
@@ -495,8 +500,20 @@ jobs:
 
             # The old-ref compile started beside itAll (above): its verdict, failing as it would have.
             - name: identity-slice's tool files still compile into a ref from before them
+              id: old-ref-verdict
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
-              run: scripts/ci/in-background.sh wait old-ref-compile 900
+              run: scripts/ci/in-background.sh wait old-ref-compile 1200
+
+            # What the compile got done, kept when it is news: a red verdict (what a cold tree got through before the
+            # ceiling, so the next run compiles only the rest) or a tool set the restored tree was not compiled for. Under
+            # a key of its own (a cache key is written once), restored by the prefix above; main's alone
+            # (CacheSavePolicySpec).
+            - name: Keep identity-slice's compiled old ref, red or green
+              if: ${{ !cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' && (steps.old-ref-verdict.outcome != 'success' || !startsWith(steps.old-ref-cache.outputs.cache-matched-key, steps.old-ref-cache.outputs.cache-primary-key)) }}
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ runner.temp }}/kinowo-identity/refs
+                  key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}
 
     # DISPATCH ORDER. Forgejo hands a free runner the waiting job with the oldest `updated`, then the lowest id
     # (models/actions/task.go GetAvailableJobsForRunner), and creates a workflow's jobs in this file's order. The

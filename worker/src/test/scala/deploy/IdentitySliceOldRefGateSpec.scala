@@ -61,6 +61,23 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     ci.indexOf("Start identity-slice's old-ref compile") should be < ci.indexOf("run: sbt itAll")
   }
 
+  /** Kept by a step of its own, red or green: an `actions/cache` step saves only on a green job, so a cold tree that
+   *  missed the verdict's ceiling was never kept and every run after started cold again (Main 1820). */
+  it should "keep what a red compile got through, under a key of its own the restore's prefix finds" in {
+    val ci      = RepoFile.read(".github/workflows/ci.yml")
+    val restore = RepoFile.step(ci, "Restore identity-slice's compiled old ref")
+    val keep    = RepoFile.step(ci, "Keep identity-slice's compiled old ref, red or green")
+    restore should include("uses: actions/cache/restore@")
+    keep should include("uses: actions/cache/save@")
+    keep should include("!cancelled()")
+    keep should include("steps.old-ref-verdict.outcome != 'success'")
+    keep should include("key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}")
+    keep should include("path: ${{ runner.temp }}/kinowo-identity/refs")
+    restore should include("id: old-ref-cache")
+    RepoFile.step(ci, "identity-slice's tool files still compile into a ref from before them") should include("id: old-ref-verdict")
+    ci.indexOf("Keep identity-slice's compiled old ref") should be > ci.indexOf("wait old-ref-compile")
+  }
+
   /** The job's checkout is shallow, so a floor the old-ref test compiles into but the start step does not fetch fails
    *  as "no commit … in this SHALLOW clone": 68370c42d added 9bb54c1a4 to the test only, and Main went red (1807). */
   it should "fetch every floor the old-ref test compiles into" in {
