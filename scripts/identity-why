@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it): its take
+# there, the take before, the listings that joined or left its decision, and every input it read that moved between the
+# two -- an answer that changed or was deleted, a TMDB/IMDb read that failed (429, timeout), a listing taken in or let go.
+#
+#   scripts/identity-why <cc> --listing "venue|title" [--at 2026-10-26T22:10:30Z]
+#
+#   --listing  substrings of the venue and the billed title (case aside); every matching listing with a take kept
+#   --at       the moment (default now): the take at or before it, else the first after it
+#
+# Reads the LOCAL prod mirror (mongodb://127.0.0.1:28017, kinowo[_<cc>]_prod_mirror, read-only; $LOCAL_MIRROR_PORT or
+# $LOCAL_MIRROR_URI overrides) after scripts/local-mirror/freshness; never prod. The logic: scripts.IdentityHistoryTools.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+"$(dirname "$0")/local-mirror/freshness" "$1" --quiet || echo "identity-why: the mirror is not fresh -- the newest history may be missing" >&2
+# each argument double-quoted, as sbt's runMain reads a value holding spaces ("Riverside Theatre Woodbridge|The Stranger")
+args=""
+for arg in "$@"; do args+=" \"${arg//\"/\\\"}\""; done
+exec "$(dirname "$0")/sbt-warm" "worker/Test/runMain scripts.IdentityHistoryTools why$args"

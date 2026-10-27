@@ -21,29 +21,34 @@ import scala.util.control.NonFatal
  * Failures follow the clients' own reading: a 404 on a film's record or a person's credits is an
  * answer (the clients read it as `{"crew":[]}`), on IMDb's suggestions an empty one, on IMDb's titles
  * or record of a title none; a 404 on a search or a find, and any transient failure, is no answer —
- * nothing is written, and what the store held stands.
+ * nothing is written, and what the store held stands. Such a failure — a 429, a timeout, the circuit open — is kept in
+ * the identity history instead ([[FailureHistory]]): the answer a read went without, which an explanation of a take names.
  */
-final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tools.JsonBodies) extends Logging {
+final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tools.JsonBodies,
+                           failures: FailureHistory = FailureHistory.Discard) extends Logging {
   import TmdbStore.Partial
 
   def filed(method: String, url: String, outcome: Try[String]): Unit =
-    try normalize(method, url, outcome)
+    try { failures.kept(url, outcome); normalize(method, url, outcome) }
     catch { case NonFatal(e) => logger.warn(s"identity store: $method ${tools.RedactedUrl(url)} not normalized: $e") }
 
   /** A POST's answer: IMDb's titles of one title (`ImdbClient.titlesOf`), or its identity record
    *  (`ImdbClient.identityRecord`). A 404 is IMDb having no such title — no titles, no record — as the client reads
    *  it; any other POST, and any other failure, files nothing. */
   def filedPost(url: String, body: String, outcome: Try[String]): Unit =
-    try if (url == ImdbClient.Endpoint) outcome match {
-      case Success(answer) =>
-        ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer))))
-        // a reply without GraphQL data is a failed read, not IMDb saying it has no such title
-        ImdbClient.identityRecordId(body).map(_ -> bodies.parse(answer)).filter { case (_, js) => (js \ "data").toOption.isDefined }
-          .foreach { case (id, js) => store.imdbRecord(TmdbStore.imdbRecordId(id), ImdbClient.identityRecordIn(js)) }
-      case Failure(e) if tools.ReadOutcome.isAbsent(e) =>
-        ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), Nil))
-        ImdbClient.identityRecordId(body).foreach(id => store.imdbRecord(TmdbStore.imdbRecordId(id), None))
-      case Failure(_) => ()
+    try if (url == ImdbClient.Endpoint) {
+      failures.kept(s"$url ${ImdbClient.titlesQueryId(body).orElse(ImdbClient.identityRecordId(body)).getOrElse("")}", outcome)
+      outcome match {
+        case Success(answer) =>
+          ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer))))
+          // a reply without GraphQL data is a failed read, not IMDb saying it has no such title
+          ImdbClient.identityRecordId(body).map(_ -> bodies.parse(answer)).filter { case (_, js) => (js \ "data").toOption.isDefined }
+            .foreach { case (id, js) => store.imdbRecord(TmdbStore.imdbRecordId(id), ImdbClient.identityRecordIn(js)) }
+        case Failure(e) if tools.ReadOutcome.isAbsent(e) =>
+          ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), Nil))
+          ImdbClient.identityRecordId(body).foreach(id => store.imdbRecord(TmdbStore.imdbRecordId(id), None))
+        case Failure(_) => ()
+      }
     }
     catch { case NonFatal(e) => logger.warn(s"identity store: POST ${tools.RedactedUrl(url)} not normalized: $e") }
 
@@ -90,6 +95,7 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 }
 
 object TmdbNormalizer {
+
   /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title and language, genre ids, release day,
    *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles, the directors
    *  among the crew, the top-billed cast's names and which countries date a release of it, its cinema releases (country, year, edition) and

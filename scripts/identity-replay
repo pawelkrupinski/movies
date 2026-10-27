@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# The identity model's take at a past moment, resolved again from the identity history (identity_history, a month of
+# it): every answer, venue page and listing as it stood then -- the value the first entry after the moment replaced, else
+# what it is now -- under this checkout's code. The model's take; the agreement stage after it is not replayed.
+#
+#   scripts/identity-replay <cc> --at 2026-10-26T22:10:30Z [--listing "venue|title"]
+#
+#   --at       the moment
+#   --listing  substrings of the venue and the billed title (case aside): the listings resolved and printed (default all)
+#
+# Reads the LOCAL prod mirror (mongodb://127.0.0.1:28017, kinowo[_<cc>]_prod_mirror, read-only; $LOCAL_MIRROR_PORT or
+# $LOCAL_MIRROR_URI overrides) after scripts/local-mirror/freshness; never prod. The logic: scripts.IdentityHistoryTools.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+"$(dirname "$0")/local-mirror/freshness" "$1" --quiet || echo "identity-replay: the mirror is not fresh -- the newest history may be missing" >&2
+# each argument double-quoted, as sbt's runMain reads a value holding spaces ("Riverside Theatre Woodbridge|The Stranger")
+args=""
+for arg in "$@"; do args+=" \"${arg//\"/\\\"}\""; done
+exec "$(dirname "$0")/sbt-warm" "worker/Test/runMain scripts.IdentityHistoryTools replay$args"

@@ -40,6 +40,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     new services.identity.adapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language, identityTmdbLayer.feed)
 
   // The projection reads the model's resolution.
+  /** The answers a listing's own questions are filed under, as the take-change lines and the history name them. */
+  private lazy val takeReads: services.identity.Listing => Seq[String] =
+    services.identity.adapters.TakeReads.of(country.language.toLanguageTag)
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
       listings    = () => identityListingIntake.projectedByVenue(liveCinemas),
@@ -57,7 +60,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       clock       = clock,
       fingerprints = venueSlotFingerprints,
       takeLines   = new services.identity.TakeChangeLines(country, configuration.commit,
-        listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle)),
+        listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
+      takeHistory = new services.identity.adapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       agreementBacklog = () => agreementStage.backlog,

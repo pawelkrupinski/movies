@@ -156,6 +156,11 @@ object MongoCollections {
         "mirror` reads so a slice decides, and explains, as prod's stage does.")
       .resolveState("the agreement's verdicts, a cache: one stands only under the same decidedUnder, listings' digest and " +
         "receipt (no-drift items 8, 10)"),
+    RegisteredCollection("identity_history", Corpus, Ttl("at"), Set(Worker))
+      .mirror("Backs no page: a month of the identity system's history -- every answer, venue page and listing the " +
+        "model read as it moved, every read that failed, every take moved with what decided it -- which " +
+        "`scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by.")
+      .resolveState("only written: the inputs' and takes' history, read by the replay and explanation tools alone"),
     RegisteredCollection("identity_agreement_keys", Corpus, Sweep("MongoAgreementKeys"), Set(Worker))
       .mirror("Backs no page: the agreement stage's cluster keys, which its verdicts in `identity_agreements` " +
         "are filed under, each with its cluster's first listing. `scripts/identity-slice --prod-mirror` " +

@@ -28,14 +28,18 @@ import settings.CommitSha
  *    `previous_runner_up_tmdb` ([[LiveProjectionIndex.priorTake]]), and `runner_up_won` — whether the film taken now is the
  *    one the take before beat;
  *  - the listing's own facts: `listing_year`, `listing_runtime`, `listing_director`, `listing_original_title`;
- *  - `repro`: the `scripts/identity-slice` line that replays the listing under the build that took it.
+ *  - `repro`: the `scripts/identity-slice` line that replays the listing under the build that took it;
+ *  - what it read: `members` (how many listings the decision holds) and `reads` (the answers the listing's own questions
+ *    are filed under, `<history kind> <id>`, the first [[TakeChangeLines.ReadsLogged]]) — the keys the identity history
+ *    keeps each one's values under, and the take itself with all its members' (`scripts/identity-why`).
  *
  * The country, the build (`build`) and the projection (`projection_id`, `projection_mode`, `projection_trigger`) are every
  * line's own fields already. Every added field is an id or a number: the line stays bounded.
  *
  * `titleRules`: the title rules a listing's title takes (`TitleNormalizer.firedRules`), asked only for a logged line.
  */
-final class TakeChangeLines(country: Country, build: CommitSha, titleRules: Listing => Seq[String] = _ => Nil) {
+final class TakeChangeLines(country: Country, build: CommitSha, titleRules: Listing => Seq[String] = _ => Nil,
+                            reads: Listing => Seq[String] = _ => Nil) {
   import TakeChangeLines.*
 
   /** The line of `take`: the stored film it was on titled `was`, the film it is on now (`now`: id and title), the
@@ -92,7 +96,9 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
       "listing_runtime"        -> listing.flatMap(_.runtime),
       "listing_director"       -> listing.map(_.directors).filter(_.nonEmpty).map(_.mkString("; ")),
       "listing_original_title" -> listing.flatMap(_.originalTitle),
-      "repro"                  -> repro))
+      "repro"                  -> repro,
+      "members"                -> decision.map(_.members.size),
+      "reads"                  -> listing.map(reads).filter(_.nonEmpty).map(_.take(ReadsLogged).mkString("; "))))
   }
 
   /** The tick's summary: how many takes moved (`takes`, its match changes, [[TakeChange.moved]]) by kind and by basis
@@ -116,6 +122,8 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
 }
 
 object TakeChangeLines {
+  /** How many of a listing's reads its line names: the history holds them all. */
+  val ReadsLogged = 12
   /** A log line: its text and its fields (a `None` value leaves its field out). */
   final case class Line(message: String, fields: Seq[(String, Any)])
 

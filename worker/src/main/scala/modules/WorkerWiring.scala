@@ -102,7 +102,13 @@ class WorkerWiring(
   // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
   // runs, in the country's database — documents, store and family answers as one layer.
   protected lazy val identityTmdbLayer: services.identity.adapters.IdentityTmdbLayer =
-    new services.identity.adapters.IdentityTmdbLayer(mongoConnection.database, clock)
+    new services.identity.adapters.IdentityTmdbLayer(mongoConnection.database, clock, identityHistory, configuration.commit.value)
+  /** The identity system's history (`identity_history`, a month of it): every answer, venue page and listing the model
+   *  read as it moved, every read that failed, and every take the projection moved with what decided it — what
+   *  `scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by. */
+  lazy val identityHistory: services.identity.adapters.IdentityHistory =
+    mongoConnection.database.fold[services.identity.adapters.IdentityHistory](services.identity.adapters.IdentityHistory.Discard)(
+      new services.identity.adapters.MongoIdentityHistory(_, workerMetrics.ttlIndexMismatches))
   lazy val identityTmdbDocuments: services.identity.adapters.TmdbDocuments = identityTmdbLayer.documents
   /** The layer's document cache, by cache name, for `registerCacheMetrics`. */
   lazy val identityTmdbCacheOccupancies: Seq[(String, () => services.metrics.CacheOccupancy)] = identityTmdbLayer.cacheOccupancies
@@ -122,7 +128,9 @@ class WorkerWiring(
     new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); tools.TickRun.Completed },
       services.identity.adapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks))
   lazy val identityTmdbStore: services.identity.adapters.TmdbStore = identityTmdbLayer.store
-  lazy val identityTmdbNormalizer: services.identity.adapters.TmdbNormalizer = new services.identity.adapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
+  lazy val identityTmdbNormalizer: services.identity.adapters.TmdbNormalizer =
+    new services.identity.adapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies,
+      new services.identity.adapters.KeptFailures(identityHistory, clock, configuration.commit.value))
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`): each day's edits checked at a
    *  pace spread over the day, from the country's own hashed phase, through the lookup chain (`enrichmentFetch`). */
   lazy val identityTmdbChanges: services.identity.adapters.TmdbChangesSweep =
@@ -171,7 +179,9 @@ class WorkerWiring(
       pageWait   = new services.identity.adapters.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
                      WorkerWiring.VenuePageWaitLimit, clock),
       takenUp    = () => identityModelTakenUp(),
-      clock      = clock)
+      clock      = clock,
+      history    = identityHistory,
+      build      = configuration.commit.value)
     identityTmdbStore.onChanged(model.filed)
     model
   }
@@ -205,7 +215,8 @@ class WorkerWiring(
     new services.identity.adapters.QuestionMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)
 
   /** `venue_pages`: every venue detail page read, written once by page (`VenuePageReader`). */
-  lazy val venuePageStore: services.venuepages.VenuePageStore = newVenuePageStore
+  lazy val venuePageStore: services.venuepages.VenuePageStore =
+    new services.venuepages.HistoryVenuePageStore(newVenuePageStore, identityHistory, clock, configuration.commit.value)
   /** The store [[venuePageStore]] holds, built once. */
   protected def newVenuePageStore: services.venuepages.VenuePageStore =
     mongoConnection.database.fold[services.venuepages.VenuePageStore](new services.venuepages.InMemoryVenuePageStore)(

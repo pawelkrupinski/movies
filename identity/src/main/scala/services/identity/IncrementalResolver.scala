@@ -291,6 +291,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private var heldListings = 0
   private def isHeld(key: ListingKey): Boolean = byKey.get(key).exists(_.listing != null)
   private def heldListing(key: ListingKey): Option[Listing] = byKey.get(key).flatMap(k => Option(k.listing))
+  /** The listing the model holds under `key`, if it holds one: what an event replaces. */
+  def held(key: ListingKey): Option[Listing] = heldListing(key)
   private def familyOf(key: ListingKey): Option[Int] = byKey.get(key).collect { case k if k.family >= 0 => k.family }
 
   private def forget(id: Int): Unit = families.remove(id).foreach { family =>

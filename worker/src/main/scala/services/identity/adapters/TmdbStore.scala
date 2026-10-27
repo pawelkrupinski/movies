@@ -39,21 +39,8 @@ trait TmdbDocuments {
   /** These documents as an ANSWER reads them: only `kind`'s [[TmdbKind.answerFields]] — a dotted one as a Mongo
    *  projection gives it, the sub-document (empty when it lacks the field) holding only that field. A store that
    *  can leave the rest on the server does. */
-  def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = kind.answerFields.fold(get(kind, ids)) { fields =>
-    get(kind, ids).view.mapValues { d =>
-      val kept = new BsonDocument()
-      fields.foreach(_.split('.') match {
-        case Array(field)        => Option(d.get(field)).foreach(kept.put(field, _))
-        case Array(field, inner) => Option(d.get(field)).filter(_.isDocument).map(_.asDocument).foreach { sub =>
-          val projected = Option(kept.get(field)).map(_.asDocument).getOrElse(new BsonDocument())
-          Option(sub.get(inner)).foreach(projected.put(inner, _))
-          kept.put(field, projected)
-        }
-        case _                   => ()
-      })
-      kept
-    }.toMap
-  }
+  def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+    if (kind.answerFields.isEmpty) get(kind, ids) else get(kind, ids).view.mapValues(TmdbDocuments.project(kind, _)).toMap
   /** Each film's hit as an answer reads it ([[TmdbStore.filmHit]]: its record's, else its search hit's); a film the
    *  store holds no hit of is left out. A store that keeps answers keeps these apart from the films' records: a
    *  resolve asks every film its questions name for its hit, and reads none of their records. */
@@ -77,6 +64,23 @@ trait TmdbDocumentRetention {
 }
 
 object TmdbDocuments {
+  /** `d` as an ANSWER reads it ([[TmdbDocuments.answers]]): only `kind`'s [[TmdbKind.answerFields]] — a dotted one as a
+   *  Mongo projection gives it, the sub-document (empty when it lacks the field) holding only that field — or the whole
+   *  document for a kind that names none. */
+  def project(kind: TmdbKind, d: BsonDocument): BsonDocument = kind.answerFields.fold(d) { fields =>
+    val kept = new BsonDocument()
+    fields.foreach(_.split('.') match {
+      case Array(field)        => Option(d.get(field)).foreach(kept.put(field, _))
+      case Array(field, inner) => Option(d.get(field)).filter(_.isDocument).map(_.asDocument).foreach { sub =>
+        val projected = Option(kept.get(field)).map(_.asDocument).getOrElse(new BsonDocument())
+        Option(sub.get(inner)).foreach(projected.put(inner, _))
+        kept.put(field, projected)
+      }
+      case _                   => ()
+    })
+    kept
+  }
+
   /** How many of one read's batches are in flight at once — each holds one of the worker's pooled
    *  connections, so a take-up's reads overlap without taking the pool from everything else. */
   val InFlight = 4
@@ -184,7 +188,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock,
       val now     = clock.millis()
       val before  = docs.get(kind, distinct)
       val written = distinct.flatMap { id =>
-        def value = before.get(id).map { d => val c = d.clone(); Stamps.foreach(c.remove); c }
+        def value = before.get(id).map(unstamped)
         val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
         if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
         else before.get(id).filter(d => renew && fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
@@ -297,6 +301,8 @@ object TmdbStore {
   /** How often an unchanged answer is re-stamped at most — each re-stamp is a write. */
   val RenewEvery: FiniteDuration = 1.day
   private val Stamps = Seq(ChangedAt, FetchedAt)
+  /** `d` without its stamps: its value, as a write compares it. */
+  def unstamped(d: BsonDocument): BsonDocument = { val c = d.clone(); Stamps.foreach(c.remove); c }
   def fetchedAt(d: BsonDocument): Option[Long] = BsonFields.int64(d.get(FetchedAt))
   /** Was `d` given longer than `age` ago — or never stamped: an answer to ask again. */
   def olderThan(d: BsonDocument, age: FiniteDuration, clock: java.time.Clock): Boolean = fetchedAt(d).forall(clock.millis() - _ > age.toMillis)

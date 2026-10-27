@@ -74,7 +74,11 @@ final class IdentityModelService(
   /** Told each time the model is taken up — at boot, and a take-up retried after one failed: the first moment a
    *  projection of it can run (the boot's, which every projection on scrapes waits for). On the model's thread. */
   takenUp:    () => Unit = () => (),
-  clock:      java.time.Clock
+  clock:      java.time.Clock,
+  /** Where each listing the model takes in, re-published with another field or poster, or lets go is kept, before and
+   *  after ([[HistoryEntry.Listing]]), by the build `build`: what a replay of a moment's takes resolves. */
+  history:    IdentityHistory = IdentityHistory.Discard,
+  build:      String = ""
 ) extends Logging {
 
   // New listings waiting for their venue page, by venue, with when each began to wait. Touched only on
@@ -228,6 +232,7 @@ final class IdentityModelService(
       val before  = engine.familiesResolved
       val seen    = admitted.flatMap(_._2) ++ released
       val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
+      kept(engine, seen, gone)
       engine.batch(seen, gone, reads.changedBy(changes))
       val batch = ModelBatch(scraped.size, changes.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
         engine.sizes)
@@ -236,6 +241,22 @@ final class IdentityModelService(
       batch
     }
   }
+
+  /** `seen` and `gone`, as they move what `engine` holds, into the history: a listing new to it, held otherwise — the
+   *  model's fields or its poster — or let go. Its screening days alone moving is no entry: a scrape adds days daily,
+   *  and the model reads only their season. */
+  private def kept(engine: IncrementalResolver, seen: Seq[Listing], gone: Seq[services.movies.ListingKey]): Unit =
+    if (history ne IdentityHistory.Discard) {
+      val at = clock.millis()
+      def key(k: services.movies.ListingKey) = services.movies.ListingKey.serialised(k)
+      val moved = seen.flatMap { listing =>
+        val was = engine.held(listing.key)
+        Option.when(!was.contains(listing) || was.exists(_.poster != listing.poster))(
+          HistoryEntry(HistoryEntry.Listing, key(listing.key), at, was.map(ListingBson.doc), Some(ListingBson.doc(listing)), build))
+      }
+      val left = gone.flatMap(k => engine.held(k).map(was => HistoryEntry(HistoryEntry.Listing, key(k), at, Some(ListingBson.doc(was)), None, build)))
+      history.append(moved ++ left)
+    }
 
   /** Each scraped venue's listings the model takes in now — all but a NEW one whose venue page is unread
    *  (`pageWait`), which waits, its page asked for once — and the waiting listings released this drain:

@@ -156,7 +156,9 @@ final class IdentityProjection(
    *  page is then a change. */
   pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil),
   /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */
-  slotMemoOf:  Long => VenueSlotMemo = new VenueSlotMemo(_)
+  slotMemoOf:  Long => VenueSlotMemo = new VenueSlotMemo(_),
+  /** Where each take a written projection moves is kept with what decided it ([[TakeHistory]]). */
+  takeHistory: TakeHistory = TakeHistory.Discard
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -579,13 +581,15 @@ final class IdentityProjection(
       if (takes.nonEmpty) {
         val moved  = takes.iterator.map(_.listing).toSet
         val now    = written.iterator.flatMap(f => f.members.iterator.filter(moved).map(_ -> f)).toMap
-        val logged = takes.take(IdentityProjection.TakeChangesLogged)
-        logged.foreach { t =>
-          log(takeLines.of(t, t.previousFilm.flatMap(id => before.get(FilmId(id))).map(_.title),
+        val lines  = takes.map { t =>
+          (t, takeLines.of(t, t.previousFilm.flatMap(id => before.get(FilmId(id))).map(_.title),
             now.get(t.listing).map(f => f.id.value -> f.title), decisions.get(t.listing), live.listing(t.listing),
-            live.priorTake(t.listing), Some(trigger)))
+            live.priorTake(t.listing), Some(trigger)), decisions.get(t.listing))
         }
+        val logged = lines.take(IdentityProjection.TakeChangesLogged)
+        logged.foreach { case (_, line, _) => log(line) }
         log(takeLines.summary(takes, logged.size))
+        takeHistory.kept(lines, live.listing)
       }
     }
 
