@@ -89,6 +89,8 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@v4
               with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
                   name: precommit-check-logs
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
