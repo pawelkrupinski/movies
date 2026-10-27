@@ -101,6 +101,11 @@ object TitleTrace {
     (directors ++ OlderRefs.optionalText(f, "originalTitle").map(t => s"original title ${q(t)}") ++ runtime ++
       OlderRefs.optionalText(f, "ageRating").map(r => s"age rating $r")).map(", " + _).mkString
   }
+  /** The billing's work as `services.billing.BillingParse` reads it — None on a ref from before it (2026-10-21), whose
+   *  lookup query reads no work. By name ([[OlderRefs]]), so the tracer still compiles into such a ref. */
+  private def billingWork(text: String): Option[String] =
+    scala.util.Try(Class.forName("services.billing.BillingParse$").getField("MODULE$").get(null)).toOption
+      .flatMap(OlderRefs.call(_, "apply", text)).flatMap(OlderRefs.call(_, "work")).collect { case work: String => work }
   extension (s: String) private def ifEmpty(other: String): String = if (s.isEmpty) other else s
   private val baselineIds: Set[String] = TitleRules.all.map(_.id).toSet
 
@@ -163,9 +168,16 @@ object TitleTrace {
     val recased = normalizer.recase(clean)
     out += s"  recase (banner-aware): ${moved(clean, recased)}"
     val searchFired = normalizer.rules.firedSearch(recased)
-    val (searchLines, stripped) = steps(normalizer, searchFired, recased)
+    val (searchLines, folded) = steps(normalizer, searchFired, recased)
     if (searchLines.isEmpty) out += "    no strip fired" else out ++= searchLines
     val apiQuery = normalizer.apiQuery(recased)
+    // The fold reads the billing's work once the rules have folded (TitleRuleSet.query): a piece cut, they fold the rest again.
+    val stripped = billingWork(folded.trim).filter(_ != folded.trim).fold(folded) { work =>
+      out += s"  billing parse (BillingParse.work): ${moved(folded.trim, work)}"
+      val (workLines, refolded) = steps(normalizer, normalizer.rules.firedSearch(work), work)
+      out ++= workLines
+      refolded
+    }
     require(stripped.trim == apiQuery, s"the strip's trace ${q(stripped.trim)} is not the fold's ${q(apiQuery)}")
     val query = normalizer.searchQuery(clean)
     out += s"  format re-peel: ${moved(apiQuery, query)}"

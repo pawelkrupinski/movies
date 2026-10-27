@@ -1628,7 +1628,7 @@
 {"text":"Baranek Shaun i kudłata bestia 2D dubbing"}
 {"text":"Baranek Shaun i kudłata bestia dubbing"}
 {"text":"Baranek Shaun i kudłata bestia | 2D | Dubbing","pl,uk,de,us,es":{"venue":{"bok":"Baranek Shaun i kudłata bestia: 2D: Dubbing"}}}
-{"text":"Baranek Shaun i kudłata bestia | 6+ | PREMIERA!!!","pl,uk,de,us,es":{"query":"Baranek Shaun i kudłata bestia | 6+ |","venue":{"bok":"Baranek Shaun i kudłata bestia: 6+: PREMIERA!!!"}}}
+{"text":"Baranek Shaun i kudłata bestia | 6+ | PREMIERA!!!","pl":{"query":"Baranek Shaun i kudłata bestia","venue":{"bok":"Baranek Shaun i kudłata bestia: 6+: PREMIERA!!!"}},"uk,de,us,es":{"query":"Baranek Shaun i kudłata bestia | 6+ |","venue":{"bok":"Baranek Shaun i kudłata bestia: 6+: PREMIERA!!!"}}}
 {"text":"Baranek Shaun i kudłata bestia | PREMIERA","pl,uk,de,us,es":{"query":"Baranek Shaun i kudłata bestia","venue":{"bok":"Baranek Shaun i kudłata bestia","kino-mok-miedzyrzecz":"Baranek Shaun i kudłata bestia |"}}}
 {"text":"Baranek shaun i kudłata bestia"}
 {"text":"Baranek shaun i kudłata bestia tani poniedziałek","pl,uk,de,us,es":{"query":"Baranek shaun i kudłata bestia"}}
@@ -2683,7 +2683,7 @@
 {"text":"Clayface (Preview)","pl,uk,de,us,es":{"query":"Clayface"}}
 {"text":"Clayface (Spanish Dubbed)"}
 {"text":"Clayface (auf Englisch)"}
-{"text":"Clayface (engl.OV)(Auch in D-BOX) (Halloween-Special)"}
+{"text":"Clayface (engl.OV)(Auch in D-BOX) (Halloween-Special)","de":{"query":"Clayface (engl.OV)(Auch in D-BOX)"}}
 {"text":"Clayface (napisy)","pl,uk,de,us,es":{"query":"Clayface"}}
 {"text":"Clayface / 2D Napisy","pl,uk,de,us,es":{"query":"Clayface"}}
 {"text":"Clayface Vorpremiere","pl,uk,de,us,es":{"query":"Clayface"}}
@@ -2939,7 +2939,7 @@
 {"text":"Czas, który nie nadszedł 2D PL, Dys. Next Film"}
 {"text":"Czas, który nie nadszedł Film PL","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł"}}
 {"text":"Czas, który nie nadszedł tani poniedziałek","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł"}}
-{"text":"Czas, który nie nadszedł | 15+","pl,uk,de,us,es":{"venue":{"bok":"Czas, który nie nadszedł: 15+"}}}
+{"text":"Czas, który nie nadszedł | 15+","pl":{"query":"Czas, który nie nadszedł","venue":{"bok":"Czas, który nie nadszedł: 15+"}},"uk,de,us,es":{"venue":{"bok":"Czas, który nie nadszedł: 15+"}}}
 {"text":"Czas, który nie nadszedł święto kina","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł"}}
 {"text":"Czas, który nie nadszedł- Kino Konesera","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł"}}
 {"text":"Czas, który nie nadszedł-seans psychologiczny","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł"}}
@@ -3327,7 +3327,7 @@
 {"text":"DYRYGENT"}
 {"text":"DZIECI Z BULLERBYN"}
 {"text":"DZIEŃ DZIECKA KS. JANA KACZKOWSKIEGO"}
-{"text":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO | PL | 12+ |","pl,uk,de,us,es":{"venue":{"bok":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO: PL: 12+:"}}}
+{"text":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO | PL | 12+ |","pl":{"query":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO | PL","venue":{"bok":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO: PL: 12+:"}},"uk,de,us,es":{"venue":{"bok":"DZIEŃ DZIECKA KSIEDZA JANA KACZKOWSKIEGO: PL: 12+:"}}}
 {"text":"DZIEŃ DZIECKA KSIĘDZA JANA KACZKOWSKIEGO"}
 {"text":"DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją","pl,uk,de,us,es":{"query":"Przepraszam, czy tu biją","programme":"DZIEŃ KINA POLSKIEGO: ","bannerEnd":22}}
 {"text":"DZIEŃ OBJAWIENIA"}
@@ -4572,7 +4572,7 @@
 {"text":"Dzień Kina Polskiego: Przez ścianę | Przedpremiera","pl,uk,de,us,es":{"query":"Przez ścianę","programme":"Dzień Kina Polskiego: ","bannerEnd":22,"venue":{"bok":"Dzień Kina Polskiego: Przez ścianę: Przedpremiera"}}}
 {"text":"Dzień Kina Polskiego: Pucio kocha zwierzaki","pl,uk,de,us,es":{"query":"Pucio kocha zwierzaki","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
 {"text":"Dzień Kina Polskiego: Wiedźmin","pl,uk,de,us,es":{"query":"Wiedźmin","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
-{"text":"Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu","pl,uk,de,us,es":{"query":"Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
+{"text":"Dzień Kina Polskiego: Wiedźmin - rozmowa ze Zbigniewem Zamachowskim i pokaz filmu","pl,uk,de,us,es":{"query":"Wiedźmin","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
 {"text":"Dzień Kina Polskiego: Znaki Pana Śliwki","pl,uk,de,us,es":{"query":"Znaki Pana Śliwki","programme":"Dzień Kina Polskiego: ","bannerEnd":22}}
 {"text":"Dzień Objawienia"}
 {"text":"Dzień dziecka Księdza Jana Kaczkowskiego"}
@@ -5457,7 +5457,7 @@
 {"text":"Festiwal Pięć Smaków: W pogoni","pl,uk,de,us,es":{"query":"W pogoni","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festiwal Pięć Smaków: W sumie spoko","pl,uk,de,us,es":{"query":"W sumie spoko","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festiwal Pięć Smaków: W sumie spoko + spotkanie psychologiczne","pl,uk,de,us,es":{"query":"W sumie spoko","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
-{"text":"Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)","pl,uk,de,us,es":{"query":"Wielki Budda+ (spotkanie z reżyserem)","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
+{"text":"Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem)","pl,uk,de,us,es":{"query":"Wielki Budda+","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festiwal Pięć Smaków: Wielki Budda+ | Otwarcie Repliki i spotkanie z reżyserem","pl,uk,de,us,es":{"query":"Wielki Budda+","programme":"Festiwal Pięć Smaków: ","bannerEnd":22,"venue":{"bok":"Festiwal Pięć Smaków: Wielki Budda+: Otwarcie Repliki i spotkanie z reżyserem"}}}
 {"text":"Festiwal Pięć Smaków: Witajcie w Hope","pl,uk,de,us,es":{"query":"Witajcie w Hope","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festiwal Pięć Smaków: Zmierzch w Luomu","pl,uk,de,us,es":{"query":"Zmierzch w Luomu","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
@@ -5603,7 +5603,7 @@
 {"text":"Fjord"}
 {"text":"Fjord (15)","pl,uk,de,us,es":{"query":"Fjord"}}
 {"text":"Fjord (15) S"}
-{"text":"Fjord , Preview am Europäischen Kinotag 22.11.2026 um 19:45 Uhr"}
+{"text":"Fjord , Preview am Europäischen Kinotag 22.11.2026 um 19:45 Uhr","pl,uk,de,us,es":{"query":"Fjord"}}
 {"text":"Fjord FFFL","pl,uk,de,us,es":{"query":"Fjord","bannerEnd":10}}
 {"text":"Flame in the Streets"}
 {"text":"Flapjax | Splat!FilmFest","pl,uk,de,us,es":{"venue":{"bok":"Flapjax: Splat!FilmFest"}}}
@@ -7422,7 +7422,7 @@
 {"text":"Jak żyć, żeby nie zwariować / 2D polski","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować"}}
 {"text":"Jak żyć, żeby nie zwariować / film polski","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować"}}
 {"text":"Jak żyć, żeby nie zwariować pl"}
-{"text":"Jak żyć, żeby nie zwariować | 15+","pl,uk,de,us,es":{"venue":{"bok":"Jak żyć, żeby nie zwariować: 15+"}}}
+{"text":"Jak żyć, żeby nie zwariować | 15+","pl":{"query":"Jak żyć, żeby nie zwariować","venue":{"bok":"Jak żyć, żeby nie zwariować: 15+"}},"uk,de,us,es":{"venue":{"bok":"Jak żyć, żeby nie zwariować: 15+"}}}
 {"text":"Jak żyć,żeby nie zwariować"}
 {"text":"Jakob Heymann: Musik für Optimisten"}
 {"text":"Jakob Nacken und die Toy Boys"}
@@ -8416,7 +8416,7 @@
 {"text":"LALKA /film polski/"}
 {"text":"LALKA 2D PL"}
 {"text":"LALKA POL.-KINO WYBRZEŻE","pl,uk,de,us,es":{"venue":{"wybrzeze":"LALKA POL."}}}
-{"text":"LALKA | 2D | PL | 13+|","pl,uk,de,us,es":{"venue":{"bok":"LALKA: 2D: PL: 13+:"}}}
+{"text":"LALKA | 2D | PL | 13+|","pl":{"query":"LALKA | 2D | PL","venue":{"bok":"LALKA: 2D: PL: 13+:"}},"uk,de,us,es":{"venue":{"bok":"LALKA: 2D: PL: 13+:"}}}
 {"text":"LAND AN ZWEI GRENZEN, DIE VIERDÖRFER","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"LAND AN ZWEI GRENZEN"}}}
 {"text":"LANDAU LIVE: Die Sessionband für die Pfalz"}
 {"text":"LANGE BEINE – LANGE FINGER"}
@@ -8781,7 +8781,7 @@
 {"text":"Lalka [english friendly]"}
 {"text":"Lalka premiera!","pl,uk,de,us,es":{"query":"Lalka"}}
 {"text":"Lalka tani poniedziałek","pl,uk,de,us,es":{"query":"Lalka"}}
-{"text":"Lalka | 13+ | PREMIERA!!!","pl,uk,de,us,es":{"query":"Lalka | 13+ |","venue":{"bok":"Lalka: 13+: PREMIERA!!!"}}}
+{"text":"Lalka | 13+ | PREMIERA!!!","pl":{"query":"Lalka","venue":{"bok":"Lalka: 13+: PREMIERA!!!"}},"uk,de,us,es":{"query":"Lalka | 13+ |","venue":{"bok":"Lalka: 13+: PREMIERA!!!"}}}
 {"text":"Lalka | 2D | PL","pl,uk,de,us,es":{"venue":{"bok":"Lalka: 2D"}}}
 {"text":"Lalka | Kino Dostępne","pl,uk,de,us,es":{"query":"Lalka","venue":{"bok":"Lalka: Kino Dostępne"}}}
 {"text":"Lalka | Kinoteka dla Rodziców","pl,uk,de,us,es":{"query":"Lalka","venue":{"bok":"Lalka: Kinoteka dla Rodziców"}}}
@@ -10014,7 +10014,7 @@
 {"text":"Mistyczka 2D PL, Dys. Rafael Film"}
 {"text":"Mistyczka Film PL","pl,uk,de,us,es":{"query":"Mistyczka"}}
 {"text":"Mistyczka kino chrześcijańskie"}
-{"text":"Mistyczka | 12+","pl,uk,de,us,es":{"venue":{"bok":"Mistyczka: 12+"}}}
+{"text":"Mistyczka | 12+","pl":{"query":"Mistyczka","venue":{"bok":"Mistyczka: 12+"}},"uk,de,us,es":{"venue":{"bok":"Mistyczka: 12+"}}}
 {"text":"Mistyczka | 2D | PL","pl,uk,de,us,es":{"venue":{"bok":"Mistyczka: 2D"}}}
 {"text":"Mit Hasan in Gaza"}
 {"text":"Mit Kultur und Kommunikation zum Glück Beates Glückssoiree"}
@@ -10528,7 +10528,7 @@
 {"text":"Nasza rewolucja (pokaz przedpremierowy z prelekcją i spotkaniem)","pl,uk,de,us,es":{"query":"Nasza rewolucja"}}
 {"text":"Nasza rewolucja (pokaz przedpremierowy)","pl,uk,de,us,es":{"query":"Nasza rewolucja"}}
 {"text":"Nasza rewolucja - Salon Kultury Helios","pl,uk,de,us,es":{"venue":{"helios":"Nasza rewolucja"}}}
-{"text":"Nasza rewolucja | 15+ | PREMIERA!!!","pl,uk,de,us,es":{"query":"Nasza rewolucja | 15+ |","venue":{"bok":"Nasza rewolucja: 15+: PREMIERA!!!"}}}
+{"text":"Nasza rewolucja | 15+ | PREMIERA!!!","pl":{"query":"Nasza rewolucja","venue":{"bok":"Nasza rewolucja: 15+: PREMIERA!!!"}},"uk,de,us,es":{"query":"Nasza rewolucja | 15+ |","venue":{"bok":"Nasza rewolucja: 15+: PREMIERA!!!"}}}
 {"text":"Nasze królestwo"}
 {"text":"Nathalie"}
 {"text":"National Lampoon's Animal House"}
@@ -10690,7 +10690,7 @@
 {"text":"Night of the Zoopocalypse"}
 {"text":"Night on Earth"}
 {"text":"Nightborn"}
-{"text":"Nightborn (Halloween-Special)"}
+{"text":"Nightborn (Halloween-Special)","de":{"query":"Nightborn"}}
 {"text":"Nightcrawler"}
 {"text":"Nightmare - Mörderische Träume"}
 {"text":"Nightmare Alley (1947)","pl,uk,de,us,es":{"key":"Nightmare Alley","venue":{"kino-kinematograf":"Nightmare Alley"}}}
@@ -10948,7 +10948,7 @@
 {"text":"Obsesja (2025)","pl,uk,de,us,es":{"key":"Obsesja","venue":{"kino-kinematograf":"Obsesja"}}}
 {"text":"Obsession"}
 {"text":"Obsession (18)","pl,uk,de,us,es":{"query":"Obsession"}}
-{"text":"Obsession (Halloween-Special)"}
+{"text":"Obsession (Halloween-Special)","de":{"query":"Obsession"}}
 {"text":"Obsession (PG)","pl,uk,de,us,es":{"query":"Obsession"}}
 {"text":"Obsession - Du sollst mich lieben"}
 {"text":"Obsession – Du sollst mich lieben"}
@@ -11785,7 +11785,7 @@
 {"text":"Pokaz przyjazny osobom z ADHD: Kandydaci śmierci","pl,uk,de,us,es":{"query":"Kandydaci śmierci","programme":"Pokaz przyjazny osobom z ADHD: ","bannerEnd":31}}
 {"text":"Pokaz sensorycznie przyjazny: Delfinek i ja 2","pl,uk,de,us,es":{"query":"Delfinek i ja 2","programme":"Pokaz sensorycznie przyjazny: ","bannerEnd":30}}
 {"text":"Pokaz specjalny - Diuna: Część trzecia","pl,uk,de,us,es":{"query":"Diuna: Część trzecia","programme":"Pokaz specjalny - ","bannerEnd":18}}
-{"text":"Pokaz specjalny Nasza rewolucja"}
+{"text":"Pokaz specjalny Nasza rewolucja","pl,uk,de,us,es":{"query":"Nasza rewolucja","bannerEnd":16}}
 {"text":"Pokaz specjalny – Księga lata","pl,uk,de,us,es":{"query":"Księga lata","programme":"Pokaz specjalny – ","bannerEnd":18}}
 {"text":"Pokaz specjalny: DO UTRATY TCHU","pl,uk,de,us,es":{"query":"DO UTRATY TCHU","programme":"Pokaz specjalny: ","bannerEnd":17}}
 {"text":"Pokaz specjalny: Diuna: Część trzecia 2D DUBBING","pl,uk,de,us,es":{"query":"Diuna: Część trzecia 2D DUBBING","programme":"Pokaz specjalny: ","bannerEnd":17}}
@@ -12077,7 +12077,7 @@
 {"text":"Przepis na święta - Nasze Kino"}
 {"text":"Przepis na święta / 2D Polski","pl,uk,de,us,es":{"query":"Przepis na święta"}}
 {"text":"Przepis na święta 2D PL"}
-{"text":"Przepis na święta | 10+","pl,uk,de,us,es":{"venue":{"bok":"Przepis na święta: 10+"}}}
+{"text":"Przepis na święta | 10+","pl":{"query":"Przepis na święta","venue":{"bok":"Przepis na święta: 10+"}},"uk,de,us,es":{"venue":{"bok":"Przepis na święta: 10+"}}}
 {"text":"Przetwory - 1. Edycja"}
 {"text":"Przez całą noc, Toute une nuit"}
 {"text":"Przez ścianę"}
@@ -12753,7 +12753,7 @@
 {"text":"Resident Evil (15)","pl,uk,de,us,es":{"query":"Resident Evil"}}
 {"text":"Resident Evil (2002)","pl,uk,de,us,es":{"key":"Resident Evil","venue":{"kino-kinematograf":"Resident Evil"}}}
 {"text":"Resident Evil (2026)","pl,uk,de,us,es":{"key":"Resident Evil","venue":{"kino-kinematograf":"Resident Evil"}}}
-{"text":"Resident Evil (Halloween-Special)"}
+{"text":"Resident Evil (Halloween-Special)","de":{"query":"Resident Evil"}}
 {"text":"Resident Evil - AF","pl,uk,de,us,es":{"venue":{"helios":"Resident Evil"}}}
 {"text":"Resident Evil / napisy","pl,uk,de,us,es":{"query":"Resident Evil"}}
 {"text":"Resident Evil 2D NAP"}
@@ -16043,7 +16043,7 @@
 {"text":"The lost Children of Tuam (15)","pl,uk,de,us,es":{"query":"The lost Children of Tuam"}}
 {"text":"The social reckoning: wsieci konsekwencji"}
 {"text":"Theatre of Blood"}
-{"text":"Theatre of Blood with Silver Screen Sippers"}
+{"text":"Theatre of Blood with Silver Screen Sippers","uk":{"query":"Theatre of Blood"}}
 {"text":"Thellakaagitham"}
 {"text":"Thelma"}
 {"text":"Thelma & Louise","pl":{"key":"Thelma i Louise","display":"Thelma i Louise"}}
@@ -16710,7 +16710,7 @@
 {"text":"Vincent. Legenda oceanu Edukacja Młode Horyzonty","pl,uk,de,us,es":{"query":"Vincent. Legenda oceanu"}}
 {"text":"Vincent. Legenda oceanu dubbing"}
 {"text":"Vincent. Legenda oceanu | 2D | Dubbing","pl,uk,de,us,es":{"venue":{"bok":"Vincent. Legenda oceanu: 2D: Dubbing"}}}
-{"text":"Vincent. Legenda oceanu | 6+ | PREMIERA!!!","pl,uk,de,us,es":{"query":"Vincent. Legenda oceanu | 6+ |","venue":{"bok":"Vincent. Legenda oceanu: 6+: PREMIERA!!!"}}}
+{"text":"Vincent. Legenda oceanu | 6+ | PREMIERA!!!","pl":{"query":"Vincent. Legenda oceanu","venue":{"bok":"Vincent. Legenda oceanu: 6+: PREMIERA!!!"}},"uk,de,us,es":{"query":"Vincent. Legenda oceanu | 6+ |","venue":{"bok":"Vincent. Legenda oceanu: 6+: PREMIERA!!!"}}}
 {"text":"Vincent. Legenda oceanu | PREMIERA","pl,uk,de,us,es":{"query":"Vincent. Legenda oceanu","venue":{"bok":"Vincent. Legenda oceanu","kino-mok-miedzyrzecz":"Vincent. Legenda oceanu |"}}}
 {"text":"Vincent. Legenda oceanu\"","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"Vincent. Legenda oceanu"}}}
 {"text":"Vincent. Legenda ocenu"}
@@ -16759,7 +16759,7 @@
 {"text":"Voices In My Head"}
 {"text":"Voices in Resistance - Stimmen für Klimagerechtigkeit"}
 {"text":"Voices of Resistance: Stories from Palestine With Comma Press"}
-{"text":"Voices of the Shenandoah River with Q&A"}
+{"text":"Voices of the Shenandoah River with Q&A","pl,uk,de,us,es":{"query":"Voices of the Shenandoah River"}}
 {"text":"Voilà, Papa! Der fast perfekte Schwiegersohn"}
 {"text":"Volcanoes 3D","pl,uk,de,us,es":{"query":"Volcanoes"}}
 {"text":"Volkshaus 39. Zittauer Tanznacht"}
@@ -16811,7 +16811,7 @@
 {"text":"WAJDA: re-wizje: Człowiek z marmuru","pl,uk,de,us,es":{"query":"Człowiek z marmuru","programme":"WAJDA: re-wizje: ","bannerEnd":17}}
 {"text":"WAJDA: re-wizje: Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor","pl,uk,de,us,es":{"query":"Człowiek z marmuru","programme":"WAJDA: re-wizje: ","bannerEnd":17}}
 {"text":"WAJDA: re-wizje: Kronika wypadków miłosnych","pl,uk,de,us,es":{"query":"Kronika wypadków miłosnych","programme":"WAJDA: re-wizje: ","bannerEnd":17}}
-{"text":"WAJDA: re-wizje: ZIEMIA OBIECANA | 15+","pl,uk,de,us,es":{"query":"ZIEMIA OBIECANA | 15+","programme":"WAJDA: re-wizje: ","bannerEnd":17,"venue":{"bok":"WAJDA: re-wizje: ZIEMIA OBIECANA: 15+"}}}
+{"text":"WAJDA: re-wizje: ZIEMIA OBIECANA | 15+","pl":{"query":"ZIEMIA OBIECANA","programme":"WAJDA: re-wizje: ","bannerEnd":17,"venue":{"bok":"WAJDA: re-wizje: ZIEMIA OBIECANA: 15+"}},"uk,de,us,es":{"query":"ZIEMIA OBIECANA | 15+","programme":"WAJDA: re-wizje: ","bannerEnd":17,"venue":{"bok":"WAJDA: re-wizje: ZIEMIA OBIECANA: 15+"}}}
 {"text":"WAKING LIFE"}
 {"text":"WALL E - Der Letzte räumt die Erde auf"}
 {"text":"WALL-E/D.LETZTE RÄUMT D.ERDE.. D, ab 0"}
@@ -17372,7 +17372,7 @@
 {"text":"Wszystko na sprzedaż (Everything for Sale)"}
 {"text":"Wtorek z klasyką: GENERAŁ","pl,uk,de,us,es":{"query":"GENERAŁ","programme":"Wtorek z klasyką: ","bannerEnd":18}}
 {"text":"Wtorek z klasyką: Milczenie owiec","pl,uk,de,us,es":{"query":"Milczenie owiec","programme":"Wtorek z klasyką: ","bannerEnd":18}}
-{"text":"Wtorek z klasyką: Prosta historia | 15+","pl,uk,de,us,es":{"query":"Prosta historia | 15+","programme":"Wtorek z klasyką: ","bannerEnd":18,"venue":{"bok":"Wtorek z klasyką: Prosta historia: 15+"}}}
+{"text":"Wtorek z klasyką: Prosta historia | 15+","pl":{"query":"Prosta historia","programme":"Wtorek z klasyką: ","bannerEnd":18,"venue":{"bok":"Wtorek z klasyką: Prosta historia: 15+"}},"uk,de,us,es":{"query":"Prosta historia | 15+","programme":"Wtorek z klasyką: ","bannerEnd":18,"venue":{"bok":"Wtorek z klasyką: Prosta historia: 15+"}}}
 {"text":"Wtorki dla Seniora: Królowa Bona odc. 1 (prelekcja + oprowadzanie po wystawie)","pl,uk,de,us,es":{"query":"Królowa Bona odc. 1 (prelekcja + oprowadzanie po wystawie)","programme":"Wtorki dla Seniora: ","bannerEnd":20}}
 {"text":"Wtorki dla Seniora: Młode matki (seans z prelekcją)","pl,uk,de,us,es":{"query":"Młode matki","programme":"Wtorki dla Seniora: ","bannerEnd":20}}
 {"text":"Wtorki dla Seniora: Nasza rewolucja (seans z prelekcją)","pl,uk,de,us,es":{"query":"Nasza rewolucja","programme":"Wtorki dla Seniora: ","bannerEnd":20}}
@@ -17389,7 +17389,7 @@
 {"text":"Wurzeln des Überlebens - mit exklusiv produziertem Kurzfilm"}
 {"text":"Wuthering Heights"}
 {"text":"Wuthering Heights + Oberon","pl,uk,de,us,es":{"query":"Wuthering Heights"}}
-{"text":"Wydarzenie kinowe wyłącznie dla kobiet z prelekcją KLAPS! - odcinek \"Onkopierwiastki: małe składniki, duże znaczenie\", losowanie nagród, prezentacje sponsorów, seans filmu \"LALKA\" (2h 42min)","pl,uk,de,us,es":{"query":"Wydarzenie kinowe wyłącznie dla kobiet","venue":{"kino-alternatywy":"Wydarzenie kinowe wyłącznie dla kobiet z prelekcją KLAPS! - odcinek Onkopierwiastki: małe składniki, duże znaczenie , losowanie nagród, prezentacje sponsorów, seans filmu LALKA (2h 42min)"}}}
+{"text":"Wydarzenie kinowe wyłącznie dla kobiet z prelekcją KLAPS! - odcinek \"Onkopierwiastki: małe składniki, duże znaczenie\", losowanie nagród, prezentacje sponsorów, seans filmu \"LALKA\" (2h 42min)","pl,uk,de,us,es":{"query":"LALKA","bannerEnd":190,"venue":{"kino-alternatywy":"Wydarzenie kinowe wyłącznie dla kobiet z prelekcją KLAPS! - odcinek Onkopierwiastki: małe składniki, duże znaczenie , losowanie nagród, prezentacje sponsorów, seans filmu LALKA (2h 42min)"}}}
 {"text":"Wymarzony"}
 {"text":"Wymiary Kina na Placu Wilsona: Witajcie w Hope - przedpremiera + spotkanie","pl,uk,de,us,es":{"query":"Witajcie w Hope","programme":"Wymiary Kina na Placu Wilsona: ","bannerEnd":31}}
 {"text":"Wypadek fortepianowy"}
@@ -17465,7 +17465,7 @@
 {"text":"ZAPOMNIANA WYSPA"}
 {"text":"ZAPOMNIANA WYSPA 2D DUBBING"}
 {"text":"ZAPOMNIANA WYSPA DUBBING-KINO WYBRZEŻE","pl,uk,de,us,es":{"venue":{"wybrzeze":"ZAPOMNIANA WYSPA DUBBING"}}}
-{"text":"ZAPOMNIANA WYSPA | 2D | DUB | 7+ |","pl,uk,de,us,es":{"venue":{"bok":"ZAPOMNIANA WYSPA: 2D: DUB: 7+:"}}}
+{"text":"ZAPOMNIANA WYSPA | 2D | DUB | 7+ |","pl":{"query":"ZAPOMNIANA WYSPA | 2D | DUB","venue":{"bok":"ZAPOMNIANA WYSPA: 2D: DUB: 7+:"}},"uk,de,us,es":{"venue":{"bok":"ZAPOMNIANA WYSPA: 2D: DUB: 7+:"}}}
 {"text":"ZAPOMNIANA WYSPA  2D DUBBING","pl,uk,de,us,es":{"venue":{"bok":"ZAPOMNIANA WYSPA 2D DUBBING"}}}
 {"text":"ZAPROSZENIE"}
 {"text":"ZAUBERHAFTE SCHWESTERN"}
@@ -17717,7 +17717,7 @@
 {"text":"Òpi (pokaz przedpremierowy)","pl,uk,de,us,es":{"query":"Òpi"}}
 {"text":"Òpi - pokaz przedpremierowy","pl,uk,de,us,es":{"query":"Òpi"}}
 {"text":"Òpi - seans przedpremierowy","pl,uk,de,us,es":{"query":"Òpi","venue":{"kino-apollo":"Òpi"}}}
-{"text":"Òpi | 16+| PRZEDPREMIEROWY POKAZ HALLOWEENOWY","pl,uk,de,us,es":{"venue":{"bok":"Òpi: 16+"}}}
+{"text":"Òpi | 16+| PRZEDPREMIEROWY POKAZ HALLOWEENOWY","pl":{"query":"Òpi","venue":{"bok":"Òpi: 16+"}},"uk,de,us,es":{"query":"Òpi | 16+","venue":{"bok":"Òpi: 16+"}}}
 {"text":"ÓPI – Splat!FilmFest ON TOUR"}
 {"text":"Ópera Cosi fan tutte (Cine)"}
 {"text":"Ópi"}
