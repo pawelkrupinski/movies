@@ -51,10 +51,13 @@ stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] 
   local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100}
   local mark quiet=0 last now mine pids p q moved
   mark=$(mktemp "${TMPDIR:-/tmp}/stall-mark.XXXXXX") || return 1
-  trap 'rm -f "$mark"; exit 0' TERM INT
+  local nap=""
+  # ended at once, mid-poll: a trap waits for a foreground `sleep` to end, so the poll sleeps in the background (each
+  # check of the hook would otherwise wait up to a poll for its watchdog to go)
+  trap 'kill $nap 2> /dev/null; rm -f "$mark"; exit 0' TERM INT
   last=-1
   while kill -0 "$root" 2> /dev/null; do
-    sleep "$poll"
+    sleep "$poll" & nap=$!; wait "$nap"; nap=""
     mine=" $(stall_tree_pids $$ | tr '\n' ' ')"
     pids=""
     for p in $(stall_tree_pids "$root" | sed 1d); do case "$mine" in *" $p "*) ;; *) pids="$pids $p" ;; esac; done

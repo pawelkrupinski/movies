@@ -9,6 +9,9 @@ unset PREPUSH_SKIP
 # next case instead of its checks. Reuse is off here, and on only in its own cases, with a cache of their own.
 export PREPUSH_NO_REUSE=1
 unset PREPUSH_REUSE_DIR
+# run by the hook's scripttests check, it inherits the hook's stall marks (stall-watch.sh): its own stalls are no stall of
+# that check
+unset KINOWO_STALL_FILE KINOWO_PROGRESS_FILE
 # Nor do the caller's Forgejo token and remote reach the scratch pushes: each Forgejo case below names its own.
 unset FORGEJO_API_TOKEN PREPUSH_REMOTE_URL PREPUSH_FORGEJO_URL
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
