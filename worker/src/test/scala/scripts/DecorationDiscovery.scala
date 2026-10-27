@@ -167,10 +167,14 @@ object DecorationDiscovery {
       capture.films.values.flatten.flatMap(f => Seq(f.title) ++ f.originalTitle ++ f.alternativeTitles).toSeq ++
         capture.queries.values.flatten.flatMap(h => Seq(h.title) ++ h.originalTitle)
 
-    /** `listings` searched under `with`, each as its title gives. */
+    /** The listings `withRules` searches otherwise than the control's rules, each searched as `withRules` gives. Against
+     *  the control's QUERY, never the captured `searchTitle`: that one also carries a broadcaster's proper name
+     *  (`Listing.searchTitlesOf`), so every proper-named listing "changed" under every proposal — ~470 of them, each
+     *  re-resolved and replayed per proposal, ~371 takes "lost" by every one, and Decoration discovery #2028 ran past
+     *  its 60 minutes. */
     private def searched(withRules: TitleNormalizer): Map[ListingKey, Listing] = capture.listings.flatMap { l =>
-      val q = Some(withRules.apiQuery(l.title).trim).filter(x => x.nonEmpty && x != l.title.trim)
-      Option.when(q != l.searchTitle)(l.key -> l.copy(searchTitle = q))
+      val q = withRules.apiQuery(l.title).trim
+      Option.when(q != normalizer.apiQuery(l.title).trim)(l.key -> l.copy(searchTitle = Some(q).filter(x => x.nonEmpty && x != l.title.trim)))
     }.toMap
 
     private def replay(listings: Seq[Listing], touched: Set[ResolverDecision], n: TitleNormalizer): (Seq[UnmatchedClusters.Take], Int) =
@@ -202,11 +206,16 @@ object DecorationDiscovery {
     }
   }
 
-  /** Every proposal measured over every bench it touches, its changes pooled. */
-  def evaluateAll(proposals: Seq[Proposal], benches: Seq[Bench]): Seq[Evaluation] =
-    proposals.map { p =>
+  /** Every proposal measured over every bench it touches, its changes pooled — the proposals side by side on `ec` (a
+   *  bench is shared as [[IdentityRefit]] shares its captures: its live answers in concurrent maps), each handed to
+   *  `measured` as it finishes, the result in `proposals`' order. */
+  def evaluateAll(proposals: Seq[Proposal], benches: Seq[Bench], measured: Evaluation => Unit = _ => ())(using
+      ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.parasitic): Seq[Evaluation] =
+    ParallelTasks.all(proposals) { p =>
       val each = benches.flatMap(_.evaluate(p))
-      Evaluation(p, each.map(_.affected).sum, each.flatMap(_.changes), each.map(_.unanswered).sum)
+      val e    = Evaluation(p, each.map(_.affected).sum, each.flatMap(_.changes), each.map(_.unanswered).sum)
+      measured(e)
+      e
     }
 
   // ── writing ───────────────────────────────────────────────────────────────────────────────
@@ -280,9 +289,13 @@ object DecorationDiscovery {
       }.filter(_.examples.nonEmpty)
     }
     println(s"mined ${proposals.size} proposal(s) from ${titles.size} unmatched listing titles against ${lexicon.size} known titles")
-    val evaluations = evaluateAll(proposals, benches)
-    evaluations.foreach(e => println(f"${e.outcome}%-28s ${e.proposal.candidate.side}%-6s ${e.proposal.candidate.text}%-40s searched ${e.affected}%3d " +
+    // a line per proposal AS it is measured: the workflow's step reads a silent stretch as a stall
+    // a pool of its own, one thread a core (never the global one: NoGlobalPoolInTestsSpec)
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors())
+    given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
+    val evaluations = try evaluateAll(proposals, benches, e => println(f"${e.outcome}%-28s ${e.proposal.candidate.side}%-6s ${e.proposal.candidate.text}%-40s searched ${e.affected}%3d " +
       f"right ${e.right} wrong ${e.wrong} switched ${e.switched} lost ${e.lost} unjudged ${e.unjudged}"))
+    finally pool.shutdown()
     val kept = evaluations.filter(_.kept).map(_.proposal)
     println(s"kept ${kept.size}: ${kept.map(_.rule.id).mkString(", ")}")
     arguments.path("report").foreach(p => Files.writeString(p, report(evaluations, "test/resources/fixtures/identity-unmatched"), StandardCharsets.UTF_8))
