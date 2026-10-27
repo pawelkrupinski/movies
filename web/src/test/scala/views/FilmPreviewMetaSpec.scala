@@ -21,7 +21,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   private implicit val city: models.City = Poznan
 
-  private val ogImageUrl = "https://kinowo.net/poznan/movie/og-image?title=Incepcja"
+  private val ogImageUrl = "https://kinowo.net/share-cards/pl/f0123456789abcd.jpg"
 
   private val sample: FilmSchedule =
     FilmSchedule(

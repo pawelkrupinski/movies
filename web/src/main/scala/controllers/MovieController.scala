@@ -319,8 +319,7 @@ class MovieController( cc: ControllerComponents,
   }
 
   // robots.txt — see `CrawlerFiles.robots` for which shape a request wants. The share-card
-  // images (`/share-cards/…`, and the old `/*/og-image` + `/*/movie/og-image` addresses that
-  // redirect to them) are deliberately NOT disallowed — Facebook honours robots.txt when
+  // images (`/share-cards/…`) are deliberately NOT disallowed — Facebook honours robots.txt when
   // fetching `og:image`, so blocking them would break every share preview.
   def robotsTxt: Action[AnyContent] = Action { request =>
     Ok(crawlerFiles.robots(PageMeta.host(request), PageMeta.origin(request))).as("text/plain; charset=utf-8")
@@ -391,10 +390,7 @@ class MovieController( cc: ControllerComponents,
    *  the detail page and the browse facets, 301'd onto `/{city}/movie…` and
    *  `/{city}/movies`. Kept routable indefinitely for the same reason the
    *  `?title=` form is: search indexes, shared links and installed app builds
-   *  all still carry the old address.
-   *
-   *  The sub-path form takes the whole remainder rather than a `:slug` because
-   *  the rename moved `/film/og-image` too, and one wildcard covers both. */
+   *  all still carry the old address. */
   def filmLegacy(city: String): Action[AnyContent] = Action { request =>
     movedToCityPath(city, "movie", request)
   }
@@ -511,22 +507,6 @@ class MovieController( cc: ControllerComponents,
   /** The film's share card, or the city's while it has none — see [[ShareCardUrl]]. */
   private def shareCardUrl(schedule: FilmSchedule)(implicit c: City): String =
     ShareCardUrl.forFilm(schedule.resolved, c)
-
-  /** `/:city/movie/og-image?title=…` — the film card's old, web-rendered address. Link previews
-   *  already cached it, so it stays, as a temporary redirect to the image the page names now: the
-   *  worker's share card, or the city's static card. Temporary because that target changes with
-   *  every card version, and a film on the city card today gets its own later. The web decodes no image. */
-  def ogImage(city: String, title: String): Action[AnyContent] = Action { request =>
-    withCity(city, request) { c =>
-      Found(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_)(using c)))
-    }
-  }
-
-  /** `/:city/og-image` — the city card's old, web-rendered address, kept because link previews
-   *  cached it. Permanently redirected, unlike [[ogImage]]: the city card's address never moves. */
-  def cityOgImage(city: String): Action[AnyContent] = Action { request =>
-    withCity(city, request)(c => MovedPermanently(ShareCardUrl.city(c)))
-  }
 
   /** `/assets/img/og-<slug>.jpg` — the city card's address while it was a committed asset, kept
    *  because link previews cached it: permanently redirected to the worker's card — THIS country's

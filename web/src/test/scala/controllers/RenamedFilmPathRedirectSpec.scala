@@ -34,16 +34,6 @@ class RenamedFilmPathRedirectSpec extends AnyFlatSpec with Matchers {
     locationOf(result) shouldBe "/poznan/movie/incepcja-2010"
   }
 
-  "the pre-rename og-image address" should "301 onto its /movie spelling, title intact" in {
-    // The card is what every link-preview scraper fetches off an already-shared
-    // URL, and it is addressed by `?title=` — a redirect that dropped the query
-    // would answer a card for no film at all.
-    val result = controller().filmSubPathLegacy("poznan", "og-image")
-      .apply(FakeRequest(GET, "/poznan/film/og-image?title=Incepcja"))
-    status(result)     shouldBe MOVED_PERMANENTLY
-    locationOf(result) shouldBe "/poznan/movie/og-image?title=Incepcja"
-  }
-
   "the pre-rename title-query address" should "301 onto its /movie spelling, query intact" in {
     val result = controller().filmLegacy("poznan")
       .apply(FakeRequest(GET, "/poznan/film?title=Incepcja"))

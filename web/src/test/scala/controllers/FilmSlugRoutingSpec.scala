@@ -74,25 +74,6 @@ class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "the og-image route" should "not be swallowed by the slug wildcard" in {
-    // Play matches routes top-down, so `/:city/movie/:slug` sitting above
-    // `/:city/movie/og-image` would capture "og-image" as a film slug and serve
-    // an HTML 404 where every social crawler expects a PNG.
-    // Off the classpath, not the filesystem — the spec's working directory
-    // differs between an sbt module run and a full-build run.
-    val stream = getClass.getResourceAsStream("/routes")
-    stream should not be null
-    val routes = scala.io.Source.fromInputStream(stream)
-    val lines = try routes.getLines().toList finally routes.close()
-    val ogImageAt = lines.indexWhere(_.contains("/:city/movie/og-image"))
-    val slugAt    = lines.indexWhere(_.contains("/:city/movie/:slug"))
-    ogImageAt should be >= 0
-    slugAt    should be >= 0
-    withClue("og-image must be declared before the :slug wildcard: ") {
-      ogImageAt should be < slugAt
-    }
-  }
-
   // The prod bug: a film billed only as Multikino's ladies' programme was addressed by
   // that billing — /poznan/movie/kino-na-obcasach-jak-zyc-zeby-nie-zwariowac. Its
   // address is now the clean title's, and the billing address 301s onto it.

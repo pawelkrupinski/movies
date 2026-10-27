@@ -51,7 +51,7 @@ groups:
             histogram_quantile(0.95,
               sum by (le, country, route) (
                 rate(kinowo_web_http_response_bytes_bucket{
-                  route!~"other|.*(og-image|assets/|/api/|img-event|/uptime|/tasks|sitemap).*"
+                  route!~"other|.*(assets/|/api/|img-event|/uptime|/tasks|sitemap).*"
                 }[30m])
               )
             ) > 1048576
@@ -113,27 +113,27 @@ groups:
         expr: >-
           (
             (
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h]))
               /
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h]))
             )
             /
             (
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
               /
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
             )
           ) > 3
           and on (country, route)
           (
             sum by (country, route) (
-              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h])
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h])
             ) >= 0.05
           )
           and on (country, route)
           (
             sum by (country, route) (
-              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d)
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d)
             ) >= 0.05
           )
         # Half an hour: a deploy that does this does it to every request immediately, so there is
@@ -162,27 +162,27 @@ groups:
         expr: >-
           (
             (
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h]))
               /
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h]))
             )
             /
             (
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
               /
-              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
             )
           ) < 0.33
           and on (country, route)
           (
             sum by (country, route) (
-              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h])
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h])
             ) >= 0.05
           )
           and on (country, route)
           (
             sum by (country, route) (
-              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d)
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d)
             ) >= 0.05
           )
         for: 30m

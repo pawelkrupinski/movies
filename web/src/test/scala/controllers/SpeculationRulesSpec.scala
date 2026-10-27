@@ -11,17 +11,13 @@ class SpeculationRulesSpec extends AnyFlatSpec with Matchers {
 
   "SpeculationRules" should "prefetch only the page's own city's film pages, on hover or pointerdown" in {
     val poznan = rule(Poznan)
-    (poznan \ "where" \ "and" \ 0 \ "href_matches").as[String] shouldBe "/poznan/movie/*"
+    (poznan \ "where" \ "href_matches").as[String] shouldBe "/poznan/movie/*"
     (poznan \ "eagerness").as[String] shouldBe "moderate"
   }
 
   it should "keep a mounted country's prefix in the pattern" in {
     val ukCity = Country.UnitedKingdom.cities.head
-    (rule(ukCity) \ "where" \ "and" \ 0 \ "href_matches").as[String] shouldBe s"/uk/${ukCity.slug}/movie/*"
-  }
-
-  it should "leave the share-card image route under the same prefix out" in {
-    (rule(Poznan) \ "where" \ "and" \ 1 \ "not" \ "href_matches").as[String] shouldBe "/poznan/movie/og-image"
+    (rule(ukCity) \ "where" \ "href_matches").as[String] shouldBe s"/uk/${ukCity.slug}/movie/*"
   }
 
   it should "prefetch, never prerender" in {

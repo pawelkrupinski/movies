@@ -33,8 +33,8 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     // segment before `api`, so it never covered these.
     body.linesIterator.toSeq should contain ("Disallow: /api/")
     body should include("Disallow: /*/api/")
-    // og:image PNGs must stay crawlable — Facebook honours robots.txt for them.
-    body should not include "og-image"
+    // The og:image share cards must stay crawlable — Facebook honours robots.txt for them.
+    body should not include "share-cards"
   }
 
   it should "fence off the browse facets, which the sitemap deliberately omits" in {

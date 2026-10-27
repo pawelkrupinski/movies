@@ -11,7 +11,8 @@
 # `/:cc/:city/movie/og-image` went from 0.002 req/s to 0.5 req/s when a crawler started sweeping the
 # share cards, and that route serves at a p95 of 1.7-2.4 SECONDS because it renders the card inline
 # on the request path and fetches the poster from the upstream host to do it. It was consuming ~70%
-# of all request-seconds on the tier while every dashboard said the site was healthy.
+# of all request-seconds on the tier while every dashboard said the site was healthy. (That route
+# is gone: the worker draws the cards and Caddy serves them off disk, out of the web tier's reach.)
 #
 # It had happened once before, on 2026-09-03, on `web-us` -- smaller, shorter, and equally unseen.
 # The only reason anyone looked either time is that a person happened to open a latency panel.
@@ -32,13 +33,13 @@
 # ------------------------------------------------------------------------------------------------
 #
 # A rendered page that takes half a second is a regression -- those routes read a projected read
-# model out of memory and normally answer in 20-100ms. An og-image, a sitemap or an /api/ response
+# model out of memory and normally answer in 20-100ms. A sitemap or an /api/ response
 # taking half a second is ordinary; those do real work per request. So the routes are PARTITIONED
 # and each half gets the threshold its own baseline earns:
 #
 #   WebPageLatencyHigh      the HTML routes -- `/`, `/:city/`, `/:city/movie/:slug`, `/:city/movies`
 #                           and their country-prefixed spellings -- at 0.5s.
-#   WebEndpointLatencyHigh  og-image, /api/, /assets/ and the sitemap, at 1s.
+#   WebEndpointLatencyHigh  /api/, /assets/ and the sitemap, at 1s.
 #
 # The split is written as an EXCLUSION on the first rule and an INCLUSION on the second, so a route
 # added tomorrow lands in the page bucket at the tighter threshold rather than going unwatched.
@@ -83,7 +84,7 @@ groups:
             histogram_quantile(0.95,
               sum by (le, country, route) (
                 rate(kinowo_web_http_request_duration_seconds_bucket{
-                  route!~"other|.*(og-image|assets/|/api/|img-event|/uptime|/tasks|sitemap).*"
+                  route!~"other|.*(assets/|/api/|img-event|/uptime|/tasks|sitemap).*"
                 }[30m])
               )
             ) > 0.5
@@ -113,7 +114,7 @@ groups:
             histogram_quantile(0.95,
               sum by (le, country, route) (
                 rate(kinowo_web_http_request_duration_seconds_bucket{
-                  route=~".*(og-image|assets/|/api/|sitemap).*"
+                  route=~".*(assets/|/api/|sitemap).*"
                 }[30m])
               )
             ) > 1
@@ -131,8 +132,6 @@ groups:
           summary: "{{ $labels.country }} endpoint {{ $labels.route }} p95 is {{ $value | humanizeDuration }}"
           description: >-
             One endpoint is spending seconds per request and, at this tier's traffic, that is enough
-            to own most of its request-seconds while every other signal stays green. The og-image
-            route is the known one: it renders the share card INLINE on the request path and fetches
-            the poster from the upstream host to do it, walking up to six candidate URLs on a cold
-            cache. Confirm which route it is from the label, then check whether its request rate
-            moved -- a sustained rate on og-image is a crawler sweeping the share cards, not people.
+            to own most of its request-seconds while every other signal stays green. Confirm which
+            route it is from the label, then check whether its request rate moved -- a sustained
+            rate on one endpoint is usually a crawler sweeping it, not people.

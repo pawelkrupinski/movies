@@ -25,8 +25,8 @@ import scala.concurrent.Future
  * retired slug never moves another's live page.
  *
  * A FILTER rather than a branch in `MovieController.withCity` because the slug
- * appears in fifteen routes — the index, the film pages, three `/api/…`
- * endpoints the mobile apps call, both OG-image endpoints — and `withCity` is
+ * appears in thirteen routes — the index, the film pages, three `/api/…`
+ * endpoints the mobile apps call — and `withCity` is
  * handed only the slug, never the path it has to rewrite.
  *
  * The rewrite is confined to the CITY segment: the path is split after the

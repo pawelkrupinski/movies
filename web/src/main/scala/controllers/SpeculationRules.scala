@@ -16,16 +16,12 @@ import play.api.libs.json.{JsValue, Json}
  *
  *  Only this city's films: a film page sets the `city` cookie the landing redirect reads, and a
  *  prefetch's `Set-Cookie` lands even when nobody follows the link — so the "also showing in"
- *  links to other cities must not be prefetched. The share-card image route shares the prefix and
- *  is not a page. */
+ *  links to other cities must not be prefetched. */
 object SpeculationRules {
   def forCity(city: City): JsValue = {
     val films = s"${CityPath(city)}/movie/"
     Json.obj("prefetch" -> Json.arr(Json.obj(
-      "where" -> Json.obj("and" -> Json.arr(
-        Json.obj("href_matches" -> s"$films*"),
-        Json.obj("not" -> Json.obj("href_matches" -> s"${films}og-image")),
-      )),
+      "where"     -> Json.obj("href_matches" -> s"$films*"),
       "eagerness" -> "moderate",
     )))
   }

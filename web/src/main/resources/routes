@@ -14,11 +14,7 @@ GET     /.well-known/assetlinks.json             controllers.WellKnownController
 # ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
 GET     /:city/                     controllers.MovieController.index(city: String)
 GET     /:city/movie                controllers.MovieController.film(city: String, title: String)
-# og-image MUST stay above the :slug route — Play matches top-down, so the
-# wildcard would otherwise swallow "og-image" as a film slug.
-GET     /:city/movie/og-image       controllers.MovieController.ogImage(city: String, title: String)
 GET     /:city/movie/:slug          controllers.MovieController.filmBySlug(city: String, slug: String)
-GET     /:city/og-image             controllers.MovieController.cityOgImage(city: String)
 # This city's slice of the crawl map — only actually linked from the country's
 # sitemap index once that country's flat file crosses
 # `SitemapBuilder.CityPartitionThreshold`; harmless (if unlinked) otherwise.
@@ -31,8 +27,7 @@ GET     /:city/movies               controllers.MovieController.browse(city: Str
 # and German-speaking deployments. They are 301'd rather than dropped: every
 # link minted before the rename carries them, including the film URLs already in
 # search indexes, anything shared, and the share / copy-link buttons of every
-# app build already installed. The wildcard covers `/film/{slug}` and
-# `/film/og-image` in one, so it needs no og-image ordering rule of its own.
+# app build already installed.
 GET     /:city/film                 controllers.MovieController.filmLegacy(city: String)
 GET     /:city/film/*rest           controllers.MovieController.filmSubPathLegacy(city: String, rest: String)
 GET     /:city/filmy                controllers.MovieController.browseLegacy(city: String)

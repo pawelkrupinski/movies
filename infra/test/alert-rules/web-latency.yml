@@ -9,7 +9,7 @@
 #   2. Does the TRAFFIC FLOOR bite? Without it a route serving one request a minute pages on a
 #      single cold start, and an alert that pages on nothing is an alert nobody reads.
 #   3. Do the TWO THRESHOLDS stay apart? 800ms is a regression on a rendered page and ordinary on
-#      an og-image. A single threshold for both would either page on healthy card rendering or miss
+#      an /api/ endpoint. A single threshold for both would either page on a healthy endpoint or miss
 #      a page that got 8x slower, and only a test distinguishes the two rules from one.
 #
 # The bucket boundaries below are the real ones the web tier emits (0.005 .. 10, +Inf); the series
@@ -20,37 +20,37 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
-  # 1. THE 2026-09-04 REGRESSION. /uk/:city/movie/og-image, 30 req/min (0.5 req/s), every one of
+  # 1. THE 2026-09-04 REGRESSION. /uk/:city/api/details, 30 req/min (0.5 req/s), every one of
   #    them landing between 1s and 2.5s -- a p95 of ~2.4s. The endpoint rule owns this route.
   - interval: 1m
     input_series:
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.005"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.005"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.01"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.01"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.025"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.025"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.05"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.05"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.1"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.1"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.15"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.15"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.25"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.25"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.5"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="1"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="1"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="2.5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="2.5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="10"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="10"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="+Inf"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="+Inf"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image"}'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details"}'
         values: '0+30x200'
     alert_rule_test:
       # `for: 15m` on top of a rate window that reads a partial range from its second sample, so the
@@ -65,46 +65,46 @@ tests:
           - exp_labels:
               severity: warning
               country: uk
-              route: /uk/:city/movie/og-image
+              route: /uk/:city/api/details
             exp_annotations:
-              summary: "uk endpoint /uk/:city/movie/og-image p95 is 2.425s"
-              description: "One endpoint is spending seconds per request and, at this tier's traffic, that is enough to own most of its request-seconds while every other signal stays green. The og-image route is the known one: it renders the share card INLINE on the request path and fetches the poster from the upstream host to do it, walking up to six candidate URLs on a cold cache. Confirm which route it is from the label, then check whether its request rate moved -- a sustained rate on og-image is a crawler sweeping the share cards, not people."
+              summary: "uk endpoint /uk/:city/api/details p95 is 2.425s"
+              description: "One endpoint is spending seconds per request and, at this tier's traffic, that is enough to own most of its request-seconds while every other signal stays green. Confirm which route it is from the label, then check whether its request rate moved -- a sustained rate on one endpoint is usually a crawler sweeping it, not people."
       # And the page rule must NOT also fire on it -- the two route sets partition, they do not
       # overlap, so this regression pages once rather than twice.
       - eval_time: 50m
         alertname: WebPageLatencyHigh
         exp_alerts: []
 
-  # 2. THE SAME ROUTE, HEALTHY. Same traffic, answering in 25-50ms from a warm card cache. Silent.
+  # 2. THE SAME ROUTE, HEALTHY. Same traffic, answering in 25-50ms. Silent.
   - interval: 1m
     input_series:
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.005"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.005"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.01"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.01"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.025"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.025"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.05"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.05"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.1"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.1"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.15"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.15"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.25"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.25"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="0.5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="1"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="1"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="2.5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="2.5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="10"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="10"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="+Inf"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details",le="+Inf"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image"}'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/api/details"}'
         values: '0+30x200'
     alert_rule_test:
       - eval_time: 2h
@@ -155,37 +155,37 @@ tests:
               summary: "pl page /:city/movie/:slug p95 is 975ms"
               description: "This route renders from the projected read model and normally answers in 20-100ms, so half a second means it has stopped reading from memory -- a cache it used to hit, a projection it now recomputes, or a JVM with no heap left to collect into. Check jvm-heap.rules for that last one first, then compare the route's request rate against yesterday: a crawler discovering a newly renamed URL space is how the 2026-09-04 regression arrived."
 
-  # 4. AN OG-IMAGE AT THE SAME ~800ms MUST STAY SILENT. This is the whole reason there are two rules
-  #    rather than one: the card endpoint doing real work in under a second is not a regression.
+  # 4. AN /api/ ENDPOINT AT THE SAME ~800ms MUST STAY SILENT. This is the whole reason there are two
+  #    rules rather than one: an endpoint doing real work in under a second is not a regression.
   - interval: 1m
     input_series:
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.005"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.005"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.01"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.01"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.025"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.025"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.05"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.05"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.1"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.1"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.15"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.15"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.25"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.25"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="0.5"}'
         values: '0+0x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="1"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="1"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="2.5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="2.5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="5"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="5"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="10"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="10"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="+Inf"}'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details",le="+Inf"}'
         values: '0+30x200'
-      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image"}'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/api/details"}'
         values: '0+30x200'
     alert_rule_test:
       - eval_time: 2h

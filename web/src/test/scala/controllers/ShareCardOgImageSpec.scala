@@ -9,9 +9,7 @@ import services.readmodel.{TestReadModel, WebReadModel}
 /**
  * The film page's `og:image` is the worker-rendered share card, served from disk by Caddy at
  * `/share-cards/<country>/<file>` — the web only names it, from `web_movies.shareCard` — and the
- * city's static card while a film has none. The old render endpoints answer with a redirect to
- * the same images, for the URLs preview scrapers already cached; nothing on the web decodes an
- * image any more.
+ * city's static card while a film has none. Nothing on the web decodes an image.
  */
 class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
 
@@ -61,24 +59,6 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
     html should include ("""<meta property="og:image:type"   content="image/jpeg">""")
     html should include ("""<meta property="og:image:width"  content="1200">""")
     html should include ("""<meta property="og:image:height" content="630">""")
-  }
-
-  "The old film card URL" should "redirect temporarily to the film's share card, or to the city card" in {
-    // Temporary: the target moves with every new card version, and a film on the city card today gets its own later.
-    val ctrl = controller()
-    val withCard = ctrl.ogImage("poznan", "Diuna").apply(request)
-    status(withCard) shouldBe FOUND
-    redirectLocation(withCard) shouldBe Some(s"https://kinowo.net/share-cards/pl/$card")
-    val withoutCard = ctrl.ogImage("poznan", "Belle").apply(request)
-    status(withoutCard) shouldBe FOUND
-    redirectLocation(withoutCard) shouldBe Some(cityCard)
-    redirectLocation(ctrl.ogImage("poznan", "No Such Film").apply(request)) shouldBe Some(cityCard)
-  }
-
-  "The old city card URL" should "redirect to the city's card" in {
-    val result = controller().cityOgImage("poznan").apply(request)
-    status(result) shouldBe MOVED_PERMANENTLY
-    redirectLocation(result) shouldBe Some(cityCard)
   }
 
   "A city's card" should "be the worker's file on disk, on its country's host" in {
