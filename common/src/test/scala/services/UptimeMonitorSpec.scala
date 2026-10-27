@@ -17,7 +17,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // them. The throw escapes the .subscribe(onError) guard, so it must be caught
   // by the upsert itself, not delivered to the subscriber.
   private def closedClientDb = {
-    val client = MongoClient("mongodb://localhost:27017")
+    val client = MongoClient("mongodb://127.0.0.1:1")
     val db     = client.getDatabase("uptime-test")
     client.close()
     db
