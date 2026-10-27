@@ -1032,6 +1032,20 @@ failed="" stalled=""
 StallSeconds="${PREPUSH_STALL_SECONDS:-1200}"
 stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/stall-watch.sh"
 [ -f "$stall_watch" ] || stall_watch="$root/scripts/stall-watch.sh"
+# The check's watchdog, ended. ONE TERM is not enough: a check that returns at once (a missing tool's) sends it within
+# microseconds of the watchdog's fork, and under a load of 85-100 that TERM was lost -- most likely taken by the
+# hook's own bash handler (its EXIT trap installs one) in the forked child before it execs, and dropped by the exec.
+# The watchdog then polled on for its whole bound (it ends when the hook does; the hook waited on it): Main #2059 and
+# #2066's pre-push-test.sh sat 600 s in `missing tool` cases. So the TERM is sent again every second while it lives
+# (its trap is up by then), and KILL after ten.
+stop_watchdog() { # <pid>
+    local nudger
+    kill "$1" 2>/dev/null
+    ( for _ in 1 2 3 4 5 6 7 8 9 10; do sleep 1; kill "$1" 2>/dev/null; done; kill -KILL "$1" 2>/dev/null ) &
+    nudger=$!
+    wait "$1" 2>/dev/null
+    kill "$nudger" 2>/dev/null; wait "$nudger" 2>/dev/null
+}
 started=$SECONDS
 log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
 for check in $checks; do
@@ -1054,7 +1068,7 @@ for check in $checks; do
         warn "$check FAILED ($((SECONDS - t0))s)"
         failed="$failed $check"
     fi
-    [ -z "$watchdog" ] || { kill "$watchdog" 2>/dev/null; wait "$watchdog" 2>/dev/null; }
+    [ -z "$watchdog" ] || stop_watchdog "$watchdog"
 done
 unset KINOWO_PROGRESS_FILE KINOWO_STALL_FILE
 
