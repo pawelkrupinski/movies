@@ -26,8 +26,10 @@
 
 # The JVM gate (scripts/jvm-gate.sh) reads the real Mac's paging and takes machine-wide slots, which a spec's stubbed
 # JVM starts have no business waiting on, and sizes JVMs for a share of the cores, which a spec's command lines would
-# then vary by: all off in every spec unless it asks for it (jvm-gate-test.sh does).
+# then vary by: all off in every spec unless it asks for it (jvm-gate-test.sh does). So is the governor (~/bin/agentctl
+# gov), whose tickets and evictions are the real Mac's.
 export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0} KINOWO_JVM_SLOTS=${KINOWO_JVM_SLOTS:-0} KINOWO_JVM_CPUS=${KINOWO_JVM_CPUS:-0}
+export KINOWO_GOVERNOR=${KINOWO_GOVERNOR:-0}
 # A spec stubs `gh` on the PATH: scripts/forge-gh would read this checkout's Forgejo remote and ask Forgejo's API
 # instead, so every spec is on GitHub's side of it unless it asks for the other (forge-gh's own spec does).
 export KINOWO_FORGE=${KINOWO_FORGE:-github}

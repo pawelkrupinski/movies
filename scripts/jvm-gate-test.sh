@@ -172,6 +172,53 @@ check "...and one started without a slot takes the first that frees" "none|took 
 check "...none with KINOWO_JVM_SLOTS=0" "none" "$(cat "$work/got")"
 kill "$a" 2>/dev/null
 
+# --- THE GOVERNOR (~/bin/agentctl gov): a stub that records its call and takes the lock on the descriptor it was given
+cat > "$work/agentctl" <<'STUB'
+#!/usr/bin/env bash
+# def cmd_gov: the line an agentctl with the governor has
+printf '%s\n' "$*" >> "$GOV_CALLS"
+case " $* " in *" --try "*) [ -n "${GOV_STUB_FULL:-}" ] && exit 1 ;; esac
+python3 -I -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
+STUB
+chmod +x "$work/agentctl"
+export GOV_CALLS="$work/gov-calls"
+governed() { KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin AGENTCTL_GOV_DIR="$work/gov" \
+  KINOWO_JVM_SLOTS=1 KINOWO_IDENTITY_CACHE="$work/gov-slots" "$@"; }
+: > "$GOV_CALLS"
+( export KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 48' KINOWO_MEMORY_GATE_FREE_PROBE='echo 1'
+  unset KINOWO_GOV_CLASS
+  governed jvm_slot_take sbt-warm 2> "$work/err"
+  echo "$(spec_lock_state "$JVM_SLOT") $([ "$KINOWO_JVM_SLOT_HELD" = "$JVM_SLOT" ] && echo named) ${JVM_SLOT%/*}" ) > "$work/got"
+check "with the governor a JVM takes its ticket on descriptor 7, held by the shell, named for its children" \
+  "held named $work/gov" "$(cat "$work/got")"
+check "...admitted as an agent's, its label and expected GB passed; the memory gate leaves memory to it" \
+  "1 1 0" "$(grep -c -- '^gov admit --fd 7 --ticket .* --class agent --mem 5 --label sbt-warm --pid ' "$GOV_CALLS") \
+$(wc -l < "$GOV_CALLS" | tr -d ' ') $(grep -c 'memory gate' "$work/err")"
+check "...the slots untouched" "0" "$(find "$work/gov-slots" -name '*.flock' 2>/dev/null | wc -l | tr -d ' ')"
+: > "$GOV_CALLS"
+( governed jvm_slot_take t; ( governed jvm_slot_take child; echo "child $(jvm_slot_riding && echo rides)" ) ) > "$work/got"
+check "...a child of a ticket's holder rides it: no second ticket" "child rides 1" "$(cat "$work/got") $(wc -l < "$GOV_CALLS" | tr -d ' ')"
+: > "$GOV_CALLS"
+( unset KINOWO_GOV_CLASS
+  governed jvm_slot_take identity-measure-local; jvm_slot_release
+  KINOWO_GOV_CLASS=check governed jvm_slot_take sbt-warm; jvm_slot_release
+  mkdir -p "$work/movies-wt-red-2059" && cd "$work/movies-wt-red-2059" && governed jvm_slot_take sbt-warm ) 2> /dev/null
+check "...classes: identity-measure* a measurement, KINOWO_GOV_CLASS (a check's hook) as set, a red fixer's checkout red" \
+  "measure check red" "$(sed -n 's/.* --class \([a-z]*\) .*/\1/p' "$GOV_CALLS" | paste -sd' ' -)"
+: > "$GOV_CALLS"
+( GOV_STUB_FULL=1 governed jvm_slot_take_if_free && echo took || echo "none $({ : >&7; } 2>/dev/null && echo open || echo closed)"
+  ) > "$work/got"
+check "...a keeper's poll is one look (--try): not admitted, it holds nothing" "none closed 1" \
+  "$(cat "$work/got") $(grep -c -- '--label keeper .*--try' "$GOV_CALLS")"
+: > "$GOV_CALLS"
+( KINOWO_GOVERNOR=0 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin KINOWO_JVM_SLOTS=1 \
+    KINOWO_IDENTITY_CACHE="$work/gov-slots" jvm_slot_take t; echo "${JVM_SLOT##*/}"
+  KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Linux governor_bin || echo linux-none ) > "$work/got"
+printf '#!/bin/sh\nexit 2\n' > "$work/old-agentctl"; chmod +x "$work/old-agentctl"
+KINOWO_GOVERNOR_BIN="$work/old-agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin || echo old-none >> "$work/got"
+check "...KINOWO_GOVERNOR=0 keeps the slots; on Linux (CI) there is no governor; nor with an agentctl without one" "1.flock|linux-none|old-none|0" \
+  "$(paste -sd'|' "$work/got")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
+
 # --- a tool JVM's cores
 check "on macOS a tool's JVM is sized for KINOWO_JVM_CPUS cores (default 4)" "-XX:ActiveProcessorCount=4|-XX:ActiveProcessorCount=6" \
   "$(unset KINOWO_JVM_CPUS; KINOWO_JVM_GATE_OS=Darwin jvm_cpu_options)|$(KINOWO_JVM_CPUS=6 KINOWO_JVM_GATE_OS=Darwin jvm_cpu_options)"

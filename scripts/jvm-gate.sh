@@ -49,11 +49,24 @@
 #                          (KINOWO_JVM_SLOTS=0, past the slot deadline, or riding a parent's) it starts all the same.
 #   jvm_slot_take_if_free  a keeper's poll: 0 when this process, holding no slot, has just taken a free one (slots on)
 #   jvm_slot_release       gives this process's slot back
+#   jvm_slot_try [label]   (with the governor: one look, its --try)
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
 #   jvm_lock <file>        this process holds <file>'s lock (below) on descriptor 6, its pid written in. 0 when taken,
 #                          1 at once when another process holds it
 #   jvm_unlock <file>      gives it back when this process holds it
+#
+# THE GOVERNOR (2026-10-27, the owner: "one governor for laptop memory and CPU"): on the Mac, with ~/bin/agentctl there
+# ($KINOWO_GOVERNOR_BIN), the slots and the memory gate give way to its ONE admission control (`agentctl gov`,
+# ~/bin/AGENTCTL.md "gov"): a JVM's ticket is admitted by its expected memory (KINOWO_GOV_MEM_GB, default 5) against the
+# budget, free memory and pressure, in priority order -- red > check > agent > measure: KINOWO_GOV_CLASS (agentctl sets
+# it for a pre-commit check's hook), else an identity-measure* tool is a measurement, a red fixer's checkout
+# (*-wt-red-*) red, anything else an agent's own -- and an idle kept sbt server is evicted first when something needs
+# room. The ticket is a lock held on descriptor 7, exactly as a slot was: riding it, handing it to a keeper and the
+# kernel's release when its holders end all stay. KINOWO_GOVERNOR=0, no agentctl, or Linux (CI's runner) keep the slots.
+#   governor_bin           the governor's agentctl when it governs here; 1 otherwise
+#   gov_class <label>      the class a JVM for <label> is admitted as
+#   gov_take <label> [--try]  a ticket on descriptor 7 (JVM_SLOT its lock file, KINOWO_JVM_SLOT_HELD exported): 0 admitted
 #
 # THE LOCKS are the kernel's flock(2) locks on a file, which the OS frees the moment the holder has ended, however it
 # ended -- exit, crash, kill -9, a restart -- so a lock is never held by a holder that is gone, and nothing detects a
@@ -90,6 +103,33 @@ except OSError:
     sys.exit(1)' "$@"
 }
 lock_busy() { [ -e "$1" ] && ! _lock_flock - "$1"; }
+
+governor_bin() {
+  local g=${KINOWO_GOVERNOR_BIN:-$HOME/bin/agentctl}
+  # an agentctl from before the governor has no `gov`: the slots stay
+  [ "${KINOWO_GOVERNOR:-1}" != 0 ] && [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] && [ -x "$g" ] &&
+    grep -q 'def cmd_gov' "$g" 2> /dev/null && echo "$g"
+}
+gov_class() { # <label>
+  if [ -n "${KINOWO_GOV_CLASS:-}" ]; then echo "$KINOWO_GOV_CLASS"; return 0; fi
+  case "$1" in identity-measure*) echo measure; return 0 ;; esac
+  case "$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")" in *-wt-red-*) echo red; return 0 ;; esac
+  echo agent
+}
+gov_take() { # <label> [--try]
+  local g label=${1:-tool} ticket
+  shift
+  g=$(governor_bin) || return 1
+  ticket="${AGENTCTL_GOV_DIR:-$HOME/.cache/agentctl/gov}/t-$$-$RANDOM$RANDOM.lock"
+  mkdir -p "$(dirname "$ticket")" && exec 7>> "$ticket" || return 1
+  if "$g" gov admit --fd 7 --ticket "$ticket" --class "$(gov_class "$label")" --mem "${KINOWO_GOV_MEM_GB:-5}" \
+      --label "$label" --pid $$ --cwd "$PWD" "$@"; then
+    JVM_SLOT=$ticket; export KINOWO_JVM_SLOT_HELD="$ticket"
+    return 0
+  fi
+  exec 7>&-; rm -f "$ticket"
+  return 1
+}
 
 JVM_LOCK=""
 jvm_lock() { lock_take 6 "$1" && JVM_LOCK=$1; }
@@ -133,6 +173,7 @@ memory_top_holders() {
 
 memory_gate() { # <label>
   [ "${KINOWO_MEMORY_GATE:-1}" = 0 ] && return 0
+  governor_bin > /dev/null && return 0   # THE GOVERNOR admits by memory itself
   jvm_slot_riding && return 0
   local label=${1:-tool} budget=${KINOWO_MEMORY_GATE_GB:-20} max=${KINOWO_MEMORY_GATE_MAX_WAIT:-}
   local poll=${KINOWO_MEMORY_GATE_POLL:-15} every=${KINOWO_MEMORY_GATE_STATUS_SECONDS:-180} state waited=0 said="" next
@@ -158,7 +199,8 @@ memory_gate() { # <label>
 
 JVM_SLOT=""
 jvm_slot_riding() { [ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && { : >&7; } 2> /dev/null; }
-jvm_slot_try() {
+jvm_slot_try() { # [label]
+  if governor_bin > /dev/null; then gov_take "${1:-tool}" --try; return; fi
   local slots=${KINOWO_JVM_SLOTS:-4} dir n
   dir="${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/jvm-slots"
   mkdir -p "$dir"
@@ -175,6 +217,10 @@ jvm_slot_take() { # <label>
   jvm_slot_riding && return 0
   local label=${1:-tool} slots=${KINOWO_JVM_SLOTS:-4} max=${KINOWO_JVM_SLOT_MAX_WAIT:-1800}
   local poll=${KINOWO_JVM_SLOT_POLL:-5} every=${KINOWO_MEMORY_GATE_STATUS_SECONDS:-180} dir n waited=0 said="" next state
+  if governor_bin > /dev/null; then
+    gov_take "$label" || echo "[$label] the governor ($(governor_bin) gov admit) failed: starting without a ticket" >&2
+    return 0
+  fi
   memory_gate "$label"
   [ "$slots" = 0 ] && return 0
   dir="${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/jvm-slots"
@@ -220,7 +266,7 @@ jvm_slot_keeper_start() { # <dir> <log> <command...>
   KEEPER_PID=$(cd "$dir" && { set -m; nohup "$@" >> "$log" 2>&1 < /dev/null 6>&- 8>&- 9>&- & echo $!; }) || return 1
   jvm_slot_hand_off "$KEEPER_PID"
 }
-jvm_slot_take_if_free() { ! jvm_slot_riding && [ "${KINOWO_JVM_SLOTS:-4}" != 0 ] && jvm_slot_try; }
+jvm_slot_take_if_free() { ! jvm_slot_riding && [ "${KINOWO_JVM_SLOTS:-4}" != 0 ] && jvm_slot_try "${1:-keeper}"; }
 
 jvm_cpu_options() {
   local cpus=${KINOWO_JVM_CPUS:-4}
