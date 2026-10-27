@@ -311,7 +311,7 @@ groups:
       # not running or not landing.
       - alert: ShareCardCityCoverageLow
         expr: >-
-          max by (country) (last_over_time(kinowo_worker_share_cards_city_coverage_ratio[10m])) < 0.95
+          max by (country) (max_over_time(kinowo_worker_share_cards_city_coverage_ratio[10m])) < 0.95
         for: 6h
         labels:
           severity: warning

@@ -131,15 +131,15 @@ groups:
       - alert: IdentitySuspectTakesRising
         expr: |
           (
-            sum by (country) (last_over_time(kinowo_worker_identity_suspect_takes[3h]))
+            sum by (country) (max_over_time(kinowo_worker_identity_suspect_takes[3h]))
               -
-            sum by (country) (last_over_time(kinowo_worker_identity_suspect_takes[3h] offset 1d))
+            sum by (country) (max_over_time(kinowo_worker_identity_suspect_takes[3h] offset 1d))
           ) > 10
           and
           (
-            sum by (country) (last_over_time(kinowo_worker_identity_suspect_takes[3h]))
+            sum by (country) (max_over_time(kinowo_worker_identity_suspect_takes[3h]))
               /
-            sum by (country) (last_over_time(kinowo_worker_identity_suspect_takes[3h] offset 1d))
+            sum by (country) (max_over_time(kinowo_worker_identity_suspect_takes[3h] offset 1d))
           ) > 1.05
         for: 2h
         labels:

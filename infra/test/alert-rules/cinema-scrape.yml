@@ -490,3 +490,36 @@ tests:
             exp_annotations:
               summary: "pl's depth scrape guard has rejected ticks every hour for 12 hours"
               description: "Every hour for twelve hours at least one cinema in \"pl\" had a scrape the depth guard judged partial (depth: the tick's showtimes were DISCARDED; breadth: its prune was SKIPPED, so films that left the board stay listed). One cinema doing that for half a day is a scraper broken in a shape the guard cannot tell from a bad fetch -- Kino Aurum's five stale days began exactly like this. Find the cinema: in the log store, `country:pl (\"DISCARDED tick\" OR \"SKIPPED prune\")` over the last 12h, counted by cinema; the one with a line every tick is it. Then compare its live listing with /{city}/ -- a real schedule cut needs nothing, a broken parser needs fixing."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # DuplicateVenueListing ACROSS A RESTART'S NaN SEED. The worker seeds the gauge NaN at boot (a
+  # reading the detector has not taken yet -- deploy.WorkerMetricsAtBootSpec), so after the pod's
+  # gap DE reads NaN for three minutes before the detector publishes again. `last_over_time` would
+  # return that NaN, fail `> 0`, and drop the six-hour hold; `max_over_time` skips it.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_copied_feed_pairs{country="de",job="kinowo-worker"}'
+        values: '1x180 stale _x2 NaN NaN NaN 1x240'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: DuplicateVenueListing
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: DuplicateVenueListing
+        exp_alerts:
+          - exp_labels:
+              country: de
+              severity: warning
+            exp_annotations:
+              summary: "1 venue pair(s) in de list one venue's booking sessions under another's name"
+              description: >-
+                In "de", a roster venue's latest scrape books its showtimes through
+                ANOTHER venue's own sessions: one venue's feed filed under a second venue's name (an
+                aggregator's mix-up), or one upstream page wired to two venues. The site then lists that
+                programme at a cinema not showing it. The worker's WARN line "copied feed (de)"
+                names the pair and how many listings it shares. Check both venues' sources in
+                CinemaScraperCatalog: a venue wired to the other's upstream is a wiring bug to fix, one with
+                no feed of its own is to drop; two venues genuinely selling each other's sessions go on
+                `services.cinemas.roster.DistinctVenuePairs` with the reason.
+

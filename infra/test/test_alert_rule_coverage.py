@@ -26,6 +26,13 @@ a green suite on 2026-09-23, and each check below is written against the class, 
    rule that latches itself (`last_over_time(<its own name>[...])`) is exempt: carrying its own
    previous value across a gap is what it is for.
 
+3. A RESTART RE-SEEDS AN UNMEASURED GAUGE AT NaN, AND last_over_time RETURNS IT. Every worker family exists
+   from boot (deploy.WorkerMetricsAtBootSpec); a reading nothing has taken yet is seeded NaN rather than a 0 that
+   would misstate it. NaN passes no comparison, so a long-held alert reading such a gauge through
+   `last_over_time` starts its hold over at every restart, exactly as an absent one did before the bridge. Those
+   families are listed in metrics-unmeasured-at-boot.txt; a long-held alert must read them through
+   `max_over_time` / `min_over_time`, which skip a NaN while the window holds any real sample.
+
 Run: python3 infra/test/test_alert_rule_coverage.py   (also run by test_alert_rules.sh)
 """
 
@@ -144,6 +151,21 @@ def recorded_reads(expr, recordings, seen=None):
     return found
 
 
+UNMEASURED_AT_BOOT = os.path.join(HERE, "metrics-unmeasured-at-boot.txt")
+
+
+def unmeasured_at_boot():
+    """The worker families seeded at NaN when the registry is built (see the module doc, 3)."""
+    with open(UNMEASURED_AT_BOOT, encoding="utf-8") as handle:
+        return {line.strip() for line in handle if line.strip() and not line.startswith("#")}
+
+
+def last_over_time_reads(expr, families):
+    """The `families` `expr` reads through last_over_time, which returns a restart's NaN seed."""
+    return sorted({name for name in families
+                   if re.search(r'last_over_time\(\s*%s(\{(?:[^{}"]|"(?:[^"\\]|\\.)*")*\})?\s*\[' % re.escape(name), expr)})
+
+
 def worker_gauges(expr):
     """[(gauge, range window or None, inside absent())] for each worker-gauge selector in expr."""
     found = []
@@ -252,6 +274,25 @@ class LongHoldsSurviveAWorkerRestart(unittest.TestCase):
                                    for c in test.get("alert_rule_test") or [])
                            for _, suite in all_suites for test in suite.get("tests", [])):
                     problems.append("%s: no case fires across a `stale` gap in %s" % (where, gauge))
+        self.assertEqual([], problems, "\n" + "\n".join(problems))
+
+    def test_a_long_held_alert_bridges_an_unmeasured_gauge_past_its_nan_seed(self):
+        unmeasured = unmeasured_at_boot()
+        self.assertIn("kinowo_worker_corpus_movies", unmeasured)  # the list is read
+        # The positive control: the check names the last_over_time read, and not the NaN-skipping one.
+        self.assertEqual(["kinowo_worker_corpus_movies"], last_over_time_reads(
+            'max(last_over_time(kinowo_worker_corpus_movies{subset="total"}[10m])) > 0 '
+            'and max_over_time(kinowo_worker_copied_feed_pairs[30m]) > 0', unmeasured))
+        recordings = recording_rules()
+        problems = []
+        for alert, (rules, rule) in sorted(prometheus_alerts().items()):
+            if seconds(rule.get("for")) < LONG_HOLD_SECONDS:
+                continue
+            exprs = [rule["expr"]] + [inner for _, inner in recorded_reads(rule["expr"], recordings)]
+            for name in sorted({n for e in exprs for n in last_over_time_reads(e, unmeasured)}):
+                problems.append("%s %s (for: %s) reads %s through last_over_time: a restart seeds it NaN, which "
+                                "last_over_time returns and no comparison passes, so the hold starts over -- read it "
+                                "through max_over_time / min_over_time, which skip NaN" % (rules, alert, rule.get("for"), name))
         self.assertEqual([], problems, "\n" + "\n".join(problems))
 
     def test_a_long_held_grafana_alert_bridges_the_restart_gap(self):

@@ -239,7 +239,7 @@ groups:
       # once the seed has re-read every venue's archived scrape (CopiedFeedDetector.SeedDelay), so
       # a restart never reads as "no copies" and drops a pending alert.
       - alert: DuplicateVenueListing
-        expr: max by (country) (last_over_time(kinowo_worker_copied_feed_pairs[30m])) > 0
+        expr: max by (country) (max_over_time(kinowo_worker_copied_feed_pairs[30m])) > 0
         for: 6h
         labels:
           severity: warning

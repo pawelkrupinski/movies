@@ -114,12 +114,12 @@ groups:
       - alert: CinemaContentStaleVenuesGrowing
         expr: >-
           (
-            max by (country) (last_over_time(kinowo_worker_cinema_content_stale_venues[1h]))
+            max by (country) (max_over_time(kinowo_worker_cinema_content_stale_venues[1h]))
             - min by (country) (min_over_time(kinowo_worker_cinema_content_stale_venues[1d] offset 1d))
           ) >= 3
           and on (country)
           (
-            max by (country) (last_over_time(kinowo_worker_cinema_content_stale_venues[1h]))
+            max by (country) (max_over_time(kinowo_worker_cinema_content_stale_venues[1h]))
             - min by (country) (min_over_time(kinowo_worker_cinema_content_stale_venues[1d] offset 1d))
           ) >= 0.05 * min by (country) (min_over_time(kinowo_worker_cinema_content_stale_venues[1d] offset 1d))
         for: 24h
@@ -151,7 +151,7 @@ groups:
       # figure under its own `instance`; held a day so a venue that lists on the halfway day itself
       # never pages. Off season the gauge reads 0, so a venue left unretired pages once a year.
       - alert: SeasonalVenuesNotReopened
-        expr: max by (country) (last_over_time(kinowo_worker_seasonal_venues_not_reopened[1h])) > 0
+        expr: max by (country) (max_over_time(kinowo_worker_seasonal_venues_not_reopened[1h])) > 0
         for: 1d
         labels:
           severity: warning

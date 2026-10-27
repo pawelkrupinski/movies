@@ -1,0 +1,20 @@
+# The worker metric families seeded at NaN -- a reading nothing has taken yet -- when the registry is built
+# (services.metrics.WorkerMetrics and the classes it builds). Kept equal to what the registry seeds by
+# deploy.WorkerMetricsAtBootSpec; read by test_alert_rule_coverage.py, which refuses a long-held alert reading one
+# through last_over_time: a restart re-seeds the NaN, last_over_time returns it, and the hold starts over.
+kinowo_worker_cinema_content_stale_venues
+kinowo_worker_copied_feed_pairs
+kinowo_worker_corpus_movies
+kinowo_worker_identity_cutover_films
+kinowo_worker_identity_cutover_listings
+kinowo_worker_identity_model_drain_seconds
+kinowo_worker_identity_model_families
+kinowo_worker_identity_model_large_families
+kinowo_worker_identity_model_largest_family_listings
+kinowo_worker_identity_model_largest_family_nodes
+kinowo_worker_identity_projection_seconds
+kinowo_worker_identity_shadow_lookups
+kinowo_worker_identity_suspect_takes
+kinowo_worker_seasonal_venues_not_reopened
+kinowo_worker_share_cards_city_coverage_ratio
+kinowo_worker_share_cards_facebook_app_usage
