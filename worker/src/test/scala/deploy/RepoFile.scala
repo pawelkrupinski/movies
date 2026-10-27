@@ -177,17 +177,18 @@ object RepoFile {
   final case class RunStep(script: String, workingDirectory: Option[String])
 
   /** Every `run:` in `yml` — what a workflow actually EXECUTES, unlike its comments, its `paths:`
-   *  triggers or a step's name, which all mention scripts they never run. */
-  def runSteps(yml: String): Seq[RunStep] = {
+   *  triggers or a step's name, which all mention scripts they never run. `named` reads another key
+   *  holding shell the same way (`script:`, the Android emulator runner's command). */
+  def runSteps(yml: String, named: String = "run:"): Seq[RunStep] = {
     val lines = yml.linesIterator.toVector
     def indentOf(line: String) = line.takeWhile(_ == ' ').length
     def code(line: String) = line.trim.nonEmpty && !line.trim.startsWith("#")
     lines.indices.flatMap { at =>
       val line = lines(at)
-      val key  = line.indexOf("run:")
+      val key  = line.indexOf(named)
       val isRun = key >= 0 && { val before = line.take(key).trim; before.isEmpty || before == "-" }
       Option.when(isRun) {
-        val inline = line.drop(key + "run:".length).trim
+        val inline = line.drop(key + named.length).trim
         val script =
           if (inline.startsWith("|") || inline.startsWith(">"))
             lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || indentOf(l) > key).filter(code).map(_.trim).mkString("\n")
