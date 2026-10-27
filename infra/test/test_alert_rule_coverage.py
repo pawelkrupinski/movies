@@ -33,6 +33,11 @@ a green suite on 2026-09-23, and each check below is written against the class, 
    families are listed in metrics-unmeasured-at-boot.txt; a long-held alert must read them through
    `max_over_time` / `min_over_time`, which skip a NaN while the window holds any real sample.
 
+4. AN ALERT OVER A METRIC THAT IS NOT THERE CAN NEVER FIRE. Every application family an alert reads owes an
+   alert on its absence: a hand-written one (`absent(...)` of it, or an `...Absent` alert reading it), or the
+   generated AppMetricAbsent rule app_metrics_absent.py writes from the alerts themselves -- whose checked-in output
+   must be current. A family whose absence is healthy is in that module's NOT_GUARDED, with the reason.
+
 Run: python3 infra/test/test_alert_rule_coverage.py   (also run by test_alert_rules.sh)
 """
 
@@ -46,6 +51,7 @@ import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import app_metrics_absent  # noqa: E402
 import promql_selectors  # noqa: E402
 from promql_selectors import seconds  # noqa: E402
 
@@ -311,6 +317,32 @@ class LongHoldsSurviveAWorkerRestart(unittest.TestCase):
                            for _, suite in all_suites for test in suite.get("tests", [])):
                     problems.append("%s: no case evaluates it across a `stale` gap in %s" % (where, gauge))
         self.assertEqual([], problems, "\n" + "\n".join(problems))
+
+
+class EveryAppMetricAnAlertReadsIsWatchedForAbsence(unittest.TestCase):
+
+    def test_the_generated_absent_alerts_are_current(self):
+        stale = [os.path.relpath(p, HERE) for p in app_metrics_absent.stale()]
+        self.assertEqual([], stale, "re-run `python3 infra/test/app_metrics_absent.py --write` and commit: "
+                                    "an alert over an app metric changed since they were generated")
+
+    def test_every_app_family_an_alert_reads_has_an_absence_alert(self):
+        read = app_metrics_absent.read_families()
+        self.assertIn("kinowo_worker_corpus_movies", read)  # the scan reaches the alerts
+        watched = set(app_metrics_absent.generated_families()) | set(app_metrics_absent.hand_guarded())
+        unwatched = ["%s, read by %s" % (f, ", ".join(readers)) for f, (_, readers) in sorted(read.items())
+                     if f not in watched and f not in app_metrics_absent.NOT_GUARDED]
+        self.assertEqual([], unwatched, "\n" + "\n".join(unwatched))
+
+    def test_not_guarded_names_only_families_an_alert_reads(self):
+        read = app_metrics_absent.read_families()
+        self.assertEqual([], sorted(f for f in app_metrics_absent.NOT_GUARDED if f not in read))
+
+    def test_the_hand_written_guards_are_recognised(self):
+        guarded = app_metrics_absent.hand_guarded()
+        self.assertEqual("CinemaScrapeCensusAbsent", guarded.get("kinowo_worker_cinema_scrape_oldest_age_seconds"))
+        self.assertEqual("ShareCardCoverageAbsent", guarded.get("kinowo_worker_share_cards_coverage_ratio"))
+        self.assertNotIn("kinowo_worker_corpus_movies", guarded)
 
 
 if __name__ == "__main__":

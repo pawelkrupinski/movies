@@ -168,10 +168,15 @@ let
   # compared by eye without sorting one of them in your head. The comparison is the only check
   # there is until the guard script exists.
   ruleNames = [
+    # IS EVERY APPLICATION METRIC AN ALERT READS STILL PUBLISHED. GENERATED (infra/test/app_metrics_absent.py) from
+    # the alerts below: one AppMetricAbsent per worker/web family they read, firing while the tier is up and the
+    # family is gone -- every family exists from boot, so an alert over a missing one is blind, never quiet.
+    # Alphabetically first.
+    "app-metrics-absent"
     # IS A WHOLE SCRAPER CLIENT QUIETLY RUNNING ON FALLBACK. Added after the 2026-09-17 incident:
     # all 87 UK Cineworld venues broke at once when the site relaunched, and every one failed over
     # to its per-venue aggregator fallback individually -- no cinema bar went red, nothing paged,
-    # found a day later by a human reading /uptime by hand. Alphabetically first.
+    # found a day later by a human reading /uptime by hand.
     "chain-fallback"
     # HAS A BUILD GOT SLOWER, OR NEAR ITS CEILING. CI's own build timings, after 4b2e9cb04 took the convergence takes
     # rows past their 55-minute timeout and the first word of it was the red run (1641).
