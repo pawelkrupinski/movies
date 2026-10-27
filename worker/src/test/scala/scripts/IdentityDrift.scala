@@ -212,13 +212,14 @@ object IdentityDrift {
       case known          => known
     })(Answer.Known(_))
     def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
-              keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys): AgreementStage =
+              keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys,
+              askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never): AgreementStage =
       AgreementStageComposition(AgreementStageComposition.Sources(reads.families.map(f => f -> store.answers(f)).toMap,
         venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf, stored = verdicts, clock = clock, normalizer = reads.normalizer,
         identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code),
         listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code), changes = store, posters = posters,
         catalogue = catalogue.answers, attempted = attempted, attemptsMarked = Some(() => marks.get), keys = keys),
-        overrides = if (budgets) Set.empty else Set(AgreementStageComposition.Override.Unbudgeted))
+        AgreementStageComposition.Effects(askNow = askNow), overrides = if (budgets) Set.empty else Set(AgreementStageComposition.Override.Unbudgeted))
     /** The family questions the stage's last apply left open, none given up as unreachable. */
     def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
       Question.families(stage.wanted) -- unreachable
@@ -235,11 +236,18 @@ object IdentityDrift {
       val open = asks(store, askable(stage).toSeq, release)
       tools.ConcurrentAsks.each(stage.wanted.toSeq.collect { case Question.Poster(q) => q }, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
       catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
+      file(open)
+    }
+    /** The family questions a stage asks INLINE ([[AgreementStage.AskNow]]): answered before its apply reads them again,
+     *  as the worker's inline asks answer them ([[services.identity.adapters.InlineFamilyAsks]]) — else a take the worker
+     *  reads its answers for at its first apply waited here for the queue's next round, served the model's film meanwhile. */
+    def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) =>
+      file(asks(store, (Question.families(questions) -- unreachable).toSeq.sortBy { case (f, q) => (f.ordinal, q) }, release))
+    private def file(open: Seq[(VoterFamily, String)]): Unit =
       tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
         try { AgreementQuestions.file(store, family, reads.sources(family), asked); () }
         catch { case NonFatal(_) => failures.merge(question, 1, (a, b) => a + b); marks.incrementAndGet(); () }
       }
-    }
   }
 
   /** Which of the family questions `open` a round asks the recording's sites: none `release` files (a held filed answer),
@@ -325,7 +333,7 @@ object IdentityDrift {
     private val inputs   = inputsOf(reads)
     private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard)
     var model: IncrementalResolver = newModel()
-    private def newStage() = answers.stage(gate, verdicts, budgets = true, keys)
+    private def newStage() = answers.stage(gate, verdicts, budgets = true, keys, askNow = answers.inline(releaseFamily))
     var stage: AgreementStage = newStage()
     /** The intake's listings by key: what a projection hands the stage. */
     var held: Map[ListingKey, Listing] = Map.empty

@@ -114,7 +114,9 @@ take is recorded at every projection of the replay, settle rounds included (`ser
 kept), and a listing whose take goes back to a film it left, changes more than once, or changes at a step where none of
 its deciding inputs changed (no answer filed, no rules changed, its model cluster the same: an interim take a pending
 correction overrides) is a FLIP: one line naming its films, the steps and each take's deciding path, in `flips-<cc>.tsv`
-and the report. Any flip fails the row; `test/resources/fixtures/identity-flips-allow.tsv` stays empty.
+and the report. Any flip fails the row; `test/resources/fixtures/identity-flips-allow.tsv` stays empty. The replay's stage
+asks its families inline as the worker's does (`InlineFamilyAsks`), so a take the worker reads its answers for at its
+first apply is not served the model's film here for a queue round.
 
 What it found first (recording 573, 2026-10-22): the agreement's stored verdict kept an agreed film as its title and year
 alone, so a stage brought up by a deploy took films its first decision had refused on the record's other facts — DE
