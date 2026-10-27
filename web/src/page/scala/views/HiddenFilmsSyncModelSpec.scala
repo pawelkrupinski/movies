@@ -332,16 +332,16 @@ object HiddenFilmsSyncModelSpec {
 
     private def load(): Unit = { page.navigate(base + Pages.path(country)); quiesce() }
 
-    /** Nothing in flight and no debounced language push armed, held for a
-     *  while — the page's reconcile chains its requests. */
+    /** Nothing in flight and no debounced language push armed, held for six polls
+     *  in a row — the page's reconcile chains its requests. Counted in the page and
+     *  polled by `waitFor`, whose budget is the page's own time: this loop's
+     *  wall-clock deadline charged a renderer frozen by a loaded machine to the page
+     *  and failed "the page never went quiet" (a land's page check, 2026-10-27,
+     *  24 suites' Chromes on one laptop; see `CdpWaitForSpec`). */
     private def quiesce(): Unit = {
-      val deadline = System.nanoTime() + 10000L * 1000000L
-      var stable = 0
-      while (stable < 6) {
-        if (System.nanoTime() > deadline) throw new RuntimeException("the page never went quiet")
-        stable = if (page.evalBool("__syncModel.idle()")) stable + 1 else 0
-        Thread.sleep(25)
-      }
+      page.eval("window.__quietPolls = 0")
+      page.waitFor("(window.__quietPolls = __syncModel.idle() ? (window.__quietPolls || 0) + 1 : 0) >= 6",
+        timeoutMs = 10000, pollMs = 25)
     }
 
     private def local: Seq[String] = Json.parse(page.evalString("JSON.stringify(getHidden())")).as[Seq[String]].sorted
