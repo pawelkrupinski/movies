@@ -41,9 +41,10 @@ printf "%s|%s\\n" "\$server" "\$(cat "\$server/worker/src/s" 2>/dev/null)" >> "$
 if [ -n "\${STUB_STALE_ONCE:-}" ] && [ ! -e "\$STUB_STALE_ONCE" ] && [ "\$*" != "--client staleTastyDrop" ]; then
   touch "\$STUB_STALE_ONCE"; echo "[error] Ignoring analyses of x due to error in reading TASTy"; exit 1
 fi
-# a slow command: whether the server named was still running as it ended
+# a slow command: held until the spec writes to the slow-go fifo, then whether the server named was still running as it
+# ended (a 3 s sleep held it before: on a loaded machine the other call reached its restart after the command had ended)
 if [ -n "\${STUB_SLOW_SERVER:-}" ]; then
-  touch "$scratch/slow-started"; sleep 3; kill -0 "\$STUB_SLOW_SERVER" 2>/dev/null && echo running > "$scratch/slow" || echo stopped > "$scratch/slow"
+  touch "$scratch/slow-started"; read -r _ < "$scratch/slow-go"; kill -0 "\$STUB_SLOW_SERVER" 2>/dev/null && echo running > "$scratch/slow" || echo stopped > "$scratch/slow"
 fi
 # a long command: its call's last-used mark aged past the idle timeout mid-run, then whether it is fresh again
 if [ -n "\${STUB_AGE_USED:-}" ]; then
@@ -212,12 +213,16 @@ check "...and records when, why and by whom in the stops log" "1" \
 (cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
 server=$!; fakes+=("$server"); await_server "$server"
 (cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)  # its settings, kept
-rm -f "$scratch/slow" "$scratch/slow-started"
+rm -f "$scratch/slow" "$scratch/slow-started" "$scratch/slow-go"; mkfifo "$scratch/slow-go"
 (cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora STUB_SLOW_SERVER=$server "$REPO_ROOT/scripts/sbt-warm" test >/dev/null 2>&1) &
 slow=$!
 wait_until "the slow call is running its command" '[ -e "$scratch/slow-started" ]'
-out=$(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
-wait "$slow"
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile 2>"$scratch/restart.err" >/dev/null) &
+restart=$!
+# the slow command ends only once the restarting call says it waits for it (or that wait's deadline has failed the case)
+wait_until "the restarting call waits for the slow command" 'grep -q "waiting for it to end" "$scratch/restart.err"'
+echo go > "$scratch/slow-go"
+wait "$slow"; wait "$restart"; out=$(cat "$scratch/restart.err")
 check "a settings restart waits for another call's running command to end" "running yes" \
   "$(cat "$scratch/slow" 2>/dev/null) $(grep -q "waiting for it to end" <<<"$out" && echo yes || echo "no: $out")"
 kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
