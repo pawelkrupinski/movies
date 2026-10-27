@@ -16,8 +16,8 @@
 # those: one runner for about a minute a day, where re-deriving them would cost a convergence boot per country.
 #
 # Runs when a recording completes, as a daily backstop, and by hand (`run-id`: any recording's run). A recording that
-# FAILED, or ran off main, is passed over for the newest successful recording on main, as the live drift check does
-# (scripts/ci/live_drift_recording.py, with no age limit): run 3139 went red with "run 3136 left no country's findings"
+# FAILED, or ran off main, is passed over for the newest successful recording on main, through the one resolver for
+# upstream runs (.github/actions/upstream-run, with no age limit): run 3139 went red with "run 3136 left no country's findings"
 # after recording 3136 failed before a convergence row wrote any -- a red for lack of input, not for a finding. Each
 # country's issue is updated in place with the findings and their triage commands, closed when empty, reopened
 # when one comes back. A finding untriaged for MORE THAN 3 DAYS is OVERDUE: marked in its country's issue, which
@@ -51,11 +51,35 @@ permissions:
     contents: read
 
 jobs:
+    # THE PLAN: which recording to report (.github/actions/upstream-run, UpstreamRunSpec). One that failed or ran off main
+    # -- a branch recording pins nothing anyone replays -- or none named (the backstop): the newest successful one on
+    # main, whatever its age, since its findings are still the newest there are to triage. Red only when there is none.
+    plan:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        outputs:
+            run: ${{ steps.upstream.outputs.run }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      scripts/forge-gh
+                  sparse-checkout-cone-mode: false
+            - id: upstream
+              uses: ./.github/actions/upstream-run
+              with:
+                  workflow: Record scrape fixtures
+                  run-id: ${{ inputs.run-id }}
+                  max-age-hours: '0'
+
     findings:
+        needs: [ plan ]
         outputs:
             overdue: ${{ steps.report.outputs.overdue }}
-        # A recording off main records nothing hermetic legs replay: its findings are no one's to triage.
-        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 10
         permissions:
@@ -67,37 +91,21 @@ jobs:
               with:
                   sparse-checkout: |
                       scripts/ci
-                      scripts/forge-gh
                       test/resources/fixtures/identity-judgements.tsv
                   sparse-checkout-cone-mode: false
-            # A recording that failed or ran off main, or none named (the backstop): the newest successful one on main,
-            # whatever its age -- its findings are still the newest there are to triage. Red only when there is none.
-            - name: Choose the recording
-              id: recording
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ github.token }}
-                  KINOWO_REPO: ${{ github.repository }}
-                  TRIGGER: ${{ inputs.run-id || github.event.workflow_run.id }}
-                  CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-                  BRANCH: ${{ github.event.workflow_run.head_branch || 'main' }}
-              run: |
-                  set -euo pipefail
-                  run=$(python3 scripts/ci/live_drift_recording.py --trigger "$TRIGGER" --conclusion "$CONCLUSION" --branch "$BRANCH" --max-age-hours 0)
-                  echo "run=$run" >> "$GITHUB_OUTPUT"
             - name: Report each country's findings
               id: report
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-                  RECORDING: ${{ steps.recording.outputs.run }}
+                  RECORDING: ${{ needs.plan.outputs.run }}
                   OWNER: ${{ github.repository_owner }}
               run: |
                   python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --work "$RUNNER_TEMP/identity-findings"
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ findings ]
+        needs: [ plan, findings ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
@@ -113,7 +121,7 @@ jobs:
     # carry the findings themselves: this one says findings are overdue, or the report itself could not run.
     report:
         name: report (scheduled run)
-        needs: [ findings, timings ]
+        needs: [ plan, findings, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5

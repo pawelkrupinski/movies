@@ -21,22 +21,17 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
       RepoFile.workflowName(RepoFile.read(".github/workflows/record-scrape-fixtures.yml")) shouldBe "Record scrape fixtures")
   }
 
-  it should "report only main's recordings — a branch recording pins nothing anyone replays" in {
-    findings should include("github.event.workflow_run.head_branch == 'main'")
-    report should include("python3 scripts/ci/identity_findings_report.py --run \"$RECORDING\"")
-  }
-
   // Run 3139 went red with "run 3136 left no country's findings" after recording 3136 failed before any
   // convergence row wrote them: a red for lack of input, not for a finding.
-  it should "pass a failed recording over for the newest successful one on main, as the live drift check does" in {
-    val choose = RepoFile.stepScript(workflow, "Choose the recording")
-    choose should include("python3 scripts/ci/live_drift_recording.py --trigger \"$TRIGGER\" --conclusion \"$CONCLUSION\"")
+  it should "report main's newest successful recording when the one it follows failed or ran off main" in {
+    val plan = RepoFile.jobs(workflow)("plan")
+    plan should include("uses: ./.github/actions/upstream-run")
     withClue("an older recording's findings are still the newest to triage: no age limit: ")(
-      choose should include("--max-age-hours 0"))
-    withClue("the helper lists runs through scripts/forge-gh, which the sparse checkout must hold: ")(
-      findings should include("scripts/forge-gh"))
-    findings should include("RECORDING: ${{ steps.recording.outputs.run }}")
-    ScriptTests.runInCi("scripts/ci/live_drift_recording_test.py") shouldBe true
+      plan should include("max-age-hours: '0'"))
+    withClue("a branch recording pins nothing anyone replays: the resolver passes it over (UpstreamRunSpec): ")(
+      findings should not include "head_branch")
+    findings should include("RECORDING: ${{ needs.plan.outputs.run }}")
+    report should include("python3 scripts/ci/identity_findings_report.py --run \"$RECORDING\"")
   }
 
   it should "read the findings the recording left, through the report script, and re-run no suite" in {

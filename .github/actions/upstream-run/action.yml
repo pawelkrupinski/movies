@@ -1,0 +1,52 @@
+name: Upstream run
+description: >
+  ONE RESOLVER FOR UPSTREAM RUNS: the run of the producing workflow that a workflow_run-triggered workflow reads.
+
+  Every workflow started by another workflow's run picks its input through this step, in its plan job, and every other
+  job reads `needs.<plan>.outputs.run` (UpstreamRunSpec): the run named by hand (`run-id`), else the triggering run when
+  it succeeded on main, else the newest successful run on main, said as a warning (scripts/ci/upstream_run.py holds the
+  rule and its history). Only this action reads `github.event.workflow_run`.
+
+  The caller checks out scripts/ci and scripts/forge-gh first, and its job has `actions: read`.
+
+inputs:
+  workflow:
+    description: The producing workflow's name -- one of the caller's `on.workflow_run.workflows`.
+    required: true
+  run-id:
+    description: A run named by hand (workflow_dispatch's `run-id`); empty for the triggering one.
+    required: false
+    default: ''
+  max-age-hours:
+    description: How old the fallback may be; 0 is no limit.
+    required: false
+    default: '48'
+  on-fallback:
+    description: "`newest` reads the newest successful run in a bad trigger's place; `skip` reads none (`run` empty)."
+    required: false
+    default: newest
+
+outputs:
+  run:
+    description: The run id to read; empty only when `on-fallback` is skip and the trigger was passed over.
+    value: ${{ steps.resolve.outputs.run }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        KINOWO_REPO: ${{ github.repository }}
+        WORKFLOW: ${{ inputs.workflow }}
+        TRIGGER: ${{ inputs.run-id || github.event.workflow_run.id }}
+        CONCLUSION: ${{ inputs.run-id == '' && github.event.workflow_run.conclusion || '' }}
+        BRANCH: ${{ github.event.workflow_run.head_branch || 'main' }}
+        MAX_AGE_HOURS: ${{ inputs.max-age-hours }}
+        ON_FALLBACK: ${{ inputs.on-fallback }}
+      run: |
+        set -euo pipefail
+        run=$(python3 scripts/ci/upstream_run.py --workflow "$WORKFLOW" --trigger "$TRIGGER" --conclusion "$CONCLUSION" \
+            --branch "$BRANCH" --max-age-hours "$MAX_AGE_HOURS" --on-fallback "$ON_FALLBACK")
+        echo "run=$run" >> "$GITHUB_OUTPUT"

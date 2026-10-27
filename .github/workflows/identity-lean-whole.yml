@@ -40,9 +40,33 @@ permissions:
     contents: read
 
 jobs:
+    # THE PLAN: which recording to measure (.github/actions/upstream-run, UpstreamRunSpec). A recording off main, or one that failed, records nothing the
+    # measurements replay, and an older one would only repeat its own measurement: `skip`, an empty run and no compare.
+    plan:
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        outputs:
+            run: ${{ steps.upstream.outputs.run }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      scripts/forge-gh
+                  sparse-checkout-cone-mode: false
+            - id: upstream
+              uses: ./.github/actions/upstream-run
+              with:
+                  workflow: Record scrape fixtures
+                  run-id: ${{ inputs.run-id }}
+                  on-fallback: skip
+
     compare:
-        # A recording off main, or one that failed, records nothing the measurements replay.
-        if: github.event_name != 'workflow_run' || (github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.conclusion == 'success')
+        needs: [plan]
+        if: needs.plan.outputs.run != ''
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
         timeout-minutes: 600
@@ -55,7 +79,7 @@ jobs:
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  RECORDING: ${{ inputs.run-id || github.event.workflow_run.id }}
+                  RECORDING: ${{ needs.plan.outputs.run }}
                   COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
                   KINOWO_REPO: ${{ github.repository }}
               run: |
@@ -105,7 +129,7 @@ jobs:
                   retention-days: 30
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [compare]
+        needs: [plan, compare]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
