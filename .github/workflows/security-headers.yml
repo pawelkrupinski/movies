@@ -40,7 +40,9 @@ permissions:
 jobs:
     check:
         runs-on: ubuntu-26.04
-        timeout-minutes: 5
+        # A Decodo outage is retried (check-security-headers.py, PROXY_ATTEMPTS): six requests x
+        # three 30 s attempts + backoff is ~11 min, and the job must outlive it to name the proxy.
+        timeout-minutes: 15
         steps:
             - uses: actions/checkout@v5
 

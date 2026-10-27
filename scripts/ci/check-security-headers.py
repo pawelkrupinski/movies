@@ -24,12 +24,20 @@ has an EXPECTED status (401 anonymous /api/me, 2xx preflight, 303 OAuth start), 
 fails with the status and `cf-mitigated` named. Requests go through the Decodo residential proxy
 when DECODO_PROXY_USER / DECODO_PROXY_PASS are set, as the OG-card workflow's do.
 
+A PROXY THAT IS DOWN IS NAMED AS THE PROXY. Run #2173 (2026-10-27): Decodo timed out or answered
+`503` on the tunnel for all six requests while both origins were healthy, and every failure read
+as the origin's. A proxy-side error (the CONNECT tunnel refused, or a timeout / refused / reset
+connection while reaching the proxy) is retried PROXY_ATTEMPTS times with backoff, and if it
+persists the failure says `proxy unavailable (Decodo ...)` -- still a failure, since nothing about
+the origin was checked.
+
 Usage: check-security-headers.py [host ...]     (default: kinowo.net showtimes.cc)
 The pure `evaluate_*` functions are unit-tested offline by check_security_headers_test.py.
 """
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -38,6 +46,9 @@ ONE_YEAR = 365 * 24 * 3600
 FOREIGN_ORIGIN = "https://security-check.invalid"
 SESSION_COOKIE = "PLAY_SESSION"
 PROXY_HOST = "isp.decodo.com:10001"
+PROXY_ATTEMPTS = 3
+PROXY_BACKOFF_SECONDS = 5
+PROXY_UNAVAILABLE = "proxy unavailable (Decodo %s)" % PROXY_HOST
 
 
 def header(headers, name):
@@ -49,6 +60,8 @@ def reachability_failures(what, status, expected, headers):
     """A response that is not the origin answering the way it always does is not evidence."""
     if status in expected:
         return []
+    if str(status).startswith(PROXY_UNAVAILABLE):
+        return ["%s: %s -- the origin was not reached, so nothing about it could be checked" % (what, status)]
     mitigated = header(headers, "cf-mitigated")
     return ["%s: got HTTP %s, expected %s%s -- not the origin's answer, so nothing else about it "
             "can be checked" % (what, status, "/".join(map(str, sorted(expected))),
@@ -126,15 +139,39 @@ def _opener():
     return urllib.request.build_opener(*handlers)
 
 
-def fetch(opener, method, url, headers):
+def is_proxy_side(error):
+    """urllib wraps what fails while connecting -- reaching the proxy, its CONNECT tunnel -- in a
+    URLError; a tunnel the proxy refused reads `Tunnel connection failed: <status>`. A TLS error
+    is the origin's certificate, through a tunnel that worked."""
+    if not isinstance(error, urllib.error.URLError) or isinstance(error, urllib.error.HTTPError):
+        return False
+    reason = error.reason
+    if isinstance(reason, (TimeoutError, ConnectionError)):
+        return True
+    return isinstance(reason, OSError) and str(reason).startswith("Tunnel connection failed")
+
+
+def _describe(error):
+    return redact("%s: %s" % (type(error).__name__, error))
+
+
+def fetch(opener, method, url, headers, proxied=None, sleep=time.sleep):
+    if proxied is None:
+        proxied = all(_proxy_credentials())
     request = urllib.request.Request(url, method=method, headers={"User-Agent": "kinowo-security-headers-check", **headers})
-    try:
-        with opener.open(request, timeout=30) as response:
-            return response.status, list(response.headers.items())
-    except urllib.error.HTTPError as error:
-        return error.code, list(error.headers.items())
-    except Exception as error:  # noqa: BLE001 -- any failure is "unreachable", never a traceback
-        return "unreachable (%s)" % redact("%s: %s" % (type(error).__name__, error)), []
+    for attempt in range(1, PROXY_ATTEMPTS + 1):
+        try:
+            with opener.open(request, timeout=30) as response:
+                return response.status, list(response.headers.items())
+        except urllib.error.HTTPError as error:
+            return error.code, list(error.headers.items())
+        except Exception as error:  # noqa: BLE001 -- any failure is "unreachable", never a traceback
+            if not (proxied and is_proxy_side(error)):
+                return "unreachable (%s)" % _describe(error), []
+            if attempt == PROXY_ATTEMPTS:
+                return "%s: %s, %d attempts" % (PROXY_UNAVAILABLE, _describe(error), attempt), []
+            print("proxy-side error on %s %s, attempt %d/%d: %s" % (method, url, attempt, PROXY_ATTEMPTS, _describe(error)))
+            sleep(PROXY_BACKOFF_SECONDS * attempt)
 
 
 def check_host(opener, host, require_secure):

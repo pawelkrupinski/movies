@@ -7,8 +7,10 @@ being able to fail is caught on the run that would otherwise have passed on it.
 Run: python3 scripts/ci/check_security_headers_test.py
 """
 import os
+import ssl
 import sys
 import unittest
+import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -142,6 +144,75 @@ class ProxyCredentialsNeverPrinted(unittest.TestCase):
         text = self._fetched(ValueError("proxy http://decodo-user:s3cr3t%2Fpass@isp.decodo.com:10001 rejected"))
         self.assertIn("unreachable", text)
         self.assertRedacted(text)
+
+
+class ProxyFailures(unittest.TestCase):
+    """Run #2173: the Decodo proxy timed out or answered `503` on the tunnel for all six requests
+    while both origins were healthy, and every failure read as the origin being unreachable. A
+    proxy-side error is retried with backoff and, if it persists, named as the proxy's."""
+
+    TUNNEL_503 = urllib.error.URLError(OSError("Tunnel connection failed: 503 Service Unavailable"))
+    PROXY_TIMEOUT = urllib.error.URLError(TimeoutError("timed out"))
+
+    def _opener(self, outcomes):
+        """Raises each exception in `outcomes` in turn; a tuple is a response (status, headers)."""
+        calls = []
+
+        class Response:
+            def __init__(self, status, headers):
+                self.status, self.headers = status, dict(headers)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        class Opener:
+            def open(self, request, timeout):
+                outcome = outcomes[len(calls)]
+                calls.append(request)
+                if isinstance(outcome, BaseException):
+                    raise outcome
+                return Response(*outcome)
+        return Opener(), calls
+
+    def _fetch(self, outcomes, proxied=True):
+        opener, calls = self._opener(outcomes)
+        sleeps = []
+        status, headers = check.fetch(opener, "GET", "https://kinowo.net/api/me", {},
+                                      proxied=proxied, sleep=sleeps.append)
+        return status, headers, calls, sleeps
+
+    def test_a_tunnel_503_is_retried_with_backoff_until_the_origin_answers(self):
+        status, headers, calls, sleeps = self._fetch(
+            [self.TUNNEL_503, self.PROXY_TIMEOUT, (401, [("strict-transport-security", "max-age=31536000")])])
+        self.assertEqual(status, 401)
+        self.assertEqual(headers, [("strict-transport-security", "max-age=31536000")])
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(sleeps), 2)
+        self.assertLess(sleeps[0], sleeps[1])
+
+    def test_a_proxy_that_stays_down_is_named_as_the_proxy_not_the_origin(self):
+        status, _, calls, _ = self._fetch([self.TUNNEL_503] * check.PROXY_ATTEMPTS)
+        self.assertEqual(len(calls), check.PROXY_ATTEMPTS)
+        self.assertTrue(str(status).startswith("proxy unavailable (Decodo"), status)
+        self.assertIn("Tunnel connection failed: 503", str(status))
+        failures = check.evaluate_cors("kinowo.net GET /api/me", status, {401}, [])
+        self.assertEqual(len(failures), 1)
+        self.assertIn("proxy unavailable (Decodo", failures[0])
+        self.assertNotIn("not the origin's answer", failures[0])
+
+    def test_an_origin_side_error_is_not_retried(self):
+        status, _, calls, sleeps = self._fetch(
+            [urllib.error.URLError(ssl.SSLError("certificate verify failed"))])
+        self.assertEqual((len(calls), sleeps), (1, []))
+        self.assertTrue(str(status).startswith("unreachable"), status)
+
+    def test_without_the_proxy_a_timeout_is_the_origins(self):
+        status, _, calls, _ = self._fetch([self.PROXY_TIMEOUT], proxied=False)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(str(status).startswith("unreachable"), status)
 
 
 if __name__ == "__main__":
