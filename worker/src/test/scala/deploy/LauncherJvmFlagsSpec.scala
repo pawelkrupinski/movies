@@ -34,18 +34,24 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
 
   private lazy val configuration = settings.ProcessConfiguration.resolve()
 
-  /** Both streams: -XX:+PrintFlagsFinal writes to stdout, -XshowSettings to stderr. */
-  private def run(args: Seq[String]): String = {
-    val out  = new StringBuilder
-    val line = (l: String) => out.synchronized { out.append(l).append('\n'); () }
-    val exit = Process(configuration.javaHome.binary("java").toString +: args).!(scala.sys.process.ProcessLogger(line, line))
-    withClue(s"java ${args.mkString(" ")}:\n$out") { exit.shouldBe(0) }
-    out.toString
+  /** The JVM's stdout and stderr, each on its own: -XX:+PrintFlagsFinal writes to stdout, -XshowSettings to stderr, and
+   *  the worker's own -XX:+PrintNMTStatistics its exit-time Native Memory Tracking report to stdout. Each stream is read
+   *  by its own thread, so one buffer for both interleaved them as the threads were scheduled: on a loaded laptop the
+   *  NMT report's indented lines landed inside the TLS block read from stderr (pre-push, 2026-10-27). */
+  private final case class Output(stdout: String, stderr: String)
+
+  private def run(args: Seq[String]): Output = {
+    val (out, err) = (new StringBuilder, new StringBuilder)
+    def into(buffer: StringBuilder) = (l: String) => buffer.synchronized { buffer.append(l).append('\n'); () }
+    val exit = Process(configuration.javaHome.binary("java").toString +: args)
+      .!(scala.sys.process.ProcessLogger(into(out), into(err)))
+    withClue(s"java ${args.mkString(" ")}:\n$out$err") { exit.shouldBe(0) }
+    Output(out.toString, err.toString)
   }
 
   /** Each flag's final value and where it came from (`default`, `ergonomic`, `command line`). */
   private def flagsWithOrigin(args: Seq[String]): Map[String, (String, String)] =
-    run(args ++ Seq("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintFlagsFinal", "-version")).linesIterator
+    run(args ++ Seq("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintFlagsFinal", "-version")).stdout.linesIterator
       .flatMap(FlagLine.findFirstMatchIn)
       .map(m => m.group(1) -> (m.group(2), m.group(3)))
       .toMap
@@ -115,7 +121,7 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
     // X25519MLKEM768 first. Every outbound host the sources name handshook under it (103 of 349 chose the
     // hybrid, the rest x25519 or a TLS 1.2 curve, none failed); see the dependency-and-flag audit.
     it should "offer JDK 27's TLS key-exchange groups, the post-quantum hybrid in front" in {
-      val tls = run(tierFlags ++ Seq("-XshowSettings:security:tls", "-version"))
+      val tls = run(tierFlags ++ Seq("-XshowSettings:security:tls", "-version")).stderr
       val groups = tls.linesIterator.dropWhile(!_.contains("Enabled Named Groups")).drop(1)
         .takeWhile(_.startsWith("        ")).map(_.trim).toSeq
       groups shouldBe Seq("X25519MLKEM768", "x25519", "secp256r1", "secp384r1", "secp521r1", "x448",
