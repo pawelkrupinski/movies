@@ -8,7 +8,7 @@ enum CollectionDatabase {
   case Fleet
   /** The web's accounts database, `MONGODB_USERS_DB`, else the deployment's own corpus (`models.UsersDatabase`). */
   case Users
-  /** The dev-only identity review pages' own database on the LOCAL mirror instance, never prod. */
+  /** The review answers' own database on the LOCAL mirror instance (`ReviewLabelsCli`), never prod. */
   case LocalReview
 }
 
@@ -83,22 +83,22 @@ object MongoCollections {
 
   val all: Seq[RegisteredCollection] = Seq(
     RegisteredCollection("movies", Corpus, Sweep("IdentityProjection"), Set(Worker))
-      .mirror("The corpus table: the film rows (/debug), also read by the identity review pages.")
+      .mirror("The corpus table: the film rows (/debug), also read by `ReviewLabelsCli` (the answers' film links, the queue).")
       .record,
     RegisteredCollection("screenings", Corpus, Sweep("StrandedSideRowsCleanup"), Set(Worker))
       .mirror("The corpus table's showtimes, stitched back into the film rows.")
       .record,
     RegisteredCollection("movie_slots", Corpus, Sweep("StrandedSideRowsCleanup"), Set(Worker))
-      .mirror("The per-cinema slot rows the corpus readers resolve beside `movies`, and each listing's venue " +
-        "facts on the review pages. Missing, every /debug film rendered slot-less.")
+      .mirror("The per-cinema slot rows the corpus readers resolve beside `movies`. Missing, every /debug film " +
+        "rendered slot-less.")
       .record,
     RegisteredCollection("enrichment_attempts", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
       .mirror("The per-row expand: each rating source's last fetch."),
     RegisteredCollection("rating_cadence", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
       .mirror("The per-row expand: each rating source's refresh cadence."),
     RegisteredCollection("web_movies", Corpus, Sweep("ReadModelProjector"), Set(Worker))
-      .mirror("The /debug/readmodel dump of what the serving app actually serves; also the review pages' film " +
-        "records. Missing, the dump was blank for every non-boot country."),
+      .mirror("The /debug/readmodel dump of what the serving app actually serves. Missing, the dump was blank for " +
+        "every non-boot country."),
     RegisteredCollection("web_screenings", Corpus, Sweep("ReadModelProjector"), Set(Worker))
       .mirror("The /debug/readmodel dump's screenings."),
     RegisteredCollection("cinema_scrapes", Corpus, OnePerVenue, Set(Worker))
@@ -111,36 +111,36 @@ object MongoCollections {
         "alone, where production falls back to this archive's last listing for a venue with none accepted " +
         "(IdentityListingIntake.knownListing)"),
     RegisteredCollection("identity_model_families", Corpus, Sweep("MongoIdentityModelStore"), Set(Worker))
-      .mirror("The identity review pages (/debug/review*): the model's decisions. ~190 MB over the five " +
-        "countries with the other review collections (2026-10-06).")
+      .mirror("Backs no page: the model's decisions, read by `ReviewLabelsCli queue`, `scripts/identity-slice` " +
+        "and `scripts/listing-history`. ~190 MB over the five countries with the other identity collections (2026-10-06).")
       .resolveState("the model's families, a cache: one stands only under the same rules version and slice digest " +
         "(IncrementalResolver.restore, no-drift item 1)"),
     RegisteredCollection("identity_listings", Corpus, OnePerVenue, Set(Worker))
-      .mirror("Review pages: each venue's last scrape as the identity intake holds it (catalogue ids, " +
-        "screenings).")
+      .mirror("Backs no page: each venue's last scrape as the identity intake holds it (catalogue ids, " +
+        "screenings), read by `scripts/venue-replay` and `scripts/listing-history`.")
       .record
       .resolveInput(ListingsKey),
     RegisteredCollection("venue_pages", Corpus, Unswept("one per venue detail page ever read; a gone page is flagged, never deleted. The rule would be 'no " +
       "current listing names (its group, page)', but listings name pages through each cinema's enricher group and no " +
       "complete read of them exists yet to sweep against"), Set(Worker))
-      .mirror("Review pages: each listing's own film page at its venue.")
+      .mirror("Backs no page: each listing's own film page at its venue, read by `scripts/venue-replay`.")
       .record
       .resolveInput("a family's slice digest of the venue facts it read, and a verdict's listings' digest " +
         "(AgreementStage.digestOf reads each listing's venue detail)"),
     RegisteredCollection("tmdb_films", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
-      .mirror("Review pages: the resolver's own TMDB record of each candidate film, for the candidates the " +
-        "corpus lacks.")
+      .mirror("Backs no page: the resolver's own TMDB record of each candidate film, for the candidates the " +
+        "corpus lacks; local identity investigations read it.")
       .record
       .resolveInput(SliceKey),
     RegisteredCollection("identity_family_answers", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
-      .mirror("Review pages: what the other film databases answered, and each candidate's TMDB poster paths " +
-        "filed beside the hashes (13 MB over the five countries, 2026-10-08).")
+      .mirror("Backs no page: what the other film databases answered, and each candidate's TMDB poster paths " +
+        "filed beside the hashes, read by `scripts/identity-slice` (13 MB over the five countries, 2026-10-08).")
       .record
       .resolveInput("a verdict's receipt of every family, poster and catalogue answer it read, unanswered ones too " +
         "(StoredVerdict.reads)"),
     RegisteredCollection("identity_traces", Corpus, Sweep("MongoIdentityTraceStore"), Set(Worker))
-      .mirror("Review pages: each listing's trace (the evidence for and against the film it weighed, every " +
-        "rule's refusal), read when a card's Why fold-out opens.")
+      .mirror("Backs no page: each listing's trace (the evidence for and against the film it weighed, every " +
+        "rule's refusal), read by `scripts/identity-slice`, `scripts/label-lookup` and `scripts/listing-history`.")
       .resolveState("the decisions' explanations, only written by the path"),
     RegisteredCollection("identity_agreements", Corpus, Sweep("MongoAgreementVerdicts"), Set(Worker))
       .mirror("Backs no page: the agreement stage's stored verdicts (the film each cluster's families agreed " +
@@ -220,9 +220,9 @@ object MongoCollections {
     RegisteredCollection("scrape_costs", Corpus, KeptForever("one per venue, its runs capped server-side ($slice)"), Set(Worker)),
     RegisteredCollection("omdb_attempts", Corpus, Ttl("at"), Set(Worker)),
     RegisteredCollection("venue_closures", Corpus, KeptForever("one per venue, cleared by the closure sweep"), Set(Worker)),
-    RegisteredCollection("review_answers", LocalReview, KeptForever("the dev-only identity " +
-      "review pages' answers, on the LOCAL mirror instance only (never prod): the record labels.tsv is exported from, and a " +
-      "history the reviewer keeps building on"), Set(Web)),
+    RegisteredCollection("review_answers", LocalReview, KeptForever("the identity review answers " +
+      "(ReviewLabelsCli), on the LOCAL mirror instance only (never prod): the record identity-judgements.tsv is exported " +
+      "from"), Set(Web)),
     RegisteredCollection("facebook_rescrapes", Fleet, Sweep("MongoFacebookRescrapeStore"), Set(Web, Worker))
   )
 

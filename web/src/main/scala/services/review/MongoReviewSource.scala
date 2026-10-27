@@ -3,13 +3,11 @@ package services.review
 import org.bson.conversions.Bson
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonDocument, BsonValue}
-import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
+import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture}
-import services.identity.agreement.AgreementStage.PosterQuestion
-import services.identity.{MongoIdentityModelStore, PosterAnswers, ResolverDecision, ResolverDecisionBson}
-import services.movies.{KeysetScan, SlotsRepository}
+import services.identity.{MongoIdentityModelStore, ResolverDecision, ResolverDecisionBson}
+import services.movies.KeysetScan
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -17,7 +15,7 @@ import scala.jdk.CollectionConverters._
 /**
  * One country's review reads, against ITS database on the local read-mirror — never prod: the wiring
  * builds these only from `MONGODB_MOVIES_MIRROR_URI`. Whole-collection reads are keyset-paged and
- * projected to what a page shows; every other read is an `$in` over the keys of the cards on screen.
+ * projected to what the review queue weighs; the film links are one `$or` over the refs asked about.
  */
 final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
   import MongoReviewSource._
@@ -46,65 +44,6 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     out.result()
   }
 
-  def slots(listingKeys: Seq[String]): Map[String, SlotFacts] =
-    listingKeys.distinct.grouped(500).flatMap { keys =>
-      await(collection(SlotsRepository.Collection).find(Filters.in("listingKey", keys*))
-        .projection(Projections.include("listingKey", "slot", "updatedAt")).batchSize(tools.MongoReplies.Default).toFuture())
-        .flatMap { d =>
-          val b = d.toBsonDocument
-          for { key <- string(b, "listingKey"); slot <- doc(b, "slot") }
-            yield key -> SlotFacts(facts(slot, poster = "posterUrl"), instant(b, "updatedAt").getOrElse(Instant.EPOCH))
-        }
-    }.toMap
-
-  def updatedSince(since: Instant): Map[String, Instant] = {
-    val out = Map.newBuilder[String, Instant]
-    scan(SlotsRepository.Collection, Filters.and(Filters.gte("updatedAt", java.util.Date.from(since)), Filters.exists("listingKey")),
-      Projections.include("listingKey", "updatedAt"), tools.MongoReplies.Default) { batch =>
-      batch.foreach { d => val b = d.toBsonDocument; for { k <- string(b, "listingKey"); at <- instant(b, "updatedAt") } out += k -> at }
-    }
-    out.result()
-  }
-
-  def venuePages(urls: Seq[String]): Map[String, VenueFacts] =
-    urls.distinct.grouped(200).flatMap { batch =>
-      await(collection(VenuePagesCollection).find(Filters.and(Filters.in("page", batch*), Filters.exists("gone", false)))
-        .sort(Sorts.ascending("readAt")).batchSize(tools.MongoReplies.Default).toFuture())
-        .flatMap { d => val b = d.toBsonDocument; string(b, "page").map(_ -> facts(b, poster = "posterUrl")) }
-    }.toMap
-
-  def feeds(listings: Seq[(String, String)]): Map[(String, String), ListingFeed] = {
-    val byVenue = listings.distinct.groupMap(_._1)(_._2)
-    if (byVenue.isEmpty) Map.empty
-    else {
-      // Only the listed films, and of their showtimes only the count and the span, leave the server. The films are
-      // picked out of each venue's array before it is unwound: a venue's listing is its whole programme (US documents
-      // average ~60 KB), and unwinding all of it to keep a few titles was most of a card page's build.
-      def raw(film: String) = Document("$ifNull" -> org.mongodb.scala.bson.BsonArray(s"$film.movie.rawTitle", s"$film.movie.title"))
-      val raws = org.mongodb.scala.bson.BsonArray.fromIterable(byVenue.values.flatten.toSeq.distinct.map(org.mongodb.scala.bson.BsonString(_)))
-      val pipeline = Seq(
-        Aggregates.`match`(Filters.in("_id", byVenue.keys.toSeq*)),
-        Aggregates.project(Document("films" -> Document("$filter" -> Document("input" -> "$films", "as" -> "film",
-          "cond" -> Document("$in" -> org.mongodb.scala.bson.BsonArray(raw("$$film"), raws)))))),
-        Aggregates.unwind("$films"),
-        Aggregates.project(Document(
-          "raw" -> raw("$films"),
-          "externalIds" -> "$films.externalIds",
-          "poster" -> "$films.posterUrl",
-          "screenings" -> Document("$size" -> Document("$ifNull" -> org.mongodb.scala.bson.BsonArray("$films.showtimes", org.mongodb.scala.bson.BsonArray()))),
-          "first" -> Document("$min" -> "$films.showtimes.dateTime"),
-          "last" -> Document("$max" -> "$films.showtimes.dateTime"))))
-      await(collection(ListingsCollection).aggregate(pipeline).batchSize(tools.MongoReplies.Default).toFuture()).flatMap { d =>
-        val b = d.toBsonDocument
-        for { venue <- string(b, "_id"); raw <- string(b, "raw") if byVenue.get(venue).exists(_.contains(raw)) } yield
-          (venue, raw) -> ListingFeed(
-            ListingFeed.catalogueIdsOf(b.get("externalIds")),
-            Option(b.get("screenings")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
-            instant(b, "first").map(localTime), instant(b, "last").map(localTime), string(b, "poster"))
-      }.toMap
-    }
-  }
-
   def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]] = {
     def ids(source: String) = refs.filter(_.source == source).map(_.id).distinct
     // a site's id is the tail of the URL the record stores ("…/film/Franz+Kafka-2025-10008278", "…/m/dolly")
@@ -122,12 +61,6 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }.filter(_.sizeIs > 1)
   }
 
-  def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace] =
-    listingKeys.distinct.grouped(500).flatMap { keys =>
-      await(collection(TracesCollection).find(Filters.in("_id", keys*)).batchSize(tools.MongoReplies.Default).toFuture())
-        .map(d => idText(d.toBsonDocument.get("_id")) -> services.identity.MongoIdentityTraceStore.decode(d.toBsonDocument))
-    }.toMap
-
   def served(): Map[String, Option[Int]] = {
     val tmdbOf = Map.newBuilder[String, Int]
     scan(MoviesCollection, Filters.exists("tmdbId"), Projections.include("tmdbId"), tools.MongoReplies.Default) { batch =>
@@ -143,90 +76,14 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }
     out.result()
   }
-
-  def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] =
-    tmdbIds.distinct.grouped(500).flatMap { ids =>
-      val records = await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids.map(_.toString)*)).projection(Projections.include("record", "hit", "local.credits.cast"))
-        .batchSize(tools.MongoReplies.Default).toFuture()).flatMap(d => filmRecord(d.toBsonDocument))
-      val posterIds = ids.map(id => PosterAnswers.idOf(PosterQuestion.Film(id)) -> id).toMap
-      val posters = await(collection(FamilyAnswersCollection).find(Filters.in("_id", posterIds.keys.toSeq*))
-        .projection(Projections.include(PosterAnswers.Paths)).batchSize(tools.MongoReplies.Default).toFuture())
-        .flatMap(d => posterIds.get(idText(d.toBsonDocument.get("_id"))).zip(posterOf(d.toBsonDocument))).toMap
-      records.map { case (tmdb, card) => tmdb -> card.copy(poster = posters.get(tmdb)) }
-    }.toMap
-
-  def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = {
-    val ids = tmdbIds.distinct
-    if (ids.isEmpty) Map.empty
-    else {
-      val records = await(collection(MoviesCollection).find(Filters.in("tmdbId", ids*))
-        .projection(Projections.include("tmdbId", "imdbId")).batchSize(tools.MongoReplies.Default).toFuture()).map(_.toBsonDocument).flatMap { b =>
-        Option(b.get("tmdbId")).filter(_.isNumber).map(t => (idText(b.get("_id")), t.asNumber.intValue, string(b, "imdbId")))
-      }
-      val filmIds = records.map(_._1)
-      val served  = if (filmIds.isEmpty) Map.empty[String, BsonDocument]
-        else await(collection(WebMoviesCollection).find(Filters.in("_id", filmIds*)).projection(Projections.exclude("synopsisByCity", "ratings"))
-          .batchSize(tools.MongoReplies.Films).toFuture()).map(d => idText(d.toBsonDocument.get("_id")) -> d.toBsonDocument).toMap
-      val tmdbSlots = if (filmIds.isEmpty) Map.empty[String, BsonDocument]
-        else await(collection(SlotsRepository.Collection).find(Filters.and(Filters.in("filmId", filmIds*), Filters.eq("slotKey", "TMDB")))
-          .projection(Projections.include("filmId", "slot")).batchSize(tools.MongoReplies.Default).toFuture())
-          .flatMap(d => doc(d.toBsonDocument, "slot").map(idText(d.toBsonDocument.get("filmId")) -> _)).toMap
-      records.map { case (filmId, tmdb, imdb) =>
-        val web  = served.get(filmId).map(facts(_, poster = "posterUrl", directors = "directors", synopsis = "synopsis"))
-        val slot = tmdbSlots.get(filmId).map(facts(_, poster = "posterUrl"))
-        val f    = web.getOrElse(VenueFacts())
-        val s    = slot.getOrElse(VenueFacts())
-        tmdb -> FilmCard(tmdb, imdb, f.title.orElse(s.title), f.originalTitle.orElse(s.originalTitle), f.year.orElse(s.year),
-          if (f.directors.nonEmpty) f.directors else s.directors, f.runtime.orElse(s.runtime), f.poster.orElse(s.poster),
-          f.synopsis.orElse(s.synopsis), if (f.cast.nonEmpty) f.cast else s.cast)
-      }.toMap
-    }
-  }
 }
 
 object MongoReviewSource {
-  val VenuePagesCollection = services.DebugMirror.VenuePages
-  val ListingsCollection   = services.DebugMirror.IdentityListings
-  val TmdbFilmsCollection  = services.DebugMirror.TmdbFilms
-  val FamilyAnswersCollection = services.DebugMirror.FamilyAnswers
-  val TracesCollection     = services.identity.MongoIdentityTraceStore.Collection
   val MoviesCollection     = services.movies.MovieRepository.Collection
-  val WebMoviesCollection  = services.readmodel.MongoReadModelRepository.MoviesCollection
   val ScreeningsCollection = services.movies.ScreeningsRepository.Collection
-
-
-  /** A `tmdb_films` document as a film card: its parsed `record` (worker `IdentityAnswerBson.film`), else the search
-   *  `hit` that stands in until the record is fetched. `None` when neither carries a title. Its cast is the top-billed
-   *  names the localized response's `credits` block keeps (worker `TmdbNormalizer.minimal`): the record holds only their
-   *  hashes. */
-  private[review] def filmRecord(d: BsonDocument): Option[(Int, FilmCard)] =
-    for {
-      tmdb  <- Option(d.get("_id")).map(idText).flatMap(_.toIntOption)
-      film  <- doc(d, "record").orElse(doc(d, "hit"))
-      title <- string(film, "title")
-    } yield tmdb -> FilmCard(tmdb, int(film, "imdbNumber").filter(_ > 0).map(n => f"tt$n%07d"), Some(title),
-      string(film, "originalTitle"), int(film, "year"), strings(film, "directors"), int(film, "runtime"), None, None,
-      doc(d, "local").flatMap(doc(_, "credits")).flatMap(c => Option(c.get("cast"))).filter(_.isArray).toSeq
-        .flatMap(_.asArray.getValues.asScala).filter(_.isDocument).flatMap(n => string(n.asDocument, "name")))
-
-  /** A film's poster document (`poster|film|<tmdbId>`) as the film's TMDB poster: the first of the paths filed beside its
-   *  hashes, the one the film's country's language prefers. `None` for one filed before paths were. */
-  private def posterOf(d: BsonDocument): Option[String] = PosterAnswers.pathsOf(d).headOption.map(PosterAnswers.FilmPosterBase + _)
 
   private def idText(v: BsonValue): String = if (v.isString) v.asString.getValue else if (v.isObjectId) v.asObjectId.getValue.toHexString else v.toString
   private def string(d: BsonDocument, name: String): Option[String] =
     Option(d.get(name)).filter(_.isString).map(_.asString.getValue.trim).filter(_.nonEmpty)
   private def int(d: BsonDocument, name: String): Option[Int] = Option(d.get(name)).filter(_.isNumber).map(_.asNumber.intValue)
-  private def strings(d: BsonDocument, name: String): Seq[String] =
-    Option(d.get(name)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.collect { case s if s.isString => s.asString.getValue })
-  private def doc(d: BsonDocument, name: String): Option[BsonDocument] = Option(d.get(name)).filter(_.isDocument).map(_.asDocument)
-  private def instant(d: BsonDocument, name: String): Option[Instant] =
-    Option(d.get(name)).filter(_.isDateTime).map(v => Instant.ofEpochMilli(v.asDateTime.getValue))
-  /** A showtime's stored date-time is a local time written as UTC. */
-  private def localTime(at: Instant): String = LocalDateTime.ofInstant(at, ZoneOffset.UTC).toString.replace("T", " ")
-
-  /** The facts a slot, venue page or served film document holds, under their field names. */
-  private[review] def facts(d: BsonDocument, poster: String, directors: String = "director", synopsis: String = "synopsis"): VenueFacts =
-    VenueFacts(string(d, "title"), string(d, "originalTitle"), int(d, "releaseYear"), strings(d, directors), int(d, "runtimeMinutes"),
-      strings(d, "cast"), strings(d, "countries"), string(d, poster), string(d, synopsis))
 }

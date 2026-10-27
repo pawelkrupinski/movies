@@ -25,7 +25,7 @@ object MongoGrantsList {
   val Path = "scripts/mongo-grants.tsv"
 
   /** The prod databases a registry home stands for: every country's corpus, the fleet's own database. The accounts
-   *  database is a corpus one (`MONGODB_USERS_DB`, else the deployment's own), and the review pages' is the local
+   *  database is a corpus one (`MONGODB_USERS_DB`, else the deployment's own), and the review answers' is the local
    *  mirror's, never prod's. */
   private def databasesOf(home: CollectionDatabase): Seq[String] = home match {
     case CollectionDatabase.Corpus      => Country.all.map(_.mongoDb)

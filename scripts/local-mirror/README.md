@@ -28,13 +28,13 @@ as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirr
 - **Collections:** `movies`, `screenings`, `movie_slots`,
   `enrichment_attempts`, `rating_cadence`, `web_movies`, `web_screenings` (plus
   `cinema_scrapes`, for replays) — exactly what a `/debug` load reads — and, for
-  the identity review pages (`/debug/review`, `/debug/review/matchable`,
-  `/debug/review/recent`), `identity_model_families` (the model's decisions),
+  local identity investigations (`scripts/identity-slice`, `scripts/listing-history`, `scripts/label-lookup`,
+  `scripts/venue-replay`, `ReviewLabelsCli`), `identity_model_families` (the model's decisions),
   `identity_listings` (each venue's last scrape: catalogue ids, screenings),
   `venue_pages` (each listing's own film page), `tmdb_films` (the resolver's
   own TMDB record of each candidate film), `identity_family_answers` (the
   paths of each candidate's TMDB posters, filed beside their hashes) and `identity_traces` (each listing's
-  evidence and every rule's refusal, read when a card's "Why" is opened); and, for
+  evidence and every rule's refusal); and, for
   `scripts/identity-slice --prod-mirror` alone, `identity_agreements` (the agreement stage's stored verdicts)
   and `identity_pins` (operator pins) — prod state no recording holds; and, for the scheduled
   white-cinema investigation (`docs/white-cinema-investigations.md`), `uptimeBuckets` (~24 h of
@@ -206,12 +206,13 @@ so the rest of the site serves whatever read model `kinowo_local` already holds.
 
 ## Review answers (`review_local.review_answers`)
 
-The review pages' answers (Right / Wrong / Other film / None of these / Not a
-film / Double bill / Undo) are written to the SAME local instance, in a database
-of their own — `review_local`, collection `review_answers` — so a re-seed, which
-drops and refills only the mirrored collections of the `*_prod_mirror`
-databases, never touches them, and they never reach prod. One document per
-answer; nothing is rewritten (an Undo is a newer answer). From a terminal:
+The identity review answers (Right / Wrong / Other film / None of these / Not a
+film / Double bill / Undo) given on the retired `/debug/review` pages live on the
+SAME local instance, in a database of their own — `review_local`, collection
+`review_answers` — so a re-seed, which drops and refills only the mirrored
+collections of the `*_prod_mirror` databases, never touches them, and they never
+reach prod. One document per answer; nothing is rewritten (an Undo is a newer
+answer). From a terminal:
 
 ```
 sbt "web/runMain services.review.ReviewLabelsCli import <all-answers.json>"   # the hand-built pages' answers, once
@@ -219,12 +220,10 @@ sbt "web/runMain services.review.ReviewLabelsCli export"                      # 
 sbt "web/runMain services.review.ReviewLabelsCli queue [50] [170]"            # the queue measured: listings the first answers settle
 ```
 
-Each answer is written into the checkout's `test/resources/fixtures/identity-judgements.tsv` as it is given
-(an Undo takes its rows back), as `review page: …` rows; commit the file to hand them to the refit and the
-gates. `export` does the same for answers given while no page was writing the file; `GET /debug/review/answers`
-lists the whole history as JSON.
+`export` writes every answer into the checkout's `test/resources/fixtures/identity-judgements.tsv` (an Undo
+takes its rows back), as `review page: …` rows; commit the file to hand them to the refit and the gates.
 
-The queue (`/debug/review`) lists the clusters an answer settles the most listings of first: every
+The queue lists the clusters an answer settles the most listings of first: every
 unmatched cluster, and each pooled take or one prod serves otherwise than the model decided, by the
 listings no label covers yet × the probability the resolver is wrong on them (1 − a take's confidence,
 the best candidate's probability for a no-match, at least ½ where the stages disagree).
@@ -246,7 +245,7 @@ and `mirror.sh` does a full re-seed.
 mongosh decodes a BSON double to a plain JS number and writes a whole one back
 as **Int32**, so a copy that round-trips documents through JS turns prod's
 `confidence: 1.0` into `1` (and a Long into an Int32 or a double). The prod
-codecs the mirror's readers use (web's movieRepo, `/debug`, the review pages)
+codecs the mirror's readers use (web's movieRepo, `/debug`, `ReviewLabelsCli`)
 then fail with "Value expected to be of type DOUBLE is of unexpected type
 INT32". Both copy paths therefore read with `promoteValues: false` — `seed.js`
 on its `find()`, `tail.js` on its `watch()` — which keeps every number as its

@@ -1,6 +1,6 @@
 package modules
 
-import modules.webwiring.{AdminWiring, ControllersWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, ReviewWiring, UsersWiring}
+import modules.webwiring.{AdminWiring, ControllersWiring, DebugWiring, MetricsWiring, MongoWiring, ReadModelWiring, UsersWiring}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoAddress, MongoConnection}
@@ -20,7 +20,7 @@ import services.{MongoAddress, MongoConnection}
  * lifecycle. The router itself is built in `AppComponents`.
  */
 trait Wiring
-    extends MongoWiring with UsersWiring with ReadModelWiring with DebugWiring with ReviewWiring
+    extends MongoWiring with UsersWiring with ReadModelWiring with DebugWiring
     with AdminWiring with MetricsWiring with ControllersWiring {
 
   def controllerComponents: ControllerComponents

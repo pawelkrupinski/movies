@@ -72,7 +72,7 @@ check "e2e: identity's tests move it (main.yml's web tier ships identity/**)" "t
 check "pages: identity's tests move nothing" "false" "$(verdict pages identity/src/test/scala/ASpec.scala)"
 check "browsers: identity's tests move nothing" "false" "$(verdict browsers identity/src/test/scala/ASpec.scala)"
 check "e2e: identity's code moves it" "true" "$(verdict e2e identity/src/main/scala/A.scala)"
-check "pages: identity's code moves it (the review pages render it)" "true" "$(verdict pages identity/src/main/scala/A.scala)"
+check "pages: identity's code moves it (the admin pages render it)" "true" "$(verdict pages identity/src/main/scala/A.scala)"
 check "browsers: identity's code moves nothing (the public pages render the snapshot)" "false" \
     "$(verdict browsers identity/src/main/scala/A.scala)"
 check "an unknown kind is refused" "2" "$(echo docs/a.md | bash "$scope" deploy "$repo" >/dev/null 2>&1; echo $?)"

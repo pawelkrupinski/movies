@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.ResolverDecision
 import services.identity.ResolverDecision.Basis
 
-/** The review pages' reading of the resolver's explanation lines, against REAL prod decisions ([[ProdReviewSample]]). */
+/** The review queue's reading of the resolver's explanation lines, against REAL prod decisions ([[ProdReviewSample]]). */
 class ProdExplanationParseSpec extends AnyFlatSpec with Matchers {
 
   private val Best   = """best (vetoed|rejected) candidate (\d+) at ([\d.]+)%""".r.unanchored
@@ -50,11 +50,5 @@ class ProdExplanationParseSpec extends AnyFlatSpec with Matchers {
     // The format ResolverDecisions writes for a pooled match; the recorded sample happens to hold none.
     val pooled = ResolverDecision(Nil, None, 0.4, Basis.BelowThreshold, Seq("pooled evidence of 3 node(s) → 677558 at 86.4%"))()
     ReviewCluster.of(Country.Poland, pooled).candidates shouldBe Seq(ReviewCandidate(677558, Some(0.864)))
-  }
-
-  "the matchable page" should "list the real decisions the resolver rated at the threshold or more, and only those" in {
-    val all = clusters.map(_._2)
-    ReviewSelection.matchable(all, 0.5, None).map(c => (c.basis, c.best.map(_.film))) shouldBe Seq((Basis.BelowThreshold, Some(1599768)))
-    ReviewSelection.matchable(all, 0.4, Some(Basis.Vetoed)).map(_.best.map(_.film)) shouldBe Seq(Some(167073))
   }
 }

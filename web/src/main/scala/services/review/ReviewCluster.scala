@@ -4,8 +4,6 @@ import models.Country
 import services.identity.ResolverDecision
 import services.movies.ListingKey
 
-import java.time.Instant
-
 /** A film the resolver weighed for a cluster: its probability where the explanation states one, and
  *  whether a member's own evidence denied it (and why). */
 final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed: Boolean = false, denial: Option[String] = None) {
@@ -13,7 +11,7 @@ final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed:
 }
 
 /**
- * One cluster of the identity model (`identity_model_families.decisions[]`) as the review pages read it.
+ * One cluster of the identity model (`identity_model_families.decisions[]`) as the review queue reads it.
  * `candidates` are the films the decision names, best first: the best rejected or vetoed candidate of
  * its pooled scoring, the members' own matches and their pooled vote, and the `candidate` / `leaning` it stored.
  */
@@ -65,7 +63,7 @@ object ReviewCluster {
   }
 }
 
-/** Which clusters each review page lists, and in what order. Pure: the pages and their tests share it. */
+/** Which clusters the review queue lists, and in what order. Pure: `ReviewLabelsCli queue` and its tests share it. */
 object ReviewSelection {
 
   /** Every unmatched cluster, and each matched one the resolver is unsure of — a pooled take, or one prod serves a
@@ -76,25 +74,4 @@ object ReviewSelection {
     clusters.map(c => c -> ReviewPriority.of(c, served, judged)).map { case (c, p) => c.withCandidates(p.served.flatten) -> p }
       .filter { case (c, p) => c.unmatched || p.stagesDisagree || (c.film.isDefined && c.basis == ResolverDecision.Basis.PooledMatch) }
       .sortBy { case (c, p) => (-p.score, -p.listings, c.title) }
-
-  /** Unmatched clusters whose best candidate the resolver itself rated at `min` or more — held back
-   *  below the line (BelowThreshold), or vetoed by a guard (Vetoed) — optionally of one basis. */
-  def matchable(clusters: Seq[ReviewCluster], min: Double, basis: Option[ResolverDecision.Basis]): Seq[ReviewCluster] =
-    clusters.filter(c => c.unmatched && c.best.exists(_.probability.exists(_ >= min)) && basis.forall(_ == c.basis))
-      .sortBy(c => (-c.bestProbability, c.title))
-
-  /** How many clusters each basis would list at `min`. */
-  def matchableByBasis(clusters: Seq[ReviewCluster], min: Double): Seq[(ResolverDecision.Basis, Int)] =
-    matchable(clusters, min, None).groupBy(_.basis).view.mapValues(_.size).toSeq.sortBy(-_._2)
-
-  /** Matched clusters a listing of which was (re)written since `since`, least confident first. The model
-   *  stores no decision time: a member's `movie_slots.updatedAt` stands in for it. */
-  def recent(clusters: Seq[ReviewCluster], updatedAt: Map[String, Instant], since: Instant): Seq[(ReviewCluster, Instant)] =
-    byConfidence(clusters.filter(_.film.isDefined).flatMap { c =>
-      c.memberKeys.flatMap(updatedAt.get).maxOption.filterNot(_.isBefore(since)).map(c -> _)
-    })
-
-  /** Least confident first, the latest first among equals — the order [[recent]] lists in, kept when several lists merge. */
-  def byConfidence(chosen: Seq[(ReviewCluster, Instant)]): Seq[(ReviewCluster, Instant)] =
-    chosen.sortBy { case (c, at) => (c.confidence, -at.toEpochMilli) }
 }
