@@ -351,8 +351,9 @@ It reaches exactly the entries that read that dependency, and of those, only the
 from what a read gives now. It never reaches an entry merely because its receipt names the dependency.
 
 This works two ways:
-- **Pull.** `clean` reads the feed's filings since an entry's check, and re-reads each filed dependency to compare it
-  by value.
+- **Pull.** `clean` reads the feed's filings since an entry's check. An entry one of them names is read again whole
+  (`stands`), by value, and checked again if it stands. So a filing that changed nothing costs a re-read, never a
+  decision.
 - **Push.** `moved(kind, now)` is for the inputs no store files: the year and attempts. It walks the index's
   dependencies of that kind, reads each once, and unchecks the readers whose digest moved.
 
@@ -390,7 +391,6 @@ Each step lands with its specs. `IncrementalWholeEquivalenceSpec`, `LateInputEqu
 2. **A typed, value-aware index in `Memo`.**
    - Its readers are kept by `Dependency`, not by filing count.
    - `moved(kind, now)` replaces `uncheckAll` on a year turning and the `uncheckWhere` receipt scan on an attempt mark.
-   - `clean` compares a filed dependency by value.
    Spec: `DependencyIndexSpec`.
 3. **Projection scope from the one feed.** The projection reads venue-page filings through a feed view, as the
    agreement reads its own, and `VenuePageIndex.moved` and `takeMoved` go. Spec: `ScopedProjectionEquivalenceSpec`'s

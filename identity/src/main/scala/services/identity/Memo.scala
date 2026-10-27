@@ -17,15 +17,21 @@ import scala.collection.concurrent.TrieMap
  * drift count is the proof the index is sound; it must read zero.
  *
  * `indexed` picks the dependencies whose filings [[reads]] answers for — what a feed must hand over because an entry read
- * it. Not thread-safe for writers: one thread writes (the stage's apply); [[reads]] is read from any.
+ * it. `pushed` picks the dependencies no filing announces (the year, an attempt): each kept with the entries that read
+ * it, so a change of one ([[moved]]) reaches exactly the entries whose recorded digest of it moved — by value, never by
+ * a receipt merely naming it (docs/design/identity-no-drift.md, "One dependency index"). Not thread-safe for writers:
+ * one thread writes (the stage's apply); [[reads]] is read from any.
  */
-final class Memo[K, V](dependenciesOf: V => collection.Map[Dependency, Long], indexed: Dependency => Boolean = _ => true) {
+final class Memo[K, V](dependenciesOf: V => collection.Map[Dependency, Long], indexed: Dependency => Boolean = _ => true,
+                       pushed: Dependency => Boolean = _ => false) {
   private val entries = TrieMap.empty[K, V]
   /** Each entry found standing: the stamp it was found under (what of the entry's key the caller compares, a listings'
    *  digest) and the version of the inputs it was found at. */
   private val checks  = TrieMap.empty[K, (Long, Long)]
   /** The dirty index: each indexed filing, with how many entries read it. */
   private val readers = new java.util.concurrent.ConcurrentHashMap[String, Integer]()
+  /** The push index: each [[pushed]] dependency an entry read, with the keys of the entries that read it. */
+  private val pushedReaders = scala.collection.mutable.HashMap.empty[Dependency, scala.collection.mutable.HashSet[K]]
   /** Each version's filings since, read once per [[newPass]]. */
   private val filings = scala.collection.mutable.HashMap.empty[Long, Option[Set[String]]]
 
@@ -37,14 +43,15 @@ final class Memo[K, V](dependenciesOf: V => collection.Map[Dependency, Long], in
 
   /** `value` held under `key`, the one it replaces dropped from the index. Its check is the caller's to make. */
   def put(key: K, value: V): Unit = {
-    entries.put(key, value).foreach(counted(_, -1))
+    entries.put(key, value).foreach { was => counted(was, -1); unpushed(key, was) }
     counted(value, 1)
+    dependenciesOf(value).keysIterator.filter(pushed).foreach(read => pushedReaders.getOrElseUpdate(read, scala.collection.mutable.HashSet.empty) += key)
   }
 
   /** The entry under `key`, if any, dropped with its check. */
   def remove(key: K): Option[V] = {
     checks -= key
-    entries.remove(key).map { value => counted(value, -1); value }
+    entries.remove(key).map { value => counted(value, -1); unpushed(key, value); value }
   }
 
   /** Does an entry read a dependency filed as `filing`? Read from any thread. */
@@ -53,10 +60,23 @@ final class Memo[K, V](dependenciesOf: V => collection.Map[Dependency, Long], in
   /** The entry under `key` found standing under `stamp` at `version`. */
   def check(key: K, stamp: Long, version: Long): Unit = checks(key) = (stamp, version)
   def uncheck(key: K): Unit = checks -= key
-  /** Every entry read again before it stands (a year turning, an attempt marked: inputs no filing announces). */
-  def uncheckAll(): Unit = checks.clear()
-  /** Every entry `read` holds of read again before it stands (an attempt marked: what receipts naming one read). */
-  def uncheckWhere(read: V => Boolean): Unit = checks.filterInPlace((key, _) => !entries.get(key).exists(read))
+  /** A change of the [[pushed]] dependencies `kind` picks — inputs no filing announces: the year turning, an attempt
+   *  marked. Each is read ONCE (`now`, None for one nothing reads again: moved for every reader), and every entry whose
+   *  receipt recorded another digest of it is unchecked, so the next pass decides it again; an entry that read it as it
+   *  reads now stays as it was, and an entry that never read it is never visited. How many entries read one that moved. */
+  def moved(kind: Dependency => Boolean, now: Dependency => Option[Long]): Int = {
+    val reached = scala.collection.mutable.HashSet.empty[K]
+    pushedReaders.foreachEntry { (read, keys) =>
+      if (kind(read)) {
+        val digest = now(read)
+        keys.foreach(key => if (entries.get(key).exists(value => !digest.exists(dependenciesOf(value).get(read).contains))) reached += key)
+      }
+    }
+    reached.foreach(checks -= _)
+    reached.size
+  }
+  /** The entries whose receipt names `read`, a [[pushed]] dependency. */
+  def readersOf(read: Dependency): collection.Set[K] = pushedReaders.getOrElse(read, Set.empty[K])
   def checked(key: K): Option[(Long, Long)] = checks.get(key)
   def isChecked(key: K): Boolean = checks.contains(key)
   /** The check of `from` moved to `to` (a value filed under another key), as it was under `stamp`. */
@@ -87,6 +107,12 @@ final class Memo[K, V](dependenciesOf: V => collection.Map[Dependency, Long], in
    *  stand is DRIFT — the index called clean what moved unannounced — unchecked, so the caller decides it again. */
   def verified(key: K, value: V, now: Dependency => Option[Long]): Memo.Validation =
     if (stands(value, now)) Memo.Validation(1, 0) else { checks -= key; Memo.Validation(1, 1) }
+
+  private def unpushed(key: K, value: V): Unit =
+    dependenciesOf(value).keysIterator.filter(pushed).foreach(read => pushedReaders.get(read).foreach { keys =>
+      keys -= key
+      if (keys.isEmpty) pushedReaders -= read
+    })
 
   private def counted(value: V, by: Int): Unit =
     dependenciesOf(value).keysIterator.filter(indexed).map(_.filing).toSet.foreach { (filing: String) =>

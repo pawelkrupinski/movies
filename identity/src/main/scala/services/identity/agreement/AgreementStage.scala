@@ -166,7 +166,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  checked at a version under its listings' digest, and indexed by every TMDB record and search it read, what [[reads]]
    *  tells the filing thread. */
   private[agreement] lazy val held: Memo[String, StoredVerdict] = {
-    val memo = new Memo[String, StoredVerdict](_.reads, _.readsTmdb)
+    val memo = new Memo[String, StoredVerdict](_.reads, _.readsTmdb, AgreementStage.pushed)
     stored.all().foreach(v => memo.put(v.id, v))
     memo
   }
@@ -288,7 +288,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   def apply(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long,
             republished: Option[Iterable[ListingKey]] = Some(Nil)): Resolution = synchronized {
     val year = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear
-    if (year != yearNow) { yearNow = year; held.uncheckAll(); last = None }
+    // the year an input no filing announces: its turning reaches the verdicts that read another year, through the index
+    if (year != yearNow) { yearNow = year; held.moved(_ == Dependency.Year, readNow); last = None }
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
     val waited = attemptedSince
     if (waited) uncheckAttempted()
@@ -304,18 +305,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  ([[Dependency.Attempted]]) are read again — those alone. A receipt naming an attempt is not enough: the fill notes
    *  one for nearly every verdict, and unchecking every such verdict on any attempt anywhere read ~all receipts again
    *  (worker-de and -uk from 2026-10-25 19:00Z: ~58 s and 11 GB an agreement phase). A correction's receipt names none,
-   *  and has no reading of it again but afresh (run 1641). How many it unchecked: [[attemptUnchecked]]. */
-  private[agreement] def uncheckAttempted(): Unit = {
-    var unchecked = 0
-    held.uncheckWhere(v => v.reads.exists {
-      case (Dependency.Attempted(question), recorded) =>
-        val moved = !readNow(Dependency.Attempted(question)).contains(recorded)
-        if (moved) unchecked += 1
-        moved
-      case _ => false
-    })
-    attemptUnchecked = unchecked
-  }
+   *  and has no reading of it again but afresh (run 1641). Found through the held verdicts' push index ([[Memo.moved]]):
+   *  each attempt a receipt names read once, and only its readers visited. How many it unchecked: [[attemptUnchecked]]. */
+  private[agreement] def uncheckAttempted(): Unit =
+    attemptUnchecked = held.moved(AgreementStage.isAttempt, readNow)
   /** How many verdicts the last attempt marked read again ([[uncheckAttempted]]). */
   private[agreement] var attemptUnchecked = 0
 
@@ -1049,6 +1042,14 @@ object AgreementStage {
   /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last
    * found standing) at, the digests of the answers it read — a filing of one decides it again — what it came to, and
    * the questions it waits on. */
+  /** The dependencies no filing announces, which the held verdicts' index keeps their readers of ([[Memo.moved]]): the
+   *  year, and the question memory's attempts. */
+  val pushed: Dependency => Boolean = read => read == Dependency.Year || isAttempt(read)
+  val isAttempt: Dependency => Boolean = {
+    case Dependency.Attempted(_) => true
+    case _                       => false
+  }
+
   /** A model take's correction's id among the stored verdicts. */
   def correctionId(cluster: String): String = s"$CorrectionPrefix$cluster"
   /** What a correction's stored id is its cluster's id behind. */
