@@ -147,72 +147,77 @@ class ProxyCredentialsNeverPrinted(unittest.TestCase):
 
 
 class ProxyFailures(unittest.TestCase):
-    """Run #2173: the Decodo proxy timed out or answered `503` on the tunnel for all six requests
-    while both origins were healthy, and every failure read as the origin being unreachable. A
-    proxy-side error is retried with backoff and, if it persists, named as the proxy's."""
+    """Runs #2173 and #2188: the Decodo port the check pinned (10001) answered `503` on the tunnel
+    for all six requests while both origins were healthy, and retrying that same port changed
+    nothing. A proxy-side error moves the request to the pool's next port; a dead port is not tried
+    again; only a pool with no port left is reported, as the proxy's, with every port's error."""
 
     TUNNEL_503 = urllib.error.URLError(OSError("Tunnel connection failed: 503 Service Unavailable"))
     PROXY_TIMEOUT = urllib.error.URLError(TimeoutError("timed out"))
+    ANSWER = (401, [("strict-transport-security", "max-age=31536000")])
 
-    def _opener(self, outcomes):
-        """Raises each exception in `outcomes` in turn; a tuple is a response (status, headers)."""
+    class Response:
+        def __init__(self, status, headers):
+            self.status, self.headers = status, dict(headers)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def _pool(self, by_port):
+        """A pool whose port answers with by_port[port]: an exception is raised, a tuple returned."""
         calls = []
 
-        class Response:
-            def __init__(self, status, headers):
-                self.status, self.headers = status, dict(headers)
+        def open_via(port, request, timeout):
+            calls.append(port)
+            outcome = by_port[port]
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return self.Response(*outcome)
+        return check.ProxyPool("isp.decodo.com", list(by_port), open_via), calls
 
-            def __enter__(self):
-                return self
+    def _fetch(self, pool):
+        return check.fetch(pool, "GET", "https://kinowo.net/api/me", {})
 
-            def __exit__(self, *exc):
-                return False
+    def test_the_pool_is_the_workers(self):
+        host, ports = check.proxy_pool()
+        self.assertEqual(host, "isp.decodo.com")
+        self.assertGreater(len(ports), 1)
+        self.assertIn("10001", ports)
 
-        class Opener:
-            def open(self, request, timeout):
-                outcome = outcomes[len(calls)]
-                calls.append(request)
-                if isinstance(outcome, BaseException):
-                    raise outcome
-                return Response(*outcome)
-        return Opener(), calls
+    def test_a_dead_port_moves_the_request_on_and_is_not_tried_again(self):
+        pool, calls = self._pool({"10001": self.TUNNEL_503, "10002": self.PROXY_TIMEOUT, "10003": self.ANSWER})
+        self.assertEqual(self._fetch(pool), self.ANSWER)
+        self.assertEqual(self._fetch(pool), self.ANSWER)
+        self.assertEqual(calls, ["10001", "10002", "10003", "10003"])
 
-    def _fetch(self, outcomes, proxied=True):
-        opener, calls = self._opener(outcomes)
-        sleeps = []
-        status, headers = check.fetch(opener, "GET", "https://kinowo.net/api/me", {},
-                                      proxied=proxied, sleep=sleeps.append)
-        return status, headers, calls, sleeps
-
-    def test_a_tunnel_503_is_retried_with_backoff_until_the_origin_answers(self):
-        status, headers, calls, sleeps = self._fetch(
-            [self.TUNNEL_503, self.PROXY_TIMEOUT, (401, [("strict-transport-security", "max-age=31536000")])])
-        self.assertEqual(status, 401)
-        self.assertEqual(headers, [("strict-transport-security", "max-age=31536000")])
-        self.assertEqual(len(calls), 3)
-        self.assertEqual(len(sleeps), 2)
-        self.assertLess(sleeps[0], sleeps[1])
-
-    def test_a_proxy_that_stays_down_is_named_as_the_proxy_not_the_origin(self):
-        status, _, calls, _ = self._fetch([self.TUNNEL_503] * check.PROXY_ATTEMPTS)
-        self.assertEqual(len(calls), check.PROXY_ATTEMPTS)
+    def test_a_pool_with_every_port_dead_is_named_as_the_proxy_not_the_origin(self):
+        pool, calls = self._pool({"10001": self.TUNNEL_503, "10002": self.PROXY_TIMEOUT})
+        status, _ = self._fetch(pool)
         self.assertTrue(str(status).startswith("proxy unavailable (Decodo"), status)
-        self.assertIn("Tunnel connection failed: 503", str(status))
+        self.assertIn("10001: URLError: <urlopen error Tunnel connection failed: 503", status)
+        self.assertIn("10002: URLError: <urlopen error timed out>", status)
         failures = check.evaluate_cors("kinowo.net GET /api/me", status, {401}, [])
         self.assertEqual(len(failures), 1)
         self.assertIn("proxy unavailable (Decodo", failures[0])
         self.assertNotIn("not the origin's answer", failures[0])
+        self._fetch(pool)
+        self.assertEqual(calls, ["10001", "10002"])
 
-    def test_an_origin_side_error_is_not_retried(self):
-        status, _, calls, sleeps = self._fetch(
-            [urllib.error.URLError(ssl.SSLError("certificate verify failed"))])
-        self.assertEqual((len(calls), sleeps), (1, []))
+    def test_an_origin_side_error_does_not_retire_the_port(self):
+        pool, calls = self._pool({"10001": urllib.error.URLError(ssl.SSLError("certificate verify failed")),
+                                  "10002": self.ANSWER})
+        status, _ = self._fetch(pool)
         self.assertTrue(str(status).startswith("unreachable"), status)
+        self.assertEqual((calls, pool.dead), (["10001"], {}))
 
-    def test_without_the_proxy_a_timeout_is_the_origins(self):
-        status, _, calls, _ = self._fetch([self.PROXY_TIMEOUT], proxied=False)
-        self.assertEqual(len(calls), 1)
-        self.assertTrue(str(status).startswith("unreachable"), status)
+    def test_an_origin_answer_with_an_error_status_is_the_origins(self):
+        error = urllib.error.HTTPError("https://kinowo.net/api/me", 403, "Forbidden", {"cf-mitigated": "challenge"}, None)
+        pool, calls = self._pool({"10001": error, "10002": self.ANSWER})
+        self.assertEqual(self._fetch(pool), (403, [("cf-mitigated", "challenge")]))
+        self.assertEqual(calls, ["10001"])
 
 
 if __name__ == "__main__":

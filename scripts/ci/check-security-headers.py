@@ -24,12 +24,15 @@ has an EXPECTED status (401 anonymous /api/me, 2xx preflight, 303 OAuth start), 
 fails with the status and `cf-mitigated` named. Requests go through the Decodo residential proxy
 when DECODO_PROXY_USER / DECODO_PROXY_PASS are set, as the OG-card workflow's do.
 
-A PROXY THAT IS DOWN IS NAMED AS THE PROXY. Run #2173 (2026-10-27): Decodo timed out or answered
-`503` on the tunnel for all six requests while both origins were healthy, and every failure read
-as the origin's. A proxy-side error (the CONNECT tunnel refused, or a timeout / refused / reset
-connection while reaching the proxy) is retried PROXY_ATTEMPTS times with backoff, and if it
-persists the failure says `proxy unavailable (Decodo ...)` -- still a failure, since nothing about
-the origin was checked.
+THE PROXY IS A POOL, AND A DEAD PORT IS NAMED AS THE PROXY'S. Decodo's ports are one static IP
+each; the pool is the worker's, read from its committed residential-proxy.properties. Runs #2173
+and #2188 (2026-10-27): the one port this check used to pin, 10001, answered `503` on the tunnel
+for every request while both origins were healthy (retrying that same port three times changed
+nothing). A proxy-side error (the CONNECT tunnel refused, or a timeout / refused / reset connection
+while reaching the proxy) now moves the request to the next port, and the dead port is skipped for
+the rest of the run; only when every port has failed does the check report `proxy unavailable
+(Decodo ...)` with each port's error -- still a failure, since nothing about the origin was checked.
+Going direct is no fallback: the runner's IP gets Cloudflare's challenge.
 
 Usage: check-security-headers.py [host ...]     (default: kinowo.net showtimes.cc)
 The pure `evaluate_*` functions are unit-tested offline by check_security_headers_test.py.
@@ -37,7 +40,6 @@ The pure `evaluate_*` functions are unit-tested offline by check_security_header
 import os
 import re
 import sys
-import time
 import urllib.error
 import urllib.request
 
@@ -45,10 +47,9 @@ HOSTS = ("kinowo.net", "showtimes.cc")
 ONE_YEAR = 365 * 24 * 3600
 FOREIGN_ORIGIN = "https://security-check.invalid"
 SESSION_COOKIE = "PLAY_SESSION"
-PROXY_HOST = "isp.decodo.com:10001"
-PROXY_ATTEMPTS = 3
-PROXY_BACKOFF_SECONDS = 5
-PROXY_UNAVAILABLE = "proxy unavailable (Decodo %s)" % PROXY_HOST
+PROXY_PROPERTIES = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir,
+                                "worker", "src", "main", "resources", "residential-proxy.properties")
+PROXY_UNAVAILABLE = "proxy unavailable (Decodo"
 
 
 def header(headers, name):
@@ -130,13 +131,57 @@ def redact(text):
     return text
 
 
+def proxy_pool(path=PROXY_PROPERTIES):
+    """(host, [port, ...]) from the worker's residential-proxy.properties."""
+    properties = {}
+    with open(path) as source:
+        for line in source:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                properties[key.strip()] = value.strip()
+    return properties["host"], [port.strip() for port in properties["ports"].split(",") if port.strip()]
+
+
+class ProxyPoolUnavailable(Exception):
+    pass
+
+
+class ProxyPool:
+    """An opener over every port of the pool: a request goes through the port the last one
+    succeeded on; a proxy-side error retires that port for the run and moves on to the next."""
+
+    def __init__(self, host, ports, open_via):
+        self.host, self.ports, self.open_via = host, list(ports), open_via
+        self.dead = {}
+
+    def open(self, request, timeout):
+        for port in [port for port in self.ports if port not in self.dead]:
+            try:
+                return self.open_via(port, request, timeout)
+            except Exception as error:  # noqa: BLE001 -- sorted below: only a proxy-side error moves on
+                if not is_proxy_side(error):
+                    raise
+                self.dead[port] = _describe(error)
+                print("Decodo %s:%s retired for this run (%s %s): %s"
+                      % (self.host, port, request.get_method(), request.full_url, self.dead[port]))
+        raise ProxyPoolUnavailable("every port of %s failed: %s" % (self.host, "; ".join(
+            "%s: %s" % (port, self.dead[port]) for port in self.ports)))
+
+
 def _opener():
-    handlers = [_NoRedirect()]
     user, password = _proxy_credentials()
-    if user and password:
-        proxy = "http://%s:%s@%s" % (urllib.request.quote(user, safe=""), urllib.request.quote(password, safe=""), PROXY_HOST)
-        handlers.append(urllib.request.ProxyHandler({"https": proxy, "http": proxy}))
-    return urllib.request.build_opener(*handlers)
+    if not (user and password):
+        return urllib.request.build_opener(_NoRedirect())
+    host, ports = proxy_pool()
+    openers = {}
+
+    def open_via(port, request, timeout):
+        if port not in openers:
+            proxy = "http://%s:%s@%s:%s" % (urllib.request.quote(user, safe=""), urllib.request.quote(password, safe=""), host, port)
+            openers[port] = urllib.request.build_opener(_NoRedirect(), urllib.request.ProxyHandler({"https": proxy, "http": proxy}))
+        return openers[port].open(request, timeout=timeout)
+    return ProxyPool(host, ports, open_via)
 
 
 def is_proxy_side(error):
@@ -155,23 +200,17 @@ def _describe(error):
     return redact("%s: %s" % (type(error).__name__, error))
 
 
-def fetch(opener, method, url, headers, proxied=None, sleep=time.sleep):
-    if proxied is None:
-        proxied = all(_proxy_credentials())
+def fetch(opener, method, url, headers):
     request = urllib.request.Request(url, method=method, headers={"User-Agent": "kinowo-security-headers-check", **headers})
-    for attempt in range(1, PROXY_ATTEMPTS + 1):
-        try:
-            with opener.open(request, timeout=30) as response:
-                return response.status, list(response.headers.items())
-        except urllib.error.HTTPError as error:
-            return error.code, list(error.headers.items())
-        except Exception as error:  # noqa: BLE001 -- any failure is "unreachable", never a traceback
-            if not (proxied and is_proxy_side(error)):
-                return "unreachable (%s)" % _describe(error), []
-            if attempt == PROXY_ATTEMPTS:
-                return "%s: %s, %d attempts" % (PROXY_UNAVAILABLE, _describe(error), attempt), []
-            print("proxy-side error on %s %s, attempt %d/%d: %s" % (method, url, attempt, PROXY_ATTEMPTS, _describe(error)))
-            sleep(PROXY_BACKOFF_SECONDS * attempt)
+    try:
+        with opener.open(request, timeout=30) as response:
+            return response.status, list(response.headers.items())
+    except urllib.error.HTTPError as error:
+        return error.code, list(error.headers.items())
+    except ProxyPoolUnavailable as error:
+        return "%s): %s" % (PROXY_UNAVAILABLE, redact(str(error))), []
+    except Exception as error:  # noqa: BLE001 -- any failure is "unreachable", never a traceback
+        return "unreachable (%s)" % _describe(error), []
 
 
 def check_host(opener, host, require_secure):

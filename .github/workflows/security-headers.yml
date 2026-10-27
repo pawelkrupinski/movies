@@ -30,6 +30,7 @@ on:
             - 'scripts/ci/check-security-headers.py'
             - 'scripts/ci/check_security_headers_test.py'
             - 'scripts/ci/script_module.py'
+            - 'worker/src/main/resources/residential-proxy.properties'
             - 'scripts/ci/scheduled-failure-issue*.sh'
             - 'scripts/ci/open-issue.sh'
             - '.github/actions/report-scheduled-run/**'
@@ -40,9 +41,9 @@ permissions:
 jobs:
     check:
         runs-on: ubuntu-26.04
-        # A Decodo outage is retried (check-security-headers.py, PROXY_ATTEMPTS): six requests x
-        # three 30 s attempts + backoff is ~11 min, and the job must outlive it to name the proxy.
-        timeout-minutes: 15
+        # A dead Decodo port is tried once and retired (check-security-headers.py, ProxyPool): the
+        # whole pool timing out is 7 x 30 s, and the job must outlive it to name the proxy.
+        timeout-minutes: 10
         steps:
             - uses: actions/checkout@v5
 
