@@ -79,8 +79,10 @@ object IdentityLiveDrift {
     cm.filmUrl.map(_.trim).filter(_.nonEmpty).map(page => s"$venue#${Integer.toHexString(page.hashCode)}").toSeq :+ venue
   }
 
-  /** A listing whose live TMDB film differs from the whole resolve's. */
-  final case class Drift(listing: ListingKey, slot: String, live: Option[Int], whole: ResolverDecision) {
+  /** A listing whose live TMDB film differs from the whole resolve's — and its decision over prod's filed answers alone
+   *  (`filedOnly`: no question asked, every cluster waiting on one left waiting), when that resolve was run. */
+  final case class Drift(listing: ListingKey, slot: String, live: Option[Int], whole: ResolverDecision,
+                         filedOnly: Option[ResolverDecision] = None) {
     def kind: String = (live.isDefined, whole.film.isDefined) match {
       case (true, false) => TakeChange.Kind.Lost.label
       case (false, true) => TakeChange.Kind.Gained.label
@@ -88,9 +90,13 @@ object IdentityLiveDrift {
     }
     def tsv(country: String): String =
       Seq(country, listing.venue, listing.rawTitle, slot, kind, live.fold("none")(id => s"tmdb:$id"), whole.film.fold("none")(id => s"tmdb:$id"),
-        whole.basis.toString, whole.explanation.lastOption.getOrElse("")).map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
+        whole.basis.toString, whole.explanation.lastOption.getOrElse(""), filedOnly.fold("")(_.film.fold("none")(id => s"tmdb:$id")),
+        filedOnly.fold("")(_.basis.toString)).map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
+    /** Prod's take is what its filed answers alone decide: the whole reaches its film only by asking what prod has not
+     *  filed yet — an input prod lacks, not a take its incremental state kept. */
+    def waitsOnAsks: Boolean = filedOnly.exists(_.film == live)
   }
-  val Header = "country\tvenue\trawTitle\tslot\tkind\tliveFilm\twholeFilm\twholeBasis\twholeWhy"
+  val Header = "country\tvenue\trawTitle\tslot\tkind\tliveFilm\twholeFilm\twholeBasis\twholeWhy\tfiledOnlyFilm\tfiledOnlyBasis"
 
   /** `listings` recorded, `compared` of them, `unsettled` left on a model gap, and the drifted. */
   final case class Report(listings: Int, compared: Int, unsettled: Int, drifted: Seq[Drift]) {
@@ -171,21 +177,25 @@ object IdentityLiveDrift {
     val held      = new ProdLookupInputs.Held(prodLookups)
     val answering = IdentityDrift.WholeLookups(
       ProdLookupInputs.lookups(held, prodLookups.pages, reads.enrichers, IdentityDrift.memo(reads), country, clock), new TmdbStore(held, clock).foundFirst)
+    // prod's filed answers alone first: the asking resolve files what it asks, which this one must not read
+    val filedOnly = IdentityDrift.whole(reads, listings, clock, answering, ask = false).decisionOf
     val whole     = IdentityDrift.whole(reads, listings, clock, answering)
-    val report    = compare(slots, liveBySlot(ProdFilms.readFrom(prodFilms)), whole.decisionOf)
+    val compared  = compare(slots, liveBySlot(ProdFilms.readFrom(prodFilms)), whole.decisionOf)
+    val report    = compared.copy(drifted = compared.drifted.map(d => d.copy(filedOnly = filedOnly.get(d.listing))))
     Files.createDirectories(o.out)
     Files.writeString(o.out.resolve(s"live-drift-${country.code}.tsv"),
       ((differences.header :+ Header) ++ report.drifted.map(_.tsv(country.code))).mkString("", "\n", "\n"))
     Files.writeString(o.out.resolve(s"live-drift-${country.code}.json"), Json.stringify(Json.obj(
       "country" -> country.code, "recordedAt" -> recording.recordedAt.toString, "listings" -> report.listings, "compared" -> report.compared,
       "unsettled" -> report.unsettled, "drifted" -> Json.toJson(Seq("lost", "gained", "changed").map(k => k -> report.byKind.getOrElse(k, 0)).toMap),
+      "waitsOnAsks" -> report.drifted.count(_.waitsOnAsks),
       "inputs" -> differences.json)))
     println(f"## ${country.code}: ${report.drifted.size} of ${report.compared} compared listings drifted from a whole resolve " +
       f"(${report.listings} recorded, ${report.unsettled} unsettled; ${report.byKind.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")}) " +
-      f"in ${started.seconds}%.0fs")
+      f"in ${started.seconds}%.0fs; ${report.drifted.count(_.waitsOnAsks)} of them prod's filed answers alone take as prod does")
     report.drifted.take(LinesPrinted).foreach { d =>
       println(s"      ${d.listing.venue} | ${d.listing.rawTitle}: ${d.kind}, live ${d.live.fold("none")(id => s"tmdb:$id")}, " +
-        s"whole ${d.whole.film.fold("none")(id => s"tmdb:$id")} (${d.whole.basis})")
+        s"whole ${d.whole.film.fold("none")(id => s"tmdb:$id")} (${d.whole.basis})" + (if (d.waitsOnAsks) ", waits on asks" else ""))
     }
   }
 

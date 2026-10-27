@@ -250,13 +250,23 @@ object IdentityDrift {
 
   /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint — what a worker with
    *  nothing kept would take — answered from `answering`. */
-  def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock, answering: WholeLookups): Resolution = {
+  def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock, answering: WholeLookups, ask: Boolean = true): Resolution = {
     val answers  = new Answers(reads, new tools.FiledAnswers.Noting(reads.filed), clock, answering.found)
     val lookups  = answering.lookups
     val model    = UnmatchedClusters.resolutionOf(IdentityResolver.resolve(listings, lookups, reads.normalizer, inputsOf(reads)).decisions)
     val stage    = answers.stage(lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
-    settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, clock, _ => false)
+    val apply    = () => stage.apply(model, byKey.get, answers.store.version)
+    if (ask) settle(stage, apply, answers, clock, _ => false) else filedOnly(stage, apply)
+  }
+
+  /** Applies until the stage holds no backlog, answering nothing: what the filed answers alone decide, every cluster
+   *  waiting on a question none of them answers left waiting — as a worker leaves it until its queue asks. */
+  def filedOnly(stage: AgreementStage, apply: () => Resolution, rounds: Int = 60): Resolution = {
+    var now = apply()
+    var n   = 0
+    while (stage.backlog && n < rounds) { n += 1; now = apply() }
+    now
   }
 
   /** Applies until the stage asks nothing and holds no backlog — answering between applies: what a round could not

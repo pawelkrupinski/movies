@@ -79,4 +79,11 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers {
       IdentityLiveDrift.Differences.Otherwise.map(_._1)
     (differences.json \ "differs" \ "stored verdicts").as[String] should include("keeps nothing")
   }
+
+  "A drifted listing" should "wait on asks when prod's filed answers alone take it as prod does, and only then" in {
+    val drift = IdentityLiveDrift.Drift(raices, "lichtspiele|raices", None, decision(raices, Some(122769)))
+    drift.waitsOnAsks shouldBe false
+    drift.copy(filedOnly = Some(decision(raices, None))).waitsOnAsks shouldBe true
+    drift.copy(filedOnly = Some(decision(raices, Some(122769)))).waitsOnAsks shouldBe false
+  }
 }
