@@ -46,6 +46,13 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
   protected def findings(corpus: ListingCorpus, listing: CorpusListing): Seq[String]
   /** Listing → why it may break the rule. */
   protected def allowlist: Map[AllowedListing, String]
+  /** Billing shapes → why every listing billed in that shape may break the rule: a billing a venue issues anew each
+   *  time (a monthly blind screening's next date), which one entry per listing would chase recording after recording.
+   *  A shape names no one listing, so it is never proved stale; keep it as narrow as the billing's own words. */
+  protected def allowedShapes: Seq[(scala.util.matching.Regex, String)] = Nil
+  /** Why a listing billed `listing` may break the rule by its shape ([[allowedShapes]]), if any. */
+  protected final def allowedByShape(listing: String): Option[String] =
+    allowedShapes.collectFirst { case (shape, why) if shape.matches(tools.UnmatchedClusters.singleSpaced(listing)) => why }
   /** What the failure tells the reader to do. */
   protected def remedy: String
   /** Allowlisted listings whose breakage is in a corpus recorded BEFORE the parser fix that cures it: a fresh
@@ -71,7 +78,8 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
     }.distinct
     /** The findings no allowlist entry explains. */
     val unexplained: Seq[(AllowedListing, String)] =
-      found.filter { case (at, _) => entryFor(at).isEmpty }.sortBy { case (at, finding) => (at.venue, at.listing, finding) }
+      found.filter { case (at, _) => entryFor(at).isEmpty && allowedByShape(at.listing).isEmpty }
+        .sortBy { case (at, finding) => (at.venue, at.listing, finding) }
     private val explained       = found.flatMap { case (at, _) => entryFor(at) }.toSet
     private val carriedAnywhere = carried ++ carried.map(at => AllowedListing.anywhere(at.listing))
     /** Allowlisted, carried, re-recorded past their fix: reported, never failed. */
