@@ -20,7 +20,11 @@ import ShellCommands.{Reference, Use}
  *    is a shebang naming an absolute interpreter (`#!/usr/bin/env bash`, `#!/bin/sh`) -- the bit on disk is not
  *    enough: CI checks out the index, not this laptop's tree;
  *  - a repo file a command hands to an interpreter (`bash x.sh`, `python3 x.py`, `source x.sh`) is in the index;
- *  - a local action or reusable workflow a job `uses: ./...` is in the index.
+ *  - a local action or reusable workflow a job `uses: ./...` is in the index;
+ *  - a workflow step that `uses: ./...` comes after a checkout of this repository into the workspace whose
+ *    sparse-checkout, if it has one, holds that action: the runner reads the action from the workspace, and 35cdcaac6
+ *    put `./.github/actions/upstream-run` after a sparse checkout of scripts/ci and scripts/forge-gh only ("no files
+ *    found after reading paths: action.yml", Identity findings report #2049).
  */
 class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
 
@@ -78,6 +82,42 @@ class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
         s"$from: uses ./$target, which is not in the index"
     }
     missing shouldBe empty
+  }
+
+  "every workflow step that uses a local action" should "come after a checkout holding it" in {
+    val checked = RepoFile.workflows().map(_.getPath).sorted.flatMap { path =>
+      RepoFile.jobs(RepoFile.read(path)).toSeq.sortBy(_._1).map((name, job) => s"$path ($name)" -> job)
+    }
+    checked.flatMap((_, job) => jobSteps(job)).count(_.contains("uses: ./")) should be > 20
+    checked.flatMap((from, job) => localActionsOutsideCheckout(from, job)) shouldBe empty
+  }
+
+  "the checkout check" should "go red on a local action with no checkout before it, or outside a sparse one" in {
+    val job =
+      """    runs-on: ubuntu-26.04
+        |    steps:
+        |        - uses: ./.github/actions/setup-jdk
+        |        - uses: actions/checkout@v5
+        |          with:
+        |              sparse-checkout: |
+        |                  scripts/ci
+        |                  .github/actions/upstream-run/
+        |              sparse-checkout-cone-mode: false
+        |        - id: upstream
+        |          uses: ./.github/actions/upstream-run
+        |        - uses: ./.github/actions/setup-sbt-build # not in the sparse checkout
+        |        - uses: actions/checkout@v5
+        |          with:
+        |              repository: other/repo
+        |        - uses: ./.github/actions/report-timings
+        |        - uses: actions/checkout@v5
+        |        - uses: ./.github/actions/report-timings
+        |""".stripMargin
+    localActionsOutsideCheckout("ci.yml (job)", job) shouldBe Seq(
+      "ci.yml (job): uses ./.github/actions/setup-jdk with no checkout of this repository before it",
+      "ci.yml (job): uses ./.github/actions/setup-sbt-build, outside its sparse checkout (scripts/ci, .github/actions/upstream-run)",
+      "ci.yml (job): uses ./.github/actions/report-timings, outside its sparse checkout (scripts/ci, .github/actions/upstream-run)",
+    )
   }
 
   "the check" should "go red on a script without its executable bit, without a shebang, or missing" in {
@@ -199,6 +239,67 @@ object WorkflowScriptsRunnableSpec {
           case other                             => Some(s"$at, whose first line is no shebang: ${other.getOrElse("")}")
         }
     }
+  }
+
+  /** Each step of a workflow job: its `- ` item's lines, whole-line comments dropped. */
+  def jobSteps(job: String): Seq[String] = {
+    def indentOf(line: String) = line.takeWhile(_ == ' ').length
+    val lines   = RepoFile.withoutComments(job).linesIterator.toVector
+    val stepsAt = lines.indexWhere(_.trim == "steps:")
+    if (stepsAt < 0) Seq.empty
+    else {
+      val body = lines.drop(stepsAt + 1).takeWhile(l => l.trim.isEmpty || indentOf(l) > indentOf(lines(stepsAt)))
+      body.find(_.trim.startsWith("- ")).map(indentOf).toSeq.flatMap { dash =>
+        body
+          .foldLeft(Vector.empty[Vector[String]]) { (steps, line) =>
+            if (line.trim.startsWith("- ") && indentOf(line) == dash) steps :+ Vector(line)
+            else steps.lastOption.fold(steps)(last => steps.init :+ (last :+ line))
+          }
+          .map(_.mkString("\n"))
+      }
+    }
+  }
+
+  /** What is wrong with each `uses: ./...` step of `job`: the runner reads a local action from the workspace, so a
+   *  checkout of this repository into it (no `repository:`, no `path:`) comes first, and when that checkout is sparse
+   *  it holds the action's directory. A later checkout replaces an earlier one. */
+  def localActionsOutsideCheckout(from: String, job: String): Seq[String] = {
+    def value(step: String, key: String): Option[String] =
+      step.linesIterator.map(_.trim.stripPrefix("- ").trim).collectFirst {
+        case line if line.startsWith(s"$key:") => line.stripPrefix(s"$key:").replaceAll("""\s+#.*$""", "").trim
+      }
+    def sparsePaths(step: String): Option[Seq[String]] = {
+      val lines = step.linesIterator.toVector
+      lines.indexWhere(_.trim.startsWith("sparse-checkout:")) match {
+        case -1 => None
+        case at =>
+          val key    = lines(at).takeWhile(_ == ' ').length
+          val inline = lines(at).trim.stripPrefix("sparse-checkout:").trim
+          val listed =
+            if (inline.startsWith("|") || inline.startsWith(">"))
+              lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > key).map(_.trim)
+            else Vector(inline)
+          Some(listed.filter(_.nonEmpty).map(_.stripPrefix("/").stripSuffix("/")))
+      }
+    }
+    // None: no checkout yet; Some(None): the whole repository; Some(Some(paths)): a sparse one.
+    jobSteps(job)
+      .foldLeft((Option.empty[Option[Seq[String]]], Vector.empty[String])) { case ((checkout, problems), step) =>
+        value(step, "uses") match {
+          case Some(s"actions/checkout@$_") if value(step, "repository").isEmpty && value(step, "path").isEmpty =>
+            (Some(sparsePaths(step)), problems)
+          case Some(s"./$local") =>
+            val target = local.stripSuffix("/")
+            checkout match {
+              case None => (checkout, problems :+ s"$from: uses ./$target with no checkout of this repository before it")
+              case Some(Some(paths)) if !paths.exists(p => target == p || target.startsWith(s"$p/")) =>
+                (checkout, problems :+ s"$from: uses ./$target, outside its sparse checkout (${paths.mkString(", ")})")
+              case _ => (checkout, problems)
+            }
+          case _ => (checkout, problems)
+        }
+      }
+      ._2
   }
 
   /** `git ls-files -s` of this checkout: path -> mode. Run with no inherited GIT_* variable, so that under a hook (which
