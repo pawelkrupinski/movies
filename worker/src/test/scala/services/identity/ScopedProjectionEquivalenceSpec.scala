@@ -359,18 +359,25 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     declined
   }
 
+  /** `run` over every seed, the seeds side by side: each builds its own worlds and shares nothing with another. One
+   *  after another, the 750 seeds of the three tests below were the worker's longest suite (474 s on CI, 2026-10-27). */
+  private def seeds(of: Range)(run: Int => Int): Seq[Int] = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
+    try scripts.ParallelTasks.all(of)(run)(using scala.concurrent.ExecutionContext.fromExecutor(pool)) finally pool.shutdown()
+  }
+
   "A projection of what moved" should "store, tick after tick, exactly what a projection of the whole corpus stores" in {
-    (1 to 400).foreach(seed => run(seed, ticks = 24))
+    seeds(1 to 400)(seed => run(seed, ticks = 24))
   }
 
   it should "store, tick after tick, exactly the records a projection from scratch over the same inputs stores" in {
-    (1 to 150).foreach(seed => run(seed, ticks = 24, fresh = true))
+    seeds(1 to 150)(seed => run(seed, ticks = 24, fresh = true))
   }
 
   // Every listing's take transition is in the change list exactly once — what the staging screen and the take-change
   // counter read — through writes the store refuses (the film parked, retried), refusals and restarts.
   it should "emit each take the store moved exactly once, writes it refused and restarts included" in {
-    (1 to 200).map(seed => run(seed, ticks = 24, declines = true)).sum should be > 20   // refusals really happened
+    seeds(1 to 200)(seed => run(seed, ticks = 24, declines = true)).sum should be > 20   // refusals really happened
   }
 
   // Two unmatched films of one title and year, the older under the plain key: another writer deletes it as its venue

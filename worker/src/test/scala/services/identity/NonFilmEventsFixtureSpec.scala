@@ -73,11 +73,6 @@ class NonFilmEventsFixtureSpec extends AnyFlatSpec with Matchers {
     val reported = outcomes.flatMap(_._2.agreed.decisions).count(_.basis == ResolverDecision.Basis.Event)
     val (questions, hashes) = (asked.size, hashed.size)
     info(s"${events.size} event clusters cost $questions family questions and $hashes poster hashes; $reported reported as events")
-    // the whole of every capture, for what the stage costs over all its no-matches
-    asked.clear(); hashed.clear()
-    val allocated = tools.costs.AllocationMeter.once(captures.foreach(UnmatchedClusters.replay(_, families = counted, posters = postersCounted)))
-    info(s"all ${captures.map(_.decisions.size).sum} clusters: ${asked.size} family questions, ${hashed.size} poster hashes, " +
-      s"${allocated / 1000000} MB allocated replaying them")
     questions shouldBe 0
     hashes shouldBe 0
     reported shouldBe events.size

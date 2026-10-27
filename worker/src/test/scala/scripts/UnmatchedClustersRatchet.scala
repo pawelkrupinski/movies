@@ -65,7 +65,11 @@ object UnmatchedClustersRatchet {
     /** The takes of every capture's replay — or, outside a measurement, the first capture that lacks answers its replay
      *  asks, and those gaps (up to five): its findings are then never written. */
     lazy val takes: Either[(String, Seq[Gap]), Seq[Take]] = {
-      val replayed = captures.map(capture => (capture, UnmatchedClusters.replay(capture)))
+      // the captures side by side, each replayed under its own country's normalizer (as IdentityRefit measures them):
+      // one after another they were the ratchet spec's 342 s (CI, 2026-10-27)
+      val pool     = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, captures.size))
+      val replayed = try ParallelTasks.all(captures)(capture => (capture, UnmatchedClusters.replay(capture)))(
+        using scala.concurrent.ExecutionContext.fromExecutor(pool)) finally pool.shutdown()
       val gaps     = replayed.flatMap { case (capture, outcome) => UnmatchedClusters.gaps(capture, outcome) }
       val stale    = if (measure) { UnmatchedClusters.writeGaps(out.resolve("capture-gaps.tsv"), gaps); None }
                      else captures.map(_.country.code).map(cc => cc -> gaps.filter(_.country == cc)).find(_._2.nonEmpty)

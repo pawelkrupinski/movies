@@ -452,6 +452,9 @@ lazy val web = (project in file("web"))
     // Play forks web's Test JVM, which doesn't read .jvmopts: the same pins as every other test JVM (headless, so AWT
     // rendering never steals focus; production's en_US number format) — project/ForkedTests.scala.
     Test / javaOptions ++= ForkedTests.options(Test, heap = "1g").value,
+    // Suites in parallel inside that fork, as every other module's run (ForkedTests.settings): sbt's default for a forked
+    // run is one suite at a time, which made web's 198 suites a serial 3.7 min of the `worker` row (CI, 2026-10-27).
+    Test / testForkedParallel := (Test / parallelExecution).value,
     inConfig(IntegrationTest)(Defaults.testSettings),
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
@@ -543,8 +546,9 @@ lazy val root = (project in file("."))
     publish / skip := true,
   )
 
-// Each unit module's specs run in a forked test JVM, one at a time under the server's JVM slot: project/ForkedTests.scala.
-ForkedTests.oneForkAtATime
+// Each unit module's specs run in a forked test JVM, one at a time under the server's JVM slot (two at once on a CI
+// runner): project/ForkedTests.scala.
+ForkedTests.forkSlots
 
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
 // listed task (their forked test JVMs one at a time) and reports all failures

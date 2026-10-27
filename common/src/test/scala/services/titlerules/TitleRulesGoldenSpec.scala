@@ -27,7 +27,14 @@ class TitleRulesGoldenSpec extends AnyFlatSpec with Matchers {
     val rows = golden
     rows.size should be > 15000
     val sets     = ruleSets
-    val mismatch = rows.iterator.filter(row => row != reading((row \ "text").as[String], sets)).take(20).toSeq
+    // the rows in one slice per core: one after another, the ~15,000 rows' folds were common's longest suite (108 s, CI)
+    val pool     = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
+    val mismatch = try {
+      val slices = rows.grouped(rows.size / Runtime.getRuntime.availableProcessors + 1).toSeq.map { slice =>
+        pool.submit(() => slice.iterator.filter(row => row != reading((row \ "text").as[String], sets)).take(20).toSeq)
+      }
+      slices.flatMap(_.get).take(20)
+    } finally pool.shutdown()
     withClue(mismatch.map(row => s"\n  golden ${Json.stringify(row)}\n  now    ${Json.stringify(reading((row \ "text").as[String], sets))}").mkString) {
       mismatch shouldBe empty
     }

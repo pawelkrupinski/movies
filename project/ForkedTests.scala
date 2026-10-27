@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters._
  * run and takes all of it along; the server keeps only the build.
  *
  * THE JVM SLOT (scripts/jvm-gate.sh). A forked test JVM is a child of the server, which holds the checkout's slot; it
- * runs under that slot rather than taking one, which holds because the forks run ONE AT A TIME ([[oneForkAtATime]],
+ * runs under that slot rather than taking one, which holds because the forks run ONE AT A TIME ([[forkSlots]],
  * sbt's own default made explicit) while the server waits on them: a slot is the server plus one test JVM sized for
  * the same cores (the server's `-XX:ActiveProcessorCount`, which sbt-warm sets, is passed on) with a heap capped per
  * module. Heaps measured 2026-10-19: worker's live set peaks at ~1.15 GB (a 1.5 GB run needed one full compaction),
@@ -43,8 +43,17 @@ object ForkedTests {
   private def serverProcessorCount: Seq[String] =
     ManagementFactory.getRuntimeMXBean.getInputArguments.asScala.filter(_.startsWith("-XX:ActiveProcessorCount=")).toSeq
 
-  /** At most one forked test JVM at a time, in every module and configuration: see THE JVM SLOT above. */
-  val oneForkAtATime: Setting[_] = Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, 1)
+  /** How many forked test JVMs run at once. ONE in a person's or an agent's sbt: see THE JVM SLOT above. On a CI runner
+   *  (`CI=true`), which runs one job and nothing else, TWO: a module's specs leave cores idle behind their longest suites
+   *  (identity's corpus equivalences, worker's projection fuzz), and the next module's fill them -- serially the `rest`
+   *  row was common's fork, then testkit's, then identity's (2.1 + 0.25 + 5.1 min, CI 2026-10-27). Two heaps of at most
+   *  2 GB and 1 GB beside the server fit a runner. `KINOWO_TEST_FORKS=<n>` overrides either. */
+  val forksAtOnce: Int =
+    sys.env.get("KINOWO_TEST_FORKS").flatMap(n => scala.util.Try(n.trim.toInt).toOption).filter(_ >= 1)
+      .getOrElse(if (sys.env.get("CI").contains("true")) 2 else 1)
+
+  /** At most [[forksAtOnce]] forked test JVMs at a time, in every module and configuration. */
+  val forkSlots: Setting[_] = Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, forksAtOnce)
 
   /** `config`'s specs in a forked JVM with at most `heap` (an `-Xmx` value, e.g. "2g"). */
   def settings(config: Configuration, heap: String): Seq[Setting[_]] = Seq(

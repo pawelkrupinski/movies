@@ -32,7 +32,9 @@ class IdentityRefitMeasureAllSpec extends AnyFlatSpec with Matchers {
   }
 
   "A refit whose round 1 shards measured on other runners" should "refit and report byte for byte as the refit measured whole" in {
-    val replays  = Seq(models.Country.Germany, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
+    // Poland's and Spain's captures, as above: Poland's takes move with the cut, so the reports compare moves (asserted
+    // below), at under half the resolve of Germany's 5.7 MB capture, which made this the worker's slowest test.
+    val replays  = Seq(models.Country.Poland, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
     val labels   = tools.IdentityJudgements.labels()
     val expected = tools.UnmatchedClusters.readTakeLines(tools.UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
     // three proposals, not the ~58 a real round makes: a cut far up (it loses takes), a cut a step down, a bound

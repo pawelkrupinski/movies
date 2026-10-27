@@ -34,8 +34,10 @@ class UnitTestForkSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "run one at a time, under the sbt server's JVM slot" in {
-    buildSbt.linesIterator.map(_.trim).toSeq should contain("ForkedTests.oneForkAtATime")
-    RepoFile.read("project/ForkedTests.scala") should include("Tags.limit(Tags.ForkedTestGroup, 1)")
+  it should "run one at a time under the sbt server's JVM slot, and two at once only on a CI runner" in {
+    buildSbt.linesIterator.map(_.trim).toSeq should contain("ForkedTests.forkSlots")
+    val forked = RepoFile.read("project/ForkedTests.scala")
+    forked should include("Tags.limit(Tags.ForkedTestGroup, forksAtOnce)")
+    forked should include("""contains("true")) 2 else 1)""")
   }
 }
