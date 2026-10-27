@@ -102,8 +102,9 @@ object UnmatchedClustersCapture {
     val sources   = LiveFamilySources.of(cache, c.country, families)
     val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
     val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
-    val tmdbOf: String => Answer[Option[Int]] = imdb => Try(tmdb.findByImdbId(imdb).map(_.id)).toOption
-      .fold[Answer[Option[Int]]](Answer.Unknown) { found => finds.put(imdb, found); Answer.Known(found) }
+    // a find answered once is that answer in every later round, as the file holds it: never asked anew and then failed
+    val tmdbOf: String => Answer[Option[Int]] = imdb => Option(finds.get(imdb)).fold(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption
+      .fold[Answer[Option[Int]]](Answer.Unknown) { found => finds.put(imdb, found); Answer.Known(found) })(Answer.Known(_))
     val answers: Map[VoterFamily, FamilyAnswers] = families.map(f => f -> store.answers(f)).toMap
     val posterStore = new PosterAnswerStore(store, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val posters     = CachedPosters.of(configuration, c.country, posterCache)

@@ -305,7 +305,10 @@ object UnmatchedClusters {
 
   // ── recording and replaying the lookups ──────────────────────────────────────────────────
 
-  /** `inner`, every answer it gave noted — what a capture writes. */
+  /** `inner`, every answer it gave noted — what a capture writes — and given again whenever it is asked again. Never
+   *  `inner` asked anew: a live source that answered once and failed the next time (an overview, which nothing memoises)
+   *  made the capture's last round decide without an answer its file holds and its replay reads, so the capture replayed
+   *  to other takes than it captured, now and then (Identity capture #2079, UK). */
   final class Recording(inner: IdentityLookups,
                         /** What answers the films' overviews ([[IdentityLookups.overview]]): `inner` unless it is a
                          *  [[MemoLookups]], which, dropped into refs older than the overview, passes none through. */
@@ -323,12 +326,13 @@ object UnmatchedClusters {
     }
     override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = inner.prefetch(queries, films, details)
     override def prefetchAnswered(): Unit = inner.prefetchAnswered()
-    override def detail(listing: Listing): Answer[Option[DetailFacts]] = noted(inner.detail(listing))(details.put(ListingKey.serialised(listing.key), _))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(inner.candidates(query))(queries.put(query, _))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))(films.put(tmdbId, _))
-    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(inner.cast(tmdbId))(casts.put(tmdbId, _))
-    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = noted(described.getOrElse(inner).overview(tmdbId))(overviews.put(tmdbId, _))
-    private def noted[A](answer: Answer[A])(keep: A => Any): Answer[A] = { answer.toOption.foreach(keep); answer }
+    override def detail(listing: Listing): Answer[Option[DetailFacts]] = noted(details, ListingKey.serialised(listing.key))(inner.detail(listing))
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(queries, query)(inner.candidates(query))
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(films, tmdbId)(inner.film(tmdbId))
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(casts, tmdbId)(inner.cast(tmdbId))
+    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = noted(overviews, tmdbId)(described.getOrElse(inner).overview(tmdbId))
+    private def noted[K, A](held: ConcurrentHashMap[K, A], key: K)(ask: => Answer[A]): Answer[A] =
+      Option(held.get(key)).fold { val answer = ask; answer.toOption.foreach(held.put(key, _)); answer }(Answer.Known(_))
   }
 
   /** The captured answers as the resolver's lookups, every TMDB question it holds no answer to noted — `queries` and
