@@ -58,7 +58,9 @@ import scala.collection.mutable
  * film, the families and the venues' programmes on `listedOn`'s site (Filmweb, in Poland: [[VenueListings]]), asked
  * only of a take a poster questions. The take is withdrawn ([[ResolverDecision.Basis.Withdrawn]]) or switched
  * ([[ResolverDecision.Basis.Corrected]]) as [[Correction.decide]] says, and decided again whenever an answer it read is
- * filed again or its listings move.
+ * filed again or its listings move. A take met in a new shape — a listing joined it — has the families its correction
+ * waits on asked inline, as a new cluster's are ([[newCorrection]]), and its venue posters hashed already read while
+ * another is not: so its first take is the corrected one, the order its listing and their answers arrive in moving none.
  *
  * A cluster waiting on its families' questions SETTLES once every question it waits on has been attempted ([[settles]],
  * docs/design/identity-questions.md step 4): answered, durably unanswered, or asked and failed (`attempted`, the
@@ -522,6 +524,13 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
       !heldByDigest._1.get(digest).exists(_.listings == digest) && !waiting.valuesIterator.exists(_.listings == digest) &&
       !askedNow(digest)
+
+  /** A model take's correction the stage meets in this SHAPE (`digest`, [[correctionDigest]]) for the first time since it
+   *  started — none held of that shape under any key, none asked inline — past its first pass: what [[askNow]] asks the
+   *  families of inline, as [[newCluster]] does a cluster's. */
+  private[agreement] def newCorrection(digest: Long, version: Long): Boolean =
+    (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
+      !heldByDigest._2.get(digest).exists(_.listings == digest) && !askedNow(digest)
 
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
    *  corrections and the model's decisions — and store the verdicts `pass` moved. */

@@ -60,7 +60,22 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // its receipt: every TMDB record and search, family answer and poster it read and every question it asked, so a
       // filing of one reads it again ([[Noting]])
       val receipt = mutable.Map.empty[Dependency, Long]
-      val (correction, waits) = receipting(receipt)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version))
+      def read() = { receipt.clear(); receipting(receipt)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version)) }
+      val (correction, waits) = {
+        val first  = read()
+        val asking = first._2.fold(Set.empty[Question])(_.filter { case question: Question.Family => !tried(question); case _ => false })
+        if (asking.isEmpty || !newCorrection(digest, version)) first
+        else {
+          // a take of a newly met shape — a listing joined it, a scrape reshaped it: the families its correction waits on
+          // asked now, inline, as a new cluster's are, so its first take reads their answers — else it was served as the
+          // model took it until they came in, and corrected after (PL "Ktoś całkiem obcy", 2026-10-25: 21 s on 2007's film)
+          askedNow += digest
+          pass.shapes += digest
+          pass.inline(key.stripPrefix(AgreementStage.CorrectionPrefix)) = (clock.millis(), asking)
+          askNow(asking, AgreementStage.AskNowWithin)
+          read()
+        }
+      }
       val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; file(verdict) }
       held.check(key, digest, version)
@@ -167,7 +182,8 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
 
   /** The candidate a venue poster matches against the model's take ([[PosterEvidence.veto]]) — read first against the
    *  take's own posters: a venue poster within [[PosterEvidence.VetoBits]] of one of them vetoes nothing, so the other
-   *  candidates' posters are hashed only for a take none of them comes near. `Unknown` while a poster is not hashed. */
+   *  candidates' posters are hashed only for a take none of them comes near. `Unknown` while the take's own posters, or
+   *  every venue poster, are not hashed — or a venue poster is not and those hashed veto nothing: a veto they make stands. */
   private[agreement] def correctionPosters(digested: AgreementStage.Digested, model: Int, reads: mutable.Map[Dependency, Long],
                                 asked: mutable.Set[Question], reading: AgreementStage.Read): Answer[Option[(Int, Int)]] = {
     val urls = PosterEvidence.urls(digested.listings)
@@ -179,12 +195,17 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       }
       val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url), None))
       val own   = read(AgreementStage.PosterQuestion.Film(model), reading.posters.film(model), Nil)
-      if (venue.exists(_._2 == Answer.Unknown) || own == Answer.Unknown) Answer.Unknown
+      // a venue poster not hashed yet names nothing, but those hashed may: a poster's veto is its own, and a later one only
+      // names a nearer film — the correction is read again once it is in (the poster asked: [[StoredCorrection.waiting]])
+      // — else a listing joining a corrected take, its poster not hashed yet, took the whole cluster back to the model's
+      // film until it was (PL "Ktoś całkiem obcy", 2026-10-25)
+      val pending = venue.exists(_._2 == Answer.Unknown)
+      if (own == Answer.Unknown || venue.forall(_._2 == Answer.Unknown)) Answer.Unknown
       else {
         val held = own.toOption.getOrElse(Nil)
         // the venue posters none of the take's own comes near: only they can name another film against it
         val far  = venue.collect { case (url, Answer.Known(Some(poster))) if !PosterEvidence.nearest(Seq(poster), held).exists(_ <= PosterEvidence.VetoBits) => url }.toSet
-        if (far.isEmpty) Answer.Known(None)
+        if (far.isEmpty) if (pending) Answer.Unknown else Answer.Known(None)
         else {
           // the films one listing showing each such poster is searched by: a cluster billed at hundreds of venues is not
           // searched again whole for the few posters that might veto its take
@@ -192,7 +213,10 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
           val films   = titledFilms(showing)
           films.foreach(film => reads(Dependency.Asked(Question.Poster(AgreementStage.PosterQuestion.Film(film)))) = 0L)
           posterDistances(digested.id, digested.digest, showing, Some(model), asked, (_, _, _) => films, reading.posters)
-            .map(found => PosterEvidence.veto(Some(model), found))
+            .map(found => PosterEvidence.veto(Some(model), found)) match {
+            case Answer.Known(None) if pending => Answer.Unknown
+            case read                          => read
+          }
         }
       }
     }
