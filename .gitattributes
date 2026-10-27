@@ -3,3 +3,8 @@
 # (both sides edited the same judgement) is what scripts/ci/identity_judgements_lint.py fails as "a second row".
 test/resources/fixtures/identity-judgements.tsv merge=union
 test/resources/fixtures/identity-unmatched/expected-matches.tsv merge=union
+# Lists of independent lines, where agents in parallel each ADD a line: both sides' lines are kept, so two additions at
+# the end never conflict (SharedFileLayoutSpec holds this list). Order-free and duplicate-safe: a path glob read as a
+# set, an allow-list row keyed by its own columns.
+.github/convergence-paths.txt merge=union
+test/resources/fixtures/identity-drift-allow.tsv merge=union

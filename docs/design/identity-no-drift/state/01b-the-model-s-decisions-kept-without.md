@@ -1,0 +1,6 @@
+# 1b. The model's decisions kept WITHOUT their trace (`DecisionTrace.Empty`), restored so from the store
+
+- **Where:** `IncrementalResolver.remember`, `ResolverDecisionBson`
+- **Verdict:** **(b) fixed**
+
+The stage's fill reads the model's trace (`UnifiedEvidence`'s `rule.*` signals and the guards they lift), so prod's fill never read what a whole resolve's did. This was UK "CBeebies Panto" ×11 and the 216-row 573 replay divergence. The model now keeps, and stores, what a stage reads of a no-match's trace (`DecisionTrace.kept`: each accepted node's rule and candidate). Cost: a few small nodes per no-match decision that a node accepted alone. Specs: `IncrementalResolverSpec` "hand a stage after it what a resolve ... hands it", `LateInputEquivalenceSpec` (CBeebies unmarked). Keeping the trace then made prod's fill take what the whole resolve's always took, wrongly: the 11 CBeebies listings and Hot Rock gained a film the model had decided apart as none (a node's title rule took it, `BilledPiece` refused it), the overruled rule lifting the fill's guards. A decision apart (`DecisionTrace.decidedApart`: bills both works, billed as one piece, an uncorroborated namesake) now lends the fill no rule, whole or incremental, and keeps none. Spec: `LateInputEquivalenceSpec` "...a pantomime TMDB holds a record of".
