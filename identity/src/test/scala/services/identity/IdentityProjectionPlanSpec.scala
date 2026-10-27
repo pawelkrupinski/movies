@@ -400,6 +400,29 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     yearDrafted shouldBe Seq(1968)
   }
 
+  // A venue printing one film under a page per event (bilety24's `/wydarzenie/?id=N`) holds one slot for them, built over
+  // the stored slot only while that names the representative's page (`CinemaSlotBuilder`'s other-page guard): a stored
+  // slot the listing landing rewrote under another of the film's pages, nothing it carries moved, builds otherwise.
+  "A venue slot" should "be built again when the slot it is built over names another of its pages, nothing it carries moved" in {
+    val first  = row(KinoApollo, "Lalka", page = Some("https://apollo/wydarzenie/?id=1"))
+    val second = row(KinoApollo, "Lalka", page = Some("https://apollo/wydarzenie/?id=2"), hours = Seq(3))
+    val r      = resolution(decision(Some(1), first, second))
+    def storedUnder(page: ProjectedListing) = slotOf(page) match {
+      case (source, slot) => StoredMovieRecord("Lalka", None, MovieRecord(tmdbId = Some(1),
+        data = Map(source -> slot.copy(synopsis = Some("Z detalu.")))), FilmId("f-lalka"), Some("lalka"))
+    }
+    def synopsis(stored: StoredMovieRecord, memo: VenueSlotMemo) = {
+      val d = IdentityProjectionPlan.draft(Seq(first, second), r, Seq(stored), FilmIdCounters.empty, normalizer, slots, tokens,
+        rowsOf(Seq(first, second)), memo)
+      memo.endTick()
+      d.drafts.head.record.data.collect { case (CinemaShowing(KinoApollo, _), slot) => slot.synopsis }.toSeq
+    }
+    val built = Seq(first, second).map(page => synopsis(storedUnder(page), VenueSlotMemo.none))
+    built.distinct.size shouldBe 2
+    val memo = new VenueSlotMemo(0L)
+    Seq(first, second).map(page => synopsis(storedUnder(page), memo)) shouldBe built
+  }
+
   "A venue printing one listing twice" should "keep both rows' showtimes on the film (P4)" in {
     val twice = Seq(row(Multikino, "Lalka", Some(2026), hours = Seq(0)), row(Multikino, "Lalka", Some(2026), hours = Seq(48)))
     twice.map(_.listing.key).distinct.size shouldBe 1

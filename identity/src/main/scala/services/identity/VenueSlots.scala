@@ -164,10 +164,14 @@ object VenueSlotMemo {
         slot.copy(showtimes = Nil, showtimesDigest = None, showtimeStartMinutes = None), ShowtimesDigest.slotDigest(slot))
     }.sortBy(_._1)))
 
-  /** The fields `CinemaSlotBuilder.build` carries forward from a prior slot. */
+  /** The fields `CinemaSlotBuilder.build` reads off a prior slot: those it carries forward, and the page it names, by which
+   *  the build tells a slot of another of the venue's pages and carries nothing from it. Left out, a venue printing one
+   *  film under a page per event (bilety24's `/wydarzenie/?id=N`, Helios' events) whose stored slot the listing landing
+   *  rewrote under another of its pages, nothing it carries moved, took from the memo a slot built over the other page —
+   *  one no build from its rows gives (prod PL, 2026-10-27). */
   private[identity] def carried(slot: SourceData): Int =
     (slot.originalTitle, slot.synopsis, slot.cast, slot.director, slot.runtimeMinutes, slot.releaseYear, slot.countries,
-      slot.genres, slot.posterUrl, slot.trailerUrl, slot.ageRating).##
+      slot.genres, slot.posterUrl, slot.trailerUrl, slot.ageRating, slot.filmUrl).##
 
   /** One film's slots at one venue as a key's `priors` reads them: what each carries forward, by its title. */
   private[identity] def priorsAt(slots: Iterable[(Source, SourceData)]): Int =
