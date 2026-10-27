@@ -241,6 +241,13 @@ on:
                 required: false
                 type: string
                 default: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+            # MAIN'S GERMAN ROWS ON CORES OF THEIR OWN (2026-10-27): the label Germany's rows take instead of `runner`, and
+            # then at most 4 at once (`max-parallel` below). Empty -- every other caller, and every run but main's -- is `runner`.
+            germany-runner:
+                description: The runner label Germany's rows take instead of `runner` (main's own 4-core runner). Empty is `runner`.
+                required: false
+                type: string
+                default: ''
             # Extra sbt JVM options for every sbt run of the leg (`-J-XX:+UseParallelGC`) — the corpus capture,
             # the pre-suite fill and the suite; not a bisect the leg requests, which replays with the
             # bisect's own settings: how a hand-dispatched run tries a JVM setting on the runner it would ship to.
@@ -382,11 +389,17 @@ jobs:
         # A takes-only measurement of some countries (scripts/identity-measure --countries) skips the others' legs whole.
         # A verify run skips the countries its recording did not capture complete (`countries`), a proven reuse every row.
         if: ${{ inputs.reused-from == '' && (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) && (!inputs.takes-only || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code))) }}
+        # MAIN'S GERMAN ROWS RUN ON FOUR CORES OF THEIR OWN (2026-10-27): ci-runner's `gate-de-lane` runner holds 4 rows on
+        # 4 physical cores no other job uses (infra forgejo.nix, the `germany` tier), so at most 4 of the leg's rows run
+        # at once, one a core. Beside main-lane, measurements and the other countries, on a host 27-29 of 32 threads busy,
+        # the German rows ran 14-25 min against 8-11 on a quiet one: their SMT sibling and L3 neighbours, not their CPU
+        # share. Every other leg and run is unbounded (16 is more rows than a leg has).
         strategy:
             fail-fast: false
+            max-parallel: ${{ inputs.code == 'de' && inputs.germany-runner != '' && 4 || 16 }}
             matrix:
                 phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
-        runs-on: ${{ inputs.runner }}
+        runs-on: ${{ inputs.code == 'de' && inputs.germany-runner || inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
         # because the corpus was mis-sized (Poland's films-per-venue ratio applied

@@ -17,7 +17,8 @@ import RunnerLabel.{Branch, Context, Forgejo, GitHub, Main}
  *    waiting job its labels match -- so a label only production asks for is the only precedence there is: Main run
  *    #484 (a red-main fix) sat 40+ min behind ~39 identity jobs on 2026-10-22.
  *  - gate (`gate-lane`, `forgejo-recording`, one runner since 2026-10-26): identity model convergence ON MAIN, which
- *    gates every push (scripts/hooks/pre-push's red-build gate), and the nightly recording's legs.
+ *    gates every push (scripts/hooks/pre-push's red-build gate), and the nightly recording's legs. Main's German rows
+ *    take `gate-de-lane` (2026-10-27), a runner on 4 cores of their own (country-convergence-leg.yml's `runs-on`).
  *  - check (`ubuntu-*`, `landing`): branch CI, the nightly and housekeeping runs, bots, and an identity landing check's
  *    identity-run groups (`-f tier=ubuntu-24.04`) and convergence run (`-f tier=landing`, a 3-slot runner of its own:
  *    Forgejo 15 ignores `strategy.max-parallel`, so its capacity caps how many of a check's 22 rows run at once):
@@ -37,7 +38,7 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
 
   private enum Tier(val labels: Set[String]) {
     case Deploy  extends Tier(Set("main-lane"))
-    case Gate    extends Tier(Set("gate-lane", "forgejo-recording"))
+    case Gate    extends Tier(Set("gate-lane", "gate-de-lane", "forgejo-recording"))
     case Check   extends Tier(Set("ubuntu-26.04", "ubuntu-24.04", "ubuntu-latest", "landing"))
     case Measure extends Tier(Set("measure"))
   }

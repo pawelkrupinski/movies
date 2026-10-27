@@ -854,7 +854,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     caller should include ("runner:                        ${{ needs.preflight.outputs.runner }}")
     caller should include ("runner: ${{ inputs.runner || github.server_url == 'https://github.com' " +
       "&& 'ubuntu-24.04' || inputs.tier || 'measure' }}")
-    leg should include ("runs-on: ${{ inputs.runner }}")
+    leg should include ("runs-on: ${{ inputs.code == 'de' && inputs.germany-runner || inputs.runner }}")
+    // Main's own German rows only: 4 at once on ci-runner's 4-core `gate-de-lane` (infra's `germany` tier), every other
+    // run's Germany on `runner` like the rest.
+    caller should include ("germany-runner:                ${{ needs.preflight.outputs.germany-runner }}")
+    caller should include ("germany-runner: ${{ !inputs.runner && github.server_url != 'https://github.com' " +
+      "&& inputs.tier == 'gate-lane' && 'gate-de-lane' || '' }}")
+    leg should include ("max-parallel: ${{ inputs.code == 'de' && inputs.germany-runner != '' && 4 || 16 }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")
   }

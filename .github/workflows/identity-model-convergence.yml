@@ -144,6 +144,9 @@ jobs:
             # github.com unless a dispatch names a runner: main's own runs gate every push, so `gate-lane`; a
             # measurement's, `measure`.
             runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
+            # Germany's rows on main's own run (`gate-lane`, no `runner` named): ci-runner's 4-core `gate-de-lane` runner
+            # (country-convergence-leg.yml's `germany-runner`). Empty everywhere else: Germany takes `runner` like the rest.
+            germany-runner: ${{ !inputs.runner && github.server_url != 'https://github.com' && inputs.tier == 'gate-lane' && 'gate-de-lane' || '' }}
             # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
             # they are set however this job ends. A `runs-on` read of one falls back to a label both forges have.
             tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
@@ -318,6 +321,7 @@ jobs:
             jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}
             # The preflight's choice (its `runner` output): this `with:` cannot read `inputs` or `github` on Forgejo.
             runner:                        ${{ needs.preflight.outputs.runner }}
+            germany-runner:                ${{ needs.preflight.outputs.germany-runner }}
             takes-base:                    ${{ needs.preflight.outputs.takes-base }}
             takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}
             takes-countries:               ${{ needs.preflight.outputs.takes-countries }}
