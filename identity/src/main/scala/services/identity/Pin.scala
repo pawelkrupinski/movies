@@ -2,7 +2,7 @@ package services.identity
 
 import services.movies.ListingKey
 
-import java.time.{Clock, Instant}
+import java.time.Instant
 
 /** What a pin asserts about its listings. */
 enum PinClaim {
@@ -39,43 +39,10 @@ object Pin {
   }
 }
 
-/** Where pins are kept — storage only; every rule lives in [[Pins]]. */
+/** Where pins are kept. */
 trait PinStore {
   def all(): Seq[Pin]
   def insert(pin: Pin): Unit
   /** Whether a pin with this id was there to delete. */
   def delete(id: String): Boolean
-}
-
-/** The pin rules above the store: what a pin must carry, and that the pin set never
- *  contradicts itself (a listing pinned to two films, or to a film it is pinned never to be). */
-final class Pins(store: PinStore, clock: Clock) {
-
-  /** Every pin, oldest first. */
-  def all(): Seq[Pin] = store.all().sortBy(p => (p.createdAt, p.id))
-
-  def constraints(): PinConstraints = PinConstraints(all())
-
-  def add(listings: Seq[ListingKey], claim: PinClaim, author: String, reason: String): Either[String, Pin] = {
-    val keys = listings.distinct.sorted
-    val pin  = Pin(keys, claim, author.trim, reason.trim, clock.instant())
-    val held = all()
-    val malformed = Seq(
-      Option.when(keys.isEmpty)("a pin needs at least one listing"),
-      Option.when(claim == PinClaim.SameFilm && keys.sizeIs < 2)("a same-film pin needs two or more listings"),
-      claim match {
-        case PinClaim.IsFilm(id) if id <= 0    => Some(s"not a TMDB id: $id")
-        case PinClaim.NeverFilm(id) if id <= 0 => Some(s"not a TMDB id: $id")
-        case _                                 => None
-      },
-      Option.when(pin.author.isEmpty)("a pin needs its author"),
-      Option.when(pin.reason.isEmpty)("a pin needs its reason"),
-      Option.when(held.exists(_.id == pin.id))(s"already pinned as ${pin.id}")).flatten
-    malformed.headOption.orElse(PinConstraints(held :+ pin).conflicts.headOption) match {
-      case Some(refusal) => Left(refusal)
-      case None          => store.insert(pin); Right(pin)
-    }
-  }
-
-  def remove(id: String): Boolean = store.delete(id)
 }

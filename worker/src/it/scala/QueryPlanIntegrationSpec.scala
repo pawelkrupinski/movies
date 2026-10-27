@@ -171,8 +171,8 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     })
   }
 
-  "the identity trace store and its admin reads" should "write by family and id, and read a rule's, a film's, a blocker's listings by index" in {
-    import services.identity.{FamilyTraces, ListingTrace, MongoIdentityTraceReads, MongoIdentityTraceStore}
+  "the identity trace store" should "write by family and id" in {
+    import services.identity.{FamilyTraces, ListingTrace, MongoIdentityTraceStore}
     import services.movies.ListingKey
     assertIndexed(plansOf("traces") { db =>
       def key(n: Int) = ListingKey.Published(s"Venue $n", s"Film $n", None, Nil)
@@ -184,19 +184,11 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       store.flush()
       store.replace(Set("f1"), FamilyTraces.of(Seq(trace(1, "f1"))))
       store.flush()
-      val reads = new MongoIdentityTraceReads(db)
-      reads.byRule("accept:rule-1", 10)
-      reads.byFilm(101, 10)
-      reads.byBlocker("search:found-nothing", 10)
-      reads.byTitle("film 2", 10)
-      reads.ruleCounts()
-      reads.blockers()
       store.close()
-    }, allowed = Map(
-      "identity_traces find filter{listing.rawTitle}" ->
-        "the admin page's free-text title search, by hand: a case-insensitive substring match no index can serve",
-      "identity_traces aggregate pipeline[{$unwind},{$group:{n:{$sum},_id}},{$sort:{n}}]" ->
-        "the admin page's every-rule count: a tally of the whole collection, by hand"))
+    }, unread = Map(
+      "identity_traces.rules_1"   -> "a rule's listings, read by hand on the prod mirror (identity-investigation); its admin page is retired",
+      "identity_traces.film_1"    -> "a film's listings, read by hand on the prod mirror (identity-investigation); its admin page is retired",
+      "identity_traces.blocker_1" -> "what keeps listings unresolved, read by hand on the prod mirror; its admin page is retired"))
   }
 
   "the venue page store" should "read, write and scan pages by id" in {

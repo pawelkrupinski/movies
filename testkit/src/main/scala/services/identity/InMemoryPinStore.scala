@@ -1,7 +1,6 @@
 package services.identity
 
-/** Pins held in memory, each written as [[MongoPinStore]] stores it to BSON and read back — for tests: every rule lives in
- *  [[Pins]], above the store. */
+/** Pins held in memory, each written as [[MongoPinStore]] stores it to BSON and read back — for tests. */
 final class InMemoryPinStore extends PinStore {
   private val pins = new java.util.concurrent.ConcurrentHashMap[String, Pin]()
   def all(): Seq[Pin]              = { import scala.jdk.CollectionConverters._; pins.values.asScala.toSeq }

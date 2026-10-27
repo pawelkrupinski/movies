@@ -942,11 +942,10 @@ adapter the resolver consumes:
 
 All of it is a function of the pin set (`PinConstraintsSpec` checks order independence).
 
-**Consistency.** `Pins` (the rules above the `PinStore` seam) refuses a malformed pin (no
-listing, a one-listing `SameFilm`, a non-positive TMDB id, no author or reason), a duplicate, and
-any pin that makes the set contradict itself: a group pinned to two films, or to a film one of its
-listings is pinned never to be. Stores: `MongoPinStore` (collection `identity_pins`, written only
-from the admin page) and `InMemoryPinStore`.
+**Consistency.** `PinConstraints` names a pin set's contradictions (a group pinned to two films,
+or to a film one of its listings is pinned never to be). Stores: `MongoPinStore` (collection
+`identity_pins`) and `InMemoryPinStore`. The admin page that wrote pins, and `Pins`, the rules it
+wrote them through, were retired 2026-10-27: nothing in the code writes a pin now.
 
 `KnownCasePins` (common test sources only) holds realistic pins for the undecidable and
 wrong-but-stable cases of §7 (Opętanie "klasyka w 4k", the Met's Samson broadcast, the
@@ -1031,8 +1030,8 @@ published are untouched.
 ### 13.3 The admin view
 
 > **Retired 2026-10-27.** `/admin/identity` (with its traces page and the pin POSTs) is gone; pins
-> are still read by the worker from `identity_pins`, and `Pins` still holds their rules, but the web
-> no longer writes them. What follows is history.
+> are still read by the worker from `identity_pins`, but nothing writes them (`Pins` and the trace
+> reads, `IdentityTraceReads`, went with it). What follows is history.
 
 `/admin/identity` (web, `IdentityAdminController`): `AdminAction`-gated like `/admin/config`. Its
 two pin POSTs are declared `Auth.Admin` / `CrossSiteFilter` in `RouteProtectionMatrixSpec`. It is

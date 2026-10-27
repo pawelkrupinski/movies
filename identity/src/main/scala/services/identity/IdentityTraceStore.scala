@@ -8,7 +8,6 @@ import services.movies.ListingKey
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
-import scala.jdk.CollectionConverters._
 import scala.util.chaining.scalaUtilChainingOps
 
 /** Which rules decided one listing ([[DecisionTrace]], plus the title rules its title took), filed under its
@@ -67,45 +66,6 @@ trait IdentityTraceStore extends IdentityTraceSink {
   def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit
   /** Stop writing: what is still queued is dropped, and a later [[replace]] keeps nothing. */
   def close(): Unit = ()
-}
-
-/** The trace READ both ways, for `/admin/identity/traces`: a rule's listings, a film's, a title's, and every rule's count. */
-trait IdentityTraceReads {
-  def byRule(rule: String, limit: Int): Seq[ListingTrace]
-  def byFilm(film: Int, limit: Int): Seq[ListingTrace]
-  /** The listings whose raw title contains `text`, ignoring case. */
-  def byTitle(text: String, limit: Int): Seq[ListingTrace]
-  /** Every rule id, with how many listings it decided — most first. */
-  def ruleCounts(): Seq[(String, Int)]
-  /** The unresolved listings one blocker stopped. */
-  def byBlocker(blocker: String, limit: Int): Seq[ListingTrace]
-  /** What keeps listings unresolved: each blocker with its listings, its distinct titles and a few of them — most
-   *  listings first, so the top row is the next win to investigate. */
-  def blockers(): Seq[BlockerCount]
-}
-
-/** One blocker's share of the unresolved listings ([[IdentityTraceReads.blockers]]). */
-final case class BlockerCount(blocker: String, listings: Int, titles: Int, examples: Seq[String])
-object BlockerCount {
-  /** The blockers of `traces`, ranked as [[IdentityTraceReads.blockers]] ranks them. */
-  def of(traces: Seq[ListingTrace]): Seq[BlockerCount] =
-    traces.flatMap(trace => trace.blocker.map(_ -> trace.listing.rawTitle)).groupBy(_._1).map { case (blocker, rows) =>
-      val titles = rows.map(_._2).distinct.sorted
-      BlockerCount(blocker, rows.size, titles.size, titles.take(Examples))
-    }.toSeq.sortBy(count => (-count.listings, count.blocker))
-  val Examples = 5
-}
-
-object IdentityTraceReads {
-  /** Nothing traced: a deployment with no Mongo. */
-  val Empty: IdentityTraceReads = new IdentityTraceReads {
-    def byRule(rule: String, limit: Int)  = Nil
-    def byFilm(film: Int, limit: Int)     = Nil
-    def byTitle(text: String, limit: Int) = Nil
-    def ruleCounts()                      = Nil
-    def blockers()                        = Nil
-    def byBlocker(blocker: String, limit: Int) = Nil
-  }
 }
 
 object IdentityTraceStore {
@@ -221,38 +181,6 @@ private[identity] final class CoalescedTraceWrites(write: (Set[String], Iterator
       try write(gone, builds.iterator.flatMap(_())) catch { case scala.util.control.NonFatal(e) => failed(gone, e) }
       finally synchronized { writing = false; notifyAll() }
     } catch { case _: InterruptedException => () })
-}
-
-/** `identity_traces` read for the admin page — through its indexes for a rule and a film; a title is a scan, asked by hand. */
-final class MongoIdentityTraceReads(db: MongoDatabase) extends IdentityTraceReads {
-  import MongoIdentityTraceStore._
-  private val Timeout = 60.seconds
-  private lazy val collection: MongoCollection[Document] = db.getCollection[Document](Collection)
-  private def find(filter: org.bson.conversions.Bson, limit: Int): Seq[ListingTrace] =
-    Await.result(collection.find(filter).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), Timeout).map(d => decode(d.toBsonDocument))
-  def byRule(rule: String, limit: Int)  = find(Filters.equal("rules", rule), limit)
-  def byFilm(film: Int, limit: Int)     = find(Filters.equal("film", film), limit)
-  def byBlocker(blocker: String, limit: Int) = find(Filters.equal("blocker", blocker), limit)
-  def byTitle(text: String, limit: Int) =
-    find(Filters.regex("listing.rawTitle", java.util.regex.Pattern.quote(text), "i"), limit)
-  def ruleCounts(): Seq[(String, Int)] =
-    Await.result(collection.aggregate(Seq(
-      org.mongodb.scala.model.Aggregates.unwind("$rules"),
-      org.mongodb.scala.model.Aggregates.group("$rules", org.mongodb.scala.model.Accumulators.sum("n", 1)),
-      org.mongodb.scala.model.Aggregates.sort(org.mongodb.scala.model.Sorts.descending("n")))).batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
-      .map(d => d.toBsonDocument).map(d => d.getString("_id").getValue -> d.getInt32("n").getValue)
-  /** Through the `blocker` index: only unresolved listings carry one. */
-  def blockers(): Seq[BlockerCount] = {
-    import org.mongodb.scala.model.{Accumulators, Aggregates, Filters as F, Sorts}
-    Await.result(collection.aggregate(Seq(
-      Aggregates.`match`(F.exists("blocker")),
-      Aggregates.group("$blocker", Accumulators.sum("n", 1), Accumulators.addToSet("titles", "$listing.rawTitle")),
-      Aggregates.sort(Sorts.orderBy(Sorts.descending("n"), Sorts.ascending("_id"))))).batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
-      .map(_.toBsonDocument).map { d =>
-        val titles = d.getArray("titles").getValues.asScala.toSeq.map(_.asString.getValue).sorted
-        BlockerCount(d.getString("_id").getValue, d.getInt32("n").getValue, titles.size, titles.take(BlockerCount.Examples))
-      }
-  }
 }
 
 object MongoIdentityTraceStore {

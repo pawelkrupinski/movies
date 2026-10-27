@@ -139,14 +139,6 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "the unresolved listings" should "rank by blocker, the one stopping most listings first" in {
-    def trace(n: Int, blocker: Option[String]) =
-      ListingTrace(ListingKey.Published(s"Venue $n", s"Film ${n % 3}", None, Nil), "f", None, "BelowThreshold", Nil, None, blocker = blocker)
-    BlockerCount.of(Seq(trace(1, Some("search:found-nothing")), trace(2, Some("veto:x")), trace(3, Some("search:found-nothing")),
-      trace(4, Some("search:found-nothing")), trace(5, None))) shouldBe Seq(
-      BlockerCount("search:found-nothing", 3, 2, Seq("Film 0", "Film 1")), BlockerCount("veto:x", 1, 1, Seq("Film 2")))
-  }
-
   "a learned rule's id" should "keep an upper bound apart from a lower one" in {
     // the signed runtime.delta learns both sides: "<= -1" and ">= 1" are two rules, never one id
     DecisionTrace.id("Learned(runtime.delta >= 11 AND title in {none,overlap})") shouldBe "learned-runtime-delta-11-and-title-in-none-overlap"
