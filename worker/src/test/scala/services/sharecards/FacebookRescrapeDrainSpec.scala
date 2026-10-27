@@ -278,7 +278,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.request("us", "us-film"); fleet.request("uk", "uk-film")
     fleet.run(UsageHold - 1.minute)
     fleet.graph.sent.size shouldBe 1
-    Seq("us", "uk").map(fleet.series.appUsageFor).max shouldBe UsageCeiling.toDouble
+    Seq("us", "uk").map(fleet.series.appUsageFor).filterNot(_.isNaN).max shouldBe UsageCeiling.toDouble
     usage = UsageCeiling - 1
     fleet.run(1.minute + Spacing * 3)
     fleet.graph.sent.size shouldBe 4

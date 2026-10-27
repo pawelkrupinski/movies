@@ -147,6 +147,11 @@ object ShareCardMetrics {
       volumeFree.labelValues(c); volumeSize.labelValues(c); minimumFree.labelValues(c)
       ShareCardStore.Kind.all.foreach(refused.labelValues(c, _))
       CityOutcome.all.foreach(cityRenders.labelValues(c, _))
+      // Readings nothing has taken yet: NaN, which no threshold crosses, until the first re-scrape and city sweep. The
+      // film coverage is not seeded: it is withdrawn while no film on screen is tracked, and ShareCardCoverageAbsent
+      // pages on that absence.
+      appUsage.labelValues(c).set(Double.NaN)
+      cityCoverage.labelValues(c).set(Double.NaN)
     }
 
     def forCountry(code: String): ShareCardMetrics = new ShareCardMetrics(code, Some(this))

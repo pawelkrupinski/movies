@@ -94,7 +94,8 @@ object RetiredVenueCensus {
   val RowsName            = "kinowo_worker_retired_venue_side_rows"
   val FutureShowtimesName = "kinowo_worker_retired_venue_future_showtimes"
 
-  private val Collections = Seq(ScreeningsRepository.Collection, SlotsRepository.Collection)
+  /** The side collections whose retired-venue rows it counts: the `collection` label's values. */
+  val Collections: Seq[String] = Seq(ScreeningsRepository.Collection, SlotsRepository.Collection)
 
   /** Daily. The rows change only when the roster does — a deploy, whose boot takes the first reading —
    *  or when the cleanup (`StrandedSideRowsCleanup`) sweeps them, and it takes a reading right after it

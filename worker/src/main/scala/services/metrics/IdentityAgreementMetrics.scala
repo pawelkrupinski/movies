@@ -34,7 +34,7 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  *    film), fresh (skipped), deferred (the host's breaker open), failed (asked again later).
  * Every series is exported at 0 from boot.
  */
-final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
+final class IdentityAgreementMetrics(countryCodes: Seq[String], registry: PrometheusRegistry) {
 
   private val clusters: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_agreement_clusters")
@@ -91,12 +91,16 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
     AgreementQuestionMetrics.Poster :+ AgreementQuestionMetrics.Catalogue
 
   /** The stage's series for `country`, every label touched at 0. */
-  def stage(country: String): AgreementStage.Metrics = {
+  private def seedStage(country: String): Unit = {
     Seq("waiting", "verdicts", "agreed", "poster-vetoed", "correcting", "event", "incomplete").foreach(clusters.labelValues(country, _))
     Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue", "withdrawn", "corrected").foreach(taken.labelValues(country, _))
     (families :+ CorrectionPoster).foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
     Seq("read", "drifted").foreach(validated.labelValues(country, _))
+  }
+
+  def stage(country: String): AgreementStage.Metrics = {
+    seedStage(country)
     applied => {
       clusters.labelValues(country, "waiting").set(applied.waiting.toDouble)
       clusters.labelValues(country, "verdicts").set(applied.verdicts.toDouble)
@@ -131,14 +135,29 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
   private val CorrectionPoster = "correction-poster"
 
   /** The questions' series for `country`, every label touched at 0. */
-  def questions(country: String): AgreementQuestionMetrics = {
+  private def seedQuestions(country: String): Unit =
     families.foreach { family =>
       Seq("added", "duplicate").foreach(enqueued.labelValues(country, family, _))
       AgreementQuestionMetrics.Outcomes.foreach(answers.labelValues(country, family, _))
     }
+
+  def questions(country: String): AgreementQuestionMetrics = {
+    seedQuestions(country)
     new AgreementQuestionMetrics {
       def enqueued(family: String, added: Boolean): Unit = IdentityAgreementMetrics.this.enqueued.labelValues(country, family, if (added) "added" else "duplicate").inc()
       def asked(family: String, outcome: String): Unit   = answers.labelValues(country, family, outcome).inc()
     }
   }
+
+  // Every country's series from boot, before its wiring builds the stage and the question queue — which seed the
+  // same sets — and every relay archive's unread days at 0.
+  countryCodes.foreach { c =>
+    seedStage(c); seedQuestions(c)
+    IdentityAgreementMetrics.RelayArchives.foreach(daysUnreadTotal.labelValues(c, _))
+  }
+}
+
+object IdentityAgreementMetrics {
+  /** The `archive` values of `kinowo_worker_identity_relay_days_unread_total`: the scrape archive and the accepted relay. */
+  val RelayArchives: Seq[String] = Seq("archive", "accepted")
 }

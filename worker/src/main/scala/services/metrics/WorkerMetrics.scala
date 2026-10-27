@@ -93,13 +93,13 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
     new services.tasks.RecheckedAudit.Series(services.tasks.RecheckedAudit.Names.ShareCards, "share-card pointer", countryCodes, registry)
 
   // The identity model's paced live lookup fill, per country — see IdentityLookupFillMetrics.
-  val identityLookupFill: IdentityLookupFillMetrics = new IdentityLookupFillMetrics(registry)
-  val identityModel: IdentityModelGauges = new IdentityModelGauges(registry)
+  val identityLookupFill: IdentityLookupFillMetrics = new IdentityLookupFillMetrics(countryCodes, registry)
+  val identityModel: IdentityModelGauges = new IdentityModelGauges(countryCodes, registry)
   // Each country's identity projection — see IdentityProjectionGauges.
-  val identityProjection: IdentityProjectionGauges = new IdentityProjectionGauges(registry)
-  val identityAgreement: IdentityAgreementMetrics = new IdentityAgreementMetrics(registry)
+  val identityProjection: IdentityProjectionGauges = new IdentityProjectionGauges(countryCodes, registry)
+  val identityAgreement: IdentityAgreementMetrics = new IdentityAgreementMetrics(countryCodes, registry)
   // Each country's takes by basis, and their changes — see IdentityTakeMetrics.
-  val identityTakes: IdentityTakeMetrics = new IdentityTakeMetrics(registry)
+  val identityTakes: IdentityTakeMetrics = new IdentityTakeMetrics(countryCodes, registry)
 
   // Every periodic loop's pulse (kinowo_worker_scheduled_tick_*) — see ScheduledTickMetrics.
   val scheduledTicks: ScheduledTickMetrics = ScheduledTickMetrics.worker(registry)
@@ -137,6 +137,35 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // NOTHING on such a tick (a partial count is indistinguishable from a real collapse),
   // so this counter is what keeps a stuck census visible instead of frozen-and-plausible.
   val corpusCensusIncomplete: Counter = CorpusCensus.incompleteCounter(registry)
+
+  // EVERY CENSUS SERIES EXISTS FROM BOOT, for every country this process serves: before its wiring builds the census
+  // that writes it, and whether or not that census ever takes a reading. An absent series is then always a fault
+  // (the family unwired, the process not exporting), never a quiet country, so an alert over one compares a value
+  // instead of testing for a sample. Where the census's own constructor seeds a series, it is seeded here at the same
+  // value; a reading nothing has taken yet that a 0 would misstate (an empty corpus, a roster with no stale venue) is
+  // NaN, which every comparison reads as false and min/max_over_time skip. deploy.WorkerMetricsAtBootSpec holds every
+  // family to this.
+  for (country <- countryCodes.flatMap(Country.byCode)) {
+    val c = country.code
+    WorkerCorpusMetrics.Subset.all.foreach(subset => corpusGauge.labelValues(c, subset).set(Double.NaN))
+    country.cities.foreach { city =>
+      WorkerSourceFilmsMetrics.Scope.all.foreach(scope => servedGauge.labelValues(c, city.slug, scope).set(0.0))
+      showtimesGauge.labelValues(c, city.slug).set(0.0)
+      cityOffSeasonGauge.labelValues(c, city.slug).set(0.0)
+    }
+    widestSlotsGauge.labelValues(c).set(0.0)
+    services.tasks.RatingSources.forCountry(country).foreach { source =>
+      ratingNotRunGauge.labelValues(c, source.kind.label).set(0.0)
+      ratingOldestAgeGauge.labelValues(c, source.kind.label).set(0.0)
+    }
+    Seq(scrapeOldestAgeGauge, scrapeNeverScrapedGauge, contentOldestAgeGauge, neverContentGauge, retiredVenueFutureGauge)
+      .foreach(_.labelValues(c).set(0.0))
+    CinemaScrapeCensus.Quantiles.foreach(q => scrapeAgeQuantileGauge.labelValues(c, q.label).set(0.0))
+    CinemaScrapeCensus.Modes.foreach(mode => scrapeDueVenuesGauge.labelValues(c, mode).set(0.0))
+    Seq(contentStaleVenuesGauge, seasonalNotReopenedGauge, copiedFeedPairsGauge).foreach(_.labelValues(c).set(Double.NaN))
+    RetiredVenueCensus.Collections.foreach(collection => retiredVenueRowsGauge.labelValues(c, collection).set(0.0))
+    corpusCensusIncomplete.labelValues(c)
+  }
 
   // Whether each env-gated alerter / integration is wired (see EnvGatedFeature): the
   // alerters are recorded per country by each wiring, the integrations once by WorkerMain.

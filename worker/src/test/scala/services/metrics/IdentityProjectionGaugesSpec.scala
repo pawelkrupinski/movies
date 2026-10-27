@@ -16,7 +16,7 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
   "the take reversals" should "count a billing once a projection however many venues it reversed at, beside the listings" in {
     // UK "RBO Cinema Season 2026-27: Macbeth" at every boot: lost at the boot's projection, taken back at the next
     val registry = new PrometheusRegistry()
-    val metrics  = new IdentityProjectionGauges(registry).forCountry("uk")
+    val metrics  = new IdentityProjectionGauges(Nil, registry).forCountry("uk")
     val venues   = Seq("Cineworld Bolton", "Cineworld Ely", "Regent Redcar")
     def macbeth(before: Option[Int], after: Option[Int]) = venues.map(change(_, "RBO Cinema Season 2026-27: Macbeth", before, after))
     metrics.takesChanged(macbeth(Some(1703622), None))
@@ -29,7 +29,7 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
 
   "the take changes" should "count each listing of a projection's change list by the basis holding it after and its kind, a new one decided" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")
+    val metrics  = new IdentityProjectionGauges(Nil, registry).forCountry("pl")
     val agreed   = Some(ResolverDecision.Basis.Agreed)
     metrics.takesChanged(Seq(change("Kino Muza", "Diuna", Some(1), None).copy(basisAfter = Some(ResolverDecision.Basis.Vetoed)),
       change("Rialto", "Diuna", Some(1), Some(2)).copy(basisAfter = agreed),
@@ -45,7 +45,7 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
 
   it should "count each move by its cause, a new listing's first take by none" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")
+    val metrics  = new IdentityProjectionGauges(Nil, registry).forCountry("pl")
     metrics.takesChanged(Seq(change("Kino Muza", "Diuna", Some(1), None).copy(cause = Some(TakeChange.Cause.Evidence)),
       change("Rialto", "Diuna", Some(1), None).copy(cause = Some(TakeChange.Cause.Evidence)),
       change("Helios", "Lalka", Some(3), None).copy(cause = Some(TakeChange.Cause.Code)),
@@ -60,7 +60,7 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
 
   it should "never read a new listing's first take as a reversal" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new IdentityProjectionGauges(registry).forCountry("pl")
+    val metrics  = new IdentityProjectionGauges(Nil, registry).forCountry("pl")
     val muza     = ListingKey.Published("Kino Muza", "Diuna", None, Nil)
     metrics.takesChanged(Seq(TakeChange(muza, Some("film-Diuna"), None, Some(2))))
     metrics.takesChanged(Seq(TakeChange(muza, None, None, None)))
@@ -69,7 +69,7 @@ class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
 
   "the rule firings" should "add each rule's listings and the listings counted, a series per rule id" in {
     val registry = new PrometheusRegistry()
-    val report   = new IdentityProjectionGauges(registry).ruleFirings("pl")
+    val report   = new IdentityProjectionGauges(Nil, registry).ruleFirings("pl")
     report(Map("title:search-programme-prefix" -> 3, "accept:sole-work" -> 40), 120)
     report(Map("title:search-programme-prefix" -> 2), 118)
     val text = render(registry)

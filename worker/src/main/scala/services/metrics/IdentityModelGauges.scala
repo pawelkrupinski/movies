@@ -21,9 +21,10 @@ import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
  *  - `kinowo_worker_identity_model_large_families` — families larger than one region: each
  *    resolves slowly whenever anything in it moves (0 is healthy).
  *
- * Nothing is seeded: a country whose model is off exports no series.
+ * Every country's series exist from boot: the counters at 0, the gauges at NaN until the first drain measures
+ * them (a 0 would claim an empty model). A country whose model is off keeps them so.
  */
-final class IdentityModelGauges(registry: PrometheusRegistry) {
+final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusRegistry) {
 
   private val families: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_model_families")
@@ -78,6 +79,12 @@ final class IdentityModelGauges(registry: PrometheusRegistry) {
     .help("Families of the incremental identity model larger than one region (0 is healthy).")
     .labelNames("country")
     .register(registry)
+
+  countryCodes.foreach { c =>
+    Seq(families, seconds, largestListings, largestNodes, large).foreach(_.labelValues(c).set(Double.NaN))
+    Seq(resolved, rebuilds, takeUpFailures).foreach(_.labelValues(c))
+    Seq("venue", "observation").foreach(events.labelValues(c, _))
+  }
 
   def forCountry(country: String): IdentityModelMetrics = new IdentityModelMetrics {
     def batch(batch: ModelBatch): Unit = {

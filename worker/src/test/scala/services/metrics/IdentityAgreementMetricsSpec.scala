@@ -13,7 +13,7 @@ class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
 
   "the agreement's series" should "read 0 from boot, before the stage or any question reports" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new IdentityAgreementMetrics(registry)
+    val metrics  = new IdentityAgreementMetrics(Nil, registry)
     metrics.stage("pl"); metrics.questions("pl")
     val text = render(registry)
     sample(text, "kinowo_worker_identity_agreement_clusters", """country="pl",state="waiting"""") shouldBe Some(0.0)
@@ -29,7 +29,7 @@ class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "carry the stage's last pass and each question's outcome" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new IdentityAgreementMetrics(registry)
+    val metrics  = new IdentityAgreementMetrics(Nil, registry)
     metrics.stage("pl").applied(AgreementStage.Applied(waiting = 40, verdicts = 12, agreed = 5, takenTmdb = 4, takenFallback = 1,
       open = Map(VoterFamily.Imdb -> 30, VoterFamily.RottenTomatoes -> 7), finds = 2, resolves = 9, seconds = 0.5,
       takenPoster = 3, posterVetoed = 2, posters = 11, events = 6))
@@ -55,7 +55,7 @@ class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "export the backfill's incomplete count at 0 from boot, carry it down and keep it at 0 once done" in {
     val registry   = new PrometheusRegistry()
-    val stage      = new IdentityAgreementMetrics(registry).stage("de")
+    val stage      = new IdentityAgreementMetrics(Nil, registry).stage("de")
     val incomplete = """country="de",state="incomplete""""
     def pass(left: Int) = AgreementStage.Applied(0, 0, 0, 0, 0, Map.empty, 0, 0, 0.0, incomplete = left)
     sample(render(registry), "kinowo_worker_identity_agreement_clusters", incomplete) shouldBe Some(0.0)

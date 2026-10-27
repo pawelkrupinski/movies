@@ -65,7 +65,7 @@ import services.identity.adapters.IdentityProjectionMetrics
  *
  * Nothing is seeded: a country whose projection has not run exports no films / listings series.
  */
-final class IdentityProjectionGauges(registry: PrometheusRegistry) {
+final class IdentityProjectionGauges(countryCodes: Seq[String], registry: PrometheusRegistry) {
 
   private val films: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_cutover_films")
@@ -178,7 +178,7 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
   def suspects(country: String): Map[SuspectTakes.Signal, Int] => Unit =
     counts => counts.foreach { case (signal, n) => suspectTakes.labelValues(country, signal.label).set(n.toDouble) }
 
-  def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
+  private def seed(country: String): Unit = {
     // Exported at 0 from boot: no drift reads 0, not absent, and an unmeasured hour shows as reconciles{measured=false}.
     drift.labelValues(country)
     Seq("true", "false").foreach(reconciles.labelValues(country, _))
@@ -188,6 +188,23 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     for (kind <- services.identity.TakeChange.Kind.Moves; cause <- services.identity.TakeChange.Cause.values)
       takeCauses.labelValues(country, kind.label, cause.label)
     takeReversals.labelValues(country)
+  }
+
+  // Every country's series from boot: the counters at 0, the measured gauges at NaN until the first projection (a 0
+  // would read as an empty corpus or a clean one). Not the billing reversals (one series per billing, removed when
+  // forgotten), the rule firings (per rule fired) or the phase histograms (per run mode).
+  countryCodes.foreach { c =>
+    seed(c)
+    Seq(films, listings).foreach(_.labelValues(c, "projection").set(Double.NaN))
+    seconds.labelValues(c).set(Double.NaN)
+    IdentityProjectionGauges.RegroupingKinds.foreach(regroupings.labelValues(c, _))
+    IdentityProjectionMetrics.Refusal.values.foreach(r => refusals.labelValues(c, r.label))
+    SuspectTakes.Signal.values.foreach(signal => suspectTakes.labelValues(c, signal.label).set(Double.NaN))
+    ruleCountedListings.labelValues(c)
+  }
+
+  def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
+    seed(country)
     private val reversals = new services.identity.TakeReversals
     private val billings  = new services.identity.BillingReversals
     def takesChanged(changes: Seq[services.identity.TakeChange]): Unit = {
@@ -205,7 +222,7 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, took: Double): Unit = {
       films.labelValues(country, "projection").set(filmCount.toDouble)
       listings.labelValues(country, "projection").set(listingCount.toDouble)
-      Seq("merge" -> moved.merges, "split" -> moved.splits, "move" -> moved.moves, "fresh" -> moved.fresh, "retire" -> moved.retired)
+      IdentityProjectionGauges.RegroupingKinds.zip(Seq(moved.merges, moved.splits, moved.moves, moved.fresh, moved.retired))
         .foreach { case (kind, n) => regroupings.labelValues(country, kind).inc(n.toDouble) }
       seconds.labelValues(country).set(took)
     }
@@ -221,6 +238,9 @@ final class IdentityProjectionGauges(registry: PrometheusRegistry) {
 object IdentityProjectionGauges {
   /** The `basis` of a change no decision names. */
   val NoDecision = "none"
+
+  /** The `kind` values of `kinowo_worker_identity_regroupings_total`, in the order a projection reports them. */
+  val RegroupingKinds: Seq[String] = Seq("merge", "split", "move", "fresh", "retire")
 
   /** The agreement phase's seconds: a scoped projection's is about a second, a whole one's past a minute on a large corpus. */
   val AgreementSecondsBuckets: Seq[Double] = Seq(0.25, 0.5, 1, 2.5, 5, 10, 20, 40, 60, 90, 120, 180, 300, 600)

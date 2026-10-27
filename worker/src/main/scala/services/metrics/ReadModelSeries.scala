@@ -130,6 +130,8 @@ final class ReadModelSeries(countryCodes: Seq[String], registry: PrometheusRegis
     ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
     ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
       Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
+    ReadModelProjectionMetrics.CardWriteCauses.foreach(cause => readModelCardWrites.labelValues(c, cause))
+    ReadModelProjectionMetrics.CardParts.foreach(part => readModelCardRewriteParts.labelValues(c, part))
   }
 
   def recordWrite(country: String, target: String, op: String, count: Int): Unit =

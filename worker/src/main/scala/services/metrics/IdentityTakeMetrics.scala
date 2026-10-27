@@ -14,7 +14,7 @@ import services.identity.adapters.IdentityStagingPublisher
  * publishes past what they keep) — 0 unless the screen misses something. How the takes CHANGE, by the same basis, is the
  * projection's change list's counter (`kinowo_worker_identity_take_changes_total{basis,kind}`, `IdentityProjectionGauges`).
  */
-final class IdentityTakeMetrics(registry: PrometheusRegistry) {
+final class IdentityTakeMetrics(countryCodes: Seq[String], registry: PrometheusRegistry) {
 
   private val clusters: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_takes")
@@ -34,9 +34,14 @@ final class IdentityTakeMetrics(registry: PrometheusRegistry) {
   private val bases: Seq[String] = ResolverDecision.Basis.values.toSeq.map(_.toString)
 
   /** `country`'s series, every basis touched at 0. */
-  def forCountry(country: String): IdentityStagingPublisher.TakeMetrics = {
+  private def seed(country: String): Unit = {
     bases.foreach { basis => clusters.labelValues(country, basis); listings.labelValues(country, basis) }
     dropped.labelValues(country)
+  }
+  countryCodes.foreach(seed)
+
+  def forCountry(country: String): IdentityStagingPublisher.TakeMetrics = {
+    seed(country)
     new IdentityStagingPublisher.TakeMetrics {
       def held(byClusters: Map[String, Int], byListings: Map[String, Int]): Unit = (bases ++ byClusters.keys).distinct.foreach { basis =>
         clusters.labelValues(country, basis).set(byClusters.getOrElse(basis, 0).toDouble)
