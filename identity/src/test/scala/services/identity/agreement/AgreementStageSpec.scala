@@ -354,6 +354,27 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should include ("corroborated by tmdb")
   }
 
+  it should "read the vote's record through TMDB's lookups, not the venues' that answer no film, as the worker wires them" in {
+    // the worker hands the stage its venue pages alone (VenueDetailLookups: every film unknown) and TMDB's store apart:
+    // read through the venues' the vote linked to no pick by its facts, and prod kept 26 takes a whole resolve made
+    // (2026-10-27: DE "Rental Family" ×9, "Dolly" ×9, PL "Ice Cream Man" ×4, …), each verdict's receipt reading the
+    // vote's record as unknown
+    val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map.empty), VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty))
+    val tmdb = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(Option.when(tmdbId == 913760)(klondike))
+    }
+    val model = resolution.copy(decisions = resolution.decisions.updated(0,
+      ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = Some(ResolverDecision.Leaning(913760, 0)))()))
+    val taken = new AgreementStage(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb)).apply(model, listingOf, version = 1).decisions.head
+    (taken.film, taken.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
+    taken.explanation.last should include ("corroborated by tmdb")
+  }
+
   // DE "Dolly" ×10 (live drift, 2026-10-25): the verdict was decided while TMDB's record of the film the model leaned to
   // was not filed — two families and an unfacted vote agree on nothing — and kept with only the families' answers among
   // its reads, so the record's filing never reopened it. A verdict is a cache of everything it read: the record filed

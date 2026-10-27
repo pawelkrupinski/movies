@@ -789,7 +789,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
         val (weighed, fill) = receipting(reads) {
-          val lean    = voteOf(decision, venuesLooked)
+          // the vote's record is TMDB's: the venues' lookups answer venue pages alone, every film unknown (the worker's
+          // VenueDetailLookups), so read there the vote linked to no family's pick by its facts in production, while a
+          // whole resolve handed one lookups for both linked it -- 26 takes prod kept as none on 2026-10-27 (DE
+          // "Rental Family" ×9, "Dolly" ×9, PL "Ice Cream Man" ×4, …): each verdict read its vote's record as unknown
+          val lean    = voteOf(decision, looked.getOrElse(venuesLooked))
           val weighed = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
           // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
           weighed -> (if (weighed.agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None)
