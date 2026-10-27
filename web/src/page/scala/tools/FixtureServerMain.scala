@@ -94,7 +94,7 @@ object FixtureServerMain {
 
     def indexPageFor(c: City): String = {
       implicit val ci: City = c
-      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = oauthConfigured, renderedAt = now).body
     }
     def browsePageFor(c: City): String = {
@@ -144,7 +144,7 @@ object FixtureServerMain {
       val bumped  = ManyShowtimesCity(base, now)
       val isLarge = controllers.MovieControllerService.totalShowtimes(bumped) >
         controllers.MovieControllerService.LargeCityShowtimeThreshold
-      views.html.repertoire(bumped, c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+      views.html.repertoire(bumped, c.cinemaDisplayNames, c.cinemaPillMap, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = oauthConfigured, renderedAt = now, isLargeCity = isLarge).body
     }
 
@@ -154,7 +154,7 @@ object FixtureServerMain {
     def usClockPageFor(c: City): String = {
       implicit val ci: City = models.Country.UnitedStates.cities.find(_.zoneId == models.TimeZones.UsEastern)
         .getOrElse(sys.error("no Eastern US city"))
-      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, minifier = tools.Minify,
+      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, minifier = tools.Minify,
         pinnedToday = wiring.pinnedToday, oauthProviders = oauthConfigured, renderedAt = now).body
     }
 

@@ -27,7 +27,7 @@ import scala.util.Try
  * showtime edits made while down and only the full reproject catches them (the
  * asymmetry that kept the reproject non-redundant).
  *
- * `enabled` is ON only in the WORKER (the durable mirror); web /debug + scripts pass
+ * `enabled` is ON only in the WORKER (the durable mirror); scripts pass
  * it OFF so an ephemeral viewer's cursor position can't clobber the worker's shared
  * token. Best-effort throughout — a failed load/save only logs; the backstop covers
  * a miss. Persist is time-throttled + fire-and-forget so the driver thread never

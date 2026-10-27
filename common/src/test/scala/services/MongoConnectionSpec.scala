@@ -130,36 +130,6 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     connection.close()
   }
 
-  // fromUri builds a SECOND connection from an explicit URI (the /debug local
-  // read-mirror, MONGODB_MOVIES_MIRROR_URI) rather than MONGODB_URI. Wiring
-  // builds it with required = services.MongoRequirement.Optional so a bad/unreachable mirror degrades to the
-  // prod connection (database None → fall back) instead of blocking boot — only
-  // /debug needs it.
-  "MongoConnection.fromUri with required = services.MongoRequirement.Optional" should "disable (database None) on an unusable URI instead of throwing" in {
-    val connection = MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Optional, MongoTuning.Default)
-    connection.database shouldBe None
-    connection.close()
-  }
-
-  "MongoConnection.fromUri with required = services.MongoRequirement.Required" should "throw on an unusable URI" in {
-    val exception = intercept[IllegalStateException] {
-      MongoConnection.fromUri(settings.MirrorMongoUri(MalformedUri), settings.MongoDatabaseName("kinowo"), required = services.MongoRequirement.Required, MongoTuning.Default)
-    }
-    exception.getMessage should include ("required")
-  }
-
-  // The mirror's database comes from its URI's own path, NOT MONGODB_DB — so the
-  // /debug mirror (`…/kinowo_prod_mirror`) can live in a different database than
-  // the app's working db (used by the prod connection).
-  "MongoConnection.databaseFromUri" should "take the database from the URI path" in {
-    MongoConnection.databaseFromUri(
-      "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true", "fallback") shouldBe "kinowo_prod_mirror"
-  }
-
-  it should "fall back to the given database when the URI names no database" in {
-    MongoConnection.databaseFromUri("mongodb://127.0.0.1:28017/?directConnection=true", "fallback") shouldBe "fallback"
-  }
-
   // Wire compression earns its CPU only on a SLOW link (the local flyctl proxy
   // tunnel / a loopback mirror), where transfer bytes dominate. Over a direct 6PN
   // link (prod worker/web → `*.internal` mongo) the hop is fast + already
@@ -264,11 +234,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     loopback("mongodb://fdaa-0-1-2.flycast:27017/db")      shouldBe false
   }
 
-  // Server-selection cap: the loopback /debug read-mirror passes a short timeout
+  // Server-selection cap: the loopback read-mirror passes a short timeout
   // so a down mirror fails fast instead of wedging every read on the driver's
   // 30s default. Prod passes none and keeps that default (the 2026-06-06 incident
   // wants prod tolerant of a slow/recovering node).
-  it should "cap server-selection at the given timeout (the /debug mirror) when one is passed" in {
+  it should "cap server-selection at the given timeout (the local mirror) when one is passed" in {
     val timeoutMs = MongoConnection
       .clientSettings(ValidUri, serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(3.seconds)))
       .getClusterSettings.getServerSelectionTimeout(MILLISECONDS)
@@ -331,12 +301,12 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     probeTimeout("-5") shouldBe MongoConnection.DefaultProbeTimeout
   }
 
-  // ── The /debug mirror's cross-language contract ─────────────────────────────
+  // ── The local mirror's cross-language contract ─────────────────────────────
   // Two halves in different languages have to agree on the mirror: the sync
   // (scripts/local-mirror/*.js) WRITES the mirrored databases and collections,
   // and this Scala side READS them. Nothing at compile time links the two, so a
   // rename or a newly-read collection can silently leave the app pointed at a
-  // database the tailer never fills — which degrades to an empty /debug, not an
+  // database the tailer never fills — which degrades to an empty mirror read, not an
   // error. These tests are that link.
   private val mirrorTargetsJs =
     scala.io.Source.fromFile("scripts/local-mirror/mirror-targets.js").mkString
@@ -359,22 +329,16 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     MongoConnection.mirrorDbFor("kinowo_de") shouldBe s"kinowo_de${jsSuffix.get}"
   }
 
-  it should "have the sync mirror every collection the /debug stacks read" in {
+  it should "have the sync mirror every collection a mirror reader reads" in {
     // The sync and `DebugMirror.Collections` read ONE file (debug-mirror-collections.json),
     // so they cannot drift; what can still drift is a reader's collection constant against
     // that file. A collection missing from the sync reads as permanently EMPTY rather than
-    // failing: `movie_slots` rendered every /debug film slot-less, `web_movies` /
-    // `web_screenings` left `/debug/readmodel` blank for every non-boot country — silently.
-    // Each reader Wiring points at the mirror connection is listed here by its OWN constant.
+    // failing — silently. Each collection `ReviewLabelsCli` reads off the mirror
+    // (`MongoReviewSource`) is listed here by its OWN constant.
     val read = Set(
       services.movies.MovieRepository.Collection, services.movies.ScreeningsRepository.Collection,
-      services.movies.SlotsRepository.Collection, services.attempts.EnrichmentAttempts.Collection,
-      services.cadence.RatingCadenceReader.Collection,
-      services.readmodel.MongoReadModelRepository.MoviesCollection,
-      services.readmodel.MongoReadModelRepository.ScreeningsCollection,
-      DebugMirror.IdentityFamilies, DebugMirror.VenuePages, DebugMirror.IdentityListings, DebugMirror.TmdbFilms,
-      DebugMirror.FamilyAnswers, DebugMirror.IdentityTraces, DebugMirror.IdentityStaging)
-    withClue(s"debug-mirror-collections.json carries ${DebugMirror.Collections} but /debug reads $read: ") {
+      DebugMirror.IdentityFamilies)
+    withClue(s"debug-mirror-collections.json carries ${DebugMirror.Collections} but the mirror readers read $read: ") {
       (read -- DebugMirror.Collections) shouldBe empty
     }
   }
@@ -387,7 +351,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "mirror the scrape archive, so a local replay has something to replay" in {
-    // `cinema_scrapes` is the odd one out in this list: it backs no /debug page.
+    // `cinema_scrapes` is the odd one out in this list: it backs no reader in the apps.
     // It is here because it is the corpus you reach for when a scrape looks
     // wrong — the last listing each cinema actually produced — and pulling it
     // over the tunnel row by row is exactly the latency the mirror exists to
@@ -397,7 +361,7 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "mirror the uptime buckets, so the white-cinema sweep can classify venues locally" in {
-    // Like `cinema_scrapes`, no /debug page reads `uptimeBuckets`: the scheduled
+    // Like `cinema_scrapes`, no app reads `uptimeBuckets`: the scheduled
     // white-cinema investigation replays `/uptime`'s classification over them from
     // the mirror (the page is admin-gated, prod Mongo is off limits). Absent from the
     // sync, every mirror holds none and the sweep silently loses its bucket history.

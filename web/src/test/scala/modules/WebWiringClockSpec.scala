@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{DebugCountries, DebugSnapshot, DebugStack, ReadModelDump, TestAdminAction}
+import controllers.TestAdminAction
 import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -68,17 +68,6 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     val bucket  = UptimeMonitor.bucketTimestamp(Pinned.toEpochMilli)
     payload.slots.last.timestamp shouldBe bucket
     payload.bucket("Probe", bucket).map(_.status) shouldBe Some("red")
-  }
-
-  "the wiring's DebugController" should "age the read-mirror on the wiring clock" in {
-    val wiring = new ClockedWiring {
-      override lazy val debugCountries: DebugCountries = DebugCountries.of(
-        new DebugStack(models.Country.default, movieRepository, taskQueue, ratingCadenceReader,
-          enrichmentAttemptReader, () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty),
-          mirrorFreshness = () => Some(Pinned.minusSeconds(300))),
-        Map.empty, devMode = true)
-    }
-    contentAsString(wiring.debugController.cadence()(FakeRequest())) should include ("mirror 5m behind")
   }
 
   "the wiring's listing" should "label a showing day against the wiring clock's year" in {

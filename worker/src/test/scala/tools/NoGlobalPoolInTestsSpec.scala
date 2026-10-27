@@ -29,8 +29,6 @@ class NoGlobalPoolInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/test/scala/tools/NoGlobalPoolInTestsSpec.scala" -> SelfTest,
     "identity/src/test/scala/tools/IndependentCases.scala" ->
       "CPU-bound cases awaited with no bound: a busy pool only makes it slower, never time out",
-    "web/src/test/scala/services/attempts/FilmAttemptReportSpec.scala" ->
-      "the one use is a film with no tmdbId, which builds its report without scheduling any work",
     "web/src/test/scala/controllers/TestAdminAction.scala" ->
       "the executor Play's action runs a handler on; the controller specs read already-completed futures",
     "web/src/test/scala/controllers/UnreadableSignedInUserSpec.scala" ->

@@ -1,13 +1,9 @@
 @import models.ResolvedRatings
 @import controllers.WebHref
 @(ratings: Option[ResolvedRatings])
-@* No per-pill `onclick` — the /debug data-row's expand-on-click handler
-   bails on clicks that originated inside an `<a>` or `<button>` (see
-   the row-click setup in debug.scala.html). That made the inline
-   `onclick="event.stopPropagation()"` we used to emit here pure noise
-   on / and /movie (neither has click-to-expand
-   parents) and equivalent-but-redundant on /debug. ~454 occurrences ×
-   37 bytes = ~17 KB raw off the / page.
+@* No per-pill `onclick`: the inline `onclick="event.stopPropagation()"` we
+   used to emit here was pure noise on / and /movie (neither has click-to-expand
+   parents). ~454 occurrences × 37 bytes = ~17 KB raw off the / page.
 
    The click-through URLs are pre-resolved on the read-model doc, so this
    partial renders them verbatim (no per-call href computation) — each only

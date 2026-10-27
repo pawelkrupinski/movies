@@ -24,12 +24,11 @@ class TestWebWiringSpec extends AnyFlatSpec with Matchers {
         "MONGODB_URI" -> DeadCluster, "MONGODB_MOVIES_MIRROR_URI" -> DeadCluster, "MONGODB_USERS_DB" -> "kinowo_users_probe")
     }
     wiring.boot()
-    Seq(wiring.movieController, wiring.debugController, wiring.usersConnection, wiring.movieMirrorConnection)
+    Seq(wiring.movieController, wiring.debugController, wiring.usersConnection)
     val clients = ObjectGraph.collect(wiring) {
       case c: org.mongodb.scala.MongoClient                     => c.toString
       case c: com.mongodb.reactivestreams.client.MongoClient    => c.toString
     }
     withClue(clients.map(_._1).mkString("\n"))(clients shouldBe empty)
-    wiring.debugCountries.switchable shouldBe false
   }
 }

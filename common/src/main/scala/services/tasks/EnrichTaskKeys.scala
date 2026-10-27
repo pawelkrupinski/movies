@@ -2,7 +2,7 @@ package services.tasks
 
 /**
  * Dedup keys + payload shapes for the operator-triggered enrichment tasks the
- * web `/tasks` and `/debug` pages enqueue and the worker handlers consume.
+ * web `/tasks` page enqueues and the worker handlers consume.
  *
  * Lives in `common` (not the worker's `services.tasks`) precisely because both
  * sides need it: the web enqueues with these exact keys, the worker reads the

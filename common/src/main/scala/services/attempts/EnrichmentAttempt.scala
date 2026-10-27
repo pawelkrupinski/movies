@@ -3,8 +3,7 @@ package services.attempts
 import java.time.Instant
 
 /**
- * The outcome of ONE per-row enrichment fetch — what the /debug expand section
- * shows per (source, film).
+ * The outcome of ONE per-row enrichment fetch, per (source, film).
  *
  * The three cases are deliberately distinct, because the pair that used to be
  * conflated is exactly what made a stuck film un-diagnosable: a source that
@@ -21,7 +20,7 @@ enum AttemptOutcome:
    *  legitimately backs off on. */
   case Unchanged
   /** The fetch threw. `message` is the exception's class + message, trimmed to
-   *  something a debug page can render on one line. */
+   *  something a log line can carry. */
   case Failed(message: String)
 
 object AttemptOutcome:

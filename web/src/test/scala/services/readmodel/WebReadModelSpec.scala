@@ -9,9 +9,8 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.Duration
 
 /**
- * Unit cover for the read cache's read surface. `allScreenings()` exists for the
- * dev `/debug/readmodel` dump, which needs every cached screening across cities
- * (the per-city `screeningsForCity` is the request-time read key, not a dump).
+ * Unit cover for the read cache's read surface. `allScreenings()` is every cached
+ * screening across cities (the per-city `screeningsForCity` is the request-time read key, not a dump).
  *
  * The `backstopTick` cases pin the CPU-saving contract: the periodic backstop
  * must NOT re-read the whole corpus while the change streams keep the model

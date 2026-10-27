@@ -170,34 +170,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
-  // `findAllForListing` is the /debug corpus-table read: it strips each source's
-  // `showtimes` SERVER-SIDE (an aggregation, since `sourceData`'s dynamic cinema
-  // keys defy a plain field-exclusion projection) so the ~58%-of-bytes showtimes
-  // never cross the wire. This proves the aggregation strips them yet leaves the
-  // rest intact AND still decodes through the normal codec — while `findById`
-  // (the lazy per-row details path) keeps the showtimes.
-  it should "drop showtimes in findAllForListing but keep them in findById" in {
-    val title = "__integration-test-listing__"
-    val year  = Some(1902)
-    val slot  = SourceData(
-      title     = Some("Listing Sentinel"),
-      showtimes = Seq(
-        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 30), Some("https://book/it-1")),
-        Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0),  Some("https://book/it-2"))))
-    repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000011"), data = Map[Source, SourceData](Multikino -> slot)))
-
-    val listed = repository.findAllForListing().find(_.record.imdbId.contains("tt0000011"))
-    listed should not be empty
-    val lslot = listed.get.record.cinemaData(Multikino)
-    lslot.showtimes shouldBe empty                 // stripped server-side…
-    lslot.title shouldBe Some("Listing Sentinel")  // …but the rest of the slot survives
-
-    // The full-fidelity reads still carry the showtimes (the /debug details path).
-    val full = repository.findById(listed.get.id) // imdbId tt0000011 — distinct from the casededupe sentinel
-    full.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(2)
-  }
-
-  // The /debug live view needs the change stream to surface DELETEs (a merge
+  // A consumer that mirrors the corpus needs the change stream to surface DELETEs (a merge
   // removes the losing row), not just upserts. A delete carries no post-image,
   // so the impl reads its `documentKey._id` — exercised here against a replica
   // set (CI starts Mongo as a single-node RS; `$changeStream` needs one),
@@ -1586,32 +1559,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
-  // findAllForListing reads `movies.sourceData` straight out of an aggregation, so it is
-  // the one reader that does not go through the shared stitch — and a migrated film would
-  // list with no cinemas at all.
-  it should "stitch slots into the listing read as well" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
-    import models.SourceData
-    val db     = specDb
-    val scr    = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val slots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
-    val split  = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(scr), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
-    val title  = "__integration-test-slotlisting__"
-    val year   = Some(1912)
-    val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
-    try {
-      val slot = SourceData(title = Some("SL"), posterUrl = Some("https://poster/l1.png"),
-        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 6, 19, 0), Some("https://book/sl-1"))))
-      split.upsert(title, year, MovieRecord(imdbId = Some("tt0000020"), data = Map[Source, SourceData](Multikino -> slot)))
-
-      val listed = split.findAllForListing().find(r => r.id.value == id)
-      listed.map(_.record.cinemaData.keySet)                         shouldBe Some(Set(Multikino))
-      listed.flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe Some("https://poster/l1.png")
-      // …still without showtimes, which is the whole point of this read
-      listed.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes) shouldBe Some(Seq.empty)
-    } finally { split.delete(title, year); slots.deleteFilm(id) }
-  }
-
   // Showtimes EXPIRING is what most re-scrapes look like: same film, same metadata, one
   // fewer session because a screening has passed. That must stay a screenings-only write.
   // If the slots split made it also write `movie_slots` — or touch `movies` — every scrape
@@ -1722,13 +1669,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { raw.delete(title, year); slots.deleteFilm(id) }
   }
 
-  // Slots read-path parity — the generalisation of the bug that shipped. `findAllForListing`
-  // reads `movies.sourceData` straight out of an aggregation and so bypassed the shared
-  // stitch, listing a migrated film with NO cinemas. Every reader is pinned here rather
-  // than just that one, because the failure mode is "a reader forgot to stitch" and the
-  // next one added will forget too. The showtimes equivalent below exists because exactly
+  // Slots read-path parity — the generalisation of the bug that shipped: a reader that
+  // bypassed the shared stitch listed a migrated film with NO cinemas. Every reader is
+  // pinned here, because the failure mode is "a reader forgot to stitch" and the next one
+  // added will forget too. The showtimes equivalent below exists because exactly
   // this class of divergence once dropped 129 films.
-  it should "return identical slots from findById, findAll, foreachRecord and findAllForListing" in {
+  it should "return identical slots from findById, findAll and foreachRecord" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import models.SourceData
     val db     = specDb
@@ -1751,13 +1697,11 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       var scanned: Option[StoredMovieRecord] = None
       split.foreachRecord(r => if (r.id.value == id) scanned = Some(r)) shouldBe tools.ScanOutcome.Complete
       val viaForeach    = slotsOf(scanned)
-      val viaListing    = slotsOf(split.findAllForListing().find(r => r.id.value == id))
 
       val expected = Some(Map[Source, Option[String]](Multikino -> Some("https://poster/pa.png")))
       withClue("findById: ")          { viaFindById shouldBe expected }
       withClue("findAll: ")           { viaFindAll  shouldBe expected }
       withClue("foreachRecord: ")     { viaForeach  shouldBe expected }
-      withClue("findAllForListing: ") { viaListing  shouldBe expected }
     } finally { split.delete(title, year); slots.deleteFilm(id) }
   }
 
@@ -1929,7 +1873,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // the worker writes concurrently (resolving TMDB,
   // re-keying years), an unsorted scan can return the same document more than
   // once — and skip others — when an intervening write relocates it mid-scan.
-  // On /debug that surfaced as phantom duplicate rows (the same `_id` rendered
+  // On the corpus table that surfaced as phantom duplicate rows (the same `_id` rendered
   // twice, one a stale pre-write image) that never cleared, plus silently
   // dropped rows. The fix sorts by the immutable, unique `_id` index, whose
   // key-ordered walk returns each document exactly once. The duplication itself only

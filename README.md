@@ -110,8 +110,6 @@ worker runs only in the cluster and in the test layers.
   do the pre-rename `/:city/film…` / `/:city/filmy` addresses)
 - `/:city/movies` — browse / filter the full film catalogue
 - `/:city/api/repertoire`, `/:city/api/details`, `/:city/api/cinemas` — the JSON feeds the mobile apps read
-- `/debug` — dev page exposing the source `movies` corpus;
-  `/debug/readmodel` — the projected read model web actually serves
 - `POST /:city/debug/rehydrate` — reload the in-memory cache from Mongo
 - `/health` — liveness/readiness probe
 

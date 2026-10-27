@@ -5,8 +5,6 @@ import org.mongodb.scala.{Document, MongoClient}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.attempts.MongoEnrichmentAttemptStore
-import services.cadence.MongoRatingCadenceReader
 import services.config.MongoEnvRegistryStore
 import services.scrapes.MongoScrapeGuardLedger
 
@@ -26,14 +24,6 @@ class UnreadableStoresReportFailureSpec extends AnyFlatSpec with Matchers with B
   // "Fresh" was then written back over the stored rejection count (RewiredVenueGuardSpec).
   "MongoScrapeGuardLedger.get" should "answer None, not a fresh venue, when the ledger cannot be read" in {
     new MongoScrapeGuardLedger(Some(db)).get(Multikino) shouldBe None
-  }
-
-  "MongoEnrichmentAttemptStore.forKeys" should "throw, not report a film as never attempted" in {
-    an[Exception] should be thrownBy new MongoEnrichmentAttemptStore(Some(db)).forKeys(Seq("imdb|tmdb:1"))
-  }
-
-  "MongoRatingCadenceReader.forKeys" should "throw, not report a film as having no cadence history" in {
-    an[Exception] should be thrownBy new MongoRatingCadenceReader(Some(db)).forKeys(Seq("imdb|tmdb:1"))
   }
 
   // Taken as "no knobs", the admin page listed none and refused every override as an unknown key.

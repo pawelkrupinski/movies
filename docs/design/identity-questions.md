@@ -206,6 +206,9 @@ A take waits on a model question by the lookup fill's rounds, and on every agree
 
 ## The staging screen (`/debug/identity/staging`, local)
 
+> **Retired 2026-10-27.** The page, its controller and its view are gone; the workers still publish
+> `identity_staging` and the mirror still syncs it. The web half below is history.
+
 What every country's takes still wait on, and what was decided lately, on one dev-only page of a local dev server
 (`scripts/dev-server.sh`; 404 in prod like the rest of `/debug`). The stage's waits live in each worker's memory
 (`AgreementStage.waitingOn`), not in Mongo, so each worker publishes them to its own database, and the local server

@@ -3,7 +3,7 @@ package services
 import com.mongodb.{ConnectionString, MongoCompressor}
 import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-import settings.{MirrorMongoUri, MongoApplicationName, MongoDatabaseName, MongoMaxPoolSize, MongoProbeTimeout, MongoUri, ProcessConfiguration, ProcessTier}
+import settings.{MongoApplicationName, MongoDatabaseName, MongoMaxPoolSize, MongoProbeTimeout, MongoUri, ProcessConfiguration, ProcessTier}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -53,7 +53,7 @@ class MongoConnection(
     probeTimeout: MongoProbeTimeout = MongoProbeTimeout(MongoConnection.DefaultProbeTimeout),
     // Caps the driver's per-request server-selection wait. `None` keeps the
     // driver default (30s) — what the prod cluster wants, to ride out a slow /
-    // recovering node. The loopback `/debug` mirror passes a short cap so a dead
+    // recovering node. The loopback read-mirror passes a short cap so a dead
     // mirror fails fast instead of wedging every read on the 30s default.
     serverSelectionTimeout: Option[MongoConnection.ServerSelectionTimeout] = None,
     // An externally-owned `MongoClient` to bind this database view to, SHARED
@@ -294,13 +294,11 @@ object MongoConnection extends Logging {
    *  `MONGODB_PROBE_TIMEOUT_SECONDS` ([[MongoTuning]]). */
   val DefaultProbeTimeout: FiniteDuration = 30.seconds
 
-  /** Boot-probe + server-selection cap for the loopback `/debug` read-mirror.
+  /** Boot-probe + server-selection cap for the loopback read-mirror (`ReviewLabelsCli`).
    *  The mirror is a LAN Mongo that answers in ~ms when healthy, so — unlike the
    *  prod cluster, which keeps the tolerant 30s `DefaultProbeTimeout` — a mirror
-   *  that doesn't respond within a few seconds is simply down. The short cap
-   *  turns a down/unreachable mirror into a fast fall-back-to-prod at boot AND a
-   *  fast-fail (empty, logged) per request, instead of wedging every `/debug`
-   *  load on the driver's 30s default server-selection timeout. */
+   *  that doesn't respond within a few seconds is simply down, and fails fast
+   *  instead of wedging on the driver's 30s default server-selection timeout. */
   val LocalMirrorTimeout: FiniteDuration = 3.seconds
 
   /** The process's own corpus connection — its [[MongoAddress]], its country's database —
@@ -312,8 +310,8 @@ object MongoConnection extends Logging {
       required, MongoTuning.from(configuration, ProcessTier.Tool))
 
   /** A connection to an EXPLICIT database on the cluster at `uri`, optionally bound to a
-   *  `sharedClient` so several database views reuse ONE pool — the web wiring's own corpus,
-   *  its shared users database and each /debug country. */
+   *  `sharedClient` so several database views reuse ONE pool — the web wiring's own corpus
+   *  and its shared users database. */
   def forDatabase(uri: Option[MongoUri], database: MongoDatabaseName, required: MongoRequirement, tuning: MongoTuning,
       sharedClient: Option[MongoClient] = None): MongoConnection =
     new MongoConnection(uri, database, required, tuning.probeTimeout, sharedClient = sharedClient, maxPoolSize = tuning.maxPoolSize,
@@ -344,9 +342,9 @@ object MongoConnection extends Logging {
   def sharedClientAt(address: MongoAddress, tuning: MongoTuning): Option[MongoClient] =
     address.uri.map(sharedClientFor(_, None, tuning.maxPoolSize, tuning.applicationName))
 
-  /** Like [[sharedClientAt]] but against an EXPLICIT URI — the `/debug`
-   *  read-mirror, whose several per-country database views share one pool the
-   *  same way the prod per-country connections do. The caller OWNS `close()`. */
+  /** Like [[sharedClientAt]] but against an EXPLICIT URI — the local read-mirror,
+   *  whose several per-country database views share one pool the same way the prod
+   *  per-country connections do. The caller OWNS `close()`. */
   def sharedClientFor(uri: MongoUri, serverSelectionTimeout: Option[ServerSelectionTimeout] = None,
       maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(DefaultMaxPoolSize),
       applicationName: MongoApplicationName = MongoApplicationName.Default): MongoClient = {
@@ -379,59 +377,6 @@ object MongoConnection extends Logging {
    *  prevent. `scripts/local-mirror/mirror-targets.js` derives the SAME name for
    *  the sync side; change one and you must change the other. */
   def mirrorDbFor(prodDb: String): String = s"${prodDb}_prod_mirror"
-
-  /** A `/debug` mirror view of ONE country's database, bound to an already-open
-   *  mirror client. Never `required`: the mirror is a dev-only read optimisation,
-   *  so an unreachable one disables this connection (→ an empty /debug for that
-   *  country) rather than failing boot. Short timeouts for the same reason
-   *  [[LocalMirrorTimeout]] exists — a loopback Mongo that goes quiet is down,
-   *  not slow. */
-  def mirrorForDb(uri: MirrorMongoUri, prodDb: String, sharedClient: Option[MongoClient] = None): MongoConnection =
-    new MongoConnection(
-      Some(uri.asMongoUri),
-      MongoDatabaseName(mirrorDbFor(prodDb)),
-      required               = MongoRequirement.Optional,
-      probeTimeout           = MongoProbeTimeout(LocalMirrorTimeout),
-      serverSelectionTimeout = Some(ServerSelectionTimeout(LocalMirrorTimeout)),
-      sharedClient           = sharedClient)
-
-  /** Build from an explicit URI rather than the process's [[MongoAddress]] — for a
-   *  second connection alongside the primary one. The web wiring uses it for the
-   *  local `/debug` read-mirror (`MONGODB_MOVIES_MIRROR_URI`): a separate
-   *  MongoClient pointed at a local Mongo that's kept synced from prod, so the
-   *  full-corpus `movies` read is a LAN hop instead of the prod tunnel. The
-   *  database is taken from the URI's own path (see `databaseFromUri`, which
-   *  falls back to `fallbackDatabase` — the caller's own) so the mirror can live
-   *  in a different database than the app's working db; probe timeout defaults
-   *  to `env`'s. `required` is the caller's to decide
-   *  (the mirror is a soft optimisation, so the caller passes `false` and
-   *  degrades to the primary connection when it's absent). */
-  def fromUri(
-      uri: MirrorMongoUri,
-      fallbackDatabase: MongoDatabaseName,
-      required: MongoRequirement,
-      tuning: MongoTuning,
-      probeTimeout: Option[MongoProbeTimeout] = None,
-      serverSelectionTimeout: Option[ServerSelectionTimeout] = None): MongoConnection =
-    new MongoConnection(
-      Some(uri.asMongoUri),
-      MongoDatabaseName(databaseFromUri(uri.value, fallbackDatabase.value)),
-      required,
-      probeTimeout.getOrElse(tuning.probeTimeout),
-      serverSelectionTimeout,
-      maxPoolSize = tuning.maxPoolSize,
-      applicationName = tuning.applicationName)
-
-  /** Database name for an explicit-URI connection: the URI's own path (e.g.
-   *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
-   *  database than the app's working db (the prod connection's). Falls back to
-   *  `fallback` (the caller's own database) when the URI names no database. The parse is
-   *  guarded so a malformed URI flows through to
-   *  `MongoConnection`'s own required/optional handling instead of throwing here. */
-  private[services] def databaseFromUri(uri: String, fallback: => String): String =
-    Try(Option(new ConnectionString(uri).getDatabase)).toOption.flatten
-      .filter(_.nonEmpty)
-      .getOrElse(fallback)
 
   /** Connections per `MongoClient`. Deliberately far below the driver's default of
    *  100: every app holds its own pool against ONE small shared mongod, so the default

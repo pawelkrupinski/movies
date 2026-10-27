@@ -341,7 +341,7 @@ class MongoSlotsRepository(
   findAllBatchBackoff:  FiniteDuration = 500.millis,
   // Persist THIS stream's resume token so a restart replays slot changes that landed while
   // down — like `screenings`, and for the same reason: a slot write need not touch `movies`.
-  // ON only in the worker (the durable mirror); OFF for web /debug + scripts.
+  // ON only in the worker (the durable mirror); OFF for scripts.
   persistResumeToken:   Boolean        = false,
   // What this store's cursor delivers, and what the apply coalesced away. The worker passes
   // the Prometheus sink; everything else keeps the no-op. See [[SideCollectionChangeMetrics]].

@@ -202,64 +202,8 @@ object MongoRatingCadenceStore {
     }
 }
 
-/** Read-only view of the `rating_cadence` collection for the dev cadence page
- *  (the web app). A one-shot full read — the page is dev-only and low-traffic, so
- *  no mirror. Returns `(dedupKey, stats)` pairs: none when no Mongo is configured, and a
- *  read that fails — or stops part-way — throws rather than answering with what it got. */
-trait RatingCadenceReader {
-  def all(): Seq[(String, RatingChangeStats)]
-
-  /** Stats for a KNOWN set of keys — what one film's /debug expand needs (its four
-   *  `<site>|tmdb:<id>` keys), as a bounded `_id in [...]` lookup instead of the
-   *  full-collection read `all` does for the cadence overview page. */
-  def forKeys(keys: Seq[String]): Map[String, RatingChangeStats]
-}
-
 object RatingCadenceReader {
   /** The cadence-stats collection — see [[services.DebugMirror]] for why the name
    *  is a constant rather than an inline literal. */
   val Collection = "rating_cadence"
-
-  /** No data — the default where cadence isn't wired (tests, Mongo-less dev). */
-  val empty: RatingCadenceReader = new RatingCadenceReader {
-    override def all(): Seq[(String, RatingChangeStats)] = Seq.empty
-    override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] = Map.empty
-  }
-}
-
-class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceReader with Logging {
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(RatingCadenceReader.Collection))
-
-  /** Keyset-paged, matching the hydrate path in this same file — that one was given
-   *  the treatment when `rating_cadence` grew; this reader was missed. An unbounded
-   *  cursor over a corpus-sized collection recurses the async driver into
-   *  `StackOverflowError` on an I/O thread, which the caller sees only as an
-   *  unexplained timeout. */
-  override def all(): Seq[(String, RatingChangeStats)] = coll match {
-    case None => Seq.empty
-    case Some(c) =>
-      // An incomplete scan THROWS: the rows it read were handed back as the whole collection, and
-      // the cadence page showed every film it did not reach as never refreshed.
-      KeysetScan.collect[Document, (String, RatingChangeStats)](
-        label          = "RatingCadenceStore all",
-        batchSize      = 2000,
-        maxAttempts    = 3,
-        initialBackoff = 500.millis,
-        keyOf          = _.getString("_id"),
-        fetchPage      = (afterId, limit) => {
-          val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
-          Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
-        },
-        onIncomplete   = exception => logger.warn(s"Rating-cadence read keyset scan failed: ${exception.getMessage}")
-      )(MongoRatingCadenceStore.decodeRecord).required
-  }
-
-  override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] =
-    if (keys.isEmpty) Map.empty
-    else coll.fold(Map.empty[String, RatingChangeStats]) { c =>
-      // A failed read THROWS: answered empty, the report showed no cadence history for a film
-      // whose history it simply could not read.
-      Await.result(c.find(Filters.in("_id", keys*)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
-        .flatMap(MongoRatingCadenceStore.decodeRecord).toMap
-    }
 }

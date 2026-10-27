@@ -757,13 +757,8 @@
     .auth-menu { min-height: 35px; }
   }
 
-  /* The Debug tab is a dev-mode-only link. On mobile (both portrait
-     and landscape) it pushes the navbar over its width budget on the
-     narrow phones — and the page it links to is keyboard-shortcut
-     heavy anyway, not useful on touch. Hide on both mobile arms. */
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
-    .nav-tab-debug { display: none; }
     .container-fluid { padding-top: .375rem !important; }
     /* "Zaloguj" lives in the navbar on desktop only. On mobile (both
        portrait and landscape) it's hidden here — the avatar pill still

@@ -281,7 +281,7 @@ class MongoScreeningsRepository(
   findAllBatchBackoff:  FiniteDuration = 500.millis,
   // Persist THIS stream's resume token so a restart replays showtime changes that landed
   // while down — the `movies` stream can't, a showtime write never touches `movies`. ON only
-  // in the worker (the durable mirror); OFF for web /debug + scripts. See [[ChangeStreamResumeToken]].
+  // in the worker (the durable mirror); OFF for scripts. See [[ChangeStreamResumeToken]].
   persistResumeToken:   Boolean        = false,
   // What this store streams. The worker passes the Prometheus sink; everything else keeps
   // the no-op. This cursor is the read-model projection's larger trigger and had no metric

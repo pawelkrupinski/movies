@@ -3,9 +3,8 @@ package services.cadence
 import scala.util.hashing.MurmurHash3
 
 /**
- * The boundary arithmetic of a phase-spread refresh schedule, in one place for the
- * worker's `DueWindow` (which decides what is due) and [[CadenceReport]] (which shows
- * when it next will be). A key refreshes once per period, at the boundaries
+ * The boundary arithmetic of a phase-spread refresh schedule, for the worker's
+ * `DueWindow` (which decides what is due). A key refreshes once per period, at the boundaries
  * `phase + n·period`; a refresh counts toward one of them, and the key is due again
  * once the boundary after that one is reached. Which one it counts toward is the
  * schedule's [[DueBoundary.Counting]].

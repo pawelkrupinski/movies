@@ -493,9 +493,9 @@ object UptimeMonitor {
     buckets.headMap(timestamp - MaxBuckets * BucketDurationMs).clear()
 
   // The venue's public source-page URL travels as a `"url:<https…>"` service
-  // tag (written by the worker's `CinemaClientMarkers`). Both /uptime and /debug
-  // turn a cinema name into a link to it, so the parse lives here — one prefix,
-  // one extractor — rather than re-spelt at each render site.
+  // tag (written by the worker's `CinemaClientMarkers`). /uptime turns a cinema
+  // name into a link to it, so the parse lives here — one prefix, one extractor —
+  // rather than re-spelt at each render site.
   val UrlTagPrefix: String = "url:"
   def urlFromTags(tags: Set[String]): Option[String] =
     tags.find(_.startsWith(UrlTagPrefix)).map(_.drop(UrlTagPrefix.length))

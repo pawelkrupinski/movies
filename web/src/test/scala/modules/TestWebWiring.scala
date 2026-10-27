@@ -1,8 +1,8 @@
 package modules
 
 import models.{Country, MovieRecord}
-import services.{MongoAddress, MongoConnection}
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.MongoAddress
+import services.movies.StoredMovieRecord
 import services.readmodel.{InMemoryReadModelRepository, ReadModelProjection, ReadModelReader}
 import play.api.test.Helpers.stubControllerComponents
 
@@ -20,20 +20,14 @@ class TestWebWiring(
   // NoRealDependenciesInUnitSpecsSpec); a spec pins one by overriding this with `Env.of(...)`.
   lazy val env: tools.Env = tools.Env.of()
   // No cluster: every connection the wiring opens at this address stays disabled — the
-  // corpus, the users database and the /debug stacks alike — whatever MONGODB_URI the
-  // shell holds (CI runs the unit suites with it set).
+  // corpus and the users database alike — whatever MONGODB_URI the shell holds (CI runs
+  // the unit suites with it set).
   val mongoAddress: MongoAddress = MongoAddress.Disabled
-  // The /debug read-mirror is the one Mongo the wiring still opens from an env knob
-  // (MONGODB_MOVIES_MIRROR_URI, a dev-only convenience), so it stays shut here too — the
-  // /debug stacks would otherwise dial it with every OTHER country in tow.
-  override protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient]  = None
-  override lazy val movieMirrorConnection: MongoConnection = mongoConnection
-  override lazy val movieRepository = new InMemoryMovieRepository(seed, normalizer = titleNormalizer)
   override lazy val readModelRepository: ReadModelReader = {
     val store = new InMemoryReadModelRepository()
     seed.foreach { case (title, year, record) =>
       val stored = StoredMovieRecord.synthesised(title, year, record, services.movies.SingleCountryNormalizer.titleNormalizer)
-      store.upsertMovie(ReadModelProjection.resolve(stored, titleNormalizer))
+      store.upsertMovie(ReadModelProjection.resolve(stored, services.movies.TitleNormalizer.forCountry(country)))
       ReadModelProjection.screenings(stored).foreach(store.upsertScreening)
     }
     store

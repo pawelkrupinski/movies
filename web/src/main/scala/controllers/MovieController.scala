@@ -2,7 +2,6 @@ package controllers
 
 import models._
 import play.api.mvc._
-import play.api.Mode
 import services.readmodel.WebReadModel
 
 import java.time.LocalDate
@@ -19,7 +18,6 @@ class MovieController( cc: ControllerComponents,
                        // Who is signed in is `AuthController`'s question, answered
                        // per client at `/api/me`.
                        oauthProviders: Set[String],
-                       environment: Mode,
                        responseCache: EncodedResponseCache,
                        // The ONE country this deployment serves — which cities are
                        // ours (`withCity`) and which the sitemap advertises. Injected
@@ -254,7 +252,7 @@ class MovieController( cc: ControllerComponents,
       schedules,
       city.cinemaDisplayNames,
       city.cinemaPillMap,
-      devMode, minifier, oauthProviders, renderedAt = now,
+      minifier, oauthProviders, renderedAt = now,
       isLargeCity     = isLargeCity,
       pageTitle       = meta.title,
       pageDescription = meta.description,
@@ -545,8 +543,6 @@ class MovieController( cc: ControllerComponents,
   def cityCardFallback(country: String): Action[AnyContent] = Action {
     Found(ShareCardUrl.home(models.Country.byCode(country).getOrElse(servingCountry)))
   }
-
-  private def devMode: Boolean = DevMode.enabled(environment)
 }
 
 object MovieController {

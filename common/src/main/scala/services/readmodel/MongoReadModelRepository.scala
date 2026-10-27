@@ -359,7 +359,7 @@ class MongoReadModelRepository(
 
 object MongoReadModelRepository {
   /** The two derived collections. Named here rather than inline so
-   *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
+   *  [[services.DebugMirror]] can state what the local mirror has to carry. */
   val MoviesCollection     = "web_movies"
   val ScreeningsCollection = "web_screenings"
 }

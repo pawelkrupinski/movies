@@ -4,7 +4,7 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Showtime, SourceData}
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
-import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
+import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
 import play.api.Logging
@@ -87,7 +87,7 @@ class MongoMovieRepository(
   // Persist the change-stream resume token so the shared cursor reopens (after a terminal
   // error or a WORKER RESTART) from where it left off — replaying events that landed while
   // this process was down, closing the gap the consumers' periodic backstops exist for. ON
-  // only in the WORKER (the durable read-model / cache mirror); OFF for web /debug + scripts,
+  // only in the WORKER (the durable read-model / cache mirror); OFF for scripts,
   // whose ephemeral cursor position must not clobber the worker's in the shared token doc.
   persistResumeToken: Boolean = false,
   // The country whose rules derive a row's `_id` (`sanitize(title)|year`). The
@@ -333,9 +333,7 @@ class MongoMovieRepository(
       }
     )(onBatch)
 
-  /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
-   *  fetches one row's per-source breakdown when its table row is expanded.
-   *  Mirrors [[findAll]]'s decode; an absent `_id` yields `None`. Best-effort:
+  /** Indexed single-document lookup by `_id`. Mirrors [[findAll]]'s decode; an absent `_id` yields `None`. Best-effort:
    *  failures are logged, not thrown, and reported as `false` so a caller can tell an
    *  absent row from an unreadable one — see the trait doc for what conflating them
    *  costs. A row whose SLOT read failed counts as unreadable too: `MovieSideStitch.decode`
@@ -371,45 +369,6 @@ class MongoMovieRepository(
           failed
       }
     case None => tools.ReadOutcome.none(what)
-  }
-
-  /** Strips each source's `showtimes` SERVER-SIDE so they never cross the wire:
-   *  rewrites `sourceData` (a dynamic-cinema-keyed subdocument, so a plain
-   *  field-exclusion projection can't target it) by mapping every value through
-   *  `$objectToArray` → `$filter` out the `showtimes` key → `$arrayToObject`.
-   *  Measured ~58% of the corpus bytes, so this roughly halves the `/debug`
-   *  corpus scan. `$sort` on `_id` stays the FIRST stage (index-backed) for the
-   *  same exactly-once guarantee as [[findAll]]. A missing `showtimes` decodes to
-   *  `Seq.empty` (`MovieCodecs.BackwardCompatibleSourceDataCodec`), so the result
-   *  round-trips through the normal `StoredMovieDto` codec. */
-  override def findAllForListing(): Seq[StoredMovieRecord] = coll match {
-    case Some(c) =>
-      // A failed read THROWS, and /debug shows the error: an empty table read as an empty corpus.
-      val stripShowtimes = org.bson.Document.parse(
-        """{ "$set": { "sourceData": { "$arrayToObject": { "$map": {
-          |  "input": { "$objectToArray": { "$ifNull": ["$sourceData", {}] } },
-          |  "as": "kv",
-          |  "in": { "k": "$$kv.k", "v": { "$arrayToObject": { "$filter": {
-          |    "input": { "$objectToArray": "$$kv.v" },
-          |    "as": "f",
-          |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
-      val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
-      val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).batchSize(tools.MongoReplies.Films).toFuture(), 60.seconds)
-      // Stitch slots like every other reader. This one reads `movies.sourceData`
-      // straight out of an aggregation, so a migrated film — whose slots have moved to
-      // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
-      // stripped: slots are stored without them, which is exactly what this path wants.
-      // A failed slots load can't be recovered from here (the listing has no "partial"
-      // shape to return), but it MUST NOT pass silently: every migrated film would
-      // render cinema-less and the page would read as a corpus-wide outage. This one is
-      // the dev /debug table, so it degrades loudly instead of refusing to render.
-      val read     = stitch.allSlotRows()
-      val allSlots = read.getOrElse(Map.empty)
-      if (read.isEmpty)
-        logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
-          "list with no cinemas. The listing is stale, not the corpus.")
-      rows.map(dto => stitch.slotsInto(StoredMovieDto.toDomain(dto, normalizer), allSlots.getOrElse(dto._id, Map.empty)))
-    case None => Seq.empty
   }
 
   /** Stream every persisted record through `f`, one keyset page at a time (via

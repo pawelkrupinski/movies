@@ -19,8 +19,8 @@ import scala.util.Try
  * `UPDATE_LOOKUP` makes insert/update/replace events carry the full post-image (not
  * just the delta), so we always hand a complete row to `onUpsert`. A DELETE has no
  * `fullDocument`, so we surface its `documentKey._id` to `onDelete` instead (what the
- * cache's periodic backstop used to be the only path for, and what the /debug live
- * view needs so a merged-away row disappears). The driver auto-resumes across
+ * cache's periodic backstop used to be the only path for, and what a consumer
+ * needs so a merged-away row disappears). The driver auto-resumes across
  * transient blips; a TERMINAL error is reopened on a backoff by [[ChangeStreamReopen]].
  * Requires a replica set (a single-node RS counts); on a standalone Mongo the stream
  * errors out and the caller falls back to its backstop.
@@ -607,7 +607,7 @@ final class MovieChangeStream(
   }
 
   /** Stop the shared cursor once no listener remains, so an idle repository
-   *  (e.g. web /debug after every viewer disconnects) doesn't keep decoding
+   *  doesn't keep decoding
    *  every write for nothing. */
   private def stopWatchingIfIdle(): Unit = changeLock.synchronized {
     if (movieChanges.isEmpty) {

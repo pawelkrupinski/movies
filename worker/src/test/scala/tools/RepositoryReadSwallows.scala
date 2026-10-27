@@ -9,9 +9,6 @@ package tools
 object RepositoryReadSwallows {
 
   val Swallows: Map[(String, String, String), String] = Map(
-    ("web/src/main/scala/services/MirrorFreshness.scala", "newestIn",
-      "Try(Await.result(") ->
-      "a dev /debug label's freshness stamp: None reads as 'freshness unknown', which is what a failed read is; logged",
     ("common/src/main/scala/services/MongoCachingDetailFetch.scala", "cached",
       "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", idOf(url)), Filters.gt(\"expireAt\", java.util.Date.from(clock.instant())))).headOption(), 10.seconds))") ->
       "a CACHE read: a miss refetches from the source, the safe direction, and costs one fetch",

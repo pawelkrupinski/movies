@@ -58,14 +58,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // boot exactly once across all tests.
   private var chrome: Option[Chrome] = None
   private var server: TestHttpServer = _
-  // `/debug-slots`' single row, plus the two change-stream frames the no-op-guard
-  // test replays through it (built in beforeAll, alongside the row itself).
-  private var slotsRowId: String = _
-  // The /debug/readmodel fixture page and its per-film screenings fragment.
-  private var readModelPage: String = _
-  private var readModelScreenings: String => String = _ => ""
-  private var slotsUnchangedFrame: String = _
-  private var slotsChangedFrame: String = _
   // Every film the city will ever show, counted off the fixture corpus the index
   // is rendered from — the number of cards the served document must already hold.
   private var corpusFilmCount: Int = 0
@@ -143,7 +135,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+        schedules, cinemas, pills, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now
       ).body
 
@@ -188,7 +180,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // can be driven without a real city's worth of scraped data.
       val manyShowtimesSchedules = tools.ManyShowtimesCity(schedules, now)
       val manyShowtimesHtml: String = views.html.repertoire(
-        manyShowtimesSchedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+        manyShowtimesSchedules, cinemas, pills, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now,
         isLargeCity = controllers.MovieControllerService.totalShowtimes(manyShowtimesSchedules) >
           controllers.MovieControllerService.LargeCityShowtimeThreshold
@@ -199,7 +191,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         schedules.map(s => s.copy(showings = s.showings.map { case (day, cinemas) =>
           day -> cinemas.map(c => c.copy(showtimes = c.showtimes.map(t => t.copy(format = t.format.filterNot(_ == "IMAX")))))
         })),
-        cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+        cinemas, pills, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now
       ).body
       // The facet listing (`/{city}/filmy?country=…|director=…|cast=…|genre=…`).
@@ -221,7 +213,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // UserStateController, and let the boot reconcile (first-login union vs.
       // server-authoritative replace) be driven over CDP.
       val loggedInHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+        schedules, cinemas, pills, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = Set("google"), renderedAt = now
       ).body
       val meJson =
@@ -283,56 +275,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         }
       }
 
-      // The global-corpus /debug page (not city-scoped) — a few corpus rows to
-      // populate the main #t table under test.
-      // Ratings are distinct so the "Ratings" column sorts by the COMBINED
-      // weighted score (MovieRecord.weightedRating), like the main page does:
-      //   Unresolved 0.0  <  Pending 6.0  <  Done 9.0.
-      // "Done Film" tops it on Metacritic+RT alone with NO imdbRating — proving
-      // the sort reads weightedRating, not the old raw-IMDb key (which was both
-      // empty here AND never matched its header, so the column never sorted).
-      val debugRows = Seq(
-        StoredMovieRecord.synthesised("Pending Film",    Some(2024), MovieRecord(tmdbId = Some(1), imdbRating = Some(6.0)), services.movies.SingleCountryNormalizer.titleNormalizer),
-        StoredMovieRecord.synthesised("Unresolved Film", Some(2023), MovieRecord(), services.movies.SingleCountryNormalizer.titleNormalizer),
-        StoredMovieRecord.synthesised("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7), metascore = Some(90), rottenTomatoes = Some(90)), services.movies.SingleCountryNormalizer.titleNormalizer),
-      )
-      val debugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(debugRows, titleNormalizer), titleNormalizer, current = models.Country.Poland).body
-      // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
-      // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =
-      // 1 distinct cinema, `cinemaSlots` = 2 per-title slots, so `_debugRow`
-      // renders the bracketed slot count `1 (2)`. Served on its own path so the
-      // shared `/debug` corpus-count + sort tests (which assert exactly 3 rows)
-      // stay untouched.
-      val slotsRow = StoredMovieRecord.synthesised("Slots Film", Some(2024), MovieRecord(
-        tmdbId = Some(99),
-        data = Map(
-          CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
-          CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))), services.movies.SingleCountryNormalizer.titleNormalizer)
-      val slotsDebugHtml: String = views.html.debug(controllers.DebugCorpusTable.of(Seq(slotsRow), titleNormalizer), titleNormalizer, current = models.Country.Poland).body
-      slotsRowId = slotsRow.id.value
-      // The /debug/readmodel page: one film with one showtime, whose booking URL is
-      // the marker the lazy-screenings test looks for — in the fetched fragment,
-      // never in the page itself.
-      val readModelFixture = services.readmodel.TestReadModel.fromRecords(Seq(("Readmodel Film", Some(2024),
-        MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Readmodel Film"),
-          showtimes = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(2).atTime(18, 30), bookingUrl = Some("https://book.example/readmodel")))))))))
-      val readModelHtml: String =
-        views.html.debugReadModel(controllers.ReadModelDump.of(readModelFixture), current = models.Country.Poland).body
-      readModelScreenings = id => controllers.ReadModelDump.screeningsOf(readModelFixture)(id)
-        .map(views.html.debugReadModelScreenings(id, _).body).getOrElse("")
-      readModelPage = readModelHtml
-      // Change-stream frames for the no-op-guard test, rendered by the SAME
-      // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`
-      // UNCHANGED (the common scrape-tick write, which bumps only `updatedAt`);
-      // the other adds a SHOWTIME to an existing slot — a real change that leaves
-      // the light data row byte-identical (same cinema count, same ids), so only
-      // the details digest can tell the two apart.
-      slotsUnchangedFrame = views.html._debugRow(slotsRow, titleNormalizer, tools.SpecClock.latestTitleYear).body
-      slotsChangedFrame = views.html._debugRow(slotsRow.copy(record = slotsRow.record.copy(
-        data = slotsRow.record.data.map { case (showing, source) =>
-          showing -> source.copy(showtimes = Seq(
-            Showtime(LocalDateTime.of(2026, 6, 8, 18, 30), bookingUrl = Some("https://example.test/book"))))
-        })), titleNormalizer, tools.SpecClock.latestTitleYear).body
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
       // prepends the prefix, so strip it here, then match the in-city sub-path.
       def sub(p: String): String = p.stripPrefix(cityPrefix)
@@ -372,24 +314,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // Every other country's picker pane, fetched by the landing once it is up.
           case p if p.startsWith("/api/picker/") =>
             pickerFragments.body(p.stripPrefix("/api/picker/").takeWhile(_ != '?')).fold("")(_.text)
-          // The global-corpus /debug page (no city prefix).
-          case "/debug" => debugHtml
-          // Isolated single-row /debug variant for the Cinemas-cell layout test.
-          case "/debug-slots" => slotsDebugHtml
-          // The read-model dump, and one film's screenings fetched on row expand,
-          // mirroring DebugController.debugReadModelScreenings.
-          case "/debug/readmodel" => readModelPage
-          case p if p.startsWith("/debug/readmodel/screenings?") =>
-            readModelScreenings(URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8"))
-          // A corpus row's per-source breakdown, fetched lazily when its /debug
-          // table row is expanded (the heavy subtree is no longer rendered inline).
-          // The `id` query param is the row's `_id`; serve the matching row's
-          // debugDetails, mirroring DebugController.debugDetails.
-          case p if p.startsWith("/debug/details?") =>
-            val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
-            (debugRows :+ slotsRow).find(r => r.id.value == id)
-              .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String], latestYear = tools.SpecClock.latestTitleYear, now = tools.SpecClock.Pinned.instant()).body)
-              .getOrElse("")
         },
         dynamicRoute = exchange => { recordPrefetch(exchange); hiddenFilmsDynamicRoute(exchange) }
       )
@@ -405,7 +329,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  see [[tools.PageScripts]]): pure definitions, installed in every tab before
    *  its body runs and again ahead of every document it loads after. */
   private val PageHelpers = Seq(
-    "common/dom.js", "debug/corpus-table.js", "film/film-page.js", "layout/navbar.js", "listing/carousel.js",
+    "common/dom.js", "film/film-page.js", "layout/navbar.js", "listing/carousel.js",
     "listing/expiry.js", "listing/filtry.js", "listing/grid.js", "listing/posters.js",
     "user-state/user-state.js")
 
@@ -446,16 +370,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  behind a county heading behind a nation heading. */
   private def onNestedLanding(body: CdpPage => Any): Unit =
     open(server.baseUrl + "/landing-nested")(body)
-
-  /** Open the global-corpus `/debug` page (not city-scoped). */
-  private def onDebug(body: CdpPage => Any): Unit =
-    open(server.baseUrl + "/debug")(body)
-
-  /** Open the single-row `/debug-slots` variant of the corpus table — the row
-   *  carries real cinema slots, so it drives both the Cinemas-cell layout and the
-   *  change-stream no-op guard without disturbing `/debug`'s three-row tests. */
-  private def onDebugSlots(body: CdpPage => Any): Unit =
-    open(server.baseUrl + "/debug-slots")(body)
 
   /** Open the index as a signed-in visitor and WAIT FOR THE AVATAR TO ARRIVE.
    *
@@ -5660,164 +5574,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("matchMedia('(pointer: coarse)').matches"),
       "expected a coarse pointer after touch emulation — swipe handlers are gated on it"
     )
-  }
-
-  // Clicking a corpus-table (#t) column header sorts the data rows by that
-  // column's data-* key. The heavy collapsed `tr.details` siblings are parked
-  // OFF-DOM (the perf win — the sort drags only the light data rows); a row's
-  // details is spliced back in, adjacent, only while it's expanded. The fixture
-  // corpus is Pending/Unresolved/Done Film; the FIRST click sorts descending, so
-  // by title that is Unresolved, Pending, Done, and a second click reverses it.
-  private val corpusTitles = "__debugTable.titles()"
-  private val attachedDetailsCount = "String(__debugTable.attachedDetails())"
-  // Every EXPANDED data row is immediately followed by its own visible details row.
-  private val expandedDetailsAdjacent = "__debugTable.expandedDetailsAdjacent()"
-
-  "the /debug corpus table" should "sort data rows and keep an expanded row's details beside it" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
-      // Collapsed details never sit in the table — that's what keeps the sort cheap.
-      page.evalString(attachedDetailsCount) shouldBe "0"
-      // First click → descending; re-click → ascending.
-      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
-      page.evalString(attachedDetailsCount) shouldBe "0"
-      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
-      // Expand the first data row → its details splices in, adjacent and visible.
-      page.eval("""document.querySelector('#t tbody tr.data').click()""")
-      page.evalString(attachedDetailsCount) shouldBe "1"
-      page.evalBool(expandedDetailsAdjacent) shouldBe true
-      // Re-sort (descending) → the now-expanded row moves and its details follows it.
-      page.eval("""document.querySelector('#t thead th[data-key="title"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
-      page.evalBool(expandedDetailsAdjacent) shouldBe true
-    }
-  }
-
-  // The per-source breakdown (every cinema × day × showtime) is NOT in the page
-  // — rendering every row's up front built one giant HTML string that OOM'd the
-  // view on the full corpus. Each row's details cell ships empty and its body is
-  // fetched from /debug/details on first expand. `cacheKey` is a `<dt>` only the
-  // debugDetails partial renders, so it's absent until a row is opened.
-  "the /debug corpus table" should "fetch a row's per-source details lazily on expand" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
-      // Nothing heavy in the initial document — proves the details aren't inline.
-      page.evalBool("""document.body.innerHTML.indexOf('cacheKey') === -1""") shouldBe true
-      // Expand the first row → its details cell fills from the fetched fragment.
-      page.eval("""document.querySelector('#t tbody tr.data').click()""")
-      page.waitFor("__debugTable.detailsHold('cacheKey')")
-    }
-  }
-
-  // The read-model dump ships per-film COUNTS; a film's screening docs are fetched
-  // on first expand — inlining every showtime of the US read model (~100k screening
-  // docs) OOM'd the dev server.
-  "the /debug/readmodel table" should "fetch a film's screenings lazily on expand, not ship them in the page" in {
-    open(server.baseUrl + "/debug/readmodel") { page =>
-      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
-      page.evalBool("""document.body.innerHTML.indexOf('book.example/readmodel') === -1""") shouldBe true
-      page.eval("""document.querySelector('#t tbody tr.data').click()""")
-      page.waitFor(
-        """[...document.querySelectorAll('.screenings-slot')].some(s => s.innerHTML.indexOf('book.example/readmodel') !== -1)""")
-    }
-  }
-
-  // Regression coverage for `filterRows`/the row-click expand handler ahead of
-  // extracting their shared shape (with debugReadModel.scala.html's own
-  // filter+expand) into one helper both pages call — pins today's behavior so
-  // the extraction can't silently change it.
-  "the /debug corpus table" should "hide rows the search box doesn't match, and collapse a hidden row that was expanded" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
-      // Expand "Pending Film" before filtering it away.
-      page.eval("__debugTable.clickRowMatching('pending')")
-      page.evalString(attachedDetailsCount) shouldBe "1"
-
-      page.eval("__dom.type('#q', 'done')")
-
-      page.evalString("__debugTable.shownHaystacks()") should include("done film")
-      page.evalInt("__debugTable.shownRows()") shouldBe 1
-      // The filtered-out "Pending Film" row was expanded — collapsing it detaches
-      // its details rather than leaving them orphaned behind a hidden row.
-      page.evalBool("__debugTable.rowExpanded('pending')") shouldBe false
-      page.evalString(attachedDetailsCount) shouldBe "0"
-
-      // Clearing the box restores every row, still collapsed.
-      page.eval("__dom.type('#q', '')")
-      page.evalInt("__debugTable.shownRows()") shouldBe 3
-    }
-  }
-
-  // A change-stream frame fires on ANY write to a film's document, and the common
-  // one re-asserts an unchanged scrape slot: it bumps `updatedAt` and nothing the
-  // row renders. Applying such a frame re-parks an EMPTY details shell, so an
-  // EXPANDED row refetched its /debug/details body — 4.4 MB every ~15s for a wide
-  // release on the live UK corpus, without end (12 consecutive frames for The
-  // Odyssey rendered byte-identical row markup). `data-digest` on the details row
-  // covers the whole record INCLUDING per-slot showtimes, so an unchanged frame is
-  // dropped whole while a showtime-only change — invisible in the light data row —
-  // still refetches.
-  "the /debug corpus table" should "drop a change-stream frame that changed nothing, and keep an expanded row loaded" in {
-    onDebugSlots { page =>
-      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
-      page.eval("""document.querySelector('#t tbody tr.data').click()""")
-      page.waitFor("__debugTable.detailsHold('cacheKey')")
-      // Count /debug/details fetches from here on. loadDetails calls the global
-      // `fetch`, so the counter sees every refetch a replayed frame provokes.
-      page.eval("__debugTable.countDetailFetches()")
-      def applyUpsert(frame: String): Unit =
-        page.eval(s"__debugTable.applyUpsert(${jsString(slotsRowId)}, ${jsString(frame)})")
-      // An UNCHANGED frame (same digest) must not refetch — and must leave the
-      // loaded body in place rather than swapping in a fresh empty shell.
-      applyUpsert(slotsUnchangedFrame)
-      page.evalInt("__debugTable.detailFetches") shouldBe 0
-      page.evalBool("__debugTable.detailsHold('cacheKey')") shouldBe true
-      // A frame whose showtimes changed shifts the digest, so the open row does
-      // refetch — the guard suppresses no-ops, not real updates.
-      applyUpsert(slotsChangedFrame)
-      page.waitFor("__debugTable.detailFetches === 1")
-    }
-  }
-
-  // The "Ratings" column sorts by the COMBINED weighted score (the same
-  // MovieRecord.weightedRating the main page sorts cards by), not the raw IMDb
-  // value. "Done Film" tops it on Metacritic+RT with no imdbRating at all, so a
-  // sort keyed on the old `data-imdbR` (which never matched its header anyway)
-  // could never produce this order — it asserts the real weighted-rating sort.
-  it should "sort the Ratings column by the combined weighted rating, like the main page" in {
-    onDebug { page =>
-      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
-      page.evalString(attachedDetailsCount) shouldBe "0"
-      // First click → descending by weighted rating (highest first: 9.0, 6.0,
-      // 0.0), as the main page shows.
-      page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Done Film|Pending Film|Unresolved Film"
-      // Re-click → ascending (0.0, 6.0, 9.0).
-      page.eval("""document.querySelector('#t thead th[data-key="rating"]').click()""")
-      page.evalString(corpusTitles) shouldBe "Unresolved Film|Pending Film|Done Film"
-      // Sorting never dragged a collapsed details row into the DOM.
-      page.evalString(attachedDetailsCount) shouldBe "0"
-    }
-  }
-
-  // The corpus Cinemas cell shows the distinct-cinema count plus, when a venue
-  // holds more per-title slots than cinemas, the slot count in parens (`1 (2)`).
-  // That bracket must sit on the SAME line as the count — a regression where the
-  // unrelated expanded-details `.cinemas` grid rule leaked onto `td.cinemas` made
-  // the cell a grid and dropped the `(nr)` span to its own row. Assert the cell
-  // is a normal table-cell and the slot span shares the count's line, to its right.
-  "the /debug Cinemas cell" should "keep the (nr) slot count on the same line as the count" in {
-    onDebugSlots { page =>
-      page.waitFor("""!!document.querySelector('#t tbody td.cinemas .slots')""")
-      // The bracket renders because slots (2) exceed distinct cinemas (1).
-      page.evalString(
-        """document.querySelector('#t tbody td.cinemas').textContent.replace(/\s+/g,'')""") shouldBe "1(2)"
-      // Layout: the cell is a plain table-cell (NOT a grid), and the slot span
-      // sits on the count's line (tops aligned within a line) and to its right.
-      page.evalBool("__debugTable.slotCountBesideCount()") shouldBe true
-    }
   }
 
   /** Dispatch a synthetic touch `PointerEvent` of `kind` at (`x`,`y`) on the

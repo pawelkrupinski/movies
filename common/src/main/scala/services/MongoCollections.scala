@@ -61,7 +61,7 @@ final case class RegisteredCollection(name: String, database: CollectionDatabase
  * ([[FleetDatabase.Collections]], `docs/fleet-database-migration.md`).
  *
  * Why: each of those was a hand-kept list, and a new collection had to be added to several by hand (`identity_agreement_keys`,
- * 2026-10-25), missing one silently — an empty /debug page, a collection nothing swept, a capture the drift check lacked.
+ * 2026-10-25), missing one silently — an empty mirror read, a collection nothing swept, a capture the drift check lacked.
  *
  * How to use: adding a collection, add its entry here in the same change, and regenerate the files the specs name. The
  * retention is `Ttl("expiresAt")` (with a TTL index on that field), `Sweep("TheClassThatDeletes")` or
@@ -83,26 +83,25 @@ object MongoCollections {
 
   val all: Seq[RegisteredCollection] = Seq(
     RegisteredCollection("movies", Corpus, Sweep("IdentityProjection"), Set(Worker))
-      .mirror("The corpus table: the film rows (/debug), also read by `ReviewLabelsCli` (the answers' film links, the queue).")
+      .mirror("Backs no page: the corpus, read by `ReviewLabelsCli` (the answers' film links, the queue) and for local inspection.")
       .record,
     RegisteredCollection("screenings", Corpus, Sweep("StrandedSideRowsCleanup"), Set(Worker))
-      .mirror("The corpus table's showtimes, stitched back into the film rows.")
+      .mirror("Backs no page: the corpus's showtimes, read by `ReviewLabelsCli queue` (what prod serves each listing as).")
       .record,
     RegisteredCollection("movie_slots", Corpus, Sweep("StrandedSideRowsCleanup"), Set(Worker))
-      .mirror("The per-cinema slot rows the corpus readers resolve beside `movies`. Missing, every /debug film " +
-        "rendered slot-less.")
+      .mirror("Backs no page: the per-cinema slot rows beside `movies`, read by the local identity scripts " +
+        "(`scripts/identity-calibrate`, the matching experiments).")
       .record,
     RegisteredCollection("enrichment_attempts", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
-      .mirror("The per-row expand: each rating source's last fetch."),
+      .mirror("Backs no page: each rating source's last fetch, read by `scripts/local-mirror/staleness.js`."),
     RegisteredCollection("rating_cadence", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
-      .mirror("The per-row expand: each rating source's refresh cadence."),
+      .mirror("Backs no page: each rating source's refresh cadence, read by `scripts/local-mirror/staleness.js`."),
     RegisteredCollection("web_movies", Corpus, Sweep("ReadModelProjector"), Set(Worker))
-      .mirror("The /debug/readmodel dump of what the serving app actually serves. Missing, the dump was blank for " +
-        "every non-boot country."),
+      .mirror("Backs no page: what the serving app actually serves, for local inspection."),
     RegisteredCollection("web_screenings", Corpus, Sweep("ReadModelProjector"), Set(Worker))
-      .mirror("The /debug/readmodel dump's screenings."),
+      .mirror("Backs no page: the read model's screenings, beside `web_movies`."),
     RegisteredCollection("cinema_scrapes", Corpus, OnePerVenue, Set(Worker))
-      .mirror("Backs no /debug page. Each cinema's last content-bearing scrape: the listing the client actually" +
+      .mirror("Backs no page. Each cinema's last content-bearing scrape: the listing the client actually" +
         " produced, before the corpus merge touched it, which is what you read when a scrape looks wrong " +
         "and the corpus a local replay replays. Over the tunnel that read is the latency this mirror " +
         "exists to remove.")
@@ -160,16 +159,16 @@ object MongoCollections {
       .resolveInput("the model's rules version, which hashes the pins (ResolveInputs.rulesVersion)"),
     // the country's staging clusters (capped) and resolved ones (capped, aged out), deleted by its publisher
     RegisteredCollection("identity_staging", Corpus, Sweep("IdentityStagingPublisher"), Set(Worker))
-      .mirror("The staging screen (/debug/identity/staging): each country's clusters still waiting on an answer" +
-        " and those resolved lately, capped by its publisher (at most 700 small documents a country).")
+      .mirror("Backs no page: each country's clusters still waiting on an answer and those resolved lately, " +
+        "capped by its publisher (at most 700 small documents a country).")
       .resolveState("the staging screen's display, only written by the path"),
     RegisteredCollection("uptimeBuckets", Corpus, Ttl("bucket"), Set(Web, Worker))
-      .mirror("Backs no /debug page: ~24 h of 15-minute scrape outcomes per service (TTL-expired in prod; the " +
+      .mirror("Backs no page: ~24 h of 15-minute scrape outcomes per service (TTL-expired in prod; the " +
         "tailer carries those deletes). The scheduled white-cinema investigation (docs/white-cinema-" +
         "investigations.md) replays /uptime's classification over them, since /uptime is admin-gated and " +
         "prod Mongo is off limits to agents."),
     RegisteredCollection("filmwebFallback", Corpus, OnePerVenue, Set(Worker))
-      .mirror("Backs no /debug page: one document per venue that ever fell back (PL's own-site to Filmweb, UK " +
+      .mirror("Backs no page: one document per venue that ever fell back (PL's own-site to Filmweb, UK " +
         "chains to Flicks; other countries hold none, and an empty prod collection never makes a mirror " +
         "stale). The white-cinema sweep reads it beside the buckets to tell a venue served via its " +
         "fallback from one that is genuinely white."),
