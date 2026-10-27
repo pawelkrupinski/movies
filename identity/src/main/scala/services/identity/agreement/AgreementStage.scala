@@ -697,7 +697,16 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     // settled without some families: their questions asked on every pass — one answered reads the verdict again
     found.foreach(v => pass.asked ++= unreached(v))
     found.filter(_.rules == decidedUnder).filter { kept =>
-      val clean = held.clean(id, digest, version, changes.changedSince)
+      // a filing of what it read is compared by value, that answer alone read again ([[Memo.clean]]'s `again`): one that
+      // moved nothing leaves it standing — every TMDB search is filed under one id (QueryFiled), so any search filed
+      // anywhere read every verdict that read one whole (DE 2026-10-27: ~4 s, 1.5 GB an apply)
+      var reread = false
+      val clean  = held.clean(id, digest, version, changes.changedSince, again = { (read, recorded) =>
+        reread = true
+        digestNow(read, listingIn(listings)).contains(recorded)
+      })
+      // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
+      if (clean && reread) pass.asked ++= kept.reads.keys.flatMap(staleOf)
       if (clean && pass.validating()) {
         // the full validation's: read again whole, though the index calls it standing — a drift is decided again
         val checked = held.verified(id, kept, digestNow(_, listingIn(listings)))

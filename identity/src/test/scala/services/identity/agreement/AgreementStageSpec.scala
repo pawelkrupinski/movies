@@ -523,6 +523,36 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     passes.takeRight(2).map(_.resolves) shouldBe Seq(0, 0)
   }
 
+  // One dependency index (docs/design/identity-no-drift.md): a filing reaches the verdicts that read what it files, and of
+  // those only the ones whose recorded digest of it moved are decided — by value, never because the receipt names it. A
+  // filing that moved nothing re-reads that one answer, not the whole receipt: every TMDB search is filed under one id
+  // (QueryFiled), so any search filed anywhere read every DE verdict's receipt whole (~1.5 GB an apply, 2026-10-27).
+  it should "stand on a filing of what it read that moved nothing, reading that alone again, and be decided again once it moves" in {
+    val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
+    var reads  = 0
+    var imdb   = Map("tt16315948" -> SourceRecord(klondike, Map("imdb" -> "tt16315948")))
+    val families = agreeing().map { case (family, answers) => family -> (new FamilyAnswers {
+      val family: VoterFamily = answers.family
+      private def held = if (family == VoterFamily.Imdb) new HeldFamilyAnswers(family, imdb) else answers
+      def titled(text: String)     = { reads += 1; held.titled(text) }
+      def directedBy(name: String) = { reads += 1; held.directedBy(name) }
+      def record(id: String)       = { reads += 1; held.record(id) }
+      override def fresh(question: String) = held.fresh(question)
+    }: FamilyAnswers) }
+    var filed = Set.empty[String]
+    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned,
+      changes = _ => Some(filed))
+    stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)
+    filed = Set(Question.Family(VoterFamily.Imdb, "title|Klondike").id.get)   // filed again, as it was
+    reads = 0
+    stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
+    (passes.last.resolves, reads) shouldBe ((0, 1))
+    imdb = Map.empty                                                          // filed again, moved
+    stage.apply(resolution, listingOf, version = 3)
+    passes.last.resolves shouldBe 1
+  }
+
   it should "take the agreed IMDb id as its fallback film when TMDB holds none" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.fallback shouldBe Some(ResolverDecision.Fallback("imdb", "tt16315948", 1.0))

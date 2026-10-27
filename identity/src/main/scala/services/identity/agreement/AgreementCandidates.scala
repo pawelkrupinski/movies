@@ -112,12 +112,13 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   }
 
   /** The TMDB films the cluster's own evidence reaches, none denied — a cache of its listings and of every TMDB answer
-   *  the read took (its receipt): kept while its listings' digest stands and none of those answers was filed since; none,
+   *  the read took (its receipt): kept while its listings' digest stands and none of those answers filed since moved (a
+   *  filing re-read and compared by value, [[Memo.clean]]); none,
    *  read again once something is filed (another `version`), while a TMDB question of theirs has no answer. What it read
    *  goes into the receipt being made, if any, kept or read afresh. */
   private[agreement] def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] = {
     val kept = candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying) &&
-      candidateFilms.clean(id, digest, applying, changes.changedSince))
+      candidateFilms.clean(id, digest, applying, changes.changedSince, again = (read, recorded) => digestNow(read, listingIn(listings)).contains(recorded)))
     val now  = kept.getOrElse {
       var blind = false
       val reads = mutable.Map.empty[Dependency, Long]
