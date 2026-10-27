@@ -17,7 +17,7 @@ class TestWebWiring(
     seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
     val country: Country = Country.default) extends Wiring {
   // No knob set, whatever the shell running the specs holds (unit specs read no process environment:
-  // UnitSpecsHaveNoRealDependenciesSpec); a spec pins one by overriding this with `Env.of(...)`.
+  // NoRealDependenciesInUnitSpecsSpec); a spec pins one by overriding this with `Env.of(...)`.
   lazy val env: tools.Env = tools.Env.of()
   // No cluster: every connection the wiring opens at this address stays disabled — the
   // corpus, the users database and the /debug stacks alike — whatever MONGODB_URI the

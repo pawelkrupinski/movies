@@ -541,7 +541,7 @@ lazy val web = (project in file("web"))
   .settings(unitReportSettings, testOrderSettings)
   // Play's test kit (play.api.test.Helpers, which web's specs use for FakeRequest and the like) names Selenium's and
   // HtmlUnit's driver classes in its object's initialiser, so they must load; no unit spec drives a browser through
-  // them, which UnitSpecsHaveNoRealDependenciesSpec checks.
+  // them, which NoRealDependenciesInUnitSpecsSpec checks.
   .settings(UnitClasspathGuard.allowing(UnitClasspathGuard.BrowserOrganizations))
   .settings(itReportSettings, itRowSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))

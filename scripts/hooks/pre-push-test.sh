@@ -209,8 +209,10 @@ check "a production Scala source runs the standing lints only" "$Always" "$(lint
 for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md build.sbt web/src/test/scala/ASpec.scala \
   worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
   out="$(lints "$changed")"
-  check "$changed runs the self-test, dispatch-gate, literal-wait, raw-git and sleep lints" \
-    "yes yes yes yes yes" "$(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec) $(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" worker:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec)"
+  # The script self-test and dispatch-gate specs spawn bash and git, so they are `it` specs now (unit specs reach no
+  # real dependency, 2026-10-27): main's integration-test row runs them, this unit lint plan no longer can.
+  check "$changed runs the literal-wait, raw-git, sleep and real-dependency lints, not the it-side self-test and dispatch-gate specs" \
+    "yes yes yes yes no no" "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" worker:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec) $(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec)"
 done
 out="$(lints scripts/x.sh)"
 check "...and the common source lints" "yes" "$(has "$out" common:tools.SourceControlCharactersLintSpec)"

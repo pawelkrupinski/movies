@@ -11,7 +11,7 @@ import sbt.Keys._
  * edit put one back on a unit classpath, this guard fails every unit Test task of that module with the entry named.
  *
  * What it cannot see -- a production class that talks to a real thing (the Mongo driver, `RealHttpFetch`) is on every
- * classpath through main -- `UnitSpecsHaveNoRealDependenciesSpec` lints for.
+ * classpath through main -- `NoRealDependenciesInUnitSpecsSpec` lints for.
  */
 object UnitClasspathGuard {
 

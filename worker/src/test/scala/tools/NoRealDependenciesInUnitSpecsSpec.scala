@@ -35,10 +35,10 @@ import java.nio.file.Path
  * the recorders, probes, backfills) are operator tools that reach the world on purpose; they assert nothing and stay
  * exempt, as in [[NoSleepInTestsSpec]].
  */
-class UnitSpecsHaveNoRealDependenciesSpec extends AnyFlatSpec with Matchers {
+class NoRealDependenciesInUnitSpecsSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, isProgram, read, scalaFiles}
-  import UnitSpecsHaveNoRealDependenciesSpec._
+  import NoRealDependenciesInUnitSpecsSpec._
 
   private lazy val sources: Seq[(Path, String)] =
     scalaFiles(UnitRoots).filterNot(isProgram).filterNot(_.toString == Self).map(p => p -> codeOf(p))
@@ -95,14 +95,14 @@ class UnitSpecsHaveNoRealDependenciesSpec extends AnyFlatSpec with Matchers {
   }
 }
 
-object UnitSpecsHaveNoRealDependenciesSpec {
+object NoRealDependenciesInUnitSpecsSpec {
 
   /** The unit configs' trees: what `testUnit` compiles and runs. */
   val UnitRoots: Seq[String] =
     Seq("common/src/test", "identity/src/test", "scrapers/src/test", "testkit/src/test", "web/src/test", "worker/src/test")
 
   /** This spec: its self-test feeds the matchers these shapes as string literals. */
-  private val Self = "worker/src/test/scala/tools/UnitSpecsHaveNoRealDependenciesSpec.scala"
+  private val Self = "worker/src/test/scala/tools/NoRealDependenciesInUnitSpecsSpec.scala"
 
   private val StringLiteral = "\"\"\"(?s:.*?)\"\"\"|\"(?:[^\"\\\\\\n]|\\\\.)*\"".r
 
