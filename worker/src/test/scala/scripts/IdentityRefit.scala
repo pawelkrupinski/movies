@@ -354,13 +354,19 @@ object IdentityRefit {
 
     def propose(c: IdentityCalibration): Seq[Change] = proposals(c, units, relearn)
 
-    /** The captured decisions under `start`: what round 1 measures from. */
-    def control(using ExecutionContext): Baseline = {
-      val base     = baseline(replays, start)
-      val verdicts = base.takes.map(UnmatchedClusters.verdict(_, labels))
-      log(s"control (the captured decisions, as the ratchet reads them): ${base.takes.size} takes, ${verdicts.count(_.contains(true))} right, " +
-        s"${verdicts.count(_.contains(false))} wrong, ${verdicts.count(_.isEmpty)} unjudged; ${base.gaps} TMDB questions its resolve asks unanswered")
-      base
+    private var controlled = Option.empty[Baseline]
+
+    /** The captured decisions under `start`: what round 1 measures from. Resolved once per ground -- a full resolve of
+     *  every capture -- however many searches and shards measure from it. */
+    def control(using ExecutionContext): Baseline = synchronized {
+      controlled.getOrElse {
+        val base     = baseline(replays, start)
+        val verdicts = base.takes.map(UnmatchedClusters.verdict(_, labels))
+        log(s"control (the captured decisions, as the ratchet reads them): ${base.takes.size} takes, ${verdicts.count(_.contains(true))} right, " +
+          s"${verdicts.count(_.contains(false))} wrong, ${verdicts.count(_.isEmpty)} unjudged; ${base.gaps} TMDB questions its resolve asks unanswered")
+        controlled = Some(base)
+        base
+      }
     }
 
     /** `changes` measured on top of `from`, each judged. */
