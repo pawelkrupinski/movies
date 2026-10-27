@@ -5,7 +5,7 @@ import services.identity.adapters.IdentityProjection
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaCityChain, CinemaCityKinepolis, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, KinoPalacowe,
-  Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb}
+  Movie, MovieRecord, Multikino, Rialto, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CacheKey, CinemaSlotBuilder, InMemoryMovieRepository, ListingKey, StringPool, VenuePageFacts}
@@ -68,7 +68,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
      *  record does not tell apart, so a page a stand linked stays until that writer judges it again. */
     var linked = false
     val linkOf = scala.collection.mutable.Map.empty[Int, ResolverDecision => ResolverDecision]
-    /** Whether every listing prints its year and director. A venue slot carries a field its listing leaves out from the
+    /** Whether every listing prints its year, director and poster. A venue slot carries a field its listing leaves out from the
      *  slot it is built over (`CinemaSlotBuilder`'s prior slot): the venue slot code's, versioned on its own
      *  (`VenueSlotMemo.codeVersion`), and not yet a function of current inputs alone. */
     var fullRows = false
@@ -113,17 +113,24 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       val (title, year, director) = printed(rng.nextInt(printed.size))
       val page  = Option.when(rng.nextBoolean())(s"https://${cinema.pillName.toLowerCase(java.util.Locale.ROOT)}/${normalizer.sanitize(title)}-${year.getOrElse(0)}")
       val hours = (0 until 1 + rng.nextInt(4)).map(_ => rng.nextInt(24 * 6)).distinct.sorted
-      CinemaMovie(Movie(title, releaseYear = year), cinema, None, page, None, Nil, director.toSeq, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
+      // printing a poster wherever it prints its year and director: one a row leaves out is carried from the slot built over
+      val poster = Option.when(fullRows)(s"https://posters/${rng.nextInt(1000)}.jpg")
+      CinemaMovie(Movie(title, releaseYear = year), cinema, poster, page, None, Nil, director.toSeq, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
     }
+
+    /** `row` printed again by its venue under its own listing key — its title, year, director and page — with another
+     *  poster and other showtimes: two rows the listings' order ties, one of which a slot is built over. */
+    def twin(row: CinemaMovie): CinemaMovie =
+      row.copy(posterUrl = Some(s"https://posters/${rng.nextInt(1000)}.jpg"), showtimes = listing(row.cinema).showtimes)
   }
 
   // Production's storage shape: showtimes in `screenings`, venue slots in `movie_slots`.
-  private def world(s: Scenario, scopedBetweenWhole: Int, clock: Clock = clock) =
+  private def world(s: Scenario, scopedBetweenWhole: Int, clock: Clock = clock, memo: Long => VenueSlotMemo = new VenueSlotMemo(_)) =
     new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
       slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer) {
         override def upsert(film: services.movies.FilmId, key: CacheKey, e: MovieRecord): services.movies.WriteOutcome =
           if (e.tmdbId.exists(s.declining)) services.movies.WriteOutcome.Declined("store refused") else super.upsert(film, key, e)
-      }, venues, clock, s.resolve, s.details, scopedBetweenWhole = scopedBetweenWhole)
+      }, venues, clock, s.resolve, s.details, scopedBetweenWhole = scopedBetweenWhole, slotMemoOf = memo)
 
   /** Everything a world stores: every film's id, key, title, year and record, and every slot's showtimes. */
   private def stored(w: ProjectionWorld) = w.repository.findAll().sortBy(_.id.value).map { r =>
@@ -214,9 +221,12 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     val ticking = new _root_.tools.MutableClock(clock.instant())
     var scoped = world(s, IdentityProjection.ScopedBetweenWhole, ticking)
     var whole  = world(s, 0, ticking)
+    // The whole world reads each venue's rows in another order: what a projection makes of a venue's programme is a
+    // function of the rows it prints, never of the order it prints them in.
+    val order = new Random(seed * 7919L)
     def scrape(cinemas: Iterable[Cinema]): Unit = {
       val programmes = cinemas.map(c => c -> s.programme.getOrElse(c, Vector.empty)).toMap
-      scoped.scrape(programmes); whole.scrape(programmes)
+      scoped.scrape(programmes); whole.scrape(programmes.map { case (c, rows) => c -> order.shuffle(rows) })
     }
     venues.foreach(c => s.programme(c) = Vector.fill(1 + rng.nextInt(4))(s.listing(c)))
     scrape(venues)
@@ -231,7 +241,9 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
         val op = rng.nextInt(11)
         events += s"op $op at ${cinema.pillName}"
         op match {
-          case 0 | 1 => s.programme(cinema) = shown :+ s.listing(cinema); touched += cinema
+          case 0 | 1 =>
+            s.programme(cinema) = shown :+ (if (shown.nonEmpty && rng.nextInt(4) == 0) s.twin(shown(rng.nextInt(shown.size))) else s.listing(cinema))
+            touched += cinema
           case 2 if shown.nonEmpty => s.programme(cinema) = shown.patch(rng.nextInt(shown.size), Nil, 1); touched += cinema
           case 3 if shown.nonEmpty =>
             val i = rng.nextInt(shown.size)
@@ -302,8 +314,15 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       val (scopedBefore, wholeBefore) = (placed(scoped, s)._1, placed(whole, s)._1)
       // The scoped world projects as the model takes its scrapes in about half the time (`tickChanged`), on the period
       // otherwise — and on the period whenever none has run yet.
+      def held(w: ProjectionWorld) = w.repository.findAll().map(r => r.id -> (r.key(normalizer), r.record)).toMap
+      val (scopedHeld, wholeHeld) = (held(scoped), held(whole))
       val a = Option.when(rng.nextBoolean())(scoped.projection.tickChanged()).flatten.getOrElse(scoped.projection.tick())
       val b = whole.projection.tick()
+      // a film a projection writes is one it moves: its key, or its record as written
+      Seq("scoped" -> (a, scopedHeld), "whole" -> (b, wholeHeld)).foreach { case (name, (projected, before)) =>
+        withClue(s"seed $seed, tick $t: the $name world wrote films as they were: ")(projected.changed.filter(f => before.get(f.id).exists {
+          case (key, record) => key == f.key && services.movies.ShowtimesDigest.leanEqual(record, f.record) }).map(_.id) shouldBe empty)
+      }
       if (a.declined > 0 || b.declined > 0) declined += 1
       def storesAlike(): Unit = {
         a.refused shouldBe b.refused
@@ -383,6 +402,28 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     a.scoped shouldBe true
     stored(scoped) shouldBe stored(whole)
     scoped.repository.findAll().filter(_.title == "Obcy").map(_.key(normalizer)) shouldBe Seq("obcy|1979")
+  }
+
+  // Prod PL 2026-10-27: every hourly projection of the whole corpus rewrote a few films as they were — none of their
+  // documents moved — and counted each as drift, "(key)", which read as a key flipping: a venue slot the memo held that a
+  // build from its rows did not give, built in full before the write and found to be the one stored.
+  it should "write, and count as drift, no film whose slots built in full are the ones it holds" in {
+    val s = new Scenario(new Random(11))
+    s.failing = false
+    var stale = false
+    val w = world(s, IdentityProjection.ScopedBetweenWhole, memo = environment => new VenueSlotMemo(environment) {
+      override private[identity] def lookup(key: VenueSlotMemo.Key, stored: => Option[Seq[(Source, SourceData)]]) =
+        super.lookup(key, stored).map(lean => if (!stale) lean else lean.map { case (source, slot) => source -> slot.copy(synopsis = Some("held")) })
+    })
+    venues.foreach(c => s.programme(c) = Vector.fill(2)(s.listing(c)))
+    w.scrape(s.programme.toMap)
+    w.projection.tick(whole = true)
+    w.projection.tick(whole = true)
+    val held = stored(w)
+    stale = true
+    val reconcile = w.projection.tick(whole = true)
+    (reconcile.changed.map(_.id), w.drifts.toSeq) shouldBe ((Nil, Seq(0, 0)))
+    stored(w) shouldBe held
   }
 
   // Prod 2026-10-26 (PL): a venue page read again moves the slot its listing builds (`CinemaSlotBuilder.pages`), with

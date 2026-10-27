@@ -173,7 +173,8 @@ object IdentityProjectionPlan {
     ProjectionIndex(byKey, storedById, previousOf, listingsOf, covered, additions, clusters, clusterOf)(normalizer)
   }
 
-  /** One listing per key — the smallest by the total order, as the resolver takes it — standing for every row
+  /** One listing per key — the smallest by the total order, as the resolver takes it, then by the rest of its row: the
+   *  row a slot is built over (`VenueSlots.first`), whatever order the venue printed them in — standing for every row
    *  published under that key (its slot is built from all of them: `merged`), so a venue printing one listing twice
    *  loses no showtime. */
   def oneByKey(listings: Seq[ProjectedListing]): Map[ListingKey, ProjectedListing] = {
@@ -186,7 +187,7 @@ object IdentityProjectionPlan {
         case Some(earlier) => twice(key) = l :: twice.getOrElse(key, List(earlier))
       }
     }
-    twice.foreach { case (key, rows) => first(key) = rows.minBy(_.listing).copy(showtimes = rows.map(_.showtimes).sorted.##) }
+    twice.foreach { case (key, rows) => first(key) = rows.minBy(p => (p.listing, p.row)).copy(showtimes = rows.map(_.showtimes).sorted.##) }
     first.toMap
   }
 

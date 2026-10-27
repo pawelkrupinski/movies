@@ -197,19 +197,25 @@ private[identity] object VenueSlots {
   def byVenue(record: MovieRecord): Map[Cinema, Seq[(Source, SourceData)]] =
     record.data.toSeq.collect { case (showing: CinemaShowing, slot) => showing.cinema -> ((showing: Source) -> slot) }.groupMap(_._1)(_._2)
 
-  /** The rows `cinema` publishes under `key`, as one: the smallest by the listings' total order, carrying every row's
-   *  showtimes — so a venue printing one listing twice loses none. */
+  /** The rows `cinema` publishes under `key`, as one: the [[first]], carrying every row's showtimes — so a venue printing
+   *  one listing twice loses none. */
   private[identity] def merged(cinema: Cinema, rows: Seq[CinemaMovie], normalizer: TitleNormalizer): CinemaMovie =
     if (rows.sizeIs == 1) rows.head
-    else rows.minBy(cm => Listing.of(cinema, cm, normalizer)).copy(showtimes = MovieRecordMerge.dedupShowtimes(rows.flatMap(_.showtimes)))
+    else first(cinema, rows, normalizer).copy(showtimes = MovieRecordMerge.dedupShowtimes(rows.flatMap(_.showtimes)))
+
+  /** Of the rows `cinema` publishes under one key, the one standing for them: the smallest by the listings' total order,
+   *  then by the rest of the row ([[ProjectedListing.rowDigest]]) — two rows the listings tie, a poster or a synopsis
+   *  apart, by what they print, never by the order the venue prints them in ([[IdentityProjectionPlan.oneByKey]]). */
+  private[identity] def first(cinema: Cinema, rows: Seq[CinemaMovie], normalizer: TitleNormalizer): CinemaMovie =
+    rows.minBy(cm => (Listing.of(cinema, cm, normalizer), ProjectedListing.rowDigest(cm)))
 
   /** Whether `byKey` holds exactly the rows `listed` were read from (no re-scrape landed between the two reads), so
    *  what is built from it may be kept under their key. */
   private[identity] def readAsListed(cinema: Cinema, listed: Seq[ProjectedListing], byKey: VenueRows, normalizer: TitleNormalizer): Boolean =
     listed.forall { l =>
       byKey.get(l.listing.key).exists { rows =>
-        val first = if (rows.sizeIs == 1) rows.head else rows.minBy(cm => Listing.of(cinema, cm, normalizer))
-        ProjectedListing.rowDigest(first) == l.row &&
+        val one = if (rows.sizeIs == 1) rows.head else first(cinema, rows, normalizer)
+        ProjectedListing.rowDigest(one) == l.row &&
           (if (rows.sizeIs == 1) rows.head.showtimes.## else rows.map(_.showtimes.##).sorted.##) == l.showtimes
       }
     }

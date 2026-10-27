@@ -154,7 +154,9 @@ final class IdentityProjection(
    *  like one re-scraped — left out, only the hourly projection of the whole corpus rebuilt its slot. Read off the one feed
    *  every input's change comes on; None when it no longer holds every filing since the last call: every listing on a
    *  page is then a change. */
-  pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil)
+  pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil),
+  /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */
+  slotMemoOf:  Long => VenueSlotMemo = new VenueSlotMemo(_)
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -162,7 +164,7 @@ final class IdentityProjection(
   private val mapping = new FilmIdMapping(filmIds)
   private var consecutiveShrinks = 0
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
-  private val slotMemo = new VenueSlotMemo(VenueSlotMemo.environment(normalizer))
+  private val slotMemo = slotMemoOf(VenueSlotMemo.environment(normalizer))
   /** The fingerprints the store holds, as far as this worker knows: none read yet until the first projection. */
   private var recordedFingerprints: Option[Set[Long]] = None
 
@@ -504,10 +506,20 @@ final class IdentityProjection(
       if (f.touched.isDefined && (movedElsewhere(f.id.value) || !cache.holdsSlotsLean)) f.copy(touched = None) else f)
     // The map first: a film written under a fresh id must be numbered before anything can see it.
     if (plan.counterAdditions.nonEmpty) filmIds.insert(plan.counterAdditions)
-    val changed = phases("compare")(drafted.filter { f =>
-      before.get(f.id).forall(s => s.key(normalizer) != f.key ||
-        !f.touched.fold(LeanRecords.equal(f.record, s.record))(LeanRecords.equalAt(f.record, s.record, _)))
-    }.pipe(films => detailed.complete(films, id => before.get(id).map(_.record))))
+    def moved(f: ProjectedFilm) = before.get(f.id).forall(s => s.key(normalizer) != f.key ||
+      !f.touched.fold(LeanRecords.equal(f.record, s.record))(LeanRecords.equalAt(f.record, s.record, _)))
+    // Compared again once complete: a venue whose lean slot differs from the stored one is built in full from its rows,
+    // and a film whose built slots are the ones stored moved nothing. Written, every hourly projection rewrote it as it
+    // was and counted it as drift — "(key)", nothing of it named — where a scoped one left it (prod PL, 2026-10-27).
+    val (changed, unmoved) = phases("compare")(drafted.filter(moved)
+      .pipe(films => detailed.complete(films, id => before.get(id).map(_.record))).partition(moved))
+    if (unmoved.nonEmpty) {
+      // a lean slot no build from its rows gives: what the venue slot memo held for it, and what it missed
+      val leanOf = drafted.iterator.map(f => f.id -> f.record).toMap
+      logger.warn(s"identity projection: ${unmoved.size} film(s) drafted from venue slots a build from their rows does not give, " +
+        s"left as stored: ${unmoved.sortBy(_.id.value).take(IdentityProjection.FilmsNamed).map(f =>
+          s"${f.id} (${IdentityProjection.rebuilt(leanOf(f.id), f.record)})").mkString(", ")}")
+    }
     // A scoped projection writes a film it keeps under its key as only what moved; a projection of the whole corpus writes
     // every changed film whole — the hourly rewrite that puts right anything a patch could not see.
     val patchable: ProjectedFilm => Option[MovieRecord] =
@@ -638,6 +650,20 @@ object IdentityProjection {
     }).map(_.toString).sorted
     val named   = fields ++ sources.take(3) ++ Option.when(sources.size > 3)(s"+${sources.size - 3} slots")
     if (named.isEmpty) "key" else named.mkString(" ")
+  }
+
+  /** The venue slots of `lean`, a film as drafted, that a build from their rows gave otherwise (`built`), each with the
+   *  fields it differs in — `showtimes` for their digest — the first few named: the input a slot's memo key misses. */
+  private[identity] def rebuilt(lean: MovieRecord, built: MovieRecord): String = {
+    val slots = lean.data.toSeq.flatMap { case (source, was) =>
+      built.data.get(source).filterNot(LeanRecords.slotsEqual(was, _)).map { now =>
+        val fields = was.productElementNames.zip(was.productIterator.zip(now.productIterator)).collect {
+          case (name, (a, b)) if !Set("showtimes", "showtimesDigest", "showtimeStartMinutes")(name) && a != b => name
+        }.toSeq ++ Option.when(services.movies.ShowtimesDigest.slotDigest(was) != services.movies.ShowtimesDigest.slotDigest(now))("showtimes")
+        s"$source: ${fields.mkString(" ")}"
+      }
+    }.sorted
+    (slots.take(3) ++ Option.when(slots.size > 3)(s"+${slots.size - 3} slots")).mkString("; ")
   }
 
   /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
