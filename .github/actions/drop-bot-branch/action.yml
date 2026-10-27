@@ -7,14 +7,15 @@ description: >-
   that push from an App without the `workflows` permission whenever those
   weeks touched .github/workflows/. An open PR on the branch is closed and
   reopened fresh -- its content is regenerated from scratch every run anyway.
-  See BotPullRequestBranchSpec.
+  See BotPullRequestBranchSpec. On Forgejo (no App, no git/refs API in the gh
+  shim) it deletes the branch with git, through the checkout's credentials.
 
 inputs:
   branch:
     description: The branch create-pull-request is about to push
     required: true
   token:
-    description: The token that pushes it (the Sync Bot App's)
+    description: The token that pushes it (the Sync Bot App's on github.com; the job's on Forgejo, where git uses the checkout's)
     required: true
 
 runs:

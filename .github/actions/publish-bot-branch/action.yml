@@ -1,0 +1,54 @@
+name: Publish a bot branch (Forgejo)
+description: >-
+  Forgejo's stand-in for create-pull-request plus the Sync Bot App, which exist
+  only on github.com: commits the listed paths onto main's tip, pushes the bot's
+  fixed branch with the job's own token (drop-bot-branch dropped the old one
+  first, so it is always a fresh branch off main), and names it to the owner in
+  an issue carrying the report (scripts/ci/bot-branch-ready.sh). No change to
+  the paths: nothing is pushed or filed. The calling job needs `permissions:
+  contents: write, issues: write`, a checkout of `ref: main` and a
+  drop-bot-branch step before this one. See BotBranchOnForgejoSpec.
+
+inputs:
+  branch:
+    description: The bot's fixed branch
+    required: true
+  add-paths:
+    description: The paths to commit, one per line (git pathspecs; a glob is fine)
+    required: true
+  commit-message:
+    description: The commit's message
+    required: true
+  title:
+    description: What the branch holds, for the issue's title
+    required: true
+  body-path:
+    description: The report the issue carries
+    required: true
+
+runs:
+  using: composite
+  steps:
+      - shell: bash
+        env:
+            GH_TOKEN: ${{ github.token }}
+            GH_REPO: ${{ github.repository }}
+            BRANCH: ${{ inputs.branch }}
+            ADD_PATHS: ${{ inputs.add-paths }}
+            MESSAGE: ${{ inputs.commit-message }}
+            TITLE: ${{ inputs.title }}
+            BODY: ${{ inputs.body-path }}
+            RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            OWNER: ${{ github.repository_owner }}
+        run: |
+            set -euo pipefail
+            mapfile -t paths < <(printf '%s\n' "$ADD_PATHS" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d')
+            git add -A -- "${paths[@]}"
+            if git diff --cached --quiet; then
+                echo "No change to publish on $BRANCH."
+                exit 0
+            fi
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+                commit -q -m "$MESSAGE"
+            git push origin "HEAD:refs/heads/$BRANCH"
+            "$GITHUB_WORKSPACE/scripts/ci/bot-branch-ready.sh" "$BRANCH" "$TITLE" "$BODY" "$RUN_URL" "$OWNER"

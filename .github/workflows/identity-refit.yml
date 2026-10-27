@@ -64,6 +64,7 @@ concurrency:
 permissions:
     contents: write
     pull-requests: write
+    issues: write
 
 jobs:
     # ROUND 1 ON FOUR RUNNERS. It is the refit's measure: ~58 proposals, each the five captures re-resolved, CPU-bound
@@ -213,7 +214,7 @@ jobs:
             # A fresh branch off main every run, never a force-push over a stale one --
             # see .github/actions/drop-bot-branch.
             - uses: actions/create-github-app-token@v3
-              if: steps.changed.outputs.kept == 'true'
+              if: github.server_url == 'https://github.com' && steps.changed.outputs.kept == 'true'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
@@ -223,10 +224,10 @@ jobs:
               if: steps.changed.outputs.kept == 'true'
               with:
                   branch: chore/identity-refit
-                  token: ${{ steps.app-token.outputs.token }}
+                  token: ${{ steps.app-token.outputs.token || github.token }}
 
             - name: Open the refit PR
-              if: steps.changed.outputs.kept == 'true'
+              if: github.server_url == 'https://github.com' && steps.changed.outputs.kept == 'true'
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}
@@ -237,6 +238,20 @@ jobs:
                       test/resources/fixtures/08-06-2026/*
                   commit-message: 'Re-tune the identity rules the weekly refit measured: right takes gained, none wrong, switched or lost'
                   title: 'Identity refit: re-tuned weights and thresholds'
+                  body-path: identity-refit-report.md
+
+            # Forgejo has no App and no PRs: the branch is pushed with the job's token and named to the owner in an
+            # issue (.github/actions/publish-bot-branch, BotBranchOnForgejoSpec).
+            - name: Publish the refit branch (Forgejo)
+              if: github.server_url != 'https://github.com' && steps.changed.outputs.kept == 'true'
+              uses: ./.github/actions/publish-bot-branch
+              with:
+                  branch: chore/identity-refit
+                  add-paths: |
+                      identity/src/main/resources/identity-weights.json
+                      test/resources/fixtures/08-06-2026/*
+                  commit-message: 'Re-tune the identity rules the weekly refit measured: right takes gained, none wrong, switched or lost'
+                  title: 'Re-tuned identity weights and thresholds'
                   body-path: identity-refit-report.md
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.

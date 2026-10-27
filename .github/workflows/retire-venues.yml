@@ -32,6 +32,7 @@ on:
 permissions:
     contents: write
     pull-requests: write
+    issues: write
 
 concurrency:
     group: retire-venues-${{ inputs.roster }}
@@ -82,10 +83,10 @@ jobs:
               if: steps.retire.outputs.retired != '0'
               run: sbt "common/testOnly models.CountrySpec"
 
-            - name: Open the PR
+            - name: Push the retirement branch
+              id: branch
               if: steps.retire.outputs.retired != '0'
               env:
-                  GH_TOKEN: ${{ github.token }}
                   ROSTER: ${{ inputs.roster }}
                   RETIRED: ${{ steps.retire.outputs.retired }}
               run: |
@@ -96,8 +97,34 @@ jobs:
                   git add -A common geodata scrapers worker web data
                   git commit -m "Retire ${RETIRED} closed ${ROSTER} venue(s) the closure sweep confirmed"
                   git push origin "$branch"
-                  gh pr create --base main --head "$branch" \
+                  echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+            - name: Open the PR
+              if: github.server_url == 'https://github.com' && steps.retire.outputs.retired != '0'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  BRANCH: ${{ steps.branch.outputs.name }}
+                  ROSTER: ${{ inputs.roster }}
+                  RETIRED: ${{ steps.retire.outputs.retired }}
+              run: |
+                  gh pr create --base main --head "$BRANCH" \
                       --title "Retire ${RETIRED} closed ${ROSTER} venue(s)" --body-file "$RUNNER_TEMP/pr-body.md"
+
+            # Forgejo has no `gh pr` and movies takes no PRs: the branch is named to the owner in an issue
+            # (scripts/ci/bot-branch-ready.sh, BotBranchOnForgejoSpec).
+            - name: Name the branch to the owner (Forgejo)
+              if: github.server_url != 'https://github.com' && steps.retire.outputs.retired != '0'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  BRANCH: ${{ steps.branch.outputs.name }}
+                  ROSTER: ${{ inputs.roster }}
+                  RETIRED: ${{ steps.retire.outputs.retired }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  OWNER: ${{ github.repository_owner }}
+              run: |
+                  scripts/ci/bot-branch-ready.sh "$BRANCH" "Retire ${RETIRED} closed ${ROSTER} venue(s)" \
+                      "$RUNNER_TEMP/pr-body.md" "$RUN_URL" "$OWNER"
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:

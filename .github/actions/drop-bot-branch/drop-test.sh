@@ -19,10 +19,17 @@ case "$STUB_REF" in
 esac
 STUB
 chmod +x "$work/gh"
+# On Forgejo the same answers come from git: `ls-remote --exit-code` exits 0 found, 2 absent, 128 a failed read.
+cat > "$work/git" <<'STUB'
+#!/usr/bin/env bash
+if [ "$1" = push ]; then echo "$*" >> "$(dirname "$0")/deleted"; exit 0; fi
+case "$STUB_REF" in ok) exit 0 ;; 404) exit 2 ;; *) exit 128 ;; esac
+STUB
+chmod +x "$work/git"
 
-drop() {
+drop() {  # drop <ok|404|500> [server url]
   rm -f "$work/deleted"
-  STUB_REF="$1" GH_REPO=o/r BRANCH=bot/x PATH="$work:$PATH" \
+  STUB_REF="$1" GITHUB_SERVER_URL="${2:-https://github.com}" GH_REPO=o/r BRANCH=bot/x PATH="$work:$PATH" \
     bash "$REPO_ROOT/.github/actions/drop-bot-branch/drop.sh" > /dev/null 2>&1
   echo $?
 }
@@ -32,5 +39,9 @@ check "...by its ref" "DELETE repos/o/r/git/refs/heads/bot/x" "$(cat "$work/dele
 check "a 404 is no branch yet" "0" "$(drop 404)"
 check "...and deletes nothing" "" "$(cat "$work/deleted" 2>/dev/null)"
 check "any other failure fails the step rather than reading as no branch" "1" "$(drop 500)"
+check "on Forgejo an existing branch is deleted through git" "0|push origin --delete bot/x" \
+  "$(drop ok http://forgejo:3000)|$(cat "$work/deleted" 2>/dev/null)"
+check "...a missing one is no branch yet" "0|" "$(drop 404 http://forgejo:3000)|$(cat "$work/deleted" 2>/dev/null)"
+check "...and a failed read fails the step" "1|" "$(drop 500 http://forgejo:3000)|$(cat "$work/deleted" 2>/dev/null)"
 
 spec_summary

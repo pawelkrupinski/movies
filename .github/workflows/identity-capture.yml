@@ -35,7 +35,8 @@ name: Identity capture
 # Secrets (all existing repo secrets): MONGO_CI_SSH_KEY + MONGO_CI_SSH_HOST_KEY (the tunnel, as
 # record-scrape-fixtures.yml), TMDB_API_KEY (the live gaps), SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
 # (the "Kinowo Sync Bot" App, as decoration-discovery.yml: it pushes the branch, and opens the PR so
-# Branch CI runs on it). This bot's PR is the third of three sanctioned exceptions to "no PRs" (with
+# Branch CI runs on it) -- on github.com only. ON FORGEJO there is no App and no PR: the job's own token
+# pushes the branch, and a green one is named to the owner in an issue (scripts/ci/bot-branch-ready.sh). This bot's PR is the third of three sanctioned exceptions to "no PRs" (with
 # decoration-discovery.yml and identity-refit.yml): land it by fast-forwarding main after review.
 
 on:
@@ -75,9 +76,15 @@ jobs:
                   MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY
+            # The Sync Bot App is github.com's alone: on Forgejo the job's own token pushes the branch (run 2915 went
+            # red asking Forgejo for these; BotBranchOnForgejoSpec).
+            - name: App secrets present
+              if: github.server_url == 'https://github.com'
+              env:
                   SYNC_PR_APP_ID: ${{ secrets.SYNC_PR_APP_ID }}
                   SYNC_PR_APP_PRIVATE_KEY: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
-              run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY SYNC_PR_APP_ID SYNC_PR_APP_PRIVATE_KEY
+              run: scripts/ci/preflight.sh SYNC_PR_APP_ID SYNC_PR_APP_PRIVATE_KEY
 
     capture:
         name: capture (${{ matrix.code }})
@@ -159,13 +166,15 @@ jobs:
         permissions:
             contents: write
             pull-requests: write
+            issues: write
         env:
             BRANCH: chore/identity-capture
             OPEN_PR: ${{ inputs.open-pr && 'true' || 'false' }}
         steps:
-            # The App's token pushes the branch (checkout keeps it as the push credential) and opens
-            # the PR, so Branch CI runs on it.
+            # On github.com the App's token pushes the branch (checkout keeps it as the push credential)
+            # and opens the PR, so Branch CI runs on it. Forgejo has no App: the job's own token pushes.
             - uses: actions/create-github-app-token@v3
+              if: github.server_url == 'https://github.com'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
@@ -177,7 +186,7 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   ref: ${{ inputs.open-pr && 'chore/identity-capture' || 'main' }}
-                  token: ${{ steps.app-token.outputs.token }}
+                  token: ${{ steps.app-token.outputs.token || github.token }}
 
             - uses: actions/download-artifact@v6
               if: ${{ !inputs.open-pr }}
@@ -274,7 +283,7 @@ jobs:
               uses: ./.github/actions/drop-bot-branch
               with:
                   branch: chore/identity-capture
-                  token: ${{ steps.app-token.outputs.token }}
+                  token: ${{ steps.app-token.outputs.token || github.token }}
 
             # A recapture creates the branch afresh; `open-pr` fast-forwards it by the re-baseline.
             - name: Publish the chore/identity-capture branch
@@ -282,7 +291,7 @@ jobs:
               run: git push origin "HEAD:refs/heads/$BRANCH"
 
             - name: Open the PR when the ratchet is green
-              if: steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
+              if: github.server_url == 'https://github.com' && steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
               env:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   GH_REPO: ${{ github.repository }}
@@ -295,6 +304,18 @@ jobs:
                           --title 'Identity capture: refreshed unmatched-cluster fixture' \
                           --body-file identity-capture-report.md
                   fi
+
+            # Forgejo has no PRs (and movies takes none): a green branch is named to the owner in an issue instead.
+            - name: Name the green branch to the owner (Forgejo)
+              if: github.server_url != 'https://github.com' && steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  OWNER: ${{ github.repository_owner }}
+              run: |
+                  scripts/ci/bot-branch-ready.sh "$BRANCH" 'Identity capture: refreshed unmatched-cluster fixture' \
+                      identity-capture-report.md "$RUN_URL" "$OWNER"
 
             - name: Say why there is no PR
               if: steps.ratchet.outputs.green != 'true'
