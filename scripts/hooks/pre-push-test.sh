@@ -13,7 +13,9 @@ unset PREPUSH_REUSE_DIR
 # that check
 unset KINOWO_STALL_FILE KINOWO_PROGRESS_FILE
 # Nor do the caller's Forgejo token and remote reach the scratch pushes: each Forgejo case below names its own.
-unset FORGEJO_API_TOKEN PREPUSH_REMOTE_URL PREPUSH_FORGEJO_URL
+unset FORGEJO_API_TOKEN PREPUSH_REMOTE_URL PREPUSH_FORGEJO_URL PREPUSH_GATE_ATTEMPTS
+# The gate's retries come back at once: a failing read is asked 3 times without a pause between.
+export PREPUSH_GATE_RETRY_SECONDS=0
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from it
 . "$REPO_ROOT/scripts/shell-spec.sh"
@@ -62,7 +64,8 @@ chmod +x "$ghstub/gh"
 # A push to a Forgejo remote reads Forgejo's actions runs API by curl instead: a stub `curl` answers
 # GET …/actions/runs?workflow_id=F from $FJ_MAIN / $FJ_IMC / $FJ_REC (Forgejo's run JSON, default none), records each
 # call's argv in $FJ_ARGV and the config it was handed on stdin (the token's header) in $FJ_CONFIG, and answers 401
-# without that header. $FJ_FAILS: unreachable (curl's exit 7). A stub `secrets` stands for the Touch ID vault: `status`
+# without that header. $FJ_FAILS: unreachable (curl's exit 7); $FJ_FAILS_ONCE=<file>: unreachable on the first call only
+# (the file marks it made). A stub `secrets` stands for the Touch ID vault: `status`
 # says $SECRETS_STATE (default locked); `get` prints a token and counts itself in $SECRETS_GETS.
 cat > "$ghstub/curl" <<'STUB'
 #!/usr/bin/env bash
@@ -70,6 +73,9 @@ config="$(cat)"
 [ -n "${FJ_CONFIG:-}" ] && printf '%s\n' "$config" >> "$FJ_CONFIG"
 [ -n "${FJ_ARGV:-}" ] && printf '%s\n' "$*" >> "$FJ_ARGV"
 [ -n "${FJ_FAILS:-}" ] && { echo "curl: (7) Failed to connect to forgejo.internal port 3000" >&2; exit 7; }
+if [ -n "${FJ_FAILS_ONCE:-}" ] && [ ! -e "$FJ_FAILS_ONCE" ]; then
+  : > "$FJ_FAILS_ONCE"; echo "curl: (7) Failed to connect to forgejo.internal port 3000" >&2; exit 7
+fi
 out="" url=""
 while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; http*) url="$1" ;; esac; shift; done
 case "$config" in *"Authorization: token "?*) ;; *) echo '{"message":"Unauthorized"}' > "$out"; printf 401; exit 0 ;; esac
@@ -601,7 +607,7 @@ check "...while --range over the same commits is refused" "1" \
   "$(cd "$grepo" && GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>&1; echo $?)"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
-check "gh failing is said for each workflow, and does not block" "0 2" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
+check "gh failing is said for each workflow, and refuses a production push (THE GATE FAILS CLOSED)" "1 2" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
 # gh hanging: the stub never ends on its own, so the hook gets past it only by its own bound cutting gh off. That
 # mechanism is the proof -- each workflow's gh cut off (bounded's 124) and said so, no stub left running -- never
 # elapsed wall time, which counts every process the hook starts: a "within 10 s" assertion failed whenever the machine
@@ -611,8 +617,8 @@ check "gh failing is said for each workflow, and does not block" "0 2" "$(GH_FAI
 hung="$gate/gh-hung"; : > "$hung"
 code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$pathchecks" \
          spec_bounded bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
-check "gh hanging is cut off by its bound for each workflow, said out loud, and does not block" "0 2 0" \
-  "$code $(grep -c "gh did not answer .* within 1s: cut off" "$gate/err") $(spec_still_running "$hung")"
+check "gh hanging is cut off by its bound for each workflow, said out loud, and refuses a production push" "1 2 0" \
+  "$code $(grep -c "gh did not answer .* within 1s (3 attempts): cut off" "$gate/err") $(spec_still_running "$hung")"
 # ── The same gate on a Forgejo remote: Forgejo's actions runs API, read by curl, not gh ────────────────────────────
 fj_run() { printf '{"id":%s,"index_in_repo":%s,"status":"%s","workflow_id":"x.yml","html_url":"http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/%s"}' "$((1000 + $1))" "$1" "$2" "$1"; }
 fjred="$(fj_run 38520439037 failure)"; fjgreen="$(fj_run 164 success)"
@@ -643,12 +649,27 @@ check "Forgejo: the vault's token is sent as a header on stdin, never in curl's 
 check "Forgejo: \$FORGEJO_API_TOKEN, when set, is used without the vault" "1 0" \
   "$(rm -f "$gate/gets"; SECRETS_GETS="$gate/gets" FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ')"
 rm -f "$gate/gets"
-check "Forgejo: the vault locked is never unlocked (no Touch ID on a push): skipped in one line, not blocked" "0 0 1" \
-  "$(SECRETS_GETS="$gate/gets" SECRETS_STATE=locked FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ') $(grep -c 'red-build gate SKIPPED\|RED on main\|Forgejo' "$gate/err")"
-check "...that line saying why" "1" "$(grep -c 'no Forgejo token .*red-build gate SKIPPED' "$gate/err")"
-check "Forgejo: unreachable is said for each workflow, and does not block" "0 2" \
-  "$(FJ_FAILS=1 fjpush "$gbase..$plain") $(grep -c 'from Forgejo (curl: (7)' "$gate/err")"
-check "Forgejo: an HTTP refusal is said for each workflow, and does not block" "0 2" \
+# THE GATE FAILS CLOSED (2026-10-27 08:05Z: a gate skipped for want of a token let agentctl's waiting processor push onto
+# a red Main): unread -- no token, an API error, no answer -- refuses a production push; a tools-only one still lands.
+check "Forgejo: the vault locked is never unlocked (no Touch ID on a push): no token REFUSES a production push" "1 0 1 0" \
+  "$(SECRETS_GETS="$gate/gets" SECRETS_STATE=locked FJ_IMC="[$fjgreen]" FJ_MAIN="[$fjgreen]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ') $(grep -c 'red-build gate UNREAD (no Forgejo token.*REFUSED' "$gate/err") $(grep -c 'SKIPPED' "$gate/err")"
+check "...saying how to hand the hook the token, and that agentctl hands it to its processes" "1 1 1" \
+  "$(grep -c 'secrets unlock movies' "$gate/err") $(grep -c 'agentctl env --print' "$gate/err") $(grep -c 'agentctl land hands the token to the processes it starts' "$gate/err")"
+check "...naming the production commit it refuses" "1" "$(grep -c "production commits land only on a green.*${plain:0:9}" "$gate/err")"
+check "Forgejo: no token, a tools-only push lands, said out loud" "0 1" \
+  "$(SECRETS_STATE=locked fjpush "$plain..$tools") $(grep -c 'red-build gate UNREAD (no Forgejo token.*every pushed commit is tools-only' "$gate/err")"
+rm -f "$gate/argv"
+check "Forgejo: an API error is asked 3 times a workflow, said for each, and REFUSES a production push" "1 2 6 1" \
+  "$(FJ_ARGV="$gate/argv" FJ_FAILS=1 FORGEJO_API_TOKEN=envtoken fjpush "$gbase..$plain") $(grep -c 'from Forgejo (curl: (7).* in 3 attempts' "$gate/err") $(wc -l < "$gate/argv" | tr -d ' ') $(grep -c 'red-build gate UNREAD.*REFUSED' "$gate/err")"
+check "...while a tools-only push lands" "0" "$(FJ_FAILS=1 FORGEJO_API_TOKEN=envtoken fjpush "$plain..$tools")"
+check "Forgejo: a failure that a retry answers is no failure: green read, the push lands" "0 0" \
+  "$(FJ_FAILS_ONCE="$gate/failed-once" FORGEJO_API_TOKEN=envtoken FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'UNREAD' "$gate/err")"
+rm -f "$gate/failed-once"
+check "Forgejo: a gate read red (token in the environment, as agentctl hands it) refuses a production push" "1 1" \
+  "$(FORGEJO_API_TOKEN=envtoken FJ_MAIN="[$fjred]" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'Main is RED on main' "$gate/err")"
+check "Forgejo: a gate read green (token in the environment) lets it land" "0 0" \
+  "$(FORGEJO_API_TOKEN=envtoken FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'RED on main\|UNREAD' "$gate/err")"
+check "Forgejo: an HTTP refusal is said for each workflow, and refuses a production push" "1 2" \
   "$(FJ_EXPECT_BASE=http://elsewhere FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(grep -c 'from Forgejo (HTTP 404)' "$gate/err")"
 check "Forgejo: an http remote's own host is read" "1" \
   "$(FJ_EXPECT_BASE=http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies FJ_IMC="[$fjred]" fjremote=http://forgejo.internal:3000/pawelkrupinski/movies.git fjpush "$gbase..$plain")"
@@ -826,7 +847,7 @@ code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/das
   PREPUSH_STALL_SECONDS=2 KINOWO_STALL_POLL_SECONDS=1 KINOWO_STALL_CPU_CENTIS=10 \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
 check "...while a check busy past the bound passes" "0 0" "$code $(grep -c 'STALLED' "$gate/err")"
-# The red gate: its TOOLS missing block like any check's; Forgejo itself unreachable stays the documented warning.
+# The red gate: its TOOLS missing block like any check's; Forgejo itself unreachable blocks a production push too.
 scratch_git "$grepo" reset -q --hard "$oldrefs_base"; tplain="$(commit_paths "a production change" -- web/src/main/scala/A.scala)"
 gate_push() { (cd "$grepo" && PREPUSH_SKIP="$pathchecks" "$@" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$tplain" \
   >/dev/null 2>"$gate/err"); echo $?; }
@@ -834,8 +855,8 @@ check "jq missing on a Forgejo push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without jq)" PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'brew install jq' "$gate/err")"
 check "gh missing on a GitHub push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without gh)") $(grep -c 'brew install gh' "$gate/err")"
-check "...Forgejo unreachable: still a warning, the push lands" "0 2" \
-  "$(gate_push env FJ_FAILS=1 GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'red-build gate SKIPPED' "$gate/err")"
+check "...Forgejo unreachable: the gate unread, a production push is refused" "1 1" \
+  "$(gate_push env FJ_FAILS=1 GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'red-build gate UNREAD' "$gate/err")"
 # ── THE REUSE: a passed run answers a re-push of the SAME tree, and nothing else ─────────────────────────────────────
 # A re-push after a no-content rebase or a reworded message ran every check again. A pass is stored under a key of the
 # pushed tree, the base's, the changed paths, the checks, the hook's bytes, the red-gate state and PREPUSH_SKIP; the

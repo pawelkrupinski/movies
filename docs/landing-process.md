@@ -225,7 +225,7 @@ turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final t
 | `NOT LANDED: rebase onto forgejo/main conflicts in: …` | your change conflicts with main | resolve by hand (`git rebase forgejo/main`), land again |
 | `NOT LANDED: prepush-check refused: … would be reverted/deleted back to an older main version` | a squash onto a moved main | rebuild your commits on current main by rebase, never `reset --soft` |
 | `<workflow> is RED on main: run …` / `NOT LANDED: the red gate refused the push` | a gating run is red and a production commit lacks `Fixes-Red:` | `agentctl ci-why`; wait (`agentctl wait run <id>` in the background) for the green run, or add `Fixes-Red:` only if your commit fixes that run |
-| `no Forgejo token … red-build gate SKIPPED` | warning only | for a real gate: `secrets unlock movies` (the user's Touch ID) |
+| `red-build gate UNREAD (…): the push is REFUSED` | the gate could not be read (no Forgejo token, API error, no answer after 3 tries); it fails closed, so a production push is refused (a tools-only push still lands) | no token: `secrets unlock movies` (the user's Touch ID), then land again (agentctl hands the token to its processes); otherwise `agentctl env --check` for the tunnel, and land again |
 | `<tool> not found: the <check> check cannot run, so the push is BLOCKED` | a local tool is missing | install it as the message says; `eval "$(~/bin/agentctl env --print)"` for sbt/java |
 | `GitOps manifests STALE … BLOCKED` | `infra/bin/fetch-gitops` could not reach movies-gitops | `launchctl kickstart -k gui/$(id -u)/net.bitcashier.forgejo-tunnel`, land again |
 | `blocked by: <checks>` | a path check failed | read the tail (and the land log), fix forward, commit, land again |

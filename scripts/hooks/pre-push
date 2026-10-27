@@ -69,11 +69,13 @@
 # skills, tests, fixtures, CI tooling — land while red (user, 2026-10-14). On 2026-10-13/14, 50 of 96 identity commits
 # landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
 # hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
-# bounded; gh UNREACHABLE is said out loud and does not block (it is no evidence of a red); gh, curl or jq NOT
-# INSTALLED blocks, as any missing tool does (BYPASS below). A push to a
-# Forgejo remote (ssh://forgejo-git/…, since GitHub suspended the account 2026-10-19) reads Forgejo's actions runs API
-# instead, by curl, with $FORGEJO_API_TOKEN or the token in the `movies` vault when it is already unlocked; without
-# one the gate is skipped, said in one line (the repository is private: anonymous reads answer 404).
+# bounded and tried $PREPUSH_GATE_ATTEMPTS (3) times; gh, curl or jq NOT INSTALLED blocks, as any missing tool does
+# (BYPASS below). A push to a Forgejo remote (ssh://forgejo-git/…, since GitHub suspended the account 2026-10-19) reads
+# Forgejo's actions runs API instead, by curl, with $FORGEJO_API_TOKEN or the token in the `movies` vault when it is
+# already unlocked (the repository is private: anonymous reads answer 404).
+# THE GATE FAILS CLOSED: a gate it cannot read -- no token, an API error, no answer in time -- may be red, so a push with
+# a production commit in it is REFUSED, saying how to hand the hook the token; a tools-only push lands, as it would
+# while red. 2026-10-27 08:05Z: a gate skipped for want of a token let agentctl's waiting processor push onto a red Main.
 # Bypass: PREPUSH_SKIP=redgate. NOT gating: the Identity findings report (a recording's own suspects and
 # corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
@@ -94,9 +96,9 @@
 # A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
 # its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
 # actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder, gh (judgements; the
-# red gate on a GitHub push), curl and jq (the red gate on a Forgejo push). What stays a WARNING is what lies outside
-# this machine's install: an external service unreachable (the red gate's Forgejo/GitHub API, a served-takes
-# download), no Forgejo token, and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
+# red gate on a GitHub push), curl and jq (the red gate on a Forgejo push); the red gate unread blocks a production
+# push (THE GATE FAILS CLOSED, above). What stays a WARNING is what lies outside
+# this machine's install: an external service unreachable (a served-takes download) and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
 # both). Not the GitOps manifests: their fetch failing BLOCKS (the checkout left behind is stale, and specs passed or
 # failed against it; a push needs Forgejo anyway).
 #
@@ -450,6 +452,9 @@ GatingWorkflows=("Main" "Identity model convergence")
 # The same workflows by file: Forgejo's runs API filters on the workflow file, not its name.
 GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml")
 GhSeconds="${PREPUSH_GH_SECONDS:-15}"
+# Each workflow's verdict is asked this many times, $PREPUSH_GATE_RETRY_SECONDS apart, before it counts as unread.
+GateAttempts="${PREPUSH_GATE_ATTEMPTS:-3}"
+GateRetrySeconds="${PREPUSH_GATE_RETRY_SECONDS:-2}"
 
 # Where the push goes decides whose runs are read (GitHub suspended the account on 2026-10-19; main's CI runs on Forgejo
 # since): a Forgejo remote (ssh://forgejo-git/…, a forgejo.* host) reads Forgejo's actions API, anything else GitHub's
@@ -543,49 +548,87 @@ touches_production() { # <commit>
     return 1
 }
 
+# The pushed commits (<range>...) that change a production path, one a line.
+production_commits() { # <range>...
+    local r commit
+    for r in "$@"; do
+        while IFS= read -r commit; do touches_production "$commit" && echo "$commit"; done < <(git log --format=%H "$r")
+    done
+}
+
+# <workflow index>'s newest verdict off this push's forge (newest_verdict / newest_verdict_forgejo), asked up to
+# $GateAttempts times; the last attempt's error on stderr, and its status (124: cut off) when every attempt failed.
+read_verdict() { # <workflow index>
+    local attempt rc=0
+    for ((attempt = 1; attempt <= GateAttempts; attempt++)); do
+        if [ "$forge" = Forgejo ]; then newest_verdict_forgejo "$api" "$repo" "${GatingWorkflowFiles[$1]}" && return 0
+        else newest_verdict "${GatingWorkflows[$1]}" && return 0
+        fi
+        rc=$?
+        [ "$attempt" -lt "$GateAttempts" ] && sleep "$GateRetrySeconds"
+    done
+    return "$rc"
+}
+
 # Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit that touches a
-# production path names one of the red runs in a `Fixes-Red: <run id>` trailer. <range>... the pushed commits.
+# production path names one of the red runs in a `Fixes-Red: <run id>` trailer -- and while the gate cannot be read
+# at all, unless no pushed commit touches a production path (THE GATE FAILS CLOSED, above). <range>... the pushed commits.
 check_redgate() {
-    local workflow verdict conclusion id url api_id reds="" commit fixes ok bad=0 r errors i forge=gh api="" repo=""
+    local workflow verdict conclusion id url api_id reds="" commit fixes ok bad=0 r errors i forge=gh api="" repo="" unread="" prod rc
     if is_forgejo_url "$remote_url"; then
         forge=Forgejo
         need redgate curl "brew install curl" || return 1
         need redgate jq "brew install jq" || return 1
         read -r api repo <<< "$(forgejo_api_for "$remote_url")"
-        # The repository is private: its runs answer 404 to an anonymous read (2026-10-20), so no token is said once and
-        # passed -- no evidence of a red, so no block, and no Touch ID prompt on a push.
-        read_forgejo_token || {
-            warn "no Forgejo token (\$FORGEJO_API_TOKEN unset; vault 'movies' locked: secrets unlock movies) — red-build gate SKIPPED"
-            gate_state="no-token"
-            return 0
-        }
+        # Never a Touch ID prompt on a push: the vault is read only while it is already unlocked.
+        read_forgejo_token || { unread="no Forgejo token (\$FORGEJO_API_TOKEN unset; vault 'movies' locked)"; gate_state="no-token"; }
     else
         need redgate gh "brew install gh" || return 1
     fi
-    # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
-    errors="$(mktemp)"
-    for i in "${!GatingWorkflows[@]}"; do
-        workflow="${GatingWorkflows[$i]}"
-        if [ "$forge" = Forgejo ]; then verdict="$(newest_verdict_forgejo "$api" "$repo" "${GatingWorkflowFiles[$i]}" 2>"$errors")"
-        else verdict="$(newest_verdict "$workflow" 2>"$errors")"
-        fi || {
-            if [ $? = 124 ]; then warn "$forge did not answer $workflow's verdict within ${GhSeconds}s: cut off — red-build gate SKIPPED for it"
-            else warn "could not read $workflow's verdict from $forge ($(head -n 1 "$errors")) — red-build gate SKIPPED for it"
+    if [ -z "$unread" ]; then
+        # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
+        errors="$(mktemp)"
+        for i in "${!GatingWorkflows[@]}"; do
+            workflow="${GatingWorkflows[$i]}"
+            verdict="$(read_verdict "$i" 2>"$errors")" || {
+                rc=$?
+                if [ "$rc" = 124 ]; then warn "$forge did not answer $workflow's verdict within ${GhSeconds}s ($GateAttempts attempts): cut off"
+                else warn "could not read $workflow's verdict from $forge ($(head -n 1 "$errors")) in $GateAttempts attempts"
+                fi
+                unread="${unread:+$unread; }$workflow's verdict unread"
+                gate_state="$gate_state $i:unread"
+                continue
+            }
+            [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
+            read -r conclusion id url api_id <<< "$verdict"
+            gate_state="$gate_state $i:$conclusion:$id"
+            if [ "$conclusion" != success ]; then
+                # On Forgejo a run has two ids: its number in the URL and the API's run id (the one scripts/forge-gh and the
+                # artifact registry use). A Fixes-Red: naming either declares the fix.
+                reds="$reds $id${api_id:+ $api_id}"
+                warn "$workflow is RED on main: run $id ($conclusion) $url${api_id:+ (run id $api_id)}"
             fi
-            gate_state="$gate_state $i:unread"
-            continue
-        }
-        [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
-        read -r conclusion id url api_id <<< "$verdict"
-        gate_state="$gate_state $i:$conclusion:$id"
-        if [ "$conclusion" != success ]; then
-            # On Forgejo a run has two ids: its number in the URL and the API's run id (the one scripts/forge-gh and the
-            # artifact registry use). A Fixes-Red: naming either declares the fix.
-            reds="$reds $id${api_id:+ $api_id}"
-            warn "$workflow is RED on main: run $id ($conclusion) $url${api_id:+ (run id $api_id)}"
+        done
+        rm -f "$errors"
+    fi
+    if [ -n "$unread" ]; then
+        prod="$(production_commits "$@")"
+        if [ -z "$prod" ]; then
+            log "red-build gate UNREAD ($unread): every pushed commit is tools-only, which lands while red" >&2
+            return 0
         fi
-    done
-    rm -f "$errors"
+        warn "red-build gate UNREAD ($unread): the push is REFUSED -- a gate that cannot be read may be red, and"
+        warn "production commits land only on a green (or Fixes-Red:) main: $(printf '%s\n' "$prod" | cut -c1-9 | tr '\n' ' ')"
+        if [ "$gate_state" = no-token ]; then
+            warn "Give the hook Forgejo's token: \`secrets unlock movies\` (the hook reads the vault only while it is unlocked,"
+            warn "never prompting; \`eval \"\$(~/bin/agentctl env --print)\"\` says whether it is), or export FORGEJO_API_TOKEN."
+            warn "agentctl land hands the token to the processes it starts (its waiting processor among them): a push from"
+            warn "one of them without it means the vault was locked when land started -- unlock it and land again."
+        else
+            warn "Forgejo/GitHub did not answer: check the tunnel (\`~/bin/agentctl env --check\`) and push again."
+        fi
+        return 1
+    fi
     [ -z "$reds" ] && return 0
     for r in "$@"; do
         while IFS=$'\t' read -r commit fixes; do
