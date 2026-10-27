@@ -20,7 +20,7 @@ import scala.collection.mutable
  *   - every next cluster left over gets a fresh name, in order of its smallest listing;
  *   - a previous name no next cluster took is RETIRED, never handed out again. One a next cluster overlaps is a merge's
  *     younger half: it is ABSORBED by the next cluster holding most of its listings (equal: the one holding the smallest
- *     listing) — named so to the staging screen, never a memory carried.
+ *     listing) — a name only, never a memory carried.
  *
  * Every step sorts by a key of the clusters themselves, so the result is invariant under the order either side is given
  * in. [[TieBreak.InputOrder]] is the teeth tests' mutation: an equal split goes to whichever half was listed first.

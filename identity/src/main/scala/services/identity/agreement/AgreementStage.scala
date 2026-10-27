@@ -71,14 +71,9 @@ import scala.collection.mutable
  * asked on every pass and read again once answered. `attemptsMarked`, when given, counts the writes of the memory behind
  * `attempted`: an apply at the same version reads what it waits on again only once that count moved.
  *
- * `staging`, when given, is told each wait as it starts and ends ([[services.identity.staging.StagingEvent]]): a cluster
- * the apply put to wait, one it stopped waiting on, and a new cluster whose families it asked inline and decided within
- * the one apply — the waits the staging screen would never see by sampling. Only an apply that reads anything tells it;
- * a quiet one changes no wait.
- *
  * Each cluster is NAMED by its KEY ([[keyOf]], docs/design/identity-cluster-identity.md): a counter of its own, assigned
  * by overlap as the projection's film ids are ([[StableNames]]), and kept in `keyStore` with each cluster's first
- * listing, which a restart re-attaches it by — what the staging screen and the drift check name a cluster by. A key
+ * listing, which a restart re-attaches it by — what the drift check names a cluster by. A key
  * decides nothing (docs/design/identity-no-drift.md: every change re-evaluates everything as if all the data had been
  * there from the start): a verdict is found by its listings under whichever key it was filed ([[heldFor]]), and stands
  * while everything it read stands — its RECEIPT ([[StoredVerdict.reads]]: every family answer, the record of the film
@@ -98,7 +93,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
                            private[agreement] val attempted: Question => Boolean = _ => false,
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
-                           private[agreement] val staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
                            private[agreement] val keyStore: AgreementKeys = new InMemoryAgreementKeys,
                            private[agreement] val pressed: () => Boolean = () => false,
                            private[agreement] val fullValidationEvery: Int = AgreementStage.FullValidationEvery)
@@ -359,7 +353,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       }
     }
     applying = version
-    val waitedBefore = staging.map(_ => waitingClusters)
     recordsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[Integer](); findsReading = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     queriedReading = false
     validating(pass)
@@ -371,7 +364,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     keyedBefore = keyed
     keyed = pass.keys
     forgetGone(resolution, pass)
-    staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
     recordsNow = recordsReading; findsNow = findsReading; queriedNow = queriedReading
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
     handOver(version)
@@ -403,8 +395,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 
   /** Keys each decision of `resolution` with listings into `pass.keys` ([[StableNames]]): one the last apply was handed
    *  keeps its key; the rest take the keys of the clusters gone since by overlap — on the first apply, the stored key of
-   *  their first listing first ([[keyStore]]), every other fresh. A key a merge absorbed is told the staging screen
-   *  ([[services.identity.staging.StagingEvent.Merged]]); the keys that moved are stored. A key only NAMES a cluster:
+   *  their first listing first ([[keyStore]]), every other fresh. The keys that moved are stored. A key only NAMES a cluster:
    *  nothing the stage decides is found by it ([[heldFor]]), and no memory goes with it (docs/design/identity-no-drift.md). */
   private[agreement] def keying(resolution: Resolution, pass: AgreementStage.Pass): Unit = {
     val before  = keyed
@@ -440,8 +431,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       firsts --= retired
       moved.foreach(k => firsts(k.key) = k.first)
       live --= retired
-      // a merge's younger half, named to the staging screen beside the cluster holding most of its listings
-      assigned.absorbed.foreach { case (from, j) => pass.merged += keyOfIndex(open(j)).toString -> from.toString }
       unkeyed.indices.foreach { i =>
         live(keyOfIndex(i)) = unkeyed(i)
         pass.keys.put(unkeyed(i), keyOfIndex(i).toString)
@@ -474,30 +463,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  correction ([[correctionWaits]]), by cluster id. */
   private[agreement] def waitingClusters: Set[String] =
     waiting.keySet.toSet ++ correctionWaits.keySet.iterator.map(_.stripPrefix(AgreementStage.CorrectionPrefix))
-
-  /** What the stage waits on for cluster `id`: its families' questions and its correction's. */
-  private def questionsOf(id: String): Set[Question] =
-    waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps)
-
-  /** Tell `staging` the waits this apply started and ended, against those it began with (`before`): a cluster put to
-   *  wait (since its inline ask, when it had one), one asked inline and decided within the apply, and one still a cluster
-   *  that waits no more. A cluster gone — regrouped, or taken by the model — is no wait ended: its listings are another
-   *  cluster's now. */
-  private def tellWaits(tell: Seq[services.identity.staging.StagingEvent] => Unit, before: Set[String], pass: AgreementStage.Pass): Unit = {
-    import services.identity.staging.StagingEvent
-    val after  = waitingClusters
-    val now    = clock.millis()
-    val events = Vector.newBuilder[StagingEvent]
-    (after -- before).toSeq.sorted.foreach(id => events += StagingEvent.Waiting(id, pass.inline.get(id).fold(now)(_._1), questionsOf(id)))
-    pass.inline.toSeq.sortBy(_._1).foreach { case (id, (at, asked)) =>
-      if (!after(id) && !before(id)) { events += StagingEvent.Waiting(id, at, asked); events += StagingEvent.Settled(id, now) }
-    }
-    (before -- after).toSeq.sorted.filter(id => pass.seen(id) || pass.correcting(AgreementStage.correctionId(id)))
-      .foreach(id => events += StagingEvent.Settled(id, now))
-    pass.merged.sorted.foreach { case (into, from) => events += StagingEvent.Merged(into, from, now) }
-    val told = events.result()
-    if (told.nonEmpty) tell(told)
-  }
 
   /** What the model's `decision` is taken as: a model take read against the evidence that may correct it, a no-match
    *  the families, the posters, the screening days, a fill or the catalogue ids take a film for — else the decision as
@@ -776,7 +741,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       else {
         // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers
         askedNow += digest
-        pass.inline(id) = (clock.millis(), gaps.toSet)
         askNow(gaps.toSet, AgreementStage.AskNowWithin)
         gaps.clear(); reads.clear()
         verdictsOf(listings, gaps, reads)
@@ -1012,11 +976,8 @@ object AgreementStage {
     val correcting   = mutable.Set.empty[String]
     /** The shapes (listings' digests) of the clusters read. */
     val shapes       = mutable.Set.empty[Long]
-    /** The new clusters whose families this apply asked inline ([[AgreementStage.askNow]]), with when and what. */
-    val inline       = mutable.Map.empty[String, (Long, Set[Question])]
-    /** Each decision's cluster key ([[AgreementStage.keying]]), and the keys a merge absorbed, with the survivor's. */
+    /** Each decision's cluster key ([[AgreementStage.keying]]). */
     val keys         = new java.util.IdentityHashMap[ResolverDecision, String]()
-    val merged       = mutable.ArrayBuffer.empty[(String, String)]
     /** What the apply's full validation of the kept verdicts came to ([[AgreementStage.FullValidationEvery]]). */
     var validated    = services.identity.Memo.Validation.None
     private var cleanHits = 0

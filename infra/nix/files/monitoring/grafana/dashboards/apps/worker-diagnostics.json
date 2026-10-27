@@ -4212,127 +4212,9 @@
       ]
     },
     {
-      "id": 74,
-      "title": "Identity takes — clusters by basis (matched and unmatched)",
-      "description": "Every take the identity projection last wrote, by basis (`ResolverDecision.Basis`): matched — Pinned, OwnMatch, PooledMatch, Agreed, Poster, Broadcast, Filled, Catalogue, Corrected — and unmatched — NoCandidate, NoEvidence, Vetoed, BelowThreshold, Withdrawn, Event. Read by the staging publisher every 20 s (`IdentityStagingPublisher`, `IdentityTakeMetrics`). `kinowo_worker_identity_takes`: clusters each basis holds now, stacked.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 409
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 60,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "expr": "sum by (basis) (kinowo_worker_identity_takes{country=~\"$country\"})",
-          "legendFormat": "{{basis}}"
-        }
-      ]
-    },
-    {
-      "id": 75,
-      "title": "Identity takes — listings by basis",
-      "description": "Every take the identity projection last wrote, by basis (`ResolverDecision.Basis`): matched — Pinned, OwnMatch, PooledMatch, Agreed, Poster, Broadcast, Filled, Catalogue, Corrected — and unmatched — NoCandidate, NoEvidence, Vetoed, BelowThreshold, Withdrawn, Event. Read by the staging publisher every 20 s (`IdentityStagingPublisher`, `IdentityTakeMetrics`). `kinowo_worker_identity_take_listings`: listings in clusters of each basis, stacked.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 409
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 60,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "expr": "sum by (basis) (kinowo_worker_identity_take_listings{country=~\"$country\"})",
-          "legendFormat": "{{basis}}"
-        }
-      ]
-    },
-    {
       "id": 76,
       "title": "Identity match changes per bar (at least an hour) — decided, joined, gained, lost, changed",
-      "description": "`kinowo_worker_identity_take_changes_total{kind,basis}` per bar (at least an hour): each written projection's change list, by listing — a listing new to the films `decided` (a new cluster, matched or not) or `joined` (a cluster already on the films), or one whose film was `gained` (had none), `lost` (has none now) or `changed` — by the basis that holds it after. The same changes, by cluster, are listed on the local /debug/identity/staging page; `staging events dropped` (`kinowo_worker_identity_staging_dropped_total`) counts any that page was never told, and is 0.",
+      "description": "`kinowo_worker_identity_take_changes_total{kind,basis}` per bar (at least an hour): each written projection's change list, by listing — a listing new to the films `decided` (a new cluster, matched or not) or `joined` (a cluster already on the films), or one whose film was `gained` (had none), `lost` (has none now) or `changed` — by the basis that holds it after.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -4342,7 +4224,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 418
+        "y": 409
       },
       "fieldConfig": {
         "defaults": {
@@ -4381,15 +4263,6 @@
           },
           "expr": "sum by (kind, basis) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\"}[$__interval]))",
           "legendFormat": "{{kind}} · {{basis}}"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "expr": "sum by (country) (increase(kinowo_worker_identity_staging_dropped_total{country=~\"$country\"}[$__interval]))",
-          "legendFormat": "{{country}} staging events dropped"
         }
       ],
       "interval": "1h"
@@ -4407,7 +4280,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 427
+        "y": 418
       },
       "fieldConfig": {
         "defaults": {
@@ -4463,7 +4336,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 436
+        "y": 427
       },
       "fieldConfig": {
         "defaults": {
@@ -4526,7 +4399,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 436
+        "y": 427
       },
       "fieldConfig": {
         "defaults": {
@@ -4589,7 +4462,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 445
+        "y": 436
       },
       "fieldConfig": {
         "defaults": {

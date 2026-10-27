@@ -98,8 +98,6 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // Each country's identity projection — see IdentityProjectionGauges.
   val identityProjection: IdentityProjectionGauges = new IdentityProjectionGauges(countryCodes, registry)
   val identityAgreement: IdentityAgreementMetrics = new IdentityAgreementMetrics(countryCodes, registry)
-  // Each country's takes by basis, and their changes — see IdentityTakeMetrics.
-  val identityTakes: IdentityTakeMetrics = new IdentityTakeMetrics(countryCodes, registry)
 
   // Every periodic loop's pulse (kinowo_worker_scheduled_tick_*) — see ScheduledTickMetrics.
   val scheduledTicks: ScheduledTickMetrics = ScheduledTickMetrics.worker(registry)

@@ -77,7 +77,6 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${A}AgreementStage.scala#findsReading"   -> Content("the IMDb ids whose TMDB finds the apply read"),
     s"${A}AgreementStage.scala#seen"           -> Pass(PerApply),
     s"${A}AgreementStage.scala#correcting"     -> Pass(PerApply),
-    s"${A}AgreementStage.scala#inline"         -> Pass(PerApply),
     s"${A}AgreementStage.scala#backfilled"     -> Pass(PerApply),
     s"${A}AgreementStage.scala#venues"         -> Pass("a field of AgreementStage.Read, built per apply: poster answers by URL"),
     s"${A}AgreementStage.scala#films"          -> Pass("a field of AgreementStage.Read, built per apply: poster answers by TMDB id"),
@@ -171,7 +170,6 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}IdentityTraceStore.scala#removed"   -> Store("write-behind: the trace rows to delete"),
     s"${I}IdentityTraceStore.scala#pending"   -> Store("write-behind: the trace rows to write"),
     s"${I}IdentityModelStore.scala#kept"      -> Store("InMemoryIdentityModelStore's rows, each carrying its digest"),
-    s"${I}staging/IdentityStaging.scala#held" -> Store("InMemoryStagingDocuments' rows"),
     s"${I}IdentityMeasures.scala#Slots"       -> Content("a constant table, never written"),
     s"${W}IdentityModelService.scala#waiting"      -> Store("the latest scraped listing per key, waiting for the model's thread"),
     s"${W}IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
@@ -200,7 +198,6 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}VenueSlots.scala#recorded"              -> Content("venue slot fingerprints"),
     s"${W}IdentityProjection.scala#recordedFingerprints" -> Content("venue slot fingerprints"),
     s"${W}IdentityProjection.scala#lastUnwritten" -> Pass("the films the last write left unwritten, replaced by each"),
-    s"${W}IdentityStagingPublisher.scala#published" -> Store("what the last publish left in the store, compared by value"),
     s"${W}RuleFiringCount.scala#titleRules"       -> Content("by venue and raw title: the title is the content its rules are read from"),
     s"${W}VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
     s"${W}LookupGaps.scala#kinds"         -> Content("a counter per gap kind")

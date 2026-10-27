@@ -1028,53 +1028,6 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stage.waitingClusters should not contain stage.keyOf(back)
   }
 
-  // The staging screen sampled the stage's waits every 20 s: a wait begun and ended in between was never seen.
-  it should "tell the staging screen each wait as it starts and ends, a new cluster's inline wait too, and nothing on a quiet apply" in {
-    import services.identity.staging.StagingEvent
-    val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-24T12:00:00Z"))
-    val told  = scala.collection.mutable.ArrayBuffer.empty[StagingEvent]
-    var id    = ""
-    def ofBare = told.toSeq.filter {
-      case StagingEvent.Waiting(cluster, _, _) => cluster == id
-      case StagingEvent.Settled(cluster, _)    => cluster == id
-      case _                                   => false
-    }
-    var rtAnswered = false
-    val rt = new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered)
-    val waits = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
-      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = clock, staging = Some(told ++= _))
-    id = waits.keyOf(waits.apply(resolution, listingOf, version = 1).decisions.head)   // RT unanswered: it waits
-    ofBare.collect { case StagingEvent.Waiting(_, began, questions) =>
-      (began, questions.contains(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")))
-    } shouldBe Seq((clock.millis(), true))
-    ofBare should have size 1
-    told.clear()
-    waits.apply(resolution, listingOf, version = 1)                                // quiet: no wait moved
-    told shouldBe empty
-    clock.advanceSeconds(30)
-    rtAnswered = true
-    waits.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
-    ofBare shouldBe Seq(StagingEvent.Settled(id, clock.millis()))
-
-    // a new cluster asked inline waits only inside the apply that meets it: told as a wait begun and ended there
-    told.clear()
-    var inlineAnswered = false
-    val inlineRt = new Flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), inlineAnswered)
-    val inline = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> inlineRt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
-      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = clock,
-      askNow = (_, _) => { clock.advanceSeconds(2); inlineAnswered = true }, staging = Some(told ++= _))
-    inline.apply(resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0)), listingOf, version = 1)
-    val asked = clock.millis()
-    val taken = inline.apply(resolution, listingOf, version = 2).decisions.head
-    taken.film shouldBe Some(913760)
-    id = inline.keyOf(taken)
-    ofBare.map {
-      case StagingEvent.Waiting(_, at, qs) => ("waiting", at, qs.contains(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")))
-      case StagingEvent.Settled(_, at)     => ("settled", at, true)
-      case other                           => fail(s"unexpected $other")
-    } shouldBe Seq(("waiting", asked, true), ("settled", asked + 2000, true))
-  }
-
   it should "ask nothing inline of a cluster met on its first pass, which meets every cluster" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
     val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,

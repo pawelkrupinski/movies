@@ -16,7 +16,12 @@ import tools.{CutoverProperties, FixtureTestWiring}
  */
 class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers with StopsItsWirings {
 
-  private final class CutOver extends FixtureTestWiring("08-06-2026")
+  private final class CutOver extends FixtureTestWiring("08-06-2026") {
+    /** Each written projection's change list, as the take-change counter is handed it. */
+    val told = new java.util.concurrent.ConcurrentLinkedQueue[services.identity.TakeChange]()
+    override def takeChangesTold: Seq[services.identity.TakeChange] => Unit = changes => { changes.foreach(told.add); () }
+    def drainTold(): Seq[services.identity.TakeChange] = Iterator.continually(told.poll()).takeWhile(_ != null).toSeq
+  }
 
   private lazy val booted: (CutOver, ProjectionTick) = {
     val w = stoppedAfterAll(new CutOver)
@@ -72,21 +77,20 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers with StopsIt
     CutoverProperties.films(again, withIds = true) shouldBe CutoverProperties.films(settled, withIds = true)
   }
 
-  // The staging screen and the take-change counter read the projections' change lists: over the recorded corpus, from
+  // The take-change counter reads the projections' change lists: over the recorded corpus, from
   // the boot through the projections that settle it, each tick's change list is exactly the listings whose stored film's
   // TMDB film it moved, or that it placed on a film first — nothing missed, nothing told twice.
   it should "tell, each projection, exactly the takes it moved on the site" in {
-    import services.identity.staging.StagingEvent
     val w = stoppedAfterAll(new CutOver)
     // a listing's state on the site: on no stored film (None), or on one of this TMDB film (or none)
     var before = Map.empty[ListingKey, Option[Int]]   // the boot's projection starts from no stored film
     var told   = 0
     (Iterator.single(() => w.bootCutover()) ++ Iterator.continually(() => w.projectIdentity())).take(5).zipWithIndex.foreach { case (project, n) =>
-      w.identityStagingEvents.drain()
+      w.drainTold()
       project()
       val (after, clusterOf) = services.identity.ProjectionPlacements.of(w.identityProjection, w.filmIdCounterStore)
       // the boot runs more than one projection (the model's batches ask for them): what each told is chained per listing
-      val changes = w.identityStagingEvents.drain().changes.collect { case StagingEvent.Changed(c, _, _) => c }
+      val changes = w.drainTold()
       val chained = changes.groupBy(_.listing).map { case (listing, cs) =>
         listing -> cs.foldLeft(before.get(listing)) { (state, c) =>
           val from = if (c.moved) Some(c.before) else None

@@ -15,7 +15,6 @@ Everything the identity system keeps per CLUSTER is keyed by the cluster's alpha
 |---|---|---|
 | the agreement's verdict, its correction (`correction|<id>`) | `AgreementStage.held`, `identity_agreements` (`MongoAgreementVerdicts`, `_id`) | `idOf` |
 | the stage's waits, checks, settle memory, inline asks | `waiting`, `checked`, `unreached`, `askedNow`, `candidateFilms`, `correctionWaits` | `idOf` |
-| staging rows | `IdentityStagingPublisher.keyOf` (`identity_staging`) | hash of `idOf` |
 | the model's stored families | `IncrementalResolver` (`storeId`) | `idOf` (out of scope here) |
 
 The key MOVES when a listing that sorts first arrives (UK's "A…" venues, PL's Bajka), when the first listing leaves the
@@ -40,8 +39,8 @@ So the real losses are the per-cluster MEMORIES (settle, inline ask, wait start)
 
 Implemented 2026-10-25 as decided below: `StableNames` (the overlap rule, the projection's film ids' too), `AgreementKeys` (`identity_agreement_keys`,
 in-memory default), `AgreementStage.keying`/`adopt`/`keyOf`, `StagingEvent.Merged`, and `ProdMirror` reading the mirror's
-verdicts through the key store. Specs: `StableNamesSpec`, `AgreementKeyingSpec`, `IdentityStagingPublisherSpec` (a merged
-cluster's wait start).
+verdicts through the key store. Specs: `StableNamesSpec`, `AgreementKeyingSpec`. (The staging screen's half,
+`StagingEvent.Merged` and `IdentityStagingPublisher`, was retired 2026-10-27.)
 
 The owner's decisions (2026-10-25) on the three open questions:
 
@@ -134,8 +133,6 @@ The counter and each live cluster's key must outlive a restart, or the first app
 - The worker's drift check (`IdentityDriftCheck`, with its `Adopt` and `AgreementStage.forget`) was deleted. The
   off-worker check, `scripts.IdentityLiveDrift`, keys its fresh stage from nothing and compares takes by listing, so its
   keys never meet the live ones.
-- `IdentityStagingPublisher.keyOf`: the stage's key (hashed short, as now). Rows already in `identity_staging` under
-  `idOf` hashes resolve once as `regrouped` at the deploy; resolutions expire in 7 days as ever.
 - Model families (`IncrementalResolver.storeId`) keep `idOf`: they are the model's, read by the model alone.
 
 ### `scripts/identity-slice` and `OlderRefs`

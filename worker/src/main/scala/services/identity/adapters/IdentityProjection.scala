@@ -146,8 +146,8 @@ final class IdentityProjection(
   /** Handed each WRITTEN projection of the whole corpus's resolution, as projected, and every listing it decided: what
    *  counts its suspect takes (`SuspectTakeCount.submit`), which must return at once — the count is no part of a projection. */
   suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => (),
-  /** Handed each written projection's change list, as [[IdentityProjectionMetrics.takesChanged]] is: what the staging
-   *  screen is told ([[staging.ChangeFeed]]), which must return at once. */
+  /** Handed each written projection's change list, as [[IdentityProjectionMetrics.takesChanged]] is, which must return
+   *  at once: a harness's tap. */
   changeFeed:  Seq[TakeChange] => Unit = _ => (),
   /** The venue pages (venue, page) whose read moved since the last call, each given once (`IndexedVenuePageFacts.takeMoved`):
    *  a venue slot is built from its listing's page ([[CinemaSlotBuilder.pages]]), so a listing whose page moved is a change
