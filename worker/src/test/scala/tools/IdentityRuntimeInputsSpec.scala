@@ -172,7 +172,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
     import StageParameter.*
     Map(
       "families"    -> Versioned, "identities" -> Versioned, "listedOn" -> Versioned, "calibration" -> Versioned, "rules" -> Versioned,
-      "venues"      -> Read("each listing's venue detail is in its listings' digest (digestOf)"),
+      "venuePages"  -> Read("each listing's venue detail page is in its listings' digest (digestOf), read through PagesOnly"),
       "normalizer"  -> Read("compiled: TitleNormalizer and its title rules are in the closure, the country's being its database's"),
       "tmdbOf"      -> Read("each agreed IMDb id's find is in the receipt"),
       "tmdb"        -> Read("every TMDB read the fill makes is in the receipt (Noting)"),
