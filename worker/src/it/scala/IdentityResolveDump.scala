@@ -144,11 +144,15 @@ object IdentityResolveDump {
     val posterStore = new PosterAnswerStore(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val posters     = CachedPosters.of(configuration, c.country)
     val catalogue   = new CatalogueFill(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")), fetch)
-    val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
-      IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
-      stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups),
-      identities = modules.wiring.IdentityProjectionWiring.identities(c.country.code), catalogue = catalogue.answers,
-      listedOn = modules.wiring.IdentityProjectionWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
+    val stage = services.identity.agreement.AgreementStageComposition(services.identity.agreement.AgreementStageComposition.Sources(
+      families.map(family => family -> store.answers(family)).toMap, venuePages = lookups, tmdb = lookups,
+      tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
+      stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, normalizer = c.normalizer,
+      identities = modules.wiring.IdentityProjectionWiring.identities(c.country.code),
+      listedOn = modules.wiring.IdentityProjectionWiring.listedOn(c.country.code), changes = services.identity.agreement.AnswerChanges.Unknown,
+      posters = posterStore, catalogue = catalogue.answers, attempted = _ => false, attemptsMarked = Some(() => 0L),
+      keys = new services.identity.agreement.InMemoryAgreementKeys),
+      overrides = Set(services.identity.agreement.AgreementStageComposition.Override.Unbudgeted))
     val byKey = listings.map(l => l.key -> l).toMap
     // each family's questions four at a time, as the experiment read the sites unblocked; one its host never answers given up
     val asked = new AgreementQuestionRounds(store, sources, s"${c.label} agreement").run(() => stage.apply(resolution, byKey.get, store.version))(

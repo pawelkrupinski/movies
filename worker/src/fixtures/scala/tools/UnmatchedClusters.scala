@@ -5,7 +5,7 @@ import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonS
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import services.identity._
 import services.identity.adapters.{CatalogueAnswerStore, FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
-import services.identity.agreement.{AgreementStage, FamilyAnswers, InMemoryAgreementVerdicts, VoterFamily}
+import services.identity.agreement.{AgreementStage, AgreementStageComposition, FamilyAnswers, InMemoryAgreementVerdicts, VoterFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import java.nio.charset.StandardCharsets
@@ -122,8 +122,12 @@ object UnmatchedClusters {
             identities: Seq[VoterFamily], catalogue: CatalogueAnswers, listedOn: Option[VoterFamily] = None,
             calibration: IdentityCalibration = IdentityCalibration.resolver): Outcome = {
     val model = resolutionOf(decisions)
-    val stage = new AgreementStage(families, lookups, normalizer, calibration, tmdbOf, new InMemoryAgreementVerdicts,
-      clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups), identities = identities, catalogue = catalogue, listedOn = listedOn)
+    // the worker's composition: a capture asks nothing between its rounds' applies but what the rounds answer, and marks
+    // no attempt (a question it gives up on is left open: `unreachable`), so the memory's marks never move
+    val stage = AgreementStageComposition(AgreementStageComposition.Sources(families, venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf,
+      stored = new InMemoryAgreementVerdicts, clock = SpecClock.Pinned, normalizer = normalizer, identities = identities, listedOn = listedOn,
+      changes = services.identity.agreement.AnswerChanges.Unknown, posters = posters, catalogue = catalogue, attempted = _ => false,
+      attemptsMarked = Some(() => 0L), keys = new services.identity.agreement.InMemoryAgreementKeys, calibration = calibration))
     val byKey = listings.map(l => l.key -> l).toMap
     Outcome(model, stage.apply(model, byKey.get, version), stage)
   }

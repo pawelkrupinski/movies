@@ -154,23 +154,21 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
                         staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
                         keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys)
       : services.identity.agreement.AgreementStage =
-    new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
-      venueDetailLookups(),
-      titleNormalizer, services.identity.IdentityCalibration.resolver,
-      tmdbOf = imdbId => identityTmdbStore.foundFirst(imdbId).toAnswer,
-      stored = stored, ask = ask, metrics = metrics, clock = stageClock, changes = familyAnswerStore.changes,
-      posters = posterAnswerStore,
-      // the fill's resolve of a cluster alone asks what the model's whole-corpus resolve never did: read as the model
-      // reads (the store, else live), never from the store alone, where those questions were gaps nothing asked
-      tmdb = Some(cutoverLookups()), identities = IdentityProjectionWiring.identities(country.code),
-      catalogue = catalogueAnswerStore,
-      listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
-      correctionPostersAtOnce = if (budgets) services.identity.agreement.AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
-      correctionsPerApply = if (budgets) services.identity.agreement.AgreementStage.CorrectionsPerApply else Int.MaxValue,
-      backfillPerApply = if (budgets) services.identity.agreement.AgreementStage.BackfillPerApply else Int.MaxValue,
-      askNow = askNow, attempted = identityQuestionMemory.attempted,
-      attemptsMarked = Some(() => identityQuestionMemory.marks), staging = staging, keyStore = keys,
-      pressed = () => tools.HeapPressure.pressed())
+    services.identity.agreement.AgreementStageComposition(
+      services.identity.agreement.AgreementStageComposition.Sources(
+        families = agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
+        venuePages = venueDetailLookups(),
+        // the fill's resolve of a cluster alone asks what the model's whole-corpus resolve never did: read as the model
+        // reads (the store, else live), never from the store alone, where those questions were gaps nothing asked
+        tmdb = cutoverLookups(),
+        tmdbOf = imdbId => identityTmdbStore.foundFirst(imdbId).toAnswer, stored = stored, clock = stageClock,
+        normalizer = titleNormalizer, identities = IdentityProjectionWiring.identities(country.code),
+        listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
+        changes = familyAnswerStore.changes, posters = posterAnswerStore, catalogue = catalogueAnswerStore,
+        attempted = identityQuestionMemory.attempted, attemptsMarked = Some(() => identityQuestionMemory.marks), keys = keys),
+      services.identity.agreement.AgreementStageComposition.Effects(ask = ask, metrics = metrics, askNow = askNow, staging = staging,
+        pressed = () => tools.HeapPressure.pressed()),
+      overrides = if (budgets) Set.empty else Set(services.identity.agreement.AgreementStageComposition.Override.Unbudgeted))
 
   // No drift check runs on the worker: the one it had (deleted) resolved everything whole beside the model's own state, filled
   // worker-us's tenured gen and OOM-killed it at its first nightly check two nights running (2026-10-23/24, 525 -> 768 of

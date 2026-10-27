@@ -56,12 +56,15 @@ object ModelTakeCorrectionCost {
       }
       def stageOf(i: Int, verdicts: AgreementVerdicts, perApply: Int = AgreementStage.CorrectionsPerApply) = {
         val (l, store, _, _, tmdbOf, _) = inputs(i)
-        new AgreementStage(UnmatchedClusters.familiesOf(l.c.country).map(f => f -> store.answers(f)).toMap, l.lookups, l.c.normalizer,
-          IdentityCalibration.resolver, tmdbOf, verdicts, clock = SpecClock.Pinned, changes = store, correctionsPerApply = perApply,
-          posters = new PosterAnswerStore(store, SpecClock.Pinned), tmdb = Some(l.lookups),
+        services.identity.agreement.AgreementStageComposition(services.identity.agreement.AgreementStageComposition.Sources(
+          UnmatchedClusters.familiesOf(l.c.country).map(f => f -> store.answers(f)).toMap, venuePages = l.lookups, tmdb = l.lookups,
+          tmdbOf = tmdbOf, stored = verdicts, clock = SpecClock.Pinned, normalizer = l.c.normalizer,
           identities = modules.wiring.IdentityProjectionWiring.identities(l.c.country.code),
-          catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages),
-          listedOn = modules.wiring.IdentityProjectionWiring.listedOn(l.c.country.code))
+          listedOn = modules.wiring.IdentityProjectionWiring.listedOn(l.c.country.code), changes = store,
+          posters = new PosterAnswerStore(store, SpecClock.Pinned),
+          catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages), attempted = _ => false,
+          attemptsMarked = Some(() => 0L), keys = new services.identity.agreement.InMemoryAgreementKeys),
+          overrides = Set(services.identity.agreement.AgreementStageComposition.Override.CorrectionsPerApply(perApply)))
       }
       def resolutionOf(i: Int, correcting: Boolean) = if (correcting) inputs(i)._3 else inputs(i)._4
       /** Each country's verdicts as a running worker keeps them, every take read once: what a restart loads. */

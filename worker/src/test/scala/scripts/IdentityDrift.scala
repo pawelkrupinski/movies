@@ -4,7 +4,7 @@ import models.Country
 import org.bson.BsonDocument
 import services.identity._
 import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, PosterAnswerStore, PosterHashing, TmdbDocuments, TmdbKind}
-import services.identity.agreement.{AgreementStage, VoterFamily}
+import services.identity.agreement.{AgreementStage, AgreementStageComposition, VoterFamily}
 import services.movies.ListingKey
 import tools.{CatalogueFill, IdentityJudgements, MutableClock, UnmatchedClusters}
 
@@ -176,6 +176,9 @@ object IdentityDrift {
     private val hashing = new PosterHashing(new services.sharecards.EgressPosterDownload(reads.fetch), new services.sharecards.VipsPosterShrinker(binary = None),
       id => reads.tmdb.posters(id, also = Seq("en")), reads.country.language.getLanguage)
     private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
+    /** How many attempts were marked: production's memory's marks (`QuestionMemory.marks`), which the stage reads to
+     *  tell an attempt since its last apply. */
+    private val marks = new java.util.concurrent.atomic.AtomicLong
     /** What a round tried to answer and could not: attempted, as production's memory records a failed ask — a cluster
      *  waiting on it settles ([[AgreementStage.settles]]). An answer filed is attempted by itself. */
     def attempted(question: Question): Boolean = question match {
@@ -189,12 +192,12 @@ object IdentityDrift {
     })(Answer.Known(_))
     def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
               keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys): AgreementStage =
-      new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, lookups, reads.normalizer, IdentityCalibration.resolver,
-        tmdbOf = tmdbOf, stored = verdicts, clock = clock, changes = store, posters = posters, tmdb = Some(lookups),
-        identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code), catalogue = catalogue.answers,
-        listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code),
-        correctionPostersAtOnce = if (budgets) AgreementStage.CorrectionPostersAtOnce else Int.MaxValue,
-        correctionsPerApply = if (budgets) AgreementStage.CorrectionsPerApply else Int.MaxValue, attempted = attempted, keyStore = keys)
+      AgreementStageComposition(AgreementStageComposition.Sources(reads.families.map(f => f -> store.answers(f)).toMap,
+        venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf, stored = verdicts, clock = clock, normalizer = reads.normalizer,
+        identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code),
+        listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code), changes = store, posters = posters,
+        catalogue = catalogue.answers, attempted = attempted, attemptsMarked = Some(() => marks.get), keys = keys),
+        overrides = if (budgets) Set.empty else Set(AgreementStageComposition.Override.Unbudgeted))
     /** The family questions the stage's last apply left open, none given up as unreachable. */
     def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
       Question.families(stage.wanted) -- unreachable
@@ -213,7 +216,7 @@ object IdentityDrift {
       catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
       tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
         try { AgreementQuestions.file(store, family, reads.sources(family), asked); () }
-        catch { case NonFatal(_) => failures.merge(question, 1, (a, b) => a + b); () }
+        catch { case NonFatal(_) => failures.merge(question, 1, (a, b) => a + b); marks.incrementAndGet(); () }
       }
     }
   }
