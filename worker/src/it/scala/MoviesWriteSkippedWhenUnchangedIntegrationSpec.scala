@@ -5,13 +5,15 @@ import tools.SpecTimeouts
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture}
+import org.bson.types.ObjectId
+import org.mongodb.scala.model.changestream.ChangeStreamDocument
+import org.mongodb.scala.{Document, Observer, SingleObservableFuture, Subscription}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, FilmId}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, FilmId, WriteOutcome}
 
+import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import scala.concurrent.Await
 
 /**
@@ -29,13 +31,17 @@ import scala.concurrent.Await
  * The sibling guards on the same method — slots, then screenings — already covered their
  * collections, which is why those measured zero while `movies` did not.
  *
- * WHY THE PROFILER. There is no seam to count on: the `movies` write is issued directly on
- * the collection inside the repository, unlike `screenings`/`slots` which arrive as
- * injected collaborators. `StagingSiblingProjectionIntegrationSpec` reads the profiler for
- * the same reason, and takes its own database because profiling is database-wide — with
- * suites running concurrently the counts otherwise belong to whoever else was querying.
+ * WHY THE CHANGE STREAM. There is no seam to count on: the `movies` write is issued directly
+ * on the collection inside the repository, unlike `screenings`/`slots` which arrive as
+ * injected collaborators. So the spec counts what the write costs — its oplog entry, as the
+ * database's change stream delivers it — on a database of its own, where every change is
+ * this spec's. It used to read the profiler, which missed a write that landed (Main #2164:
+ * "must still be written: 0 was not greater than 0", green on the rerun): the profile level
+ * is in-memory state of the database, and its entry is a best-effort side write. An oplog
+ * entry is the write itself, and the stream delivers it in order before a marker written
+ * after it, so reading up to the marker waits for nothing but what happened.
  *
- * Requires MONGODB_URI; skips otherwise.
+ * Requires MONGODB_URI on a replica set (change streams); skips without one.
  */
 class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
@@ -62,18 +68,54 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
       Multikino   -> SourceData(title = Some(title), showtimes = Seq(Showtime(at, None))),
       KinoMuranow -> SourceData(title = Some(title), showtimes = Seq(Showtime(at.plusHours(2), None)))))
 
-  /** `movies` writes issued while `body` runs. `replaceOne` reaches the profiler as an
-   *  `update` op; the namespace filter keeps `screenings` / `movie_slots` out of it. */
-  private def moviesWritesDuring(body: => Unit): Int = {
-    Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), SpecTimeouts.Io)
-    Await.result(db.getCollection[Document]("system.profile").drop().toFuture(), SpecTimeouts.Io)
-    Await.result(db.runCommand(Document("profile" -> 2)).toFuture(), SpecTimeouts.Io)
-    try body
-    finally Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), SpecTimeouts.Io)
-    Await.result(
-      db.getCollection[Document]("system.profile")
-        .find(Filters.and(Filters.eq("op", "update"), Filters.regex("ns", "movies$")))
-        .toFuture(), SpecTimeouts.Io).size
+  /** `movies` writes `upsert` made: the changes the database's stream delivers from a time
+   *  read just before it to a marker written just after it. Its outcome must be `Written` — a
+   *  declined or failed upsert would otherwise read as a write the guard skipped. */
+  private def moviesWritesDuring(upsert: => WriteOutcome): Int = {
+    val session = Await.result(isolatedDb.client.startSession().toFuture(), SpecTimeouts.Io)
+    try {
+      val markers = db.getCollection[Document]("change_markers")
+      Await.result(markers.insertOne(session, Document("at" -> "start")).toFuture(), SpecTimeouts.Io)
+      val from = session.getOperationTime
+      upsert shouldBe WriteOutcome.Written
+      val end = new ObjectId()
+      Await.result(markers.insertOne(Document("_id" -> end)).toFuture(), SpecTimeouts.Io)
+      val changes = changesUntil(from, end)
+      withClue(s"every change in the window, in order: ${changes.mkString(", ")}: ") {
+        changes.filterNot(_.endsWith(" change_markers")).foreach(_ should (startWith("insert ") or startWith("replace ") or
+          startWith("update ") or startWith("delete ")))
+      }
+      changes.count(_.endsWith(" movies"))
+    } finally session.close()
+  }
+
+  /** `<operation> <collection>` of each change on the database from `from` up to the insert
+   *  of the marker `end`, in oplog order. */
+  private def changesUntil(from: org.bson.BsonTimestamp, end: ObjectId): Seq[String] = {
+    val delivered    = new LinkedBlockingQueue[Either[Throwable, ChangeStreamDocument[Document]]]()
+    val subscription = new java.util.concurrent.atomic.AtomicReference[Subscription]()
+    db.watch[Document]().startAtOperationTime(from).subscribe(new Observer[ChangeStreamDocument[Document]] {
+      override def onSubscribe(s: Subscription): Unit = { subscription.set(s); s.request(Long.MaxValue) }
+      override def onNext(change: ChangeStreamDocument[Document]): Unit = delivered.put(Right(change))
+      override def onError(e: Throwable): Unit = delivered.put(Left(e))
+      override def onComplete(): Unit = ()
+    })
+    try {
+      val seen = Seq.newBuilder[String]
+      var done = false
+      while (!done) {
+        delivered.poll(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) match {
+          case null          => fail(s"the change stream did not deliver the end marker within ${SpecTimeouts.Io}; saw ${seen.result()}")
+          case Left(failure) => throw failure
+          case Right(change) =>
+            val collection = Option(change.getNamespace).map(_.getCollectionName).getOrElse("-")
+            seen += s"${change.getOperationTypeString} $collection"
+            done = collection == "change_markers" &&
+              Option(change.getDocumentKey).exists(_.get("_id") == new org.bson.BsonObjectId(end))
+        }
+      }
+      seen.result()
+    } finally Option(subscription.get).foreach(_.unsubscribe())
   }
 
   "an upsert that changes nothing" should "not rewrite the film's movies document" in {

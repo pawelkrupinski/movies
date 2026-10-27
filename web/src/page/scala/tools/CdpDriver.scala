@@ -162,10 +162,12 @@ object Chrome {
       // Installed but not started is a FAILURE, not "Chrome not installed": callers
       // cancel on None, which hid a start that timed out as a skipped spec.
       val exited = Option.when(!process.isAlive)(process.exitValue())
+      // What Chrome printed is why it died: an exit 133 (its own CHECK crash) once failed Main #2146 with no word.
+      // Read to its EOF BEFORE `destroyForcibly`, which closes the process's stdout even when it has already exited:
+      // whatever the drain had not read yet was lost, and the failure quoted nothing (Main #2155, #2164).
+      if (exited.isDefined) drain.join(SpecTimeouts.Io.toMillis)
       process.destroyForcibly()
       deleteProfile(userDirectory)
-      // what Chrome printed is why it died: an exit 133 (its own CHECK crash) once failed Main #2146 with no word
-      if (exited.isDefined) drain.join(SpecTimeouts.Io.toMillis) // an exited Chrome's last lines, read to its EOF
       val printed = output.text
       throw new IllegalStateException(
         s"Chrome at $exe did not open its DevTools port within ${LaunchTimeoutMs / 1000}s" +
