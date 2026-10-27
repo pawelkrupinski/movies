@@ -143,7 +143,15 @@ object UnmatchedClustersCapture {
     val wantedCatalogue = replayed.stage.wanted.collect { case Question.Catalogue(q) => q }
     check(wantedPosters.isEmpty, s"the capture replays wanting posters: ${wantedPosters.take(5).mkString("; ")}")
     check(wantedCatalogue.isEmpty, s"the capture replays wanting catalogue answers: ${wantedCatalogue.take(5).mkString("; ")}")
-    check(UnmatchedClusters.takes(capture, replayed) == UnmatchedClusters.takes(capture, outcome), "the capture replays to other takes than it captured")
+    val (live, again) = (UnmatchedClusters.takes(capture, outcome), UnmatchedClusters.takes(capture, replayed))
+    // each listing whose take differs, both sides whole: the film, its basis and the explanation that made it
+    check(again == live, {
+      def side(ts: Seq[UnmatchedClusters.Take]) = ts.map(t => (t.venue, t.rawTitle) -> t).toMap
+      val (was, now) = (side(live), side(again))
+      val moved      = (was.keySet ++ now.keySet).toSeq.sorted.filter(k => was.get(k) != now.get(k))
+      s"the capture replays to other takes than it captured: ${moved.size} listing(s), ${replayed.unanswered.size} TMDB lookup(s) " +
+        s"unanswered on replay${moved.take(20).map(k => s"\n  captured ${was.get(k)}\n  replayed ${now.get(k)}").mkString}"
+    })
     println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
       s"${filed.size} family answers after $rounds round(s), ${asked.unreachable.size} unreachable; takes ${UnmatchedClusters.takes(capture, outcome).size}")
     // the venue pages the recorded tree lacks of the captured listings and the model's pooled takes (`LiveGapLeaf.readAhead`)
