@@ -3,8 +3,7 @@
 # CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change
 # what the named rows test (or, for `deploy`, what main.yml ships), `false` when every one is inert for them.
 #
-#   ci-row-scope.sh pages    < paths   the Scala page-test row (`page tests (chrome / stable)`: IdentityAdminPageSpec
-#                                      renders identity code)
+#   ci-row-scope.sh pages    < paths   the Scala page-test row (`page tests (chrome / stable)`)
 #   ci-row-scope.sh browsers < paths   the Playwright page-test rows and mobile-local-server: the public pages,
 #                                      served by FixtureServerMain from the checked-in read-model snapshot
 #   ci-row-scope.sh e2e      < paths   the e2e rows: what `pages` takes, and identity's tests too, because the
@@ -27,8 +26,7 @@
 #                                                sources or the build, or a live script sources it
 # and also:
 #   identity/src/test/**   for pages and browsers (not e2e: main.yml's web tier filter takes all of identity/**)
-#   identity/src/main/**   for browsers only (the public pages render the snapshot; identity runs in e2e and in the
-#                          admin pages of the Scala page row)
+#   identity/src/main/**   for browsers only (the public pages render the snapshot; identity runs in e2e)
 # Everything else is LIVE: an unknown path runs every row. (CiRowScopeSpec reads the wiring; ci-row-scope-test.sh
 # the classification.)
 #

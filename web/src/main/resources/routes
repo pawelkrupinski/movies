@@ -208,23 +208,6 @@ POST    /admin/config/set                controllers.EnvConfigController.set()
 + nocsrf
 POST    /admin/config/reset              controllers.EnvConfigController.reset()
 
-# ── Admin: film identity ────────────────────────────────────────────────────
-# Read-only diagnostic of the identity resolver's contradicted and low-confidence
-# shadow decisions, plus pin create/remove for emergencies (identity phase 3,
-# docs/design/identity-resolver.md). Same login + ADMIN_ALLOWLIST gate; nocsrf
-# because the page POSTs JSON via fetch (the AdminAction gate is the auth check).
-GET     /admin/identity                  controllers.IdentityAdminController.index()
-GET     /admin/identity/traces           controllers.IdentityAdminController.traces(rule: Option[String] ?= None, film: Option[Int] ?= None, title: Option[String] ?= None, blocker: Option[String] ?= None)
-+ nocsrf
-POST    /admin/identity/pins             controllers.IdentityAdminController.createPin()
-+ nocsrf
-POST    /admin/identity/pins/remove      controllers.IdentityAdminController.removePin()
-
-# ── Admin: share cards ──────────────────────────────────────────────────────
-# Every city and film share card this country's pages name, in two searchable tabs,
-# to look over by eye. Read-only; same login + ADMIN_ALLOWLIST gate.
-GET     /admin/share-cards               controllers.ShareCardGalleryController.index()
-
 # ── robots.txt ────────────────────────────────────────────────────────────────
 # Returning a 404 on /robots.txt confused Facebook's link-preview scraper
 # (`facebookexternalhit`) — its debugger reported "403 due to robots.txt

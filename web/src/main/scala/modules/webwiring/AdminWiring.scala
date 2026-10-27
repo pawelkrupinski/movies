@@ -1,14 +1,13 @@
 package modules.webwiring
 
-import controllers.{AdminAction, EnvConfigController, IdentityAdminController, TasksController, UptimeController}
+import controllers.{AdminAction, EnvConfigController, TasksController, UptimeController}
 import modules.Wiring
 import services.UptimeMonitor
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
 
 /** ── Operator pages ────────────────────────────────────────────────────────
- *  What sits behind the `AdminAction` gate: /uptime, /tasks, /admin/config, /admin/identity
- *  and /admin/share-cards,
+ *  What sits behind the `AdminAction` gate: /uptime, /tasks and /admin/config,
  *  and the read-only views of worker-owned state they render. */
 trait AdminWiring { self: Wiring =>
 
@@ -57,16 +56,4 @@ trait AdminWiring { self: Wiring =>
     tickInterval = processConfiguration.configRefreshInterval(
       settings.ConfigRefreshInterval(scala.concurrent.duration.Duration(30L, "seconds")))))
   lazy val envConfigController = new EnvConfigController(controllerComponents, adminAction, envConfigService)
-
-  // Film identity (phase 3 of docs/design/identity-resolver.md): the emergency pins, written here and
-  // read by the worker's identity model, and the model's traces.
-  lazy val identityPins = new services.identity.Pins(new services.identity.MongoPinStore(mongoConnection.database), clock)
-  lazy val identityAdminController =
-    new IdentityAdminController(controllerComponents, adminAction, userRepository, identityPins,
-      mongoConnection.database.fold[services.identity.IdentityTraceReads](services.identity.IdentityTraceReads.Empty)(
-        new services.identity.MongoIdentityTraceReads(_)))
-
-  // Every share card this country names, to look over by eye (/admin/share-cards).
-  lazy val shareCardGalleryController =
-    new controllers.ShareCardGalleryController(controllerComponents, adminAction, webReadModel, country)
 }

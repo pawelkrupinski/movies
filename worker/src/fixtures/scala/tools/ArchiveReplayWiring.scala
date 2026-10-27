@@ -214,7 +214,7 @@ class ArchiveReplayWiring(
 
   override lazy val tmdbJsonBodies: JsonBodies = tmdbBodies
 
-  /** No identity traces. They are diagnostics for `/admin/identity/traces` — nothing a replay asserts
+  /** No identity traces. They are diagnostics (`identity_traces`) — nothing a replay asserts
    *  reads them, nor does the resolver — yet a cut-over replay built one per listing on every resolve
    *  (each listing's fired title rules, regexes over ~100k US listings) and bulk-wrote them into the
    *  same Mongo the projection writes its films to: 10% of a US order-independence replay's CPU, and

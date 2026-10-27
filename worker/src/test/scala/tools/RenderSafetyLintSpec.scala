@@ -114,7 +114,6 @@ object RenderSafetyLintSpec {
     ("_serviceNameLink.scala.html", "u")             -> "a WebHref (the template's `url: Option[WebHref]`)",
     ("_filmDetailContent.scala.html", "url")         -> "a WebHref (FilmSchedule.linkableCinemaFilmUrls)",
     ("_moviePoster.scala.html", "proxied")           -> "a WebHref (PosterProxy.proxyPoster of the template's `poster: Option[WebHref]`)",
-    ("shareCards.scala.html", "image")               -> "a WebHref (ShareCardGalleryController's `image: Option[WebHref]`)",
     ("_filmDetailContent.scala.html", "href")        -> "an app route: FilmHref of a sibling city (MovieController.otherCityLinks)",
     ("film.scala.html", "canonicalUrl")              -> "an app URL: this page's own address (MovieController.film)",
     ("_ogTagsApp.scala.html", "{if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}") ->

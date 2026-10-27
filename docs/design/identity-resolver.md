@@ -1030,6 +1030,10 @@ published are untouched.
 
 ### 13.3 The admin view
 
+> **Retired 2026-10-27.** `/admin/identity` (with its traces page and the pin POSTs) is gone; pins
+> are still read by the worker from `identity_pins`, and `Pins` still holds their rules, but the web
+> no longer writes them. What follows is history.
+
 `/admin/identity` (web, `IdentityAdminController`): `AdminAction`-gated like `/admin/config`. Its
 two pin POSTs are declared `Auth.Admin` / `CrossSiteFilter` in `RouteProtectionMatrixSpec`. It is
 a read-only diagnostic of the latest shadow decisions:
