@@ -14,7 +14,9 @@ scratch="$(mktemp -d)"; scratch="$(cd "$scratch" && pwd -P)"
 # process group — the caller's shell and every spec beside it — whenever it ended before $sleeper was set.)
 fakes=()
 trap 'kill ${fakes[@]+"${fakes[@]}"} 2>/dev/null; rm -rf "$scratch"' EXIT
-export KINOWO_SBT_WARM_STATE="$scratch/state" KINOWO_IDENTITY_CACHE="$scratch/identity"
+export KINOWO_SBT_WARM_STATE="$scratch/state" KINOWO_IDENTITY_CACHE="$scratch/identity" KINOWO_SBT_CACHE="$scratch/cache"
+# the shared build cache publishes only in its own checks below: the seeds checked before them are worktrees' and refs'
+export KINOWO_SBT_CACHE_PUBLISH=0
 # the seeds this spec checks are its own scratch builds: a caller's seed (fail-before exports its built checkout) is none
 unset KINOWO_SBT_WARM_SEED
 # run by the hook's scripttests check, it inherits the hook's stall marks (stall-watch.sh): its own stalls are no stall of
@@ -34,6 +36,11 @@ active=project/target/active.json
 [ -f "\$active" ] || { mkdir -p project/target; echo "{\\"uri\\":\\"local://\$(pwd -P)/sock\\"}" > "\$active"; }
 server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
 printf "%s|%s\\n" "\$server" "\$(cat "\$server/worker/src/s" 2>/dev/null)" >> "$scratch/sbt-sources"
+[ -n "\${STUB_FAIL:-}" ] && exit 1
+# a stale TASTy read, once: the command fails with the signature (project/StaleTastyRetry.scala)
+if [ -n "\${STUB_STALE_ONCE:-}" ] && [ ! -e "\$STUB_STALE_ONCE" ] && [ "\$*" != "--client staleTastyDrop" ]; then
+  touch "\$STUB_STALE_ONCE"; echo "[error] Ignoring analyses of x due to error in reading TASTy"; exit 1
+fi
 # a slow command: whether the server named was still running as it ended
 if [ -n "\${STUB_SLOW_SERVER:-}" ]; then
   touch "$scratch/slow-started"; sleep 3; kill -0 "\$STUB_SLOW_SERVER" 2>/dev/null && echo running > "$scratch/slow" || echo stopped > "$scratch/slow"
@@ -125,6 +132,56 @@ mkdir -p "$scratch/other/identity/src"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a module the checkout has not built yet is seeded, the built ones kept" "newest old" \
   "$(cat "$scratch/other/identity/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from")"
+
+# THE SHARED BUILD CACHE: a passing call in a clean checkout of a main commit publishes its build; a seed prefers it
+export KINOWO_SBT_CACHE_PUBLISH=1
+scratch_git "$repo" worktree add -q -b pub "$scratch/pub" origin/main
+build "$scratch/pub" pub; mkdir -p "$scratch/pub/web/target/scala-3.9.0/zinc"
+head_sha=$(scratch_git "$repo" rev-parse origin/main)
+(cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a passing call in a clean checkout of a main commit publishes its build, its server socket left out" "pub 2 no" \
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null) $([ -e "$KINOWO_SBT_CACHE/$head_sha/project/target/active.json" ] && echo yes || echo no)"
+check "...and no partial copy is left" "" "$(find "$KINOWO_SBT_CACHE" -mindepth 1 -maxdepth 1 -name '*.*')"
+echo pubbed > "$scratch/pub/worker/target/scala-3.9.0/zinc/from"
+(cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "an entry is not replaced by a build of no more configurations" "pub" \
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+mkdir -p "$scratch/pub/identity/target/scala-3.9.0/zinc"
+echo edit >> "$scratch/pub/a"
+(cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a checkout with a changed tracked file publishes nothing" "pub" \
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+scratch_git "$scratch/pub" checkout -q -- a
+(cd "$scratch/pub" && STUB_FAIL=1 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a call whose command failed publishes nothing" "2" "$(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null)"
+(cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a fuller build replaces the entry; the replaced one is retired, not deleted under a seed" "pubbed 3 1" \
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null) $(find "$KINOWO_SBT_CACHE" -mindepth 1 -maxdepth 1 -name '*.retired-*' | wc -l | tr -d ' ')"
+(cd "$scratch/ahead" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a branch's build (its HEAD on no main) is never published" "no" \
+  "$([ -d "$KINOWO_SBT_CACHE/$(scratch_git "$scratch/ahead" rev-parse HEAD)" ] && echo yes || echo no)"
+scratch_git "$repo" worktree add -q -b fromcache "$scratch/fromcache" origin/main
+(cd "$scratch/fromcache" && "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
+check "a seed takes the cache entry over another build of the same commit" "pubbed" \
+  "$(cat "$scratch/fromcache/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+exec 9>> "$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/fromcache" | shasum | cut -c1-12).busy"
+python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
+mkdir -p "$scratch/fromcache/scrapers/target/scala-3.9.0/zinc" "$scratch/fromcache/geodata/target/scala-3.9.0/zinc" \
+  "$scratch/fromcache/common/target/scala-3.9.0/zinc"
+out=$(cd "$scratch/fromcache" && "$REPO_ROOT/scripts/sbt-warm" --publish 2>&1)
+check "--publish while a command runs in the server publishes nothing" "3 yes" \
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs") $(grep -q 'nothing published' <<<"$out" && echo yes || echo "no: $out")"
+exec 9>&-
+(cd "$scratch/fromcache" && "$REPO_ROOT/scripts/sbt-warm" --publish >/dev/null 2>&1)
+check "...and publishes once none does" "4" "$(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs")"
+
+# ONE BUILD PATH: a command that failed on a stale TASTy read drops the stale classes in its server and runs once more
+: > "$scratch/sbt-calls"
+out=$(cd "$scratch/pub" && STUB_STALE_ONCE="$scratch/stale-once" "$REPO_ROOT/scripts/sbt-warm" "worker/compile" 2>&1); rc=$?
+check "a stale TASTy read is recovered through sbt-guard: staleTastyDrop in the server, the command once more" \
+  "0|--client worker/compile|--client staleTastyDrop|--client worker/compile" \
+  "$rc|$(cut -d'|' -f2 "$scratch/sbt-calls" | paste -sd'|' -)"
+export KINOWO_SBT_CACHE_PUBLISH=0
 
 # the build changed under the kept server (a rebase onto a new module): it reloads before running the commands
 (cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &

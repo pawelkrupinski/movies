@@ -8,6 +8,8 @@
 #   scripts/sbt-warm --serve <command>   run a command that SERVES until stopped (a `runMain` fixture server) in this
 #                                        checkout's server, which it keeps in use (never idle-stopped) while it serves
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
+#   scripts/sbt-warm --publish           put this checkout's build into the shared build cache (when it is a clean build
+#                                        of a main commit, and no command runs in its server)
 #   scripts/sbt-warm --status            this checkout's server, and every kept one
 #   scripts/sbt-warm --stop              stop this checkout's server and its keeper, returning once the keeper is gone and
 #                                        its slot free (by pid, its own only: never `sbt --client shutdown`,
@@ -26,6 +28,19 @@
 # sbt-target-cache restores (APFS clones: no bytes copied), less project/target/active.json, the source's server socket. Zinc's analysis is relative to the checkout, so the first
 # compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead. A class
 # file the source's Zinc analysis does not list as a product (another build wrote it) is not seeded: scripts/zinc_orphans.py.
+#
+# THE SHARED BUILD CACHE, $KINOWO_SBT_CACHE (default ~/.cache/sbt-movies-cache): one directory per main commit,
+# <sha>/, holding a build of that commit's tree -- the same paths a seed copies, as APFS clones -- and the first place a
+# seed looks (an entry wins a tie with a worktree's build at the same commit). A worktree's build may be half-written by
+# a compile running in it, or hold the classes of edits never committed; an entry is published only from a CLEAN
+# checkout (no tracked file changed, no untracked source) whose HEAD is on a remote's main, by a call whose command
+# PASSED, holding $key.busy EXCLUSIVELY (no other call's command runs in the server: else it publishes nothing); copied
+# to <sha>.part-<pid>, its orphan classes pruned (zinc_orphans.py), then renamed into place, so a seed never reads a
+# partial entry. An entry is replaced only by a build of more configurations (its .zincs count); the replaced one is
+# renamed <sha>.retired-<time> and deleted 10 min later, so a seed copying from it finishes. The newest
+# $KINOWO_SBT_CACHE_KEEP (8) entries are kept; KINOWO_SBT_CACHE_PUBLISH=0 publishes nothing. Correctness never rests
+# on an entry being exact: Zinc's analysis records every source's hash, so a seed recompiles whatever differs, and a
+# stale TASTy read in that first incremental compile is recovered as in CI (ONE BUILD PATH, below).
 #
 # THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses).
 # Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm); every call also reaps removed checkouts' servers.
@@ -67,6 +82,9 @@
 #     owner is gone, however it ended -- fixture-server.sh nohups the serve, so nothing else would.
 #   * a call finding the server serving fails AT ONCE (exit 75, `sbt-warm BLOCKED: ...`) while the serve and its owner
 #     live -- its command would wait for the serve's end -- and restarts the server when either is gone (an orphan).
+#   * ONE BUILD PATH: the client runs through scripts/ci/sbt-guard/sbt, as every CI sbt call does: a command that failed
+#     on a stale TASTy read (project/StaleTastyRetry.scala) is followed by `staleTastyDrop` in this server and run once
+#     more -- a seeded checkout's first compile is incremental over another commit's classes, where that read happens.
 #   * NO PROGRESS: a call whose server (with its forked JVMs) and client use no CPU for $KINOWO_SBT_WARM_STALL_SECONDS
 #     (600) -- a command queued behind one that never ends, a dead server's socket, a deadlock -- writes the server's
 #     thread dump to $State/<key>.stall-<time>.txt, stops it and runs the command once more in a fresh one; stalled
@@ -86,6 +104,7 @@ IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-10}
 # shellcheck source=scripts/stall-watch.sh
 . "$(dirname "$0")/stall-watch.sh"
 IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
+SbtCache=${KINOWO_SBT_CACHE:-$HOME/.cache/sbt-movies-cache}
 log() { echo "[sbt-warm]${LogStamp:+ $(date '+%F %T')} $*" >&2; }
 Self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 
@@ -225,22 +244,29 @@ reap() { # [idle]
   done
 }
 
-# The newest local build of a commit this checkout's HEAD contains: "<commits behind it> <dir>", or nothing.
+# The newest local build of a commit this checkout's HEAD contains: "<commits behind it> <1: a cache entry, else 0>
+# <dir>", or nothing. A shared cache entry wins a tie: it is a clean build of exactly that commit.
 seed_source() {
-  local dir sha t head
+  local dir sha t head cached
   head=$(git -C "$root" rev-parse -q --verify HEAD 2>/dev/null) || head=origin/main
   {
     git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p'
     [ -d "$IdentityRefs" ] && find "$IdentityRefs" -mindepth 1 -maxdepth 1 -type d ! -name '*.part'
+    [ -d "$SbtCache" ] && find "$SbtCache" -mindepth 1 -maxdepth 1 -type d ! -name '*.*'
   } | while IFS= read -r dir; do
     [ "$(cd "$dir" 2>/dev/null && pwd -P)" = "$root" ] && continue
     compgen -G "$dir/worker/target/scala-*/test-classes" > /dev/null || continue
     compgen -G "$dir/worker/target/scala-*/zinc" > /dev/null || continue
-    case "$dir" in "$IdentityRefs"/*) sha=$(basename "$dir") ;; *) sha=$(git -C "$dir" rev-parse -q --verify HEAD 2>/dev/null) || continue ;; esac
+    cached=0
+    case "$dir" in
+      "$IdentityRefs"/*) sha=$(basename "$dir") ;;
+      "$SbtCache"/*) sha=$(basename "$dir"); cached=1 ;;
+      *) sha=$(git -C "$dir" rev-parse -q --verify HEAD 2>/dev/null) || continue ;;
+    esac
     git merge-base --is-ancestor "$sha" "$head" 2>/dev/null || continue
     t=$(git rev-list --count "$sha" 2>/dev/null) || continue   # HEAD's ancestors are linear: the nearer, the more behind it
-    echo "$t $dir"
-  done | sort -rn | head -1
+    echo "$t $cached $dir"
+  done | sort -k1,1rn -k2,2rn -k3r | head -1
 }
 
 # What this checkout has not built: project/target, and each module (a directory with src/) without Zinc state -- of
@@ -258,7 +284,7 @@ seed() {
   local missing src=${KINOWO_SBT_WARM_SEED:-} d m started=$SECONDS
   missing=$(unbuilt)
   [ -n "$missing" ] || return 0
-  [ -n "$src" ] || src=$(seed_source | cut -d' ' -f2-)
+  [ -n "$src" ] || src=$(seed_source | cut -d' ' -f3-)
   [ -n "$src" ] || { log "no local build of main to seed from: the first compile is cold"; return 0; }
   log "seeding $(printf '%s' "$missing" | tr '\n' ' ') in $root from $src's build"
   for m in $missing; do
@@ -277,6 +303,77 @@ seed() {
   # fixtures classes in worker's main classes/, shadowing the real ones): Zinc never deletes what it did not produce
   python3 "$(dirname "$0")/zinc_orphans.py" "$root"
   log "seeded in $((SECONDS - started))s"
+}
+
+# THE SHARED BUILD CACHE (header). The paths a seed copies, of <dir>: one per line.
+build_paths() { # <dir>
+  local d
+  for d in project/target project/project/target; do [ -d "$1/$d" ] && echo "$d"; done
+  for d in "$1"/*/target/scala-*; do [ -d "$d" ] && echo "${d#"$1"/}"; done
+}
+
+# How many configurations <dir> has built (Zinc state directories): a cache entry is replaced only by a fuller build.
+built_zincs() { # <dir>
+  find "$1" -mindepth 4 -maxdepth 4 -type d -path "$1/*/target/scala-*/*zinc" 2>/dev/null | wc -l | tr -d ' '
+}
+
+# Whether <sha> is on a remote's main (the commit a seed may stand on), with a clean checkout: no tracked file changed,
+# no untracked file where sbt reads sources.
+publishable() { # <sha>
+  local ref on=1
+  for ref in $(git -C "$root" for-each-ref --format='%(refname)' 'refs/remotes/*/main' 2>/dev/null); do
+    git -C "$root" merge-base --is-ancestor "$1" "$ref" 2>/dev/null && { on=0; break; }
+  done
+  [ "$on" = 0 ] || return 1
+  git -C "$root" diff --quiet HEAD -- 2>/dev/null || return 1
+  [ -z "$(git -C "$root" ls-files --others --exclude-standard -- build.sbt ':(glob)project/*.s*' project/build.properties \
+    ':(glob)*/src/**' ':(glob)*/conf/**' 2>/dev/null | head -1)" ]
+}
+
+# Publishes this checkout's build as the cache entry of its HEAD. The caller holds $key.busy exclusively.
+publish() {
+  local head entry part zincs have p
+  [ "${KINOWO_SBT_CACHE_PUBLISH:-1}" != 0 ] || return 0
+  head=$(git -C "$root" rev-parse -q --verify HEAD 2>/dev/null) || return 0
+  publishable "$head" || return 0
+  zincs=$(built_zincs "$root")
+  [ "${zincs:-0}" -gt 0 ] || return 0
+  entry="$SbtCache/$head"
+  have=$(cat "$entry/.zincs" 2>/dev/null || echo 0)
+  [ "$zincs" -gt "$have" ] || return 0
+  mkdir -p "$SbtCache" || return 0
+  part="$entry.part-$$"
+  rm -rf "$part"
+  build_paths "$root" | while IFS= read -r p; do
+    mkdir -p "$part/$(dirname "$p")"
+    cp -cR "$root/$p" "$part/$p" 2>/dev/null || cp -R "$root/$p" "$part/$p"
+  done
+  rm -f "$part/project/target/active.json"
+  python3 "$(dirname "$0")/zinc_orphans.py" "$part" > /dev/null
+  echo "$zincs" > "$part/.zincs"
+  [ -d "$entry" ] && mv "$entry" "$entry.retired-$(date +%s)"
+  if mv "$part" "$entry" 2>/dev/null; then
+    log "published this build of ${head:0:10} ($zincs configurations) to the shared build cache $SbtCache"
+  else
+    rm -rf "$part"
+  fi
+  prune_cache
+}
+
+# The newest $KINOWO_SBT_CACHE_KEEP entries stay; retired entries go after 10 min, abandoned .part copies after an hour.
+prune_cache() {
+  local keep=${KINOWO_SBT_CACHE_KEEP:-8} d
+  find "$SbtCache" -mindepth 1 -maxdepth 1 -type d -name '*.retired-*' -mmin +10 -exec rm -rf {} + 2>/dev/null
+  find "$SbtCache" -mindepth 1 -maxdepth 1 -type d -name '*.part-*' -mmin +60 -exec rm -rf {} + 2>/dev/null
+  # shellcheck disable=SC2010 # entry names are shas: no odd characters
+  for d in $(ls -1t "$SbtCache" 2>/dev/null | grep -v '\.' | tail -n +"$((keep + 1))"); do rm -rf "${SbtCache:?}/$d"; done
+}
+
+# After a command that passed: publish, holding $key.busy exclusively (descriptor 9, held shared by this call) -- only
+# when no other call runs a command in the server, which could be writing the classes being copied.
+publish_after_call() {
+  python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null || return 0
+  publish
 }
 
 # The build definition's digest: a server started on another one runs `reload` first.
@@ -331,6 +428,11 @@ case "${1:-}" in
   --keep) keep; exit 0 ;;
   --reap) reap idle; exit 0 ;;
   --seed) seed; exit 0 ;;
+  --publish)
+    exec 9>> "$State/$key.busy"
+    if python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then publish
+    else log "a command runs in the server of $root: nothing published"; fi
+    exit 0 ;;
   --stop)
     if [ "${2:-}" != --root ] && [ "$(git rev-parse --path-format=absolute --git-dir 2>/dev/null)" = "$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" ]; then
       log "refusing --stop in the root checkout ($root): cd into your own worktree first, or --stop --root to stop the root's server"
@@ -420,9 +522,9 @@ else
 fi
 # The KINOWO_* settings this call passes. A kept server reads the environment it STARTED with, never a later call's:
 # KINOWO_IDENTITY_CORPUS_DIR given to a call reached nothing, and the corpus specs cancelled (2026-10-18). A call whose
-# settings differ from its server's restarts the server with them. The tool-side knobs (KINOWO_SBT_WARM_*, the JVM
+# settings differ from its server's restarts the server with them. The tool-side knobs (KINOWO_SBT_WARM_*, KINOWO_SBT_CACHE*, the JVM
 # gate's KINOWO_MEMORY_GATE*/KINOWO_JVM_*, the stall bound's KINOWO_STALL_*/KINOWO_PROGRESS_FILE) are no server setting.
-settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' \
+settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_SBT_CACHE' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' \
   -e '^KINOWO_STALL_' -e '^KINOWO_PROGRESS_FILE=' | sort | shasum | cut -c1-16)
 if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" != "$settings" ]; then
   log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
@@ -485,7 +587,9 @@ StallSeconds=${KINOWO_SBT_WARM_STALL_SECONDS:-600}
 client=""
 trap '[ -n "$client" ] && kill $(stall_tree_pids "$client") 2> /dev/null; exit 143' TERM INT
 run_client() {
-  (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" exec sbt --client "$command" 5>&- 6>&- 7>&- 8>&- 9>&-) &
+  local sbt=sbt
+  [ -x "$(dirname "$Self")/ci/sbt-guard/sbt" ] && sbt="$(dirname "$Self")/ci/sbt-guard/sbt"   # ONE BUILD PATH (the header)
+  (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" exec "$sbt" --client "$command" 5>&- 6>&- 7>&- 8>&- 9>&-) &
   client=$!
 }
 # the client's and server's process trees, one pid per line
@@ -557,6 +661,7 @@ else
   fi
 fi
 client=""
+[ "$rc" = 0 ] && [ "$serve" = 0 ] && publish_after_call
 kill "$heartbeat" 2>/dev/null
 jvm_slot_release
 touch "$State/$key.used"

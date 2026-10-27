@@ -356,7 +356,7 @@ if command -v shellcheck >/dev/null; then
   # in place and warm, instead of in a cold temporary checkout -- and through scripts/sbt-warm itself, holding the
   # checkout's busy lock as any call does: a bare `sbt --client` held none, so the server's keeper, seeing it idle, could
   # stop it mid-check ("sbt server disconnected", 2026-10-19). sbt-warm's state, slots and keeper are the spec's own.
-  export KINOWO_SBT_WARM_STATE="$scratch/sbt-warm" KINOWO_IDENTITY_CACHE="$scratch/identity" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
+  export KINOWO_SBT_WARM_STATE="$scratch/sbt-warm" KINOWO_SBT_CACHE="$scratch/sbt-cache" KINOWO_IDENTITY_CACHE="$scratch/identity" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
     KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=1
   cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
