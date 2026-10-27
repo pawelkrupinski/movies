@@ -208,7 +208,7 @@ object IdentityDrift {
     /** One round of the queue's work: the stage's open questions answered — a held filed answer released, the rest
      *  asked of the recording's sites — its posters hashed and its catalogue questions filed. */
     def answer(stage: AgreementStage, release: String => Boolean): Unit = {
-      val open = askable(stage).toSeq.filterNot { case (family, question) => release(FamilyAnswerStore.questionId(family, question)) }
+      val open = asks(store, askable(stage).toSeq, release)
       tools.ConcurrentAsks.each(stage.wanted.toSeq.collect { case Question.Poster(q) => q }, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
       catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
       tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
@@ -217,6 +217,17 @@ object IdentityDrift {
       }
     }
   }
+
+  /** Which of the family questions `open` a round asks the recording's sites: none `release` files (a held filed answer),
+   *  nor one whose answer the store holds fresh — skipped, as production's asker skips it
+   *  ([[services.identity.adapters.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
+   *  held, and keeps listing them once filed; asked again, the recording's answer replaced the filed one, which no whole
+   *  resolve ever reads (PL "LALKA / DOLLY", seed 2, run 3154: RT's filed "Lalka Dolly" search read again as no hits). */
+  def asks(store: FamilyAnswerStore, open: Seq[(VoterFamily, String)], release: String => Boolean): Seq[(VoterFamily, String)] =
+    open.filter { case (family, question) =>
+      val id = FamilyAnswerStore.questionId(family, question)
+      !release(id) && store.wanted(id)
+    }
 
   /** The recording's answers, each read once: a venue page is parsed once, not on every projection. */
   def memo(reads: Reads): IdentityLookups =
