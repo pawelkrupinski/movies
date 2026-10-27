@@ -36,7 +36,7 @@ check "...PASS-AFTER yes" "yes" "$(printf '%s\n' "$out" | sed -n 's/^PASS-AFTER:
 printf 'test "$KINOWO_SBT_WARM_SEED" = "$EXPECTED_SEED"; s=$?; test "$(bash greet.sh)" = hello && exit $s; exit 1\n' > "$repo/seed-test.sh"
 scratch_git "$repo" add -A
 scratch_git "$repo" commit -qm "a test reading the seed"
-out="$(cd "$repo" && EXPECTED_SEED= "$tool" --files 'seed-test.sh' -- bash seed-test.sh 2>&1)"
+out="$(cd "$repo" && EXPECTED_SEED='' "$tool" --files 'seed-test.sh' -- bash seed-test.sh 2>&1)"
 check "an unbuilt caller names no seed" "yes" "$(printf '%s\n' "$out" | sed -n 's/^PASS-AFTER: //p')"
 mkdir -p "$repo/worker/target/scala-3.9.0/zinc"
 out="$(cd "$repo" && EXPECTED_SEED="$(cd "$repo" && pwd -P)" "$tool" --files 'seed-test.sh' -- bash seed-test.sh 2>&1)"

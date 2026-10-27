@@ -230,7 +230,7 @@ fi
 # --- act --------------------------------------------------------------------
 
 reaped=0
-while read -r pid ppid age cpu pct rule short; do
+while read -r pid ppid age _ pct rule short; do
   [[ -z "${pid:-}" ]] && continue
 
   human_age=$((age / 3600))h$(((age % 3600) / 60))m
