@@ -28,11 +28,18 @@ class WebRenderMetrics(registry: PrometheusRegistry, country: String) {
     .classicUpperBounds(WebRenderMetrics.ByteBuckets*)
     .register(registry)
 
+  WebRenderMetrics.Pages.foreach(page => allocated.labelValues(country, page))
+
   def record(page: String, bytes: Long): Unit =
     allocated.labelValues(country, page).observe(bytes.toDouble)
 }
 
 object WebRenderMetrics {
+  /** The `page` values: a city's repertoire, and the share of it spent building its schedules. */
+  val Listing          = "listing"
+  val ListingSchedules = "listing_schedules"
+  val Pages: Seq[String] = Seq(Listing, ListingSchedules)
+
   private val MB = 1024.0 * 1024
   /** 1 MB to 512 MB in doublings: one render of the smallest city to a worst case
    *  above what New York ever cost. */

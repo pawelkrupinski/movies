@@ -77,6 +77,9 @@ object WebRouteUsageMetrics {
     """(?i)bot|crawl|spider|slurp|externalagent|externalhit|preview|curl|wget|python|go-http|java/|okhttp|headless|scrapy|httpclient""".r
 
   /** Sorts a User-Agent into the closed `client` label set. */
+  /** Every value [[clientKind]] answers: the closed `client` label set. */
+  val ClientKinds: Seq[String] = Seq("ios_app", "android_app", "bot", "browser", "other")
+
   def clientKind(userAgent: Option[String]): String = userAgent match {
     case Some(agent) if agent.startsWith("KinowoIOS/")             => "ios_app"
     case Some(agent) if agent.startsWith("KinowoAndroid/")         => "android_app"

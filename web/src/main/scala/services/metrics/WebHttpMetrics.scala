@@ -59,12 +59,16 @@ import play.api.routing.Router
  *    worker's per-country `kinowo_worker_*` series on the shared dashboards —
  *    the same reason `kinowo_web_movies_served` carries it.
  *
- * Deliberately NOT seeded to zero across the label grid, unlike
- * [[WorkerHttpMetrics]]: that grid is route × method × status ≈ 50 × 9 × 5,
- * and materialising ~2,000 permanently-zero series to avoid a few
- * appears-on-first-request Grafana lines is the wrong trade. The histogram
- * carries no `status` label for the same reason — latency is asked per route,
- * and a status dimension would multiply a 14-series-per-combination metric.
+ * Not seeded across the whole label grid, unlike [[WorkerHttpMetrics]]: that
+ * grid is route × method × status ≈ 90 × 9 × 5, and ~4,000 permanently-zero
+ * series is the wrong trade. Seeded instead where a missing series blinds an
+ * alert: every route the router defines, by its own method, at `4xx` and `5xx`
+ * ([[declareRoutes]], at boot), so a route's FIRST error is an increase from 0
+ * that `increase()` sees rather than a series appearing at 1, which it cannot;
+ * and both histograms on the unmatched route, so every family exists from boot
+ * (deploy.WebMetricsAtBootSpec). The histogram carries no `status` label for
+ * the grid's reason — latency is asked per route, and a status dimension would
+ * multiply a 14-series-per-combination metric.
  */
 class WebHttpMetrics(registry: PrometheusRegistry, country: String) {
 
@@ -97,6 +101,15 @@ class WebHttpMetrics(registry: PrometheusRegistry, country: String) {
     .classicOnly()
     .classicUpperBounds(WebHttpMetrics.ByteBuckets*)
     .register(registry)
+
+  duration.labelValues(country, "GET", WebHttpMetrics.UnmatchedRoute)
+  responseBytes.labelValues(country, "GET", WebHttpMetrics.UnmatchedRoute)
+
+  /** Seed every route the router defines (Play's `documentation`: method, generated path) at 0 for its error
+   *  classes — see the class comment. Called once at boot by [[modules.Wiring.metricsAtBoot]]. */
+  def declareRoutes(routes: Seq[(String, String)]): Unit =
+    for ((method, path) <- routes; status <- Seq("4xx", "5xx"))
+      requests.labelValues(country, WebHttpMetrics.methodLabel(method), WebHttpMetrics.readablePattern(path), status)
 
   /** Record one answered request. Called once per request by
    *  [[modules.HttpMetricsFilter]]; all three metric objects are thread-safe.

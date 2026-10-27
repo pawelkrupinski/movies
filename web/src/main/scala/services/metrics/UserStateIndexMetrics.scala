@@ -20,5 +20,8 @@ class UserStateIndexMetrics(registry: PrometheusRegistry, country: String) exten
     .labelNames("country")
     .register(registry)
 
+  // NaN until the boot's index check answers: not yet known, which neither reading of the alert may claim.
+  unique.labelValues(country).set(Double.NaN)
+
   def uniqueUserIdIndex(present: Boolean): Unit = unique.labelValues(country).set(if (present) 1 else 0)
 }

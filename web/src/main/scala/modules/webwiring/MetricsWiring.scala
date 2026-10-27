@@ -66,4 +66,17 @@ trait MetricsWiring { self: Wiring =>
   lazy val webDecodeFailureMetrics = new WebDecodeFailureMetrics(webJvmMetrics.registry, metricsCountry.code)
   // Whether `userStates` has its unique userId index — see the class doc. Lazy, as above.
   lazy val userStateIndexMetrics = new UserStateIndexMetrics(webJvmMetrics.registry, metricsCountry.code)
+
+  /** Build every metric this tier publishes, and seed the router's `routes` (Play's documentation: method, generated
+   *  path), before the first request: each family then carries its series from the first scrape, so an alert over
+   *  one compares a value and an absent family is a fault (deploy.WebMetricsAtBootSpec). Without it the lazy vals
+   *  above are built by their first user, which for some is the first request that touches them. Called once by
+   *  `AppComponents`, as soon as its router exists. */
+  def metricsAtBoot(routes: Seq[(String, String)]): Unit = {
+    // Each registers its families as it is built; the values are not needed here.
+    Seq[AnyRef](ticks, webHttpMetrics, webRouteUsageMetrics, legacyAddressMetrics, webRenderMetrics, userStateWriteMetrics,
+      webDecodeFailureMetrics, userStateIndexMetrics, webReadModelStreamMetrics).foreach(_ => ())
+    webRouteUsageMetrics.declareRoutes(routes.map(_._2))
+    webHttpMetrics.declareRoutes(routes)
+  }
 }

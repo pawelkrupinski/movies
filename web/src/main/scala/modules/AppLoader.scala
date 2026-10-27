@@ -211,9 +211,10 @@ class AppComponents(applicationContext: Context, val env: Env, val country: Coun
       .orElse(ConstructByType[Routes](httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, pickerController, debugController, identityStagingController, debugStreamController, ssoController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, shareCardGalleryController, reviewController, assets)
         .withPrefix(httpConfiguration.context))
 
-  // The routes inventory the "longest uncalled route" panel ranks against — a
-  // route nobody calls has no last-called series, only this one.
-  webRouteUsageMetrics.declareRoutes(router.documentation.map(_._2))
+  // Every metric family's series from boot, the routes seeded off the router: the inventory the "longest uncalled
+  // route" panel ranks against (a route nobody calls has no last-called series, only this one), and each route's
+  // error classes at 0.
+  metricsAtBoot(router.documentation.map { case (method, path, _) => method -> path })
 
   start()
 

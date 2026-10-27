@@ -39,6 +39,9 @@ class LegacyAddressMetrics(registry: PrometheusRegistry, country: String, clock:
     .labelNames("country", "kind", "client")
     .register(registry)
 
+  // Every kind and client kind at 0 from boot. Not the last-called times: an address never served has none.
+  for (kind <- LegacyAddressKind.values; client <- WebRouteUsageMetrics.ClientKinds) hits.labelValues(country, kind.label, client)
+
   /** One served legacy hit. Skips what [[WebHttpMetrics.isMeasured]] skips — the
    *  `/metrics` scrape and the synthetic probe. */
   def record(kind: LegacyAddressKind, request: RequestHeader): Unit =
