@@ -24,6 +24,7 @@ wait_until "a pattern there" grep -q there <<< "it is there"
 check "wait_until: a command with its arguments is run as given" "0" "$?"
 
 # a deadline reached: a failed case counted and named, and the status for a caller that branches on it
+# shellcheck disable=SC2154 # fails is shell-spec.sh's tally
 before=$fails
 out=$(SPEC_WAIT_BOUND=0 wait_until "a file never made" '[ -e "$work/never" ]'; echo "status=$? fails=$fails")
 check "wait_until: a deadline reached is a failure, counted" "status=1 fails=$((before + 1))" "$(tail -1 <<< "$out")"
