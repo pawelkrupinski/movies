@@ -22,7 +22,10 @@ permissions:
 jobs:
     check:
         runs-on: ubuntu-26.04
-        timeout-minutes: 60
+        # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
+        # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
+        # and the job 90, room for the failure steps after it
+        timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
               with:
@@ -60,8 +63,8 @@ jobs:
                   # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  timeout --kill-after=60 50m scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
-                  [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 50 minutes and were stopped"
+                  timeout --kill-after=60 80m scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
             # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
