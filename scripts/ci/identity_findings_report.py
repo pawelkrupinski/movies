@@ -24,16 +24,17 @@ country bills in the same week as another country that one of them takes as a fi
 (countries_disagree.py). A triage list beside the findings, never aged: CI has no mirror, so only a run given the
 export carries it.
 
-AGE LIMIT: a finding untriaged for more than --max-age-days (3) days turns the report run red. That red is NOT a
-red-build gate (scripts/hooks/pre-push's GatingWorkflows): a push neither makes nor mends a recording's data, so holding
-pushes behind it is the very coupling this report exists to undo. It reaches the owner through the issue instead.
+AGE LIMIT: a finding untriaged for more than --max-age-days (3) days is OVERDUE: marked in its country's issue (assigned
+to the owner), warned in the log, and `overdue=true` in $GITHUB_OUTPUT for the workflow's report job. It never turns the
+run red (the owner, 2026-10-27: CI red means only a regression; a deadline becomes a task): the 3-day red had kept this
+report red for days, and that noise is why its red got ignored.
 
 usage: identity_findings_report.py [--run RUN] [--countries pl,de,uk,es,us] [--judgements F] [--today D]
          [--max-age-days N] [--assignee LOGIN] [--server URL] [--repo OWNER/NAME] [--work DIR] [--dry-run]
          [--countries-disagree DIR]
 --run defaults (also when empty) to the newest completed `Record scrape fixtures` run on main.
-Exit 0 when every finding is within its age, 1 when one is overdue, 2 when there is no recording to report, no
-country's findings could be read, or a country's issue could not be read or written.
+Exit 0 when the report was made (overdue findings included), 2 when there is no recording to report, no country's
+findings could be read, or a country's issue could not be read or written.
 """
 
 import argparse
@@ -193,7 +194,7 @@ def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed
              f"Recording [run {run}]({run_url}): no finding to triage.", "",
              "These are the RECORDING's: no commit made them, so no build fails on them -- the identity takes check fails "
              "only what a commit's code makes, base against head. A finding untriaged for more than "
-             f"{max_age} days turns the Identity findings report red. A suspect judged into identity-judgements.tsv leaves this issue on "
+             f"{max_age} days is marked overdue here (⏰). A suspect judged into identity-judgements.tsv leaves this issue on "
              "the next report; the rest leave when a recording no longer carries them. Updated in place by "
              "`scripts/ci/identity_findings_report.py`."]
     for kind, heading, how in SECTIONS:
@@ -283,7 +284,7 @@ def report(countries, run, directory_of, judgements_path, today, max_age, run_ur
         overdue_total += overdue
         print(f"{title_of(cc)}: {len(found)} finding(s), {overdue} overdue -- issue {outcome}")
         if overdue:
-            print(f"::error title={title_of(cc)}::{overdue} finding(s) untriaged for more than {max_age} days")
+            print(f"::warning title={title_of(cc)}::{overdue} finding(s) untriaged for more than {max_age} days (overdue)")
     return overdue_total, read, unwritten
 
 
@@ -342,7 +343,10 @@ def main(argv=None, run_gh=gh):
     if read == 0:
         print(f"::error::run {a.run} left no country's findings -- nothing was reported")
         return 2
-    return 1 if overdue else 2 if unwritten else 0
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+            out.write(f"overdue={'true' if overdue else 'false'}\n")
+    return 2 if unwritten else 0
 
 
 if __name__ == "__main__":

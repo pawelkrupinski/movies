@@ -10,13 +10,18 @@
 # workflow is green again. One issue per workflow: a failure while one is open adds a comment,
 # never a second issue.
 #
+# OVERDUE is the same issue for a run that passed but found work past its deadline (a check whose
+# lateness is a task, not a regression: the owner, 2026-10-27, "CI red should mean only a
+# regression"): it opens or comments the same way, and the next pass with nothing overdue closes it.
+#
 # Usage (needs GH_TOKEN with `issues: write` and GH_REPO=<owner>/<repo>):
 #   scheduled-failure-issue.sh failed   "<workflow name>" "<run url>" "<assignee>"
+#   scheduled-failure-issue.sh overdue  "<workflow name>" "<run url>" "<assignee>"
 #   scheduled-failure-issue.sh recovered "<workflow name>" "<run url>"
 # Tested by scripts/ci/scheduled-failure-issue-test.sh against a stub `gh`.
 set -euo pipefail
 
-verdict="${1:?failed|recovered}"
+verdict="${1:?failed|overdue|recovered}"
 workflow="${2:?workflow name}"
 run_url="${3:?run url}"
 assignee="${4:-}"
@@ -26,6 +31,16 @@ title="Scheduled workflow failing: $workflow"
 open_issue="$(open_issue_titled "$title")"
 
 case "$verdict" in
+  overdue)
+    if [ -n "$open_issue" ]; then
+      gh issue comment "$open_issue" --body "Still overdue: $run_url"
+    else
+      gh issue create --title "$title" ${assignee:+--assignee "$assignee"} --body \
+"The scheduled workflow **$workflow** passed, but found work past its deadline: $run_url (its log's warnings name it). Not a regression, so not a red run.
+
+This issue stays open until a run finds nothing overdue, which closes it. Opened by \`scripts/ci/scheduled-failure-issue.sh\`."
+    fi
+    ;;
   failed)
     if [ -n "$open_issue" ]; then
       gh issue comment "$open_issue" --body "Failed again: $run_url"
@@ -42,7 +57,7 @@ This issue stays open until the workflow next passes on its schedule, which clos
     fi
     ;;
   *)
-    echo "unknown verdict '$verdict' (failed|recovered)" >&2
+    echo "unknown verdict '$verdict' (failed|overdue|recovered)" >&2
     exit 2
     ;;
 esac

@@ -1,8 +1,10 @@
 # IS THE IDENTITY CI STILL TELLING US ANYTHING? Every three hours, scripts/ci/identity-ci-staleness.sh
 # asks GitHub whether `Identity model convergence` has been red on main for over 6 hours, whether the
 # newest pipeline commit has gone 3 hours with no convergence run covering it, and whether
-# `Record scrape fixtures` has gone 36 hours without a success. Any of them fails the run, and the
-# `report` job turns that into the owner-assigned issue, closed by the next green run.
+# `Record scrape fixtures` has gone 36 hours without a success. Any of them is work OVERDUE, not a
+# regression: the run stays green (the owner, 2026-10-27: CI red means only a regression) and the
+# `report` job turns it into the owner-assigned issue, closed by the next run with nothing overdue.
+# The run is red only when the checker itself cannot judge (gh, git or jq failed).
 #
 # WHY A WORKFLOW AND NOT AN ALERT: Prometheus cannot see GitHub. And WHY AT ALL: convergence is
 # dispatched by Main, so its own `report` job (schedule-only) never runs -- a red leg sat red for ~10
@@ -25,6 +27,8 @@ jobs:
     check:
         runs-on: ubuntu-26.04
         timeout-minutes: 5
+        outputs:
+            overdue: ${{ steps.staleness.outputs.overdue }}
         permissions:
             contents: read
             actions: read
@@ -43,6 +47,7 @@ jobs:
               run: bash scripts/ci/identity-ci-staleness-test.sh
 
             - name: Is the identity CI stale?
+              id: staleness
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
@@ -77,3 +82,4 @@ jobs:
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+                  overdue: ${{ needs.check.outputs.overdue }}

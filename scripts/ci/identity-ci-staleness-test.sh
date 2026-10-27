@@ -50,13 +50,15 @@ green_recording() { runs record-scrape-fixtures.yml "$(run_json "$base" complete
 check_out() {  # check_out <check name> -> "stale" or "ok" for that check, from a run of the script
   (cd "$repo" && PATH="$work/bin:$PATH" NOW="$NOW_EPOCH" STUB_RUNS="$work/runs" \
      CONVERGENCE_PATHS_FILE="$work/paths.txt" bash "$REPO_ROOT/scripts/ci/identity-ci-staleness.sh") \
-    | grep -E "^(::error::|ok  )$1:" | sed -e 's/^::error::.*/stale/' -e 's/^ok  .*/ok/'
+    | grep -E "^(::error::|::warning::|ok  )$1:" | sed -E -e 's/^::(error|warning)::.*/stale/' -e 's/^ok  .*/ok/'
 }
 exit_code() {
   (cd "$repo" && PATH="$work/bin:$PATH" NOW="$NOW_EPOCH" STUB_RUNS="$work/runs" STUB_GH_FAILS="${1:-}" \
-     CONVERGENCE_PATHS_FILE="$work/paths.txt" bash "$REPO_ROOT/scripts/ci/identity-ci-staleness.sh" >/dev/null 2>&1)
+     GITHUB_OUTPUT="$work/output" CONVERGENCE_PATHS_FILE="$work/paths.txt" \
+     bash "$REPO_ROOT/scripts/ci/identity-ci-staleness.sh" >/dev/null 2>&1)
   echo $?
 }
+overdue_out() { tail -1 "$work/output"; }
 
 green_recording
 
@@ -109,10 +111,13 @@ check "no success at all is stale" stale "$(check_out recording-stale)"
 echo "the exit code"
 green_recording
 check "all fresh exits 0" 0 "$(exit_code)"
+check "...with nothing overdue" overdue=false "$(overdue_out)"
 runs record-scrape-fixtures.yml "$(run_json "$base" completed failure 2 1)"
-check "any stale check exits 1" 1 "$(exit_code)"
+check "a stale check is overdue work, not a red run: exits 0" 0 "$(exit_code)"
+check "...and says overdue=true, for the report job's issue" overdue=true "$(overdue_out)"
 green_recording
 check "a gh that cannot list runs exits 1, never a quiet 0" 1 "$(exit_code fail)"
+check "...and is overdue too" overdue=true "$(overdue_out)"
 
 echo "a run list jq cannot read"
 unreadable='{"headSha":"x","status":"completed","conclusion":"failure","createdAt":"2026-10-01T00:00:00Z","updatedAt":null,"url":"u"}'

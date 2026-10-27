@@ -43,6 +43,12 @@ check "an issue whose title only contains the workflow's is not its issue" \
 check "a workflow name with a quote still finds its open issue" \
   "issue comment 7 --body Failed again: https://run/5" \
   "$(run 7 failed 'Say "cheese"' "https://run/5" pawelkrupinski)"
+check "overdue work opens the same issue, on a green run" \
+  "issue create --title Scheduled workflow failing: OG cards --" \
+  "$(run "" overdue "OG cards" "https://run/6" pawelkrupinski | head -n 1)"
+check "...and comments on it while it is open" \
+  "issue comment 7 --body Still overdue: https://run/7" \
+  "$(run 7 overdue "OG cards" "https://run/7" pawelkrupinski)"
 check "a pass closes the open issue" \
   "issue close 7 --comment Passed again: https://run/3" \
   "$(run 7 recovered "OG cards" "https://run/3")"

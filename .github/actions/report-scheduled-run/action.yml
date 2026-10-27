@@ -10,6 +10,12 @@ inputs:
   failed:
     description: "'true' when any job this run depends on failed"
     required: true
+  overdue:
+    description: >-
+      'true' when the run passed but found work past a deadline (a task, not a regression: it opens the same issue
+      without a red run; scripts/ci/scheduled-failure-issue.sh `overdue`)
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -19,9 +25,10 @@ runs:
             GH_TOKEN: ${{ github.token }}
             GH_REPO: ${{ github.repository }}
             FAILED: ${{ inputs.failed }}
+            OVERDUE: ${{ inputs.overdue }}
             WORKFLOW: ${{ github.workflow }}
             RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             OWNER: ${{ github.repository_owner }}
         run: |
-            if [ "$FAILED" = "true" ]; then verdict=failed; else verdict=recovered; fi
+            if [ "$FAILED" = "true" ]; then verdict=failed; elif [ "$OVERDUE" = "true" ]; then verdict=overdue; else verdict=recovered; fi
             "$GITHUB_WORKSPACE/scripts/ci/scheduled-failure-issue.sh" "$verdict" "$WORKFLOW" "$RUN_URL" "$OWNER"

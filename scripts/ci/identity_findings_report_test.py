@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_findings_report as r  # noqa: E402
@@ -123,12 +124,16 @@ class FindingsReportTest(unittest.TestCase):
         self.assertEqual(2, self.run_report(self.recording("a", self.RED), "2026-10-14"))
         self.assertEqual(["OPEN", "OPEN"], [fake.state(cc) for cc in ("pl", "de")])
 
-    def test_the_issue_is_updated_in_place_keeping_first_seen_and_a_finding_past_three_days_turns_the_report_red(self):
+    def test_the_issue_is_updated_in_place_keeping_first_seen_and_a_finding_past_three_days_is_overdue_not_red(self):
         red = self.recording("a", self.RED)
         self.run_report(red, "2026-10-14")
         self.assertEqual(0, self.run_report(red, "2026-10-17"))  # 3 days: within the limit
         self.assertEqual(3, len(self.gh.issues))  # updated in place, never a second issue
-        self.assertEqual(1, self.run_report(red, "2026-10-18"))  # 4 days: overdue
+        # 4 days: overdue -- a task in the issue and the report job's output, never a red run
+        with tempfile.NamedTemporaryFile("r", suffix=".out") as out:
+            with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": out.name}):
+                self.assertEqual(0, self.run_report(red, "2026-10-18"))
+            self.assertEqual("overdue=true\n", out.read())
         self.assertIn("### ⏰ KF Ambasada: Diabły", self.gh.body("pl"))
         self.assertIn("first seen 2026-10-14 (4 d)", self.gh.body("pl"))
 

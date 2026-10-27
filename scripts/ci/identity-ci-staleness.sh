@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# IS THE IDENTITY CI STILL TELLING US ANYTHING? Exits 1, naming each check that has gone stale.
+# IS THE IDENTITY CI STILL TELLING US ANYTHING? Names each check that has gone stale, as OVERDUE, not as a red run.
 #
 # WHY. The identity resolver's code-caused regressions are caught by CI, never by Prometheus: the
 # identity takes check and the suspect-take ratchet in every leg of `Identity model convergence`,
@@ -26,9 +26,12 @@
 #   recording-stale     no `Record scrape fixtures` run on main has succeeded in
 #                       RECORDING_STALE_HOURS (36: one missed nightly plus slack).
 #
-# Exit 1 is the whole report: `.github/workflows/identity-ci-staleness.yml` runs this on a
-# schedule, and its `report` job turns a red run into the owner-assigned issue every scheduled
-# workflow files (scripts/ci/scheduled-failure-issue.sh), closed by the next green run.
+# A stale check is work OVERDUE, not a regression (the owner, 2026-10-27: CI red means only a
+# regression; a deadline becomes an alert or a task). It prints `::warning::`, writes
+# `overdue=true` to $GITHUB_OUTPUT and exits 0: `.github/workflows/identity-ci-staleness.yml`'s
+# `report` job turns it into the owner-assigned issue every scheduled workflow files
+# (scripts/ci/scheduled-failure-issue.sh `overdue`), closed by the next pass with nothing overdue.
+# Exit 1 only when the checker itself cannot judge (gh, git or jq failed): a broken check is.
 #
 # Needs GH_TOKEN and GH_REPO, jq, and a checkout of main with its history (fetch-depth: 0).
 # NOW (epoch seconds) is the clock, injectable for the test.
@@ -44,9 +47,12 @@ paths_file="${CONVERGENCE_PATHS_FILE:-$here/../../.github/convergence-paths.txt}
 convergence_workflow="${CONVERGENCE_WORKFLOW:-identity-model-convergence.yml}"
 recording_workflow="${RECORDING_WORKFLOW:-record-scrape-fixtures.yml}"
 
-stale=0
+stale=0 broken=0
 verdict() {  # verdict <check> <stale|fresh> <message>
-  if [ "$2" = stale ]; then echo "::error::$1: $3"; stale=1; else echo "ok  $1: $3"; fi
+  if [ "$2" = stale ]; then echo "::warning::$1: $3"; stale=1; else echo "ok  $1: $3"; fi
+}
+unjudged() {  # unjudged <check> <message>: the checker could not read its input -- stale AND broken
+  echo "::error::$1: $2"; stale=1; broken=1
 }
 
 runs() {  # runs <workflow file> -> JSON array, newest first
@@ -56,11 +62,11 @@ runs() {  # runs <workflow file> -> JSON array, newest first
 
 # A failed read is not "nothing is wrong": it is reported as stale, so the check cannot go quiet.
 if ! convergence_runs="$(runs "$convergence_workflow")"; then
-  verdict convergence "stale" "could not list $convergence_workflow runs"
+  unjudged convergence "could not list $convergence_workflow runs"
   convergence_runs='[]'
 fi
 if ! recording_runs="$(runs "$recording_workflow")"; then
-  verdict recording-stale "stale" "could not list $recording_workflow runs"
+  unjudged recording-stale "could not list $recording_workflow runs"
   recording_runs='[]'
 fi
 
@@ -78,8 +84,8 @@ red="$(jq -r --argjson now "$now" --argjson hours "$red_hours" '
       | (($now - ($since | fromdateiso8601)) / 3600 | floor) as $age
       | (if $age >= $hours then "stale" else "fresh" end)
         + " red since \($since) (\($age)h, \($streak | length) failed run(s)); newest \($streak[0].url)"
-    end' <<<"$convergence_runs")" || red="stale could not judge the $convergence_workflow runs (jq failed on them)"
-verdict convergence-red "${red%% *}" "${red#* }"
+    end' <<<"$convergence_runs")" || red="unjudged could not judge the $convergence_workflow runs (jq failed on them)"
+if [ "${red%% *}" = unjudged ]; then unjudged convergence-red "${red#* }"; else verdict convergence-red "${red%% *}" "${red#* }"; fi
 
 # ── convergence-unrun ────────────────────────────────────────────────────────────────────────────
 # `dir/**` is git's `dir/`; any other entry is an exact path (.github/actions/changed-paths/matches.sh).
@@ -91,7 +97,7 @@ done < <(sed -e 's/[[:space:]]*#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$
 # A history that cannot be read (no checkout, a broken one) is not "no commit touches the paths".
 pipeline_sha="" pipeline_time=""
 if ! newest=$(git log -1 --first-parent --format='%H %ct' HEAD -- "${pathspecs[@]}"); then
-  verdict convergence-unrun stale "could not read this checkout's history"
+  unjudged convergence-unrun "could not read this checkout's history"
 elif read -r pipeline_sha pipeline_time <<< "$newest" && [ -z "${pipeline_sha:-}" ]; then
   verdict convergence-unrun fresh "no commit touches the convergence paths"
 else
@@ -117,7 +123,11 @@ recording="$(jq -r --argjson now "$now" --argjson hours "$recording_hours" '
   | if . == null then "stale no successful run among the last 100"
     else (($now - (.updatedAt | fromdateiso8601)) / 3600 | floor) as $age
       | (if $age >= $hours then "stale" else "fresh" end) + " last success \(.updatedAt) (\($age)h ago): \(.url)"
-    end' <<<"$recording_runs")" || recording="stale could not judge the $recording_workflow runs (jq failed on them)"
-verdict recording-stale "${recording%% *}" "${recording#* }"
+    end' <<<"$recording_runs")" || recording="unjudged could not judge the $recording_workflow runs (jq failed on them)"
+if [ "${recording%% *}" = unjudged ]; then unjudged recording-stale "${recording#* }"
+else verdict recording-stale "${recording%% *}" "${recording#* }"; fi
 
-exit "$stale"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  if [ "$stale" = 1 ]; then echo "overdue=true"; else echo "overdue=false"; fi >> "$GITHUB_OUTPUT"
+fi
+exit "$broken"
