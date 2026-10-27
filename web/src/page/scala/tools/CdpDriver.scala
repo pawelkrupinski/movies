@@ -110,7 +110,9 @@ object Chrome {
         // Shared memory in the profile's temp directory, not /dev/shm: a Docker container's /dev/shm is 64 MB
         // unless the run says otherwise (ci-runner's job containers do not), and the page suites' Chromes, run
         // in parallel, outgrew it -- the browser died mid-suite, its tabs' DevTools connections reset and every
-        // later `/json/new` was refused (precommit-check run 3260, 2026-10-27). A no-op off Linux.
+        // later `/json/new` was refused (precommit-check run 3260, 2026-10-27), and a Chrome launched into the full
+        // /dev/shm exited at once with 133, its CHECK crash (Main #2146; reproduced: 133 with /dev/shm filled, 0 with
+        // this flag). A no-op off Linux.
         "--disable-dev-shm-usage",
         "--mute-audio",
         "--disable-background-networking",
@@ -132,13 +134,14 @@ object Chrome {
     // Drain stdout/stderr so the buffer never fills up and blocks Chrome, keeping its last lines: a browser that
     // dies mid-suite says why in them (see `Chrome.gone`).
     val output = new OutputTail(OutputTailLines)
-    new Thread(() => {
+    val drain = new Thread(() => {
       val in = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream))
       try {
         var line = in.readLine()
         while (line != null) { output.add(line); line = in.readLine() }
       } catch { case _: Throwable => () }
-    }, "chrome-stdout-drain").start()
+    }, "chrome-stdout-drain")
+    drain.start()
     activePort(process, userDirectory) match {
     case Some(port) =>
       // Print the Chrome version + binary path to the test log so any
@@ -161,9 +164,13 @@ object Chrome {
       val exited = Option.when(!process.isAlive)(process.exitValue())
       process.destroyForcibly()
       deleteProfile(userDirectory)
+      // what Chrome printed is why it died: an exit 133 (its own CHECK crash) once failed Main #2146 with no word
+      if (exited.isDefined) drain.join(SpecTimeouts.Io.toMillis) // an exited Chrome's last lines, read to its EOF
+      val printed = output.text
       throw new IllegalStateException(
         s"Chrome at $exe did not open its DevTools port within ${LaunchTimeoutMs / 1000}s" +
-          exited.fold("")(code => s" (exited with $code)"))
+          exited.fold("")(code => s" (exited with $code)") +
+          (if (printed.isEmpty) "" else s"; its last output:\n$printed"))
     }
   }
 

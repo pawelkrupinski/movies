@@ -3493,8 +3493,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalInt("document.querySelectorAll('.truncated').length") should be > 0
 
       enableSlideAnimation(page)
-      page.eval("const s = document.getElementById('date-filter'); s.value = 'today'; onDateSelect()")
-      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      pickFromDropdown(page, "today")._1 shouldBe true
       withClue("a preview carried the live grid's folded rows: ") {
         page.evalInt("document.querySelectorAll('#day-track > .day-col .truncated').length") shouldBe 0
       }
@@ -3671,10 +3670,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Multi-step jump today → anytime: the dropdown moves first, then a SINGLE
       // slide carries the target day's column into view (the track is armed).
-      page.eval(
-        "const s = document.getElementById('date-filter'); s.value = 'anytime'; onDateSelect()"
-      )
-      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      pickFromDropdown(page, "anytime")._1 shouldBe true
 
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
@@ -3776,11 +3772,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // today → anytime (last option). Linear: AFTER → right/next. Wrap-shortest
       // would have gone left, so this side assertion FAILS before the fix.
-      page.eval(
-        "const s = document.getElementById('date-filter'); s.value = 'anytime'; onDateSelect()"
-      )
-      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
-      armedSlideSide(page) shouldBe "next"
+      pickFromDropdown(page, "anytime") shouldBe (true, "next")
 
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
@@ -3795,11 +3787,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // anytime (last) → today (first). Linear: BEFORE → left/previous. Wrap-shortest
       // would have gone right, so this side assertion FAILS before the fix.
-      page.eval(
-        "const s = document.getElementById('date-filter'); s.value = 'today'; onDateSelect()"
-      )
-      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
-      armedSlideSide(page) shouldBe "previous"
+      pickFromDropdown(page, "today") shouldBe (true, "previous")
 
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "today"
@@ -5562,6 +5550,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  populated column, or "" if neither is populated (no slide in flight). This
    *  is the deterministic read of the slide direction the dropdown picked. */
   private def armedSlideSide(page: CdpPage): String = page.evalString("__carousel.armedSide()")
+
+  /** Pick `day` from the date dropdown and read, in the SAME evaluate, whether the slide armed and from which
+   *  side. A second evaluate came too late on a loaded machine (a remote pre-commit check, 2026-10-27): a stall
+   *  between the two round-trips outlasted the 550 ms slide, which had committed and disarmed by the time the
+   *  check ran -- "should enter from the right ..." failed with the page doing nothing wrong. */
+  private def pickFromDropdown(page: CdpPage, day: String): (Boolean, String) = {
+    val armed = page.eval(
+      s"(() => { document.getElementById('date-filter').value = '$day'; onDateSelect(); " +
+        "return [document.getElementById('day-track').classList.contains('day-track--armed'), String(__carousel.armedSide())] })()")
+    (armed(0).as[Boolean], armed(1).as[String])
+  }
 
   private def firstVisibleTitle(page: CdpPage): String = page.evalString("__grid.firstTitleWithPoster()")
 

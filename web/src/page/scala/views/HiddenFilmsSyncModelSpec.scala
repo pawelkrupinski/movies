@@ -340,8 +340,7 @@ object HiddenFilmsSyncModelSpec {
      *  24 suites' Chromes on one laptop; see `CdpWaitForSpec`). */
     private def quiesce(): Unit = {
       page.eval("window.__quietPolls = 0")
-      page.waitFor("(window.__quietPolls = __syncModel.idle() ? (window.__quietPolls || 0) + 1 : 0) >= 6",
-        timeoutMs = 10000, pollMs = 25)
+      page.waitFor("(window.__quietPolls = __syncModel.idle() ? (window.__quietPolls || 0) + 1 : 0) >= 6", pollMs = 25)
     }
 
     private def local: Seq[String] = Json.parse(page.evalString("JSON.stringify(getHidden())")).as[Seq[String]].sorted

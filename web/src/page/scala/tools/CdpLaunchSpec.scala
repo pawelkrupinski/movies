@@ -3,6 +3,7 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsValue, Json}
+import settings.CdpBrowserBinary
 
 import java.net.URI
 import java.nio.file.Files
@@ -52,6 +53,19 @@ class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
         s"${other.debuggingPort}\n/devtools/browser/00000000-0000-0000-0000-000000000000\n")
       Chrome.activePort(alive, profile) shouldBe None
     } finally { alive.destroyForcibly(); Chrome.deleteProfile(profile) }
+  }
+
+  // Main #2146: Chrome exited with 133 at launch and the failure said only that, its own CHECK message discarded.
+  "A browser that exits at launch" should "fail naming its exit code and what it printed" in {
+    val dir     = Files.createTempDirectory("chrome-cdp-test-crasher-")
+    val crasher = dir.resolve("chrome")
+    Files.writeString(crasher, "#!/bin/sh\necho 'FATAL: Check failed: shared memory' >&2\nexit 133\n")
+    crasher.toFile.setExecutable(true)
+    try {
+      val failure = the[IllegalStateException] thrownBy Chrome.tryStart(Some(CdpBrowserBinary(crasher)))
+      failure.getMessage should include("(exited with 133)")
+      failure.getMessage should include("FATAL: Check failed: shared memory")
+    } finally Chrome.deleteProfile(dir)
   }
 
   // A browser that died mid-suite (2026-10-27, /dev/shm outgrown in a CI container) failed every later test with a
