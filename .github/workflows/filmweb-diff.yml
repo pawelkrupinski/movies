@@ -38,6 +38,10 @@ jobs:
               with:
                   sbt-runner-version: 2.0.10 # the job image's (SetupSbtRunnerPinSpec)
                   disk-cache: 'false'
+            # Every sbt of this job through the stale-TASTy guard (scripts/ci/sbt-guard/sbt, OneSbtPathSpec).
+            - name: Route sbt through the stale-TASTy guard
+              shell: bash
+              run: echo "$GITHUB_WORKSPACE/scripts/ci/sbt-guard" >> "$GITHUB_PATH"
 
             - name: Date stamp
               id: stamp
