@@ -40,7 +40,7 @@ on:
 # One fill at a time PER COUNTRY SET: two of the same set would fetch the same list twice, but a newer dispatch
 # for other countries must not replace a pending one (the lane keeps one waiting run, the newest).
 concurrency:
-    group: convergence-fill-${{ inputs.countries }}-${{ inputs.recording }}
+    group: convergence-fill-${{ inputs.countries }}
     cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the
