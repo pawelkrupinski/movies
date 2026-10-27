@@ -345,8 +345,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     def decided(candidate: Option[ResolverDecision.Leaning]) = {
       val model = resolution.copy(decisions = resolution.decisions.updated(0,
         ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = candidate)()))
-      new AgreementStage(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts,
-        clock = _root_.tools.SpecClock.Pinned).apply(model, listingOf, version = 1).decisions.head
+      new AgreementStage(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb)).apply(model, listingOf, version = 1).decisions.head
     }
     decided(None).film shouldBe None
     val taken = decided(Some(ResolverDecision.Leaning(913760, 0)))
@@ -373,6 +373,10 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb)).apply(model, listingOf, version = 1).decisions.head
     (taken.film, taken.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
     taken.explanation.last should include ("corroborated by tmdb")
+    // handed TMDB's records as its venues' lookups, as every harness handed them, the stage reads none of them there
+    val venuesOnly = new AgreementStage(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(model, listingOf, version = 1).decisions.head
+    venuesOnly.film shouldBe None
   }
 
   // DE "Dolly" ×10 (live drift, 2026-10-25): the verdict was decided while TMDB's record of the film the model leaned to
@@ -391,8 +395,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     }
     val model = resolution.copy(decisions = resolution.decisions.updated(0,
       ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = Some(ResolverDecision.Leaning(913760, 0)))()))
-    def stageOver(stored: AgreementVerdicts) = new AgreementStage(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
-      stored, clock = _root_.tools.SpecClock.Pinned)
+    def stageOver(stored: AgreementVerdicts) = new AgreementStage(two, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb))
     val stored = new InMemoryAgreementVerdicts
     val stage  = stageOver(stored)
     stage.apply(model, listingOf, version = 1).decisions.head.film shouldBe None

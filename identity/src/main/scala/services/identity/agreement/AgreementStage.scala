@@ -85,7 +85,7 @@ import scala.collection.mutable
  * TMDB leans to, all its fill reads, the year — each answered or not), which a filing of any of it reopens; a cluster
  * settles on what the question memory says, never on its own past, and a merge carries no memory with its key.
  */
-final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], private[agreement] val venues: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
+final class AgreementStage(private[agreement] val families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups, private[agreement] val normalizer: TitleNormalizer,
                            private[agreement] val calibration: IdentityCalibration, private[agreement] val tmdbOf: String => Answer[Option[Int]], private[agreement] val stored: AgreementVerdicts,
                            private[agreement] val ask: Set[Question] => Unit = _ => (), private[agreement] val metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
                            private[agreement] val clock: java.time.Clock, private[agreement] val changes: AnswerChanges = AnswerChanges.Unknown, private[agreement] val posters: PosterAnswers = PosterAnswers.Silent,
@@ -204,6 +204,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   @volatile private var recordsNow: java.util.Set[Integer] = java.util.Collections.emptySet()
   @volatile private var findsNow: java.util.Set[String]    = java.util.Collections.emptySet()
   @volatile private var queriedNow = false
+
+  /** The venues' lookups: their pages, and nothing of TMDB's, whatever `venuePages` answers besides ([[AgreementStage.PagesOnly]]) —
+   *  what the worker hands the stage there (VenueDetailLookups), so a harness handing one lookups for both roles reads
+   *  as production reads. Handed TMDB's records through this role, every harness read the model's vote by its facts
+   *  where production read it unknown, and none of them saw prod keep 26 takes a whole resolve made (2026-10-27). */
+  private[agreement] val venues: IdentityLookups = AgreementStage.PagesOnly(venuePages)
 
   /** TMDB's and the venues' lookups as the stage reads them: each read noted ([[Noting]]). */
   private[agreement] lazy val looked: Option[IdentityLookups] = tmdb.map(new Noting(_, Dependency.Via.Tmdb))
@@ -897,6 +903,24 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 }
 
 object AgreementStage {
+  /** `inner`'s venue pages alone: TMDB's searches and records unknown, a film's cast and description none to go on —
+   *  as the worker's venue lookups answer them (VenueDetailLookups). TMDB is the stage's `tmdb`. */
+  final class PagesOnly private (val inner: IdentityLookups) extends IdentityLookups {
+    def hasDetail(listing: Listing): Boolean                       = inner.hasDetail(listing)
+    def detail(listing: Listing): Answer[Option[DetailFacts]]      = inner.detail(listing)
+    override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
+      inner.prefetch(Nil, Nil, details)
+    override def prefetchAnswered(): Unit                          = inner.prefetchAnswered()
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Unknown
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]   = Answer.Unknown
+  }
+  object PagesOnly {
+    def apply(lookups: IdentityLookups): IdentityLookups = lookups match {
+      case pages: PagesOnly => pages
+      case other            => new PagesOnly(other)
+    }
+  }
+
   /** A family's answers that note every question still a gap, and the digest of every answer read. */
   private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[Dependency, Long]) extends FamilyAnswers {
     val family: VoterFamily = answers.family
