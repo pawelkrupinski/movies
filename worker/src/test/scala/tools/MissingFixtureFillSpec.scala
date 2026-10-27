@@ -121,6 +121,19 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
     Files.walk(out.value).iterator().asScala.filter(Files.isRegularFile(_)).map(Files.readString).mkString should not include "k3y"
   }
 
+  // Wikimedia refuses a request without a meaningful User-Agent: a Wikidata gap is asked with its client's own, as the
+  // pipeline asked it (`MissingFixtures.ResentHeaders`); any other host's bare GET goes out with no header added.
+  it should "ask a Wikidata gap with Wikidata's User-Agent, and a bare gap with none" in withRoots { (held, out) =>
+    val live    = new Live(_ => """{"search":[]}""")
+    val search  = "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Broder&language=de&format=json"
+    val outcome = new MissingFixtureFill(MissingFixtureFill.heldIn(held, Tree), MissingFixtureFill.recordingInto(out, Tree, live),
+        threads = 1, sign = FillCredentials(None).sign).fill(Seq(gap(search), gap("https://www.flicks.us/movie/a/")), 1.minute)
+
+    outcome.fetched shouldBe 2
+    live.headers.asScala.toSeq shouldBe Seq(services.enrichment.WikidataClient.UserAgentHeader)
+    MissingFixtureFill.heldIn(out, Tree)(gap(search)) shouldBe true
+  }
+
   // IMDb's GraphQL is a POST of a query naming a title: the fill asks it again, body and all, and records the answer
   // where a replay of the same POST looks for it.
   it should "ask a POST gap again with its body, and record it where a replay of it looks" in withRoots { (held, out) =>

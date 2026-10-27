@@ -42,6 +42,12 @@ inputs:
       out of them too; packing and publishing take about one more.
     required: false
     default: '7'
+  recording:
+    description: >-
+      A `Record scrape fixtures` run not pinned yet, filled instead of the pinned pair: the gaps its verify legs listed,
+      published as its own fills (`fill-<code>-<recording>-…`), which its pin then lays over its tree. Empty: the pinned pair.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -57,6 +63,7 @@ runs:
           token:  ${{ inputs.token }}
           mode:   hermetic
           replay: 'false'
+          corpus-run: ${{ inputs.recording }}
 
     - name: Find the gaps the last leg listed
       id: gaps
@@ -77,8 +84,10 @@ runs:
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
+      # Every fill of the corpus, read here: a named recording's pair names none (it is replayed bare), yet a fill
+      # dispatched for it before may hold what its list still names.
       run: |
-          read -ra fills <<< "${KINOWO_CONVERGENCE_FILL_ASSETS:-}"
+          read -ra fills <<< "$(.github/scripts/convergence-fill.sh fills "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN")"
           .github/scripts/convergence-fill.sh unpack "$RUNNER_TEMP/fill-held" "${fills[@]}"
 
     - name: Fetch them until the fill's minutes run out

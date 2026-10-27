@@ -187,8 +187,15 @@ object NonMovieEventClassifier {
     val t = title.toLowerCase(Locale.ROOT)
     isMysteryScreening(title) || isTestListing(t) || (!isNamedBroadcast(t) && (
       NeutralPerformanceMarkers.exists(_.findFirstIn(t).isDefined) ||
-      (NeutralTalkMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t) && FilmMention.findFirstIn(t).isEmpty)))
+      (NeutralTalkMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(TalkPiece.findFirstIn(t).fold(t)(_ => t.replace('|', ' '))) &&
+        FilmMention.findFirstIn(t).isEmpty)))
   }
+
+  /** A billing that LEADS with its reading as a piece of its own — "Lesung und Gespräch | Dörte Hansen moderiert von
+   *  Ingrid Abeln | Broder" (DE Museum-Lichtspiele Tübingen, recording 3166) — whose "|" separates the programme's
+   *  fields rather than joining a film to the talk: the reading is the evening, and its book (Dörte Hansen's "Broder")
+   *  was searched for as a film. A "+" still attaches one. */
+  private val TalkPiece = """^\s*\p{L}*lesung(?:\s+(?:und|mit|&)\s+gespräch)?\s*\|""".r
 
   /** Word-anchored markers of a live stage/music event. Anchored on `\b` so
    *  `\bteatr` matches "Teatr Skene", "Teatralne popołudnie", "teatru capitol"

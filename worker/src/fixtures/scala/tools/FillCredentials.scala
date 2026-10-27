@@ -15,8 +15,12 @@ final case class FillCredentials(tmdb: Option[settings.TmdbApiKey]) {
   private val byParameter: Map[String, (String, Map[String, String])] =
     tmdb.map(key => "api_key" -> (key.value, key.authorization)).toMap
 
-  /** The URL to ask and the headers to send for a listed gap; None when it masks a credential this fill does not hold. */
-  def sign(url: String): Option[(String, Map[String, String])] = url.indexOf('?') match {
+  /** The URL to ask and the headers to send for a listed gap — its host's own beside any key's
+   *  ([[MissingFixtures.ResentHeaders]]); None when it masks a credential this fill does not hold. */
+  def sign(url: String): Option[(String, Map[String, String])] =
+    signed(url).map { case (signedUrl, headers) => signedUrl -> (MissingFixtures.resentHeaders(url) ++ headers) }
+
+  private def signed(url: String): Option[(String, Map[String, String])] = url.indexOf('?') match {
     case -1 => Some(url -> Map.empty)
     case at =>
       val parameters = url.substring(at + 1).split("&", -1).toSeq.map { parameter =>

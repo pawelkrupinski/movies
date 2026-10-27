@@ -108,6 +108,23 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
     missing.size shouldBe 3
   }
 
+  // Wikidata's client sends only a User-Agent, which Wikimedia requires and the fill sends again itself: its searches are
+  // listed as bare GETs. Before, every one went unlisted — DE's six over recording 3166 (verify run 3240) wrote "0
+  // fetchable gap(s)", and no fill could close them. Another header beside it is still a header GET, never listed.
+  it should "list a Wikidata search asked with its own User-Agent, and no other header GET" in {
+    val missing = new MissingFixtures
+    val leaf    = new HermeticHttpLeaf(missing)
+    val search  = "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Broder&language=de&format=json"
+    an [Exception] should be thrownBy leaf.get(search, services.enrichment.WikidataClient.UserAgentHeader)
+    an [Exception] should be thrownBy leaf.get(s"$search&x=1", services.enrichment.WikidataClient.UserAgentHeader + ("Authorization" -> "Bearer x"))
+    an [Exception] should be thrownBy leaf.get("https://api.test/ua", services.enrichment.WikidataClient.UserAgentHeader)
+
+    val file = Files.createTempDirectory("refetch").resolve("enrichment-de.refetch.tsv")
+    missing.writeRefetches(file) shouldBe 1
+    Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
+      Seq(MissingFixtures.Refetch("GET", search))
+  }
+
   // A remembered failure is keyed without the headers it was sent with, so the cache reports a header GET as "GET": the
   // fill would send it bare and record the bare answer at the same key. The leaf's rule applies to it too.
   "a remembered failure" should "be listed by the leaf's rule, headers included" in {

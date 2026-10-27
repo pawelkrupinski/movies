@@ -9,6 +9,10 @@
 #
 #   gh workflow run convergence-fill.yml --ref main -f countries=us -f minutes=20
 #
+# `recording` fills a recording that is not pinned yet (a nightly `Record scrape fixtures` run, e.g. 3166) from the
+# refetch lists its verify legs published: its fills go up under its own corpus run, so the pin that promotes it
+# finds them as any pair's (convergence-setup), and a promotion never waits on a gap a dispatch could have closed.
+#
 # Its own run id names what it publishes, so it never writes a leg row's name (those carry their phase).
 # Main only, like every publish of the release (convergence-publish). (ConvergenceFillWiringSpec)
 #
@@ -27,11 +31,16 @@ on:
                 required: false
                 type: number
                 default: 7
+            recording:
+                description: A `Record scrape fixtures` run not pinned yet to fill instead of the pinned pair (its verify legs' lists).
+                required: false
+                type: string
+                default: ''
 
 # One fill at a time PER COUNTRY SET: two of the same set would fetch the same list twice, but a newer dispatch
 # for other countries must not replace a pending one (the lane keeps one waiting run, the newest).
 concurrency:
-    group: convergence-fill-${{ inputs.countries }}
+    group: convergence-fill-${{ inputs.countries }}-${{ inputs.recording }}
     cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the
@@ -86,6 +95,7 @@ jobs:
                   code:         ${{ matrix.code }}
                   token:        ${{ secrets.GITHUB_TOKEN }}
                   minutes:      ${{ inputs.minutes > 30 && 30 || inputs.minutes }}
+                  recording:    ${{ inputs.recording }}
                   tmdb-api-key: ${{ secrets.TMDB_API_KEY }}
                   proxy-user: ${{ secrets.DECODO_PROXY_USER }}
                   proxy-pass: ${{ secrets.DECODO_PROXY_PASS }}

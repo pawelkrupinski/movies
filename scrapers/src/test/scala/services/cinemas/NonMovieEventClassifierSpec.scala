@@ -366,6 +366,16 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
   }
 
+  // DE Museum-Lichtspiele Tübingen bills its programme's fields joined by "|", the reading first (recording 3166): its
+  // pipes join no film, and the author's book ("Broder") was asked of Wikidata as one. A film after a "+" still keeps it.
+  it should "drop a reading billed first, its fields joined by pipes" in {
+    Seq("Lesung und Gespräch | Dörte Hansen moderiert von Ingrid Abeln | Broder",
+        "Lesung und Gespräch | Edgar Selge moderiert von Ingrid Abeln | Juras letzter Winter", "Buchlesung | Daisy")
+      .foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
+    Seq("Broder | Lesung und Gespräch mit Dörte Hansen", "Lesung | Dörte Hansen + Der Vorleser")
+      .foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+  }
+
   it should "keep the films and relays those billings resemble" in {
     // Real films and broadcasts across the five recorded corpora of 2026-10-12, each carrying a film record.
     Seq(

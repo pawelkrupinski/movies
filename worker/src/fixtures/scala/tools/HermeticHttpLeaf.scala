@@ -106,6 +106,20 @@ object MissingFixtures {
           Refetch(verb, redacted, replayed.body.map { case (text, contentType) => Refetch.Body(contentType, text) }))
       }
 
+  /** The headers a client sends that name no credential, by host — what the fill sends again beside a listed GET
+   *  ([[FillCredentials.sign]]), so a GET asked with exactly these is listed as a bare one. Wikidata's: Wikimedia refuses
+   *  a request without a meaningful User-Agent, and before this every one of its gaps went unlisted — DE's six searches
+   *  over recording 3166 (verify run 3240) listed "0 fetchable gap(s)" and no fill could ever close them. */
+  val ResentHeaders: Map[String, Map[String, String]] = Map("www.wikidata.org" -> services.enrichment.WikidataClient.UserAgentHeader)
+
+  /** The headers the fill sends again for `url`'s host ([[ResentHeaders]]), none for any other. */
+  def resentHeaders(url: String): Map[String, String] =
+    scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).flatMap(ResentHeaders.get).getOrElse(Map.empty)
+
+  /** Whether `headers` sent with `url` are more than the fill sends again for its host ([[ResentHeaders]]): only then is a
+   *  GET a header GET to [[listedAs]]. */
+  def carriesOwnHeaders(url: String, headers: Map[String, String]): Boolean = headers.nonEmpty && headers != resentHeaders(url)
+
   /** The verb a gap is listed under for the fill, or None when the fill could not ask it as the pipeline did — the ONE
    *  rule for a refused request ([[HermeticHttpLeaf]]) and a remembered failure ([[listingPassingFailures]]) alike:
    *
@@ -170,7 +184,7 @@ final class HermeticHttpLeaf(missing: MissingFixtures) extends HttpFetch {
   override def get(url: String): String           = refuse(url, body = None, MissingFixtures.listedAs("GET", url, withHeaders = false, None))
   override def getBytes(url: String): Array[Byte] = refuse(url, body = None, MissingFixtures.listedAs("BYTES", url, withHeaders = false, None))
   override def get(url: String, headers: Map[String, String]): String =
-    refuse(url, body = None, MissingFixtures.listedAs("GET", url, withHeaders = headers.nonEmpty, None))
+    refuse(url, body = None, MissingFixtures.listedAs("GET", url, withHeaders = MissingFixtures.carriesOwnHeaders(url, headers), None))
   override def post(url: String, body: String, contentType: String): String =
     refuse(url, Some(body), MissingFixtures.listedAs("POST", url, withHeaders = false, Some(body)), contentType = contentType)
 

@@ -55,7 +55,7 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch,
   // key), so headers don't discriminate between two responses. Same key as the
   // bare form, exactly as `MongoCachingDetailFetch` treats its detail pages.
   override def get(url: String, headers: Map[String, String]): String =
-    cached(CachingEnrichmentFetch.keyOf("GET", url), "GET", url, "GET", withHeaders = headers.nonEmpty)(
+    cached(CachingEnrichmentFetch.keyOf("GET", url), "GET", url, "GET", withHeaders = MissingFixtures.carriesOwnHeaders(url, headers))(
       CachingEnrichmentFetch.asBody)(CachedResponse.Body.apply)(underlying.get(url, headers))
 
   // Cached as base64 rather than left to the inherited default, which re-encodes
