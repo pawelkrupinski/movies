@@ -83,6 +83,14 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
 
     def counterLines: Seq[String] =
       exposition.linesIterator.filter(_.startsWith(Counter + "{")).toSeq
+
+    /** The series of `family` that counted something: a counter's lines, a histogram's `_count` lines, above 0. The
+     *  histograms carry a series from construction (seeded at 0, deploy.WebMetricsAtBootSpec), so a family's mere
+     *  presence says nothing about a request. */
+    def recorded(family: String): Seq[String] =
+      exposition.linesIterator
+        .filter(line => line.startsWith(family + "{") || line.startsWith(family + "_count{"))
+        .filter(_.split(' ').last.toDouble > 0).toSeq
   }
 
   private def routed(method: String, uri: String, routePath: String,
@@ -167,17 +175,15 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     val harness = new Harness()
     harness.run(routed("GET", "/metrics", MetricsPath, "controllers.MetricsController", "metrics"))
 
-    // A family with no data points is omitted from the exposition entirely, so
-    // the absence of the name IS the assertion that nothing was recorded.
-    harness.exposition should not include Counter
-    harness.exposition should not include Histogram
+    harness.recorded(Counter) shouldBe empty
+    harness.recorded(Histogram) shouldBe empty
   }
 
   it should "not count /metrics even when the request arrives without a matched route" in {
     val harness = new Harness()
     harness.run(FakeRequest("GET", "/metrics"))
 
-    harness.exposition should not include Counter
+    harness.recorded(Counter) shouldBe empty
   }
 
   it should "not count the synthetic probe, which monitoring-1 fires at the biggest pages every minute" in {
@@ -186,9 +192,9 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
       .withHeaders(Headers("User-Agent" -> "kinowo-synthetic-probe/1 (+https://kinowo.net)")),
       Results.Ok("x" * 4096).withHeaders("Content-Length" -> "4096"))
 
-    harness.exposition should not include Counter
-    harness.exposition should not include Histogram
-    harness.exposition should not include Bytes
+    harness.recorded(Counter) shouldBe empty
+    harness.recorded(Histogram) shouldBe empty
+    harness.recorded(Bytes) shouldBe empty
   }
 
   it should "leave out the User-Agent the probes are ACTUALLY configured with, not just a copy of it" in {
@@ -213,7 +219,7 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     val harness = new Harness()
     harness.run(routed("GET", "/uk/london/", CityIndexPath).withHeaders(Headers("User-Agent" -> configured)))
     withClue(s"$relative sends User-Agent '$configured': ") {
-      harness.exposition should not include Counter
+      harness.recorded(Counter) shouldBe empty
     }
   }
 

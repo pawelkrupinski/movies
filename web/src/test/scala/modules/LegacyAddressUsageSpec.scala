@@ -59,11 +59,11 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
         .fold(first)(follow(_, agent, host))
     }
 
-    /** kind → client → hits, from the exposition. */
+    /** kind → client → hits, from the exposition: the pairs hit at least once (every pair is seeded at 0). */
     def hits: Map[(String, String), Double] =
       """kinowo_web_legacy_address_hits_total\{client="([^"]+)",country="[a-z]+",kind="([^"]+)"\} (\S+)""".r
         .findAllMatchIn(PrometheusExposition.render(registry))
-        .map(m => (m.group(2), m.group(1)) -> m.group(3).toDouble).toMap
+        .map(m => (m.group(2), m.group(1)) -> m.group(3).toDouble).filter(_._2 > 0).toMap
 
     def lastCalled: Set[(String, String)] =
       """kinowo_web_legacy_address_last_called_seconds\{client="([^"]+)",country="[a-z]+",kind="([^"]+)"\}""".r
