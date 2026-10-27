@@ -1340,6 +1340,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     MultiFilmBill.billedOne(Seq("Maraton Horrorów")) shouldBe None
     MultiFilmBill.billedOne(Seq("Shrek + Shrek 2 - maraton")) shouldBe None
     MultiFilmBill.billedOne(Seq("Inna Mamusia - maraton")) shouldBe Some("Inna Mamusia")
+    // a trilogy is never one film: DE JAC Kino Attendorn's "DUNE - Trilogie" took Lynch's Dune (1984) as the title it annotated
+    MultiFilmBill.billedOne(Seq("DUNE - Trilogie")) shouldBe None
+    MultiFilmBill.marker(Seq("DUNE - Trilogie")) shouldBe Some("trilogie")
   }
 
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {

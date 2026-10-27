@@ -63,8 +63,10 @@ object FormatTags {
   // ... and the invitation a box office words it as ("Arrietty (4K Restoration) Experience It In IMAX", Cineworld)
   private val FormatPreposition = """(?i)\s+(?:experience\s+it\s+)?(?:on|in|w)\s+(\d{2}mm|4k|[23]d|imax|4dx)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
+  // A bare "Dub" names the version as "Dubbed" does ("Kung Fu Soccer (English Dub)", Odeon), but not inside a restored
+  // print's note ("(English Dub, 4K Restoration)"), whose edition the search strip takes and the card keeps.
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU|Originalversion|D-?BOX)\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|dubb?(?![^)]*restor)|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU|Originalversion|D-?BOX)\b[^)]*)\)\s*$""".r
   // German venues spell the original version out in brackets — "Verity (Original English Version)", "The Rocky
   // Horror Picture Show (1975/Original English Version)" — and bracket a hyphenated screen, "Forgotten Island
   // (3-D)". Both are rewritten to their token's own word before the strips, inside brackets only: a bare "3-D" is
@@ -126,6 +128,10 @@ object FormatTags {
   // slashed title ("AC/DC", "Face/Off", "either/or") is never split.
   private val GluedFormatSlash =
     ("(?i)/(?=" + FormatVersionWord + ")").r
+  // …or a pipe joins two of them, with no space at all — Gloria Kinocenter's "Avengers: Doomsday 3D|Atmos". Only
+  // between two version words, so a title's own glued pipe is never split.
+  private val GluedFormatPipe =
+    ("(?i)(?<=(?<![\\p{L}\\p{N}])" + FormatVersionWord + ")\\|(?=" + FormatVersionWord + ")").r
 
   // A dash glued to the version word after a space — "DIGGER -OmU" (a Cineamo venue). Spaced out so the word
   // drops like "Digger - OmU"; the space before it keeps a hyphenated title ("Spider-Man") whole.
@@ -209,8 +215,8 @@ object FormatTags {
   def peel(raw: String): Peeled = {
     val spelled = BracketedHyphenatedScreen.replaceAllIn(
       BracketedOriginalVersion.replaceAllIn(OriginalVersionPreposition.replaceAllIn(raw, " "), "OV"), "($1D)")
-    var t    = GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.collapsedSpaces, " - "), " "), " "), " - ")
+    var t    = GluedFormatDash.replaceAllIn(GluedFormatPipe.replaceAllIn(GluedFormatSlash.replaceAllIn(
+                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.collapsedSpaces, " - "), " "), " "), " | "), " - ")
     var previous = ""
     var certificate = Option.empty[String]
     var runtime     = Option.empty[Int]

@@ -18,6 +18,12 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Collateral (35mm)") shouldBe ("Collateral", List("35MM"))
     FormatTags.extractFormatTags("The Odyssey | 70MM IMAX") shouldBe ("The Odyssey", List("70MM", "IMAX"))
     FormatTags.extractFormatTags("Klasyka na TOPie: Absolwent (4K)")._2 shouldBe List("4K")
+    // UK Odeon's "(English Dub)" (DE Gloria Kinocenter's pipe-glued "3D|Atmos") searched with the version left in
+    FormatTags.extractFormatTags("Kung Fu Soccer (English Dub)") shouldBe ("Kung Fu Soccer", List("DUB"))
+    FormatTags.extractFormatTags("Avengers: Doomsday 3D|Atmos") shouldBe ("Avengers: Doomsday", List("3D", "ATMOS"))
+    // …but a restored print's note is the edition's, the card's own, and a title's own pipe stays
+    FormatTags.extractFormatTags("Whisper of the Heart (English Dub, 4K Restoration)")._1 shouldBe "Whisper of the Heart (English Dub, 4K Restoration)"
+    FormatTags.extractFormatTags("Kino|Atmos")._1 shouldBe "Kino|Atmos"
   }
 
   they should "take the preposition a print format is billed with" in {

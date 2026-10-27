@@ -15,6 +15,9 @@ import services.movies.{TitleContainment, TitleWords}
  */
 object BillJoins {
 
+  /** A franchise's three films together, in each language a venue bills them: "trilogy", "Trilogie", "trylogia". */
+  private val Trilogy = """\btrilog(?:y|ie|ia)\b|\btrylogi\w*"""
+
   private val Markers: Seq[scala.util.matching.Regex] = Seq(
     // a double or triple bill, as each language bills one (the word table's, services.movies.TitleWords)
     TitleWords.foldedPattern(TitleWords.Concept.DoubleBill),
@@ -22,7 +25,7 @@ object BillJoins {
     // heading a title, as a film's own name does ("Triple Frontier", "Triple 9")
     """(?<=\w\s)triple\b""",
     // a franchise's films together
-    """\btrilog(?:y|ie|ia)\b|\btrylogi\w*""",
+    Trilogy,
     // a night of films
     """\bmarath?on\w*""",
     """\bback\s+to\s+back\b""",
@@ -63,13 +66,15 @@ object BillJoins {
 
   /** The one title a programme word annotates after a dash — "Inna Mamusia - maraton" — when the word and nothing else
    *  follows it, and the title joins no works by a "+". A programme word heading the title ("Maraton Horrorów") names no
-   *  title. */
+   *  title, and a trilogy never one film: DE JAC Kino Attendorn's "DUNE - Trilogie" bills Villeneuve's films, and
+   *  read as one title it took Lynch's 1984 Dune, the one candidate titled so. */
   def billedOne(title: String): Option[String] =
     DashPiece.split(title.trim).toSeq match {
       case Seq(head, tail) if !head.contains('+') && head.exists(_.isLetter) &&
-        Markers.exists(_.pattern.matcher(folded(tail)).matches()) => Some(head.trim)
+        OneTitleMarkers.exists(_.pattern.matcher(folded(tail)).matches()) => Some(head.trim)
       case _ => None
     }
+  private val OneTitleMarkers = Markers.filterNot(_.regex == Trilogy)
 
   /** The pieces a spaced "//" joins in `raw`: one when it joins none. */
   def slashPieces(raw: String): Seq[String] = SlashJoin.split(raw).toSeq
