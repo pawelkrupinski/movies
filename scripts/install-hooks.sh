@@ -30,5 +30,4 @@ fi
 git config core.hooksPath scripts/hooks
 chmod +x scripts/hooks/*
 echo "core.hooksPath = scripts/hooks (was: ${current:-unset}). Bypass once with 'git push --no-verify'."
-echo "The JVM reaper is versioned in scripts/reap-stale-jvms.sh. To run it instead of the copy outside the repo:"
-echo "  ln -sf \"\$PWD/scripts/reap-stale-jvms.sh\" ~/.local/bin/reap-stale-jvms.sh   (run from main's checkout; not done for you)"
+echo "The JVM reaper is agentctl's: ~/bin/agentctl reap, every 15 min by launchd net.bitcashier.agentctl-maintain."

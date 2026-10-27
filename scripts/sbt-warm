@@ -133,7 +133,7 @@ server_pid() { # <root>
 
 # THE STOPS LOG: every server and keeper this script stops is a line of $State/stops.log -- when, which, the checkout, why,
 # and by whom (the stopping process and its parents) -- and a server its keeper saw end WITHOUT one is a "vanished" line
-# there, naming the JVM reaper's kill (~/Library/Logs/jvm-reaper.log) or a crash file when either names it. Two kept
+# there, naming the JVM reaper's kill (agentctl's ~/.cache/agentctl/reap.log) or a crash file when either names it. Two kept
 # servers vanished on 2026-10-19 with nothing logged anywhere sbt-warm wrote; the next one says how.
 StopsLog="$State/stops.log"
 stopper() { # -> "pid:args <- ppid:args <- ..." for this process and two parents
@@ -382,9 +382,12 @@ build_digest() { (cd "$root" && cat build.sbt project/*.sbt project/*.scala proj
 # The server <pid> its keeper watched has ended: unless this script stopped it (the stops log names it), a "vanished" line,
 # with what else might know -- the JVM reaper's log, a crash file, a heap dump
 server_vanished() { # <pid>
-  local found
+  local found logs
   tail -n 200 "$StopsLog" 2>/dev/null | grep -q " pid=$1 checkout=$root " && return 0
-  found=$(grep " pid=$1 " "${KINOWO_JVM_REAPER_LOG:-$HOME/Library/Logs/jvm-reaper.log}" 2>/dev/null | tail -2 | tr '\n' ' ')
+  # the reaper is agentctl's (`agentctl maintain`: ~/.cache/agentctl/reap.log); the retired one's log kept its history
+  logs=("${KINOWO_JVM_REAPER_LOG:-$HOME/.cache/agentctl/reap.log}")
+  [ -n "${KINOWO_JVM_REAPER_LOG:-}" ] || logs+=("$HOME/Library/Logs/jvm-reaper.log")
+  found=$(grep -hE " pid=$1 |killed [a-z -]+ pid $1 " "${logs[@]}" 2>/dev/null | tail -2 | tr '\n' ' ')
   found="$found$(ls "$root"/hs_err_pid"$1".log "$root"/target/oom-* "$HOME"/hs_err_pid"$1".log 2>/dev/null | tr '\n' ' ')"
   record_stop vanished "$1" "$root" "ended without sbt-warm stopping it; ${found:-no reaper kill, crash file or heap dump names it}"
 }

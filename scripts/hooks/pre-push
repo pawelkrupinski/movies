@@ -79,6 +79,16 @@
 # Bypass: PREPUSH_SKIP=redgate. NOT gating: the Identity findings report (a recording's own suspects and
 # corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
+# THE KNOWN-RED BASELINE: with $PREPUSH_BASELINE_DIR set (agentctl sets it), a check that fails is held against the push
+# only when it fails in a way plain main does not. `<dir>/<base commit sha>` is the hook's own output of the same checks
+# on the base's tree, its first line `pre-push baseline <base commit sha>` (agentctl's `land` writes it when a change's
+# dry run fails: `--checks-only` over main's tree on top of the change). A failing check whose failure lines (the strong
+# markers -- *** FAILED, [error], Error:, assertion, exit code, FAILED -- else every line, normalized: no timestamps,
+# temp paths, shas or numbers) ALL appear in that check's failure on the base is KNOWN RED: said, not blocking. A
+# change that fixes one simply passes it. FAIL-CLOSED: no file for the push's base, a file without that first line, or
+# more than one pushed range, and every failing check blocks as ever. A stall is never known red. Without the variable,
+# nothing changes (2026-10-27: every land failed on main's own breakage, the fix included).
+#
 # REUSE: a push of a tree that already passed -- same tree, base, changed paths, hook, red-gate state and PREPUSH_SKIP --
 # skips the path checks (THE REUSE, below; the key kept in ~/.cache/kinowo-prepush). Anything different runs them all.
 # PREPUSH_NO_REUSE=1 runs them regardless.
@@ -732,6 +742,21 @@ changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
 head_sha="$(git rev-parse --verify "${ranges[${#ranges[@]}-1]##*..}^{commit}")" || exit 1
 base_sha="${ranges[0]%%..*}"
 
+# THE KNOWN-RED BASELINE (the header): the base's own failures, or none (every failure blocks).
+baseline="" baseline_note=""
+if [ -n "${PREPUSH_BASELINE_DIR:-}" ]; then
+    base_commit="$(git rev-parse --verify -q "$base_sha^{commit}" || true)"
+    if [ "${#ranges[@]}" -ne 1 ]; then
+        baseline_note="no known-red baseline for a push of ${#ranges[@]} ranges: every failing check blocks"
+    elif [ -z "$base_commit" ] || [ ! -r "$PREPUSH_BASELINE_DIR/$base_commit" ]; then
+        baseline_note="no known-red baseline for base ${base_commit:0:10} in $PREPUSH_BASELINE_DIR: every failing check blocks"
+    elif [ "$(head -1 "$PREPUSH_BASELINE_DIR/$base_commit")" != "pre-push baseline $base_commit" ]; then
+        baseline_note="$PREPUSH_BASELINE_DIR/$base_commit does not start 'pre-push baseline $base_commit': every failing check blocks"
+    else
+        baseline="$PREPUSH_BASELINE_DIR/$base_commit"
+    fi
+fi
+
 checks="$(printf '%s\n' "$changed" | plan)"
 # --fast-only: the `sbt` check alone (compiles, lints, the `fast` set), whatever else the paths select
 [ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"
@@ -749,13 +774,14 @@ checks="$(printf '%s\n' "$changed" | plan)"
 # PREPUSH_NO_REUSE=1 runs everything regardless.
 reuse_dir="${PREPUSH_REUSE_DIR:-$HOME/.cache/kinowo-prepush}" reuse_key=""
 compute_reuse_key() { # prints the key, or fails when any part of it cannot be read
-    local here tree base_tree hook
+    local here tree base_tree hook known_base=none
     here="$(dirname "${BASH_SOURCE[0]}")"
+    if [ -n "$baseline" ]; then known_base="$(git hash-object "$baseline")" && [ -n "$known_base" ] || return 1; fi
     tree="$(git rev-parse --verify -q "$head_sha^{tree}")" && [ -n "$tree" ] || return 1
     base_tree="$(git rev-parse --verify -q "$base_sha^{tree}")" && [ -n "$base_tree" ] || return 1
     hook="$(cat "${BASH_SOURCE[0]}" "$here/../hooks-path.sh" "$here/../tool-conventions.sh" | git hash-object --stdin)" \
         && [ -n "$hook" ] || return 1
-    { echo "tree $tree"; echo "base $base_tree"; echo "hook $hook"; echo "gate $gate_state"
+    { echo "tree $tree"; echo "base $base_tree"; echo "hook $hook"; echo "gate $gate_state"; echo "baseline $known_base"
       echo "skip $(tr -s ' ' '\n' <<< "${PREPUSH_SKIP:-}" | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ' ')"
       echo "checks $(printf '%s' "$checks" | tr '\n' ' ')"; printf '%s\n' "$changed"; } | git hash-object --stdin
 }
@@ -1115,6 +1141,39 @@ stop_watchdog() { # <pid>
     wait "$1" 2>/dev/null
     kill "$nudger" 2>/dev/null; wait "$nudger" 2>/dev/null
 }
+# THE KNOWN-RED BASELINE (the header). A check's failure lines from its output on stdin: the strong markers, else every
+# non-empty line; normalized (what changes run to run out), sorted, unique.
+Esc="$(printf '\033')"
+failure_lines() {
+    local all strong
+    all="$(sed "s/${Esc}\[[0-9;]*[A-Za-z]//g" | grep -v '^[[:space:]]*$')"
+    strong="$(printf '%s\n' "$all" | grep -E '\*\*\* FAILED|\[error\]|::error::|[Aa]ssert(ion)?|Error:|ENOENT|[Ee]xit code [1-9]|FAILED' || true)"
+    [ -n "$strong" ] || strong="$all"
+    [ -n "$strong" ] || return 0
+    printf '%s\n' "$strong" \
+        | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //; s#/(private/)?(tmp|var/folders)/[^[:space:]]*#<tmp>#g' \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[0-9a-f]{7,40}/H/g; s/[0-9]+(\.[0-9]+)?/N/g; s/[[:space:]]+/ /g; s/^ //; s/ $//' \
+        | cut -c1-160 | LC_ALL=C sort -u
+}
+# The output the baseline's run printed for <check> before its `<check> FAILED` line; fails when it did not fail there.
+baseline_failure() { # <check>
+    sed "s/${Esc}\[[0-9;]*[A-Za-z]//g" "$baseline" | awk -v c="$1" '
+        /pre-push [^ ]+ (ok|FAILED) \([0-9]+s\)/ || / — for [0-9]+ changed path/ {
+            if (index($0, "pre-push " c " FAILED (")) { printf "%s", seg; found = 1 }
+            seg = ""; next }
+        { seg = seg $0 "\n" }
+        END { exit !found }'
+}
+# <check> failed (its output in <file>) only in ways it fails on the base: every failure line of it is one of the base's.
+known_red() { # <check> <file>
+    local base mine
+    base="$(baseline_failure "$1")" || return 1
+    mine="$(failure_lines < "$2")"
+    [ -n "$mine" ] || return 1
+    [ -z "$(LC_ALL=C comm -23 <(printf '%s\n' "$mine") <(printf '%s\n' "$base" | failure_lines))" ]
+}
+known=""
 started=$SECONDS
 log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
 for check in $checks; do
@@ -1127,7 +1186,14 @@ for check in $checks; do
         bash "$stall_watch" watch $$ "$StallSeconds" "$check" "$KINOWO_STALL_FILE" "$KINOWO_PROGRESS_FILE" "$tmp" 2>/dev/null &
         watchdog=$!
     fi
-    if "check_$check"; then
+    # with a known-red baseline the check's output is kept, to be compared with the base's (then shown, as ever)
+    if [ -n "$baseline" ]; then
+        "check_$check" > "$tmp/output.$check" 2>&1; rc=$?
+        cat "$tmp/output.$check" >&2
+    else
+        "check_$check"; rc=$?
+    fi
+    if [ "$rc" = 0 ]; then
         log "$check ok ($((SECONDS - t0))s)"
     elif [ -s "$KINOWO_STALL_FILE" ]; then
         printf 'pre-push STALLED: %s (no progress for %ss: %s; ended after %ss)\n' "$check" "$StallSeconds" \
@@ -1135,13 +1201,19 @@ for check in $checks; do
         failed="$failed $check" stalled="$stalled $check"
     else
         warn "$check FAILED ($((SECONDS - t0))s)"
-        failed="$failed $check"
+        if [ -n "$baseline" ] && known_red "$check" "$tmp/output.$check"; then
+            warn "KNOWN RED: $check fails the same way on the base ${base_commit:0:10} (the known-red baseline): not held against this push"
+            known="$known $check"
+        else
+            failed="$failed $check"
+        fi
     fi
     [ -z "$watchdog" ] || stop_watchdog "$watchdog"
 done
 unset KINOWO_PROGRESS_FILE KINOWO_STALL_FILE
 
 if [ -n "$failed" ]; then
+    [ -z "$baseline_note" ] || warn "$baseline_note"
     warn "blocked by:$failed ($((SECONDS - started))s). Fix, or bypass with PREPUSH_SKIP=\"${failed# }\" / --no-verify."
     [ -z "$stalled" ] || exit 75   # THE STALL SIGNAL: a step hung, no verdict on the change
     exit 1
@@ -1151,7 +1223,8 @@ if [ -n "$reuse_key" ] && mkdir -p "$reuse_dir" 2>/dev/null; then
     printf '%s (%s)\n' "$(date -u +%Y-%m-%dT%H:%MZ)" "${head_sha:0:9}" > "$reuse_dir/$reuse_key.$$" && mv -f "$reuse_dir/$reuse_key.$$" "$reuse_dir/$reuse_key"
     find "$reuse_dir" -type f -mtime +14 -delete 2>/dev/null
 fi
-log "all clear ($((SECONDS - started))s)"
+if [ -n "$known" ]; then log "all clear but main's own known red:$known ($((SECONDS - started))s)"
+else log "all clear ($((SECONDS - started))s)"; fi
 # CHECK FIRST: git opens the push's ssh connection BEFORE it runs this hook and sends the pack only after it, so a long
 # hook holds that connection idle. To Forgejo it rides the laptop's launchd ssh tunnel (net.bitcashier.forgejo-tunnel,
 # `ssh -N forgejo-tunnel`); when the tunnel drops (its own keepalives missed under a load of 100+, a network change) and

@@ -333,7 +333,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `isolation: worktree` agent (confirmed 2026-10-15 06:54:35). A product bug; the pre-push hook resets it on each push,
   and `scripts/install-hooks.sh` restores it.
 - [x] The JVM reaper now lives in the repo (`scripts/reap-stale-jvms.sh`, spec `scripts/reap-stale-jvms-test.sh`); the
-  user switches `~/.local/bin` over with the symlink `scripts/install-hooks.sh` prints.
+  user switches `~/.local/bin` over with the symlink `scripts/install-hooks.sh` prints. Superseded 2026-10-27: the rules
+  are `agentctl reap`'s (launchd net.bitcashier.agentctl-maintain); `scripts/reap-stale-jvms.sh` is a shim calling it.
 - [x] Worktrees reviewed 2026-10-15: a8e8055c, ad334852, afc695e6 (their commits were on main under the same subjects),
   the RB+O, Arsenal and a083 worktrees and `movies-wt-convergence-timings` removed. Left: `movies-red2` and the
   kinowo-mobile-release temp worktree (other sessions').

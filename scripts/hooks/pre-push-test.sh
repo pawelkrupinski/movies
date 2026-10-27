@@ -761,7 +761,7 @@ check "...and PREPUSH_SKIP=linux skips just that" "0 --changed $runner_base" \
 # ── oldrefs: a push changing a tool's TOOL_FILES runs the old-ref compile test, read from the tools of the pushed tree ──
 printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/A.scala\n  tools/B.scala)\n' > "$grepo/scripts/identity-slice"
 printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/T.scala)\n' > "$grepo/scripts/title-trace"
-printf '#!/usr/bin/env bash\necho ran >> "$STUB_OLDREFS_RAN"\necho "FAIL: tools compile into c0ffee" \nexit "${STUB_OLDREFS_EXIT:-0}"\n' \
+printf '#!/usr/bin/env bash\necho ran >> "$STUB_OLDREFS_RAN"\necho "${STUB_OLDREFS_LINE:-FAIL: tools compile into c0ffee}" \nexit "${STUB_OLDREFS_EXIT:-0}"\n' \
   > "$grepo/scripts/identity-slice-old-ref-test.sh"
 scratch_git "$grepo" add scripts && scratch_git "$grepo" commit -qm "the tools, stubbed"
 # the check wants an sbt and a java to compile with (CI's script-test container has neither: stubbed); the stubbed test needs neither
@@ -780,6 +780,31 @@ check "...a failing compile blocks the push, its output shown" "1 1 1 1" \
 check "a file neither tool drops in does not run it" "0 0" "$(oldrefs_push tools/C.scala)"
 check "PREPUSH_SKIP=oldrefs skips it, said out loud" "0 0 1" \
   "$(oldrefs_push tools/A.scala PREPUSH_SKIP="$pathchecks oldrefs") $(grep -c 'oldrefs SKIPPED' "$gate/err")"
+
+# ── THE KNOWN-RED BASELINE: a check failing only as it fails on plain main does not block ─────────────────────────
+# 2026-10-27: every land failed on main's own breakage, the fix included. With PREPUSH_BASELINE_DIR (agentctl sets it),
+# <dir>/<base sha> holds the hook's output of the same checks on the base; a failure the base shares is said, not held
+# against the push. Fail-closed: no baseline for the base, every failure blocks.
+printf '\033[36m▸\033[0m pre-push: the known-red baseline\n'
+known="$gate/known"; mkdir -p "$known"
+# the baseline of oldrefs_base: the hook's own output of a run whose old-ref compile fails with the default line
+{ echo "pre-push baseline $oldrefs_base"; oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 >/dev/null; cat "$gate/err"; } \
+  > "$known/$oldrefs_base.out"
+check "the baseline run itself failed the old-ref compile" "1" "$(grep -c 'oldrefs FAILED' "$known/$oldrefs_base.out")"
+mv "$known/$oldrefs_base.out" "$known/$oldrefs_base"
+check "a failure plain main shares is said, not blocking" "0 1 1 1" \
+  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: oldrefs' "$gate/err") $(grep -c 'FAIL: tools compile into c0ffee' "$gate/err")"
+check "...a failure plain main does not share blocks" "1 1 0" \
+  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 STUB_OLDREFS_LINE="Error: a new break" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
+check "...a change fixing the baseline's failure passes" "0 1 0" \
+  "$(oldrefs_push tools/A.scala PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
+check "...no baseline for the base: every failure blocks, said" "1 1 1" \
+  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known/none") $(grep -c 'no known-red baseline for base' "$gate/err")"
+sed '1s/.*/pre-push baseline of something else/' "$known/$oldrefs_base" > "$known/x" && mv "$known/x" "$known/$oldrefs_base"
+check "...a baseline file not naming the base: every failure blocks" "1 1 1" \
+  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'does not start' "$gate/err")"
+check "...and without PREPUSH_BASELINE_DIR, as ever" "1 1" "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1)"
+rm -rf "$known"
 
 # ── A CHECK'S TOOL MISSING BLOCKS THE PUSH, WITH THE FIX: never a silent skip ───────────────────────────────────────
 # 2026-10-21: an agent's push, sbt off its PATH, skipped the sbt check ("sbt not installed — SKIPPED") and landed
