@@ -332,23 +332,40 @@ object ReadModelProjection {
     // The film id for one display-title variant. The variant that carries the row's own
     // title keeps the plain film id — so the card an unsplit film already has is unchanged
     // the moment a second variant (a banner-prefixed listing) joins — and every other
-    // variant is the film id plus its sanitized variant title, which two groups never
-    // share. `~` is not a character `sanitize` emits, nor one any read-model id
-    // composition uses (`|` joins city and cinema onto a screening id).
+    // variant is the film id plus its sanitized variant title. `~` is not a character
+    // `sanitize` emits, nor one any read-model id composition uses (`|` joins city and
+    // cinema onto a screening id).
     def cardId(title: String): String = {
       val variant = normalizer.sanitize(title)
       if (variant == anchorKey) filmId(stored) else s"${filmId(stored)}~$variant"
     }
+    // Two groups can SHOW the same title, and so name the same card: the display drops a trailing
+    // year equal to the row's before it is keyed, so "Killer, The (1989)" (key killerthe) shows as
+    // "Killer, The" (key thekiller), the card "The Killer" names. They are one card: their slots
+    // merge into it, whatever order the groups come in. Two variants under one id made the
+    // projector write the card twice per pass, the second diffing against screenings the first
+    // had just replaced (Verify scrape recording run 3189: Germany's churn-free tick rewrote 26
+    // screenings of one film every tick, "key not found" on each).
+    val shown = groups.map { case (key, sources) =>
+      val scoped = stored.record.scopedToSources(sources)
+      val title  = scoped.displayTitle(stored.title, normalizer)
+      key -> Variant(sources, scoped, title, cardId(title))
+    }
+    val cards = shown.map(_._2.filmId).distinct
     val split =
-      if (groups.sizeIs <= 1) Nil
-      else groups.map { case (_, sources) =>
-        val scoped = stored.record.scopedToSources(sources)
-        val title  = scoped.displayTitle(stored.title, normalizer)
-        Variant(sources, scoped, title, cardId(title))
+      if (cards.sizeIs <= 1) Nil
+      else cards.map { id =>
+        shown.collect { case (_, variant) if variant.filmId == id => variant } match {
+          case Seq(one) => one
+          case several  =>
+            val sources = several.map(_.sources).reduce(_ ++ _)
+            val scoped  = stored.record.scopedToSources(sources)
+            Variant(sources, scoped, scoped.displayTitle(stored.title, normalizer), id)
+        }
       }
     val cardByGroup =
       if (split.isEmpty) groups.map(_._1 -> filmId(stored)).toMap
-      else groups.map(_._1).zip(split.map(_.filmId)).toMap
+      else shown.map { case (key, variant) => key -> variant.filmId }.toMap
     new Partition(stored, normalizer, split, anchorKey, cardByGroup)
   }
 

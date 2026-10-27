@@ -336,6 +336,27 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       Seq("iwangrozny|1944", s"iwangrozny|1944~${titleNormalizer.sanitize("Иван Грозный")}")
   }
 
+  // Two slot titles can SHOW as one: "Killer, The (1989)" keys apart from "The Killer", but its card drops the
+  // year it prints anyway, and "Killer, The" names the card "The Killer" names. Two variants under one id made the projector
+  // write that card twice per pass, each diffing away the other's screenings, and every pass did it again
+  // (Verify scrape recording run 3189, Germany: "key not found" on f880b5da17ba25d8's screenings).
+  it should "merge the titles that show as one card into that card, never two variants under one id" in {
+    val record = MovieRecord(
+      tmdbId = Some(10835),
+      data = Map[Source, SourceData](
+        Multikino           -> SourceData(title = Some("The Killer"), showtimes = Seq(at("2026-06-12T18:00"))),
+        CinemaCityKinepolis -> SourceData(title = Some("Killer, The (1989)"), showtimes = Seq(at("2026-06-14T20:00"))),
+        Tmdb                -> SourceData(title = Some("The Killer"), releaseYear = Some(1989))))
+    // Germany's rules keep the article where the listing put it (Poland's fold it, so these share a key there).
+    val german = TitleNormalizer.forCountry(Country.Germany)
+    val stored = StoredMovieRecord.fromStorage("thekiller|1989", record, german)
+    german.sanitize("Killer, The (1989)") should not be german.sanitize("The Killer")
+    ReadModelProjection.filmIds(stored, german) shouldBe Seq("thekiller|1989")
+    val cards = ReadModelProjection.projectAll(stored, german)
+    cards.map(_._1.title) shouldBe Seq("The Killer")
+    cards.head._2.map(_.cinema).distinct should have size 2
+  }
+
   // What the search matches besides the shown title: every metadata source's original title
   // (TMDB's native one, IMDb's and Filmweb's, which romanise it as the language does) and TMDB's
   // English title -- curated spellings, far better than a transliteration of the native title.
