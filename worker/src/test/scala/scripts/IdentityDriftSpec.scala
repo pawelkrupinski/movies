@@ -50,4 +50,10 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     clock.advance(Duration.ofDays(91))
     IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(question, unfiled)
   }
+
+  "the reviewed flips" should "stay empty: a flip the leg finds is fixed, never listed (the owner, 2026-10-27)" in {
+    val path = "test/resources/fixtures/identity-flips-allow.tsv"
+    deploy.RepoFile.exists(path) shouldBe true
+    IdentityDrift.flipAllowList(java.nio.file.Path.of(path)) shouldBe empty
+  }
 }

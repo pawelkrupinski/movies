@@ -107,6 +107,15 @@ each nightly recording, on CI (`scripts.IdentityLiveDrift` in `.github/workflows
 resolved whole against the films prod was screening as it was recorded, `kinowo_identity_drift_listings`, the
 `IdentityIncrementalDrift` alert) — the worker's own nightly check (`IdentityDriftCheck`) OOM-killed worker-us.
 
+FLIPS: an end state cannot show a take that moved and came back (A -> B -> A), and prod's regression watch counts exactly
+those (`kinowo_identity_listing_flips`: UK "The Stranger" at Riverside Woodbridge, 1429348 <-> 848791; PL "Ktoś całkiem
+obcy", a listing joining a corrected take served the model's film until its answers came in). So every listing's served
+take is recorded at every projection of the replay, settle rounds included (`services.identity.TakeFlips`, only changes
+kept), and a listing whose take goes back to a film it left, changes more than once, or changes at a step where none of
+its deciding inputs changed (no answer filed, no rules changed, its model cluster the same: an interim take a pending
+correction overrides) is a FLIP: one line naming its films, the steps and each take's deciding path, in `flips-<cc>.tsv`
+and the report. Any flip fails the row; `test/resources/fixtures/identity-flips-allow.tsv` stays empty.
+
 What it found first (recording 573, 2026-10-22): the agreement's stored verdict kept an agreed film as its title and year
 alone, so a stage brought up by a deploy took films its first decision had refused on the record's other facts — DE
 Museum-Lichtspiele's "… Eröffnungskonzert - Raíces" ('Roots', whose original title is the billing's last piece), taken

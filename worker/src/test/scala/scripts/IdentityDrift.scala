@@ -37,10 +37,16 @@ import scala.util.control.NonFatal
  * film differs at a checkpoint is a DIVERGENCE (`drift-<cc>.tsv`), unless the allow-list
  * (`test/resources/fixtures/identity-drift-allow.tsv`: cc, venue or `*`, raw title, checkpoint or `*`, reason) names it.
  *
+ * FLIPS: every listing's served take is recorded at every projection of the sequence — each tick's, each settle round's
+ * apply — and a listing whose take goes back to a film it left, changes more than once, or changes where none of its
+ * deciding inputs did ([[TakeFlips]]) is a FLIP (`flips-<cc>.tsv`): what prod's regression watch counts
+ * (`kinowo_identity_listing_flips`) and a checkpoint's end state cannot show. Every flip fails the run unless
+ * `test/resources/fixtures/identity-flips-allow.tsv` (cc, venue or `*`, raw title, reason) names it — kept empty.
+ *
  * {{{
- *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]
+ *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV]
  * }}}
- * Exit: 0 no divergence beyond the allow-list, 1 divergences, 2 usage.
+ * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage.
  */
 object IdentityDrift {
   import IdentitySlice.{Reads, Recording, filmOf}
@@ -48,7 +54,9 @@ object IdentityDrift {
   final case class Options(country: String = "", recording: Option[Path] = None, families: Option[Path] = None, seeds: Int = 2,
                            gate: Int = 15, out: Path = Path.of("target/identity-drift"), allow: Option[Path] = None, labels: Option[Path] = None,
                            /** `--seed S`: that seed alone, to replay one divergence. */
-                           only: Option[Int] = None)
+                           only: Option[Int] = None,
+                           /** `--flips-allow TSV`: the reviewed flips ([[FlipAllowed]]) — kept empty. */
+                           flipsAllow: Option[Path] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                            => o
@@ -60,12 +68,13 @@ object IdentityDrift {
     case "--out" :: v :: rest           => parse(rest, o.copy(out = Path.of(v)))
     case "--allow" :: v :: rest         => parse(rest, o.copy(allow = Some(Path.of(v))))
     case "--labels" :: v :: rest        => parse(rest, o.copy(labels = Some(Path.of(v))))
+    case "--flips-allow" :: v :: rest   => parse(rest, o.copy(flipsAllow = Some(Path.of(v))))
     case cc :: rest if !cc.startsWith("--") && o.country.isEmpty => parse(rest, o.copy(country = cc.toLowerCase(java.util.Locale.ROOT)))
     case other :: _                     => usage(s"unknown argument $other")
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV]")
+    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV]")
     sys.exit(2)
   }
 
@@ -105,6 +114,18 @@ object IdentityDrift {
       case Array(cc, venue, title, checkpoint, reason, _*) if reason.trim.nonEmpty => Allowed(cc, venue, title, checkpoint, reason)
       case row => sys.error(s"identity-drift-allow: every row names cc, venue, raw title, checkpoint and a REASON: ${row.mkString("|")}")
     }
+
+  /** A flip in the reviewed list: one production's design keeps on purpose, with why. */
+  final case class FlipAllowed(country: String, venue: String, rawTitle: String, reason: String) {
+    def covers(country: String, f: TakeFlips.Flip): Boolean =
+      this.country == country && (venue == "*" || venue == f.key.venue) && rawTitle == f.key.rawTitle
+  }
+  def flipAllowList(path: Path): Seq[FlipAllowed] = if (!Files.exists(path)) Nil else
+    Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.filter(l => l.nonEmpty && !l.startsWith("#")).drop(1).map(_.split("\t", -1)).map {
+      case Array(cc, venue, title, reason, _*) if reason.trim.nonEmpty => FlipAllowed(cc, venue, title, reason)
+      case row => sys.error(s"identity-flips-allow: every row names cc, venue, raw title and a REASON: ${row.mkString("|")}")
+    }
+  val FlipHeader = "country\tseed\tvenue\trawTitle\tfilms\treasons\ttakes"
 
   // ── the answers production files over time ───────────────────────────────────────────────
 
@@ -304,49 +325,70 @@ object IdentityDrift {
     private val inputs   = inputsOf(reads)
     private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard)
     var model: IncrementalResolver = newModel()
-    var stage: AgreementStage = answers.stage(gate, verdicts, budgets = true, keys)
+    private def newStage() = answers.stage(gate, verdicts, budgets = true, keys)
+    var stage: AgreementStage = newStage()
     /** The intake's listings by key: what a projection hands the stage. */
     var held: Map[ListingKey, Listing] = Map.empty
     /** Nothing built on yet: the next projection reads every cluster again (its `republished` is `None`). */
     private var fresh = true
     private var projections = 0
+    /** Every listing's served take at each projection, and the ones that flip-flop ([[TakeFlips]]). */
+    val flips = new TakeFlips
+    /** What happened since the last projection (`scrape`, `fill`, `deploy`, ...): its step's name. */
+    private var events = Vector.empty[String]
+    /** The events that change every listing's deciding inputs: answers filed, the rules. */
+    private val Answering = Set("fill", "answer", "settle", "deploy-rules")
+    /** Each listing's model cluster at the last projection, as a hash of its members: a listing whose cluster gained or
+     *  lost one has its inputs changed. */
+    private var clusters = Map.empty[ListingKey, Int]
+    private def event(name: String): Unit = events :+= name
 
     def releaseFamily(id: String): Boolean = docs.held(id) && { docs.release(id); answers.store.noteFiled(id); true }
 
-    /** One projection: the stage over the model's decisions now. */
-    def project(republished: Iterable[ListingKey] = Nil): Resolution = {
+    /** One projection: the stage over the model's decisions now, every listing's take recorded ([[flips]]). */
+    def project(republished: Iterable[ListingKey] = Nil, checkpoint: String = ""): Resolution = {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
-      val r = stage.apply(UnmatchedClusters.resolutionOf(model.decisions), held.get, answers.store.version, if (fresh) None else Some(republished))
+      val decided = model.decisions
+      val r = stage.apply(UnmatchedClusters.resolutionOf(decided), held.get, answers.store.version, if (fresh) None else Some(republished))
       fresh = false
       projections += 1
+      val now      = decided.iterator.flatMap(d => { val sig = scala.util.hashing.MurmurHash3.unorderedHash(d.members); d.members.iterator.map(_ -> sig) }).toMap
+      val answered = events.exists(Answering)
+      val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
+      flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}") },
+        key => answered || !clusters.get(key).contains(now.getOrElse(key, 0)))
+      clusters = now
+      events = Vector.empty
       System.err.println(f"[identity-drift] seed $seed projection $projections: ${held.size} listings, " +
         f"${r.decisions.count(d => d.film.isDefined || d.fallback.isDefined)} clusters taken, backlog ${stage.backlog} (${started.seconds}%.1fs)")
       r
     }
-    def boot(listings: Seq[Listing]): Unit = { held = listings.map(l => l.key -> l).toMap; model.restore(listings) }
-    def scraped(listings: Seq[Listing]): Unit = { held ++= listings.map(l => l.key -> l); model.batch(seen = listings) }
-    def gone(keys: Seq[ListingKey]): Unit = { held --= keys; model.batch(gone = keys) }
-    def filled(fraction: Double, rng: scala.util.Random): Unit = model.batch(answered = gate.release(fraction, rng))
-    def answered(): Unit = answers.answer(stage, releaseFamily)
+    def boot(listings: Seq[Listing]): Unit = { event("boot"); held = listings.map(l => l.key -> l).toMap; model.restore(listings) }
+    def scraped(listings: Seq[Listing]): Unit = { event("scrape"); held ++= listings.map(l => l.key -> l); model.batch(seen = listings) }
+    def gone(keys: Seq[ListingKey]): Unit = { event("gone"); held --= keys; model.batch(gone = keys) }
+    def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = gate.release(fraction, rng)) }
+    def answered(): Unit = { event("answer"); answers.answer(stage, releaseFamily) }
     /** A deploy: the model and the stage made anew from their stores; `outrule` — a deploy changing the rules. */
     def deploy(outrule: Boolean): Unit = {
+      event(if (outrule) "deploy-rules" else "deploy")
       if (outrule) { rules = s"$rules+"; verdicts.outrule() }
       model = newModel()
       model.restore(held.values.toSeq.sorted)
-      stage = answers.stage(gate, verdicts, budgets = true, keys)
+      stage = newStage()
       fresh = true
     }
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
       gate.open = true; docs.openAll(answers.store.noteFiled)
       model.batch(answered = gate.release(1.0, new scala.util.Random(0)))
-      settle(stage, () => project(), answers, clock, releaseFamily)
+      settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }
 
-  /** One seed's sequence; each checkpoint's resolution, named. */
-  def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock): Seq[(String, Resolution)] = {
+  /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
+  final case class Replay(checkpoints: Seq[(String, Resolution)], flips: Seq[TakeFlips.Flip])
+  def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock): Replay = {
     val rng     = new scala.util.Random(seed)
     val venues  = rng.shuffle(listings.map(_.venue).distinct.sorted)
     val (first, later) = venues.splitAt((venues.size * 0.7).toInt)
@@ -358,7 +400,9 @@ object IdentityDrift {
     def half     = rng.shuffle(venues).take(venues.size / 2).toSet
     val w = new Worker(reads, seed, gatePercent, clock)
     val checkpoints = Seq.newBuilder[(String, Resolution)]
-    def rescrape(): Resolution = { val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key)) }
+    def rescrape(checkpoint: String = ""): Resolution = {
+      val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key), checkpoint)
+    }
     w.boot(initial); w.project()
     w.filled(0.5, rng); w.project()
     w.answered(); w.project()
@@ -374,12 +418,12 @@ object IdentityDrift {
     w.scraped(of(arrivals(2))); w.project()
     checkpoints += "settled" -> w.settled()
     for (run <- 1 to 2) {
-      checkpoints += s"tick-$run" -> rescrape()
+      checkpoints += s"tick-$run" -> rescrape(s"tick-$run")
       w.deploy(outrule = run == 2)
-      checkpoints += s"deploy-$run" -> w.project()
-      checkpoints += s"after-deploy-$run" -> rescrape()
+      checkpoints += s"deploy-$run" -> w.project(checkpoint = s"deploy-$run")
+      checkpoints += s"after-deploy-$run" -> rescrape(s"after-deploy-$run")
     }
-    checkpoints.result()
+    Replay(checkpoints.result(), w.flips.flips)
   }
 
   def main(args: Array[String]): Unit = {
@@ -392,20 +436,23 @@ object IdentityDrift {
     val listings = IdentitySlice.listingsOf(recording, opened.rows)
     val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
     val allowed = o.allow.fold(Seq.empty[Allowed])(allowList).filter(_.country == country.code)
+    val flipsAllowed = o.flipsAllow.fold(Seq.empty[FlipAllowed])(flipAllowList).filter(_.country == country.code)
+    val flips   = Seq.newBuilder[(Int, TakeFlips.Flip)]
     val started = tools.Stopwatch.start()
     System.err.println(s"[identity-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
     val divergences = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)).flatMap { seed =>
       val clock = new MutableClock(recording.recordedAt)
       // hermetic: no prod pins nor stored verdicts beside the CI gate's recording, on both sides of its comparison alike
       def readsAt(c: java.time.Clock) = new Reads(country, opened.fetch, opened.gaps, c, filed, tools.ProdState.none)
-      val checkpoints = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
+      val replay  = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
+      flips ++= replay.flips.map(seed -> _)
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())
       val wholeReads = readsAt(wholeClock)
       val reference  = takesOf(whole(wholeReads, listings, wholeClock, WholeLookups.recorded(wholeReads)))
       println(s"[${country.code} seed $seed] the whole resolve's takes by basis: " +
         reference.values.groupMapReduce(_.basis)(_ => 1)(_ + _).toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", "))
-      checkpoints.flatMap { case (name, resolution) =>
+      replay.checkpoints.flatMap { case (name, resolution) =>
         val now = takesOf(resolution)
         listings.map(_.key).flatMap { key =>
           val (a, b) = (reference.getOrElse(key, Take("none", "absent", "")), now.getOrElse(key, Take("none", "absent", "")))
@@ -425,7 +472,18 @@ object IdentityDrift {
         println(s"      ${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]$label")
       }
     }
-    if (open.nonEmpty) sys.exit(1)
+    val flipped                 = flips.result()
+    val (flipsKept, unreviewed) = flipped.partition { case (_, f) => flipsAllowed.exists(_.covers(country.code, f)) }
+    Files.writeString(o.out.resolve(s"flips-${country.code}.tsv"), (FlipHeader +: flipped.map { case (seed, f) =>
+      Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "))
+        .map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
+    }).mkString("", "\n", "\n"))
+    println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipsKept.size} allow-listed")
+    unreviewed.groupBy { case (_, f) => f.reasons.head }.toSeq.sortBy(-_._2.size).foreach { case (reason, fs) =>
+      println(s"  ${fs.map(_._2.key).distinct.size} listing(s)  flip: $reason")
+      fs.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.take(6).foreach { case (seed, f) => println(s"      ${f.line} [seed $seed]") }
+    }
+    if (open.nonEmpty || unreviewed.nonEmpty) sys.exit(1)
   }
 
   /** What the judgements say of the two sides' films, where they judge the listing. */

@@ -1,0 +1,4 @@
+# Listing FLIPS in the incremental replay (scripts.IdentityDrift, services.identity.TakeFlips) that are REVIEWED as
+# intended: one row a listing, its reason required. It STAYS EMPTY (the owner, 2026-10-27): a flip is fixed, never
+# listed -- IdentityFlipsAllowSpec holds it so.
+country	venue	rawTitle	reason
