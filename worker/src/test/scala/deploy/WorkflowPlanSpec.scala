@@ -120,6 +120,11 @@ class WorkflowPlanSpec extends AnyFlatSpec with Matchers {
     withClue("the runner gives up on a timed-out step without ending it (scripts/ci/bounded-step.sh): ") {
       files.flatMap(unbounded) shouldBe empty
     }
+    // The reap step RUNS it (sourcing does not need the bit): committed without it, every reap step failed with
+    // "Permission denied" and turned all of main's convergence legs red (run 3134, 2026-10-27).
+    withClue("scripts/ci/bounded-step.sh is run by the reap steps, so it must be executable: ") {
+      new java.io.File("scripts/ci/bounded-step.sh").canExecute shouldBe true
+    }
   }
 
   "the evaluation model" should "read the workflows' text the way the rules need" in {
