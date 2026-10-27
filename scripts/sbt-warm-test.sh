@@ -168,7 +168,10 @@ kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 
 # 2026-10-15: a seed ran every call (a module that never gets Zinc state) and removed active.json under the LIVE server,
 # so each call started a new one — 69 leaked servers. A live server's active.json survives a seeding call...
-fake_server() { (cd "$1" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) & fakes+=("$!"); }
+# A JVM survives SIGQUIT (it prints a thread dump), and jcmd/jstack attach by sending one: the stall's thread dump killed
+# a bare `sleep` with it (Quit, core dumped) before sbt-warm could stop and record it (Main #2047). Ignored, the signal
+# stays ignored across the exec.
+fake_server() { (trap '' QUIT; cd "$1" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) & fakes+=("$!"); }
 mkdir -p "$scratch/other/e2e/src"
 fake_server "$scratch/other"; server=$!
 await_server "$server"
@@ -451,13 +454,13 @@ fake_server "$scratch/stall"; server=$!; await_server "$server"
 (cd "$scratch/stall" && KINOWO_SBT_WARM_SERVE_OWNER=$owner KINOWO_SBT_WARM_OWNER_POLL=0.2 \
   exec "$REPO_ROOT/scripts/sbt-warm" --serve "web/PageTest/runMain tools.FixtureServerMain port") >/dev/null 2>&1 &
 serve=$!; fakes+=("$serve")
-for _ in $(seq 1 100); do compgen -G "$KINOWO_SBT_WARM_STATE/*.serving" >/dev/null && break; sleep 0.1; done
+wait_until "the serve marks its server serving" 'compgen -G "$KINOWO_SBT_WARM_STATE/*.serving" >/dev/null'
 out=$(cd "$scratch/stall" && spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null); rc=$?
 check "a call meeting a live serve in its server fails at once with exit 75, BLOCKED, naming it" "75 yes" \
   "$rc $(grep -q '^sbt-warm BLOCKED: .*FixtureServerMain' <<<"$out" && echo yes || echo "no: $out")"
 kill "$owner"
 # (the stop is recorded just after its signal)
-for _ in $(seq 1 100); do grep -q "pid=$server .*which ended" "$KINOWO_SBT_WARM_STATE/stops.log" && break; sleep 0.1; done
+wait_until "the orphaned serve's server stop is recorded" 'grep -q "pid=$server .*which ended" "$KINOWO_SBT_WARM_STATE/stops.log"'
 check "the serve's owner gone (killed, no clean-up), its server is stopped, recorded" "stopped yes" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "pid=$server .*which ended" "$KINOWO_SBT_WARM_STATE/stops.log" && echo yes || echo no)"
 kill -TERM "$serve" 2>/dev/null; wait "$serve" 2>/dev/null
