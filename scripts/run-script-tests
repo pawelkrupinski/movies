@@ -193,8 +193,20 @@ RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq 
       bash coreutils findutils sed gawk grep diffutils git jq python3 perl curl ca-certificates unzip zip xz-utils \
       file procps lsof bc tzdata shellcheck zstd rsync nodejs > /dev/null && rm -rf /var/lib/apt/lists/* \
  && git config --system safe.directory "*"'
+# <objects dir> [depth] -> every object directory it borrows from, transitively (objects/info/alternates; git follows
+# five levels), each absolute and resolved: a repository reads them as its own, so a container without them cannot.
+alternate_object_dirs() {
+  local objects="$1" depth="${2:-0}" line dir
+  [ "$depth" -lt 5 ] && [ -f "$objects/info/alternates" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|'#'*) continue ;; /*) dir=$line ;; *) dir="$objects/$line" ;; esac
+    dir="$(cd "$dir" 2>/dev/null && pwd -P)" || continue
+    echo "$dir"
+    alternate_object_dirs "$dir" $((depth + 1))
+  done < "$objects/info/alternates"
+}
 run_on_linux() {
-  local docker image git_common mounts=() selected=()
+  local docker image git_common alternate mounts=() selected=()
   docker=$(command -v docker || true)
   [ -z "$docker" ] && [ -x "$HOME/.rd/bin/docker" ] && docker="$HOME/.rd/bin/docker" # Rancher Desktop's
   if [ -z "$docker" ] || ! bounded 20 "$docker" info > /dev/null 2>&1; then
@@ -210,6 +222,13 @@ run_on_linux() {
   mounts=(-v "$root:$root:ro")
   git_common="$(cd "$root" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
   case "$git_common" in "$(cd "$root" && pwd -P)"/*|"$root"/*|"") ;; *) mounts+=(-v "$git_common:$git_common:ro") ;; esac
+  # ...and the object directories it borrows from: on ci-runner every checkout's objects/info/alternates names the
+  # runner's git mirror (/git-mirror, infra forgejo.nix), which holds every object the job's fetch did not bring. Unmounted,
+  # `git show HEAD:<path>` failed in here for a blob the mirror already had -- identity-measure-test.sh's "HEAD has no
+  # .github/convergence-paths.txt" on the check tier (run 3260), passing wherever the mirror lagged the commit.
+  if [ -n "$git_common" ]; then
+    while IFS= read -r alternate; do mounts+=(-v "$alternate:$alternate:ro"); done < <(alternate_object_dirs "$git_common/objects")
+  fi
   while IFS="$(printf '\t')" read -r path _; do selected+=("$path"); done < "$work/selected"
   echo "run-script-tests: ${#selected[@]} test(s) on Linux ($image)" >&2
   # each path names exactly its own test; a tag, when one selected them, keeps the tagged ones in

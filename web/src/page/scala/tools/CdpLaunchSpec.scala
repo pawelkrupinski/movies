@@ -6,6 +6,7 @@ import play.api.libs.json.{JsValue, Json}
 
 import java.net.URI
 import java.nio.file.Files
+import java.util.concurrent.TimeUnit
 
 /**
  * A driver must drive the Chrome it launched, whatever else runs on the machine.
@@ -51,5 +52,15 @@ class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
         s"${other.debuggingPort}\n/devtools/browser/00000000-0000-0000-0000-000000000000\n")
       Chrome.activePort(alive, profile) shouldBe None
     } finally { alive.destroyForcibly(); Chrome.deleteProfile(profile) }
+  }
+
+  // A browser that died mid-suite (2026-10-27, /dev/shm outgrown in a CI container) failed every later test with a
+  // bare "Connection refused" from opening its tab: the failure now says the browser itself is gone.
+  "A Chrome whose browser process has exited" should "fail the next tab saying so, not with a refused connection" in withChrome { chrome =>
+    val browser = ProcessHandle.of(chrome.browserPid).orElseThrow()
+    browser.destroyForcibly()
+    browser.onExit().get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
+    val failure = the[IllegalStateException] thrownBy chrome.openPage("about:blank")(_ => ())
+    failure.getMessage should include(s"Chrome (pid ${chrome.browserPid}) exited")
   }
 }

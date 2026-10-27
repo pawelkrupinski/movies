@@ -169,6 +169,14 @@ check "...the checkout mounted read-only at its own path, as this user, not root
   "$(grep -c -- "^run .*-v $tree:$tree:ro" "$work/docker-calls") $(grep -c -- "--user $(id -u):$(id -g)" "$work/docker-calls")"
 check "...naming exactly the tests selected here" "1" "$(grep -c 'run-script-tests --jobs 8 --timeout 600 scripts/ci/b_test.py$' "$work/docker-calls")"
 check "...from an ubuntu image pulled from mirror.gcr.io" "1" "$(grep -c 'kinowo-script-tests:' "$work/docker-calls" | grep -c .)"
+# a checkout borrowing objects (ci-runner's git mirror, by objects/info/alternates) reads them in the container too
+scratch_repo "$work/mirror.git" --bare
+mirror_objects="$(cd "$work/mirror.git/objects" && pwd -P)"
+echo "$mirror_objects" > "$tree/.git/objects/info/alternates"
+linux scripts/ci/b_test.py > /dev/null
+check "...with the object directories it borrows from mounted read-only at their own paths" "1" \
+  "$(grep -c -- "^run .*-v $mirror_objects:$mirror_objects:ro" "$work/docker-calls")"
+rm "$tree/.git/objects/info/alternates"
 NO_IMAGE=1 linux scripts/ci > /dev/null
 check "...built once when it is missing" "1" "$(grep -c '^build ' "$work/docker-calls")"
 scratch_git "$tree" update-ref refs/remotes/origin/main "$base"

@@ -107,6 +107,11 @@ object Chrome {
         "--disable-gpu",
         "--no-sandbox",
         "--hide-scrollbars",
+        // Shared memory in the profile's temp directory, not /dev/shm: a Docker container's /dev/shm is 64 MB
+        // unless the run says otherwise (ci-runner's job containers do not), and the page suites' Chromes, run
+        // in parallel, outgrew it -- the browser died mid-suite, its tabs' DevTools connections reset and every
+        // later `/json/new` was refused (precommit-check run 3260, 2026-10-27). A no-op off Linux.
+        "--disable-dev-shm-usage",
         "--mute-audio",
         "--disable-background-networking",
         "--disable-default-apps",
@@ -124,11 +129,15 @@ object Chrome {
         ++ Seq("about:blank"))*
     ).redirectErrorStream(true)
     val process = pb.start()
-    // Drain stdout/stderr so the buffer never fills up and blocks Chrome.
+    // Drain stdout/stderr so the buffer never fills up and blocks Chrome, keeping its last lines: a browser that
+    // dies mid-suite says why in them (see `Chrome.gone`).
+    val output = new OutputTail(OutputTailLines)
     new Thread(() => {
-      val in = process.getInputStream
-      val buf = new Array[Byte](4096)
-      try while (in.read(buf) >= 0) () catch { case _: Throwable => () }
+      val in = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream))
+      try {
+        var line = in.readLine()
+        while (line != null) { output.add(line); line = in.readLine() }
+      } catch { case _: Throwable => () }
     }, "chrome-stdout-drain").start()
     activePort(process, userDirectory) match {
     case Some(port) =>
@@ -145,7 +154,7 @@ object Chrome {
           userAgentOverride = """"User-Agent":\s*"([^"]+)"""".r.findFirstMatchIn(info)
             .map(_.group(1).replace("HeadlessChrome", "Chrome"))
       } catch { case _: Throwable => () }
-      Some(new Chrome(process, port, userDirectory, proxy, userAgentOverride))
+      Some(new Chrome(process, port, userDirectory, proxy, userAgentOverride, output))
     case None =>
       // Installed but not started is a FAILURE, not "Chrome not installed": callers
       // cancel on None, which hid a start that timed out as a skipped spec.
@@ -156,6 +165,19 @@ object Chrome {
         s"Chrome at $exe did not open its DevTools port within ${LaunchTimeoutMs / 1000}s" +
           exited.fold("")(code => s" (exited with $code)"))
     }
+  }
+
+  /** How many of Chrome's last output lines a dead browser's failure quotes. */
+  private val OutputTailLines = 20
+
+  /** The last `size` lines a process wrote, for the failure that names why it died. */
+  private[tools] final class OutputTail(size: Int) {
+    private val lines = new java.util.ArrayDeque[String]()
+    def add(line: String): Unit = lines.synchronized {
+      lines.addLast(line)
+      if (lines.size > size) lines.removeFirst()
+    }
+    def text: String = lines.synchronized(String.join("\n", lines))
   }
 
   private[tools] def deleteProfile(profile: Path): Unit =
@@ -235,7 +257,8 @@ class Chrome private[tools] (
                               port: Int,
                               userDataDirectory: Path,
                               proxy: Option[Chrome.ProxyConfig] = None,
-                              userAgentOverride: Option[String] = None
+                              userAgentOverride: Option[String] = None,
+                              output: Chrome.OutputTail = new Chrome.OutputTail(0)
                             ) extends AutoCloseable {
   /** For the launch spec: which browser process and DevTools port this driver holds. */
   private[tools] def browserPid: Long = process.pid()
@@ -276,7 +299,9 @@ class Chrome private[tools] (
     // queries that look like phantom page failures. Driving the navigation
     // through `Page.navigate` over CDP is the supported path that doesn't
     // depend on the legacy query-string URL.
-    val newTab = Json.parse(Chrome.httpPut(s"http://${Chrome.Loopback}:$port/json/new"))
+    val newTab =
+      try Json.parse(Chrome.httpPut(s"http://${Chrome.Loopback}:$port/json/new"))
+      catch { case e: java.io.IOException if !process.isAlive => throw gone(e) }
     val wsUrl  = (newTab \ "webSocketDebuggerUrl").as[String]
     val tabId  = (newTab \ "id").as[String]
     val page = new CdpPage(URI.create(wsUrl))
@@ -325,6 +350,16 @@ class Chrome private[tools] (
       try page.close() catch { case _: Throwable => () }
       try Chrome.httpGet(s"http://${Chrome.Loopback}:$port/json/close/$tabId") catch { case _: Throwable => () }
     }
+  }
+
+  /** The browser process itself has exited: no tab of it can open again, so the failure says so, with the exit
+   *  code and what Chrome last printed, instead of a bare "Connection refused" per test. */
+  private def gone(cause: Throwable): IllegalStateException = {
+    val printed = output.text
+    new IllegalStateException(
+      s"Chrome (pid ${process.pid()}) exited with ${process.exitValue()} mid-suite: not an assertion about the page." +
+        (if (printed.isEmpty) "" else s" Its last output:\n$printed"),
+      cause)
   }
 
   override def close(): Unit = {
