@@ -18,8 +18,8 @@ class LogThrottleSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep its allowance to itself" in {
-    val first  = new LogThrottle(intervalNanos = Long.MaxValue, Stopwatch.System)
-    val second = new LogThrottle(intervalNanos = Long.MaxValue, Stopwatch.System)
+    val first  = new LogThrottle(intervalNanos = Long.MaxValue, new _root_.tools.Stopwatch(() => 0L))
+    val second = new LogThrottle(intervalNanos = Long.MaxValue, new _root_.tools.Stopwatch(() => 0L))
     first.admit() shouldBe Some(0)
     second.admit() shouldBe Some(0)
   }

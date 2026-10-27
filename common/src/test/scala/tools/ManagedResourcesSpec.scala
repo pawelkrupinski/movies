@@ -9,7 +9,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
 
   "closeAll" should "close newest first, and close the rest when one fails" in {
     val closed  = ListBuffer.empty[String]
-    val managed = new ManagedResources(Stopwatch.System)
+    val managed = new ManagedResources(new Stopwatch(() => 0L))
     managed.register("a", "a")(closed += _)
     managed.register("b", "b")(_ => throw new IllegalStateException("b refuses"))
     managed.register("c", "c")(closed += _)
@@ -19,7 +19,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "shut a registered executor, so nothing it ran is left running" in {
-    val managed = new ManagedResources(Stopwatch.System)
+    val managed = new ManagedResources(new Stopwatch(() => 0L))
     val pool    = managed.executor("pool")(DaemonExecutors.scheduler("managed-spec"))
     pool.execute(() => ())
     managed.closeAll()
@@ -30,7 +30,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
   // `shutdownNow` hands back the tasks it pulled off the queue unrun; dropping that list left each
   // one's `Future` forever incomplete, and a thread waiting on it (an `invokeAll`) waiting forever.
   it should "cancel the tasks a closed executor never ran, releasing whoever waits on them" in {
-    val managed = new ManagedResources(Stopwatch.System)
+    val managed = new ManagedResources(new Stopwatch(() => 0L))
     val pool    = managed.executor("queued")(DaemonExecutors.boundedPool("managed-queued", threads = 1, queueCapacity = 4, WhenFull.RunOnCaller))
     val running = new java.util.concurrent.CountDownLatch(1)
     val never   = new java.util.concurrent.CountDownLatch(1)  // released only by closeAll's interrupt
@@ -60,7 +60,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
   it should "hand a stopping service what is left of the grace, to bound its own drain" in {
     @volatile var handed = Option.empty[scala.concurrent.duration.FiniteDuration]
     val grace   = scala.concurrent.duration.Duration(3, "seconds")
-    val managed = new ManagedResources(Stopwatch.System, grace)
+    val managed = new ManagedResources(new Stopwatch(() => 0L), grace)
     managed.stopping(new services.Stoppable {
       def stop(): Unit = ()
       override def stopWithin(budget: scala.concurrent.duration.FiniteDuration): Unit = handed = Some(budget)
@@ -71,7 +71,7 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
 
   "A resource registered once the stop has begun" should "be closed at once" in {
     val closed  = ListBuffer.empty[String]
-    val managed = new ManagedResources(Stopwatch.System)
+    val managed = new ManagedResources(new Stopwatch(() => 0L))
     managed.closeAll()
     managed.register("late", "late")(closed += _)
     closed.toList shouldBe List("late")

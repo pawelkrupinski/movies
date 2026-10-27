@@ -61,15 +61,16 @@ class CorpusFixtureSpec extends AnyFlatSpec with Matchers {
   // The capture log reports the JSON's size: measured from the one render the write makes, where
   // it used to render the whole corpus again (296 MB for the US) just to count it.
   it should "report the size of the JSON it compressed, the same bytes a reader inflates" in {
-    val key = s"zz-spec-${System.nanoTime()}"
-    val written = CorpusFixture.write(key, rows)
+    val key       = "zz-spec"
+    val directory = java.nio.file.Files.createTempDirectory("corpus-fixture-spec")
+    val written   = CorpusFixture.writeIn(directory, key, rows)
     try {
-      written.path shouldBe CorpusFixture.pathFor(key)
+      written.path shouldBe CorpusFixture.pathIn(directory, key)
       val in = new java.util.zip.GZIPInputStream(java.nio.file.Files.newInputStream(written.path))
       val inflated = try in.readAllBytes() finally in.close()
       written.jsonBytes shouldBe inflated.length.toLong
-      CorpusFixture.read(key) shouldBe CorpusFixture.parse(CorpusFixture.render(rows))
-    } finally java.nio.file.Files.deleteIfExists(written.path)
+      CorpusFixture.readFrom(written.path) shouldBe CorpusFixture.parse(CorpusFixture.render(rows))
+    } finally { java.nio.file.Files.deleteIfExists(written.path); java.nio.file.Files.deleteIfExists(directory); () }
   }
 
   // A sample leg's key is `de-sample`, and the refusal used to name only the COUNTRY — "no corpus

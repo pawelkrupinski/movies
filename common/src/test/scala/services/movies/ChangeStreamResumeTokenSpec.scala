@@ -80,7 +80,7 @@ class ChangeStreamResumeTokenSpec extends AnyFlatSpec with Matchers {
   // Letting it advance would re-arm the very token the clear threw away, and the next open
   // would resume from it and fail the same way.
   "advance" should "ignore a position captured before a clear()" in {
-    val token = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
+    val token = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = new _root_.tools.Stopwatch(() => 0L))
     val stale = token.generation
     token.clear()
 
@@ -91,7 +91,7 @@ class ChangeStreamResumeTokenSpec extends AnyFlatSpec with Matchers {
     token.current shouldBe Some(new BsonDocument("_data", new BsonString("after-clear")))
   }
 
-  private def unreadableToken(failures: Int) = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System) {
+  private def unreadableToken(failures: Int) = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = new _root_.tools.Stopwatch(() => 0L)) {
     private var left = failures
     override def load(): tools.ReadOutcome[BsonDocument] =
       if (left > 0) { left -= 1; tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new MongoSocketReadTimeoutException("slow", new ServerAddress(), new java.io.IOException("read timed out")))) }

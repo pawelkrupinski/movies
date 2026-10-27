@@ -63,7 +63,7 @@ class PosterFallbackSpec extends AnyFlatSpec with Matchers {
     try {
       val base = s"http://127.0.0.1:${server.getAddress.getPort}"
       val series = new ShareCardMetrics.Series(Seq("pl"), new PrometheusRegistry)
-      val posters = new ShareCardPosters(tempStore(), new HttpPosterDownload(maxBytes = 1024), new VipsPosterShrinker(binary = None), series.forCountry("pl"), _root_.tools.Stopwatch.System)
+      val posters = new ShareCardPosters(tempStore(), new HttpPosterDownload(maxBytes = 1024), new VipsPosterShrinker(binary = None), series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen)
       Seq("missing", "broken", "huge", "garbage").foreach(name => posters.load(s"f$name", Seq(s"$base/$name.jpg")) shouldBe None)
       Seq(PosterFailure.Http4xx, PosterFailure.Http5xx, PosterFailure.TooLarge, PosterFailure.DecodeError)
         .foreach(reason => withClue(reason) { series.posterFetchCount("pl", reason) shouldBe 1 })

@@ -51,7 +51,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[MonitoringHttpFetch]         -> ((d: HttpFetch) => new MonitoringHttpFetch(d, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned))),
       classOf[CountingHttpFetch]           -> ((d: HttpFetch) => new CountingHttpFetch(d, HttpOutcomeRecorder.noop)),
       classOf[StickyShardHttpFetch]        -> ((d: HttpFetch) => new StickyShardHttpFetch(IndexedSeq(d))),
-      classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d), Stopwatch.System)),
+      classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d), _root_.tools.SpecStopwatch.Frozen)),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
       // A budget with room: every call reaches the fetch it decorates.
       classOf[services.identity.adapters.LookupFillLiveFetch] -> ((d: HttpFetch) =>

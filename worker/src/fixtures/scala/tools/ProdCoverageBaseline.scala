@@ -95,13 +95,20 @@ object ProdCoverageBaseline {
 
   /** Beside the corpus it was captured with, and shipped in the same archive — the
    *  two are only meaningful together, so they must not be able to arrive apart. */
-  def pathFor(code: String): Path =
-    Paths.get(s"test/resources/fixtures/corpus/prod-coverage-$code.json")
+  def pathFor(code: String): Path = pathIn(CorpusDirectory, code)
+
+  private val CorpusDirectory: Path = Paths.get("test/resources/fixtures/corpus")
+
+  /** [[pathFor]] under `directory` — a spec hands a temp directory in place of the checked-in corpus tree. */
+  def pathIn(directory: Path, code: String): Path = directory.resolve(s"prod-coverage-$code.json")
 
   def exists(code: String): Boolean = Files.exists(pathFor(code))
 
-  def write(code: String, baseline: ProdCoverageBaseline): Path = {
-    val path = pathFor(code)
+  def write(code: String, baseline: ProdCoverageBaseline): Path = writeIn(CorpusDirectory, code, baseline)
+
+  /** [[write]] into `directory` instead of the checked-in corpus tree. */
+  def writeIn(directory: Path, code: String, baseline: ProdCoverageBaseline): Path = {
+    val path = pathIn(directory, code)
     Files.createDirectories(path.getParent)
     Files.write(path, Json.prettyPrint(Json.toJson(baseline)).getBytes("UTF-8"))
     path
@@ -114,8 +121,11 @@ object ProdCoverageBaseline {
       count("filmwebRating"), count("metascore"), count("rottenTomatoes"))
   }
 
-  def read(code: String): Option[ProdCoverageBaseline] =
-    Option.when(exists(code))(Json.parse(Files.readAllBytes(pathFor(code))).as[ProdCoverageBaseline])
+  def read(code: String): Option[ProdCoverageBaseline] = readIn(CorpusDirectory, code)
+
+  /** [[read]] from `directory` instead of the checked-in corpus tree. */
+  def readIn(directory: Path, code: String): Option[ProdCoverageBaseline] =
+    Option.when(Files.exists(pathIn(directory, code)))(Json.parse(Files.readAllBytes(pathIn(directory, code))).as[ProdCoverageBaseline])
 
   /**
    * Films' worth of difference that is never a finding, whatever the percentages say.

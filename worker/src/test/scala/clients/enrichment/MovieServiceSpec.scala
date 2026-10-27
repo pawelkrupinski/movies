@@ -1,9 +1,9 @@
 package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FailingHttpFetch
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieService
-import tools.RealHttpFetch
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class MovieServiceSpec extends AnyFlatSpec with Matchers {
@@ -67,7 +67,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
   private def service(seed: (String, Option[Int], MovieRecord)*): MovieService = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(seed, normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    new MovieService(cache, new InProcessEventBus(), new TmdbClient(new RealHttpFetch, apiKey = None), clock = _root_.tools.SpecClock.Pinned)
+    new MovieService(cache, new InProcessEventBus(), new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), clock = _root_.tools.SpecClock.Pinned)
   }
 
   // The projection fetches a film's TMDB details once — while its record lacks them. A 5xx on the

@@ -18,14 +18,14 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
   "FallbackHttpFetch" should "return the first backend's body when it succeeds" in {
     val primary   = new RequestLogHttpFetch(ok("primary-body"))
     val secondary = new RequestLogHttpFetch(ok("secondary-body"))
-    val chain = new FallbackHttpFetch(Seq("primary" -> primary, "secondary" -> secondary), _root_.tools.Stopwatch.System)
+    val chain = new FallbackHttpFetch(Seq("primary" -> primary, "secondary" -> secondary), _root_.tools.SpecStopwatch.Frozen)
     chain.get("https://example") shouldBe "primary-body"
     primary.gets shouldBe Seq("https://example")
     secondary.calls shouldBe empty  // secondary never consulted
   }
 
   it should "roll over to the next backend when the first throws" in {
-    val chain = new FallbackHttpFetch(Seq("primary" -> boom("zyte boom"), "secondary" -> ok("from-secondary")), _root_.tools.Stopwatch.System)
+    val chain = new FallbackHttpFetch(Seq("primary" -> boom("zyte boom"), "secondary" -> ok("from-secondary")), _root_.tools.SpecStopwatch.Frozen)
     chain.get("https://example") shouldBe "from-secondary"
   }
 
@@ -33,7 +33,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     val chain = new FallbackHttpFetch(Seq(
       "zyte"   -> boom("zyte 5xx"),
       "direct" -> ok("direct-finally-worked")
-    ), _root_.tools.Stopwatch.System)
+    ), _root_.tools.SpecStopwatch.Frozen)
     chain.get("https://example") shouldBe "direct-finally-worked"
   }
 
@@ -41,7 +41,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     val chain = new FallbackHttpFetch(Seq(
       "zyte"   -> boom("z-failure"),
       "direct" -> boom("d-failure")
-    ), _root_.tools.Stopwatch.System)
+    ), _root_.tools.SpecStopwatch.Frozen)
     val exception = intercept[RuntimeException](chain.get("https://example"))
     exception.getMessage should include ("All 2 backends failed")
     exception.getMessage should include ("zyte:")
@@ -58,7 +58,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     val chain = new FallbackHttpFetch(Seq(
       "direct" -> new FailingHttpFetch((_, _) => limited),
       "proxy"  -> boom("p-failure")
-    ), _root_.tools.Stopwatch.System)
+    ), _root_.tools.SpecStopwatch.Frozen)
     val exception = intercept[tools.HttpStatusException](chain.get("https://example"))
     exception.code shouldBe 429
     exception.retryAfter shouldBe Some(scala.concurrent.duration.Duration(7, "s"))
@@ -71,7 +71,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     def chainOf(failure: Throwable) = new FallbackHttpFetch(Seq(
       "direct" -> new FailingHttpFetch((_, _) => failure),
       "proxy"  -> boom("p-failure")
-    ), _root_.tools.Stopwatch.System)
+    ), _root_.tools.SpecStopwatch.Frozen)
     intercept[tools.HttpStatusException](chainOf(asked).get("https://example")).code shouldBe 503
     intercept[RuntimeException](chainOf(bare).get("https://example")) should not be a [tools.HttpStatusException]
   }
@@ -83,7 +83,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "roll over to the next backend when one answers a challenge page with a 2xx" in {
     val challenge = "<html><head><title>Just a moment...</title></head><script>window._cf_chl_opt={}</script></html>"
     val outcomes  = mutable.ListBuffer.empty[(String, Option[String])]
-    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(challenge), "fallback" -> ok("<html>listing</html>")), _root_.tools.Stopwatch.System,
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(challenge), "fallback" -> ok("<html>listing</html>")), _root_.tools.SpecStopwatch.Frozen,
       onOutcome = (name, error) => outcomes += ((name, error)))
     chain.get("https://cinema.example/listing") shouldBe "<html>listing</html>"
     chain.getBytes("https://cinema.example/listing").toSeq shouldBe "<html>listing</html>".getBytes("UTF-8").toSeq
@@ -92,7 +92,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "fail, not answer, when every backend answers a challenge page" in {
     val challenge = "<title>Just a moment...</title>"
-    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(challenge), "fallback" -> ok(challenge)), _root_.tools.Stopwatch.System)
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(challenge), "fallback" -> ok(challenge)), _root_.tools.SpecStopwatch.Frozen)
     val exception = intercept[RuntimeException](chain.get("https://cinema.example/listing"))
     exception.getMessage should include ("Cloudflare challenge")
   }
@@ -103,7 +103,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     val page = "<html><head><script type=\"text/javascript\" src=\"/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=1\" async></script></head>" +
       "<body>" + ("<div class=\"film\">Diuna</div>" * 300) + "</body></html>"
     val outcomes = mutable.ListBuffer.empty[(String, Option[String])]
-    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(page), "fallback" -> boom("must not be tried")), _root_.tools.Stopwatch.System,
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(page), "fallback" -> boom("must not be tried")), _root_.tools.SpecStopwatch.Frozen,
       onOutcome = (name, error) => outcomes += ((name, error)))
     chain.get("https://cinema.example/listing") shouldBe page
     outcomes.toSeq shouldBe Seq("proxy" -> None)
@@ -111,13 +111,13 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "exercise the same fallback for post as for get" in {
     val secondary = new RoutingHttpFetch(Seq("https://x" -> "post-body"))
-    val chain = new FallbackHttpFetch(Seq("primary" -> boom("503"), "secondary" -> secondary), _root_.tools.Stopwatch.System)
+    val chain = new FallbackHttpFetch(Seq("primary" -> boom("503"), "secondary" -> secondary), _root_.tools.SpecStopwatch.Frozen)
     chain.post("https://x", "payload", "text/plain") shouldBe "post-body"
     secondary.postBodies shouldBe Seq(("https://x", "payload", "text/plain"))
   }
 
   it should "refuse to construct with an empty backend list — wiring bug, not runtime fallback" in {
-    intercept[IllegalArgumentException] { new FallbackHttpFetch(Seq.empty, _root_.tools.Stopwatch.System) }
+    intercept[IllegalArgumentException] { new FallbackHttpFetch(Seq.empty, _root_.tools.SpecStopwatch.Frozen) }
   }
 
   // ── onOutcome metering (powers the /uptime "Residential proxy" row) ─────────
@@ -125,7 +125,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "report a failed primary then the served fallback (proxy failed → Zyte used)" in {
     val outcomes = mutable.ListBuffer.empty[(String, Option[String])]
     val chain = new FallbackHttpFetch(
-      Seq("proxy" -> boom("HTTP 407"), "fallback" -> ok("served")), _root_.tools.Stopwatch.System,
+      Seq("proxy" -> boom("HTTP 407"), "fallback" -> ok("served")), _root_.tools.SpecStopwatch.Frozen,
       onOutcome = (name, error) => outcomes += (name -> error))
     chain.get("https://x") shouldBe "served"
     outcomes.toList shouldBe List(
@@ -136,7 +136,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "report only the primary when it succeeds (proxy served, fallback untouched)" in {
     val outcomes = mutable.ListBuffer.empty[(String, Option[String])]
     val chain = new FallbackHttpFetch(
-      Seq("proxy" -> ok("served"), "fallback" -> boom("unused")), _root_.tools.Stopwatch.System,
+      Seq("proxy" -> ok("served"), "fallback" -> boom("unused")), _root_.tools.SpecStopwatch.Frozen,
       onOutcome = (name, error) => outcomes += (name -> error))
     chain.get("https://x") shouldBe "served"
     outcomes.toList shouldBe List("proxy" -> None)
@@ -144,7 +144,7 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "not let an onOutcome that throws break the fetch" in {
     val chain = new FallbackHttpFetch(
-      Seq("proxy" -> ok("served")), _root_.tools.Stopwatch.System,
+      Seq("proxy" -> ok("served")), _root_.tools.SpecStopwatch.Frozen,
       onOutcome = (_, _) => throw new RuntimeException("listener boom"))
     chain.get("https://x") shouldBe "served"
   }

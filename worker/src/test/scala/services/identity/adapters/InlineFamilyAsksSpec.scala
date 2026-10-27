@@ -4,7 +4,7 @@ package adapters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
-import tools.{SpecClock, SpecTimeouts, Stopwatch}
+import tools.{SpecClock, SpecTimeouts}
 
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
@@ -22,7 +22,7 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
   private val hit = SourceHit("tt16315948", "Klondike", None, Some(2022))
   private def asks(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], pool: java.util.concurrent.ExecutorService,
                    filed: () => Unit = () => (), memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", SpecClock.Pinned)) =
-    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed, memory = memory), pool, Stopwatch.System)
+    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed, memory = memory), pool, _root_.tools.SpecStopwatch.Frozen)
 
   "inline family asks" should "file each family's answer before returning" in {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)

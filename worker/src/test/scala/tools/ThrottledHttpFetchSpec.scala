@@ -180,7 +180,7 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     val slept    = mutable.ListBuffer.empty[Long]
     val direct   = new ScriptedFetch
     val proxy    = new ScriptedFetch
-    val chain    = new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> proxy), Stopwatch.System,
+    val chain    = new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> proxy), _root_.tools.SpecStopwatch.Frozen,
                                          endsChain = FallbackHttpFetch.OriginAnswered)
     val throttle = new ThrottledHttpFetch(chain, jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH),
                                           sleep = ms => { slept += ms; () })

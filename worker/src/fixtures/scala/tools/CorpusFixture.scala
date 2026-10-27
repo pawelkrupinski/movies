@@ -53,8 +53,14 @@ object CorpusFixture {
   /** Where a country's corpus lives. Repo-root-relative, like every other
    *  `test/resources/fixtures/…` load, so it resolves the same unforked from sbt
    *  and from a CI checkout. */
-  def pathFor(countryCode: String): Path =
-    Paths.get("test", "resources", "fixtures", "corpus", s"cinema-scrapes-${countryCode.toLowerCase(java.util.Locale.ROOT)}.json.gz")
+  def pathFor(countryCode: String): Path = pathIn(CorpusDirectory, countryCode)
+
+  /** The checked-in corpus directory, repo-root-relative. */
+  private val CorpusDirectory: Path = Paths.get("test", "resources", "fixtures", "corpus")
+
+  /** Where a country's corpus lives under `directory` — [[pathFor]] for the checked-in one; a spec hands a temp directory. */
+  def pathIn(directory: Path, countryCode: String): Path =
+    directory.resolve(s"cinema-scrapes-${countryCode.toLowerCase(java.util.Locale.ROOT)}.json.gz")
 
   def exists(countryCode: String): Boolean = Files.exists(pathFor(countryCode))
 
@@ -110,8 +116,11 @@ object CorpusFixture {
    *  log used to render the whole corpus a SECOND time just to count it (296 MB for the US). */
   final case class Written(path: Path, jsonBytes: Long)
 
-  def write(countryCode: String, rows: Seq[ArchivedScrape]): Written = {
-    val path = pathFor(countryCode)
+  def write(countryCode: String, rows: Seq[ArchivedScrape]): Written = writeIn(CorpusDirectory, countryCode, rows)
+
+  /** [[write]] into `directory` instead of the checked-in corpus tree. */
+  def writeIn(directory: Path, countryCode: String, rows: Seq[ArchivedScrape]): Written = {
+    val path = pathIn(directory, countryCode)
     Files.createDirectories(path.getParent)
     val json = render(rows).getBytes(java.nio.charset.StandardCharsets.UTF_8)
     val out  = new GZIPOutputStream(new FileOutputStream(path.toFile))

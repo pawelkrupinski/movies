@@ -31,6 +31,10 @@ class FailingHttpFetch(fault: (String, String) => Throwable) extends HttpFetch {
 }
 
 object FailingHttpFetch {
+  /** For a client built only to satisfy a constructor: nothing may be sent, and a send throws an
+   *  [[AssertionError]] naming the request, so a spec that unexpectedly reaches the wire shows it. */
+  val Unexpected: HttpFetch = new FailingHttpFetch((method, url) => new AssertionError(s"unexpected $method $url: this spec sends nothing"))
+
   /** A named way for an upstream to be down, for a spec parametrised over them. */
   final case class Fault(name: String, fetch: HttpFetch)
 

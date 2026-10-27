@@ -1,10 +1,11 @@
 package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FailingHttpFetch
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
 import services.enrichment.FilmwebClient.{Candidate, SearchHit}
-import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch, UpstreamNotFound}
+import tools.{GetOnlyHttpFetch, RoutingHttpFetch, UpstreamNotFound}
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
@@ -12,7 +13,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
   private def filmwebSite(routes: Map[String, String]) =
     new RoutingHttpFetch(routes, getOnly = true, unroutedIsNotFound = true)
 
-  private val client = new FilmwebClient(new RealHttpFetch)
+  private val client = new FilmwebClient(FailingHttpFetch.Unexpected)
 
   // ── an absent film vs a failed read ──────────────────────────────────────────
 

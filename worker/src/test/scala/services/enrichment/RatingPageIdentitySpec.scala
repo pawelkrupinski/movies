@@ -5,10 +5,11 @@ import tools.SpecClock.given
 import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FailingHttpFetch
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.{GetOnlyHttpFetch, RealHttpFetch, UpstreamNotFound}
+import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
 import java.nio.file.{Files, Paths}
 
@@ -28,7 +29,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
     def get(url: String): String = pages.getOrElse(url, UpstreamNotFound(url))
   }
 
-  private val tmdb = new TmdbClient(new RealHttpFetch, apiKey = None)
+  private val tmdb = new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None)
 
   private def bogaci(rtUrl: Option[String] = None, rt: Option[Int] = None,
                      mcUrl: Option[String] = None, mc: Option[Int] = None) = {

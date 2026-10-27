@@ -52,7 +52,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     val primary  = "https://multikino.example/403.jpg"
     val series   = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val download = new CountingDownload(failing = Set(primary, "https://gone.example/a.jpg", "https://gone.example/b.jpg"))
-    val posters  = new ShareCardPosters(tempStore(), download, newJavaShrinker(), series.forCountry("pl"), _root_.tools.Stopwatch.System)
+    val posters  = new ShareCardPosters(tempStore(), download, newJavaShrinker(), series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen)
 
     posters.load(film1, Seq(primary, url)) shouldBe defined
     posters.load("fother", Seq("https://gone.example/a.jpg", "https://gone.example/b.jpg")) shouldBe None

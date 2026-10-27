@@ -53,7 +53,7 @@ class HealthEndpointSpec extends AnyFlatSpec with Matchers {
 
   // The next workers roll out only once these are ready: five booting at once saturated the node.
   "/ready" should "answer booting until the boot work has settled, then ready" in {
-    val readiness = new BootReadiness(scala.concurrent.duration.Duration(8, "minutes"), tools.Stopwatch.System)
+    val readiness = new BootReadiness(scala.concurrent.duration.Duration(8, "minutes"), _root_.tools.SpecStopwatch.Frozen)
     var settled   = false
     readyStatus(readiness) shouldBe 503
     readiness.becomes(() => settled)

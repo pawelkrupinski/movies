@@ -117,12 +117,13 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "survive a round-trip through the fixture file" in {
-    val baseline = coverage(films = 727, tmdb = 526, imdb = 515, imdbRating = 478, filmweb = 482, metascore = 308, rt = 354)
-    val code     = s"roundtrip-${ProcessHandle.current().pid()}"
+    val baseline  = coverage(films = 727, tmdb = 526, imdb = 515, imdbRating = 478, filmweb = 482, metascore = 308, rt = 354)
+    val code      = "roundtrip"
+    val directory = java.nio.file.Files.createTempDirectory("prod-coverage-baseline-spec")
     try {
-      ProdCoverageBaseline.write(code, baseline)
-      ProdCoverageBaseline.read(code) shouldBe Some(baseline)
-    } finally java.nio.file.Files.deleteIfExists(ProdCoverageBaseline.pathFor(code))
+      ProdCoverageBaseline.writeIn(directory, code, baseline)
+      ProdCoverageBaseline.readIn(directory, code) shouldBe Some(baseline)
+    } finally { java.nio.file.Files.deleteIfExists(ProdCoverageBaseline.pathIn(directory, code)); java.nio.file.Files.deleteIfExists(directory); () }
   }
 
   /**

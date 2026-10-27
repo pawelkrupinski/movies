@@ -40,7 +40,7 @@ class FallbackHttpFetchHeadersSpec extends AnyFlatSpec with Matchers {
 
   "FallbackHttpFetch" should "carry request headers to the backend that serves" in {
     val primary = new RecordingFetch("proxy")
-    new FallbackHttpFetch(Seq("proxy" -> primary, "direct" -> new RecordingFetch("direct")), Stopwatch.System)
+    new FallbackHttpFetch(Seq("proxy" -> primary, "direct" -> new RecordingFetch("direct")), new _root_.tools.Stopwatch(() => 0L))
       .get(Url, Bearer) shouldBe "proxy"
     primary.seen shouldBe Seq(Bearer)
   }
@@ -49,7 +49,7 @@ class FallbackHttpFetchHeadersSpec extends AnyFlatSpec with Matchers {
   // was ALSO called without the bearer. Both legs must see the headers.
   it should "carry request headers to a fallback backend after the primary fails" in {
     val direct = new RecordingFetch("direct")
-    new FallbackHttpFetch(Seq("proxy" -> new RecordingFetch("proxy", fail = true), "direct" -> direct), Stopwatch.System)
+    new FallbackHttpFetch(Seq("proxy" -> new RecordingFetch("proxy", fail = true), "direct" -> direct), new _root_.tools.Stopwatch(() => 0L))
       .get(Url, Bearer) shouldBe "direct"
     direct.seen shouldBe Seq(Bearer)
   }

@@ -5,12 +5,13 @@ import tools.SpecClock.given
 import clients.TmdbClient
 import models.{KinoMuza, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FailingHttpFetch
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.TmdbAttempt
 import services.tasks.RatingSources
-import tools.{GetOnlyHttpFetch, RealHttpFetch, UpstreamNotFound}
+import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
 import java.time.Instant
 
@@ -83,7 +84,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
     val (cache, key, _) = unmatched("Przekleństwa niewinności", Some(2026), Seq("Sofia Coppola"))
     cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
     val rt = new RottenTomatoesClient(new GetOnlyHttpFetch { def get(u: String): String = if (u == url) page else UpstreamNotFound(u) })
-    new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), rt).refreshOneSync(key)
+    new RottenTomatoesRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), rt).refreshOneSync(key)
     cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe Some(url)
   }
 
@@ -98,7 +99,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
       val mc = new MetacriticClient(new GetOnlyHttpFetch {
         def get(url: String): String = pages.get(url.stripSuffix("/")).orElse(pages.get(url)).getOrElse(UpstreamNotFound(url))
       })
-      new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), mc).refreshOneSync(key)
+      new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), mc).refreshOneSync(key)
       cache.get(key).flatMap(_.metacriticUrl)
     }
     resolving(Map("https://www.metacritic.com/movie/nadzy" -> page("Mike Leigh", 1993))) shouldBe Some("https://www.metacritic.com/movie/nadzy")

@@ -3,8 +3,6 @@ package tools
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.Files
-
 /**
  * `Env` resolves an installed admin override first, then its static source.
  * Most cases drive an instance over a fixed map ([[Env.of]]); the process
@@ -133,19 +131,5 @@ class EnvSpec extends AnyFlatSpec with Matchers {
 
   it should "answer None when neither process source has the key" in {
     layered(Map.empty, Map.empty).get("KINOWO_TEST_MISSING") shouldBe None
-  }
-
-  // The app reads its process and nothing else: secrets reach a local run through
-  // `secrets run movies … -- <command>`, never a file. `.env.local` (deleted 2026-10-09)
-  // used to be read from the working directory — and every unforked test layer has the
-  // repo root as its working directory, so a key left in that file switched live services
-  // on under the tests.
-  "The process-bound Env" should "never read a .env.local in the working directory" in {
-    val file = new java.io.File(".env.local").getAbsoluteFile  // the working directory
-    assume(!file.exists(), s"$file already exists; refusing to overwrite it")
-    val key = s"KINOWO_TEST_ONLY_IN_FILE_${java.util.UUID.randomUUID().toString.replace("-", "")}"
-    Files.writeString(file.toPath, s"$key=file\n")
-    try settings.ProcessConfiguration.resolve().env.get(key) shouldBe None
-    finally Files.deleteIfExists(file.toPath)
   }
 }

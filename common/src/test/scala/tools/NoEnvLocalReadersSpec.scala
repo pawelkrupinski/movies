@@ -27,7 +27,7 @@ class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
   /** file → why it may name the file in code. */
   private val Allowed: Map[String, String] = Map(
     "common/src/test/scala/tools/NoEnvLocalReadersSpec.scala" -> "this lint",
-    "common/src/test/scala/tools/EnvSpec.scala" ->
+    "worker/src/it/scala/tools/EnvIntegrationSpec.scala" ->
       "writes a .env.local to prove the process-bound Env never reads it",
     "worker/src/test/scala/deploy/ReleaseLanePublishSpec.scala" ->
       "asserts ios-release.sh does not mention it",

@@ -141,7 +141,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(
       Seq(("Film bez IMDb", Some(2026), MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](Tmdb -> SourceData())))),
       normalizer = titleNormalizer), normalizer = titleNormalizer, clock = tools.SpecClock.Pinned)
-    new ImdbIdResolver(cache, new ImdbClient(wire.fetch), stopwatch = tools.Stopwatch.System)
+    new ImdbIdResolver(cache, new ImdbClient(wire.fetch), stopwatch = _root_.tools.SpecStopwatch.Frozen)
       .resolveSync("Film bez IMDb", Some(2026), "Film bez IMDb")
     scala.util.Try(new MovieService(cache, new InProcessEventBus(), wire.tmdb, clock = tools.SpecClock.Pinned)
       .withFilmDetails(MovieRecord(), 7))

@@ -37,7 +37,7 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers {
     }
     val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val store = tempStore()
-    val loaded = new ShareCardPosters(store, download, shrinker, series.forCountry("pl"), _root_.tools.Stopwatch.System).load("f1", Seq(broken, good))
+    val loaded = new ShareCardPosters(store, download, shrinker, series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen).load("f1", Seq(broken, good))
     loaded.map(_._1) shouldBe Some(good)
     series.posterFetchCount("pl", PosterFailure.EncodeError) shouldBe 1
   }
@@ -45,7 +45,7 @@ class PosterColourSpaceSpec extends AnyFlatSpec with Matchers {
   it should "leave the film a card without a poster, not an exception, when every poster fails" in {
     val shrinker = new PosterShrinker { def coverSlot(f: Path): Either[String, BufferedImage] = throw new javax.imageio.IIOException("Bogus input colorspace") }
     val store = tempStore()
-    val posters = new ShareCardPosters(store, serving(() => file(image(BufferedImage.TYPE_INT_RGB), "jpg")), shrinker, ShareCardMetrics.noop, _root_.tools.Stopwatch.System)
+    val posters = new ShareCardPosters(store, serving(() => file(image(BufferedImage.TYPE_INT_RGB), "jpg")), shrinker, ShareCardMetrics.noop, _root_.tools.SpecStopwatch.Frozen)
     val service = new ShareCardService(models.Country.default, store, posters, new services.tasks.InMemoryTaskQueue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0))
     service.render(service.inputs(film()), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.RenderedNoPoster
   }
@@ -80,7 +80,7 @@ object PosterColourSpaceSpec extends Matchers {
 
   def rendersThrough(shrinker: PosterShrinker, poster: () => Path) = {
     val store = tempStore()
-    val posters = new ShareCardPosters(store, serving(poster), shrinker, ShareCardMetrics.noop, _root_.tools.Stopwatch.System)
+    val posters = new ShareCardPosters(store, serving(poster), shrinker, ShareCardMetrics.noop, _root_.tools.SpecStopwatch.Frozen)
     val movie = film()
     val service = new ShareCardService(models.Country.default, store, posters, new services.tasks.InMemoryTaskQueue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0))
     service.render(service.inputs(movie), Seq(ShareCardReason.NewFilm)) shouldBe ShareCardMetrics.Outcome.Rendered

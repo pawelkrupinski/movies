@@ -114,7 +114,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
       def fetch(url: String): Either[String, Path] = { tried += url; Right(Files.copy(giant, Files.createTempFile("dl-", ".jpg"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)) }
     }
     val store = tempStore()
-    val posters = new ShareCardPosters(store, download, new VipsPosterShrinker(binary = None), ShareCardMetrics.noop, _root_.tools.Stopwatch.System)
+    val posters = new ShareCardPosters(store, download, new VipsPosterShrinker(binary = None), ShareCardMetrics.noop, _root_.tools.SpecStopwatch.Frozen)
     posters.load("f1", Seq("https://m.media-amazon.com/images/M/abc@._V1_.jpg")) shouldBe None
     tried.toSeq shouldBe Seq(
       "https://m.media-amazon.com/images/M/abc@._V1_SX780.jpg",

@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 class MongoReadModelRepositoryWriteFailureSpec extends AnyFlatSpec with Matchers {
 
   private val repository = new MongoReadModelRepository(
-    Some(MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")), stopwatch = _root_.tools.Stopwatch.System)
+    Some(MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")), stopwatch = new _root_.tools.Stopwatch(() => 0L))
 
   private val movie = ResolvedMovie(
     _id = "a|1", title = "T", originalTitle = None, posterUrl = None, fallbackPosterUrls = Seq.empty,

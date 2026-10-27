@@ -30,7 +30,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
 
   private def cacheOver(delegate: HttpFetch, store: InMemoryEnrichmentCacheStore = new InMemoryEnrichmentCacheStore())
       : (CachingEnrichmentFetch, EnrichmentCache, InMemoryEnrichmentCacheStore) = {
-    val cache = new EnrichmentCache(store, Stopwatch.System)
+    val cache = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen)
     (new CachingEnrichmentFetch(cache, delegate), cache, store)
   }
 
@@ -129,7 +129,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
         s"java.lang.RuntimeException: All 2 backends failed for get $wrapped:\n  direct: HttpStatusException: HTTP 401 for GET $wrapped")))
     val delegate = new ScriptedHttpFetch(Map(bare -> (() => """{"Response":"True"}"""), wrapped -> (() => """{"Response":"True"}""")))
     // a hermetic replay's cache: the one that loads what a recording or fill wrote down of its transient failures
-    val cache = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
+    val cache = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
     val fetch = new CachingEnrichmentFetch(cache, delegate)
 
     cache.preload() shouldBe 2
@@ -222,7 +222,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // divergence that has nothing to do with ordering.
   it should "put only one live call on the wire when several passes miss at once" in {
     val calls   = new java.util.concurrent.atomic.AtomicInteger(0)
-    val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)
+    val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), _root_.tools.SpecStopwatch.Frozen)
     lazy val threads: Seq[Thread] = (1 to 4).map(_ => new Thread(() => {
       new CachingEnrichmentFetch(cache, slowDelegate).get("https://example.test/contended")
       ()
@@ -250,7 +250,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // wiring and so its own fetch. They must agree about what the live service said.
   it should "share one set of answers across the several fetches built over it" in {
     val delegate = new ScriptedHttpFetch(Map("https://example.test/shared" -> (() => "answer")))
-    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)
+    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), _root_.tools.SpecStopwatch.Frozen)
     val passOne = new CachingEnrichmentFetch(cache, delegate)
     val passTwo = new CachingEnrichmentFetch(cache, delegate)
 
@@ -277,7 +277,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // nothing but wait. A store that cannot be reached has to stop being asked.
   it should "stop writing through to a store that keeps failing, rather than pay its timeout on every miss" in {
     val store = new UnreachableEnrichmentCacheStore
-    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, Stopwatch.System), alwaysAnswering)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen), alwaysAnswering)
 
     fill(fetch, 40)
 
@@ -288,7 +288,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // correctness. It must not also start failing the fetches.
   it should "keep answering from memory while its store is unreachable" in {
     val delegate = new ScriptedHttpFetch(Map("https://example.test/a" -> (() => "body")))
-    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(new UnreachableEnrichmentCacheStore, Stopwatch.System), delegate)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(new UnreachableEnrichmentCacheStore, _root_.tools.SpecStopwatch.Frozen), delegate)
 
     fetch.get("https://example.test/a") shouldBe "body"
     fetch.get("https://example.test/a") shouldBe "body"
@@ -378,7 +378,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
       if (refuse) throw new CircuitOpenException("v3.sg.media-imdb.com", 60000L, Some("HTTP 429")) else """{"d":[]}""")))
     val store = new InMemoryEnrichmentCacheStore()
     val fetch = new CachingEnrichmentFetch(
-      new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded), delegate)
+      new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded), delegate)
 
     val refused = the [CircuitOpenException] thrownBy fetch.get("https://v3.sg.media-imdb.com/suggestion/d/dune.json")
     withClue("the caller must still see the refusal as one, so it defers by openForMs: ") { refused.openForMs shouldBe 60000L }
@@ -395,7 +395,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     val url = "https://v3.sg.media-imdb.com/suggestion/d/dune.json"
     val delegate = new ScriptedHttpFetch(Map(url -> (() => """{"d":[]}""")))
     val store = new InMemoryEnrichmentCacheStore()
-    val cache = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded)
+    val cache = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded)
     cache.remember(CachingEnrichmentFetch.keyOf("GET", url), CachedResponse.failureOf(
       new CircuitOpenException("v3.sg.media-imdb.com", 60000L, Some("HTTP 429")), "GET"))
 
@@ -412,12 +412,12 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     it should s"write a $label failure down for a hermetic replay, but ask it again on the next recording" in {
       val store = new InMemoryEnrichmentCacheStore()
       val recording = new CachingEnrichmentFetch(
-        new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded),
+        new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded),
         new ScriptedHttpFetch(Map("https://example.test/t" -> boom)))
       the [Exception] thrownBy recording.get("https://example.test/t")
       withClue("recorded for the hermetic replay: ") { store.writes shouldBe 1 }
 
-      val nextRecording = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded)
+      val nextRecording = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded)
       withClue("the next recording must not preload it: ") { nextRecording.preload() shouldBe 0 }
       val delegate = new ScriptedHttpFetch(Map("https://example.test/t" -> (() => "answered")))
       new CachingEnrichmentFetch(nextRecording, delegate).get("https://example.test/t") shouldBe "answered"
@@ -427,11 +427,11 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     it should s"replay a recorded $label failure in a hermetic run without asking" in {
       val store = new InMemoryEnrichmentCacheStore()
       val recording = new CachingEnrichmentFetch(
-        new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded),
+        new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded),
         new ScriptedHttpFetch(Map("https://example.test/t" -> boom)))
       val original = the [Exception] thrownBy recording.get("https://example.test/t")
 
-      val hermetic = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
+      val hermetic = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
       hermetic.preload() shouldBe 1
       val delegate = new ScriptedHttpFetch(Map.empty)
       val replayed = the [Exception] thrownBy new CachingEnrichmentFetch(hermetic, delegate).get("https://example.test/t")
@@ -449,7 +449,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   it should "never write a failure down in a hermetic run" in {
     val store = new InMemoryEnrichmentCacheStore()
     val fetch = new CachingEnrichmentFetch(
-      new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed),
+      new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed),
       new HermeticHttpLeaf(new MissingFixtures))
 
     a [MissingFixtureException] should be thrownBy fetch.get("https://example.test/t")
@@ -464,7 +464,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // response never arrived for.
   it should "leave successes to the fixture tree when one is recording them" in {
     val store = new InMemoryEnrichmentCacheStore()
-    val cache = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false)
+    val cache = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false)
     val delegate = new ScriptedHttpFetch(Map("https://example.test/a" -> (() => "body")))
     val fetch = new CachingEnrichmentFetch(cache, delegate)
 
@@ -482,7 +482,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
   // every unresolved film's rating slugs.
   it should "still persist a 404 when successes are left to the tree" in {
     val store = new InMemoryEnrichmentCacheStore()
-    val cache = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false)
+    val cache = new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen, persistSuccesses = false)
     val fetch = new CachingEnrichmentFetch(cache, new ScriptedHttpFetch(Map(
       "https://www.rottentomatoes.com/m/nope" ->
         (() => throw new HttpStatusException(404, "GET", "https://www.rottentomatoes.com/m/nope", None)))))
@@ -494,7 +494,7 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "resume writing through once the store answers again" in {
     val store = new IntermittentEnrichmentCacheStore(failFirst = EnrichmentCache.MaxConsecutiveWriteFailures - 1)
-    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, Stopwatch.System), alwaysAnswering)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, _root_.tools.SpecStopwatch.Frozen), alwaysAnswering)
 
     fill(fetch, 10)
 

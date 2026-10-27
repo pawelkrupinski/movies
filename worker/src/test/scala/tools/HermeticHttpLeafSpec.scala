@@ -144,7 +144,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
   }
 
   "the cache" should "say a replayed failure was asked with headers" in {
-    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System, transients = EnrichmentCache.Transients.Replayed)
+    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), _root_.tools.SpecStopwatch.Frozen, transients = EnrichmentCache.Transients.Replayed)
     cache.remember(CachingEnrichmentFetch.keyOf("GET", "https://api.test/h"), CachedResponse.Failed(Some(503), "GET", "HTTP 503"))
     val seen  = new java.util.concurrent.ConcurrentLinkedQueue[CachingEnrichmentFetch.Replayed]()
     val fetch = new CachingEnrichmentFetch(cache, new clients.tools.FailingHttpFetch(), r => { seen.add(r); () })
