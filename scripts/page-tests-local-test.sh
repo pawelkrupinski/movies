@@ -22,7 +22,11 @@ case "$*" in *"${NPX_FAILS:-no such}"*) exit 1 ;; esac
 STUB
 printf '#!/usr/bin/env bash\necho "npm $*" >> "$CALLS"\n' > "$t/npm"
 chmod +x "$t/sbt-warm" "$t/npx" "$t/npm"
-export PAGE_TESTS_SBT_WARM="$t/sbt-warm" PAGE_TESTS_NPX="$t/npx" PAGE_TESTS_NPM="$t/npm"
+printf '#!/usr/bin/env bash\necho "install $*" >> "$CALLS"\n' > "$t/install"
+printf '#!/usr/bin/env bash\necho "node $*" >> "$CALLS"\n' > "$t/node"
+chmod +x "$t/install" "$t/node"
+export PAGE_TESTS_SBT_WARM="$t/sbt-warm" PAGE_TESTS_NPX="$t/npx" PAGE_TESTS_NPM="$t/npm" PAGE_TESTS_INSTALL="$t/install" PAGE_TESTS_NODE="$t/node"
+unset CI PW_WORKERS
 
 printf '\033[36m▸\033[0m page-tests-local\n'
 : > "$CALLS"
@@ -47,5 +51,14 @@ out=$(NPX_FAILS=chrome-desktop bash "$REPO_ROOT/scripts/page-tests-local" 2>&1);
 check "a failing row fails the run, names the row, and the rows after it still run" "1 1 1" \
   "$code $(printf '%s\n' "$out" | grep -c '==> chrome desktop FAILED') $(grep -c webkit-desktop "$CALLS")"
 check "...and stops the server" "1" "$(grep -c 'sbt-warm --stop' "$CALLS")"
+check "off CI it installs, warms and pins nothing" "0 0" "$(grep -c '^install\|^node' "$CALLS") $(grep '^npx' "$CALLS" | grep -c 'workers=5')"
+: > "$CALLS"
+CI=true bash "$REPO_ROOT/scripts/page-tests-local" chromium >/dev/null 2>&1
+check "on CI: the row's browsers installed and warmed, five workers" "1 1 3" \
+  "$(grep -cx 'install chromium' "$CALLS") $(grep -cx 'node warm-browsers.mjs chromium' "$CALLS") $(grep '^npx' "$CALLS" | grep -c 'workers=5$')"
+: > "$CALLS"
+CI=true bash "$REPO_ROOT/scripts/page-tests-local" >/dev/null 2>&1
+check "on CI, all: both engines; the WebKit row still one worker" "1 1" \
+  "$(grep -cx 'install chromium webkit' "$CALLS") $(grep -c 'webkit-desktop.*workers=1$' "$CALLS")"
 check "an unknown row is a usage error" "2" "$(bash "$REPO_ROOT/scripts/page-tests-local" firefox >/dev/null 2>&1; echo $?)"
 spec_summary

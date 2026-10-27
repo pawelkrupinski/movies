@@ -14,7 +14,8 @@
 # .github/scripts/fixture-server.sh (relaunch on an early exit, 600 s ceiling), stopped on exit with the checkout's kept
 # server (`sbt-warm --stop`): a serving runMain holds it. Needs Node (npm ci once per worktree) and Playwright's
 # browsers (`npx playwright install chromium webkit`; Google Chrome for chrome-desktop).
-# PAGE_TESTS_SBT_WARM / PAGE_TESTS_NPX / PAGE_TESTS_NPM stand in for scripts/sbt-warm, npx, npm (the self-test's fakes).
+# PAGE_TESTS_SBT_WARM / PAGE_TESTS_NPX / PAGE_TESTS_NPM / PAGE_TESTS_INSTALL / PAGE_TESTS_NODE stand in for scripts/sbt-warm,
+# npx, npm, scripts/ci/install-playwright.sh and node (the self-test's fakes).
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
@@ -42,6 +43,17 @@ export KINOWO_BASE_URL
 
 cd page-tests-playwright
 [ -x node_modules/.bin/playwright ] || "$npm" ci --no-audit --no-fund --silent
+# ON CI (precommit-check.yml's remote checks): the job image has none of Playwright's browsers, and its Node sees the
+# host's 32 cores behind a 4-CPU quota. Run 3342 failed every Chromium test in milliseconds (no browser); with the
+# browsers but 40 workers (playwright.config.ts's 125%) the load passed 170 and 16 tests timed out (diag run 3353).
+# So: the browsers and their system libraries, CI's worker figure (run-page-test's PW_WORKERS on Forgejo, unless the
+# caller set one), and one warm render per engine before any test's clock starts (warm-browsers.mjs).
+if [ -n "${CI:-}" ]; then
+    case "$which" in chromium) engines=(chromium) ;; webkit) engines=(webkit) ;; *) engines=(chromium webkit) ;; esac
+    ${PAGE_TESTS_INSTALL:-../scripts/ci/install-playwright.sh} "${engines[@]}"
+    export PW_WORKERS=${PW_WORKERS:-5}
+    ${PAGE_TESTS_NODE:-node} warm-browsers.mjs "${engines[@]}"
+fi
 rc=0
 row() { # <name> <playwright args...>
     local name=$1 t0=$SECONDS
