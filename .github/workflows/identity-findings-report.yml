@@ -15,7 +15,10 @@
 # `convergence-diagnostics-<cc>-convergence` artifact (reported there, never failing the recording). This reads
 # those: one runner for about a minute a day, where re-deriving them would cost a convergence boot per country.
 #
-# Runs when a recording completes, as a daily backstop, and by hand (`run-id`: any recording's run). Each
+# Runs when a recording completes, as a daily backstop, and by hand (`run-id`: any recording's run). A recording that
+# FAILED, or ran off main, is passed over for the newest successful recording on main, as the live drift check does
+# (scripts/ci/live_drift_recording.py, with no age limit): run 3139 went red with "run 3136 left no country's findings"
+# after recording 3136 failed before a convergence row wrote any -- a red for lack of input, not for a finding. Each
 # country's issue is updated in place with the findings and their triage commands, closed when empty, reopened
 # when one comes back. A finding untriaged for MORE THAN 3 DAYS turns this run red. That red is deliberately NOT
 # one of the red-build gate's workflows: a push neither makes nor mends a recording's data, so gating pushes on
@@ -62,18 +65,32 @@ jobs:
               with:
                   sparse-checkout: |
                       scripts/ci
+                      scripts/forge-gh
                       test/resources/fixtures/identity-judgements.tsv
                   sparse-checkout-cone-mode: false
+            # A recording that failed or ran off main, or none named (the backstop): the newest successful one on main,
+            # whatever its age -- its findings are still the newest there are to triage. Red only when there is none.
+            - name: Choose the recording
+              id: recording
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  KINOWO_REPO: ${{ github.repository }}
+                  TRIGGER: ${{ inputs.run-id || github.event.workflow_run.id }}
+                  CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+                  BRANCH: ${{ github.event.workflow_run.head_branch || 'main' }}
+              run: |
+                  set -euo pipefail
+                  run=$(python3 scripts/ci/live_drift_recording.py --trigger "$TRIGGER" --conclusion "$CONCLUSION" --branch "$BRANCH" --max-age-hours 0)
+                  echo "run=$run" >> "$GITHUB_OUTPUT"
             - name: Report each country's findings
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-                  EVENT_RUN: ${{ github.event.workflow_run.id }}
-                  INPUT_RUN: ${{ inputs.run-id }}
+                  RECORDING: ${{ steps.recording.outputs.run }}
                   OWNER: ${{ github.repository_owner }}
-              # No run named: the script reports the newest completed recording on main (and fails, exit 2, when there is none).
               run: |
-                  python3 scripts/ci/identity_findings_report.py --run "${INPUT_RUN:-$EVENT_RUN}" --assignee "$OWNER" --work "$RUNNER_TEMP/identity-findings"
+                  python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --work "$RUNNER_TEMP/identity-findings"
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
