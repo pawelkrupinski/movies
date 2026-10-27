@@ -34,6 +34,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import app_metrics_catalogue  # noqa: E402
 import promql_selectors  # noqa: E402
 
 SNAPSHOT = os.path.join(HERE, "label-values.json")
@@ -43,8 +44,6 @@ RESNAPSHOT = "re-run infra/bin/snapshot-label-values (fleet SOCKS proxy up) and 
 # about is happening. The snapshot is two weeks of a mostly healthy fleet, so their absence from
 # it says nothing about whether the matcher is right. Each entry is (metric, label, value).
 EVENT_ONLY_VALUES = {
-    # Play reports 5xx only when a request fails; the fortnight in the snapshot had none.
-    ("kinowo_web_http_requests_total", "status", "5xx"),
     # kube-state-metrics publishes a reason series only while a container is in that state.
     ("kube_pod_container_status_waiting_reason", "reason", "CrashLoopBackOff"),
     ("kube_pod_container_status_waiting_reason", "reason", "ErrImagePull"),
@@ -57,12 +56,6 @@ EVENT_ONLY_VALUES = {
     # Re-snapshot once the series exists; `ready="False"` then stays here as event-only.
     ("flux:resource_info", "ready", "False"),
     ("flux:resource_info", "suspended", "true"),
-    # NOT PUBLISHED YET: the worker's in-app Telegram counter is new (TelegramNotificationMetrics),
-    # so the fleet has no series to snapshot. `outcome` is the closed set TelegramOutcome seeds and
-    # `job` the worker's scrape job. Re-snapshot once a worker with it has run, then drop these.
-    ("kinowo_worker_telegram_notifications_total", "job", "kinowo-worker"),
-    ("kinowo_worker_telegram_notifications_total", "outcome", "sent"),
-    ("kinowo_worker_telegram_notifications_total", "outcome", "failed"),
     # NOT PUBLISHED YET (2026-10-21): the poster probes and the web's poster census are new with
     # posters.rules, so no `kind="poster"` probe and no `poster_host` series exist to snapshot.
     # `kind` is what synthetic-probe-targets.sh writes; `none`/`other` are the census's two fixed
@@ -84,22 +77,10 @@ EVENT_ONLY_VALUES = {
     # the timer has run, then drop these.
     ("kinowo_identity_build_net_lost", "country", "de"),
     ("kinowo_identity_build_net_lost", "country", "uk"),
-    # NOT PUBLISHED YET (2026-10-24): the take-change counter counts a new listing's first take as
-    # `kind="decided"` or `kind="joined"` (and gained `basis`) since the staging publisher's cluster
-    # counter folded into it, so the fleet has no such series to snapshot. Re-snapshot once the
-    # workers run it, then drop these.
-    ("kinowo_worker_identity_take_changes_total", "kind", "decided"),
-    ("kinowo_worker_identity_take_changes_total", "kind", "joined"),
-    # NOT PUBLISHED YET (2026-10-25): a take change's cause (services.identity.TakeCauses) is new -- the
-    # build gauge's `cause` label and the worker's take-cause counter -- so the fleet has no such series
-    # to snapshot. Re-snapshot once monitoring-1 and the workers run it, then drop these.
+    # NOT PUBLISHED YET (2026-10-25): a take change's cause (services.identity.TakeCauses) is new on the build
+    # gauge's `cause` label, so the fleet has no such series to snapshot. Re-snapshot once monitoring-1 runs it,
+    # then drop this. (The worker's own families need no entry here: the metric catalogue declares their values.)
     ("kinowo_identity_build_net_lost", "cause", "code"),
-    ("kinowo_worker_identity_take_causes_total", "kind", "lost"),
-    # NOT PUBLISHED YET (2026-10-26): the agreement stage's full-validation counter is new
-    # (IdentityAgreementMetrics, `result` = `read` or `drifted`), so the fleet has no series to snapshot.
-    # Re-snapshot once the workers run it, then drop these.
-    ("kinowo_worker_identity_agreement_validated_total", "result", "read"),
-    ("kinowo_worker_identity_agreement_validated_total", "result", "drifted"),
     # NOT SNAPSHOTTED YET (2026-10-25): CI's build timings carried `ref` from the start, but only the dashboards'
     # templated `ref=~"$ref"` read it, which the snapshot does not record; ci-build-times.rules is its first literal
     # matcher. `runner_wait` and `kinowo_ci_run_number` are new with it (scripts/ci/ci_timings.py). Re-snapshot, then
@@ -153,12 +134,22 @@ SHAPES = {
 
 
 def load_snapshot():
+    """The fleet's values, and beside them every value the application code declares (app_metrics_catalogue.py).
+
+    A declared value is real by construction: the code seeds its series at boot, so the first scrape of a release
+    that adds it publishes it. A new worker or web metric is therefore checked against what it declares the day it
+    lands, with no "NOT PUBLISHED YET" exemption waiting on a re-snapshot -- and a matcher naming a value the code
+    neither declares nor the fleet ever produced still fails."""
     with open(SNAPSHOT, encoding="utf-8") as handle:
         metrics = json.load(handle)["metrics"]
     for labels in metrics.values():
         for label, values in list(labels.items()):
             if isinstance(values, dict):
                 labels[label] = metrics[values["same_as"]][label]
+    for metric, declared in app_metrics_catalogue.declared_values().items():
+        labels = metrics.setdefault(metric, {})
+        for label, values in declared.items():
+            labels[label] = sorted(set(labels.get(label, [])) | set(values))
     return metrics
 
 
@@ -246,6 +237,19 @@ class LabelMatchersAgainstTheFleet(unittest.TestCase):
                     problems.add("%s: %s{%s} names %s but not %s, which is the same %s"
                                  % (where, metric, matcher, taken[:3], left[:3], matcher.label))
         self.assertEqual([], sorted(problems), "\n" + "\n".join(sorted(problems)))
+
+
+class TheCatalogueDeclaresValuesTheFleetHasNotPublished(unittest.TestCase):
+
+    def test_a_declared_value_counts_and_an_undeclared_one_does_not(self):
+        # The positive control for load_snapshot's merge: a seeded label value is accepted before any fleet series
+        # carries it, `job` comes from the family's tier, and a value nothing declares is still absent.
+        snapshot = load_snapshot()
+        validated = snapshot["kinowo_worker_identity_agreement_validated_total"]
+        self.assertIn("drifted", validated["result"])
+        self.assertNotIn("misread", validated["result"])
+        self.assertEqual(["kinowo-worker"], snapshot["kinowo_worker_telegram_notifications_total"]["job"])
+        self.assertIn("5xx", snapshot["kinowo_web_http_requests_total"]["status"])
 
 
 class ShapeFunctions(unittest.TestCase):

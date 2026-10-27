@@ -30,7 +30,7 @@ a green suite on 2026-09-23, and each check below is written against the class, 
    from boot (deploy.WorkerMetricsAtBootSpec); a reading nothing has taken yet is seeded NaN rather than a 0 that
    would misstate it. NaN passes no comparison, so a long-held alert reading such a gauge through
    `last_over_time` starts its hold over at every restart, exactly as an absent one did before the bridge. Those
-   families are listed in metrics-unmeasured-at-boot.txt; a long-held alert must read them through
+   families are the catalogue's `boot: NaN` ones (app_metrics_catalogue.py); a long-held alert must read them through
    `max_over_time` / `min_over_time`, which skip a NaN while the window holds any real sample.
 
 4. AN ALERT OVER A METRIC THAT IS NOT THERE CAN NEVER FIRE. Every application family an alert reads owes an
@@ -52,6 +52,7 @@ import yaml
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import app_metrics_absent  # noqa: E402
+import app_metrics_catalogue  # noqa: E402
 import promql_selectors  # noqa: E402
 from promql_selectors import seconds  # noqa: E402
 
@@ -157,13 +158,9 @@ def recorded_reads(expr, recordings, seen=None):
     return found
 
 
-UNMEASURED_AT_BOOT = os.path.join(HERE, "metrics-unmeasured-at-boot.txt")
-
-
 def unmeasured_at_boot():
-    """The worker families seeded at NaN when the registry is built (see the module doc, 3)."""
-    with open(UNMEASURED_AT_BOOT, encoding="utf-8") as handle:
-        return {line.strip() for line in handle if line.strip() and not line.startswith("#")}
+    """The worker and web families seeded at NaN at boot (see the module doc, 3), from the metric catalogue."""
+    return app_metrics_catalogue.unmeasured_at_boot()
 
 
 def last_over_time_reads(expr, families):

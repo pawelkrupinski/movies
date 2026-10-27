@@ -77,21 +77,13 @@ class WorkerMetricsAtBootSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /**
-   * The families seeded at NaN, written out for the alert-rule checks: a restart re-seeds them, and `last_over_time`
-   * returns that NaN, which no comparison passes — so a long-held alert reading one that way would start its hold over
-   * at every restart. infra/test/test_alert_rule_coverage.py reads this file and requires such an alert to read it
-   * through `max_over_time` / `min_over_time`, which skip NaN.
-   */
-  it should "list the families it seeds unmeasured (NaN) in infra/test/metrics-unmeasured-at-boot.txt" in {
-    val unmeasured = atBoot.collect { case (family, _, values) if values.exists(_.isNaN) => family }.sorted
-    val listed = RepoFile.read(UnmeasuredList).linesIterator.map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#")).toSeq
-    withClue(s"$UnmeasuredList is stale; its families are:\n${unmeasured.mkString("\n")}\n") {
-      listed shouldBe unmeasured
-    }
+  /** The worker's half of the metric catalogue (services.metrics.MetricCatalogue): what the infra checks read as the
+   *  one declaration of each family — its labels and seeded values, and which families read NaN at boot. */
+  it should "be written out as infra/test/app-metrics-catalogue/worker.json" in {
+    val rendered = services.metrics.MetricCatalogue.render(
+      new WorkerMetrics(countries, settings.WorkerPoolSize(1)).registry.scrape(), "worker")
+    services.metrics.MetricCatalogue.check(java.nio.file.Path.of("infra/test/app-metrics-catalogue/worker.json"), rendered) shouldBe None
   }
-
-  private val UnmeasuredList = "infra/test/metrics-unmeasured-at-boot.txt"
 
   "NotSeededAtBoot" should "not exempt a family that has its series after all, or that no longer exists" in {
     val families = atBoot.map(_._1).toSet

@@ -24,6 +24,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import app_metrics_catalogue  # noqa: E402
 from promql_selectors import seconds  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -89,6 +90,19 @@ def query_panels(document):
                 yield panel
 
     return list(walk(document["panels"]))
+
+
+class EveryCatalogueFamilyIsCharted(unittest.TestCase):
+    """Every worker and web family the metric catalogue declares is drawn on a provisioned dashboard -- the panel half
+    of a metric's one declaration (app_metrics_catalogue.py), checked here too so an infra-only change that drops a
+    panel fails in the job that ships the dashboards, not only in the application's GrafanaMetricCoverageSpec."""
+
+    def test_every_declared_family_is_on_a_panel(self):
+        text = "\n".join(json.dumps(document) for _, document in dashboards())
+        declared = app_metrics_catalogue.families()
+        self.assertGreater(len(declared), 150)  # both tiers' files are read
+        uncharted = sorted(name for name in declared if name not in text)
+        self.assertEqual([], uncharted, "declared by the code and drawn on no dashboard -- add a panel: %s" % uncharted)
 
 
 class DashboardStructure(unittest.TestCase):

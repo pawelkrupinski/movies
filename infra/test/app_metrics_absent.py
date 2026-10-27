@@ -31,6 +31,7 @@ import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import app_metrics_catalogue  # noqa: E402
 import promql_selectors  # noqa: E402
 
 RULES_OUT = os.path.join(promql_selectors.MONITORING, "rules", "app-metrics-absent.rules")
@@ -61,6 +62,11 @@ _ABSENT_OF = re.compile(r"\babsent(?:_over_time)?\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*
 
 
 def tier_of(name):
+    """(scrape job, tier) of an app metric: the catalogue's tier, or by prefix for the families the web renders as
+    text (kinowo_web_movies_served, the uptime and fallback gauges), which no registry declares."""
+    entry = app_metrics_catalogue.family_of(name)
+    if entry is not None:
+        return app_metrics_catalogue.JOBS[entry["tier"]], entry["tier"]
     for prefix, job, tier in TIERS:
         if name.startswith(prefix):
             return job, tier

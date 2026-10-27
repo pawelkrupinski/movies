@@ -52,18 +52,22 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
       case RouteLine(method, path) => method -> path
     }.toSeq
 
-  /** family -> series count, off the registry of a booted wiring. */
-  private lazy val atBoot: Map[String, Int] = {
+  /** The registry of a booted wiring, scraped once. */
+  private lazy val scraped: io.prometheus.metrics.model.snapshots.MetricSnapshots = {
     val wiring = new modules.TestWebWiring()
     wiring.boot()
     try {
       wiring.metricsAtBoot(routes)
-      wiring.webJvmMetrics.registry.scrape().asScala.toSeq
-        .map(s => s.getMetadata.getPrometheusName.stripSuffix("_total") -> s.getDataPoints.size)
-        .filter(_._1.startsWith("kinowo_"))
-        .toMap
+      wiring.webJvmMetrics.registry.scrape()
     } finally wiring.shutdown()
   }
+
+  /** family -> series count. */
+  private lazy val atBoot: Map[String, Int] =
+    scraped.asScala.toSeq
+      .map(s => s.getMetadata.getPrometheusName.stripSuffix("_total") -> s.getDataPoints.size)
+      .filter(_._1.startsWith("kinowo_"))
+      .toMap
 
   private lazy val namedInSource: Seq[String] = {
     def walk(d: File): Seq[File] = Option(d.listFiles()).getOrElse(Array.empty[File]).toSeq.flatMap {
@@ -93,6 +97,15 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
     ) {
       empty shouldBe empty
     }
+  }
+
+  /** The web's half of the metric catalogue (services.metrics.MetricCatalogue). The host-memory gauges read
+   *  /proc/meminfo, so they are left out: the file must not depend on the machine the spec runs on. */
+  it should "be written out as infra/test/app-metrics-catalogue/web.json" in {
+    val portable = new io.prometheus.metrics.model.snapshots.MetricSnapshots(
+      scraped.asScala.filterNot(s => LinuxOnly(s.getMetadata.getPrometheusName)).toSeq.asJava)
+    val path = RepoFile.locate("infra/test/app-metrics-catalogue").toPath.resolve("web.json")
+    services.metrics.MetricCatalogue.check(path, services.metrics.MetricCatalogue.render(portable, "web")) shouldBe None
   }
 
   "NotSeededAtBoot" should "not exempt a family that has its series after all, or that no longer exists" in {
