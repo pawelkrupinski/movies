@@ -62,7 +62,7 @@
 # checkout (e.g. the DevPanel's `sbt web/run`): two compilers over one classes dir race.
 #
 # RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
-# gating workflow (Main, Identity model convergence, Verify scrape recording; a cancelled run says nothing
+# gating workflow (Main and Identity model convergence, the owner's gate of 2026-10-27; a cancelled run says nothing
 # and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
 # `Fixes-Red: <run id>` trailer naming one of the red runs — except a commit touching no production path
 # (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile): tools — scripts, docs,
@@ -106,7 +106,11 @@
 # hands over to the pushing worktree's own copy, so a stale root checkout never judges a worktree's push.
 #
 # DRY RUN / TEST: `scripts/hooks/pre-push --plan < paths` prints the checks a list of changed
-# paths selects, without running them (scripts/hooks/pre-push-test.sh). `--checks-only A..B` is `--range A..B` without
+# paths selects, without running them (scripts/hooks/pre-push-test.sh). `--fast-only A..B` is the `waiting` batch's
+# combined check at green (each change in it passed its own full checks before it joined): the red gate is not judged
+# and only the `sbt` check runs -- every test config compiled, the lint specs, and local-tests.txt's `fast` set instead
+# of `basic`; no area tests. Its pass is stored like any (THE REUSE), and a push with PREPUSH_REUSE_FAST=1 (agentctl's
+# batch push) of the same tree on the same base reuses it after judging the red gate. `--checks-only A..B` is `--range A..B` without
 # the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
@@ -126,7 +130,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
 # the dry runs (--plan, --compile-plan, --range, --checks-only), which name the file they mean.
 case "${1:-}" in
-    --plan|--compile-plan|--range|--checks-only) ;;
+    --plan|--compile-plan|--range|--checks-only|--fast-only) ;;
     *)
         if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
             hooks_path="$(git config --get core.hooksPath || true)"
@@ -438,9 +442,13 @@ need_jvm() { # <check>
 # fixtures goes red when it could not scrape or record a country -- a fact about the night, not about any push -- and is
 # watched by its own issue and identity-ci-staleness's recording-stale; Verify scrape recording replays what it captured,
 # hermetically, and goes red when the code does not hold on it.
-GatingWorkflows=("Main" "Identity model convergence" "Verify scrape recording")
+# THE GATE (the owner, 2026-10-27: "if the latest main and convergence runs are green, just push then, remember that";
+# "if the latest completed run(s) is green, just check in"): exactly the newest COMPLETED Main run and the newest
+# COMPLETED Identity model convergence run on main -- running, queued and cancelled runs say nothing. Verify scrape
+# recording no longer gates (`agentctl ci-why` lists its red, and any other, as information only).
+GatingWorkflows=("Main" "Identity model convergence")
 # The same workflows by file: Forgejo's runs API filters on the workflow file, not its name.
-GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "verify-scrape-recording.yml")
+GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml")
 GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 
 # Where the push goes decides whose runs are read (GitHub suspended the account on 2026-10-19; main's CI runs on Forgejo
@@ -450,7 +458,7 @@ GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 # of `<remote>/main..HEAD` is keyed like the push that follows it, which then REUSES its pass (CHECK FIRST, below).
 remote_url=""
 case "${1:-}" in
-    --range|--checks-only)
+    --range|--checks-only|--fast-only)
         remote_url="${PREPUSH_REMOTE_URL:-}"
         range_base="${2:-}"; range_base="${range_base%%..*}"
         case "$range_base" in
@@ -622,9 +630,10 @@ to_main=0
 # main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
 # when it is pushed there. Any other ref in the same push is checked as ever.
 measure_only="" other=""
-checks_only=""
-if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ]; then
+checks_only="" fast_only=""
+if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ]; then
     [ "$1" = "--checks-only" ] && checks_only=1
+    [ "$1" = "--fast-only" ] && checks_only=1 fast_only=1
     ranges+=("${2:?$1 A..B}")
     to_main=1   # a dry run is judged as a push to main
 else
@@ -654,6 +663,8 @@ fi
 gate_state="not-main"
 if [ "$to_main" = 1 ]; then
     if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
+    elif [ -n "$fast_only" ]; then log "--fast-only: the red gate is not judged (it is when the batch is pushed)" >&2
+        gate_state="fast-only"
     elif [ -n "$checks_only" ]; then log "--checks-only: the red gate is not judged (it is when these commits are pushed)" >&2
         gate_state="checks-only"
     else gate_state=""; check_redgate "${ranges[@]}" || exit 1
@@ -677,7 +688,9 @@ head_sha="$(git rev-parse --verify "${ranges[${#ranges[@]}-1]##*..}^{commit}")" 
 base_sha="${ranges[0]%%..*}"
 
 checks="$(printf '%s\n' "$changed" | plan)"
-[ -z "$checks" ] && exit 0
+# --fast-only: the `sbt` check alone (compiles, lints, the `fast` set), whatever else the paths select
+[ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"
+[ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
 
 # ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
 # A re-push of the very same tree -- a no-content rebase, a reworded message, a push that lost its race at the remote
@@ -701,6 +714,14 @@ compute_reuse_key() { # prints the key, or fails when any part of it cannot be r
       echo "skip $(tr -s ' ' '\n' <<< "${PREPUSH_SKIP:-}" | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ' ')"
       echo "checks $(printf '%s' "$checks" | tr '\n' ' ')"; printf '%s\n' "$changed"; } | git hash-object --stdin
 }
+if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUSH_REUSE_FAST:-}" ] && [ -z "$fast_only" ]; then
+    # agentctl's push of the `waiting` batch: the batch's --fast-only pass of this tree on this base stands for it
+    fast_key="$(gate_state=fast-only; checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"; compute_reuse_key)" || fast_key=""
+    if [ -n "$fast_key" ] && [ -f "$reuse_dir/$fast_key" ]; then
+        log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change passed its own full checks before it joined)" >&2
+        exit 0
+    fi
+fi
 if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
     reuse_key="$(compute_reuse_key)" || reuse_key=""
     if [ -n "$reuse_key" ] && [ -f "$reuse_dir/$reuse_key" ]; then
@@ -851,8 +872,11 @@ check_sbt() {
     for module in common scrapers worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
-    # the basic tests (local-tests.txt's `basic sbt` lines) ride the same run, after the compiles and lints
-    while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines basic sbt)
+    # the basic tests (local-tests.txt's `basic sbt` lines) ride the same run, after the compiles and lints; --fast-only:
+    # the `fast` set instead
+    local set=basic
+    [ -n "$fast_only" ] && set=fast
+    while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines "$set" sbt)
     local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")
     if [ "$sbt_client" = 1 ]; then
         local line

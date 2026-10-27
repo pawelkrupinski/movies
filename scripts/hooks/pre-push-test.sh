@@ -566,7 +566,8 @@ check "a red Identity model convergence refuses an undeclared commit" "1" "$(GH_
 check "...naming the red run" "1" "$(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
 check "...and the commit without the trailer" "1" "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err")"
 check "a red Main refuses it too" "1" "$(GH_MAIN="[$red]" push "$gbase..$plain")"
-check "a red verify of the nightly recording refuses it too" "1" "$(GH_REC="[$red]" push "$gbase..$plain")"
+# THE GATE is Main and Identity model convergence only (the owner, 2026-10-27): the recording's verify no longer gates
+check "a red verify of the nightly recording no longer refuses it" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$red]" push "$gbase..$plain")"
 check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"
 check "every pushed commit must name it, not just one" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
 check "a Fixes-Red: naming another run is no declaration" "1" "$(GH_IMC="[$(run_json 1 completed failure 1)]" push "$gbase..$fixing")"
@@ -600,7 +601,7 @@ check "...while --range over the same commits is refused" "1" \
   "$(cd "$grepo" && GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>&1; echo $?)"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
-check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
+check "gh failing is said for each workflow, and does not block" "0 2" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
 # gh hanging: the stub never ends on its own, so the hook gets past it only by its own bound cutting gh off. That
 # mechanism is the proof -- each workflow's gh cut off (bounded's 124) and said so, no stub left running -- never
 # elapsed wall time, which counts every process the hook starts: a "within 10 s" assertion failed whenever the machine
@@ -610,7 +611,7 @@ check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAI
 hung="$gate/gh-hung"; : > "$hung"
 code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$pathchecks" \
          spec_bounded bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
-check "gh hanging is cut off by its bound for each workflow, said out loud, and does not block" "0 3 0" \
+check "gh hanging is cut off by its bound for each workflow, said out loud, and does not block" "0 2 0" \
   "$code $(grep -c "gh did not answer .* within 1s: cut off" "$gate/err") $(spec_still_running "$hung")"
 # ── The same gate on a Forgejo remote: Forgejo's actions runs API, read by curl, not gh ────────────────────────────
 fj_run() { printf '{"id":%s,"index_in_repo":%s,"status":"%s","workflow_id":"x.yml","html_url":"http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/%s"}' "$((1000 + $1))" "$1" "$2" "$1"; }
@@ -625,7 +626,8 @@ check "Forgejo: a red Identity model convergence refuses an undeclared commit" "
 check "...naming the red run by its number in the run's URL" "1" \
   "$(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/38520439037' "$gate/err")"
 check "Forgejo: a red Main refuses it too" "1" "$(FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
-check "Forgejo: a red verify of the nightly recording refuses it too" "1" "$(FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
+check "Forgejo: a red verify of the nightly recording no longer refuses it" "0" \
+  "$(FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
 check "Forgejo: a commit naming the red run in Fixes-Red: lands" "0" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$fixing")"
 check "Forgejo: a commit naming the red run by its API run id (forge-gh's) lands too" "0" \
   "$(FJ_IMC="[$fjred]" fjpush "$fixing..$fixing_by_id")"
@@ -636,7 +638,7 @@ check "Forgejo: tools-only commits land while red" "0" "$(FJ_IMC="[$fjred]" fjpu
 check "Forgejo: PREPUSH_SKIP=redgate bypasses it" "0" "$(FJ_IMC="[$fjred]" PREPUSH_SKIP=redgate fjpush "$gbase..$plain")"
 rm -f "$gate/argv" "$gate/config"
 FJ_ARGV="$gate/argv" FJ_CONFIG="$gate/config" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain" >/dev/null
-check "Forgejo: the vault's token is sent as a header on stdin, never in curl's argv" "3 0" \
+check "Forgejo: the vault's token is sent as a header on stdin, never in curl's argv" "2 0" \
   "$(grep -c '^header = "Authorization: token vaulttoken"$' "$gate/config") $(grep -c vaulttoken "$gate/argv")"
 check "Forgejo: \$FORGEJO_API_TOKEN, when set, is used without the vault" "1 0" \
   "$(rm -f "$gate/gets"; SECRETS_GETS="$gate/gets" FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ')"
@@ -644,9 +646,9 @@ rm -f "$gate/gets"
 check "Forgejo: the vault locked is never unlocked (no Touch ID on a push): skipped in one line, not blocked" "0 0 1" \
   "$(SECRETS_GETS="$gate/gets" SECRETS_STATE=locked FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ') $(grep -c 'red-build gate SKIPPED\|RED on main\|Forgejo' "$gate/err")"
 check "...that line saying why" "1" "$(grep -c 'no Forgejo token .*red-build gate SKIPPED' "$gate/err")"
-check "Forgejo: unreachable is said for each workflow, and does not block" "0 3" \
+check "Forgejo: unreachable is said for each workflow, and does not block" "0 2" \
   "$(FJ_FAILS=1 fjpush "$gbase..$plain") $(grep -c 'from Forgejo (curl: (7)' "$gate/err")"
-check "Forgejo: an HTTP refusal is said for each workflow, and does not block" "0 3" \
+check "Forgejo: an HTTP refusal is said for each workflow, and does not block" "0 2" \
   "$(FJ_EXPECT_BASE=http://elsewhere FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(grep -c 'from Forgejo (HTTP 404)' "$gate/err")"
 check "Forgejo: an http remote's own host is read" "1" \
   "$(FJ_EXPECT_BASE=http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies FJ_IMC="[$fjred]" fjremote=http://forgejo.internal:3000/pawelkrupinski/movies.git fjpush "$gbase..$plain")"
@@ -832,7 +834,7 @@ check "jq missing on a Forgejo push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without jq)" PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'brew install jq' "$gate/err")"
 check "gh missing on a GitHub push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without gh)") $(grep -c 'brew install gh' "$gate/err")"
-check "...Forgejo unreachable: still a warning, the push lands" "0 3" \
+check "...Forgejo unreachable: still a warning, the push lands" "0 2" \
   "$(gate_push env FJ_FAILS=1 GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'red-build gate SKIPPED' "$gate/err")"
 # ── THE REUSE: a passed run answers a re-push of the SAME tree, and nothing else ─────────────────────────────────────
 # A re-push after a no-content rebase or a reworded message ran every check again. A pass is stored under a key of the
@@ -867,6 +869,19 @@ check "another base (same tree) runs everything" "0 5" "$(reuse_push "$rhead..$d
 check "a red-gate state that differs runs everything (a red run appeared; tools land while red)" "0 6" \
   "$(reuse_push "$rbase..$docs_only" GH_IMC="[$red]")"
 check "another PREPUSH_SKIP runs everything" "0 7" "$(reuse_push "$rbase..$docs_only" PREPUSH_SKIP="${pathchecks/scripttests/} linux")"
+# --fast-only: the `waiting` batch's combined check (sbt alone: compiles, lints, the `fast` set), no red gate; a push
+# with PREPUSH_REUSE_FAST=1 (agentctl's batch push) of that tree on that base reuses its pass after the gate
+fast_head="$(commit_paths "a batch of script changes" -- scripts/z.sh)"
+fast_run() { (cd "$grepo" && env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/scripttests/}" \
+  STUB_RUNS="$reuse/runs" GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" --fast-only "$rbase..$fast_head" >/dev/null 2>"$gate/err")
+  echo "$? $(cat "$reuse/runs" 2>/dev/null | wc -l | tr -d ' ')"; }
+check "--fast-only judges no red gate and runs no path check but sbt (scripttests not run)" "0 7 1" \
+  "$(fast_run) $(grep -c 'fast-only: the red gate is not judged' "$gate/err")"
+check "a batch push with PREPUSH_REUSE_FAST=1 reuses the fast pass: nothing runs, said once" "0 7 1" \
+  "$(reuse_push "$rbase..$fast_head" PREPUSH_REUSE_FAST=1) $(grep -c "the waiting batch's fast check passed" "$gate/err")"
+check "...an ordinary push of it runs its checks" "0 8" "$(reuse_push "$rbase..$fast_head")"
+head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs"  # the counts below start from 7
+scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.
 mkdir -p "$reuse/hook/scripts/hooks"
 cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$reuse/hook/scripts/"

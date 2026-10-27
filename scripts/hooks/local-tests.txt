@@ -8,6 +8,10 @@
 #             warm: compiles, checked-in/generated artefacts, CI/deploy wiring. Nothing needing Mongo or the network;
 #             the deploy specs needing the movies-gitops manifests stay out (the `sbt` check's lint plan runs them once
 #             infra/bin/fetch-gitops has fetched them). The generated-artefacts drift is the path-selected `drift` check.
+#   fast      what `pre-push --fast-only` runs in place of `basic`: the `waiting` batch's combined check at green, after
+#             every change in it passed its own full checks (the owner, 2026-10-27: "when waiting is rebuilt, just run very
+#             basic checks like compile and the fast tests"). Every test config compiled, the lint and structure specs;
+#             target 3 min warm. No area tests.
 #   identity  the `identity` check, on a change to the hook's identity paths (is_identity_path)
 #   page      the `page` check, on a change to the hook's page paths (is_page_path)
 # An area line costs its measured warm time on the laptop (2026-10-26); an area's whole set stays under 15 min.
@@ -15,6 +19,9 @@ basic sbt Test/compile
 basic sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
 basic sbt e2e/testOnly services.movies.FilmScheduleEndToEndSpec tools.ReadModelSnapshotSpec
 basic sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.* -deploy.AotCacheOptionsSpec -deploy.ChangeStreamSilenceAlertSpec -deploy.CinemaScrapeStalenessAlertSpec -deploy.FleetDatabaseConfigSpec -deploy.FluxImageAutomationSpec -deploy.K8sTierPathGatingSpec -deploy.LauncherJvmFlagsSpec -deploy.NodeCpuBudgetSpec -deploy.NodeMemoryBudgetSpec -deploy.PrometheusNodePortAgreementSpec -deploy.SharedUsersDatabaseConfigSpec -deploy.WebRolloutAvailabilitySpec -deploy.WorkerRolloutStaggerSpec -deploy.WorkerScrapeCadenceConfigSpec
+fast sbt Test/compile
+fast sbt all web/IntegrationTest/compile worker/IntegrationTest/compile
+fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectionListsSpec deploy.WorkflowScriptsRunnableSpec deploy.SharedFileLayoutSpec deploy.WorkflowPlanSpec deploy.OverdueIsNotRedSpec
 
 # identity: the identity module whole (agreement/equivalence specs included: IncrementalWholeEquivalence,
 # LateInputEquivalence, Memo...; 1095 tests, 52 s), then every services.identity.* / services.titlerules.* / worker

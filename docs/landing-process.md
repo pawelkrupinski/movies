@@ -127,9 +127,8 @@ green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's 
 2. **What is pushed.** git's stdin, one line per ref. Deleting a ref checks nothing. A push of only
    `refs/heads/measure/*` checks nothing (a measurement's run ref). For a push to `main`, `agentctl prepush-check
    --hook` (the squash guard) runs first, when `~/bin/agentctl` exists.
-3. **The red gate** (push to main only; bypass name `redgate`). For each gating workflow — Main (`main.yml`),
-   Identity model convergence (`identity-model-convergence.yml`), Verify scrape recording
-   (`verify-scrape-recording.yml`) — it reads the newest *decided* run on main (success or failure; cancelled,
+3. **The red gate** (push to main only; bypass name `redgate`). For each gating workflow — exactly Main (`main.yml`)
+   and Identity model convergence (`identity-model-convergence.yml`), the owner's gate (2026-10-27) — it reads the newest *decided* run on main (success or failure; cancelled,
    skipped and unfinished runs say nothing), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A Forgejo remote
    reads Forgejo's runs API with `$FORGEJO_API_TOKEN` or the `movies` vault's token if already unlocked; no token →
    the gate is skipped with one warning. An API that does not answer is warned about and skipped for that workflow,
@@ -137,7 +136,7 @@ green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's 
    `*/conf/`, `build.sbt`, `project/`, `infra/nix/`, `infra/kubernetes/`, `Dockerfile`) must carry a
    `Fixes-Red: <run>` trailer naming one of the red runs — its number in the run URL or its API run id. Commits
    touching no production path (scripts, docs, skills, tests, fixtures, `.github/`) land while red. The Identity
-   findings report and Record scrape fixtures (the nightly capture) do not gate.
+   findings report, Record scrape fixtures (the nightly capture) and Verify scrape recording (its replay) do not gate.
 4. **Changed paths**: a three-dot diff of each pushed range from its base, so commits main gained since do not count.
 5. **Plan**: the checks those paths select (`scripts/hooks/pre-push --plan < paths` prints them).
 6. **Reuse**: if a push with the same key passed before — pushed tree, base tree, changed paths, selected checks,
