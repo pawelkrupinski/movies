@@ -459,8 +459,12 @@ final class IdentityProjection(
       }
     val scope  = closed(moved)
     val before = stored.iterator.filter(r => !scope.films(r.id.value)).map(r => r.id -> r).toMap
+    // a film that moved its key alone names both keys: the key a projection derives is the drift to read then
     val missed = tick.changed.filterNot(inside(scope, _)).map(f => f.id.value -> before.get(f.id).fold("new")(s =>
-      IdentityProjection.moved(s.record, f.record))) ++ plan.retired.map(_.value).filterNot(scope.films).map(_ -> "retired")
+      IdentityProjection.moved(s.record, f.record) match {
+        case "key" => s"key ${s.key(normalizer)} -> ${f.key}, titled '${s.title}' -> '${f.title}'"
+        case what  => what
+      })) ++ plan.retired.map(_.value).filterNot(scope.films).map(_ -> "retired")
     metrics.drifted(missed.size)
     if (missed.nonEmpty) logger.warn(s"identity projection drift: the whole projection changed ${missed.size} film(s) the scoped one " +
       s"would have left: ${missed.sortBy(_._1).take(20).map { case (id, what) => s"$id ($what)" }.mkString(", ")}")
