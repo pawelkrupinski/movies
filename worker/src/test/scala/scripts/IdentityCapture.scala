@@ -33,10 +33,13 @@ object IdentityCapture {
   /** The prod Mongo the family answers are exported from (read-only): set by the shell script, after its tunnel. */
   val FamilyUri = "KINOWO_IDENTITY_FAMILY_URI"
 
+  /** Where scripts/identity-capture.sh hands over the newest recording's run id. */
+  val NewestRecordingVariable = "KINOWO_IDENTITY_NEWEST_RECORDING"
+
   /** Every variable the run reads from its environment, each defaulted where unset ([[captureArguments]], [[environment]]). */
   val Variables: Seq[String] = Seq("KINOWO_IDENTITY_UNMATCHED_CAPTURE", "KINOWO_IDENTITY_CORPUS_DIR", "KINOWO_FIXTURE_ROOT",
     "KINOWO_IDENTITY_AGREEMENT_CACHE", "KINOWO_IDENTITY_FAMILY_SEED", "KINOWO_IDENTITY_POSTER_CACHE",
-    "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY", "MONGODB_URI", FamilyUri, "KINOWO_IDENTITY_CAPTURE_WORK")
+    "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY", "MONGODB_URI", FamilyUri, "KINOWO_IDENTITY_CAPTURE_WORK", NewestRecordingVariable)
 
   /** The local, THROWAWAY Mongo the capture's pipeline seeds (the it/ one). */
   val LocalMongo = "mongodb://127.0.0.1:28017/?directConnection=true"
@@ -225,9 +228,6 @@ object IdentityCapture {
   final case class Keep(run: String, why: String) extends Currency
   /** Nothing here, and nothing to fetch it from. */
   final case class Missing(why: String) extends Currency
-
-  /** Where scripts/identity-capture.sh hands over the newest recording's run id. */
-  val NewestRecordingVariable = "KINOWO_IDENTITY_NEWEST_RECORDING"
 
   /** What to do about a country's corpus and tree: `present` is the run they were downloaded from, `newest` the newest
    *  successful recording (`None`: not looked up — a dry run never touches the network). */

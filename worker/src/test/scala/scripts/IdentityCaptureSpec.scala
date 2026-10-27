@@ -236,6 +236,9 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     new Live(repo, Map(NewestRecordingVariable -> " 37407719592\n")).newestRecording() shouldBe Some("37407719592")
     new Live(repo, Map(NewestRecordingVariable -> "")).newestRecording() shouldBe None
     new Live(repo, Map.empty).newestRecording() shouldBe None
+    // main hands Live only the Variables it names: without this one every capture read "not looked up" and
+    // failed for want of a recording (Identity capture run 3221, 2026-10-27).
+    Variables should contain(NewestRecordingVariable)
   }
 
   "A country's recording" should "be fetched when nothing is there yet" in {
