@@ -450,6 +450,7 @@ fake_server "$scratch/restopped"; server=$!; await_server "$server"
 wait_until "the checkout has exactly the new keeper" '[ "$(keepers_of "$scratch/restopped")" = "1 $new_keeper" ]'
 check "...and the server it keeps has ONE keeper, the new one" "1 $new_keeper" "$(keepers_of "$scratch/restopped")"
 # the idle reap stops a checkout the same way: its keeper too
+touch -t 202001010000 "$restopped_key.used"   # idle: a mark touched this second is not past "+0" minutes
 (cd "$scratch/restopped" && KINOWO_SBT_WARM_IDLE_MINUTES=0 "$REPO_ROOT/scripts/sbt-warm" --reap >/dev/null 2>&1)
 check "--reap stops an idle server's keeper with it" "stopped 0" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(keepers_of "$scratch/restopped")"
