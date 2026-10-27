@@ -116,6 +116,38 @@ class StoredIdentityConfidenceSpec extends AnyFlatSpec with Matchers {
     searched.keySet should not contain "popularity.log2"
   }
 
+  // A film a few hundred venues list: titles in three families, some stating the film's year, some its director, some
+  // nothing -- every listing measured against the venues sharing its title key.
+  private val widelyListed = IdentityMeasures.Film("Shaun das Schaf - Spuk im Kürbisfeld", year = Some(2026),
+    directors = Some(Seq("Steve Cox")), runtime = Some(85))
+  private def venuesListing(n: Int): Seq[(String, IdentityMeasures.Listing)] = (1 to n).map { i =>
+    val title = Seq("Shaun das Schaf - Spuk im Kürbisfeld", "Shaun das Schaf – Spuk im Kürbisfeld", "SHAUN DAS SCHAF: Spuk im Kürbisfeld")(i % 3)
+    s"Kino $i" -> IdentityMeasures.Listing(title, year = Option.when(i % 4 == 0)(2026), directors = if (i % 5 == 0) Seq("Steve Cox") else Nil,
+      runtime = Option.when(i % 2 == 0)(85 + i % 3))
+  }
+
+  "a film's confidence" should "be its best listing's, each measured against the venues sharing its title" in {
+    val venues   = venuesListing(60)
+    val searches = Seq(TitleSearch(IdentityMeasures.key(venues.head._2.title), Some(1), 0))
+    val perListing = venues.map { case (venue, l) =>
+      val m = StoredIdentityConfidence.measures(widelyListed, venue, l, venues, searches)
+      calibration.probability(IdentityMeasures.ListingFilm, m) max
+        calibration.probability(IdentityMeasures.ListingFilm, m -- IdentityMeasures.RankingPriors)
+    }
+    StoredIdentityConfidence.of(widelyListed, venues, searches, calibration) shouldBe perListing.maxOption
+  }
+
+  it should "cost in proportion to its listings, not to their pairs" in {
+    assume(tools.ThreadAllocation.supported, "this JVM cannot say what a thread allocated")
+    def bytes(n: Int): Long = {
+      val venues = venuesListing(n)
+      StoredIdentityConfidence.of(widelyListed, venues, Nil, calibration)
+      Seq.fill(3)(tools.ThreadAllocation.of(StoredIdentityConfidence.of(widelyListed, venues, Nil, calibration))._2).min
+    }
+    // four times the venues: four times the work, where every listing asking every other was sixteen
+    bytes(400).toDouble / bytes(100) should be < 6.0
+  }
+
   "the gate's version" should "follow the calibration artefact" in {
     EvidenceRatingGate(calibration).version shouldBe EvidenceRatingGate(calibration).version
     EvidenceRatingGate(calibration.copy(version = "other")).version should not be EvidenceRatingGate(calibration).version

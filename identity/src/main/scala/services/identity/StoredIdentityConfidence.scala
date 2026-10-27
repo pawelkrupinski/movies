@@ -57,27 +57,45 @@ object StoredIdentityConfidence {
                searches: Seq[TitleSearch]): Map[String, Measure] = {
     val titleKey = PinnedGateMeasures.key(listing.title)
     val family   = venues.filter { case (_, l) => PinnedGateMeasures.key(l.title) == titleKey }
+    measured(film, listing, titleKey, PinnedGateMeasures.corroboratingVenues(film, family, venue), searches)
+  }
+
+  /** One listing's measures, its title key and its corroborating count already worked out. */
+  private def measured(film: Film, listing: Listing, titleKey: String, corroborating: Int,
+                       searches: Seq[TitleSearch]): Map[String, Measure] = {
     val search   = searches.find(_.titleKey == titleKey)
     val measured = PinnedGateMeasures.listingFilm(listing, film, search.flatMap(_.rank), search.fold(0)(_.rivals),
-      PinnedGateMeasures.corroboratingVenues(film, family, venue)) - "popularity.log2"
+      corroborating) - "popularity.log2"
     if (search.isDefined) measured else measured -- PinnedGateMeasures.RankingPriors
   }
 
   /** The film's confidence: its best-evidenced listing's calibrated probability. The ratings are
    *  the TMDB film's, so one venue whose facts (with its family's) establish that film is enough;
    *  a venue that publishes nothing neither establishes nor refutes it. None without a TMDB
-   *  record or a venue listing: nothing to measure. */
-  def of(film: Film, venues: Seq[(String, Listing)], searches: Seq[TitleSearch], calibration: IdentityCalibration): Option[Double] =
-    venues.map { case (venue, l) =>
-      // The search standing can lend a listing confidence, never withdraw it: a film its own
-      // facts establish is not doubted for ranking seventh among namesakes. The same rule the
-      // resolver's vetoes follow (`IdentityResolver.factsProbability`): rank and rivals are
-      // ambiguity, not evidence of a different film, and their weights are the label-selection
-      // sensitive ones (docs/design/identity-resolver.md §14.6).
-      val withSearch = measures(film, venue, l, venues, searches)
-      calibration.probability(ListingFilm, withSearch) max
-        calibration.probability(ListingFilm, withSearch -- PinnedGateMeasures.RankingPriors)
+   *  record or a venue listing: nothing to measure.
+   *
+   *  Each listing's [[measures]], with every title key and each family's corroborating venues worked out once, not
+   *  once per listing: a film a few hundred venues list (Germany's "Shaun das Schaf" at 440) asked them per pair,
+   *  ~10% of a Germany convergence row's CPU (JFR, 2026-10-27). Listings alike in all but venue that count the same
+   *  corroboration are measured once. */
+  def of(film: Film, venues: Seq[(String, Listing)], searches: Seq[TitleSearch], calibration: IdentityCalibration): Option[Double] = {
+    val keyed  = venues.map { case (venue, l) => (venue, l, PinnedGateMeasures.key(l.title)) }
+    val backed = keyed.groupBy(_._3).view.mapValues(family => PinnedGateMeasures.corroborating(film, family.map(v => v._1 -> v._2))).toMap
+    val scored = scala.collection.mutable.HashMap.empty[(Listing, String, Int), Double]
+    keyed.map { case (venue, l, titleKey) =>
+      val corroborating = (backed(titleKey) - venue).size
+      scored.getOrElseUpdate((l, titleKey, corroborating), {
+        // The search standing can lend a listing confidence, never withdraw it: a film its own
+        // facts establish is not doubted for ranking seventh among namesakes. The same rule the
+        // resolver's vetoes follow (`IdentityResolver.factsProbability`): rank and rivals are
+        // ambiguity, not evidence of a different film, and their weights are the label-selection
+        // sensitive ones (docs/design/identity-resolver.md §14.6).
+        val withSearch = measured(film, l, titleKey, corroborating, searches)
+        calibration.probability(ListingFilm, withSearch) max
+          calibration.probability(ListingFilm, withSearch -- PinnedGateMeasures.RankingPriors)
+      })
     }.maxOption
+  }
 
   def of(record: MovieRecord, calibration: IdentityCalibration): Option[Double] =
     record.data.get(Tmdb).filter(_ => record.tmdbId.isDefined).flatMap { tmdb =>

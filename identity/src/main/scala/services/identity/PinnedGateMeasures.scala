@@ -169,10 +169,15 @@ object PinnedGateMeasures {
    *  whose OWN facts back `f` — its exact year, or a credit of its director — other than
    *  `ownVenue`: the `venues.corroborating` count. */
   def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
+    (corroborating(f, group) - ownVenue).size
+
+  /** The venues among `group` whose own facts back `f`, its own venue among them: what [[corroboratingVenues]]
+   *  counts for each of the group's listings, worked out once for all of them. */
+  def corroborating(f: Film, group: Seq[(String, Listing)]): Set[String] =
     group.iterator.filter { case (_, l) =>
       statedYear(l).exists(y => f.year.contains(y)) ||
         f.directors.exists(ds => directorRelation(l.directors, ds) == Category("same_person"))
-    }.map(_._1).toSet.-(ownVenue).size
+    }.map(_._1).toSet
 
   // ── the measurement sets ─────────────────────────────────────────────────────────────
 
