@@ -429,8 +429,13 @@ object UnmatchedClusters {
       .append("catalogueIds", array(l.catalogueIds.map(c => new BsonDocument("source", new BsonString(c.source)).append("id", new BsonString(c.id)))))
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
     if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
-    // a lean read's season alone (`ModelRead`): no day, but the season the rules read
-    else l.screenings.season.foreach(season => d.append("season", new BsonInt32(season)))
+    // a lean read's season alone (`ModelRead`): no day, but the season the rules read, and the year of its first day,
+    // which a rule dating a film against its screenings reads (`ScreeningDays.firstYear`): read back as the season's
+    // opening year, a listing first screening in January 2027 replayed as one of 2026 -- current for a 2025 film it was
+    // not current for live (UK Regal Stowmarket "Song Sung Blue- The Music of Neil Diamond", Identity capture #2084, #2104)
+    else l.screenings.season.foreach { season =>
+      d.append("season", new BsonInt32(season)); putInt(d, "firstYear", l.screenings.firstYear)
+    }
     if (!l.names.isEmpty) d.append("names", array(l.names.hashes.map(new BsonInt32(_))))
     if (!l.words.isEmpty) d.append("words", array(l.words.hashes.map(new BsonInt32(_))))
     put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster); put(d, "certificate", l.certificate)
@@ -445,11 +450,16 @@ object UnmatchedClusters {
       opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
       opt(d, "searchTitle"), opt(d, "poster"), optInt(d, "season").fold(ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)))(season =>
-        ScreeningDays.ofSeason(java.time.LocalDate.of(season, ScreeningDays.SeasonOpens, 1))),
+        ScreeningDays.ofSeason(seasonDay(season, optInt(d, "firstYear")))),
       VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))), properTitle = opt(d, "properTitle"),
       certificate = opt(d, "certificate"), yearUpperBound = optInt(d, "yearUpperBound"), performanceYear = optInt(d, "performanceYear"),
       words = ProseWords.ofHashes(Option(d.get("words")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))
   }
+  /** A day of `season` in `firstYear` (its opening year when the file names none, as one written before it kept the
+   *  year): the season runs from July into the next year's June. */
+  private[tools] def seasonDay(season: Int, firstYear: Option[Int]): java.time.LocalDate =
+    firstYear.filter(_ > season).fold(java.time.LocalDate.of(season, ScreeningDays.SeasonOpens, 1))(java.time.LocalDate.of(_, 1, 1))
+
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))
     case CandidateQuery.Director(name)    => new BsonDocument("director", new BsonString(name))
