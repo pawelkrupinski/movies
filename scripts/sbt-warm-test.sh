@@ -441,12 +441,14 @@ wait_until "the slow nohup is waiting" '[ -e "$scratch/slow-nohup/waiting" ]'
 (cd "$scratch/restopped" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1)
 check "--stop stops the checkout's keeper with its server, its JVM slot free" "stopped gone free" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${old_keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$own_slot")"
+# its server up BEFORE the call that starts the new keeper: a keeper meeting no server ends after the grace's two polls
+# here, so a server started after the call raced it -- on a loaded machine the keeper was gone first (Main #2097)
+fake_server "$scratch/restopped"; server=$!; await_server "$server"
 out=$(cd "$scratch/restopped" && KINOWO_IDENTITY_CACHE="$scratch/own-slots" KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_MAX_WAIT=4 KINOWO_MEMORY_GATE=0 \
   "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
 check "...so the next call takes the slot at once, never waiting on a keeper it keeps alive" "no" \
   "$(grep -q 'slots busy\|slot still busy' <<<"$out" && echo "yes: $out" || echo no)"
 new_keeper=$(cat "$restopped_key.keep.flock" 2>/dev/null)
-fake_server "$scratch/restopped"; server=$!; await_server "$server"
 wait_until "the checkout has exactly the new keeper" '[ "$(keepers_of "$scratch/restopped")" = "1 $new_keeper" ]'
 check "...and the server it keeps has ONE keeper, the new one" "1 $new_keeper" "$(keepers_of "$scratch/restopped")"
 # the idle reap stops a checkout the same way: its keeper too
