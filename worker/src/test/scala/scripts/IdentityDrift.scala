@@ -361,6 +361,7 @@ object IdentityDrift {
       val r = stage.apply(UnmatchedClusters.resolutionOf(decided), held.get, answers.store.version, if (fresh) None else Some(republished))
       fresh = false
       projections += 1
+      val applied  = started.seconds
       val now      = decided.iterator.flatMap(d => { val sig = scala.util.hashing.MurmurHash3.unorderedHash(d.members); d.members.iterator.map(_ -> sig) }).toMap
       val answered = events.exists(Answering)
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
@@ -369,7 +370,8 @@ object IdentityDrift {
       clusters = now
       events = Vector.empty
       System.err.println(f"[identity-drift] seed $seed projection $projections: ${held.size} listings, " +
-        f"${r.decisions.count(d => d.film.isDefined || d.fallback.isDefined)} clusters taken, backlog ${stage.backlog} (${started.seconds}%.1fs)")
+        f"${r.decisions.count(d => d.film.isDefined || d.fallback.isDefined)} clusters taken, backlog ${stage.backlog} (${applied}%.1fs, " +
+        f"takes recorded in ${started.seconds - applied}%.2fs)")
       r
     }
     def boot(listings: Seq[Listing]): Unit = { event("boot"); held = listings.map(l => l.key -> l).toMap; model.restore(listings) }
