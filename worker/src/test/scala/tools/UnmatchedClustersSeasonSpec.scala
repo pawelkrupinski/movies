@@ -39,9 +39,9 @@ class UnmatchedClustersSeasonSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read a file written before it kept the year as of its season's opening year" in {
-    UnmatchedClusters.seasonDay(2026, None) shouldBe LocalDate.of(2026, 7, 1)
-    UnmatchedClusters.seasonDay(2026, Some(2026)) shouldBe LocalDate.of(2026, 7, 1)
-    UnmatchedClusters.seasonDay(2026, Some(2027)) shouldBe LocalDate.of(2027, 1, 1)
+    services.identity.ListingBson.seasonDay(2026, None) shouldBe LocalDate.of(2026, 7, 1)
+    services.identity.ListingBson.seasonDay(2026, Some(2026)) shouldBe LocalDate.of(2026, 7, 1)
+    services.identity.ListingBson.seasonDay(2026, Some(2027)) shouldBe LocalDate.of(2027, 1, 1)
   }
 
   "A listing's screening days" should "come back as they were" in {

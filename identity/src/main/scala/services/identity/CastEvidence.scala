@@ -163,6 +163,8 @@ final class ListedCast private (pairs: Array[Int]) extends SortedHashes[ListedCa
 
 object ListedCast {
   val None: ListedCast = new ListedCast(Array.emptyIntArray)
+  /** The field as its [[SortedHashes.hashes]] stored it ([[ListingBson]]). */
+  def ofHashes(hashes: Seq[Int]): ListedCast = if (hashes.isEmpty) None else new ListedCast(SortedHashes.of(hashes))
   /** The names a field must list for its silence about a film's cast to count. */
   val Names = 2
 

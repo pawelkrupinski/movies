@@ -1,6 +1,6 @@
 package tools
 
-import models.{Country, Source}
+import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.bson.json.{JsonMode, JsonWriterSettings}
 import services.identity._
@@ -371,7 +371,7 @@ object UnmatchedClusters {
     def answered(queries: Map[CandidateQuery, Seq[Hit]]) =
       array(queries.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) })
     val d = new BsonDocument("country", new BsonString(capture.country.code))
-      .append("listings", array(capture.listings.sortBy(_.sortKey).map(listingDoc)))
+      .append("listings", array(capture.listings.sortBy(_.sortKey).map(ListingBson.doc)))
       .append("decisions", array(capture.decisions.sortBy(_.members.headOption.map(ListingKey.serialised).getOrElse("")).map(ResolverDecisionBson.encode)))
       .append("queries", answered(older))
       // apart from "queries", which a ref predating the title-credit question reads whole and fails on a kind it lacks
@@ -398,7 +398,7 @@ object UnmatchedClusters {
     val country = Country.all.find(_.code == d.getString("country").getValue).getOrElse(sys.error(s"no country in $path"))
     def docs(name: String) = d.getArray(name).getValues.asScala.toSeq.map(_.asDocument)
     Capture(country,
-      docs("listings").map(listingOf),
+      docs("listings").map(ListingBson.of),
       docs("decisions").map(ResolverDecisionBson.decode),
       (docs("queries") ++ (if (d.containsKey("titleCredits")) docs("titleCredits") else Nil))
         .map(q => queryOf(q) -> q.getArray("hits").getValues.asScala.toSeq.map(h => hitOf(h.asDocument))).toMap,
@@ -425,44 +425,6 @@ object UnmatchedClusters {
   private def optInt(d: BsonDocument, name: String): Option[Int] = Option(d.get(name)).filterNot(_.isNull).map(_.asNumber.intValue)
   private def put(d: BsonDocument, name: String, value: Option[String]): BsonDocument = { value.foreach(v => d.append(name, new BsonString(v))); d }
   private def putInt(d: BsonDocument, name: String, value: Option[Int]): BsonDocument = { value.foreach(v => d.append(name, new BsonInt32(v))); d }
-
-  private def listingDoc(l: Listing): BsonDocument = {
-    val d = new BsonDocument("cinema", new BsonString(l.cinema.displayName)).append("key", new BsonString(ListingKey.serialised(l.key)))
-      .append("rawTitle", new BsonString(l.rawTitle)).append("title", new BsonString(l.title)).append("cleanTitle", new BsonString(l.cleanTitle))
-      .append("directors", strings(l.directors)).append("countries", strings(l.countries))
-      .append("catalogueIds", array(l.catalogueIds.map(c => new BsonDocument("source", new BsonString(c.source)).append("id", new BsonString(c.id)))))
-    putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
-    if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
-    // a lean read's season alone (`ModelRead`): no day, but the season the rules read, and the year of its first day,
-    // which a rule dating a film against its screenings reads (`ScreeningDays.firstYear`): read back as the season's
-    // opening year, a listing first screening in January 2027 replayed as one of 2026 -- current for a 2025 film it was
-    // not current for live (UK Regal Stowmarket "Song Sung Blue- The Music of Neil Diamond", Identity capture #2084, #2104)
-    else l.screenings.season.foreach { season =>
-      d.append("season", new BsonInt32(season)); putInt(d, "firstYear", l.screenings.firstYear)
-    }
-    if (!l.names.isEmpty) d.append("names", array(l.names.hashes.map(new BsonInt32(_))))
-    if (!l.words.isEmpty) d.append("words", array(l.words.hashes.map(new BsonInt32(_))))
-    put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster); put(d, "certificate", l.certificate)
-    putInt(d, "yearUpperBound", l.yearUpperBound)
-    putInt(d, "performanceYear", l.performanceYear)
-  }
-  private def listingOf(d: BsonDocument): Listing = {
-    val name   = d.getString("cinema").getValue
-    val cinema = Source.byDisplayName.get(name).flatMap(Source.cinemaOf).getOrElse(sys.error(s"no venue named $name"))
-    Listing(cinema, ListingKey.parse(d.getString("key").getValue).getOrElse(sys.error(s"bad key in ${d.toJson}")), d.getString("rawTitle").getValue,
-      d.getString("title").getValue, d.getString("cleanTitle").getValue, optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"),
-      opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
-      d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
-      opt(d, "searchTitle"), opt(d, "poster"), optInt(d, "season").fold(ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)))(season =>
-        ScreeningDays.ofSeason(seasonDay(season, optInt(d, "firstYear")))),
-      VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))), properTitle = opt(d, "properTitle"),
-      certificate = opt(d, "certificate"), yearUpperBound = optInt(d, "yearUpperBound"), performanceYear = optInt(d, "performanceYear"),
-      words = ProseWords.ofHashes(Option(d.get("words")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))
-  }
-  /** A day of `season` in `firstYear` (its opening year when the file names none, as one written before it kept the
-   *  year): the season runs from July into the next year's June. */
-  private[tools] def seasonDay(season: Int, firstYear: Option[Int]): java.time.LocalDate =
-    firstYear.filter(_ > season).fold(java.time.LocalDate.of(season, ScreeningDays.SeasonOpens, 1))(java.time.LocalDate.of(_, 1, 1))
 
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))
