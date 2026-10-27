@@ -817,8 +817,9 @@ code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/das
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
 check "a check making no progress is ended: exit 75, \`pre-push STALLED: <check>\`, no hung step left" "75 1 0" \
   "$code $(grep -c '^pre-push STALLED: dashboards' "$gate/err") $(spec_still_running "$gate/py-hung")"
-# ...while one busy past the bound (CPU in its processes) is no stall
-printf '#!/bin/sh\n[ "$1" = -c ] && exit 0\nend=$(( $(date +%%s) + 4 )); while [ "$(date +%%s)" -lt "$end" ]; do :; done\n' > "$gate/hungpy/python3"
+# ...while one busy past the bound (CPU in its processes) is no stall, however loaded the machine: busy, it is runnable at
+# every poll, whatever CPU share it gets (it loops in bash builtins, forking nothing)
+printf '#!/usr/bin/env bash\n[ "$1" = -c ] && exit 0\nend=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done\n' > "$gate/hungpy/python3"
 code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} oldrefs redgate" PATH="$gate/hungpy:$PATH" \
   PREPUSH_STALL_SECONDS=2 KINOWO_STALL_POLL_SECONDS=1 KINOWO_STALL_CPU_CENTIS=10 \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"

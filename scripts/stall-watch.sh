@@ -5,11 +5,17 @@
 #
 #   scripts/stall-watch.sh watch <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]
 #       the watchdog: polls every $KINOWO_STALL_POLL_SECONDS (30) and counts as progress (a) the CPU of <root pid>'s
-#       descendants (less the watchdog's own) growing by >= $KINOWO_STALL_CPU_CENTIS (100: one second) in a poll, (b)
-#       <progress file> touched, (c) a file directly in <dir> written (its logs). <seconds> without any: it appends <label> to
+#       descendants (less the watchdog's own, with what their exited children used) growing by >= $KINOWO_STALL_CPU_CENTIS
+#       (100: one second) in a poll, (b) one of them runnable at the poll (state R: running, or waiting for a CPU), (c)
+#       <progress file> touched, (d) a file directly in <dir> written (its logs). (b) keeps a busy step alive on a loaded
+#       machine: under a load of 90 a shell loop forking `date` was granted 5 centiseconds a second, most of them in
+#       children gone before the poll (2026-10-27: pre-push-test's busy case judged STALLED). A step that waits on nothing
+#       sleeps. (Processes new since the last poll are no progress: the hook's own helper loops start some every second.)
+#       <seconds> without any: it appends <label> to
 #       <stalled file>, prints `STALLED: <label> (no progress for <seconds>s)` on stderr, and ends the descendants (TERM,
 #       KILL 10 s later). It ends itself when <root pid> does; its caller kills it once the step is done.
-#   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...]
+#   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
+#                                     stall_any_runnable [<pid>...]
 #
 # THE STALL SIGNAL, for any caller (agentctl land among them): a stalled step's tool exits 75 (EX_TEMPFAIL) with a
 # line `<tool> STALLED: <step> ...` on stderr -- scripts/sbt-warm (`sbt-warm STALLED: <sbt command> ...`) and the
@@ -32,15 +38,27 @@ stall_tree_pids() { # <pid>
           while (i <= n) { p = q[i++]; print p; m = split(kids[p], a, " "); for (j = 1; j <= m; j++) q[++n] = a[j] } }'
 }
 
-# The CPU the live <pid>s have used, summed, in centiseconds (ps's `time`: [[dd-]hh:]mm:ss[.cc], BSD and procps)
+# ps's flag that adds the CPU of a process's exited (reaped) children to its own: `-S` (BSD, procps), else none
+_stall_children_flag=""
+ps -S -o time= -p $$ > /dev/null 2>&1 && _stall_children_flag=-S
+
+# The CPU the live <pid>s have used, summed, with their exited children's where ps can add it, in centiseconds (ps's
+# `time`: [[dd-]hh:]mm:ss[.cc], BSD and procps)
 stall_cpu_centis() { # [<pid>...]
   [ $# -gt 0 ] || { echo 0; return 0; }
-  ps -o time= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | awk '
+  ps $_stall_children_flag -o time= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | awk '
     { t = $1; d = 0
       if (index(t, "-")) { split(t, x, "-"); d = x[1]; t = x[2] }
       n = split(t, a, ":"); s = 0; for (i = 1; i <= n; i++) s = s * 60 + a[i]
       tot += (s + d * 86400) * 100 }
     END { printf "%d\n", tot }'
+}
+
+# Whether one of the live <pid>s is runnable (ps state R): running, or ready and waiting for a CPU, as a busy process on
+# a loaded machine mostly is. A step that waits on nothing sleeps (S), or is stopped or blocked on I/O.
+stall_any_runnable() { # [<pid>...]
+  [ $# -gt 0 ] || return 1
+  ps -o stat= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | grep -q '^R'
 }
 
 # Whether <file> was modified since the watchdog's mark <mark> (a file whose mtime is the previous poll)
@@ -66,6 +84,8 @@ stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] 
     moved=0
     [ "$last" -ge 0 ] && [ $((now - last)) -ge "$need" ] && moved=1
     [ "$last" -lt 0 ] && moved=1   # the first poll: no baseline yet
+    # shellcheck disable=SC2086
+    stall_any_runnable $pids && moved=1
     _stall_newer "$progress" "$mark" && moved=1
     [ -n "$dir" ] && [ -n "$(find "$dir" -maxdepth 1 -type f -newer "$mark" 2> /dev/null | head -1)" ] && moved=1
     touch "$mark"; last=$now

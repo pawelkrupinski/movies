@@ -479,7 +479,8 @@ if [ "$serve" = 1 ]; then
   fi
 fi
 # The sbt client, in the background so this call can watch it: NO PROGRESS (the header) -- the server's process tree
-# (forked test JVMs included) and the client's using under KINOWO_STALL_CPU_CENTIS in each poll, for StallSeconds.
+# (forked test JVMs included) and the client's using under KINOWO_STALL_CPU_CENTIS in each poll, none of their processes
+# runnable at it, for StallSeconds.
 StallSeconds=${KINOWO_SBT_WARM_STALL_SECONDS:-600}
 client=""
 trap '[ -n "$client" ] && kill $(stall_tree_pids "$client") 2> /dev/null; exit 143' TERM INT
@@ -487,12 +488,17 @@ run_client() {
   (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" exec sbt --client "$command" 5>&- 6>&- 7>&- 8>&- 9>&-) &
   client=$!
 }
-# the server's and client's CPU, summed (centiseconds)
-client_and_server_cpu() {
+# the client's and server's process trees, one pid per line
+client_and_server_pids() {
   local spid
   spid=$(server_pid "$root") || spid=""
+  stall_tree_pids "$client"
+  [ -z "$spid" ] || stall_tree_pids "$spid"
+}
+# the server's and client's CPU, summed (centiseconds)
+client_and_server_cpu() {
   # shellcheck disable=SC2046 # one pid per word
-  stall_cpu_centis $(stall_tree_pids "$client") ${spid:+$(stall_tree_pids "$spid")}
+  stall_cpu_centis $(client_and_server_pids)
 }
 # Waits for the client: its status, or 75 once it made no progress for StallSeconds (the server then dumped and stopped)
 watch_client() {
@@ -502,7 +508,9 @@ watch_client() {
     sleep 0.5
     [ "$SECONDS" -ge "$next" ] || continue
     next=$((SECONDS + poll)); now=$(client_and_server_cpu)
-    if [ $((now - last)) -ge "$need" ]; then
+    # progress: CPU, or a process of theirs runnable at the poll (a busy one on a loaded machine; stall-watch.sh)
+    # shellcheck disable=SC2046 # one pid per word
+    if [ $((now - last)) -ge "$need" ] || stall_any_runnable $(client_and_server_pids); then
       quiet=0
       [ -n "${KINOWO_PROGRESS_FILE:-}" ] && touch "$KINOWO_PROGRESS_FILE"
     else
