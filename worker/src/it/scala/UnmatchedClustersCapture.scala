@@ -150,8 +150,13 @@ object UnmatchedClustersCapture {
       def side(ts: Seq[UnmatchedClusters.Take]) = ts.map(t => (t.venue, t.rawTitle) -> t).toMap
       val (was, now) = (side(live), side(again))
       val moved      = (was.keySet ++ now.keySet).toSeq.sorted.filter(k => was.get(k) != now.get(k))
+      // a listing no film was taken for has no take: its decision says what it waits on, or why it was refused
+      val keyOf      = capture.listings.map(l => (l.venue, l.rawTitle) -> l.key).toMap
+      def decided(o: UnmatchedClusters.Outcome, k: (String, String)) = keyOf.get(k).flatMap(o.agreed.decisionOf.get)
+        .fold("no decision")(d => s"${d.basis} unanswered ${d.unanswered}: ${d.explanation.mkString(" | ")}")
       s"the capture replays to other takes than it captured: ${moved.size} listing(s), ${replayed.unanswered.size} TMDB lookup(s) " +
-        s"unanswered on replay${moved.take(20).map(k => s"\n  captured ${was.get(k)}\n  replayed ${now.get(k)}").mkString}"
+        s"unanswered on replay${moved.take(20).map(k => s"\n  captured ${was.get(k)}\n    decided ${decided(outcome, k)}" +
+          s"\n  replayed ${now.get(k)}\n    decided ${decided(replayed, k)}").mkString}"
     })
     println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
       s"${filed.size} family answers after $rounds round(s), ${asked.unreachable.size} unreachable; takes ${UnmatchedClusters.takes(capture, outcome).size}")
