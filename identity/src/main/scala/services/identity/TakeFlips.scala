@@ -12,8 +12,12 @@ import scala.collection.mutable
  * overridden by a correction seconds later, then back). A listing FLIPS when its take
  *
  *  - goes back to a film it left (A -> B -> A),
- *  - changes more than once (A -> B -> C), or
+ *  - moves to another film more than once (A -> B -> C), or
  *  - changes at a step where none of its deciding inputs changed: an interim take a pending correction overrides.
+ *
+ * The films a listing moves between are counted as prod's watch counts them, between films: no film (`none`) between
+ * two takes of one is a take lost while answers were missing and found again once they came in (A -> none -> A), and a
+ * first take of none is no film left — so neither counts unless no input moved it.
  *
  * Only changes are kept, so recording a step costs one look-up a listing.
  */
@@ -54,6 +58,9 @@ final class TakeFlips {
 
 object TakeFlips {
 
+  /** No film served: the take of a listing that holds none. */
+  val NoFilm = "none"
+
   /** A listing's served take: its film (`tmdb:<id>`, `<source>:<id>` or `none`) and the path that decided it. */
   final case class Served(film: String, path: String)
 
@@ -73,12 +80,13 @@ object TakeFlips {
 
   object Flip {
     def reasons(takes: Vector[Taken]): Seq[String] = {
-      val films     = takes.map(_.served.film)
+      val films     = takes.map(_.served.film).filter(_ != NoFilm)
+        .foldLeft(Vector.empty[String])((seen, film) => if (seen.lastOption.contains(film)) seen else seen :+ film)
       val back      = films.indices.exists(i => films.indexOf(films(i)) < i)
       val unchanged = takes.drop(1).filterNot(_.moved).map(_.step)
       Seq(
         Option.when(back)("back to a film it left"),
-        Option.when(!back && films.size > 2)(s"changed ${films.size - 1} times"),
+        Option.when(!back && films.size > 2)(s"moved between films ${films.size - 1} times"),
         Option.when(unchanged.nonEmpty)(s"changed with its inputs unchanged at ${unchanged.mkString(", ")}")).flatten
     }
   }

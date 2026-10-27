@@ -36,7 +36,13 @@ class TakeFlipsSpec extends AnyFlatSpec with Matchers {
 
   "a take changing twice" should "flip" in {
     replay(("1 boot", Map(stranger -> own(1)), Set.empty), ("2 answer", Map(stranger -> own(2)), Set(stranger)),
-      ("3 answer", Map(stranger -> own(3)), Set(stranger))).flips.map(_.reasons) shouldBe Seq(Seq("changed 2 times"))
+      ("3 answer", Map(stranger -> own(3)), Set(stranger))).flips.map(_.reasons) shouldBe Seq(Seq("moved between films 2 times"))
+  }
+
+  "a take lost while answers were missing and found again, or a first take of no film" should "be no flip" in {
+    replay(("1 boot", Map(stranger -> own(1429348), other -> TakeFlips.Served("none", "BelowThreshold")), Set.empty),
+      ("2 fill", Map(stranger -> TakeFlips.Served("none", "BelowThreshold"), other -> own(1)), Set(stranger, other)),
+      ("3 answer", Map(stranger -> own(1429348), other -> own(2)), Set(stranger, other))).flips shouldBe empty
   }
 
   "a take changing where none of its inputs did" should "flip, even once: an interim take a pending correction overrides" in {
