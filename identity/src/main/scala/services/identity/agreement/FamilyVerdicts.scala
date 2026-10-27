@@ -58,7 +58,7 @@ private[agreement] object FamilyVerdicts {
 
   private final case class Kept(listings: Seq[Listing], read: Array[Read], verdict: Answer[FamilyVerdict], var usedAt: Long)
 
-  private def digestOf(answer: Answer[?]): Long = services.identity.agreement.AgreementStage.digest(Seq(answer.toString))
+  private def digestOf(answer: Answer[?]): Long = services.identity.Dependency.digest(answer)
 
   /** One thing a verdict's resolve read, by the digest of what it read. */
   private sealed trait Read {

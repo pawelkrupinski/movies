@@ -59,6 +59,22 @@ object Dependency {
     case Answer, Release, Cast, Overview
   }
 
+  /** THE digest of what a read of any dependency saw, recorded and compared alike: every kind is read as an answer — a
+   *  lookup's or a family's as it came, an attempt as [[attemptRead]], the year as [[yearRead]], nothing there yet as
+   *  `Unknown` — and digested by its text. One function, so the form a receipt records is the form a re-read compares
+   *  (docs/design/identity-no-drift.md, "One dependency index": the year recorded as its bare text never read equal).
+   *  64 bits, two MurmurHash3 seeds: stable across runs, as a stored digest must be. */
+  def digest(answer: services.identity.Answer[?]): Long = {
+    val text = answer.toString
+    (scala.util.hashing.MurmurHash3.stringHash(text, 0x2f1d7a3b).toLong << 32) | (scala.util.hashing.MurmurHash3.stringHash(text, 0x6c8e9cf5).toLong & 0xffffffffL)
+  }
+  /** Whether a question was attempted, as an [[Attempted]] read reads it. */
+  def attemptRead(attempted: Boolean): services.identity.Answer[String] = services.identity.Answer.Known(attempted.toString)
+  /** The year, as a [[Year]] read reads it. */
+  def yearRead(year: Int): services.identity.Answer[String] = services.identity.Answer.Known(year.toString)
+  /** What a read of a question none answered digests to: an answer filed no longer matches it. */
+  val Unanswered: Long = digest(services.identity.Answer.Unknown)
+
   /** What any TMDB search is filed as among the answers' changes: one id for all — a receipt that read any search is read
    *  again on a search's filing. */
   val QueryFiled = "tmdb|query"

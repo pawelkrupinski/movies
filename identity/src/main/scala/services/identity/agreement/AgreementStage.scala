@@ -214,7 +214,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  ([[AgreementStage.Receipt.reread]] reads it again). */
   private[agreement] final class Noting(inner: IdentityLookups, via: Dependency.Via) extends services.identity.ForwardingIdentityLookups(inner) {
     private def noted[A](aspect: Dependency.Aspect, question: Question, answer: Answer[A]): Answer[A] = {
-      if (receipt != null) receipt(Dependency.Lookup(via, aspect, question)) = AgreementStage.digest(Seq(answer.toString))
+      if (receipt != null) receipt(Dependency.Lookup(via, aspect, question)) = Dependency.digest(answer)
       answer
     }
     private def record[A](aspect: Dependency.Aspect, tmdbId: Int, answer: Answer[A]): Answer[A] = { recordsReading.add(tmdbId); noted(aspect, Question.FilmRecord(tmdbId), answer) }
@@ -309,7 +309,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     var unchecked = 0
     held.uncheckWhere(v => v.reads.exists {
       case (Dependency.Attempted(question), recorded) =>
-        val moved = recorded != AgreementStage.attemptedDigest(attempted(question))
+        val moved = !readNow(Dependency.Attempted(question)).contains(recorded)
         if (moved) unchecked += 1
         moved
       case _ => false
@@ -353,8 +353,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     keying(resolution, pass)
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
-      val year = AgreementStage.yearDigest(yearNow)
-      held.values.filter(v => v.rules == decidedUnder && v.reads.get(Dependency.Year).forall(_ == year)).foreach { v =>
+      val year = readNow(Dependency.Year)
+      held.values.filter(v => v.rules == decidedUnder && v.reads.get(Dependency.Year).forall(year.contains)).foreach { v =>
         held.check(v.id, v.listings, version)
       }
     }
@@ -730,11 +730,13 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     })
   }
 
-  /** The digest of what `read` reads now ([[reread]]), of the listings `listingOf` names. */
-  private[agreement] def digestNow(read: Dependency, listingOf: ListingKey => Option[Listing]): Option[Long] = read match {
-    case Dependency.Year => Some(AgreementStage.yearDigest(yearNow))
-    case _               => reread(read, listingOf).map(answer => AgreementStage.digest(Seq(answer.toString)))
-  }
+  /** The digest of what `read` reads now ([[reread]]), of the listings `listingOf` names: the one digest a receipt
+   *  records it by ([[Dependency.digest]]), so no kind is compared in another form than it was recorded in. */
+  private[agreement] def digestNow(read: Dependency, listingOf: ListingKey => Option[Listing]): Option[Long] =
+    reread(read, listingOf).map(Dependency.digest)
+  /** What `read` — one no listing names: the year, an attempt — digests to now. A receipt records it by this, the reader it
+   *  is compared through ([[digestNow]]): one form both ways. */
+  private[agreement] def readNow(read: Dependency): Option[Long] = digestNow(read, _ => None)
 
   /** One of `listings`, by its key: a receipt reads the detail page of its cluster's own listings alone. */
   private[agreement] def listingIn(listings: Seq[Listing]): ListingKey => Option[Listing] = key => listings.find(_.key == key)
@@ -778,7 +780,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       waiting -= id
       Some {
         val thisYear = yearNow
-        reads(Dependency.Year) = AgreementStage.yearDigest(thisYear)
+        readNow(Dependency.Year).foreach(reads(Dependency.Year) = _)
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
         val (weighed, fill) = receipting(reads) {
@@ -843,10 +845,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     if (answer == Answer.Unknown && attempted(question)) Answer.Known(absent) else answer
 
   /** The questions a settled verdict's families never answered ([[settles]]): its receipt's unanswered entries
-   *  ([[AgreementStage.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's
+   *  ([[Dependency.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's
    *  keys lost or renumbered ask each cluster's own. */
   private[agreement] def unreached(verdict: StoredVerdict): Iterator[Question] =
-    verdict.reads.iterator.collect { case (read, AgreementStage.Unanswered) => read }.flatMap(staleOf)
+    verdict.reads.iterator.collect { case (read, Dependency.Unanswered) => read }.flatMap(staleOf)
 
   /** A family's answer a receipt holds that is stale, as the question to ask again. */
   private[agreement] def staleOf(read: Dependency): Option[Question] = read match {
@@ -854,11 +856,13 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     case _                                                                                                           => None
   }
 
-  /** What a receipt's dependency reads now: a family's answer, as [[Recording]] notes it; TMDB's and the venues' lookups',
-   *  as [[Noting]] notes them, a detail page of a listing `listingOf` names; whether a question was attempted.
-   *  None for one nothing reads again — what holds it never stands. */
+  /** What a receipt's dependency reads now — the one reader a receipt is compared through: a family's answer, as
+   *  [[Recording]] notes it; TMDB's and the venues' lookups', as [[Noting]] notes them, a detail page of a listing
+   *  `listingOf` names; whether a question was attempted; the year the apply reads by. None for one nothing reads again —
+   *  what holds it never stands. */
   private[agreement] def reread(read: Dependency, listingOf: ListingKey => Option[Listing]): Option[Answer[?]] = read match {
-    case Dependency.Attempted(question)     => Some(Answer.Known(attempted(question).toString))
+    case Dependency.Attempted(question)     => Some(Dependency.attemptRead(attempted(question)))
+    case Dependency.Year                    => Some(Dependency.yearRead(yearNow))
     case Dependency.Lookup(Dependency.Via.Venues, aspect, question) => AgreementStage.Receipt.reread(venues, aspect, question, listingOf)
     case Dependency.Lookup(Dependency.Via.Tmdb, aspect, question)   => tmdb.flatMap(AgreementStage.Receipt.reread(_, aspect, question, listingOf))
     case Dependency.Answer(Question.Family(family, question)) =>
@@ -871,7 +875,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
           case _                       => None
         }
       }
-    case Dependency.Year | Dependency.Asked(_) | Dependency.Unparsed(_) => None
+    case Dependency.Asked(_) | Dependency.Unparsed(_) => None
   }
 
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
@@ -888,7 +892,7 @@ object AgreementStage {
   private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[Dependency, Long]) extends FamilyAnswers {
     val family: VoterFamily = answers.family
     private def noted[A](question: String, answer: Answer[A]): Answer[A] = {
-      AgreementStage.noted(answers, question, AgreementStage.digest(Seq(answer.toString)), answer == Answer.Unknown, asked, reads)
+      AgreementStage.noted(answers, question, Dependency.digest(answer), answer == Answer.Unknown, asked, reads)
       answer
     }
     def titled(text: String): Answer[Seq[SourceHit]]     = noted(s"title|$text", answers.titled(text))
@@ -919,13 +923,6 @@ object AgreementStage {
     (scala.util.hashing.MurmurHash3.stringHash(text, 0x2f1d7a3b).toLong << 32) | (scala.util.hashing.MurmurHash3.stringHash(text, 0x6c8e9cf5).toLong & 0xffffffffL)
   }
 
-  /** What a receipt reads whether a question was attempted as ([[Dependency.Attempted]]). */
-  def attemptedDigest(attempted: Boolean): Long = digest(Seq(Answer.Known(attempted.toString).toString))
-
-  /** What a settled verdict reads a question none answered as ([[AgreementStage.settles]]): the digest of no answer, which
-   *  an answer filed no longer matches. */
-  val Unanswered: Long = digest(Seq(Answer.Unknown.toString))
-
   /** What a TMDB record read again for its day is filed as among the answers' changes ([[AnswerChanges]]):
    *  [[Question.Record]]'s id. */
   def recordReadId(tmdbId: Int): String = Question.Record(tmdbId).id.get
@@ -933,11 +930,6 @@ object AgreementStage {
   def recordOf(id: String): Option[Int] = Question.parse(id).collect { case Question.Record(film) => film }
   /** What TMDB's find of an IMDb id is filed as ([[services.identity.Question.Find]]'s id). */
   val FindPrefix = "find|"
-  /** The year's digest in a receipt ([[Dependency.Year]]): of the answer naming it, as every read is digested. The
-   *  year's bare text never read equal, so no verdict stood a re-read: every apply that read the held verdicts again
-   *  resolved them all (prod DE 2026-10-26: ~1,750 resolves, 58 s and 11 GB an apply). */
-  def yearDigest(year: Int): Long = digest(Seq(Answer.Known(year.toString).toString))
-
   object Receipt {
     /** The answer a lookup's dependency names (as [[AgreementStage.Noting]] notes it), read from `lookups` now: a detail
      *  page of a listing `listingOf` names (one it does not reads as moved). */

@@ -124,7 +124,7 @@ The counter and each live cluster's key must outlive a restart, or the first app
   live verdict under its new id on the first pass after the deploy. The alternative — drop every verdict and decide
   them all again — is the 40 s / 514 MB boot pass of 2026-10-05 (PL) at deploy, and far more on worker-us, which was
   OOM-killed twice this week by a comparable whole-corpus working set.
-- The stored `unreached` memory is rebuilt from each verdict's `reads` (`AgreementStage.Unanswered`) at load, as now,
+- The stored `unreached` memory is rebuilt from each verdict's `reads` (`Dependency.Unanswered`) at load, as now,
   so it migrates with the verdict.
 
 ### What reads the key

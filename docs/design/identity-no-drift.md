@@ -306,6 +306,102 @@ On the incremental side, the order dependence is limited to interim states: batc
 > only names a merge to the staging screen now, and `askedNow` only spares a second inline ask (asking, never a take).
 > Step 4 is not started. Step 5 is done but for the `searchTitle` and the venue slot's prior-slot carry (item 7).
 
+## One dependency index for reading and notification (2026-10-27)
+
+The owner approved this generalization on 2026-10-27.
+
+### The bugs, one shape
+
+Each of these was something read without the read itself saying when to look again:
+- **The year.** It was digested in one form when recorded (its text) and in another when compared (`Known(<year>)`), so
+  no verdict stood a re-read (fixed by hand in 9627359ec).
+- **Over-unchecking.** An attempt marked anywhere unchecked every verdict whose receipt *named* an attempt, not those
+  whose recorded *value* moved: ~58 s and 11 GB an apply on DE and UK (fixed by hand in d16de25b2).
+- **The venue page.** Its detail fed the venue slot, but no change was reported to the scoped projection (fixed by hand
+  in 5c27f0498, through a side set `VenuePageIndex.moved` the projection drains).
+- **Inline asks.** Whether a cluster was "new" was keyed by its cluster key (fixed by hand in 6eb4deba2 to key plus
+  shape digest).
+
+Each fix was local. The point of this section is that one mechanism makes the class impossible.
+
+### The mechanism
+
+**1. Every input read is a typed `Dependency`.** The kinds are:
+- `Answer(family question)`;
+- `Attempted(question)`;
+- `Lookup(via, aspect, question)`, covering TMDB records and searches and the venues' detail pages;
+- `Asked(question)`;
+- `Year`.
+
+A reader reads through one API, and the read records `dependency -> digest` into the reader's receipt.
+
+**2. There is one digest function.** It is `Dependency.digest(answer)`: the digest of the `Answer` a read returned.
+Every kind is read as an `Answer`:
+- the year as `Known(<year>)`;
+- an attempt as `Known(<bool>)`;
+- an unanswered question as `Unknown`.
+
+Recording and comparing both go through `Dependency.digest`, and comparing re-reads through the one reader
+(`AgreementStage.reread`, the year included). So the form recorded and the form compared cannot differ.
+`DependencyReadSpec` holds this for every kind.
+
+**3. One index answers "who read it".** `Memo` keeps, for each indexed dependency, the entries whose receipt names it.
+A change event says a dependency moved: a filing on the feed, a mark in the question memory, or the year turning.
+It reaches exactly the entries that read that dependency, and of those, only the ones whose recorded digest differs
+from what a read gives now. It never reaches an entry merely because its receipt names the dependency.
+
+This works two ways:
+- **Pull.** `clean` reads the feed's filings since an entry's check, and re-reads each filed dependency to compare it
+  by value.
+- **Push.** `moved(kind, now)` is for the inputs no store files: the year and attempts. It walks the index's
+  dependencies of that kind, reads each once, and unchecks the readers whose digest moved.
+
+`DependencyIndexSpec` holds both to full validation over random receipts and changes of every kind. After any change,
+an entry is clean exactly when every dependency it read still digests as recorded. This is the property "any
+dependency change puts every entry that read it into the next apply", plus its converse, "and no other entry".
+
+**4. The same events drive the other consumers.** Each consumer reads the change events and resolves them to its own
+readers:
+
+| Consumer | Readers | What moves them | Before |
+|---|---|---|---|
+| Memo uncheck (verdicts, corrections, candidates) | memo entries | any dependency in their receipt, by value | per kind: `uncheckAll` (year), the `uncheckWhere` receipt scan (attempts), filings (by presence) |
+| Projection scope | listings, so their clusters and films | a venue page filing (`Lookup(Venues, Answer, VenuePage)`) on the one feed, through a view of the projection's own | the side set `VenuePageIndex.moved`, drained by `takeMoved` |
+| Inline-ask newness | cluster shapes, by their listings' digest | a shape no verdict, check, wait or inline ask holds, under any key | key plus digest, looked up by the cluster's key |
+
+### Why not a push index of every receipt entry
+
+A push index from every dependency to its readers would cost memory. Each verdict's receipt is about 20–60 entries,
+and the index would hold a set entry for each one, with tens of MB more held on worker-us. The pull side already gives
+"every entry that read it", because each apply asks each entry it meets. What the pull side lacked was the comparison
+by VALUE and a form shared with the recorder, and both now hold.
+
+So the push index holds only the kinds no filing announces: attempts, the year, and the TMDB reads whose filings the
+feed must be told to count (`reads`). The cost is one set entry per indexed receipt entry. Prod DE and UK verdicts hold
+1–3 attempts and one year each.
+
+### Steps
+
+Each step lands with its specs. `IncrementalWholeEquivalenceSpec`, `LateInputEquivalenceSpec` and
+`ScopedProjectionEquivalenceSpec` stay green, and the footprint shows 0 moved takes.
+
+1. **One digest, one reader.** `Dependency.digest`, with the year read through `reread`, so `digestNow` has no case of
+   its own. Spec: `DependencyReadSpec`.
+2. **A typed, value-aware index in `Memo`.**
+   - Its readers are kept by `Dependency`, not by filing count.
+   - `moved(kind, now)` replaces `uncheckAll` on a year turning and the `uncheckWhere` receipt scan on an attempt mark.
+   - `clean` compares a filed dependency by value.
+   Spec: `DependencyIndexSpec`.
+3. **Projection scope from the one feed.** The projection reads venue-page filings through a feed view, as the
+   agreement reads its own, and `VenuePageIndex.moved` and `takeMoved` go. Spec: `ScopedProjectionEquivalenceSpec`'s
+   venue-page case, plus a wiring spec that a settle reaching the feed reaches the scope.
+4. **Ask-newness by shape.** `askedNow` is keyed by the shape digest alone. `newCluster` asks the digest indexes
+   (`heldByDigest`, waits by digest), not the key, so a renamed or renumbered cluster whose shape a verdict holds is
+   not asked inline again. Spec: `AgreementStageSpec`.
+5. **Later, not in this change: attempts filed on the feed.** The question memory would publish `tried|<question>`
+   on the feed, and the stage would drop `attemptsMarked`, `awaiting` and `awaitingMarks`. This waits for a harness
+   change: every spec world that marks attempts would publish them too.
+
 ## What still blocks retiring the checks
 
 1. Item 7's open parts (the first draft's `searchTitle`, the venue slot's prior-slot carry), and receipts of the question memory's outcomes for a

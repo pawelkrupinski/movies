@@ -35,7 +35,8 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
           productions = () => productionsOf(listings, measured, asked, Some(reads)), undated = { film =>
-            reads(services.identity.Dependency.Attempted(Question.Record(film))) = AgreementStage.attemptedDigest(!waitsOn(film))
+            val attempt = services.identity.Dependency.Attempted(Question.Record(film))
+            readNow(attempt).foreach(reads(attempt) = _)
             undatedOf(lookups)(film)
           })
         Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>

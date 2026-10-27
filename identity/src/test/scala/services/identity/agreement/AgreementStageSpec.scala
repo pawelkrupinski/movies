@@ -1049,11 +1049,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val stage = new AgreementStage(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = q => tried(q))
     val (record, other) = (Question.Record(913760), Question.Record(7))
+    val D = services.identity.Dependency
     def verdict(id: String, reads: (services.identity.Dependency, Long)*) = StoredVerdict(id, 1L, reads.toMap, None, stage.decidedUnder)
-    val waiting  = verdict("waiting", services.identity.Dependency.Attempted(record) -> AgreementStage.attemptedDigest(false))
-    val read     = verdict("read", services.identity.Dependency.Attempted(record) -> AgreementStage.attemptedDigest(true))
-    val elsewise = verdict("elsewise", services.identity.Dependency.Attempted(other) -> AgreementStage.attemptedDigest(false))
-    val none     = verdict("none", services.identity.Dependency.Year -> AgreementStage.yearDigest(2026))
+    val waiting  = verdict("waiting", D.Attempted(record) -> D.digest(D.attemptRead(false)))
+    val read     = verdict("read", D.Attempted(record) -> D.digest(D.attemptRead(true)))
+    val elsewise = verdict("elsewise", D.Attempted(other) -> D.digest(D.attemptRead(false)))
+    val none     = verdict("none", D.Year -> D.digest(D.yearRead(2026)))
     Seq(waiting, read, elsewise, none).foreach { v => stage.held.put(v.id, v); stage.held.check(v.id, 1L, 1L) }
     tried = Set(record)
     stage.uncheckAttempted()

@@ -83,7 +83,7 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    itself), and an ask that failed asks for a projection as a filing does, so the cluster settles at once.
    Settling ends the wait, not the asking: the questions none answered stay asked on every pass
    (`AgreementStage.unreached`, retried on the memory's backoff, 5 min doubling to 6 h), and the settled verdict reads
-   them as unanswered (`AgreementStage.Unanswered`), so the first answered reads it again, after a restart too. Any new
+   them as unanswered (`Dependency.Unanswered`), so the first answered reads it again, after a restart too. Any new
    data reads a settled cluster again: a late answer (that read), a refreshed answer that moved (its read's digest), a
    re-scrape (its listings' digest); a settled cluster settles again rather than waiting anew. A TMDB record read again
    for its release day is waited on until its read is filed or attempted (`AgreementStage.waitsOn`); `RecordWait`'s
