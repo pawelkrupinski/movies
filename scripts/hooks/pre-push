@@ -671,7 +671,9 @@ to_main=0
 # A MEASUREMENT'S BRANCH (scripts/identity-measure's `measure/<user>/<sha>-<rand>`) is pushed only for CI to run the
 # commit's identity takes from: it never lands, nothing merges it, and its run deletes it. The checks below guard what
 # main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
-# when it is pushed there. Any other ref in the same push is checked as ever.
+# when it is pushed there. Any other ref in the same push is checked as ever. A CHECK BRANCH (agentctl's remote checks,
+# `check/<entry>`) is the same: pushed only for .github/workflows/precommit-check.yml to run these checks on ci-runner,
+# deleted after its run, never landed.
 measure_only="" other=""
 checks_only="" fast_only=""
 if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ]; then
@@ -684,7 +686,7 @@ else
     while read -r _local_ref local_sha remote_ref remote_sha; do
         pushed+="$_local_ref $local_sha $remote_ref $remote_sha"$'\n'
         [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
-        case "$remote_ref" in refs/heads/measure/*) measure_only=1; continue ;; *) other=1 ;; esac
+        case "$remote_ref" in refs/heads/measure/*|refs/heads/check/*) measure_only=1; continue ;; *) other=1 ;; esac
         base="$(base_for "$local_sha" "$remote_sha")"
         [ -n "$base" ] && ranges+=("$base..$local_sha")
         [ "$remote_ref" = refs/heads/main ] && to_main=1
@@ -698,7 +700,7 @@ else
     fi
 fi
 if [ "${#ranges[@]}" -eq 0 ]; then
-    [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ branch: a measurement's run ref, never landed -- nothing to check"
+    [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ or check/ branch: a CI run's ref, never landed -- nothing to check"
     exit 0
 fi
 
@@ -764,6 +766,30 @@ if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUS
         log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change passed its own full checks before it joined)" >&2
         exit 0
     fi
+fi
+# A REMOTE PASS (agentctl's remote checks: under memory or CPU pressure a queued change's checks run on ci-runner's check
+# tier, .github/workflows/precommit-check.yml on a check/<entry> branch): the push to main carries
+# PREPUSH_REMOTE_RUN=<run id>, and that run stands for this hook's checks only once Forgejo says it is a
+# precommit-check.yml run that SUCCEEDED on exactly the commit pushed. Anything else -- another workflow, a failure, a
+# run still going, another commit, no token, Forgejo silent -- and every check runs here. The red gate ran above.
+remote_pass() { # <run id> -> 0 when Forgejo vouches for it
+    local api repo body code said
+    is_forgejo_url "$remote_url" && read_forgejo_token || return 1
+    read -r api repo <<< "$(forgejo_api_for "$remote_url")"
+    body="$(mktemp)"
+    code="$(printf '%s' "header = \"Authorization: token $forgejo_token\"" \
+        | bounded "$GhSeconds" curl -sS --config - -o "$body" -w '%{http_code}' "$api/repos/$repo/actions/runs/$1")" \
+        || { rm -f "$body"; return 1; }
+    said="$(jq -r '"\(.workflow_id) \(.status) \(.commit_sha)"' "$body" 2>/dev/null)"
+    rm -f "$body"
+    [ "$code" = 200 ] && [ "$said" = "precommit-check.yml success $head_sha" ]
+}
+if [ -n "${PREPUSH_REMOTE_RUN:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ "$to_main" = 1 ]; then
+    if remote_pass "$PREPUSH_REMOTE_RUN"; then
+        log "the checks passed on ci-runner for ${head_sha:0:10} (precommit-check.yml run $PREPUSH_REMOTE_RUN, confirmed with Forgejo): not run again here" >&2
+        exit 0
+    fi
+    warn "PREPUSH_REMOTE_RUN=$PREPUSH_REMOTE_RUN does not vouch for ${head_sha:0:10} (Forgejo: not a successful precommit-check.yml run of it): every check runs here"
 fi
 if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
     reuse_key="$(compute_reuse_key)" || reuse_key=""

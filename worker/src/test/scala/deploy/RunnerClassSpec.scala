@@ -19,7 +19,7 @@ import RunnerLabel.{Branch, Context, Forgejo, GitHub, Main}
  *  - gate (`gate-lane`, `forgejo-recording`, one runner since 2026-10-26): identity model convergence ON MAIN, which
  *    gates every push (scripts/hooks/pre-push's red-build gate), and the nightly recording's legs. Main's German rows
  *    take `gate-de-lane` (2026-10-27), a runner on 4 cores of their own (country-convergence-leg.yml's `runs-on`).
- *  - check (`ubuntu-*`, `landing`): branch CI, the nightly and housekeeping runs, bots, and an identity landing check's
+ *  - check (`ubuntu-*`, `landing`): branch CI, agentctl's remote pre-commit checks, the nightly and housekeeping runs, bots, and an identity landing check's
  *    identity-run groups (`-f tier=ubuntu-24.04`) and convergence run (`-f tier=landing`, a 3-slot runner of its own:
  *    Forgejo 15 ignores `strategy.max-parallel`, so its capacity caps how many of a check's 22 rows run at once):
  *    a landing check blocks work.
@@ -58,8 +58,8 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
   ) ++ Seq(
     "android.yml", "archive-recording.yml", "branch-ci.yml", "convergence-daily.yml", "country-fixture-artifact.yml",
     "discover-cinemas.yml", "filmweb-diff.yml", "identity-ci-staleness.yml", "identity-findings-report.yml", "ios.yml",
-    "nightly-stress.yml", "nix-update.yml", "prune-actions-caches.yml", "retire-venues.yml", "roster-audit.yml",
-    "scala-steward.yml", "security-headers.yml"
+    "nightly-stress.yml", "nix-update.yml", "precommit-check.yml", "prune-actions-caches.yml", "retire-venues.yml",
+    "roster-audit.yml", "scala-steward.yml", "security-headers.yml"
   ).map(_ -> always(Check)) ++ Seq(
     "convergence-bisect.yml", "convergence-fill.yml", "decoration-discovery.yml", "identity-capture.yml",
     "identity-decorations.yml", "identity-lean-whole.yml", "identity-live-drift.yml", "identity-refit.yml",

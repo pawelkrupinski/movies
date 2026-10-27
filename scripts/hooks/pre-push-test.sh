@@ -62,7 +62,8 @@ printf '%s' "$runs" | jq -r "$jqexpr"
 STUB
 chmod +x "$ghstub/gh"
 # A push to a Forgejo remote reads Forgejo's actions runs API by curl instead: a stub `curl` answers
-# GET …/actions/runs?workflow_id=F from $FJ_MAIN / $FJ_IMC / $FJ_REC (Forgejo's run JSON, default none), records each
+# GET …/actions/runs?workflow_id=F from $FJ_MAIN / $FJ_IMC / $FJ_REC (Forgejo's run JSON, default none) and GET
+# …/actions/runs/<id> with $FJ_RUN (one run's JSON, default {}), records each
 # call's argv in $FJ_ARGV and the config it was handed on stdin (the token's header) in $FJ_CONFIG, and answers 401
 # without that header. $FJ_FAILS: unreachable (curl's exit 7); $FJ_FAILS_ONCE=<file>: unreachable on the first call only
 # (the file marks it made). A stub `secrets` stands for the Touch ID vault: `status`
@@ -80,6 +81,8 @@ out="" url=""
 while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; http*) url="$1" ;; esac; shift; done
 case "$config" in *"Authorization: token "?*) ;; *) echo '{"message":"Unauthorized"}' > "$out"; printf 401; exit 0 ;; esac
 case "$url" in
+  "${FJ_EXPECT_BASE:-http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies}/actions/runs/"[0-9]*)
+    printf '%s' "${FJ_RUN:-{\}}" > "$out"; printf 200; exit 0 ;;
   "${FJ_EXPECT_BASE:-http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies}/actions/runs?"*) ;;
   *) echo '{"message":"Not Found"}' > "$out"; printf 404; exit 0 ;;
 esac
@@ -687,7 +690,11 @@ check "a push to another branch than main is not gated" "0 0" "$code $(printf '%
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\n' "$plain" 0000000000000000000000000000000000000000 \
         | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
 check "a measurement's measure/ branch alone is checked for nothing: it never lands" "0 1" \
-  "$code $(printf '%s\n' "$out" | grep -c 'measure/ branch: a measurement')"
+  "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
+out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/check/20261027-1200-movies-wt-x-3 %s\n' "$plain" 0000000000000000000000000000000000000000 \
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
+check "...nor is a remote check's check/ branch: its run checks it on ci-runner" "0 1" \
+  "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\nrefs/heads/main %s refs/heads/main %s\n' "$plain" 0000000000000000000000000000000000000000 "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "…but beside a push to main, main is gated as ever" "1" "$code"
@@ -901,6 +908,22 @@ check "--fast-only judges no red gate and runs no path check but sbt (scripttest
 check "a batch push with PREPUSH_REUSE_FAST=1 reuses the fast pass: nothing runs, said once" "0 7 1" \
   "$(reuse_push "$rbase..$fast_head" PREPUSH_REUSE_FAST=1) $(grep -c "the waiting batch's fast check passed" "$gate/err")"
 check "...an ordinary push of it runs its checks" "0 8" "$(reuse_push "$rbase..$fast_head")"
+# A REMOTE PASS: agentctl pushes a change its checks passed on ci-runner with PREPUSH_REMOTE_RUN=<run id>; the run stands
+# for the checks only when Forgejo says it is precommit-check.yml, a success, on exactly the pushed commit
+remote_head="$(commit_paths "a change checked on ci-runner" -- scripts/z.sh)"
+fj_check_run() { printf '{"id":%s,"workflow_id":"%s","status":"%s","commit_sha":"%s"}' "$1" "$2" "$3" "$4"; }
+remote_push() { reuse_push "$rbase..$remote_head" PREPUSH_NO_REUSE=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=envtoken \
+  FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" PREPUSH_REMOTE_RUN=55 "$@"; }
+check "a push whose remote run Forgejo confirms (precommit-check.yml, success, this commit) runs no check here" "0 8 1" \
+  "$(remote_push FJ_RUN="$(fj_check_run 55 precommit-check.yml success "$remote_head")") $(grep -c 'passed on ci-runner' "$gate/err")"
+vouches() { echo "$1 $(grep -c 'does not vouch' "$gate/err")"; }
+check "...a failed run: every check runs here, said" "0 9 1" \
+  "$(vouches "$(remote_push FJ_RUN="$(fj_check_run 55 precommit-check.yml failure "$remote_head")")")"
+check "...another workflow's success: the same" "0 10 1" \
+  "$(vouches "$(remote_push FJ_RUN="$(fj_check_run 55 main.yml success "$remote_head")")")"
+check "...a success on another commit: the same" "0 11 1" \
+  "$(vouches "$(remote_push FJ_RUN="$(fj_check_run 55 precommit-check.yml success "$rbase")")")"
+check "...Forgejo not answering: the same" "0 12 1" "$(vouches "$(remote_push FJ_FAILS=1)")"
 head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs"  # the counts below start from 7
 scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.

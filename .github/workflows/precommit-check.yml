@@ -1,0 +1,82 @@
+name: Pre-commit check
+
+# REMOTE CHECKS (agentctl's land queue, ~/bin/AGENTCTL.md "remote checks"; the owner, 2026-10-27): while the laptop is
+# under memory or CPU pressure, a queued change's pre-commit checks run HERE, on ci-runner's check tier (the ubuntu
+# runner, cgroup slice `check`), instead of on the laptop. agentctl pushes the change's checked tip to `check/<entry>`
+# (the pre-push hook checks nothing for a check/ branch: a run's ref, never landed), this run runs THE SAME HOOK over it
+# -- `scripts/hooks/pre-push --checks-only <merge-base with main>..HEAD`: the path-selected checks, the basic tests and
+# the touched areas' tests, the red gate left to the push to main -- and agentctl reads the verdict, deletes the branch
+# and pushes to main with PREPUSH_REMOTE_RUN=<this run's id>, which the hook takes for its checks only once Forgejo
+# confirms that this workflow succeeded on that very commit.
+on:
+    push:
+        branches: ['check/**']
+
+concurrency:
+    group: precommit-check-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 60
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+            - name: Fetch main, the base the change sits on
+              run: git fetch --quiet origin main
+            # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-restore-only: 'true'
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+            # the hook's tools that the job image lacks: a missing one blocks the check, as on the laptop
+            - name: The hook's tools
+              env:
+                  ACTIONLINT_VERSION: 1.7.12
+                  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+              run: |
+                  archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+                  curl -fsSL --retry 3 --max-time 60 -o "$RUNNER_TEMP/$archive" \
+                      "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$archive"
+                  echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+                  tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+                  echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+                  python3 -m pip install --quiet timezonefinder || python3 -m pip install --quiet --break-system-packages timezonefinder
+                  for tool in shellcheck jq; do command -v "$tool" > /dev/null || scripts/ci/install-apt-package.sh "$tool"; done
+            - name: The pre-push hook's checks of the change
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+                  TMPDIR: ${{ runner.temp }}/hook
+              run: |
+                  mkdir -p "$TMPDIR"
+                  scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD"
+            # A failed check keeps the hook's logs (its temp dir): their failure lines here, as agentctl's verdict reads them
+            - name: The failed checks' lines
+              if: failure()
+              env:
+                  HOOK_TMP: ${{ runner.temp }}/hook
+              run: |
+                  find "$HOOK_TMP" -name '*.log' -print0 | while IFS= read -r -d '' log; do
+                      echo "::group::$log"
+                      grep -E -B2 -A4 '\*\*\* FAILED|\[error\]|::error::' "$log" | head -150 || tail -40 "$log"
+                      echo "::endgroup::"
+                  done
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
+    timings:
+        needs: [ check ]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
+        secrets: inherit
