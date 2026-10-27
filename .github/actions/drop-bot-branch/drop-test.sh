@@ -39,7 +39,8 @@ check "...by its ref" "DELETE repos/o/r/git/refs/heads/bot/x" "$(cat "$work/dele
 check "a 404 is no branch yet" "0" "$(drop 404)"
 check "...and deletes nothing" "" "$(cat "$work/deleted" 2>/dev/null)"
 check "any other failure fails the step rather than reading as no branch" "1" "$(drop 500)"
-check "on Forgejo an existing branch is deleted through git" "0|push origin --delete bot/x" \
+check "on Forgejo an existing branch is deleted through the branches API, not a push from the shallow checkout" \
+  "0|DELETE repos/o/r/branches/bot/x" \
   "$(drop ok http://forgejo:3000)|$(cat "$work/deleted" 2>/dev/null)"
 check "...a missing one is no branch yet" "0|" "$(drop 404 http://forgejo:3000)|$(cat "$work/deleted" 2>/dev/null)"
 check "...and a failed read fails the step" "1|" "$(drop 500 http://forgejo:3000)|$(cat "$work/deleted" 2>/dev/null)"

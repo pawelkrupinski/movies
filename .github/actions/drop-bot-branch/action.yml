@@ -8,7 +8,9 @@ description: >-
   weeks touched .github/workflows/. An open PR on the branch is closed and
   reopened fresh -- its content is regenerated from scratch every run anyway.
   See BotPullRequestBranchSpec. On Forgejo (no App, no git/refs API in the gh
-  shim) it deletes the branch with git, through the checkout's credentials.
+  shim) git reads the branch through the checkout's credentials and Forgejo's
+  branches API deletes it (a delete push from the shallow checkout crashes
+  receive-pack; see drop.sh).
 
 inputs:
   branch:
