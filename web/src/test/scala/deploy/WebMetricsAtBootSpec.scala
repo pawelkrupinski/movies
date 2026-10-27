@@ -105,7 +105,8 @@ class WebMetricsAtBootSpec extends AnyFlatSpec with Matchers {
     val portable = new io.prometheus.metrics.model.snapshots.MetricSnapshots(
       scraped.asScala.filterNot(s => LinuxOnly(s.getMetadata.getPrometheusName)).toSeq.asJava)
     val path = RepoFile.locate("infra/test/app-metrics-catalogue").toPath.resolve("web.json")
-    services.metrics.MetricCatalogue.check(path, services.metrics.MetricCatalogue.render(portable, "web")) shouldBe None
+    services.metrics.MetricCatalogue.check(path, services.metrics.MetricCatalogue.render(portable, "web"),
+      "web/testOnly deploy.WebMetricsAtBootSpec") shouldBe None
   }
 
   "NotSeededAtBoot" should "not exempt a family that has its series after all, or that no longer exists" in {

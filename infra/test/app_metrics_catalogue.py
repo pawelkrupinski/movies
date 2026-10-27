@@ -11,9 +11,9 @@ series only a wiring names). It is the ONE declaration of a metric the infra che
 - test_alert_rule_coverage.py reads which families boot at NaN;
 - test_dashboards.py requires each family on a panel.
 
-`country` is not listed: the scrape's target label replaces it. Regenerate with
-`KINOWO_WRITE_METRIC_CATALOGUE=1 scripts/sbt-warm "worker/testOnly deploy.WorkerMetricsAtBootSpec"
-"web/testOnly deploy.WebMetricsAtBootSpec"`.
+`country` is not listed: the scrape's target label replaces it. Regenerate by deleting a file and running its spec:
+`rm infra/test/app-metrics-catalogue/worker.json && scripts/sbt-warm "worker/testOnly deploy.WorkerMetricsAtBootSpec"`
+(web: `web/testOnly deploy.WebMetricsAtBootSpec`).
 """
 
 import glob

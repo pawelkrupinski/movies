@@ -82,7 +82,8 @@ class WorkerMetricsAtBootSpec extends AnyFlatSpec with Matchers {
   it should "be written out as infra/test/app-metrics-catalogue/worker.json" in {
     val rendered = services.metrics.MetricCatalogue.render(
       new WorkerMetrics(countries, settings.WorkerPoolSize(1)).registry.scrape(), "worker")
-    services.metrics.MetricCatalogue.check(java.nio.file.Path.of("infra/test/app-metrics-catalogue/worker.json"), rendered) shouldBe None
+    services.metrics.MetricCatalogue.check(java.nio.file.Path.of("infra/test/app-metrics-catalogue/worker.json"), rendered,
+      "worker/testOnly deploy.WorkerMetricsAtBootSpec") shouldBe None
   }
 
   "NotSeededAtBoot" should "not exempt a family that has its series after all, or that no longer exists" in {
