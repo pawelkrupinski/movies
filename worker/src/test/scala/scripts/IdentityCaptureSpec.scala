@@ -270,13 +270,21 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     val (ok, said) = runOf(Seq("pl", "de"), { job =>
       commands.add(job.command)
       // a tool's exit is its verdict: a capture printed in full does not stand when it exited 1
-      if (job.cc == "de") Ran(1, captured("de").log) else captured(job.cc)
+      if (job.cc == "de") Ran(1, captured("de").log :+ "[full-de] FAILED: the capture replays asking what it never answered") else captured(job.cc)
     })
     commands.asScala.map(_.dropWhile(_ != "cp").drop(1).take(2)).toSet shouldBe Set(Seq(CaptureTool, "de"), Seq(CaptureTool, "pl"))
     commands.asScala.flatten should not contain "org.scalatest.tools.Runner"
     ok shouldBe false
     said should include("de: FAILED — its JVM exited 1")
+    // the JVM's own verdict, in the run's output: CI keeps the log only in an artifact
+    said should include("  [full-de] FAILED: the capture replays asking what it never answered")
     failure(Ran(0, Nil)) shouldBe None
+  }
+
+  it should "echo a failed JVM's verdict, else its last lines" in {
+    failureLines(Seq("compiling", "[full-uk] FAILED: no corpus", "bye")) shouldBe Seq("[full-uk] FAILED: no corpus")
+    failureLines(Seq("a", "java.lang.OutOfMemoryError: Java heap space")) shouldBe Seq("java.lang.OutOfMemoryError: Java heap space")
+    failureLines((1 to 20).map(_.toString), most = 3) shouldBe Seq("18", "19", "20")
   }
 
   it should "report the listings it captured" in {

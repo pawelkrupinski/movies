@@ -251,6 +251,13 @@ object IdentityCapture {
   def failure(ran: Ran): Option[String] =
     Option.when(ran.exit != 0)(s"its JVM exited ${ran.exit}${if (ran.exit > 128) s" (killed by signal ${ran.exit - 128})" else ""}")
 
+  /** What a failed JVM said of its failure, for the run's own output: CI keeps the log only in an artifact, so without
+   *  these the step says no more than an exit code. Its `FAILED:` verdicts and exception lines, else its last lines. */
+  def failureLines(log: Seq[String], most: Int = 8): Seq[String] = {
+    val said = log.filter(l => l.contains("FAILED:") || l.contains("Exception") || l.contains("Error:"))
+    (if (said.nonEmpty) said else log).takeRight(most)
+  }
+
   /** A capture that read venue pages the recorded tree lacks says so ("capture again"): the next run answers them from
    *  the stored pages. The run captures such a country again, while each capture reads more, up to [[MaxCaptures]]. */
   def capturesAgain(log: Seq[String]): Boolean = log.exists(_.contains("capture again"))
@@ -496,7 +503,10 @@ object IdentityCapture {
         } else previous
       val (last, ran) = until(attempt(again = false, 1), 1)
       val failed = if (options.dryRun) None else failure(ran)
-      failed.foreach(why => out(s"[identity-capture] $cc: FAILED — $why; see ${last.log}"))
+      failed.foreach { why =>
+        out(s"[identity-capture] $cc: FAILED — $why; see ${last.log}")
+        failureLines(ran.log).foreach(l => out(s"  $l"))
+      }
       if (failed.isEmpty) {
         ran.log.filter(l => l.contains(s"[full-$cc]") || l.contains(s"[$cc]")).foreach(l => out(s"  $l"))
         // a capture's decisions are now those of this recording under this code: what the next run compares with
