@@ -37,7 +37,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
 
   // The venue pages as a venue slot is built from them, and as which of them moved since the projection last asked.
   private lazy val venuePageFacts =
-    new services.identity.adapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language)
+    new services.identity.adapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language, identityTmdbLayer.feed)
 
   // The projection reads the model's resolution.
   lazy val identityProjection: IdentityProjection =

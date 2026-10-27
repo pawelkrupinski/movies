@@ -367,7 +367,7 @@ readers:
 | Consumer | Readers | What moves them | Before |
 |---|---|---|---|
 | Memo uncheck (verdicts, corrections, candidates) | memo entries | any dependency in their receipt, by value | per kind: `uncheckAll` (year), the `uncheckWhere` receipt scan (attempts), filings (by presence) |
-| Projection scope | listings, so their clusters and films | a venue page filing (`Lookup(Venues, Answer, VenuePage)`) on the one feed, through a view of the projection's own | the side set `VenuePageIndex.moved`, drained by `takeMoved` |
+| Projection scope | listings, so their clusters and films | a venue page's filing on the one feed (`VenuePageIndex.keyOf`, the key the model reads a page by), through a view of the projection's own | the side set `VenuePageIndex.moved`, drained by `takeMoved` |
 | Inline-ask newness | cluster shapes, by their listings' digest | a shape no verdict, check, wait or inline ask holds, under any key | key plus digest, looked up by the cluster's key |
 
 ### Why not a push index of every receipt entry
@@ -392,9 +392,11 @@ Each step lands with its specs. `IncrementalWholeEquivalenceSpec`, `LateInputEqu
    - Its readers are kept by `Dependency`, not by filing count.
    - `moved(kind, now)` replaces `uncheckAll` on a year turning and the `uncheckWhere` receipt scan on an attempt mark.
    Spec: `DependencyIndexSpec`.
-3. **Projection scope from the one feed.** The projection reads venue-page filings through a feed view, as the
-   agreement reads its own, and `VenuePageIndex.moved` and `takeMoved` go. Spec: `ScopedProjectionEquivalenceSpec`'s
-   venue-page case, plus a wiring spec that a settle reaching the feed reaches the scope.
+3. **Projection scope from the one feed.** `IndexedVenuePageFacts.takeMoved` reads the venue-page filings through a feed
+   view, as the agreement reads its own, and the side set `VenuePageIndex.moved` goes. When the feed no longer holds
+   every filing since the last call, it returns None, and every listing on a page is a change. Specs:
+   - `VenuePageIndexSpec`: a settle's filing reaches the view once; a dropped filing gives None;
+   - `ScopedProjectionEquivalenceSpec`'s venue-page case, both ways.
 4. **Ask-newness by shape.** `askedNow` is keyed by the shape digest alone. `newCluster` asks the digest indexes
    (`heldByDigest`, waits by digest), not the key, so a renamed or renumbered cluster whose shape a verdict holds is
    not asked inline again. Spec: `AgreementStageSpec`.

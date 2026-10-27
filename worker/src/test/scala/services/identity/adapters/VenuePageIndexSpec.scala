@@ -33,10 +33,12 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     def post(url: String, body: String, contentType: String): String = fail(s"unexpected request $url")
   }
 
-  private final class World {
+  private final class World(kept: Int = FiledAnswerFeed.Kept) {
     val pages    = new InMemoryVenuePageStore
     val reported = scala.collection.mutable.ArrayBuffer.empty[String]
-    val index    = new VenuePageIndex(pages, reported += _)
+    val feed     = new FiledAnswerFeed(kept)
+    feed.subscribe(reported += _)
+    val index    = new VenuePageIndex(pages, feed.publish)
     def store(group: String, page: String, outcome: VenuePage.Outcome): Unit = {
       pages.put(VenuePage(VenuePageKey(group, page), outcome, clock.instant())); index.pageRead(group, page)
     }
@@ -144,19 +146,33 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
 
   // A slot is built from its listing's page: the projection drafts again the listings whose page moved (prod PL
   // 2026-10-26: left to the hourly projection of the whole corpus, every one counted as drift).
-  it should "tell the projection each venue page whose answer moved at a settle, once" in {
+  // Read off the one feed every input's change comes on (docs/design/identity-no-drift.md, "One dependency index"), as
+  // the model and the agreement stage read theirs: no side set of the index's own.
+  it should "tell the projection each venue page whose answer moved at a settle, once, off the feed the settle files it on" in {
     val world = new World
-    val facts = new IndexedVenuePageFacts(Seq(new FakeDetailEnricher(KinoApollo, Group)), world.index, java.util.Locale.forLanguageTag("pl"))
+    val facts = new IndexedVenuePageFacts(Seq(new FakeDetailEnricher(KinoApollo, Group)), world.index, java.util.Locale.forLanguageTag("pl"), world.feed)
     world.store(Group, "http://arco", VenuePage.Read(Full))
     world.index.settle()
-    facts.takeMoved() shouldBe empty                                             // the baseline moves nothing
+    facts.takeMoved() shouldBe Some(Nil)                                         // the baseline moves nothing
     world.store(Group, Page, VenuePage.Read(Full))
-    facts.takeMoved() shouldBe empty                                             // announced, not yet settled
+    facts.takeMoved() shouldBe Some(Nil)                                         // announced, not yet settled
     world.index.settle()
-    facts.takeMoved() shouldBe Seq(KinoApollo -> Page)
-    facts.takeMoved() shouldBe empty
+    facts.takeMoved() shouldBe Some(Seq(KinoApollo -> Page))
+    facts.takeMoved() shouldBe Some(Nil)
     world.store(Group, Page, VenuePage.Read(Full)); world.index.settle()         // read again, unchanged
-    facts.takeMoved() shouldBe empty
+    facts.takeMoved() shouldBe Some(Nil)
+    world.feed.publish(VenuePageIndex.keyOf("another-group", Page))              // another venue's page: none of these
+    facts.takeMoved() shouldBe Some(Nil)
+  }
+
+  it should "say it cannot tell which pages moved once the feed dropped filings since the projection last asked" in {
+    val world = new World(kept = 1)
+    val facts = new IndexedVenuePageFacts(Seq(new FakeDetailEnricher(KinoApollo, Group)), world.index, java.util.Locale.forLanguageTag("pl"), world.feed)
+    world.index.settle()
+    Seq("http://a", "http://b").foreach(page => world.store(Group, page, VenuePage.Read(Full)))
+    world.index.settle()
+    facts.takeMoved() shouldBe None
+    facts.takeMoved() shouldBe Some(Nil)
   }
 
   // Cinema City lists "Lalka" and "Ladies Night - Lalka" on one film row; their facts once shared one slot,

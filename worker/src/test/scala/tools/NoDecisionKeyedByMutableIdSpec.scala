@@ -181,7 +181,6 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${W}TmdbIdentityLookups.scala#reading" -> Content("single-flight by title, removed when the read completes"),
     s"${W}TmdbStore.scala#byKind"         -> Store("InMemoryTmdbDocuments' rows"),
     s"${W}VenuePageIndex.scala#pending"   -> Name("the pages to read again, removed as each is read"),
-    s"${W}VenuePageIndex.scala#moved"     -> Name("the pages whose answer moved, compared by value"),
     s"${W}LookupFill.scala#overloaded"    -> Pass(PerRound),
     s"${W}LookupFill.scala#wanted"        -> Pass(PerRound),
     s"${W}LookupFill.scala#byHost"        -> Pass(PerRound),

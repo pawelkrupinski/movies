@@ -151,8 +151,10 @@ final class IdentityProjection(
   changeFeed:  Seq[TakeChange] => Unit = _ => (),
   /** The venue pages (venue, page) whose read moved since the last call, each given once (`IndexedVenuePageFacts.takeMoved`):
    *  a venue slot is built from its listing's page ([[CinemaSlotBuilder.pages]]), so a listing whose page moved is a change
-   *  like one re-scraped — left out, only the hourly projection of the whole corpus rebuilt its slot. */
-  pagesMoved:  () => Seq[(Cinema, String)] = () => Nil
+   *  like one re-scraped — left out, only the hourly projection of the whole corpus rebuilt its slot. Read off the one feed
+   *  every input's change comes on; None when it no longer holds every filing since the last call: every listing on a
+   *  page is then a change. */
+  pagesMoved:  () => Option[Seq[(Cinema, String)]] = () => Some(Nil)
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -351,11 +353,13 @@ final class IdentityProjection(
   /** The listings whose venue page moved since the last projection took them ([[pagesMoved]]): each one's slot is built
    *  from the page as it is read now. Taken before the draft reads a page, so a page moving after is the next one's. */
   private def pageChanges(run: Run): ProjectionScope.Changes = {
-    val moved = pagesMoved().groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
-    if (moved.isEmpty) ProjectionScope.Changes.none
+    val moved = pagesMoved().map(_.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
+    if (moved.exists(_.isEmpty)) ProjectionScope.Changes.none
     else ProjectionScope.Changes(run.venues.iterator.flatMap { case (cinema, listings) =>
-      moved.get(cinema).fold(Iterator.empty[ListingKey])(pages => listings.iterator.map(_.listing.key).filter {
-        case ListingKey.Native(_, page, _) => pages(page)
+      // the feed no longer holding every filing since: any page may have moved
+      val pages = moved.fold(Option[String => Boolean](_ => true))(_.get(cinema))
+      pages.fold(Iterator.empty[ListingKey])(onPage => listings.iterator.map(_.listing.key).filter {
+        case ListingKey.Native(_, page, _) => onPage(page)
         case _                             => false
       })
     }.toSet, Set.empty)

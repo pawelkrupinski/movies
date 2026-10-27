@@ -388,33 +388,38 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   // Prod 2026-10-26 (PL): a venue page read again moves the slot its listing builds (`CinemaSlotBuilder.pages`), with
   // nothing of the listing moved — Kino KDK's films, their pages re-read after each hourly scrape. Only the hourly
   // projection of the whole corpus rebuilt those slots, and counted every one as drift.
-  it should "project a listing whose venue page moved, though nothing else of it did" in {
-    val s = new Scenario(new Random(1))
-    s.failing = false
-    val page = "https://rialto/lalka-2026"
-    val row  = CinemaMovie(Movie("Lalka", releaseYear = Some(2026)), Rialto, None, Some(page), None, Nil, Nil, Seq(Showtime(start, None)))
-    s.programme(Rialto) = Vector(row)
-    var synopsis = "Pierwsza wersja"
-    val facts: VenuePageFacts = (cinema, p) => Option.when(cinema == Rialto && p == page)(SourceData(synopsis = Some(synopsis)))
-    // Each world is told of a page that moved once, as the page index tells the projection.
-    val unread = scala.collection.mutable.Map.empty[Int, Seq[(Cinema, String)]].withDefaultValue(Nil)
-    def pageWorld(between: Int) = new ProjectionWorld(new InMemoryMovieRepository(
-      screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
-      slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer), venues, clock,
-      s.resolve, s.details, scopedBetweenWhole = between, slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool, facts),
-      pagesMoved = () => { val taken = unread(between); unread(between) = Nil; taken })
-    val (scoped, whole) = (pageWorld(IdentityProjection.ScopedBetweenWhole), pageWorld(0))
-    def both[A](f: ProjectionWorld => A): (A, A) = (f(scoped), f(whole))
-    both(_.scrape(Map(Rialto -> Vector(row))))
-    both(_.projection.tick())
-    both(_.projection.tick())
-    synopsis = "Druga wersja"
-    Seq(IdentityProjection.ScopedBetweenWhole, 0).foreach(w => unread(w) = Seq(Rialto -> page))
-    val (a, _) = both(_.projection.tick())
-    a.scoped shouldBe true
-    stored(scoped) shouldBe stored(whole)
-    scoped.repository.findAll().flatMap(_.record.data.collect { case (_: CinemaShowing, slot) => slot.synopsis }) shouldBe Seq(Some("Druga wersja"))
-    whole.drifts.filter(_ != 0) shouldBe empty
+  // The feed may have dropped the filings since the projection last asked (`IndexedVenuePageFacts.takeMoved` None): every
+  // listing on a page is then a change.
+  Seq[(String, Seq[(Cinema, String)] => Option[Seq[(Cinema, String)]])](
+    "named on the feed" -> (Some(_)), "the feed no longer holding its filing" -> (_ => None)).foreach { case (told, tell) =>
+    it should s"project a listing whose venue page moved, though nothing else of it did: $told" in {
+      val s = new Scenario(new Random(1))
+      s.failing = false
+      val page = "https://rialto/lalka-2026"
+      val row  = CinemaMovie(Movie("Lalka", releaseYear = Some(2026)), Rialto, None, Some(page), None, Nil, Nil, Seq(Showtime(start, None)))
+      s.programme(Rialto) = Vector(row)
+      var synopsis = "Pierwsza wersja"
+      val facts: VenuePageFacts = (cinema, p) => Option.when(cinema == Rialto && p == page)(SourceData(synopsis = Some(synopsis)))
+      // Each world is told of a page that moved once, as the page index tells the projection.
+      val unread = scala.collection.mutable.Map.empty[Int, Seq[(Cinema, String)]].withDefaultValue(Nil)
+      def pageWorld(between: Int) = new ProjectionWorld(new InMemoryMovieRepository(
+        screenings = Some(new services.movies.InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+        slots = Some(new services.movies.InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = normalizer), venues, clock,
+        s.resolve, s.details, scopedBetweenWhole = between, slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool, facts),
+        pagesMoved = () => { val taken = unread(between); unread(between) = Nil; if (taken.isEmpty) Some(Nil) else tell(taken) })
+      val (scoped, whole) = (pageWorld(IdentityProjection.ScopedBetweenWhole), pageWorld(0))
+      def both[A](f: ProjectionWorld => A): (A, A) = (f(scoped), f(whole))
+      both(_.scrape(Map(Rialto -> Vector(row))))
+      both(_.projection.tick())
+      both(_.projection.tick())
+      synopsis = "Druga wersja"
+      Seq(IdentityProjection.ScopedBetweenWhole, 0).foreach(w => unread(w) = Seq(Rialto -> page))
+      val (a, _) = both(_.projection.tick())
+      a.scoped shouldBe true
+      stored(scoped) shouldBe stored(whole)
+      scoped.repository.findAll().flatMap(_.record.data.collect { case (_: CinemaShowing, slot) => slot.synopsis }) shouldBe Seq(Some("Druga wersja"))
+      whole.drifts.filter(_ != 0) shouldBe empty
+    }
   }
 
   it should "project only the films its changes reach, not the whole corpus" in {

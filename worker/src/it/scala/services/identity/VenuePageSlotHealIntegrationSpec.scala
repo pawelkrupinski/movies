@@ -1,7 +1,7 @@
 package services.identity
 
 
-import services.identity.adapters.{IndexedVenuePageFacts, VenuePageIndex}
+import services.identity.adapters.{FiledAnswerFeed, IndexedVenuePageFacts, VenuePageIndex}
 import models.{CinemaMovie, CinemaShowing, Country, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -53,7 +53,7 @@ class VenuePageSlotHealIntegrationSpec extends AnyFlatSpec with Matchers with to
       repository.upsert(FilmId("f6482ce2e2b03e6c"), "Lalka", Some(1968),
         MovieRecord(data = Map(CinemaShowing(KinoApollo, "lalka") -> polluted)))
 
-      val facts = new IndexedVenuePageFacts(Seq(Apollo), new VenuePageIndex(pages), Country.Poland.language)
+      val facts = new IndexedVenuePageFacts(Seq(Apollo), new VenuePageIndex(pages), Country.Poland.language, new FiledAnswerFeed)
       val world = new ProjectionWorld(repository, Seq(KinoApollo), clock,
         slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool, facts))
       world.scrape(Map(KinoApollo -> Seq(listing(has, 0), listing(kawalski, 3))))

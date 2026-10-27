@@ -43,7 +43,7 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
       // the whole store: the pages past it stay gaps only until the next settle scans again, which
       // reports every answer it moved — a page the model found a gap is re-asked then.
       if (scanned) (read.keySet ++ answers.keySet).foreach { key =>
-        if (read.get(key) != answers.get(key)) { moved.add(key); changed(keyOf(key._1, key._2)) }
+        if (read.get(key) != answers.get(key)) changed(keyOf(key._1, key._2))
       }
       answers  = read
       scanned  = true
@@ -58,19 +58,10 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
                   catch { case scala.util.control.NonFatal(e) => pending.add(key); throw e }
         if (now != answers.get(key)) {
           answers = now.fold(answers - key)(a => answers + (key -> a))
-          moved.add(key)
           changed(keyOf(group, page))
         }
       }
     }
-  }
-
-  /** The pages (detail group, page) whose answer moved since the last [[takeMoved]], each taken once: what a venue slot
-   *  built from the page is built from too ([[IndexedVenuePageFacts.takeMoved]]). */
-  def takeMoved(): Set[(String, String)] = {
-    val taken = moved.asScala.toSet
-    taken.foreach(moved.remove)
-    taken
   }
 
   @volatile private var answers: Map[(String, String), Option[FilmDetail]] = Map.empty
@@ -78,7 +69,6 @@ final class VenuePageIndex(pages: VenuePageStore, changed: String => Unit = _ =>
   @volatile private var scanned  = false
   @volatile private var complete = false
   private val pending = ConcurrentHashMap.newKeySet[(String, String)]()
-  private val moved   = ConcurrentHashMap.newKeySet[(String, String)]()
 }
 
 object VenuePageIndex {
@@ -90,6 +80,10 @@ object VenuePageIndex {
   private val KeyPrefix = s"${LookupQuery.DetailMethod} "
   /** Is `key` one [[keyOf]] makes — a venue page's, of all an answer feed carries? */
   def isKey(key: String): Boolean = key.startsWith(KeyPrefix)
+  /** The page of `detailGroup` a [[keyOf]] key names, if it names one of that group's. */
+  def pageOf(key: String, detailGroup: String): Option[String] =
+    Option.when(isKey(key) && key.endsWith(s" $detailGroup") && key.length > KeyPrefix.length + detailGroup.length + 1)(
+      key.substring(KeyPrefix.length, key.length - detailGroup.length - 1))
 
   private def answerOf(page: VenuePage): Option[FilmDetail] = page.outcome match {
     case VenuePage.Read(detail) => Some(detail)
@@ -126,7 +120,8 @@ final class VenuePageDetailEnricher(underlying: DetailEnricher, index: VenuePage
  * page, landed as the detail enrichment lands it on the slot (`FilmDetail.landed`) — never fetched, and only for a venue
  * whose detail lands on its own slot (a chain's lands on its network source, which no listing builds).
  */
-final class IndexedVenuePageFacts(enrichers: Seq[DetailEnricher], index: VenuePageIndex, enrichmentLanguage: java.util.Locale)
+final class IndexedVenuePageFacts(enrichers: Seq[DetailEnricher], index: VenuePageIndex, enrichmentLanguage: java.util.Locale,
+                                  feed: services.identity.agreement.AnswerFeed)
     extends services.movies.VenuePageFacts {
   private val ownSlot: Map[models.Cinema, DetailEnricher] =
     enrichers.iterator.filter(e => e.detailTarget == e.cinema).map(e => e.cinema -> e).toMap
@@ -136,8 +131,20 @@ final class IndexedVenuePageFacts(enrichers: Seq[DetailEnricher], index: VenuePa
   def of(cinema: models.Cinema, page: String): Option[models.SourceData] =
     ownSlot.get(cinema).flatMap(index.answer(_, page)).flatten.map(_.landed(enrichmentLanguage).pageFields)
 
+  /** The venue pages' filings on the ONE feed every input's change comes on ([[VenuePageIndex]] files there each page
+   *  whose answer a settle moved, as the model and the agreement stage read their own): the projection's view of them
+   *  (docs/design/identity-no-drift.md, "One dependency index"). */
+  private val filings = feed.view(key => Option.when(VenuePageIndex.isKey(key))(key))
+  private var takenAt = filings.version
+
   /** Each venue page whose answer moved since the last call, as the venue and the page a listing's key names
-   *  (`ListingKey.Native`): a slot built from it is built otherwise now, though nothing of its listing moved. */
-  def takeMoved(): Seq[(models.Cinema, String)] =
-    index.takeMoved().toSeq.flatMap { case (group, page) => cinemasOf.getOrElse(group, Nil).map(_ -> page) }
+   *  (`ListingKey.Native`): a slot built from it is built otherwise now, though nothing of its listing moved. None when
+   *  the feed no longer holds every filing since the last call: then any page may have moved. */
+  def takeMoved(): Option[Seq[(models.Cinema, String)]] = synchronized {
+    val at    = filings.version
+    val since = filings.changedSince(takenAt)
+    takenAt = at   // a filing after `at` is in `since` and comes again next call: drafted twice, never missed
+    since.map(_.toSeq.sorted.flatMap(key => cinemasOf.iterator.flatMap { case (group, cinemas) =>
+      VenuePageIndex.pageOf(key, group).iterator.flatMap(page => cinemas.map(_ -> page)) }))
+  }
 }

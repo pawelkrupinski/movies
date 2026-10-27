@@ -27,7 +27,7 @@ private[identity] final class ProjectionWorld(
   scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole,
   slots:             CinemaSlotBuilder = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
   backlog:           () => Boolean = () => false,
-  pagesMoved:        () => Seq[(Cinema, String)] = () => Nil) {
+  pagesMoved:        () => Option[Seq[(Cinema, String)]] = () => Some(Nil)) {
   import ProjectionWorld.normalizer
 
   /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
