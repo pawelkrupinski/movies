@@ -41,10 +41,13 @@ object StaleTastyRetry extends AutoPlugin {
     onLoad := onLoad.value.andThen(arm)
   )
 
+  /** Armed once per batch: a `set` in the batch loads the build again, and with it this `onLoad`. Armed afresh there, the
+   *  queued `Arm` found the handler the first one set and disarmed the batch, so a stale read failed for good (Identity
+   *  live drift #2001, run 3141, whose batch begins `set worker / Test / run / fork := false`). */
   private def arm(s: State): State = {
     val (boot, batch) = s.remainingCommands.span(e => SbtBootCommands(e.commandLine))
     val interactive = batch.exists(e => e.commandLine == "shell" || e.commandLine.startsWith("~"))
-    if (batch.isEmpty || interactive || sys.props.contains(Retried)) s
+    if (batch.isEmpty || interactive || sys.props.contains(Retried) || s.get(Batch).isDefined) s
     else s.put(Batch, (System.currentTimeMillis, batch)).copy(remainingCommands = boot ++ (Exec(Arm, None) :: batch))
   }
 
