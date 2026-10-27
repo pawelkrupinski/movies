@@ -371,7 +371,10 @@ check "a shared resolver change measures every country" "footprint pl,de,uk,us,e
 capture=$(fp_commit test/resources/fixtures/identity-unmatched/uk.inputs "x")
 check "a country's capture reaches that country" "footprint uk" "$(plan --head "$capture" --base "$main_tip" | head -1)"
 words=$(fp_commit common/src/main/resources/title-words.tsv "# header\\nanniversary\\ten\\tanniversary\\nanniversary\\tes\\taniversario\\n")
-check "title-words rows reach their languages' countries (en: uk and us)" "footprint uk,us,es" "$(plan --head "$words" --base "$main_tip" | head -1)"
+check "a title-words row reaches every country (TitleWords.tokens reads every language's words in every country)" \
+  "footprint pl,de,uk,us,es" "$(plan --head "$words" --base "$main_tip" | head -1)"
+rules=$(fp_commit common/src/main/resources/title-rules.tsv "# header\\nde-strip\\tquery\\t\\tde\\t\\tjunk\\t\\tx\\t\\t\\t[]\\n")
+check "a title-rules row scoped to a country reaches that country alone" "footprint de" "$(plan --head "$rules" --base "$main_tip" | head -1)"
 check "--countries wins over the footprint" "footprint pl" "$(plan --head "$de_only" --base "$main_tip" --countries pl | head -1)"
 check "--all-countries ignores it" "footprint pl,de,uk,us,es" "$(plan --head "$de_only" --base "$main_tip" --all-countries | head -1)"
 docs=$(fp_commit docs/notes.md "x")

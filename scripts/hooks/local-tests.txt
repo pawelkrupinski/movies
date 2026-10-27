@@ -12,7 +12,9 @@
 #             every change in it passed its own full checks (the owner, 2026-10-27: "when waiting is rebuilt, just run very
 #             basic checks like compile and the fast tests"). Every test config compiled, the lint and structure specs;
 #             target 3 min warm. No area tests.
-#   identity  the `identity` check, on a change to the hook's identity paths (is_identity_path)
+#   identity  the `identity` check, on a change to the hook's identity paths (is_identity_path) -- narrowed to the specs
+#             the change can reach, over the countries it can reach (scripts/ci/identity_impact.py: the hook's
+#             select_identity_tests), each class once; every line when the change reaches the build or an unknown reader
 #   page      the `page` check, on a change to the hook's page paths (is_page_path)
 # An area line costs its measured warm time on the laptop (2026-10-26); an area's whole set stays under 15 min.
 basic sbt Test/compile

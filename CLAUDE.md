@@ -145,7 +145,8 @@ green branch); if some specific area (browser / page, identity) is touched, run 
 it takes longer than 15 mins), then merge to main and test everything there". So every change — identity included —
 lands with `agentctl land`: the pre-push hook runs the basic tests (path-selected lints, generated artefacts, every
 test config compiled, the snapshot and deploy specs) and, when the push touches an AREA, that area's local tests
-(`scripts/hooks/local-tests.txt`: `identity`, `page`; each under 15 min warm). Merge on green means MAIN green: the
+(`scripts/hooks/local-tests.txt`: `identity`, `page`; each under 15 min warm; the identity set narrowed to the specs and
+countries the change can reach, `scripts/ci/identity_impact.py`, proved by `scripts/identity-impact-check`). Merge on green means MAIN green: the
 red gate below; while main is red, a production change waits on the one local `waiting` branch (`land` prints
 `WAITING <sha>`, keeps running, and lands it with the others in one push once main is green). Nothing waits for a branch CI run; `scripts/identity-landing-check` and `identity-measure` are optional
 tools for your own confidence, not merge requirements. The merge queue (`agentctl queue`) is retired.

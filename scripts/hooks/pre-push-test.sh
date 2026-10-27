@@ -332,6 +332,7 @@ printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
 for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+mkdir -p "$area/scripts/ci"; cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile
@@ -344,6 +345,8 @@ cat > "$area/scripts/sbt-warm" <<'STUB'
 #!/usr/bin/env bash
 printf 'sbt-warm' >> "$AREA_CALLS"; printf ' [%s]' "$@" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"
 case "$*" in *"${SBTWARM_FAILS:-no such}"*) echo "[error] Failed: Total 3, Failed 1"; exit 1 ;; esac
+# the test-impact task: the classes $IMPACT_LINES names (unset: no answer, and the hook runs every identity test)
+case "$1" in identityImpact\ *) [ -n "${IMPACT_LINES+x}" ] && printf '%b' "$IMPACT_LINES" > "${1##* }" ;; esac
 echo "[info] All tests passed."
 STUB
 printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n' > "$areabin/sbt"
@@ -374,6 +377,12 @@ check "a docs change runs neither area nor the basic set" "0 0" "$code $(wc -l <
 code="$(area_push worker/src/main/scala/services/movies/A.scala)"
 check "a code change outside the areas runs the basic set only" "0 1 0 0" \
   "$code $(basic_ran) $(calls identity/test) $(calls PageTest)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='identity services.identity.ResolverSpec\nworker services.identity.AdapterSpec\nworker tools.OtherSpec\n')"
+check "TEST-IMPACT SELECTION: the identity set narrowed to the classes the change reaches, each line's own" "0 1 0 0" \
+  "$code $(calls '\[identity/testOnly services.identity.ResolverSpec\] \[worker/testOnly services.identity.AdapterSpec\]') $(calls '\[identity/test\]') $(calls OtherSpec)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='web services.movies.ElsewhereSpec\n')"
+check "...and none at all when it reaches no identity spec, said" "0 0 1" \
+  "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out")"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_FAILS=identity/test)"
 check "a failing identity set blocks the push, naming the check and the failure" "1 1 1" \
   "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'Failed 1' "$testroot/area-out")"

@@ -9,12 +9,13 @@ import tools.UnmatchedClusters.Label
  *  A suite of its own, apart from [[IdentityRefitSpec]]: each of these re-resolves recorded captures, the two
  *  slowest tests of the worker's unit run, and ScalaTest runs one suite's tests one after another but suites side
  *  by side. */
-class IdentityRefitCaptureReplaySpec extends AnyFlatSpec with Matchers {
+class IdentityRefitCaptureReplaySpec extends AnyFlatSpec with Matchers with tools.CountryScope {
   import IdentityRefit._
 
   private val shipped = IdentityCalibration.resolver
 
   "A calibration" should "reach the captures' re-resolve: one accepting nothing takes fewer films than the shipped one" in {
+    assumeInScope("pl")
     // Poland's capture (2.5 MB against Germany's 5.7, whose re-resolve was most of the worker unit run's longest suite):
     // its takes move with the rating cut, as Germany's do. Spain's and the United States' do not — on them the claims
     // below would hold vacuously (0 takes, or the same 396 either way).

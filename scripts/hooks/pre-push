@@ -43,7 +43,8 @@
 #                 the basic tests before every merge (once the merge queue's pre-check list)
 #   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path): the identity
 #                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
-#                 are main's CI's. Through scripts/sbt-warm, warm
+#                 are main's CI's. Through scripts/sbt-warm, warm. Only the specs the change can reach, over the
+#                 countries it can reach (TEST-IMPACT SELECTION, select_identity_tests; proof: identity-impact-check)
 #   `page`        local-tests.txt's `page` lines, on a change to the page paths (is_page_path): the page specs and the
 #                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
 #   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
@@ -1035,6 +1036,17 @@ run_local_tests() { # <set>
     local cmds=() line rc=0
     need_jvm "$1" || return 1
     while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
+    if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
+        local selected=()
+        if select_identity_tests "${cmds[@]}" > "$tmp/identity.plan" 2> "$tmp/identity.select.log"; then
+            while IFS= read -r line; do [ -n "$line" ] && selected+=("$line"); done < "$tmp/identity.plan"
+            log "identity: $(tr '\n' ';' < "$tmp/identity.summary" | sed 's/;$//; s/;/; /')"
+            cmds=(${selected[@]+"${selected[@]}"})
+            if [ "${#cmds[@]}" -eq 0 ]; then log "identity: the change reaches no identity spec"; return 0; fi
+        else
+            warn "identity: no test-impact selection ($(tail -1 "$tmp/identity.select.log")) -- every identity test"
+        fi
+    fi
     if [ "${#cmds[@]}" -gt 0 ]; then
         scripts/sbt-warm "${cmds[@]}" > "$tmp/$1.log" 2>&1 || rc=1
     fi
@@ -1050,6 +1062,28 @@ run_local_tests() { # <set>
         return 1
     fi
     grep -E 'Tests: succeeded|All tests passed|[0-9]+ passed' "$tmp/$1.log" | tail -3
+}
+# TEST-IMPACT SELECTION (scripts/ci/identity_impact.py, project/TestImpact.scala): of the identity set's sbt lines, only
+# the specs the pushed change can reach (the compiler's dependency record; the data's readers by name), each once, the
+# country-scoped ones (tools.CountryScope) over the countries it can reach. Every path the range changed counts,
+# deletions too (a deleted source selects every test); one range only -- several, and every test runs. Prints the sbt
+# lines to run (none: no spec reached), or fails (every test runs).
+select_identity_tests() { # <the set's sbt lines>...
+    local mb countries
+    [ "${#ranges[@]}" -eq 1 ] || { echo "the push holds ${#ranges[@]} ranges"; return 1; }
+    mb="$(git merge-base "$base_sha" "$head_sha")" || { echo "no merge base of ${base_sha:0:9} and ${head_sha:0:9}"; return 1; }
+    git diff --name-only --no-renames "$mb" "$head_sha" > "$tmp/identity.changed" || return 1
+    scripts/sbt-warm "identityImpact $tmp/identity.changed $tmp/identity.impact" > "$tmp/identity.impact.log" 2>&1 \
+        || { tail -20 "$tmp/identity.impact.log"; echo "sbt identityImpact failed"; return 1; }
+    countries="$(python3 scripts/ci/identity_impact.py countries "$mb" "$head_sha" < "$tmp/identity.changed")" \
+        || { echo "the countries could not be read"; return 1; }
+    printf '%s\n' "$@" | python3 scripts/ci/identity_impact.py plan --impact "$tmp/identity.impact" --countries "$countries" \
+        || { echo "no plan"; return 1; }
+    if grep -q '^ALL' "$tmp/identity.impact"; then
+        echo "every identity spec: $(grep -m1 '^ALL' "$tmp/identity.impact" | cut -c5-)"
+    else echo "the specs the change reaches ($(grep -c . "$tmp/identity.impact") test classes in every module)"
+    fi > "$tmp/identity.summary"
+    echo "countries in scope: ${countries:-none}" >> "$tmp/identity.summary"
 }
 check_identity() { run_local_tests identity; }
 # THE RATCHET (the header's `allowlists`): an allow-list row only with its check's birth, TEMPORARY; else lists only shrink

@@ -16,11 +16,13 @@ import java.util.concurrent.ConcurrentHashMap
  * questions and the posters it would hash. Writes the events it finds to `target/identity-unmatched/non-film-events.tsv`
  * for review.
  */
-class NonFilmEventsFixtureSpec extends AnyFlatSpec with Matchers {
+class NonFilmEventsFixtureSpec extends AnyFlatSpec with Matchers with tools.CountryScope {
 
   private val labels   = tools.IdentityJudgements.labels()
   private val takes    = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
-  private val captures = models.Country.all.map(UnmatchedClusters.fixturePath).filter(Files.exists(_)).map(UnmatchedClusters.read)
+  // every check holds per capture (tools.CountryScope): only the change's countries' are read and replayed
+  private lazy val captures = models.Country.all.filter(c => countriesInScope(c.code)).map(UnmatchedClusters.fixturePath)
+    .filter(Files.exists(_)).map(UnmatchedClusters.read)
 
   /** Each capture's model decisions whose cluster is a non-film event, with why. */
   private lazy val events: Seq[(UnmatchedClusters.Capture, ResolverDecision, String)] = captures.flatMap { capture =>
@@ -50,7 +52,8 @@ class NonFilmEventsFixtureSpec extends AnyFlatSpec with Matchers {
         found.groupBy(_._3).view.mapValues(_.size).toSeq.sortBy(-_._2).map { case (why, n) => s"$why $n" }.mkString(", "))
     }
     info(s"wrote $out")
-    events.map(_._1.country.code).toSet should contain allOf ("pl", "uk", "de", "us")
+    val billing = Set("pl", "uk", "de", "us").intersect(countriesInScope)
+    events.map(_._1.country.code).toSet.intersect(billing) shouldBe billing
   }
 
   "the agreement stage" should "ask no family and hash no poster for a non-film event cluster" in {
@@ -76,5 +79,8 @@ class NonFilmEventsFixtureSpec extends AnyFlatSpec with Matchers {
     questions shouldBe 0
     hashes shouldBe 0
     reported shouldBe events.size
+    // per country, so that a scoped run holds what the whole one does
+    outcomes.map { case (cc, outcome) => cc -> outcome.agreed.decisions.count(_.basis == ResolverDecision.Basis.Event) }.toMap shouldBe
+      events.groupBy(_._1.country.code).view.mapValues(_.size).toMap
   }
 }

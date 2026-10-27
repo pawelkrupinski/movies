@@ -15,7 +15,10 @@ import scala.util.Try
  * decided again, model and agreement, from its own answers alone, and each listing must take its right film — or, where
  * the case's expected.tsv says so by hand, no film (`none`) or any film but a wrong one (`not:<film>`).
  */
-class IdentitySliceCasesSpec extends AnyFlatSpec with Matchers {
+class IdentitySliceCasesSpec extends AnyFlatSpec with Matchers with tools.CountryScope {
+
+  /** A slice is one country's, its directory's `<cc>-` prefix, which ends its test's name. */
+  override protected def countriesOf(testName: String): Seq[String] = Seq(testName.split(' ').last.takeWhile(_ != '-'))
 
   private val root = Path.of("test", "resources", "fixtures", "identity-slices")
   private val cases: Seq[Path] =

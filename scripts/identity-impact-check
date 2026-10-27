@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""THE PROOF OF THE IDENTITY TEST-IMPACT SELECTION (scripts/ci/identity_impact.py, project/TestImpact.scala): that it
+never leaves out a test that could fail. Two ways, each in a checkout of its own (--tree, default
+~/.cache/kinowo-identity/impact-check, a detached worktree of this clone) through its own scripts/sbt-warm server:
+
+  mutations   each MUTATION below, a change that fails some identity test, committed on the checkout's HEAD: the
+              selection made of it, then EVERY test of the identity set run on it. SOUND when every class that failed
+              is a selected one, and every selected country-scoped spec (tools.CountryScope) passes over the countries
+              the selection left out; VACUOUS (said, not failed) when nothing failed.
+  replay      the last -n commits of --ref (default forgejo/main) that touched an identity path, oldest first, each
+              against its parent: the selection made at the commit (the tooling laid over it: identity-impact.sbt,
+              project/TestImpact.scala, scripts/ci/identity_impact.py), then the identity set's tests the selection
+              LEFT OUT run at the commit, and -- only where one fails -- at its parent. SOUND when no left-out test's
+              outcome differs. Country scopes are reported; the commits' specs predate tools.CountryScope, so the
+              mutations are the proof of those.
+
+Usage: scripts/identity-impact-check mutations [--only NAME,...] | replay [-n 50] [--ref REF] [--from N]
+Exit 0 sound, 1 a test the selection left out changed outcome (named), 2 the check could not be made.
+Results: <tree>.results/<mode>.tsv, one row per mutation or commit; each step's logs beside it.
+"""
+
+import argparse
+import glob
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(HERE, "ci"))
+import identity_impact  # noqa: E402
+
+TOOLING = ["identity-impact.sbt", "project/TestImpact.scala", "scripts/ci/identity_impact.py"]
+IDENTITY_PATHS = ["identity/", "worker/src/main/scala/services/identity/", "worker/src/test/scala/services/identity/",
+                  "common/src/main/resources/title-rules.tsv", "common/src/main/resources/title-words.tsv",
+                  "common/src/main/scala/services/titlerules/", ":(glob)test/resources/fixtures/identity-*/**",
+                  ":(glob)test/resources/fixtures/identity-*"]
+
+
+def say(msg):
+    print(f"identity-impact-check: {msg}", file=sys.stderr, flush=True)
+
+
+def run(cmd, cwd, check=True, **kw):
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, **kw)
+    if check and r.returncode != 0:
+        raise RuntimeError(f"{' '.join(cmd)}: {r.stderr.strip()[-2000:]}")
+    return r
+
+
+def git(tree, *args, check=True):
+    return run(["git", *args], tree, check=check).stdout
+
+
+# ── the checkout ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def prepare(tree, at):
+    if not os.path.isdir(tree):
+        os.makedirs(os.path.dirname(tree), exist_ok=True)
+        git(REPO, "worktree", "add", "--detach", tree, at)
+    git(tree, "reset", "-q", "--hard")
+    git(tree, "clean", "-qfd")  # untracked only: the ignored build output stays, warm
+    git(tree, "checkout", "-q", "--detach", at)
+
+
+def lay_tooling(tree):
+    """The selection's tooling, as this checkout has it, over an older commit (uncommitted: a reset takes it back)."""
+    for path in TOOLING:
+        os.makedirs(os.path.dirname(os.path.join(tree, path)) or tree, exist_ok=True)
+        shutil.copy(os.path.join(REPO, path), os.path.join(tree, path))
+
+
+def sbt(tree, log, *commands):
+    with open(log, "w") as fh:
+        return subprocess.run([os.path.join(tree, "scripts", "sbt-warm"), *commands], cwd=tree, stdout=fh,
+                              stderr=subprocess.STDOUT).returncode
+
+
+def set_lines(tree):
+    """The identity set's sbt lines, as this checkout's local-tests.txt defines them."""
+    with open(os.path.join(REPO, "scripts", "hooks", "local-tests.txt")) as fh:
+        return [m.group(1) for m in (re.match(r"^identity\s+sbt\s+(.*)$", l.rstrip("\n")) for l in fh) if m]
+
+
+# ── one selection, one run ──────────────────────────────────────────────────────────────────────────────────────────
+
+def select(tree, base, head, out):
+    """(why ALL, {module: classes} selected, {module: classes} every test, countries) of base..head in `tree`."""
+    changed = git(tree, "diff", "--name-only", "--no-renames", base, *([head] if head else [])).split()
+    with open(out + ".changed", "w") as fh:
+        fh.write("\n".join(changed) + "\n")
+    if sbt(tree, out + ".impact.log", f"identityImpact {out}.changed {out}.impact") != 0:
+        raise RuntimeError(f"identityImpact failed: {out}.impact.log")
+    why, chosen = identity_impact.read_impact(out + ".impact")
+    _, every = identity_impact.read_impact(out + ".impact.tests")
+    cwd = os.getcwd()
+    try:
+        os.chdir(tree)
+        countries = identity_impact.countries(base, head, changed, tree)
+    finally:
+        os.chdir(cwd)
+    return why, chosen, every, countries
+
+
+def universe(lines, every):
+    """{module: classes} the identity set's lines run, of `every`."""
+    plan = identity_impact.plan(lines, [], every, None)
+    out = {}
+    for line in plan:
+        words = line.split()
+        if words and words[0].endswith("/testOnly"):
+            out.setdefault(words[0].split("/")[0], set()).update(w for w in words[1:] if w != "--" and not w.startswith("-D"))
+    return out
+
+
+def run_classes(tree, log, classes, countries=None):
+    """Run {module: classes} (country-scoped with `countries`), the reports cleared first; (rc, failed classes)."""
+    reports = os.path.join(tree, "target", "test-reports", "unit")
+    shutil.rmtree(reports, ignore_errors=True)
+    lines = identity_impact.plan([f"{m}/testOnly *" for m in classes], [], classes, countries)
+    if not lines:
+        return 0, set()
+    rc = sbt(tree, log, *lines)
+    failed = set()
+    for f in glob.glob(os.path.join(reports, "TEST-*.xml")):
+        try:
+            root = ET.parse(f).getroot()
+        except ET.ParseError:
+            continue
+        if int(root.get("failures", 0)) + int(root.get("errors", 0)) > 0:
+            failed.add(root.get("name"))
+    if rc != 0 and not failed:
+        failed.add(f"(the run failed with no failing report: {log})")
+    return rc, failed
+
+
+def flat(classes):
+    return {c for cs in classes.values() for c in cs}
+
+
+def minus(a, b):
+    out = {m: cs - b.get(m, set()) for m, cs in a.items()}
+    return {m: cs for m, cs in out.items() if cs}
+
+
+def within(a, b):
+    return {m: cs & b.get(m, set()) for m, cs in a.items() if cs & b.get(m, set())}
+
+
+SCOPED = {"services.identity.UnmatchedClustersRatchetSpec", "services.identity.NonFilmEventsFixtureSpec",
+          "services.identity.IdentitySliceCasesSpec", "scripts.IdentityRefitMeasureAllSpec",
+          "scripts.IdentityRefitCaptureReplaySpec"}
+
+
+# ── the mutations ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+def edit(tree, path, fn):
+    p = os.path.join(tree, path)
+    with open(p, encoding="utf-8") as fh:
+        text = fh.read()
+    new = fn(text)
+    if new == text:
+        raise RuntimeError(f"the mutation changed nothing in {path}")
+    with open(p, "w", encoding="utf-8") as fh:
+        fh.write(new)
+
+
+def tsv_row(text, pred, change):
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        if line and not line.startswith("#") and pred(line.split("\t")):
+            lines[i] = "\t".join(change(line.split("\t")))
+            return "\n".join(lines)
+    raise RuntimeError("no row to mutate")
+
+
+def m_rules_pl_venue(tree):
+    edit(tree, "common/src/main/resources/title-rules.tsv", lambda t: tsv_row(t, lambda c: c[0] == "muza-najlepsze-z-najgorszych",
+         lambda c: c[:7] + [c[7].replace("najgorszych", "najgorszy")] + c[8:]))
+
+
+def m_rules_de_row(tree):
+    edit(tree, "common/src/main/resources/title-rules.tsv", lambda t: tsv_row(t, lambda c: c[0] == "xtra-special-bracket-suffix",
+         lambda c: c[:7] + [c[7].replace("Special", "Spezial")] + c[8:]))
+
+
+def m_judgement_pl(tree):
+    expected = os.path.join(tree, "test/resources/fixtures/identity-unmatched/expected-matches.tsv")
+    takes = [l.split("\t") for l in open(expected, encoding="utf-8").read().split("\n")[1:] if l.startswith("pl\t")]
+    keys = {(t[0], t[1], t[2], t[3]) for t in takes} | {(t[0], "*", t[2], t[3]) for t in takes}
+    edit(tree, "test/resources/fixtures/identity-judgements.tsv", lambda t: tsv_row(t,
+         lambda c: len(c) > 5 and (c[0], c[1], c[2], c[3]) in keys and c[4] == "right" and c[5] == "open",
+         lambda c: c[:4] + ["wrong"] + c[5:]))
+
+
+def m_expected_uk(tree):
+    edit(tree, "test/resources/fixtures/identity-unmatched/expected-matches.tsv",
+         lambda t: t.rstrip("\n") + "\nuk\tNo Such Cinema\tNo Such Billing\ttmdb:1\tNo Such Film (1900)\n")
+
+
+def m_slice_uk(tree):
+    d = sorted(glob.glob(os.path.join(tree, "test/resources/fixtures/identity-slices/uk-act-one-*")))[0]
+    path = os.path.relpath(os.path.join(d, "expected.tsv"), tree)
+    edit(tree, path, lambda t: re.sub(r"\ttmdb:1702778\t", "\ttmdb:1\t", t, count=1))
+
+
+def m_seed_us(tree):
+    edit(tree, "test/resources/fixtures/corpus/hard-clusters-seeds.tsv",
+         lambda t: t.rstrip("\n") + "\nus\tNo Such Film Billed Anywhere\tfinding\n")
+
+
+def m_words(tree):
+    edit(tree, "common/src/main/resources/title-words.tsv", lambda t: re.sub(r"(?m)^(anniversary\ten\tanniversary)$",
+         "\\1\nanniversary\tde\tfilm", t, count=1))
+
+
+def m_agreement(tree):
+    edit(tree, "identity/src/main/scala/services/identity/agreement/AgreementStage.scala",
+         lambda t: t.replace("val CorrectionsPerApply = 200", "val CorrectionsPerApply = 0"))
+
+
+def m_capture_reader(tree):
+    edit(tree, "worker/src/fixtures/scala/tools/UnmatchedClusters.scala",
+         lambda t: t.replace('def fixturePath(country: Country): Path = Directory.resolve(s"${country.code}.json.gz")',
+                             'def fixturePath(country: Country): Path = Directory.resolve(s"${country.code}.json.gz.missing")'))
+
+
+MUTATIONS = [
+    ("rules-pl-venue", "a Polish venue's title rule (Kino Muza) no longer strips its programme suffix", m_rules_pl_venue),
+    ("rules-de-row", "a German-scoped title rule's pattern changed", m_rules_de_row),
+    ("judgement-pl", "a Polish take the ratchet holds right judged wrong", m_judgement_pl),
+    ("expected-uk", "a British take expected that no capture makes", m_expected_uk),
+    ("slice-uk", "a British slice expecting another film", m_slice_uk),
+    ("seed-us", "an American hard-cluster seed no corpus holds", m_seed_us),
+    ("words-de", "a German event word that every country's titles bill", m_words),
+    ("agreement", "AgreementStage corrects no take an apply", m_agreement),
+    ("capture-reader", "the capture reader (worker fixtures) names no capture", m_capture_reader),
+]
+
+
+def mutations(tree, out, only):
+    rows, unsound = [], []
+    head = git(REPO, "rev-parse", "HEAD").strip()
+    dirty = git(REPO, "status", "--porcelain", "--", *TOOLING).strip()
+    if dirty:
+        raise RuntimeError(f"commit the selection's tooling first: the mutations run on HEAD ({dirty})")
+    for name, what, apply in MUTATIONS:
+        if only and name not in only:
+            continue
+        say(f"mutation {name}: {what}")
+        prepare(tree, head)
+        apply(tree)  # uncommitted: the selection reads the working tree against HEAD
+        why, chosen, every, countries = select(tree, head, None, f"{out}/{name}")
+        area = universe(set_lines(tree), every)
+        selected = area if why else within(chosen, area)
+        rc, failed = run_classes(tree, f"{out}/{name}.full.log", area)
+        missed = sorted(failed - flat(selected))
+        scoped = {m: cs & SCOPED for m, cs in selected.items() if cs & SCOPED}
+        rest = [cc for cc in identity_impact.COUNTRIES if cc not in countries]
+        out_scope_failed = set()
+        if scoped and rest:
+            _, out_scope_failed = run_classes(tree, f"{out}/{name}.outscope.log", scoped, rest)
+        verdict = "UNSOUND" if missed or out_scope_failed else ("VACUOUS" if not failed else "SOUND")
+        if verdict == "UNSOUND":
+            unsound.append(name)
+        rows.append([name, verdict, "ALL" if why else str(len(flat(selected))), str(len(flat(area))), ",".join(countries) or "-",
+                     ",".join(sorted(failed)) or "-", ",".join(missed) or "-",
+                     ",".join(sorted(out_scope_failed)) + (f" (over {','.join(rest)})" if out_scope_failed else "") or "-"])
+        say(f"  {verdict}: selected {rows[-1][2]} of {rows[-1][3]} classes, countries {rows[-1][4]}; failed {rows[-1][5]}; "
+            f"missed {rows[-1][6]}; out of scope failed {rows[-1][7]}")
+    prepare(tree, head)
+    return rows, unsound, ["mutation", "verdict", "selected", "of", "countries", "failed", "missed", "outOfScopeFailed"]
+
+
+# ── the replay ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def replay(tree, out, n, ref, start):
+    commits = git(REPO, "log", "--format=%H", "--no-merges", f"-n{n}", ref, "--", *IDENTITY_PATHS).split()[::-1]
+    rows, unsound = [], []
+    for i, sha in enumerate(commits):
+        if i < start:
+            continue
+        subject = git(REPO, "log", "-1", "--format=%s", sha).strip()[:70]
+        say(f"[{i + 1}/{len(commits)}] {sha[:9]} {subject}")
+        prepare(tree, sha)
+        lay_tooling(tree)
+        try:
+            why, chosen, every, countries = select(tree, f"{sha}~1", sha, f"{out}/{sha[:9]}")
+        except RuntimeError as e:
+            rows.append([sha[:9], "NOT MADE", "-", "-", "-", "-", str(e)[:200], subject])
+            continue
+        area = universe(set_lines(tree), every)
+        selected = area if why else within(chosen, area)
+        left = minus(area, selected)
+        rc, failed = run_classes(tree, f"{out}/{sha[:9]}.left.log", left) if left else (0, set())
+        changed = set()
+        if failed:
+            say(f"  left-out tests failed at {sha[:9]}: {','.join(sorted(failed))} -- at its parent too?")
+            prepare(tree, f"{sha}~1")
+            lay_tooling(tree)
+            again = {m: cs & failed for m, cs in left.items() if cs & failed}
+            _, before = run_classes(tree, f"{out}/{sha[:9]}.parent.log", again)
+            changed = failed - before
+        verdict = "UNSOUND" if changed else "SOUND"
+        if changed:
+            unsound.append(sha[:9])
+        rows.append([sha[:9], verdict, "ALL" if why else str(len(flat(selected))), str(len(flat(area))),
+                     ",".join(countries) or "-", ",".join(sorted(failed)) or "-", ",".join(sorted(changed)) or "-", subject])
+        say(f"  {verdict}: selected {rows[-1][2]} of {rows[-1][3]}, countries {rows[-1][4]}; left-out failed {rows[-1][5]}")
+    return rows, unsound, ["commit", "verdict", "selected", "of", "countries", "leftOutFailed", "changedOutcome", "subject"]
+
+
+def main(argv):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("mode", choices=["mutations", "replay"])
+    ap.add_argument("--tree", default=os.path.expanduser("~/.cache/kinowo-identity/impact-check"))
+    ap.add_argument("--only", default="")
+    ap.add_argument("-n", type=int, default=50)
+    ap.add_argument("--ref", default="forgejo/main")
+    ap.add_argument("--from", dest="start", type=int, default=0, help="resume a replay at its N-th commit (0-based)")
+    a = ap.parse_args(argv)
+    out = a.tree + ".results"  # beside the checkout: a reset cleans its untracked files
+    try:
+        if a.mode == "mutations":
+            prepare(a.tree, git(REPO, "rev-parse", "HEAD").strip())
+            os.makedirs(out, exist_ok=True)
+            rows, unsound, header = mutations(a.tree, out, set(filter(None, a.only.split(","))))
+        else:
+            prepare(a.tree, a.ref)
+            os.makedirs(out, exist_ok=True)
+            rows, unsound, header = replay(a.tree, out, a.n, a.ref, a.start)
+    except (RuntimeError, OSError) as e:
+        say(f"could not be made: {e}")
+        return 2
+    table = os.path.join(out, f"{a.mode}.tsv")
+    with open(table, "a" if a.start else "w", encoding="utf-8") as fh:
+        if not a.start:
+            fh.write("\t".join(header) + "\n")
+        for r in rows:
+            fh.write("\t".join(r) + "\n")
+    print("\t".join(header))
+    for r in rows:
+        print("\t".join(r))
+    say(f"{'UNSOUND: ' + ', '.join(unsound) if unsound else 'SOUND'} ({len(rows)} {a.mode}; {table})")
+    return 1 if unsound else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
