@@ -58,6 +58,21 @@
 # with its parents -- and a server its keeper saw end without one (a crash, the JVM reaper, a stray kill) is a "vanished"
 # line there, naming the reaper's kill or a crash file when one does. Each keeper's own log is $State/<key>.log.
 #
+# ONE COMMAND AT A TIME: sbt runs a server's commands one after another, so a command still running in it -- a serving
+# runMain whose caller is gone -- holds every later call's command queued, its sbtn client silent at 0% CPU, forever
+# (2026-10-27: a land's pre-push compile waited 2.5 h behind an orphaned FixtureServerMain, holding the landing lock).
+# So:
+#   * a --serve call marks the server serving ($key.serving: its pid, its owner, the command). With
+#     KINOWO_SBT_WARM_SERVE_OWNER=<pid> (scripts/page-tests-local passes its own) it stops the server the moment that
+#     owner is gone, however it ended -- fixture-server.sh nohups the serve, so nothing else would.
+#   * a call finding the server serving fails AT ONCE (exit 75, `sbt-warm BLOCKED: ...`) while the serve and its owner
+#     live -- its command would wait for the serve's end -- and restarts the server when either is gone (an orphan).
+#   * NO PROGRESS: a call whose server (with its forked JVMs) and client use no CPU for $KINOWO_SBT_WARM_STALL_SECONDS
+#     (600) -- a command queued behind one that never ends, a dead server's socket, a deadlock -- writes the server's
+#     thread dump to $State/<key>.stall-<time>.txt, stops it and runs the command once more in a fresh one; stalled
+#     again, it fails: exit 75, `sbt-warm STALLED: <command> ...` (scripts/stall-watch.sh: THE STALL SIGNAL). A call
+#     making progress touches $KINOWO_PROGRESS_FILE when set. A --serve call is never bounded: it serves, idle.
+#
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
 # one classes dir delete each other's classes (the pre-push hook steps around a live one). Use this script, or --stop.
 set -uo pipefail
@@ -68,6 +83,8 @@ IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-10}
 . "$(dirname "$0")/tool-conventions.sh"
 # shellcheck source=scripts/jvm-gate.sh
 . "$(dirname "$0")/jvm-gate.sh"
+# shellcheck source=scripts/stall-watch.sh
+. "$(dirname "$0")/stall-watch.sh"
 IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
 log() { echo "[sbt-warm]${LogStamp:+ $(date '+%F %T')} $*" >&2; }
 Self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
@@ -179,7 +196,7 @@ stop_checkout() { # <root> <state prefix> <why>
   local stopped=1
   stop_keeper_of "$2" "$3"
   stop_servers_of "$1" "$3" && stopped=0
-  rm -f "$2".root "$2".pid "$2".used "$2".env "$2".build
+  rm -f "$2".root "$2".pid "$2".used "$2".env "$2".build "$2".serving
   return "$stopped"
 }
 
@@ -326,8 +343,11 @@ case "${1:-}" in
     exit 0 ;;
   ""|-h|--help) usage_from_header; exit 0 ;;
 esac
-# --serve runs like any command now that the server, not the command, holds the slot; kept for its callers' clarity
+# --serve runs like any command now that the server, not the command, holds the slot -- but marks the server serving
+# (ONE COMMAND AT A TIME, the header)
+serve=0
 if [ "$1" = --serve ]; then
+  serve=1
   shift
   [ $# -gt 0 ] || { log "--serve needs the command it serves"; exit 2; }
 fi
@@ -337,6 +357,9 @@ fi
 # server it started. The lock is the kernel's (jvm-gate.sh's jvm_lock): free the moment its holder has gone, killed or
 # not. Calls reaching a live server take no lock.
 LockFile="$State/$key.flock"
+# what this call undoes as it ends, however it ends (the start lock, the serving mark)
+ExitHooks=":"
+trap 'eval "$ExitHooks"' EXIT
 KeepFile="$State/$key.keep.flock"
 # IN USE: this call holds $key.busy shared until it ends (descriptor 9), so the keeper never stops the server under it
 exec 9>> "$State/$key.busy"
@@ -351,7 +374,7 @@ lock_start() {
     [ "$waited" -ge "${KINOWO_SBT_WARM_LOCK_SECONDS:-1800}" ] && { log "gave up waiting for the server start lock of $root"; exit 1; }
     sleep 1; waited=$((waited + 1))
   done
-  trap 'jvm_unlock "$LockFile"' EXIT
+  ExitHooks="$ExitHooks; jvm_unlock \"\$LockFile\""
 }
 server_pid "$root" >/dev/null || lock_start
 
@@ -366,6 +389,24 @@ echo "$root" > "$State/$key.root"
 ( while kill -0 $$ 2>/dev/null; do touch "$State/$key.used"; sleep "${KINOWO_SBT_WARM_HEARTBEAT_SECONDS:-60}"; done ) \
   > /dev/null 2>&1 5>&- 6>&- 7>&- 8>&- 9>&- &
 heartbeat=$!
+# ONE COMMAND AT A TIME (the header): a server still serving another call's command would hold this one queued for good
+ServingFile="$State/$key.serving"
+if [ -f "$ServingFile" ] && pid=$(server_pid "$root"); then
+  read -r serve_pid serve_owner serve_cmd < "$ServingFile"
+  if ps -o args= -p "${serve_pid:-0}" 2> /dev/null | grep -q 'sbt-warm' &&
+    { [ "${serve_owner:--}" = - ] || kill -0 "$serve_owner" 2> /dev/null; }; then
+    log "server pid $pid of $root is serving \`$serve_cmd\` (sbt-warm pid $serve_pid, owner ${serve_owner:--}): this command would wait for it to end"
+    echo "sbt-warm BLOCKED: the server of $root is serving \`$serve_cmd\` (sbt-warm pid $serve_pid); stop that first (its owner's clean-up, or scripts/sbt-warm --stop)" >&2
+    [ -n "${KINOWO_STALL_FILE:-}" ] && echo "sbt-warm blocked by serving $serve_cmd" >> "$KINOWO_STALL_FILE"
+    kill "$heartbeat" 2> /dev/null
+    exit 75
+  fi
+  stop_servers_of "$root" "still serving \`$serve_cmd\` for sbt-warm pid $serve_pid / owner ${serve_owner:--}, which ended: an orphaned command every later one would queue behind"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
+  for p in $(server_pids "$root"); do stop_server -9 "$p" "$root" "orphaned serving command, alive 10 s after SIGTERM"; done
+  rm -f "$ServingFile" "$root/project/target/active.json"
+fi
+server_pid "$root" > /dev/null || rm -f "$ServingFile"   # the server it marked is gone
 fresh=0
 if pid=$(server_pid "$root"); then
   log "checkout $root, server pid $pid"
@@ -380,8 +421,9 @@ fi
 # The KINOWO_* settings this call passes. A kept server reads the environment it STARTED with, never a later call's:
 # KINOWO_IDENTITY_CORPUS_DIR given to a call reached nothing, and the corpus specs cancelled (2026-10-18). A call whose
 # settings differ from its server's restarts the server with them. The tool-side knobs (KINOWO_SBT_WARM_*, the JVM
-# gate's KINOWO_MEMORY_GATE*/KINOWO_JVM_*) are no server setting.
-settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' | sort | shasum | cut -c1-16)
+# gate's KINOWO_MEMORY_GATE*/KINOWO_JVM_*, the stall bound's KINOWO_STALL_*/KINOWO_PROGRESS_FILE) are no server setting.
+settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' \
+  -e '^KINOWO_STALL_' -e '^KINOWO_PROGRESS_FILE=' | sort | shasum | cut -c1-16)
 if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" != "$settings" ]; then
   log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
   # never under another call's running command (it holds $key.busy shared, as this one does): this call waits for the
@@ -422,7 +464,91 @@ else
     jvm_slot_release   # another call's keeper started meanwhile: it holds this server's slot
   fi
 fi
-(cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 5>&- 6>&- 7>&- 8>&- 9>&-); rc=$?
+if [ "$serve" = 1 ]; then
+  # removed once the serve's command has ended; a serve KILLED leaves it, so the next call restarts the server under it
+  echo "$$ ${KINOWO_SBT_WARM_SERVE_OWNER:--} $command" > "$ServingFile"
+  # its owner gone (killed: no clean-up of its own ran), the serve's command would hold the server forever
+  if [ -n "${KINOWO_SBT_WARM_SERVE_OWNER:-}" ]; then
+    ( while kill -0 $$ 2> /dev/null; do
+        if ! kill -0 "$KINOWO_SBT_WARM_SERVE_OWNER" 2> /dev/null; then
+          stop_servers_of "$root" "serving \`$command\` for pid $KINOWO_SBT_WARM_SERVE_OWNER, which ended"
+          break
+        fi
+        sleep "${KINOWO_SBT_WARM_OWNER_POLL:-2}"
+      done ) > /dev/null 2>&1 5>&- 6>&- 7>&- 8>&- 9>&- &
+  fi
+fi
+# The sbt client, in the background so this call can watch it: NO PROGRESS (the header) -- the server's process tree
+# (forked test JVMs included) and the client's using under KINOWO_STALL_CPU_CENTIS in each poll, for StallSeconds.
+StallSeconds=${KINOWO_SBT_WARM_STALL_SECONDS:-600}
+client=""
+trap '[ -n "$client" ] && kill $(stall_tree_pids "$client") 2> /dev/null; exit 143' TERM INT
+run_client() {
+  (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" exec sbt --client "$command" 5>&- 6>&- 7>&- 8>&- 9>&-) &
+  client=$!
+}
+# the server's and client's CPU, summed (centiseconds)
+client_and_server_cpu() {
+  local spid
+  spid=$(server_pid "$root") || spid=""
+  # shellcheck disable=SC2046 # one pid per word
+  stall_cpu_centis $(stall_tree_pids "$client") ${spid:+$(stall_tree_pids "$spid")}
+}
+# Waits for the client: its status, or 75 once it made no progress for StallSeconds (the server then dumped and stopped)
+watch_client() {
+  local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100} next quiet=0 last now spid dump
+  last=$(client_and_server_cpu); next=$((SECONDS + poll))
+  while kill -0 "$client" 2> /dev/null; do
+    sleep 0.5
+    [ "$SECONDS" -ge "$next" ] || continue
+    next=$((SECONDS + poll)); now=$(client_and_server_cpu)
+    if [ $((now - last)) -ge "$need" ]; then
+      quiet=0
+      [ -n "${KINOWO_PROGRESS_FILE:-}" ] && touch "$KINOWO_PROGRESS_FILE"
+    else
+      quiet=$((quiet + poll))
+    fi
+    last=$now
+    [ "$quiet" -ge "$StallSeconds" ] || continue
+    spid=$(server_pid "$root") || spid=""
+    dump="$State/$key.stall-$(date '+%Y%m%d-%H%M%S').txt"
+    if [ -n "$spid" ]; then
+      { echo "# server pid $spid of $root, \`$command\`: no progress for ${quiet}s"
+        "${JAVA_HOME:+$JAVA_HOME/bin/}jcmd" "$spid" Thread.print 2>&1 || jstack "$spid" 2>&1; } > "$dump"
+      log "no progress for ${quiet}s on \`$command\` (server pid $spid and client at 0% CPU); thread dump: $dump"
+      grep -A14 '^"main"' "$dump" 2> /dev/null | grep -q 'sbt.Execute.runKeep' &&
+        log "...its main thread is running a command: this one was queued behind it ($(grep -m1 -E '^[[:space:]]+at (tools|services|controllers)\.' "$dump" | sed 's/^[[:space:]]*//'))"
+    else
+      log "no progress for ${quiet}s on \`$command\`, and no server of $root runs: the client waits on nothing"
+    fi
+    # shellcheck disable=SC2046 # one pid per word
+    kill $(stall_tree_pids "$client") 2> /dev/null
+    stop_servers_of "$root" "no progress for ${quiet}s on \`$command\` (thread dump: ${spid:+$dump})"
+    for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
+    for spid in $(server_pids "$root"); do stop_server -9 "$spid" "$root" "stalled, alive 10 s after SIGTERM"; done
+    rm -f "$root/project/target/active.json"
+    wait "$client" 2> /dev/null
+    StallDump=$dump
+    return 75
+  done
+  wait "$client"
+}
+if [ "$serve" = 1 ]; then
+  run_client; wait "$client"; rc=$?
+  rm -f "$ServingFile"
+else
+  run_client; watch_client; rc=$?
+  if [ "$rc" = 75 ]; then
+    log "running \`$command\` once more, in a fresh server"
+    first=$StallDump
+    run_client; watch_client; rc=$?
+    if [ "$rc" = 75 ]; then
+      echo "sbt-warm STALLED: $command (no progress for ${StallSeconds}s, twice, each in a fresh server; thread dumps: $first $StallDump)" >&2
+      [ -n "${KINOWO_STALL_FILE:-}" ] && echo "sbt-warm $command" >> "$KINOWO_STALL_FILE"
+    fi
+  fi
+fi
+client=""
 kill "$heartbeat" 2>/dev/null
 jvm_slot_release
 touch "$State/$key.used"

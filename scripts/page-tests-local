@@ -31,6 +31,10 @@ stop() {
     rm -rf "$state"
 }
 trap stop EXIT
+# the serve is nohup'd (fixture-server.sh): this script killed before its clean-up, the serve's runMain would hold the
+# checkout's sbt server -- and every later command queued in it -- for good (2026-10-27, a land's hook 2.5 h). Its owner
+# named, sbt-warm stops that server the moment this script is gone.
+KINOWO_SBT_WARM_SERVE_OWNER=$$ \
 .github/scripts/fixture-server.sh launch "$state" "$sbt_warm" --serve "web/PageTest/runMain tools.FixtureServerMain $state/port"
 .github/scripts/fixture-server.sh await "$state"
 KINOWO_BASE_URL="http://127.0.0.1:$(cat "$state/port")"

@@ -81,6 +81,13 @@
 # skips the path checks (THE REUSE, below; the key kept in ~/.cache/kinowo-prepush). Anything different runs them all.
 # PREPUSH_NO_REUSE=1 runs them regardless.
 #
+# NO STEP HANGS: each check runs under a no-progress bound (scripts/stall-watch.sh): no CPU in the hook's processes, no
+# log written in its temp dir and no progress from scripts/sbt-warm (KINOWO_PROGRESS_FILE: a kept sbt server's work is
+# no CPU of the hook's) for $PREPUSH_STALL_SECONDS (1200) ends the check's processes and fails it with
+# `pre-push STALLED: <check>`, and the hook with exit 75 -- THE STALL SIGNAL, which scripts/sbt-warm gives too (its
+# own bound, 600 s, fires first inside an sbt step). 2026-10-27: a land's hook sat 2.5 h in one sbt-warm call, the
+# landing lock held, five lands behind it.
+#
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
 # the named checks.
 #
@@ -997,22 +1004,39 @@ if [ -n "$isolate_reason" ]; then
     cd "$tree" || exit 1
 fi
 
-failed=""
+failed="" stalled=""
+StallSeconds="${PREPUSH_STALL_SECONDS:-1200}"
+stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/stall-watch.sh"
+[ -f "$stall_watch" ] || stall_watch="$root/scripts/stall-watch.sh"
 started=$SECONDS
 log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
 for check in $checks; do
     if skipped "$check"; then warn "$check SKIPPED (PREPUSH_SKIP)"; continue; fi
     t0=$SECONDS
+    # NO STEP HANGS (the header): the check's watchdog, and the marks sbt-warm reports its progress and stalls to
+    export KINOWO_PROGRESS_FILE="$tmp/progress.$check" KINOWO_STALL_FILE="$tmp/stalled.$check"
+    watchdog=""
+    if [ -f "$stall_watch" ]; then
+        bash "$stall_watch" watch $$ "$StallSeconds" "$check" "$KINOWO_STALL_FILE" "$KINOWO_PROGRESS_FILE" "$tmp" 2>/dev/null &
+        watchdog=$!
+    fi
     if "check_$check"; then
         log "$check ok ($((SECONDS - t0))s)"
+    elif [ -s "$KINOWO_STALL_FILE" ]; then
+        printf 'pre-push STALLED: %s (no progress for %ss: %s; ended after %ss)\n' "$check" "$StallSeconds" \
+            "$(tr '\n' ';' < "$KINOWO_STALL_FILE" | sed 's/;$//')" "$((SECONDS - t0))" >&2
+        failed="$failed $check" stalled="$stalled $check"
     else
         warn "$check FAILED ($((SECONDS - t0))s)"
         failed="$failed $check"
     fi
+    [ -z "$watchdog" ] || { kill "$watchdog" 2>/dev/null; wait "$watchdog" 2>/dev/null; }
 done
+unset KINOWO_PROGRESS_FILE KINOWO_STALL_FILE
 
 if [ -n "$failed" ]; then
     warn "blocked by:$failed ($((SECONDS - started))s). Fix, or bypass with PREPUSH_SKIP=\"${failed# }\" / --no-verify."
+    [ -z "$stalled" ] || exit 75   # THE STALL SIGNAL: a step hung, no verdict on the change
     exit 1
 fi
 rm -rf "$tmp"

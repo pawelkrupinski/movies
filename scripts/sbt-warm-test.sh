@@ -391,4 +391,82 @@ check "--reap stops an idle server's keeper with it" "stopped 0" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(keepers_of "$scratch/restopped")"
 kill "$server" 2>/dev/null
 
+# 2026-10-27: a land's pre-push compile waited 2.5 h in sbt-warm, client and server at 0% CPU: the server still ran an
+# orphaned serving command, and sbt runs one command at a time. NO PROGRESS: a call whose server and client use no CPU
+# for KINOWO_SBT_WARM_STALL_SECONDS is ended -- thread dump, server stopped, one retry in a fresh server, then exit 75.
+scratch_git "$repo" worktree add -q -b stall "$scratch/stall" origin/main
+cp -R "$scratch/other/worker/target" "$scratch/stall/worker/target" 2>/dev/null
+cp "$scratch/bin/sbt" "$scratch/sbt.orig"
+cat > "$scratch/bin/sbt" <<STUB
+#!/usr/bin/env bash
+# a client waiting on a server that never answers: the first call only (STUB_HANG_ONCE), or every one
+if [ -n "\${STUB_HANG_ONCE:-}" ] && [ -f "\$STUB_HANG_ONCE" ]; then echo served; exit 0; fi
+[ -n "\${STUB_HANG_ONCE:-}" ] && touch "\$STUB_HANG_ONCE"
+echo \$\$ >> "$scratch/hung"; exec sleep 86400
+STUB
+export KINOWO_STALL_POLL_SECONDS=1
+fake_server "$scratch/stall"; server=$!; await_server "$server"
+out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 KINOWO_STALL_FILE="$scratch/stalled" \
+  spec_bounded "$REPO_ROOT/scripts/sbt-warm" "common/Test/compile" 2>&1 >/dev/null); rc=$?
+check "a call making no progress fails with the stall signal: exit 75 and a STALLED line naming the command" "75 yes" \
+  "$rc $(grep -q '^sbt-warm STALLED: common/Test/compile' <<<"$out" && echo yes || echo "no: $out")"
+check "...after one retry in a fresh server" "yes" "$(grep -q 'once more, in a fresh server' <<<"$out" && echo yes || echo "no: $out")"
+check "...the stalled server stopped, recorded with why" "stopped yes" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "pid=$server .*no progress for" "$KINOWO_SBT_WARM_STATE/stops.log" && echo yes || echo no)"
+check "...its thread dump written beside the keeper's log" "yes" \
+  "$(compgen -G "$KINOWO_SBT_WARM_STATE/*.stall-*.txt" >/dev/null && echo yes || echo no)"
+check "...the stalled command named in KINOWO_STALL_FILE" "sbt-warm common/Test/compile" "$(cat "$scratch/stalled" 2>/dev/null)"
+check "...and no hung client left behind" "0" "$(spec_still_running "$scratch/hung")"
+rm -f "$scratch/hung"
+# a stall the fresh server clears: the retry's result is the call's
+fake_server "$scratch/stall"; server=$!; await_server "$server"
+out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 STUB_HANG_ONCE="$scratch/hung-once" \
+  spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>/dev/null); rc=$?
+check "a stall the fresh server clears: the retry's result is the call's" "0 served" "$rc $out"
+check "...no hung client left behind" "0" "$(spec_still_running "$scratch/hung")"
+rm -f "$scratch/hung"
+# a client using CPU is progress, however long it runs
+cat > "$scratch/bin/sbt" <<'STUB'
+#!/usr/bin/env bash
+end=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done; echo done
+STUB
+out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 KINOWO_STALL_CPU_CENTIS=10 KINOWO_PROGRESS_FILE="$scratch/progress" \
+  spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>/dev/null); rc=$?
+check "a command busy past the stall bound is no stall" "0 done" "$rc $out"
+check "...and it touched KINOWO_PROGRESS_FILE as it went" "yes" "$([ -f "$scratch/progress" ] && echo yes || echo no)"
+
+# ONE COMMAND AT A TIME: a --serve marks the server serving; a call meeting a live serve fails at once, BLOCKED, instead
+# of queueing behind it; the serve's owner gone, the server is stopped; a serve gone, the next call restarts the server
+cat > "$scratch/bin/sbt" <<STUB
+#!/usr/bin/env bash
+case "\$*" in *runMain*) echo \$\$ >> "$scratch/hung"; exec sleep 86400 ;; esac
+echo served
+STUB
+sleep 600 & owner=$!; fakes+=("$owner")
+fake_server "$scratch/stall"; server=$!; await_server "$server"
+(cd "$scratch/stall" && KINOWO_SBT_WARM_SERVE_OWNER=$owner KINOWO_SBT_WARM_OWNER_POLL=0.2 \
+  exec "$REPO_ROOT/scripts/sbt-warm" --serve "web/PageTest/runMain tools.FixtureServerMain port") >/dev/null 2>&1 &
+serve=$!; fakes+=("$serve")
+for _ in $(seq 1 100); do compgen -G "$KINOWO_SBT_WARM_STATE/*.serving" >/dev/null && break; sleep 0.1; done
+out=$(cd "$scratch/stall" && spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null); rc=$?
+check "a call meeting a live serve in its server fails at once with exit 75, BLOCKED, naming it" "75 yes" \
+  "$rc $(grep -q '^sbt-warm BLOCKED: .*FixtureServerMain' <<<"$out" && echo yes || echo "no: $out")"
+kill "$owner"
+# (the stop is recorded just after its signal)
+for _ in $(seq 1 100); do grep -q "pid=$server .*which ended" "$KINOWO_SBT_WARM_STATE/stops.log" && break; sleep 0.1; done
+check "the serve's owner gone (killed, no clean-up), its server is stopped, recorded" "stopped yes" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "pid=$server .*which ended" "$KINOWO_SBT_WARM_STATE/stops.log" && echo yes || echo no)"
+kill -TERM "$serve" 2>/dev/null; wait "$serve" 2>/dev/null
+check "...the serve's client ended with it" "0" "$(spec_still_running "$scratch/hung")"
+rm -f "$scratch/hung"
+# a serve gone (killed) while its server still runs the served command: the next call restarts the server under it
+fake_server "$scratch/stall"; server=$!; await_server "$server"
+stall_key=$(grep -lx "$scratch/stall" "$KINOWO_SBT_WARM_STATE"/*.root); stall_key=${stall_key%.root}
+echo "999999 - web/PageTest/runMain tools.FixtureServerMain port" > "$stall_key.serving"
+out=$(cd "$scratch/stall" && spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>/dev/null); rc=$?
+check "a server still serving for a serve that is gone is restarted, and the call runs" "stopped 0 served" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $rc $out"
+unset KINOWO_STALL_POLL_SECONDS
+cp "$scratch/sbt.orig" "$scratch/bin/sbt"
+
 spec_summary
