@@ -336,7 +336,7 @@ if command -v shellcheck >/dev/null; then
   live_sbt=$!
   # The hook finds it by name: wait until the background shell has exec'd under it, or a busy
   # runner's hook looks before it has, and checks in place (Main run 36374330375).
-  for _ in $(seq 1 100); do grep -q 'fake/sbt-launch.jar' <<<"$(ps -o args= -p "$live_sbt" 2>/dev/null)" && break; sleep 0.1; done
+  wait_until "the fake sbt exec'd under its launcher name" 'ps -o args= -p "$live_sbt" 2>/dev/null | grep -q "fake/sbt-launch.jar"'
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
@@ -364,7 +364,7 @@ for f in glob.glob(sys.argv[1] + "/*.busy"):
 STUB
   (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
   live_sbt=$!
-  for _ in $(seq 1 100); do grep -q 'fake/sbt-launch.jar --detach' <<<"$(ps -o args= -p "$live_sbt" 2>/dev/null)" && break; sleep 0.1; done
+  wait_until "the fake kept sbt server exec'd under its launcher name" 'ps -o args= -p "$live_sbt" 2>/dev/null | grep -q "fake/sbt-launch.jar --detach"'
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null

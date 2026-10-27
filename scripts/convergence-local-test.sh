@@ -143,7 +143,7 @@ time.sleep(60)
 PY
 python3 "$work/listen.py" > "$work/listener-port" &
 listener=$!
-for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do [ -s "$work/listener-port" ] && break; sleep 0.2; done
+wait_until "the listener printed its port" '[ -s "$work/listener-port" ]'
 mirror_port=$(cat "$work/listener-port")
 TMDB_API_KEY=tmdb local_leg pl
 check "the itAll mongod answering: reused, no container" "mongodb://127.0.0.1:$mirror_port/?directConnection=true " \

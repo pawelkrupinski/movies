@@ -463,7 +463,7 @@ rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
     KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=1 PATH="$work/bin:$PATH" \
     exec "$REPO_ROOT/scripts/identity-measure" --countries pl > "$work/out" 2>&1 ) &
 pid=$!
-for _ in $(seq 1 100); do [ -f "$work/stub/watched" ] && break; sleep 0.1; done
+wait_until "the tool is watching the run" '[ -f "$work/stub/watched" ]'
 # A watchdog: a script that defers the signal (a wait inside a $(...) subshell does) must fail this, not hang it.
 ( sleep 20; kill -KILL "$pid" 2> /dev/null ) & watchdog=$!
 kill -TERM "$pid"; wait "$pid"; status=$?

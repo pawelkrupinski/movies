@@ -19,12 +19,10 @@ class CdpSocketLossSpec extends AnyFlatSpec with Matchers with SuiteConfiguratio
         try chrome.openPage("about:blank") { page =>
           page.evalInt("1 + 1") shouldBe 2
           page.closeTargetFromChrome()
-          val started = System.nanoTime()
           // Call until the closed connection surfaces: the poll's own timeout would fail the message check below.
           val failure = intercept[RuntimeException](
             CdpPage.pollUntil("the closed connection to surface", timeoutMs = 5000, pollMs = 20) { () => page.evalInt("1"); false })
           failure.getMessage should include ("Chrome closed this page's DevTools connection")
-          ((System.nanoTime() - started) / 1000000) should be < 10000L
         }
         finally chrome.close()
     }

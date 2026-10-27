@@ -36,7 +36,7 @@ check "a chore nobody started is reported at once, so the caller can do it itsel
 # A chore that never ends on its own, waited on once it is half way: wait returns only by its deadline, while the
 # chore runs on.
 bg start hung bash -c 'echo "half way"; echo $$ > "$0"; exec sleep 86400' "$work/hung"
-for _ in $(seq 1 600); do [ -s "$work/hung" ] && break; sleep 0.1; done
+wait_until "the hung chore wrote its pid" '[ -s "$work/hung" ]'
 out="$(bg wait hung 1)"; status=$?
 check "a chore past its deadline fails the wait" "1" "$status"
 check "...on the deadline, not the chore's own end: it is still running" "true" \

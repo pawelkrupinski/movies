@@ -224,7 +224,7 @@ release_lock
 COMMON="$HERE/../../scripts/store-screenshots-common.sh"
 LOCK_ROOT="$LOCK_ROOT" bash -c "source '$COMMON'; acquire_lock proc; sleep 5" >/dev/null 2>&1 &
 _holder=$!
-sleep 1                                            # let it take the lock
+wait_until "the holder took the lock" '[ -d "$LOCK_ROOT/kinowo-screenshots-proc.lock" ]'
 check "a second PROCESS is refused while one holds it" "1" \
   "$(LOCK_ROOT="$LOCK_ROOT" bash -c "source '$COMMON'; acquire_lock proc" >/dev/null 2>&1; echo $?)"
 check "the holder is still alive (it was not clobbered)" "0" \

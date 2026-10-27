@@ -93,7 +93,7 @@ check "...a child started with the slot's descriptor closed rides nothing: it ta
 spec_lock_holder "$slots/1.flock"; a=$SPEC_LOCK_HOLDER; spec_lock_holder "$slots/2.flock"; b=$SPEC_LOCK_HOLDER
 ( jvm_slot_take t; echo "${JVM_SLOT##*/}" > "$work/got" ) 2> "$work/err" &
 waiter=$!
-for _ in $(seq 1 100); do grep -q 'JVM slots busy' "$work/err" 2>/dev/null && break; sleep 0.05; done
+wait_until "the waiter said every slot is busy" grep -q 'JVM slots busy' "$work/err"
 check "every slot busy: waits, saying so with the holders" "yes no" \
   "$(grep -q "all 2 JVM slots busy (KINOWO_JVM_SLOTS; holders: $a,$b)" "$work/err" && echo yes || echo no) $([ -s "$work/got" ] && echo yes || echo no)"
 kill -9 "$b"; wait "$b" 2>/dev/null; wait "$waiter"
@@ -108,7 +108,7 @@ probe "${readings[@]}"
 ( KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE="$probe_cmd" KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_JVM_SLOT_MAX_WAIT=0 \
     KINOWO_MEMORY_GATE_STATUS_SECONDS=1 jvm_slot_take t; echo "${JVM_SLOT##*/}" > "$work/got" ) 2> "$work/err" &
 waiter=$!
-for _ in $(seq 1 100); do grep -q 'still waiting' "$work/err" 2>/dev/null && break; sleep 0.05; done
+wait_until "the waiter said it is still waiting" grep -q 'still waiting' "$work/err"
 kill "$c"; wait "$c" 2>/dev/null; wait "$waiter"
 check "...but while memory is short it keeps waiting past the slot deadline, saying why, until a slot frees" "2.flock 0 yes" \
   "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err") $(grep -q 'past KINOWO_JVM_SLOT_MAX_WAIT=0, but 99 GB paged out, 0 GB free: still waiting' "$work/err" && echo yes || echo no)"
@@ -123,25 +123,27 @@ kill "$live"; wait "$live" 2>/dev/null
 # many processes racing for one free lock, and for the machine's slots: never two inside at once, every round
 for round in 1 2 3 4 5; do
   racers=()
-  for _ in $(seq 1 16); do
-    ( while [ ! -e "$work/go$round" ]; do :; done
+  for i in $(seq 1 16); do
+    ( touch "$work/ready$round.$i"; while [ ! -e "$work/go$round" ]; do :; done
       until jvm_lock "$work/race$round"; do sleep 0.01; done
       echo in >> "$work/inside$round"; sleep 0.05; echo out >> "$work/inside$round"; jvm_unlock "$work/race$round" ) &
     racers+=($!)
   done
-  sleep 0.3; touch "$work/go$round"; wait "${racers[@]}"
+  wait_until "every racer for round $round is ready" '[ "$(ls "$work"/ready$round.* 2>/dev/null | wc -l)" -eq 16 ]'
+  touch "$work/go$round"; wait "${racers[@]}"
 done
 check "16 racers for one lock, five rounds: each inside alone, one after another" "16 16 16 16 16|in,out" \
   "$(for r in 1 2 3 4 5; do grep -c in "$work/inside$r"; done | paste -sd' ' -)|$(cat "$work"/inside? | paste -sd, - | sed 's/\(in,out,\)*in,out$/in,out/')"
 : > "$work/slot-log"
 racers=()
-for _ in $(seq 1 12); do
-  ( while [ ! -e "$work/go-slots" ]; do :; done
+for i in $(seq 1 12); do
+  ( touch "$work/ready-slots.$i"; while [ ! -e "$work/go-slots" ]; do :; done
     KINOWO_JVM_SLOT_POLL=0.02 jvm_slot_take t 2> /dev/null
     echo "+ $JVM_SLOT" >> "$work/slot-log"; sleep 0.2; echo "- $JVM_SLOT" >> "$work/slot-log"; jvm_slot_release ) &
   racers+=($!)
 done
-sleep 0.3; touch "$work/go-slots"; wait "${racers[@]}"
+wait_until "every slot racer is ready" '[ "$(ls "$work"/ready-slots.* 2>/dev/null | wc -l)" -eq 12 ]'
+touch "$work/go-slots"; wait "${racers[@]}"
 check "12 racers for 2 slots: never more than 2 holding at once, never one slot twice" "24 2 ok" \
   "$(wc -l < "$work/slot-log" | tr -d ' ') $(awk '/^\+/ { n++; if (n > m) m = n; if (held[$2]++) bad = 1 } /^-/ { n--; held[$2]-- } END { print m, (bad ? "twice" : "ok") }' "$work/slot-log")"
 ( KINOWO_JVM_SLOTS=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" )
@@ -154,11 +156,11 @@ export KINOWO_IDENTITY_CACHE="$work/keeper-cache"; slots="$work/keeper-cache/jvm
   jvm_slot_keeper_start "$work" "$work/keeper.log" bash -c 'echo "in $PWD"; { : >&6; } 2>/dev/null && echo "holds 6"; exec sleep 60' 6>> "$work/six"
   echo "$KEEPER_PID ${JVM_SLOT:-handed}" > "$work/keeper" )
 read -r keeper handed < "$work/keeper"
-for _ in $(seq 1 200); do [ -s "$work/keeper.log" ] && break; sleep 0.05; done
+wait_until "the keeper's command wrote its log" '[ -s "$work/keeper.log" ]'
 check "a keeper holds the slot handed to it after its taker has gone, named in it, run in its directory, no other lock" \
   "held $keeper alive handed|in $work" \
   "$(spec_lock_state "$slots/1.flock") $(cat "$slots/1.flock") $(kill -0 "$keeper" 2>/dev/null && echo alive || echo gone) $handed|$(cat "$work/keeper.log")"
-kill "$keeper"; for _ in $(seq 1 200); do kill -0 "$keeper" 2>/dev/null || break; sleep 0.05; done
+kill "$keeper"; wait_until "the keeper has ended" '! kill -0 "$keeper" 2>/dev/null'
 check "...and the slot is free once the keeper has ended" "free" "$(spec_lock_state "$slots/1.flock")"
 ( jvm_slot_take t; jvm_slot_take_if_free && echo second || echo riding ) > "$work/got"
 check "a keeper's poll takes no second slot while it holds one" "riding" "$(cat "$work/got")"

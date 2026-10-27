@@ -3,6 +3,7 @@ package services.enrichment.scraping
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import scala.concurrent.duration.DurationInt
 import scala.util.Random
 
 /** [[HtmlScripts]] is the script-element regex the rating readers used, found by `indexOf` instead:
@@ -44,12 +45,14 @@ class HtmlScriptsSpec extends AnyFlatSpec with Matchers {
 
   // The regex's lazy body tried its closing at every character after every opening: a page whose
   // openings never close cost each opening a scan to the end of the page, so 30,000 of them took tens
-  // of seconds. One pass over 300 kB is milliseconds; the bound leaves two orders of magnitude.
+  // of seconds. One pass over 300 kB is milliseconds of CPU; the bound leaves two orders of magnitude.
   it should "read a page whose scripts never close in one pass, not one pass per opening" in {
-    val html    = "<script>x " * 30000
-    val started = System.nanoTime()
+    val html = "<script>x " * 30000
     JsonLdBlocks.scripts(html) shouldBe empty
     RottenTomatoesScorecard.criticsScore(html) shouldBe None
-    (System.nanoTime() - started) / 1000000 should be < 1000L
+    tools.costs.CpuMeter.fastest(runs = 1) {
+      JsonLdBlocks.scripts(html)
+      RottenTomatoesScorecard.criticsScore(html)
+    } should be < 1.second
   }
 }

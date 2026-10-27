@@ -60,6 +60,6 @@ sync all-of-them; rc=$?
 check "an unknown argument is refused" "1" "$rc"
 check "...before any tunnel or dump" "0" "$(grep -c . "$CALLS" 2>/dev/null || echo 0)"
 sync pl
-sleep 0.5
+wait_until "the tunnel's ssh is gone" '! kill -0 "$(cat "$SSH_PID")" 2>/dev/null'
 check "the tunnel's ssh is closed on exit, none stranded" "gone" "$(kill -0 "$(cat "$SSH_PID")" 2>/dev/null && echo alive || echo gone)"
 spec_summary

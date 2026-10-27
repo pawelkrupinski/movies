@@ -285,7 +285,7 @@ check "a kept JVM that never listens is stopped at the deadline, and the call fa
 one_slot="$cache/jvm-slots/1.flock"
 slotted() { KINOWO_JVM_SLOTS=1 slice "$@"; }
 keeper_of() { ps -axo pid=,args= | awk -v jvm="--keep-served $1" 'index($0, jvm) && !/awk/ { print $1 }'; }
-gone_within() { local _; for _ in $(seq 1 300); do kill -0 "$1" 2>/dev/null || return 0; sleep 0.1; done; return 1; }
+gone_within() { local pid=$1; wait_until "pid $pid is gone" '! kill -0 "$pid" 2>/dev/null'; }
 rm -f "$work/calls"; slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
 served=$(cat "$cache"/serve/*.pid); keeper=$(keeper_of "$served")
 check "a kept JVM holds a JVM slot after its call has ended: its keeper's, watching that JVM" "held ${keeper:-none} alive" \
@@ -302,7 +302,7 @@ spec_lock_holder "$one_slot"; holder=$SPEC_LOCK_HOLDER
 KINOWO_JVM_SLOT_MAX_WAIT=0 KINOWO_IDENTITY_SLICE_IDLE_MINUTES=3 slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
 served=$(cat "$cache"/serve/*.pid); keeper=$(keeper_of "$served")
 kill "$holder"; wait "$holder" 2>/dev/null
-for _ in $(seq 1 300); do [ "$(cat "$one_slot" 2>/dev/null)" = "${keeper:-none}" ] && break; sleep 0.1; done
+wait_until "the keeper took the freed slot" '[ "$(cat "$one_slot" 2>/dev/null)" = "${keeper:-none}" ]'
 check "a keeper started without a slot takes the first that frees" "held ${keeper:-none}" "$(spec_lock_state "$one_slot") $(cat "$one_slot")"
 check "...the idle exit set by KINOWO_IDENTITY_SLICE_IDLE_MINUTES" "1" "$(grep -c -- '--idle-minutes 3$' "$work/calls")"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
@@ -317,8 +317,9 @@ CLASS=scripts.IdentitySlice bash -c 'until [ -e "$0" ]; do sleep 0.05; done; exe
 jvm=$!
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO_IDENTITY_SLICE_KEEPER_POLL=0.1 \
   "$repo/scripts/identity-slice" --keep-served "$jvm" 2> /dev/null & keeper=$!
-sleep 0.5; touch "$work/exec-now"
-for _ in $(seq 1 300); do ps -o args= -p "$jvm" | grep -q 'scripts\.IdentitySlice' && break; sleep 0.1; done
+wait_until "the keeper is running, watching a JVM that has not exec'd yet" 'ps -o args= -p "$keeper" 2>/dev/null | grep -q -- "--keep-served"'
+touch "$work/exec-now"
+wait_until "the JVM exec'd as an IdentitySlice" 'ps -o args= -p "$jvm" | grep -q "scripts\.IdentitySlice"'
 sleep 0.5
 check "a keeper waits out its JVM's start (its process not yet exec'd as one), then holds on" "alive" \
   "$(kill -0 "$keeper" 2>/dev/null && echo alive || echo gone)"
@@ -356,16 +357,14 @@ chmod +x "$work/bin/gh"; rm -f "$work/gh-started"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" perl -e 'setpgrp(0, 0); exec @ARGV' \
   "$repo/scripts/identity-slice" de --faithfulness 323456789 > /dev/null 2> "$work/err" &
 cut_short=$!
-for _ in $(seq 1 100); do [ -e "$work/gh-started" ] && break; sleep 0.1; done
+wait_until "the stub gh started its download" '[ -e "$work/gh-started" ]'
 kill -TERM -- "-$cut_short" 2>/dev/null; wait "$cut_short" 2>/dev/null
 # faith_locks_held -> how many of the run's download locks a process still holds
 faith_locks_held() { local f; for f in "$cache"/locks/diagnostics-323456789-*.flock; do [ ! -e "$f" ] || spec_lock_state "$f"; done | grep -c held; }
 # the download's subshell cleans up once bounded has ended gh's group (up to 2s), after the tool itself has gone --
 # later still on a loaded machine (the pre-push hook runs eight tests at once)
-for _ in $(seq 1 150); do
-  [ -z "$(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*')" ] && [ "$(faith_locks_held)" = 0 ] && break
-  sleep 0.1
-done
+wait_until "the cut-short download's directory is gone and its locks free" \
+  '[ -z "$(find "$cache/diagnostics" -maxdepth 1 -name "323456789.dl.*")" ] && [ "$(faith_locks_held)" = 0 ]'
 check "--faithfulness RUN: a download cut short leaves no download directory, and its lock free" "yes 0 1 0" \
   "$([ -e "$work/gh-started" ] && echo yes || echo no) $(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*' | wc -l | tr -d ' ') $(find "$cache/locks" -maxdepth 1 -name 'diagnostics-323456789-*.flock' | wc -l | tr -d ' ') $(faith_locks_held)"
 rm -f "$work/bin/gh"

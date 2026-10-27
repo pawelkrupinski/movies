@@ -243,7 +243,7 @@ lazy val common = (project in file("common"))
 // are compiled into their test configs as well. A test classpath is never on another module's, so the compilations
 // never meet.
 lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
-  "tools/SpecTimeouts", "tools/ChildJvm", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
+  "tools/SpecTimeouts", "tools/Answered", "tools/costs/CpuMeter", "tools/ChildJvm", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
   "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository").map { name =>
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })

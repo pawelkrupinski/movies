@@ -21,12 +21,17 @@ echo "[spec] mongosh_at"
 for shell in /bin/bash "$BASH"; do
   [ -x "$shell" ] || continue
   rm -f "$PIDFILE"
+  # The shell under test backgrounds mongosh, tells us (the fifo) when to kill "$!", and waits for it to be gone.
+  rm -f "$SCRATCH/go"; mkfifo "$SCRATCH/go"
   PATH="$FAKE:$PATH" "$shell" -c '
     . "'"$HERE"'/prod-tunnel.sh"
     "$MONGOSH_AT" "mongodb://127.0.0.1:1/x" --quiet --file tail.js &
     p=$!
-    for _ in 1 2 3 4 5 6 7 8 9 10; do [ -s "$PIDFILE" ] && break; sleep 0.1; done
-    kill "$p"; wait "$p" 2>/dev/null; sleep 0.2'
+    read -r _ < "'"$SCRATCH"'/go"
+    kill "$p"; wait "$p" 2>/dev/null' &
+  shell_pid=$!
+  wait_until "mongosh recorded its pid" '[ -s "$PIDFILE" ]'
+  echo go > "$SCRATCH/go"; wait "$shell_pid"
   child="$(cat "$PIDFILE" 2>/dev/null)"
   alive="$(kill -0 "$child" 2>/dev/null && echo alive || echo gone)"
   [ "$alive" = alive ] && kill "$child" 2>/dev/null

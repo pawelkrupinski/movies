@@ -15,6 +15,9 @@ alive() { kill -0 "$1" 2>/dev/null && echo alive || echo gone; }
 # A process whose command line's program is $2 (a `java` as the JVM's own), holding $work in its arguments for the trap.
 start() { (cd "$1" && exec -a "$2" bash -c 'while :; do sleep 1; done' "$work") > /dev/null 2>&1 & echo $!; }
 
+# A stand-in is its own process only once its subshell has exec'd: its arguments then carry $work.
+execd() { ps -o args= -p "$1" 2>/dev/null | grep -qF -- "$work"; }
+
 check "nothing running: exits 0 and says nothing" "0:" "$(bash "$REPO_ROOT/scripts/ci/stop-stray-sbt.sh" "$work/build" 2>&1; echo "$?:")"
 
 sbt=$(start "$work/build" java)
@@ -22,7 +25,7 @@ forked=$(start "$work/build/worker" java)
 elsewhere=$(start "$work/other" java)
 sibling=$(start "$work/build-two" java)
 helper=$(start "$work/build" sleeper)
-sleep 0.3
+wait_until "every stand-in has exec'd under its own name" 'execd "$sbt" && execd "$forked" && execd "$elsewhere" && execd "$sibling" && execd "$helper"'
 
 out=$(bash "$REPO_ROOT/scripts/ci/stop-stray-sbt.sh" "$work/build" 2>&1)
 check "ends the strays and succeeds" "0" "$?"
@@ -35,7 +38,7 @@ check "...and a process that is no JVM is left alone" "alive" "$(alive "$helper"
 
 # From the build root itself, as the workflow runs it.
 again=$(start "$work/build" java)
-sleep 0.3
+wait_until "the stand-in has exec'd under its own name" 'execd "$again"'
 (cd "$work/build" && bash "$REPO_ROOT/scripts/ci/stop-stray-sbt.sh" > /dev/null 2>&1)
 check "defaults to the current directory as the build root" "gone" "$(alive "$again")"
 

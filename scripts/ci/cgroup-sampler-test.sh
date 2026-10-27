@@ -21,7 +21,7 @@ printf 'Name:\tmongod\nVmRSS:\t500 kB\n' > "$proc/103/status"
 
 export CGROUP_ROOT="$cg" PROC_ROOT="$proc" CGROUP_SAMPLER_OUT="$dir/max"
 "$sampler" start 1
-for _ in 1 2 3 4 5 6 7 8 9 10; do [ -f "$dir/max" ] && break; sleep 0.2; done
+wait_until "the sampler wrote its first sample" '[ -f "$dir/max" ]'
 pgrep -f "cgroup-sampler.sh start 1" | head -1 > "$dir/pid"
 report="$("$sampler" report)"
 

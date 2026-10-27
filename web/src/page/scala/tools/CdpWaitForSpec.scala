@@ -66,10 +66,9 @@ class CdpWaitForSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
   }
 
   it should "still time out on a state the running page never reaches" in withPage { (_, page) =>
-    val started = System.nanoTime()
+    // its own 500 ms timeout ends it: the message says which, and no wall-clock bound measures the machine's load
     val failure = intercept[RuntimeException](page.waitFor("window.never === true", timeoutMs = 500))
     failure.getMessage should include ("Timed out after 500ms")
-    ((System.nanoTime() - started) / 1000000) should be < 5000L
   }
 
   // A poll can land while the page is swapping documents (a reload the test

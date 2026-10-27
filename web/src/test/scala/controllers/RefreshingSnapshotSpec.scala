@@ -33,6 +33,12 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
   }
 
   private def eventually(cond: => Boolean): Unit = { Eventually.eventually(cond shouldBe true, pollMs = 5); () }
+  /** What `get` answers while `read` is still held: at once, never after the read ([[tools.Answered]]). */
+  private def answeredWhileHeld[A](read: GatedRead)(get: => A): A = {
+    val got = tools.Answered.at("a get while the read hangs")(get)
+    read.gate.getCount shouldBe 1
+    got
+  }
 
   private val Start = Instant.parse("2026-10-03T12:00:00Z")
 
@@ -67,9 +73,7 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     clock.advanceSeconds(16)
     read.gate = new CountDownLatch(1)   // the re-read hangs until released
 
-    val started = System.nanoTime()
-    snapshot.get().value shouldBe 1
-    (System.nanoTime() - started).nanos should be < 1.second
+    answeredWhileHeld(read)(snapshot.get()).value shouldBe 1
 
     read.gate.countDown()
     eventually(snapshot.get().value == 2)
@@ -120,9 +124,7 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     read.gate    = new CountDownLatch(1)          // the fresh read hangs until released
     val snapshot = snapshotOf(read, new MutableClock(Start), store = store)
 
-    val started = System.nanoTime()
-    snapshot.get().value shouldBe 41
-    (System.nanoTime() - started).nanos should be < 1.second
+    answeredWhileHeld(read)(snapshot.get()).value shouldBe 41
 
     read.gate.countDown()
     eventually(snapshot.get().value == 1)

@@ -149,7 +149,7 @@ rm -f "$work/calls"
 ( KINOWO_MEASURE_LOCAL_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
     --base "$base" --head "$third" --countries pl --out "$work/locked" > "$work/locked.out" 2>&1; echo $? > "$work/locked.status" ) &
 runner=$!
-for _ in $(seq 1 50); do grep -q 'waiting for it' "$work/locked.out" 2>/dev/null && break; sleep 0.1; done
+wait_until "the run said it waits for the other's resolve" grep -q 'waiting for it' "$work/locked.out"
 check "a ref another live run is resolving: waited for, not resolved twice" "yes " \
   "$(grep -q "$third is being resolved by pid $holder" "$work/locked.out" && echo yes || echo no) $(grep "^$third" "$work/calls" 2>/dev/null)"
 kill -9 "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
@@ -160,7 +160,7 @@ mkdir -p "$cache/jvm-slots"; spec_lock_holder "$cache/jvm-slots/1.flock"; holder
 ( KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
     --base "$base" --head "$fourth" --countries pl --out "$work/slots" > "$work/slots.out" 2>&1; echo $? > "$work/slots.status" ) &
 runner=$!
-for _ in $(seq 1 50); do grep -q 'JVM slots busy' "$work/slots.out" 2>/dev/null && break; sleep 0.1; done
+wait_until "the run said every JVM slot is busy" grep -q 'JVM slots busy' "$work/slots.out"
 check "every JVM slot on the machine busy: the resolve waits for one (scripts/jvm-gate.sh)" "yes no" \
   "$(grep -q '\[identity-measure-local\] all 1 JVM slots busy' "$work/slots.out" && echo yes || echo no) $(grep -q "^$fourth" "$work/calls" && echo yes || echo no)"
 kill -9 "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
@@ -197,7 +197,7 @@ race() { # <tag> -> the race's two runs: a run on recording 41 held in its first
   ( STUB_PAUSE="$work/pause" STUB="$work" KINOWO_IDENTITY_CACHE="$cache" perl -e 'alarm 60; exec @ARGV' bash "$repo/scripts/identity-measure-local" \
       --base "$base" --head "$head" --recording 41 --countries pl "$@" > "$work/race41.out" 2>&1; echo $? > "$work/race41.status" ) &
   local first=$!
-  for _ in $(seq 1 200); do [ -e "$work/pause.reached" ] && break; sleep 0.05; done
+  wait_until "the first run reached its pause" '[ -e "$work/pause.reached" ]'
   STUB="$work" KINOWO_IDENTITY_CACHE="$cache" perl -e 'alarm 60; exec @ARGV' bash "$repo/scripts/identity-measure-local" \
     --base "$base" --head "$head" --recording 39 --countries pl "$@" > "$work/race39.out" 2>&1; echo $? > "$work/race39.status"
   rm -f "$work/pause"; wait "$first"

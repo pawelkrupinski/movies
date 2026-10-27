@@ -100,8 +100,8 @@ supervised() { # <case> -> runs supervise_db with the collaborators stubbed; pri
         TAIL_EXIT=1 supervise_db kinowo 0 > "$work/backoff.log" 2>&1 ;;
     esac
   ) > "$work/$which.out" 2>&1 &
-  local child=$! deadline=$((SECONDS + 120)) # a cap on a hang only: the child ends on its own
-  while kill -0 "$child" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.1; done
+  local child=$!
+  wait_until "the supervised child ended on its own" '! kill -0 "$child" 2>/dev/null'
   kill "$child" 2>/dev/null; wait "$child" 2>/dev/null
 }
 export TAIL_EXIT

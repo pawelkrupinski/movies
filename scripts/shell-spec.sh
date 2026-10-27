@@ -81,6 +81,34 @@ spec_still_running() {
   echo "$left"
 }
 
+# WAITING FOR SOMETHING. A spec never sleeps a guessed interval and then looks (`sleep 0.3; touch go`), nor polls a
+# fixed number of times and falls through when the count runs out: either one passes on an idle laptop and fails, or
+# silently tests nothing, on a machine ten times slower. It waits for the condition itself, with a deadline that only a
+# broken case reaches -- a wait that holds returns the moment it does, so a generous deadline costs a green run nothing.
+SPEC_WAIT_BOUND=${SPEC_WAIT_BOUND:-120}
+
+# wait_until <what> <condition> -> 0 the moment the condition holds; else, after SPEC_WAIT_BOUND seconds, 1, with a
+# failed case named <what> counted and the condition's last output shown. <condition> is one shell string, evaluated with
+# the caller's variables and functions (in a subshell: it reads them, sets none), or a command with its arguments:
+#   wait_until "the holder took the lock" '[ "$(cat "$lock")" = "$holder" ]'
+#   wait_until "the tool says it waits" grep -q 'waiting for it' "$work/out"
+wait_until() {
+  local what=$1 deadline out pause=0.01
+  shift
+  deadline=$((SECONDS + SPEC_WAIT_BOUND))
+  while :; do
+    if [ $# -eq 1 ]; then out=$(eval "$1" 2>&1) && return 0
+    else out=$("$@" 2>&1) && return 0; fi
+    [ "$SECONDS" -lt "$deadline" ] || break
+    command sleep "$pause"
+    case $pause in 0.01) pause=0.05 ;; 0.05) pause=0.2 ;; esac
+  done
+  printf '  \033[31m✗\033[0m %s: not within %ss (SPEC_WAIT_BOUND)\n     waited on: %s\n     last output: %s\n' \
+    "$what" "$SPEC_WAIT_BOUND" "$*" "${out:-(none)}"
+  fails=$((fails + 1))
+  return 1
+}
+
 # Failure tally. Set here rather than in each caller, which is the third line all
 # four repeated.
 fails=0

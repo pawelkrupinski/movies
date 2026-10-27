@@ -109,7 +109,7 @@ check "…and that port is not the pinned default" "" "$(printf '%s' "$ports" | 
 
 run "$REPO_ROOT/scripts/with-prod-mongo.sh" bash -c 'exit 7' >/dev/null 2>&1
 check "the command's exit status is the wrapper's" "7" "$?"
-sleep 0.2
+wait_until "the tunnel it opened is closed" '[ ! -f "$SSH_PID" ] || ! kill -0 "$(cat "$SSH_PID")" 2>/dev/null'
 check "the tunnel it opened is closed when the command ends" "gone" \
   "$(if [ ! -f "$SSH_PID" ]; then echo never-opened; elif kill -0 "$(cat "$SSH_PID")" 2>/dev/null; then echo running; else echo gone; fi)"
 spec_summary

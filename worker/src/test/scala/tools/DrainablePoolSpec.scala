@@ -18,11 +18,8 @@ class DrainablePoolSpec extends AnyFlatSpec with Matchers {
     val never = new CountDownLatch(1)
     val pool  = singleThreadPool()
     (1 to 4).foreach(_ => pool.submit(never.await())) // one running, three queued behind it
-    val stopwatch = Stopwatch.System.start()
-
-    val dropped = pool.stop(within = 200.millis)
-
-    stopwatch.elapsed should be < 2.seconds
+    // a drain waiting on the backlog would wait on `never` for good: it must answer at all, not within a guessed time
+    val dropped = Answered.at("a drain with a running task that never ends")(pool.stop(within = 200.millis))
     dropped shouldBe 4
   }
 

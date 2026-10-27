@@ -146,10 +146,11 @@ check "a lock whose holder was killed is free at once" "0 0" \
 # agents racing for one lock: one runs under it at a time -- never two inside
 # shellcheck disable=SC2016 # the command's own $1
 printf '%s\n' 'echo in >> "$1"; sleep 0.3; echo out >> "$1"' > "$work/inside"
-for _ in $(seq 1 12); do
-  ( while [ ! -e "$work/go" ]; do :; done; tools identity_locked race sh "$work/inside" "$work/inside.log" ) &
+for i in $(seq 1 12); do
+  ( touch "$work/ready$i"; while [ ! -e "$work/go" ]; do :; done; tools identity_locked race sh "$work/inside" "$work/inside.log" ) &
 done
-sleep 0.3; touch "$work/go"; wait
+wait_until "every racer is ready" '[ "$(ls "$work"/ready* 2>/dev/null | wc -l)" -eq 12 ]'
+touch "$work/go"; wait
 check "12 agents racing for one lock run under it one at a time" "12 in,out" \
   "$(grep -c in "$work/inside.log") $(paste -sd, - < "$work/inside.log" | sed 's/\(in,out,\)*in,out$/in,out/')"
 # a live holder is waited for, but not forever
@@ -226,7 +227,7 @@ check "...ending its whole process group: what it started too" "gone" \
 rm -f "$work/grandchild" "$work/command"
 bash -c '. "$1"; bounded 30 bash -c "sleep 30 & echo \$! > $2; echo \$\$ > $3; wait"' _ "$conventions" "$work/grandchild" "$work/command" &
 caller=$!
-for _ in $(seq 1 50); do [ -s "$work/command" ] && [ -s "$work/grandchild" ] && break; sleep 0.1; done
+wait_until "the command and its grandchild recorded their pids" '[ -s "$work/command" ] && [ -s "$work/grandchild" ]'
 kill -INT "$(ps -o ppid= -p "$(cat "$work/command")" | tr -d ' ')"
 wait "$caller"; status=$?
 check "a Ctrl-C to bounded ends the command's whole group, the caller seeing the interrupt" "gone 130" \

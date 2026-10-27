@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import scala.concurrent.duration.DurationInt
 import services.identity.IdSeeding.Film
 import services.movies.ListingKey
 
@@ -93,9 +94,7 @@ class FilmIdCountersSpec extends AnyFlatSpec with Matchers {
 class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
   "nextCounter" should "be answered without walking the whole map on every ask" in {
     val counters = FilmIdCounters.of((1 to 200000).map(i => FilmIdCounter(s"f$i", i.toLong))).toOption.get
-    val started  = System.nanoTime()
-    (1 to 20000).foreach(_ => counters.nextCounter shouldBe 200001L)
-    // A walk per ask is 4e9 steps — tens of seconds; once, it is microseconds per ask.
-    (System.nanoTime() - started) / 1e9 should be < 5.0
+    // A walk per ask is 4e9 steps — tens of seconds of CPU; once, it is microseconds per ask.
+    tools.costs.CpuMeter.fastest(runs = 1)((1 to 20000).foreach(_ => counters.nextCounter shouldBe 200001L)) should be < 5.seconds
   }
 }

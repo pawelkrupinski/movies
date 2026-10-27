@@ -44,7 +44,7 @@ check "under -eo pipefail, a failing pipeline still ends the step" "1" "$?"
 # 2. What a step starts in the background on purpose and then ends normally is left alone (a tunnel, mongod).
 bg=$(step "bash -c 'while :; do sleep 1; done' '$work' & echo \$! > '$work/daemon'")
 bash --noprofile --norc -eo pipefail "$bg"
-sleep 0.2
+wait_until "the daemon recorded its pid" '[ -s "$work/daemon" ]'
 check "a finished step's background daemon survives the next reap" "alive" \
   "$(bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap > /dev/null; alive "$(cat "$work/daemon")")"
 kill "$(cat "$work/daemon")" 2>/dev/null
@@ -53,7 +53,7 @@ kill "$(cat "$work/daemon")" 2>/dev/null
 hung=$(step "bash -c 'while :; do sleep 1; done' '$work' & echo \$! > '$work/child'; while :; do sleep 1; done")
 bash --noprofile --norc -eo pipefail "$hung" > /dev/null 2>&1 &
 runner_gave_up_on=$!
-for _ in $(seq 1 50); do [ -s "$work/child" ] && break; sleep 0.1; done
+wait_until "the step's child recorded its pid" '[ -s "$work/child" ]'
 check "a step still running holds a record" "1" "$(records)"
 out=$(bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap 2>&1)
 check "the reap succeeds" "0" "$?"
@@ -68,8 +68,7 @@ if [ -e /proc/self/environ ] && command -v setsid > /dev/null; then
   : > "$work/child"
   escaped=$(step "setsid bash -c 'while :; do sleep 1; done' '$work' & echo \$! > '$work/child'; while :; do sleep 1; done")
   bash --noprofile --norc -eo pipefail "$escaped" > /dev/null 2>&1 &
-  for _ in $(seq 1 50); do [ -s "$work/child" ] && break; sleep 0.1; done
-  sleep 0.2
+  wait_until "the step's child recorded its pid" '[ -s "$work/child" ]'
   bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap > /dev/null 2>&1
   check "a daemon that left the group is ended by its BOUNDED_STEP mark" "gone" "$(alive "$(cat "$work/child")")"
 fi
@@ -78,7 +77,7 @@ fi
 : > "$work/child"
 hung=$(step "bash -c 'while :; do sleep 1; done' '$work' & echo \$! > '$work/child'; while :; do sleep 1; done")
 bash --noprofile --norc -eo pipefail "$hung" > /dev/null 2>&1 &
-for _ in $(seq 1 50); do [ -s "$work/child" ] && break; sleep 0.1; done
+wait_until "the step's child recorded its pid" '[ -s "$work/child" ]'
 next=$(step "true")
 bash --noprofile --norc -eo pipefail "$next" > /dev/null 2>&1
 check "a bounded step ends what the previous one left before it runs" "gone" "$(alive "$(cat "$work/child")")"

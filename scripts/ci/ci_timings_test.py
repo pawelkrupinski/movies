@@ -28,6 +28,23 @@ import ci_timings as timings  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 
+
+def wait_until(what, predicate, bound=120):
+    """Poll predicate until it holds (an exception counts as not yet), then return. After `bound` seconds FAIL the test
+    naming `what`: a wait never counts a fixed number of tries and falls through to test nothing."""
+    deadline = time.monotonic() + bound
+    last = None
+    while True:
+        try:
+            if predicate():
+                return
+            last = None
+        except Exception as error:
+            last = error
+        if time.monotonic() >= deadline:
+            raise AssertionError("%s: not within %ss (last error: %r)" % (what, bound, last))
+        time.sleep(0.1)
+
 RUN = {"id": 7, "name": "Identity model convergence", "head_branch": "main", "conclusion": "failure",
        "created_at": "2026-10-14T07:59:00Z", "run_started_at": "2026-10-14T08:00:00Z"}
 STAMP = "1791964800000000000"  # 2026-10-14T08:00:00Z, the run's start
@@ -378,12 +395,7 @@ class RealPrometheusTest(unittest.TestCase):
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             base = "http://127.0.0.1:%d" % port
-            for _ in range(60):
-                try:
-                    urllib.request.urlopen(base + "/-/ready", timeout=1).close()
-                    break
-                except Exception:
-                    time.sleep(0.5)
+            wait_until("prometheus answers /-/ready", lambda: urllib.request.urlopen(base + "/-/ready", timeout=1).close() or True)
             started = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=5)
             payload = timings.otlp_payload(dict(RUN, run_started_at=started.strftime("%Y-%m-%dT%H:%M:%SZ")), jobs())
             for _ in range(2):

@@ -46,11 +46,9 @@ class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
     val release  = new CountDownLatch(1)
     try {
       val s = new AdaptiveTimeoutScraper(delegate(Set("slow.pl")) { release.await(SpecTimeouts.Io.toMillis, MILLISECONDS); OneMovie }, stats, executor)
-      val t0 = System.nanoTime() / 1000000
+      // cut at the budget: uncut, the hang ends only at the release below, after the fetch, and returns a film
       val thrown = intercept[TimeoutException](s.fetch())
-      val elapsed = System.nanoTime() / 1000000 - t0
       thrown.getMessage should include ("slow.pl")
-      elapsed should be < 2000L                       // returned at the budget, not after the 3s hang
       stats.deadlineFor("slow.pl", Multikino.displayName) shouldBe 120.millis // the cut scrape did NOT feed the baseline
     } finally { release.countDown(); executor.shutdown() }
   }

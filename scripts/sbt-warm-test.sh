@@ -36,7 +36,7 @@ server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
 printf "%s|%s\\n" "\$server" "\$(cat "\$server/worker/src/s" 2>/dev/null)" >> "$scratch/sbt-sources"
 # a slow command: whether the server named was still running as it ended
 if [ -n "\${STUB_SLOW_SERVER:-}" ]; then
-  sleep 3; kill -0 "\$STUB_SLOW_SERVER" 2>/dev/null && echo running > "$scratch/slow" || echo stopped > "$scratch/slow"
+  touch "$scratch/slow-started"; sleep 3; kill -0 "\$STUB_SLOW_SERVER" 2>/dev/null && echo running > "$scratch/slow" || echo stopped > "$scratch/slow"
 fi
 # a long command: its call's last-used mark aged past the idle timeout mid-run, then whether it is fresh again
 if [ -n "\${STUB_AGE_USED:-}" ]; then
@@ -48,7 +48,7 @@ chmod +x "$scratch/bin/sbt"
 export PATH="$scratch/bin:$PATH"
 
 # fake_server's pid once it carries the server's command line (the background shell has exec'd)
-await_server() { for _ in $(seq 1 100); do grep -q -- --detach-stdio <<<"$(ps -o args= -p "$1" 2>/dev/null)" && return; sleep 0.1; done; }
+await_server() { local pid=$1; wait_until "fake server $pid carries the server's command line" 'ps -o args= -p "$pid" 2>/dev/null | grep -q -- --detach-stdio'; }
 
 origin="$scratch/origin.git"; repo="$scratch/repo"
 scratch_repo "$origin" --bare
@@ -129,7 +129,7 @@ check "a module the checkout has not built yet is seeded, the built ones kept" "
 # the build changed under the kept server (a rebase onto a new module): it reloads before running the commands
 (cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
 server=$!; fakes+=("$server")
-for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+await_server "$server"
 echo 'lazy val x = 1' > "$scratch/other/build.sbt"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a changed build is reloaded first" "--client reload; compile" "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
@@ -140,11 +140,11 @@ kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 # a kept server reads the environment it started with: a call passing other KINOWO_* settings restarts it with them
 (cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
 server=$!; fakes+=("$server")
-for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+await_server "$server"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a call with the server's own settings keeps it" "running" "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped)"
 out=$(cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
-sleep 0.3
+wait_until "the restarted server is stopped" '! kill -0 "$server" 2>/dev/null'
 check "a call passing other KINOWO_* settings restarts the server with them" "stopped yes" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "settings differ" <<<"$out" && echo yes || echo "no: $out")"
 kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
@@ -155,10 +155,10 @@ check "...and records when, why and by whom in the stops log" "1" \
 (cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
 server=$!; fakes+=("$server"); await_server "$server"
 (cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)  # its settings, kept
-rm -f "$scratch/slow"
+rm -f "$scratch/slow" "$scratch/slow-started"
 (cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora STUB_SLOW_SERVER=$server "$REPO_ROOT/scripts/sbt-warm" test >/dev/null 2>&1) &
 slow=$!
-sleep 1
+wait_until "the slow call is running its command" '[ -e "$scratch/slow-started" ]'
 out=$(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
 wait "$slow"
 check "a settings restart waits for another call's running command to end" "running yes" \
@@ -171,16 +171,16 @@ kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 fake_server() { (cd "$1" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) & fakes+=("$!"); }
 mkdir -p "$scratch/other/e2e/src"
 fake_server "$scratch/other"; server=$!
-for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+await_server "$server"
 echo '{"uri":"local://elsewhere/sock"}' > "$scratch/other/project/target/active.json"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a seeding call leaves the live server's active.json alone" "elsewhere" \
   "$(sed -n 's|.*local://\(.*\)/sock.*|\1|p' "$scratch/other/project/target/active.json")"
 # ...and several servers in one checkout are stopped, so a call starts exactly one
 fake_server "$scratch/other"; second=$!
-sleep 0.5
+await_server "$second"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
-sleep 0.3
+wait_until "both servers are stopped" '! kill -0 "$server" 2>/dev/null && ! kill -0 "$second" 2>/dev/null'
 check "several servers in one checkout are all stopped" "stopped stopped" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "$second" 2>/dev/null && echo running || echo stopped)"
 kill "$server" "$second" 2>/dev/null
@@ -194,9 +194,10 @@ cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 echo "start \$(pwd -P)" >> "$scratch/spans"; sleep 1; echo "end \$(pwd -P)" >> "$scratch/spans"
 STUB
+rm -f "$scratch/spans"
 (cd "$scratch/locked" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1) &
 first=$!
-sleep 0.3
+wait_until "the first call started its command (it holds the start lock)" '[ -s "$scratch/spans" ]'
 (cd "$scratch/locked" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1) &
 second=$!
 wait "$first" "$second"
@@ -216,7 +217,7 @@ fake_server "$scratch/fresh"; server=$!; await_server "$server"
 echo "$server" > "$fresh_key.pid"
 rm -rf "$scratch/fresh"; scratch_git "$repo" worktree prune
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
-sleep 0.2
+wait_until "the removed checkout's server is stopped" '! kill -0 "$server" 2>/dev/null'
 check "a removed checkout's server is stopped, and forgotten" "stopped 0" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -l "$scratch/fresh" "$KINOWO_SBT_WARM_STATE"/*.root 2>/dev/null | wc -l | tr -d ' ')"
 kill "$server" 2>/dev/null
@@ -252,7 +253,7 @@ check "--stop and --reap with no server of this checkout ask sbt nothing, and le
   "$(grep -c shutdown "$scratch/sbt-calls") $(kill -0 "$theirs" 2>/dev/null && echo running || echo stopped)"
 fake_server "$scratch/idle"; mine=$!; await_server "$mine"
 (cd "$scratch/idle" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1)
-sleep 0.3
+wait_until "this checkout's own server is stopped" '! kill -0 "$mine" 2>/dev/null'
 check "--stop stops this checkout's own server, and only it" "stopped running" \
   "$(kill -0 "$mine" 2>/dev/null && echo running || echo stopped) $(kill -0 "$theirs" 2>/dev/null && echo running || echo stopped)"
 kill "$mine" "$theirs" 2>/dev/null
@@ -262,7 +263,7 @@ fake_server "$repo"; roots=$!; await_server "$roots"
 check "--stop in the root checkout is refused, leaving its server running" "2 running" \
   "$(cd "$repo" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1; echo $?) $(kill -0 "$roots" 2>/dev/null && echo running || echo stopped)"
 (cd "$repo" && "$REPO_ROOT/scripts/sbt-warm" --stop --root >/dev/null 2>&1)
-sleep 0.3
+wait_until "the root checkout's server is stopped" '! kill -0 "$roots" 2>/dev/null'
 check "...and --stop --root stops it" "stopped" "$(kill -0 "$roots" 2>/dev/null && echo running || echo stopped)"
 kill "$roots" 2>/dev/null
 
@@ -277,7 +278,7 @@ check "a running command keeps its server marked as in use, however long it runs
 # gate's first probe ages the mark, as ten minutes of waiting would, and its last one says whether it is fresh again
 used="$KINOWO_SBT_WARM_STATE/$busy_key.used" aged="$scratch/aged-once"
 # (once the last call's keeper has ended: while it lives the call takes no slot, so it never reaches the gate)
-for _ in $(seq 1 50); do [ "$(spec_lock_state "$KINOWO_SBT_WARM_STATE/$busy_key.keep.flock")" = held ] || break; sleep 0.1; done
+wait_until "the last call's keeper has ended" '[ "$(spec_lock_state "$KINOWO_SBT_WARM_STATE/$busy_key.keep.flock")" != held ]'
 (cd "$scratch/slotted" && KINOWO_SBT_WARM_HEARTBEAT_SECONDS=1 KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' \
   KINOWO_MEMORY_GATE_POLL=1 KINOWO_MEMORY_GATE_MAX_WAIT=3 KINOWO_MEMORY_GATE_PROBE="if [ -e '$aged' ]; then
       [ -n \"\$(find '$used' -mmin +1)\" ] && echo idle > '$scratch/waited' || echo busy > '$scratch/waited'
@@ -310,7 +311,7 @@ scratch_git "$repo" worktree add -q -b counted "$scratch/counted" origin/main
 counted_key="$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/counted" | shasum | cut -c1-12)"
 one_slot="$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock"
 fake_server "$scratch/counted"; server=$!; await_server "$server"
-for _ in $(seq 1 50); do [ "$(spec_lock_state "$one_slot")" = free ] && break; sleep 0.1; done  # earlier keepers done
+wait_until "earlier keepers are done, the slot free" '[ "$(spec_lock_state "$one_slot")" = free ]'
 echo "2026-10-19 15:14:01 REAP pid=$server ppid=1 rule=hog age=1h42m" > "$scratch/jvm-reaper.log"
 (cd "$scratch/counted" && KINOWO_JVM_SLOTS=1 KINOWO_JVM_REAPER_LOG="$scratch/jvm-reaper.log" "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 keeper=$(cat "$counted_key.keep.flock" 2>/dev/null)
@@ -320,7 +321,7 @@ out=$(cd "$scratch/counted" && KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_MAX_WAIT=0 KIN
 check "...a command on the warm server takes no second slot for the same JVM (with the only slot held, it never waits)" "yes no" \
   "$(grep -q 'this command takes none' <<<"$out" && echo yes || echo "no: $out") $(grep -q 'slots busy\|slot still busy' <<<"$out" && echo yes || echo no)"
 kill "$server"; wait "$server" 2>/dev/null
-for _ in $(seq 1 50); do kill -0 "${keeper:-0}" 2>/dev/null || break; sleep 0.1; done
+wait_until "the server's keeper has ended" '! kill -0 "${keeper:-0}" 2>/dev/null'
 check "...and once the server is gone, its keeper ends and the slot is free" "gone free" \
   "$(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$one_slot")"
 # 2026-10-19: two kept servers vanished between calls, nothing logged anywhere sbt-warm wrote (the JVM reaper had killed
@@ -340,9 +341,9 @@ keeper=$(cat "$idler_key.keep.flock" 2>/dev/null)
 check "a server whose last-used mark aged past the idle timeout under a running command is not stopped" "idle running" \
   "$(cat "$scratch/busy" 2>/dev/null) $(kill -0 "$server" 2>/dev/null && echo running || echo stopped)"
 touch -t 202001010000 "$idler_key.used"
-for _ in $(seq 1 50); do kill -0 "$server" 2>/dev/null || break; sleep 0.1; done
+wait_until "the idle server is stopped by its keeper" '! kill -0 "$server" 2>/dev/null'
 wait "$server" 2>/dev/null
-for _ in $(seq 1 50); do kill -0 "${keeper:-0}" 2>/dev/null || break; sleep 0.1; done
+wait_until "the idle server's keeper has ended" '! kill -0 "${keeper:-0}" 2>/dev/null'
 check "...an idle one is: stopped by its keeper, which ends, its slot free" "stopped gone" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone)"
 : > "$scratch/sbt-calls"
@@ -376,7 +377,7 @@ chmod +x "$scratch/slow-nohup/nohup"
 (cd "$scratch/restopped" && PATH="$scratch/slow-nohup:$PATH" KINOWO_IDENTITY_CACHE="$scratch/own-slots" KINOWO_JVM_SLOTS=1 \
   KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=60 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 old_keeper=$(cat "$restopped_key.keep.flock" 2>/dev/null)
-for _ in $(seq 1 50); do [ -e "$scratch/slow-nohup/waiting" ] && break; sleep 0.1; done
+wait_until "the slow nohup is waiting" '[ -e "$scratch/slow-nohup/waiting" ]'
 (cd "$scratch/restopped" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1)
 check "--stop stops the checkout's keeper with its server, its JVM slot free" "stopped gone free" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${old_keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$own_slot")"
@@ -386,7 +387,7 @@ check "...so the next call takes the slot at once, never waiting on a keeper it 
   "$(grep -q 'slots busy\|slot still busy' <<<"$out" && echo "yes: $out" || echo no)"
 new_keeper=$(cat "$restopped_key.keep.flock" 2>/dev/null)
 fake_server "$scratch/restopped"; server=$!; await_server "$server"
-sleep 0.5
+wait_until "the checkout has exactly the new keeper" '[ "$(keepers_of "$scratch/restopped")" = "1 $new_keeper" ]'
 check "...and the server it keeps has ONE keeper, the new one" "1 $new_keeper" "$(keepers_of "$scratch/restopped")"
 # the idle reap stops a checkout the same way: its keeper too
 (cd "$scratch/restopped" && KINOWO_SBT_WARM_IDLE_MINUTES=0 "$REPO_ROOT/scripts/sbt-warm" --reap >/dev/null 2>&1)

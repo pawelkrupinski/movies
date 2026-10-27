@@ -46,7 +46,12 @@ server.serve_forever()
 PY
 python3 "${tmp}/api.py" "${tmp}/calls.log" >"${tmp}/port" &
 api_pid=$!
-for _ in $(seq 50); do [ -s "${tmp}/port" ] && break; sleep 0.1; done
+# Wait for the port line itself, to a deadline that fails loudly (never a counted fall-through).
+deadline=$((SECONDS + 120))
+until [ -s "${tmp}/port" ]; do
+  [ "${SECONDS}" -lt "${deadline}" ] || fail "the fake API did not start within 120 s"
+  command sleep 0.05
+done
 port="$(cat "${tmp}/port")"
 [ -n "${port}" ] || fail "the fake API did not start"
 server="http://127.0.0.1:${port}"

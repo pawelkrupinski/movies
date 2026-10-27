@@ -91,8 +91,8 @@ FAKE
 chmod +x "$bin/sleep"
 : > "$CALLS"
 HOME="$home" PATH="$bin:/usr/bin:/bin" MONGODB_URI="mongodb://secret" "$BASH" "$agent/service.sh" agent > /dev/null 2>&1 &
-pid=$! deadline=$((SECONDS + 120)) # a cap on a hang only: the agent ends on its own
-while kill -0 "$pid" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.1; done
+pid=$!
+wait_until "the agent loop ended on its own" '! kill -0 "$pid" 2>/dev/null'
 kill "$pid" 2>/dev/null; wait "$pid"; code=$?
 check "the agent restarts mirror.sh after each exit, 10s apart, MONGODB_URI inherited" \
   "mirror.sh with mongodb://secret|sleep 10|mirror.sh with mongodb://secret|sleep 10" "$(paste -sd'|' - < "$CALLS")"

@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import scala.concurrent.duration.DurationInt
 import services.movies.TitleSeason
 import services.identity.IdentityMeasures.{Category, Film, Listing, ListingListing, Missing, Number}
 import services.identity.StageRelays.{Billing, Houses}
@@ -25,15 +26,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   they should "cost a title that ends in neither no scan of it" in {
     val long = ("Kino Seniora " * 1500).trim
-    IdentityMeasures.shapes(Seq(long)) // warm
-    // the fastest of five: one sample measures the machine's load as much as the scan (113 ms at load 150, 2026-10-18),
-    // and a quadratic scan of a 1,500-word title stays far slower than this however idle the machine
-    val fastest = (1 to 5).map { _ =>
-      val started = System.nanoTime()
-      IdentityMeasures.shapes(Seq(long))
-      (System.nanoTime() - started) / 1000000
-    }.min
-    fastest should be < 100L
+    // CPU, not wall time: a quadratic scan of a 1,500-word title takes seconds of it, a scan that never starts microseconds
+    // (wall time read 113 ms of a 100 ms bound at load 150, 2026-10-18)
+    tools.costs.CpuMeter.fastest()(IdentityMeasures.shapes(Seq(long))) should be < 100.millis
   }
 
   "an original title" should "share nothing with the billing only when it is another title altogether, not a spelling of it" in {
