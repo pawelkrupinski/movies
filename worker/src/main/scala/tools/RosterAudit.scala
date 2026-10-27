@@ -2,7 +2,7 @@ package tools
 
 import models.Country
 import services.cinemas.CinemaScraperCatalog
-import services.cinemas.roster.{ChainDirectory, RosterLocationAudit, RosterSourceReader, SourceReading}
+import services.cinemas.roster.{ChainDirectory, RosterFinding, RosterLocationAudit, RosterSourceReader, SourceReading}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
@@ -23,13 +23,33 @@ import scala.util.{Failure, Success}
  * Run weekly by `.github/workflows/roster-audit.yml`, or by hand:
  *   sbt "worker/runMain tools.RosterAudit [summary.md]"
  * Appends a Markdown report to the given file (the job summary in CI) and exits
- * 1 when anything needs fixing. A page that could not be fetched this time is
- * listed, not failed on — except a chain venue list still unread through the
- * residential proxy (see [[ChainListEgress]]).
+ * with [[verdict]]'s code: 0 clean, [[DriftFound]] when a source disagrees with
+ * the roster (data drift: the owner's task, never a red run --
+ * scripts/ci/roster-audit.sh turns it into `overdue=true`, OverdueIsNotRedSpec),
+ * 1 when the audit could not judge. A page that could not be fetched this time
+ * is listed, not failed on — except a chain venue list still unread through the
+ * residential proxy (see [[ChainListEgress]]), or too few pages read at all.
  *
  * `def main`, not `extends App` — see `FilmwebDiff`.
  */
 object RosterAudit {
+
+  /** The exit code for a run whose only failing findings are the sources disagreeing with the roster. */
+  val DriftFound = 3
+
+  /** The run's exit code. A town, an address or a venue the sources now publish differently is DATA DRIFT -- a fix
+   *  to the roster for the owner, not a regression of the code -- so it is [[DriftFound]], which the workflow reports
+   *  as overdue work. Red (1) is left for an audit that could not judge: a chain list unread through the residential
+   *  proxy, or too few pages read to call a pass clean. (Run 2877, 2026-10-26, was red with a log cut off before the
+   *  report: drift and a broken audit read the same then.) */
+  def verdict(findings: Seq[RosterFinding]): Int = {
+    val failing = findings.filter(_.failing)
+    val unjudged = failing.exists {
+      case _: RosterFinding.LowCoverage | _: RosterFinding.DirectoryNotRead => true
+      case _                                                                => false
+    }
+    if (unjudged) 1 else if (failing.nonEmpty) DriftFound else 0
+  }
 
   /** Filmweb soft-blocks past ~5 concurrent callers (external-api-rate-limits skill). */
   private val Workers = 5
@@ -83,6 +103,6 @@ object RosterAudit {
     }
     val failing = findings.count(_.failing)
     println(s"RosterAudit: $failing finding(s) to fix. ${stats.summary}")
-    sys.exit(if (failing > 0) 1 else 0)
+    sys.exit(verdict(findings))
   }
 }

@@ -21,6 +21,8 @@ class OverdueIsNotRedSpec extends AnyFlatSpec with Matchers {
   private val DeadlineChecks: Map[String, (String, String, String)] = Map(
     "identity-findings-report.yml" -> ("findings", "report", "scripts/ci/identity_findings_report.py"),
     "identity-ci-staleness.yml"    -> ("check", "staleness", "scripts/ci/identity-ci-staleness.sh"),
+    // A source disagreeing with the cinema roster is data drift, the owner's fix (tools.RosterAudit.verdict).
+    "roster-audit.yml"             -> ("roster-audit", "audit", "scripts/ci/roster-audit.sh"),
   )
 
   private def code(file: String) = RepoFile.withoutComments(RepoFile.read(s".github/workflows/$file"))
