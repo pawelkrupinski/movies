@@ -58,7 +58,11 @@ jobs:
               run: |
                   mkdir -p "$TMPDIR"
                   scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD"
-            # A failed check keeps the hook's logs (its temp dir): their failure lines here, as agentctl's verdict reads them
+            # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
+            # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
+            # `Error:` blocks, sbt's FAILED/[error]: run 3342's 60 `✘` lines filled every head and its error never
+            # showed), then its last lines, whatever matched: `grep | head` exits 0 on no match, so the old `|| tail`
+            # never ran.
             - name: The failed checks' lines
               if: failure()
               env:
@@ -66,9 +70,20 @@ jobs:
               run: |
                   find "$HOOK_TMP" -name '*.log' -print0 | while IFS= read -r -d '' log; do
                       echo "::group::$log"
-                      grep -E -B2 -A4 '\*\*\* FAILED|\[error\]|::error::' "$log" | head -150 || tail -40 "$log"
+                      echo "-- its error lines (first 120):"
+                      grep -E -B2 -A8 '\*\*\* FAILED|\[error\]|::error::|^ *Error:|Error: |[0-9]+ failed' "$log" | head -120 || true
+                      echo "-- its last 60 lines:"
+                      tail -60 "$log"
                       echo "::endgroup::"
                   done
+            # ...and every log whole, for what the lines above leave out
+            - name: The hook's logs
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: precommit-check-logs
+                  path: ${{ runner.temp }}/hook/**/*.log
+                  if-no-files-found: ignore
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:
