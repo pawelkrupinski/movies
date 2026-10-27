@@ -6,11 +6,21 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosClient
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
-  // Every case reads the same immutable result, so the fixture is parsed once.
-  private lazy val results = new HeliosClient(new FakeHttpFetch("helios/posters"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()
+class HeliosClientFixtureRegressionsSpec extends AnyFlatSpec with Matchers {
+  // Every case reads the same immutable result, so each fixture is parsed once.
+  private lazy val missingRuntimeResults = new HeliosClient(new FakeHttpFetch("helios/missing-runtime"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()
+  private lazy val results               = new HeliosClient(new FakeHttpFetch("helios/posters"), titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch()
 
-  // ── Smoke test ────────────────────────────────────────────────────────────
+  // ── Missing runtime: smoke test ───────────────────────────────────────────
+
+  "HeliosClient.fetch" should "return results with runtime always set" in {
+    val result = missingRuntimeResults
+    result                    should not be empty
+    result.size               should be >= 5
+    result.find(_.movie.runtimeMinutes.isEmpty) shouldBe empty
+  }
+
+  // ── Posters: smoke test ───────────────────────────────────────────────────
 
   "HeliosClient.fetch" should "return results from real fixture data" in {
     results                     should not be empty

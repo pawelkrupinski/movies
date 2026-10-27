@@ -13,7 +13,7 @@ import java.time.{LocalDate, LocalDateTime}
   * entirely — "12 Wrz (Sb) / 16:10" instead of "09 Wrz 2026 (Śr) / 16:00".
   * `PrahaClient.StampPat` required the year, so every stamp on the page
   * failed to parse and the venue went white again: 0 films, 0 showtimes,
-  * four days after the weekday-label fix (see PrahaWeekdayLabelSpec). */
+  * four days after the weekday-label fix (see PrahaClientSpec). */
 class PrahaNoYearSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today = LocalDate.of(2026, 9, 12)

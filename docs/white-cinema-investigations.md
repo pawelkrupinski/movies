@@ -1660,7 +1660,7 @@ Warsaw time, like `KinoPortClient` and friends), threaded through from
 yearless) page — the pre-fix `PrahaClient` doesn't even compile against a
 `today` parameter (the class had none), which is as clean a "fails before" as
 a signature change gets; after the fix it reads "12 Wrz (Sb) / 16:10" as
-2026-09-12 16:10. `PrahaWeekdayLabelSpec` (09-08's fixture, year + weekday
+2026-09-12 16:10. `PrahaClientSpec` (09-08's fixture, year + weekday
 label) and the original `PrahaClientSpec` (June fixture, plain year) both
 still pass unchanged — three date-stamp shapes now share one pattern.
 
@@ -1826,7 +1826,7 @@ stamp — "09 Wrz 2026 **(Śr)** / 16:00" instead of "09 Wrz 2026 / 16:00" — a
 `PrahaClient.StampPat` required the slash immediately after the 4-digit year,
 so every stamp on the page failed to match: 0 films, 0 showtimes. Fix: an
 optional non-capturing `(?:\s*\([^)]*\))?` between the year and the slash.
-`PrahaWeekdayLabelSpec` replays a 2026-09-08 capture; fails before, passes
+`PrahaClientSpec` replays a 2026-09-08 capture; fails before, passes
 after; the original `PrahaClientSpec` (June capture, no weekday label) still
 passes.
 
