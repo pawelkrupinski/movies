@@ -41,9 +41,7 @@ class UnitSpecsNeedNoMongoOrBrowserSpec extends AnyFlatSpec with Matchers {
   private val ConnectingRef = Connecting.map(java.util.regex.Pattern.quote).mkString("""\b(?:""", "|", """)\b""").r
 
   /** Unit specs that name a helper without connecting, and why. */
-  private val Allowlist: Map[String, String] = Map(
-    "testkit/src/test/scala/tools/IntegrationMongoSpec.scala" ->
-      "tests IntegrationMongo's pure URI classification and redaction; it opens no connection")
+  private val Allowlist: Map[String, String] = Map.empty
 
   private val StringLiteral = "\"\"\"(?s:.*?)\"\"\"|\"(?:[^\"\\\\\\n]|\\\\.)*\"".r
   private val ClientBuilt   = """\b(?:MongoClient|MongoClients\.create)\(\s*""".r

@@ -23,7 +23,7 @@ import scala.concurrent.Await
  * `admin.$cmd`; each is counted once per transaction whose operations touch the database
  * (or, when `collections` names some, touch one of them).
  */
-final class OplogWrites(uri: String, database: String, collections: Seq[String] = Nil) extends AutoCloseable {
+final class OplogWrites(uri: String, database: String, collections: Seq[String] = Nil) extends CorpusWrites {
   private val client = MongoClient(uri)
   private val oplog  = client.getDatabase("local").getCollection[Document]("oplog.rs")
 

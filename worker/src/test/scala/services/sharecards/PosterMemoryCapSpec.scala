@@ -18,18 +18,10 @@ import scala.util.Try
  * A poster must never cost the worker CONTAINER more memory than the vips child's cap: a
  * progressive JPEG's decoder holds every coefficient of the WHOLE image (measured ~360 MB for
  * 8000×12000), and the child shares the container's cgroup with a JVM already at 700-850 MB of a
- * 960 MiB limit. The header says how big that buffer will be before anything decodes.
+ * 960 MiB limit. The header says how big that buffer will be before anything decodes. The cases that run a real
+ * or stand-in vips child are in [[PosterMemoryCapIntegrationSpec]].
  */
 class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
-
-  /** A stand-in `vips` that records it ran and exits with `exit`. */
-  private def fakeVips(exit: Int): (String, Path) = {
-    val ran    = Files.createTempFile("vips-ran-", ".txt"); Files.delete(ran)
-    val script = Files.createTempFile("fake-vips-", ".sh")
-    Files.writeString(script, s"#!/bin/sh\ntouch '$ran'\nexit $exit\n")
-    Files.setPosixFilePermissions(script, PosixFilePermissions.fromString("rwx------"))
-    (script.toString, ran)
-  }
 
   /** Runs `body` while another shrink holds `gate`'s permit. The holder keeps it until `body` has
    *  returned — never on a timer — so a shrink that wrongly queued behind it could only finish by
@@ -109,34 +101,10 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     VipsPosterShrinker.locate(settings.ExecutableSearchPath(Nil)) shouldBe None
   }
 
-  "The progressive pre-check" should "let a real 2764×4096 progressive poster render" in {
-    val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
-    assume(vips.isDefined, "vips is not installed")
-    val dir = Files.createTempDirectory("progressive-")
-    def run(args: String*): Unit = new ProcessBuilder((vips.get.value +: args)*).inheritIO().start().waitFor() shouldBe 0
-    run("gaussnoise", dir.resolve("n.v").toString, "2764", "4096")
-    run("cast", dir.resolve("n.v").toString, dir.resolve("u.v").toString, "uchar")
-    run("jpegsave", dir.resolve("u.v").toString, dir.resolve("p.jpg").toString, "--interlace", "--Q", "85", "--subsample-mode", "off")
-    new VipsPosterShrinker(binary = vips).coverSlot(dir.resolve("p.jpg")).map(i => (i.getWidth, i.getHeight)) shouldBe Right((420, 630))
-  }
-
   "A giant progressive JPEG" should "be routed away by its header, never decoded" in {
-    val (bin, ran) = fakeVips(exit = 0)
+    val (bin, ran) = PosterMemoryCapSpec.fakeVips(exit = 0)
     new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true)) shouldBe Left(PosterFailure.ProgressiveEstimate)
     Files.exists(ran) shouldBe false
-  }
-
-  it should "leave a normal-sized progressive poster to vips" in {
-    val (bin, ran) = fakeVips(exit = 1)
-    new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(PosterMemoryCapSpec.jpegHeader(780, 1144, progressive = true))
-    Files.exists(ran) shouldBe true
-  }
-
-  "A vips child that hits its cap" should "fail only itself: no decode of the same poster in the JVM" in {
-    val (bin, ran) = fakeVips(exit = 134)                              // SIGABRT, as libjpeg's "Insufficient memory"
-    val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
-    new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(poster) shouldBe Left(PosterFailure.VipsCap)
-    Files.exists(ran) shouldBe true
   }
 
   "A poster the whole chain refuses" should "degrade the card to no poster, counted as a failed fetch, trying smaller renditions first" in {
@@ -165,6 +133,15 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
 }
 
 object PosterMemoryCapSpec {
+  /** A stand-in `vips` that records it ran and exits with `exit`. */
+  def fakeVips(exit: Int): (String, Path) = {
+    val ran    = Files.createTempFile("vips-ran-", ".txt"); Files.delete(ran)
+    val script = Files.createTempFile("fake-vips-", ".sh")
+    Files.writeString(script, s"#!/bin/sh\ntouch '$ran'\nexit $exit\n")
+    Files.setPosixFilePermissions(script, PosixFilePermissions.fromString("rwx------"))
+    (script.toString, ran)
+  }
+
   /** SOI + one SOF segment, nothing else: a header-only "poster" of any declared size. */
   def jpegHeader(width: Int, height: Int, progressive: Boolean, sampling: Seq[Int] = Seq(0x22, 0x11, 0x11)): Path = {
     val out = new ByteArrayOutputStream()

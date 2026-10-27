@@ -13,9 +13,8 @@ import javax.imageio.stream.{ImageInputStream, MemoryCacheImageInputStream}
 import javax.imageio.{ImageIO, ImageReadParam, ImageReader, ImageTypeSpecifier}
 import scala.concurrent.{Await, ExecutionContext, Future}
 
+/** The case that races a counting reader against ImageIO's first use in a fresh JVM is in [[PosterDecodeIntegrationSpec]]. */
 class PosterDecodeSpec extends AnyFlatSpec with Matchers {
-
-  private lazy val configuration = settings.ProcessConfiguration.resolve()
 
   private def file(bytes: Array[Byte]): java.io.File = {
     val f = java.nio.file.Files.createTempFile("poster-", ".img")
@@ -62,19 +61,6 @@ class PosterDecodeSpec extends AnyFlatSpec with Matchers {
       second.reads.get() shouldBe 1
     }
     first.reads.get() shouldBe 1
-  }
-
-  // `sbt common/test`, 2026-09-25: both counting-reader tests failed in the full suite and passed
-  // alone. IIORegistry.getDefaultInstance creates the JVM's registry lazily and WITHOUT a lock, so a
-  // registration racing ImageIO's own first use (another suite's ImageIO.read, started in parallel)
-  // could create a second registry that ImageIO never consults -- for the rest of that JVM. Only a
-  // fresh JVM still has that first use ahead of it, so each attempt runs in one.
-  it should "register where ImageIO looks, even racing another suite's first use of ImageIO" in {
-    val outcomes = (1 to 5).map { _ =>
-      val (exit, output) = ChildJvm(configuration).run("tools.CountingReaderRace",jvmArgs = Seq("-Djava.awt.headless=true"))
-      (exit, output.trim)
-    }
-    all(outcomes) shouldBe ((0, "VISIBLE"))
   }
 
   // A 2000×3000 poster decoded whole is a 6 MP raster (18-24 MB of heap) for a slot 420×630 pixels

@@ -15,7 +15,8 @@ import scala.jdk.CollectionConverters.*
  *  cap. The launcher's options come AFTER the overlay's JAVA_OPTS on the java command line (a
  *  worker-us JVM's arguments, 2026-10-03), so for a flag both name the launcher's value is the one
  *  that runs — an overlay cannot switch a launcher flag off. A CDS archive flag is worse: the
- *  JVM refuses to start beside -XX:AOTCache, which is why the Dockerfile then leaves the cache out. */
+ *  JVM refuses to start beside -XX:AOTCache, which is why the Dockerfile then leaves the cache out.
+ *  The case that starts a real JVM under the baked options is [[AotCacheOptionsIntegrationSpec]]. */
 class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
 
   private val Collector   = """-XX:\+Use\w*GC""".r
@@ -100,16 +101,6 @@ class AotCacheOptionsSpec extends AnyFlatSpec with Matchers {
     // times and never again.
     if (tier == "worker") it should "compile a method only after three times the default invocations" in {
       LauncherOptions.of(tier) should contain ("-XX:CompileThresholdScaling=3")
-    }
-
-    // ArchiveRelocationMode is diagnostic: a launcher that names it before -XX:+UnlockDiagnosticVMOptions
-    // does not start at all. Starting a JVM under exactly the baked options, in their order, is the check
-    // a pod would otherwise make.
-    it should "start a JVM under exactly the options it bakes, in order" in {
-      val java    = ProcessHandle.current().info().command().orElseThrow() // this JVM's own `java`
-      val process = new ProcessBuilder((java +: LauncherOptions.of(tier) :+ "-version")*).redirectErrorStream(true).start()
-      val output  = new String(process.getInputStream.readAllBytes())
-      withClue(s"infra/jvm options for $tier:\n$output")(process.waitFor() shouldBe 0)
     }
   }
 }

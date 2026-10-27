@@ -371,6 +371,13 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
+            # The gitops manifests where the unit `worker` row checks them out (see there): the deploy specs that run a
+            # real script or JVM over them (K8sTierPathGatingIntegrationSpec, LauncherJvmFlagsSpec, …) are `it` specs
+            # since unit specs spawn no process (2026-10-27), and they run on this row.
+            - if: matrix.row == 'rest'
+              name: Check out the gitops manifests (movies-gitops main, anonymously)
+              run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
+
             # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores below, which it shares nothing with
             # (~20 s of every row's start, 2026-10-23), and waited for just before itAll ("Wait for MongoDB").
             - name: Start MongoDB (single-node replica set, for change streams)

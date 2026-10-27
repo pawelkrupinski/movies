@@ -222,8 +222,4 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read(".github/scripts/convergence-publish.sh") should include(
       "^(fill|refetch|refused)-$code-[0-9]+-[0-9]+(-[0-9]+)?(-[a-z][a-z-]*)?\\\\.(tar\\\\.zst|tsv)$")
   }
-
-  "the fill's release script" should "be run by CI's shell specs" in {
-    ScriptTests.runInCi(".github/scripts/convergence-fill-test.sh") shouldBe true
-  }
 }

@@ -49,8 +49,4 @@ class ActionsCachePruneWiringSpec extends AnyFlatSpec with Matchers {
     run should include ("run: scripts/ci/prune-actions-caches.sh")
     run should not include "--dry-run"
   }
-
-  "ci.yml" should "run the prune script's own spec" in {
-    ScriptTests.runInCi("scripts/ci/prune-actions-caches-test.sh") shouldBe true
-  }
 }

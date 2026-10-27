@@ -17,7 +17,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   /** `body` allocates fewer than `budget` bytes per call on this thread — its answer read as a primitive, never boxed:
    *  the median of five batches of calls, after one unmeasured batch that loads and links what it reads lazily.
    *
-   *  Measured ONLY in a JVM without escape analysis ([[ResolverAllocationBudgetSpec]] runs this suite in one): with it
+   *  Measured ONLY in a JVM without escape analysis ([[ResolverAllocationIntegrationSpec]] runs this suite in one): with it
    *  on, what a call allocates depends on what C2 managed to scalar-replace, which depends on the JIT's state, not the
    *  code — the dated-title check measured 28.3–28.9k bytes a call alone, 32.6k inside the parallel `common/test`
    *  (other suites' calls had left the shared title code megamorphic), and 33.4k with escape analysis off. In production,
@@ -245,14 +245,4 @@ object ResolverAllocationSpec {
   /** Runs [[ResolverAllocationSpec]] in this JVM, exiting 1 unless it passes. */
   def main(args: Array[String]): Unit =
     if (!org.scalatest.tools.Runner.run(Array("-oW", "-s", classOf[ResolverAllocationSpec].getName))) System.exit(1)
-}
-
-/** [[ResolverAllocationSpec]]'s allocation budgets, measured in a fresh JVM without escape analysis: per call, the bytes
- *  its code allocates, whatever the JIT made of it and whatever ran before it in the shared test JVM. */
-class ResolverAllocationBudgetSpec extends AnyFlatSpec with Matchers {
-  "the resolver's hottest helpers" should "allocate within their budgets with nothing scalar-replaced" in {
-    val (exit, output) = tools.ChildJvm(settings.ProcessConfiguration.resolve())
-      .run("services.identity.ResolverAllocationSpec", jvmArgs = Seq("-XX:-DoEscapeAnalysis", "-XX:AutoBoxCacheMax=16384"))
-    withClue(s"ResolverAllocationSpec without escape analysis said:\n$output\n")(exit shouldBe 0)
-  }
 }

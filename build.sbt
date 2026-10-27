@@ -235,6 +235,7 @@ lazy val common = (project in file("common"))
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
+  .settings(UnitClasspathGuard.settings)
   .settings(noApiDocs)
 
 // The hand-stepped time doubles, the polling helper, the recording tick recorder, the one-country title normalizer, the property specs' base,
@@ -243,7 +244,7 @@ lazy val common = (project in file("common"))
 // are compiled into their test configs as well. A test classpath is never on another module's, so the compilations
 // never meet.
 lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
-  "tools/SpecTimeouts", "tools/Answered", "tools/costs/CpuMeter", "tools/ChildJvm", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
+  "tools/SpecTimeouts", "tools/Answered", "tools/costs/CpuMeter", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
   "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository").map { name =>
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })
@@ -305,6 +306,7 @@ lazy val identity = (project in file("identity"))
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "1g"))
+  .settings(UnitClasspathGuard.settings)
   .settings(noApiDocs)
 
 // ── Shared test support (not deployed) ───────────────────────────────────────
@@ -320,11 +322,29 @@ lazy val testkit = (project in file("testkit"))
   .dependsOn(common, identity)
   .settings(testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
+  .settings(UnitClasspathGuard.settings)
   .settings(
     name := "testkit",
     publish / skip := true,
     // ScalaCheck too: the property specs' base (`services.IdentityPropertySpec`) is one of the shared doubles.
     libraryDependencies ++= Seq(scalatestPlay, scalatestScalaCheck),
+  )
+  .settings(noApiDocs)
+
+// ── Integration test support (not deployed) ──────────────────────────────────
+//
+// The helpers that reach REAL things -- a Mongo cluster (IntegrationMongo, the isolated and corpus databases, query
+// plans, oplog writes, run claims), a child JVM (ChildJvm), a TCP forwarder, git (ScratchGitRepository), the JDK's
+// keytool, the repository's scripts (ScriptTests). Only the integration (`it`), page and e2e configs depend on it; no
+// unit Test config may (the owner, 2026-10-27: "unit tests have all external deps mocked"), which
+// UnitClasspathGuard enforces on every unit Test classpath. testkit keeps the fakes, in-memory implementations and
+// pure helpers the unit specs use.
+lazy val itkit = (project in file("itkit"))
+  .dependsOn(common, identity, testkit)
+  .settings(
+    name := "itkit",
+    publish / skip := true,
+    libraryDependencies ++= Seq(scalatestPlay),
   )
   .settings(noApiDocs)
 
@@ -344,6 +364,7 @@ lazy val scrapers = (project in file("scrapers"))
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
+  .settings(UnitClasspathGuard.settings)
   .settings(noApiDocs)
 
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
@@ -363,7 +384,7 @@ lazy val worker = (project in file("worker"))
   // test that a caller honours a completeness flag.
   // `test->test` on scrapers: the worker's specs drive its scrape tasks through the scrapers' own test doubles
   // (`StubCinemaScraper`, `ScriptedCinemaScraper`, `FakeDetailEnricher`) and recording tools.
-  .dependsOn(common, identity, scrapers % "compile->compile;test->test", testkit % "test,it,fixtures->compile")
+  .dependsOn(common, identity, scrapers % "compile->compile;test->test", testkit % "test,it,fixtures->compile", itkit % "it,fixtures->compile")
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest, Fixtures)
   .settings(
@@ -388,6 +409,11 @@ lazy val worker = (project in file("worker"))
     // …and on `it`'s, for the fixtures-side stores whose Mongo round-trip can only
     // be tested against a real Mongo (MongoEnrichmentCacheStore's TTL index).
     IntegrationTest / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
+    // …and the unit specs' own helpers (RepoFile, the recorded fixtures' readers): a spec that moved to `it` for its
+    // real dependency (a script, git, a child JVM: itkit) keeps the helpers it was written with.
+    IntegrationTest / unmanagedClasspath ++= (Test / fullClasspath).value,
+    // …and identity's: ResolverAllocationIntegrationSpec runs identity's ResolverAllocationSpec in a child JVM.
+    IntegrationTest / unmanagedClasspath ++= (identity / Test / exportedProducts).value,
     // A handful of enrichment specs (MetacriticClientSpec, RottenTomatoesClientSpec,
     // ImdbClientSpec, ImdbIdResolverSpec) read fixtures off the CLASSPATH via
     // `getResourceAsStream("/fixtures/…")`, but those HTML captures live in the
@@ -422,6 +448,7 @@ lazy val worker = (project in file("worker"))
   )
   .settings(unitReportSettings, testOrderSettings, workerRowSettings)
   .settings(ForkedTests.settings(Test, heap = "2g"))
+  .settings(UnitClasspathGuard.settings)
   .settings(itReportSettings, itRowSettings)
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
@@ -445,7 +472,7 @@ lazy val web = (project in file("web"))
   // Compile/Test stay independent: the deployed `web/stage` is built from
   // Compile, which never sees worker, so the two apps remain decoupled in
   // production. (Same cross-app shape as e2e.)
-  .dependsOn(common, identity, testkit % Test, worker % "page->fixtures")
+  .dependsOn(common, identity, testkit % Test, itkit % "it->compile", worker % "page->fixtures")
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
@@ -459,6 +486,8 @@ lazy val web = (project in file("web"))
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
     IntegrationTest / parallelExecution := true,
+    // The unit specs' helpers, for a spec that moved to `it` for its real dependency (see worker's).
+    IntegrationTest / unmanagedClasspath ++= (Test / fullClasspath).value,
     inConfig(PageTest)(Defaults.testSettings),
     PageTest / scalaSource              := baseDirectory.value / "src" / "page" / "scala",
     PageTest / resourceDirectory        := baseDirectory.value / "src" / "page" / "resources",
@@ -510,6 +539,10 @@ lazy val web = (project in file("web"))
     PlayKeys.externalizeResources := false,
   )
   .settings(unitReportSettings, testOrderSettings)
+  // Play's test kit (play.api.test.Helpers, which web's specs use for FakeRequest and the like) names Selenium's and
+  // HtmlUnit's driver classes in its object's initialiser, so they must load; no unit spec drives a browser through
+  // them, which UnitSpecsHaveNoRealDependenciesSpec checks.
+  .settings(UnitClasspathGuard.allowing(UnitClasspathGuard.BrowserOrganizations))
   .settings(itReportSettings, itRowSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
@@ -527,7 +560,7 @@ lazy val web = (project in file("web"))
 // artifact. Depends on worker's narrow `Fixtures` config, not its full `Test`
 // (~320 unrelated specs) — see the Fixtures config comment near IntegrationTest.
 lazy val e2e = (project in file("e2e"))
-  .dependsOn(web, worker % "test->fixtures", testkit % Test)
+  .dependsOn(web, worker % "test->fixtures", testkit % Test, itkit % Test)
   .settings(
     name := "e2e",
     publish / skip := true,
@@ -540,7 +573,7 @@ lazy val e2e = (project in file("e2e"))
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(geodata, common, identity, scrapers, testkit, web, worker, e2e)
+  .aggregate(geodata, common, identity, scrapers, testkit, itkit, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,

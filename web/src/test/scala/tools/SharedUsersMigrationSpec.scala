@@ -17,7 +17,7 @@ import java.time.Instant
  * blanked avatar, a set of hidden films silently dropped because the other
  * country's row happened to be newer.
  */
-class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
+class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
 
   private val Early = Instant.parse("2026-01-01T00:00:00Z")
   private val Mid   = Instant.parse("2026-05-01T00:00:00Z")
@@ -203,15 +203,5 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers with SuiteConfi
     val store = new DroppingUserStateRepository   // the writes went nowhere it can read back
 
     SharedUsersMigration.unwrittenStates(rows, store) shouldBe Seq("alice@example.com", "bob@example.com")
-  }
-
-
-  "The migration's command line" should "dry-run with no flag, write with --write, and exit 2 on a flag it does not know" in {
-    SharedUsersMigration.commandLine.parse(Nil).toOption.get.flag("write") shouldBe false
-    SharedUsersMigration.commandLine.parse(Seq("--write")).toOption.get.flag("write") shouldBe true
-    // args.contains("--write") read a mistyped --wirte as no flag: the operator's write ran as a silent dry run
-    val (code, output) = ChildJvm(configuration).run("tools.SharedUsersMigration", Seq("--wirte"))
-    code shouldBe 2
-    output should include("unknown option --wirte")
   }
 }

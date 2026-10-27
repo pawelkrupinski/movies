@@ -14,6 +14,7 @@ scrapers/src/main/**
 worker/src/main/**
 worker/src/fixtures/**
 testkit/src/main/**
+itkit/src/main/**
 # The tools a leg's takes check and hard-cluster ratchet run (scripts/ci/identity-takes-check.sh, scripts/hard-clusters.sh):
 # their flags, outputs and exit codes are part of the verdict, though they live outside src/main.
 worker/src/it/scala/IdentityResolveDump.scala

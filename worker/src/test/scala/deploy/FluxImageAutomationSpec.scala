@@ -3,9 +3,6 @@ package deploy
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.file.Files
-import scala.sys.process.Process
-
 /**
  * A BUILD BECOMES A DEPLOY ONLY IF ONE REGEX MATCHES ONE TAG. That is the whole
  * of this spec, and the reason it exists is that nothing else would notice if it
@@ -25,51 +22,14 @@ import scala.sys.process.Process
  * So this spec does not compare two strings and hope. It RUNS the shell that CI
  * runs to build the tag, and feeds the result to the REAL pattern out of the
  * ImagePolicy, asking the question directly: would Flux deploy what CI just
- * built?
+ * built? That run of CI's shell is in [[FluxImageAutomationIntegrationSpec]].
  */
 class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
 
-  private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
-  private lazy val automation = RepoFile.read("infra/kubernetes/image-automation/automation.yaml")
+  private lazy val automation = FluxImageAutomationSpec.automation
+  private def policyPattern: String = FluxImageAutomationSpec.policyPattern
 
   private val Apps = Seq("web", "worker")
-
-  /** The `run:` body of the step that builds the sortable tag, verbatim. */
-  private def orderableTagScript: String =
-    RepoFile.stepScript(mainYml, "Compute an orderable image tag")
-
-  /** The tag CI would actually publish for `sha`, produced by running CI's own shell. */
-  private def tagBuiltByCi(sha: String): String = {
-    val script = Files.createTempFile("orderable-tag", ".sh")
-    val output = Files.createTempFile("github-output", ".txt")
-    Files.writeString(script, orderableTagScript.replace("${{ github.sha }}", sha))
-    val rc = Process(Seq("bash", script.toString), None, "GITHUB_OUTPUT" -> output.toString).!
-    rc shouldBe 0
-    Files.readString(output).trim.stripPrefix("value=")
-  }
-
-  /** Every `pattern:` in the ImagePolicies, as a JAVA regex.
-   *
-   *  Flux compiles these with Go's RE2, whose named group is `(?P<x>)`; Java
-   *  spells the same thing `(?<x>)` and throws on the P. The translation is the
-   *  ONLY difference between the two dialects that this pattern uses, so a
-   *  match here is a match there. */
-  private def policyPatterns: Seq[String] =
-    automation.linesIterator
-      .map(_.trim)
-      .filter(_.startsWith("pattern:"))
-      .map(_.stripPrefix("pattern:").trim.stripPrefix("'").stripSuffix("'"))
-      .map(_.replace("(?P<", "(?<"))
-      .toSeq
-
-  private def policyPattern: String = {
-    val all = policyPatterns
-    all should not be empty
-    withClue("web and worker must select tags the same way, or one tier silently stops deploying: ") {
-      all.distinct should have size 1
-    }
-    all.head
-  }
 
   /** The `image:` line of each tier's base Deployment, whichever registry it names
    *  (ghcr.io until the GitHub suspension, registry.kinowo.net since). */
@@ -81,17 +41,6 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
       .find(_.trim.startsWith("image: "))
       .getOrElse(throw new AssertionError(s"no `image:` line in $path"))
       .trim
-  }
-
-  "the tag CI publishes" should "be one the ImagePolicy will actually deploy" in {
-    val tag = tagBuiltByCi("b5af6c9f17c2a2b42bff9066db3507f296ebb257")
-    withClue(s"CI builds `$tag`, policy selects `$policyPattern`: ") {
-      tag should fullyMatch regex policyPattern
-    }
-  }
-
-  it should "carry the short commit SHA, so a deployed tag still says which commit it is" in {
-    tagBuiltByCi("b5af6c9f17c2a2b42bff9066db3507f296ebb257") should endWith("-b5af6c9")
   }
 
   "the ImagePolicy" should "refuse tags that cannot be ordered" in {
@@ -186,5 +135,34 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
     val images = automation.linesIterator.map(_.trim).filter(_.startsWith("image: ")).map(_.stripPrefix("image: ").trim).toSeq
     images should not be empty
     every(images) should startWith("registry.kinowo.net/")
+  }
+}
+
+/** The ImagePolicies' own tag pattern, shared with [[FluxImageAutomationIntegrationSpec]]. */
+object FluxImageAutomationSpec extends Matchers {
+
+  lazy val automation: String = RepoFile.read("infra/kubernetes/image-automation/automation.yaml")
+
+  /** Every `pattern:` in the ImagePolicies, as a JAVA regex.
+   *
+   *  Flux compiles these with Go's RE2, whose named group is `(?P<x>)`; Java
+   *  spells the same thing `(?<x>)` and throws on the P. The translation is the
+   *  ONLY difference between the two dialects that this pattern uses, so a
+   *  match here is a match there. */
+  private def policyPatterns: Seq[String] =
+    automation.linesIterator
+      .map(_.trim)
+      .filter(_.startsWith("pattern:"))
+      .map(_.stripPrefix("pattern:").trim.stripPrefix("'").stripSuffix("'"))
+      .map(_.replace("(?P<", "(?<"))
+      .toSeq
+
+  def policyPattern: String = {
+    val all = policyPatterns
+    all should not be empty
+    withClue("web and worker must select tags the same way, or one tier silently stops deploying: ") {
+      all.distinct should have size 1
+    }
+    all.head
   }
 }

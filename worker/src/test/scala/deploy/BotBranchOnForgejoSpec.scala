@@ -91,7 +91,5 @@ class BotBranchOnForgejoSpec extends AnyFlatSpec with Matchers {
     action should include("""git push origin "HEAD:refs/heads/$BRANCH"""")
     action should not include "--force"
     action should include("scripts/ci/bot-branch-ready.sh")
-    withClue("bot-branch-ready-test.sh is run by CI's script-test runner: ")(
-      ScriptTests.runInCi("scripts/ci/bot-branch-ready-test.sh") shouldBe true)
   }
 }

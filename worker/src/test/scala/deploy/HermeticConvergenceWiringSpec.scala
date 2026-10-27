@@ -239,7 +239,6 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     withClue("each step replays the checked-in (and tested) step script, copied out of the tree bisect rewrites: ") {
       RepoFile.withoutComments(bisect) should include("""export STEP_COMMAND="$tools/convergence-bisect-step.sh"""")
       RepoFile.withoutComments(bisect) should not include "<<'STEP'"
-      ScriptTests.runInCi(".github/scripts/convergence-bisect-step-test.sh") shouldBe true
     }
     withClue("the leg must not carry a bisect job of its own: ") {
       leg.linesIterator.map(_.trim).toList should not contain "bisect:"

@@ -74,7 +74,7 @@ object FixpointPass {
    *  on the cursor's own thread whenever it gets there, so a count taken when the pass
    *  returns can miss the pass's own writes or catch the previous pass's. Build it AFTER the
    *  scenario and BEFORE the pass. */
-  def ledger(w: TestWiring, oplog: Option[OplogWrites] = None): ChurnLedger = {
+  def ledger(w: TestWiring, oplog: Option[CorpusWrites] = None): ChurnLedger = {
     val ledger = new ChurnLedger()
       .registry(w.workerMetrics.registry, WorkFamilies, isWork)
       // The stamped task types `isWork` leaves out of `tasks_enqueued` are counted HERE, or
@@ -87,7 +87,7 @@ object FixpointPass {
       .counter("venue scrape outcomes that flipped")(w.scrapeOutcomeFlips.get)
       .explain(w.scrapeOutcomeFlipped.toSeq.sorted.take(6).mkString("venues whose scrape outcome flipped: ", "; ", ""))
     oplog match {
-      case Some(writes) => ledger.counter("corpus writes (oplog)")(writes.count()).explain(writes.describe())
+      case Some(writes) => ledger.counter("corpus writes (oplog)")(writes.count()).explain(writes.describe(20))
       case None =>
         ledger
           .deliveries("movies change stream")(tick => w.movieRepository.watchChanges(_ => tick(), _ => tick()))

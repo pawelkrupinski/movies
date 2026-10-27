@@ -39,14 +39,11 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
     RepoFile.withoutComments(findings) should not include "sbt"
     withClue("the report reads the judgements to tell triaged from untriaged: ")(
       findings should include("test/resources/fixtures/identity-judgements.tsv"))
-    ScriptTests.runInCi("scripts/ci/identity_findings_report_test.py") shouldBe true
   }
 
   it should "fail, not report nothing, when there is no recording to read" in {
     val script = RepoFile.read("scripts/ci/identity_findings_report.py")
     script should include("::error::no completed Record scrape fixtures run to report")
-    withClue("held by identity_findings_report_test.py's no-run-named case, which the runner runs: ")(
-      ScriptTests.runInCi("scripts/ci/identity_findings_report_test.py") shouldBe true)
   }
 
   it should "take the dispatched run id through the environment, never spliced into the script" in {

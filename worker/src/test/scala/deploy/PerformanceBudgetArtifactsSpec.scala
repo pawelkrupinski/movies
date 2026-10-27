@@ -34,8 +34,7 @@ class PerformanceBudgetArtifactsSpec extends AnyFlatSpec with Matchers {
     action should include("if: ${{ !cancelled() && inputs.kind == 'chrome' }}")
   }
 
-  "adopt-ci-budgets" should "be tested in CI and named in the budgets' header" in {
-    ScriptTests.runInCi("scripts/adopt_ci_budgets_test.py") shouldBe true
+  "adopt-ci-budgets" should "be named in the budgets' header" in {
     RepoFile.read("testkit/src/main/scala/tools/costs/PerformanceBudgets.scala") should include("scripts/adopt-ci-budgets <run id>")
   }
 }

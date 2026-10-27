@@ -117,8 +117,4 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
   "a measurement's legs" should "save no build cache" in {
     setup should include("restore-only: ${{ inputs.replay != 'true' || startsWith(github.ref, 'refs/heads/measure/') }}")
   }
-
-  "ci.yml" should "run the cache key script's own spec" in {
-    ScriptTests.runInCi("scripts/ci/sbt-sources-key-test.sh") shouldBe true
-  }
 }

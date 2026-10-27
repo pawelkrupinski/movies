@@ -49,7 +49,12 @@ object Dependencies {
   val icu4j            = "com.ibm.icu"                    %  "icu4j"              % "79.1"
   val sentryLogback    = "io.sentry"                      %  "sentry-logback"     % sentryVersion
   val logbackClassic   = "ch.qos.logback"                %  "logback-classic"    % logbackVersion
-  val scalatestPlay    = "org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion
+  // Without the browser drivers it pulls in for its browser suites (OneBrowserPerSuite & co.): nothing here drives a
+  // browser through them (the page tests speak CDP to a real Chrome), and a browser driver on a unit classpath is what
+  // UnitClasspathGuard refuses.
+  val scalatestPlay    = ("org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion)
+    .excludeAll(ExclusionRule("org.seleniumhq.selenium"), ExclusionRule("org.htmlunit"), ExclusionRule("net.sourceforge.htmlunit"))
+  // (web's specs need them back for Play's own test kit: see web's UnitClasspathGuard.allowing in build.sbt)
   val scalatestScalaCheck = "org.scalatestplus"          %% "scalacheck-1-19"    % scalatestScalaCheckVersion
   val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
   val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion

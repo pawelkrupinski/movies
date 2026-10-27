@@ -89,7 +89,6 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     stop should not include ("old-ref-verdict")
     ci.indexOf("End the old-ref compile's JVMs") should be > ci.indexOf("wait old-ref-compile")
     ci.indexOf("End the old-ref compile's JVMs") should be < ci.indexOf("Keep identity-slice's compiled old ref")
-    ScriptTests.runInCi("scripts/ci/stop-stray-sbt-test.sh") shouldBe true
   }
 
   /** The job's checkout is shallow, so a floor the old-ref test compiles into but the start step does not fetch fails

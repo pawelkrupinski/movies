@@ -47,18 +47,14 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
 
   /** file → why it may run `git` itself. */
   private val DirectGitAllowed: Map[String, String] = Map(
-    "worker/src/test/scala/deploy/ScratchGitRepository.scala" ->
-      "the Scala helper: every command it starts runs with ScratchGitRepository.isolate's environment",
     "infra/version-dashboard/test/mobile/repo.ts" ->
       "the dashboard's TempRepo helper, under the environment setup.ts isolates for every test",
-    "worker/src/test/scala/deploy/ScratchGitRepositorySpec.scala" ->
+    "worker/src/it/scala/deploy/ScratchGitRepositorySpec.scala" ->
       "proves ScratchGitRepository.isolate against a decoy GIT_DIR — it must start git with an environment of its own making",
     "infra/version-dashboard/test/git-isolation.test.ts" ->
       "proves isolateGitEnvironment against a decoy GIT_DIR — it must run git with an environment of its own making",
-    "worker/src/test/scala/deploy/WorkflowScriptsRunnableSpec.scala" ->
+    "worker/src/it/scala/deploy/WorkflowScriptsRunnableIntegrationSpec.scala" ->
       "a read-only `git ls-files -s` of this checkout's index (the modes CI checks out), with every GIT_* variable dropped",
-    "worker/src/test/scala/services/enrichment/scraping/JsonLdScanSpec.scala" ->
-      "a read-only `git ls-files` of this checkout's own fixtures: writes nothing, and reads the checkout it runs in",
   )
 
   /** file → why a fixed temp path written in it is not a shared file. */

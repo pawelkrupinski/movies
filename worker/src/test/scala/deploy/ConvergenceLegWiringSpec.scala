@@ -775,7 +775,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val commands = RepoFile.withoutComments(RepoFile.read(".github/scripts/convergence-findings-summary.sh"))
     commands should not include regex ("""\|\s*head\s+-[0-9]+""")
     commands should include("sed -n 's/^\\[info\\] //; 1,150p'")
-    ScriptTests.runInCi(".github/scripts/convergence-findings-summary-test.sh") shouldBe true
   }
 
   /** A red leg names its films in `target/convergence-diagnostics` (`tools.ConvergenceDiagnostics`); the report puts
@@ -833,7 +832,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val end = RepoFile.step(leg, "End any JVM a timed-out step left running")
     end should include("if: always()")
     end should include("run: scripts/ci/stop-stray-sbt.sh")
-    ScriptTests.runInCi("scripts/ci/stop-stray-sbt-test.sh") shouldBe true
   }
 
   "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {

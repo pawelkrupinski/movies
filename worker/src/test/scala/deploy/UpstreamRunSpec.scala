@@ -73,11 +73,10 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
     ReadNoRun.keys.filter(f => resolverSteps(f).nonEmpty) shouldBe empty
   }
 
-  "the resolver" should "be scripts/ci/upstream_run.py, tested in CI, with the fallback the workflows rely on" in {
+  "the resolver" should "be scripts/ci/upstream_run.py, with the fallback the workflows rely on" in {
     val action = RepoFile.read(".github/actions/upstream-run/action.yml")
     action should include("python3 scripts/ci/upstream_run.py")
     action should include("github.event.workflow_run.conclusion")
-    ScriptTests.runInCi("scripts/ci/upstream_run_test.py") shouldBe true
     withClue("the resolver lists runs through scripts/forge-gh, which every plan job's checkout must hold: ") {
       triggered.filterNot(ReadNoRun.contains).flatMap(resolverSteps(_).map(_._2)).filterNot(_.contains("scripts/forge-gh")) shouldBe empty
     }

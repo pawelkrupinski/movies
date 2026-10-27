@@ -20,14 +20,15 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
   private val Fixtures = Paths.get("test/resources/fixtures")
   private val RatingSites = Seq("www.metacritic.com", "www.rottentomatoes.com")
 
-  /** The RECORDED pages: the ones git tracks. Walking the tree read whatever another suite running
-   *  beside this one was writing into it at that moment — a page mid-write, or gone before it was
-   *  read — and failed intermittently on a page nobody recorded. */
-  private def ratingPages: Seq[Path] =
-    scala.sys.process.Process(Seq("git", "ls-files", "-z", "--", Fixtures.toString)).!!.split('\u0000').toSeq
-      .filter(path => path.nonEmpty && RatingSites.exists(path.contains))
-      .map(Paths.get(_))
-      .filter(Files.isRegularFile(_))
+  /** The recorded pages: the regular files under the fixtures directory, sorted, for the two rating sites. Listed
+   *  by walking the directory, as no unit spec starts a process (`git ls-files` named the same files). */
+  private def ratingPages: Seq[Path] = {
+    val walk = Files.walk(Fixtures)
+    try walk.iterator.asScala.filter(Files.isRegularFile(_)).toSeq
+      .filter(path => RatingSites.exists(path.toString.contains))
+      .sortBy(_.toString)
+    finally walk.close()
+  }
 
   private def byJsoup(html: String): Seq[String] = JsonLdBlocks.scripts(Jsoup.parse(html))
 

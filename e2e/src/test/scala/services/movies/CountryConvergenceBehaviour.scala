@@ -947,7 +947,7 @@ abstract class CountryConvergenceBehaviour(
                       "re-write of unchanged data, not a corpus still moving)"
                     else s"\n${CorpusDiff.records(recordsBeforeTick, recordsAfterTick, s"before-tick$t", s"after-tick$t")}") +
                    named.take(8).map("\n  " + _).mkString +
-                   tickWrites.map(_.describe()).filter(_.nonEmpty).map("\n  " + _.replace("\n", "\n  ")).getOrElse("")
+                   tickWrites.map(_.describe(20)).filter(_.nonEmpty).map("\n  " + _.replace("\n", "\n  ")).getOrElse("")
         }
         tickWrites.foreach(_.close())
         if (appeared.nonEmpty) keyDrift += s"tick $t: keys APPEARED: ${appeared.take(8).mkString(", ")}"

@@ -59,7 +59,7 @@ trait ConvergenceStorage {
    *  moment it is called. What a fixpoint pass (`FixpointPass`) holds to zero; bookkeeping
    *  (the task queue, freshness stamps) is left out because a pass legitimately claims and
    *  stamps. `None` for a storage with no oplog to count off. */
-  def corpusWrites(): Option[OplogWrites] = None
+  def corpusWrites(): Option[CorpusWrites] = None
 
   def close(): Unit = ()
 }
@@ -118,7 +118,7 @@ object ConvergenceStorage {
 
     override val describe = s"MongoDB $name"
 
-    override def corpusWrites(): Option[OplogWrites] = Some(new OplogWrites(uri, name, Seq(
+    override def corpusWrites(): Option[CorpusWrites] = Some(new OplogWrites(uri, name, Seq(
       MovieRepository.Collection, ScreeningsRepository.Collection, SlotsRepository.Collection,
       "web_movies", "web_screenings")))
 
