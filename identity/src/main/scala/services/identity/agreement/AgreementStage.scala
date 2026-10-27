@@ -242,9 +242,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
    *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
   private[agreement] val waiting = TrieMap.empty[String, AgreementStage.Waiting]
-  /** The clusters whose families were asked inline ([[askNow]]), with the digest of the listings they were asked for:
-   *  each shape of a cluster asked so once. */
-  private[agreement] val askedNow = TrieMap.empty[String, Long]
+  /** The SHAPES (listings' digests) whose families were asked inline ([[askNow]]): each asked so once, whichever key
+   *  names its cluster — a key only names (docs/design/identity-no-drift.md, "One dependency index"). Kept while a
+   *  cluster of that shape is met. */
+  private[agreement] val askedNow = mutable.HashSet.empty[Long]
   /** The questions the last [[apply]] waited on that were not attempted yet: one attempted since — a failed ask files
    *  nothing — is what reads the same decisions at the same version again ([[attemptedSince]]). */
   private[agreement] var awaiting = Set.empty[Question]
@@ -509,6 +510,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         case None =>
           val AgreementStage.Digested(id, listings, digest) = digestedOf(decision, pass.keys.get(decision), listingOf)
           pass.seen += id
+          pass.shapes += digest
           val verdict = verdictOf(decision, id, listings, digest, pass)
           // the venue posters' distances to the cluster's candidates and to the film the families agree on
           def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, pass.asked)
@@ -540,14 +542,15 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     }
 
   /** A cluster the stage meets in this SHAPE (its listings digesting to `digest`) for the first time since it started —
-   *  no verdict, check, wait or inline ask of it held at that digest — past its first pass, which meets every cluster:
+   *  no verdict, wait or inline ask of that shape held, under ANY key: found by the digest, as a verdict is ([[heldFor]]),
+   *  never by the key naming the cluster now — past its first pass, which meets every cluster:
    *  what [[askNow]] asks inline. A new key and a known key a scrape reshaped alike: under its kept key, PL "Bez końca" ×7
    *  (2026-10-23, 10-26) gained a listing whose title no family had been asked, waited on the queue, and was published
    *  lost until the answers came in half a minute later — where a cluster new to its key would have read them. */
-  private[agreement] def newCluster(id: String, digest: Long, version: Long): Boolean =
+  private[agreement] def newCluster(digest: Long, version: Long): Boolean =
     (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
-      !held.get(id).exists(_.listings == digest) && !held.checked(id).exists(_._1 == digest) &&
-      !waiting.get(id).exists(_.listings == digest) && !askedNow.get(id).contains(digest)
+      !heldByDigest._1.get(digest).exists(_.listings == digest) && !waiting.valuesIterator.exists(_.listings == digest) &&
+      !askedNow(digest)
 
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
    *  corrections and the model's decisions — and store the verdicts `pass` moved. */
@@ -558,7 +561,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val removed    = held.keys.toSet -- pass.seen -- pass.correcting ++ superseded
     val moved      = pass.moved.filterNot(verdict => superseded(verdict.id))
     waiting --= waiting.keySet.toSet -- pass.seen
-    askedNow --= askedNow.keySet.toSet -- pass.seen
+    askedNow.filterInPlace(pass.shapes)
     (candidateFilms.keys.toSet -- pass.seen).foreach(candidateFilms.remove)   // a correction's candidates are read, never kept
     correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
     if (removed.nonEmpty || moved.nonEmpty) {
@@ -754,10 +757,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val gaps  = mutable.Set.empty[Question]
     val verdicts = {
       val first = verdictsOf(listings, gaps, reads)
-      if (!first.contains(Answer.Unknown) || !newCluster(id, digest, version)) first
+      if (!first.contains(Answer.Unknown) || !newCluster(digest, version)) first
       else {
         // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers
-        askedNow(id) = digest
+        askedNow += digest
         pass.inline(id) = (clock.millis(), gaps.toSet)
         askNow(gaps.toSet, AgreementStage.AskNowWithin)
         gaps.clear(); reads.clear()
@@ -970,6 +973,8 @@ object AgreementStage {
     /** The clusters read, by id, and the model takes read against the evidence, by their correction's id. */
     val seen         = mutable.Set.empty[String]
     val correcting   = mutable.Set.empty[String]
+    /** The shapes (listings' digests) of the clusters read. */
+    val shapes       = mutable.Set.empty[Long]
     /** The new clusters whose families this apply asked inline ([[AgreementStage.askNow]]), with when and what. */
     val inline       = mutable.Map.empty[String, (Long, Set[Question])]
     /** Each decision's cluster key ([[AgreementStage.keying]]), and the keys a merge absorbed, with the survivor's. */

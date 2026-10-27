@@ -935,6 +935,21 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     answeredTitles should contain ("Klondike: wojna w Donbasie")
   }
 
+  // Newness is the shape's, never the key's (docs/design/identity-no-drift.md, "One dependency index"): a key only names a
+  // cluster, and a shape a verdict, a wait or an inline ask holds under one key is no new cluster under another.
+  it should "count as new only a shape no verdict, wait or inline ask holds, under whichever key" in {
+    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
+      askNow = (_, _) => ())
+    stage.loadedAt = Some(1L)
+    val (decided, waited, asked, fresh) = (11L, 12L, 13L, 14L)
+    stage.file(StoredVerdict("7", decided, Map.empty, None, stage.decidedUnder))
+    stage.waiting("8") = AgreementStage.Waiting(waited, Set.empty)
+    stage.askedNow += asked
+    Seq(decided, waited, asked, fresh).map(stage.newCluster(_, version = 2)) shouldBe Seq(false, false, false, true)
+    stage.newCluster(fresh, version = 1) shouldBe false   // the first pass meets every cluster
+  }
+
   // A wait is decided for one shape of its cluster, as a verdict is: kept by the cluster's key alone, a shape that waited
   // went on being reported as waiting after the cluster went back to a shape whose verdict stands (NoDecisionKeyedByMutableIdSpec).
   it should "wait on nothing of a cluster's earlier shape once it is back to a shape whose verdict stands" in {

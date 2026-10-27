@@ -12,7 +12,7 @@ import java.nio.file.{Files, Paths}
  * under the key it keeps, a listing's page moves under its key. State the identity code keeps BY such an id and decides
  * from is stale the moment the content moves, unless the value says what it was decided for. Each of these was that bug:
  *  - the agreement's inline asks, kept by cluster key: a reshaped cluster under its old key was never asked again (now
- *    `askedNow`, its listings' digest the value);
+ *    `askedNow`, a set of the shapes' digests: no key at all);
  *  - verdicts found by key, not by the listings they were decided for (now `heldFor`, by `StoredVerdict.listings`);
  *  - the dirty index's `checked` by id, which a reshaped cluster inherited (now checked under a stamp, [[services.identity.Memo]]);
  *  - a cluster's waits and a correction's waits, kept by key: a cluster back to a shape whose verdict stands, or a
@@ -68,8 +68,9 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${A}AgreementStage.scala#firsts"         -> Store("keyStore's rows: each live key's first listing"),
     s"${A}AgreementStage.scala#held"           -> Digested("listings", "a Memo: heldFor compares StoredVerdict.listings, and an entry is checked under the listings' digest"),
     s"${A}AgreementStage.scala#heldByDigest"   -> Content("the held verdicts by their listings' digest"),
+    s"${A}AgreementStage.scala#askedNow"       -> Content("the shapes (listings' digests) asked inline, no key"),
+    s"${A}AgreementStage.scala#shapes"         -> Pass(PerApply),
     s"${A}AgreementStage.scala#waiting"        -> Digested("listings", "Waiting.listings: a wait for another shape is dropped (verdictOf) and never read"),
-    s"${A}AgreementStage.scala#askedNow"       -> Digested("value", "the listings' digest the cluster was asked inline for; newCluster compares it"),
     s"${A}AgreementStage.scala#candidateFilms" -> Digested("digest", "a Memo: CandidateFilms.digest compared, its receipt checked"),
     s"${A}AgreementStage.scala#correctionWaits" -> Digested("listings", "Waiting.listings: a correction's waits for another shape of its take are dropped (corrected)"),
     s"${A}AgreementStage.scala#recordsReading" -> Content("TMDB ids the apply read"),
