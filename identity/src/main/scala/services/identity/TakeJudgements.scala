@@ -5,7 +5,8 @@ package services.identity
  * columns and states: `tools.IdentityJudgements`, the gates' reader), bundled into the worker and handed in by its
  * composition root (`modules.wiring.BundledJudgements`) so its
  * suspect-take count (`services.identity.adapters.SuspectTakeCount`) counts only the suspects no one has judged, and
- * the takes a judgement calls wrong apart. Reporting only: no take reads it.
+ * the takes a judgement calls wrong apart; and the projection withdraws each listing's take a judgement calls wrong
+ * ([[withdraw]]), after the model and the agreement stage decided: a wrong judgement corrects the take.
  *
  * [[decide]] is THE rule a set of judgements gives a take — the gates' (`tools.UnmatchedClusters.verdict`) and the
  * worker's alike.
@@ -17,7 +18,24 @@ object TakeJudgements {
   final case class Judgement(country: String, venue: String, rawTitle: String, film: String, right: Boolean)
 
   /** A billing as every judgement keys it: runs of whitespace one space, none at the ends. */
-  def normalise(raw: String): String = raw.replaceAll("(?U)\\s+", " ").stripPrefix(" ").stripSuffix(" ")
+  def normalise(raw: String): String =
+    if (raw.isEmpty || (!space(raw.head) && !space(raw.last) && !hasOtherSpace(raw))) raw
+    else raw.replaceAll("(?U)\\s+", " ").stripPrefix(" ").stripSuffix(" ")
+
+  /** What `(?U)\s` matches: a no-break space too. */
+  private def space(c: Char): Boolean = Character.isWhitespace(c) || Character.isSpaceChar(c)
+
+  /** Whether `raw` holds whitespace other than single plain spaces: every listing a projection takes is asked. */
+  private def hasOtherSpace(raw: String): Boolean = {
+    var i = 0
+    var other = false
+    while (!other && i < raw.length) {
+      val c = raw.charAt(i)
+      other = space(c) && (c != ' ' || (i + 1 < raw.length && space(raw.charAt(i + 1))))
+      i += 1
+    }
+    other
+  }
 
   /** A take's verdict by the judgements covering its listing (`covering`: its country and billing, its venue or "*"):
    *  `Some(false)` when one denies a film it is known by (`ids`), or names its right film in a database the take has an id
@@ -47,7 +65,45 @@ object TakeJudgements {
     /** The verdict on `rawTitle` at `venue` taken as a film known by `ids`. */
     def verdict(venue: String, rawTitle: String, ids: Set[String]): Option[Boolean] =
       byBilling.get(normalise(rawTitle)).flatMap(rows => decide(ids, rows.filter(j => j.venue == "*" || j.venue == venue)))
+    /** The TMDB films a judgement calls wrong for `rawTitle` at `venue`: its venue's or every venue's, unless its venue's
+     *  calls the film right ([[decide]]'s precedence). */
+    def denied(venue: String, rawTitle: String): Set[Int] =
+      if (judgements.isEmpty) Set.empty
+      else byBilling.get(normalise(rawTitle)).fold(Set.empty[Int]) { all =>
+        val rows      = all.filter(j => j.venue == "*" || j.venue == venue)
+        val rightHere = rows.filter(j => j.venue != "*" && j.right).map(_.film).toSet
+        rows.iterator.filter(j => !j.right && !rightHere(j.film) && j.film.startsWith("tmdb:")).flatMap(_.film.stripPrefix("tmdb:").toIntOption).toSet
+      }
   }
+
+  /** `resolution` with every listing taken as a TMDB film a judgement calls wrong for it WITHDRAWN: taken out of its
+   *  decision into one of its own, no film, [[ResolverDecision.Basis.Withdrawn]] — the judged listing's take and nothing
+   *  else, as a pin acts on its own listings: no other listing of its decision, family or title moves, and nothing is
+   *  decided again (2026-10-28: read as the resolver's evidence instead, a denial moved the film other venues of the
+   *  title pooled to — Münster's "Transit", Ilkley's "Fallen Angels"). A pure function of the resolution and the
+   *  judgements, applied whole to every projection: no stickiness. */
+  def withdraw(resolution: Resolution, index: Index): Resolution =
+    if (index.size == 0) resolution
+    else {
+      var moved = false
+      val decisions = resolution.decisions.flatMap { d =>
+        d.film.fold(Seq(d)) { film =>
+          val (judged, kept) = d.members.partition(k => index.denied(k.venue, k.rawTitle)(film))
+          if (judged.isEmpty) Seq(d)
+          else {
+            moved = true
+            val line = s"withdrawn: a hand judgement calls tmdb:$film wrong for this billing (identity-judgements.tsv)"
+            Option.when(kept.nonEmpty)(d.copy(members = kept)(d.trace)).toSeq ++
+              judged.map(k => d.copy(members = Seq(k), film = None, basis = ResolverDecision.Basis.Withdrawn, explanation = d.explanation :+ line,
+                fallback = None, agreed = Map.empty)(d.trace.copy(stage = Some(WithdrawnRule))))
+          }
+        }
+      }
+      if (moved) resolution.copy(decisions = decisions) else resolution
+    }
+
+  /** The rule a judged listing's withdrawal is traced under. */
+  val WithdrawnRule = "withdrawal:judged-wrong"
 
   object Index {
     val Empty: Index = new Index(Nil)

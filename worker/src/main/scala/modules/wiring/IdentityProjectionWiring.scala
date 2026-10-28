@@ -63,11 +63,16 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
       takeHistory = new services.identity.adapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
       adopt       = identityListingIntake.adopt,
-      agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
+      // the agreement's takes, each a hand judgement calls wrong withdrawn from its own listing (TakeJudgements.withdraw)
+      agreement   = (resolution, listingOf, republished) =>
+        services.identity.TakeJudgements.withdraw(agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished), judged),
       agreementBacklog = () => agreementStage.backlog,
       suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
       changeFeed  = takeChangesTold,
       pagesMoved  = venuePageFacts.takeMoved)
+
+  /** This country's hand judgements of takes, as the worker was built with them ([[BundledJudgements]]). */
+  lazy val judged: services.identity.TakeJudgements.Index = BundledJudgements.index(country.code)
 
   /** Handed each written projection's change list, as the take-change counter is: nothing reads it in production since
    *  the staging screen retired; a harness overrides it to hold the change lists to what the projection wrote. */
@@ -82,7 +87,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       services.identity.adapters.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
-      pressed = () => tools.HeapPressure.pressed(), judgements = BundledJudgements.index(country.code),
+      pressed = () => tools.HeapPressure.pressed(), judgements = judged,
       reportWrong = workerMetrics.identityProjection.judgedWrong(country.code))
 
   /** How often each rule fires on the live listings (`kinowo_worker_identity_rule_fires_total{rule}`), over each written

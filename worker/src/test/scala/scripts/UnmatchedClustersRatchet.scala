@@ -73,7 +73,9 @@ object UnmatchedClustersRatchet {
       val gaps     = replayed.flatMap { case (capture, outcome) => UnmatchedClusters.gaps(capture, outcome) }
       val stale    = if (measure) { UnmatchedClusters.writeGaps(out.resolve("capture-gaps.tsv"), gaps); None }
                      else captures.map(_.country.code).map(cc => cc -> gaps.filter(_.country == cc)).find(_._2.nonEmpty)
-      stale.toLeft(replayed.flatMap { case (capture, outcome) => UnmatchedClusters.takes(capture, outcome) })
+      // the final takes as the worker projects them: each a hand judgement calls wrong withdrawn from its own listing
+      stale.toLeft(replayed.flatMap { case (capture, outcome) => UnmatchedClusters.takes(capture,
+        outcome.copy(agreed = services.identity.TakeJudgements.withdraw(outcome.agreed, modules.wiring.BundledJudgements.index(capture.country.code)))) })
     }
 
     /** The findings file, written before any check reads the takes: a red ratchet still leaves it to read. */

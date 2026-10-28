@@ -79,7 +79,9 @@ object IdentityResolveDump {
     val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
-    val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned))
+    // as the worker projects them: each take a hand judgement calls wrong withdrawn from its own listing
+    val (resolution, seconds) = timed(services.identity.TakeJudgements.withdraw(
+      IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned), modules.wiring.BundledJudgements.index(c.country.code)))
     val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
     // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
     val suspects  = {
