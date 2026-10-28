@@ -25,7 +25,7 @@ fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectio
 
 # identity: the identity module whole (agreement/equivalence specs included: IncrementalWholeEquivalence,
 # LateInputEquivalence, Memo...; 1095 tests, 52 s), then every services.identity.* / services.titlerules.* / worker
-# scripts.* spec of every module plus the hard-cluster ratchet (Main's `test (worker-identity)` / `(worker-scripts)`
+# scripts.* spec of every module plus the hard-cluster ratchet (Main's `test (worker-identity)` / `(heavy1)` / `(heavy2)`
 # identity parts; 651 tests, ~4 min). ~5 min warm, measured 2026-10-26 under a load of 17-130. NOT here (main's CI):
 # HardClusterConvergenceIntegrationSpec (IntegrationTest, Mongo), the convergence suite, the takes measure.
 identity sbt identity/test

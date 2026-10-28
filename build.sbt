@@ -176,16 +176,31 @@ lazy val IdentityIntegrationSuites = Set(
   "integration.HardClusterConvergenceIntegrationSpec")
 lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -> IdentityIntegrationSuites))
 
-// The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split by
-// package into rows of roughly equal suite time: the identity tooling's capture re-resolves (`scripts`), the
-// resolver's corpus specs (`identity`), and `rest`, which CI runs beside the web module's unit tests. `refit` is the
-// one suite that was ~250 s of `scripts`' 337 (IdentityRefitMeasureAllSpec's whole-vs-sharded refit over two
-// captures, 2026-10-23), on a row of its own beside it: it still runs on every push the unit rows run on.
-lazy val RefitRowSuites = Set("scripts.IdentityRefitMeasureAllSpec")
+// The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split into
+// rows. THE HEAVY ROWS (2026-10-28, the owner: the suites that replay whole recordings or captures "don't belong in a
+// unit stage", but still run before every deploy): the suites that re-decide a recording's slices or re-resolve the
+// checked-in captures, ~610 of the worker's ~1,230 suite-seconds, run on two rows of their own, `heavy1` and `heavy2`,
+// cut by measured suite time (Forgejo run 3419, test step at load ~10: each row's longest suite 146 s and 120 s). They
+// are rows of ci.yml's `test` job, which main.yml's publish jobs need (`needs: ci`), so they gate every deploy as
+// before. The unit rows proper: `identity` (the resolver's other specs, the tools' and the identity tooling's) and
+// `rest`, which CI runs beside the web and scrapers modules. Every unit row's suites are mock-only either way
+// (NoRealDependenciesInUnitSpecsSpec).
+lazy val HeavyRows: Map[String, Set[String]] = Map(
+  "heavy1" -> Set(
+    "services.identity.IdentitySliceCasesSpec",       // every pinned slice of a recording, decided again
+    "scripts.IdentityUnifiedFitSpec",                 // the unified model's weights fitted again from every capture's rows
+    "services.identity.NonFilmEventsFixtureSpec",     // the non-film events over every capture's unmatched clusters
+    "tools.UnmatchedClustersGapsSpec"),               // a capture replayed for the lookups it lacks
+  "heavy2" -> Set(
+    "scripts.IdentityRefitMeasureAllSpec",            // the refit's whole-vs-sharded measure over two captures
+    "services.identity.UnmatchedClustersRatchetSpec", // the ratchet: the five captures replayed
+    "scripts.IdentityRefitCaptureReplaySpec",         // the refit's re-resolve of a capture
+    "services.identity.MatchedTakesLabelSpec"))       // every capture's matched takes against the labels
+lazy val HeavySuites: Set[String] = HeavyRows.values.flatten.toSet
 lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
-  "refit"    -> RefitRowSuites,
-  "scripts"  -> (suite => suite.startsWith("scripts.") && !RefitRowSuites(suite)),
-  "identity" -> (_.startsWith("services.identity."))))
+  "heavy1"   -> HeavyRows("heavy1"),
+  "heavy2"   -> HeavyRows("heavy2"),
+  "identity" -> (suite => !HeavySuites(suite) && Seq("services.identity.", "scripts.", "tools.").exists(suite.startsWith))))
 
 lazy val itReportSettings = Seq(
   IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",

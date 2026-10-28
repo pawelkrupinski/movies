@@ -62,6 +62,20 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
     RepoFile.matrixRows(testJob).find(_("shard") == "worker").map(_("suites")) shouldBe Some("rest")
   }
 
+  /** The heavy rows select their suites by name: a renamed or moved suite would leave its row running nothing while the
+   *  suite itself ran nowhere -- every unit row excludes it. */
+  they should "name heavy suites that exist, each on one heavy row" in {
+    val block  = buildSbt.substring(buildSbt.indexOf("lazy val HeavyRows"), buildSbt.indexOf("lazy val HeavySuites"))
+    val names  = """"([a-z]+(?:\.[a-z]+)*\.[A-Z]\w+Spec)"""".r.findAllMatchIn(block).map(_.group(1)).toSeq
+    names should not be empty
+    names shouldBe names.distinct
+    names.foreach { name =>
+      withClue(name)(RepoFile.exists(s"worker/src/test/scala/${name.replace('.', '/')}.scala") shouldBe true)
+    }
+    """"(heavy\d)"\s*->\s*Set\(""".r.findAllMatchIn(block).map(_.group(1)).toSet shouldBe
+      RepoFile.matrixRows(testJob).flatMap(_.get("suites")).filter(_.startsWith("heavy")).toSet
+  }
+
   "ci.yml's integration rows" should "be build.sbt's IT_ROW filters, each running all of itAll" in {
     RepoFile.matrixRows(itJob).map(_("row")) should contain theSameElementsAs rowsOf("IT_ROW").toSeq
     itJob should include("IT_ROW: ${{ matrix.row }}")

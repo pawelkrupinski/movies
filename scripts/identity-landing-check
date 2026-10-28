@@ -26,7 +26,7 @@
 #   --no-cache       passed to identity-measure: measure even when its result cache holds the verdict
 #
 # THE SPECS: exactly the identity-relevant suites of Main's rows (ci.yml), each group as its row runs it:
-#   unit        `test (worker-identity)` + `test (worker-scripts)` + the identity/common parts of `test (rest)` + the
+#   unit        `test (worker-identity)` + `test (heavy1)` + `test (heavy2)` + the identity/common parts of `test (rest)` + the
 #               worker lint and ratchet specs: every services.identity.* (worker and identity modules), services.titlerules.*
 #               (the golden, examples and mutation specs), scripts.* (the capture re-resolves), DocCommentPlacementSpec,
 #               HardClusterRatchetSpec
