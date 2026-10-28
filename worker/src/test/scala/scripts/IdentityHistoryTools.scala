@@ -32,7 +32,7 @@ object IdentityHistoryTools {
     def opt(name: String) = rest.sliding(2).collectFirst { case List(`name`, value) => value }
     val at      = opt("--at").map(Instant.parse(_).toEpochMilli).getOrElse(clock.millis())
     val wanted  = opt("--listing").map(_.split('|').map(_.trim.toLowerCase(java.util.Locale.ROOT)).toList)
-    val uri     = sys.env.getOrElse("LOCAL_MIRROR_URI", s"mongodb://127.0.0.1:${sys.env.getOrElse("LOCAL_MIRROR_PORT", "28017")}")
+    val uri     = opt("--mongo").getOrElse("mongodb://127.0.0.1:28017/?directConnection=true")
     val client  = MongoClient(uri)
     try {
       val db     = client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))

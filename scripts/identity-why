@@ -9,8 +9,8 @@
 #   --listing  substrings of the venue and the billed title (case aside); every matching listing with a take kept
 #   --at       the moment (default now): the take at or before it, else the first after it
 #
-# Reads the LOCAL prod mirror (mongodb://127.0.0.1:28017, kinowo[_<cc>]_prod_mirror, read-only; $LOCAL_MIRROR_PORT or
-# $LOCAL_MIRROR_URI overrides) after scripts/local-mirror/freshness; never prod. The logic: scripts.IdentityHistoryTools.
+# Reads the LOCAL prod mirror (mongodb://127.0.0.1:28017, kinowo[_<cc>]_prod_mirror, read-only; $LOCAL_MIRROR_PORT
+# overrides, passed as --mongo) after scripts/local-mirror/freshness; never prod. The logic: scripts.IdentityHistoryTools.
 set -euo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh" # usage_from_header
@@ -19,4 +19,4 @@ case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >
 # each argument double-quoted, as sbt's runMain reads a value holding spaces ("Riverside Theatre Woodbridge|The Stranger")
 args=""
 for arg in "$@"; do args+=" \"${arg//\"/\\\"}\""; done
-exec "$(dirname "$0")/sbt-warm" "worker/Test/runMain scripts.IdentityHistoryTools why$args"
+exec "$(dirname "$0")/sbt-warm" "worker/Test/runMain scripts.IdentityHistoryTools why$args --mongo $(local_mongo_uri)"

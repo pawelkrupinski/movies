@@ -5,7 +5,7 @@ import models.{CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ListingKey
-import tools.{HttpStatusException, MutableClock, TestWiring}
+import tools.{HttpStatusException, ManualScheduler, MutableClock, TestWiring}
 
 import scala.util.{Failure, Success}
 
@@ -34,7 +34,7 @@ class IdentityHistoryReplaySpec extends AnyFlatSpec with Matchers {
     val service = new IdentityModelService(
       () => { val m = new IncrementalResolver(new TrackedLookups(new StoredTmdbLookups(store, language, UnansweredTmdbLookups, reads), reads,
         Some(java.util.concurrent.Executors.newFixedThreadPool(2))), titles, IdentityCalibration.resolver); model = Some(m); m },
-      reads, () => first, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor(),
+      reads, () => first, titles, scala.concurrent.duration.Duration(1, "second"), new ManualScheduler(clock),
       clock = clock, history = history, build = "b1")
     store.onChanged(service.observed)
 
