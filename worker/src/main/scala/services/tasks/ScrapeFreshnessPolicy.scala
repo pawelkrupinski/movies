@@ -7,6 +7,7 @@ import scala.concurrent.duration.FiniteDuration
 
 import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
+import scala.jdk.CollectionConverters._
 
 /**
  * Decides whether a finished scrape attempt advances the cinema's due schedule —
@@ -57,7 +58,10 @@ class ScrapeFreshnessPolicy(
   // leaves cadence untouched, so every existing caller/test that doesn't pass a
   // `remainingHorizon` to `succeeded` is unaffected. Production wires the same
   // instance the worker's `scrapeDueWindow` reads.
-  venueCadence:     Option[VenueCadenceStore] = None
+  venueCadence:     Option[VenueCadenceStore] = None,
+  // Where a venue whose scrape failed on the residential-proxy leg is parked while the proxy is down, and released
+  // from the moment it is back (see `ProxyParking`). None where there is no proxy: every failure is the venue's own.
+  proxyParking:     Option[ProxyParking] = None
 ) extends Logging {
 
   private val consecutiveFailures = new ConcurrentHashMap[String, Integer]()
@@ -71,6 +75,7 @@ class ScrapeFreshnessPolicy(
    *  back to the country default. */
   def succeeded(key: String, remainingHorizon: Option[FiniteDuration] = None): Unit = {
     consecutiveFailures.remove(key)
+    proxyParking.foreach(_.released(key))
     freshness.markFresh(key, FreshnessKind.CinemaScrape, clock.instant())
     for (store <- venueCadence; horizon <- remainingHorizon) store.record(key, horizon)
   }
@@ -84,13 +89,48 @@ class ScrapeFreshnessPolicy(
 
   /** The scrape threw. Leave the cinema stale so the reaper retries next tick,
    *  until the streak passes `immediateRetries` — then stamp anyway so it stops
-   *  jumping the queue ahead of healthy cinemas. */
-  def failed(key: String): Unit = {
+   *  jumping the queue ahead of healthy cinemas. When `error` failed on the
+   *  residential-proxy leg and the proxy's probe says it is down, the venue is
+   *  ALSO parked on that cause, so [[releaseRecoveredProxy]] makes it due again the
+   *  moment the proxy is back instead of a whole freshness window later. The stamp
+   *  stays either way: should the probe never pass, the venue still comes round on
+   *  its normal window, as before. */
+  def failed(key: String, error: Option[Throwable] = None): Unit = {
     val streak = consecutiveFailures.merge(key, 1, (a, b) => a + b)
     if (streak > immediateRetries) {
-      logger.warn(s"$key failed $streak consecutive scrapes; parking it on the normal " +
-        "freshness window so it stops consuming the reaper's per-tick budget.")
+      val onProxy = error.exists(tools.AllBackendsFailedException.legFailed(_, tools.ProxyChain.ProxyLeg)) &&
+        proxyParking.exists(_.parkIfProxyDown(key))
+      if (onProxy)
+        logger.warn(s"$key failed $streak consecutive scrapes on the residential proxy, which its probe says is down; " +
+          "parking it on the proxy's recovery (and on the normal freshness window, should that come first).")
+      else
+        logger.warn(s"$key failed $streak consecutive scrapes; parking it on the normal " +
+          "freshness window so it stops consuming the reaper's per-tick budget.")
       freshness.markFresh(key, FreshnessKind.CinemaScrape, clock.instant())
     }
+  }
+
+  /** The recovery check (`ScrapeWiring.proxyParkingRecovery`, every `ProxyParking.ProbeInterval`): when the
+   *  proxy's probe passes again, every venue parked on it is made due NOW — its stamp dropped, so the reaper takes
+   *  it first, at its usual per-tick cap and spread (the drain is paced by the reaper, not stampeded) — with a fresh
+   *  retry budget. Returns how many were released. */
+  def releaseRecoveredProxy(): Int = proxyParking.fold(0) { parking =>
+    val released = parking.releaseIfRecovered()
+    released.foreach { key =>
+      consecutiveFailures.remove(key)
+      freshness.invalidate(key)
+    }
+    if (released.nonEmpty)
+      logger.warn(s"residential proxy recovered: un-parked ${released.size} cinema(s), due for scraping now " +
+        s"(${released.take(5).mkString(", ")}${if (released.size > 5) ", ..." else ""})")
+    released.size
+  }
+
+  /** Venues parked right now, by cause (`ProxyParking.Cause`): on the proxy, or on their own failure streak. */
+  def parkedByCause: Map[String, Int] = {
+    val own = consecutiveFailures.asScala.count { case (key, streak) =>
+      streak > immediateRetries && !proxyParking.exists(_.isParked(key))
+    }
+    Map(ProxyParking.Cause.ResidentialProxyDown -> proxyParking.fold(0)(_.size), ProxyParking.Cause.OwnFailures -> own)
   }
 }

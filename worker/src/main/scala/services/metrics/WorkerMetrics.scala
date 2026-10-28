@@ -111,6 +111,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // The per-host circuit breakers' open hosts and openings, by leg — see HttpBreakerMetrics.
   val httpBreakers: HttpBreakerMetrics = new HttpBreakerMetrics(countryCodes, registry)
 
+  // Venues parked by cause, and released by their cause's probe — see ParkedScrapeMetrics.
+  val parkedScrapes: ParkedScrapeMetrics = new ParkedScrapeMetrics(countryCodes, registry)
+
   // Every in-app Telegram alert's delivery attempt — see TelegramNotificationMetrics.
   val telegramNotifications: TelegramNotificationMetrics = new TelegramNotificationMetrics(countryCodes, registry)
 

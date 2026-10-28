@@ -47,6 +47,7 @@ trait TestWiring extends WorkerWiring {
   // so every cinema-egress route collapses onto the wiring's own `httpFetch`.
   override protected def zyteApiKey: Option[settings.ZyteApiKey] = None
   override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] = None
+  override protected def residentialProxyProbe: Option[ProxyProbe] = None
 
   // Run the adaptive-timeout scrape inline on the calling thread, so the
   // order-determinism specs see no scrape thread to race. Fixture scrapes are

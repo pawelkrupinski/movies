@@ -5,7 +5,7 @@ import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester
 import services.metrics.PaidEgressMetrics
-import tools.{HttpFetch, HttpOutcomeRecorder, ProxyChain, RealHttpFetch, ResidentialProxy, StickyShardHttpFetch}
+import tools.{HttpFetch, HttpOutcomeRecorder, ProxyChain, ProxyProbe, RealHttpFetch, ResidentialProxy, ResidentialProxyProbe, StickyShardHttpFetch}
 
 /** Cinema-site egress routes: the residential-proxy chains the Cloudflare-blocked
  *  venues scrape through (plus the one Zyte route for a venue the proxy cannot
@@ -30,6 +30,12 @@ trait EgressWiring { self: WorkerWiring =>
    *  whatever environment they are handed: `TestWiring` answers None. */
   protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
     EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
+
+  /** The residential proxy's health check — a CONNECT through each pool port — that a venue failing on the proxy is
+   *  parked on and released by (`ProxyParking`); None where the proxy isn't configured. A seam like
+   *  [[residentialProxyShards]]: `TestWiring` answers None. */
+  protected def residentialProxyProbe: Option[ProxyProbe] =
+    ResidentialProxy.fromConfiguration(configuration).map(new ResidentialProxyProbe(_))
 
   // Proxy primary → `fallback` (direct), so a proxy IP that's ever unreachable/burned
   // rolls over to the direct fetch rather than failing outright. There is no paid

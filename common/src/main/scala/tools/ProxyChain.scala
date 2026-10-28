@@ -6,6 +6,9 @@ package tools
  *  (`CinemaEgress.diagnostic`, the recording and replay tools'), so the two build one chain. */
 object ProxyChain {
 
+  /** The proxy leg's name in the chain — what its failures are reported under (`AllBackendsFailedException.failedLegs`). */
+  val ProxyLeg = "proxy"
+
   /** The residential proxy first, `direct` behind it — and with no proxy, `direct` alone. */
   def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch,
                       clock: java.time.Clock, stopwatch: Stopwatch, warmUrl: Option[String] = None): HttpFetch =
@@ -22,7 +25,7 @@ object ProxyChain {
                    breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch = {
     val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
     val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, clock, breakerMeter)
-    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), stopwatch, onOutcome = onOutcome,
+    new FallbackHttpFetch(Seq(ProxyLeg -> proxyLeg, "fallback" -> fallback), stopwatch, onOutcome = onOutcome,
                           endsChain = FallbackHttpFetch.OriginAnswered)
   }
 

@@ -147,7 +147,7 @@ class ChunkScrapePlanner(
     // due, it would be re-run on the next ticks and re-walk the fallback each time.
     val fallbackServed = scala.util.Try(publishScrape(PreScrapedCinemaScraper.of(scraper, () => throw e))).isSuccess
     val key            = ScrapeCinemaHandler.dedupKey(scraper.cinema)
-    if (fallbackServed) scrapeFreshness.succeeded(key) else scrapeFreshness.failed(key)
+    if (fallbackServed) scrapeFreshness.succeeded(key) else scrapeFreshness.failed(key, Some(e))
   }
 }
 

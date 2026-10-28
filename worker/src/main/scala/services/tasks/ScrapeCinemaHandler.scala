@@ -118,7 +118,7 @@ class ScrapeCinemaHandler(
               logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
             // Left stale → the reaper re-enqueues on its next tick, until the retry
             // budget is spent and the policy parks it on the normal window instead.
-            outcome.failed(key)
+            outcome.failed(key, Some(e))
             Done
         }
     }

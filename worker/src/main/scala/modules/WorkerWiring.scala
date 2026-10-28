@@ -537,6 +537,7 @@ class WorkerWiring(
     boot.step("audit reapers")(auditReapers.foreach(_.start()))
     boot.step("scrape phase planner")(scrapePhasePlanner.start())
     boot.step("scrape reaper")(scrapeReaper.start())
+    boot.step("proxy parking")(startProxyParking())
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
     boot.step("chunk scrape reaper")(chunkScrapeReaper.start())

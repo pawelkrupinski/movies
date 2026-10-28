@@ -147,6 +147,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/tools/MonitoringHttpFetch.scala", "classify",
       "case _: Exception => None") ->
       "a URL whose host does not parse gets no uptime row; the call itself still goes out and fails on its own",
+    ("worker/src/main/scala/tools/ResidentialProxyProbe.scala", "statusThrough",
+      "case e: IOException =>") ->
+      "a health probe: a port that cannot be reached IS the answer (no status, so the probe fails), logged at DEBUG",
     ("worker/src/main/scala/tools/ThrottledHttpFetch.scala", "isOverload",
       "case _: CircuitOpenException               => false") ->
       "a classifier over an exception already caught, not a handler: a CircuitOpenException is not an overload signal",

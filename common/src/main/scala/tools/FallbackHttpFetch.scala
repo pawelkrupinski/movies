@@ -72,6 +72,7 @@ class FallbackHttpFetch(
    *  read anyway, and booked the proxy leg as having served. `text` is how a body is searched. */
   private def tryEach[T](verb: String, url: String, call: HttpFetch => T)(text: T => String): T = {
     val failures        = mutable.ListBuffer.empty[String]
+    val failedLegs      = mutable.ListBuffer.empty[String]
     var lastFailure     = Option.empty[Throwable]
     val failuresSeen    = mutable.ListBuffer.empty[Throwable]
     var result: Option[T] = None
@@ -94,6 +95,7 @@ class FallbackHttpFetch(
         case t: Throwable =>
           lastFailure = Some(t)
           failuresSeen += t
+          failedLegs += name
           val message = s"$name: ${t.getClass.getSimpleName}: ${masked(t.getMessage)}"
           safeOutcome(name, Some(message))
           if (endsChain(t)) {
@@ -144,7 +146,7 @@ class FallbackHttpFetch(
       if (limits.nonEmpty) {
         val limit = limits.maxBy(_.retryAfter.fold(0L)(_.toMillis))
         failureLog.failed(key, s"FallbackHttpFetch $detail")
-        limit.addSuppressed(new RuntimeException(detail))
+        limit.addSuppressed(new AllBackendsFailedException(detail, failedLegs.toList))
         throw limit
       }
       // NOW it is a warning: nothing answered. Logged as well as thrown because
@@ -153,13 +155,33 @@ class FallbackHttpFetch(
       // repeat of the identical failure is held back (RepeatedFailureLog); the exception
       // below still carries the full detail every time.
       failureLog.failed(key, s"FallbackHttpFetch $detail")
-      throw new RuntimeException(detail)
+      throw new AllBackendsFailedException(detail, failedLegs.toList)
     }
   }
 
   // A metering callback must never break the fetch it's observing.
   private def safeOutcome(name: String, error: Option[String]): Unit =
     try onOutcome(name, error) catch { case _: Throwable => () }
+}
+
+/** Every leg of a [[FallbackHttpFetch]] failed. Still the `RuntimeException` callers have always caught; typed so a
+ *  caller can ask WHICH legs failed — a scrape whose residential-proxy leg failed while the proxy itself is down is
+ *  parked on the proxy's health, not on its own failure count (`services.tasks.ProxyParking`). */
+final class AllBackendsFailedException(detail: String, val failedLegs: Seq[String]) extends RuntimeException(detail)
+
+object AllBackendsFailedException {
+
+  /** Did a [[FallbackHttpFetch]] somewhere in `error` — itself, its causes, or what they carry suppressed (a
+   *  retrying scraper's earlier attempts, a rate limit's composite) — fail on its leg named `leg`? */
+  def legFailed(error: Throwable, leg: String): Boolean = {
+    val seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[Throwable, java.lang.Boolean]())
+    def visit(t: Throwable): Boolean =
+      t != null && seen.add(t) && (t match {
+        case all: AllBackendsFailedException if all.failedLegs.contains(leg) => true
+        case _                                                               => visit(t.getCause) || t.getSuppressed.exists(visit)
+      })
+    visit(error)
+  }
 }
 
 object FallbackHttpFetch {

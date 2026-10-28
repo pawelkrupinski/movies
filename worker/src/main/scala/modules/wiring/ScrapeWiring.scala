@@ -12,7 +12,8 @@ import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import services.tasks.{InMemoryScrapeCostStore, MongoScrapeCostStore, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
+import services.schedule.AlwaysClaimScheduledRunStore
+import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper}
 import tools.{DaemonExecutors, HostScrapeStats}
 
 import java.util.concurrent.ExecutorService
@@ -327,7 +328,29 @@ trait ScrapeWiring { self: WorkerWiring =>
   // due schedule by the same rule. See ScrapeFreshnessPolicy for why a broken venue
   // MUST eventually be stamped: un-stamped venues sort first in the reaper's
   // oldest-first order and otherwise camp on the whole per-tick budget forever.
-  lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore, venueCadence = Some(venueCadenceStore), clock = clock)
+  lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore, venueCadence = Some(venueCadenceStore), clock = clock,
+    proxyParking = proxyParking)
+
+  // Venues that failed on the residential proxy while its probe said it was down, parked on that cause and released
+  // the moment the probe passes again — see ProxyParking. None where there is no proxy.
+  lazy val proxyParking: Option[ProxyParking] = residentialProxyProbe.map(new ProxyParking(_, clock))
+
+  // The recovery check: every ProbeInterval, while anything is parked on the proxy, probe it; when it passes, every
+  // venue parked on it is due at once (drained by the reaper at its usual cap). Not claimed across machines — the
+  // parked set is this process's own, so every process checks its own.
+  lazy val proxyParkingRecovery: Option[ClaimedPeriodicTask] = proxyParking.map { _ =>
+    managedResources.stopping(new ClaimedPeriodicTask("proxy-parking-recovery", () => {
+      val released = scrapeFreshnessPolicy.releaseRecoveredProxy()
+      workerMetrics.parkedScrapes.recordUnparked(country.code, ProxyParking.Cause.ResidentialProxyDown, released)
+      tools.TickRun.Completed
+    }, ProxyParking.ProbeInterval, ProxyParking.ProbeInterval, AlwaysClaimScheduledRunStore, clock, ticks))
+  }
+
+  /** Report this country's parked venues on `kinowo_worker_scrapes_parked`, and start the proxy's recovery check. */
+  def startProxyParking(): Unit = {
+    workerMetrics.parkedScrapes.watch(country.code, () => scrapeFreshnessPolicy.parkedByCause)
+    proxyParkingRecovery.foreach(_.start())
+  }
 
   // Each cinema's recent scrape costs, recorded by the handler (plain) and the chunk
   // planner (fan-out) and read by `scrapePhasePlanner` to space the scrape schedule.
