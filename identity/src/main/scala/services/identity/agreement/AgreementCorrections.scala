@@ -71,7 +71,6 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
           // model took it until they came in, and corrected after (PL "Ktoś całkiem obcy", 2026-10-25: 21 s on 2007's film)
           askedNow += digest
           pass.shapes += digest
-          pass.inline(key.stripPrefix(AgreementStage.CorrectionPrefix)) = (clock.millis(), asking)
           askNow(asking, AgreementStage.AskNowWithin)
           read()
         }
