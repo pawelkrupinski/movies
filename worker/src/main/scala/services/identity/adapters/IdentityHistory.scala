@@ -27,7 +27,10 @@ import scala.jdk.CollectionConverters._
  *    decision's members and the answers it read ([[TakeRecord]]).
  */
 final case class HistoryEntry(kind: String, id: String, at: Long, before: Option[BsonDocument], after: Option[BsonDocument],
-                              build: String, failure: Option[String] = None)
+                              build: String, failure: Option[String] = None,
+                              /** `before` not known — a writer that keeps no read of what it replaced (a family answer, a
+                               *  marker, a venue page this process had not seen): `None` then says nothing, not "absent". */
+                              beforeUnknown: Boolean = false)
 
 object HistoryEntry {
   val Listing = "listing"
@@ -74,7 +77,7 @@ object IdentityHistory {
    *  what it is now. So only the entries written after `at` are needed. */
   def valueAt(entries: Seq[HistoryEntry], at: Long, current: => Option[BsonDocument]): Option[BsonDocument] = {
     val (until, after) = entries.sortBy(_.at).partition(_.at <= at)
-    until.lastOption.map(_.after).orElse(after.headOption.map(_.before)).getOrElse(current)
+    until.lastOption.map(_.after).orElse(after.headOption.filterNot(_.beforeUnknown).map(_.before)).getOrElse(current)
   }
 }
 
@@ -130,11 +133,13 @@ object MongoIdentityHistory {
     e.before.foreach(d.append("before", _))
     e.after.foreach(d.append("after", _))
     e.failure.foreach(f => d.append("failure", BsonString(f)))
+    if (e.beforeUnknown) d.append("beforeUnknown", org.bson.BsonBoolean.TRUE)
     d
   }
 
   def entryOf(d: BsonDocument): HistoryEntry =
     HistoryEntry(d.getString("kind").getValue, d.getString("id").getValue, d.getDateTime("at").getValue,
       Option(d.get("before")).filter(_.isDocument).map(_.asDocument), Option(d.get("after")).filter(_.isDocument).map(_.asDocument),
-      Option(d.get("build")).filter(_.isString).fold("")(_.asString.getValue), Option(d.get("failure")).filter(_.isString).map(_.asString.getValue))
+      Option(d.get("build")).filter(_.isString).fold("")(_.asString.getValue), Option(d.get("failure")).filter(_.isString).map(_.asString.getValue),
+      Option(d.get("beforeUnknown")).exists(v => v.isBoolean && v.asBoolean.getValue))
 }

@@ -24,7 +24,7 @@ class TakeExplanationSpec extends AnyFlatSpec with Matchers {
     val clock   = new MutableClock(TestWiring.FixedInstant)
     val history = new InMemoryIdentityHistory
     val docs    = new HistoryTmdbDocuments(new InMemoryTmdbDocuments, history, clock, "b1")
-    val store   = new TmdbStore(docs, clock)
+    val store   = new TmdbStore(docs, clock, history = history, build = "b1")
     val normalizer = new TmdbNormalizer(store, failures = new KeptFailures(history, clock, "b1"))
     val lines   = new TakeChangeLines(Country.Poland, settings.CommitSha("b1"), reads = TakeReads.of(language))
     val takes   = new TakeHistory(history, TakeReads.of(language), clock, "b1")

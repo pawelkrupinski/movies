@@ -22,23 +22,33 @@ class HistoryTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
   private def query(ids: String, fetchedAt: Long) =
     new BsonDocument("ids", BsonString(ids)).append(TmdbStore.FetchedAt, BsonInt64(fetchedAt))
 
-  "an answer" should "be kept when its value moves, before and after, and not when only its stamp does" in {
-    val w = new World
-    w.docs.put(TmdbKind.Query, Seq("q" -> query("1,2", 1)))
-    w.later(); w.docs.put(TmdbKind.Query, Seq("q" -> query("1,2", 2)))
-    w.later(); w.docs.put(TmdbKind.Query, Seq("q" -> query("3,1,2", 3)))
+  private def ids(d: Option[BsonDocument]) = d.map(x => BsonFields.intsOf(x.get("ids")))
+
+  "an answer the TMDB store files" should "be kept when its value moves, before and after, and not when only its stamp does" in {
+    val w     = new World
+    val store = new TmdbStore(w.docs, w.clock, history = w.history, build = "b1")
+    store.people("q", Seq(1, 2))
+    w.clock.advance(java.time.Duration.ofDays(2)); store.people("q", Seq(1, 2))   // re-stamped, the same value
+    w.later(); store.people("q", Seq(3, 1, 2))
     val kept = w.history.all
-    kept.map(e => (e.kind, e.id, e.before.map(_.getString("ids").getValue), e.after.map(_.getString("ids").getValue), e.build)) shouldBe Seq(
-      ("answer:tmdb_queries", "q", None, Some("1,2"), "b1"), ("answer:tmdb_queries", "q", Some("1,2"), Some("3,1,2"), "b1"))
+    kept.map(e => (e.kind, e.id, ids(e.before), ids(e.after), e.build)) shouldBe Seq(
+      ("answer:tmdb_queries", "q", None, Some(Seq(1, 2)), "b1"), ("answer:tmdb_queries", "q", Some(Seq(1, 2)), Some(Seq(3, 1, 2)), "b1"))
     kept.flatMap(e => e.after.toSeq ++ e.before).foreach(_.containsKey(TmdbStore.FetchedAt) shouldBe false)
   }
 
   it should "be kept as a film's answer reads it, the record's partials aside" in {
-    val w = new World
     val film = new BsonDocument("record", new BsonDocument("title", BsonString("Lalka"))).append("local", new BsonDocument("imdb_id", BsonString("tt1"))
       .append("overview", BsonString("…"))).append(TmdbStore.FetchedAt, BsonInt64(1))
-    w.docs.put(TmdbKind.Film, Seq("1" -> film))
-    w.history.all.head.after.get.getDocument("local").keySet shouldBe java.util.Set.of("imdb_id")
+    HistoryTmdbDocuments.valueOf(TmdbKind.Film, film).getDocument("local").keySet shouldBe java.util.Set.of("imdb_id")
+  }
+
+  "a family answer" should "be kept as filed, its re-file alike no entry, and read nothing to tell" in {
+    val w = new World
+    val fam = (v: String, at: Long) => new BsonDocument("hits", BsonString(v)).append(TmdbStore.FetchedAt, BsonInt64(at))
+    w.docs.put(TmdbKind.Family, Seq("imdb|title|Lalka" -> fam("a", 1)))
+    w.docs.put(TmdbKind.Family, Seq("imdb|title|Lalka" -> fam("a", 2)))
+    w.docs.put(TmdbKind.Family, Seq("imdb|title|Lalka" -> fam("b", 3)))
+    w.history.all.map(e => (e.after.map(_.getString("hits").getValue), e.beforeUnknown)) shouldBe Seq((Some("a"), true), (Some("b"), true))
   }
 
   it should "be kept as deleted when the retention sweep lets it go, and only when it did" in {
@@ -50,15 +60,16 @@ class HistoryTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read at a moment as the first change after it found it, else as it is now" in {
-    val w = new World
-    w.docs.put(TmdbKind.Query, Seq("q" -> query("1", 1)))
+    val w     = new World
+    val store = new TmdbStore(w.docs, w.clock, history = w.history, build = "b1")
+    store.people("q", Seq(1))
     val first = w.clock.millis()
-    w.later(); w.docs.put(TmdbKind.Query, Seq("q" -> query("2", 2)))
+    w.later(); store.people("q", Seq(2))
     val second = w.clock.millis()
-    val replay = new IdentityHistoryReplay(w.history.all, first).documents(w.inner)
-    replay.get(TmdbKind.Query, Seq("q"))("q").getString("ids").getValue shouldBe "1"
-    new IdentityHistoryReplay(w.history.all, second).documents(w.inner).get(TmdbKind.Query, Seq("q"))("q").getString("ids").getValue shouldBe "2"
-    new IdentityHistoryReplay(w.history.all, first - 1).documents(w.inner).get(TmdbKind.Query, Seq("q")) shouldBe empty
+    def at(t: Long) = new IdentityHistoryReplay(w.history.all, t).documents(w.inner).get(TmdbKind.Query, Seq("q")).get("q").map(d => BsonFields.intsOf(d.get("ids")))
+    at(first) shouldBe Some(Seq(1))
+    at(second) shouldBe Some(Seq(2))
+    at(first - 1) shouldBe None
   }
 
   "a marker" should "be kept at every write, its stamps and all: each is an attempt" in {
@@ -79,5 +90,6 @@ class HistoryTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     pages.put(VenuePage(key, VenuePage.Gone(404), java.time.Instant.ofEpochMilli(3)))
     w.history.all.map(e => (e.kind, e.id, e.before.isDefined, e.after.exists(_.containsKey("gone")))) shouldBe Seq(
       ("answer:venue_pages", key.id, false, false), ("answer:venue_pages", key.id, true, true))
+    w.history.all.map(_.beforeUnknown) shouldBe Seq(true, false)
   }
 }

@@ -32,6 +32,15 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     .labelNames("country")
     .register(registry)
 
+  private val historyDropped: Counter = Counter.builder()
+    .name("kinowo_worker_identity_history_dropped_total")
+    .help("Identity history entries dropped because its writer's queue was full (the history is diagnostic: never back-pressure).")
+    .labelNames("country")
+    .register(registry)
+
+  /** Count `n` history entries dropped for `country` ([[services.identity.adapters.AsyncIdentityHistory]]). */
+  def historyDropped(country: String)(n: Long): Unit = historyDropped.labelValues(country).inc(n.toDouble)
+
   private val resolved: Counter = Counter.builder()
     .name("kinowo_worker_identity_model_resolved_total")
     .help("Families the incremental identity model re-resolved, summed over its drains.")

@@ -33,6 +33,6 @@ final class IdentityTmdbLayer(database: Option[MongoDatabase], clock: Clock, his
   lazy val documents: TmdbDocuments = database.fold[TmdbDocuments](backend)(_ => new CoalescedTmdbDocuments(backend))
   /** Where every filing of the layer's stores, and of the venue page index, is announced. */
   lazy val feed: services.identity.agreement.AnswerFeed = new FiledAnswerFeed
-  lazy val store: TmdbStore = new TmdbStore(documents, clock, feed)
+  lazy val store: TmdbStore = new TmdbStore(documents, clock, feed, history, build)
   lazy val familyAnswers: FamilyAnswerStore = new FamilyAnswerStore(documents, clock, feed)
 }

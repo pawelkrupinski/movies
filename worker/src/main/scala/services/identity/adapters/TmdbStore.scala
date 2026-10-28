@@ -161,7 +161,8 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with Tmd
  * changes nothing the model reads, and wakes nothing.
  */
 final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock,
-                      feed: services.identity.agreement.AnswerFeed = new FiledAnswerFeed) {
+                      feed: services.identity.agreement.AnswerFeed = new FiledAnswerFeed,
+                      history: IdentityHistory = IdentityHistory.Discard, build: String = "") {
   import TmdbStore._
 
   /** Call `listener` with a document's key ([[keyOf]]) whenever its value changes: the feed's TMDB keys ([[isKey]]). */
@@ -195,6 +196,12 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock,
           .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
       }
       if (written.nonEmpty) docs.put(kind, written.map { case (id, d, _) => id -> d })
+      // each value that moved into the history, before and after — read already, no read of its own; the history's
+      // writer is a queue (AsyncIdentityHistory), so this never waits on it
+      if (history ne IdentityHistory.Discard) history.append(written.collect { case (id, d, true) =>
+        HistoryEntry(HistoryEntry.answer(kind), id, now, before.get(id).map(HistoryTmdbDocuments.valueOf(kind, _)),
+          Some(HistoryTmdbDocuments.valueOf(kind, d)), build)
+      })
       written.collect { case (id, _, true) => id }
     }
     moved.foreach(id => feed.publish(keyOf(kind, id)))

@@ -4,14 +4,12 @@ package adapters
 import org.bson.BsonDocument
 
 /**
- * `inner`, every answer whose VALUE a write or a delete moved appended to `history` ([[HistoryEntry.answer]]): the
- * value before and after, each as an answer reads it ([[TmdbDocuments.project]], the stamps aside), so a replay reads
- * at any moment what the model and the agreement read then ([[IdentityHistoryReplay]]). A re-stamp of an unchanged
- * answer — TMDB's daily re-fetch, a family answer filed again alike — is no entry: only changes are kept. A marker of
- * the question memory is kept whole, stamps and all: each is an attempt, its failure and when it is due again.
- *
- * Over the whole store, under the coalescing: the stores' filings ([[TmdbStore]], [[FamilyAnswerStore]],
- * [[QuestionMemory]]) and the retention sweep's deletes ([[TmdbStoreSweep]]) all pass here.
+ * `inner`, what the stores other than [[TmdbStore]] file appended to `history` ([[HistoryEntry.answer]]) — the
+ * families' answers ([[FamilyAnswerStore]]), each as it reads, a re-file alike no entry; the question memory's markers
+ * ([[QuestionMemory]]), whole, stamps and all: each is an attempt, its failure and when it is due again — and the
+ * retention sweep's deletes ([[TmdbStoreSweep]]). The TMDB store keeps its own moves, before and after, off the read its
+ * write makes anyway ([[TmdbStore]]'s `history`). A write here reads nothing: the history never costs a write a read,
+ * and its writer is a queue ([[AsyncIdentityHistory]]).
  */
 final class HistoryTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, history: IdentityHistory, clock: java.time.Clock,
                                  build: String) extends TmdbDocuments with TmdbDocumentRetention {
@@ -21,14 +19,25 @@ final class HistoryTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, h
   override def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answersReadThrough(kind, ids)
   def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] = inner.fetchedBefore(kind, cutoff)
 
-  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = if (history eq IdentityHistory.Discard) inner.put(kind, docs) else {
-    val before = valuesOf(kind, docs.map(_._1))
+  /** Each family answer's value as last kept here, by its hash: a re-file alike is no entry. Bounded: one forgotten is
+   *  kept once more at its next filing, no more. */
+  private val lastFamily: com.github.benmanes.caffeine.cache.Cache[String, java.lang.Integer] =
+    tools.BoundedCache.ofSize(HistoryTmdbDocuments.FamiliesHeld).build[String, java.lang.Integer]()
+
+  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = {
     inner.put(kind, docs)
-    val at = clock.millis()
-    history.append(docs.flatMap { case (id, d) =>
-      val after = HistoryTmdbDocuments.valueOf(kind, d)
-      Option.when(!before.get(id).contains(after))(HistoryEntry(HistoryEntry.answer(kind), id, at, before.get(id), Some(after), build))
-    })
+    if ((history ne IdentityHistory.Discard) && (kind == TmdbKind.Family || kind == TmdbKind.Marker)) {
+      val at = clock.millis()
+      history.append(docs.flatMap { case (id, d) =>
+        val after = HistoryTmdbDocuments.valueOf(kind, d)
+        val alike = kind == TmdbKind.Family && {
+          val hash = after.hashCode
+          val was  = lastFamily.asMap.put(id, hash)
+          was != null && was.intValue == hash
+        }
+        Option.unless(alike)(HistoryEntry(HistoryEntry.answer(kind), id, at, None, Some(after), build, beforeUnknown = true))
+      })
+    }
   }
 
   def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int = if (history eq IdentityHistory.Discard) inner.deleteIfStill(kind, stamped) else {
@@ -48,6 +57,8 @@ final class HistoryTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, h
 }
 
 object HistoryTmdbDocuments {
+  /** How many family answers' last values are remembered to tell a re-file alike. */
+  val FamiliesHeld = 200000
   /** What the history keeps of a document of `kind`: its answer ([[TmdbDocuments.project]]), stamps aside — but a
    *  marker's whole, whose stamps are what it says. */
   def valueOf(kind: TmdbKind, d: BsonDocument): BsonDocument =

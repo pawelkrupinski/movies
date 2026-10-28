@@ -106,10 +106,13 @@ class WorkerWiring(
   /** The identity system's history (`identity_history`, a month of it): every answer, venue page and listing the model
    *  read as it moved, every read that failed, and every take the projection moved with what decided it — what
    *  `scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by. */
+  // Written on a thread of its own (AsyncIdentityHistory): no caller waits on it, a full queue drops and counts.
   lazy val identityHistory: services.identity.adapters.IdentityHistory =
     services.identity.adapters.IdentityHistory.composed(
-      mongoConnection.database.fold[services.identity.adapters.IdentityHistory](services.identity.adapters.IdentityHistory.Discard)(
-        new services.identity.adapters.MongoIdentityHistory(_, workerMetrics.ttlIndexMismatches)),
+      mongoConnection.database.fold[services.identity.adapters.IdentityHistory](services.identity.adapters.IdentityHistory.Discard)(db =>
+        managedResources.stopping(new services.identity.adapters.AsyncIdentityHistory(
+          new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
+          workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
   /** How this wiring's history differs from the worker's (`IdentityHistory.Override`): none in production; a harness's
    *  wiring names its own. */
