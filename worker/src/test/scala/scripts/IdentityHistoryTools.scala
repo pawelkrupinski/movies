@@ -66,7 +66,7 @@ object IdentityHistoryTools {
     val pins       = new MongoPinStore(Some(db)).all()
     println(s"replaying $country at ${Instant.ofEpochMilli(at)}: ${listings.size} listings, ${core.size} selected")
     val decisions  = services.identity.IdentitySlicing.resolve(if (core.isEmpty) listings else core, listings, lookups, normalizer,
-      services.identity.OlderRefs.resolveInputs(pins))
+      services.identity.OlderRefs.resolveInputs(pins, country.code))
     decisions.filter(_.members.exists(matches)).foreach { d =>
       d.members.filter(matches).foreach(k => println(s"${k.venue} | ${k.rawTitle}: ${d.film.fold("no film")(id => s"tmdb $id")} ${d.basis} " +
         s"(${ResolverDecision.percent(d.confidence)}) — ${d.explanation.headOption.getOrElse("")}"))

@@ -65,8 +65,9 @@ class OlderRefsSpec extends AnyFlatSpec with Matchers {
   "the resolve's inputs, read by name" should "be the ones the worker's builder makes, its pins among them" in {
     val pin = Pin(Seq(services.movies.ListingKey.Published("Kino Muza", "Lalka", None, Nil)), PinClaim.IsFilm(1081010), "pawel", "a spec",
       java.time.Instant.EPOCH)
-    val built = ResolveInputs.of(Seq(pin))
-    OlderRefs.resolveInputs(Seq(pin)) shouldBe ((built.calibration, built.pins, built.decorations))
+    val built = ResolveInputs.of(Seq(pin), TakeJudgements.Index.bundled("pl"))
+    built.pins.judged.size should be > 0 // the worker's bundled judgements, on this classpath too
+    OlderRefs.resolveInputs(Seq(pin), "pl") shouldBe ((built.calibration, built.pins, built.decorations))
   }
 
   they should "pass on every input the builder makes: a new one fails here before the slice decides without it" in {

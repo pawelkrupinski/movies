@@ -63,15 +63,20 @@ object OlderRefs {
       .flatMap(read => call(read, "corpus", byCinema, normalizer)).map(_.asInstanceOf[Seq[Listing]])
       .getOrElse(Listing.corpus(byCinema, normalizer))
 
-  /** The resolve's inputs over `pins` (its calibration, pins and title decorations) as production builds them:
-   *  `ResolveInputs.of` where the ref has it (2026-10-25), the one builder the worker and the drift checks use, else as an
-   *  older ref's resolve defaulted them. An input this tool does not pass on (a field of `ResolveInputs` beyond these
-   *  three) is refused, never dropped: the slice would decide without it while the worker decides with it. */
-  def resolveInputs(pins: Seq[Pin]): (IdentityCalibration, PinConstraints, TitleDecorations) =
+  /** The resolve's inputs over `pins` (its calibration, pins and title decorations) as production builds them for
+   *  `country`: `ResolveInputs.of` where the ref has it (2026-10-25), the one builder the worker and the drift checks use —
+   *  with `country`'s bundled hand judgements where it takes them (`TakeJudgements`, 2026-10-28) — else as an older ref's
+   *  resolve defaulted them. An input this tool does not pass on (a field of `ResolveInputs` beyond these three) is
+   *  refused, never dropped: the slice would decide without it while the worker decides with it. */
+  def resolveInputs(pins: Seq[Pin], country: String): (IdentityCalibration, PinConstraints, TitleDecorations) =
     scala.util.Try(Class.forName("services.identity.ResolveInputs$").getField("MODULE$").get(null)).toOption
       .fold((IdentityCalibration.resolver, PinConstraints(pins), TitleDecorations.resolver)) { builder =>
-        val inputs = call(builder, "of", pins).getOrElse(throw new IllegalStateException("ResolveInputs.of no longer takes the pins alone: " +
-          "pass its new input in OlderRefs.resolveInputs")).asInstanceOf[Product]
+        // the judgements' index, by name: a ref from before them has no such class, and its `of` takes the pins alone
+        val judged = scala.util.Try(Class.forName("services.identity.TakeJudgements$Index$").getField("MODULE$").get(null)).toOption
+          .flatMap(index => call(index, "bundled", country))
+        val inputs = judged.flatMap(j => call(builder, "of", pins, j)).orElse(call(builder, "of", pins))
+          .getOrElse(throw new IllegalStateException("ResolveInputs.of no longer takes the pins (and the judgements) alone: " +
+            "pass its new input in OlderRefs.resolveInputs")).asInstanceOf[Product]
         val unread = inputs.productElementNames.toSet -- ResolvedInputs
         require(unread.isEmpty, s"ResolveInputs holds ${unread.mkString(", ")}, which OlderRefs.resolveInputs does not pass on: pass it")
         (field(inputs, "calibration").get.asInstanceOf[IdentityCalibration], field(inputs, "pins").get.asInstanceOf[PinConstraints],

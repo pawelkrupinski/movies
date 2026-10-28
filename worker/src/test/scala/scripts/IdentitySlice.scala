@@ -235,12 +235,12 @@ object IdentitySlice {
                            changed: Set[String] => Resolution = _ => Resolution(Nil, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty))
 
   def decide(core: Seq[Listing], context: Seq[Listing], reads: Reads, label: String): Decided =
-    agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer, OlderRefs.resolveInputs(reads.prod.pins)), core, reads, label)
+    agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer, OlderRefs.resolveInputs(reads.prod.pins, reads.country.code)), core, reads, label)
 
   /** The slice's listings handed to the INCREMENTAL model in a shuffled order, a few batches at a time — as scrapes reach
    *  the worker's model — and its decisions on the core: what P1 says equals [[IdentitySlicing.resolve]]'s. */
   def incrementally(core: Seq[Listing], context: Seq[Listing], reads: Reads, seed: Long): Seq[ResolverDecision] = {
-    val (calibration, pins, decorations) = OlderRefs.resolveInputs(reads.prod.pins)
+    val (calibration, pins, decorations) = OlderRefs.resolveInputs(reads.prod.pins, reads.country.code)
     val model = new IncrementalResolver(reads.lookups, reads.normalizer, calibration, pins, decorations)
     val all   = new scala.util.Random(seed).shuffle(core ++ context)
     all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, services.identity.AnswersChanged.Empty))
