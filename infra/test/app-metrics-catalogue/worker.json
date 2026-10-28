@@ -117,6 +117,8 @@
     {"name": "kinowo_worker_scrape_listing_incomplete", "tier": "worker", "type": "counter", "sample": "kinowo_worker_scrape_listing_incomplete_total", "boot": "0", "labels": {"reason": ["chunk_incomplete", "page_failed"]}},
     {"name": "kinowo_worker_scrape_listing_incomplete_streak_venues", "tier": "worker", "type": "gauge", "sample": "kinowo_worker_scrape_listing_incomplete_streak_venues", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_scrape_write_skipped", "tier": "worker", "type": "counter", "sample": "kinowo_worker_scrape_write_skipped_total", "boot": "0", "labels": {"reason": ["cache-miss-race", "repository-write-failed"]}},
+    {"name": "kinowo_worker_scrapes_parked", "tier": "worker", "type": "gauge", "sample": "kinowo_worker_scrapes_parked", "boot": "0", "labels": {"cause": ["own_failures", "residential_proxy_down"]}},
+    {"name": "kinowo_worker_scrapes_unparked", "tier": "worker", "type": "counter", "sample": "kinowo_worker_scrapes_unparked_total", "boot": "0", "labels": {"cause": ["own_failures", "residential_proxy_down"]}},
     {"name": "kinowo_worker_screenings_change_events", "tier": "worker", "type": "counter", "sample": "kinowo_worker_screenings_change_events_total", "boot": "0", "labels": {"op": ["delete", "insert", "other", "replace", "update"]}},
     {"name": "kinowo_worker_screenings_coalesced_changes", "tier": "worker", "type": "counter", "sample": "kinowo_worker_screenings_coalesced_changes_total", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_screenings_writes", "tier": "worker", "type": "counter", "sample": "kinowo_worker_screenings_writes_total", "boot": "0", "labels": {"outcome": ["unchanged", "written"]}},

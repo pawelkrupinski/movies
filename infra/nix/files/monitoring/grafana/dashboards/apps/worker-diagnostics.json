@@ -2160,6 +2160,83 @@
       ]
     },
     {
+      "id": 83,
+      "title": "Parked scrapes — venues parked now, and released by their cause's probe, by country and cause",
+      "interval": "1m",
+      "description": "`kinowo_worker_scrapes_parked{cause}`: venues whose scrapes are parked right now. `residential_proxy_down` = the scrape failed on the residential proxy while its probe also failed; the venue waits on the proxy and is released the moment the probe passes. `own_failures` = the venue failed its own consecutive scrapes and waits out its normal freshness window. Dashed: `kinowo_worker_scrapes_unparked_total` as venues released per 5 minutes, by the cause whose probe passed. Healthy is `own_failures` low and steady and `residential_proxy_down` at 0. A proxy outage shows as `residential_proxy_down` climbing (the 2026-10-27 Decodo outage parked 826 venues across PL and the UK), then dropping to 0 in one step with a matching released spike when the probe passes again; a climb with no release is the probe still failing.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 201
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*released.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "A",
+          "expr": "max by (country, cause) (kinowo_worker_scrapes_parked{country=~\"$country\"})",
+          "legendFormat": "{{country}} parked {{cause}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "refId": "B",
+          "expr": "sum by (country, cause) (increase(kinowo_worker_scrapes_unparked_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "{{country}} released {{cause}}"
+        }
+      ]
+    },
+    {
       "id": 35,
       "title": "Repository writes that FAILED — by country, collection, op and exception",
       "description": "`kinowo_worker_repository_write_failed_total`: a movies / movie_slots / screenings write that THREW (every Mongo repository write goes through services.movies.RepositoryWrite). ZERO IS THE HEALTHY READING. Each failure is also a WARN line naming the film, and the cache rolls the row back so the next identical scrape retries the write — so a short blip heals itself, while a sustained line is a write that keeps failing (a codec that cannot encode a field, a validator, a full disk). Alerted by RepositoryWritesFailing (worker-pipeline.rules). Added 2026-09-24: a codec bug failed 34 upserts over ~6h with nothing counting it, and two new films never reached the site until a restart. The exception label is the class's simple name. Every known collection/op is seeded at 0 for the expected exception classes, so the first failure shows; any other class appears on its first failure and shows from its second.",
@@ -2172,7 +2249,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 201
+        "y": 209
       },
       "fieldConfig": {
         "defaults": {
@@ -2223,7 +2300,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 217
+        "y": 225
       },
       "fieldConfig": {
         "defaults": {
@@ -2336,7 +2413,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 225
+        "y": 233
       },
       "fieldConfig": {
         "defaults": {
@@ -2387,7 +2464,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 233
+        "y": 241
       },
       "fieldConfig": {
         "defaults": {
@@ -2470,7 +2547,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 241
+        "y": 249
       },
       "fieldConfig": {
         "defaults": {
@@ -2521,7 +2598,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 249
+        "y": 257
       },
       "fieldConfig": {
         "defaults": {
@@ -2604,7 +2681,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 257
+        "y": 265
       },
       "fieldConfig": {
         "defaults": {
@@ -2655,7 +2732,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 257
+        "y": 265
       },
       "targets": [
         {
@@ -2711,7 +2788,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 257
+        "y": 265
       },
       "targets": [
         {
@@ -2751,7 +2828,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 265
+        "y": 273
       },
       "fieldConfig": {
         "defaults": {
@@ -2811,7 +2888,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 273
+        "y": 281
       },
       "fieldConfig": {
         "defaults": {
@@ -2877,7 +2954,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 297
+        "y": 305
       },
       "fieldConfig": {
         "defaults": {
@@ -2946,7 +3023,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 297
+        "y": 305
       },
       "fieldConfig": {
         "defaults": {
@@ -3060,7 +3137,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 305
+        "y": 313
       },
       "fieldConfig": {
         "defaults": {
@@ -3111,7 +3188,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 305
+        "y": 313
       },
       "fieldConfig": {
         "defaults": {
@@ -3165,7 +3242,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 313
+        "y": 321
       },
       "fieldConfig": {
         "defaults": {
@@ -3216,7 +3293,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 321
+        "y": 329
       },
       "fieldConfig": {
         "defaults": {
@@ -3294,7 +3371,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 321
+        "y": 329
       },
       "fieldConfig": {
         "defaults": {
@@ -3354,7 +3431,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 329
+        "y": 337
       },
       "fieldConfig": {
         "defaults": {
@@ -3424,7 +3501,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 337
+        "y": 345
       },
       "fieldConfig": {
         "defaults": {
@@ -3466,7 +3543,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 345
+        "y": 353
       },
       "fieldConfig": {
         "defaults": {
@@ -3535,7 +3612,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 345
+        "y": 353
       },
       "fieldConfig": {
         "defaults": {
@@ -3595,7 +3672,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 353
+        "y": 361
       },
       "fieldConfig": {
         "defaults": {
@@ -3650,7 +3727,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 361
+        "y": 369
       },
       "fieldConfig": {
         "defaults": {
@@ -3701,7 +3778,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 361
+        "y": 369
       },
       "fieldConfig": {
         "defaults": {
@@ -3761,7 +3838,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 369
+        "y": 377
       },
       "fieldConfig": {
         "defaults": {
@@ -3825,7 +3902,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 377
+        "y": 385
       },
       "fieldConfig": {
         "defaults": {
@@ -3876,7 +3953,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 377
+        "y": 385
       },
       "fieldConfig": {
         "defaults": {
@@ -3927,7 +4004,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 385
+        "y": 393
       },
       "fieldConfig": {
         "defaults": {
@@ -3996,7 +4073,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 385
+        "y": 393
       },
       "fieldConfig": {
         "defaults": {
@@ -4047,7 +4124,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 393
+        "y": 401
       },
       "fieldConfig": {
         "defaults": {
@@ -4138,7 +4215,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 401
+        "y": 409
       },
       "fieldConfig": {
         "defaults": {
@@ -4224,7 +4301,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 409
+        "y": 417
       },
       "fieldConfig": {
         "defaults": {
@@ -4280,7 +4357,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 418
+        "y": 426
       },
       "fieldConfig": {
         "defaults": {
@@ -4336,7 +4413,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 427
+        "y": 435
       },
       "fieldConfig": {
         "defaults": {
@@ -4399,7 +4476,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 427
+        "y": 435
       },
       "fieldConfig": {
         "defaults": {
@@ -4462,7 +4539,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 436
+        "y": 444
       },
       "fieldConfig": {
         "defaults": {
