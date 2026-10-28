@@ -48,7 +48,10 @@ import services.identity.adapters.IdentityProjectionMetrics
  *    reversed most recently keep a series, the least recent past it is dropped;
  *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
  *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
- *    last projection of the whole corpus. A rise between recordings is a wrong take the convergence legs will name;
+ *    last projection of the whole corpus, but for the billings a hand judgement judges (`identity-judgements.tsv`, bundled:
+ *    [[services.identity.TakeJudgements]]). A rise between recordings is a wrong take the convergence legs will name;
+ *  - `kinowo_worker_identity_suspect_takes_wrong` — the billings taken as a film a hand judgement calls wrong, on the same
+ *    projection: wrong takes still served, 0 once each is corrected;
  *  - `kinowo_worker_identity_rule_fires_total{rule}` — per rule id (a title rule's `title:<title-rules.tsv id>`, the
  *    model's `accept:` / `pooled:` / `veto:` / `apart:` / `join:` / `refused:` ids, a later stage's `stage:<rule>`), the
  *    live listings it fired on, added up over each written whole-corpus projection
@@ -139,6 +142,12 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
     .labelNames("country", "signal")
     .register(registry)
 
+  private val suspectTakesWrong: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_suspect_takes_wrong")
+    .help("Billings taken as a film a hand judgement (identity-judgements.tsv) calls wrong, on the last written whole-corpus projection.")
+    .labelNames("country")
+    .register(registry)
+
   private val agreementSeconds: Histogram = Histogram.builder()
     .name("kinowo_worker_identity_agreement_phase_seconds")
     .help("Wall clock of each identity projection's agreement phase, by projection mode (periodic, whole, changed).")
@@ -178,6 +187,9 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
   def suspects(country: String): Map[SuspectTakes.Signal, Int] => Unit =
     counts => counts.foreach { case (signal, n) => suspectTakes.labelValues(country, signal.label).set(n.toDouble) }
 
+  /** Where a country's count of billings taken as a film judged wrong goes. */
+  def judgedWrong(country: String): Int => Unit = n => suspectTakesWrong.labelValues(country).set(n.toDouble)
+
   private def seed(country: String): Unit = {
     // Exported at 0 from boot: no drift reads 0, not absent, and an unmeasured hour shows as reconciles{measured=false}.
     drift.labelValues(country)
@@ -200,6 +212,7 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
     IdentityProjectionGauges.RegroupingKinds.foreach(regroupings.labelValues(c, _))
     IdentityProjectionMetrics.Refusal.values.foreach(r => refusals.labelValues(c, r.label))
     SuspectTakes.Signal.values.foreach(signal => suspectTakes.labelValues(c, signal.label).set(Double.NaN))
+    suspectTakesWrong.labelValues(c).set(Double.NaN)
     ruleCountedListings.labelValues(c)
   }
 

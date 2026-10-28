@@ -2944,7 +2944,7 @@
     {
       "id": 48,
       "title": "Identity cutover — films and listings per path",
-      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of each country stored and resolved; path=projection. `kinowo_worker_identity_suspect_takes{signal}`: on the last whole-corpus projection, the billings whose take a suspect-take signal finds against its own evidence (SuspectTakes: fragment, era, runtime, sequel, feed, route) — a rise between recordings is a wrong take the convergence legs' suspect-take ratchet will name. Panel only.",
+      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of each country stored and resolved; path=projection. `kinowo_worker_identity_suspect_takes{signal}`: on the last whole-corpus projection, the billings no hand judgement judges whose take a suspect-take signal finds against its own evidence (SuspectTakes: fragment, era, runtime, sequel, feed, route) — a rise between recordings is a wrong take the convergence legs' suspect-take ratchet will name; `kinowo_worker_identity_suspect_takes_wrong`: the billings taken as a film identity-judgements.tsv calls wrong, still served (0 once corrected). Panel only.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3007,6 +3007,15 @@
           },
           "expr": "max by (country, signal) (kinowo_worker_identity_suspect_takes{country=~\"$country\"})",
           "legendFormat": "{{country}} suspect takes ({{signal}})"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_identity_suspect_takes_wrong{country=~\"$country\"})",
+          "legendFormat": "{{country}} takes judged wrong"
         }
       ]
     },

@@ -73,7 +73,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  the staging screen retired; a harness overrides it to hold the change lists to what the projection wrote. */
   def takeChangesTold: Seq[services.identity.TakeChange] => Unit = _ => ()
 
-  /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
+  /** The suspect takes no hand judgement judges, and the takes one calls wrong, of each written projection of the whole
+   *  corpus (`kinowo_worker_identity_suspect_takes`, `…_wrong`): its
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
    *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
   lazy val suspectTakeCount: services.identity.adapters.SuspectTakeCount =
@@ -81,7 +82,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       services.identity.adapters.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
-      pressed = () => tools.HeapPressure.pressed())
+      pressed = () => tools.HeapPressure.pressed(), judgements = services.identity.TakeJudgements.Index.bundled(country.code),
+      reportWrong = workerMetrics.identityProjection.judgedWrong(country.code))
 
   /** How often each rule fires on the live listings (`kinowo_worker_identity_rule_fires_total{rule}`), over each written
    *  projection of the whole corpus — counted on a thread of its own, put off while the heap is near its limit. */
