@@ -117,7 +117,10 @@ inputs changed (no answer filed, no rules changed, its model cluster the same: a
 correction overrides) is a FLIP: one line naming its films, the steps and each take's deciding path, in `flips-<cc>.tsv`
 and the report. Any flip fails the row; `test/resources/fixtures/identity-flips-allow.tsv` stays empty. The replay's stage
 asks its families inline as the worker's does (`InlineFamilyAsks`), so a take the worker reads its answers for at its
-first apply is not served the model's film here for a queue round.
+first apply is not served the model's film here for a queue round; and its fills announce the TMDB searches and records
+they file on the stage's feed as the worker's TMDB store does (`IdentityDrift.announce`, the stage composition making the
+family store follow its stage), so a take waiting on one is read again at the fill that files it, not at a later scrape
+or deploy (run 3509: UK "The Ties That Bind Us", US "NT Live: Hamlet").
 
 What it found first (recording 573, 2026-10-22): the agreement's stored verdict kept an agreed film as its title and year
 alone, so a stage brought up by a deploy took films its first decision had refused on the record's other facts — DE

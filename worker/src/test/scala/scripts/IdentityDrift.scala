@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.bson.BsonDocument
 import services.identity._
-import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, PosterAnswerStore, PosterHashing, TmdbDocuments, TmdbKind}
+import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, PosterAnswerStore, PosterHashing, TmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, VoterFamily}
 import services.movies.ListingKey
 import tools.{CatalogueFill, IdentityJudgements, MutableClock, UnmatchedClusters}
@@ -160,6 +160,18 @@ object IdentityDrift {
         some[ListingKey](details, k => s"d:${ListingKey.serialised(k)}"))
     }
     def pending: Boolean = !queries.isEmpty || !films.isEmpty || !details.isEmpty
+  }
+
+  /** `released` — the TMDB searches and records a fill let through — announced on `store`'s feed as production's TMDB store
+   *  announces each document it writes, under its own keys ([[TmdbStore.questionId]], `tmdb_films:<id>`): the stage's
+   *  answers' version moves for the ones it waits on or read ([[FamilyAnswerStore.agreementKeyOf]]), as the worker's moves
+   *  when its fill files them. Unannounced, a take waiting on one stood until a scrape or a deploy read it again — UK
+   *  "The Ties That Bind Us" corrected at a re-scrape, US "NT Live: Hamlet" withdrawn at a deploy (run 3509): flips of
+   *  the replay's own, never production's. */
+  def announce(store: FamilyAnswerStore, language: String, released: AnswersChanged): AnswersChanged = {
+    released.queries.foreach(query => store.noteFiled(TmdbStore.keyOf(TmdbKind.Query, TmdbStore.questionId(language, query))))
+    released.films.foreach(film => store.noteFiled(TmdbStore.keyOf(TmdbKind.Film, film.toString)))
+    released
   }
 
   /** The family answers filed so far: a [[Share]] of the capture's family questions not filed until [[release]]d (a
@@ -352,6 +364,8 @@ object IdentityDrift {
     private def event(name: String): Unit = events :+= name
 
     def releaseFamily(id: String): Boolean = docs.held(id) && { docs.release(id); answers.store.noteFiled(id); true }
+    /** The TMDB answers a fill files, announced to the stage as the worker's TMDB store announces them ([[announce]]). */
+    private def released(answered: AnswersChanged): AnswersChanged = announce(answers.store, reads.country.language.toLanguageTag, answered)
 
     /** One projection: the stage over the model's decisions now, every listing's take recorded ([[flips]]). */
     def project(republished: Iterable[ListingKey] = Nil, checkpoint: String = ""): Resolution = {
@@ -377,7 +391,7 @@ object IdentityDrift {
     def boot(listings: Seq[Listing]): Unit = { event("boot"); held = listings.map(l => l.key -> l).toMap; model.restore(listings) }
     def scraped(listings: Seq[Listing]): Unit = { event("scrape"); held ++= listings.map(l => l.key -> l); model.batch(seen = listings) }
     def gone(keys: Seq[ListingKey]): Unit = { event("gone"); held --= keys; model.batch(gone = keys) }
-    def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = gate.release(fraction, rng)) }
+    def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = released(gate.release(fraction, rng))) }
     def answered(): Unit = { event("answer"); answers.answer(stage, releaseFamily) }
     /** A deploy: the model and the stage made anew from their stores; `outrule` — a deploy changing the rules. */
     def deploy(outrule: Boolean): Unit = {
@@ -391,7 +405,7 @@ object IdentityDrift {
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
       gate.open = true; docs.openAll(answers.store.noteFiled)
-      model.batch(answered = gate.release(1.0, new scala.util.Random(0)))
+      model.batch(answered = released(gate.release(1.0, new scala.util.Random(0))))
       settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }

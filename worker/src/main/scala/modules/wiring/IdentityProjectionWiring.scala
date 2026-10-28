@@ -102,9 +102,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       Option.when(IdentityProjectionWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
   }
   /** The live agreement stage. The TMDB finds and records it waits on ([[services.identity.agreement.AgreementStage.wanted]])
-   *  move its answers' version as the TMDB store files them, whoever asked: the agreement's asker or the model's fill. */
-  lazy val agreementStage: services.identity.agreement.AgreementStage = {
-    val stage = newAgreementStage(agreementVerdicts, clock,
+   *  move its answers' version as the TMDB store files them, whoever asked: the agreement's asker or the model's fill —
+   *  the composition makes the family store follow the stage it builds ([[services.identity.agreement.AnswerChanges.follow]]). */
+  lazy val agreementStage: services.identity.agreement.AgreementStage =
+    newAgreementStage(agreementVerdicts, clock,
       ask = questions => { enqueueAgreementQuestions(questions); () },
       metrics = workerMetrics.identityAgreement.stage(country.code),
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
@@ -112,10 +113,6 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
         stopwatch = stopwatch),
       keys = agreementKeys)
-    familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
-    familyAnswerStore.readBy(stage.reads)
-    stage
-  }
   /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */
   private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): services.tasks.Enqueued =
     services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
@@ -149,7 +146,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         tmdbOf = imdbId => identityTmdbStore.foundFirst(imdbId).toAnswer, stored = stored, clock = stageClock,
         normalizer = titleNormalizer, identities = IdentityProjectionWiring.identities(country.code),
         listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
-        changes = familyAnswerStore.changes, posters = posterAnswerStore, catalogue = catalogueAnswerStore,
+        changes = familyAnswerStore, posters = posterAnswerStore, catalogue = catalogueAnswerStore,
         attempted = identityQuestionMemory.attempted, attemptsMarked = Some(() => identityQuestionMemory.marks), keys = keys),
       services.identity.agreement.AgreementStageComposition.Effects(ask = ask, metrics = metrics, askNow = askNow,
         pressed = () => tools.HeapPressure.pressed()),
@@ -205,7 +202,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  cluster's family questions inline ([[agreementStage]]'s `askNow`). */
   lazy val agreementAsker: services.identity.adapters.AgreementAsker =
     new services.identity.adapters.AgreementAsker(familyAnswerStore, familySources,
-      // what they file reaches the stage through the TMDB store's own filings ([[familyAnswerStore]]'s `awaitedBy`)
+      // what they file reaches the stage through the TMDB store's own filings ([[familyAnswerStore]]'s `follow`)
       find = imdbId => { tmdbClient.findByImdbId(imdbId); () }, reread = film => { tmdbClient.readRecordAgain(film); () },
       posterAnswerStore, posterHashing, catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
       filed = () => {

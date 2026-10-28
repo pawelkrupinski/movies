@@ -23,9 +23,9 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFee
     extends services.identity.agreement.AnswerChanges {
   import FamilyAnswerStore._
 
-  /** Which TMDB finds and records the agreement stage waits on ([[awaitedBy]]): none until a stage says. */
+  /** Which TMDB finds and records the agreement stage waits on ([[follow]]): none until a stage says. */
   @volatile private var awaited: Question => Boolean = _ => false
-  /** Which TMDB records and searches a verdict the stage keeps read, by the ids its receipts file them as ([[readBy]]). */
+  /** Which TMDB records and searches a verdict the stage keeps read, by the ids its receipts file them as ([[follow]]). */
   @volatile private var read: String => Boolean = _ => false
 
   /** The agreement's view of the feed ([[agreementKeyOf]]): every answer this store files, every other one an agreement
@@ -36,12 +36,11 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock, feed: AnswerFee
   /** How many agreement answers were filed since this store was made. */
   def version: Long = changes.version
 
-  /** The agreement stage whose waits decide which TMDB finds and records move [[changes]]: `waitsOn` asked of each
-   *  find or record the TMDB store files, on the filing thread. Set once by the live stage's wiring. */
-  def awaitedBy(waitsOn: Question => Boolean): Unit = awaited = waitsOn
-  /** The agreement stage whose kept verdicts' receipts decide which TMDB records and searches move [[changes]]
-   *  ([[services.identity.agreement.AgreementStage.reads]]), on the filing thread. Set once by the live stage's wiring. */
-  def readBy(reads: String => Boolean): Unit = read = reads
+  /** The agreement stage whose waits and kept verdicts' receipts decide which TMDB filings move [[changes]]: `waitsOn`
+   *  asked of each find or record the TMDB store files, `reads` ([[services.identity.agreement.AgreementStage.reads]]) of
+   *  each record and search, on the filing thread. Set by the composition that builds the stage over this store
+   *  ([[services.identity.agreement.AgreementStageComposition]]); the newest stage built over it is the one followed. */
+  override def follow(waitsOn: Question => Boolean, reads: String => Boolean): Unit = { awaited = waitsOn; read = reads }
 
   /** Announces a filing under `id` that another store made: counted only when an agreement question names `id`. */
   def noteFiled(id: String): Unit = feed.publish(id)

@@ -72,7 +72,14 @@ trait FamilyAnswers {
 
 /** Which family answers were filed since a version of them (`<family>|<kind>|<text>`, as a verdict's reads name them):
  *  `None` when that is not known — the stage then reads a verdict's answers again to tell. */
-trait AnswerChanges { def changedSince(version: Long): Option[Set[String]] }
+trait AnswerChanges {
+  def changedSince(version: Long): Option[Set[String]]
+  /** Counts from now on, among the changes, the TMDB filings of the stage these changes are read for: the finds and
+   *  records it `waitsOn` ([[AgreementStage.wanted]]), and the records and searches its kept verdicts and last takes
+   *  `read` ([[AgreementStage.reads]]). [[AgreementStageComposition]] calls it with the stage it builds, so the worker's
+   *  and every harness's stage hears what TMDB files for it alike. Nothing by default: changes no TMDB filing reaches. */
+  def follow(waitsOn: services.identity.Question => Boolean, read: String => Boolean): Unit = ()
+}
 object AnswerChanges { val Unknown: AnswerChanges = _ => None }
 
 /**

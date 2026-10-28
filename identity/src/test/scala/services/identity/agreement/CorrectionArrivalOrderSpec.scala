@@ -32,6 +32,16 @@ class CorrectionArrivalOrderSpec extends AnyFlatSpec with Matchers {
     run.stage.wanted.collect { case Question.Poster(q) => q } shouldBe empty
     run.seen.last shouldBe Map(joined.key -> Some(Corrected), first.key -> Some(Corrected))
   }
+
+  "its answers' changes" should "follow the stage the composition built: a TMDB filing it waits on or read moves them, a harness's as the worker's" in {
+    val run             = Run(answersFirst = false)
+    val (waitsOn, read) = run.followed.getOrElse(fail("the composition built a stage its answers' changes do not follow"))
+    val records         = Seq(ModelFilm, Corrected).map(AgreementStage.recordReadId) :+ services.identity.Dependency.QueryFiled
+    records.map(read) shouldBe records.map(run.stage.reads)
+    records.exists(run.stage.reads) shouldBe true
+    val questions = Seq(Question.Record(ModelFilm), Question.Record(Corrected), Question.Poster(AgreementStage.PosterQuestion.Venue(joinedPoster)))
+    questions.map(waitsOn) shouldBe questions.map(run.stage.wanted.contains)
+  }
 }
 
 object CorrectionArrivalOrderSpec {
@@ -89,9 +99,15 @@ object CorrectionArrivalOrderSpec {
       case Question.Family(_, asked)                                 => !joinedQuestion(asked) || familyFiled
       case _                                                         => true
     }
+    /** What the composition made the stage's answers' changes follow ([[AnswerChanges.follow]]). */
+    var followed: Option[(Question => Boolean, String => Boolean)] = None
+    private val changes = new AnswerChanges {
+      def changedSince(since: Long): Option[Set[String]] = Some(filings.iterator.collect { case (at, id) if at > since => id }.toSet)
+      override def follow(waitsOn: Question => Boolean, read: String => Boolean): Unit = followed = Some((waitsOn, read))
+    }
     private val sources = AgreementStageComposition.Sources(families, NoVenueDetails, table, _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       _root_.tools.SpecClock.Pinned, normalizer, identities = Seq(VoterFamily.Wiki), listedOn = None,
-      changes = since => Some(filings.iterator.collect { case (at, id) if at > since => id }.toSet), posters = posters,
+      changes = changes, posters = posters,
       catalogue = CatalogueAnswers.Silent, attempted = tried, attemptsMarked = None, keys = new InMemoryAgreementKeys)
     // the worker's inline asks: the family questions asked are answered — filed — before the apply reads them again
     private val askNow: AgreementStage.AskNow = (questions, _) =>

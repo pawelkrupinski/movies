@@ -121,7 +121,8 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    holds the old and new versions and `changedSince` sets side by side). D3 (done): the agreement view maps the TMDB
    store's own filings of a find (`tmdb_queries:find|<imdbId>`) and a film record (`tmdb_films:<id>`) to the ids the
    stage reads them by (`find|<imdbId>`, `tmdb|record|<id>`; `FamilyAnswerStore.agreementKeyOf`), but only while the live
-   stage waits on that question (`awaitedBy(stage.wanted.contains)`): a take-up files thousands of records, and each
+   stage waits on that question (`follow(stage.wanted.contains, stage.reads)`, which the one stage composition calls for
+   every stage it builds, a harness's too): a take-up files thousands of records, and each
    counted would move the stage's version and re-read every verdict. So the asker's two hand bridges (`noteFiled` after a
    find and after a record read again) are gone, and with them the corrections' special case for a find "filed outside
    the answers' changes": a waiting correction is read again when a find it asked is filed, as for any question. A find

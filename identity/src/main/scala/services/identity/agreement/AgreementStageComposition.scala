@@ -9,7 +9,7 @@ import services.movies.TitleNormalizer
  * the dumps — each handing it its [[Sources]], the worker's live, a harness's recorded. Every role is filled the same
  * way whoever builds it: the venues' pages and TMDB apart (a harness handing one lookups for both hid that the worker's
  * venue lookups answer no film, and prod kept 26 takes a whole resolve made, 2026-10-27), the families, the finds,
- * the posters, the catalogue, the attempts and their marks.
+ * the posters, the catalogue, the attempts and their marks, and the TMDB filings its answers' changes count ([[apply]]).
  *
  * What a harness may build otherwise is an [[Override]], each named here with the reason it changes no take; nothing
  * else differs. `AgreementStageCompositionSpec` holds both: no stage is built but through [[apply]] (the spec names the
@@ -41,9 +41,13 @@ object AgreementStageComposition {
     case CorrectionsPerApply(perApply: Int) extends Override("the corrections' budget, measured: it spreads them over applies")
   }
 
+  /** The stage over `sources`, its `changes` following it ([[AnswerChanges.follow]]): a TMDB record or search it waits on
+   *  or read moves its answers' version when filed, the fill's filings too — the worker's wiring did that by hand, and
+   *  the drift replay's stage, built without it, heard none of them: a take waiting on one stood until a scrape or a deploy
+   *  read it again, a flip of the replay's own (UK "The Ties That Bind Us", US "NT Live: Hamlet", run 3509). */
   def apply(sources: Sources, effects: Effects = Effects(), overrides: Set[Override] = Set.empty): AgreementStage = {
     val unbudgeted = overrides(Override.Unbudgeted)
-    new AgreementStage(sources.families, sources.venuePages, sources.normalizer, sources.calibration, sources.tmdbOf, sources.stored,
+    val stage = new AgreementStage(sources.families, sources.venuePages, sources.normalizer, sources.calibration, sources.tmdbOf, sources.stored,
       ask = effects.ask, metrics = effects.metrics, clock = sources.clock, changes = sources.changes, posters = sources.posters,
       tmdb = Some(sources.tmdb), identities = sources.identities, catalogue = sources.catalogue, listedOn = sources.listedOn,
       correctionPostersAtOnce = if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionPostersAtOnce,
@@ -52,5 +56,7 @@ object AgreementStageComposition {
       backfillPerApply = if (unbudgeted) Int.MaxValue else AgreementStage.BackfillPerApply,
       askNow = effects.askNow, attempted = sources.attempted, attemptsMarked = sources.attemptsMarked,
       keyStore = sources.keys, pressed = effects.pressed)
+    sources.changes.follow(question => stage.wanted.contains(question), stage.reads)
+    stage
   }
 }

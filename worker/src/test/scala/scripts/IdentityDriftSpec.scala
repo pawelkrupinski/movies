@@ -3,8 +3,9 @@ package scripts
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.{AnswersChanged, CandidateQuery, Dependency, Question}
 import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
-import services.identity.agreement.VoterFamily
+import services.identity.agreement.{AgreementStage, VoterFamily}
 import tools.MutableClock
 
 import java.time.{Duration, Instant}
@@ -49,6 +50,17 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(unfiled)
     clock.advance(Duration.ofDays(91))
     IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(question, unfiled)
+  }
+
+  "a fill's TMDB answers" should "move the stage's answers' version as the worker's TMDB store's filings do: those it waits on or read" in {
+    val clock         = new MutableClock(Instant.parse("2026-10-20T13:26:32Z"))
+    val (_, store)    = filed(clock)
+    store.follow(Set[Question](Question.Record(7)), Set(AgreementStage.recordReadId(8), Dependency.QueryFiled))
+    def moved(released: AnswersChanged): Long = { val before = store.version; IdentityDrift.announce(store, "de-DE", released); store.version - before }
+    moved(AnswersChanged(Set.empty, Set(7))) shouldBe 1                           // a record the stage waits on
+    moved(AnswersChanged(Set.empty, Set(8))) shouldBe 1                           // a record a take read
+    moved(AnswersChanged(Set(CandidateQuery.Title("Titans")), Set.empty)) shouldBe 1 // a search, while a verdict read one
+    moved(AnswersChanged(Set.empty, Set(9))) shouldBe 0                           // a record nothing waits on nor read
   }
 
   "the reviewed flips" should "stay empty: a flip the leg finds is fixed, never listed (the owner, 2026-10-27)" in {

@@ -82,7 +82,7 @@ class AnswerFeedSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbStore(docs, clock, feed)
     val families = new FamilyAnswerStore(docs, clock, feed)
     val awaited  = mutable.Set[Question](Question.Find("tt2"), Question.Record(7))
-    families.awaitedBy(awaited.contains)
+    families.follow(awaited.contains, _ => false)
     def film(id: Int, year: Int): Unit =
       tmdb.filmPartial(id, TmdbStore.Partial.Local, play.api.libs.json.Json.obj("id" -> id, "release_date" -> s"$year-01-01"))
     // a take-up's filings: finds and records none waits on move nothing
@@ -113,7 +113,7 @@ class AnswerFeedSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbStore(docs, clock, feed)
     val families = new FamilyAnswerStore(docs, clock, feed)
     val read     = mutable.Set[String](AgreementStage.recordReadId(7))
-    families.readBy(read.contains)
+    families.follow(_ => false, read.contains)
     def film(id: Int, year: Int): Unit =
       tmdb.filmPartial(id, TmdbStore.Partial.Local, play.api.libs.json.Json.obj("id" -> id, "release_date" -> s"$year-01-01"))
     film(8, 2000)
