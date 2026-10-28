@@ -28,6 +28,32 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     reported shouldBe Signal.values.map(_ -> 0).toMap ++ Map(Signal.Fragment -> 1, Signal.Era -> 1)
   }
 
+  it should "leave out a suspect a judgement judges, and count the billings taken as a film judged wrong apart" in {
+    val fumo   = listing("Giorgia Fumo - OUT OF OFFICE")
+    val other  = listing("Lorenzo Fumo - OUT OF OFFICE")
+    val lalka  = listing("Lalka")
+    val films  = Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)), 2 -> IdentityMeasures.Film("Lalka", year = Some(2026)))
+    val judged = new TakeJudgements.Index(Seq(
+      TakeJudgements.Judgement("pl", "*", "Giorgia  Fumo - OUT OF OFFICE", "tmdb:1", right = true),
+      TakeJudgements.Judgement("pl", KinoMuza.displayName, "Lalka", "tmdb:2", right = false)))
+    var reported = Map.empty[Signal, Int]
+    var wrong    = -1
+    count(NoFilmLookups, _ => Map.empty, counts => reported = counts, judgements = judged, reportWrong = n => wrong = n)(
+      resolutionOf(Seq(decision(Seq(fumo), 1), decision(Seq(other), 1), decision(Seq(lalka), 2)), films), Seq(fumo, other, lalka))
+    reported(Signal.Fragment) shouldBe 1 // Lorenzo's, which no judgement judges
+    wrong shouldBe 1
+  }
+
+  it should "name the billings, the most venues first, at most a bounded number" in {
+    val take = (raw: String, venue: models.Cinema) =>
+      SuspectTakes.Take(listing(raw, venue), "tmdb:1", Some(1), IdentityMeasures.Film("Out of Office", year = Some(2022)),
+        decision(Seq(listing(raw, venue)), 1))
+    val found = Seq(take("A", KinoMuza) -> "fragment: x", take("B", KinoMuza) -> "era: y", take("B", models.Helios) -> "era: y")
+    SuspectTakeCount.named(found) shouldBe Seq("B → tmdb:1 Out of Office (2022) [2 venue(s)]: era: y",
+      "A → tmdb:1 Out of Office (2022) [1 venue(s)]: fragment: x")
+    SuspectTakeCount.named((1 to 60).map(i => take(s"T$i", KinoMuza) -> "x")).size shouldBe SuspectTakeCount.Named
+  }
+
   it should "read a listing's running time from its venue's page" in {
     val short = listing("Herr der Ringe")
     val page  = new IdentityLookups {
@@ -129,8 +155,9 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
   }
 
   private def count(venues: IdentityLookups, records: Seq[Int] => Map[Int, IdentityMeasures.Film], report: Map[Signal, Int] => Unit,
-                    runner: java.util.concurrent.Executor = _.run(), pressed: () => Boolean = () => false) =
-    new SuspectTakeCount(venues, records, tools.SpecClock.Pinned, java.time.ZoneOffset.UTC, report, runner, pressed)
+                    runner: java.util.concurrent.Executor = _.run(), pressed: () => Boolean = () => false,
+                    judgements: TakeJudgements.Index = TakeJudgements.Index.Empty, reportWrong: Int => Unit = _ => ()) =
+    new SuspectTakeCount(venues, records, tools.SpecClock.Pinned, java.time.ZoneOffset.UTC, report, runner, pressed, judgements, reportWrong)
 
   private def resolutionOf(decisions: Seq[ResolverDecision], films: Map[Int, IdentityMeasures.Film]): Resolution =
     Resolution(decisions, decisions.map(_.members.size).sum, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, films)

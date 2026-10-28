@@ -276,16 +276,9 @@ object UnmatchedClusters {
    *  name its listing's right film in a database the take has an id in and this is not it — `None` unjudged. The take's
    *  own venue's label calling a film right overrules every venue's ("*") calling it wrong: PL Kino Iluzjon's "Lalka" is
    *  Has' 1968 film, the bare "Lalka" everywhere else Kawalski's 2026 one. */
-  def verdict(take: Take, labels: Seq[Label]): Option[Boolean] = {
-    val covering  = labels.filter(_.covers(take))
-    val rightHere = covering.filter(label => label.venue != "*" && label.right).map(_.film).toSet
-    val about     = covering.filterNot(label => label.venue == "*" && !label.right && rightHere(label.film))
-    val databases = take.ids.map(_.takeWhile(_ != ':'))
-    if (about.exists(l => !l.right && take.ids(l.film))) Some(false)
-    else if (about.exists(l => l.right && take.ids(l.film))) Some(true)
-    else if (about.exists(l => l.right && databases(l.film.takeWhile(_ != ':')))) Some(false)
-    else None
-  }
+  def verdict(take: Take, labels: Seq[Label]): Option[Boolean] =
+    services.identity.TakeJudgements.decide(take.ids,
+      labels.filter(_.covers(take)).map(l => services.identity.TakeJudgements.Judgement(l.country, l.venue, l.rawTitle, l.film, l.right)))
 
   def takeLine(take: Take): String = Seq(take.country, take.venue, take.rawTitle, take.film, take.title).mkString("\t")
   def readTakeLines(path: Path): Set[(String, String, String, String)] =

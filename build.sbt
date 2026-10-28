@@ -391,6 +391,13 @@ lazy val worker = (project in file("worker"))
     name := "worker",
     // standard sbt layout: src/main/scala, src/test/scala
     Compile / mainClass := Some("modules.WorkerMain"),
+    // the hand judgements of takes, bundled as `/identity-judgements.tsv`: the suspect-take count leaves out the judged
+    // ones and counts the takes judged wrong apart (services.identity.TakeJudgements)
+    Compile / resourceGenerators += Def.task {
+      val bundled = (Compile / resourceManaged).value / "identity-judgements.tsv"
+      IO.copyFile((ThisBuild / baseDirectory).value / "test" / "resources" / "fixtures" / "identity-judgements.tsv", bundled)
+      Seq(bundled)
+    }.taskValue,
     // Integration tests (live scrape + Mongo) run under their own config so CI
     // can dispatch them as a separate job — same pattern as the web module.
     inConfig(IntegrationTest)(Defaults.testSettings),
