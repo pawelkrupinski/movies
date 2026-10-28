@@ -27,11 +27,12 @@ An origin is flagged
                         [--write this.json] [--summary $GITHUB_STEP_SUMMARY] [--title <country>]
 
 PROXY UNREACHABLE is no verdict on the origin: a refusal whose `proxy:` leg (FallbackHttpFetch's composite, the
-recording's direct -> residential-proxy route) failed without reaching it -- `Tunnel failed`, a connect timeout or
-refusal -- says only that production's route was not there to ask. An origin flagged `refusing` with most of its
-refusals so is `proxy-unreachable` instead: UNKNOWN, exit 3, never a code red (Record scrape fixtures #2238: Decodo
-answered `Tunnel failed, got: 503` from 2026-10-27T17:00Z, and Cineworld, which 403s CI's own address, was booked as
-refusing 66/66).
+recording's direct -> residential-proxy route) failed without reaching it -- `Tunnel failed`, a CONNECT that timed out
+or was hung up on before any answer, a connect timeout or refusal -- says only that production's route was not there to
+ask. An origin flagged `refusing` with most of its refusals so is `proxy-unreachable` instead: UNKNOWN, exit 3, never a
+code red (Record scrape fixtures #2238: Decodo answered `Tunnel failed, got: 503` from 2026-10-27T17:00Z, and
+Cineworld, which 403s CI's own address, was booked as refusing 66/66; in #2265 the same outage's silent ports hung up
+on 53 of Cineworld's 156 asks, `HTTP/1.1 header parser received no bytes`).
 
 BEST-EFFORT origins (BEST_EFFORT) are judged the same way but only WARN: OMDb is the one optional
 source, whose free key runs out of its daily quota and then answers 401 to everything (run 469,
@@ -62,9 +63,12 @@ NOT_FOUND = {"404", "410"}   # HttpStatusException.isDurable: a verdict about th
 CACHE_DIRECTORY = ".enrichment-cache"
 # Origins whose refusal or absence is reported but never fails a recording, with the name the warning uses.
 BEST_EFFORT = {"www.omdbapi.com": "OMDb"}
-# A composite failure's proxy leg that never reached the origin: the proxy itself refused the tunnel, or no connection.
-PROXY_DOWN = re.compile(r"^\s*proxy: (?:[\w.]*\.)?(?:IOException: Tunnel failed|HttpConnectTimeoutException|ConnectException|"
-                        r"NoRouteToHostException|UnknownHostException)", re.M)
+# A composite failure's proxy leg that never reached the origin, in java.net.http's words: the proxy refused the tunnel
+# (`Tunnel failed, got: 503`), let its CONNECT time out, or took the connection and hung up before a byte of any answer
+# (`HTTP/1.1 header parser received no bytes`); or no connection was made at all.
+PROXY_DOWN = re.compile(r"^\s*proxy: (?:[\w.]*\.)?(?:IOException: (?:Tunnel failed|HTTP/1\.1 header parser received no bytes)|"
+                        r"HttpTimeoutException: proxy tunneling CONNECT request timed out|HttpConnectTimeoutException|"
+                        r"ConnectException|NoRouteToHostException|UnknownHostException)", re.M)
 UNKNOWN_EXIT = 3
 
 

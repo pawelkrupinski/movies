@@ -1149,7 +1149,8 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             # A RECORDING whose per-origin health failed (convergence-publish's "Judge this recording's per-origin
-            # health", the table on the summary): red here, after every publish, so the tree is saved either way.
+            # health", its table in the log -- Forgejo discards job summaries): red here, after every publish, so the tree
+            # is saved either way.
             - name: Fail the leg on the recording's health
               if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'
               shell: bash
@@ -1157,9 +1158,9 @@ jobs:
                   UNKNOWN: ${{ steps.publish.outputs.recording-health-unknown }}
               run: |
                   if [ "$UNKNOWN" = proxy-unreachable ]; then
-                      echo "::error::UNKNOWN: proxy unreachable — ${{ inputs.country }}'s recording met the residential proxy down, so the origins it routes through it were not judged; fix the proxy, not the code — see the Recording health table on the summary"
+                      echo "::error::UNKNOWN: proxy unreachable — ${{ inputs.country }}'s recording met the residential proxy down, so the origins it routes through it were not judged; fix the proxy (the Decodo probe workflow says whether it answers), not the code — see the Recording health table in this job's log"
                   else
-                      echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table on the summary"
+                      echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table in this job's log"
                   fi
                   exit 1
 

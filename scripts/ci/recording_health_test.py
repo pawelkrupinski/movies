@@ -184,6 +184,27 @@ class RecordingHealthTest(unittest.TestCase):
         self.assertIn("UNKNOWN: the residential proxy was unreachable", summary.read_text())
         self.assertIn("**PROXY-UNREACHABLE (UNKNOWN)**", summary.read_text())
 
+    def test_a_proxy_that_hung_up_or_let_its_connect_time_out_was_unreachable_too(self):
+        # Record scrape fixtures #2265, the same Decodo outage: 103 of Cineworld's 156 asks met `Tunnel failed, got: 503`
+        # and the other 53 a proxy port that took the connection and hung up before any answer -- java.net.http's
+        # `HTTP/1.1 header parser received no bytes` -- booked as Cineworld's own refusals. Had they outnumbered the
+        # 503s, the outage would have read as Cineworld refusing: a code red. A CONNECT the proxy let time out never
+        # reached the origin either; a request that timed out through an open tunnel did, and stays a refusal.
+        url = "https://www.cineworld.co.uk/api/gatsby-source-boxofficeapi/movies"
+
+        def composite(proxy):
+            return (f"java.lang.RuntimeException: All 2 backends failed for getBytes {url}:\n"
+                    f"  direct: HttpStatusException: HTTP 403 for GET {url}\n"
+                    f"  proxy: {proxy}")
+        self.tree.failure(url, "", DURING, 30, message=composite("IOException: HTTP/1.1 header parser received no bytes"))
+        self.tree.failure(url, "", DURING, 10, message=composite("HttpTimeoutException: proxy tunneling CONNECT request timed out"))
+        self.tree.failure(url, "", DURING, 5, message=composite("IOException: Tunnel failed, got: 503"))
+        self.tree.failure(url, "", DURING, 4, message=composite("HttpTimeoutException: request timed out"))
+        manifest = self.manifest()
+        self.assertEqual((manifest["origins"]["www.cineworld.co.uk"]["refused"], manifest["origins"]["www.cineworld.co.uk"]["proxyDown"]), (49, 45))
+        self.assertEqual([(f.origin, f.reason) for f in health.judge(manifest, None)], [("www.cineworld.co.uk", "proxy-unreachable")])
+        self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE)]), 3)
+
     def test_an_origin_that_refused_through_a_working_proxy_too_is_still_refusing(self):
         composite = ("java.lang.RuntimeException: All 2 backends failed for get https://www.cineworld.co.uk/api/movies:\n"
                      "  direct: HttpStatusException: HTTP 403 for GET https://www.cineworld.co.uk/api/movies\n"
