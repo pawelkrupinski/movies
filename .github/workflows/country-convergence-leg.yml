@@ -869,6 +869,9 @@ jobs:
                   cores=$(nproc)
                   echo "::error title=${LEG} timed out under load::${LEG} reached its ${LIMIT_MINUTES}-minute suite ceiling after $(( elapsed / 60 )) min; runner load ${load1} / ${load5} / ${load15} (1/5/15 min) on ${cores} cores -- an infra verdict, not a test failure: rerun it when the runner is not contended"
                   echo "### ${LEG} timed out under load (load ${load1} / ${load5} / ${load15} on ${cores} cores, ceiling ${LIMIT_MINUTES} min)" >> "$GITHUB_STEP_SUMMARY"
+                  # The leg's commit status says it too (leg-verdict.sh): the one channel that outlives a job log the runner
+                  # stopped shipping, as the germany rows' did in run #2301.
+                  echo "timed out under load: ${LIMIT_MINUTES}-min suite ceiling, load ${load1} / ${load5} / ${load15} on ${cores} cores" > "$RUNNER_TEMP/leg-verdict-why"
 
             # WHAT THIS JOB ASKED THE OUTSIDE WORLD: the live calls of a recording's suite, or of a hermetic leg's
             # pre-suite fill, per external service and outcome -- the worker's own `kinowo_worker_http_total`, dumped by

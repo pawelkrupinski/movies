@@ -31,6 +31,23 @@ check "a passing leg posts success" "state=success" \
   "$(run success "convergence (poland)" | grep -o 'state=[a-z]*')"
 check "a cancelled leg (a timeout) posts error, never success" "state=error" \
   "$(run cancelled "convergence (united-states)" | grep -o 'state=[a-z]*')"
+export RUNNER_TEMP="$stub_dir/runner-temp"
+mkdir -p "$RUNNER_TEMP"
+echo "timed out under load: 30-min suite ceiling, load 61.2 / 58.0 / 40.1 on 32 cores" > "$RUNNER_TEMP/leg-verdict-why"
+check "a leg whose step named its cause carries it in the status, which outlives a job log the runner lost (run #2301)" \
+  "description=order-independence-p12 (germany) FAILED: timed out under load: 30-min suite ceiling, load 61.2 / 58.0 / 40.1 on 32 cores" \
+  "$(run failure "order-independence-p12 (germany)" | grep -o 'description=.*')"
+check "...and in its error annotation" \
+  "::error title=order-independence-p12 (germany) FAILED::order-independence-p12 (germany) FAILED: timed out under load: 30-min suite ceiling, load 61.2 / 58.0 / 40.1 on 32 cores — the other legs keep running and publish their own recordings" \
+  "$(PATH="$stub_dir:$PATH" bash "$REPO_ROOT/scripts/ci/leg-verdict.sh" failure "order-independence-p12 (germany)" | grep '^::error')"
+printf 'x%.0s' $(seq 1 200) > "$RUNNER_TEMP/leg-verdict-why"
+check "a long cause is cut to the 140 characters a github.com status description holds" "140" \
+  "$(run failure "leg" | grep -o 'description=.*' | sed 's/^description=//' | tr -d '\n' | wc -m | tr -d ' ')"
+rm -f "$RUNNER_TEMP/leg-verdict-why"
+check "a passing leg never carries a cause" "description=convergence (poland) passed" \
+  "$(echo stale > "$RUNNER_TEMP/leg-verdict-why"; run success "convergence (poland)" | grep -o 'description=.*')"
+rm -f "$RUNNER_TEMP/leg-verdict-why"
+
 check "a status the API refuses does not fail the leg it reports on" "0" \
   "$(STUB_FAIL=1 PATH="$stub_dir:$PATH" bash "$REPO_ROOT/scripts/ci/leg-verdict.sh" failure x >/dev/null 2>&1; echo $?)"
 
