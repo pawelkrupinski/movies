@@ -81,13 +81,16 @@ class SuspectTakesSpec extends AnyFlatSpec with Matchers {
     signals(take(listing(KinoMuza, "Rewind"), film("Rewind", 1971)), corpus(billed(Helios, "Rewind", 2, 2026))) should contain(Signal.Era)
   }
 
-  "a runtime mismatch" should "be a film far from the listing's running time, or a short taken for a feature or a title widely billed" in {
+  "a runtime mismatch" should "be a film far longer than the listing runs, or a short taken for a feature or a title widely billed" in {
     signals(take(listing(KinoMuza, "Herr der Ringe", runtime = Some(263)), film("Herr der Ringe", 2025, runtime = Some(14)))) should contain(Signal.Runtime)
     val short = film("Herr der Ringe", 2025, runtime = Some(14))
     val wide  = corpus(Seq(KinoMuza, Helios, Multikino, Rialto).map(venue => take(listing(venue, "Herr der Ringe - Rückkehr des Königs (ext.)"), short, tmdb = 9))*)
     signals(take(listing(KinoApollo, "Herr der Ringe - Rückkehr des Königs (ext.)"), short), wide) should contain(Signal.Runtime)
     signals(take(listing(KinoApollo, "Herr der Ringe - Rückkehr des Königs (ext.)"), short)) shouldNot contain(Signal.Runtime)
-    signals(take(listing(KinoMuza, "Dune", runtime = Some(155)), film("Dune", 2021, runtime = Some(90)))) should contain(Signal.Runtime)
+    signals(take(listing(KinoMuza, "Dune", runtime = Some(90)), film("Dune", 2021, runtime = Some(155)))) should contain(Signal.Runtime)
+    // a listing running longer than the film is the venue's slot: the film with its wine, its Q&A, its adverts
+    signals(take(listing(KinoMuza, "Psycho with wine", runtime = Some(170)), film("Psycho", 1960, runtime = Some(109)))) shouldNot contain(Signal.Runtime)
+    signals(take(listing(KinoMuza, "Dune", runtime = Some(155)), film("Dune", 2021, runtime = Some(90)))) shouldNot contain(Signal.Runtime)
     signals(take(listing(KinoMuza, "Dune", runtime = Some(155)), film("Dune", 1984, runtime = Some(137)))) shouldNot contain(Signal.Runtime)
     // a venue billing a short states the programme's time, not the film's
     signals(take(listing(KinoMuza, "World Champion", runtime = Some(36)), film("World Champion", 2021, runtime = Some(110)))) shouldNot contain(Signal.Runtime)

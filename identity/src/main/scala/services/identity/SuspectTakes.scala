@@ -284,7 +284,9 @@ object SuspectTakes {
       if (stated <= ShortFilms.MaxMinutes) None // a venue billing a short: its programme, not the film's running time
       else if (ShortFilms.isShort(film) && stated >= FeatureMinutes)
         Some(Suspicion(Signal.Runtime, s"a ${runs.max}-minute short taken for a listing running $stated minutes"))
-      else Option.when(runs.forall(x => math.abs(stated - x) >= math.max(IdentityMeasures.RuntimeContradiction.toDouble, stated * 0.3)))(
+      // only a listing running SHORTER than every cut: a longer one is the venue's slot — the film with its wine, its Q&A,
+      // its adverts ("Psycho with wine" 170 minutes), right on every judged take (2026-10-28: 17 of 17, none wrong)
+      else Option.when(runs.forall(x => x - stated >= math.max(IdentityMeasures.RuntimeContradiction.toDouble, stated * 0.3)))(
         Suspicion(Signal.Runtime, s"the listing runs $stated minutes, the film ${runs.sorted.mkString("/")}"))
     }
   }
