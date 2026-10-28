@@ -19,7 +19,7 @@ cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 case "$1 $2" in
   "run list") [ -e "$STUB/hang" ] && { echo $$ >> "$STUB/hang"; exec sleep 86400; } # never answers: blocks until killed
-              cat "$STUB/last" 2>/dev/null ;;
+              echo "$*" > "$STUB/list-args"; cat "$STUB/last" 2>/dev/null ;;
   "workflow run") echo "$3" >> "$STUB/dispatched"; echo "$*" >> "$STUB/dispatch-args" ;;
 esac
 STUB
@@ -53,6 +53,8 @@ kick() { # <head> [matcher] -> the suites dispatched, one line; the exit status 
 echo "$base" > "$work/last"
 check "a push outside the paths since the suite's last run is not dispatched (no timeout(1) on PATH)" "" "$(kick "$docs")"
 check "...and the gate exits 0" "0" "$(cat "$work/status")"
+case "$(cat "$work/list-args")" in *"--branch main"*) b=yes ;; *) b=no ;; esac
+check "the base is the suite's newest run ON MAIN, never a measurement's or another branch's" "yes" "$b"
 check "a pipeline change since the last run is dispatched" "Country convergence" "$(kick "$pipeline")"
 
 : > "$work/last"

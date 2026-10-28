@@ -57,8 +57,11 @@ dispatch() {
 }
 
 for workflow in "$@"; do
+    # THE SUITE'S NEWEST RUN ON THIS BRANCH: never a measurement's (measure/*) or another branch's run, whose head can sit
+    # past every pipeline change since main's last run (2026-10-28: a measure run's head made six hours of main's pushes
+    # look unchanged, and main got no convergence verdict at all).
     # allow-silenced: an unreadable last run leaves no base, which DISPATCHES — the safe direction.
-    base=$(bounded "${KICK_CONVERGENCE_GH_TIMEOUT:-60}" gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
+    base=$(bounded "${KICK_CONVERGENCE_GH_TIMEOUT:-60}" gh run list --workflow "$workflow" --branch "$ref" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
     if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
         echo "$workflow: no earlier run to diff against (base '${base:-none}') — dispatching"
         dispatch "$workflow"
