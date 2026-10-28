@@ -53,7 +53,7 @@ class ChangeStreamResumeTokenIntegrationSpec extends AnyFlatSpec with Matchers w
     tools.Eventually.eventually(persisted shouldBe ReadOutcome.Answered(later))
   }
 
-  "ChangeStreamResumeToken.load" should "answer FAILED, not absent, when the position cannot be read" in {
+  "ChangeStreamResumeToken.load" should "answer Failed, not Absent, when the position cannot be read" in {
     val blind = new ChangeStreamResumeToken("blind", Some(unreachable.getDatabase("resume-token")), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
     blind.load() shouldBe a[ReadOutcome.Failed]
     // …so the open is deferred to the reopen backoff a few times — and then opens anyway, at

@@ -164,7 +164,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     repository.deletes                                       shouldBe empty
   }
 
-  it should "KEEP a row when the durable read FAILED rather than came back empty" in {
+  it should "KEEP a row when the durable read failed rather than came back empty" in {
     // A failed read is not data: it cannot distinguish "no cinemas" from
     // "Mongo did not answer", so it must never authorise a delete.
     // `findByIdChecked`/`findByKeyChecked` answer `readOk = false` — "I could not tell
@@ -269,7 +269,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     } finally cleanup.stop()
   }
 
-  it should "KEEP a nominated row when the durable read FAILED" in {
+  it should "KEEP a nominated row when the durable read failed" in {
     val repository = new UnreadableByIdMovieRepository(Seq(("Unread", Some(2026), mkRecord("tt4", Map(Helios -> cinemaSlot("Unread"))))),
       titleNormalizer = titleNormalizer)
     val cache     = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
