@@ -481,6 +481,11 @@ lazy val web = (project in file("web"))
     Test / javaOptions ++= ForkedTests.options(Test, heap = "1g").value,
     // Suites in parallel inside that fork, as every other module's run (ForkedTests.settings): sbt's default for a forked
     // run is one suite at a time, which made web's 198 suites a serial 3.7 min of the `worker` row (CI, 2026-10-27).
+    // BOTH keys: sbt's forked run reads `parallelExecution` too, which PlayScala sets false, so with only
+    // `testForkedParallel` the fork stayed serial (the `worker` row's tail was web's suites one at a time, ~120 s for
+    // ~105 suite-seconds, measure runs 3420-3480). testOrderSettings, after these, still makes the order-independence
+    // run sequential.
+    Test / parallelExecution := true,
     Test / testForkedParallel := (Test / parallelExecution).value,
     inConfig(IntegrationTest)(Defaults.testSettings),
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
