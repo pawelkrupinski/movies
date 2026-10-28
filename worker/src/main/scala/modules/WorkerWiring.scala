@@ -107,8 +107,13 @@ class WorkerWiring(
    *  read as it moved, every read that failed, and every take the projection moved with what decided it — what
    *  `scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by. */
   lazy val identityHistory: services.identity.adapters.IdentityHistory =
-    mongoConnection.database.fold[services.identity.adapters.IdentityHistory](services.identity.adapters.IdentityHistory.Discard)(
-      new services.identity.adapters.MongoIdentityHistory(_, workerMetrics.ttlIndexMismatches))
+    services.identity.adapters.IdentityHistory.composed(
+      mongoConnection.database.fold[services.identity.adapters.IdentityHistory](services.identity.adapters.IdentityHistory.Discard)(
+        new services.identity.adapters.MongoIdentityHistory(_, workerMetrics.ttlIndexMismatches)),
+      identityHistoryOverrides)
+  /** How this wiring's history differs from the worker's (`IdentityHistory.Override`): none in production; a harness's
+   *  wiring names its own. */
+  protected def identityHistoryOverrides: Set[services.identity.adapters.IdentityHistory.Override] = Set.empty
   lazy val identityTmdbDocuments: services.identity.adapters.TmdbDocuments = identityTmdbLayer.documents
   /** The layer's document cache, by cache name, for `registerCacheMetrics`. */
   lazy val identityTmdbCacheOccupancies: Seq[(String, () => services.metrics.CacheOccupancy)] = identityTmdbLayer.cacheOccupancies

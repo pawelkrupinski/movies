@@ -57,6 +57,18 @@ object IdentityHistory {
   /** How long an entry is kept: a month of flips can be replayed and explained. */
   val Kept: FiniteDuration = 30.days
 
+  /** The ways a harness's history may differ from the worker's, each with why — chosen where the harness is wired,
+   *  never read from configuration. */
+  enum Override(val reason: String) {
+    /** A convergence or measure leg resolves a recording, not prod: no moment of it is replayed or explained, and its
+     *  writes cost the leg's tick (red #2301: Germany's first tick past its 30-minute timeout). */
+    case Unwritten extends Override("a harness resolves a recording, not prod: nothing of it is a moment to explain")
+  }
+
+  /** The history `writer` keeps — or, a harness `Unwritten` ([[Override]]), none. */
+  def composed(writer: => IdentityHistory, overrides: Set[Override]): IdentityHistory =
+    if (overrides(Override.Unwritten)) Discard else writer
+
   /** What `entries` (one id's, any order) say it read at `at`, given what it reads now (`current`): the value the last
    *  entry at or before `at` left, else the value the first entry after `at` replaced, else — no entry moved it since —
    *  what it is now. So only the entries written after `at` are needed. */

@@ -58,6 +58,9 @@ class ArchiveReplayWiring(
   // between them rather than once per pass; production's per-thread handoff otherwise.
   tmdbBodies:       JsonBodies = new JsonBodies
 ) extends WorkerWiring(replayCountry, env = environment) with TestWiring {
+  // A convergence leg replays a recording: it writes no identity history (IdentityHistory.Override.Unwritten).
+  override protected def identityHistoryOverrides: Set[services.identity.adapters.IdentityHistory.Override] =
+    Set(services.identity.adapters.IdentityHistory.Override.Unwritten)
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
 
