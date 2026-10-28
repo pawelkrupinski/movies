@@ -7,19 +7,20 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.FilmDetail
+import services.identity.adapters.InMemoryIdentityHistory
 import services.venuepages.*
 import tools.IsolatedMongoDatabase
 import tools.contracts.Implementations
 
-import java.time.Instant
+import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable
 import scala.concurrent.Await
 
 /**
  * ONE behaviour suite for [[VenuePageStore]], run against every implementation on the class path:
- * the `venue_pages` collection and the in-memory store. A page round-trips with every fact it
- * stated, a gone page with its code, a re-read replaces the earlier one but keeps what the rows took of the
- * page, and a read-through delivers every page once.
+ * the `venue_pages` collection, the in-memory store and the history decorator (over an in-memory store). A page
+ * round-trips with every fact it stated, a gone page with its code, a re-read replaces the earlier one but keeps
+ * what the rows took of the page, and a read-through delivers every page once.
  */
 class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
@@ -29,8 +30,12 @@ class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAn
   private def fresh(cls: Class[? <: VenuePageStore]): VenuePageStore = {
     Await.result(isolatedDatabase.database.getCollection(MongoVenuePageStore.Collection).drop().toFuture(), SpecTimeouts.Io)
     Implementations.construct(cls, _.getTypeName match {
-      case "org.mongodb.scala.MongoDatabase" => Some(isolatedDatabase.database)
-      case _                                 => None
+      case "org.mongodb.scala.MongoDatabase"            => Some(isolatedDatabase.database)
+      case "services.venuepages.VenuePageStore"         => Some(new InMemoryVenuePageStore)
+      case "services.identity.adapters.IdentityHistory" => Some(new InMemoryIdentityHistory)
+      case "java.time.Clock"                            => Some(Clock.fixed(at, ZoneOffset.UTC))
+      case "java.lang.String"                           => Some("contract")
+      case _                                            => None
     }).fold(missing => fail(missing), identity)
   }
 
