@@ -1147,8 +1147,14 @@ jobs:
             - name: Fail the leg on the recording's health
               if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'
               shell: bash
+              env:
+                  UNKNOWN: ${{ steps.publish.outputs.recording-health-unknown }}
               run: |
-                  echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table on the summary"
+                  if [ "$UNKNOWN" = proxy-unreachable ]; then
+                      echo "::error::UNKNOWN: proxy unreachable — ${{ inputs.country }}'s recording met the residential proxy down, so the origins it routes through it were not judged; fix the proxy, not the code — see the Recording health table on the summary"
+                  else
+                      echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table on the summary"
+                  fi
                   exit 1
 
             # THE CAPTURE'S OWN VERDICT: a recording's convergence row is red only when it captured nothing usable -- no

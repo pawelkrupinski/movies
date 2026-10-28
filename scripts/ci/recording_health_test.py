@@ -63,8 +63,8 @@ class RecordingHealthTest(unittest.TestCase):
         self.tree.failure("https://www.metacritic.com/movie/x", 404, BEFORE, 3)
         self.tree.failure("https://www.metacritic.com/movie/y", 404, DURING, 2)
         origins = self.manifest()["origins"]
-        self.assertEqual(origins["api.themoviedb.org"], {"tree": 57, "answered": 7, "notFound": 0, "refused": 0, "refusals": {}})
-        self.assertEqual(origins["www.metacritic.com"], {"tree": 0, "answered": 0, "notFound": 2, "refused": 0, "refusals": {}})
+        self.assertEqual(origins["api.themoviedb.org"], {"tree": 57, "answered": 7, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0})
+        self.assertEqual(origins["www.metacritic.com"], {"tree": 0, "answered": 0, "notFound": 2, "refused": 0, "refusals": {}, "proxyDown": 0})
 
     def test_an_entry_whose_compressed_body_is_damaged_is_skipped_as_undecodable(self):
         self.tree.failure("https://www.cineworld.co.uk/api/movies", 403, DURING)
@@ -166,6 +166,37 @@ class RecordingHealthTest(unittest.TestCase):
         self.assertEqual(code, 1)
         flags = health.judge(self.manifest(), None)
         self.assertEqual([(f.origin, f.blocking) for f in flags], [("api.themoviedb.org", True), ("www.omdbapi.com", False)])
+
+    def test_an_origin_refused_with_the_residential_proxy_unreachable_is_unknown_not_refusing(self):
+        # Record scrape fixtures #2238: Cineworld 403s CI's own address, and the recording's direct -> proxy route
+        # met Decodo answering `Tunnel failed, got: 503` on every ask. That is the proxy down, not a verdict on the
+        # origin: UNKNOWN (exit 3), never a red the code is asked to fix.
+        composite = ("java.lang.RuntimeException: All 2 backends failed for get https://www.cineworld.co.uk/api/movies:\n"
+                     "  direct: HttpStatusException: HTTP 403 for GET https://www.cineworld.co.uk/api/movies\n"
+                     "  proxy: IOException: Tunnel failed, got: 503")
+        self.tree.response("api.themoviedb.org", DURING, 30)
+        self.tree.failure("https://www.cineworld.co.uk/api/movies", "", DURING, 66, message=composite)
+        flags = health.judge(self.manifest(), None)
+        self.assertEqual([(f.origin, f.reason) for f in flags], [("www.cineworld.co.uk", "proxy-unreachable")])
+        summary = pathlib.Path(self.dir.name) / "summary.md"
+        code = health.main([str(self.tree.root), "--since", str(SINCE), "--summary", str(summary), "--title", "uk"])
+        self.assertEqual(code, 3)
+        self.assertIn("UNKNOWN: the residential proxy was unreachable", summary.read_text())
+        self.assertIn("**PROXY-UNREACHABLE (UNKNOWN)**", summary.read_text())
+
+    def test_an_origin_that_refused_through_a_working_proxy_too_is_still_refusing(self):
+        composite = ("java.lang.RuntimeException: All 2 backends failed for get https://www.cineworld.co.uk/api/movies:\n"
+                     "  direct: HttpStatusException: HTTP 403 for GET https://www.cineworld.co.uk/api/movies\n"
+                     "  proxy: HttpStatusException: HTTP 403 for GET https://www.cineworld.co.uk/api/movies")
+        self.tree.failure("https://www.cineworld.co.uk/api/movies", "", DURING, 66, message=composite)
+        self.assertEqual([(f.origin, f.reason) for f in health.judge(self.manifest(), None)], [("www.cineworld.co.uk", "refusing")])
+        self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE)]), 1)
+
+    def test_a_real_refusal_beside_a_proxy_outage_is_still_a_red(self):
+        down = "java.lang.RuntimeException: All 2 backends failed:\n  direct: HTTP 403\n  proxy: HttpConnectTimeoutException: HTTP connect timed out"
+        self.tree.failure("https://www.cineworld.co.uk/api/movies", "", DURING, 30, message=down)
+        self.tree.failure("https://api.themoviedb.org/3/movie/1", 429, DURING, 40)
+        self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE)]), 1)
 
     def test_a_missing_previous_manifest_falls_back_to_the_absolute_floor(self):
         self.tree.response("api.themoviedb.org", DURING, 30)

@@ -97,6 +97,11 @@ outputs:
       what it was asked or vanished from the tree, or the tree could not be judged at all; 'true' when none did;
       empty when not judged (a hermetic leg, or this run's start or the last manifest unreadable).
     value: ${{ steps.health.outputs.healthy }}
+  recording-health-unknown:
+    description: >-
+      'proxy-unreachable' when the only origins flagged were refused with the residential proxy unreachable
+      (recording_health.py's exit 3): the proxy is down, the origins not judged -- an UNKNOWN, not a code red.
+    value: ${{ steps.health.outputs.unknown }}
 
 runs:
   using: composite
@@ -187,8 +192,14 @@ runs:
           verdict=0
           python3 scripts/ci/recording_health.py "test/resources/fixtures/enrichment-$CODE" --since "$since" \
               --previous "$previous" --write "$manifest" --summary "$GITHUB_STEP_SUMMARY" --title "$CODE" || verdict=$?
+          # 3: the origins it flagged were refused with the residential proxy unreachable -- UNKNOWN, the proxy to fix, not
+          # the code (Record scrape fixtures #2238). Still not healthy: no baseline is published from it.
           # 2: it could not judge the tree (unreadable, or holding nothing) — no verdict, never a healthy one: failed as unjudged.
-          [ "$verdict" -gt 1 ] && echo "::error::recording_health.py could not judge $CODE's recording ($verdict) — failing it unjudged"
+          case "$verdict" in
+              0|1) ;;
+              3) echo "unknown=proxy-unreachable" >> "$GITHUB_OUTPUT" ;;
+              *) echo "::error::recording_health.py could not judge $CODE's recording ($verdict) — failing it unjudged" ;;
+          esac
           echo "healthy=$([ "$verdict" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
     - name: Publish this healthy recording's manifest as the next one's baseline
