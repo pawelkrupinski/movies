@@ -269,7 +269,7 @@ object IdentityDrift {
 
   /** The resolve's inputs over `reads`: prod's pins where they are read (the local mirror, a recording's capture of
    *  them), as the worker builds its own ([[ResolveInputs.of]]). */
-  def inputsOf(reads: Reads): ResolveInputs = ResolveInputs.of(reads.prod.pins)
+  def inputsOf(reads: Reads): ResolveInputs = ResolveInputs.of(reads.prod.pins, TakeJudgements.Index.bundled(reads.country.code))
 
   /** What a whole resolve answers its questions from: `lookups`, the model's and the stage's, and `found`, the stage's IMDb
    *  finds ahead of the recording's — the CI gate's the recording's alone ([[WholeLookups.recorded]]), the live drift

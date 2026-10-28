@@ -158,7 +158,7 @@ class WorkerWiring(
     val model = new IdentityModelService(
       newModel   = () => {
         // the one builder of a resolve's inputs, the drift checks' and the identity slice's too
-        val inputs = ResolveInputs.of(pinStore.all())
+        val inputs = ResolveInputs.of(pinStore.all(), TakeJudgements.Index.bundled(country.code))
         val lookupsNow = new TrackedLookups(cutoverLookups(identityReads), identityReads, Some(identityPrefetchPool))
         tracked = Some(lookupsNow)
         inputs.incremental(lookupsNow, titleNormalizer,

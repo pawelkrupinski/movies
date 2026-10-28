@@ -2446,6 +2446,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     same.violations shouldBe 0
   }
 
+  "A hand judgement calling a take wrong" should "deny the listing that film, as a never-this-film pin does, unless its venue's judges it right" in {
+    val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
+    val dated = listing(Helios, "Opętanie", Some(1981), Some("Andrzej Żuławski"))
+    def judged(js: TakeJudgements.Judgement*) =
+      IdentityResolver.resolve(Seq(dated), new FilmTable(films, normalizer), normalizer, ResolveInputs.of(Nil, TakeJudgements.Index(js)).copy(calibration = weights))
+    judged().decisionOf(dated.key).film shouldBe Some(1)
+    judged(TakeJudgements.Judgement("pl", "*", "Opętanie", "tmdb:1", right = false)).decisionOf(dated.key).film should not be Some(1)
+    judged(TakeJudgements.Judgement("pl", "*", "Opętanie", "tmdb:1", right = false),
+      TakeJudgements.Judgement("pl", Helios.displayName, "Opętanie", "tmdb:1", right = true)).decisionOf(dated.key).film shouldBe Some(1)
+  }
+
   "Learned cannot-links" should "veto by the artefact's rules, and never on missing evidence" in {
     val rule = IdentityCalibration.CannotLinkRule("director in {different} AND year.distance >= 6", "listing-film",
       Seq(IdentityCalibration.Condition("director", in = Seq("different")), IdentityCalibration.Condition("year.distance", atLeast = Some(6))),

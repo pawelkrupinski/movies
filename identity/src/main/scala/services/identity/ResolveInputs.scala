@@ -25,8 +25,10 @@ final case class ResolveInputs(pins: PinConstraints, calibration: IdentityCalibr
 
 object ResolveInputs {
 
-  /** Production's inputs: the operator `pins` (`identity_pins`), the resolver's calibration and its title decorations. */
-  def of(pins: Seq[Pin]): ResolveInputs = ResolveInputs(PinConstraints(pins), IdentityCalibration.resolver, TitleDecorations.resolver)
+  /** Production's inputs: the operator `pins` (`identity_pins`), the hand judgements of takes (`judged`: the worker's
+   *  bundled ones, [[TakeJudgements.Index.bundled]]), the resolver's calibration and its title decorations. */
+  def of(pins: Seq[Pin], judged: TakeJudgements.Index = TakeJudgements.Index.Empty): ResolveInputs =
+    ResolveInputs(PinConstraints(pins, judged), IdentityCalibration.resolver, TitleDecorations.resolver)
 
   /** No pins: a spec's corpus, or a tool that reads no curation and says so. */
   val Unpinned: ResolveInputs = of(Nil)

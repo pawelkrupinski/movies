@@ -33,7 +33,7 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     val other  = listing("Lorenzo Fumo - OUT OF OFFICE")
     val lalka  = listing("Lalka")
     val films  = Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)), 2 -> IdentityMeasures.Film("Lalka", year = Some(2026)))
-    val judged = new TakeJudgements.Index(Seq(
+    val judged = TakeJudgements.Index(Seq(
       TakeJudgements.Judgement("pl", "*", "Giorgia  Fumo - OUT OF OFFICE", "tmdb:1", right = true),
       TakeJudgements.Judgement("pl", KinoMuza.displayName, "Lalka", "tmdb:2", right = false)))
     var reported = Map.empty[Signal, Int]

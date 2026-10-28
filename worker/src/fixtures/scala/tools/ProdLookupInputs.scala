@@ -74,7 +74,7 @@ object ProdLookupInputs {
   def capture(prod: TmdbDocuments, pages: Seq[BsonDocument], listings: Seq[Listing], pins: Seq[Pin], country: Country, clock: Clock): Captured = {
     val docs = new Capturing(prod)
     IdentityResolver.resolve(listings, lookups(docs, pages, enrichersOf(country, clock), Refused, country, clock), TitleNormalizer.forCountry(country),
-      ResolveInputs.of(pins))
+      ResolveInputs.of(pins, services.identity.TakeJudgements.Index.bundled(country.code)))
     docs.captured(pages)
   }
 
