@@ -109,6 +109,11 @@ class ArchiveReplayWiring(
   override protected def pacingFleet: FleetHostPace =
     if (hermetic.isDefined) ArchiveReplayWiring.UnpacedFleet else super.pacingFleet
 
+  /** Over a hermetic leaf a retried IMDb-id lookup is answered exactly as its first ask was, so retrying it only made the
+   *  outcome hang on the wall clock: a retry fired 30 s or more later, and a pass snapshotted before it landed held no
+   *  imdbId where a pass snapshotted after held one (Verify scrape recording #2245). Concluded in the pass instead. */
+  override protected def imdbIdRetriesFailures: Boolean = hermetic.isEmpty
+
   /** A replay or a recording spends no part of prod's OMDb day ([[services.enrichment.OmdbBudget]]): a hermetic leaf
    *  asks no wire, and a recording asks with CI's own key. Metered, a run's frozen clock would also set how much of
    *  the day its bulk sweep may use, and the takes would move with the hour the clock was pinned to. */

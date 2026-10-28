@@ -341,7 +341,17 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   private def hermeticWiring(cache: Option[EnrichmentCache], missing: MissingFixtures): ArchiveReplayWiring =
     new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, new FetchOnlyStorage, fixtureTree, settings.FixtureRoot.RepositoryRelative, Some(missing))
 
-  "a hermetic archive replay" should "refuse an unrecorded enrichment request and name its fixture" in {
+  "a hermetic archive replay" should "conclude a failed IMDb-id lookup in the pass, where a recording retries it" in {
+    val hermetic = hermeticWiring(None, new MissingFixtures)
+    stoppedAtEnd += hermetic.imdbIdResolver
+    hermetic.imdbIdResolver.retriesFailures shouldBe false
+    useFreshTree()
+    val recording = wiringWith(None, new CountingLeaf)
+    stoppedAtEnd += recording.imdbIdResolver
+    recording.imdbIdResolver.retriesFailures shouldBe true
+  }
+
+  it should "refuse an unrecorded enrichment request and name its fixture" in {
     val missing = new MissingFixtures
     val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), _root_.tools.SpecStopwatch.Frozen)), missing)
     val url     = "https://www.omdbapi.com/?t=Dune&type=movie&apikey=secret"

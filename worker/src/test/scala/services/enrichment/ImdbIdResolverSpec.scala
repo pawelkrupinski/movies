@@ -224,6 +224,26 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     asked.get shouldBe first
   }
 
+  // A hermetic replay's wire answers a retry as it answered the first ask, so a retry there only raced the pass's
+  // snapshot on the wall clock (Verify scrape recording #2245): with retries off, a failed lookup is never asked again.
+  it should "not retry a failed lookup when its wiring turns retries off" in {
+    val clock     = new tools.MutableClock(java.time.Instant.parse("2026-10-04T10:00:00Z"))
+    val scheduler = new tools.ManualScheduler(clock)
+    val asked     = new java.util.concurrent.atomic.AtomicInteger()
+    val row   = MovieRecord(tmdbId = Some(1024))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Swan Lake", Some(2027), row)), normalizer = titleNormalizer),
+      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val resolver = new ImdbIdResolver(cache, imdbAnswering { url =>
+      asked.incrementAndGet(); throw new java.io.IOException(s"HERMETIC: no recorded fixture for $url")
+    }, retries = scheduler, retriesFailures = false, random = () => 0.0, stopwatch = _root_.tools.SpecStopwatch.Frozen)
+    resolver.onImdbIdMissing(ImdbIdMissing("Swan Lake", Some(2027), "Swan Lake"))
+    resolver.drain()
+    val first = asked.get
+    first should be > 0
+    scheduler.advance(java.time.Duration.ofDays(1)); resolver.drain()
+    asked.get shouldBe first
+  }
+
   "ImdbIdResolver.retryDelay" should "double from a minute to six hours, jittered, and wait at least what the source asked" in {
     val failure = new RuntimeException("down")
     ImdbIdResolver.retryDelay(0, failure, random = 1.0) shouldBe ImdbIdResolver.FirstRetryDelay

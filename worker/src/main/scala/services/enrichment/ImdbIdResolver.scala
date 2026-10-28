@@ -67,6 +67,11 @@ class ImdbIdResolver(
   // next attempt ([[ImdbIdResolver.retryDelay]]). Nothing else re-asks a missing id outside Poland
   // (Filmweb's refresh does there), so without it one blip cost the film its IMDb rating for good.
   retries: ScheduledExecutorService = DaemonExecutors.scheduler("imdb-id-retry"),
+  // Whether a failed lookup waits on [[retries]] at all. False only over a hermetic replay (`ArchiveReplayWiring`),
+  // whose wire answers a retry exactly as it answered the first ask: there a retry fired a minute or more later on the
+  // WALL clock, so whether its answer landed before a pass was snapshotted decided the film's imdbId, and two passes
+  // over one recording disagreed (Verify scrape recording #2245: 'Royal Ballet & Opera 2026/27: Swan Lake').
+  val retriesFailures: Boolean = true,
   random: () => Double = () => scala.util.Random.nextDouble(),
   // The wiring's monotonic clock: how long a `drain` has waited on the resolver's pool.
   stopwatch: tools.Stopwatch
@@ -128,6 +133,9 @@ class ImdbIdResolver(
     catch {
       case NonFatal(failure) if ImdbIdResolver.definitive(failure) =>
         logger.info(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed for good: ${failure.getMessage}")
+      case NonFatal(failure) if !retriesFailures =>
+        logger.info(s"IMDb-id: lookup for '$title' (${year.getOrElse("?")}) [search='$searchTitle'] failed, not concluded; " +
+          s"not retried (a hermetic replay answers a retry as it answered this): ${failure.getMessage}")
       case NonFatal(failure) =>
         val delay = ImdbIdResolver.retryDelay(attempt, failure, random())
         // None: a retry for the film already waits. A failed schedule is the scheduler stopping with the worker:
