@@ -557,6 +557,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "not take a namesake its title names only as another country's title, beside a credited sibling of the film it names" in {
+    // DE CinemaxX "Titans" ×3 (recording 573, Identity model convergence #2375): TMDB's search for "Titans" ranks "Remember
+    // the Titans" (2000), whose Danish title it is, first and the 2026 Malayalam "Titans" ninth; CinemaxX Essen credits
+    // that film's director. The bare listings took the 2000 film alone whenever no UNTAKEN sibling denied it, and went
+    // back to the 2026 film once one came: the drift replay's seed-1 flip.
+    val films    = Seq(F(10637, "Remember the Titans", 2000, "Boaz Yakin", 113, 14, alternatives = Seq("Titans")),
+      F(869152, "Titans", 2026, "Prince Joy", 0, 1))
+    val credited = listing(Multikino, "Titans", director = Some("Prince Joy"))
+    val bare     = Seq(Helios, KinoApollo, Rialto).map(listing(_, "Titans"))
+    val r = shipped(credited +: bare, films)
+    r.decisionOf(credited.key).film shouldBe Some(869152)
+    bare.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(869152)))
+  }
+
+  it should "keep the film its own feed links, beside a credited sibling of the namesake its title names" in {
+    // DE Metro-Kino im Schloßhof's "Billie" [96′] (recording 573): Cineamo links it to the 2020 Billie Holiday documentary,
+    // "Billie" only by its original title; Hansa Kino bills Sheri Hagen's 2026 "Billie" with her credit. Withdrawing the
+    // linked take for the namesake (the Titans rule above, unguarded) moved it to Hagen's 108′ film.
+    val films    = Seq(F(649137, "Billie - Legende des Jazz", 2020, "James Erskine", 96, 2, original = Some("Billie")),
+      F(1544034, "Billie", 2026, "Sheri Hagen", 108, 1))
+    val credited = listing(Multikino, "Billie", director = Some("Sheri Hagen"))
+    val linked   = fed(listing(Helios, "Billie", runtime = Some(96)), "cineamo", "649137m")
+    val r = shipped(Seq(credited, linked), films)
+    r.decisionOf(credited.key).film shouldBe Some(1544034)
+    withClue(r.decisionOf(linked.key).render)(r.decisionOf(linked.key).film shouldBe Some(649137))
+  }
+
   "A broadcast's bare listing" should "not take an old film its title-linked sibling's season denies" in {
     // The Met's 2026/27 "Samson et Dalila": one venue names the season, another lists the bare
     // title. TMDB's search for the Polish title returns only DeMille's 1949 film.

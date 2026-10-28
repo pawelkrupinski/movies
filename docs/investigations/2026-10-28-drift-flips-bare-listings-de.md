@@ -1,14 +1,13 @@
-# 2026-10-28 — Germany's drift flips: a bare listing's take hangs on which sibling listings are present (OPEN)
+# 2026-10-28 — Germany's drift flips: a bare listing's take hangs on which sibling listings are present (Titans FIXED, CAMOUFLAGE OPEN)
 
 Identity model convergence #2375 (run 3558, and #2335, run 3509, on the same code) fails `takes-drift-1 (germany)`
 and `takes-drift-2 (germany)` on FLIPS alone: 0 divergences from a whole resolve, and takes that went back to a film
 they left (`services.identity.TakeFlips`). Both are model takes of listings that bill a bare title. Both are real
 resolver behaviour, not artefacts of the replay. Prod meets the same states whenever a sibling listing's run ends
-first or starts later. Neither is fixed here: each fix moves the model over whole corpora and needs the full measure
-(below). PL's `takes-drift-1` row (Kino Eva's "LALKA", changed with its inputs unchanged) is a false flag, cleared by
+first or starts later. Each fix moves the model over whole corpora and needs the full measure (below). PL's `takes-drift-1` row (Kino Eva's "LALKA", changed with its inputs unchanged) is a false flag, cleared by
 the flip predicate's fix ("Flip check: a model take moving at a step that moved listings moved with its inputs"). The
-Titans fix below was written, replayed and measured whole-corpus, and parked: it moves another take to a likely wrong
-film ("The Titans fix, measured").
+Titans fix below was written, replayed and measured whole-corpus, parked (it moved another take to a likely wrong film),
+then guarded and landed by red fixer #2452 ("The Titans fix, measured"). CAMOUFLAGE (seed 2) stays open.
 
 ## CinemaxX "Titans" (seed 1): a namesake by a Danish alternative title, withdrawn only by a sibling taken by nothing
 
@@ -94,7 +93,7 @@ Werkstattkino's listing as 1735950 now, with Gröben's listing present.
    backs the linked film (the counter-case: two old films, each named once); or keep a bare listing in the family its
    title key joined while the bridge is away.
 
-### The Titans fix, measured (parked)
+### The Titans fix, measured (landed, guarded)
 
 `Families.siblingDenying`: a sibling taken alone withdraws a node's alone take when the node's title names the
 sibling's film exactly, the node's take reads the title otherwise, no other venue corroborates that take, and the
@@ -110,9 +109,16 @@ sibling's denial compared a fact the node did not publish. Code: tag `experiment
     Zamek bills that week; 8915 reads "Amelia" only as the original title of "Amelia Earhart" (2009). Likely right,
     unjudged.
 
-Before it lands: keep a take the node's own feed links (and no overrule sets aside) out of the withdrawal (CinemaxX's
-bare node links 869152, the right film, so its withdrawal of 10637 stands), judge Kino ODEON's "Amelia", and measure
-again.
+Landed by red fixer #2452 (convergence #2452, run 3635: the same three Titans flips on seed 1) with the guard it lacked:
+a take of the film the node's own feed links, its link standing (`FamilyScope.overruled` empty), is never withdrawn by
+a sibling taken alone. CinemaxX's bare node links 869152, the right film, so its withdrawal of 10637 stands; Metro-Kino's
+"Billie" keeps 649137 (`IdentityResolverCasesSpec`: "keep the film its own feed links"). Kino ODEON's "AMELIA" is judged:
+the venue's own synopsis is Amélie's (Amelia lives in Paris, works in a café). Recording 573:
+
+- the drift replay (`scripts/identity-slice de --drift --recording 573`, both seeds, local): 3 flips -> 1, the seed-2
+  CAMOUFLAGE alone; 0 divergences;
+- `scripts/identity-measure-local --base 86d10e36f` (de, pl, uk, us): one model take moves, PL Kino ODEON's "AMELIA"
+  8915 -> 194, a cure; DE, UK and US move nothing, every final take unchanged.
 
 Each changes shared resolver code, so the whole-corpus verdict is `scripts/identity-measure` (every country). The DE
 rows' own check is the drift replay on CI, which lays the recording. `{fixtures}` is the laid pair, so the capture

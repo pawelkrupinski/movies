@@ -29,10 +29,11 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   /** A node's ALONE acceptance, withdrawn when a title-linked sibling that accepted nothing itself
    *  DENIES the film: a bare "Samson i Dalila" beside the same venue family's "…: live in hd
    *  2026/27" has no evidence of its own against DeMille's 1949 film, but its sibling's season
-   *  is. The node then goes to the group vote with its siblings, where every member's denial holds. */
+   *  is — or a sibling that took the film the node's title names more closely ([[siblingDenying]]).
+   *  The node then goes to the group vote with its siblings, where every member's denial holds. */
   private def withoutSiblingDenials(members: Seq[EvidenceNode], scope: FamilyScope,
                                     alone: Map[String, Accepted]): Map[String, Accepted] =
-    alone.filter { case (id, (best, _)) => deniedBySibling(nodeById(id), members, scope, best, alone.contains).isEmpty }
+    alone.filter { case (id, (best, _)) => deniedBySibling(nodeById(id), members, scope, best, alone.get(_).map(_._1)).isEmpty }
 
   /** The title-linked sibling, itself taken by no rule alone, whose own evidence denies `best`'s film — and its denial:
    *  why a node's own match is withdrawn ([[withoutSiblingDenials]]), which the node's trace says. A denial by the
@@ -52,24 +53,50 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  stagings are two productions, and a banner wrongly learned as another house denies nothing. UK, run 38355584482:
    *  Flicks' "RBO Cinema Season 2026-27: Macbeth" ×34 (RBO's cinema season relays the Met) withdrew Savoy's "The
    *  Metropolitan Opera: Macbeth" ×6 from the Met's 2026/27 record, and its Fanciulla billing (the original title Vue's
-   *  feed carries) withdrew Vue's "MET Opera 2026-27: La Fanciulla Del West" ×81 from the Met's 2026/27 Fanciulla. */
+   *  feed carries) withdrew Vue's "MET Opera 2026-27: La Fanciulla Del West" ×81 from the Met's 2026/27 Fanciulla.
+   *
+   *  A sibling a rule took alone (`takenAlone`: its own take) withdraws nothing — its denial says it is another film, not
+   *  that the node is — unless the film it took is one the node's own title names exactly while the node's take reads its
+   *  title otherwise (another country's title, the original one) and no other venue's listing corroborates that take,
+   *  and its denial compared a fact the node did not publish. The node's title then names the sibling's film no less
+   *  than its own take, and nothing singles that take out: DE CinemaxX's bare "Titans" ×3 took "Remember the Titans"
+   *  (2000), whose Danish title it is, beside CinemaxX Essen's "Titans" crediting the 2026 Malayalam film's director —
+   *  and back whenever no untaken sibling denied it (recording 573; the drift replay's seed-1 flip of convergence
+   *  #2375). A corroborated take stands: Werkstattkino's bare "CAMOUFLAGE" keeps the 2026 "Камуфляж", which four venues
+   *  bill, beside Kino Krokodil's "Camouflage" [2016] crediting Imge Özbilge. So does a take of the film the node's own
+   *  feed links, its link standing ([[FamilyScope.overruled]]): DE Metro-Kino im Schloßhof's 96′ "Billie", which
+   *  Cineamo links to the 2020 Billie Holiday documentary, beside Hansa Kino's "Billie" crediting Sheri Hagen's 2026
+   *  film (recording 573). */
   def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
-                      takenAlone: String => Boolean): Option[(EvidenceNode, String)] =
+                      takenAlone: String => Option[Scored]): Option[(EvidenceNode, String)] =
     siblingDenying(node, members, scope, best, takenAlone).map { case (sibling, other) => sibling -> other.denial.fold("denied")(_.why) }
 
   /** [[deniedBySibling]]'s sibling and its own scoring of the film, which holds the denial. */
   def siblingDenying(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
-                     takenAlone: String => Boolean): Option[(EvidenceNode, Scored)] = {
+                     takenAlone: String => Option[Scored]): Option[(EvidenceNode, Scored)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
     val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film) ||
       RelayStage.particularRecordOf(best.listing, best.candidate.film)
-    def withdraws(denial: Scored) =
+    def comparedUnpublished(denial: Scored) =
+      (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty
+    def withdraws(denial: Scored, byTaken: Boolean) =
       !(best.houseProduction && denial.denial.exists(_.kind == Denial.Kind.AnotherHousesSeason)) &&
-        (!denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty)
+        (!(denial.deniedByCutOnly || byTaken) || comparedUnpublished(denial))
+    // the node's take read by another title, corroborated by no other venue nor linked by its own feed: only then may a
+    // sibling taken alone withdraw it
+    lazy val readOtherwise = !best.category("title").contains("exact") && best.number("venues.corroborating").forall(_ <= 0) &&
+      !(scope.feedLinked(node).exists(_._2 == best.candidate.tmdbId) && scope.overruled(node).isEmpty)
+    def namedCloser(taken: Scored) = readOtherwise && taken.candidate.tmdbId != best.candidate.tmdbId &&
+      scope.of(node).exists(own => own.candidate.tmdbId == taken.candidate.tmdbId && own.category("title").contains("exact"))
     if (ownProduction) None
-    else members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
-      .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied && withdraws(other))
-        .map(other => sibling -> other))
+    else members.iterator.filter(_.id != node.id)
+      .flatMap { sibling =>
+        val taken = takenAlone(sibling.id)
+        // the title link last: a sibling taken alone almost never may withdraw, and a family can hold thousands of them
+        if (!taken.forall(namedCloser) || !links.titleLinked(node, sibling)) None
+        else scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied &&
+          withdraws(other, taken.isDefined)).map(other => sibling -> other)
+      }
       .nextOption()
   }
 

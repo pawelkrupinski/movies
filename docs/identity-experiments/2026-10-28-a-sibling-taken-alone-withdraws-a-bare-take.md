@@ -1,4 +1,4 @@
-# 2026-10-28 — a sibling taken alone withdraws a bare take its title reads only by another title — PARKED, it withdraws a take the venue's own feed links (pinned 573, base `86d10e36f`)
+# 2026-10-28 — a sibling taken alone withdraws a bare take its title reads only by another title — PARKED, it withdraws a take the venue's own feed links (pinned 573, base `86d10e36f`); LANDED 2026-10-29 with that guard
 
 - **What:** `Families.siblingDenying` let only a title-linked sibling taken by NO rule alone withdraw a node's alone take.
   The experiment lets a sibling taken alone withdraw it too, when the node's title names the sibling's film exactly, the
@@ -21,3 +21,7 @@
   `ResolverDecisions`, an `IdentityResolverCasesSpec` case, the pinned slices `de-werkstattkino-e-v-camouflage` and
   `es-bahia-mar-escape-room-2` (re-pinned to the 2026 film it then takes), and a judgement row for Werkstattkino's
   "CAMOUFLAGE".
+- **Landed** 2026-10-29 (red fixer #2452): with the guard named above (a take of the film the node's own feed links,
+  its link standing, is never withdrawn by a sibling taken alone). Metro-Kino's "Billie" keeps 649137; the whole-corpus
+  local measure moves only PL Kino ODEON's "AMELIA" 8915 -> 194, judged right (its synopsis is Amélie's); the DE drift
+  replay keeps only seed 2's CAMOUFLAGE flip (`docs/investigations/2026-10-28-drift-flips-bare-listings-de.md`).

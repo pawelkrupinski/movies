@@ -73,9 +73,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   shifts a block of phases under nearest-boundary counting, how to prove it, the damping options, and the missing
   due-set gauge.
 - [investigations/2026-10-28-drift-flips-bare-listings-de.md](investigations/2026-10-28-drift-flips-bare-listings-de.md) —
-  OPEN: convergence #2375's German drift flips, CinemaxX "Titans" and Werkstattkino "CAMOUFLAGE". A bare listing's take
-  follows which sibling or bridge listing is present. The slice variants that show it, and the two resolver fixes they
-  point to, unmeasured.
+  convergence #2375's German drift flips: CinemaxX "Titans" (fixed: a sibling taken alone withdraws a bare take read by
+  another title, never one its own feed links) and Werkstattkino "CAMOUFLAGE" (OPEN). A bare listing's take follows
+  which sibling or bridge listing is present. The slice variants that show it, and the fixes they point to.
 - [investigations/2026-10-22-footprint-measure.md](investigations/2026-10-22-footprint-measure.md) — the footprint
   measure (`identity-measure --footprint`): why a title-rule change can be proved to move no take by replaying the base's
   title readings, the ideas rejected as unsound, and its validation against eight full measures.

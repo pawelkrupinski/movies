@@ -50,7 +50,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
     val scope = families.scopeOf(node)
     !families.bestOf.contains(node.id) && !FeedLink.linked(node.listings).exists(_._2 == film) && scope.takenAlone(node).exists { case ((best, _), _) =>
       best.candidate.tmdbId == film && families.siblingDenying(node, scope.members, scope, best,
-        id => scope.takenAlone(scoring.generation.nodeById(id)).isDefined).exists { case (_, denial) =>
+        id => scope.takenAlone(scoring.generation.nodeById(id)).map(_._1._1)).exists { case (_, denial) =>
         denial.denial.exists(_.kind match {
           case Denial.Kind.NotTheWork(creditOverrules) => !(creditOverrules && IdentityMeasures.sameDirector(best.measures))
           case _                                       => false
