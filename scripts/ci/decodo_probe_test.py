@@ -3,9 +3,12 @@
 
 Run: python3 scripts/ci/decodo_probe_test.py
 """
+import contextlib
+import io
 import os
 import sys
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -26,6 +29,23 @@ class DecodoProbeTest(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(text.startswith("FAIL"))
         self.assertNotIn("s3cret", text)
+
+    def test_every_port_failing_is_an_error_annotation_naming_the_cause(self):
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {"DECODO_PROXY_USER": "u", "DECODO_PROXY_PASS": "s3cret"}), \
+                mock.patch.object(probe, "proxy_pool", return_value=("127.0.0.1", ["1", "2"])), \
+                mock.patch.object(probe, "probe", return_value=(False, "FAIL Tunnel connection failed: 503")), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(probe.main(), 1)
+        self.assertIn("::error::DECODO DOWN: 0/2 ports reached https://kinowo.net/ through 127.0.0.1 "
+                      "(2x FAIL Tunnel connection failed: 503)", out.getvalue())
+
+    def test_missing_credentials_is_an_error_annotation(self):
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {"DECODO_PROXY_USER": "", "DECODO_PROXY_PASS": ""}), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(probe.main(), 2)
+        self.assertTrue(out.getvalue().startswith("::error::DECODO_PROXY_USER"))
 
 
 if __name__ == "__main__":

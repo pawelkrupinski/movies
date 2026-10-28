@@ -4,8 +4,10 @@
 A port PASSES when https://kinowo.net/ answered THROUGH the tunnel with an HTTP status below 500 (2xx-4xx; a 3xx is
 not followed, it is the origin answering). It FAILS on a proxy-side error: CONNECT `Tunnel connection failed: 503`,
 407, a timeout, a refusal, a reset. Exit 0: at least one port passed; 1: none did (Decodo is down); 2: no credentials
-(a config error, not a proxy outage).
+(a config error, not a proxy outage). Both failure verdicts are `::error::` annotations, which `agentctl ci-why` ranks
+first: a step's plain output can fall outside Forgejo's per-step log slice and leave a red run reading UNCLEAR.
 """
+import collections
 import os
 import sys
 import urllib.error
@@ -52,18 +54,22 @@ def probe(host, port, user, password, url=URL, timeout=TIMEOUT):
 def main():
     user, password = headers._proxy_credentials()
     if not user or not password:
-        print("DECODO_PROXY_USER / DECODO_PROXY_PASS are not set: config error, not a proxy outage")
+        print("::error::DECODO_PROXY_USER / DECODO_PROXY_PASS are not set: config error, not a proxy outage")
         return 2
     host, ports = proxy_pool()
     passed = 0
+    failures = collections.Counter()
     for port in ports:
         ok, text = probe(host, port, user, password)
         passed += ok
+        if not ok:
+            failures[text] += 1
         print("port %s: %s" % (port, text), flush=True)
     if passed:
         print("DECODO UP: %d/%d ports" % (passed, len(ports)))
         return 0
-    print("DECODO DOWN: 0/%d ports reached %s through %s" % (len(ports), URL, host))
+    causes = ", ".join("%dx %s" % (count, text) for text, count in failures.most_common())
+    print("::error::DECODO DOWN: 0/%d ports reached %s through %s (%s)" % (len(ports), URL, host, causes))
     return 1
 
 

@@ -3,7 +3,7 @@ name: Decodo probe
 # Is the Decodo residential proxy pool answering? Opens https://kinowo.net/ through every port of
 # worker/src/main/resources/residential-proxy.properties and prints one line per port
 # (scripts/ci/decodo-probe.py): exit 0 when at least one port reached the origin, 1 when none did,
-# 2 on missing credentials. agentctl keys on this workflow's name.
+# 2 on missing credentials, both verdicts as ::error:: annotations. agentctl keys on this workflow's name.
 
 on:
     schedule:
@@ -18,7 +18,11 @@ jobs:
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
+            # No `\r` progress lines: they shift Forgejo's per-step log slices, so `agentctl ci-why` (run 2307) showed
+            # the checkout's output where the probe's verdict should have been.
             - uses: actions/checkout@v5
+              with:
+                  show-progress: false
 
             - name: Self-test the probe
               run: python3 scripts/ci/decodo_probe_test.py
