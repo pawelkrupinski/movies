@@ -79,6 +79,25 @@ class GateTest(unittest.TestCase):
             self.assertEqual(ablation.gate(""), [])
 
 
+class RelayTest(unittest.TestCase):
+    def test_the_sbt_run_s_progress_reaches_the_job_log_as_it_comes_and_the_whole_output_the_sbt_log(self):
+        # run 3559: the row timed out with its progress only in sbt-573.log, whose upload the timeout cancelled
+        import contextlib
+        import io
+        import tempfile
+        script = ("echo '[info] compiling 3 Scala sources'; echo '[info] [ablation pl] base: 10 listings in 1.0s'; "
+                  "echo '[ablation pl] b001: 2 moved in 3.5s'; echo '[de] FAILED: boom' >&2; exit 3")
+        with tempfile.TemporaryDirectory() as d:
+            log, shown = os.path.join(d, "sbt.log"), io.StringIO()
+            with contextlib.redirect_stdout(shown):
+                status = ablation.relay(["sh", "-c", script], d, log, now=lambda: "16:23:20Z")
+            self.assertEqual(status, 3)
+            self.assertEqual(shown.getvalue().splitlines(), ["16:23:20Z [ablation pl] base: 10 listings in 1.0s",
+                                                             "16:23:20Z [ablation pl] b001: 2 moved in 3.5s",
+                                                             "16:23:20Z [de] FAILED: boom"])
+            self.assertEqual(len(open(log, encoding="utf-8").read().splitlines()), 4)
+
+
 class ShardAndMergeTest(unittest.TestCase):
     def test_shards_split_the_first_round_and_merge_back_whole(self):
         configs = [{"id": f"b{i}", "rules": [f"r{i}"]} for i in range(5)]

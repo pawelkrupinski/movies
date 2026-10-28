@@ -24,6 +24,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -196,10 +197,26 @@ def run_plan(repo, recording, pair, configs, out, lock, chunk, log):
                    f"--full {','.join(wanted)} --corpus-dir {pair}/corpus --fixtures {pair}")
         argv = gate(lock) + sbt_argv(repo, command)
         print(f"[ablation] {recording}: chunk {i + 1}/{len(chunks)}, {len(part)} configurations, countries {','.join(wanted)}", flush=True)
-        with open(log, "a", encoding="utf-8") as f:
-            status = subprocess.call(argv, cwd=repo, stdout=f, stderr=subprocess.STDOUT)
+        status = relay(argv, repo, log)
         if status != 0:
             raise SystemExit(f"[ablation] {recording}: sbt run failed (exit {status}), log {log}")
+
+
+PROGRESS = re.compile(r"^(?:\[(?:info|error)\] )?(\[ablation [^\]]*\] .*|\[[^\]]+\] FAILED: .*)$")
+
+
+def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M:%SZ")):
+    """Run `argv`, its whole output appended to `log` and its progress -- IdentityRuleAblation's `[ablation <cc>] ...`
+    line per configuration and `[<cc>] FAILED: ...` -- printed as it comes, timed: a row cut off mid-run still shows in
+    its job log how far it got (run 3559 timed out with every line of it in a log whose upload the timeout cancelled)."""
+    with open(log, "a", encoding="utf-8") as f, subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                                                  text=True, errors="replace") as p:
+        for line in p.stdout:
+            f.write(line)
+            m = PROGRESS.match(line.rstrip("\n"))
+            if m:
+                print(f"{now()} {m.group(1)}", flush=True)
+        return p.wait()
 
 
 def sbt_argv(repo, command):

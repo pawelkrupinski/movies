@@ -32,7 +32,7 @@ on:
                 default: '1'
                 type: string
             only:
-                description: Ablate exactly these rules (comma-separated trace names); empty for every rule. Keep it to a few dozen, so each row ends well inside its 110 minutes.
+                description: Ablate exactly these rules (comma-separated trace names); empty for every rule. Keep it to a few dozen, so each row ends well inside its bound.
                 required: false
                 default: ''
                 type: string
@@ -57,8 +57,10 @@ jobs:
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
         # SHORT ROWS: a runner drain waits for its longest job (runs 850, 1050 held the ubuntu runner for hours). One
-        # recording and one round fit in ~20 minutes; a row cut off here still uploads its state.json.
-        timeout-minutes: 30
+        # recording and one round fit in ~25 minutes. The ablation step carries its own bound: a JOB timeout cancels the
+        # `always()` upload too (#2376 was cut 27 minutes into its step and lost the round and its log), a step's does
+        # not, so a row cut there still uploads its state and the configurations it resolved. Bounds: CiRowTimeoutSpec.
+        timeout-minutes: 45
         permissions:
             contents: read
             actions: read
@@ -124,6 +126,12 @@ jobs:
                   gh run download "$RESUME" -R "$GITHUB_REPOSITORY" --name identity-rule-ablation-shard-0 --dir "$RUNNER_TEMP/resume"
                   mkdir -p ablation
                   cp "$RUNNER_TEMP/resume/ablation/state.json" ablation/state.json
+                  # and the rounds' resolved configurations (moves-<cc>.jsonl, done-<cc>): a row cut mid-round carries on
+                  # from the last configuration it resolved, not from the round's start
+                  for round in "$RUNNER_TEMP"/resume/ablation/round-*; do
+                      if [ -d "$round" ]; then cp -R "$round" ablation/; fi
+                  done
+                  echo "carried on: $(find ablation -name 'done-*' | wc -l) configuration-countries already resolved"
                   python3 -c 'import json; s=json.load(open("ablation/state.json")); print("resuming round", s["round"], "with", len(s["pending"] or []), "configurations")'
 
             - name: Lay out the recordings
@@ -153,6 +161,7 @@ jobs:
 
             - name: Ablate this shard's batches
               shell: bash
+              timeout-minutes: 34
               env:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
                   SBT_OPTS: -Xmx8g
@@ -162,10 +171,15 @@ jobs:
                   ROUNDS: ${{ inputs.rounds }}
                   SHARD: ${{ matrix.shard }}
               run: |
+                  . scripts/ci/bounded-step.sh
                   set -o pipefail
                   python3 -I scripts/identity_rule_ablation.py --out ablation --recordings "$RECORDINGS" \
                       --kinds "$KINDS" --max-rounds "$ROUNDS" \
                       --shard "$SHARD/$SHARDS" ${ONLY:+--only "$ONLY"} 2>&1 | tee ablation.out
+
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
 
             - uses: actions/upload-artifact@v6
               if: always()
@@ -177,6 +191,7 @@ jobs:
                       ablation/state.json
                       ablation/report.md
                       ablation/round-*/*/*/moves-*.jsonl
+                      ablation/round-*/*/*/done-*
                       ablation/sbt-*.log
                       ablation.out
                   retention-days: 14
