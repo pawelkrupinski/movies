@@ -710,7 +710,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       !again
     })
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
-      case Some(w) => pass.asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
+      // its questions not all answered yet: a resolve now could reach no verdict — or, its fill read blind, the verdict
+      // that read gave, at answers nothing has been filed over since: a resolve now would read the very same
+      case Some(w) => pass.asked ++= w.gaps; w.read
       case None    => resolved(decision, id, digest, listings, pass)
     })
   }
@@ -784,8 +786,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten, refused = weighed.refused)
         if (fill == Answer.Unknown) {
           // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
-          // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5)
-          waiting(id) = AgreementStage.Waiting(digest, Set.empty, blindAt = Some(version))
+          // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5).
+          // The wait holds what the pass read, handed back while nothing is filed: dropped, the next decision of the same
+          // cluster at the same answers read no verdict and took none — a re-resolve of the family elsewhere flipped the
+          // take, the next filing flipped it back (UK Cineworld's "RBO Cinema Season 2026-27: La Fanciulla Del West" ×73)
+          waiting(id) = AgreementStage.Waiting(digest, Set.empty, blindAt = Some(version), read = Some(verdict))
           held.uncheck(id)
         } else {
           if (!held.get(id).contains(verdict)) pass.moved += verdict
@@ -1150,8 +1155,10 @@ object AgreementStage {
   object Metrics { val Silent: Metrics = _ => () }
 
   /** A cluster (or a take's correction) waiting on answers: its listings' digest and the questions it waits on — none where
-   *  only its fill's TMDB answers were missing (`blindAt`), resolved again once something is filed. */
-  private[agreement] final case class Waiting(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None)
+   *  only its fill's TMDB answers were missing (`blindAt`), resolved again once something is filed, and until then read as
+   *  the verdict that resolve gave (`read`). */
+  private[agreement] final case class Waiting(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None,
+                                              read: Option[StoredVerdict] = None)
   /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had
    *  no answer, to be read again at another — with what the read took (its receipt). */
   private[agreement] final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long], reads: Map[Dependency, Long])

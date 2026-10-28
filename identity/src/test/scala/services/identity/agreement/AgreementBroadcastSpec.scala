@@ -143,6 +143,34 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
       .film shouldBe Some(metFanciulla.id)
   }
 
+  // prod UK 2026-10-28 (worker 55d5aaf): Cineworld's 73 "RBO Cinema Season 2026-27: La Fanciulla Del West" flipped none <->
+  // the Met's record every 2-6 minutes, 4,322 take changes by 07:00Z. The cluster's fill read a TMDB answer its store did
+  // not hold — its Flicks page unread — so the verdict was read for that pass and kept nowhere, the cluster waiting on
+  // TMDB until something was filed. A scrape elsewhere in the family handed the stage a new decision for the same cluster
+  // at the same version: the wait was not due, the verdict read was gone, and the cluster took none; the next filing made
+  // it due, and it took the Met's record again
+  "a cluster whose verdict was read blind" should "take the same at the same answers, whichever decision object holds it" in {
+    val families = silentFamilies + (VoterFamily.RottenTomatoes -> new Productions(VoterFamily.RottenTomatoes, rtProductions))
+    val flicks   = "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+    val listings = Seq(Multikino, KinoMuza).map(venue => FilmTable.listing(venue, "RBO Cinema Season 2026-27: La Fanciulla Del West",
+      director = Some("Richard Jones")).copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 26))), page = Some(flicks)))
+    // the listings site's page, not read yet: a gap to everything reading it, no fact to the catalogue-blind read
+    val unread = new IdentityLookups {
+      def hasDetail(listing: Listing): Boolean                  = listing.page.isDefined
+      def detail(listing: Listing): Answer[Option[DetailFacts]] = if (listing.page.isDefined) Answer.Unknown else Answer.Known(None)
+      def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]]  = table.film(id)
+    }
+    val stage = new AgreementStage(families, unread, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(unread))
+    def model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 1.0, ResolverDecision.Basis.Vetoed, Nil)()),
+      listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val byKey = listings.map(l => l.key -> l).toMap
+    // the same listings and answers, at the same version, each pass a new decision as a re-resolve of the family hands it
+    val takes = Seq(1L, 1L, 1L, 2L, 2L).map(version => stage.apply(model, byKey.get, version).decisions.head)
+    takes.map(d => (d.film, d.basis)).distinct shouldBe Seq((Some(metFanciulla.id), ResolverDecision.Basis.Broadcast))
+  }
+
   it should "take none where no listing of the cluster credits it, or a listing credits another production's director" in {
     creditedAll(Seq(rbo("Macbeth", None, "2026-10-20"),
       FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20)))))).film shouldBe None
