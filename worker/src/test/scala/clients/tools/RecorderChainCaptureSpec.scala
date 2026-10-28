@@ -10,7 +10,7 @@ import java.nio.file.Files
 
 /**
  * Guards `RecordAllDataToFixture`'s capture of the paid-egress cinemas (Multikino,
- * Kino Kameralne / biletyna). Those sit behind a WAF that blocks our datacenter
+ * Kino Kameralne / biletyna, flicks / Cineworld, Vue). Those sit behind a WAF that blocks our datacenter
  * IP, so they're fetched through a residential proxy → `direct` chain whose
  * proxy leg tunnels through its OWN clients. A `RecordingHttpFetch` wired as the
  * chain's inner `direct` fallback therefore never sees a proxy-served response —
@@ -77,6 +77,20 @@ class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndA
     // network, no `main()`.
     recordingWiring.multikinoFetch shouldBe a[RecordingHttpFetch]
     recordingWiring.biletynaFetch  shouldBe a[RecordingHttpFetch]
+  }
+
+  it should "fetch the flicks / Cineworld and Vue routes through the residential proxy, recorded from the OUTSIDE" in {
+    // Record scrape fixtures #2238: the recorder left `flicksFetch` on the direct leg, so every
+    // Cineworld detail request 403'd from the runner's IP. The `.invalid` host makes the old
+    // direct wiring fail at DNS rather than reach a real origin.
+    val wiring = new RecordAllDataToFixture(
+      new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("KINOWO_FIXTURE_DIR" -> "recorder-chain-capture-spec/proxied-routes")),
+      (_, _) => Some(IndexedSeq(proxyServing("detail-json-from-proxy"))))
+    val detailUrl = "https://cineworld.invalid/api/gatsby-source-boxofficeapi/movies?ids=HO00012345"
+    wiring.flicksFetch.get(detailUrl) shouldBe "detail-json-from-proxy"
+    wiring.vueFetch.get(detailUrl) shouldBe "detail-json-from-proxy"
+    wiring.flicksFetch shouldBe a[RecordingHttpFetch]
+    wiring.vueFetch shouldBe a[RecordingHttpFetch]
   }
 
   /** A leg that counts what reaches it and serves `body`, or fails like a dead tunnel. */

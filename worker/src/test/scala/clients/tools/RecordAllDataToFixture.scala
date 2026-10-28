@@ -47,16 +47,26 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  */
 object RecordAllDataToFixture {
   def main(args: Array[String]): Unit = {
-    // Before any request: the Multikino / biletyna chains tunnel through the residential
+    // Before any request: the Multikino / biletyna / flicks / Vue chains tunnel through the residential
     // proxy, and the JDK reads this once — see ProxyTunnelAuthentication.
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     new RecordAllDataToFixture(_root_.settings.ProcessConfiguration.resolve()).run()
   }
+
+  /** The process's own Decodo pool — None without its credentials, and every paid route is then direct alone. */
+  def processResidentialShards(configuration: _root_.settings.ProcessConfiguration,
+                               tls: javax.net.ssl.SSLContext): Option[IndexedSeq[HttpFetch]] =
+    modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tls)
 }
 
 /** The recording wiring — an instance `main` builds, so the lazily built fetches, clients
  *  and repositories are the run's own rather than object state. */
-final class RecordAllDataToFixture(processConfiguration: _root_.settings.ProcessConfiguration) extends TestWiring {
+final class RecordAllDataToFixture(
+  processConfiguration: _root_.settings.ProcessConfiguration,
+  // The residential-proxy shards the paid routes below tunnel through — the process's Decodo pool, or a spec's stand-in.
+  residentialShards: (_root_.settings.ProcessConfiguration, javax.net.ssl.SSLContext) => Option[IndexedSeq[HttpFetch]] =
+    RecordAllDataToFixture.processResidentialShards
+) extends TestWiring {
   // The fixture directory under test/resources/fixtures/ that this run writes into.
   //   - country-fixture-artifact.yml leaves it at the default `today` (a fixed,
   //     dateless directory the daily artifact + local sync key off).
@@ -87,12 +97,21 @@ final class RecordAllDataToFixture(processConfiguration: _root_.settings.Process
   // lack every `www.multikino.pl` / biletyna fixture. So the WHOLE chain is wrapped in
   // recording, capturing the response keyed by the target URL whichever leg served it.
   // Guarded by `RecorderChainCaptureSpec`.
-  private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] =
-    modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(processConfiguration), tlsContext)
+  private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] = residentialShards(processConfiguration, tlsContext)
   override lazy val multikinoFetch: HttpFetch =
     new RecordingHttpFetch(captureDate, services.cinemas.CinemaEgress.multikinoChain(processProxyShards, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System))
   override lazy val biletynaFetch: HttpFetch =
     new RecordingHttpFetch(captureDate, ProxyChain.paidEgressChain(processProxyShards, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System))
+  // flicks.co.uk and www.cineworld.co.uk (whose venues and chain-wide detail fetch share
+  // `flicksFetch`) are Cloudflare-403'd from a datacenter IP, as Vue's films API is: production
+  // proxies all three (`EgressWiring`), and so does the recorder. Direct, the runner's IP got 403
+  // on every Cineworld detail request (Record scrape fixtures #2238) and the recording-health
+  // gate marked the origin REFUSING. Vue keeps production's host-only stickiness for its token cookie.
+  override lazy val flicksFetch: HttpFetch =
+    new RecordingHttpFetch(captureDate, ProxyChain.paidEgressChain(processProxyShards, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System))
+  override lazy val vueFetch: HttpFetch =
+    new RecordingHttpFetch(captureDate, processProxyShards.fold[HttpFetch](new RealHttpFetch())(
+      ProxyChain.proxyPrimary(_, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System, keyOf = _root_.tools.StickyShardHttpFetch.hostOnly)))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so
