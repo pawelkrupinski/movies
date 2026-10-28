@@ -69,7 +69,9 @@ object EnrichDetailsTasks {
  * phase boundary while the handler skipped it as still-fresh, so the same row
  * churned the queue every tick without ever refreshing (see [[DueWindow]]). A
  * TRANSIENTLY failed fetch is reported `Done` without marking fresh, so the
- * cinema's next scrape re-enqueues it rather than the worker spinning. A
+ * reaper asks again on its next tick — but only [[EnrichDetailsHandler.ImmediateRetries]]
+ * times in a row; past that it is stamped and waits its normal window, so a page that
+ * keeps failing is asked a few times an outage, not once a minute for its length. A
  * DURABLY gone page (404/410) is stamped instead — there, leaving it stale is
  * what makes the worker spin, because an unstamped key is due on every reaper
  * tick forever. See [[services.cinemas.common.DetailFetchOutcome]].
@@ -97,6 +99,10 @@ class EnrichDetailsHandler(
 ) extends TaskHandler with Logging {
 
   private val reader = new services.venuepages.VenuePageReader(pages, freshness, event => bus.publish(event), clock)
+
+  // Consecutive transient failures per task key. In memory on purpose, like ScrapeFreshnessPolicy's streak: losing it
+  // on a restart costs at most ImmediateRetries extra asks per page.
+  private val consecutiveFailures = new java.util.concurrent.ConcurrentHashMap[String, Integer]()
 
   /** A detail page's fields as a cinema slot holds them (`FilmDetail.landed`). */
   private def landed(detail: FilmDetail): FilmDetail = detail.landed(enrichmentLanguage)
@@ -127,7 +133,16 @@ class EnrichDetailsHandler(
     services.venuepages.DetailUptime.record(uptime, enricher, label, read.outcome)
     read.outcome match {
       case DetailFetchOutcome.Failed =>
-        Done // failed/absent — not marked fresh, the next scrape re-enqueues
+        // Failed transiently: left stale, so the reaper asks again next tick (once a minute) — within a budget. With
+        // no budget, a page that kept failing was asked every minute for as long as it failed: from the 2026-10-27
+        // Decodo outage on, ~100 Cineworld film pages a minute went to the direct leg and came back 403, ~9k
+        // refusals every 3h from one IP to a site that had blocked it. Past the budget the failure is not a blip,
+        // so stamp it and let the page wait its normal (phase-spread) window like a gone one.
+        val streak = consecutiveFailures.merge(task.dedupKey, 1, (a, b) => a + b)
+        if (streak > EnrichDetailsHandler.ImmediateRetries) {
+          consecutiveFailures.remove(task.dedupKey)
+          markAsked(task)
+        } else Done
       case _ if read.unfiled =>
         // Read and not filed: neither stamped nor announced, so asked again — never landed on the row as done
         // while the identity model, which reads only venue_pages, decides the film without it.
@@ -149,8 +164,10 @@ class EnrichDetailsHandler(
         // answered from cache anyway. If the film comes back under a NEW url the
         // listing scrape rewrites the slot's `filmUrl`, and the next window
         // fetches it.
+        consecutiveFailures.remove(task.dedupKey)
         markAsked(task)
       case DetailFetchOutcome.Fetched(page) =>
+        consecutiveFailures.remove(task.dedupKey)
         landOnRow(task, enricher, ref, pageKey, before, page)
         markAsked(task)
     }
@@ -262,4 +279,11 @@ class EnrichDetailsHandler(
       case None       => before.page.map(_.outcome).collect { case VenuePage.Read(last) => last }.fold(FilmDetail())(last =>
         detail.changedSince(landed(last)).copy(releaseYear = detail.releaseYear, runtimeMinutes = detail.runtimeMinutes))
     }
+}
+
+object EnrichDetailsHandler {
+
+  /** Transient failures in a row a detail page is asked again at the reaper's tick before it waits its normal window —
+   *  enough to ride out a blip, not enough to hammer a site that is refusing us. */
+  val ImmediateRetries = 2
 }

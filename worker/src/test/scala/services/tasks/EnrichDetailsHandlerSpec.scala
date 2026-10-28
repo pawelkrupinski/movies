@@ -319,6 +319,27 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     enricher.calls shouldBe 2
   }
 
+  // 2026-10-27: with the residential proxy down, ~100 Cineworld film pages failed on every ask and were asked again
+  // every minute — ~9k 403s every 3h from one IP. A page that keeps failing waits its window after a few asks.
+  it should "stamp a detail page that keeps failing past its retry budget, so an outage is not asked every minute" in {
+    val cache    = seededCache("Dune")
+    val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      failure = Some(new HttpStatusException(403, "GET", "http://ref", None)))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow, clock = specClock, enrichmentLanguage = polish)
+    val task     = taskFor("kino-apollo", cache, "Dune", enricher)
+
+    (1 to EnrichDetailsHandler.ImmediateRetries).foreach { _ =>
+      h.handle(task) shouldBe Done
+      fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe false
+    }
+    h.handle(task) shouldBe Done
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe true
+    h.handle(task) shouldBe Skipped // waits its window now
+    enricher.calls shouldBe EnrichDetailsHandler.ImmediateRetries + 1
+  }
+
   // Requirement: a task with exactly the same definition (enrich a specific film
   // for a specific cinema/group) must be rejected as a duplicate.
   "the queue" should "reject a duplicate EnrichDetails task for the same (group, film)" in {
