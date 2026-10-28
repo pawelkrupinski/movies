@@ -358,9 +358,9 @@ object IdentityDrift {
     private var events = Vector.empty[String]
     /** The events that change every listing's deciding inputs: answers filed, the rules. */
     private val Answering = Set("fill", "answer", "settle", "deploy-rules")
-    /** Each listing's model cluster at the last projection, as a hash of its members: a listing whose cluster gained or
-     *  lost one has its inputs changed. */
-    private var clusters = Map.empty[ListingKey, Int]
+    /** Each listing's model cluster at the last projection, as a hash of its members, and the model's take of it
+     *  ([[inputsMoved]]). */
+    private var clusters = Map.empty[ListingKey, ModelCluster]
     private def event(name: String): Unit = events :+= name
 
     def releaseFamily(id: String): Boolean = docs.held(id) && { docs.release(id); answers.store.noteFiled(id); true }
@@ -376,11 +376,13 @@ object IdentityDrift {
       fresh = false
       projections += 1
       val applied  = started.seconds
-      val now      = decided.iterator.flatMap(d => { val sig = scala.util.hashing.MurmurHash3.unorderedHash(d.members); d.members.iterator.map(_ -> sig) }).toMap
+      val now      = decided.iterator.flatMap(d => { val cluster = ModelCluster(scala.util.hashing.MurmurHash3.unorderedHash(d.members), filmOf(d))
+                                                    d.members.iterator.map(_ -> cluster) }).toMap
       val answered = events.exists(Answering)
+      val scraped  = events.exists(ListingEvents)
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}") },
-        key => answered || !clusters.get(key).contains(now.getOrElse(key, 0)))
+        key => answered || inputsMoved(clusters.get(key), now.get(key), scraped))
       clusters = now
       events = Vector.empty
       System.err.println(f"[identity-drift] seed $seed projection $projections: ${held.size} listings, " +
@@ -409,6 +411,20 @@ object IdentityDrift {
       settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }
+
+  /** A listing's model cluster at a projection: a hash of its members, and the film the model took it as ([[filmOf]]). */
+  final case class ModelCluster(members: Int, film: String)
+  /** The events that move the listings the model holds — and with them the corpus every family reads ([[CorpusContext]]). */
+  val ListingEvents: Set[String] = Set("boot", "scrape", "gone")
+
+  /** Whether a listing's deciding inputs moved since the last projection, answers and rules aside: its model cluster gained
+   *  or lost a listing — or, at a step that moved listings, the model took its cluster otherwise: a family reads the corpus
+   *  beyond its own listings ([[CorpusContext]]), and [[IncrementalResolver]] resolves one again when its slice of it moves
+   *  (PL Kino Eva's "LALKA", run 3509: its cluster kept its members while new venues' listings came in, and the model took
+   *  it as no film — read as "inputs unchanged" when the members alone were its inputs). Where no listing moved — a deploy
+   *  under the same rules, an apply after nothing — the model's take moving is no input moving: a flip. */
+  def inputsMoved(before: Option[ModelCluster], now: Option[ModelCluster], listingsMoved: Boolean): Boolean =
+    before.map(_.members) != now.map(_.members) || (listingsMoved && before.map(_.film) != now.map(_.film))
 
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
   final case class Replay(checkpoints: Seq[(String, Resolution)], flips: Seq[TakeFlips.Flip])

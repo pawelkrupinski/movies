@@ -113,7 +113,8 @@ obcy", a listing joining a corrected take served the model's film until its answ
 take is recorded at every projection of the replay, settle rounds included (`services.identity.TakeFlips`, only changes
 kept), and a listing whose take goes back to a film it left, moves to another film more than once (no film between two
 takes of one is a take lost while answers were missing, not a move), or changes at a step where none of its deciding
-inputs changed (no answer filed, no rules changed, its model cluster the same: an interim take a pending
+inputs changed (no answer filed, no rules changed, its model cluster the same — its members, and at a step that moved
+listings the model's take of it, since a family reads the corpus beyond its listings: an interim take a pending
 correction overrides) is a FLIP: one line naming its films, the steps and each take's deciding path, in `flips-<cc>.tsv`
 and the report. Any flip fails the row; `test/resources/fixtures/identity-flips-allow.tsv` stays empty. The replay's stage
 asks its families inline as the worker's does (`InlineFamilyAsks`), so a take the worker reads its answers for at its
