@@ -69,6 +69,10 @@ sleep 300 & session=$!   # listed below as an agent session (`claude`) sitting i
 sleep 300 & mcp=$!       # ...an MCP server that session started (its direct child, no shell between)
 sleep 300 & toolshell=$! # ...and a tool call's shell of that session, running real work
 sleep 300 & toolwork=$!
+# Processes that exist only in the fake table get pids no kernel hands out (Linux caps them below 2^22, macOS below
+# 100000). Fixed 9001..9004 collided with this test's own `sleep`s in a CI container, where real pids run low: the
+# victim got pid 9003 and the bystander 9004, the fake rows replaced theirs, and four checks failed (Main #2390).
+stray=4194401 small=4194402 hog=4194403 slice=4194404
 
 {
   printf '%s 1 4096 0:01.00 05:00 /bin/zsh\n' "$$"
@@ -78,10 +82,10 @@ sleep 300 & toolwork=$!
   printf '%s %s 60000 0:05.00 02:00:00 node /npx/mongodb-mcp-server\n' "$mcp" "$session"
   printf '%s %s 4096 0:00.10 01:00 /bin/zsh -c eval scripts/sbt-warm\n' "$toolshell" "$session"
   printf '%s %s 900000 1:00.00 01:00 /jdk/bin/java -Xmx4g sbt-launch.jar\n' "$toolwork" "$toolshell"
-  printf '9001 1 2500000 1:00.00 2-00:00:00 /jdk/bin/java -Xmx6g strayer\n'
-  printf '9002 1 200000 0:10.00 2-00:00:00 /jdk/bin/java -Xmx1g small\n'
-  printf '9003 1 100000 50:00.00 01:00:00 python3 busy.py\n'
-  printf '9004 1 3000 0:01.00 01:00:00 bash scripts/identity-slice de --batch x\n'
+  printf '%s 1 2500000 1:00.00 2-00:00:00 /jdk/bin/java -Xmx6g strayer\n' "$stray"
+  printf '%s 1 200000 0:10.00 2-00:00:00 /jdk/bin/java -Xmx1g small\n' "$small"
+  printf '%s 1 100000 50:00.00 01:00:00 python3 busy.py\n' "$hog"
+  printf '%s 1 3000 0:01.00 01:00:00 bash scripts/identity-slice de --batch x\n' "$slice"
 } > "$work/ps.txt"
 {
   printf 'p%s\nfcwd\nn%s\n' "$$" "$work/wt-orphan"
@@ -91,8 +95,8 @@ sleep 300 & toolwork=$!
   printf 'p%s\nfcwd\nn%s\n' "$mcp" "$work/wt-orphan"
   printf 'p%s\nfcwd\nn%s\n' "$toolshell" "$work/wt-orphan"
   printf 'p%s\nfcwd\nn%s\n' "$toolwork" "$work/wt-orphan"
-  printf 'p9004\nfcwd\nn%s\n' "$work/wt-live"
-  printf 'p9001\nfcwd\nn/\n'
+  printf 'p%s\nfcwd\nn%s\n' "$slice" "$work/wt-live"
+  printf 'p%s\nfcwd\nn/\n' "$stray"
 } > "$work/lsof.txt"
 export AGENT_PROCS_PS_COMMAND="cat $work/ps.txt" AGENT_PROCS_CWD_COMMAND="cat $work/lsof.txt"
 
@@ -136,9 +140,9 @@ check "a process with its cwd in a subdirectory is attributed to the worktree" "
 check "...with its RSS" "1" "$(block wt-orphan | grep -c "pid $victim .*rss   781MB")"
 check "an identity-slice run is listed under its worktree" "1" "$(block wt-live | grep -c identity-slice)"
 heavy="$(printf '%s\n' "$listing" | sed -n '/^Heavy processes/,$p')"
-check "a >1 GB process outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c 'pid 9001 ')"
-check "a lifetime-CPU hog outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c 'pid 9003 ')"
-check "a small, cool process is not" "0" "$(printf '%s\n' "$heavy" | grep -c 'pid 9002 ')"
+check "a >1 GB process outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c "pid $stray ")"
+check "a lifetime-CPU hog outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c "pid $hog ")"
+check "a small, cool process is not" "0" "$(printf '%s\n' "$heavy" | grep -c "pid $small ")"
 check "a process inside a worktree is not listed as heavy" "0" "$(printf '%s\n' "$heavy" | grep -c "pid $victim ")"
 
 # kill: only the named worktree's processes, never the caller's own ancestors.
