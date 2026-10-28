@@ -81,6 +81,23 @@
       heldFrames.splice(0).forEach(function (cb) { cb(performance.now()); });
     },
     msSinceStep: function () { return performance.now() - window.__carousel.steppedAt; },
+    // Slide to `day` and, in the frame that starts the slide (this callback is
+    // queued after the slide's own), fire a card's bubbling `transitionend`, then
+    // report [slide started, track still armed, selected day]. All in one frame:
+    // neither the slide's end nor its fallback timer can come between.
+    slideWithCardTransitionEnd: function (day) {
+      window.animateToDay(day);
+      return new Promise(function (resolve) {
+        window.requestAnimationFrame(function () {
+          var track = document.getElementById('day-track');
+          var started = track.style.transition.indexOf('transform') === 0;
+          track.querySelector('.card').dispatchEvent(
+            new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }));
+          resolve([started, track.classList.contains('day-track--armed'),
+            document.getElementById('date-filter').value]);
+        });
+      });
+    },
     // Some card in `#view-root` is shown and inside the viewport horizontally.
     gridOnScreen: function () {
       return all('#view-root .col[data-title]').filter(function (c) { return c.offsetParent !== null; })

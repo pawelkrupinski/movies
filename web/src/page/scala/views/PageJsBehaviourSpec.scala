@@ -3653,15 +3653,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // hover lift) ends whenever the grid sliding under a resting mouse moves the
   // hover from one card to the next. That card's event used to commit the day
   // ~200 ms into a 550 ms desktop slide: the grid snapped into place mid-glide.
+  // The card's event fires in the frame that starts the slide: three round trips apart, a loaded runner let the
+  // slide's own end commit first (run 3458, "false was not equal to true" on the armed check).
   it should "not commit the slide on a card's own transitionend" in {
     onPath("/") { page =>
       enableSlideAnimation(page)
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
-      page.eval("window.animateToDay('tomorrow')")
-      page.waitFor("getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'")
-      page.eval("document.querySelector('#day-track .card').dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))")
-      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
-      page.evalString("document.getElementById('date-filter').value") shouldBe "today"
+      page.eval("__carousel.slideWithCardTransitionEnd('tomorrow')") shouldBe
+        Json.arr(true, true, "today") // [slide started, still armed, day not committed]
       // …and the slide's own end still commits it.
       page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
