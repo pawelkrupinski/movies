@@ -75,13 +75,18 @@ final case class PinConstraints(pins: Seq[Pin], judged: TakeJudgements.Index = T
   /** The films the pins say `k` never is (its whole group's). */
   def deniedFilms(k: ListingKey): Set[Int] = deniedByGroup.getOrElse(groupOf.getOrElse(k, k), Set.empty)
 
-  /** The films `k`'s evidence may not take: the pins' ([[deniedFilms]]) and those a hand judgement calls wrong for its
-   *  billing. Only a scope's denial reads the judgements — no block key, edge or group: a judgement takes a film off its
-   *  own listing and moves no other listing's family (measured 2026-10-28: as edges, Tywyn's "Fallen Angels" pulled two
-   *  other venues' 2026 take off). */
-  def deniedTakes(k: ListingKey): Set[Int] = {
-    val wrong = judged.denied(k.venue, k.rawTitle)
-    if (wrong.isEmpty) deniedFilms(k) else deniedFilms(k) ++ wrong
+  /** The films an evidence node holding `listings` may not take: its first listing's pins' ([[deniedFilms]]), and those a hand
+   *  judgement calls wrong for the billing of EVERY listing it holds. Only a scope's denial reads the judgements — no block
+   *  key, edge or group — and a node joins one billing's listings across venues, so one venue's judgement denies a film
+   *  only to a node of that venue alone (measured 2026-10-28: read off the node's first listing, Tywyn's "Fallen Angels"
+   *  took Ilkley's and Teignmouth's 2026 film off them). */
+  def deniedTakes(listings: Seq[Listing]): Set[Int] = {
+    val pinned = listings.headOption.fold(Set.empty[Int])(l => deniedFilms(l.key))
+    if (judged.size == 0 || listings.isEmpty) pinned
+    else {
+      val wrong = listings.iterator.map(l => judged.denied(l.key.venue, l.key.rawTitle)).reduce(_ intersect _)
+      if (wrong.isEmpty) pinned else pinned ++ wrong
+    }
   }
 
   /** Extra family block keys: the group's own key, and the pinned and denied films' TMDB keys
