@@ -696,7 +696,7 @@ else
     while read -r _local_ref local_sha remote_ref remote_sha; do
         pushed+="$_local_ref $local_sha $remote_ref $remote_sha"$'\n'
         [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
-        case "$remote_ref" in refs/heads/measure/*|refs/heads/check/*) measure_only=1; continue ;; *) other=1 ;; esac
+        case "$remote_ref" in refs/heads/measure/*|refs/heads/check/*|refs/heads/land/*) measure_only=1; continue ;; *) other=1 ;; esac
         base="$(base_for "$local_sha" "$remote_sha")"
         [ -n "$base" ] && ranges+=("$base..$local_sha")
         [ "$remote_ref" = refs/heads/main ] && to_main=1

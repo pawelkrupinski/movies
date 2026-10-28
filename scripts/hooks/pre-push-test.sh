@@ -697,6 +697,10 @@ out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/check/20261027-1200-mov
         | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
 check "...nor is a remote check's check/ branch: its run checks it on ci-runner" "0 1" \
   "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
+out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/land/20261028-1200-movies-wt-x-3 %s\n' "$plain" 0000000000000000000000000000000000000000 \
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
+check "...nor is a submitted change's land/ ref: the reconciler checks it (agentctl, design step 14)" "0 1" \
+  "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\nrefs/heads/main %s refs/heads/main %s\n' "$plain" 0000000000000000000000000000000000000000 "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "…but beside a push to main, main is gated as ever" "1" "$code"
