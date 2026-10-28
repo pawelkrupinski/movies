@@ -15,8 +15,10 @@
 #   env: HEAP (sbt -Xmx, default 6g), DRIFT_SEEDS (default 2), DRIFT_SEED (that one seed alone, in place of DRIFT_SEEDS:
 #        a leg's `takes-drift-<seed>` row each replays one, side by side -- in turn the two were 20-54 minutes of the
 #        takes row, run 2809), GITHUB_STEP_SUMMARY (optional)
-# Writes <out>/drift-<cc>.tsv (every divergence, allowed ones included), <out>/flips-<cc>.tsv (every flip) and
-# <out>/report.txt.
+# Writes <out>/drift-<cc>.tsv (every divergence, allowed ones included), <out>/flips-<cc>.tsv (every flip),
+# <out>/report.txt, and <out>/verdict.txt: one line naming what the replay found beyond the allow-lists, divergences and
+# flips apart -- what the row's ::error says (a step summary is discarded on Forgejo; and run 3509's rows failed on flips
+# alone, 0 divergences, under a title saying the state "ends elsewhere than a whole resolve", which three fixers chased).
 # Exit: 0 none beyond the allow-lists, 1 divergences or flips, 2 it could not run.
 set -uo pipefail
 
@@ -52,6 +54,9 @@ flips=$(grep -m1 -E '^## [a-z]+ flips: ' "$out/report.txt")
 [ -n "$flips" ] || { tail -40 "$out/sbt.log" >&2; echo "identity drift ($cc): no flips verdict (sbt exit $code)" >&2; exit 2; }
 flipped=$(sed -E 's/.* ([0-9]+) flip\(s\).*/\1/' <<< "$flips")
 flips_allowed=$(sed -E 's/.* ([0-9]+) allow-listed.*/\1/' <<< "$flips")
-[ $((found - allowed)) -gt 0 ] && exit 1
-[ $((flipped - flips_allowed)) -gt 0 ] && exit 1
+open_divergences=$((found - allowed))
+open_flips=$((flipped - flips_allowed))
+echo "$open_divergences divergence(s) from a whole resolve and $open_flips flip(s) on the way, beyond the allow-lists" > "$out/verdict.txt"
+[ "$open_divergences" -gt 0 ] && exit 1
+[ "$open_flips" -gt 0 ] && exit 1
 exit 0
