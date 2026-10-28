@@ -70,6 +70,12 @@ GET     /:city/debug/tune/movie     controllers.DebugController.tuneFilm(city: S
 # Mongo edits.
 + nocsrf
 POST    /:city/debug/rehydrate      controllers.DebugController.rehydrate(city: String)
+# Dev-only: the read model (`web_movies` + per-film `web_screenings` counts) of ?country=,
+# from the local mirror when MONGODB_MOVIES_MIRROR_URI is set. 404 in prod.
+GET     /debug/readmodel            controllers.DebugController.debugReadModel()
+# Dev-only: one read-model film's screening docs, fetched when a /debug/readmodel row
+# is expanded. 404 in prod.
+GET     /debug/readmodel/screenings controllers.DebugController.debugReadModelScreenings(id: String)
 
 # ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
 # `/auth/<provider>/start` issues a CSRF state, stashes it in the signed

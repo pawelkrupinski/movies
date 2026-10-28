@@ -140,7 +140,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val cc          = Helpers.stubControllerComponents()
     val adminAction = TestAdminAction(users)
     given Messages  = testsupport.TestMessages.deployment
-    val debug       = new DebugController(cc, null, adminAction, Mode.Prod, servingCountry = models.Country.Poland)
+    val debug       = new DebugController(cc, null, adminAction, Mode.Prod, servingCountry = models.Country.Poland, readModels = null)
     val codes       = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
     val auth        = new AuthController(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val sso         = new SsoController(cc, users, codes, models.Country.Poland)

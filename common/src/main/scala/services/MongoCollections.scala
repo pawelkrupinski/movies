@@ -106,9 +106,9 @@ object MongoCollections {
     RegisteredCollection("rating_cadence", Corpus, Sweep("OrphanFilmStateSweep"), Set(Worker))
       .mirror("Backs no page: each rating source's refresh cadence, read by `scripts/local-mirror/staleness.js`."),
     RegisteredCollection("web_movies", Corpus, Sweep("ReadModelProjector"), Set(Worker))
-      .mirror("Backs no page: what the serving app actually serves, for local inspection."),
+      .mirror("The /debug/readmodel dump of every country's read model."),
     RegisteredCollection("web_screenings", Corpus, Sweep("ReadModelProjector"), Set(Worker))
-      .mirror("Backs no page: the read model's screenings, beside `web_movies`."),
+      .mirror("The /debug/readmodel dump's screenings."),
     RegisteredCollection("cinema_scrapes", Corpus, OnePerVenue, Set(Worker))
       .mirror("Backs no page. Each cinema's last content-bearing scrape: the listing the client actually" +
         " produced, before the corpus merge touched it, which is what you read when a scrape looks wrong " +

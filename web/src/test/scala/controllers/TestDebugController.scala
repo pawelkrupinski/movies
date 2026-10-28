@@ -5,7 +5,7 @@ import play.api.test.Helpers
 import services.readmodel.{TestReadModel, WebReadModel}
 
 /** Shared builder for a [[DebugController]]: the read model projected from
- *  `records`. Returns the concrete [[WebReadModel]] too, so a spec can `reload()`
+ *  `records` (also what /debug/readmodel lists, unless `readModels` says otherwise). Returns the concrete [[WebReadModel]] too, so a spec can `reload()`
  *  or inspect what `rehydrate` reloaded. */
 object TestDebugController {
 
@@ -13,6 +13,8 @@ object TestDebugController {
     records: Seq[(String, Option[Int], models.MovieRecord)],
     mode: Mode = Mode.Test,
     adminAction: AdminAction = TestAdminAction(),
+    // What /debug/readmodel lists; the serving country's projected `records` by default.
+    readModels: Option[DebugReadModels] = None,
   ): (DebugController, WebReadModel) = {
     given play.api.i18n.Messages = testsupport.TestMessages.deployment
     val readModel = TestReadModel.fromRecords(records)
@@ -22,6 +24,7 @@ object TestDebugController {
       adminAction    = adminAction,
       environment    = mode,
       servingCountry = models.Country.default,
+      readModels     = readModels.getOrElse(DebugReadModels.of(models.Country.default, TestReadModel.store(records), mirror = None)),
     )
     (ctrl, readModel)
   }

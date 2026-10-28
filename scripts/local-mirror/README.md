@@ -196,7 +196,9 @@ MONGODB_DB=kinowo_local
 
 `kinowo_local` is a normal database on the same replica set, so web gets the
 change streams it needs. No worker runs locally,
-so the rest of the site serves whatever read model `kinowo_local` already holds.
+so the rest of the site serves whatever read model `kinowo_local` already holds
+(usually nothing). `/debug/readmodel?country=xx` lists each country's read model from
+its `*_prod_mirror` instead.
 
 ## Review answers (`review_local.review_answers`)
 

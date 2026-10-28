@@ -1,0 +1,247 @@
+@import controllers.{ReadModelDump, ScreeningCounts}
+@(dump: ReadModelDump, current: models.Country, source: String, countries: Seq[models.Country])
+@*
+ * Dev-only dump of one country's read model — `web_movies` (ResolvedMovie) and
+ * per-film `web_screenings` (CityScreening) counts — read from `source` (the
+ * local mirror when one is configured). It is the projection's output, so a film
+ * present in the corpus but missing here is a projection gap, not a scrape gap.
+ *
+ * Rows carry per-film COUNTS; a row's screening docs are fetched from
+ * `/debug/readmodel/screenings` on first expand. Inlining every showtime built
+ * a page the size of the whole read model and OOM'd the dev server on the US
+ * one (~100k screening docs).
+ *@
+@movies = @{ dump.movies }
+@* Render one `<dd>` for an optional scalar field — the value, or a dim em-dash. *@
+@metaOpt(value: Option[String]) = {@value match { case Some(v) => {<dd>@v</dd>} case None => {<dd class="miss">—</dd>} }}
+@* Render one `<dd>` for a list field — comma-joined, or a dim em-dash when empty. *@
+@metaSeq(values: Seq[String]) = {@if(values.isEmpty){<dd class="miss">—</dd>}else{<dd>@values.mkString(", ")</dd>}}
+@* Render one `<dd>` for a rating — the score linked to its (always-present) URL,
+   or just the URL when the score is missing, or a dim em-dash when neither. *@
+@metaRating(score: Option[String], url: Option[String]) = {@(score, url) match {
+  case (Some(s), Some(u)) => {<dd><a href="@u" target="_blank" rel="noopener">@s</a></dd>}
+  case (None,    Some(u)) => {<dd><a href="@u" target="_blank" rel="noopener" class="miss">(no score) @u</a></dd>}
+  case _                  => {<dd class="miss">—</dd>}
+}}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Read model</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; margin: 0; }
+    h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .5rem; }
+    .summary { color: #666; margin-bottom: .5rem; font-size: 11px; }
+    .summary b { color: #aad4ff; font-weight: normal; }
+    .summary .warn { color: #d9a441; }
+    .country {
+      color: #ffd479; background: #1a1a2e; border: 1px solid #2a2a3e;
+      padding: .2rem .5rem; border-radius: 3px; font: 12px monospace; cursor: pointer; margin-left: .5rem;
+    }
+    input[type=search] {
+      background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
+      padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
+      width: 320px; margin-bottom: .5rem;
+    }
+    table { border-collapse: collapse; width: 100%; font-size: 11px; }
+    th, td { padding: .35rem .5rem; border-bottom: 1px solid #1a1a2e; vertical-align: middle; text-align: left; white-space: nowrap; }
+    thead th {
+      background: #1a1a2e; color: #aad4ff;
+      position: sticky; top: 0; z-index: 1;
+    }
+    tbody tr.data { cursor: pointer; }
+    tbody tr.data:hover { background: #111120; }
+    tbody tr.data.expanded { background: #1a1a30; }
+    .title { max-width: 36ch; overflow: hidden; text-overflow: ellipsis; }
+    .orig  { color: #99b; max-width: 24ch; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+    .year  { color: #888; text-align: right; font-variant-numeric: tabular-nums; }
+    .id    { color: #669fcc; font-size: 10px; max-width: 28ch; overflow: hidden; text-overflow: ellipsis; }
+    .num   { text-align: right; font-variant-numeric: tabular-nums; }
+    .num.zero { color: #6a3a3a; }
+    .meta-cell { color: #99b; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
+    .miss  { color: #444; }
+    a { color: #669fcc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .ratings { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+    .hidden { display: none !important; }
+
+    /* Expanded screenings row */
+    tr.details > td { background: #0a0a18; padding: .6rem 1rem 1rem; white-space: normal; }
+
+    /* Movie metadata block (everything the ResolvedMovie holds) */
+    .movie-meta {
+      display: grid; grid-template-columns: max-content minmax(0, 1fr);
+      gap: .15rem .8rem; margin-bottom: .8rem;
+      border: 1px solid #1a1a2e; border-radius: 3px;
+      padding: .5rem .7rem; background: #0d0d18;
+    }
+    .movie-meta dt { color: #8899bb; grid-column: 1; }
+    .movie-meta dd { color: #ccc; grid-column: 2; margin: 0; word-break: break-word; }
+    .movie-meta dd.miss { color: #444; }
+    .movie-meta dd a { word-break: break-all; }
+    .movie-meta .synopsis { white-space: normal; line-height: 1.5; }
+    .meta-section { color: #8899bb; font-weight: bold; margin: .2rem 0 .3rem; }
+    .poster-thumb { max-height: 90px; border-radius: 3px; vertical-align: middle; margin-right: .5rem; }
+
+    .no-screenings { color: #6a3a3a; }
+    .screenings { display: grid; gap: .4rem; margin-top: .2rem; }
+    .screening {
+      border: 1px solid #1a1a2e; border-radius: 3px;
+      padding: .35rem .6rem; background: #0d0d18;
+    }
+    .screening-head {
+      display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+      color: #aad4ff; margin-bottom: .25rem;
+    }
+    .screening-head .cinema { font-weight: bold; }
+    .screening-head .city { color: #888; font-size: 10px; }
+    .screening-head .count { color: #888; font-size: 10px; }
+    .showtimes { display: flex; flex-wrap: wrap; gap: .3rem; }
+    .showtime {
+      background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 3px;
+      padding: 0 .4rem; color: #ccc; font-variant-numeric: tabular-nums;
+    }
+    .showtime .fmt { color: #669fcc; font-size: 9px; margin-left: .2rem; }
+    .showtime .room { color: #c0a060; font-size: 9px; margin-left: .2rem; }
+    .showtime a.book { color: #7fae6f; font-size: 9px; margin-left: .25rem; }
+    .screening-head .filmurl { color: #555; font-size: 10px; word-break: break-all; }
+    .sid { color: #555; font-size: 10px; margin-top: .3rem; word-break: break-all; }
+  </style>
+  @_ratingStyles()
+</head>
+<body>
+
+<h1>Read model
+  @if(countries.size > 1){
+    <select class="country" aria-label="Country" onchange="location.href=this.value">
+      @for(c <- countries){<option value="@routes.DebugController.debugReadModel()?country=@c.code"@if(c == current){ selected}>@c.displayName</option>}
+    </select>
+  } else { · @current.displayName }
+</h1>
+<div class="summary">
+  <b>@movies.size</b> movies · <b>@dump.screeningCount</b> screenings · <b>@dump.showtimeCount</b> showtimes ·
+  read from <b>@source</b> ·
+  click a row for its screenings · filter is case-insensitive
+  @if(movies.isEmpty){<span class="warn"> · the read model is EMPTY in @source</span>}
+</div>
+
+<input type="search" id="q" placeholder="Filter by title, original, id…" oninput="filterRows(this.value)">
+
+<script src="@routes.Assets.versioned("js/debugTable.js")"></script>
+
+<table id="t">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Original</th>
+      <th>Year</th>
+      <th>Genres / Directors</th>
+      <th>Ratings</th>
+      <th>Cinemas</th>
+      <th>Screenings</th>
+      <th>Showtimes</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for(m <- movies) {
+      @defining(dump.counts.getOrElse(m._id, ScreeningCounts(0, 0, 0))) { counts =>
+          <tr class="data" data-row-id="@m._id"
+              data-haystack="@(s"${m.title} ${m.originalTitle.getOrElse("")} ${m._id}".toLowerCase(java.util.Locale.ROOT))">
+            <td class="title">@m.title</td>
+            <td class="orig">@m.originalTitle.getOrElse("")</td>
+            <td class="year">@m.releaseYear.map(_.toString).getOrElse("")</td>
+            <td class="meta-cell">@{(m.genres ++ m.directors).mkString(", ")}</td>
+            <td>@_ratingBadges(Some(m.ratings))</td>
+            <td class="num cinemas @if(counts.cinemas == 0){zero}">@counts.cinemas</td>
+            <td class="num @if(counts.docs == 0){zero}">@counts.docs</td>
+            <td class="num @if(counts.showtimes == 0){zero}">@counts.showtimes</td>
+          </tr>
+          <tr class="details hidden" data-row-id="@m._id">
+            <td colspan="8">
+              @* Everything the ResolvedMovie read-model doc holds for this film. *@
+              <dl class="movie-meta">
+                <dt>id</dt>            <dd class="id">@m._id</dd>
+                <dt>title</dt>         <dd>@m.title</dd>
+                <dt>originalTitle</dt> @metaOpt(m.originalTitle)
+                <dt>releaseYear</dt>   @metaOpt(m.releaseYear.map(_.toString))
+                <dt>runtime</dt>       @metaOpt(m.runtimeMinutes.map(r => s"$r min"))
+                <dt>genres</dt>        @metaSeq(m.genres)
+                <dt>countries</dt>     @metaSeq(m.countries)
+                <dt>directors</dt>     @metaSeq(m.directors)
+                <dt>cast</dt>          @metaSeq(m.cast)
+                <dt>weightedRating</dt><dd>@{f"${m.weightedRating}%.2f"}</dd>
+                <dt>imdb</dt>          @metaRating(m.ratings.imdb.map(r => f"$r%.1f"), m.ratings.imdbUrl)
+                <dt>metascore</dt>     @metaRating(m.ratings.metascore.map(_.toString), Some(m.ratings.metacriticUrl))
+                <dt>rottenTomatoes</dt>@metaRating(m.ratings.rottenTomatoes.map(rt => s"$rt%"), Some(m.ratings.rottenTomatoesUrl))
+                <dt>filmweb</dt>       @metaRating(m.ratings.filmweb.map(r => f"$r%.1f"), Some(m.ratings.filmwebUrl))
+                <dt>poster</dt>
+                  @m.posterUrl match {
+                    case Some(u) => { <dd><img class="poster-thumb" src="@u" alt="" loading="lazy"><a href="@u" target="_blank" rel="noopener">@u</a></dd> }
+                    case None    => { <dd class="miss">—</dd> }
+                  }
+                <dt>fallbackPosters</dt>
+                  @if(m.fallbackPosterUrls.isEmpty){ <dd class="miss">—</dd> } else {
+                    <dd>@for(u <- m.fallbackPosterUrls){ <a href="@u" target="_blank" rel="noopener">@u</a> }</dd>
+                  }
+                <dt>trailers</dt>
+                  @if(m.trailerUrls.isEmpty){ <dd class="miss">—</dd> } else {
+                    <dd>@for(u <- m.trailerUrls){ <a href="@u" target="_blank" rel="noopener">@u</a> }</dd>
+                  }
+                <dt>synopsis</dt>
+                  @m.synopsis match {
+                    case Some(s) => { <dd class="synopsis">@s</dd> }
+                    case None    => { <dd class="miss">—</dd> }
+                  }
+                @if(m.synopsisByCity.nonEmpty){
+                  <dt>synopsisByCity</dt>
+                  <dd class="synopsis">@for((slug, text) <- m.synopsisByCity.toSeq.sortBy(_._1)){<b>@slug:</b> @text<br>}</dd>
+                }
+              </dl>
+
+              @* Every per-(city, cinema) screening doc + every field of its showtimes —
+                 fetched on first expand into this placeholder. *@
+              <div class="screenings-slot" data-film-id="@m._id"></div>
+            </td>
+          </tr>
+      }
+    }
+  </tbody>
+</table>
+
+<script>
+  // "Expanding a row" here means unhiding its `tr.details` DOM SIBLING (found
+  // by a `[data-row-id]` attribute selector) and filling its screenings slot.
+  // `debugTable.js`'s `wireExpandableTable` owns the click/expanded/filter state machine.
+  function detailsFor(tr) {
+    const sel = window.CSS && CSS.escape ? CSS.escape(tr.dataset.rowId) : tr.dataset.rowId;
+    return document.querySelector('#t tbody tr.details[data-row-id="' + sel + '"]');
+  }
+  // The screenings section is fetched once, on the row's first expand (see the
+  // template comment for why it is not in the page).
+  function showDetails(tr) {
+    const d = detailsFor(tr);
+    if (!d) return;
+    d.classList.remove('hidden');
+    const slot = d.querySelector('.screenings-slot');
+    if (slot && !slot.dataset.loaded) {
+      slot.dataset.loaded = '1';
+      slot.textContent = 'loading screenings…';
+      fetch('@routes.DebugController.debugReadModelScreenings("")' + encodeURIComponent(slot.dataset.filmId) + '&country=@current.code')
+        .then(r => r.ok ? r.text() : r.text().then(t => { throw new Error(t || r.status); }))
+        .then(html => { slot.innerHTML = html; })
+        .catch(e => { slot.textContent = 'could not load screenings: ' + e.message; delete slot.dataset.loaded; });
+    }
+  }
+  function hideDetails(tr) {
+    const d = detailsFor(tr);
+    if (d) d.classList.add('hidden');
+  }
+
+  const { filterRows } = wireExpandableTable('#t', showDetails, hideDetails);
+  window.filterRows = filterRows; // referenced by the #q box's oninput=
+
+  document.getElementById('q').focus();
+</script>
+</body>
+</html>
