@@ -986,20 +986,15 @@ jobs:
               uses: ./.github/actions/setup-buildx
 
             # IN THE BACKGROUND, beside the e2e run below, which shares nothing with it (2026-10-23: the build and push
-            # were ~62 s after that run, on this row's end). The same build build-push-action ran -- buildx's CLI, the
-            # builder setup-buildx made the default -- and its verdict is collected after the run ("The web image was
+            # were ~62 s after that run, on this row's end). The same build as main.yml's worker image (build-image.sh, on
+            # the builder setup-buildx made the default) -- and its verdict is collected after the run ("The web image was
             # built and pushed"), failing the row as the step did.
             - name: Build and push the web image under this commit's SHA tag only
               if: matrix.shard == 'corpus' && !github.event.pull_request
-              env:
-                  # amd64 ONLY: the cluster is Hetzner x86_64. INLINE cache, restored from the image last shipped: the
-                  # layers worth reusing (base OS, JRE) are all in `latest`, and inline metadata rides the push itself.
-                  IMAGE: ${{ env.IMAGE_REPO }}/movies-web
+              # amd64 only, the inline cache of `latest`, Docker Hub's bases when the mirror loses a blob: build-image.sh.
               run: |
-                  scripts/ci/in-background.sh start web-image docker buildx build --platform linux/amd64 --push \
-                      --build-arg BIN=web --build-arg COMMIT_SHA=${{ github.sha }} \
-                      --tag ${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }} \
-                      --cache-from type=registry,ref=${{ env.IMAGE_REPO }}/movies-web:latest --cache-to type=inline .
+                  scripts/ci/in-background.sh start web-image \
+                      scripts/ci/build-image.sh web ${{ env.IMAGE_REPO }}/movies-web ${{ github.sha }}
 
 
             - run: sbt ${{ matrix.cmd }}

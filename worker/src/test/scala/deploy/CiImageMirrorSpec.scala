@@ -12,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
  * endpoint answering 504 / timing out: buildx booting `moby/buildkit`, and the Dockerfile's
  * `ubuntu` base (run 37993027475). A login does not help the second -- the login IS that endpoint.
  * The mirror serves the same images with neither failure, so any pull that goes back to Docker Hub
- * brings both back. (start-mongo-replset.sh may still fall back to Docker Hub when the mirror
+ * brings both back. (start-mongo-replset.sh and build-image.sh may still fall back to Docker Hub when the mirror
  * refuses; its first choice is what this checks.)
  */
 class CiImageMirrorSpec extends AnyFlatSpec with Matchers {
@@ -48,6 +48,17 @@ class CiImageMirrorSpec extends AnyFlatSpec with Matchers {
     images(1) shouldBe images.head.stripPrefix(Mirror)
     action should include("continue-on-error: true")
     action should include("if: steps.mirror.outcome == 'failure'")
+  }
+
+  /** Main #2264 (2026-10-28): the mirror answered "not found" for the ubuntu base's layer it had served 50 minutes before,
+   *  and the web image build went red on that alone. build-image.sh builds again from Docker Hub when that happens. */
+  "every image build" should "go through build-image.sh, which falls back to Docker Hub when the mirror loses a blob" in {
+    val byHand = RepoFile.workflows().filter { f =>
+      val workflow = RepoFile.withoutComments(RepoFile.read(f.getPath))
+      workflow.contains("docker/build-push-action@") || workflow.contains("buildx build")
+    }.map(_.getName)
+    withClue("build images with scripts/ci/build-image.sh: ")(byHand shouldBe empty)
+    RepoFile.read("scripts/ci/build-image.sh") should include("FROM docker.io/library/")
   }
 
   "the CI mongod" should "be pulled from the mirror first" in {

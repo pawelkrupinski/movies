@@ -437,21 +437,9 @@ jobs:
             # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
             - uses: ./.github/actions/setup-buildx
 
+            # amd64 only, the inline cache of `latest`, Docker Hub's bases when the mirror loses a blob: build-image.sh.
             - name: Build and push under this commit's SHA tag only
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  # amd64 ONLY: the cluster is Hetzner x86_64.
-                  platforms: linux/amd64
-                  push: true
-                  build-args: |
-                      BIN=worker
-                      COMMIT_SHA=${{ github.sha }}
-                  tags: ${{ env.IMAGE_REPO }}/movies-worker:${{ github.sha }}
-                  # INLINE cache, restored from the image last shipped: the layers worth reusing (base
-                  # OS, JRE, libvips) are all in `latest`, and inline metadata rides the push itself.
-                  cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/movies-worker:latest
-                  cache-to: type=inline
+              run: scripts/ci/build-image.sh worker ${{ env.IMAGE_REPO }}/movies-worker ${{ github.sha }}
 
 
     publish-worker:
