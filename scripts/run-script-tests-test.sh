@@ -158,17 +158,33 @@ case "$1" in
   info) [ -z "${DOCKER_DOWN:-}" ] || { echo "Cannot connect to the Docker daemon" >&2; exit 1; } ;;
   image) [ -z "${NO_IMAGE:-}" ] || exit 1 ;;
   build) cat > /dev/null ;;
-  run) echo "PASS       0s  in the container" ;;
+  run) cat > "$DOCKER_STDIN"; echo "PASS       0s  in the container" ;;
 esac
 STUB
 chmod +x "$work/docker-bin/docker"
 linux() { : > "$work/docker-calls"
-  (cd "$work" && HOME="$work/home" PATH="$work/docker-bin:$PATH" DOCKER_CALLS="$work/docker-calls" bash "$runner" --root "$tree" --linux "$@") > "$work/out" 2>&1; echo $?; }
+  (cd "$work" && HOME="$work/home" PATH="$work/docker-bin:$PATH" DOCKER_CALLS="$work/docker-calls" DOCKER_STDIN="$work/docker-stdin" \
+    bash "$runner" --root "${LINUX_ROOT:-$tree}" --linux "$@") > "$work/out" 2>&1; echo $?; }
 check "--linux runs the selected tests in a container" "0" "$(linux scripts/ci/b_test.py)"
 check "...the checkout mounted read-only at its own path, as this user, not root" "1 1" \
   "$(grep -c -- "^run .*-v $tree:$tree:ro" "$work/docker-calls") $(grep -c -- "--user $(id -u):$(id -g)" "$work/docker-calls")"
 check "...naming exactly the tests selected here" "1" "$(grep -c 'run-script-tests --jobs 8 --timeout 600 scripts/ci/b_test.py$' "$work/docker-calls")"
 check "...from an ubuntu image pulled from mirror.gcr.io" "1" "$(grep -c 'kinowo-script-tests:' "$work/docker-calls" | grep -c .)"
+# its git metadata a snapshot, unpacked into a tmpfs at the git dir's own path, only the objects mounted live: a host git
+# rewriting the shared .git/config (lock and rename) made it read as missing in there for most of the next second
+git_dir="$(cd "$tree/.git" && pwd -P)"
+check "...its git dir a tmpfs, the objects in it mounted read-only, the git dir itself not mounted" "1 1 0" \
+  "$(grep -c -- "^run .*--mount type=tmpfs,destination=$git_dir,tmpfs-mode=1777" "$work/docker-calls") \
+$(grep -c -- "^run .*-v $git_dir/objects:$git_dir/objects:ro" "$work/docker-calls") $(grep -c -- "-v $git_dir:" "$work/docker-calls")"
+check "...unpacked there from its stdin before the tests start" "1" \
+  "$(grep -c -- "^run .* bash -c .*tar -xf - -C \"\$0\".* $git_dir bash scripts/run-script-tests " "$work/docker-calls")"
+check "...the snapshot its config, HEAD and refs, not its objects" "config HEAD refs/heads/main 0" \
+  "$(tar -tf "$work/docker-stdin" | grep -x -e config -e HEAD -e refs/heads/main | paste -sd' ' -) $(tar -tf "$work/docker-stdin" | grep -c '^objects')"
+scratch_git "$tree" worktree add -q "$work/wt" -b wt
+LINUX_ROOT="$work/wt" linux scripts/ci/b_test.py > /dev/null
+check "...from a worktree, the clone's metadata and the worktree's own" "config worktrees/wt/HEAD worktrees/wt/commondir worktrees/wt/gitdir" \
+  "$(tar -tf "$work/docker-stdin" | grep -x -e config -e 'worktrees/wt/[a-zA-Z]*' | grep -v -e index -e ORIG_HEAD | paste -sd' ' -)"
+scratch_git "$tree" worktree remove --force "$work/wt"
 # a checkout borrowing objects (ci-runner's git mirror, by objects/info/alternates) reads them in the container too
 scratch_repo "$work/mirror.git" --bare
 mirror_objects="$(cd "$work/mirror.git/objects" && pwd -P)"

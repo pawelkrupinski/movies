@@ -182,8 +182,9 @@ touched_by() { # <test path> <changed paths file>: the test, its tool, or a file
 # BSD tools and /bin/bash 3.2 pass what Linux fails -- 03b3a6825's refit logged `sysctl machdep.cpu.brand_string`,
 # macOS-only, and CI run 38772214523 failed on it. The image is ubuntu:26.04 from mirror.gcr.io (CiImageMirrorSpec:
 # never Docker Hub first) plus the packages below, built once and kept, tagged by this recipe's hash. The checkout is
-# mounted READ-ONLY at its own path (a worktree's .git file names the clone's git dir by absolute path, so that is
-# mounted too); the tests write only to their mktemp scratch, the container's own /tmp. They run as this user, not
+# mounted READ-ONLY at its own path; the tests write only to their mktemp scratch, the container's own /tmp. Its git
+# metadata (config, HEAD, refs, the worktree's own dir: git_metadata_tar) is a snapshot in a tmpfs at the git dir's own
+# path, only the objects mounted live (a worktree's .git file names the clone's git dir by absolute path). They run as this user, not
 # root, as CI's `runner` does: root passes a chmod-000 check that fails everywhere else. The package list is what the
 # runner image ships that the tests reach for -- zstd (every recording/tree archive the convergence and restore tools
 # unpack), rsync (ios-release.sh pins /usr/bin/rsync) and node (local-mirror/rules-test.sh) among them: a tool the runner has and this image lacks fails
@@ -205,8 +206,24 @@ alternate_object_dirs() {
     alternate_object_dirs "$dir" $((depth + 1))
   done < "$objects/info/alternates"
 }
+# <common dir> <git dir> -> a tar of the git metadata a checkout reads, all but the objects, relative to the common dir.
+# Mounted live, the clone's shared .git/config read as missing in the container whenever a host git rewrote it (every
+# agent's worktree commits through it; git writes a config.lock and renames it over): Rancher's virtiofs answered
+# ENOENT for most of the next second, and git died "unknown error occurred while reading the configuration files" --
+# 58 of pre-push-test.sh's checks on plain main (2026-10-28), passing alone. A file mounted over it went the same way:
+# the rename invalidates that path, and the mount on it with it.
+git_metadata_tar() {
+  local common=$1 dir=$2 prefix entry entries=()
+  for prefix in "" "${dir#"$common"/}/"; do
+    [ "$prefix" = "$dir/" ] && continue # the main checkout: its git dir is the common dir
+    for entry in config config.worktree HEAD ORIG_HEAD FETCH_HEAD commondir gitdir index packed-refs refs shallow info; do
+      [ -e "$common/$prefix$entry" ] && entries+=("$prefix$entry")
+    done
+  done
+  COPYFILE_DISABLE=1 tar -C "$common" --no-xattrs -cf - "${entries[@]}" # no macOS ._ files, no xattr headers
+}
 run_on_linux() {
-  local docker image git_common alternate mounts=() selected=()
+  local docker image git_common git_dir alternate mounts=() selected=()
   docker=$(command -v docker || true)
   [ -z "$docker" ] && [ -x "$HOME/.rd/bin/docker" ] && docker="$HOME/.rd/bin/docker" # Rancher Desktop's
   if [ -z "$docker" ] || ! bounded 20 "$docker" info > /dev/null 2>&1; then
@@ -221,7 +238,9 @@ run_on_linux() {
   fi
   mounts=(-v "$root:$root:ro")
   git_common="$(cd "$root" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
-  case "$git_common" in "$(cd "$root" && pwd -P)"/*|"$root"/*|"") ;; *) mounts+=(-v "$git_common:$git_common:ro") ;; esac
+  git_dir="$(cd "$root" && git rev-parse --path-format=absolute --git-dir 2>/dev/null)"
+  [ -z "$git_common" ] || mounts+=(--mount "type=tmpfs,destination=$git_common,tmpfs-mode=1777"
+    -v "$git_common/objects:$git_common/objects:ro")
   # ...and the object directories it borrows from: on ci-runner every checkout's objects/info/alternates names the
   # runner's git mirror (/git-mirror, infra forgejo.nix), which holds every object the job's fetch did not bring. Unmounted,
   # `git show HEAD:<path>` failed in here for a blob the mirror already had -- identity-measure-test.sh's "HEAD has no
@@ -234,8 +253,12 @@ run_on_linux() {
   # each path names exactly its own test; a tag, when one selected them, keeps the tagged ones in
   # the failing logs land on the host, in the run's own log directory
   mkdir -p "$log_dir" && mounts+=(-v "$log_dir:$log_dir")
-  "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb -e RUN_SCRIPT_TESTS_LOG_DIR="$log_dir" "${mounts[@]}" -w "$root" "$image" \
-    bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" ${tag:+--tag "$tag"} "${selected[@]}" < /dev/null
+  # the snapshot comes in on stdin, unpacked before the tests start (their stdin closed, as ever)
+  # shellcheck disable=SC2016 # expanded by the container's bash
+  { [ -z "$git_common" ] || git_metadata_tar "$git_common" "$git_dir"; } |
+    "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb -e RUN_SCRIPT_TESTS_LOG_DIR="$log_dir" "${mounts[@]}" -w "$root" "$image" \
+      bash -c '[ -z "$0" ] || tar -xf - -C "$0" || exit 2; exec "$@" < /dev/null' "$git_common" \
+      bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" ${tag:+--tag "$tag"} "${selected[@]}"
 }
 
 work="$(mktemp -d)"
