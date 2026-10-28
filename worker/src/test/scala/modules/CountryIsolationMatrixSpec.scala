@@ -1,6 +1,7 @@
 package modules
 
 import models.{Cinema, CinemaCityChain, CineworldChain, City, Country, RegalChain}
+import org.scalatest.ParallelTestExecution
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CinemaScraperCatalog
@@ -35,8 +36,12 @@ import java.util.Locale
  * every country's scrapers by design, and each consumer is expected to take its own
  * country's slice — which is what the rest of the walk checks. No currency is modelled
  * anywhere in the app, so there is none to check.
+ *
+ * The tests run side by side (`ParallelTestExecution`): each boots a wiring of its own and stops it. One after another,
+ * the 25 boots were the `test (worker)` row's long pole, ~60 s on CI alone after every other worker suite had ended
+ * (measure runs 3419-3425, 2026-10-28).
  */
-class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
+class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
   /** An offline wiring that also names every cinema it tags into its /uptime. */
   private class IsolationProbe(c: Country) extends OfflineWorkerWiring(c) {
