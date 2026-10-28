@@ -97,6 +97,42 @@ class RelayTest(unittest.TestCase):
                                                              "16:23:20Z [de] FAILED: boom"])
             self.assertEqual(len(open(log, encoding="utf-8").read().splitlines()), 4)
 
+    def test_past_the_deadline_the_sbt_run_s_whole_process_group_is_ended_and_the_run_stops(self):
+        # run 3583: the default two recordings need ~60 minutes, its row's bounded step 34
+        import contextlib
+        import io
+        import tempfile
+        import time
+        with tempfile.TemporaryDirectory() as d:
+            log, child = os.path.join(d, "sbt.log"), os.path.join(d, "child.pid")
+            script = f"sleep 60 & echo $! > {child}; echo '[ablation pl] b001: 0 moved in 8.0s'; wait"
+            began = time.monotonic()
+            with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(ablation.Deadline):
+                ablation.relay(["sh", "-c", script], d, log, past_deadline=lambda: True)
+            self.assertLess(time.monotonic() - began, 20)
+            pid = int(open(child).read())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(pid, 0)
+
+    def test_a_run_cut_at_its_deadline_keeps_its_round_and_ends_well(self):
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            pending = [{"id": "b001", "rules": ["title:x"], "countries": None}]
+            with open(os.path.join(d, "state.json"), "w") as f:
+                json.dump({"round": 1, "settled": {}, "interactions": [], "pending": pending, "fired": {}}, f)
+            with mock.patch.object(ablation, "run_recordings", side_effect=ablation.Deadline()), \
+                    mock.patch.object(ablation, "read_judgements", return_value=[]), \
+                    contextlib.redirect_stdout(io.StringIO()) as shown:
+                status = ablation.main(["--out", d, "--recordings", "573", "--deadline-minutes", "28"])
+            self.assertEqual(status, 0)
+            self.assertEqual(json.load(open(os.path.join(d, "state.json")))["pending"], pending)
+            self.assertIn("stopped at the 28-minute deadline in round 1", shown.getvalue())
+            self.assertTrue(os.path.exists(os.path.join(d, "report.md")))
+
 
 class ShardAndMergeTest(unittest.TestCase):
     def test_shards_split_the_first_round_and_merge_back_whole(self):
@@ -108,6 +144,21 @@ class ShardAndMergeTest(unittest.TestCase):
                                  {"round": 2, "settled": {"r1": outcome(1)}, "interactions": [{"rules": ["a"]}], "fired": {}, "pending": []}])
         self.assertEqual(sorted(merged["settled"]), ["r0", "r1"])
         self.assertEqual((merged["round"], merged["interactions"], merged["fired"]), (3, [{"rules": ["a"]}], {"r0": 2}))
+
+    def test_configurations_left_for_the_next_dispatch_are_no_failure_of_the_merge(self):
+        # run 3583's collect: one round per dispatch always leaves the movers' halves pending
+        import contextlib
+        import io
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            shard = os.path.join(d, "state.json")
+            with open(shard, "w") as f:
+                json.dump({"round": 2, "settled": {"r0": outcome()}, "interactions": [], "fired": {},
+                           "pending": [{"id": "b001a", "rules": ["r1"]}]}, f)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(ablation.main(["--out", os.path.join(d, "merged"), "--merge", shard]), 0)
+            self.assertTrue(os.path.exists(os.path.join(d, "merged", "report.md")))
 
     def test_sbt_runs_against_ci_s_mongodb_when_one_is_named(self):
         old = os.environ.pop("MONGODB_URI", None)

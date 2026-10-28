@@ -70,4 +70,25 @@ class CiRowTimeoutSpec extends AnyFlatSpec with Matchers {
     ForgejoParse.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation/round-*/*/*/done-*")
     ablateStep("Carry on").getOrElse("run", "") should include("round-")
   }
+
+  it should "stop the ablation at its own deadline, inside the step's bound, so an unfinished round ends green and resumable" in {
+    // Identity rule ablation #2400: the default two recordings need ~60 minutes; the step's 34 cut them, and red
+    val step     = ablateStep("Ablate")
+    val deadline = step.getOrElse("run", "") match {
+      case s"$_--deadline-minutes $n $_" => n.takeWhile(_.isDigit).toInt
+      case _                             => fail("the ablation runs with no --deadline-minutes: an unfinished round is cut by the step's bound")
+    }
+    val bound = step.get("timeout-minutes").map(_.trim.takeWhile(_.isDigit).toInt).getOrElse(fail("no step bound"))
+    // the deadline is read at each configuration (up to ~2 minutes apart), then sbt gets 30 s to end and the report is written
+    deadline should be <= bound - 4
+    deadline should be >= LongestGreenAblationStepMinutes
+  }
+
+  "the rule ablation's collect job" should "merge the state each ablate row uploads, where the upload puts it" in {
+    // the upload's paths share the workspace, not ablation/ (ablation.out sits beside it): `shards/*/state.json` matched
+    // nothing, and every collect since went red with no report
+    val collect = RepoFile.jobs(RepoFile.read(".github/workflows/identity-rule-ablation.yml"))("collect")
+    ForgejoParse.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation.out")
+    ForgejoParse.steps(collect).flatMap(_.get("run")).mkString("\n") should include("--merge shards/*/ablation/state.json")
+  }
 }

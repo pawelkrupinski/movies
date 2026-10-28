@@ -14,15 +14,18 @@ learned ones (`learned-*`: the refit's, not code's) nor `refused:`/`pooled:`/`fo
 ablated as its family (`veto:...-namesake-*`).
 
 Rounds are kept under <out>/round-N/<recording>/ and a finished configuration is never resolved again, so a stopped
-run resumes where it stopped. Each sbt run takes the heavy-build lock (--lock) and runs niced.
+run resumes where it stopped -- one cut off at its --deadline-minutes, too: it ends the sbt run, keeps its state, and
+exits 0 (a CI row stops inside its step's bound, and the next dispatch's resume-run carries on). Each sbt run takes the heavy-build lock (--lock) and runs niced.
 """
 
 import argparse
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -180,13 +183,19 @@ def recording_countries(pair):
     return sorted(d[len("enrichment-"):] for d in os.listdir(pair) if d.startswith("enrichment-"))
 
 
-def run_plan(repo, recording, pair, configs, out, lock, chunk, log):
+class Deadline(Exception):
+    """The run's --deadline-minutes passed: stop where it stands; every configuration resolved so far is kept."""
+
+
+def run_plan(repo, recording, pair, configs, out, lock, chunk, log, past_deadline=lambda: False):
     """Resolve `configs` over one recording, `chunk` configurations per sbt run (each run takes the lock anew)."""
     ccs = recording_countries(pair)
     todo = [c for c in configs if not all(os.path.exists(os.path.join(out, c["id"], f"done-{cc}"))
                                           for cc in reach(c, ccs))]
     chunks = [todo[i:i + chunk] for i in range(0, len(todo), chunk)] or ([[]] if not os.path.exists(os.path.join(out, "base")) else [])
     for i, part in enumerate(chunks):
+        if past_deadline():
+            raise Deadline()
         wanted = sorted({cc for c in part for cc in reach(c, ccs)}) or ccs
         os.makedirs(out, exist_ok=True)
         plan = os.path.join(out, f"plan-{i}.json")
@@ -197,7 +206,7 @@ def run_plan(repo, recording, pair, configs, out, lock, chunk, log):
                    f"--full {','.join(wanted)} --corpus-dir {pair}/corpus --fixtures {pair}")
         argv = gate(lock) + sbt_argv(repo, command)
         print(f"[ablation] {recording}: chunk {i + 1}/{len(chunks)}, {len(part)} configurations, countries {','.join(wanted)}", flush=True)
-        status = relay(argv, repo, log)
+        status = relay(argv, repo, log, past_deadline=past_deadline)
         if status != 0:
             raise SystemExit(f"[ablation] {recording}: sbt run failed (exit {status}), log {log}")
 
@@ -205,18 +214,32 @@ def run_plan(repo, recording, pair, configs, out, lock, chunk, log):
 PROGRESS = re.compile(r"^(?:\[(?:info|error)\] )?(\[ablation [^\]]*\] .*|\[[^\]]+\] FAILED: .*)$")
 
 
-def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M:%SZ")):
+def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M:%SZ"), past_deadline=lambda: False):
     """Run `argv`, its whole output appended to `log` and its progress -- IdentityRuleAblation's `[ablation <cc>] ...`
     line per configuration and `[<cc>] FAILED: ...` -- printed as it comes, timed: a row cut off mid-run still shows in
-    its job log how far it got (run 3559 timed out with every line of it in a log whose upload the timeout cancelled)."""
+    its job log how far it got (run 3559 timed out with every line of it in a log whose upload the timeout cancelled).
+    Past the deadline (read at each line) it ends the run's process group and raises Deadline."""
     with open(log, "a", encoding="utf-8") as f, subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                                                  text=True, errors="replace") as p:
+                                                                  text=True, errors="replace", process_group=0) as p:
         for line in p.stdout:
             f.write(line)
             m = PROGRESS.match(line.rstrip("\n"))
             if m:
                 print(f"{now()} {m.group(1)}", flush=True)
+            if past_deadline():
+                end_group(p)
+                raise Deadline()
         return p.wait()
+
+
+def end_group(p, grace=30):
+    """TERM the process group `p` leads, KILL it after `grace` seconds."""
+    os.killpg(p.pid, signal.SIGTERM)
+    try:
+        p.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        os.killpg(p.pid, signal.SIGKILL)
+        p.wait()
 
 
 def sbt_argv(repo, command):
@@ -246,11 +269,11 @@ def merge(states):
     return out
 
 
-def run_recordings(repo, recordings, configs, round_dir, lock, chunk, out):
+def run_recordings(repo, recordings, configs, round_dir, lock, chunk, out, past_deadline=lambda: False):
     """run_plan over every recording, ONE AFTER ANOTHER: two sbt runs in one checkout collide on its server socket
     ("ServerAlreadyBootingException: Address already in use") and its compile output."""
     for rec, pair in recordings.items():
-        run_plan(repo, rec, pair, configs, os.path.join(round_dir, rec), lock, chunk, os.path.join(out, f"sbt-{rec}.log"))
+        run_plan(repo, rec, pair, configs, os.path.join(round_dir, rec), lock, chunk, os.path.join(out, f"sbt-{rec}.log"), past_deadline)
 
 
 def gate(lock):
@@ -304,8 +327,11 @@ def main(argv=None):
     p.add_argument("--shard", default="", help="I/N: bisect only every N-th first-round batch, from the I-th (a CI row's)")
     p.add_argument("--max-rounds", type=int, default=0, help="stop after this many bisection rounds (0: until settled); "
                    "a later run with the same --out resumes from its state.json")
+    p.add_argument("--deadline-minutes", type=float, default=0,
+                   help="stop a round's sbt run this many minutes in, keeping its state for a resumed run (0: none)")
     p.add_argument("--merge", nargs="*", help="state.json files of several shards: write their one report to --out, run nothing")
     a = p.parse_args(argv)
+    started = time.monotonic()
     if a.merge is not None:
         state = merge([json.load(open(path, encoding="utf-8")) for path in a.merge])
         os.makedirs(a.out, exist_ok=True)
@@ -313,7 +339,8 @@ def main(argv=None):
             json.dump(state, f, indent=1)
         write_report(state, os.path.join(a.out, "report.md"))
         print(f"[ablation] merged {len(a.merge)} shards: {len(state['settled'])} rules settled, {len(state['pending'])} unsettled")
-        return 0 if not state["pending"] else 1
+        # configurations left are a sweep's next dispatch (resume-run), not a failure: every `rounds`-bounded row leaves some
+        return 0
     repo = os.path.dirname(HERE)
     cache = os.environ.get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity"))
     recordings = {r: os.path.join(cache, "recordings", r, "pair", "test", "resources", "fixtures") for r in a.recordings.split(",")}
@@ -350,13 +377,32 @@ def main(argv=None):
         state["pending"] = shard_of(batches(rules, lambda r: rules[r], state["fired"], a.hot, a.cold), a.shard)
         state["round"] = 1
         save()
+    # read from round 1 only: a round-0 cut would leave baselines (fired-<cc>.tsv) a resumed run does not carry
+    past_deadline = (lambda: time.monotonic() - started > a.deadline_minutes * 60) if a.deadline_minutes else (lambda: False)
+    try:
+        resolve_rounds(a, repo, recordings, rows, state, save, past_deadline)
+    except Deadline:
+        save()
+        write_report(state, os.path.join(a.out, "report.md"))
+        print(f"::notice::[ablation] stopped at the {a.deadline_minutes:g}-minute deadline in round {state['round']} "
+              f"({len(state['pending'])} configurations); a run with resume-run naming this one carries on from its last "
+              f"resolved configuration", flush=True)
+        return 0
+    write_report(state, os.path.join(a.out, "report.md"))
+    left = f", {len(state['pending'])} configurations left for a resumed run" if state["pending"] else ""
+    print(f"[ablation] done: {len(state['settled'])} rules settled{left}, report {os.path.join(a.out, 'report.md')}")
+    return 0
+
+
+def resolve_rounds(a, repo, recordings, rows, state, save, past_deadline):
+    """Resolve the pending rounds, up to --max-rounds, saving the state after each."""
     rounds = 0
     while state["pending"] and (not a.max_rounds or rounds < a.max_rounds):
         rounds += 1
         configs = state["pending"]
         rd = os.path.join(a.out, f"round-{state['round']}")
         print(f"[ablation] round {state['round']}: {len(configs)} configurations, {sum(len(c['rules']) for c in configs)} rules", flush=True)
-        run_recordings(repo, recordings, configs, rd, a.lock, a.chunk, a.out)
+        run_recordings(repo, recordings, configs, rd, a.lock, a.chunk, a.out, past_deadline)
         noisy = determinism(rd, recordings)
         if noisy:
             raise SystemExit(f"[ablation] round {state['round']}: the baseline moved on a second resolve in {noisy}")
@@ -367,10 +413,6 @@ def main(argv=None):
         state["pending"] = nxt
         state["round"] += 1
         save()
-    write_report(state, os.path.join(a.out, "report.md"))
-    left = f", {len(state['pending'])} configurations left for a resumed run" if state["pending"] else ""
-    print(f"[ablation] done: {len(state['settled'])} rules settled{left}, report {os.path.join(a.out, 'report.md')}")
-    return 0
 
 
 def write_report(state, path):

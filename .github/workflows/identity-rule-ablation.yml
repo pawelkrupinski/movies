@@ -57,7 +57,9 @@ jobs:
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
         # SHORT ROWS: a runner drain waits for its longest job (runs 850, 1050 held the ubuntu runner for hours). One
-        # recording and one round fit in ~25 minutes. The ablation step carries its own bound: a JOB timeout cancels the
+        # recording and one round fit in ~25 minutes; the default two do not (#2400: ~60). The ablation stops itself at
+        # its --deadline-minutes, keeping its state and every configuration it resolved for the next dispatch's
+        # resume-run, and ends green; its step's bound is only the backstop for a hang. A JOB timeout cancels the
         # `always()` upload too (#2376 was cut 27 minutes into its step and lost the round and its log), a step's does
         # not, so a row cut there still uploads its state and the configurations it resolved. Bounds: CiRowTimeoutSpec.
         timeout-minutes: 45
@@ -174,7 +176,7 @@ jobs:
                   . scripts/ci/bounded-step.sh
                   set -o pipefail
                   python3 -I scripts/identity_rule_ablation.py --out ablation --recordings "$RECORDINGS" \
-                      --kinds "$KINDS" --max-rounds "$ROUNDS" \
+                      --kinds "$KINDS" --max-rounds "$ROUNDS" --deadline-minutes 28 \
                       --shard "$SHARD/$SHARDS" ${ONLY:+--only "$ONLY"} 2>&1 | tee ablation.out
 
             - name: End what a timed-out step left running
@@ -217,7 +219,8 @@ jobs:
               shell: bash
               run: |
                   set -o pipefail
-                  python3 -I scripts/identity_rule_ablation.py --out merged --merge shards/*/state.json | tee merged.out
+                  # each row's artifact keeps its `ablation/` directory (it uploads ablation.out beside it)
+                  python3 -I scripts/identity_rule_ablation.py --out merged --merge shards/*/ablation/state.json | tee merged.out
                   cat merged/report.md >> "$GITHUB_STEP_SUMMARY"
 
             - uses: actions/upload-artifact@v6
