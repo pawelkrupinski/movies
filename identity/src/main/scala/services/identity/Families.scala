@@ -131,7 +131,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   /** Does `n`'s evidence deny `film` — scored, or, for a film it has no evidence path to, its own
    *  evidence against the film's record? */
   def denies(node: EvidenceNode, film: Int): Boolean =
-    scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(pins.deniedFilms(node.listings.head.key)(film) || {
+    scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(pins.deniedTakes(node.listings.head.key)(film) || {
       candidateOf(film).exists { candidate =>
         val stated = scopeOf(node).evidenceOf(node).measured
         evidenceDenies(stated, candidate.film, IdentityMeasures.listingFilm(stated, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers,

@@ -359,7 +359,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
    *  slot, a title billing a film festival alone, or a billing as a silent film of a sound-era film. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] =
-    Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
+    Option.when(pins.deniedTakes(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial)).map(Denial(_))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse((Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))

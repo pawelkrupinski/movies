@@ -20,7 +20,7 @@ import services.movies.ListingKey
  *    onto a film the pins deny, is dropped — the pin overrides the rule.
  *
  * `judged`: the hand judgements of takes ([[TakeJudgements]]) — each TMDB film one calls wrong for a listing's billing is
- * denied the listing as a never-this-film pin denies it, so a wrong judgement corrects the take on the next resolve.
+ * denied the listing's evidence ([[deniedTakes]]), so a wrong judgement corrects the take on the next resolve.
  *
  * A pure function of the pin SET and the judgements: groups and edges come out sorted, whatever order the pins do.
  */
@@ -72,11 +72,16 @@ final case class PinConstraints(pins: Seq[Pin], judged: TakeJudgements.Index = T
   def filmOf(k: ListingKey): Option[Int] =
     groupOf.get(k).flatMap(pinnedFilms.get).filter(_.sizeIs == 1).map(_.head)
 
-  /** The films the pins say `k` never is (its whole group's), and those a judgement calls wrong for its billing. */
-  def deniedFilms(k: ListingKey): Set[Int] = {
-    val pinned = deniedByGroup.getOrElse(groupOf.getOrElse(k, k), Set.empty)
-    val wrong  = judged.denied(k.venue, k.rawTitle)
-    if (wrong.isEmpty) pinned else pinned ++ wrong
+  /** The films the pins say `k` never is (its whole group's). */
+  def deniedFilms(k: ListingKey): Set[Int] = deniedByGroup.getOrElse(groupOf.getOrElse(k, k), Set.empty)
+
+  /** The films `k`'s evidence may not take: the pins' ([[deniedFilms]]) and those a hand judgement calls wrong for its
+   *  billing. Only a scope's denial reads the judgements — no block key, edge or group: a judgement takes a film off its
+   *  own listing and moves no other listing's family (measured 2026-10-28: as edges, Tywyn's "Fallen Angels" pulled two
+   *  other venues' 2026 take off). */
+  def deniedTakes(k: ListingKey): Set[Int] = {
+    val wrong = judged.denied(k.venue, k.rawTitle)
+    if (wrong.isEmpty) deniedFilms(k) else deniedFilms(k) ++ wrong
   }
 
   /** Extra family block keys: the group's own key, and the pinned and denied films' TMDB keys
