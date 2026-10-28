@@ -19,7 +19,9 @@ import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
  *  - `kinowo_worker_identity_model_largest_family_listings` / `_largest_family_nodes` — the largest
  *    family's listings and the most evidence nodes any family holds;
  *  - `kinowo_worker_identity_model_large_families` — families larger than one region: each
- *    resolves slowly whenever anything in it moves (0 is healthy).
+ *    resolves slowly whenever anything in it moves (0 is healthy);
+ *  - `kinowo_worker_identity_history_dropped_total` — identity history entries dropped because its
+ *    writer's queue was full (0 is healthy).
  *
  * Every country's series exist from boot: the counters at 0, the gauges at NaN until the first drain measures
  * them (a 0 would claim an empty model). A country whose model is off keeps them so.
@@ -91,7 +93,7 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
 
   countryCodes.foreach { c =>
     Seq(families, seconds, largestListings, largestNodes, large).foreach(_.labelValues(c).set(Double.NaN))
-    Seq(resolved, rebuilds, takeUpFailures).foreach(_.labelValues(c))
+    Seq(resolved, rebuilds, takeUpFailures, historyDropped).foreach(_.labelValues(c))
     Seq("venue", "observation").foreach(events.labelValues(c, _))
   }
 

@@ -3291,8 +3291,8 @@
     },
     {
       "id": 51,
-      "title": "Identity model — families held, re-resolved, rebuilds and failed take-ups",
-      "description": "The incremental identity model (IdentityModelService): families it holds after its last drain, families its events re-resolved per minute, rebuilds (a failed drain rebuilt from the store — 0 is healthy), and failed take-ups (the model is down until a backed-off retry succeeds — 0 is healthy).",
+      "title": "Identity model — families held, re-resolved, rebuilds, failed take-ups and dropped history",
+      "description": "The incremental identity model (IdentityModelService): families it holds after its last drain, families its events re-resolved per minute, rebuilds (a failed drain rebuilt from the store — 0 is healthy), failed take-ups (the model is down until a backed-off retry succeeds — 0 is healthy), and identity history entries dropped because its writer's queue was full (0 is healthy).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3360,6 +3360,15 @@
           "refId": "D",
           "expr": "sum by (country) (increase(kinowo_worker_identity_model_takeup_failures_total[1h]))",
           "legendFormat": "{{country}} failed take-ups / h",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "E",
+          "expr": "sum by (country) (increase(kinowo_worker_identity_history_dropped_total[1h]))",
+          "legendFormat": "{{country}} history dropped / h",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
