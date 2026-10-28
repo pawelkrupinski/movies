@@ -82,7 +82,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       services.identity.adapters.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
-      pressed = () => tools.HeapPressure.pressed(), judgements = services.identity.TakeJudgements.Index.bundled(country.code),
+      pressed = () => tools.HeapPressure.pressed(), judgements = BundledJudgements.index(country.code),
       reportWrong = workerMetrics.identityProjection.judgedWrong(country.code))
 
   /** How often each rule fires on the live listings (`kinowo_worker_identity_rule_fires_total{rule}`), over each written

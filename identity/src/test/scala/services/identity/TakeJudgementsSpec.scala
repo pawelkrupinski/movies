@@ -29,8 +29,4 @@ class TakeJudgementsSpec extends AnyFlatSpec with Matchers {
     index.verdict("Kino Muza", "Wersal", Set("tmdb:5")) shouldBe Some(false)
     index.verdict("Kino Muza", "Michael", Set("tmdb:3")) shouldBe None
   }
-
-  "the bundled judgements" should "be none for a classpath without them" in {
-    TakeJudgements.Index.bundled("pl").size shouldBe 0
-  }
 }

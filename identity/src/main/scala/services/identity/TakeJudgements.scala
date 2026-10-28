@@ -1,12 +1,9 @@
 package services.identity
 
-import java.nio.charset.StandardCharsets
-import scala.io.Source
-import scala.util.Using
-
 /**
  * THE HAND JUDGEMENTS OF TAKES as the live worker reads them: `test/resources/fixtures/identity-judgements.tsv` (its
- * columns and states: `tools.IdentityJudgements`, the gates' reader), bundled into the worker as [[Resource]] so its
+ * columns and states: `tools.IdentityJudgements`, the gates' reader), bundled into the worker and handed in by its
+ * composition root (`modules.wiring.BundledJudgements`) so its
  * suspect-take count (`services.identity.adapters.SuspectTakeCount`) counts only the suspects no one has judged, and
  * the takes a judgement calls wrong apart. Reporting only: no take reads it.
  *
@@ -37,9 +34,6 @@ object TakeJudgements {
     else None
   }
 
-  /** The bundled judgements' classpath resource. */
-  val Resource = "/identity-judgements.tsv"
-
   /** The rows of the judgements file's lines that judge a film right or wrong. */
   def parse(lines: Iterator[String]): Seq[Judgement] =
     lines.filterNot(line => line.trim.isEmpty || line.startsWith("#") || line.startsWith("country\t")).map(_.split("\t", -1)).collect {
@@ -57,9 +51,5 @@ object TakeJudgements {
 
   object Index {
     val Empty: Index = new Index(Nil)
-    /** `country`'s bundled judgements: none when the worker was built without them. */
-    def bundled(country: String): Index =
-      Option(getClass.getResourceAsStream(Resource)).fold(Empty)(stream =>
-        new Index(Using.resource(Source.fromInputStream(stream, StandardCharsets.UTF_8.name()))(source => parse(source.getLines())).filter(_.country == country)))
   }
 }

@@ -44,7 +44,12 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     wrong shouldBe 1
   }
 
-  it should "name the billings, the most venues first, at most a bounded number" in {
+  "the worker's bundled judgements" should "be the checked-in judgements file's, by country" in {
+    modules.wiring.BundledJudgements.index("pl").size should be > 0
+    modules.wiring.BundledJudgements.index("xx").size shouldBe 0
+  }
+
+  "the count" should "name the billings, the most venues first, at most a bounded number" in {
     val take = (raw: String, venue: models.Cinema) =>
       SuspectTakes.Take(listing(raw, venue), "tmdb:1", Some(1), IdentityMeasures.Film("Out of Office", year = Some(2022)),
         decision(Seq(listing(raw, venue)), 1))
