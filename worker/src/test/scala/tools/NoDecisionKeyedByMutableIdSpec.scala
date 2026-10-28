@@ -100,6 +100,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}IncrementalResolver.scala#filmReadersOf" -> Name("reverse index: film → families"),
     s"${I}IncrementalResolver.scala#familiesOfKey" -> Name("reverse index: block key → families"),
     s"${I}IncrementalResolver.scala#freedIds"      -> Name("family numbers free to reuse; forget clears every index entry of one"),
+    s"${I}TakeFlips.scala#last"          -> Name("a replay's record of each listing's last served take: it watches takes, decides none"),
+    s"${I}TakeFlips.scala#changes"       -> Name("a replay's record of each listing's served takes, the flip check's input: it decides no take"),
     s"${I}LiveCorpus.scala#listings"     -> Name("each listing's node, moved as it arrives and leaves"),
     s"${I}LiveCorpus.scala#heads"        -> Name("each node's head listing and its evidence, derived again whenever the head arrives"),
     s"${I}LiveCorpus.scala#members"      -> Name("each node's member listings"),
