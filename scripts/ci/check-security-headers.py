@@ -17,12 +17,23 @@ What it asserts, per host (kinowo.net, showtimes.cc):
      `KINOWO_SESSION_SECURE` is live on both hosts; without it a missing `Secure` is only a
      GitHub warning (for a run against a host that has not turned it on).
 
-AN UNREACHABLE ORIGIN IS A FAILURE, NOT A PASS. GitHub's runners are Cloudflare Bot-Fight-Mode
-material on both zones (2026-09-15), and a challenge page carries none of the headers checked
-here -- so "no ACAC header" would pass against a page that is not ours. Every request therefore
-has an EXPECTED status (401 anonymous /api/me, 2xx preflight, 303 OAuth start), and anything else
-fails with the status and `cf-mitigated` named. Requests go through the Decodo residential proxy
-when DECODO_PROXY_USER / DECODO_PROXY_PASS are set, as the OG-card workflow's do.
+AN UNREACHABLE ORIGIN IS A FAILURE, NOT A PASS. Datacenter IPs (GitHub's runners, then ci-runner)
+are Cloudflare Bot-Fight-Mode material on both zones (2026-09-15), and a challenge page carries
+none of the headers checked here -- so "no ACAC header" would pass against a page that is not
+ours. Every request therefore has an EXPECTED status (401 anonymous /api/me, 2xx preflight, 303
+OAuth start), and anything else fails with the status and `cf-mitigated` named.
+
+DIRECT FIRST, FROM CI-RUNNER, WITH THE EDGE KEY. Runs #2239 on (2026-10-27): the check went
+through the Decodo residential proxy only, and Decodo's account went dark (CONNECT 503 on every
+port), so a header check of our own sites failed for a third party's reason. Bot Fight Mode has no
+custom-rule skip on the Free plan; its one exception is an IP Access Rule, matched first. So both
+zones Allow ci-runner's address (162.55.0.154), and a custom rule BLOCKS that address on
+kinowo.net / showtimes.cc unless the request carries `X-Kinowo-Edge-Check: <EDGE_CHECK_KEY>` --
+the bypass is the address AND the secret, nothing else (infra/bin/cloudflare-ci-edge-allow sets
+both up). Every request goes direct with that header; only a direct answer that is not the
+origin's (a 403, or no connection) is retried through the proxy, when DECODO_PROXY_USER /
+DECODO_PROXY_PASS are set. The proxy is the fallback, never the verdict's excuse: a challenge
+through either path is still a failure.
 
 THE PROXY IS A POOL, AND A DEAD PORT IS NAMED AS THE PROXY'S. Decodo's ports are one static IP
 each; the pool is the worker's, read from its committed residential-proxy.properties. Runs #2173
@@ -32,7 +43,6 @@ nothing). A proxy-side error (the CONNECT tunnel refused, or a timeout / refused
 while reaching the proxy) now moves the request to the next port, and the dead port is skipped for
 the rest of the run; only when every port has failed does the check report `proxy unavailable
 (Decodo ...)` with each port's error -- still a failure, since nothing about the origin was checked.
-Going direct is no fallback: the runner's IP gets Cloudflare's challenge.
 
 Usage: check-security-headers.py [host ...]     (default: kinowo.net showtimes.cc)
 The pure `evaluate_*` functions are unit-tested offline by check_security_headers_test.py.
@@ -50,6 +60,7 @@ SESSION_COOKIE = "PLAY_SESSION"
 PROXY_PROPERTIES = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir,
                                 "worker", "src", "main", "resources", "residential-proxy.properties")
 PROXY_UNAVAILABLE = "proxy unavailable (Decodo"
+EDGE_CHECK_HEADER = "X-Kinowo-Edge-Check"
 
 
 def header(headers, name):
@@ -119,12 +130,16 @@ def _proxy_credentials():
     return os.environ.get("DECODO_PROXY_USER", "").strip(), os.environ.get("DECODO_PROXY_PASS", "").strip()
 
 
+def _edge_check_key():
+    return os.environ.get("EDGE_CHECK_KEY", "").strip()
+
+
 def redact(text):
-    """`text` with any URL userinfo and the proxy credentials (raw or URL-quoted) masked. A failed
-    fetch's text goes into an `::error::` line of a public run log, and the proxy URL carries the
-    Decodo user and password."""
+    """`text` with any URL userinfo, the proxy credentials and the edge key (raw or URL-quoted)
+    masked. A failed fetch's text goes into an `::error::` line of a public run log, and the proxy
+    URL carries the Decodo user and password."""
     text = re.sub(r"(\w+://)[^/@\s]+@", r"\1***@", text)
-    for secret in _proxy_credentials():
+    for secret in _proxy_credentials() + (_edge_check_key(),):
         if secret:
             for form in {secret, urllib.request.quote(secret, safe="")}:
                 text = text.replace(form, "***")
@@ -169,10 +184,34 @@ class ProxyPool:
             "%s: %s" % (port, self.dead[port]) for port in self.ports)))
 
 
+class DirectThenProxy:
+    """Direct first; a direct answer that is not the origin's -- a 403 (Cloudflare's challenge or
+    the edge-key rule's block) or no connection at all -- is tried once more through the proxy.
+    Whatever the proxy answers is the verdict, so a challenge there still fails the check."""
+
+    def __init__(self, direct, proxy):
+        self.direct, self.proxy = direct, proxy
+
+    def open(self, request, timeout):
+        try:
+            return self.direct.open(request, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            if error.code != 403:
+                raise
+            print("direct %s %s: HTTP 403%s -- retrying through the proxy"
+                  % (request.get_method(), request.full_url, "".join(
+                      " (cf-mitigated: %s)" % v for v in header(list(error.headers.items()), "cf-mitigated"))))
+        except urllib.error.URLError as error:
+            print("direct %s %s: %s -- retrying through the proxy"
+                  % (request.get_method(), request.full_url, _describe(error)))
+        return self.proxy.open(request, timeout)
+
+
 def _opener():
+    direct = urllib.request.build_opener(_NoRedirect())
     user, password = _proxy_credentials()
     if not (user and password):
-        return urllib.request.build_opener(_NoRedirect())
+        return direct
     host, ports = proxy_pool()
     openers = {}
 
@@ -181,7 +220,7 @@ def _opener():
             proxy = "http://%s:%s@%s:%s" % (urllib.request.quote(user, safe=""), urllib.request.quote(password, safe=""), host, port)
             openers[port] = urllib.request.build_opener(_NoRedirect(), urllib.request.ProxyHandler({"https": proxy, "http": proxy}))
         return openers[port].open(request, timeout=timeout)
-    return ProxyPool(host, ports, open_via)
+    return DirectThenProxy(direct, ProxyPool(host, ports, open_via))
 
 
 def is_proxy_side(error):
@@ -201,7 +240,9 @@ def _describe(error):
 
 
 def fetch(opener, method, url, headers):
-    request = urllib.request.Request(url, method=method, headers={"User-Agent": "kinowo-security-headers-check", **headers})
+    key = _edge_check_key()
+    request = urllib.request.Request(url, method=method, headers={
+        "User-Agent": "kinowo-security-headers-check", **({EDGE_CHECK_HEADER: key} if key else {}), **headers})
     try:
         with opener.open(request, timeout=30) as response:
             return response.status, list(response.headers.items())

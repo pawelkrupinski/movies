@@ -13,9 +13,13 @@ name: Security headers (live)
 # Cloudflare together, on the real hosts only. So this is a synthetic check, not a unit test, and
 # the fleet has no blackbox exporter to hang it on.
 #
-# Through the Decodo proxy (same secrets as the OG-card workflow): GitHub's runner IPs get a
-# Cloudflare Bot-Fight challenge on both zones, and the checker FAILS on a challenge rather than
-# passing a page that is not ours.
+# DIRECT from ci-runner, with the Decodo proxy as a fallback only. Bot Fight Mode challenges
+# datacenter IPs on both zones, and on the Free plan its one exception is an IP Access Rule: both
+# zones Allow ci-runner (162.55.0.154), and a custom rule blocks that address on kinowo.net /
+# showtimes.cc unless the request carries the EDGE_CHECK_KEY secret as `X-Kinowo-Edge-Check`
+# (infra/bin/cloudflare-ci-edge-allow). Run #2239 (2026-10-27) is why: Decodo's account went dark
+# and a proxy-only check of our own headers went red with it. The checker still FAILS on a
+# challenge from either path rather than passing a page that is not ours.
 
 on:
     schedule:
@@ -42,7 +46,8 @@ jobs:
     check:
         runs-on: ubuntu-26.04
         # A dead Decodo port is tried once and retired (check-security-headers.py, ProxyPool): the
-        # whole pool timing out is 7 x 30 s, and the job must outlive it to name the proxy.
+        # whole pool timing out is 7 x 30 s, and the job must outlive it to name the proxy. The
+        # pool is only reached when a direct request is refused.
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v5
@@ -60,6 +65,7 @@ jobs:
 
             - name: Check kinowo.net and showtimes.cc
               env:
+                  EDGE_CHECK_KEY: ${{ secrets.EDGE_CHECK_KEY }}
                   DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   REQUIRE_SECURE_SESSION_COOKIE: ${{ vars.REQUIRE_SECURE_SESSION_COOKIE }}

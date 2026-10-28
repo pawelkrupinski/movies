@@ -220,5 +220,80 @@ class ProxyFailures(unittest.TestCase):
         self.assertEqual(calls, ["10001"])
 
 
+class DirectThenProxyTest(unittest.TestCase):
+    """Run #2239 on (2026-10-27): Decodo dark, so the proxy-only check failed for a third party's
+    reason. Direct (ci-runner, IP Access Allow + the edge key) answers first; only a direct answer
+    that is not the origin's goes to the proxy, and the proxy's answer -- a challenge included --
+    is the verdict."""
+
+    CHALLENGE_403 = urllib.error.HTTPError("https://kinowo.net/api/me", 403, "Forbidden", {"cf-mitigated": "challenge"}, None)
+    ANSWER = (401, [("strict-transport-security", "max-age=31536000")])
+
+    class Leg:
+        def __init__(self, outcome):
+            self.outcome, self.requests = outcome, []
+
+        def open(self, request, timeout):
+            self.requests.append(request)
+            if isinstance(self.outcome, BaseException):
+                raise self.outcome
+            return ProxyFailures.Response(*self.outcome)
+
+    def _fetch(self, direct, proxy):
+        return check.fetch(check.DirectThenProxy(self.Leg(direct), proxy), "GET", "https://kinowo.net/api/me", {})
+
+    def test_a_direct_origin_answer_never_touches_the_proxy(self):
+        proxy = self.Leg(self.ANSWER)
+        self.assertEqual(self._fetch(self.ANSWER, proxy), self.ANSWER)
+        self.assertEqual(proxy.requests, [])
+
+    def test_a_direct_challenge_falls_back_to_the_proxy(self):
+        proxy = self.Leg(self.ANSWER)
+        self.assertEqual(self._fetch(self.CHALLENGE_403, proxy), self.ANSWER)
+        self.assertEqual(len(proxy.requests), 1)
+
+    def test_a_challenge_on_both_paths_still_fails(self):
+        status, headers = self._fetch(self.CHALLENGE_403, self.Leg(self.CHALLENGE_403))
+        failures = check.evaluate_cors("kinowo.net GET /api/me", status, {401}, headers)
+        self.assertEqual(len(failures), 1)
+        self.assertIn("cf-mitigated: challenge", failures[0])
+
+    def test_a_direct_challenge_with_the_proxy_dark_fails_naming_the_proxy(self):
+        dark = check.ProxyPool("isp.decodo.com", ["10001"], lambda port, request, timeout: (_ for _ in ()).throw(
+            urllib.error.URLError(OSError("Tunnel connection failed: 503 Service Unavailable"))))
+        status, _ = self._fetch(self.CHALLENGE_403, dark)
+        self.assertTrue(str(status).startswith("proxy unavailable (Decodo"), status)
+
+    def test_a_direct_origin_error_status_is_not_retried(self):
+        proxy = self.Leg(self.ANSWER)
+        error = urllib.error.HTTPError("https://kinowo.net/api/me", 500, "Server Error", {}, None)
+        self.assertEqual(self._fetch(error, proxy), (500, []))
+        self.assertEqual(proxy.requests, [])
+
+
+class EdgeKeyTest(unittest.TestCase):
+    """The edge key rides on every request (the custom rule blocks ci-runner without it), and never
+    reaches a log line."""
+
+    def setUp(self):
+        self.saved = os.environ.get("EDGE_CHECK_KEY")
+        os.environ["EDGE_CHECK_KEY"] = "s3cr3t-edge/key"
+
+    def tearDown(self):
+        if self.saved is None:
+            os.environ.pop("EDGE_CHECK_KEY", None)
+        else:
+            os.environ["EDGE_CHECK_KEY"] = self.saved
+
+    def test_every_request_carries_the_key(self):
+        leg = DirectThenProxyTest.Leg(DirectThenProxyTest.ANSWER)
+        check.fetch(leg, "OPTIONS", "https://kinowo.net/api/me", {"Origin": "https://x.invalid"})
+        self.assertEqual(leg.requests[0].get_header("X-kinowo-edge-check"), "s3cr3t-edge/key")
+        self.assertEqual(leg.requests[0].get_header("Origin"), "https://x.invalid")
+
+    def test_the_key_is_redacted(self):
+        self.assertNotIn("s3cr3t", check.redact("failed with s3cr3t-edge/key and s3cr3t-edge%2Fkey"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
