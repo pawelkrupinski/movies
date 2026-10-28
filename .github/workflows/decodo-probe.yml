@@ -1,0 +1,55 @@
+name: Decodo probe
+
+# Is the Decodo residential proxy pool answering? Opens https://kinowo.net/ through every port of
+# worker/src/main/resources/residential-proxy.properties and prints one line per port
+# (scripts/ci/decodo-probe.py): exit 0 when at least one port reached the origin, 1 when none did,
+# 2 on missing credentials. agentctl keys on this workflow's name.
+
+on:
+    schedule:
+        - cron: '7,37 * * * *'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    probe:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Self-test the probe
+              run: python3 scripts/ci/decodo_probe_test.py
+
+            - name: Probe every Decodo port
+              env:
+                  DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
+                  DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
+              run: python3 scripts/ci/decodo-probe.py
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [probe]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        secrets: inherit
+
+    report:
+        name: report (scheduled run)
+        needs: [probe, timings]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
