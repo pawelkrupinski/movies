@@ -58,7 +58,7 @@ object CorrectionFlipReplaySpec {
     private val filings     = mutable.ArrayBuffer.empty[(Long, String)]
     private def file(ids: String*): Unit = ids.foreach { id => version += 1; filings += version -> id }
 
-    private def joinedQuestion(question: String) = question.toLowerCase.contains("klub")
+    private def joinedQuestion(question: String) = question.toLowerCase(java.util.Locale.ROOT).contains("klub")
     private def family(of: VoterFamily, inner: FamilyAnswers): FamilyAnswers = new FamilyAnswers {
       val family: VoterFamily = of
       private def gated[A](question: String)(answer: => Answer[A]): Answer[A] = if (joinedQuestion(question) && !familyFiled) Answer.Unknown else answer
