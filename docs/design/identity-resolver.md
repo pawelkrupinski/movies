@@ -3187,7 +3187,8 @@ suspect, never vetoing it:
   the director named, a re-release TMDB dates), and another billing of the same title was taken as a film 30+ years newer.
   A feed's copied year is no venue's statement.
 - **runtime** — a short (<40 min) for a feature-length listing or a title three venues bill; else a stated runtime 30
-  min and 30% from every runtime TMDB states (cuts included).
+  min and 30% SHORTER than every runtime TMDB states (cuts included); a listing running longer is the venue's slot
+  (wine, Q&A, adverts: 2026-10-28, 33 recorded billings, every judged one right; wrong recall unchanged at 49/80).
 - **sequel** — `IdentityMeasures.numbersAnotherInstalment`, never a relay's season number.
 - **feed** — a Cineamo TMDB link to another film, on an agreement/fill take only (the model's own takes overrule a link
   on their evidence, `FeedLink`).
