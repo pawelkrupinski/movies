@@ -34,10 +34,13 @@ class UnitTestForkSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "run one at a time under the sbt server's JVM slot, and two at once only on a CI runner" in {
+  it should "run one at a time under the sbt server's JVM slot, and three at once only on a CI runner" in {
     buildSbt.linesIterator.map(_.trim).toSeq should contain("ForkedTests.forkSlots")
     val forked = RepoFile.read("project/ForkedTests.scala")
     forked should include("Tags.limit(Tags.ForkedTestGroup, forksAtOnce)")
-    forked should include("""contains("true")) 2 else 1)""")
+    forked should include("""contains("true")) 3 else 1)""")
+    // in place of sbt's own limit of one, which `+=` left standing beside it (and the tighter rule wins)
+    forked should include("concurrentRestrictions).value.filterNot(forkLimit)")
+    forked should not include ("concurrentRestrictions +=")
   }
 }

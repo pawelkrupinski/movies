@@ -44,16 +44,29 @@ object ForkedTests {
     ManagementFactory.getRuntimeMXBean.getInputArguments.asScala.filter(_.startsWith("-XX:ActiveProcessorCount=")).toSeq
 
   /** How many forked test JVMs run at once. ONE in a person's or an agent's sbt: see THE JVM SLOT above. On a CI runner
-   *  (`CI=true`), which runs one job and nothing else, TWO: a module's specs leave cores idle behind their longest suites
-   *  (identity's corpus equivalences, worker's projection fuzz), and the next module's fill them -- serially the `rest`
-   *  row was common's fork, then testkit's, then identity's (2.1 + 0.25 + 5.1 min, CI 2026-10-27). Two heaps of at most
-   *  2 GB and 1 GB beside the server fit a runner. `KINOWO_TEST_FORKS=<n>` overrides either. */
+   *  (`CI=true`), which runs one job and nothing else, THREE: every module of a unit row in a fork of its own at once (a
+   *  row is at most three modules: worker, web and scrapers; common, identity and testkit). A module's specs leave cores
+   *  idle behind their longest suites, and the other modules' fill them. Measured on main-lane, the two multi-module rows
+   *  side by side in each of three runs at host load 82-213 (measure runs 3468, 3475, 3480), test step in s:
+   *  `worker` 368/371/338 at one fork, 288/276/274 at two, 262/241/253 at three; `rest` 284/263/268, 274/243/259,
+   *  273/244/251. Three heaps of at most 2 GB, 1 GB and 512 MB beside the server fit a runner. `KINOWO_TEST_FORKS=<n>`
+   *  overrides either. */
   val forksAtOnce: Int =
     sys.env.get("KINOWO_TEST_FORKS").flatMap(n => scala.util.Try(n.trim.toInt).toOption).filter(_ >= 1)
-      .getOrElse(if (sys.env.get("CI").contains("true")) 2 else 1)
+      .getOrElse(if (sys.env.get("CI").contains("true")) 3 else 1)
 
-  /** At most [[forksAtOnce]] forked test JVMs at a time, in every module and configuration. */
-  val forkSlots: Setting[_] = Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, forksAtOnce)
+  /** At most [[forksAtOnce]] forked test JVMs at a time, in every module and configuration. IN PLACE OF sbt's own
+   *  `Tags.limit(Tags.ForkedTestGroup, 1)` (Defaults.defaultRestrictions), not beside it: every rule applies, so with
+   *  both the tighter one won and CI ran its test forks one at a time after 5a4cb6949 too (`show Global /
+   *  concurrentRestrictions` listed "Limit forked-test-group to 1" beside "to 2"; the `worker` row ran worker's,
+   *  scrapers' and web's forks one after another, 2026-10-28). */
+  val forkSlots: Setting[_] = Global / concurrentRestrictions := {
+    // sbt's rules are opaque predicates over the running tasks' tag counts: its fork limit is the one that refuses a
+    // second forked test group alone.
+    val forkLimit: Tags.Rule => Boolean = rule =>
+      rule(Map(Tags.ForkedTestGroup -> 1)) && !rule(Map(Tags.ForkedTestGroup -> 2))
+    (Global / concurrentRestrictions).value.filterNot(forkLimit) :+ Tags.limit(Tags.ForkedTestGroup, forksAtOnce)
+  }
 
   /** `config`'s specs in a forked JVM with at most `heap` (an `-Xmx` value, e.g. "2g"). */
   def settings(config: Configuration, heap: String): Seq[Setting[_]] = Seq(
