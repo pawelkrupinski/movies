@@ -8,6 +8,11 @@
 # none of its deciding inputs did (services.identity.TakeFlips: prod's `kinowo_identity_listing_flips`, which an end-state
 # comparison cannot see) -- unless test/resources/fixtures/identity-flips-allow.tsv names it, and that list stays empty.
 #
+# A RED HERE is fixed in the incremental state that diverges (a lag, a budget, queue order, a cache, a restart key), never
+# by a new resolver rule (the owner, 2026-10-29: a rule is identity design, measured on the full corpus); and it is not
+# closed until its listing's drift slice is committed (scripts/identity-slice <cc> SELECTOR --emit-drift-slice, replayed by
+# IdentityDriftSlicesSpec). docs/design/identity-no-drift.md, "Fixing a drift or flip red"; pre-push's driftguards.
+#
 # One commit's verdict, not base vs head: incremental = whole is a property every commit must hold, so a red here is
 # this code's (or a recording's that exposes it -- fix the code, or allow-list the listing with why it is intended).
 #

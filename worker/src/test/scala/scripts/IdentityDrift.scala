@@ -48,10 +48,19 @@ import scala.util.control.NonFatal
  * new flips, focus in eliminating all old flips and then fail on all flips"). The baseline only shrinks; once it is
  * empty every flip fails, the strict gate. Divergences have no baseline.
  *
+ * SLICE SCOPE (`--slice DIR`, Tier 1 of the drift gate): the same sequence and the same checks over one drift slice —
+ * `test/resources/fixtures/drift-slices/<cc>/<name>/`, a listing that once diverged or flipped, its families and corpus
+ * context, and every answer they read — from its own answers alone ([[SliceRun]]; `IdentityDriftSlicesSpec` replays every
+ * one in the unit suite). `--widen` with `--recording` (and `--families`) is the cut's second half
+ * (`scripts/identity-slice <cc> SELECTOR --emit-drift-slice`): each answer the incremental sequence reads that the slice
+ * lacks — a cluster at boot holding fewer listings asks otherwise than the whole resolve the slice was cut by — read
+ * from the recording and kept in the slice.
+ *
  * {{{
  *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]
+ *   IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S] [--allow TSV] [--flips-allow TSV] [--out DIR]
  * }}}
- * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage.
+ * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage, 3 a slice lacks answers.
  */
 object IdentityDrift {
   import IdentitySlice.{Reads, Recording, filmOf}
@@ -63,7 +72,11 @@ object IdentityDrift {
                            /** `--flips-allow TSV`: the reviewed flips ([[FlipAllowed]]) — kept empty. */
                            flipsAllow: Option[Path] = None,
                            /** `--flips-baseline TSV`: the known flips ([[BaselineFlip]]), which pass, counted, until fixed. */
-                           flipsBaseline: Option[Path] = None)
+                           flipsBaseline: Option[Path] = None,
+                           /** `--slice DIR`: one drift slice's listings and answers in place of the recording's ([[SliceRun]]). */
+                           slice: Option[Path] = None,
+                           /** `--widen`: what the slice lacks read from `--recording`, and kept in it. */
+                           widen: Boolean = false)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                            => o
@@ -77,12 +90,15 @@ object IdentityDrift {
     case "--labels" :: v :: rest        => parse(rest, o.copy(labels = Some(Path.of(v))))
     case "--flips-allow" :: v :: rest   => parse(rest, o.copy(flipsAllow = Some(Path.of(v))))
     case "--flips-baseline" :: v :: rest => parse(rest, o.copy(flipsBaseline = Some(Path.of(v))))
+    case "--slice" :: v :: rest         => parse(rest, o.copy(slice = Some(Path.of(v))))
+    case "--widen" :: rest              => parse(rest, o.copy(widen = true))
     case cc :: rest if !cc.startsWith("--") && o.country.isEmpty => parse(rest, o.copy(country = cc.toLowerCase(java.util.Locale.ROOT)))
     case other :: _                     => usage(s"unknown argument $other")
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]")
+    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]" +
+      "\n  IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S] [--allow TSV] [--flips-allow TSV] [--out DIR]")
     sys.exit(2)
   }
 
@@ -297,6 +313,11 @@ object IdentityDrift {
   def memo(reads: Reads): IdentityLookups =
     OlderRefs.passing(classOf[IdentityLookups], new tools.MemoLookups(reads.lookups), reads.lookups, OlderRefs.NewerLookups)
 
+  /** The store of prod's filed family answers a stage starts from: [[Noted]] in every run, a recording one while a
+   *  slice is cut ([[SliceRun]]). */
+  type FiledDocs = tools.FiledAnswers => TmdbDocuments
+  val Noted: FiledDocs = new tools.FiledAnswers.Noting(_)
+
   // ── the whole resolve ────────────────────────────────────────────────────────────────────
 
   /** The resolve's inputs over `reads`: prod's pins where they are read (the local mirror, a recording's capture of
@@ -314,8 +335,9 @@ object IdentityDrift {
 
   /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint — what a worker with
    *  nothing kept would take — answered from `answering`. */
-  def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock, answering: WholeLookups, ask: Boolean = true): Resolution = {
-    val answers  = new Answers(reads, new tools.FiledAnswers.Noting(reads.filed), clock, answering.found)
+  def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock, answering: WholeLookups, ask: Boolean = true,
+            filedDocs: FiledDocs = Noted): Resolution = {
+    val answers  = new Answers(reads, filedDocs(reads.filed), clock, answering.found)
     val lookups  = answering.lookups
     val model    = UnmatchedClusters.resolutionOf(IdentityResolver.resolve(listings, lookups, reads.normalizer, inputsOf(reads)).decisions)
     val stage    = answers.stage(lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
@@ -352,10 +374,10 @@ object IdentityDrift {
   // ── the incremental sequence ─────────────────────────────────────────────────────────────
 
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
-  final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock) {
+  final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock, filedDocs: FiledDocs = Noted) {
     private val share    = new Share(seed, gatePercent)
     val gate             = new Gate(memo(reads), share)
-    val docs             = new GatedDocuments(new tools.FiledAnswers.Noting(reads.filed), share)
+    val docs             = new GatedDocuments(filedDocs(reads.filed), share)
     val answers          = new Answers(reads, docs, clock, _ => None)
     private val families = new InMemoryIdentityModelStore
     private val verdicts = new StoredAsWritten.Verdicts
@@ -446,9 +468,15 @@ object IdentityDrift {
   def inputsMoved(before: Option[ModelCluster], now: Option[ModelCluster], listingsMoved: Boolean): Boolean =
     before.isEmpty || before.map(_.members) != now.map(_.members) || (listingsMoved && before.map(_.film) != now.map(_.film))
 
+  /** The share of the booted listings that leave and return: a venue's run ending. */
+  val Leave = 0.03
+
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
   final case class Replay(checkpoints: Seq[(String, Resolution)], flips: Seq[TakeFlips.Flip])
-  def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock): Replay = {
+  def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, filedDocs: FiledDocs = Noted,
+               /** At least one booted listing leaves and returns: a drift slice's few listings, where [[Leave]] would send
+                *  none away — and a sibling's run ending is what moved DE Werkstattkino's "CAMOUFLAGE" (#2473, ecedac9aa). */
+               leaveOne: Boolean = false): Replay = {
     val rng     = new scala.util.Random(seed)
     val venues  = rng.shuffle(listings.map(_.venue).distinct.sorted)
     val (first, later) = venues.splitAt((venues.size * 0.7).toInt)
@@ -456,9 +484,10 @@ object IdentityDrift {
     val atVenue  = listings.groupBy(_.venue)
     def of(vs: Seq[String]) = vs.flatMap(atVenue.getOrElse(_, Nil)).sorted
     val initial  = of(first)
-    val leaving  = initial.filter(_ => rng.nextDouble() < 0.03)
+    val drawn    = initial.filter(_ => rng.nextDouble() < Leave)
+    val leaving  = if (drawn.isEmpty && leaveOne && initial.nonEmpty) Seq(initial(rng.nextInt(initial.size))) else drawn
     def half     = rng.shuffle(venues).take(venues.size / 2).toSet
-    val w = new Worker(reads, seed, gatePercent, clock)
+    val w = new Worker(reads, seed, gatePercent, clock, filedDocs)
     val checkpoints = Seq.newBuilder[(String, Resolution)]
     def rescrape(checkpoint: String = ""): Resolution = {
       val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key), checkpoint)
@@ -486,33 +515,30 @@ object IdentityDrift {
     Replay(checkpoints.result(), w.flips.flips)
   }
 
-  def main(args: Array[String]): Unit = {
-    val o       = parse(args.toList)
-    val country = Country.all.find(_.code == o.country).getOrElse(usage(s"no country '${o.country}'"))
-    val root    = o.recording.getOrElse(usage("--recording DIR (a recording's test/resources/fixtures)"))
-    val recording = Recording(root, country)
-    val filed   = o.families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
-    val opened  = IdentitySlice.openRecording(recording, filed)
-    val listings = IdentitySlice.listingsOf(recording, opened.rows)
-    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
-    val allowed = o.allow.fold(Seq.empty[Allowed])(allowList).filter(_.country == country.code)
-    val flipsAllowed = o.flipsAllow.fold(Seq.empty[FlipAllowed])(flipAllowList).filter(_.country == country.code)
-    val baseline     = o.flipsBaseline.fold(Seq.empty[BaselineFlip])(flipBaseline).filter(_.country == country.code)
-    val flips   = Seq.newBuilder[(Int, TakeFlips.Flip)]
-    val started = tools.Stopwatch.start()
-    System.err.println(s"[identity-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
-    val divergences = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)).flatMap { seed =>
-      val clock = new MutableClock(recording.recordedAt)
-      // hermetic: no prod pins nor stored verdicts beside the CI gate's recording, on both sides of its comparison alike
-      def readsAt(c: java.time.Clock) = new Reads(country, opened.fetch, opened.gaps, c, filed, tools.ProdState.none)
-      val replay  = sequence(readsAt(clock), listings, seed.toLong, o.gate, clock)
+  /** What one replay found, over every seed: each divergence from the whole resolve, and each flip by its seed. */
+  final case class Findings(divergences: Seq[Divergence], flips: Seq[(Int, TakeFlips.Flip)]) {
+    /** The divergences no `allowed` row names, and the flips no `flipsAllowed` row does: what fails the gate. */
+    def open(country: String, allowed: Seq[Allowed], flipsAllowed: Seq[FlipAllowed]): Findings =
+      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) })
+    def isEmpty: Boolean = divergences.isEmpty && flips.isEmpty
+  }
+
+  /** The incremental sequence over `listings` for each of `seeds`, every checkpoint compared with the whole resolve at the
+   *  sequence's last moment — the replay the CI gate and a drift slice share. `readsAt` makes the reads over a clock; each
+   *  seed's whole-resolve takes are handed to `wholeTakes`. */
+  def replay(country: Country, listings: Seq[Listing], recordedAt: java.time.Instant, seeds: Seq[Int], gate: Int,
+             readsAt: java.time.Clock => Reads, filedDocs: FiledDocs = Noted, leaveOne: Boolean = false,
+             wholeTakes: (Int, Map[ListingKey, Take]) => Unit = (_, _) => ()): Findings = {
+    val flips = Seq.newBuilder[(Int, TakeFlips.Flip)]
+    val divergences = seeds.flatMap { seed =>
+      val clock  = new MutableClock(recordedAt)
+      val replay = sequence(readsAt(clock), listings, seed.toLong, gate, clock, filedDocs, leaveOne)
       flips ++= replay.flips.map(seed -> _)
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())
       val wholeReads = readsAt(wholeClock)
-      val reference  = takesOf(whole(wholeReads, listings, wholeClock, WholeLookups.recorded(wholeReads)))
-      println(s"[${country.code} seed $seed] the whole resolve's takes by basis: " +
-        reference.values.groupMapReduce(_.basis)(_ => 1)(_ + _).toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", "))
+      val reference  = takesOf(whole(wholeReads, listings, wholeClock, WholeLookups.recorded(wholeReads), filedDocs = filedDocs))
+      wholeTakes(seed, reference)
       replay.checkpoints.flatMap { case (name, resolution) =>
         val now = takesOf(resolution)
         listings.map(_.key).flatMap { key =>
@@ -521,26 +547,95 @@ object IdentityDrift {
         }
       }
     }
-    val (kept, open) = divergences.partition(d => allowed.exists(_.covers(d)))
+    Findings(divergences, flips.result())
+  }
+
+  /** One drift slice replayed (`test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice
+   *  --emit-drift-slice`): its listings — core and context — and its own HTTP answers and filed answers alone. Cutting it
+   *  (`widenFrom`: the recording opened, with prod's filed answers), what the slice lacks is read from the recording,
+   *  each family answer the stages read from the filed ones noted, and [[keep]] writes both into the slice. */
+  final class SliceRun(dir: Path, widenFrom: Option[(IdentitySlice.Recording, tools.FiledAnswers)] = None) {
+    val slice: IdentitySlice.Slice = IdentitySlice.readSlice(dir)
+    private val opened    = widenFrom.map { case (recording, filed) => IdentitySlice.openRecording(recording, filed) }
+    private val noting    = opened.map(r => new tools.SliceHttp.Noting(r.fetch, () => r.leaf.metOnThread))
+    val replaying         = new tools.SliceHttp.Replaying(slice.http, noting)
+    private val filed     = widenFrom.fold(slice.filed)(_._2)
+    private val notings   = new java.util.concurrent.ConcurrentLinkedQueue[tools.FiledAnswers.Noting]
+    private val lookups   = new java.util.concurrent.ConcurrentLinkedQueue[tools.FiledAnswers.Lookups]
+    val listings: Seq[Listing] = (slice.core ++ slice.context).sortBy(_.sortKey)
+    def readsAt(clock: java.time.Clock): Reads = {
+      val reads = new Reads(slice.country, replaying, replaying.gaps, clock, filed, tools.ProdState.none)
+      reads.filedLookups.foreach(lookups.add)
+      reads
+    }
+    val filedDocs: FiledDocs = f => { val n = new tools.FiledAnswers.Noting(f); notings.add(n); n }
+    def run(seeds: Seq[Int], gate: Int): Findings = replay(slice.country, listings, slice.recordedAt, seeds, gate, readsAt, filedDocs, leaveOne = true)
+    /** The requests the slice lacked (none read from a recording): a replay of it is not the cut's. */
+    def lacking: Seq[String] = replaying.lacking.asScala.map(_.render).toSeq.sorted
+    /** The slice with what this run read beside it — the recording's answers it lacked, the filed answers read — written back. */
+    def keep(): Unit = {
+      val families = notings.asScala.flatMap(_.read.asScala).toMap
+      val read     = lookups.asScala.foldLeft(tools.FiledAnswers.read(filed, families, Map.empty, None)) { (sofar, l) =>
+        tools.FiledAnswers.merge(sofar, tools.FiledAnswers.read(filed, Map.empty, Map.empty, Some(l)))
+      }
+      val kept = tools.FiledAnswers.merge(slice.filed, read)
+      IdentitySlice.writeSlice(dir, slice.copy(http = slice.http ++ replaying.widened, filed = kept.copy(source = slice.filed.source)))
+    }
+  }
+
+  def main(args: Array[String]): Unit = {
+    val o       = parse(args.toList)
+    val country = Country.all.find(_.code == o.country).getOrElse(usage(s"no country '${o.country}'"))
+    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
+    val allowed = o.allow.fold(Seq.empty[Allowed])(allowList).filter(_.country == country.code)
+    val flipsAllowed = o.flipsAllow.fold(Seq.empty[FlipAllowed])(flipAllowList).filter(_.country == country.code)
+    val baseline     = o.flipsBaseline.fold(Seq.empty[BaselineFlip])(flipBaseline).filter(_.country == country.code)
+    val seeds   = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_))
+    val started = tools.Stopwatch.start()
+    def filedOf(families: Option[Path]) = families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
+    val (listings, findings, lacking) = o.slice match {
+      case Some(dir) =>
+        if (o.widen && o.recording.isEmpty) usage("--widen reads what the slice lacks from --recording DIR")
+        val run = new SliceRun(dir, Option.when(o.widen)(Recording(o.recording.get, country) -> filedOf(o.families)))
+        if (run.slice.country != country) usage(s"the slice $dir is ${run.slice.country.code}'s, not ${country.code}'s")
+        System.err.println(s"[identity-drift] ${country.code} slice $dir: ${run.listings.size} listings, ${run.slice.http.size} answers")
+        val found = run.run(seeds, o.gate)
+        if (o.widen) { run.keep(); System.err.println(s"[identity-drift] the slice kept ${run.replaying.widened.size} answer(s) read from the recording") }
+        (run.listings, found, run.lacking)
+      case None =>
+        val root      = o.recording.getOrElse(usage("--recording DIR (a recording's test/resources/fixtures)"))
+        val recording = Recording(root, country)
+        val filed     = filedOf(o.families)
+        val opened    = IdentitySlice.openRecording(recording, filed)
+        val listings  = IdentitySlice.listingsOf(recording, opened.rows)
+        System.err.println(s"[identity-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
+        // hermetic: no prod pins nor stored verdicts beside the CI gate's recording, on both sides of its comparison alike
+        val found = replay(country, listings, recording.recordedAt, seeds, o.gate,
+          c => new Reads(country, opened.fetch, opened.gaps, c, filed, tools.ProdState.none),
+          wholeTakes = (seed, reference) => println(s"[${country.code} seed $seed] the whole resolve's takes by basis: " +
+            reference.values.groupMapReduce(_.basis)(_ => 1)(_ + _).toSeq.sortBy(-_._2).map { case (b, n) => s"$b $n" }.mkString(", ")))
+        (listings, found, Nil)
+    }
+    val divergences = findings.divergences
+    val open        = findings.open(country.code, allowed, flipsAllowed)
     Files.createDirectories(o.out)
     Files.writeString(o.out.resolve(s"drift-${country.code}.tsv"), (Header +: divergences.map(_.tsv)).mkString("", "\n", "\n"))
-    println(f"## ${country.code}: ${listings.size} listings, ${o.only.fold(o.seeds)(_ => 1)} seed(s), ${divergences.size} divergence(s) " +
-      f"(${divergences.map(_.key).distinct.size} listings), ${kept.size} allow-listed, in ${started.seconds}%.0fs")
-    open.groupBy(_.cls).toSeq.sortBy(-_._2.size).foreach { case (cls, ds) =>
+    println(f"## ${country.code}: ${listings.size} listings, ${seeds.size} seed(s), ${divergences.size} divergence(s) " +
+      f"(${divergences.map(_.key).distinct.size} listings), ${divergences.size - open.divergences.size} allow-listed, in ${started.seconds}%.0fs")
+    open.divergences.groupBy(_.cls).toSeq.sortBy(-_._2.size).foreach { case (cls, ds) =>
       println(s"  ${ds.map(_.key).distinct.size} listing(s)  $cls")
       ds.distinctBy(_.key).sortBy(d => (d.key.rawTitle, d.key.venue)).take(6).foreach { d =>
         val label = verdictOf(country, d, labels)
         println(s"      ${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]$label")
       }
     }
-    val flipped                 = flips.result()
-    val (flipsKept, unreviewed) = flipped.partition { case (_, f) => flipsAllowed.exists(_.covers(country.code, f)) }
+    val flipped = findings.flips
     Files.writeString(o.out.resolve(s"flips-${country.code}.tsv"), (FlipHeader +: flipped.map { case (seed, f) =>
       Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "))
         .map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
     }).mkString("", "\n", "\n"))
-    val verdict = flipVerdict(country.code, unreviewed, baseline, o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)))
-    println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipsKept.size} allow-listed, " +
+    val verdict = flipVerdict(country.code, open.flips, baseline, seeds)
+    println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipped.size - open.flips.size} allow-listed, " +
       s"${verdict.known.size} known")
     println(s"## ${country.code} known flips: ${verdict.known.size} known flip(s) remaining (${verdict.known.map(_._2.key).distinct.size} listings in " +
       s"identity-flips-baseline.tsv), ${verdict.fixed.size} fixed")
@@ -550,7 +645,11 @@ object IdentityDrift {
       println(s"  ${fs.map(_._2.key).distinct.size} listing(s)  flip: $reason")
       fs.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.take(6).foreach { case (seed, f) => println(s"      ${f.line} [seed $seed]") }
     }
-    if (open.nonEmpty || verdict.fresh.nonEmpty) sys.exit(1)
+    if (lacking.nonEmpty) {
+      println(s"## the slice lacks ${lacking.size} answer(s) — cut it again (scripts/identity-slice --emit-drift-slice): ${lacking.take(8).mkString("; ")}")
+      sys.exit(3)
+    }
+    if (open.divergences.nonEmpty || verdict.fresh.nonEmpty) sys.exit(1)
   }
 
   /** What the judgements say of the two sides' films, where they judge the listing. */

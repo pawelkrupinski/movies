@@ -63,6 +63,10 @@ object IdentitySlice {
                            /** The worker build prod runs (the `deployed-worker` tag): whose code wrote the mirror's state. */
                            deployed: Option[String] = None,
                            pending: (Option[String], Option[String]) = (None, None), emitCase: Option[Path] = None,
+                           /** `--emit-slice ROOT`: the slice cut, whole and judged by nothing, copied to `ROOT/<cc>/<selector>` — a
+                            *  drift slice (`scripts/identity-slice --emit-drift-slice`, which then widens it with what
+                            *  IdentityDrift's incremental sequence reads). */
+                           emitSlice: Option[Path] = None,
                            /** How many slices are decided at once (one JVM, a bounded pool; the output keeps the batch's order). */
                            threads: Int = math.max(1, math.min(8, Runtime.getRuntime.availableProcessors / 2)),
                            /** Where each slice's result is kept, shared by every checkout (scripts/identity-slice names it per
@@ -98,6 +102,7 @@ object IdentitySlice {
     case "--serve" :: v :: rest        => parse(rest, o.copy(serve = Some(Path.of(v))))
     case "--idle-minutes" :: v :: rest => parse(rest, o.copy(idleMinutes = v.toInt))
     case "--emit-case" :: v :: rest    => parse(rest, o.copy(emitCase = Some(Path.of(v))))
+    case "--emit-slice" :: v :: rest   => parse(rest, o.copy(emitSlice = Some(Path.of(v))))
     case "--replay" :: v :: rest       => parse(rest, o.copy(replay = o.replay :+ Path.of(v)))
     case "--venue" :: v :: rest        => parse(rest, pend(o, venue = Some(v)))
     case "--title" :: v :: rest        => parse(rest, pend(o, title = Some(v)))
@@ -533,7 +538,7 @@ object IdentitySlice {
     val country = session.recording.country
     val groups  = sameCluster(o.selectors.map(s => s -> session.listings.filter(s.selects).map(_.key).toSet), session.index, o.widen)
     // a result read from the cache holds nothing of prod's moment, nor the slice an emitted case copies
-    val results = o.results.filter(_ => prod.name.isEmpty && o.emitCase.isEmpty)
+    val results = o.results.filter(_ => prod.name.isEmpty && o.emitCase.isEmpty && o.emitSlice.isEmpty)
     def one(selector: Selector, seeds: Set[ListingKey]): SliceResult =
       if (seeds.isEmpty) SliceResult(s"\n## ${selector.label}: no listing of recording ${session.recording.root} matches\n", Nil, Nil)
       else kept(results.map(_.resolve(resultKey(selector, seeds, o, labels, country)))) {
@@ -544,6 +549,8 @@ object IdentitySlice {
               val slice = extract(session.recording, session.opened, session.index, seeds, selector.label, o.widen, dir, o.ref, session.filed, prod)
               val lacked = replaySlice(slice, None, labels, Some(new java.io.PrintWriter(takes)), o.orders, o.modes, prod)
               emitInto(slice, dir, labels, o, country, selector)
+              o.emitSlice.foreach(root => emitSlice(slice, dir, root.resolve(country.code).resolve(selector.directoryName),
+                o.families.flatMap(checkoutOf).toSeq :+ Paths.get("")))
               lacked
             }
           }
@@ -832,7 +839,7 @@ object IdentitySlice {
    *  what another checkout (its uncommitted capture, its absolute path) left there — so an emitting run cuts its slice
    *  in a directory of its own, removed once `f` has copied the case out of it. */
   def inWorkDir[A](o: Options, cache: Path, selector: Selector)(f: Path => A): A =
-    if (o.emitCase.isEmpty) f(o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName))
+    if (o.emitCase.isEmpty && o.emitSlice.isEmpty) f(o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName))
     else {
       val own = Files.createTempDirectory("identity-slice-emit")
       try f(own.resolve(selector.directoryName)) finally deleteTree(own)
@@ -877,6 +884,16 @@ object IdentitySlice {
       println(s"\n--emit-case: ${known.size} listing(s) pinned in $target (IdentitySliceCasesSpec replays it):")
       expected.foreach(e => println(s"  ${e.venue} | ${e.rawTitle} must take ${e.film} — label ${e.note}"))
     }
+  }
+
+  /** Copies `slice` (kept in `from`) to `target` whole, its filed answers named from the checkout: a drift slice, which no
+   *  judgement must judge — the drift replay holds it to its own whole resolve. Prints `--emit-slice: <target>`. */
+  def emitSlice(slice: Slice, from: Path, target: Path, checkouts: Seq[Path]): Unit = {
+    deleteTree(target)
+    Files.createDirectories(target)
+    Seq("slice.json.gz", "rows.json.gz", "http.jsonl.gz").foreach(name => Files.copy(from.resolve(name), target.resolve(name)))
+    tools.FiledAnswers.write(target, slice.filed.copy(source = checkoutRelative(slice.filed.source, checkouts)))
+    println(s"--emit-slice: $target")
   }
 
   /** Each listing of a pinned slice and the film it takes now: what [[readExpected]] is held to. */

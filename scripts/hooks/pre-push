@@ -65,6 +65,12 @@
 #   `ios`         scripts/ios-compile-check.sh (app target + XCUITests, Mac and Linux SwiftPM; fails on a concurrency
 #                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
+#   `driftguards` scripts/ci/drift-guards.sh over each pushed range, on a change to the identity paths, worker/src/main or
+#                 the drift harness (is_drift_path): a commit fixing a drift or flip red (`Fixes-Red:` and a message
+#                 about drift/flips) lands with its drift slice (test/resources/fixtures/drift-slices/, cut by
+#                 scripts/identity-slice --emit-drift-slice) or a `Drift-Slice: none -- <why>` trailer; and a red fix
+#                 changing resolver or agreement RULE code names the design doc that measured it (`Identity-Design: <doc>`;
+#                 red fixers fix incremental state, not rules -- the owner, 2026-10-29). Seconds: git only
 #   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
 #                 matches and hard clusters: the judgements are well formed and the files leaning on
 #                 them agree. A judgements change is also read against the takes the newest Identity
@@ -270,6 +276,14 @@ is_identity_path() { # <path>
     esac
     return 1
 }
+# What a fix to a drift or flip red touches: the identity paths, the worker's code, the drift harness and its slices.
+is_drift_path() { # <path>
+    is_identity_path "$1" && return 0
+    case "$1" in
+        worker/src/main/*|worker/src/test/scala/scripts/IdentityDrift*|scripts/ci/identity-drift-check*|scripts/ci/drift-guards*) return 0 ;;
+    esac
+    return 1
+}
 # The page paths: the browser JS and CSS, the templates that render what it reads, the page specs and the Playwright suite.
 is_page_path() { # <path>
     case "$1" in
@@ -282,7 +296,7 @@ is_page_path() { # <path>
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 page=0 allowlists=0
+    local identity=0 page=0 allowlists=0 driftguards=0
     local tools
     tools=" $(tool_files | tr '\n' ' ') "
     while IFS= read -r path; do
@@ -330,6 +344,7 @@ plan() {
         case "$path" in .github/allow-lists.txt|scripts/ci/allow_list_ratchet*.py) allowlists=1 ;; esac
         [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
         is_identity_path "$path" && identity=1
+        is_drift_path "$path" && driftguards=1
         is_page_path "$path" && page=1
     done
     # an area runs only when local-tests.txt (beside this hook) names tests for it
@@ -339,6 +354,7 @@ plan() {
     [ $page = 1 ] && sbt=1
     [ $judgements = 1 ] && echo judgements
     [ $allowlists = 1 ] && echo allowlists
+    [ $driftguards = 1 ] && echo driftguards
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
@@ -1123,6 +1139,11 @@ check_identitydrift() {
         esac
     done
     return $rc
+}
+check_driftguards() {
+    local r failed=0
+    for r in "${ranges[@]}"; do bash scripts/ci/drift-guards.sh "$r" || failed=1; done
+    return "$failed"
 }
 check_page() { run_local_tests page; }
 

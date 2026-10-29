@@ -38,6 +38,22 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
 - DIVERGENCES (incremental ≠ whole end state) have no baseline: they always fail.
 - A newborn check's own findings go TEMPORARY on `identity-flips-allow.tsv` (`New-Check:`), never a flip that already
   exists.
+## Fixing a drift or flip red (the owner, 2026-10-29)
+
+- **A red fix names and fixes the incremental state that diverges** — a lag, a budget, the queue's order, a cache, a
+  restart's key — so the incremental path ends where a whole resolve does. **Red fixers add no identity resolver rule**
+  as a flip or drift fix: a new or changed rule (IdentityResolver, FeedLink, FamilyScope, the acceptance and scoring
+  rules, the agreement's rules, the title rules) is identity design, measured on the full corpus in every country,
+  outside red fixing. A `Fixes-Red:` commit touching rule code carries `Identity-Design: <doc>`, the design doc that
+  measured it (`scripts/ci/drift-guards.sh`, pre-push's `driftguards`). Mechanism files — AgreementStage's state
+  handling, the incremental resolver, the stores and keys — need none.
+- **Known flips wait on the shrink-only baseline** ("Known flips" above); new flips and every divergence fail.
+  Neither allow-list is edited to get green.
+- **A drift or flip red is not closed until its slice is committed**: `scripts/identity-slice <cc> --venue V --title T
+  --emit-drift-slice` cuts the listing into `test/resources/fixtures/drift-slices/<cc>/<name>/`, and
+  `scripts.IdentityDriftSlicesSpec` replays every slice through the incremental sequence on 12 seeds in the unit suite
+  (Tier 1 of the drift gate; `IdentityDrift --slice`). The fix's push carries the slice, or `Drift-Slice: none --
+  <why>` when the red has no listing (a CI script, a timeout).
 
 ## The harness
 
