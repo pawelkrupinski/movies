@@ -30,7 +30,9 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   }
 
   /** The gate's exit status and what it dispatched; `refuse` names a suite whose
-   *  `gh workflow run` is refused (403), `flaky` one whose first dispatch hits a GitHub 500. */
+   *  `gh workflow run` is refused (403), `flaky` one whose first dispatch hits a GitHub 500.
+   *  The in-flight read (dispatch.sh's `run_in_flight`, the one asking for `databaseId,headSha,status`)
+   *  finds no run of the head queued or running. */
   private def kickWithStatus(repo: ScratchGitRepository, head: String, lastRun: String,
                              refuse: String = "", flaky: String = ""): (Int, Seq[String]) = {
     val dispatched = Files.createTempFile("dispatched", ".log")
@@ -38,7 +40,8 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     Files.delete(flakedOnce)
     val gh = repo.script("gh",
       s"""case "$$1 $$2" in
-         |  "run list")      echo "$lastRun" ;;
+         |  "run list")      [[ " $$* " == *" databaseId,headSha,status "* ]] && exit 0
+         |                   echo "$lastRun" ;;
          |  "workflow run")  [ "$$3" = "$refuse" ] && { echo "HTTP 403" >&2; exit 1; }
          |                   if [ "$$3" = "$flaky" ] && [ ! -e "$flakedOnce" ]; then
          |                     touch "$flakedOnce"; echo "HTTP 500: Failed to run workflow dispatch" >&2; exit 1

@@ -62,10 +62,11 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # What scripts/identity-drift-ci dispatches for its pre-land drift check (a laptop tool, never run here).
             drift-only:
                 description: >-
                     Run only each leg's takes-drift rows (the incremental = whole replay, scripts/ci/identity-drift-check.sh)
-                    -- scripts/identity-drift-ci's pre-land drift check: 10 rows, not 37. takes-countries narrows the
+                    -- the pre-land drift check: 10 rows, not 37. takes-countries narrows the
                     countries, drift-seeds the seeds. Never a reuse source for main's full verdict.
                 required: false
                 type: boolean
