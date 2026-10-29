@@ -158,7 +158,7 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
   }
 
-  it should "be trusted as stored after a restart, reading no answer, and read afresh only a few takes an apply" in {
+  it should "be trusted as stored after a restart, reading no answer, and read at its first apply whatever the budget" in {
     val verdicts = new InMemoryAgreementVerdicts
     def stageOver(posters: PosterAnswers, perApply: Int = AgreementStage.CorrectionsPerApply) =
       new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
@@ -171,9 +171,10 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     }
     decided(stageOver(counting)).basis shouldBe ResolverDecision.Basis.Corrected
     read shouldBe 0
-    // a take never read stands as the model took it while the apply's budget is spent
+    // a take never read is read with the apply's budget spent: served as the model took it meanwhile, it was corrected
+    // at a later apply none of its inputs moved at — a flip (the drift replay's UK "The Ties That Bind Us", run 3656)
     decided(new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
-      clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.OwnMatch
+      clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.Corrected
   }
 
   // Identity model convergence run 1641 (2026-10-25): every TMDB search is filed under one id, so a search filed for any
@@ -222,26 +223,63 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     s.backlog shouldBe false
   }
 
-  it should "read the takes its budget left unread on the next apply of the same decisions, until none is left" in {
-    // US run 563 (2026-10-20): 2,024 model takes against a budget of 200 an apply. The boot read the first few hundred,
-    // and every later projection handed the stage the same decisions, so it gave back the last apply's result unread;
-    // Burns Court's "NT Live: Hamlet", the 652nd, was withdrawn only on the next day, when new decisions reached it
-    val cumberbatch = FilmTable.F(396227, "National Theatre Live: Hamlet", 2015, "Lyndsey Turner", 204,
-      alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2015-10-15")))
-    val abeysekera  = FilmTable.F(1507580, "National Theatre Live: Hamlet", 2026, "Robert Hastie", 178,
-      alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2026-01-22")))
-    val records = new FilmTable(Seq(FilmTable.F(1001, "Lalka", 2026, "Maciej Kawalski", 162), FilmTable.F(1002, "Lalka", 1968, "Wojciech Has", 159),
-      cumberbatch, abeysekera), normalizer)
-    val relay = FilmTable.listing(Multikino, "NT Live: Hamlet", year = Some(2015))
-      .copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.parse("2026-11-24"))), page = Some("https://www.flicks.us/movie/nt-live-hamlet/"))
-    val both = Resolution(model.decisions :+ ResolverDecision(Seq(relay.key), Some(cumberbatch.id), 0.17, ResolverDecision.Basis.OwnMatch,
-      Seq(s"own match ${cumberbatch.id}"))(), 2, Map(listing.key -> 0, relay.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    val s = new AgreementStage(takingHas, records, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
-      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(records), correctionsPerApply = 1)
-    val listed = Map(listing.key -> listing, relay.key -> relay).get
-    s.apply(both, listed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.OwnMatch)
+  // US run 563 (2026-10-20): 2,024 model takes against a budget of 200 an apply. The boot read the first few hundred;
+  // Burns Court's "NT Live: Hamlet", the 652nd, was served as the model took it — the 2015 relay — and withdrawn only on
+  // the next day, when the budget reached it. The drift replay's flip check names the same take (run 3656, US seed 2:
+  // withdrawn at a deploy, "inputs unchanged"): a take served as the model took it until its correction is read is an
+  // interim take that correction overrides, at an apply where none of its inputs moved.
+  private val cumberbatch = FilmTable.F(396227, "National Theatre Live: Hamlet", 2015, "Lyndsey Turner", 204,
+    alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2015-10-15")))
+  private val abeysekera  = FilmTable.F(1507580, "National Theatre Live: Hamlet", 2026, "Robert Hastie", 178,
+    alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2026-01-22")))
+  private val relayed = new FilmTable(Seq(FilmTable.F(1001, "Lalka", 2026, "Maciej Kawalski", 162), FilmTable.F(1002, "Lalka", 1968, "Wojciech Has", 159),
+    cumberbatch, abeysekera), normalizer)
+  private val relay = FilmTable.listing(Multikino, "NT Live: Hamlet", year = Some(2015))
+    .copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.parse("2026-11-24"))), page = Some("https://www.flicks.us/movie/nt-live-hamlet/"))
+  /** Has's "Lalka" and the Hamlet relay, two model takes each read against the evidence. */
+  private val both = Resolution(model.decisions :+ ResolverDecision(Seq(relay.key), Some(cumberbatch.id), 0.17, ResolverDecision.Basis.OwnMatch,
+    Seq(s"own match ${cumberbatch.id}"))(), 2, Map(listing.key -> 0, relay.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+  private val bothListed = Map(listing.key -> listing, relay.key -> relay).get
+  private def relayStage(verdicts: AgreementVerdicts, perApply: Int) = new AgreementStage(takingHas, relayed, normalizer, IdentityCalibration.resolver,
+    tmdbOf = _ => Answer.Known(None), verdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(relayed), correctionsPerApply = perApply)
+
+  it should "read every take never read at its shape at its first apply, past the apply's budget" in {
+    val s = relayStage(new InMemoryAgreementVerdicts, perApply = 1)
+    s.apply(both, bothListed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.Withdrawn)
+    s.backlog shouldBe false
+  }
+
+  it should "read the corrections a deploy's rules left stale on the next apply of the same decisions, standing as decided until then" in {
+    // the budget spreads a deploy's backfill: each correction decided under the previous rules stands as it was decided —
+    // never as the model took it — until an apply's budget reads it again, and the next apply of the same decisions reads
+    // on rather than hand back the last one's result
+    val verdicts = new InMemoryAgreementVerdicts
+    relayStage(verdicts, perApply = Int.MaxValue).apply(both, bothListed, 1)
+    verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "the previous deploy's")))
+    val s = relayStage(verdicts, perApply = 1)
+    s.apply(both, bothListed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.Withdrawn)
     s.backlog shouldBe true
-    s.apply(both, listed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.Withdrawn)
+    s.apply(both, bothListed, 1).decisions.map(_.basis) shouldBe Seq(ResolverDecision.Basis.Corrected, ResolverDecision.Basis.Withdrawn)
+    s.backlog shouldBe false
+  }
+
+  it should "read a correction waiting on an answer once that answer is filed, past the apply's budget" in {
+    // waiting, it decided nothing, and the take was served as the model took it: left for a later apply's budget, the
+    // correction then came at an apply none of its inputs moved at (the drift replay's UK "Cosi Fan Tutte", run 3656)
+    var films   = Map(1001 -> Seq(far))
+    val posters = new PosterAnswers {
+      def venue(url: String): Answer[Option[PosterHash]] = Answer.Known(Some(shown))
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
+    }
+    var filed = Set.empty[String]
+    val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, changes = _ => Some(filed), posters = posters, tmdb = Some(table()), correctionsPerApply = 0)
+    decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
+    s.wanted.collect { case Question.Poster(q) => q } shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    films = films + (1002 -> Seq(near(3)))
+    filed = Set("poster|film|1002")
+    val taken = decided(s, version = 2)
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
     s.backlog shouldBe false
   }
 
@@ -478,15 +516,16 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   }
 
   // A correction's waits are read at one shape of its take, as its verdict is: kept by the take's key alone, a reshaped
-  // take its budget left unread went on asking, and being reported waiting on, what the old shape waited on.
-  it should "wait on nothing a reshaped take's earlier shape waited on, while its budget leaves it unread" in {
+  // take its budget left unread went on asking, and being reported waiting on, what the old shape waited on. A reshaped
+  // take is read at its first apply now, whatever another take spent of the budget: its waits are its new shape's.
+  it should "read a reshaped take at its first apply, though another take spent the budget, waiting on its new shape's questions" in {
     val rt = new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("x" -> has), unanswered = true)
     val s = new AgreementStage(takingHas + (VoterFamily.RottenTomatoes -> rt), table(), normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = hasPoster,
       tmdb = Some(table()), correctionsPerApply = 1)
     val waited = decided(s)
     s.waitingOn(waited).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
-    // a scrape adds a listing to the take, and another take, first in content order, spends the apply's one fresh read
+    // a scrape adds a listing to the take, and another take, first in content order, is met in the same apply
     val joined  = FilmTable.listing(Multikino, "Lalka", year = Some(2026)).copy(screenings = ScreeningDays.of(Seq(day)))
     val other   = FilmTable.listing(Multikino, "Klondike").copy(screenings = ScreeningDays.of(Seq(day)))
     val reshape = Resolution(Seq(
@@ -495,8 +534,8 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       3, Map(other.key -> 0, listing.key -> 1, joined.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val byKey   = Map(listing.key -> listing, joined.key -> joined, other.key -> other)
     val decisions = s.apply(reshape, byKey.get, version = 2).decisions
-    val unread  = decisions.find(_.members.contains(joined.key)).get
-    s.backlog shouldBe true                                              // the reshaped take left for a later apply
-    s.waitingOn(unread).questions shouldBe empty
+    val reshaped = decisions.find(_.members.contains(joined.key)).get
+    s.backlog shouldBe false                                             // no take left for a later apply
+    s.waitingOn(reshaped).questions.collect { case q @ Question.Family(VoterFamily.RottenTomatoes, _) => q } should not be empty
   }
 }

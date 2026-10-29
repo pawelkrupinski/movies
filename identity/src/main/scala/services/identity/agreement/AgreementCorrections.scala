@@ -29,9 +29,10 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
 
   /** The model's take, withdrawn or switched where the evidence against it says so ([[Correction.decide]]): the stored
    *  correction while its listings and rules stand and none of the answers it read was filed again since it was checked
-   *  — at boot, every stored one stands, as a stored verdict does — else read anew, while the apply's `fresh` budget
-   *  lasts ([[AgreementStage.CorrectionsPerApply]]; a take beyond it stands as the model took it until a later apply).
-   *  What it waits on is noted in `pass` to ask: the families' questions, the IMDb ids, the posters. */
+   *  — at boot, every stored one stands, as a stored verdict does — else read anew: at once when no decided correction
+   *  stands for it (never read at this shape, or read waiting on an answer), else while the apply's `fresh` budget lasts
+   *  ([[AgreementStage.CorrectionsPerApply]]; a take beyond it stands as last decided until a later apply, never as the
+   *  model took it). What it waits on is noted in `pass` to ask: the families' questions, the IMDb ids, the posters. */
   private[agreement] def corrected(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], key: String, pass: AgreementStage.Pass): ResolverDecision = {
     val version = pass.version
     val digest = correctionDigest(decision, listingOf)
@@ -54,7 +55,11 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
         })
       }
     })
-    val now = kept.orElse(Option.when(pass.fresh()) {
+    // what stands while the budget is spent: a correction decided over the same listings, under any rules. A take with
+    // none — never read at this shape, or read waiting on an answer — would be served as the model took it until a
+    // later apply's budget reached it, then corrected at an apply where none of its inputs moved: an interim take
+    val standing = heldFor(key, digest, pass).flatMap(_.correction).filterNot(_.waiting)
+    val now = kept.orElse(Option.when(standing.isEmpty || pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
       val listings = sortedListings(decision, listingOf)
       // its receipt: every TMDB record and search, family answer and poster it read and every question it asked, so a
@@ -85,7 +90,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // stands as last decided over the same listings, never as the model took it: else the boot's whole projection put
       // the model's take back and a later apply corrected it again, a flip per deploy (UK Chichester's "The Ties That Bind
       // Us", 18 of them). Left unchecked, it is read afresh once an apply's budget reaches it.
-      heldFor(key, digest, pass).flatMap(_.correction))
+      standing)
     correctionWaits.get(key).foreach(_.gaps.foreach {
       case Question.Poster(poster) => pass.correctionPosters += poster
       case question                => pass.asked += question

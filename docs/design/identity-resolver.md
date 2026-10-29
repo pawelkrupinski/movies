@@ -2786,7 +2786,9 @@ sharing no director with the take (Filmweb's own family pick is not counted besi
 the agreement's verdicts (`identity_agreements`, `correction|<cluster>`: the film, the line, the 64-bit digests of the
 question ids it read, whether it waits), trusted at boot as a verdict is, and read again only when its take's listings
 move (a digest of their keys, posters and days, read without decoding an answer) or an answer it read is filed again;
-a take never read is read 200 an apply (`CorrectionsPerApply`), so a first deploy's backfill spreads over applies. The programmes are no FILL for an unmatched cluster: the +1 film they gained there (Kino CK Lublin's
+a take never read at its shape, or read waiting on an answer since filed, is read at once; a decided one a deploy's new
+rules left stale is read again 200 an apply (`CorrectionsPerApply`), standing as decided meanwhile, so the backfill
+spreads over applies. The programmes are no FILL for an unmatched cluster: the +1 film they gained there (Kino CK Lublin's
 "Lalka") did not pay for ~250–520 Filmweb requests a day; read only for a take a poster questions, they cost a few.
 
 Whole-corpus dump against main (the five corpora, every answer asked): 3 clusters (6 listings) switched, 0 withdrawn,

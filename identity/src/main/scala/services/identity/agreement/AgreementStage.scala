@@ -1071,8 +1071,12 @@ object AgreementStage {
   def correctionId(cluster: String): String = s"$CorrectionPrefix$cluster"
   /** What a correction's stored id is its cluster's id behind. */
   val CorrectionPrefix = "correction|"
-  /** How many model takes one apply reads the evidence of afresh: a take not read yet beyond them stands as the model
-   *  took it until a later apply — the first deploy's backfill of every take spread over applies, never one boot's spike. */
+  /** How many model takes with a decided correction standing — decided under a deploy's previous rules, or before an
+   *  answer it read was filed again — one apply reads the evidence of afresh, the rest standing as decided until a later
+   *  apply: a deploy's backfill spread over applies, never one boot's spike. A take with none standing — never read at
+   *  its shape, or read waiting on an answer — is read at once: served as the model took it until a later apply's budget
+   *  reached it, it was an interim take its correction overrode at an apply none of its inputs moved at (the drift
+   *  replay's flips, convergence run 3656: UK "The Ties That Bind Us", "Cosi Fan Tutte", US "NT Live: Hamlet"). */
   val CorrectionsPerApply = 200
   /** How many verdicts decided under other rules one apply decides again: a deploy's backfill of every stored verdict
    *  (prod PL 2026-10-05: re-reading them all at boot was a 40 s, 514 MB pass; worker-us OOM-killed on a comparable

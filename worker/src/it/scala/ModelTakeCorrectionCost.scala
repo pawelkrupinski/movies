@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters._
  * takes read (as the worker runs it) and with them passed by (every model take handed over as a pin: the stage as it
  * was): CPU, bytes allocated and wall time of a cold apply (a fresh stage over the verdicts a running worker kept, as at
  * a restart), of a warm one (the same stage, one answer filed elsewhere) and of a first deploy's (no correction kept
- * yet: one budget of takes read), medians of 5 after a warm-up, and the heap the stages keep after an apply (used heap
+ * yet: every take read, none decided to stand), medians of 5 after a warm-up, and the heap the stages keep after an apply (used heap
  * after a full GC). The answers are those a whole-corpus dump filed (`answers-<cc>.jsonl`, `IdentityResolveDump`).
  *
  *   KINOWO_IDENTITY_FULL=pl,uk,de,es,us KINOWO_IDENTITY_CORPUS_DIR=<dir> KINOWO_FIXTURE_ROOT=<dir> KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=<key>
@@ -78,7 +78,7 @@ object ModelTakeCorrectionCost {
       /** Fresh stages over the kept verdicts — a restart — one apply each at the store's version. */
       def cold(correcting: Boolean): Seq[AgreementStage] = inputs.indices.map { i =>
         val stage = stageOf(i, kept(correcting)(i)); stage.apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version); stage }
-      /** The first apply of a worker that never kept a correction: the backfill's first budget of takes. */
+      /** The first apply of a worker that never kept a correction: every take read, none decided to stand meanwhile. */
       def first(): Unit = inputs.indices.foreach { i =>
         stageOf(i, new InMemoryAgreementVerdicts).apply(resolutionOf(i, true), inputs(i)._6.get, inputs(i)._2.version) }
       val os  = java.lang.management.ManagementFactory.getOperatingSystemMXBean.asInstanceOf[com.sun.management.OperatingSystemMXBean]

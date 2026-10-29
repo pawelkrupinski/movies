@@ -144,7 +144,9 @@ incomplete receipt, and every one is decided again with its full receipt, a budg
 - Agreement verdicts: `BackfillPerApply` (500) an apply. Until a later apply's budget reaches one, it stands as it
   was, and the stage reports a backlog so the next apply goes on. Before this change, every deploy touching the stage
   decided every agreement verdict again on its first apply, unbounded: the boot pass that OOM-killed worker-us.
-- Corrections: `CorrectionsPerApply` (200) an apply, as before. Until then each stands as last decided.
+- Corrections: `CorrectionsPerApply` (200) an apply, as before. Until then each stands as last decided. A take with no
+  decided correction (never read at its shape, or waiting on an answer) spends none of it: it is read at once, never
+  served as the model took it meanwhile (2026-10-29, the drift replay's flips, convergence run 3656).
 
 **Order.** Both budgets are spent in the clusters' content order: by the least listing key of each cluster, which no
 two clusters share (`AgreementStage.inContentOrder`). The model hands its decisions over in that order already, and
@@ -242,7 +244,9 @@ dependency set". Each is its own refactor commit, landed with 0 moved takes. Non
   - `unreached`: the "settled before, settles again" short-circuit (:636), and its transfer on merge (:337-341);
   - `askedNow`: asked once per stage life (:178);
   - `rereads`: asked once per stage life (:193-197);
-  - the correction budget of 200 per apply (`CorrectionsPerApply`, :92), which makes interim takes depend on read order.
+  - the correction budget of 200 per apply (`CorrectionsPerApply`, :92), which made interim takes depend on read order.
+    Since 2026-10-29 it defers only a decided correction's reading again, which stands as decided meanwhile: a take with
+    none decided is read at once (state/21).
 - **Gaps in the verdict cache key.** `held` is keyed by the listings digest, the rules and the family-read digests (:584-590). The key leaves out:
   - the fill's TMDB reads (`filledOf` → `IdentityResolver.evidenceOf`, AgreementTakes.scala:30; the code says "its reads are the families' only", :656);
   - `thisYear` (:642).
