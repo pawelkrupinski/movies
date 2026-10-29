@@ -13,7 +13,7 @@ import java.security.cert.Certificate
 import java.security.{KeyStore, PrivateKey}
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
-import scala.concurrent.{Await, ExecutionContext, Future, blocking}
+import scala.concurrent.{Await, Future}
 import scala.util.{Try, Using}
 
 /**
@@ -73,13 +73,12 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with Befor
     val process = ChildJvm(configuration).start(ServersMain)
     val lines   = new BufferedReader(new InputStreamReader(process.getInputStream, UTF_8))
     val seen    = new StringBuffer
-    val ready   = Future(blocking(Iterator.continually(lines.readLine()).takeWhile(_ != null)
-      .map { line => seen.append(line).append('\n'); line }.find(_.startsWith(Ready))))(using ExecutionContext.global)
+    val ready   = Future(Iterator.continually(lines.readLine()).takeWhile(_ != null)
+      .map { line => seen.append(line).append('\n'); line }.find(_.startsWith(Ready)))(using DedicatedThreads)
     Try(Await.result(ready, SpecTimeouts.Run)).toOption.flatten match {
       case Some(line) =>
         // Drained from here on, so nothing the servers print can fill the pipe and stall them.
-        val drain = new Thread(() => { Try(lines.transferTo(Writer.nullWriter())); () })
-        drain.setDaemon(true); drain.start()
+        DedicatedThreads.execute(() => { Try(lines.transferTo(Writer.nullWriter())); () })
         val Array(_, port, trustStore) = line.split(" ", 3)
         Serving(process, port.toInt, trustStore)
       case None =>
