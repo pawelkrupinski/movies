@@ -101,6 +101,15 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     SearchTitles.candidates("Spider-Man", None) shouldBe Seq("Spider-Man")
   }
 
+  // DE Mal seh'n Kino's "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989": the dash between the years is the range's,
+  // not a banner's. Split there, the title had a piece "1989", which joined Bambi's bare "(1989)" (kinoheld's entry for
+  // Teito Taisen, its German title blank) to B-Movie's cluster by title-segment (Verify scrape recording #2406).
+  it should "not split a year range at its spaced dash" in {
+    val ranged = SearchTitles.candidates("B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989", None)
+    ranged should contain ("LUST & SOUND IN WESTBERLIN 1979 – 1989")
+    ranged should contain noneOf ("1989", "LUST & SOUND IN WESTBERLIN 1979")
+  }
+
   it should "also draw on the row's other reported titles (cinemaTitles + slot originals), de-decorated" in {
     SearchTitles.candidates(
       title = "KINO SENIORA | Opętanie", originalTitle = None,

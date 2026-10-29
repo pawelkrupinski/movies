@@ -9,14 +9,16 @@ object SearchTitles {
   // Compiled once: `candidates` runs for every title of every record the identity model reads.
   private val PipeSeparator       = java.util.regex.Pattern.compile("""\s+\|\s+""")
   private val DashedTitle         = java.util.regex.Pattern.compile(""".*\s[-–—]\s.*""")
-  private val DashSeparator       = java.util.regex.Pattern.compile("""\s+[-–—]\s+""")
+  // Not between two numbers: "1979 – 1989" is a range, and split there "1989" would be a piece of the title.
+  private val DashSeparator       = java.util.regex.Pattern.compile("""(?<![\d\s])\s+[-–—]\s+|\s+[-–—]\s++(?!\d)""")
   private val TrailingParenthesis = java.util.regex.Pattern.compile("""\s*\([^)]*\)\s*$""")
   /** Search candidates for a row, in priority order: the row's title, the
    *  cinema-provided original title, then every other reported title (the row's
    *  cinema titles + per-slot original titles). Each is additionally expanded with
    *  its de-decorated forms — every side of a `" | "` festival/preview split
    *  ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "WTF Fest | Stolik kawowy"), every side
-   *  of a spaced dash ("Ladies Night - Narodziny gwiazdy"), the part after a
+   *  of a spaced dash ("Ladies Night - Narodziny gwiazdy"; never a year range's,
+   *  "1979 – 1989"), the part after a
    *  `"Series: Film"` programme-banner colon ("Akademia Kina Polskiego:
    *  Człowiek z żelaza (1981) 4K" → "Człowiek z żelaza (1981) 4K") and the
    *  trailing-parenthetical-stripped form ("Ojczyzna (pokaz przedpremierowy)" →

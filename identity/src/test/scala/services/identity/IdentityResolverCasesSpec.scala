@@ -387,6 +387,20 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "not be drawn from a year range's last year to a listing titled only by that year" in {
+    // DE, recording 3571: Bambi's " (1989)" is kinoheld's entry for Teito Taisen, its German title blank. Mal seh'n
+    // Kino's "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989", split at the range's dash, had a piece "1989", and
+    // the title-segment must-link served the bare year — Takashige Ichise's 1989 film — as B-Movie (2015).
+    val films  = Seq(F(318042, "B-Movie: Lust & Sound in West-Berlin 1979-1989", 2015, "Jörg A. Hoppe", 92, 2))
+    val ranged = listing(KinoApollo, "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989")
+    val bare   = listing(Multikino, " (1989)", director = Some("Takashige Ichise"))
+    val r = resolve(Seq(ranged, bare), films)
+    withClue(Seq(ranged, bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.edges.exists(e => e.must && e.reason == "title-segment") shouldBe false
+      r.decisionOf(bare.key).film should not be Some(318042)
+    }
+  }
+
   it should "keep the directors its peeled banner names as what narrows its namesakes" in {
     // DE Babylon (Mitte)'s "Hitchcock & Chabrol: Spellbound", nothing else published: "Hitchcock & Chabrol" is a learned
     // banner (the cinema's series, recording 38666576506), and peeled it left a bare "Spellbound" that pooled to the most
