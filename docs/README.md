@@ -72,6 +72,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   US chunked scrapes go idle ~3 h every ~3 days (all venues fresh, no due work); the hypothesis that a phase replan
   shifts a block of phases under nearest-boundary counting, how to prove it, the damping options, and the missing
   due-set gauge.
+- [investigations/2026-10-29-flip-burn-down.md](investigations/2026-10-29-flip-burn-down.md) — the known-flips
+  baseline's burn-down: each flip, its mechanism, its fix and its status. UK "Rose (2023)" is open as identity design:
+  leaving a candidate out until its record is filed cures it but adds two new flips (DE "Madoka", UK Chichester).
 - [investigations/2026-10-28-drift-flips-bare-listings-de.md](investigations/2026-10-28-drift-flips-bare-listings-de.md) —
   convergence #2375's German drift flips: CinemaxX "Titans" (fixed: a sibling taken alone withdraws a bare take read by
   another title, never one its own feed links) and Werkstattkino "CAMOUFLAGE" (fixed: one source overrules a feed's
