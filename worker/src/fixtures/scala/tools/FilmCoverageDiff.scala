@@ -1,7 +1,7 @@
 package tools
 
 import models.Source
-import services.identity.ResolverDecision
+import services.identity.{ResolverDecision, TakeJudgements}
 import services.movies.{ListingKey, StoredMovieRecord}
 
 import scala.collection.mutable
@@ -42,7 +42,9 @@ object IdentityVerdict {
       case Basis.NoEvidence     => "lookups unanswered"
       case Basis.Vetoed         => "vetoed"
       case Basis.BelowThreshold => "below the acceptance cut"
-      case Basis.Withdrawn      => "withdrawn by the correction stage"
+      case Basis.Withdrawn      =>
+        if (decision.trace.stage.contains(TakeJudgements.WithdrawnRule)) "withdrawn: a hand judgement calls it wrong"
+        else "withdrawn by the correction stage"
       case Basis.Event          => "billed as an event"
       case matched              => s"decided $matched, but the record holds no id"
     }

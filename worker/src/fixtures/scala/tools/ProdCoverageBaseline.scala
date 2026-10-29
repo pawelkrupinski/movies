@@ -55,6 +55,16 @@ case class ProdCoverageBaseline(
   def metrics: Seq[(String, Int)] = Seq(
     "films" -> films, "tmdbId" -> tmdbId, "imdbId" -> imdbId, "imdbRating" -> imdbRating,
     "filmwebRating" -> filmwebRating, "metascore" -> metascore, "rottenTomatoes" -> rottenTomatoes)
+
+  /** This baseline without `withdrawn`'s coverage: production's films whose take a hand judgement calls wrong
+   *  ([[ProdFilms.judgedWrong]]), still films but holding nothing on any other axis — as the replay, which
+   *  withdraws those takes, counts them. */
+  def withdrawing(withdrawn: Seq[ProdFilm]): ProdCoverageBaseline = {
+    def less(axis: String, count: Int) = count - withdrawn.count(_.covered(axis))
+    copy(tmdbId = less("tmdbId", tmdbId), imdbId = less("imdbId", imdbId), imdbRating = less("imdbRating", imdbRating),
+      filmwebRating = less("filmwebRating", filmwebRating), metascore = less("metascore", metascore),
+      rottenTomatoes = less("rottenTomatoes", rottenTomatoes))
+  }
 }
 
 /**

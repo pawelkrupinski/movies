@@ -1,6 +1,7 @@
 package tools
 
 import play.api.libs.json._
+import services.identity.TakeJudgements
 
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}
@@ -47,4 +48,16 @@ object ProdFilms {
   /** The films a recording laid out elsewhere holds (its `corpus/prod-films-<cc>.json.gz`). */
   def readFrom(path: Path): Seq[ProdFilm] =
     Using.resource(new GZIPInputStream(Files.newInputStream(path)))(in => Json.parse(in).as[Seq[ProdFilm]])
+
+  /** Production's films whose TMDB take a hand judgement calls wrong at EVERY listing of `run` sharing their slots:
+   *  the takes the projection withdraws (`TakeJudgements.withdraw`) that production served still — its worker reads
+   *  the judgements it was last deployed with, the replay main's. A film some listing still takes keeps its
+   *  coverage, as the withdrawal leaves that listing's take. */
+  def judgedWrong(prod: Seq[ProdFilm], run: Seq[RunFilm], judgements: TakeJudgements.Index): Seq[ProdFilm] = {
+    val listingsBySlot = run.flatMap(_.listings).groupBy(_.slotKey)
+    prod.filter(film => film.tmdbId.exists { id =>
+      val listings = film.slots.flatMap(listingsBySlot.getOrElse(_, Nil))
+      listings.nonEmpty && listings.forall(listing => judgements.denied(listing.venue, listing.raw)(id))
+    })
+  }
 }

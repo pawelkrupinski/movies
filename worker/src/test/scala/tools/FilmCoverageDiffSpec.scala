@@ -114,4 +114,35 @@ class FilmCoverageDiffSpec extends AnyFlatSpec with Matchers {
     ratings.gaps.filter(_.axis == "imdbRating").map(gap => gap.run.map(_.id) -> gap.cause) should contain theSameElementsAs Seq(
       Some("dune") -> "run did not identify the film", Some("anora") -> "identified, not rated")
   }
+
+  // Production serves its worker's judgements, the ones it was last deployed with; the replay withdraws every take
+  // main's judgements call wrong (TakeJudgements.withdraw). Recording 3650's Poland served "Przemytnicy" as the 1985
+  // film at its three venues, judged wrong at every venue the day before: counted, the band read main's withdrawal as
+  // a coverage loss (Verify scrape recording #2602, tmdbId 5.1% under production).
+  "production's judged-wrong takes" should "be the films a judgement denies its take at every listing the replay joins to it" in {
+    import services.identity.TakeJudgements.{Index, Judgement}
+    val (gniewino, olawa) = (listing("Centrum Kultury Gniewino", "Przemytnicy"), listing("Kino Odra Oława", "PRZEMYTNICY"))
+    val (fenomen, lublin) = (listing("Kino Fenomen (WDK)", "Dyrygent"), listing("Kino CK Lublin", "Dyrygent"))
+    val replay = Seq(run("p1", Seq(gniewino)), run("p2", Seq(olawa)), run("d", Seq(fenomen, lublin)), run("anora", Seq(sameRio), tmdb = Some(1064213)))
+    val films = Seq(
+      prod("p-przemytnicy", Seq(gniewino.slotKey, olawa.slotKey), tmdb = Some(581674), covered = Set("imdbId")),
+      prod("p-dyrygent", Seq(fenomen.slotKey, lublin.slotKey), tmdb = Some(95269)),
+      prod("p-anora", Seq(sameRio.slotKey), tmdb = Some(1064213)))
+    val judgements = new Index(Seq(
+      Judgement("pl", "*", "Przemytnicy", "tmdb:581674", right = false),
+      Judgement("pl", "*", "PRZEMYTNICY", "tmdb:581674", right = false),
+      Judgement("pl", "Kino Fenomen (WDK)", "Dyrygent", "tmdb:95269", right = false)))
+    ProdFilms.judgedWrong(films, replay, judgements).map(_.id) shouldBe Seq("p-przemytnicy")
+    ProdFilms.judgedWrong(films, replay, Index.Empty) shouldBe empty
+  }
+
+  "a take a hand judgement withdrew" should "be told apart from the correction stage's withdrawal" in {
+    import services.identity.{ResolverDecision, Resolution, TakeJudgements}
+    val sława    = services.movies.ListingKey.Published("Kino Sława", "Przemytnicy", None, Nil)
+    val taken    = ResolverDecision(Seq(sława), Some(581674), 0.99, ResolverDecision.Basis.OwnMatch, Nil)()
+    val resolved = Resolution(Seq(taken), 1, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val judged   = new TakeJudgements.Index(Seq(TakeJudgements.Judgement("pl", "*", "Przemytnicy", "tmdb:581674", right = false)))
+    IdentityVerdict.of(TakeJudgements.withdraw(resolved, judged).decisions.head).cause shouldBe "withdrawn: a hand judgement calls it wrong"
+    IdentityVerdict.of(taken.copy(film = None, basis = ResolverDecision.Basis.Withdrawn)(taken.trace)).cause shouldBe "withdrawn by the correction stage"
+  }
 }

@@ -160,4 +160,11 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
     val withShadow = old.copy(shadow = Some(ShadowCoverage(java.time.Instant.EPOCH, 9, 4)))
     Json.toJson(withShadow).as[ProdCoverageBaseline] shouldBe withShadow
   }
+
+  "A baseline withdrawing production's judged-wrong takes" should "count those films still, on no axis but films" in {
+    val wrong = ProdFilm("p-przemytnicy", "przemytnicy|1985", Some(581674), Some("search"), Some("tt0089846"),
+      Set("tmdbId", "imdbId", "imdbRating"), Seq("Kino Sława␟przemytnicy"))
+    coverage(films = 1249, tmdb = 813, imdb = 790, imdbRating = 760).withdrawing(Seq(wrong)) shouldBe
+      coverage(films = 1249, tmdb = 812, imdb = 789, imdbRating = 759)
+  }
 }

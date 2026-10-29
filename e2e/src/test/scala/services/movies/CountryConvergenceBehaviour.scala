@@ -12,11 +12,12 @@ import org.scalatest.{BeforeAndAfterAll, Failed, Outcome}
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.TakeJudgements
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import tools.{Alongside, ArchiveReplayWiring, ConvergenceDiagnostics, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance,
   CountryScrapeCorpus, IdentityLookupSweep, ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FilmCoverageDiff,
-  FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline, ProdFilms, SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring,
-  ConvergenceKnownIssues}
+  FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline, ProdFilm, ProdFilms, RunFilm, SameThreadExecutionBudget, ServedCorpusInvariants,
+  TestWiring, ConvergenceKnownIssues}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -1260,18 +1261,31 @@ abstract class CountryConvergenceBehaviour(
            s"$screeningAt — ${corpus.size - mine.films} of the corpus's ${corpus.size} had no showtime left " +
            s"by then, which is the tail production does not count either")
 
+      // Judged by the SAME judgements on both sides. Production's worker withdraws the takes the judgements it
+      // was last deployed with call wrong, the replay those main's call wrong (TakeJudgements.withdraw), so a
+      // judgement main gained since production's deploy read as the replay's coverage loss: recording 3650's
+      // Poland, "Przemytnicy" served as the 1985 film at three venues, judged wrong the day before — tmdbId 5.1%
+      // under production (Verify scrape recording #2602) on main's deliberate withdrawal alone.
+      val prodFilms   = ProdFilms.read(corpusKey)
+      val judgedWrong = prodFilms.fold(Seq.empty[ProdFilm])(ProdFilms.judgedWrong(_, screening.map(RunFilm.of), w.judged))
+      if (judgedWrong.nonEmpty)
+        info(s"${country.displayName}: ${judgedWrong.size} of production's take(s) a hand judgement calls wrong, " +
+             s"which the replay withdraws, are not counted as its coverage — " +
+             judgedWrong.map(film => s"'${film.key}' tmdb ${film.tmdbId.mkString}").mkString(", "))
+      val judgedBaseline = baseline.withdrawing(judgedWrong)
+
       // Printed whether or not it passes. A band that only speaks when it breaks hides
       // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of a 5%
       // band while the rating axes it feeds were the ones failing.
       info(s"${country.displayName}: coverage against production${if (againstShadow.isDefined) "'s pipeline (reported only)" else ""} —\n  " +
-           ProdCoverageBaseline.report(mine, baseline, ProdTolerance).mkString("\n  "))
+           ProdCoverageBaseline.report(mine, judgedBaseline, ProdTolerance).mkString("\n  "))
 
-      val offBand = againstShadow.fold(ProdCoverageBaseline.divergences(mine, baseline, ProdTolerance))(
+      val offBand = againstShadow.fold(ProdCoverageBaseline.divergences(mine, judgedBaseline, ProdTolerance))(
         _.divergences(CorpusCoverage.of(corpus), ProdTolerance))
 
       // WHICH films, on every run: the counts above say how far the run sits from production, this says on
       // which films and why — so a red band is read off the log, not reproduced locally.
-      val filmByFilm = filmsAgainstProduction(w, screening, failing = offBand.map(_.takeWhile(_ != ' ')).toSet)
+      val filmByFilm = filmsAgainstProduction(w, screening, prodFilms, failing = offBand.map(_.takeWhile(_ != ' ')).toSet)
       filmByFilm.foreach(line => println(s"[${country.code}] $line"))
 
       // Reported above either way; only the ASSERTION is conditional. A country
@@ -1311,11 +1325,13 @@ abstract class CountryConvergenceBehaviour(
    * the `failing` axes follow it, capped at [[GapFilmsShown]], and the whole account goes to the leg's
    * diagnostics artifact (`ConvergenceDiagnostics`).
    */
-  private def filmsAgainstProduction(w: ArchiveReplayWiring, screening: Seq[StoredMovieRecord], failing: Set[String]): Seq[String] =
-    ProdFilms.read(corpusKey).fold(Seq(
+  private def filmsAgainstProduction(w: ArchiveReplayWiring, screening: Seq[StoredMovieRecord], prodFilms: Option[Seq[ProdFilm]],
+                                     failing: Set[String]): Seq[String] =
+    prodFilms.fold(Seq(
       s"no per-film production export beside this corpus (${ProdFilms.pathFor(corpusKey)}) — it was recorded before the " +
         "recorder wrote one, so the band can name no films; the next recording carries it")) { prod =>
-      val decisions = w.identityModel.current(5.minutes).map(_.resolution.decisionOf)
+      // as the projection serves them: each take a hand judgement calls wrong withdrawn
+      val decisions = w.identityModel.current(5.minutes).map(model => TakeJudgements.withdraw(model.resolution, w.judged).decisionOf)
       val diff      = FilmCoverageDiff.ofReplay(screening, prod, decisions)
       val name      = s"$corpusKey-coverage"
       val report    = ConvergenceDiagnostics.write(name, diff.full)
