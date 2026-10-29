@@ -433,7 +433,7 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ preflight, leg, request-bisect ]
+        needs: [ preflight, leg, request-bisect, verdict-complete ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read

@@ -12,17 +12,17 @@ printf '\033[36m▸\033[0m drift-guards.sh\n'
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-git init -q "$work/repo"
-cd "$work/repo" || exit 1
-git config user.email spec@example.com
-git config user.name spec
+repo="$work/repo"
+scratch_repo "$repo"
 commit() { # <path> <message>
-    mkdir -p "$(dirname "$1")"; echo "$RANDOM" >> "$1"; git add "$1"; git commit -qm "$2"
+    mkdir -p "$repo/$(dirname "$1")"; echo "$RANDOM" >> "$repo/$1"; scratch_git "$repo" add "$1"; scratch_git "$repo" commit -qm "$2"
 }
 commit README base
-base=$(git rev-parse HEAD)
-guard() { bash "$REPO_ROOT/scripts/ci/drift-guards.sh" "$base..HEAD" > /dev/null 2>&1; echo $?; }
-reset() { git reset -q --hard "$base"; }
+base=$(scratch_git "$repo" rev-parse HEAD)
+# the guard reads the scratch repository, never a GIT_DIR the hook running this spec was handed (scratch-git.sh)
+ungit() { local v; for v in $(compgen -e | grep '^GIT_'); do unset "$v"; done; }
+guard() { (cd "$repo" && ungit; bash "$REPO_ROOT/scripts/ci/drift-guards.sh" "$base..HEAD" > /dev/null 2>&1; echo $?); }
+reset() { scratch_git "$repo" reset -q --hard "$base"; }
 
 commit identity/src/main/A.scala "$(printf 'Identity: a feature\n\nNo red.')"
 check "a commit fixing no red passes" 0 "$(guard)"; reset
@@ -66,8 +66,8 @@ harness=worker/src/test/scala/scripts/IdentityDrift.scala
 commit "$harness" "Drift harness: the queue files a held answer first"
 check "a harness change without its self-test fails" 1 "$(guard)"; reset
 
-mkdir -p worker/src/test/scala/scripts; echo a >> "$harness"; echo b >> worker/src/test/scala/scripts/IdentityDriftSpec.scala
-git add -A; git commit -qm "Drift harness: the queue files a held answer first, and its replay case"
+mkdir -p "$repo/worker/src/test/scala/scripts"; echo a >> "$repo/$harness"; echo b >> "$repo/worker/src/test/scala/scripts/IdentityDriftSpec.scala"
+scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "Drift harness: the queue files a held answer first, and its replay case"
 check "...with a capture-replay case in the same commit it passes" 0 "$(guard)"; reset
 
 commit scripts/ci/identity-drift-check.sh "$(printf 'Drift check: one helper for the verdict line\n\nDrift-Harness-Refactor: no behaviour moves')"
@@ -80,6 +80,6 @@ commit identity/src/main/scala/services/identity/TakeFlips.scala "Flips: a re-sc
 commit identity/src/test/scala/services/identity/TakeFlipsSpec.scala "Flips: its spec, in a later commit"
 check "...a self-test in another commit of the push does not count" 1 "$(guard)"; reset
 
-check "an unreadable range is no verdict" 2 "$(bash "$REPO_ROOT/scripts/ci/drift-guards.sh" "nosuch..HEAD" > /dev/null 2>&1; echo $?)"
+check "an unreadable range is no verdict" 2 "$(cd "$repo" && ungit; bash "$REPO_ROOT/scripts/ci/drift-guards.sh" "nosuch..HEAD" > /dev/null 2>&1; echo $?)"
 
 spec_summary
