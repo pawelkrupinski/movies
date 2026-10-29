@@ -20,8 +20,11 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
   def titleKeys(node: EvidenceNode): Set[String] =
     keysOf.getOrElseUpdate(node.id, TitleLinks.titleKeys(node, normalizer, pins, wholeTitle, bannerSegment))
 
+  /** Each node's delimited segments, its own title aside. A segment with no letter names no work: a spaced dash splits
+   *  the year range of "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989", and its "1989" is not the bare "(1989)"
+   *  kinoheld titles 帝都大戦 by (DE recording 3650). */
   val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
-    (node.evidence.published.shapes.map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
+    (node.evidence.published.shapes.map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.exists(_.isLetter))).toMap
   def segmentOf(whole: EvidenceNode, decorated: EvidenceNode): Boolean =
     segmentsOf(decorated.id).contains(sanitized(whole.evidence.cleanTitle))
 

@@ -556,6 +556,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "not join a title that is only a year to a billing whose year range a spaced dash splits" in {
+    // DE recording 3650 (Verify scrape recording #2493): kinoheld titles Bambi's "帝都大戦" (1989) only "(1989)", and Mal
+    // seh'n Kino bills "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989", whose spaced dash leaves "1989" a piece. The
+    // year's key was the piece's, so the title-segment must-link served the Japanese film under B-Movie (2015).
+    val year     = listing(Helios, "(1989)", director = Some("Takashige Ichise"))
+    val bMovie   = listing(KinoMuza, "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989")
+    for (cut <- Seq(weights, strictPairCut)) {
+      val r = IdentityResolver.resolve(Seq(year, bMovie), new FilmTable(Nil, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = cut))
+      together(r, year, bMovie) shouldBe false
+    }
+  }
+
   "A bare listing its own evidence cannot separate between two films" should
     "follow its title's credited siblings, not the database's popularity ranking" in {
     // Four 2026 films TMDB titles "Lalka"; the one the venue credits ranks LAST in the search, so
