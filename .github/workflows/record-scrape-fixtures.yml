@@ -117,8 +117,9 @@ jobs:
               with:
                   sparse-checkout: scripts/ci
                   sparse-checkout-cone-mode: false
-            # One request each to OMDb and TMDB: a refused key (spent daily quota, rotated key) ended 5 of the week's
-            # 14 failed recordings 22-125 min in (runs 335, 408, 528, 563, 2507), after every leg had started.
+            # One request each to OMDb and TMDB: a refused key ended 5 of the week's 14 failed recordings 22-125 min in
+            # (runs 335, 408, 528, 563, 2507), after every leg had started. OMDb's spent daily quota only warns: OMDb is
+            # the recording's best-effort origin (recording_health.py), and failing on it made the nightly #2426 red.
             - name: OMDb and TMDB still take the keys
               env:
                   OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
