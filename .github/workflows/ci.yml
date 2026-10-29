@@ -142,8 +142,9 @@ jobs:
     # the tools' and the identity tooling's, and `worker` the worker's rest beside the web and scrapers modules. Each
     # row is cut to roughly equal time from per-suite JUnit times (measure run 3419 and after). One runner running all
     # five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15). The non-sbt checks
-    # (roster drift, actionlint, the script self-tests, …) ride `worker-identity`; the gitops manifests ride `worker`,
-    # whose deploy specs read them.
+    # (roster drift, the read-model stamp, actionlint, the script self-tests, …) ride `heavy1`, the lightest row (Main
+    # runs 3614-3623: heavy1 4.1 min against worker-identity 7.2, which carried them until then); the gitops manifests
+    # ride `worker`, whose deploy specs read them.
     test:
         name: test (${{ matrix.shard }})
         strategy:
@@ -199,7 +200,7 @@ jobs:
             # (scripts/ci/generated-artefacts-drift.sh). Gated on the chain's paths — it
             # fetches GeoNames and PyPI, which an unrelated push should not depend on.
             - name: Did this change touch the generated roster's sources?
-              if: matrix.shard == 'worker-identity'
+              if: matrix.shard == 'heavy1'
               id: roster
               uses: ./.github/actions/changed-paths
               with:
@@ -225,7 +226,7 @@ jobs:
             # half a second instead of the e2e shard's ~110s corpus replay. See
             # scripts/read-model-snapshot-inputs.sh for what the stamp does and does not cover.
             - name: The read-model snapshot is stamped for this fixture corpus
-              if: matrix.shard == 'worker-identity'
+              if: matrix.shard == 'heavy1'
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
             # actionlint over every workflow (shellcheck over their `run:` blocks), and the composite
@@ -233,7 +234,7 @@ jobs:
             # The pre-push hook runs both over what a push changes, but skips a tool that is not
             # installed — this is the check that cannot be skipped. Pinned by version and checksum.
             - name: Workflows pass actionlint, and composite actions' run blocks pass shellcheck
-              if: matrix.shard == 'worker-identity'
+              if: matrix.shard == 'heavy1'
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -255,7 +256,7 @@ jobs:
             # nothing with: run first in the foreground they held the unit run back by their own
             # ~21-25 s (run 37121131703). Waited for, and failing as they would have, after it (below).
             - name: Script self-tests, in the background
-              if: matrix.shard == 'worker-identity'
+              if: matrix.shard == 'heavy1'
               run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
 
             # The JDK, sbt and the build cache (.github/actions/setup-sbt-build). Warm zinc state
@@ -296,7 +297,7 @@ jobs:
             # for before it, they held it back ~63 s on every run (they outlast the JDK, sbt and cache restores). On a red
             # unit run too, so a broken script still says so.
             - name: The script self-tests passed
-              if: ${{ !cancelled() && matrix.shard == 'worker-identity' }}
+              if: ${{ !cancelled() && matrix.shard == 'heavy1' }}
               run: scripts/ci/in-background.sh wait script-tests 600
 
             # The snapshot guards in this run (CatalogSeedSpec's app seeds among them) write
