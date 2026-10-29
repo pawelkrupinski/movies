@@ -1012,7 +1012,7 @@ jobs:
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
                   case $code in
                       0) ;;
-                      1) echo "::error title=identity drift (${{ inputs.code }})::the incremental state ends elsewhere than a whole resolve -- see the step summary" ;;
+                      1) echo "::error title=identity drift (${{ inputs.code }})::$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'divergences or flips beyond the allow-lists') -- each named in the step log" ;;
                       *) echo "::error title=identity drift (${{ inputs.code }})::the drift replay could not run, so nothing was judged -- see the step log" ;;
                   esac
                   exit "$code"

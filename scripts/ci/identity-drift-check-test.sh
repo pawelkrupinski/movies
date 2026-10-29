@@ -2,6 +2,7 @@
 # identity-drift-check.sh against a stand-in sbt: the verdict is the replay's own report line -- divergences beyond the
 # allow-list fail (1), none or only allowed ones pass (0), and a replay that wrote no report, or no recording to replay,
 # is no verdict (2). Flips likewise: any the flips allow-list does not name fail (1), and no flips line is no verdict (2).
+# The verdict line the row's ::error quotes names divergences and flips apart.
 # Run: bash scripts/ci/identity-drift-check-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -37,11 +38,14 @@ check "no recorded corpus to replay: no verdict" "2" "$(FAKE_FOUND=0 FAKE_ALLOWE
 touch "$work/repo/test/resources/fixtures/corpus/cinema-scrapes-pl.json.gz"
 check "no divergence passes" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
 check "divergences the allow-list does not name fail" "1" "$(FAKE_FOUND=3 FAKE_ALLOWED=0 run)"
+check "...and the verdict names them" "3 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists" "$(cat "$work/out/verdict.txt")"
 check "...and the report names their class" "1" "$(grep -c 'incremental-only take' "$work/out/report.txt")"
 check "divergences the allow-list names all pass" "0" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 run)"
 check "a replay that never reported is no verdict" "2" "$(FAKE_REPORT=none run)"
 check "flips the flips allow-list does not name fail" "1" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=2 run)"
 check "...and the report names the listing and its takes" "1" "$(grep -c 'The Stranger: tmdb:1429348' "$work/out/report.txt")"
+check "...and the verdict names flips, not divergences" "0 divergence(s) from a whole resolve and 2 flip(s) on the way, beyond the allow-lists" \
+  "$(cat "$work/out/verdict.txt")"
 check "flips fail beside allowed divergences too" "1" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 FAKE_FLIPS=1 run)"
 check "flips the flips allow-list names pass" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=1 FAKE_FLIPS_ALLOWED=1 run)"
 check "a replay that reported no flips line is no verdict" "2" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=none run)"
