@@ -51,6 +51,20 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(question, unfiled)
   }
 
+  "a listing's inputs" should "move with its model cluster's members, and at a step that moved listings with the model's take of it" in {
+    val lalka = IdentityDrift.ModelCluster(members = 17, film = "tmdb:1321666")
+    IdentityDrift.inputsMoved(Some(lalka), Some(lalka.copy(members = 18)), listingsMoved = false) shouldBe true
+    // PL Kino Eva's "LALKA", run 3509: new venues' listings came, its cluster kept its members, the model took it as none
+    IdentityDrift.inputsMoved(Some(lalka), Some(lalka.copy(film = "none")), listingsMoved = true) shouldBe true
+    // a deploy under the same rules moved nothing: the model's take moving there is a flip of the model's own
+    IdentityDrift.inputsMoved(Some(lalka), Some(lalka.copy(film = "none")), listingsMoved = false) shouldBe false
+    IdentityDrift.inputsMoved(Some(lalka), Some(lalka), listingsMoved = true) shouldBe false
+    IdentityDrift.inputsMoved(None, Some(lalka), listingsMoved = false) shouldBe true
+    // a listing no model cluster held at either step: nothing to tell its inputs apart by, read as moved as the members'
+    // hash alone read it — the model take's clause only ever removes a flag
+    IdentityDrift.inputsMoved(None, None, listingsMoved = false) shouldBe true
+  }
+
   "the reviewed flips" should "stay empty: a flip the leg finds is fixed, never listed (the owner, 2026-10-27)" in {
     val path = "test/resources/fixtures/identity-flips-allow.tsv"
     deploy.RepoFile.exists(path) shouldBe true
