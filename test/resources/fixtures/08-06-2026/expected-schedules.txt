@@ -900,15 +900,15 @@ showings:
 displayTitle:      Cinema Italia Oggi: Jeden szkolny rok
 cinemaTitles:      Cinema Italia Oggi: Jeden szkolny rok | Jeden szkolny rok
 runtimeMinutes:    103
-releaseYear:       2025
+releaseYear:       2026
 countries:         Włochy, Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1753219495691.jpg
-synopsis.length:   118
-cast:              —
+synopsis.length:   658
+cast:              Stella Wendick, Giacomo Covi, Pietro Giustolisi, Samuel Volturno, Magnus Krepper
 director:          Laura Samani
 tmdbId:            1442922
 imdbId:            —
-originalTitle:     —
+originalTitle:     Un anno di scuola
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —

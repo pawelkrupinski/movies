@@ -1425,33 +1425,6 @@
     "shareCardPending" : false,
     "searchTitles" : [ ]
   }, {
-    "_id" : "f1459055c1a63a94",
-    "title" : "Left-Handed Girl",
-    "originalTitle" : "左撇子女孩",
-    "posterUrl" : "https://sdk.waw.pl/images/wydarzenia/02-2026/Left_OW.jpg",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/19v1ixdwQx3QXi82gsvoZ3BLypm.jpg" ],
-    "runtimeMinutes" : 108,
-    "releaseYear" : 2025,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Francja", "USA", "Wielka Brytania", "Tajwan" ],
-    "directors" : [ " Shih-Ching Tsou" ],
-    "cast" : [ "馬士媛", "蔡淑臻", "葉子綺", "黃鐙輝", "陳慕義" ],
-    "synopsis" : "Samotna matka i jej dwie córki wracają do Tajpej po kilku latach mieszkania na wsi, aby otworzyć stoisko na tętniącym życiem nocnym targu. Każda z nich na swój sposób będzie musiała dostosować się do nowego otoczenia, aby związać koniec z końcem i utrzymać jedność rodziny. Trzy pokolenia rodzinnych sekretów zaczynają się rozwiązywać, gdy najmłodsza córka, która jest leworęczna, dostaje od swojego tradycyjnego dziadka polecenie, aby nigdy nie używała swojej „diabelskiej ręki”.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt27722618/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%B7%A6%E6%92%87%E5%AD%90%E5%A5%B3%E5%AD%A9/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E5%B7%A6%E6%92%87%E5%AD%90%E5%A5%B3%E5%AD%A9",
-      "filmweb" : 7.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Left-Handed+Girl.+To+by%C5%82a+r%C4%99ka%E2%80%A6+diab%C5%82a%21-2025-10078990"
-    },
-    "weightedRating" : 7.3,
-    "synopsisByCity" : {
-      "warszawa" : "Hit tegorocznego festiwalu Nowe Horyzonty, oficjalny kandydat Tajwanu do Oscara i nowy tytuł ze znakiem jakości Seana Bakera.\n\nPulsujące nocnym życiem Tajpej. Trzy kobiety przeprowadzają się do stolicy Tajwanu, aby otworzyć nowy rozdział w życiu: niemająca szczęścia do miłości ani pieniędzy Shu-Fen oraz jej córki – nastoletnia i zadziorna I-Ann oraz diabelnie urocza, kilkuletnia I-Jing. Podczas gdy samotna mama rozkręca na nocnym targu własny stragan z kluskami, I-Ann zamiast studiować dorabia jako dealerka betelu – lokalnego odpowiednika naszych snusów, a I-Jing na własną rękę (dosłownie i w przenośni…) eksploruje zakamarki kuszącego neonami marketu.\n\nW mieście wielkich szans i nie mniejszych rozczarowań tajwańsko-amerykańska reżyserka bierze pod lupę kobiece więzi rodzinne, w których nie brakuje pęknięć, ale też czułości. W efekcie powstał tryskający energią komediodramat o tym, że rodziny się nie wybiera, ale gdybyśmy mogli, to zaprosilibyśmy do niej… surykatkę. I o co chodzi z tą lewą ręką?\n\nReżyserką i współautorką scenariusza jest Shih-Ching Tsou, dla której to wprawdzie pierwszy tytuł jako samodzielnej reżyserki, ale Tsou zadebiutowała już ponad 20 lat temu – i to u boku samego Seana Bakera, z którym od lat przyjaźni się w życiu i na planie zdjęciowym. Wspólnie wyreżyserowali drugi pełny metraż Bakera – „Take Out”, a Tsou była także producentką jego innych filmów: „Starlet” („Gwiazdeczka”), „Tangerine” („Mandarynki”), „The Florida Project” i „Red Rocket”. Sean Baker jest również współautorem scenariusza do „Left-Handed Girl” oraz producentem wiodącym filmu. Jego charakterystyczne spojrzenie na rzeczywistość i sposób opowiadania historii są w tym projekcie wyraźnie obecne – Baker odpowiada tu także w całości za montaż!\n\nFilm jest oficjalnym tajwańskim kandydatem do Oscara, a jego światowa premiera odbyła się na Festiwalu w Cannes i dziś z powodzeniem kontynuuje festiwalową trasę zdobywając nagrody. Krytycy chwalą świadomą, dopracowaną reżyserię, dynamikę dialogów, sposób przedstawienia relacji rodzinnych i świata z perspektywy dziecka – w słodko-gorzki, a momentami tragikomiczny sposób – porównując pod tym kątem „Left-Handed Girl” do „The Florida Project”."
-    },
-    "shareCardPending" : false,
-    "searchTitles" : [ "左撇子女孩", "Zuo pie zi nv hai" ]
-  }, {
     "_id" : "f145ae7016903f07",
     "title" : "James Hamilton. Fotograf Nowego Jorku",
     "originalTitle" : "Uncropped",
@@ -7387,47 +7360,47 @@
     "title" : "Cinema Italia Oggi: Jeden szkolny rok",
     "originalTitle" : "Un anno di scuola",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1753219495691.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/8kGEfpIabMiaWpdMkTcNFclld5W.jpg" ],
     "runtimeMinutes" : 103,
-    "releaseYear" : 2025,
-    "genres" : [ ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat" ],
     "countries" : [ "Włochy", "Francja" ],
     "directors" : [ "Laura Samani" ],
-    "cast" : [ ],
+    "cast" : [ "Stella Wendick", "Giacomo Covi", "Pietro Giustolisi", "Samuel Volturno", "Magnus Krepper" ],
+    "synopsis" : "Wrzesień 2007, Triest. Fred, energiczna i odważna osiemnastoletnia Szwedka, przybywa do miasta, aby ukończyć ostatni rok w technikum. Okazuje się jedyną dziewczyną w klasie wyłącznie męskiej i przyciąga uwagę wszystkich, a zwłaszcza trójki przyjaciół: Antero, czarującego i powściągliwego; Pasiniego, efektownego uwodziciela; oraz Mitisa, dobrodusznego i opiekuńczego. Cała trójka należy do siebie, odkąd pamiętają. Przybycie Fred burzy ich jednolitość, wystawiając ich przyjaźń na próbę. Podczas gdy każde z nich skrycie jej pragnie, Fred pragnie dołączyć do grupy, ale ona jest nieustannie proszona o poświęcenie czegoś z siebie, aby stać się jedną z nich.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Jeden+szkolny+rok/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Jeden+szkolny+rok",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Jeden+szkolny+rok"
+      "metacriticUrl" : "https://www.metacritic.com/search/Un+anno+di+scuola/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Un+anno+di+scuola",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Un+anno+di+scuola"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : {
-      "poznan" : "Wrzesień 2007, Triest. Fred, osiemnastoletnia Szwedka o ognistym i odważnym temperamencie, przyjeżdża do miasta, by..."
-    },
+    "synopsisByCity" : { },
     "shareCardPending" : false,
-    "searchTitles" : [ ]
+    "searchTitles" : [ "Un anno di scuola", "A Year of School" ]
   }, {
     "_id" : "f51ee49a967f78a2~jedenszkolnyrok",
     "title" : "Jeden szkolny rok",
     "originalTitle" : "Un anno di scuola",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1753219495691.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/8kGEfpIabMiaWpdMkTcNFclld5W.jpg" ],
     "runtimeMinutes" : 103,
-    "releaseYear" : 2025,
-    "genres" : [ ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat" ],
     "countries" : [ "Włochy", "Francja" ],
     "directors" : [ "Laura Samani" ],
-    "cast" : [ ],
+    "cast" : [ "Stella Wendick", "Giacomo Covi", "Pietro Giustolisi", "Samuel Volturno", "Magnus Krepper" ],
+    "synopsis" : "Wrzesień 2007, Triest. Fred, energiczna i odważna osiemnastoletnia Szwedka, przybywa do miasta, aby ukończyć ostatni rok w technikum. Okazuje się jedyną dziewczyną w klasie wyłącznie męskiej i przyciąga uwagę wszystkich, a zwłaszcza trójki przyjaciół: Antero, czarującego i powściągliwego; Pasiniego, efektownego uwodziciela; oraz Mitisa, dobrodusznego i opiekuńczego. Cała trójka należy do siebie, odkąd pamiętają. Przybycie Fred burzy ich jednolitość, wystawiając ich przyjaźń na próbę. Podczas gdy każde z nich skrycie jej pragnie, Fred pragnie dołączyć do grupy, ale ona jest nieustannie proszona o poświęcenie czegoś z siebie, aby stać się jedną z nich.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Jeden+szkolny+rok/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Jeden+szkolny+rok",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Jeden+szkolny+rok"
+      "metacriticUrl" : "https://www.metacritic.com/search/Un+anno+di+scuola/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Un+anno+di+scuola",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Un+anno+di+scuola"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
     "shareCardPending" : false,
-    "searchTitles" : [ ]
+    "searchTitles" : [ "Un anno di scuola", "A Year of School" ]
   }, {
     "_id" : "f5277803f6038ea8",
     "title" : "Łowca androidów: Final Cut | Kultowe Klasyki",
@@ -8994,22 +8967,25 @@
     "posterUrl" : "https://medstore.kinoteka.pl/plakatcyrkularne(2).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 216,
-    "genres" : [ "Dramat", "Przygodowy", "Wojenny" ],
+    "releaseYear" : 1962,
+    "genres" : [ "Wojenny", "Dramat", "Przygodowy" ],
     "countries" : [ "Wielka Brytania" ],
     "directors" : [ "David Lean" ],
     "cast" : [ "Anthony Quinn", "Alec Guinness", "Peter O'Toole" ],
+    "synopsis" : "Film oparty na prawdziwych wydarzeniach. Rok 1916. Młody oficer brytyjski, T.E. Lawrence, zostaje wysłany na Bliski Wschód. Wbrew rozkazom namawia Arabów do buntu przeciwko Turkom.",
     "trailerUrls" : [ "https://www.youtube.com/embed/_AznzZAlwVA" ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA"
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Lawrence+z+Arabii-1962-33560"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.6,
     "synopsisByCity" : {
       "warszawa" : "Oglądamy epickie kino w kinie, nie na telefonie — bo tylko wielki ekran oddaje pełnię takich filmów.\n\nZapraszamy na wyjątkowy pokaz jednego z najważniejszych dzieł w historii kina – epickiej superprodukcji Davida Leana „Lawrence z Arabii” z niezapomnianą kreacją Petera O’Toole’a.\n\n„Lawrence z Arabii” to nie tylko imponująca wizualnie epopeja, nagrodzona 7 Oscarami, ale także poruszająca opowieść o bohaterstwie, tożsamości, moralnych dylematach i cienkiej granicy między legendą a rzeczywistością. Monumentalne krajobrazy pustyni, mistrzowska reżyseria oraz zapadająca w pamięć muzyka sprawiają, że film wciąż zachwyca kolejne pokolenia widzów.\n\nW trakcie seansu (po 139 minutach) zaplanowana jest 15- minutowa przerwa.\n\nKino cyrkularne to cykl poświęcony klasyce – mamy nadzieję spełniać w nim nasze i wasze kinofilskie marzenia o pokazach ulubionych klasycznych filmów na wielkim ekranie.\n\nKuratorka cyklu: Karolina Fornal"
     },
     "shareCardPending" : false,
-    "searchTitles" : [ ]
+    "searchTitles" : [ "Lawrence of Arabia" ]
   }, {
     "_id" : "f676a29184d58e63",
     "title" : "100 dni: misja zeus",
@@ -12272,22 +12248,25 @@
     "posterUrl" : "https://medstore.kinoteka.pl/779820113.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 89,
-    "genres" : [ "Czarna Komedia", "Horror", "Surrealistyczny" ],
+    "releaseYear" : 1977,
+    "genres" : [ "Surrealistyczny" ],
     "countries" : [ "USA" ],
     "directors" : [ "David Lynch" ],
     "cast" : [ ],
+    "synopsis" : "Henry żyje w zindustrializowanym świecie. Podczas kolacji u rodziców swojej dziewczyny dowiaduje się, że został ojcem.",
     "trailerUrls" : [ "https://www.youtube.com/embed/J0Eq5GtCYdA" ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+G%C5%82owa+do+wycierania/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+G%C5%82owa+do+wycierania",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+G%C5%82owa+do+wycierania"
+      "filmweb" : 7.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/G%C5%82owa+do+wycierania-1977-1088"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.3,
     "synopsisByCity" : {
       "warszawa" : "\"Surrealistyczny koszmar Davida Lyncha.\n\nHenry Spencer prowadzi samotne życie w przemysłowym mieście przypominającym niekończący się koszmar. Kiedy jego dziewczyna Mary informuje go, że urodziło im się dziecko, Henry trafia do świata pełnego niezręcznych rodzinnych spotkań, napięcia i coraz trudniejszej do zniesienia codzienności. Problem w tym, że ich nowo narodzone dziecko wygląda bardziej jak dziwne, chorowite stworzenie niż człowiek, a opieka nad nim zaczyna powoli niszczyć psychikę Henry’ego.\n\n„Głowa do wycierania” nie przypomina klasycznego horroru ani zwykłego filmu surrealistycznego. David Lynch buduje tutaj własny język kina: oparty na dźwięku, niepokoju, dziwnej logice snu i obrazach, których nie da się wyrzucić z głowy. Czarny humor miesza się z autentycznym dyskomfortem, a cały film wygląda momentami jak koszmar o dorosłości, rodzicielstwie i strachu przed dpowiedzialnością.\n\nPełnometrażowy debiut Lyncha powstawał z przerwami przez kilka lat. Po premierze nie stał się natychmiastowym hitem – swoją legendę zbudował dopiero dzięki nocnym pokazom i widzom, którzy odkrywali go jak filmowy sekret. To właśnie „Głowa do wycierania” ustanowiła wiele elementów stylu Lyncha: przemysłowy niepokój, czarny humor, logikę snu i obrazy działające bardziej na podświadomość niż rozsądek.\""
     },
     "shareCardPending" : false,
-    "searchTitles" : [ ]
+    "searchTitles" : [ "Eraserhead" ]
   }, {
     "_id" : "f8e999785791f655",
     "title" : "\"Portret kobiety w ogniu\" w ramach cyklu Kino Siostrzeńskie",
@@ -15974,6 +15953,32 @@
     "shareCardPending" : false,
     "searchTitles" : [ "Dead Man" ]
   }, {
+    "_id" : "fac319f9e96d9eb6",
+    "title" : "Left-Handed Girl",
+    "originalTitle" : "Zuo pie zi nv hai",
+    "posterUrl" : "https://sdk.waw.pl/images/wydarzenia/02-2026/Left_OW.jpg",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 108,
+    "releaseYear" : 2025,
+    "genres" : [ "Dramat" ],
+    "countries" : [ ],
+    "directors" : [ " Shih-Ching Tsou" ],
+    "cast" : [ ],
+    "synopsis" : "Samotna matka przeprowadza się z dwoma córkami do Tajpej.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Left-Handed+Girl/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Left-Handed+Girl",
+      "filmweb" : 7.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Left-Handed+Girl.+To+by%C5%82a+r%C4%99ka%E2%80%A6+diab%C5%82a%21-2025-10078990"
+    },
+    "weightedRating" : 7.3,
+    "synopsisByCity" : {
+      "warszawa" : "Hit tegorocznego festiwalu Nowe Horyzonty, oficjalny kandydat Tajwanu do Oscara i nowy tytuł ze znakiem jakości Seana Bakera.\n\nPulsujące nocnym życiem Tajpej. Trzy kobiety przeprowadzają się do stolicy Tajwanu, aby otworzyć nowy rozdział w życiu: niemająca szczęścia do miłości ani pieniędzy Shu-Fen oraz jej córki – nastoletnia i zadziorna I-Ann oraz diabelnie urocza, kilkuletnia I-Jing. Podczas gdy samotna mama rozkręca na nocnym targu własny stragan z kluskami, I-Ann zamiast studiować dorabia jako dealerka betelu – lokalnego odpowiednika naszych snusów, a I-Jing na własną rękę (dosłownie i w przenośni…) eksploruje zakamarki kuszącego neonami marketu.\n\nW mieście wielkich szans i nie mniejszych rozczarowań tajwańsko-amerykańska reżyserka bierze pod lupę kobiece więzi rodzinne, w których nie brakuje pęknięć, ale też czułości. W efekcie powstał tryskający energią komediodramat o tym, że rodziny się nie wybiera, ale gdybyśmy mogli, to zaprosilibyśmy do niej… surykatkę. I o co chodzi z tą lewą ręką?\n\nReżyserką i współautorką scenariusza jest Shih-Ching Tsou, dla której to wprawdzie pierwszy tytuł jako samodzielnej reżyserki, ale Tsou zadebiutowała już ponad 20 lat temu – i to u boku samego Seana Bakera, z którym od lat przyjaźni się w życiu i na planie zdjęciowym. Wspólnie wyreżyserowali drugi pełny metraż Bakera – „Take Out”, a Tsou była także producentką jego innych filmów: „Starlet” („Gwiazdeczka”), „Tangerine” („Mandarynki”), „The Florida Project” i „Red Rocket”. Sean Baker jest również współautorem scenariusza do „Left-Handed Girl” oraz producentem wiodącym filmu. Jego charakterystyczne spojrzenie na rzeczywistość i sposób opowiadania historii są w tym projekcie wyraźnie obecne – Baker odpowiada tu także w całości za montaż!\n\nFilm jest oficjalnym tajwańskim kandydatem do Oscara, a jego światowa premiera odbyła się na Festiwalu w Cannes i dziś z powodzeniem kontynuuje festiwalową trasę zdobywając nagrody. Krytycy chwalą świadomą, dopracowaną reżyserię, dynamikę dialogów, sposób przedstawienia relacji rodzinnych i świata z perspektywy dziecka – w słodko-gorzki, a momentami tragikomiczny sposób – porównując pod tym kątem „Left-Handed Girl” do „The Florida Project”."
+    },
+    "shareCardPending" : false,
+    "searchTitles" : [ "Zuo pie zi nv hai" ]
+  }, {
     "_id" : "fac83cd86eb4de44",
     "title" : "National Theatre Live: Niebezpieczne związki",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8212S2R.jpg",
@@ -19215,7 +19220,8 @@
     "posterUrl" : "https://medstore.kinoteka.pl/lozko.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 77,
-    "genres" : [ "Dramat", "Horror", "Surrealistyczny" ],
+    "releaseYear" : 1977,
+    "genres" : [ "Horror" ],
     "countries" : [ "USA" ],
     "directors" : [ "George Barry" ],
     "cast" : [ ],
@@ -19223,9 +19229,10 @@
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera"
+      "filmweb" : 3.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Death+Bed%3A+The+Bed+That+Eats-1977-172421"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 3.4,
     "synopsisByCity" : {
       "warszawa" : "Film o łóżku, które pożera ludzi i zdrowy rozsądek widzów.\n\nW opuszczonym domu stoi stare łóżko o bardzo nietypowym problemie – regularnie pożera ludzi, którzy mają pecha na nim usiąść, położyć się albo spędzić noc. Kolejne ofiary trafiają do pokoju, nie mając pojęcia, że mebel od dawna żyje własnym życiem i powoli rozpuszcza wszystko, co znajdzie się na jego materacu. Całość obserwuje tajemniczy mężczyzna uwięziony za ścianą obrazu, komentujący wydarzenia, jakby sam do końca nie wierzył w absurd tego, co ogląda.\n\n„Łóżko, które pożera” działa jak horror wymyślony według logiki prawdziwego snu – pełnego przypadkowych dialogów, dziwnych decyzji i scen kompletnie ignorujących normalne zasady narracji. Reżyser George Barry z absolutną powagą traktuje pomysł o morderczym łóżku i właśnie dlatego cały film staje się tak fascynujący. Psychodeliczna atmosfera, surrealistyczny humor i kompletnie nieprzewidywalna logika zamieniają całość w jedno z najbardziej osobliwych doświadczeń horrorowego undergroundu.\n\nFilm został nakręcony w 1977 roku, ale przez lata praktycznie nie istniał w normalnym obiegu i funkcjonował bardziej jako legenda wśród fanów dziwnego kina niż realny film. Dopiero po latach „Łóżko, które pożera” zdobyło status kultowego midnight movie i jednego z najbardziej surrealistycznych horrorów undergroundowych swoich czasów. To dokładnie ten rodzaj filmu, przy którym przez pół seansu nie wiadomo, czy bardziej się śmiać, czy próbować zrozumieć, jakim cudem coś takiego w ogóle powstało."
     },
@@ -21221,45 +21228,51 @@
   }, {
     "_id" : "fe23109c5e5944a4",
     "title" : "Poza prawem",
+    "originalTitle" : "Down by Law",
     "posterUrl" : "https://www.kinokultura.pl/foto,19311,f0f374a4a5cb4ed8c88c84f3842dc3ac,jpg.html",
     "fallbackPosterUrls" : [ "https://bilety.pokis.pl/MSI/ImageData.ashx?id=106&mode=thumb" ],
     "runtimeMinutes" : 107,
     "releaseYear" : 1986,
-    "genres" : [ ],
+    "genres" : [ "Dramat", "Komedia kryminalna" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Jim Jarmusch" ],
     "cast" : [ ],
+    "synopsis" : "Trzej nieudacznicy trafiają do jednej więziennej celi. Jeden z nich obmyśla plan ucieczki.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Poza+prawem/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poza+prawem",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poza+prawem"
+      "filmweb" : 7.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Poza+prawem-1986-5176"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.7,
     "synopsisByCity" : { },
     "shareCardPending" : false,
-    "searchTitles" : [ ]
+    "searchTitles" : [ "Down by Law" ]
   }, {
     "_id" : "fe23109c5e5944a4~pozaprawemjimjarmusch",
     "title" : "Poza prawem // jim jarmusch",
+    "originalTitle" : "Down by Law",
     "posterUrl" : "https://www.kinokultura.pl/foto,19311,f0f374a4a5cb4ed8c88c84f3842dc3ac,jpg.html",
     "fallbackPosterUrls" : [ "https://bilety.pokis.pl/MSI/ImageData.ashx?id=106&mode=thumb" ],
     "runtimeMinutes" : 107,
     "releaseYear" : 1986,
-    "genres" : [ ],
+    "genres" : [ "Dramat", "Komedia kryminalna" ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Jim Jarmusch" ],
     "cast" : [ ],
+    "synopsis" : "Trzej nieudacznicy trafiają do jednej więziennej celi. Jeden z nich obmyśla plan ucieczki.",
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Poza+prawem+%2F%2F+jim+jarmusch/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poza+prawem+%2F%2F+jim+jarmusch",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poza+prawem+%2F%2F+jim+jarmusch"
+      "filmweb" : 7.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Poza+prawem-1986-5176"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.7,
     "synopsisByCity" : { },
     "shareCardPending" : false,
-    "searchTitles" : [ ]
+    "searchTitles" : [ "Down by Law" ]
   }, {
     "_id" : "fe23e41bedb2d7a2",
     "title" : "Maryja. Matka papieża",
@@ -27822,19 +27835,6 @@
       "format" : [ "NAP" ]
     } ],
     "listingKeys" : [ "P\u0000Cinema1\u0000SPA WEEKEND\u00002026" ]
-  }, {
-    "_id" : "f1459055c1a63a94|warszawa|Służewski Dom Kultury",
-    "filmId" : "f1459055c1a63a94",
-    "city" : "warszawa",
-    "cinema" : "Służewski Dom Kultury",
-    "filmUrl" : "https://sdk.waw.pl/wydarzenia/rodzaj-wydarzenia/kino/left-handed-girl-kino",
-    "showtimes" : [ {
-      "dateTime" : "2026-02-22T19:00:00",
-      "bookingUrl" : "https://biletyna.pl/film/Left-Handed-Girl-2/Warszawa",
-      "room" : "sala widowiskowa",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Służewski Dom Kultury\u0000https://sdk.waw.pl/wydarzenia/rodzaj-wydarzenia/kino/left-handed-girl-kino\u0000Left-Handed Girl" ]
   }, {
     "_id" : "f145ae7016903f07|wroclaw|Dolnośląskie Centrum Filmowe",
     "filmId" : "f145ae7016903f07",
@@ -146524,6 +146524,19 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Kino za Rogiem\u0000Truposz // JIM JARMUSCH\u00001995" ]
+  }, {
+    "_id" : "fac319f9e96d9eb6|warszawa|Służewski Dom Kultury",
+    "filmId" : "fac319f9e96d9eb6",
+    "city" : "warszawa",
+    "cinema" : "Służewski Dom Kultury",
+    "filmUrl" : "https://sdk.waw.pl/wydarzenia/rodzaj-wydarzenia/kino/left-handed-girl-kino",
+    "showtimes" : [ {
+      "dateTime" : "2026-02-22T19:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Left-Handed-Girl-2/Warszawa",
+      "room" : "sala widowiskowa",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Służewski Dom Kultury\u0000https://sdk.waw.pl/wydarzenia/rodzaj-wydarzenia/kino/left-handed-girl-kino\u0000Left-Handed Girl" ]
   }, {
     "_id" : "fac83cd86eb4de44|bydgoszcz|Cinema City Bydgoszcz",
     "filmId" : "fac83cd86eb4de44",
