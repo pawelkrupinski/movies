@@ -384,10 +384,6 @@ jobs:
     # a divergent replay must not cancel the boot that would have said where, and vice
     # versa.
     #
-    # THE DRIFT ROWS FIRST (convergence-failures-2026-10-29 §7.3, W2): a runner takes the oldest waiting job, so the rows
-    # start in this order, and the takes-drift rows -- the failing step in 28 of that week's 36 red runs -- give their
-    # verdict first.
-    #
     # They are side by side, NOT chained. The replay seeds its own archive and never
     # touches the booted corpus, so chaining them would only put a 4-hour row behind a
     # 3-hour one — the 6-hour cancellation the split exists to escape. The leg costs one
@@ -402,7 +398,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]' || inputs.drift-seeds == '2' && '["takes-drift-2"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('[{0}"convergence"{1}{2}]', inputs.mode == 'hermetic' && inputs.takes-row && '"takes-drift-1","takes-drift-2","takes",' || '', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '')) }}
+                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]' || inputs.drift-seeds == '2' && '["takes-drift-2"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,

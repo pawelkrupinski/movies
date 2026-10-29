@@ -439,10 +439,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]' || inputs.drift-seeds == '2' && '["takes-drift-2"]' || """ +
-        """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('[{0}"convergence"{1}{2}]', """ +
-        """inputs.mode == 'hermetic' && inputs.takes-row && '"takes-drift-1","takes-drift-2","takes",' || '', inputs.order-command != '' && (inputs.order-split && """ +
+        """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
-        """inputs.next-day-command != '' && ',"next-day"' || '')) }}""")
+        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}""")
   }
 
   /** THE INCREMENTAL = WHOLE GATE, ONE SEED A ROW (2026-10-26): the takes row ran the takes check and then both drift seeds,
