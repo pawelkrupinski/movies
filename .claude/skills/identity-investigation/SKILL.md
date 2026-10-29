@@ -201,9 +201,10 @@ scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judg
 
 - right / wrong: a row, `state` `open`. A venue's row overrides the `*` row.
 - a WRONG take that is served and has no safe fix: `state` `known-wrong`, `scope` the gates it stands in (`capture`:
-  the unmatched-cluster ratchet; `served`: a leg's suspect gate; `rows`: MatchedTakesLabelSpec; `hard-clusters`: an
-  expected-hard-clusters file), `reason` why. Covers every venue billing the title. A scope no take needs any more fails
-  as stale (capture, rows, hard-clusters) or is named GONE (served): strike it.
+  the unmatched-cluster ratchet; `served`: a leg's suspect gate; `rows`: MatchedTakesLabelSpec), `reason` why. Covers
+  every venue billing the title. A scope no take needs any more fails as stale (capture, rows) or is named GONE
+  (served): strike it. No scope covers an expected-hard-clusters file: the projection withdraws every judged-wrong
+  take (`TakeJudgements.withdraw`), so the lint fails such an expectation as stale -- regenerate the file.
 - a loss the takes check should accept: `state` `accepted-loss` with `reason`; of a take judged RIGHT only as
   `accepted-right-loss` (the lint names each on every run). A move to another film is accepted by judging that film
   right, or the old one wrong.

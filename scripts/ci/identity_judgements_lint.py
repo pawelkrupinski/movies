@@ -130,14 +130,15 @@ HARD_LINE = re.compile(r"^(?P<key>[^|\t]*)\|[^\t]*\t.*\btmdb=(?P<tmdb>\d+)\b.*\b
 
 
 def hard_cluster_findings(root, judged):
-    """The hard-cluster expectations the judgements call wrong that no known-wrong row of scope hard-clusters stands
-    for, and each such row no expectation needs any more (stale)."""
-    wrong = defaultdict(list)  # (cc, title key, film) -> venues judged wrong ("*" for every)
+    """The hard-cluster expectations that take a film the judgements call wrong for the billing at one of its cinemas.
+    The projection withdraws every such take (TakeJudgements.withdraw, 176074559) -- its venue's or every venue's wrong,
+    unless its venue's calls the film right -- so HardClusterConvergenceIntegrationSpec cannot come out so: the file is
+    stale (Main #2600), and no known-wrong row can let it stand."""
+    wrong, right = defaultdict(set), defaultdict(set)  # (cc, title key, film) -> venues ("*" for every)
     for r in judged:
-        if r.verdict == "wrong":
-            wrong[(r.country, key(r.rawTitle), r.film)].append(r.venue)
-    standing = {(r.country, key(r.rawTitle), r.film): r for r in judged if r.state == "known-wrong" and "hard-clusters" in r.scopes}
-    out, needed = [], set()
+        if r.verdict in ("wrong", "right"):
+            (wrong if r.verdict == "wrong" else right)[(r.country, key(r.rawTitle), r.film)].add(r.venue)
+    out = []
     for cc in COUNTRIES:
         path = os.path.join(root, HARD_CLUSTERS.format(cc=cc))
         if not os.path.exists(path):
@@ -149,18 +150,12 @@ def hard_cluster_findings(root, judged):
                     continue
                 film, cinemas = f"tmdb:{m['tmdb']}", {v.strip() for v in m["cinemas"].split(",")}
                 k = (cc, m["key"], film)
-                venues = wrong.get(k, [])
-                if "*" in venues or cinemas & set(venues):
-                    if k in standing:
-                        needed.add(k)
-                    else:
-                        out.append((("expected", cc, "hard-clusters", m["key"], film),
-                                    f"expected-hard-clusters-{cc}.txt expects '{m['key']}' as {film}, which the judgements call wrong"))
-    for k, r in sorted(standing.items()):
-        if k not in needed:
-            out.append((("stale", r.country, r.venue, r.rawTitle, r.film),
-                        f"{r.country} {r.venue} | {r.rawTitle}: {r.film} is known-wrong in scope hard-clusters, but no hard-cluster "
-                        f"expectation takes it any more -- drop the scope (and the state, if it was the last)"))
+                denied = {v for v in cinemas if ("*" in wrong[k] or v in wrong[k]) and v not in right[k]}
+                if denied:
+                    out.append((("expected", cc, "hard-clusters", m["key"], film),
+                                f"expected-hard-clusters-{cc}.txt expects '{m['key']}' as {film}, which the judgements call wrong: "
+                                f"the projection withdraws that take (TakeJudgements.withdraw), so the spec cannot come out so "
+                                f"-- regenerate the file"))
     return out
 
 

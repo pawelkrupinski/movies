@@ -27,7 +27,6 @@ object IdentityJudgements {
     val Capture      = "capture"       // the unmatched-cluster ratchet (UnmatchedClustersRatchetSpec)
     val Served       = "served"        // a convergence leg's suspect gate (SuspectTakesAudit)
     val Rows         = "rows"          // the model's matched takes in the recorded rows (MatchedTakesLabelSpec)
-    val HardClusters = "hard-clusters" // an expected-hard-clusters-<cc>.txt expectation (the lint)
   }
 
   final case class Row(country: String, venue: String, rawTitle: String, film: String, verdict: String, state: String, scope: Set[String],

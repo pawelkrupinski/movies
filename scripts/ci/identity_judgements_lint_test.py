@@ -138,22 +138,29 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertEqual(1, len(found))
         self.assertIn("expected-matches.tsv expects tmdb:30959", found[0])
 
-    def test_a_hard_cluster_expectation_the_judgements_call_wrong_fails_unless_known_wrong_there(self):
+    def test_a_hard_cluster_expectation_the_judgements_call_wrong_fails_however_it_is_judged(self):
         # c151636f1: PL's hard clusters regenerated to the 2007 "Ktoś całkiem obcy", wrong at every venue
         hard = {lint.HARD_CLUSTERS.format(cc="pl"):
                 "ktoscalkiemobcy|2007\tKtoś całkiem obcy (2007) tmdb=7183 imdb=tt0457433 address=ktos-calkiem-obcy "
                 "cinemas=[Kino 60 Krzeseł, Kino Kryterium, Kino Luna]\n"}
+        expects = ("expected-hard-clusters-pl.txt expects 'ktoscalkiemobcy' as tmdb:7183, which the judgements call wrong: the "
+                   "projection withdraws that take (TakeJudgements.withdraw), so the spec cannot come out so -- regenerate the file")
         found = self.messages([row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong")], extra=hard)
-        self.assertEqual(["expected-hard-clusters-pl.txt expects 'ktoscalkiemobcy' as tmdb:7183, which the judgements call wrong"], found)
+        self.assertEqual([expects], found)
         # a venue's row reaches only a cluster that venue is in
         self.assertEqual([], self.messages([row("pl", "Kino Muza", "Ktoś całkiem obcy", "tmdb:7183", "wrong")], extra=hard))
         self.assertEqual(1, len(self.messages([row("pl", "Kino Luna", "Ktoś całkiem obcy", "tmdb:7183", "wrong")], extra=hard)))
-        # known-wrong in scope hard-clusters it stands -- and once no expectation takes it, the scope is stale
+        # a venue's own right overrules every venue's wrong there, as withdraw does: only the other cinemas count
+        luna_right = row("pl", "Kino Luna", "Ktoś całkiem obcy", "tmdb:7183", "right")
+        self.assertEqual([expects], self.messages([row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong"), luna_right], extra=hard))
+        only_luna = {lint.HARD_CLUSTERS.format(cc="pl"): hard[lint.HARD_CLUSTERS.format(cc="pl")].replace(
+            "Kino 60 Krzeseł, Kino Kryterium, Kino Luna", "Kino Luna")}
+        self.assertEqual([], self.messages([row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong"), luna_right], extra=only_luna))
+        # Main #2600: no known-wrong row lets one stand -- the withdrawal cures every one, so the scope is no gate any more
         known = [row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong", "known-wrong", "hard-clusters", reason="fix the take, regenerate")]
-        self.assertEqual([], self.messages(known, extra=hard))
-        found = self.messages(known, extra={lint.HARD_CLUSTERS.format(cc="pl"): ""})
-        self.assertEqual(1, len(found))
-        self.assertIn("no hard-cluster expectation takes it any more", found[0])
+        found = self.messages(known, extra=hard)
+        self.assertIn(expects, found)
+        self.assertTrue(any("scope hard-clusters is none of" in f for f in found), found)
 
     def served(self, decisions):
         path = os.path.join(self.root, "de.json.gz")

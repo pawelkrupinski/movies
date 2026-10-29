@@ -21,8 +21,8 @@ Columns, tab-separated, a header line first (lines starting "#" are comments):
              accepted-right-loss   the same for a film judged RIGHT -- the lint's policy forbids accepting a right take's
                                    loss, so this state is that policy's explicit exception, named on every lint run
   scope      for known-wrong (and an undecided suspect), comma-separated: capture (the unmatched-cluster ratchet),
-             served (a convergence leg's suspect gate), rows (MatchedTakesLabelSpec's matched rows), hard-clusters (an
-             expected-hard-clusters-<cc>.txt expectation)
+             served (a convergence leg's suspect gate), rows (MatchedTakesLabelSpec's matched rows); no scope lets an
+             expected-hard-clusters-<cc>.txt expectation stand, the projection withdraws every wrong take
   filmTitle  the film's title and year, for a reader
   reason     why the row's state stands (required but for `open`)
   judged     the date (YYYY-MM-DD) the verdict was given
@@ -42,7 +42,7 @@ HEADER = "\t".join(COLUMNS)
 COUNTRIES = ("pl", "uk", "de", "es", "us")
 VERDICTS = ("right", "wrong", "undecided")
 STATES = ("open", "known-wrong", "accepted-loss", "accepted-right-loss")
-SCOPES = ("capture", "served", "rows", "hard-clusters")
+SCOPES = ("capture", "served", "rows")
 ACCEPTED = ("accepted-loss", "accepted-right-loss")
 # The suspect gate was armed on this day with the suspects then standing: an undecided row is one of those, never a new
 # suspect (judge that right or wrong instead), so the undecided rows only shrink.
@@ -243,7 +243,7 @@ def problems(rows):
             if r.verdict != "wrong":
                 bad("known-wrong is a state of a WRONG take: its verdict must be wrong")
             if not r.scopes:
-                bad("known-wrong names no scope: which gate lets it stand (capture, served, rows, hard-clusters)?")
+                bad("known-wrong names no scope: which gate lets it stand (capture, served, rows)?")
         elif r.verdict == "undecided" and r.state == "open":
             if r.scopes != {"served"}:
                 bad("an undecided row is a suspect the served gate lets stand: its scope is served")

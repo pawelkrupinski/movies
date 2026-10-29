@@ -1152,7 +1152,7 @@ pl	*	OPĘTANIE + TRASA PLAKATOWA	tmdb:21484	right	open				2026-10-13	judged 10-1
 pl	*	Obcy w domu	cinemeta:tt7605088	wrong	open				2026-10-08	judged 10-06: U-jazdowski's page (pokaz-shortow, 29 Sep 2026) bills a block of three 2025-26 shorts (MIX, Kontrewers, Dziwnie być człowiekiem) under this name: no film of it
 pl	*	Obcy w domu	filmweb:109199	wrong	open				2026-10-08	hand label: Obcy w domu (1967) Pierre Rouve
 pl	*	Obcy w domu	imdb:tt0097503	wrong	open				2026-10-08	hand label: Hider in the House (1989) Matthew Patrick
-pl	*	Obcy w domu	tmdb:923171	wrong	known-wrong	hard-clusters		the hard-cluster replay takes Wortman's 1986 short for U-jazdowski's block of three 2025-26 shorts billed 'Obcy w domu' (labels.tsv, judged 10-06); 257ad0afd regenerated it so -- fix the take, regenerate, then strike	2026-10-08	judged 10-06: U-jazdowski's page (pokaz-shortow, 29 Sep 2026) bills a block of three 2025-26 shorts under this name, not Wortman's 1986 short
+pl	*	Obcy w domu	tmdb:923171	wrong	open				2026-10-08	judged 10-06: U-jazdowski's page (pokaz-shortow, 29 Sep 2026) bills a block of three 2025-26 shorts under this name, not Wortman's 1986 short
 pl	*	Obcy w domu	wikidata:Q1233370	wrong	open				2026-10-08	hand label: Obcy w domu (1989) Matthew Patrick
 pl	*	Obcy w domu	wikipedia:Q1233370	wrong	open				2026-10-08	hand label: Obcy w domu (1989) Matthew Patrick
 pl	*	Odblask | UFF	tmdb:828920	right	open				2026-10-08	judged 10-06: Amondo's synopsis is Vasyanovych's Reflection (Відблиск, tt14225832)
