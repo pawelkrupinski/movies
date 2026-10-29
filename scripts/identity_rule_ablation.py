@@ -233,13 +233,26 @@ def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M
 
 
 def end_group(p, grace=30):
-    """TERM the process group `p` leads, KILL it after `grace` seconds."""
+    """TERM the process group `p` leads, KILL it after `grace` seconds; return once every member is gone, not only `p`:
+    the leader dying first left a member still running (Main #2583: the test's `sleep` alive after relay raised)."""
     os.killpg(p.pid, signal.SIGTERM)
-    try:
-        p.wait(timeout=grace)
-    except subprocess.TimeoutExpired:
+    if not group_gone(p, grace):
         os.killpg(p.pid, signal.SIGKILL)
-        p.wait()
+        group_gone(p, 5)
+
+
+def group_gone(p, seconds):
+    """Whether the process group `p` leads has no member left within `seconds` (`p` itself reaped)."""
+    until = time.monotonic() + seconds
+    while True:
+        p.poll()
+        try:
+            os.killpg(p.pid, 0)
+        except ProcessLookupError:
+            return True
+        if time.monotonic() > until:
+            return False
+        time.sleep(0.05)
 
 
 def sbt_argv(repo, command):

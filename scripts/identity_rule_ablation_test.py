@@ -104,10 +104,13 @@ class RelayTest(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             log, child = os.path.join(d, "sbt.log"), os.path.join(d, "child.pid")
-            script = f"sleep 60 & echo $! > {child}; echo '[ablation pl] b001: 0 moved in 8.0s'; wait"
+            # the member outlives the leader by a second, as sbt's forked JVMs outlive sbt's launcher (Main #2583)
+            member = f"trap 'sleep 1; exit 0' TERM; echo \\$\\$ > {child}; while :; do sleep 0.1; done"
+            script = (f"sh -c \"{member}\" & while [ ! -s {child} ]; do sleep 0.05; done; "
+                      "echo '[ablation pl] b001: 0 moved in 8.0s'; wait")
             with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(ablation.Deadline):
                 ablation.relay(["sh", "-c", script], d, log, past_deadline=lambda: True)
-            # the sleep, still 60 s from its own end, is gone: the group was ended, not waited out
+            # the member, which would loop forever, is gone: the whole group was ended and waited for, not only its leader
             pid = int(open(child).read())
             with self.assertRaises(ProcessLookupError):
                 os.kill(pid, 0)
