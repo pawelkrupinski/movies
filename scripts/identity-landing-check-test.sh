@@ -154,8 +154,8 @@ check "--no-measure and --no-specs together is a usage error" "2" "$(landing --n
 
 # THE DRIFT GROUP: a change to a drift path (.github/identity-drift-paths.txt) runs identity-drift-ci on the landing tier
 rm -f "$work/logs/drift-args"
-check "a resolver change runs the drift group: every takes-drift row, drift-only, on landing" "0 true" \
-  "$(landing --head "$code" --base "$base") $(grep -q -- "--head $code --tier landing --out " "$work/logs/drift-args" && echo true || echo false)"
+check "a resolver change runs the drift group: every takes-drift row, drift-only, on landing, held against main's" "0 true" \
+  "$(landing --head "$code" --base "$base") $(grep -q -- "--head $code --against main --tier landing --out " "$work/logs/drift-args" && echo true || echo false)"
 check "...its verdict a line of the check's" "true" "$(has '  drift       DRIFT CLEAN')"
 check "a red drift row is BLOCKED, naming it" "1 true" \
   "$(DRIFT=1 landing --head "$code" --base "$base") $(has '- drift: DRIFT RED: takes-drift-2 (germany)')"

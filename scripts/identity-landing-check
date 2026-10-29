@@ -41,6 +41,9 @@
 # run on ci-runner's `landing` tier (~25-40 min for all ten rows), beside the measure and the specs. On by default when
 # the change touches a path in .github/identity-drift-paths.txt (the resolver, worker/src/main, the title rules, the
 # replay harness, the flip predicate, the allow-lists); --full runs it anyway inside the whole suite, so not again.
+# Each row is held against main's newest decided run (identity-drift-ci --against main): a row worse than main's -- more
+# open findings, or red where main's is green -- BLOCKS; red only where main is, and no worse, does not (main's red has
+# its own fixer).
 #
 # THE VERDICT, last on stdout: `LANDABLE`, or `BLOCKED` with each failing spec, the test, and a hint for its usual cause
 # (e.g. MatchedTakesLabelSpec's "known-wrong in scope rows": judgement rows stale -> known-wrong scope rows). Every
@@ -149,7 +152,7 @@ fi
 pids=()
 if [ -n "$drift" ]; then
   say "drift: identity-drift-ci (every takes-drift row, drift-only, on ci-runner's $landing_convergence_tier tier)"
-  "${IDENTITY_LANDING_DRIFT:-$here/identity-drift-ci}" --head "$commit" --tier "$landing_convergence_tier" --out "$out/drift/run" \
+  "${IDENTITY_LANDING_DRIFT:-$here/identity-drift-ci}" --head "$commit" --against main --tier "$landing_convergence_tier" --out "$out/drift/run" \
     > "$out/drift.txt" 2> "$out/drift.log" &
   drift_pid=$!
 fi

@@ -69,7 +69,7 @@ artifact() { # <run id> <cc> <seed> <open divergences> <open flips>: the row's a
 }
 
 # the red: run id 3726 (#2517) failed takes-drift-2 (germany); its UK seed-1 row passed, a leg caller failed by cascade
-echo '[{"databaseId": 3726, "number": 2517}, {"databaseId": 3700, "number": 2500}]' > "$work/state/runs.json"
+echo '[{"databaseId": 3726, "number": 2517, "status": "completed"}, {"databaseId": 3700, "number": 2500, "status": "completed"}]' > "$work/state/runs.json"
 jobs 3726 "takes-drift-2 (germany):completed:failure" "takes-drift-1 (united-kingdom):completed:success" "leg (germany):completed:failure"
 jobs 900 "takes-drift-2 (germany):completed:failure"
 echo completed > "$work/state/status-900"
@@ -92,7 +92,8 @@ check "--for-red <id>: the same rows; every one green is DRIFT CLEAN, exit 0" "0
 # A PARTIAL FIX (5df3295bd: PL's flips cleared, DE seed 2's stayed): fewer in one row, more in none, is progress
 jobs 3726 "takes-drift-2 (germany):completed:failure" "takes-drift-1 (united-kingdom):completed:failure"
 artifact 3726 de 2 0 2; artifact 3726 uk 1 1 3
-jobs 900 "takes-drift-2 (germany):completed:failure" "takes-drift-1 (united-kingdom):completed:failure"
+jobs 900 "takes-drift-2 (germany):completed:failure" "takes-drift-1 (united-kingdom):completed:failure" \
+  "takes-drift-1 (germany):completed:success" "takes-drift-2 (united-kingdom):completed:success"
 artifact 900 de 2 0 2; artifact 900 uk 1 0 1
 drift partialfix --for-red 3726
 check "a partial fix is DRIFT PROGRESS, exit 0, naming what moved and what stays red" \
@@ -104,6 +105,27 @@ check "...but one row worse refutes it, whatever else got better" "1" "$(cat "$w
 rm -rf "$work/state/artifacts-3726"
 drift nobase --for-red 3726
 check "a red row with no baseline to hold it against is no verdict, exit 2" "2" "$(cat "$work/nobase.rc")"
+
+# --against main: A CHECK'S BIRTH LANDS ONLY IF IT FINDS NOTHING MAIN'S RUN DOES NOT (allow_list_ratchet.py's rule), and an
+# identity change while main is red is held to "no worse". Main's newest decided run with drift rows is 3726.
+jobs 3726 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:failure" \
+  "takes-drift-1 (united-kingdom):completed:success" "takes-drift-2 (united-kingdom):completed:success"
+artifact 3726 de 2 0 2
+jobs 900 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:failure" \
+  "takes-drift-1 (united-kingdom):completed:failure" "takes-drift-2 (united-kingdom):completed:success"
+artifact 900 de 2 0 2; artifact 900 uk 1 0 3
+drift born --against main --countries de,uk
+check "--against main: a row red where main's was green is worse -- a born-red gate is refused, exit 1" \
+  "1 DRIFT RED: worse than run 3726: takes-drift-1 (united-kingdom): 0 -> 3 open" "$(cat "$work/born.rc") $(tail -1 "$work/born.out")"
+jobs 900 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:failure" \
+  "takes-drift-1 (united-kingdom):completed:success" "takes-drift-2 (united-kingdom):completed:success"
+drift notworse --against main --countries de,uk
+check "...red only where main is, and no worse there: DRIFT NOT WORSE, exit 0" \
+  "0 DRIFT NOT WORSE than run 3726: takes-drift-2 (germany): 2 -> 2 open" "$(cat "$work/notworse.rc") $(tail -1 "$work/notworse.out")"
+jobs 900 "takes-drift-2 (germany):completed:failure"
+drift short --against main --countries de,uk
+check "...a requested row that never ran is no verdict, exit 2" "2" "$(cat "$work/short.rc")"
+check "--for-red and --against together is a usage error" "2" "$(drift both --for-red 3726 --against main; cat "$work/both.rc")"
 
 rm -f "$work/state/dispatches"
 jobs 3700 "convergence (poland):completed:failure" "takes-drift-1 (poland):completed:success"

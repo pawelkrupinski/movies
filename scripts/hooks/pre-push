@@ -53,7 +53,14 @@
 #                 "fix" for a drift red is judged on the red's rows before it lands, not ~48 min after on main
 #                 (convergence-failures-2026-10-29 §7.2: two refuted fixes, 52 fixer launches).
 #                 A red with no failed drift row has nothing to judge; a run that could not be made warns and passes
-#                 (nothing heavy runs on the laptop either way). Not from a CI job (agentctl's remote checks): said so
+#                 (nothing heavy runs on the laptop either way). Not from a CI job (agentctl's remote checks): said so.
+#                 AND A CHECK'S BIRTH LANDS GREEN: a push touching the gate itself (.github/identity-drift-gate-paths.txt:
+#                 the drift-check script, the replay harness, the flip predicate, the allow-lists), or carrying
+#                 `New-Check:` and touching a drift path, runs every drift row against main's newest run
+#                 (identity-drift-ci --against main): a row worse than main's refuses the push
+#   `allowlists`  scripts/ci/allow_list_ratchet.py over the pushed commits, on a change to a registered allow-list
+#                 (.github/allow-lists.txt) or the ratchet itself: a row lands only with its check's birth (`New-Check:`,
+#                 the row TEMPORARY with an owner and when it goes); otherwise a list only shrinks
 #   `ios`         scripts/ios-compile-check.sh (app target + XCUITests, Mac and Linux SwiftPM; fails on a concurrency
 #                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
@@ -274,7 +281,7 @@ is_page_path() { # <path>
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 page=0
+    local identity=0 page=0 allowlists=0
     local tools
     tools=" $(tool_files | tr '\n' ' ') "
     while IFS= read -r path; do
@@ -319,6 +326,8 @@ plan() {
             scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
         esac
         case "$tools" in *" $path "*) oldrefs=1 ;; esac
+        case "$path" in .github/allow-lists.txt|scripts/ci/allow_list_ratchet*.py) allowlists=1 ;; esac
+        [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
         is_identity_path "$path" && identity=1
         is_page_path "$path" && page=1
     done
@@ -328,6 +337,7 @@ plan() {
     [ $identity = 1 ] && sbt=1
     [ $page = 1 ] && sbt=1
     [ $judgements = 1 ] && echo judgements
+    [ $allowlists = 1 ] && echo allowlists
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
@@ -770,7 +780,7 @@ checks="$(printf '%s\n' "$changed" | plan)"
 [ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"
 # THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
 # `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
-drift_reds=""
+drift_reds="" drift_birth=""
 if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-paths.txt ] \
     && [ "$(printf '%s\n' "$changed" | .github/actions/changed-paths/matches.sh .github/identity-drift-paths.txt 2>/dev/null)" = true ]; then
     for r in "${ranges[@]}"; do
@@ -778,7 +788,16 @@ if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-path
             | awk -F'\t' '$1 == "" { print $2 }' | tr ',; ' '\n' | sed 's/^#//' | grep -E '^[0-9]+$' || true)"$'\n'
     done
     drift_reds="$(printf '%s' "$drift_reds" | grep -v '^$' | LC_ALL=C sort -un | tr '\n' ' ' | sed 's/ $//')"
-    [ -z "$drift_reds" ] || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
+    # A CHECK'S BIRTH OR TIGHTENING (the header): the gate's own files, or `New-Check:` on a commit of the push
+    if [ -f .github/identity-drift-gate-paths.txt ] \
+        && [ "$(printf '%s\n' "$changed" | .github/actions/changed-paths/matches.sh .github/identity-drift-gate-paths.txt 2>/dev/null)" = true ]; then
+        drift_birth="the gate's own files"
+    fi
+    for r in "${ranges[@]}"; do
+        [ -n "$drift_birth" ] && break
+        [ -z "$(git log --format='%(trailers:key=New-Check,valueonly)' "$r" | grep -v '^$' || true)" ] || drift_birth="New-Check:"
+    done
+    { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
 fi
 [ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
 
@@ -1033,14 +1052,31 @@ run_local_tests() { # <set>
     grep -E 'Tests: succeeded|All tests passed|[0-9]+ passed' "$tmp/$1.log" | tail -3
 }
 check_identity() { run_local_tests identity; }
+# THE RATCHET (the header's `allowlists`): an allow-list row only with its check's birth, TEMPORARY; else lists only shrink
+check_allowlists() {
+    local args=() r
+    need allowlists python3 "install Python 3 (brew install python)" || return 1
+    for r in "${ranges[@]}"; do args+=(--range "$r"); done
+    python3 scripts/ci/allow_list_ratchet.py "${args[@]}"
+}
 # THE IDENTITY DRIFT CHECK: each claimed red's failed takes-drift rows, on CI (scripts/identity-drift-ci --for-red). 1 blocks; 2
 # (the run could not be made: CI unreachable, no token) warns and passes -- a fix is not held hostage to an outage, and
 # main's own run still judges it.
 check_identitydrift() {
     local run rc=0 r
     if [ "${GITHUB_ACTIONS:-}" = true ]; then
-        warn "drift: not run from a CI job (it pushes a measure/ branch and dispatches from the laptop): main's run judges Fixes-Red: $drift_reds"
+        warn "drift: not run from a CI job (it pushes a measure/ branch and dispatches from the laptop): main's run judges ${drift_reds:+Fixes-Red: $drift_reds}${drift_birth:+ the birth of a check}"
         return 0
+    fi
+    if [ -n "$drift_birth" ]; then
+        log "drift: a check's birth or tightening ($drift_birth): every drift row at ${head_sha:0:9}, against main's newest run"
+        scripts/identity-drift-ci --head "$head_sha" --against main > "$tmp/drift-birth.log" 2>&1; r=$?
+        grep -vE '^identity-drift-ci: run [0-9]+: [0-9]+/[0-9]+ drift row' "$tmp/drift-birth.log" | tail -40 >&2
+        case $r in
+            0) ;;
+            1) warn "drift: the check finds what main's run does not -- a new or tightened check lands green: put what it finds at birth on its allow-list, TEMPORARY with an owner and when it goes, under New-Check: (full log: $tmp/drift-birth.log)"; rc=1 ;;
+            *) warn "drift: no verdict on the check's birth (exit $r): not held against the push; main's run judges it" ;;
+        esac
     fi
     for run in $drift_reds; do
         log "drift: the takes-drift rows run $run failed, at ${head_sha:0:9}, drift-only on ci-runner (scripts/identity-drift-ci)"

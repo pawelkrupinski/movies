@@ -65,9 +65,13 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     IdentityDrift.inputsMoved(None, None, listingsMoved = false) shouldBe true
   }
 
-  "the reviewed flips" should "stay empty: a flip the leg finds is fixed, never listed (the owner, 2026-10-27)" in {
+  // A flip the leg finds is fixed, never listed (the owner, 2026-10-27). The one exception is a check's birth (the ratchet,
+  // scripts/ci/allow_list_ratchet.py; convergence-failures-2026-10-29 recommendation 2): what a new or tightened check
+  // finds at birth is listed TEMPORARY, with an owner and when it goes, so the check lands green -- and the list only shrinks.
+  "the reviewed flips" should "hold nothing but a check's TEMPORARY birth rows, each with an owner and when it goes" in {
     val path = "test/resources/fixtures/identity-flips-allow.tsv"
     deploy.RepoFile.exists(path) shouldBe true
-    IdentityDrift.flipAllowList(java.nio.file.Path.of(path)) shouldBe empty
+    val temporary = """(?i)^TEMPORARY\b.*\bowner:\s*\S+.*\bremove when\b\s*\S+.*""".r
+    IdentityDrift.flipAllowList(java.nio.file.Path.of(path)).filterNot(row => temporary.matches(row.reason.trim)) shouldBe empty
   }
 }

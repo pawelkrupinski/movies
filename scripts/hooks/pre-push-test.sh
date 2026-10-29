@@ -486,6 +486,11 @@ printf '\033[36m▸\033[0m pre-push identity drift check\n'
 mkdir -p "$area/.github/actions/changed-paths"
 cp "$REPO_ROOT/.github/actions/changed-paths/matches.sh" "$area/.github/actions/changed-paths/matches.sh"
 cp "$REPO_ROOT/.github/identity-drift-paths.txt" "$area/.github/identity-drift-paths.txt"
+cp "$REPO_ROOT/.github/identity-drift-gate-paths.txt" "$area/.github/identity-drift-gate-paths.txt"
+cp "$REPO_ROOT/.github/allow-lists.txt" "$area/.github/allow-lists.txt"
+mkdir -p "$area/scripts/ci" "$area/test/resources/fixtures"
+cp "$REPO_ROOT/scripts/ci/allow_list_ratchet.py" "$area/scripts/ci/allow_list_ratchet.py"
+printf '# reviewed flips\ncountry\tvenue\trawTitle\treason\n' > "$area/test/resources/fixtures/identity-flips-allow.tsv"
 cat > "$area/scripts/identity-drift-ci" <<'STUB'
 #!/usr/bin/env bash
 echo "identity-drift-ci $*" >> "$AREA_CALLS"
@@ -515,6 +520,23 @@ code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala 'no 
 check "a push claiming no red runs no drift check" "0 0" "$code $(calls identity-drift-ci)"
 code="$(drift_push docs/fix.md $'a doc\n\nFixes-Red: 3726')"
 check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls identity-drift-ci)"
+# A CHECK'S BIRTH LANDS GREEN: the gate's own files, or New-Check:, run every drift row against main's
+code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala 'the harness, tightened')"
+check "a push touching the gate itself runs every drift row against main's newest run" "0 1" \
+  "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --against main$")"
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a new check\n\nNew-Check: settled takes')"
+check "...and so does a New-Check: push touching a drift path" "0 1" "$code $(calls 'against main')"
+code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala 'the harness, tightened' DRIFT_RC=1)"
+check "...a row worse than main's refuses it, saying how a check lands green" "1 1" \
+  "$code $(grep -c 'a new or tightened check lands green' "$testroot/area-out")"
+# THE RATCHET: an allow-list row lands only with its check's birth
+code="$(drift_push docs/x.md 'docs')"
+printf 'de\t*\tCAMOUFLAGE\tlooks intended\n' >> "$area/test/resources/fixtures/identity-flips-allow.tsv"
+scratch_git "$area" commit -qam "list a flip"
+: > "$AREA_CALLS"
+code="$(cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs identitydrift" bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1; echo $?)"
+check "a row added to a registered allow-list outside a check's birth is refused" "1 1 1" \
+  "$code $(grep -c 'blocked by: allowlists' "$testroot/area-out") $(grep -c 'an allow-list only shrinks' "$testroot/area-out")"
 unset AREA_CALLS
 
 # ── AN ABSOLUTE core.hooksPath STILL RUNS THE PUSHING WORKTREE'S OWN HOOK ──────────────────────────

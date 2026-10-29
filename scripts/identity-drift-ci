@@ -9,7 +9,8 @@
 # red row is judged in ~12-16 minutes and all ten in ~25-40, before the push.
 #
 # usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds 1|2|both]
-#                                  [--for-red <run>] [--tier LABEL] [--timeout <minutes>] [--out DIR] [--no-wait]
+#                                  [--for-red <run> | --against <run>|main] [--tier LABEL] [--timeout <minutes>]
+#                                  [--out DIR] [--no-wait]
 #        scripts/identity-drift-ci --run <run id> [--out DIR]
 #   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
 #                scripts/ci/ laid over it, as identity-measure does)
@@ -22,6 +23,12 @@
 #                divergences plus flips beyond the allow-lists. Fewer in some row and more in none is PROGRESS (exit 0,
 #                `DRIFT PROGRESS: ...`); no row better, or one worse, is a refuted fix (exit 1); the red's verdict unreadable (its
 #                artifacts kept 7 days) is no verdict (exit 2)
+#   --against    every requested row held against a run's own verdict for it -- `main`: main's newest decided convergence
+#                run -- in place of "any red row is red": a row worse than there (more open findings, or red where it was
+#                green) is DRIFT RED (exit 1); none worse is `DRIFT NOT WORSE` (exit 0) even while main itself is red.
+#                What a NEW OR TIGHTENED CHECK must show to land (scripts/ci/allow_list_ratchet.py's rule): it finds
+#                nothing main's run does not, every finding at birth on its allow-list as TEMPORARY. And what
+#                identity-landing-check asks of a change while main is red on drift
 #   --tier       the ci-runner tier label (default `landing`: ci-runner's own check-tier runner, 6 slots)
 #   --timeout    minutes to wait for the rows (default 75: the drift step's own ceiling)
 #   --no-wait    dispatch, print the run id, exit 0; collect with --run
@@ -55,13 +62,14 @@ workflow=identity-model-convergence.yml
 say() { echo "identity-drift-ci: $*" >&2; }
 progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
 
-ref=HEAD seeds=both for_red="" tier=landing timeout_min=75 out="" nowait="" run=""
+ref=HEAD seeds=both for_red="" against="" tier=landing timeout_min=75 out="" nowait="" run=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift ;;
     --country|--countries|--country=*|--countries=*) country_flag "$@"; shift $((COUNTRY_FLAG_ARGS - 1)) ;;
     --seeds) flag_value "$@"; seeds=$2; shift ;;
     --for-red) flag_value "$@"; for_red=${2#\#}; shift ;;
+    --against) flag_value "$@"; against=${2#\#}; shift ;;
     --tier) flag_value "$@"; tier=$2; shift ;;
     --timeout) flag_value "$@"; timeout_min=$2; shift ;;
     --out) flag_value "$@"; out=$2; shift ;;
@@ -74,6 +82,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 case $seeds in 1|2|both) ;; *) usage_error "--seeds takes 1, 2 or both, not $seeds" ;; esac
+[ -z "$for_red" ] || [ -z "$against" ] || usage_error "--for-red and --against each name the baseline: one of them"
 countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_countries_csv)
 remote=${IDENTITY_MEASURE_REMOTE:-}
 [ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
@@ -116,6 +125,24 @@ if [ -n "$for_red" ]; then
   done <<< "$red_rows"
   case $seen_seeds in 1) seeds=1 ;; 2) seeds=2 ;; *) seeds=both ;; esac
   say "run $for_red's red drift rows: $(tr '\n' ',' <<< "$red_rows" | sed 's/,$//') -> countries $countries, seeds $seeds"
+fi
+
+# ── the baseline every row is held against: the red's (--for-red) or the named run's (--against) ─────────────────────
+base_ids=${red_ids:-} base_label="run ${for_red:-}"
+if [ -n "$against" ]; then
+  if [ "$against" = main ]; then
+    # main's newest decided run whose drift rows ran (a reused or cancelled run judged none)
+    for id in $(identity_gh "$DISPATCH_GH_TIMEOUT" run list --workflow "$workflow" --branch main --limit 10 --json databaseId,status \
+                  --jq '.[] | select(.status == "completed") | .databaseId') ; do
+      drift_jobs "$id" | awk -F'\t' '$3 == "success" || $3 == "failure"' | grep -q . && { base_ids=$id; break; }
+    done
+    [ -n "$base_ids" ] || die "no decided run of $workflow on main judged its drift rows: nothing to hold this one against"
+  else
+    [[ "$against" =~ ^[0-9]+$ ]] || usage_error "--against takes a run id or main, not $against"
+    base_ids=$against
+  fi
+  base_label="run $base_ids"
+  say "every row held against $base_label${against:+ ($against)}"
 fi
 
 # the rows this run must judge, `takes-drift-<seed> (<country>)` a line
@@ -210,12 +237,24 @@ gh_download "$DISPATCH_GH_TIMEOUT" run download "$run" --pattern 'identity-drift
 open_findings() {
   sed -nE 's/^([0-9]+) divergence\(s\).* ([0-9]+) flip\(s\).*/\1 \2/p' "$1" 2> /dev/null | awk 'NR == 1 { print $1 + $2 }'
 }
-# --for-red: the red run's own verdict per row, the baseline a partial fix is held against
-for id in ${red_ids:-}; do
-  mkdir -p "$out/red-$id"
-  gh_download "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-drift-*' --dir "$out/red-$id" > /dev/null \
-    || say "could not download red run $id's identity-drift artifacts: no baseline for a partial fix"
+# the baseline's own verdict per row (--for-red, --against): its job's conclusion, and its artifact when it failed
+base_rows=""
+for id in $base_ids; do
+  mkdir -p "$out/base-$id"
+  base_rows+=$(drift_jobs "$id" | sed "s/\$/	$id/")$'\n' || say "could not read baseline run $id's jobs"
+  gh_download "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-drift-*' --dir "$out/base-$id" > /dev/null \
+    || say "could not download baseline run $id's identity-drift artifacts"
 done
+# was_open <row name> <artifact dir name> -> the baseline's open findings for the row: 0 where its job passed, its
+# verdict's count where it failed, nothing where unknown
+was_open() {
+  local line id
+  line=$(awk -F'\t' -v n="$1" '$1 == n && ($3 == "success" || $3 == "failure")' <<< "$base_rows" | head -1)
+  [ -n "$line" ] || return 0
+  case $(cut -f3 <<< "$line") in success) echo 0; return ;; esac
+  id=$(cut -f4 <<< "$line")
+  open_findings "$out/base-$id/$2/verdict.txt"
+}
 red=() unjudged=() better=() same=() worse=() unknown_base=()
 while IFS=$'\t' read -r name _ conclusion; do
   [ -n "$name" ] || continue
@@ -224,11 +263,13 @@ while IFS=$'\t' read -r name _ conclusion; do
   dir="$out/identity-drift-$(code_of "$country")-takes-drift-$seed"
   echo "$name: $conclusion -- $(cat "$dir/verdict.txt" 2> /dev/null || echo 'no verdict.txt')"
   [ ! -f "$dir/report.txt" ] || grep -E '^## |^  [0-9]+ listing|^      ' "$dir/report.txt" | head -40 | sed 's/^/    /'
-  case $conclusion in success) [ -z "$for_red" ] || better+=("$name: green") ;; failure) red+=("$name") ;; *) unjudged+=("$name ($conclusion)") ;; esac
-  if [ -n "$for_red" ] && [ "$conclusion" = failure ]; then
-    now=$(open_findings "$dir/verdict.txt") was=""
-    for base in "$out"/red-*/"$(basename "$dir")"/verdict.txt; do [ -f "$base" ] && was=$(open_findings "$base") && break; done
-    if [ -z "$now" ] || [ -z "$was" ]; then unknown_base+=("$name")
+  case $conclusion in success) ;; failure) red+=("$name") ;; *) unjudged+=("$name ($conclusion)") ;; esac
+  if [ -n "$base_ids" ] && { [ "$conclusion" = failure ] || [ "$conclusion" = success ]; }; then
+    now=0; [ "$conclusion" = success ] || now=$(open_findings "$dir/verdict.txt")
+    was=$(was_open "$name" "$(basename "$dir")")
+    if [ "$conclusion" = success ] && [ -n "$was" ] && [ "$was" != 0 ]; then better+=("$name: green")
+    elif [ "$conclusion" = success ]; then :
+    elif [ -z "$now" ] || [ -z "$was" ]; then unknown_base+=("$name")
     elif [ "$now" -lt "$was" ]; then better+=("$name: $was -> $now open")
     elif [ "$now" -eq "$was" ]; then same+=("$name: $was -> $now open")
     else worse+=("$name: $was -> $now open"); fi
@@ -237,12 +278,19 @@ done <<< "$rows"
 missing=""
 [ -z "$expected" ] || missing=$(LC_ALL=C comm -23 <(printf '%s\n' "$expected" | LC_ALL=C sort -u) <(cut -f1 <<< "$rows" | LC_ALL=C sort -u))
 echo "run $run, $wall min from dispatch; artifacts in $out"
+if [ "${#red[@]}" -gt 0 ] && [ -n "$against" ]; then
+  if [ "${#worse[@]}" -gt 0 ]; then echo "DRIFT RED: worse than $base_label: ${worse[*]}"; exit 1; fi
+  if [ "${#unknown_base[@]}" -gt 0 ] || [ "${#unjudged[@]}" -gt 0 ] || [ -n "$missing" ]; then
+    echo "NO VERDICT: not judged against $base_label: ${unknown_base[*]+${unknown_base[*]}}${unjudged[*]+ ${unjudged[*]}} $(paste -sd, - <<< "$missing")"; exit 2
+  fi
+  echo "DRIFT NOT WORSE than $base_label: ${same[*]+${same[*]}}${better[*]+ (better: ${better[*]})}"; exit 0
+fi
 if [ "${#red[@]}" -gt 0 ] && [ -n "$for_red" ]; then
   if [ "${#worse[@]}" -gt 0 ] || { [ "${#better[@]}" -eq 0 ] && [ "${#unknown_base[@]}" -eq 0 ]; }; then
     echo "DRIFT RED: no better than run $for_red: ${worse[*]+${worse[*]} }${same[*]+${same[*]}}"; exit 1
   fi
-  if [ "${#unknown_base[@]}" -gt 0 ] || [ "${#unjudged[@]}" -gt 0 ]; then
-    echo "NO VERDICT: still red, and no baseline to tell a partial fix by: ${unknown_base[*]+${unknown_base[*]}}${unjudged[*]+ ${unjudged[*]}}"; exit 2
+  if [ "${#unknown_base[@]}" -gt 0 ] || [ "${#unjudged[@]}" -gt 0 ] || [ -n "$missing" ]; then
+    echo "NO VERDICT: still red, and no baseline to tell a partial fix by: ${unknown_base[*]+${unknown_base[*]}}${unjudged[*]+ ${unjudged[*]}} $(paste -sd, - <<< "$missing")"; exit 2
   fi
   echo "DRIFT PROGRESS: $(printf '%s; ' "${better[@]}" | sed 's/; $//') -- still red: ${red[*]}"; exit 0
 fi

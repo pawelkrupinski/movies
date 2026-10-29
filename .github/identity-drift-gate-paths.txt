@@ -1,0 +1,12 @@
+# THE INCREMENTAL = WHOLE GATE ITSELF: what decides what a takes-drift row finds -- the check script, the replay harness,
+# the flip predicate and the two allow-lists. A push to main touching one of these, or carrying `New-Check:` and touching
+# a drift path (.github/identity-drift-paths.txt), is a check's birth or tightening: the pre-push hook's `identitydrift`
+# check runs every drift row (scripts/identity-drift-ci --against main) and refuses a row worse than main's own run --
+# a new or tightened check lands green, everything it finds at birth on its allow-list as TEMPORARY
+# (scripts/ci/allow_list_ratchet.py). The flip and drift gates were both born red (9bb54c1a4, a2c684f80): 15 red runs.
+# The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
+scripts/ci/identity-drift-check.sh
+worker/src/test/scala/scripts/IdentityDrift.scala
+identity/src/main/scala/services/identity/TakeFlips.scala
+test/resources/fixtures/identity-drift-allow.tsv
+test/resources/fixtures/identity-flips-allow.tsv
