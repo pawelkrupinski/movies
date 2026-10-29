@@ -172,13 +172,10 @@ jobs:
               with:
                   fetch-depth: 300
                   filter: blob:none
+                  # .github for its *-paths.txt, identity-model-convergence.yml and the convergence-setup/-fill scripts.
                   sparse-checkout: |
                       scripts/ci
-                      .github/*-paths.txt
-                      .github/workflows/identity-model-convergence.yml
-                      .github/scripts/convergence-setup.sh
-                      .github/scripts/convergence-fill.sh
-                  sparse-checkout-cone-mode: false
+                      .github
             - name: What every leg is handed
               id: legs
               env:

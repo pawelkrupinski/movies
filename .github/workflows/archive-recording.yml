@@ -40,7 +40,6 @@ jobs:
                   sparse-checkout: |
                       scripts
                       .github/scripts
-                  sparse-checkout-cone-mode: false
             - name: Archive the recordings
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

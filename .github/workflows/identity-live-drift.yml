@@ -62,9 +62,7 @@ jobs:
               with:
                   sparse-checkout: |
                       .github/actions/upstream-run
-                      scripts/ci
-                      scripts/forge-gh
-                  sparse-checkout-cone-mode: false
+                      scripts
             - id: upstream
               uses: ./.github/actions/upstream-run
               with:

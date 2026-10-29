@@ -110,7 +110,6 @@ jobs:
                   sparse-checkout: |
                       scripts/ci
                       .github/actions/changed-paths
-                  sparse-checkout-cone-mode: false
 
             # Whether the `instrumented` emulator lane runs — see the note over that job. The base
             # is the head of the last SUCCESSFUL run on main, not this push's `before`: this

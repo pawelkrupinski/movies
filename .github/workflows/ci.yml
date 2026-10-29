@@ -114,6 +114,7 @@ jobs:
             browsers: ${{ steps.scope.outputs.browsers }}
         steps:
             # What the live-script check reads (ci-row-scope.sh), nothing else: no 21k-file checkout for a few seconds' job.
+            # build.sbt too, as every file at the root: a sparse checkout holds them all.
             - uses: actions/checkout@v5
               with:
                   sparse-checkout: |
@@ -123,8 +124,6 @@ jobs:
                       web/src/page
                       page-tests-playwright
                       project
-                      build.sbt
-                  sparse-checkout-cone-mode: false
             - name: Which rows can this push move?
               id: scope
               env:

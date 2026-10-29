@@ -37,7 +37,6 @@ jobs:
                       scripts/ci
                       .github/actions/report-timings
                       .github/workflows
-                  sparse-checkout-cone-mode: false
             - uses: ./.github/actions/report-timings
               with:
                   grafana-url: ${{ secrets.GRAFANA_URL }}

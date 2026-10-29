@@ -24,20 +24,96 @@ import ShellCommands.{Reference, Use}
  *  - a workflow step that `uses: ./...` comes after a checkout of this repository into the workspace whose
  *    sparse-checkout, if it has one, holds that action: the runner reads the action from the workspace, and 35cdcaac6
  *    put `./.github/actions/upstream-run` after a sparse checkout of scripts/ci and scripts/forge-gh only ("no files
- *    found after reading paths: action.yml", Identity findings report #2049).
+ *    found after reading paths: action.yml", Identity findings report #2049);
+ *  - a sparse checkout is git's cone mode, listing directories of this repository: actions/checkout's non-cone mode
+ *    appends its patterns to `.git/info/sparse-checkout` and makes no `.git/info/` for it, which only the runner's
+ *    `git init` template provides. ci-runner's had none on the morning of 2026-10-23 (until infra 756c9fde), and a
+ *    non-cone checkout died "ENOENT: no such file or directory, open '.../.git/info/sparse-checkout'" (Archive
+ *    recording #823's `report (timings)`). Cone mode runs `git sparse-checkout set`, which makes the directory itself. It takes
+ *    directories only -- a pattern (a `*-paths.txt` glob) fails the checkout, a file is read as a directory -- and
+ *    brings every file at the root and directly inside each listed directory's parents.
  *
- * The first two, which read the index through a real `git ls-files`, are in [[WorkflowScriptsRunnableIntegrationSpec]].
+ * The first two, which read the index through a real `git ls-files`, are in [[WorkflowScriptsRunnableIntegrationSpec]],
+ * beside the real `git sparse-checkout set` the last one rests on.
  */
 class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
 
   import WorkflowScriptsRunnableSpec.*
 
-  "every workflow step that uses a local action" should "come after a checkout holding it" in {
-    val checked = RepoFile.workflows().map(_.getPath).sorted.flatMap { path =>
+  /** Every job of every workflow, by where it is: `<workflow path> (<job>)`. */
+  private lazy val workflowJobs: Seq[(String, String)] =
+    RepoFile.workflows().map(_.getPath).sorted.flatMap { path =>
       RepoFile.jobs(RepoFile.read(path)).toSeq.sortBy(_._1).map((name, job) => s"$path ($name)" -> job)
     }
-    checked.flatMap((_, job) => jobSteps(job)).count(_.contains("uses: ./")) should be > 20
-    checked.flatMap((from, job) => localActionsOutsideCheckout(from, job)) shouldBe empty
+
+  "every workflow step that uses a local action" should "come after a checkout holding it" in {
+    workflowJobs.flatMap((_, job) => jobSteps(job)).count(_.contains("uses: ./")) should be > 20
+    workflowJobs.flatMap((from, job) => localActionsOutsideCheckout(from, job)) shouldBe empty
+  }
+
+  "every sparse checkout" should "be git's cone mode, of directories of this repository" in {
+    val checked = workflowJobs ++ RepoFile.compositeActions().map(path => path -> RepoFile.read(path))
+    checked.flatMap((_, job) => jobSteps(job)).count(sparseEntries(_).nonEmpty) should be > 10
+    checked.flatMap((from, job) => sparseCheckoutProblems(from, job, new java.io.File(_).isDirectory)) shouldBe empty
+  }
+
+  "the sparse checkout check" should "go red on a non-cone checkout, and on an entry no directory of this repository" in {
+    val job =
+      """    runs-on: ubuntu-26.04
+        |    steps:
+        |        - uses: actions/checkout@v5
+        |          with:
+        |              sparse-checkout: |
+        |                  scripts/ci
+        |                  scripts/forge-gh
+        |                  .github/*-paths.txt
+        |                  /scripts
+        |              sparse-checkout-cone-mode: false
+        |        - uses: actions/checkout@v5
+        |          with:
+        |              sparse-checkout: scripts/ci # the job's scripts
+        |              sparse-checkout-cone-mode: 'TRUE'
+        |        - uses: actions/checkout@v5
+        |          with:
+        |              repository: other/repo
+        |              path: other
+        |              sparse-checkout: docs/guide.md
+        |        - uses: actions/checkout@v5
+        |          with:
+        |              repository: other/repo
+        |              sparse-checkout: docs
+        |              sparse-checkout-cone-mode: ${{ inputs.cone }}
+        |        - uses: actions/checkout@v5
+        |""".stripMargin
+    sparseCheckoutProblems("ci.yml (job)", job, Set("scripts", "scripts/ci")) shouldBe Seq(
+      "ci.yml (job): a non-cone sparse checkout (scripts/ci, scripts/forge-gh, .github/*-paths.txt, /scripts), which " +
+        "needs .git/info from the runner's git template: leave sparse-checkout-cone-mode out",
+      "ci.yml (job): its sparse checkout lists scripts/forge-gh, no directory of this repository (cone mode takes directories)",
+      "ci.yml (job): its sparse checkout lists .github/*-paths.txt, no directory of this repository (cone mode takes directories)",
+      "ci.yml (job): its sparse checkout lists /scripts, no directory of this repository (cone mode takes directories)",
+      "ci.yml (job): a non-cone sparse checkout (docs), which needs .git/info from the runner's git template: leave " +
+        "sparse-checkout-cone-mode out",
+    )
+  }
+
+  "what a checkout holds" should "be, sparse, git's cone: all under a listed directory, the files beside its parents" in {
+    def job(checkout: String) = s"    runs-on: ubuntu-26.04\n    steps:\n$checkout        - run: scripts/ci/plan.sh\n"
+    val sparse = job(
+      """        - uses: actions/checkout@v5
+        |          with:
+        |              sparse-checkout: |
+        |                  scripts/ci
+        |                  .github/actions/upstream-run
+        |""".stripMargin)
+    // What `git sparse-checkout set scripts/ci .github/actions/upstream-run` checks out, and what it leaves out.
+    Seq("scripts/ci/ci-row-scope.sh", "scripts/forge-gh", ".github/convergence-paths.txt", "build.sbt",
+      ".github/actions/upstream-run/action.yml").filterNot(checkoutHolds(sparse, _)) shouldBe empty
+    Seq("scripts/hooks/pre-push", ".github/workflows/ci.yml", ".github/actions/report-timings/action.yml")
+      .filter(checkoutHolds(sparse, _)) shouldBe empty
+    checkoutHolds(job("        - uses: actions/checkout@v5\n"), "scripts/hooks/pre-push") shouldBe true
+    checkoutHolds(job(""), "build.sbt") shouldBe false
+    checkoutHolds(job("        - uses: actions/checkout@v5\n          with:\n              repository: other/repo\n"),
+      "build.sbt") shouldBe false
   }
 
   "the checkout check" should "go red on a local action with no checkout before it, or outside a sparse one" in {
@@ -208,34 +284,77 @@ object WorkflowScriptsRunnableSpec {
     }
   }
 
+  /** A step's one-line `key:` value, its trailing comment dropped. */
+  private def value(step: String, key: String): Option[String] =
+    step.linesIterator.map(_.trim.stripPrefix("- ").trim).collectFirst {
+      case line if line.startsWith(s"$key:") => line.stripPrefix(s"$key:").replaceAll("""\s+#.*$""", "").trim
+    }
+
+  /** A checkout step's `sparse-checkout:` entries as actions/checkout reads them (one a line, trimmed, blank lines
+   *  dropped); None when it has none, a checkout of every file. */
+  def sparseEntries(step: String): Option[Seq[String]] = {
+    val lines = step.linesIterator.toVector
+    lines.indexWhere(_.trim.startsWith("sparse-checkout:")) match {
+      case -1 => None
+      case at =>
+        val key    = lines(at).takeWhile(_ == ' ').length
+        val inline = lines(at).trim.stripPrefix("sparse-checkout:").replaceAll("""\s+#.*$""", "").trim
+        val listed =
+          if (inline.startsWith("|") || inline.startsWith(">"))
+            lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > key).map(_.trim)
+          else Vector(yamlScalar(inline))
+        Some(listed.filter(_.nonEmpty))
+    }
+  }
+
+  /** What is wrong with each sparse checkout of `job` (a workflow job, or a composite action): non-cone mode, which
+   *  actions/checkout reads from any `sparse-checkout-cone-mode` but `true` and whose patterns need the `.git/info/` only
+   *  the runner's `git init` template makes (Archive recording #823); and, in a checkout of this repository, an entry
+   *  that is no directory of it (`isDirectory`, from its root) -- a pattern, a file, an absolute or a gone path. */
+  def sparseCheckoutProblems(from: String, job: String, isDirectory: String => Boolean): Seq[String] =
+    jobSteps(job).flatMap { step =>
+      (value(step, "uses"), sparseEntries(step)) match {
+        case (Some(s"actions/checkout@$_"), Some(entries)) =>
+          val nonCone = value(step, "sparse-checkout-cone-mode").map(yamlScalar).exists(!_.equalsIgnoreCase("true"))
+          val notDirectories =
+            if (value(step, "repository").nonEmpty) Seq.empty
+            else entries.filterNot(entry => !entry.startsWith("/") && isDirectory(entry))
+          Option.when(nonCone)(s"$from: a non-cone sparse checkout (${entries.mkString(", ")}), which needs .git/info " +
+            "from the runner's git template: leave sparse-checkout-cone-mode out").toSeq ++
+            notDirectories.map(entry =>
+              s"$from: its sparse checkout lists $entry, no directory of this repository (cone mode takes directories)")
+        case _ => Seq.empty
+      }
+    }
+
+  /** Whether `step` checks this repository out into the workspace: actions/checkout with no `repository:` and no
+   *  `path:`. */
+  private def checksOutThisRepository(step: String): Boolean =
+    value(step, "uses").exists(_.startsWith("actions/checkout@")) && value(step, "repository").isEmpty &&
+      value(step, "path").isEmpty
+
+  /** Whether `job`'s checkout of this repository (its last) holds the file `path`: a whole checkout holds every file; a
+   *  sparse one, cone mode, everything under a listed directory and every file at the root or directly inside a listed
+   *  directory's parents. */
+  def checkoutHolds(job: String, path: String): Boolean =
+    jobSteps(job).filter(checksOutThisRepository).lastOption.exists { checkout =>
+      sparseEntries(checkout).forall { entries =>
+        val directories = entries.map(_.stripSuffix("/"))
+        val parent      = path.split('/').init.mkString("/")
+        parent.isEmpty || directories.exists(dir => path.startsWith(s"$dir/") || dir.startsWith(s"$parent/"))
+      }
+    }
+
   /** What is wrong with each `uses: ./...` step of `job`: the runner reads a local action from the workspace, so a
    *  checkout of this repository into it (no `repository:`, no `path:`) comes first, and when that checkout is sparse
    *  it holds the action's directory. A later checkout replaces an earlier one. */
-  def localActionsOutsideCheckout(from: String, job: String): Seq[String] = {
-    def value(step: String, key: String): Option[String] =
-      step.linesIterator.map(_.trim.stripPrefix("- ").trim).collectFirst {
-        case line if line.startsWith(s"$key:") => line.stripPrefix(s"$key:").replaceAll("""\s+#.*$""", "").trim
-      }
-    def sparsePaths(step: String): Option[Seq[String]] = {
-      val lines = step.linesIterator.toVector
-      lines.indexWhere(_.trim.startsWith("sparse-checkout:")) match {
-        case -1 => None
-        case at =>
-          val key    = lines(at).takeWhile(_ == ' ').length
-          val inline = lines(at).trim.stripPrefix("sparse-checkout:").trim
-          val listed =
-            if (inline.startsWith("|") || inline.startsWith(">"))
-              lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > key).map(_.trim)
-            else Vector(inline)
-          Some(listed.filter(_.nonEmpty).map(_.stripPrefix("/").stripSuffix("/")))
-      }
-    }
+  def localActionsOutsideCheckout(from: String, job: String): Seq[String] =
     // None: no checkout yet; Some(None): the whole repository; Some(Some(paths)): a sparse one.
     jobSteps(job)
       .foldLeft((Option.empty[Option[Seq[String]]], Vector.empty[String])) { case ((checkout, problems), step) =>
         value(step, "uses") match {
-          case Some(s"actions/checkout@$_") if value(step, "repository").isEmpty && value(step, "path").isEmpty =>
-            (Some(sparsePaths(step)), problems)
+          case _ if checksOutThisRepository(step) =>
+            (Some(sparseEntries(step).map(_.map(_.stripPrefix("/").stripSuffix("/")))), problems)
           case Some(s"./$local") =>
             val target = local.stripSuffix("/")
             checkout match {
@@ -248,5 +367,4 @@ object WorkflowScriptsRunnableSpec {
         }
       }
       ._2
-  }
 }

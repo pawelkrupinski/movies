@@ -67,9 +67,7 @@ jobs:
               with:
                   sparse-checkout: |
                       .github/actions/upstream-run
-                      scripts/ci
-                      scripts/forge-gh
-                  sparse-checkout-cone-mode: false
+                      scripts
             - id: upstream
               uses: ./.github/actions/upstream-run
               with:
@@ -88,12 +86,11 @@ jobs:
             actions: read
             issues: write
         steps:
+            # The judgements are read from the commit, not checked out: a sparse checkout names directories only
+            # (WorkflowScriptsRunnableSpec), and theirs, test/resources/fixtures, is a gigabyte of recorded fixtures.
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: |
-                      scripts/ci
-                      test/resources/fixtures/identity-judgements.tsv
-                  sparse-checkout-cone-mode: false
+                  sparse-checkout: scripts/ci
             - name: Report each country's findings
               id: report
               env:
@@ -102,7 +99,8 @@ jobs:
                   RECORDING: ${{ needs.plan.outputs.run }}
                   OWNER: ${{ github.repository_owner }}
               run: |
-                  python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --work "$RUNNER_TEMP/identity-findings"
+                  git show HEAD:test/resources/fixtures/identity-judgements.tsv > "$RUNNER_TEMP/identity-judgements.tsv"
+                  python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --judgements "$RUNNER_TEMP/identity-judgements.tsv" --work "$RUNNER_TEMP/identity-findings"
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:

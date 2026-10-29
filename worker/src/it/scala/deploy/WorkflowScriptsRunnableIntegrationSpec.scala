@@ -4,10 +4,13 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, NoSuchFileException}
+import java.nio.file.StandardOpenOption.{APPEND, CREATE}
 
 import ShellCommands.Use
 
-/** The cases of [[WorkflowScriptsRunnableSpec]] that read the git index through a real `git ls-files`. */
+/** The cases of [[WorkflowScriptsRunnableSpec]] that run a real git: the index through `git ls-files`, and the
+ *  `git sparse-checkout set` its cone-mode rule rests on. */
 class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers {
 
   import WorkflowScriptsRunnableSpec.*
@@ -64,6 +67,22 @@ class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers {
         s"$from: uses ./$target, which is not in the index"
     }
     missing shouldBe empty
+  }
+
+  // Why every sparse checkout is cone mode: actions/checkout sets one up after `git init` and its fetch, before checking
+  // anything out, in the .git the runner's template made -- ci-runner's had no info/ on 2026-10-23 (Archive recording
+  // #823). The default template makes info/exclude, so the scratch repository drops it to stand in for that one.
+  "a sparse checkout" should "set up in cone mode in a repository with no .git/info" in {
+    val repo = new ScratchGitRepository()
+    val info = repo.root.resolve(".git/info")
+    Files.deleteIfExists(info.resolve("exclude"))
+    Files.deleteIfExists(info)
+    withClue("non-cone, actions/checkout appends its patterns to the file, and so needs its directory: ") {
+      a[NoSuchFileException] should be thrownBy
+        Files.writeString(info.resolve("sparse-checkout"), "\nscripts/ci\n", CREATE, APPEND)
+    }
+    repo.git("sparse-checkout", "set", "scripts/ci", ".github/actions/report-timings")
+    Files.readString(info.resolve("sparse-checkout")) should include("/scripts/ci/")
   }
 
   /** `git ls-files -s` of this checkout: path -> mode. Run with no inherited GIT_* variable, so that under a hook (which

@@ -78,7 +78,8 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
     action should include("python3 scripts/ci/upstream_run.py")
     action should include("github.event.workflow_run.conclusion")
     withClue("the resolver lists runs through scripts/forge-gh, which every plan job's checkout must hold: ") {
-      triggered.filterNot(ReadNoRun.contains).flatMap(resolverSteps(_).map(_._2)).filterNot(_.contains("scripts/forge-gh")) shouldBe empty
+      triggered.filterNot(ReadNoRun.contains).flatMap(resolverSteps(_).map(_._2))
+        .filterNot(WorkflowScriptsRunnableSpec.checkoutHolds(_, "scripts/forge-gh")) shouldBe empty
     }
   }
 }
