@@ -1,4 +1,5 @@
 import Foundation
+import KinowoTestSupport
 @testable import KinowoCore
 
 /// Test-only helpers: a scratch directory per test, and seeding an entry.
@@ -23,14 +24,12 @@ extension ConditionalPayloadCache {
     /// temp directory — never the user's caches (`defaultDirectory`), which a
     /// concurrent `swift test` and the developer's own app share by file name.
     /// Remove it with `discardScratchDirectory(_:)` in `tearDown`.
+    /// Gone at process exit even when no `tearDown` runs (`ScratchDirectory`).
     static func scratchDirectory() -> URL {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ConditionalPayloadCache-\(UUID().uuidString)", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
+        ScratchDirectory.make("ConditionalPayloadCache")
     }
 
     static func discardScratchDirectory(_ directory: URL) {
-        try? FileManager.default.removeItem(at: directory)
+        ScratchDirectory.discard(directory)
     }
 }
