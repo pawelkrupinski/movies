@@ -199,8 +199,17 @@ final class LookupFill(
       asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> outcome(lookups.candidates(q))) ++
         asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> outcome(lookups.film(id))))
     memory.unanswered(outcomes.collect { case (question, (LookupFill.Asked.Unanswered, _)) => question })
-    outcomes.collect { case (question, (LookupFill.Asked.Failed, host)) => (question, host) }.groupMap(_._2)(_._1)
-      .foreach { case (host, failed) => memory.failed(failed, host) }
+    val failures = outcomes.collect { case (question, (LookupFill.Asked.Failed, host)) => (question, host) }.groupMap(_._2)(_._1)
+      .toSeq.flatMap { case (host, failed) => memory.failed(failed, host).map { case (question, times) => (question, host, times) } }
+    // A record whose read keeps failing while its host answers others is filed absent, as a 404 is: never pending for good.
+    val answering = budget.hosts.collect { case (host, (answered, _, _)) if answered > 0 => host }.toSet
+    failures.foreach {
+      case (Question.FilmRecord(id), host, times)
+          if times >= QuestionPolicies.RecordGiveUpFailures && answering(host.getOrElse(QuestionMemory.TmdbHost)) =>
+        logger.warn(s"identity lookup fill: film $id's record failed $times reads in a row; filed absent")
+        normalizer.recordAbsent(id)
+      case _ => ()
+    }
     // Then, with what the allowance has left, what has aged (`QuestionRenewals`) — through the same live fetch: the
     // questions first, then the records and people TMDB last gave a month ago, what its changes may never have named. A
     // record or person that failed is named again by the next scan.

@@ -38,6 +38,12 @@ object QuestionPolicies {
   /** The first wait after a failed ask, doubled per further failure up to [[MaxFailureWait]]. */
   val FirstFailureWait: FiniteDuration = 5.minutes
   val MaxFailureWait: FiniteDuration   = 6.hours
+  /** A film record whose read FAILED this many times in a row -- each in a round where its host answered other reads, so
+   *  no outage -- is filed as TMDB's absent record, as a 404 is ([[LookupFill]]): ~16 hours of failing at the waits above.
+   *  The identity model takes a film only where its pool with and without a pending record agree (`FamilyScope`), so a
+   *  record pending for good would hold its listings at no take for good, a quiet stall. Asked again at
+   *  [[ModelRecordAge]], as every record is. */
+  val RecordGiveUpFailures: Int = 8
 
   // ── The agreement's questions ─────────────────────────────────────────────────────────────────
   /** How long a family's search is read before it is asked again: venues list a title for weeks, and a new film

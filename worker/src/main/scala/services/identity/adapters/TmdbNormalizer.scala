@@ -92,6 +92,10 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
     }
   }
 
+
+  /** Files film `id`'s record as TMDB's absent one -- both its responses as a 404 files them -- for a record whose read kept
+   *  failing ([[QuestionPolicies.RecordGiveUpFailures]]): the model then reads `Known(None)`, filed, never pending. */
+  def recordAbsent(id: Int): Unit = Partial.values.foreach(p => store.filmPartial(id, p, Json.obj("crew" -> JsArray())))
 }
 
 object TmdbNormalizer {

@@ -313,4 +313,47 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     } finally { release.countDown(); pool.shutdownNow(); () }
     ticks.completedRuns shouldBe Seq(LookupFill.Tick -> 30.minutes)        // and once it ran to its end
   }
+
+  // AGREE OR NONE (FamilyScope) takes no film while a pool's record is pending: a record whose read failed for good would
+  // hold its listings at no take for good. A run of failed reads while TMDB answers the rest files it absent, as a 404.
+  it should "file a film's record absent once its read has failed as many rounds in a row as the policy allows" in {
+    val clock   = new tools.MutableClock(TestWiring.FixedInstant)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val tmdb    = store()
+    val search  = CandidateQuery.Title("Answered")
+    val service = new HttpFetch {
+      private def answer(url: String): String =
+        if (url.contains("/movie/77?")) throw new HttpStatusException(500, "GET", url, None)
+        else """{"results":[],"crew":[],"cast":[]}"""
+      override def get(url: String): String                                    = answer(url)
+      override def get(url: String, headers: Map[String, String]): String      = answer(url)
+      override def post(url: String, body: String, contentType: String): String = answer(url)
+    }
+    def model = new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads)
+    def round(): Unit = {
+      fill(tmdb, service, gaps = _ => AnswersChanged(Set(search), Set(77)), memory = Some(memory), fillClock = clock).round()
+      clock.advance(java.time.Duration.ofHours(7))   // past the longest failure wait: due again
+    }
+    (1 until QuestionPolicies.RecordGiveUpFailures).foreach(_ => round())
+    model.film(77) shouldBe Answer.Unknown                              // failing, not yet given up on
+    round()
+    model.film(77) shouldBe Answer.Known(None)                          // filed absent: the pool decides without it
+  }
+
+  it should "not give a record up in rounds where its host answered nothing, an outage" in {
+    val clock   = new tools.MutableClock(TestWiring.FixedInstant)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val tmdb    = store()
+    val service = new HttpFetch {
+      private def answer(url: String): String = throw new HttpStatusException(500, "GET", url, None)
+      override def get(url: String): String                                    = answer(url)
+      override def get(url: String, headers: Map[String, String]): String      = answer(url)
+      override def post(url: String, body: String, contentType: String): String = answer(url)
+    }
+    (1 to QuestionPolicies.RecordGiveUpFailures + 2).foreach { _ =>
+      fill(tmdb, service, gaps = _ => AnswersChanged(Set.empty, Set(77)), memory = Some(memory), fillClock = clock).round()
+      clock.advance(java.time.Duration.ofHours(7))
+    }
+    new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads).film(77) shouldBe Answer.Unknown
+  }
 }
