@@ -8,5 +8,3 @@
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.
 country	seed	venue	rawTitle	takes	firstSeen	owner	note
-uk	1	Duke of York's Picturehouse Brighton	Rose (2023)	tmdb:901251 -> tmdb:1069112 -> tmdb:901251	2026-10-29	the fixer of convergence #2527 (red-a0762f14066e)	convergence #2527 (run 3757, 9744f8f09): back to a film it left
-uk	1	Queen's Film Theatre Belfast	Rose (2023)	tmdb:901251 -> tmdb:1069112 -> tmdb:901251	2026-10-29	the fixer of convergence #2527 (red-a0762f14066e)	convergence #2527 (run 3757, 9744f8f09): back to a film it left

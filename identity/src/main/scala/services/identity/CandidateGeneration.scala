@@ -67,7 +67,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
     lookups.prefetch(Nil, ids, Nil)
     ids.map(id => id -> lookups.film(id)).toMap
   }
-  lazy val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id).toOption.flatten) }
+  lazy val recorded: Map[Int, Candidate] = hitsById.map { case (id, hits) => id -> Candidate.of(id, hits, records(id)) }
   /** Whether these listings are part of a larger corpus, read through its context. */
   def partOfCorpus: Boolean = corpus.isDefined
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
@@ -87,7 +87,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
    *  event is queued, and re-resolves the family with the context that knows it; until then the
    *  record is read from this resolve's own hits. */
   private def filedSince(id: Int): Option[Candidate] =
-    if (corpus.isEmpty) None else hitsById.get(id).map(hits => Candidate.of(id, hits, lookups.film(id).toOption.flatten))
+    if (corpus.isEmpty) None else hitsById.get(id).map(hits => Candidate.of(id, hits, lookups.film(id)))
   /** A record some node reached: every one is known to the context, or filed since it last heard. */
   def candidateById(id: Int): Candidate = candidateOf(id).getOrElse(throw new NoSuchElementException(s"no candidate $id in the corpus context"))
   /** The candidates the nodes of a node's IDENTICAL title (`IdentityMeasures.key`) reached by their

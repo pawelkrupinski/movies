@@ -80,6 +80,10 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   another title, never one its own feed links) and Werkstattkino "CAMOUFLAGE" (fixed: one source overrules a feed's
   link to an older film for a current release it bills at more venues). A bare listing's take follows
   which sibling or bridge listing is present. The slice variants that show it, and the fixes they point to.
+- [investigations/2026-10-29-drift-flip-record-awaited.md](investigations/2026-10-29-drift-flip-record-awaited.md) —
+  convergence #2527's UK "Rose (2023)" flip: a search's hit weighed before its record is filed ("Rose Parade 2023",
+  which only its record denies). Which held answer decides it, why production meets the state, the first fix (a film
+  weighed once its record is filed) and why it gave way to the owner's AGREE OR NONE.
 - [investigations/2026-10-22-footprint-measure.md](investigations/2026-10-22-footprint-measure.md) — the footprint
   measure (`identity-measure --footprint`): why a title-rule change can be proved to move no take by replaying the base's
   title readings, the ideas rejected as unsound, and its validation against eight full measures.

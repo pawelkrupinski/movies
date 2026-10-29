@@ -503,19 +503,21 @@ object Hit {
 }
 
 /** A film some listing of a family may be: its TMDB id and what TMDB says about it — its own
- *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. */
-final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film)
+ *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. `awaitingRecord`: its
+ *  record is not answered yet, so the hits alone carry it and nothing its record states (a running time, credits, where it
+ *  was released) can deny it — a family takes a film only where its pool with and without it agree ([[FamilyScope]]). */
+final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film, awaitingRecord: Boolean = false)
 
 object Candidate {
 
-  def of(tmdbId: Int, hits: Seq[Hit], record: Option[IdentityMeasures.Film]): Candidate = {
+  def of(tmdbId: Int, hits: Seq[Hit], record: Answer[Option[IdentityMeasures.Film]]): Candidate = {
     val popularity = hits.map(_.popularity).maxOption
     val best = Hit.best(hits)
     // A record that carries its popularity is the candidate's film itself: a copy restating it was a second Film per
     // recorded film beside the corpus's `records` (30k on worker-uk, 2026-10-07).
-    Candidate(tmdbId, record.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
+    Candidate(tmdbId, record.toOption.flatten.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
       IdentityMeasures.Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
-        popularity = popularity)))
+        popularity = popularity)), awaitingRecord = !record.isKnown)
   }
 }
 

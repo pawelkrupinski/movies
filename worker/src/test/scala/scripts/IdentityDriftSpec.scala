@@ -3,12 +3,14 @@ package scripts
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.TakeFlips
+import services.identity.{Answer, AnswersChanged, CandidateQuery, ForwardingIdentityLookups, Hit, IdentityLookups, IdentityMeasures,
+  IdentityResolver, IdentityTraceSink, InMemoryIdentityModelStore, TakeFlips}
 import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.VoterFamily
 import tools.MutableClock
 
-import java.time.{Duration, Instant}
+import java.nio.file.Path
+import java.time.{Clock, Duration, Instant, ZoneOffset}
 
 /** The drift replay's queue asks what production's asker asks: a family question whose answer was filed and is fresh is
  *  not asked of the recording's sites again — read again, the recording's answer replaced the one filed, which the whole
@@ -111,5 +113,97 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     val path = java.nio.file.Path.of("test/resources/fixtures/identity-flips-baseline.tsv")
     deploy.RepoFile.exists(path.toString) shouldBe true
     noException should be thrownBy IdentityDrift.flipBaseline(path)
+  }
+
+  /** `inner`'s answers but those `held` names (`q:<sortKey>`, `f:<film>`, as [[IdentityDrift.Gate]] names them): what the
+   *  fill has not filed yet. */
+  private final class Withheld(inner: IdentityLookups) extends ForwardingIdentityLookups(inner) {
+    var held = Set.empty[String]
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]] =
+      if (held(s"q:${query.sortKey}")) Answer.Unknown else inner.candidates(query)
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+      if (held(s"f:$tmdbId")) Answer.Unknown else inner.film(tmdbId)
+  }
+
+  /** One slice through the incremental model, its answers filed as `held` shrinks: at each step the model must be the
+   *  whole resolve of the listings seen and the answers filed, and its takes are recorded as the drift replay's are. */
+  private final class SliceReplay(dir: String) {
+    private val slice     = IdentitySlice.readSlice(Path.of(dir))
+    private val replaying = new tools.SliceHttp.Replaying(slice.http)
+    private val reads     = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC),
+      slice.filed, tools.ProdState.none)
+    private val inputs    = IdentityDrift.inputsOf(reads)
+    val lookups           = new Withheld(reads.lookups)
+    val listings          = slice.core ++ slice.context
+    val model             = inputs.incremental(lookups, reads.normalizer, new InMemoryIdentityModelStore, "rules", IdentityTraceSink.Discard)
+    val flips             = new TakeFlips
+    private var seen      = Seq.empty[services.identity.Listing]
+    private def takesOf(decisions: Seq[services.identity.ResolverDecision]) =
+      decisions.flatMap(d => d.members.map(_ -> IdentitySlice.filmOf(d))).toMap
+    def takes(title: String): Map[String, String] =
+      takesOf(model.decisions).collect { case (key, film) if key.rawTitle == title => key.venue -> film }
+    def scraped(step: String, venues: String => Boolean): Unit = {
+      val arriving = listings.filter(listing => venues(listing.venue))
+      seen ++= arriving
+      model.batch(seen = arriving)
+      check(step)
+    }
+    def filed(step: String, queries: Set[CandidateQuery], films: Set[Int]): Unit = {
+      lookups.held = lookups.held -- queries.map(query => s"q:${query.sortKey}") -- films.map(film => s"f:$film")
+      model.batch(answered = AnswersChanged(queries, films))
+      check(step)
+    }
+    private def check(step: String): Unit = {
+      val now = takesOf(model.decisions)
+      now shouldBe takesOf(IdentityResolver.resolve(seen, lookups, reads.normalizer, inputs).decisions)
+      flips.record(step, now.view.mapValues(TakeFlips.Served(_, "")), _ => true)
+    }
+  }
+
+  // AGREE OR NONE (the owner, 2026-10-29): while a film's record is pending, a take only where the pool with it and the
+  // pool without it agree, else none until it is filed. Each case is a convergence flip, replayed as its seed filed it.
+
+  "a search filed before the records of the films it names" should "move no take back and forth" in {
+    // Convergence #2527 (run 3757), takes-drift-1 (united-kingdom): seed 1's gate held flicks.co.uk's "Rose (2023)" search
+    // and the records of the films it names. The fill filed the search at step 2 and "Rose Parade 2023"'s record at step 8;
+    // between them the listing took the parade, which only its record (a 90-minute US broadcast) denies, then went back to
+    // Oplev's "Rose" (2022).
+    val replay = new SliceReplay("test/resources/fixtures/identity-slices/uk-queen-s-film-theatre-belfast-rose-2023--4f64ad1a")
+    val search = CandidateQuery.Title("Rose (2023)")
+    replay.lookups.held = Set(s"q:${search.sortKey}", "f:1069112")
+    replay.scraped("boot", _ => true)
+    replay.filed("the search filed", Set(search), Set.empty)
+    replay.takes("Rose (2023)").values.toSet should not contain "tmdb:1069112"
+    replay.filed("its record filed", Set.empty, Set(1069112))
+    replay.flips.flips.map(_.line) shouldBe empty
+    replay.takes("Rose (2023)").values.toSet shouldBe Set("tmdb:901251")
+  }
+
+  "a bare title whose rival's record is pending" should "take neither film until it is filed" in {
+    // Drift 3810, takes-drift-1 (germany), with the rival's record left out of the pool: Metropol-Kino-Center's bare "Madoka
+    // Magica - Der Film: Rebellion" took the 2013 film (212162) at boot, the 1962 "Rebellion" (42997) once its record was
+    // filed, and 212162 again once Filmhaus (Langerringen)'s listing joined it.
+    val replay = new SliceReplay("test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc")
+    replay.lookups.held = Set("f:42997")
+    replay.scraped("boot", _ == "Metropol-Kino-Center")
+    replay.takes("Madoka Magica - Der Film: Rebellion") shouldBe Map("Metropol-Kino-Center" -> "none")
+    replay.filed("the rival's record filed", Set.empty, Set(42997))
+    replay.scraped("Filmhaus's listing", _ => true)
+    replay.flips.flips.map(_.line) shouldBe empty
+    replay.takes("Madoka Magica - Der Film: Rebellion").values.toSet shouldBe Set("tmdb:212162")
+  }
+
+  "a namesake whose record is pending" should "not stand in for the film the model takes once it is filed" in {
+    // Drift 3810, takes-drift-2 (united-kingdom), with the namesake's record left out of the pool: Chichester's "The Ties
+    // That Bind Us" took the 2025 film (1096642) at boot, the model's take 1460982 once its record was filed at step 8, and
+    // 1096642 again when the agreement corrected it at settle. The model's take, every answer filed, is 1460982. Main's
+    // reading (the pending film weighed on its hits) passes this too: it holds the agree-or-none rule's other half.
+    val replay = new SliceReplay("test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f")
+    replay.lookups.held = Set("f:1460982")
+    replay.scraped("boot", _ => true)
+    replay.takes("The Ties That Bind Us").values.toSet should not contain "tmdb:1096642"
+    replay.filed("its record filed", Set.empty, Set(1460982))
+    replay.flips.flips.map(_.line) shouldBe empty
+    replay.takes("The Ties That Bind Us").values.toSet shouldBe Set("tmdb:1460982")
   }
 }

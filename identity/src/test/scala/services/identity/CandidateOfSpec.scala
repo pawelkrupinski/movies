@@ -15,15 +15,22 @@ class CandidateOfSpec extends AnyFlatSpec with Matchers {
 
   "a candidate of a record carrying its popularity" should "be the record itself" in {
     val record = Film("Samson et Dalila", year = Some(2026), popularity = Some(4.0))
-    (Candidate.of(7, hits, Some(record)).film eq record) shouldBe true
+    (Candidate.of(7, hits, Answer.Known(Some(record))).film eq record) shouldBe true
   }
 
   "a candidate of a record carrying none" should "take its hits' highest popularity" in {
     val record = Film("Samson et Dalila", year = Some(2026))
-    Candidate.of(7, hits, Some(record)).film shouldBe record.copy(popularity = Some(30.0))
+    Candidate.of(7, hits, Answer.Known(Some(record))).film shouldBe record.copy(popularity = Some(30.0))
   }
 
   "a candidate of no record" should "be built from its most popular hit" in {
-    Candidate.of(7, hits, None).film shouldBe Film("Samson et Dalila", None, Nil, Some(2026), popularity = Some(30.0))
+    Candidate.of(7, hits, Answer.Known(None)).film shouldBe Film("Samson et Dalila", None, Nil, Some(2026), popularity = Some(30.0))
+  }
+
+  "a candidate whose record is not answered yet" should "be built from its hits, and await its record" in {
+    val awaiting = Candidate.of(7, hits, Answer.Unknown)
+    awaiting.film shouldBe Film("Samson et Dalila", None, Nil, Some(2026), popularity = Some(30.0))
+    awaiting.awaitingRecord shouldBe true
+    Candidate.of(7, hits, Answer.Known(None)).awaitingRecord shouldBe false
   }
 }

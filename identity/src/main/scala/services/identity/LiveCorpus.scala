@@ -232,7 +232,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
           bestHits.get(id) match {
             case Some(byQuery) =>
               if (rerecorded(id) || !records.contains(id)) records(id) = lookups.film(id)
-              val candidate = Candidate.of(id, byQuery.values.toSeq, records(id).toOption.flatten)
+              val candidate = Candidate.of(id, byQuery.values.toSeq, records(id))
               base(id) = candidate
               filmKeysOf(id, candidate.film).foreach { key => filedUnder += key; filmsByKey.addValue(key, id) }
             case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)

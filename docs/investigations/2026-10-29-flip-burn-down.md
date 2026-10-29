@@ -14,10 +14,10 @@ inline ask, 8a50e6d5d and 5ca8d38f8). Two more were cleared by rule fixes, each 
 
 | Country | Seed | Listing | Takes | Mechanism | Status |
 |---|---|---|---|---|---|
-| uk | 1 | Duke of York's Picturehouse Brighton, "Rose (2023)" | 901251 → 1069112 → 901251 | An input still waiting for its answer: a search's hit weighed before its record is filed (below) | **OPEN: identity design** |
+| uk | 1 | Duke of York's Picturehouse Brighton, "Rose (2023)" | 901251 → 1069112 → 901251 | An input still waiting for its answer: a search's hit weighed before its record is filed (below) | **FIXED: agree or none** (rows removed) |
 | uk | 1 | Queen's Film Theatre Belfast, "Rose (2023)" | the same | the same flicks.co.uk node (Grosvenor Cinema Glasgow is the third listing) | the same |
 
-## UK "Rose (2023)": the record-awaited fix, measured, and why it does not land
+## UK "Rose (2023)": the record-awaited fix, measured, and why it did not land
 
 The diagnosis is red fixer #2527's (branch `red-2527`, commit d51dc845f, with
 `docs/investigations/2026-10-29-drift-flip-record-awaited.md` on that branch). The fill files the search
@@ -77,3 +77,21 @@ The full-corpus drift run of any of these is about 45 min on CI (`scripts/identi
 final-take measure is `scripts/identity-measure --all-countries`. Until the owner chooses, the two Rose rows stay on
 the baseline. d51dc845f must not land: its land item `20261029-192949-movies-wt-red-2527-161583`, queued by the stopped
 fixer with `Fixes-Red: 2527`, would add two new flips.
+
+## The owner's decision and the fix: AGREE OR NONE (landed with the rows' removal)
+
+The owner chose option 3. While a candidate's record is pending, a take only where the pool with the pending films and
+the pool without them agree, else none until the record is filed (`FamilyScope.of` and `.pooled`, the fallback scope
+alike; `2026-10-29-drift-flip-record-awaited.md`). On recording 573:
+
+- `IdentityDriftSpec`: Rose, Madoka and Chichester, each replayed as its seed filed it, flip in none. Rose and Madoka
+  fail with the rule switched off; Chichester holds the exclusion's regression.
+- Drift 3854 (all 10 rows, both seeds): 0 flips, 0 divergences, 0 known flips left. DRIFT CLEAN.
+- Measure 3855 (every country, the pinned pair): 0 model and 0 final takes moved in pl, de, uk, us and es.
+- Interim "none": against main's drift 3811 (same seeds), the boot projection takes 12-15% fewer clusters in every
+  row (UK seed 1 1141 -> 975, DE seed 2 2562 -> 2193, US seed 1 1689 -> 1451). The gap closes as answers are filed, and
+  every row's last projection takes the same count (UK 1787, DE 3119, US 2027, PL 759, ES 237). That is the rule's price:
+  after a deploy brings new questions, a listing whose pool has a pending record is shown unmatched until the fill
+  files it.
+
+The baseline is empty: the drift gate fails every flip again.
