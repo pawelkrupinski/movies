@@ -406,10 +406,10 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 1
+                  # cone mode (WorkflowScriptsRunnableSpec): convergence_reuse.py, and .github for the workflow it reads
                   sparse-checkout: |
                       scripts/ci
-                      .github/workflows/identity-model-convergence.yml
-                  sparse-checkout-cone-mode: false
+                      .github
             - name: Did every takes and takes-drift row decide?
               env:
                   GH_TOKEN: ${{ github.token }}
