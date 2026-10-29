@@ -24,14 +24,29 @@ jobs:
         timeout-minutes: 5
         permissions:
             actions: write
+            contents: read
         steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts
+            # NOT A SECOND RUN OF ONE COMMIT: when main's convergence for this very commit is already queued or running
+            # (Main's kick dispatched it -- with no takes-skip, so in shadow too: every takes row in full), that run is the
+            # day's. Run 3656 was this dispatch, 39 s after the kick's 3653 for the same commit: it waited 54 min in the
+            # lane behind it, then ran all 37 rows again (scripts/ci/dispatch.sh's run_in_flight; an unreadable list
+            # dispatches).
             - name: Dispatch main's convergence, every takes row in full
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
               # Main's run, so main's tier, as Main's kick passes it (RunnerClassSpec): without it the run asked for
               # `measure`, and as main's lane's newest it replaced the push's gate-lane run (run 2829, 2026-10-26).
-              run: gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f tier=gate-lane
+              run: |
+                  . scripts/ci/dispatch.sh
+                  if run_in_flight identity-model-convergence.yml main "$GITHUB_SHA" && [ -n "$IN_FLIGHT_RUN" ]; then
+                      echo "run $IN_FLIGHT_RUN of ${GITHUB_SHA:0:9} is already queued or running: it is today's full run"
+                      exit 0
+                  fi
+                  gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f tier=gate-lane
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:

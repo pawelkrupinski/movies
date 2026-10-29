@@ -16,6 +16,10 @@
 #       Sets DISPATCHED_RUN to the newest run created at or after <since> matching the predicate (fields:
 #       databaseId, headSha, createdAt, displayTitle), polled for DISPATCH_FIND_SECONDS (120): a dispatch's
 #       run appears in the list seconds after it.
+#   run_in_flight <workflow> <ref> <sha>
+#       Sets IN_FLIGHT_RUN to a run of <workflow> on <ref> for <sha> that is still queued or running (none: empty) --
+#       the run a second dispatch of the same commit would only wait behind (run 3656, 2026-10-29: 54 min queued
+#       behind 3653, the same commit, then run in full). Non-zero when the list cannot be read: the caller dispatches.
 #   wait_until_no_runs <workflow> <jq predicate over a run> <timeout seconds> <what is waited for> [gh run list args...]
 #       Polls the workflow's newest 20 runs until none matches (fields: status, conclusion).
 #   wait_for_run <run id> <timeout seconds>
@@ -97,6 +101,15 @@ find_dispatched_run() {
   done
   _dispatch_say "dispatched $workflow, but no run of it appeared in ${DISPATCH_FIND_SECONDS:-120}s"
   return 1
+}
+
+run_in_flight() {
+  local workflow=$1 ref=$2 sha=$3 found
+  IN_FLIGHT_RUN=""
+  found=$(_dispatch_gh run list --workflow "$workflow" --branch "$ref" --limit 20 --json databaseId,headSha,status \
+    --jq "[.[] | select(.headSha == \"$sha\" and .status != \"completed\")] | first | .databaseId // empty") \
+    || { _dispatch_say "could not list $workflow's runs on $ref"; return 1; }
+  IN_FLIGHT_RUN=$found
 }
 
 wait_until_no_runs() {

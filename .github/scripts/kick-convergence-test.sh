@@ -14,11 +14,13 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/repo"
 
-# gh: `run list` answers $work/last (or, while $work/hang exists, records its pid there and never answers); `workflow run` records the suite dispatched
+# gh: `run list` answers $work/last (or, while $work/hang exists, records its pid there and never answers) -- the in-flight
+# read (dispatch.sh's run_in_flight) $work/inflight; `workflow run` records the suite dispatched
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 case "$1 $2" in
-  "run list") [ -e "$STUB/hang" ] && { echo $$ >> "$STUB/hang"; exec sleep 86400; } # never answers: blocks until killed
+  "run list") [[ " $* " == *" databaseId,headSha,status "* ]] && { cat "$STUB/inflight" 2>/dev/null; exit 0; }
+              [ -e "$STUB/hang" ] && { echo $$ >> "$STUB/hang"; exec sleep 86400; } # never answers: blocks until killed
               echo "$*" > "$STUB/list-args"; cat "$STUB/last" 2>/dev/null ;;
   "workflow run") echo "$3" >> "$STUB/dispatched"; echo "$*" >> "$STUB/dispatch-args" ;;
 esac
@@ -56,6 +58,12 @@ check "...and the gate exits 0" "0" "$(cat "$work/status")"
 case "$(cat "$work/list-args")" in *"--branch main"*) b=yes ;; *) b=no ;; esac
 check "the base is the suite's newest run ON MAIN, never a measurement's or another branch's" "yes" "$b"
 check "a pipeline change since the last run is dispatched" "Country convergence" "$(kick "$pipeline")"
+# A RUN OF THIS VERY COMMIT ALREADY QUEUED OR RUNNING (run 3656 waited 54 min behind 3653, the same commit dispatched by
+# the daily run 39 s earlier, then ran in full): not dispatched again
+echo 3653 > "$work/inflight"
+check "a commit whose run is already queued or running is not dispatched again" "" "$(kick "$pipeline")"
+check "...saying which run judges it" "true" "$(grep -q 'run 3653 for .* is already queued or running' "$work/out" && echo true || echo false)"
+rm -f "$work/inflight"
 
 : > "$work/last"
 check "a suite that never ran is dispatched" "Country convergence" "$(kick "$docs")"

@@ -286,17 +286,20 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
+                # THE MOST-FAILING COUNTRIES FIRST (convergence-failures-2026-10-29 §7.3, W2): a runner takes the OLDEST waiting
+                # job, so rows start in this order -- UK (31 failing drift rows that week), DE, US, PL, then ES (none). In
+                # matrix order (PL, DE, ES, UK, US) the UK's rows started 29-38 min into a run and the US's 41-85.
                 # LOWERCASE KEYS: Forgejo lowercases the name a `matrix.<key>` read looks up but not the
                 # matrix's own keys, so a camelCase key read in a reusable call's `with:` is "missing" there.
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
                 # value: Forgejo (CI since the GitHub suspension) evaluates a reusable call's `with:` strictly
                 # and refuses `matrix.<key>` a row lacks -- github.com reads it as null. Same values either way.
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
-                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
                     - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceUkOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
                     - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false' }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write

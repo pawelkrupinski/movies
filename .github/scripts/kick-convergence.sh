@@ -49,6 +49,13 @@ reuse_hint() {
 }
 dispatch() {
     local reuse
+    # A RUN OF THIS COMMIT ALREADY QUEUED OR RUNNING judges it (scripts/ci/dispatch.sh's run_in_flight): a second one only
+    # waits behind it in the lane, then runs in full (run 3656: 54 min queued behind 3653, the same commit, which the
+    # daily run had dispatched 39 s earlier). An unreadable list dispatches, the safe direction.
+    if run_in_flight "$1" "$ref" "$head_sha" 2>/dev/null && [ -n "$IN_FLIGHT_RUN" ]; then
+        echo "$1: run $IN_FLIGHT_RUN for ${head_sha:0:9} is already queued or running -- not dispatched again"
+        return 0
+    fi
     reuse=$(reuse_hint "$1")
     case $reuse in *[!0-9]*) reuse="" ;; esac
     [ -z "$reuse" ] || echo "$1: run $reuse ran this tree's whole suite -- dispatching it as reuse-run=$reuse (the run's preflight checks it)"

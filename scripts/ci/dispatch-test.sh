@@ -67,6 +67,14 @@ reset; answer 1 "fail HTTP 502"
 find_dispatched_run w.yml 2026-10-15T00:00:00Z true 2> /dev/null
 check "a failed listing is a failure, not 'not listed yet'" "1 1" "$? $(calls)"
 
+reset; answer 1 "4711"
+run_in_flight w.yml main abc 2> /dev/null; check "a queued or running run of the same commit is in flight" "0 4711" "$? $IN_FLIGHT_RUN"
+check "...asked of the ref's runs, by head and status" "true" \
+  "$(grep -q -- 'run list --workflow w.yml --branch main --limit 20 --json databaseId,headSha,status --jq .*headSha == "abc" and .status != "completed"' "$work/calls" && echo true || echo false)"
+reset
+run_in_flight w.yml main abc 2> /dev/null; check "none: nothing in flight" "0 ''" "$? '$IN_FLIGHT_RUN'"
+reset; answer 1 "fail HTTP 500"
+run_in_flight w.yml main abc 2> /dev/null; check "an unreadable list is a failure, never 'none in flight'" "1 ''" "$? '$IN_FLIGHT_RUN'"
 reset; answer 1 "2"; DEFAULT=0
 wait_until_no_runs w.yml 'true' 60 "busy" 2> /dev/null; check "runs matching are waited out" "0 2" "$? $(calls)"
 reset; DEFAULT=1
