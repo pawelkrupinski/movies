@@ -15,7 +15,7 @@
 #   - THE PAIR: each country's pinned recording and the fills published over it (convergence-setup.sh `pinned`,
 #     convergence-fill.sh `fills`), as the source's preflight read them, are what this run would replay now.
 #   - THE INPUTS: what the source's legs were handed (its preflight's outputs, `inputs` below) is what main's are: hermetic
-#     (the workflow's own), every country and row (no takes-only, takes-countries, recording), the takes skip gate in shadow
+#     (the workflow's own), every country and row (no takes-only, drift-only, takes-countries, recording), the takes skip gate in shadow
 #     or off, no runner or JVM options, both order-independence phases (scripts/ci/order-phases.sh: off main a ref may run
 #     p01 alone). takes-no-store and a JFR profile change no verdict.
 #   - EVERY ROW GREEN: the source run succeeded, and every row main's matrix runs (expected_rows(): the phases the leg
@@ -67,7 +67,9 @@ CODES = ("pl", "de", "uk", "es", "us")
 # The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix). expected_rows() models
 # exactly this; ConvergenceReuseSpec fails the moment the leg's expression is anything else.
 PHASES_EXPRESSION = (
-    "${{ fromJson(inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}]', "
+    "${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '[\"takes-drift-1\"]' || "
+    "inputs.drift-seeds == '2' && '[\"takes-drift-2\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
+    "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}]', "
     "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',\"order-independence-p01\"' || "
     "',\"order-independence-p01\",\"order-independence-p12\"') || ',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
@@ -175,12 +177,14 @@ INPUTS = {
     "runner": ("INPUT_RUNNER", ""),
     "takes-base": ("INPUT_TAKES_BASE", ""),
     "takes-only": ("INPUT_TAKES_ONLY", "false"),
+    "drift-only": ("INPUT_DRIFT_ONLY", "false"),
+    "drift-seeds": ("INPUT_DRIFT_SEEDS", ""),
     "recording": ("INPUT_RECORDING", ""),
     "takes-countries": ("INPUT_TAKES_COUNTRIES", ""),
     "takes-no-store": ("INPUT_TAKES_NO_STORE", "false"),
     "takes-skip": ("INPUT_TAKES_SKIP", "shadow"),
 }
-BOOLEANS = {"profile", "takes-only", "takes-no-store"}
+BOOLEANS = {"profile", "takes-only", "drift-only", "takes-no-store"}
 
 
 def leg_inputs(env):
@@ -200,6 +204,11 @@ def inputs_unlike_main(inputs, order_phases):
     why = []
     if inputs.get("takes-only") != "false":
         why.append("takes-only: only the takes rows ran")
+    # A drift-only run (scripts/identity-drift-ci) ran the takes-drift rows alone: never a source for main's full verdict.
+    if inputs.get("drift-only", "false") != "false":
+        why.append("drift-only: only the takes-drift rows ran")
+    if inputs.get("drift-seeds", ""):
+        why.append(f"drift-seeds {inputs['drift-seeds']!r}: not main's suite")
     for name in ("takes-countries", "recording", "jvm-options", "runner"):
         if inputs.get(name, ""):
             why.append(f"{name} {inputs[name]!r}: not main's suite")

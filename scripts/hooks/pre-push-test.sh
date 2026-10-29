@@ -479,6 +479,42 @@ check "a failing identity set blocks the push, naming the check and the failure"
 code="$(area_push web/src/main/twirl/views/x.scala.html PREPUSH_SKIP="eslint lintspecs page")"
 check "PREPUSH_SKIP=page skips the page set, said out loud" "0 0 1" \
   "$code $(calls PageTest) $(grep -c 'page SKIPPED' "$testroot/area-out")"
+
+# ── THE IDENTITY DRIFT CHECK: a Fixes-Red push touching a drift path is judged on the red's drift rows, on CI ──────────────
+# A fake scripts/identity-drift-ci notes its arguments; DRIFT_RC is its exit.
+printf '\033[36m▸\033[0m pre-push identity drift check\n'
+mkdir -p "$area/.github/actions/changed-paths"
+cp "$REPO_ROOT/.github/actions/changed-paths/matches.sh" "$area/.github/actions/changed-paths/matches.sh"
+cp "$REPO_ROOT/.github/identity-drift-paths.txt" "$area/.github/identity-drift-paths.txt"
+cat > "$area/scripts/identity-drift-ci" <<'STUB'
+#!/usr/bin/env bash
+echo "identity-drift-ci $*" >> "$AREA_CALLS"
+[ "${DRIFT_RC:-0}" = 1 ] && echo "DRIFT RED: takes-drift-2 (germany)"
+exit "${DRIFT_RC:-0}"
+STUB
+chmod +x "$area/scripts/identity-drift-ci"
+scratch_git "$area" add -A; scratch_git "$area" commit -qm "drift tooling"
+drift_push() { # <path> <message> [env...]: commits <path> with <message>, runs the hook over it; prints the exit code
+  local path="$1" message="$2"; shift 2
+  mkdir -p "$area/$(dirname "$path")"; echo "x $RANDOM" >> "$area/$path"
+  scratch_git "$area" add -A; scratch_git "$area" commit -qm "$message"
+  : > "$AREA_CALLS"
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+     bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
+}
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: #2517; 3726')"
+check "a Fixes-Red push touching a drift path runs the red's drift rows, each claimed run once, at the pushed commit" "0 1 1" \
+  "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --for-red 2517") $(calls 'for-red 3726')"
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: 3726' DRIFT_RC=1)"
+check "...a red drift row refuses the push, naming the check" "1 1" "$code $(grep -c 'blocked by: identitydrift' "$testroot/area-out")"
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: 3726' DRIFT_RC=2)"
+check "...a run that could not be made warns and passes" "0 1" "$code $(grep -c 'no verdict for Fixes-Red: 3726' "$testroot/area-out")"
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a speed-up\n\nFixes-Red: 3726\nRed-Unrelated: CI speed-up')"
+check "a Red-Unrelated commit claims no fix: no drift run" "0 0" "$code $(calls identity-drift-ci)"
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala 'no claim')"
+check "a push claiming no red runs no drift check" "0 0" "$code $(calls identity-drift-ci)"
+code="$(drift_push docs/fix.md $'a doc\n\nFixes-Red: 3726')"
+check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls identity-drift-ci)"
 unset AREA_CALLS
 
 # ── AN ABSOLUTE core.hooksPath STILL RUNS THE PUSHING WORKTREE'S OWN HOOK ──────────────────────────

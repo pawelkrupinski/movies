@@ -293,6 +293,12 @@ class ForgeGhTest(unittest.TestCase):
         finally:
             JOBS["2848"][1].update(status="in_progress", conclusion=None)
 
+    def test_a_runs_jobs_are_read_from_the_actions_api(self):
+        # identity-drift-ci --for-red reads a red's failing takes-drift rows this way
+        done = self.gh("run", "view", "2848", "--json", "databaseId,jobs",
+                       "-q", '.jobs[] | "\\(.name)\t\\(.conclusion)"')
+        self.assertEqual("order-independence-p01 (germany)\tfailure\ntakes (germany)\tnull\n", done.stdout, done.stderr)
+
     def test_a_failed_runs_queued_job_is_waiting_while_the_run_is_recent_and_dead_once_it_is_quiet(self):
         fj = forge_gh.Forgejo("o/movies", self.env)
         queued = [{"name": "takes (spain)", "status": "queued", "completed_at": None},

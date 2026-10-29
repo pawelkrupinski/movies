@@ -62,6 +62,19 @@ on:
                 required: false
                 type: boolean
                 default: false
+            drift-only:
+                description: >-
+                    Run only each leg's takes-drift rows (the incremental = whole replay, scripts/ci/identity-drift-check.sh)
+                    -- scripts/identity-drift-ci's pre-land drift check: 10 rows, not 37. takes-countries narrows the
+                    countries, drift-seeds the seeds. Never a reuse source for main's full verdict.
+                required: false
+                type: boolean
+                default: false
+            drift-seeds:
+                description: A drift-only run's seeds -- 1, 2, or empty for both (`takes-drift-<seed>` rows).
+                required: false
+                type: string
+                default: ''
             recording:
                 description: The `Record scrape fixtures` run every leg replays -- its own corpus and tree, no fills -- in place of the pinned pair (the identity-measure script's --recording; takes-only).
                 required: false
@@ -134,6 +147,8 @@ jobs:
             jvm-options: ${{ steps.legs.outputs.jvm-options }}
             takes-base: ${{ steps.legs.outputs.takes-base }}
             takes-only: ${{ steps.legs.outputs.takes-only }}
+            drift-only: ${{ steps.legs.outputs.drift-only }}
+            drift-seeds: ${{ steps.legs.outputs.drift-seeds }}
             recording: ${{ steps.legs.outputs.recording }}
             takes-countries: ${{ steps.legs.outputs.takes-countries }}
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
@@ -171,6 +186,8 @@ jobs:
                   INPUT_RUNNER: ${{ inputs.runner }}
                   INPUT_TAKES_BASE: ${{ inputs.takes-base }}
                   INPUT_TAKES_ONLY: ${{ inputs.takes-only }}
+                  INPUT_DRIFT_ONLY: ${{ inputs.drift-only }}
+                  INPUT_DRIFT_SEEDS: ${{ inputs.drift-seeds }}
                   INPUT_RECORDING: ${{ inputs.recording }}
                   INPUT_TAKES_COUNTRIES: ${{ inputs.takes-countries }}
                   INPUT_TAKES_NO_STORE: ${{ inputs.takes-no-store }}
@@ -195,8 +212,8 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
                   FIXTURE_RELEASE_TAG: convergence-fixtures
-                  # The legs this run starts: a takes-only measurement's countries, else all five.
-                  CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
+                  # The legs this run starts: a takes-only measurement's or a drift-only check's countries, else all five.
+                  CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true' || inputs.drift-only == true || inputs.drift-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
                   RECORDING: ${{ inputs.recording || '' }}
               run: scripts/ci/convergence-preflight.sh "$CODES" "$RECORDING"
             # REUSE ONLY WHAT IS PROVEN (scripts/ci/convergence_reuse.py): the named run covered every row this one would,
@@ -321,6 +338,9 @@ jobs:
             takes-base:                    ${{ needs.preflight.outputs.takes-base }}
             takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}
             takes-countries:               ${{ needs.preflight.outputs.takes-countries }}
+            # Only the takes-drift rows (scripts/identity-drift-ci): the incremental = whole replay, before a land.
+            drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}
+            drift-seeds:                   ${{ needs.preflight.outputs.drift-seeds }}
             takes-no-store:                ${{ needs.preflight.outputs.takes-no-store == 'true' }}
             # The skip gate's mode (a push's kick dispatches with none: shadow). The daily full run (convergence-daily.yml)
             # always passes shadow, so whatever main's pushes do, one run a day takes every take in full.

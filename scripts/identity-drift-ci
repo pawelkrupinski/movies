@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+# THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-<seed> (<country>)` rows -- "Check that the incremental state ends
+# where a whole resolve does" (scripts/ci/identity-drift-check.sh), the step behind 28 of 36 red convergence runs in the
+# week to 2026-10-29 -- run on ci-runner BEFORE the commit lands, and nothing else of the convergence suite.
+#
+# Why (docs: convergence-failures-2026-10-29, §5 Tier 2 and §7.2): main's full suite gives a drift verdict ~48 minutes
+# after a push (red) or ~80 (green), and only once the commit is on main; fixers' "fixes" were refuted there, one after
+# another. This dispatches Identity model convergence with `drift-only` (10 rows, not 37) on the `landing` tier, so one
+# red row is judged in ~12-16 minutes and all ten in ~25-40, before the push.
+#
+# usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds 1|2|both]
+#                                  [--for-red <run>] [--tier LABEL] [--timeout <minutes>] [--out DIR] [--no-wait]
+#        scripts/identity-drift-ci --run <run id> [--out DIR]
+#   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
+#                scripts/ci/ laid over it, as identity-measure does)
+#   --countries  the countries whose drift rows run (the workflow's takes-countries); default all five
+#   --seeds      1, 2 or both (default both)
+#   --for-red    only the rows a red convergence run failed: its failed `takes-drift-<seed> (<country>)` jobs name the
+#                countries and seeds (a run id, or the run's number as its URL shows it). A red with no failed drift row
+#                has nothing to judge here: exit 0, said so. A FIX MAY BE PARTIAL (5df3295bd cleared PL's flips while DE
+#                seed 2's stayed): each row still red is held against the red run's own verdict.txt for it -- open
+#                divergences plus flips beyond the allow-lists. Fewer in some row and more in none is PROGRESS (exit 0,
+#                `DRIFT PROGRESS: ...`); no row better, or one worse, is a refuted fix (exit 1); the red's verdict unreadable (its
+#                artifacts kept 7 days) is no verdict (exit 2)
+#   --tier       the ci-runner tier label (default `landing`: ci-runner's own check-tier runner, 6 slots)
+#   --timeout    minutes to wait for the rows (default 75: the drift step's own ceiling)
+#   --no-wait    dispatch, print the run id, exit 0; collect with --run
+#   --run        collect an existing drift-only run
+#   --out        where each row's artifact goes (default target/identity-drift-ci/<run>)
+#
+# It pushes the commit as `measure/<user>/<short sha>-drift-<random>` (the pre-push hook checks nothing on a measure/
+# ref; the run deletes its branch as its last job), dispatches through scripts/ci/dispatch.sh, waits with backoff (60 s,
+# x1.5, at most 5 min; a line per poll, and $KINOWO_PROGRESS_FILE touched, so the pre-push hook's no-progress watchdog
+# sees it alive), stops as soon as every requested drift row has ended (the run's tail goes on without it), then prints
+# each row's verdict.txt and its report's divergence and flip lines.
+#
+# Called by scripts/identity-landing-check (its `drift` group) and by the pre-push hook's `identitydrift` check (a push carrying
+# `Fixes-Red: <run>` for a convergence drift red: `--for-red <run>`). Never runs anything heavy on the laptop.
+#
+# The last line on stdout is the verdict: `DRIFT CLEAN`, `DRIFT RED: <rows>`, or `NO VERDICT: <why>`.
+# Exit: 0 clean (or nothing to judge), 1 a divergence or flip beyond the allow-lists, 2 could not run.
+set -uo pipefail
+
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/identity-tools.sh
+. "$here/identity-tools.sh" # bounded, die, usage_*, country_flag, gh_download, identity_gh, identity_push_measure_branch
+# shellcheck disable=SC2034 # read by tool-conventions.sh (die, usage_error)
+DIE_STATUS=2
+TOOL_NAME=identity-drift-ci
+# shellcheck source=scripts/ci/dispatch.sh
+. "$here/ci/dispatch.sh"
+export DISPATCH_GH_TIMEOUT=${IDENTITY_DRIFT_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_DRIFT_POLL:-30}
+export DISPATCH_GH=$KINOWO_GH
+workflow=identity-model-convergence.yml
+say() { echo "identity-drift-ci: $*" >&2; }
+progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
+
+ref=HEAD seeds=both for_red="" tier=landing timeout_min=75 out="" nowait="" run=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --head) flag_value "$@"; ref=$2; shift ;;
+    --country|--countries|--country=*|--countries=*) country_flag "$@"; shift $((COUNTRY_FLAG_ARGS - 1)) ;;
+    --seeds) flag_value "$@"; seeds=$2; shift ;;
+    --for-red) flag_value "$@"; for_red=${2#\#}; shift ;;
+    --tier) flag_value "$@"; tier=$2; shift ;;
+    --timeout) flag_value "$@"; timeout_min=$2; shift ;;
+    --out) flag_value "$@"; out=$2; shift ;;
+    --no-wait) nowait=1 ;;
+    --run) flag_value "$@"; run=$2; shift ;;
+    -h|--help) usage_from_header; exit 0 ;;
+    -*) usage_error "unknown option $1" ;;
+    *) ref=$1 ;;
+  esac
+  shift
+done
+case $seeds in 1|2|both) ;; *) usage_error "--seeds takes 1, 2 or both, not $seeds" ;; esac
+countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_countries_csv)
+remote=${IDENTITY_MEASURE_REMOTE:-}
+[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+
+code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
+name_of() { case "$1" in pl) echo poland ;; de) echo germany ;; uk) echo united-kingdom ;; es) echo spain ;; us) echo united-states ;; *) echo "$1" ;; esac; }
+csv_add() { [[ ",$1," == *",$2,"* ]] && echo "$1" || echo "${1:+$1,}$2"; } # <csv> <item>
+
+# drift_jobs <run id> -> "<name>\t<status>\t<conclusion>" for each takes-drift row of the run (none yet: nothing)
+drift_jobs() {
+  identity_gh "$DISPATCH_GH_TIMEOUT" run view "$1" --json jobs \
+    --jq '(.jobs // [])[] | select(.name | test("^takes-drift-[12] \\(")) | [.name, .status, (.conclusion // "")] | @tsv'
+}
+
+# ── --for-red: the rows a red failed ─────────────────────────────────────────────────────────────────────────────
+# A Fixes-Red: trailer names a run by its id or by the number its URL shows; both are tried, among convergence runs.
+if [ -n "$for_red" ]; then
+  [[ "$for_red" =~ ^[0-9]+$ ]] || usage_error "--for-red takes a run id or number, not $for_red"
+  ids=$(identity_gh "$DISPATCH_GH_TIMEOUT" run list --workflow "$workflow" --limit 300 --json databaseId,number \
+    --jq ".[] | select(.databaseId == $for_red or .number == $for_red) | .databaseId") || die "could not list $workflow's runs"
+  [ -n "$ids" ] || { say "run $for_red is no $workflow run among its newest 300: no drift row to judge"; echo "DRIFT CLEAN (nothing to judge)"; exit 0; }
+  red_rows="" red_ids=""
+  for id in $ids; do
+    rows=$(drift_jobs "$id") || die "could not read run $id's jobs"
+    failed=$(awk -F'\t' '$3 == "failure" { print $1 }' <<< "$rows")
+    [ -z "$failed" ] || red_ids+=" $id"
+    red_rows+=$failed$'\n'
+  done
+  red_rows=$(grep -v '^$' <<< "$red_rows" | LC_ALL=C sort -u)
+  if [ -z "$red_rows" ]; then
+    say "run $for_red failed no takes-drift row: nothing for the drift check to judge"
+    echo "DRIFT CLEAN (nothing to judge)"
+    exit 0
+  fi
+  seen_seeds="" countries=""
+  while IFS= read -r row; do
+    seed=${row#takes-drift-}; seed=${seed%% *}
+    country=${row#*(}; country=${country%)}
+    seen_seeds=$(csv_add "$seen_seeds" "$seed"); countries=$(csv_add "$countries" "$(code_of "$country")")
+  done <<< "$red_rows"
+  case $seen_seeds in 1) seeds=1 ;; 2) seeds=2 ;; *) seeds=both ;; esac
+  say "run $for_red's red drift rows: $(tr '\n' ',' <<< "$red_rows" | sed 's/,$//') -> countries $countries, seeds $seeds"
+fi
+
+# the rows this run must judge, `takes-drift-<seed> (<country>)` a line
+expected_rows() {
+  local cc s
+  for cc in ${countries:-pl de uk es us}; do
+    for s in 1 2; do
+      { [ "$seeds" = both ] || [ "$seeds" = "$s" ]; } && echo "takes-drift-$s ($(name_of "$cc"))"
+    done
+  done
+}
+countries=${countries//,/ }
+
+# ── the run: dispatched, or named ────────────────────────────────────────────────────────────────────────────────
+branch="" dispatched_at=$SECONDS
+delete_branch() {
+  [ -n "$branch" ] || return 0
+  bounded 120 git push -q "$remote" --delete "refs/heads/$branch" 2> /dev/null && say "deleted branch $branch"
+}
+if [ -z "$run" ]; then
+  commit=$(git rev-parse --verify -q "$ref^{commit}") || die "no commit $ref"
+  [ "$ref" != HEAD ] || [ -z "$(git status --porcelain --untracked-files=no 2> /dev/null)" ] \
+    || say "WARNING: uncommitted changes are not checked -- only ${commit:0:9}"
+  push=$commit
+  # The commit's own workflows must know drift-only; an older one gets main's CI laid over it (identity-measure's way).
+  leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml" 2> /dev/null) || leg=""
+  if [[ "$leg" != *drift-only* ]]; then
+    bounded 120 git fetch -q "$remote" main || die "could not fetch $remote main"
+    index=$(mktemp)
+    GIT_INDEX_FILE=$index git read-tree "$commit" \
+      && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
+      && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
+      && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
+      && tree=$(GIT_INDEX_FILE=$index git write-tree) \
+      && push=$(git commit-tree "$tree" -p "$commit" -m "drift: $remote/main's CI over ${commit:0:9}") \
+      || { rm -f "$index"; die "could not lay main's CI over $commit"; }
+    rm -f "$index"
+    say "${commit:0:9} predates the drift-only dispatch: checking it under $remote/main's .github/ and scripts/ci/ (${push:0:9})"
+  fi
+  branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-drift-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+  say "commit $(git log --oneline -1 "$commit" | cut -c1-100)"
+  identity_push_measure_branch "$remote" "$push" "$branch" || { delete_branch; die "could not push $branch: $MEASURE_PUSH_ERROR"; }
+  only=(-f drift-only=true -f tier="$tier")
+  [ -z "$countries" ] || only+=(-f takes-countries="$(tr ' ' ',' <<< "$countries")")
+  [ "$seeds" = both ] || only+=(-f drift-seeds="$seeds")
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ) dispatched_at=$SECONDS
+  dispatch_workflow "$workflow" "$branch" "${only[@]}" || { delete_branch; die "could not dispatch $workflow on $branch"; }
+  find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
+    || die "dispatched, but no run of ${push:0:9} on $branch was found (the run deletes $branch when it ends)"
+  run=$DISPATCHED_RUN
+  # The run's owner, for agentctl's branch-red routing (AGENTCTL.md "dispatch"); best effort, never a verdict.
+  [ ! -x "$HOME/bin/agentctl" ] || bounded 30 "$HOME/bin/agentctl" dispatch record --branch "$branch" --run "$run" \
+    --workflow "$workflow" --purpose "identity-drift-ci ${for_red:+--for-red $for_red }${commit:0:9}" > /dev/null 2>&1 || true
+  say "run $run on $branch: drift-only, $(expected_rows | wc -l | tr -d ' ') row(s) on $tier ($(expected_rows | tr '\n' ',' | sed 's/,$//'))"
+  if [ -n "$nowait" ]; then say "not waiting: collect with  scripts/identity-drift-ci --run $run"; echo "$run"; exit 0; fi
+fi
+
+# ── wait until every expected drift row has ended ────────────────────────────────────────────────────────────────
+expected=$(expected_rows)
+if [ -z "$branch" ]; then
+  # --run: the rows the run itself has (its countries and seeds were its dispatch's)
+  expected=""
+fi
+deadline=$((SECONDS + timeout_min * 60)) delay=${IDENTITY_DRIFT_FIRST_WAIT:-60} unread=0
+while :; do
+  progress
+  if rows=$(drift_jobs "$run") && status=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json status --jq .status); then
+    unread=0
+    want=${expected:-$(cut -f1 <<< "$rows" | grep -v '^$')}
+    ended=$(awk -F'\t' '$2 == "completed" { print $1 }' <<< "$rows" | LC_ALL=C sort -u)
+    open=$(LC_ALL=C comm -23 <(printf '%s\n' "$want" | grep -v '^$' | LC_ALL=C sort -u) <(printf '%s\n' "$ended"))
+    say "run $run: $(( $(grep -c . <<< "$want") - $(grep -c . <<< "$open") ))/$(grep -c . <<< "$want" | tr -d ' ') drift row(s) ended, run $status, $(( (SECONDS - dispatched_at) / 60 )) min"
+    [ -n "$want" ] && [ -z "$open" ] && break
+    [ "$status" = completed ] && break
+  else
+    unread=$((unread + 1))
+    [ "$unread" -lt 10 ] || die "run $run: ten unreadable reads in a row"
+  fi
+  [ "$SECONDS" -lt "$deadline" ] || die "run $run: the drift rows did not end within --timeout $timeout_min minutes"
+  sleep "$delay"; delay=$(dispatch_backoff_next "$delay")
+done
+# the run's tail (timings, the branch drop) goes on; the branch is the run's to delete
+branch=""
+wall=$(( (SECONDS - dispatched_at) / 60 ))
+
+# ── the verdict ──────────────────────────────────────────────────────────────────────────────────────────────────
+out=${out:-$(git rev-parse --show-toplevel 2> /dev/null || pwd)/target/identity-drift-ci/$run}
+rm -rf "$out"; mkdir -p "$out"
+gh_download "$DISPATCH_GH_TIMEOUT" run download "$run" --pattern 'identity-drift-*' --dir "$out" > /dev/null \
+  || say "could not download run $run's identity-drift artifacts (each row's verdict still stands)"
+# open_findings <verdict.txt> -> divergences plus flips beyond the allow-lists (identity-drift-check.sh's verdict line)
+open_findings() {
+  sed -nE 's/^([0-9]+) divergence\(s\).* ([0-9]+) flip\(s\).*/\1 \2/p' "$1" 2> /dev/null | awk 'NR == 1 { print $1 + $2 }'
+}
+# --for-red: the red run's own verdict per row, the baseline a partial fix is held against
+for id in ${red_ids:-}; do
+  mkdir -p "$out/red-$id"
+  gh_download "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-drift-*' --dir "$out/red-$id" > /dev/null \
+    || say "could not download red run $id's identity-drift artifacts: no baseline for a partial fix"
+done
+red=() unjudged=() better=() same=() worse=() unknown_base=()
+while IFS=$'\t' read -r name _ conclusion; do
+  [ -n "$name" ] || continue
+  [ -z "$expected" ] || grep -qxF "$name" <<< "$expected" || continue
+  seed=${name#takes-drift-}; seed=${seed%% *}; country=${name#*(}; country=${country%)}
+  dir="$out/identity-drift-$(code_of "$country")-takes-drift-$seed"
+  echo "$name: $conclusion -- $(cat "$dir/verdict.txt" 2> /dev/null || echo 'no verdict.txt')"
+  [ ! -f "$dir/report.txt" ] || grep -E '^## |^  [0-9]+ listing|^      ' "$dir/report.txt" | head -40 | sed 's/^/    /'
+  case $conclusion in success) [ -z "$for_red" ] || better+=("$name: green") ;; failure) red+=("$name") ;; *) unjudged+=("$name ($conclusion)") ;; esac
+  if [ -n "$for_red" ] && [ "$conclusion" = failure ]; then
+    now=$(open_findings "$dir/verdict.txt") was=""
+    for base in "$out"/red-*/"$(basename "$dir")"/verdict.txt; do [ -f "$base" ] && was=$(open_findings "$base") && break; done
+    if [ -z "$now" ] || [ -z "$was" ]; then unknown_base+=("$name")
+    elif [ "$now" -lt "$was" ]; then better+=("$name: $was -> $now open")
+    elif [ "$now" -eq "$was" ]; then same+=("$name: $was -> $now open")
+    else worse+=("$name: $was -> $now open"); fi
+  fi
+done <<< "$rows"
+missing=""
+[ -z "$expected" ] || missing=$(LC_ALL=C comm -23 <(printf '%s\n' "$expected" | LC_ALL=C sort -u) <(cut -f1 <<< "$rows" | LC_ALL=C sort -u))
+echo "run $run, $wall min from dispatch; artifacts in $out"
+if [ "${#red[@]}" -gt 0 ] && [ -n "$for_red" ]; then
+  if [ "${#worse[@]}" -gt 0 ] || { [ "${#better[@]}" -eq 0 ] && [ "${#unknown_base[@]}" -eq 0 ]; }; then
+    echo "DRIFT RED: no better than run $for_red: ${worse[*]+${worse[*]} }${same[*]+${same[*]}}"; exit 1
+  fi
+  if [ "${#unknown_base[@]}" -gt 0 ] || [ "${#unjudged[@]}" -gt 0 ]; then
+    echo "NO VERDICT: still red, and no baseline to tell a partial fix by: ${unknown_base[*]+${unknown_base[*]}}${unjudged[*]+ ${unjudged[*]}}"; exit 2
+  fi
+  echo "DRIFT PROGRESS: $(printf '%s; ' "${better[@]}" | sed 's/; $//') -- still red: ${red[*]}"; exit 0
+fi
+if [ "${#red[@]}" -gt 0 ]; then echo "DRIFT RED: ${red[*]}"; exit 1; fi
+if [ -n "$missing" ] || [ "${#unjudged[@]}" -gt 0 ]; then
+  echo "NO VERDICT: $({ printf '%s\n' "${unjudged[@]+"${unjudged[@]}"}"; printf '%s\n' "$missing"; } | grep -v '^$' | paste -sd, - | sed 's/,/, /g') not judged"
+  exit 2
+fi
+[ -n "$rows" ] || { echo "NO VERDICT: run $run has no takes-drift row"; exit 2; }
+echo "DRIFT CLEAN"
+exit 0

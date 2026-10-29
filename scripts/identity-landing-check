@@ -10,7 +10,7 @@
 # IdentityCutoverEndToEnd and DocCommentPlacementSpec.
 #
 # usage: scripts/identity-landing-check [<commit> | --head REF] [--base SHA] [--full | --footprint-only] [--local]
-#                                       [--no-measure | --no-specs] [--no-cache]
+#                                       [--no-measure | --no-specs] [--no-cache] [--drift | --no-drift]
 #   <commit>         default HEAD (committed only: uncommitted changes are neither measured nor tested)
 #   --base           default the commit's merge-base with <remote>/main (identity-measure's)
 #   (no mode flag)   the measure: `identity-measure --footprint` -- the footprint measure when the change is title rules
@@ -24,6 +24,7 @@
 #                    each group its own `scripts/identity-ci-run` (identity-run.yml) at the commit, all at once
 #   --no-measure     the specs only;  --no-specs  the measure only
 #   --no-cache       passed to identity-measure: measure even when its result cache holds the verdict
+#   --drift          the `drift` group whatever the change touches;  --no-drift  never (see THE DRIFT GROUP)
 #
 # THE SPECS: exactly the identity-relevant suites of Main's rows (ci.yml), each group as its row runs it:
 #   unit        `test (worker-identity)` + `test (heavy1)` + `test (heavy2)` + the identity/common parts of `test (rest)` + the
@@ -34,6 +35,12 @@
 #   e2e-corpus  `e2e (corpus)`: FilmScheduleEndToEndSpec        } only when Main's scope would run the e2e rows for
 #   e2e-rest    `e2e (rest)`'s identity specs: SearchQueryMarkers,  } this change (scripts/ci/ci-row-scope.sh e2e):
 #               IdentityCutoverEndToEnd                          } judgements and identity tests alone do not
+#
+# THE DRIFT GROUP: the incremental = whole replay -- every `takes-drift-<seed> (<country>)` row of main's convergence run,
+# the step behind 28 of 36 red convergence runs in the week to 2026-10-29 -- as scripts/identity-drift-ci's drift-only
+# run on ci-runner's `landing` tier (~25-40 min for all ten rows), beside the measure and the specs. On by default when
+# the change touches a path in .github/identity-drift-paths.txt (the resolver, worker/src/main, the title rules, the
+# replay harness, the flip predicate, the allow-lists); --full runs it anyway inside the whole suite, so not again.
 #
 # THE VERDICT, last on stdout: `LANDABLE`, or `BLOCKED` with each failing spec, the test, and a hint for its usual cause
 # (e.g. MatchedTakesLabelSpec's "known-wrong in scope rows": judgement rows stale -> known-wrong scope rows). Every
@@ -53,7 +60,7 @@ DIE_STATUS=2
 # `strategy.max-parallel`, so that runner's capacity is the cap on how many rows run at once. The same job image.
 landing_tier=ubuntu-24.04
 landing_convergence_tier=landing
-ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache=""
+ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache="" drift=auto
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift 2 ;;
@@ -64,6 +71,8 @@ while [ "$#" -gt 0 ]; do
     --no-measure) measure=""; shift ;;
     --no-specs) specs=""; shift ;;
     --no-cache) no_cache=1; shift ;;
+    --drift) drift=1; shift ;;
+    --no-drift) drift=""; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) usage_error "unknown option $1" ;;
     *) ref=$1; shift ;;
@@ -128,7 +137,22 @@ if [ -n "$local" ] && [ -n "$specs" ] && [ "$(git rev-parse HEAD)" != "$commit" 
   die "--local tests the working tree: check out ${commit:0:9} first (or run on CI, without --local)"
 fi
 
+# THE DRIFT GROUP (the header): on when the change touches a drift path; a --full measure runs the drift rows itself
+if [ "$drift" = auto ]; then
+  drift=""
+  if [ "$mode" != full ] && git diff --name-only --no-renames "$base" "$commit" \
+      | "$here/../.github/actions/changed-paths/matches.sh" "$here/../.github/identity-drift-paths.txt" | grep -qx true; then
+    drift=1
+  fi
+fi
+
 pids=()
+if [ -n "$drift" ]; then
+  say "drift: identity-drift-ci (every takes-drift row, drift-only, on ci-runner's $landing_convergence_tier tier)"
+  "${IDENTITY_LANDING_DRIFT:-$here/identity-drift-ci}" --head "$commit" --tier "$landing_convergence_tier" --out "$out/drift/run" \
+    > "$out/drift.txt" 2> "$out/drift.log" &
+  drift_pid=$!
+fi
 if [ -n "$specs" ]; then
   if [ -n "$local" ]; then
     say "specs: on the laptop, one group after another ($(cut -f1 <<< "$groups" | tr '\n' ' '))"
@@ -150,6 +174,8 @@ fi
 [ "${#pids[@]}" -eq 0 ] || wait "${pids[@]}"
 measure_rc=""
 if [ -n "$measure" ]; then wait "$measure_pid"; measure_rc=$?; fi
+drift_rc=""
+if [ -n "$drift" ]; then wait "$drift_pid"; drift_rc=$?; fi
 
 # ── reading the failures ───────────────────────────────────────────────────────────────────────
 # failures <sbt.log> -> "<Spec><TAB><test><TAB><its first detail line>" per failed test; a suite that failed with no
@@ -242,6 +268,14 @@ if [ -n "$measure" ]; then
     1) echo "  measure     NOT LANDABLE"; blocked+=("measure	NOT LANDABLE: $(sed -n '/^NOT LANDABLE/,$p' "$out/measure.txt" | sed -n '2,4p' | sed 's/^ *- //' | paste -sd';' -)	a take moved wrong or a right one was lost: the measure's table, $out/measure.txt (scripts/identity-slice --explain its listings)") ;;
     3) echo "  measure     not answered by the footprint (--footprint-only)"; blocked+=("measure	--footprint-only could not answer	run without --footprint-only for the full measure") ;;
     *) echo "  measure     could not measure$(why_not "$out/measure.log" identity-measure) ($out/measure.log)"; unknown+=(measure) ;;
+  esac
+fi
+if [ -n "$drift" ]; then
+  case $drift_rc in
+    0) echo "  drift       $(tail -1 "$out/drift.txt")" ;;
+    1) echo "  drift       $(tail -1 "$out/drift.txt")"
+       blocked+=("drift	$(tail -1 "$out/drift.txt")	the incremental state ends elsewhere than a whole resolve, or a take flips on the way: each row's verdict and report lines in $out/drift.txt; a fix, never an allow-list entry, unless the listing is intended (identity-drift-allow.tsv / identity-flips-allow.tsv)") ;;
+    *) echo "  drift       could not check$(why_not "$out/drift.log" identity-drift-ci) ($out/drift.log)"; unknown+=(drift) ;;
   esac
 fi
 if [ -n "$specs" ]; then

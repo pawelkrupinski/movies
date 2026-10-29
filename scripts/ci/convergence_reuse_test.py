@@ -97,6 +97,16 @@ class JudgeTest(unittest.TestCase):
         self.assertNotReused(why, "takes-only")
         self.assertNotReused(why, "`convergence (poland)` did not run there")
 
+    def test_a_drift_only_source_is_never_mains_verdict(self):
+        # scripts/identity-drift-ci's pre-land run: the takes-drift rows alone, even when every one of them passed
+        rows = [r for r in ROWS if r.startswith("takes-drift")]
+        inputs = dict(MAIN_INPUTS, **{"drift-only": "true"})
+        why = reuse.judge(source(), green_jobs(rows), facts(inputs=inputs), mine())
+        self.assertNotReused(why, "drift-only")
+        self.assertNotReused(why, "`takes (poland)` did not run there")
+        self.assertNotReused(reuse.judge(source(), green_jobs(), facts(inputs=dict(MAIN_INPUTS, **{"drift-seeds": "2"})),
+                                         mine()), "drift-seeds")
+
     def test_a_partial_source_is_not_some_countries(self):
         inputs = dict(MAIN_INPUTS, **{"takes-countries": "pl"})
         self.assertNotReused(reuse.judge(source(), green_jobs(), facts(inputs=inputs), mine()), "takes-countries")
@@ -168,8 +178,10 @@ class InputsTest(unittest.TestCase):
         self.assertEqual(reuse.inputs_unlike_main(reuse.leg_inputs({}), "both"), [])
 
     def test_forgejos_string_booleans_and_defaults_are_normalised(self):
-        legs = reuse.leg_inputs({"INPUT_TAKES_ONLY": "true", "INPUT_PROFILE": "", "INPUT_TAKES_SKIP": ""})
-        self.assertEqual((legs["takes-only"], legs["profile"], legs["takes-skip"]), ("true", "false", "shadow"))
+        legs = reuse.leg_inputs({"INPUT_TAKES_ONLY": "true", "INPUT_PROFILE": "", "INPUT_TAKES_SKIP": "",
+                                 "INPUT_DRIFT_ONLY": "true"})
+        self.assertEqual((legs["takes-only"], legs["profile"], legs["takes-skip"], legs["drift-only"], legs["drift-seeds"]),
+                         ("true", "false", "shadow", "true", ""))
 
 
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")

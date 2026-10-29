@@ -43,7 +43,8 @@ when that vault is already unlocked (never a Touch ID prompt; the repository is 
         POST /repos/{repo}/actions/workflows/<file>/dispatches {"ref", "inputs"}: Forgejo answers no run id, so a caller
         finds the run it made by listing (the CI dispatch helper's find_dispatched_run). `run list --event E` filters
         the listing by its trigger (workflow_dispatch, push, ...).
-  A form outside it fails (exit 1) naming itself: no Forgejo API serves a run's log (`run view --log`) or its jobs.
+  run view <run> --json jobs[,...] adds the run's jobs ({name, status, conclusion}) from the CI's actions API.
+  A form outside it fails (exit 1) naming itself: no Forgejo API serves a run's log (`run view --log`).
 Errors are worded as gh words them (HTTP <code>, "no artifact matches", "no assets match", "release not found"),
 so gh_download tells a failed read from an absent one the same on both forges. --jq runs jq -r, as gh's --jq prints.
 """
@@ -486,7 +487,13 @@ def run_view(fj: Forgejo, opts, pos):
                    "or name what you need from it directly, e.g. --recording)")
     if not pos:
         raise Fail("gh (forgejo): run view needs a run id")
-    emit(gh_run(fj.settled(fj.run(pos[0])), workflows_by_file()), opts.get("json"), opts.get("jq"))
+    run = gh_run(fj.settled(fj.run(pos[0])), workflows_by_file())
+    # `--json jobs`: the run's jobs as gh lists them (name, status, conclusion), from the CI's actions API -- what
+    # scripts/identity-drift-ci --for-red reads a red's failing rows from. A failed read fails, never an empty list.
+    if "jobs" in (opts.get("json") or "").split(","):
+        run["jobs"] = [{"name": j.get("name"), "status": j.get("status"), "conclusion": j.get("conclusion")}
+                       for j in fj.jobs(run["databaseId"])]
+    emit(run, opts.get("json"), opts.get("jq"))
 
 
 def run_list(fj: Forgejo, opts, pos):

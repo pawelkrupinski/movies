@@ -137,6 +137,24 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     requests.foreach(_ should include("inputs.mode == 'hermetic'"))
   }
 
+  // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The
+  // matrix re-parse hands the leg's `with:` the preflight's outputs and nothing else, and Forgejo's dispatch booleans are
+  // strings, so the input travels as takes-only does: an output of the preflight, compared with 'true' in the call.
+  it should "run only the takes-drift rows on a drift-only dispatch, handed on as takes-only is" in {
+    RepoFile.block(workflow, "on") should include("drift-only:")
+    RepoFile.block(workflow, "on") should include("drift-seeds:")
+    val outputs = RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs")
+    outputs should include("drift-only: ${{ steps.legs.outputs.drift-only }}")
+    outputs should include("drift-seeds: ${{ steps.legs.outputs.drift-seeds }}")
+    RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_ONLY: ${{ inputs.drift-only }}")
+    val call = RepoFile.jobs(workflow)("leg")
+    call should include("drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}")
+    call should include("drift-seeds:                   ${{ needs.preflight.outputs.drift-seeds }}")
+    val rows = RepoFile.block(leg, "convergence")
+    rows should include("""fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]'""")
+    rows should include("(!(inputs.takes-only || inputs.drift-only) || inputs.takes-countries == ''")
+  }
+
   "the convergence leg" should "set no identity switch: its films are the identity model's, as production's are" in {
     leg should not include "KINOWO_IDENTITY_CUTOVER"
     leg should not include "identity-model:"

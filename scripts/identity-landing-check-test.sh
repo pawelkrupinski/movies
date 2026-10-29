@@ -53,11 +53,23 @@ case "${MEASURE:-0}" in
 esac
 exit "${MEASURE:-0}"
 STUB
-chmod +x "$work/bin/ci-run" "$work/bin/measure"
+# identity-drift-ci: notes its arguments; DRIFT=1 a red row, 2 no verdict
+cat > "$work/bin/drift" <<'STUB'
+#!/usr/bin/env bash
+echo "$*" > "$LOGS/drift-args"
+case "${DRIFT:-0}" in
+  0) echo "DRIFT CLEAN" ;;
+  1) echo "DRIFT RED: takes-drift-2 (germany)" ;;
+  *) echo "identity-drift-ci: could not dispatch identity-model-convergence.yml" >&2 ;;
+esac
+exit "${DRIFT:-0}"
+STUB
+chmod +x "$work/bin/ci-run" "$work/bin/measure" "$work/bin/drift"
 
 landing() { # <args...>: exit code; output in $work/out
   ( cd "$repo" && LOGS="$work/logs" IDENTITY_LANDING_OUT="$work/check" IDENTITY_LANDING_CI_RUN="$work/bin/ci-run" \
-      IDENTITY_LANDING_MEASURE="$work/bin/measure" "$REPO_ROOT/scripts/identity-landing-check" "$@" > "$work/out" 2> "$work/err" )
+      IDENTITY_LANDING_MEASURE="$work/bin/measure" IDENTITY_LANDING_DRIFT="$work/bin/drift" \
+      "$REPO_ROOT/scripts/identity-landing-check" "$@" > "$work/out" 2> "$work/err" )
   echo $?
 }
 has() { grep -qF -- "$1" "$work/out" && echo true || echo false; }
@@ -139,5 +151,22 @@ check "...saying why, in identity-ci-run's words" "true" \
   "$(has 'e2e-corpus  could not run: could not push measure/u/abc-1: remote rejected (unable to migrate objects to permanent storage)')"
 rm -f "$work/logs/e2e-corpus.unreachable"
 check "--no-measure and --no-specs together is a usage error" "2" "$(landing --no-measure --no-specs)"
+
+# THE DRIFT GROUP: a change to a drift path (.github/identity-drift-paths.txt) runs identity-drift-ci on the landing tier
+rm -f "$work/logs/drift-args"
+check "a resolver change runs the drift group: every takes-drift row, drift-only, on landing" "0 true" \
+  "$(landing --head "$code" --base "$base") $(grep -q -- "--head $code --tier landing --out " "$work/logs/drift-args" && echo true || echo false)"
+check "...its verdict a line of the check's" "true" "$(has '  drift       DRIFT CLEAN')"
+check "a red drift row is BLOCKED, naming it" "1 true" \
+  "$(DRIFT=1 landing --head "$code" --base "$base") $(has '- drift: DRIFT RED: takes-drift-2 (germany)')"
+check "a drift run that could not be made is no verdict, saying why" "2 true" \
+  "$(DRIFT=2 landing --head "$code" --base "$base") $(has 'drift       could not check: could not dispatch identity-model-convergence.yml')"
+rm -f "$work/logs/drift-args"
+check "a judgements-only change touches no drift path: no drift group" "0 false" \
+  "$(landing --head "$judged" --base "$code") $([ -f "$work/logs/drift-args" ] && echo true || echo false)"
+check "...unless --drift asks for it" "true" "$(landing --head "$judged" --base "$code" --drift > /dev/null; [ -f "$work/logs/drift-args" ] && echo true || echo false)"
+rm -f "$work/logs/drift-args"
+check "--full runs the drift rows inside the whole suite, so not again; --no-drift never" "false false" \
+  "$(landing --head "$code" --base "$base" --full > /dev/null; [ -f "$work/logs/drift-args" ] && echo true || echo false) $(landing --head "$code" --base "$base" --no-drift > /dev/null; [ -f "$work/logs/drift-args" ] && echo true || echo false)"
 
 spec_summary

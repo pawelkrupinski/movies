@@ -1,0 +1,16 @@
+# The paths that can move a takes-drift row's verdict -- "Check that the incremental state ends where a whole resolve
+# does" (scripts/ci/identity-drift-check.sh, scripts.IdentityDrift): the resolver and the worker's incremental state, the
+# title rules it reads through, the replay harness, the flip predicate and the two allow-lists.
+#
+# Read by scripts/identity-landing-check (its `drift` group runs scripts/identity-drift-ci when a change touches one)
+# and by the pre-push hook's `identitydrift` check (a `Fixes-Red:` push for a convergence drift red that touches one). One list,
+# so the two cannot disagree. The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
+identity/src/main/**
+worker/src/main/**
+common/src/main/scala/services/titlerules/**
+common/src/main/resources/title-rules.tsv
+common/src/main/resources/title-words.tsv
+worker/src/test/scala/scripts/IdentityDrift.scala
+test/resources/fixtures/identity-drift-allow.tsv
+test/resources/fixtures/identity-flips-allow.tsv
+scripts/ci/identity-drift-check.sh
