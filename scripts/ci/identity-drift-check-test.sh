@@ -22,6 +22,9 @@ printf '%s\n' "$@" | grep -oE -- '--seeds? [0-9]+' > "$out.seeds"
 printf '%s\n' "$@" > "$out.args"
 [ "${FAKE_REPORT:-}" = none ] && { echo "[error] compilation failed"; exit 1; }
 mkdir -p "$out"; printf 'country\tseed\n' > "$out/drift-pl.tsv"
+# FAKE_VARY: a replay whose flips differ from run to run (a counter beside the out dir)
+n=$(( $(cat "$out/../runs" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$out/../runs"
+if [ -n "${FAKE_VARY:-}" ]; then printf 'country\tseed\nuk\t2\trun %s\n' "$n" > "$out/flips-pl.tsv"; else printf 'country\tseed\n' > "$out/flips-pl.tsv"; fi
 echo "## pl: 10804 listings, 2 seed(s), $FAKE_FOUND divergence(s) (1 listings), $FAKE_ALLOWED allow-listed, in 191s"
 [ "$FAKE_FOUND" -gt 0 ] && echo "  1 listing(s)  deploy: incremental-only take (whole BelowThreshold, incremental Agreed)"
 [ "${FAKE_FLIPS:-0}" = none ] && exit 0
@@ -72,5 +75,11 @@ check "a baselined flip that is gone is flagged: remove its row" "0 1" \
 check "divergences have no baseline: they fail beside known flips" "1" "$(FAKE_FOUND=1 FAKE_ALLOWED=0 FAKE_FLIPS=2 FAKE_KNOWN=2 run)"
 FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "the replay reads the baseline" "1" "$(grep -c 'identity-flips-baseline.tsv' "$work/out.args" 2>/dev/null || echo 0)"
+DRIFT_TWICE=true FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
+check "the daily double run: two replays alike pass" "0" "$(DRIFT_TWICE=true FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
+check "...having replayed twice" "1" "$(grep -c deterministic "$work/stdout")"
+check "two replays that differ fail" "1" "$(DRIFT_TWICE=true FAKE_VARY=1 FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
+check "...and the verdict says so" "1" "$(grep -c '^not deterministic' "$work/out/verdict.txt")"
+check "a replay that differs from itself passes once alone (the push's rows replay once)" "0" "$(FAKE_VARY=1 FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
 
 spec_summary

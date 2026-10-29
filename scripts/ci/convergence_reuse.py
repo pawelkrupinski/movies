@@ -194,8 +194,9 @@ INPUTS = {
     "takes-countries": ("INPUT_TAKES_COUNTRIES", ""),
     "takes-no-store": ("INPUT_TAKES_NO_STORE", "false"),
     "takes-skip": ("INPUT_TAKES_SKIP", "shadow"),
+    "drift-twice": ("INPUT_DRIFT_TWICE", "false"),
 }
-BOOLEANS = {"profile", "takes-only", "drift-only", "takes-no-store"}
+BOOLEANS = {"profile", "takes-only", "drift-only", "takes-no-store", "drift-twice"}
 
 
 def leg_inputs(env):

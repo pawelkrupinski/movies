@@ -96,6 +96,11 @@ on:
                 required: false
                 type: string
                 default: shadow
+            drift-twice:
+                description: Each takes-drift row replays its seed twice and fails when the two runs' TSVs differ (the daily full run's determinism check).
+                required: false
+                type: boolean
+                default: false
             reuse-run:
                 description: >-
                     An earlier run of this workflow whose verdict this commit may reuse (Main's kick names a landing check's
@@ -154,6 +159,7 @@ jobs:
             takes-countries: ${{ steps.legs.outputs.takes-countries }}
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
             takes-skip: ${{ steps.legs.outputs.takes-skip }}
+            drift-twice: ${{ steps.legs.outputs.drift-twice }}
             # The legs' runner, evaluated HERE: Forgejo expands the matrix `leg` call only once this job is done, and
             # that re-parse hands its `with:` this job's outputs and nothing else -- `inputs` and `github` read empty
             # there, which sent main's legs to `measure` (run 2783, 2026-10-26; RunnerClassSpec). The run's tier off
@@ -190,6 +196,7 @@ jobs:
                   INPUT_TAKES_COUNTRIES: ${{ inputs.takes-countries }}
                   INPUT_TAKES_NO_STORE: ${{ inputs.takes-no-store }}
                   INPUT_TAKES_SKIP: ${{ inputs.takes-skip }}
+                  INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
             - name: Secrets present
               env:
@@ -347,6 +354,8 @@ jobs:
             # The skip gate's mode (a push's kick dispatches with none: shadow). The daily full run (convergence-daily.yml)
             # always passes shadow, so whatever main's pushes do, one run a day takes every take in full.
             takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}
+            # The daily full run's determinism check (convergence-daily.yml): each drift seed replayed twice, the TSVs diffed.
+            drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
             corpus-run:                    ${{ needs.preflight.outputs.recording }}
             # A proven reuse (the preflight's `reused-from`): every row of the leg skips.

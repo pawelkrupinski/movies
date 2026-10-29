@@ -148,6 +148,17 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     job should include("convergence_reuse.py complete --run \"$RUN_ID\" --sha \"$GITHUB_SHA\" --reused-from \"$REUSED_FROM\"")
   }
 
+  // THE DETERMINISM CHECK (convergence-failures-2026-10-29 G10): the daily full run replays each drift seed twice and
+  // diffs the TSVs (identity-drift-check.sh's DRIFT_TWICE) -- handed on as takes-only is, an output of the preflight.
+  it should "replay each drift seed twice on the daily run, handed on to the drift step" in {
+    RepoFile.block(workflow, "on") should include("drift-twice:")
+    RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include("drift-twice: ${{ steps.legs.outputs.drift-twice }}")
+    RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}")
+    RepoFile.jobs(workflow)("leg") should include("drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}")
+    leg should include("DRIFT_TWICE: ${{ inputs.drift-twice }}")
+    RepoFile.read(".github/workflows/convergence-daily.yml") should include("-f drift-twice=true")
+  }
+
   // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The
   // matrix re-parse hands the leg's `with:` the preflight's outputs and nothing else, and Forgejo's dispatch booleans are
   // strings, so the input travels as takes-only does: an output of the preflight, compared with 'true' in the call.
