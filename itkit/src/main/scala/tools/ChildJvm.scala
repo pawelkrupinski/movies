@@ -17,6 +17,16 @@ final class ChildJvm(javaHome: JavaHome, classPath: JavaClassPath) {
 
   /** Exit code and combined stdout+stderr. */
   def run(main: String, args: Seq[String] = Nil, jvmArgs: Seq[String] = Nil): (Int, String) = {
+    val process = start(main, args, jvmArgs)
+    val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
+    if (!process.waitFor(SpecTimeouts.Run.toMillis, TimeUnit.MILLISECONDS)) { process.destroyForcibly(); (-1, output + "\n[timed out]") }
+    else (process.exitValue(), output)
+  }
+
+  /** The child, started and not waited for: one that keeps running beside the spec -- a server whose
+   *  timing the spec's shared JVM must not disturb (another suite's full collections stop every thread
+   *  in it). Its stdout carries stderr too; the caller reads it, and ends the child. */
+  def start(main: String, args: Seq[String] = Nil, jvmArgs: Seq[String] = Nil): Process = {
     val java    = javaHome.binary("java").toString
     val builder = new ProcessBuilder((Seq(java, "-cp", classpath) ++ jvmArgs ++ (main +: args))*)
       .redirectErrorStream(true)
@@ -24,10 +34,7 @@ final class ChildJvm(javaHome: JavaHome, classPath: JavaClassPath) {
     // stderr, merged into the output callers compare. CI sets JAVA_TOOL_OPTIONS on the self-hosted
     // Forgejo runners; a short-lived probe JVM needs none of them.
     Seq("JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS").foreach(builder.environment().remove)
-    val process = builder.start()
-    val output  = new String(process.getInputStream.readAllBytes(), UTF_8)
-    if (!process.waitFor(SpecTimeouts.Run.toMillis, TimeUnit.MILLISECONDS)) { process.destroyForcibly(); (-1, output + "\n[timed out]") }
-    else (process.exitValue(), output)
+    builder.start()
   }
 
   /** This test run's classpath, whether sbt forked it (`java.class.path`) or runs it in its own

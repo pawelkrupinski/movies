@@ -5,12 +5,15 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.io.{BufferedReader, InputStreamReader, Writer}
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.security.cert.Certificate
 import java.security.{KeyStore, PrivateKey}
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.{KeyManagerFactory, SSLContext}
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.util.{Try, Using}
 
 /**
@@ -22,7 +25,8 @@ import scala.util.{Try, Using}
  *
  * In a CHILD JVM, because the JDK reads [[IssuerCertificateFetching.Property]] once, when its
  * path builder first loads, and the spec's own JVM may already have loaded it either way —
- * and because setting it in the spec's JVM would set it for every suite beside it.
+ * and because setting it in the spec's JVM would set it for every suite beside it. The servers
+ * run in a second child JVM, out of reach of whatever the suites beside it do to the spec's.
  */
 class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -56,12 +60,63 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with Befor
 
   /** The servers and the chain, minted ONCE for the suite: minting is ten keytool runs (a JVM
    *  each), and nothing a child does changes them — every child JVM is still a fresh process
-   *  that has fetched nothing. The AIA server starts first: its port goes into the leaf. */
-  private final class Servers {
+   *  that has fetched nothing. They serve from a JVM of their own, not the spec's: `itAll` runs
+   *  suites in parallel in one JVM, and a neighbour forcing full collections (LiveHeapSpec's class
+   *  histograms) stopped every thread in it, the servers' with them, past the probe's 5 s connect
+   *  budget, which bounds the TLS handshake and the intermediate's fetch within it (Main #2607). */
+  private final case class Serving(process: Process, originPort: Int, rootTrustStore: String)
+
+  private var started: Option[Serving] = None
+  private def serving: Serving = synchronized { started.getOrElse { val s = startServers(); started = Some(s); s } }
+
+  private def startServers(): Serving = {
+    val process = ChildJvm(configuration).start(ServersMain)
+    val lines   = new BufferedReader(new InputStreamReader(process.getInputStream, UTF_8))
+    val seen    = new StringBuffer
+    val ready   = Future(blocking(Iterator.continually(lines.readLine()).takeWhile(_ != null)
+      .map { line => seen.append(line).append('\n'); line }.find(_.startsWith(Ready))))(using ExecutionContext.global)
+    Try(Await.result(ready, SpecTimeouts.Run)).toOption.flatten match {
+      case Some(line) =>
+        // Drained from here on, so nothing the servers print can fill the pipe and stall them.
+        val drain = new Thread(() => { Try(lines.transferTo(Writer.nullWriter())); () })
+        drain.setDaemon(true); drain.start()
+        val Array(_, port, trustStore) = line.split(" ", 3)
+        Serving(process, port.toInt, trustStore)
+      case None =>
+        process.destroyForcibly()
+        fail(s"the servers' JVM never became ready:\n$seen")
+    }
+  }
+
+  // Closing its stdin is the servers' JVM's signal to stop and delete what it minted.
+  override def afterAll(): Unit = try synchronized(started.foreach { serving =>
+    serving.process.getOutputStream.close()
+    if (!serving.process.waitFor(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)) serving.process.destroyForcibly()
+  }) finally super.afterAll()
+
+  private def handshake(applied: Option[IssuerCertificateFetching], jvmOptions: Seq[String] = Nil): (Int, String) =
+    ChildJvm(configuration).run(ProbeMain,
+      jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=${serving.rootTrustStore}", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
+      args = Seq(applied.fold(NoPolicy)(_.toString), s"https://127.0.0.1:${serving.originPort}/"))
+}
+
+object IssuerCertificateFetchingSpec {
+  private val Loopback      = InetAddress.getLoopbackAddress
+  private val StorePassword = "changeit"
+  private val ProbeMain     = "tools.IssuerCertificateFetchingProbe"
+  private val ServersMain   = "tools.IssuerCertificateFetchingServers"
+  /** The first word of the line the servers' JVM prints once both serve: `ready <origin port> <root trust store>`. */
+  private[tools] val Ready  = "ready"
+  /** The probe's first argument when its `main` applies no policy at all. */
+  private[tools] val NoPolicy = "none"
+
+  /** The AIA server (plain HTTP, serving the intermediate) and the origin (HTTPS, presenting the
+   *  leaf alone). The AIA server starts first: its port goes into the leaf. */
+  private[tools] final class Servers(keytool: Keytool) {
     val dir     = Files.createTempDirectory("issuer-fetching")
     val issuers = HttpServer.create(new InetSocketAddress(Loopback, 0), 0)
     issuers.start()
-    val chain   = Chain.mint(new Keytool(configuration.javaHome), dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
+    val chain   = Chain.mint(keytool, dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
     issuers.createContext("/intermediate.cer", exchange => {
       val bytes = Files.readAllBytes(chain.intermediateDer)
       exchange.getResponseHeaders.set("Content-Type", "application/pkix-cert")
@@ -84,27 +139,9 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with Befor
     }
   }
 
-  private var started: Option[Servers] = None
-  private def servers: Servers = synchronized { started.getOrElse { val s = new Servers; started = Some(s); s } }
-
-  override def afterAll(): Unit = try synchronized(started.foreach(_.close())) finally super.afterAll()
-
-  private def handshake(applied: Option[IssuerCertificateFetching], jvmOptions: Seq[String] = Nil): (Int, String) =
-    ChildJvm(configuration).run(ProbeMain,
-      jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=${servers.chain.rootTrustStore}", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
-      args = Seq(applied.fold(NoPolicy)(_.toString), s"https://127.0.0.1:${servers.origin.getAddress.getPort}/"))
-}
-
-object IssuerCertificateFetchingSpec {
-  private val Loopback      = InetAddress.getLoopbackAddress
-  private val StorePassword = "changeit"
-  private val ProbeMain     = "tools.IssuerCertificateFetchingProbe"
-  /** The probe's first argument when its `main` applies no policy at all. */
-  private[tools] val NoPolicy = "none"
-
   /** root → intermediate → leaf (for 127.0.0.1, naming `aiaUrl` as its issuer's location),
    *  minted with the JDK's own keytool, since the JDK has no public API for it. */
-  private final case class Chain(keys: Path, intermediateDer: Path, rootTrustStore: Path) {
+  private[tools] final case class Chain(keys: Path, intermediateDer: Path, rootTrustStore: Path) {
 
     /** A server context presenting the leaf ALONE — no intermediate in the chain it sends. */
     def leafOnlyServerContext: SSLContext = {
@@ -123,7 +160,7 @@ object IssuerCertificateFetchingSpec {
     }
   }
 
-  private object Chain {
+  private[tools] object Chain {
     def mint(keytool: Keytool, dir: Path, aiaUrl: String): Chain = {
       val keys  = dir.resolve("keys.p12")
       val trust = dir.resolve("trust.p12")
@@ -150,6 +187,19 @@ object IssuerCertificateFetchingSpec {
       Seq("root.pem", "intermediate.csr", "leaf.csr", "leaf.der").foreach(name => Files.delete(dir.resolve(name)))
       Chain(keys, dir.resolve("intermediate.der"), trust)
     }
+  }
+}
+
+/** The servers' JVM: mints the chain, serves until its stdin closes, then deletes what it minted. */
+object IssuerCertificateFetchingServers {
+  def main(args: Array[String]): Unit = {
+    val servers = new IssuerCertificateFetchingSpec.Servers(new Keytool(settings.ProcessConfiguration.resolve().javaHome))
+    try {
+      println(s"${IssuerCertificateFetchingSpec.Ready} ${servers.origin.getAddress.getPort} ${servers.chain.rootTrustStore}")
+      System.out.flush()
+      System.in.readAllBytes()
+    } finally servers.close()
+    System.exit(0)
   }
 }
 
