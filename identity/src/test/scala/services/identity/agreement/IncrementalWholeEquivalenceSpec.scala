@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{AnswersChanged, Answer, CandidateQuery, DetailFacts, FilmTable, GeneratedIdentityCorpus, Hit, IdentityCalibration,
   IdentityLookups, IdentityMeasures, IdentityResolver, IncrementalResolver, InMemoryIdentityModelStore, Listing, PosterAnswers, PosterHash, Question,
-  Resolution, ResolverDecision, ScreeningDays, TitleDecorations, UnifiedEvidence, UnifiedRules}
+  Resolution, ResolverDecision, ScreeningDays, TakeFlips, TitleDecorations, UnifiedEvidence, UnifiedRules}
 import services.movies.{ListingKey, SingleCountryNormalizer}
 import tools.IndependentCases
 
@@ -65,6 +65,20 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
   // a restart seeded them under the key each verdict was filed by until 2026-10-25, and a renumbered key asked another's.
   it should "ask what the twin asks" in {
     every(Budget.Production)(_.namesReadByNothing(asking = true, parted = () => ())) shouldBe empty
+  }
+
+  // THE FLIP PROPERTY (convergence-failures-2026-10-29 G3): the convergence leg's takes-drift rows fail on FLIPS too
+  // (services.identity.TakeFlips, prod's kinowo_identity_listing_flips) -- a take that goes back to a film it left, moves
+  // more than once, or moves where no input did -- which an end-state comparison cannot see: run 3509's rows failed on
+  // flips alone, after the flip gate was born. Under production's correction budget the stage serves interim takes, and an
+  // interim take a pending correction then overrides is exactly such a flip. Held here, in seconds, over generated
+  // histories: every listing the incremental path flips, the whole resolve of the same inputs flips too (leaving and
+  // returning listings, answers filed late, can move a whole resolve's take back and forth as well).
+  it should "flip no take that a whole resolve of the same inputs, step by step, does not flip" in {
+    val flipped = new java.util.concurrent.atomic.AtomicInteger
+    every(Budget.Production)(_.flipsBeyondWhole(flipped = () => flipped.incrementAndGet())) shouldBe empty
+    // not vacuous: the recorder sees flips -- ones the whole resolve makes too, so allowed -- in some of the histories
+    withClue("histories where a listing flipped, the whole resolve's way: ") { flipped.get should be > 0 }
   }
 
   "its cases" should "reach the stage's takes — agreed, filled, corrected — and the model's matches" in {
@@ -384,6 +398,26 @@ object IncrementalWholeEquivalenceSpec {
           .orElse(Option.when(asking && twin.wanted != stage.wanted)(at(s"wanted: twin ${(twin.wanted -- stage.wanted).take(2)}, stage ${(stage.wanted -- twin.wanted).take(2)}")))
           .orElse(Option.when(twin.backlog != stage.backlog)(at("backlog differs")))
       }.nextOption().tap(_ => if (named) parted())
+    }
+
+    /** Every listing's served take, recorded after every event for the incremental path and the whole resolve alike
+     *  ([[TakeFlips]], an event's inputs moved unless it was a restart or a tick): the first listing the incremental path
+     *  flips that the whole resolve does not. */
+    def flipsBeyondWhole(flipped: () => Unit, steps: Int = 30): Option[String] = {
+      val (incremental, wholly) = (new TakeFlips, new TakeFlips)
+      def served(resolution: Resolution) =
+        resolution.decisions.filter(_.members.nonEmpty).flatMap { d =>
+          val film = d.film.map(id => s"tmdb:$id").orElse(d.fallback.map(f => s"${f.source}:${f.id}")).getOrElse(TakeFlips.NoFilm)
+          d.members.map(_ -> TakeFlips.Served(film, d.basis.toString))
+        }
+      (Iterator.range(0, steps).map(_ => event()) ++ Iterator(()).map(_ => finish())).zipWithIndex.foreach { case (label, step) =>
+        val moved: ListingKey => Boolean = _ => label != "restart" && label != "tick"
+        incremental.record(s"$step $label", served(applied()), moved)
+        wholly.record(s"$step $label", served(whole(settled = false)), moved)
+      }
+      val alsoWhole = wholly.flips.map(_.key).toSet
+      if (incremental.flips.nonEmpty) flipped()
+      incremental.flips.find(f => !alsoWhole(f.key)).map(f => s"seed $seed: ${f.line}")
     }
 
     /** The whole resolve at the end of the history, settled: what the cases' reach is read off. */

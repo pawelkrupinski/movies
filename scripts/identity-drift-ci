@@ -194,8 +194,12 @@ if [ -z "$run" ]; then
     || die "dispatched, but no run of ${push:0:9} on $branch was found (the run deletes $branch when it ends)"
   run=$DISPATCHED_RUN
   # The run's owner, for agentctl's branch-red routing (AGENTCTL.md "dispatch"); best effort, never a verdict.
-  [ ! -x "$HOME/bin/agentctl" ] || bounded 30 "$HOME/bin/agentctl" dispatch record --branch "$branch" --run "$run" \
-    --workflow "$workflow" --purpose "identity-drift-ci ${for_red:+--for-red $for_red }${commit:0:9}" > /dev/null 2>&1 || true
+  # (A run of 2026-10-29 went unrecorded under a 30 s bound and showed as a branch red of NOBODY: 90 s, and said.)
+  if [ -x "$HOME/bin/agentctl" ]; then
+    bounded 90 "$HOME/bin/agentctl" dispatch record --branch "$branch" --run "$run" --workflow "Identity model convergence" \
+      --purpose "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" > /dev/null 2>&1 \
+      || say "could not record run $run's owner (agentctl dispatch record): its red, if any, reaches nobody"
+  fi
   say "run $run on $branch: drift-only, $(expected_rows | wc -l | tr -d ' ') row(s) on $tier ($(expected_rows | tr '\n' ',' | sed 's/,$//'))"
   if [ -n "$nowait" ]; then say "not waiting: collect with  scripts/identity-drift-ci --run $run"; echo "$run"; exit 0; fi
 fi
