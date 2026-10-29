@@ -263,6 +263,8 @@ red=() unjudged=() better=() same=() worse=() unknown_base=()
 while IFS=$'\t' read -r name _ conclusion; do
   [ -n "$name" ] || continue
   [ -z "$expected" ] || grep -qxF "$name" <<< "$expected" || continue
+  # --run: the countries a drift-only dispatch left out show as skipped rows, which judge nothing
+  [ -n "$expected" ] || [ "$conclusion" != skipped ] || continue
   seed=${name#takes-drift-}; seed=${seed%% *}; country=${name#*(}; country=${country%)}
   dir="$out/identity-drift-$(code_of "$country")-takes-drift-$seed"
   echo "$name: $conclusion -- $(cat "$dir/verdict.txt" 2> /dev/null || echo 'no verdict.txt')"

@@ -504,9 +504,13 @@ drift_push() { # <path> <message> [env...]: commits <path> with <message>, runs 
   mkdir -p "$area/$(dirname "$path")"; echo "x $RANDOM" >> "$area/$path"
   scratch_git "$area" add -A; scratch_git "$area" commit -qm "$message"
   : > "$AREA_CALLS"
-  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+  # GITHUB_ACTIONS unset: in a CI job (this test in agentctl's remote checks) the check is skipped, said -- tested below
+  (cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
      bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
 }
+code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: 3726' GITHUB_ACTIONS=true)"
+check "in a CI job the drift check dispatches nothing, and says main's run judges the fix" "0 0 1" \
+  "$code $(calls identity-drift-ci) $(grep -c 'not run from a CI job' "$testroot/area-out")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: #2517; 3726')"
 check "a Fixes-Red push touching a drift path runs the red's drift rows, each claimed run once, at the pushed commit" "0 1 1" \
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --for-red 2517") $(calls 'for-red 3726')"
