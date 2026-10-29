@@ -15,15 +15,21 @@ package services.identity
  *  credit to Antoine Fuqua. The node is then read on its titles alone
  *  ([[Evidence.titlesOnly]]) and the linked film is denied it; a link another source confirms, or one only a single
  *  source contradicts, stands (DE "Kohlhiesels Töchter": Cineamo's 1962 film at one venue, kinoheld's 1920 one at
- *  another — two films, each named once).
+ *  another — two films, each named once) — but for a current release that source bills at more venues than the link,
+ *  [[ReleaseVenues]] at least, against an older linked film ([[venues]]): the operator's pick is then an old namesake of
+ *  the film opening that month. DE Werkstattkino's "CAMOUFLAGE", linked to the 2001 comedy (56085m) with its original
+ *  title copied, is Gibalenko's 2026 film that Filmstarts' one entry dates and credits at three venues; it took the
+ *  comedy whenever Gröben-Lichtspiele's Cineamo entry of the 2026 film, the second source, was away (convergence #2473).
  *
  *  Overruled too when no source backs the linked film and the venue's own title, read without the facts the feed copied,
  *  names another film exactly and the linked one not at all ([[FeedLink.TitledRival]]): the operator typed the title
  *  and picked the record from a search, and the title is the claim. DE Yorck's "Jin-Roh - Die Wolfsbrigade", linked to
  *  Kim Jee-woon's 2018 "Illang" with its 139 minutes and original title copied, is Okiura's 1999 anime. */
-private[identity] final case class FeedLink(id: CatalogueId, film: Int, rival: Int, sources: Int) {
+private[identity] final case class FeedLink(id: CatalogueId, film: Int, rival: Int, sources: Int, venues: Int = 0) {
   private def because: String =
-    if (sources == FeedLink.TitledRival) s"its title names $rival exactly and $film not at all" else s"$sources other source(s) back $rival"
+    if (sources == FeedLink.TitledRival) s"its title names $rival exactly and $film not at all"
+    else if (venues > 0) s"$sources other source(s) back $rival, a current release, at $venues venues against an older film's link"
+    else s"$sources other source(s) back $rival"
   /** What the decision's explanation says of it. */
   def explanation: String =
     s"feed ${id.source} ${id.id} links $film, overruled: $because and none backs $film — its copied facts set aside"
@@ -34,6 +40,9 @@ private[identity] final case class FeedLink(id: CatalogueId, film: Int, rival: I
 private[identity] object FeedLink {
   /** How many sources other than the feed's own entry must back a rival the title names to overrule the link. */
   val OverrulingSources = 2
+  /** How many venues besides the node's must bill a current release a single source backs for it to overrule a link to an
+   *  older film — more than the link's own venues besides ([[FeedLink.venues]]). */
+  val ReleaseVenues = 2
   /** The `sources` of a link overruled by the venue's own title naming another film exactly, no source backing either. */
   val TitledRival = 0
 

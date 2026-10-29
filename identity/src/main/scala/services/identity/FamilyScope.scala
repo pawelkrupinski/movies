@@ -216,23 +216,50 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
   private def overrule(node: EvidenceNode): Option[FeedLink] = feedLinked(node).flatMap { case (id, film) =>
     val listing = node.evidence.measured
-    val groups  = IdentityMeasures.titleGroups(listing)
     val own     = sourceOf(node)
-    // a film the title carries as one of its delimited pieces is backed by the venues billing that piece alone: DE Astor's
-    // "ATMOS: Michael", which Cineamo links to Dreyer's 1924 film, is the "Michael" sixteen venues credit to Antoine Fuqua
-    def sources(candidate: Candidate) = backing.sources((groups ++ IdentityMeasures.searchGroups(listing, candidate.film) ++
-      listing.shapeKeys.filter(candidate.film.titleKeys)).distinct, candidate.film, own)
+    def sources(candidate: Candidate) = backing.sources(backingGroups(listing, candidate), candidate.film, own)
     // a rival the title names only as one of its pieces overrules no link to a film it names whole: DE Metropolis's
     // "KIRSCHBLÜTEN - HANAMI", linked to Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes
     val namedWhole = pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
     val overruling = if (namedWhole) IdentityMeasures.Rivalling else IdentityMeasures.TitlesItsOwn
     if (pool.exists(candidate => candidate.tmdbId == film && sources(candidate) > 0)) None
-    else pool.filter(candidate => candidate.tmdbId != film && overruling(titleRelation(listing, candidate).value))
-      .map(candidate => candidate.tmdbId -> sources(candidate)).filter(_._2 >= FeedLink.OverrulingSources)
-      .sortBy { case (rival, count) => (-count, rival) }.headOption
-      .map { case (rival, count) => FeedLink(id, film, rival, count) }
-      .orElse(titledRival(node.evidence.titlesOnly.measured, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
+    else {
+      val rivals = pool.filter(candidate => candidate.tmdbId != film && overruling(titleRelation(listing, candidate).value))
+        .map(candidate => candidate -> sources(candidate))
+      rivals.filter(_._2 >= FeedLink.OverrulingSources).sortBy { case (rival, count) => (-count, rival.tmdbId) }.headOption
+        .map { case (rival, count) => FeedLink(id, film, rival.tmdbId, count) }
+        .orElse(currentRelease(node, film, rivals.collect { case (rival, count) if count > 0 => rival })
+          .map { case (rival, venues) => FeedLink(id, film, rival, 1, venues) })
+        .orElse(titledRival(node.evidence.titlesOnly.measured, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
+    }
   }
+  /** The one current release among `backed` (the rivals a source backs, fewer than [[FeedLink.OverrulingSources]]) that
+   *  the title names whole and more of the title's venues bill than `node`'s link, [[FeedLink.ReleaseVenues]] at least,
+   *  when the linked `film` is an older one the listing does not date — with the venues billing it. The operator's pick
+   *  from a search is then an old namesake of the film opening that month, not one claim against another ([[FeedLink]]).
+   *  Never a release the title names only as one of its pieces (DE Babylon's "Nosferatu Live mit Babylon Orchester
+   *  Berlin", which Cineamo links to Herzog's 1979 film, is no 2025 "Nosferatu"), nor against a link the listing dates by
+   *  its film's year (Melodie's one-night "Spider-Man" [2002] is Raimi's, not the 2026 "Spider-Man: Brand New Day"). */
+  private def currentRelease(node: EvidenceNode, film: Int, backed: Seq[Candidate]): Option[(Int, Int)] = {
+    val firstYear = node.listings.flatMap(_.screenings.firstYear).minOption
+    def current(candidate: Candidate) = candidate.film.year.exists(year => firstYear.exists(year >= _ - IdentityResolver.CurrentRelease))
+    val listing = node.evidence.measured
+    val older   = pool.find(_.tmdbId == film).exists(linked => !current(linked) &&
+      linked.film.year.exists(year => !node.evidence.statedYear.contains(year)))
+    if (!older) None
+    else backed.filter(candidate => current(candidate) && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
+      .map(candidate => candidate.tmdbId -> backing.corroborating(backingGroups(listing, candidate), candidate.film, node.venue, sourceOf(node)))
+      .filter { case (_, venues) => venues >= FeedLink.ReleaseVenues && venues > node.venues.size } match {
+      case Seq(rival) => Some(rival)
+      case _          => None
+    }
+  }
+  /** The title groups whose venues back `candidate` for `listing`: its own title's, and a film the title carries as one of
+   *  its delimited pieces is backed by the venues billing that piece alone — DE Astor's "ATMOS: Michael", which Cineamo
+   *  links to Dreyer's 1924 film, is the "Michael" sixteen venues credit to Antoine Fuqua. */
+  private def backingGroups(listing: IdentityMeasures.Listing, candidate: Candidate): Seq[String] =
+    (IdentityMeasures.titleGroups(listing) ++ IdentityMeasures.searchGroups(listing, candidate.film) ++
+      listing.shapeKeys.filter(candidate.film.titleKeys)).distinct
   /** The one film of the pool `titles` (a node's titles alone) name exactly, when they name the linked `film` not at all. */
   private def titledRival(titles: IdentityMeasures.Listing, film: Int): Option[Int] = {
     def relation(candidate: Candidate) = IdentityMeasures.titleRelation(titles, candidate.film, houses, qualifiers).value

@@ -2886,6 +2886,44 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE Werkstattkino's "CAMOUFLAGE", recording 573 with Gröben-Lichtspiele's Cineamo entry of the 2026 film away (the
+  // drift replay of convergence #2473, seed 2): Cineamo links it to the 2001 comedy (56085m), copying its original title;
+  // Filmstarts' one entry 1000049621 dates Gibalenko's film 2026 and credits him at three venues the month it opens
+  private val october           = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 22)))
+  private val camouflageFilms   = Seq(F(56085, "Camouflage - Alles nur Tarnung", 2001, "James Keach", 98, 2.3807, original = Some("Camouflage")),
+    F(1735950, "Камуфляж", 2026, "Mykyta Gibalenko", 107, 5.7422, alternatives = Seq("Camouflage")))
+  private def linkedCamouflage(billed: Listing) = fed(billed, "cineamo", "56085m").copy(originalTitle = Some("Camouflage"), screenings = october)
+  private def filmstartsCamouflage(year: Int) = Seq(KinoMuza, Helios, Multikino).map(v =>
+    fed(listing(v, "Camouflage", Some(year), Some("Mykyta Gibalenko"), Some(107)), "webedia", "1000049621").copy(screenings = october))
+
+  it should "be overruled by a single source billing a current release at more venues than the link, against an older film" in {
+    val linked = linkedCamouflage(listing(KinoMikro, "CAMOUFLAGE"))
+    val others = filmstartsCamouflage(2026)
+    val r = shipped(linked +: others, camouflageFilms)
+    withClue((linked +: others).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      (linked +: others).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1735950))
+      r.decisionOf(linked.key).explanation.exists(line => line.contains("cineamo 56085m links 56085, overruled") && line.contains("a current release")) shouldBe true
+    }
+  }
+
+  it should "stand against a single source billing an older film, however many venues bill it" in {
+    // the same single source billing a film of no current year names one film against another (DE "Kohlhiesels Töchter")
+    val films  = camouflageFilms.map(f => if (f.id == 1735950) f.copy(year = 2014) else f)
+    val linked = linkedCamouflage(listing(KinoMikro, "CAMOUFLAGE"))
+    val r = shipped(linked +: filmstartsCamouflage(2014), films)
+    withClue(r.decisionOf(linked.key).render)(r.decisionOf(linked.key).explanation.exists(_.contains("overruled")) shouldBe false)
+  }
+
+  it should "stand against a single source where the listing dates the linked film, or names the release only as a piece" in {
+    // DE Melodie's one-night "Spider-Man" [2002], linked to Raimi's film, is no 2026 "Spider-Man: Brand New Day"; Babylon's
+    // "Nosferatu Live mit Babylon Orchester Berlin", linked to Herzog's 1979 film, no 2025 "Nosferatu" (recording 573)
+    Seq(listing(KinoMikro, "CAMOUFLAGE", Some(2001)), listing(KinoMikro, "CAMOUFLAGE Live mit Kinoorchester")).foreach { billed =>
+      val linked = linkedCamouflage(billed)
+      val r = shipped(linked +: filmstartsCamouflage(2026), camouflageFilms)
+      withClue(r.decisionOf(linked.key).render)(r.decisionOf(linked.key).explanation.exists(_.contains("overruled")) shouldBe false)
+    }
+  }
+
   it should "stand where the title names the linked film whole and the others' film only as one of its pieces" in {
     // DE Metropolis Kino's "KIRSCHBLÜTEN - HANAMI" [121′] ("Cherry Blossoms"), prod 2026-10-22: Cineamo links Dörrie's 2008
     // film (6461m), its whole title; the title-segment join set it beside venues billing Denise Fernandes's "Hanami", and
