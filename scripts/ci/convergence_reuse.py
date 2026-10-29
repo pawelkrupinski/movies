@@ -40,8 +40,19 @@
 #   convergence_reuse.py find --sha SHA                 the newest source run whose facts name SHA's key, or nothing (the
 #                                                       kick's hint: verify decides)
 #   convergence_reuse.py expected-rows [REV]            the rows main's matrix runs, `<phase> (<country>)` a line
+#   convergence_reuse.py complete --run RUN --sha SHA [--reused-from RUN] [--inputs F] [--order-phases P]
+#                                                       NO FALSE GREEN (below): exit 1, each reason on stderr, when a takes
+#                                                       or takes-drift row of RUN was skipped, cancelled or never ran and
+#                                                       no proven reuse names a source
 #   convergence_reuse.py judge --run F --jobs F --facts F --mine F
 #                                                       judge() over JSON files: each reason a line, none when it holds
+#
+# NO FALSE GREEN (convergence-failures 2026-10-29, G7): a main run whose takes or takes-drift rows did not run (run 1747:
+# its takes rows skipped, the run green, an 18-hour red episode read as two) is no verdict, and must never count green for
+# THE GATE. Its `verdict complete` job (identity-model-convergence.yml) runs incomplete() over the run's own jobs and
+# fails the run when any of those rows has no decided conclusion -- unless the preflight's `reused-from` names a run this
+# check proved (verify), whose rows ran. A takes row whose skip gate left out its diff (takes-skip-gate.sh) still ran
+# and concluded: the gate's own proof stands.
 # env: GH_REPO, GH_TOKEN (gh's own), FIXTURE_RELEASE_TAG (the pairs). Tested by convergence_reuse_test.py and
 # ConvergenceReuseSpec.
 
@@ -82,7 +93,7 @@ FIND_RUNS = 30
 FIND_HOURS = 24
 
 
-USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|expected-rows|judge ... (see the header)"
+USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|complete|expected-rows|judge ... (see the header)"
 
 
 class Unproven(Exception):
@@ -267,6 +278,51 @@ def judge(source_run, jobs, facts, mine):
         elif not same:
             why.append(f"takes ({code}): judged against {theirs[:9]} there, main would judge against {main[:9]}")
     return why
+
+
+# ── no false green ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+VERDICT_PHASES = ("takes", "takes-drift-1", "takes-drift-2")
+DECIDED = ("success", "failure")
+
+
+def incomplete(jobs, rows, reused_from="", inputs=None, order_phases="both"):
+    """Why a run with `jobs` gives no verdict for THE GATE: each takes or takes-drift row of `rows` (expected_rows())
+    that did not run to a decided conclusion, and inputs that are not main's suite; empty when every one decided, or
+    when `reused_from` names the proven source whose rows did."""
+    if reused_from:
+        return []
+    # what leaves a takes row out: a takes-only run, some countries, another recording (not the skip gate's mode: a takes
+    # row it skips the diff of still runs and decides, on its own proof; nor the order phases, no takes row)
+    why = [f"this run's legs: {reason}" for reason in inputs_unlike_main(inputs, order_phases)
+           if reason.startswith(("takes-only", "drift-only", "takes-countries", "recording"))] if inputs is not None else []
+    result = {j.get("name"): j for j in jobs}
+    for name in rows:
+        if not name.startswith(tuple(f"{p} (" for p in VERDICT_PHASES)):
+            continue
+        job = result.get(name)
+        if job is None:
+            why.append(f"`{name}` did not run")
+        elif job.get("conclusion") not in DECIDED:
+            why.append(f"`{name}` ended {job.get('status')}/{job.get('conclusion')}: no verdict")
+    return why
+
+
+def cmd_complete(opts):
+    try:
+        why = incomplete(run_jobs(opts["run"]), expected_rows(workflow_at(opts["sha"])), opts.get("reused-from", ""),
+                         read_json(opts["inputs"]) if opts.get("inputs") else None, opts.get("order-phases", "both"))
+    except (Unproven, subprocess.CalledProcessError, OSError, ValueError, KeyError) as e:
+        why = [f"could not read the run's rows: {e}"]
+    if not why:
+        print(f"convergence-reuse: run {opts['run']}: every takes and takes-drift row decided")
+        return 0
+    for reason in why:
+        print(f"::error title=no verdict::{reason} -- a run whose takes rows did not run is no green (G7)", file=sys.stderr)
+    summary(["### No verdict: this run's takes rows did not all run", "",
+             "A green run must have judged every takes and takes-drift row (or reused a proven run's verdict).", ""]
+            + [f"- {w}" for w in why])
+    return 1
 
 
 # ── reading the forge ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -546,7 +602,7 @@ def main(argv):
     if command == "phases-expression":
         print(PHASES_EXPRESSION)
         return 0
-    handlers = {"inputs": cmd_inputs, "facts": cmd_facts, "verify": cmd_verify, "find": cmd_find}
+    handlers = {"inputs": cmd_inputs, "facts": cmd_facts, "verify": cmd_verify, "find": cmd_find, "complete": cmd_complete}
     if command not in handlers:
         print(USAGE, file=sys.stderr)
         return 64

@@ -246,5 +246,40 @@ class KeyTest(unittest.TestCase):
         self.assertTrue(reuse.listed("build.sbt", patterns))
 
 
+class NoFalseGreen(unittest.TestCase):
+    """G7: a run whose takes or takes-drift rows did not all decide is no green, unless a proven reuse names its source."""
+
+    def test_every_row_decided_is_complete(self):
+        self.assertEqual(reuse.incomplete(green_jobs(), ROWS), [])
+
+    def test_a_red_takes_row_is_decided(self):
+        jobs = [dict(j, conclusion="failure") if j["name"] == "takes-drift-2 (germany)" else j for j in green_jobs()]
+        self.assertEqual(reuse.incomplete(jobs, ROWS), [])
+
+    def test_a_skipped_takes_row_is_no_verdict(self):
+        jobs = [dict(j, conclusion="skipped") if j["name"] == "takes (united-kingdom)" else j for j in green_jobs()]
+        self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 1)
+
+    def test_a_missing_or_cancelled_drift_row_is_no_verdict(self):
+        jobs = [j for j in green_jobs() if j["name"] != "takes-drift-1 (poland)"]
+        jobs = [dict(j, conclusion="cancelled") if j["name"] == "takes-drift-2 (spain)" else j for j in jobs]
+        self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 2)
+
+    def test_other_rows_skipped_are_not_this_checks(self):
+        jobs = [dict(j, conclusion="skipped") if j["name"].startswith("next-day") else j for j in green_jobs()]
+        self.assertEqual(reuse.incomplete(jobs, ROWS), [])
+
+    def test_a_proven_reuse_is_complete_with_every_row_skipped(self):
+        jobs = [dict(j, conclusion="skipped") for j in green_jobs()]
+        self.assertEqual(reuse.incomplete(jobs, ROWS, reused_from="2821"), [])
+        self.assertNotEqual(reuse.incomplete(jobs, ROWS), [])
+
+    def test_legs_handed_less_than_mains_suite_are_no_verdict(self):
+        self.assertNotEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS, **{"takes-only": "true"})), [])
+        self.assertEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS)), [])
+        # the skip gate enforced still runs every takes row: its proof stands, the run decides
+        self.assertEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS, **{"takes-skip": "enforce"})), [])
+
+
 if __name__ == "__main__":
     unittest.main()
