@@ -966,6 +966,36 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     asked.size shouldBe once
   }
 
+  // Identity model convergence #2473 (run 3656), the drift replay's UK seed 2: Rio's "Queer Horror Nights: THE ROCKY
+  // HORROR PICTURE SHOW with Shadow Cast" was asked inline, and Metacritic's title search, answered, found a hit whose
+  // record no one had asked: the cluster waited on it, and was agreed only at the next scrape's apply, which another
+  // cluster's inline ask filed that record in — a take that moved where none of its inputs did.
+  it should "ask inline the questions a new cluster's answers lead to, and take what they answer in its first take" in {
+    val answered = scala.collection.mutable.Set.empty[String]
+    val rt = new FamilyAnswers {
+      val family: VoterFamily = VoterFamily.RottenTomatoes
+      private val held = new HeldFamilyAnswers(family, Map("klondike_2022" -> SourceRecord(klondike)))
+      private def when[A](question: String)(answer: => Answer[A]): Answer[A] = if (answered(question)) answer else Answer.Unknown
+      def titled(text: String)     = when(s"title|$text")(held.titled(text))
+      def directedBy(name: String) = when(s"director|$name")(held.directedBy(name))
+      def record(id: String)       = when(s"record|$id")(held.record(id))
+      override def fresh(question: String) = answered(question)
+    }
+    val asked = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
+    val askNow: AgreementStage.AskNow = (questions, _) => {
+      asked += questions
+      questions.foreach { case Question.Family(VoterFamily.RottenTomatoes, question) => answered += question; case _ => () }
+    }
+    val stage = new AgreementStage(agreeing() + (VoterFamily.RottenTomatoes -> rt), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, askNow = askNow)
+    val known = resolution.copy(decisions = resolution.decisions.drop(1), nodes = 1, familyOf = Map(matched.key -> 0))
+    stage.apply(known, listingOf, version = 1)                                     // the first pass: nothing new to it
+    stage.apply(resolution, listingOf, version = 2).decisions.head.film shouldBe Some(913760)
+    asked.flatten.toSet should contain (Question.Family(VoterFamily.RottenTomatoes, "record|klondike_2022"))
+    // each round asks only what no round before it did
+    asked.flatten.size shouldBe asked.flatten.toSet.size
+  }
+
   // PL "Bez końca" ×7 (2026-10-23 16:27, 10-26 10:43): a scrape reshaped a cluster the families agreed on, under the key it
   // kept, and its new listing's title had not been asked. Inline asks went only to a cluster KEY never met, so the reshaped
   // one waited on the queue: its take was published lost, then retaken half a minute later once the answers came in.
