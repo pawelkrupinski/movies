@@ -160,3 +160,27 @@ java -Xmx3g -cp "$(cat target/identity-tools/classpath)" scripts.IdentitySlice d
   differs only by case (`scripts/identity-measure-local`'s header). Judge PL's rows by CI's replay.
 
 The correction-lag ones are in `docs/identity-experiments/2026-10-28-drift-replay-stage-hears-tmdb-filings.md`.
+
+## 2026-10-29: two stage lags behind most of them (red fixer #2473, run 3656)
+
+Recording 573 reproduces CI's UK seed-1 flips exactly (`scripts.IdentityDrift uk --seed 1`, local, ~5 min a seed).
+
+- **The corrections' budget** (`AgreementStage.CorrectionsPerApply`, 200 an apply) deferred every fresh read. A take
+  never read at its shape, or read waiting on an answer since filed, was served as the model took it until a later
+  apply's budget reached it. The replay boots with nothing stored, and its stage's backlog stayed set through
+  projections 1-22 of 27. Fixed: only a decided correction waits for the budget, standing as decided
+  (`docs/design/identity-no-drift/state/21-…`). Cures Chichester's "The Ties That Bind Us", the three "Cosi Fan Tutte"
+  and, by `AgreementCorrectionSpec`'s run-563 case, US "NT Live: Hamlet".
+- **A new cluster's inline ask** asked its first read's gaps only. Rio's "Rocky Horror" then waited on the record of a
+  hit Metacritic's search found, and was agreed at the next scrape, once another cluster's ask filed it. Fixed: the
+  inline ask follows the questions its answers lead to (`AgreementStage.InlineRounds`).
+
+After both, recording 573: UK seed 1 keeps one flip, UK seed 2 none, US seed 2 none, DE seed 2 CAMOUFLAGE; no
+divergence anywhere. Still open:
+
+- **UK "Rose (2023)"** (flicks.co.uk's listing at Duke of York's Brighton and Queen's Film Theatre Belfast). A model
+  take under partial TMDB answers: 901251, Oplev's Danish "Rose" (2022), at boot and from step 8 (fill 1.0) on, the
+  whole resolve's take; 1069112, "Rose Parade 2023" (a 2023-01-02 broadcast), at step 2 (fill 0.5). No correction
+  reverses it. Find which released answer moves the model, and why a namesake billed with the year alone outranks the
+  film while a rival's answer is missing.
+- **DE "CAMOUFLAGE"**: the rule decision above, unchanged by either fix.
