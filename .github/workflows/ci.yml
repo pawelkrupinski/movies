@@ -142,9 +142,9 @@ jobs:
     # the tools' and the identity tooling's, and `worker` the worker's rest beside the web and scrapers modules. Each
     # row is cut to roughly equal time from per-suite JUnit times (measure run 3419 and after). One runner running all
     # five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15). The non-sbt checks
-    # (roster drift, the read-model stamp, actionlint, the script self-tests, …) ride `heavy1`, the lightest row (Main
-    # runs 3614-3623: heavy1 4.1 min against worker-identity 7.2, which carried them until then); the gitops manifests
-    # ride `worker`, whose deploy specs read them.
+    # (roster drift, the read-model stamp, actionlint, …) ride `heavy1`, the lightest row (Main runs 3614-3623: heavy1
+    # 4.1 min against worker-identity 7.2, which carried them until then); the script self-tests are the `script-tests`
+    # job, below; the gitops manifests ride `worker`, whose deploy specs read them.
     test:
         name: test (${{ matrix.shard }})
         strategy:
@@ -247,18 +247,6 @@ jobs:
                   SHELLCHECK_OPTS='-S warning' "$RUNNER_TEMP/actionlint"
                   scripts/ci/shellcheck-action-runs.sh
 
-            # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts,
-            # ios/scripts and infra/bin), found by name and run in parallel by scripts/run-script-tests: which
-            # checks the pre-push hook selects, what the preflight jobs accept, how a failed test is judged
-            # and ledgered, how the throwaway MongoDB starts, the identity and release tooling. A new test
-            # runs here the moment it exists; one tagged `# script-test: <tag>` runs where its toolchain is.
-            # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores (~22 s) they share
-            # nothing with: run first in the foreground they held the unit run back by their own
-            # ~21-25 s (run 37121131703). Waited for, and failing as they would have, after it (below).
-            - name: Script self-tests, in the background
-              if: matrix.shard == 'heavy1'
-              run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
-
             # The JDK, sbt and the build cache (.github/actions/setup-sbt-build). Warm zinc state
             # across pushes so an unchanged push is near-instant. The exact key is scoped to the sources
             # this job compiles (unit = every module's main + test, not the action's default it scope)
@@ -293,13 +281,6 @@ jobs:
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
 
-            # The script self-tests, started in the background above, collected AFTER the unit run (2026-10-23): waited
-            # for before it, they held it back ~63 s on every run (they outlast the JDK, sbt and cache restores). On a red
-            # unit run too, so a broken script still says so.
-            - name: The script self-tests passed
-              if: ${{ !cancelled() && matrix.shard == 'heavy1' }}
-              run: scripts/ci/in-background.sh wait script-tests 600
-
             # The snapshot guards in this run (CatalogSeedSpec's app seeds among them) write
             # what they expected; a committed file they rewrote is a stale snapshot, whether
             # or not the spec itself noticed. See scripts/ci/tree-unchanged.sh.
@@ -332,6 +313,26 @@ jobs:
                       */target/performance-budgets.tsv
                   if-no-files-found: ignore
                   retention-days: 14
+
+    # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
+    # infra/bin), found by name and run in parallel by scripts/run-script-tests: which checks the pre-push hook selects,
+    # what the preflight jobs accept, how a failed test is judged and ledgered, how the throwaway MongoDB starts, the
+    # identity and release tooling. A new test runs here the moment it exists; one tagged `# script-test: <tag>` runs
+    # where its toolchain is. A JOB OF ITS OWN (2026-10-29): in the background of a unit row (worker-identity, then
+    # heavy1) its ~350 s slowed that row's JDK/sbt/cache restore (setup-sbt-build 85-104 s against ~25 s on the
+    # others) and its wait after the sbt run added 24-35 s, so whichever row carried it was the stage's slowest by
+    # ~1.5-2.5 min (Main runs 3614-3636). It needs no JDK, sbt or build cache: a checkout. Like every job here it gates
+    # the deploy (main.yml's publish jobs `needs: ci`).
+    script-tests:
+        name: script self-tests
+        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+            - name: Every script self-test
+              run: scripts/run-script-tests
 
     # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the
     # hard-cluster convergence, whose parallel boots fill a runner's cores; `rest` runs every other spec, by
