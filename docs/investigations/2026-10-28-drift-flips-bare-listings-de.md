@@ -1,4 +1,4 @@
-# 2026-10-28 — Germany's drift flips: a bare listing's take hangs on which sibling listings are present (Titans FIXED, CAMOUFLAGE OPEN)
+# 2026-10-28 — Germany's drift flips: a bare listing's take hangs on which sibling listings are present (Titans FIXED, CAMOUFLAGE FIXED)
 
 Identity model convergence #2375 (run 3558, and #2335, run 3509, on the same code) fails `takes-drift-1 (germany)`
 and `takes-drift-2 (germany)` on FLIPS alone: 0 divergences from a whole resolve, and takes that went back to a film
@@ -7,7 +7,8 @@ resolver behaviour, not artefacts of the replay. Prod meets the same states when
 first or starts later. Each fix moves the model over whole corpora and needs the full measure (below). PL's `takes-drift-1` row (Kino Eva's "LALKA", changed with its inputs unchanged) is a false flag, cleared by
 the flip predicate's fix ("Flip check: a model take moving at a step that moved listings moved with its inputs"). The
 Titans fix below was written, replayed and measured whole-corpus, parked (it moved another take to a likely wrong film),
-then guarded and landed by red fixer #2452 ("The Titans fix, measured"). CAMOUFLAGE (seed 2) stays open.
+then guarded and landed by red fixer #2452 ("The Titans fix, measured"). CAMOUFLAGE (seed 2) was fixed by red fixer
+#2473 ("The CAMOUFLAGE fix, measured").
 
 ## CinemaxX "Titans" (seed 1): a namesake by a Danish alternative title, withdrawn only by a sibling taken by nothing
 
@@ -91,7 +92,7 @@ Werkstattkino's listing as 1735950 now, with Gröben's listing present.
 2. **CAMOUFLAGE.** A rule decision, either form changing shared resolver code: let one source overrule a TMDB-keyed
    feed's link when it backs a current release the node's title names, billed at several venues that week, and nothing
    backs the linked film (the counter-case: two old films, each named once); or keep a bare listing in the family its
-   title key joined while the bridge is away.
+   title key joined while the bridge is away. Taken: the first form, narrowed ("The CAMOUFLAGE fix, measured" below).
 
 ### The Titans fix, measured (landed, guarded)
 
@@ -183,4 +184,23 @@ divergence anywhere. Still open:
   whole resolve's take; 1069112, "Rose Parade 2023" (a 2023-01-02 broadcast), at step 2 (fill 0.5). No correction
   reverses it. Find which released answer moves the model, and why a namesake billed with the year alone outranks the
   film while a rival's answer is missing.
-- **DE "CAMOUFLAGE"**: the rule decision above, unchanged by either fix.
+- **DE "CAMOUFLAGE"**: fixed by the rule below.
+
+## The CAMOUFLAGE fix, measured (red fixer #2473, run 3656)
+
+`FamilyScope.currentRelease` (`FeedLink`'s `venues`): one source overrules a TMDB-keyed feed's link when the link names
+an older film (no current release by the screenings' year, `IdentityResolver.CurrentRelease`) that nothing backs and
+the listing does not date, for a current release the title names whole (exact, original, alternative) that more of the
+title's venues bill than the link, `FeedLink.ReleaseVenues` (2) at least. Filmstarts' one entry 1000049621, at
+Deggendorf, Monopol and SchanzenKino 73, then overrules Werkstattkino's 56085m with Gröben's listing away. Pinned:
+`IdentityResolverCasesSpec` (three cases beside "Kohlhiesels Töchter") and the hand-cut slice
+`identity-slices/de-werkstattkino-e-v-camouflage-without-groeben-lichtspiele` (the 312d135e case less Gröben's row).
+Recording 573, base `11635d5cc` (`scripts/identity-measure-local`, DE: Cineamo, the only TMDB-keyed feed, is DE's):
+
+- first form (any rival the title names as its own, dated listings too): 2 unjudged model moves, both likely wrong --
+  Babylon (Mitte)'s "Nosferatu Live mit Babylon Orchester Berlin" (Cineamo: Herzog's 6404, a 2025 "Nosferatu" at two
+  venues) pooled to Eggers' 2024 film, and Melodie Filmtheater's one-night "Spider-Man" [2002] (Cineamo: Raimi's 557)
+  took the 2026 "Spider-Man: Brand New Day" (two Ludwigsburg venues' Cineamo entry 969681m);
+- whole-named rivals only: Nosferatu gone, Spider-Man stays (its rival is named whole);
+- and not against a link the listing dates by its film's year: **0 takes moved** (model and final), LANDABLE;
+- the drift replay (`scripts.IdentityDrift de`, both seeds, local): 0 flips, 0 divergences (seed 2 was CAMOUFLAGE).
