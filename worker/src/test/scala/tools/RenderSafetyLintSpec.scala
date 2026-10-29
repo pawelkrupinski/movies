@@ -96,7 +96,10 @@ object RenderSafetyLintSpec {
 
   /** Templates served only behind `DevMode.gate` (a production deployment 404s them), so
    *  the data they show never reaches a visitor. Name → why. */
-  val DevOnlyTemplates: Map[String, String] = Map.empty
+  val DevOnlyTemplates: Map[String, String] = Map(
+    "debugReadModel.scala.html"           -> "/debug/readmodel — DebugController.devOnly",
+    "debugReadModelScreenings.scala.html" -> "/debug/readmodel/screenings — DebugController.devOnly",
+  )
 
   /** Raw `Html(…)` splices in (non-dev) templates whose text is ours. (file, argument) → why. */
   val AllowedRawSplices: Map[Site, String] = Map(
