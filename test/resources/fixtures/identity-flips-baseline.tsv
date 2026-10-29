@@ -1,0 +1,12 @@
+# THE KNOWN-FLIPS BASELINE (the owner, 2026-10-29: "fail build only on new flips, focus in eliminating all old flips and
+# then fail on all flips"). One row per flip main's convergence showed when the gate turned to failing on NEW flips only,
+# generated from a run's flips by scripts/ci/identity_flips_baseline.py -- never typed. The drift check
+# (scripts/ci/identity-drift-check.sh, scripts.IdentityDrift --flips-baseline) passes a flip of a listing named here,
+# counted loudly as "N known flips remaining" (a ::warning and the step summary), and FAILS every other flip.
+# ONLY SHRINKS: a commit adding a row is refused, no override (scripts/ci/allow_list_ratchet.py). A commit fixing a flip
+# removes its row; a run whose seed shows the listing no longer flips names it "fixed, remove its row".
+# THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
+# Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.
+country	seed	venue	rawTitle	takes	firstSeen	owner	note
+uk	1	Duke of York's Picturehouse Brighton	Rose (2023)	tmdb:901251 -> tmdb:1069112 -> tmdb:901251	2026-10-29	the fixer of convergence #2527 (red-a0762f14066e)	convergence #2527 (run 3757, 9744f8f09): back to a film it left
+uk	1	Queen's Film Theatre Belfast	Rose (2023)	tmdb:901251 -> tmdb:1069112 -> tmdb:901251	2026-10-29	the fixer of convergence #2527 (red-a0762f14066e)	convergence #2527 (run 3757, 9744f8f09): back to a film it left

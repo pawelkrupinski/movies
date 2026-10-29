@@ -19,16 +19,23 @@ cat > "$work/bin/sbt" <<'EOF'
 #!/usr/bin/env bash
 out=$(printf '%s\n' "$@" | grep -oE -- '--out [^ ]+' | tail -1 | cut -d' ' -f2)
 printf '%s\n' "$@" | grep -oE -- '--seeds? [0-9]+' > "$out.seeds"
+printf '%s\n' "$@" > "$out.args"
 [ "${FAKE_REPORT:-}" = none ] && { echo "[error] compilation failed"; exit 1; }
 mkdir -p "$out"; printf 'country\tseed\n' > "$out/drift-pl.tsv"
 echo "## pl: 10804 listings, 2 seed(s), $FAKE_FOUND divergence(s) (1 listings), $FAKE_ALLOWED allow-listed, in 191s"
 [ "$FAKE_FOUND" -gt 0 ] && echo "  1 listing(s)  deploy: incremental-only take (whole BelowThreshold, incremental Agreed)"
 [ "${FAKE_FLIPS:-0}" = none ] && exit 0
-echo "## pl flips: ${FAKE_FLIPS:-0} flip(s) (1 listings), ${FAKE_FLIPS_ALLOWED:-0} allow-listed"
+if [ -n "${FAKE_KNOWN:-}" ]; then
+  echo "## pl flips: ${FAKE_FLIPS:-0} flip(s) (1 listings), ${FAKE_FLIPS_ALLOWED:-0} allow-listed, $FAKE_KNOWN known"
+  echo "## pl known flips: $FAKE_KNOWN known flip(s) remaining (1 listings in identity-flips-baseline.tsv), ${FAKE_FIXED:-0} fixed"
+  [ "${FAKE_FIXED:-0}" -gt 0 ] && echo "      FIXED, remove its row: Kino Eva | LALKA [seed 1] — no flip in this run"
+else
+  echo "## pl flips: ${FAKE_FLIPS:-0} flip(s) (1 listings), ${FAKE_FLIPS_ALLOWED:-0} allow-listed"
+fi
 [ "${FAKE_FLIPS:-0}" -gt 0 ] && echo "  1 listing(s)  flip: back to a film it left" && \
   echo "      Riverside | The Stranger: tmdb:1429348 [3 scrape: OwnMatch: own] -> tmdb:848791 [4 answer: Corrected: c] -> tmdb:1429348 [9 scrape (tick-1), inputs unchanged: OwnMatch: own] (back to a film it left) [seed 1]"
 [ "$FAKE_FOUND" -gt "$FAKE_ALLOWED" ] && exit 1
-[ "${FAKE_FLIPS:-0}" -gt "${FAKE_FLIPS_ALLOWED:-0}" ] && exit 1
+[ "${FAKE_FLIPS:-0}" -gt $(( ${FAKE_FLIPS_ALLOWED:-0} + ${FAKE_KNOWN:-0} )) ] && exit 1
 exit 0
 EOF
 chmod +x "$work/bin/sbt"
@@ -38,13 +45,13 @@ check "no recorded corpus to replay: no verdict" "2" "$(FAKE_FOUND=0 FAKE_ALLOWE
 touch "$work/repo/test/resources/fixtures/corpus/cinema-scrapes-pl.json.gz"
 check "no divergence passes" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
 check "divergences the allow-list does not name fail" "1" "$(FAKE_FOUND=3 FAKE_ALLOWED=0 run)"
-check "...and the verdict names them" "3 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists" "$(cat "$work/out/verdict.txt")"
+check "...and the verdict names them" "3 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists and 0 known flip(s)" "$(cat "$work/out/verdict.txt")"
 check "...and the report names their class" "1" "$(grep -c 'incremental-only take' "$work/out/report.txt")"
 check "divergences the allow-list names all pass" "0" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 run)"
 check "a replay that never reported is no verdict" "2" "$(FAKE_REPORT=none run)"
 check "flips the flips allow-list does not name fail" "1" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=2 run)"
 check "...and the report names the listing and its takes" "1" "$(grep -c 'The Stranger: tmdb:1429348' "$work/out/report.txt")"
-check "...and the verdict names flips, not divergences" "0 divergence(s) from a whole resolve and 2 flip(s) on the way, beyond the allow-lists" \
+check "...and the verdict names flips, not divergences" "0 divergence(s) from a whole resolve and 2 flip(s) on the way, beyond the allow-lists and 0 known flip(s)" \
   "$(cat "$work/out/verdict.txt")"
 check "flips fail beside allowed divergences too" "1" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 FAKE_FLIPS=1 run)"
 check "flips the flips allow-list names pass" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=1 FAKE_FLIPS_ALLOWED=1 run)"
@@ -53,5 +60,17 @@ FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "both seeds by default" "--seeds 2" "$(cat "$work/out.seeds")"
 DRIFT_SEED=2 FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "a row's one seed alone" "--seed 2" "$(cat "$work/out.seeds")"
+
+check "known flips pass" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=2 FAKE_KNOWN=2 run)"
+check "...said loudly as a warning" "1" "$(grep -c '::warning title=identity drift (pl)::2 known flip(s) remaining' "$work/stdout")"
+check "...and the verdict counts no open flip" "0 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists and 2 known flip(s)" \
+  "$(cat "$work/out/verdict.txt")"
+check "a new flip beside known ones fails" "1" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=3 FAKE_KNOWN=2 run)"
+check "...its verdict naming the one new flip" "1" "$(grep -c ' and 1 flip(s) on the way' "$work/out/verdict.txt")"
+check "a baselined flip that is gone is flagged: remove its row" "0 1" \
+  "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=0 FAKE_KNOWN=0 FAKE_FIXED=1 run) $(grep -c 'Kino Eva | LALKA.*remove its row from identity-flips-baseline.tsv' "$work/stdout")"
+check "divergences have no baseline: they fail beside known flips" "1" "$(FAKE_FOUND=1 FAKE_ALLOWED=0 FAKE_FLIPS=2 FAKE_KNOWN=2 run)"
+FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
+check "the replay reads the baseline" "1" "$(grep -c 'identity-flips-baseline.tsv' "$work/out.args" 2>/dev/null || echo 0)"
 
 spec_summary

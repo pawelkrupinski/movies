@@ -3,6 +3,7 @@ package scripts
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.TakeFlips
 import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.VoterFamily
 import tools.MutableClock
@@ -73,5 +74,42 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     deploy.RepoFile.exists(path) shouldBe true
     val temporary = """(?i)^TEMPORARY\b.*\bowner:\s*\S+.*\bremove when\b\s*\S+.*""".r
     IdentityDrift.flipAllowList(java.nio.file.Path.of(path)).filterNot(row => temporary.matches(row.reason.trim)) shouldBe empty
+  }
+
+  // THE KNOWN-FLIPS BASELINE (the owner, 2026-10-29: "fail build only on new flips, focus in eliminating all old flips and
+  // then fail on all flips"): a baselined listing's flip passes, counted; any other fails; a row whose seed ran without
+  // its listing flipping is fixed; an empty baseline fails every flip, the strict gate.
+  private def flip(venue: String, title: String) = {
+    def taken(step: String, film: String) = TakeFlips.Taken(step, TakeFlips.Served(film, "OwnMatch"), moved = true)
+    TakeFlips.Flip(services.movies.ListingKey.Published(venue, title, None, Nil),
+      Vector(taken("1 boot", "tmdb:1"), taken("6 gone", "tmdb:2"), taken("10 scrape", "tmdb:1")))
+  }
+  private def known(venue: String, title: String, seed: Int) =
+    IdentityDrift.BaselineFlip("de", seed, venue, title, "tmdb:1 -> tmdb:2 -> tmdb:1", "2026-10-29", "red fixer of convergence #2527", "")
+
+  "the known-flips baseline" should "pass a baselined flip as known and fail a new one" in {
+    val flips   = Seq(1 -> flip("Werkstattkino e.V.", "CAMOUFLAGE"), 2 -> flip("CinemaxX Dammtor", "Titans"))
+    val verdict = IdentityDrift.flipVerdict("de", flips, Seq(known("Werkstattkino e.V.", "CAMOUFLAGE", 2)), Seq(1, 2))
+    verdict.known.map(_._2.key.rawTitle) shouldBe Seq("CAMOUFLAGE")
+    verdict.fresh.map(_._2.key.rawTitle) shouldBe Seq("Titans")
+    verdict.fixed shouldBe empty
+  }
+
+  it should "name a row fixed when its seed ran and its listing flipped in none, and judge no seed the run did not replay" in {
+    val baseline = Seq(known("Werkstattkino e.V.", "CAMOUFLAGE", 1), known("CinemaxX Dammtor", "Titans", 2))
+    IdentityDrift.flipVerdict("de", Nil, baseline, Seq(1)).fixed.map(_.rawTitle) shouldBe Seq("CAMOUFLAGE")
+    IdentityDrift.flipVerdict("de", Nil, baseline, Seq(1, 2)).fixed.map(_.rawTitle) shouldBe Seq("CAMOUFLAGE", "Titans")
+  }
+
+  it should "cover only its own country, and fail every flip once empty: the strict gate" in {
+    val flips = Seq(1 -> flip("Werkstattkino e.V.", "CAMOUFLAGE"))
+    IdentityDrift.flipVerdict("pl", flips, Seq(known("Werkstattkino e.V.", "CAMOUFLAGE", 1)), Seq(1)).fresh should have size 1
+    IdentityDrift.flipVerdict("de", flips, Nil, Seq(1)).fresh should have size 1
+  }
+
+  it should "read the checked-in baseline, every row with its seed, first sighting and owner" in {
+    val path = java.nio.file.Path.of("test/resources/fixtures/identity-flips-baseline.tsv")
+    deploy.RepoFile.exists(path.toString) shouldBe true
+    noException should be thrownBy IdentityDrift.flipBaseline(path)
   }
 }

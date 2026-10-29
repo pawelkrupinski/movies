@@ -19,7 +19,10 @@
 # <out>/report.txt, and <out>/verdict.txt: one line naming what the replay found beyond the allow-lists, divergences and
 # flips apart -- what the row's ::error says (a step summary is discarded on Forgejo; and run 3509's rows failed on flips
 # alone, 0 divergences, under a title saying the state "ends elsewhere than a whole resolve", which three fixers chased).
-# Exit: 0 none beyond the allow-lists, 1 divergences or flips, 2 it could not run.
+# KNOWN FLIPS (test/resources/fixtures/identity-flips-baseline.tsv) pass, each run saying "N known flip(s) remaining" as a
+# ::warning and in the step summary, and naming a baselined flip that is gone "remove its row"; a NEW flip fails. The
+# baseline only shrinks; empty, every flip fails. Divergences have no baseline.
+# Exit: 0 none beyond the allow-lists and the known flips, 1 divergences or new flips, 2 it could not run.
 set -uo pipefail
 
 cc=${1:?country code}
@@ -35,7 +38,8 @@ mkdir -p "$out"
 code=0
 ( cd "$here" && sbt -J-Xmx"$heap" 'set worker / Test / run / fork := false' \
     "worker/Test/runMain scripts.IdentityDrift $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz \
-     --allow $fixtures/identity-drift-allow.tsv --flips-allow $fixtures/identity-flips-allow.tsv --labels $fixtures/identity-judgements.tsv ${seeds[*]} --out $out" ) \
+     --allow $fixtures/identity-drift-allow.tsv --flips-allow $fixtures/identity-flips-allow.tsv \
+     --flips-baseline $fixtures/identity-flips-baseline.tsv --labels $fixtures/identity-judgements.tsv ${seeds[*]} --out $out" ) \
   > "$out/sbt.log" 2>&1 || code=$?
 grep -E '^## |^  [0-9]+ listing|^      ' "$out/sbt.log" > "$out/report.txt"
 [ -f "$out/drift-$cc.tsv" ] || { tail -40 "$out/sbt.log" >&2; echo "identity drift ($cc): the replay wrote nothing" >&2; exit 2; }
@@ -54,9 +58,23 @@ flips=$(grep -m1 -E '^## [a-z]+ flips: ' "$out/report.txt")
 [ -n "$flips" ] || { tail -40 "$out/sbt.log" >&2; echo "identity drift ($cc): no flips verdict (sbt exit $code)" >&2; exit 2; }
 flipped=$(sed -E 's/.* ([0-9]+) flip\(s\).*/\1/' <<< "$flips")
 flips_allowed=$(sed -E 's/.* ([0-9]+) allow-listed.*/\1/' <<< "$flips")
+# THE KNOWN-FLIPS BASELINE (identity-flips-baseline.tsv; the owner, 2026-10-29: "fail build only on new flips, focus in
+# eliminating all old flips and then fail on all flips"): its flips pass, said loudly; a row whose listing no longer flips
+# is named fixed. Empty, every flip fails. A replay from before the baseline prints no `known` count: none known.
+known=$(sed -nE 's/.* ([0-9]+) known$/\1/p' <<< "$flips"); known=${known:-0}
+known_line=$(grep -m1 -E '^## [a-z]+ known flips: ' "$out/report.txt" || true)
+if [ "$known" -gt 0 ]; then
+  echo "::warning title=identity drift ($cc)::$known known flip(s) remaining (identity-flips-baseline.tsv) -- not failed, to be fixed: ${known_line#\#\# }"
+fi
+while IFS= read -r fixed; do
+  [ -n "$fixed" ] && echo "::warning title=identity drift ($cc): a baselined flip is gone::${fixed#"${fixed%%[! ]*}"} -- remove its row from identity-flips-baseline.tsv"
+done < <(grep -E '^      FIXED, remove its row: ' "$out/report.txt" || true)
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -n "$known_line" ]; then
+  { echo "**${known_line#\#\# }** -- known flips pass until fixed; every other flip fails"; } >> "$GITHUB_STEP_SUMMARY"
+fi
 open_divergences=$((found - allowed))
-open_flips=$((flipped - flips_allowed))
-echo "$open_divergences divergence(s) from a whole resolve and $open_flips flip(s) on the way, beyond the allow-lists" > "$out/verdict.txt"
+open_flips=$((flipped - flips_allowed - known))
+echo "$open_divergences divergence(s) from a whole resolve and $open_flips flip(s) on the way, beyond the allow-lists and $known known flip(s)" > "$out/verdict.txt"
 [ "$open_divergences" -gt 0 ] && exit 1
 [ "$open_flips" -gt 0 ] && exit 1
 exit 0

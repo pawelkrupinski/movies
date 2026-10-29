@@ -9,6 +9,11 @@
 #     `TEMPORARY owner: <who>; remove when <fix>; <why>`. The check then lands green;
 #   - any other commit may only REMOVE rows from a registered allow-list (.github/allow-lists.txt): a finding after
 #     birth is fixed, never listed.
+# THE KNOWN-FLIPS BASELINE ONLY SHRINKS (test/resources/fixtures/identity-flips-baseline.tsv; the owner, 2026-10-29: "fail
+# build only on new flips, focus in eliminating all old flips and then fail on all flips"): every flip main showed when the
+# gate turned to failing on new flips only is a row there, generated (scripts/ci/identity_flips_baseline.py). No commit
+# adds a row to it, whatever its trailers: no override. Only its creation, once, writes rows; a file that existed before
+# is never made again.
 # A registered allow-list is a TSV whose last column is the row's reason; `#` lines and the header (its first non-comment
 # line) are not rows. Every allow-list file in the repository must be registered (AllowListRatchetSpec), so a new check
 # with a new list gets the ratchet the moment it is added.
@@ -26,6 +31,7 @@ import sys
 
 REGISTRY = ".github/allow-lists.txt"
 TRAILER = "New-Check"
+BASELINES = ("test/resources/fixtures/identity-flips-baseline.tsv",)
 TEMPORARY = re.compile(r"^TEMPORARY\b.*\bowner:\s*\S+.*\bremove when\b\s*\S+", re.I)
 
 
@@ -68,6 +74,14 @@ def judge(added: list[str], births: bool) -> list[str]:
     return why
 
 
+def existed_before(sha: str, path: str) -> bool:
+    """Whether any ancestor of `sha` held `path`: a baseline is created once, never made again."""
+    try:
+        return bool(git("log", "--format=%H", "-1", f"{sha}^", "--", path).strip())
+    except subprocess.CalledProcessError:
+        return False
+
+
 def commits(rng: str) -> list[str]:
     return [c for c in git("rev-list", "--reverse", rng).split() if c]
 
@@ -85,6 +99,11 @@ def check(ranges: list[str], registry: str) -> list[str]:
                     continue
                 before = set(rows(at(parent, path)))
                 added = [r for r in rows(at(sha, path)) if r not in before]
+                if path in BASELINES:
+                    born = not before and not at(parent, path) and not existed_before(sha, path)
+                    refused += [f"{sha[:9]} {path}: {r!r}: the known-flips baseline only shrinks -- a new flip is fixed, never "
+                                "baselined (no override)" for r in added if not born]
+                    continue
                 for reason in judge(added, bool(trailers)):
                     refused.append(f"{sha[:9]} {path}: {reason}")
     return refused

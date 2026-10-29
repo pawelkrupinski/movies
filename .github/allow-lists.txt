@@ -5,3 +5,4 @@
 # One path a line; a registered list is a TSV whose last column is the row's reason, its first non-comment line a header.
 test/resources/fixtures/identity-drift-allow.tsv
 test/resources/fixtures/identity-flips-allow.tsv
+test/resources/fixtures/identity-flips-baseline.tsv

@@ -16,6 +16,9 @@ SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL = os.path.join(HERE, "allow_list_ratchet.py")
 LIST = "test/resources/fixtures/identity-flips-allow.tsv"
 HEAD = "# reviewed flips\ncountry\tvenue\trawTitle\treason\n"
+BASELINE = "test/resources/fixtures/identity-flips-baseline.tsv"
+BHEAD = "# known flips\ncountry\tseed\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n"
+BROW = "de\t2\tWerkstattkino e.V.\tCAMOUFLAGE\ttmdb:1 -> tmdb:2 -> tmdb:1\t2026-10-29\tfixer\tconvergence #2527\n"
 BIRTH = "TEMPORARY owner: pawel; remove when the flip predicate reads a re-scrape as no input change; found at birth"
 
 
@@ -42,6 +45,12 @@ class RatchetTest(unittest.TestCase):
             os.makedirs(os.path.dirname(full) or self.repo, exist_ok=True)
             with open(full, "w") as f:
                 f.write(text)
+        self.scratch("scratch_git", "add", "-A")
+        self.scratch("scratch_git", "commit", "-qm", message)
+        return self.scratch("scratch_git", "rev-parse", "HEAD")
+
+    def commit_removing(self, path, message):
+        os.remove(os.path.join(self.repo, path))
         self.scratch("scratch_git", "add", "-A")
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
@@ -82,6 +91,35 @@ class RatchetTest(unittest.TestCase):
 
     def test_an_unreadable_range_is_no_verdict(self):
         self.assertEqual(2, self.ratchet("nosuch..alsonot")[0])
+
+
+    def test_the_baseline_is_born_once_with_its_rows(self):
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n"}, "register")
+        born = self.commit({BASELINE: BHEAD + BROW}, "the known flips")
+        self.assertEqual((0, ""), self.ratchet(f"{reg}..{born}"))
+
+    def test_a_row_added_to_the_baseline_is_refused_whatever_the_trailers(self):
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        more = BROW.replace("CAMOUFLAGE", "Titans")
+        for n, message in enumerate(("one more", "gate\n\nNew-Check: flips", "fix\n\nFixes-Red: 2527")):
+            head = self.commit({BASELINE: BHEAD + BROW + more, "x.txt": f"{n}\n"}, message)
+            rc, err = self.ratchet(f"{reg}..{head}")
+            self.assertEqual(1, rc, message)
+            self.assertIn("only shrinks", err)
+            self.scratch("scratch_git", "reset", "-q", "--hard", reg)
+
+    def test_removing_a_fixed_flips_row_lands(self):
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        fixed = self.commit({BASELINE: BHEAD}, "CAMOUFLAGE no longer flips")
+        self.assertEqual((0, ""), self.ratchet(f"{reg}..{fixed}"))
+
+    def test_a_baseline_made_again_after_its_removal_is_refused(self):
+        self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        gone = self.commit_removing(BASELINE, "dropped")
+        again = self.commit({BASELINE: BHEAD + BROW}, "made again")
+        rc, err = self.ratchet(f"{gone}..{again}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("only shrinks", err)
 
 
 if __name__ == "__main__":

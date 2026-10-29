@@ -1,4 +1,7 @@
-# Listing FLIPS in the incremental replay (scripts.IdentityDrift, services.identity.TakeFlips) that are REVIEWED as
-# intended: one row a listing, its reason required. It STAYS EMPTY (the owner, 2026-10-27): a flip is fixed, never
-# listed -- IdentityFlipsAllowSpec holds it so.
+# Listing FLIPS in the incremental replay (scripts.IdentityDrift, services.identity.TakeFlips) a NEWBORN check found at
+# its birth: one row a listing, its reason required. It is EMPTY, apart from newborn-check TEMPORARY rows -- what a new
+# check finds at its birth, in a commit carrying `New-Check:`, each `TEMPORARY owner: <who>; remove when <fix>; <why>`
+# (scripts/ci/allow_list_ratchet.py) -- and never a flip that already exists: those are rows of the known-flips baseline
+# (identity-flips-baseline.tsv), which only shrinks (the owner, 2026-10-29: "fail build only on new flips, focus in
+# eliminating all old flips and then fail on all flips"). IdentityDriftSpec holds it so.
 country	venue	rawTitle	reason

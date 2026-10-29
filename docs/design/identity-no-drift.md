@@ -21,6 +21,24 @@ Once this holds, the nightly live drift check (`scripts.IdentityLiveDrift`, aler
 convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire. What remains for that is listed under
 "What still blocks retiring the checks".
 
+## Known flips (the owner, 2026-10-29)
+
+"Fail build only on new flips, focus in eliminating all old flips and then fail on all flips."
+
+- `test/resources/fixtures/identity-flips-baseline.tsv` holds one row per flip main's convergence showed when the gate
+  turned to failing on new flips only — country, seed, venue, raw title, the takes, first seen, owner, note — generated
+  from a run's flips by `scripts/ci/identity_flips_baseline.py from-run <run>`, never typed. Seeded from convergence
+  #2527 (run 3757): UK "Rose (2023)" at Duke of York's and Queen's Film Theatre, seed 1.
+- The drift check (`scripts/ci/identity-drift-check.sh`, `IdentityDrift --flips-baseline`) passes a baselined
+  listing's flips, saying "N known flip(s) remaining" as a ::warning and in the step summary; fails every other flip;
+  and names a baselined flip that no longer occurs in a seed the row names "remove its row".
+- The baseline ONLY SHRINKS: `scripts/ci/allow_list_ratchet.py` refuses any added row, whatever the commit's trailers;
+  a commit fixing a flip removes its row.
+- **The end state is automatic**: with no row left, every flip fails — the strict gate.
+- DIVERGENCES (incremental ≠ whole end state) have no baseline: they always fail.
+- A newborn check's own findings go TEMPORARY on `identity-flips-allow.tsv` (`New-Check:`), never a flip that already
+  exists.
+
 ## The harness
 
 `identity/src/test/scala/services/identity/agreement/IncrementalWholeEquivalenceSpec.scala` runs in unit and CI on every

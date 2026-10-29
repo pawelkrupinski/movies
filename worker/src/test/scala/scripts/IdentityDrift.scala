@@ -40,11 +40,16 @@ import scala.util.control.NonFatal
  * FLIPS: every listing's served take is recorded at every projection of the sequence — each tick's, each settle round's
  * apply — and a listing whose take goes back to a film it left, changes more than once, or changes where none of its
  * deciding inputs did ([[TakeFlips]]) is a FLIP (`flips-<cc>.tsv`): what prod's regression watch counts
- * (`kinowo_identity_listing_flips`) and a checkpoint's end state cannot show. Every flip fails the run unless
- * `test/resources/fixtures/identity-flips-allow.tsv` (cc, venue or `*`, raw title, reason) names it — kept empty.
+ * (`kinowo_identity_listing_flips`) and a checkpoint's end state cannot show. A NEW flip fails the run: one neither
+ * `test/resources/fixtures/identity-flips-allow.tsv` (a newborn check's TEMPORARY rows only) nor the KNOWN-FLIPS
+ * BASELINE (`--flips-baseline`, `test/resources/fixtures/identity-flips-baseline.tsv`, [[BaselineFlip]]) names. A
+ * baselined flip passes, counted loudly ("N known flip(s) remaining"), and a baseline row of a seed this run replayed
+ * whose listing flipped in none of them is named "fixed — remove its row" (the owner, 2026-10-29: "fail build only on
+ * new flips, focus in eliminating all old flips and then fail on all flips"). The baseline only shrinks; once it is
+ * empty every flip fails, the strict gate. Divergences have no baseline.
  *
  * {{{
- *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV]
+ *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]
  * }}}
  * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage.
  */
@@ -56,7 +61,9 @@ object IdentityDrift {
                            /** `--seed S`: that seed alone, to replay one divergence. */
                            only: Option[Int] = None,
                            /** `--flips-allow TSV`: the reviewed flips ([[FlipAllowed]]) — kept empty. */
-                           flipsAllow: Option[Path] = None)
+                           flipsAllow: Option[Path] = None,
+                           /** `--flips-baseline TSV`: the known flips ([[BaselineFlip]]), which pass, counted, until fixed. */
+                           flipsBaseline: Option[Path] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                            => o
@@ -69,12 +76,13 @@ object IdentityDrift {
     case "--allow" :: v :: rest         => parse(rest, o.copy(allow = Some(Path.of(v))))
     case "--labels" :: v :: rest        => parse(rest, o.copy(labels = Some(Path.of(v))))
     case "--flips-allow" :: v :: rest   => parse(rest, o.copy(flipsAllow = Some(Path.of(v))))
+    case "--flips-baseline" :: v :: rest => parse(rest, o.copy(flipsBaseline = Some(Path.of(v))))
     case cc :: rest if !cc.startsWith("--") && o.country.isEmpty => parse(rest, o.copy(country = cc.toLowerCase(java.util.Locale.ROOT)))
     case other :: _                     => usage(s"unknown argument $other")
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV]")
+    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]")
     sys.exit(2)
   }
 
@@ -126,6 +134,30 @@ object IdentityDrift {
       case row => sys.error(s"identity-flips-allow: every row names cc, venue, raw title and a REASON: ${row.mkString("|")}")
     }
   val FlipHeader = "country\tseed\tvenue\trawTitle\tfilms\treasons\ttakes"
+
+  /** A KNOWN flip (`identity-flips-baseline.tsv`, written by scripts/ci/identity_flips_baseline.py from a run's flips):
+   *  the listing flipped on main before the gate failed on new flips only. It covers its listing's flips in any seed; it
+   *  is FIXED when a run replayed its seed and the listing flipped in none of that run's seeds. */
+  final case class BaselineFlip(country: String, seed: Int, venue: String, rawTitle: String, takes: String, firstSeen: String, owner: String,
+                                note: String) {
+    def covers(country: String, f: TakeFlips.Flip): Boolean = this.country == country && venue == f.key.venue && rawTitle == f.key.rawTitle
+  }
+  val BaselineHeader = "country\tseed\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote"
+  def flipBaseline(path: Path): Seq[BaselineFlip] = if (!Files.exists(path)) Nil else
+    Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.filter(l => l.nonEmpty && !l.startsWith("#")).drop(1).map(_.split("\t", -1)).map {
+      case Array(cc, seed, venue, title, takes, first, owner, note, _*) if seed.toIntOption.isDefined && first.trim.nonEmpty && owner.trim.nonEmpty =>
+        BaselineFlip(cc, seed.toInt, venue, title, takes, first, owner, note)
+      case row => sys.error(s"identity-flips-baseline: every row names cc, seed, venue, raw title, takes, first seen and an OWNER: ${row.mkString("|")}")
+    }
+
+  /** Of `flips` (by seed) beyond the allow-list: the KNOWN ones `baseline` covers, the NEW ones it does not, and the
+   *  baseline rows of `seeds` whose listing flipped in none of them — fixed, their rows to remove. */
+  final case class FlipVerdict(known: Seq[(Int, TakeFlips.Flip)], fresh: Seq[(Int, TakeFlips.Flip)], fixed: Seq[BaselineFlip])
+  def flipVerdict(country: String, flips: Seq[(Int, TakeFlips.Flip)], baseline: Seq[BaselineFlip], seeds: Seq[Int]): FlipVerdict = {
+    val (known, fresh) = flips.partition { case (_, f) => baseline.exists(_.covers(country, f)) }
+    val fixed          = baseline.filter(b => b.country == country && seeds.contains(b.seed) && !flips.exists { case (_, f) => b.covers(country, f) })
+    FlipVerdict(known, fresh, fixed)
+  }
 
   // ── the answers production files over time ───────────────────────────────────────────────
 
@@ -465,6 +497,7 @@ object IdentityDrift {
     val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
     val allowed = o.allow.fold(Seq.empty[Allowed])(allowList).filter(_.country == country.code)
     val flipsAllowed = o.flipsAllow.fold(Seq.empty[FlipAllowed])(flipAllowList).filter(_.country == country.code)
+    val baseline     = o.flipsBaseline.fold(Seq.empty[BaselineFlip])(flipBaseline).filter(_.country == country.code)
     val flips   = Seq.newBuilder[(Int, TakeFlips.Flip)]
     val started = tools.Stopwatch.start()
     System.err.println(s"[identity-drift] ${country.code}: ${listings.size} listings, ${filed.render}")
@@ -506,12 +539,18 @@ object IdentityDrift {
       Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "))
         .map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
     }).mkString("", "\n", "\n"))
-    println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipsKept.size} allow-listed")
-    unreviewed.groupBy { case (_, f) => f.reasons.head }.toSeq.sortBy(-_._2.size).foreach { case (reason, fs) =>
+    val verdict = flipVerdict(country.code, unreviewed, baseline, o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_)))
+    println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipsKept.size} allow-listed, " +
+      s"${verdict.known.size} known")
+    println(s"## ${country.code} known flips: ${verdict.known.size} known flip(s) remaining (${verdict.known.map(_._2.key).distinct.size} listings in " +
+      s"identity-flips-baseline.tsv), ${verdict.fixed.size} fixed")
+    verdict.fixed.sortBy(b => (b.rawTitle, b.venue)).foreach(b => println(s"      FIXED, remove its row: ${b.venue} | ${b.rawTitle} [seed ${b.seed}] — no flip in this run"))
+    verdict.known.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.foreach { case (seed, f) => println(s"      KNOWN: ${f.line} [seed $seed]") }
+    verdict.fresh.groupBy { case (_, f) => f.reasons.head }.toSeq.sortBy(-_._2.size).foreach { case (reason, fs) =>
       println(s"  ${fs.map(_._2.key).distinct.size} listing(s)  flip: $reason")
       fs.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.take(6).foreach { case (seed, f) => println(s"      ${f.line} [seed $seed]") }
     }
-    if (open.nonEmpty || unreviewed.nonEmpty) sys.exit(1)
+    if (open.nonEmpty || verdict.fresh.nonEmpty) sys.exit(1)
   }
 
   /** What the judgements say of the two sides' films, where they judge the listing. */
