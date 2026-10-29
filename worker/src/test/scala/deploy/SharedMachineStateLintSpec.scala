@@ -13,7 +13,7 @@ import scala.util.matching.Regex
  * machine at once, sharing one `.git` (config, refs, stash — every worktree commits through it),
  * one `/tmp`, one home directory.
  *
- * Four rules, over every test file in every language the repository tests in — shell (`*-test.sh`,
+ * Five rules, over every test file in every language the repository tests in — shell (`*-test.sh`,
  * `*-spec.sh`), Python (`test_*.py`, `*_test.py`), Scala (`src/test`, `src/it`, `src/page`,
  * `src/fixtures`, testkit), TypeScript/JavaScript (`*.test.*`, `*.spec.*`, the dashboard's `test/`,
  * the Playwright suite), Swift and Kotlin tests — each offender named `file:line`:
@@ -40,6 +40,14 @@ import scala.util.matching.Regex
  *     later leaves a window in which any other process on the machine can take it. Bind port 0 and
  *     KEEP the socket — `TcpForwarder.start` holds its own; a spec that needs the port dead first
  *     severs the forwarder rather than releasing the port.
+ *
+ *  5. NO TEMP DIRECTORY LEFT BEHIND (JVM). A JVM test takes a temp directory or file through testkit's
+ *     `ScratchDirectories` (`tempDirectory` / `tempFile`, deleted when the suite ends) or common's `TempDirectories`
+ *     (deleted by its owner, or when the JVM exits) — never a bare `Files.createTempDirectory("…")` /
+ *     `createTempFile("…", …)`, which nothing deletes: by 2026-10-29 the suites had left ~270,000 entries and
+ *     ~40 GB in the per-user temp directory (`scratch-git*`, `share-cards*`, `enrichment-tree*`, ...). Swift tests
+ *     take theirs through `ScratchDirectory.make` (KinowoTestSupport), swept at process exit. A path made INSIDE one
+ *     of those directories (`createTempFile(dir, …)`) goes with it, and is not caught.
  *
  * Each allowlist names its file and why; an entry whose file no longer offends fails the build.
  */
@@ -131,6 +139,22 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
   private val ReleasedPort =
     """(?i)\bfree_?port\s*\(\s*\)|ServerSocket\(\s*0\s*\)[^\n]*\bclose\(|bind\(\([^)]*,\s*0\s*\)\)[^\n]*getsockname""".r
 
+  /** A temp directory or file made in the default temp directory, which nothing deletes: `Files.createTempDirectory`
+   *  or `createTempFile` with a name prefix first (one with a parent directory first lives inside that directory), or
+   *  a Swift test's own `temporaryDirectory` path. */
+  private val LeakedTemp =
+    """\bFiles\.createTemp(?:Directory|File)\(\s*(?:"|s")|\bFileManager\.default\.temporaryDirectory\b|\bNSTemporaryDirectory\(""".r
+
+  /** file → why it may make a temp path nothing deletes. */
+  private val LeakedTempAllowed: Map[String, String] = Map(
+    "ios/Tests/KinowoTestSupport/ScratchDirectory.swift" ->
+      "the Swift helper itself: it remembers every directory it makes and removes what is left at process exit",
+    "ios/Tests/KinowoCoreTests/Unit/PosterStoreTests.swift" ->
+      "one directory per test, made in setUp and removed in tearDown (no instance-init directory)",
+    "ios/Tests/KinowoNetworkingTests/PosterStoreInjectionTests.swift" ->
+      "one directory per test, made in setUp and removed in tearDown (no instance-init directory)",
+  )
+
   /** file → why it may release a port it found free. */
   private val ReleasedPortAllowed: Map[String, String] = Map(
     "scripts/ci/close-mongo-tunnel-test.sh" ->
@@ -163,6 +187,7 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
   private val fixedTemp: (String, Language) => Seq[String] = offending(_ => fixedTempWrite)
   private val userDirectory: (String, Language) => Seq[String] = offending(found(_ => UserDirectory))
   private val releasedPort: (String, Language) => Seq[String] = offending(found(_ => ReleasedPort))
+  private val leakedTemp: (String, Language) => Seq[String]   = offending(found(_ => LeakedTemp))
 
   private def offenders(rule: (String, Language) => Seq[String], allowed: Map[String, String]): Seq[String] =
     testFiles.filterNot { case (file, _) => allowed.contains(file) }.flatMap(rule.tupled)
@@ -207,12 +232,22 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  they should "take temp directories and files through the helper that deletes them" in {
+    val found = offenders(leakedTemp, LeakedTempAllowed)
+    withClue(s"${found.size} temp paths in tests that nothing deletes, left in the per-user temp directory for good. " +
+      "Use ScratchDirectories' tempDirectory / tempFile in a suite, TempDirectories.create / createFile / within " +
+      "elsewhere, ScratchDirectory.make in Swift — or allowlist the file with a reason:\n" + found.mkString("\n") + "\n") {
+      found shouldBe empty
+    }
+  }
+
   "the allowlists" should "name only files that are tests and still offend" in {
     def stale(allowed: Map[String, String], rule: (String, Language) => Seq[String]) =
       allowed.keys.toSeq.sorted.filterNot(file => testFiles.find(_._1 == file).exists(rule.tupled(_).nonEmpty))
     withClue("allowlisted but no longer offending (or no longer a test file) — drop the entry: ") {
       (stale(DirectGitAllowed, directGit) ++ stale(FixedTempAllowed, fixedTemp) ++
-        stale(UserDirectoryAllowed, userDirectory) ++ stale(ReleasedPortAllowed, releasedPort)) shouldBe empty
+        stale(UserDirectoryAllowed, userDirectory) ++ stale(ReleasedPortAllowed, releasedPort) ++
+        stale(LeakedTempAllowed, leakedTemp)) shouldBe empty
     }
   }
 
@@ -225,6 +260,15 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
       "d=$(mktemp -d /tmp/kinowo-spec.XXXXXX) && echo y > \"$d/f\"")
     caught.filterNot(fixedTempWrite) shouldBe empty
     passed.filter(fixedTempWrite) shouldBe empty
+  }
+
+  "the leaked-temp rule" should "catch a temp path made in the default temp directory, and not one made inside another" in {
+    val caught = Seq("val d = Files.createTempDirectory(\"x\")", "java.nio.file.Files.createTempFile(\"a\", \".b\")",
+      "Files.createTempFile(s\"poster-$n\", \".img\")", "let d = FileManager.default.temporaryDirectory")
+    val passed = Seq("Files.createTempFile(file.getParent, name, \".part\")", "tempDirectory(\"x\")",
+      "TempDirectories.create(\"x\")", "ScratchDirectory.make(\"PosterStore\")")
+    caught.filter(LeakedTemp.findFirstIn(_).isEmpty) shouldBe empty
+    passed.filter(LeakedTemp.findFirstIn(_).isDefined) shouldBe empty
   }
 
   "the shell rule" should "catch git however a script runs it, and not its mentions" in {
