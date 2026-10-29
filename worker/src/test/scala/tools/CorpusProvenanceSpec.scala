@@ -13,7 +13,7 @@ import java.time.{Instant, LocalDateTime}
  * UK leg red in run 35948292875: the day's corpus lost the Mockingjay Part 1 listings
  * that carried an original title, with no code change behind it.
  */
-class CorpusProvenanceSpec extends AnyFlatSpec with Matchers {
+class CorpusProvenanceSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def listing(cinema: Cinema, title: String, original: Option[String], showtimes: Int) = CinemaMovie(
     movie     = Movie(title, Some(123), None, Seq.empty, Seq.empty, original, None),
@@ -59,7 +59,7 @@ class CorpusProvenanceSpec extends AnyFlatSpec with Matchers {
   private def env(pairs: (String, String)*): settings.ProcessConfiguration = new settings.ProcessConfiguration(Env.of(pairs*))
 
   "the provenance verdict" should "say CHANGED, with the diff, when the green leg replayed another corpus" in {
-    val dir = Files.createTempDirectory("green-corpus")
+    val dir = tempDirectory("green-corpus")
     Files.write(dir.resolve("cinema-scrapes-uk.json.gz"), gzip(CorpusFixture.render(green)))
 
     val provenance = CorpusProvenance.of("uk", today, env(

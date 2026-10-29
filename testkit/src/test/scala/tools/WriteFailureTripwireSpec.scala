@@ -19,14 +19,14 @@ import scala.jdk.CollectionConverters.*
  * Every line here carries a per-test token, and only lines with it are counted: the
  * reporter listens on the ROOT logger, so a parallel suite's failed write could land in the file.
  */
-class WriteFailureTripwireSpec extends AnyFlatSpec with Matchers {
+class WriteFailureTripwireSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val logger = LoggerFactory.getLogger("kinowo.write-failure-tripwire-spec")
 
   /** Runs `body` under a reporter writing into a fresh directory; returns the recorded lines
    *  carrying `token`. */
   private def tripwire(token: String)(body: Path => Unit): Seq[String] = {
-    val dir      = Files.createTempDirectory("write-failure-tripwire")
+    val dir      = tempDirectory("write-failure-tripwire")
     val reporter = new WriteFailureTripwire
     reporter(RunStarting(new Ordinal(1), 0, ConfigMap(WriteFailureTripwire.DirKey -> dir.toString)))
     try body(dir)

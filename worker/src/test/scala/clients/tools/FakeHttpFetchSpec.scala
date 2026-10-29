@@ -1,5 +1,6 @@
 package clients.tools
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -10,10 +11,10 @@ import java.nio.file.{Files, Path}
  *  CI), and that must not turn a fixture root reached through a SYMLINK into "no fixture": a root
  *  handed in as a link (a scratch directory pointing at a downloaded tree) replayed every request
  *  as a miss, silently, because the check compared the link's path with the file's real one. */
-class FakeHttpFetchSpec extends AnyFlatSpec with Matchers {
+class FakeHttpFetchSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def tree(): (Path, Path) = {
-    val base = Files.createTempDirectory("fake-http-fetch")
+    val base = tempDirectory("fake-http-fetch")
     Files.createDirectories(base.resolve("real/enrichment-xx/api.example.com/3/search"))
     val key  = RecordingHttpFetch.fixtureKey("https://api.example.com/3/search/person?query=Ridley+Scott", foldYear = false)
     Files.writeString(base.resolve("real/enrichment-xx").resolve(key), """{"results":[]}""", StandardCharsets.UTF_8)

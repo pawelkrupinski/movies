@@ -1,5 +1,6 @@
 package scripts
 
+import tools.TempDirectories
 import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonString}
 import play.api.libs.json.Json
@@ -841,7 +842,7 @@ object IdentitySlice {
   def inWorkDir[A](o: Options, cache: Path, selector: Selector)(f: Path => A): A =
     if (o.emitCase.isEmpty && o.emitSlice.isEmpty) f(o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName))
     else {
-      val own = Files.createTempDirectory("identity-slice-emit")
+      val own = TempDirectories.create("identity-slice-emit")
       try f(own.resolve(selector.directoryName)) finally deleteTree(own)
     }
 

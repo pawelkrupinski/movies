@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{ResolverDecision, TakeChange}
@@ -9,7 +10,7 @@ import tools.ProdFilm
 /** The off-worker drift check joins each recorded listing to the film prod screened it as and names every one whose TMDB
  *  film a whole resolve takes otherwise — but not a listing prod screens in no slot, nor one the whole resolve left on a
  *  model gap, nor the listings of a slot the whole resolve splits. */
-class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers {
+class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   private def key(venue: String, title: String): ListingKey = ListingKey.Published(venue, title, None, Nil)
   private def decision(k: ListingKey, film: Option[Int], unanswered: Int = 0) =
     ResolverDecision(Seq(k), film, 0.5, ResolverDecision.Basis.OwnMatch, Seq("why"), unanswered = unanswered)()
@@ -60,7 +61,7 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers {
   }
 
   "filedOf" should "refuse a --families capture that is not there, never read it as no answers filed" in {
-    val missing = java.nio.file.Files.createTempDirectory("live-drift").resolve("de.json.gz")
+    val missing = tempDirectory("live-drift").resolve("de.json.gz")
     IdentityLiveDrift.filedOf(Some(missing), models.Country.Germany) shouldBe Left(s"no --families capture at $missing")
     IdentityLiveDrift.filedOf(None, models.Country.Germany).map(_.isEmpty) shouldBe Right(true)
   }

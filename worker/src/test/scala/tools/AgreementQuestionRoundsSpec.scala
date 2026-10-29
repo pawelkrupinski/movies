@@ -13,7 +13,7 @@ import scala.collection.immutable.ListSet
 /** The capture's and the fill's question rounds over a host that never answers one question — the US capture of
  *  2026-10-12 (run 38281127226): Wikidata's search for "SANGGEUN PARK" timed out from the GitHub runner on every one of
  *  twelve rounds, and the capture failed with the question open. */
-class AgreementQuestionRoundsSpec extends AnyFlatSpec with Matchers {
+class AgreementQuestionRoundsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Blackholed = VoterFamily.Wiki -> "director|SANGGEUN PARK"
   private val Answering  = VoterFamily.Wiki -> "director|Jineui Kim"
@@ -120,7 +120,7 @@ class AgreementQuestionRoundsSpec extends AnyFlatSpec with Matchers {
   "an unreachable question" should "be kept in the fixture beside the answers, for the replay to leave open and the next capture to ask" in {
     val capture = UnmatchedClusters.Capture(models.Country.all.head, Nil, Nil, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty,
       unreachable = Set(Blackholed))
-    val file = Files.createTempFile("unmatched", ".json.gz")
+    val file = tempFile("unmatched", ".json.gz")
     try {
       UnmatchedClusters.write(file, capture)
       val read = UnmatchedClusters.read(file)

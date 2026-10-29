@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.{ScratchDirectories, TempDirectories}
 import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -21,7 +22,7 @@ import scala.util.Try
  * 960 MiB limit. The header says how big that buffer will be before anything decodes. The cases that run a real
  * or stand-in vips child are in [[PosterMemoryCapIntegrationSpec]].
  */
-class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
+class PosterMemoryCapSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   /** Runs `body` while another shrink holds `gate`'s permit. The holder keeps it until `body` has
    *  returned — never on a timer — so a shrink that wrongly queued behind it could only finish by
@@ -40,7 +41,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
    *  this JVM keep busy queues the shrink before it ever reaches the gate, and the wait below would
    *  time the queue instead (CI, 2026-10-05: ExecutionContext.global saturated, `None` at 5 s). */
   private def shrinking(shrinker: VipsPosterShrinker): Future[Either[String, (Int, Int)]] = {
-    val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val poster = Files.write(tempFile("poster-", ".jpg"), posterJpeg)
     val result = Promise[Either[String, (Int, Int)]]()
     new Thread(() => { result.complete(Try(shrinker.coverSlot(poster).map(i => (i.getWidth, i.getHeight)))); () }).start()
     result.future
@@ -75,7 +76,7 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val full = JpegHeader.read(PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true, sampling = Seq(0x11, 0x11, 0x11))).get
     full.coefficientBytes shouldBe 8000L * 12000 * 3 * 2
     JpegHeader.read(PosterMemoryCapSpec.jpegHeader(780, 1144, progressive = false)).map(_.progressive) shouldBe Some(false)
-    JpegHeader.read(Files.write(Files.createTempFile("png-", ".png"), Array[Byte](0x89.toByte, 'P', 'N', 'G'))) shouldBe None
+    JpegHeader.read(Files.write(tempFile("png-", ".png"), Array[Byte](0x89.toByte, 'P', 'N', 'G'))) shouldBe None
   }
 
   "The progressive pre-check" should "admit an ordinary 11-megapixel poster, even at 4:4:4, and refuse what cannot fit" in {
@@ -92,8 +93,8 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
   // The search path is handed in (the root's PATH), so where vips is looked for is the
   // caller's to say: the first directory holding an executable `vips`, else none.
   "VipsPosterShrinker.locate" should "find vips in the first directory of the search path that has it" in {
-    val empty   = Files.createTempDirectory("no-vips-")
-    val holding = Files.createTempDirectory("vips-")
+    val empty   = tempDirectory("no-vips-")
+    val holding = tempDirectory("vips-")
     val binary  = Files.createFile(holding.resolve("vips"),
       PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr-x")))
     VipsPosterShrinker.locate(settings.ExecutableSearchPath(Seq(empty, holding))) shouldBe Some(VipsPosterShrinker.Binary(binary.toString))
@@ -111,9 +112,9 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     val tried = collection.mutable.Buffer.empty[String]
     val giant = PosterMemoryCapSpec.jpegHeader(8000, 12000, progressive = true)
     val download = new PosterDownload {
-      def fetch(url: String): Either[String, Path] = { tried += url; Right(Files.copy(giant, Files.createTempFile("dl-", ".jpg"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)) }
+      def fetch(url: String): Either[String, Path] = { tried += url; Right(Files.copy(giant, tempFile("dl-", ".jpg"), java.nio.file.StandardCopyOption.REPLACE_EXISTING)) }
     }
-    val store = tempStore()
+    val store = tempStore(tempDirectory)
     val posters = new ShareCardPosters(store, download, new VipsPosterShrinker(binary = None), ShareCardMetrics.noop, _root_.tools.SpecStopwatch.Frozen)
     posters.load("f1", Seq("https://m.media-amazon.com/images/M/abc@._V1_.jpg")) shouldBe None
     tried.toSeq shouldBe Seq(
@@ -135,8 +136,8 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
 object PosterMemoryCapSpec {
   /** A stand-in `vips` that records it ran and exits with `exit`. */
   def fakeVips(exit: Int): (String, Path) = {
-    val ran    = Files.createTempFile("vips-ran-", ".txt"); Files.delete(ran)
-    val script = Files.createTempFile("fake-vips-", ".sh")
+    val ran    = TempDirectories.createFile("vips-ran-", ".txt"); Files.delete(ran)
+    val script = TempDirectories.createFile("fake-vips-", ".sh")
     Files.writeString(script, s"#!/bin/sh\ntouch '$ran'\nexit $exit\n")
     Files.setPosixFilePermissions(script, PosixFilePermissions.fromString("rwx------"))
     (script.toString, ran)
@@ -151,7 +152,7 @@ object PosterMemoryCapSpec {
     out.write(0xff); out.write(if (progressive) 0xc2 else 0xc0)        // SOF2 / SOF0
     u16(8 + 3 * sampling.size); out.write(8); u16(height); u16(width); out.write(sampling.size)
     sampling.zipWithIndex.foreach { case (s, i) => out.write(i + 1); out.write(s); out.write(0) }
-    Files.write(Files.createTempFile("header-", ".jpg"), out.toByteArray)
+    Files.write(TempDirectories.createFile("header-", ".jpg"), out.toByteArray)
   }
 
 }

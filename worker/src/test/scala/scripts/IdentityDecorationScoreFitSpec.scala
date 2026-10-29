@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.DecorationScore
@@ -8,7 +9,7 @@ import java.nio.file.Files
 
 /** The shipped candidate-decoration score is what `IdentityDecorationScoreFit` fits from the checked-in training rows
  *  — every learned weight has its re-learn tool, and the artefact is never edited by hand. */
-class IdentityDecorationScoreFitSpec extends AnyFlatSpec with Matchers {
+class IdentityDecorationScoreFitSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   "The shipped decoration score" should "be the fit of the checked-in training rows" in {
     Files.exists(IdentityDecorationScoreFit.Training) shouldBe true
@@ -20,7 +21,7 @@ class IdentityDecorationScoreFitSpec extends AnyFlatSpec with Matchers {
   "A training row" should "read back as it was written" in {
     val row = DecorationScore.Row("suffix:edukacja mlode horyzonty", DecorationScore.Features(2, 3, 1, prefix = false, 3, 0.0, 0.3333, 0.25),
       good = true, bad = false)
-    val file = Files.createTempFile("training", ".tsv")
+    val file = tempFile("training", ".tsv")
     try {
       Files.writeString(file, IdentityDecorationScoreFit.Header + "\n" + IdentityDecorationScoreFit.line(row) + "\n")
       IdentityDecorationScoreFit.read(file) shouldBe Seq(row)

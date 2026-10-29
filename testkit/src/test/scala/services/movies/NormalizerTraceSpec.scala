@@ -1,5 +1,6 @@
 package services.movies
 
+import tools.ScratchDirectories
 import models.{Country, Helios}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,10 +13,10 @@ import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 
 /** The footprint measure's proof (`scripts/identity-measure --footprint`): a trace hears every normaliser built while it
  *  is set, and the check reads every reading again under the rules it runs on, naming each one that reads otherwise. */
-class NormalizerTraceSpec extends AnyFlatSpec with Matchers {
+class NormalizerTraceSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def traced(body: => Unit): Path = {
-    val path = Files.createTempFile("normalizer-trace", ".jsonl.gz")
+    val path = tempFile("normalizer-trace", ".jsonl.gz")
     NormalizerTrace.recording(Some(path))(body)
     path
   }
@@ -24,12 +25,12 @@ class NormalizerTraceSpec extends AnyFlatSpec with Matchers {
     try Iterator.continually(in.readLine()).takeWhile(_ != null).toSeq finally in.close()
   }
   private def rewritten(path: Path)(edit: String => String): Path = {
-    val to  = Files.createTempFile("normalizer-trace-edited", ".jsonl.gz")
+    val to  = tempFile("normalizer-trace-edited", ".jsonl.gz")
     val out = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(to)), UTF_8))
     try lines(path).foreach(l => { out.write(edit(l)); out.write('\n') }) finally out.close()
     to
   }
-  private def check(trace: Path) = NormalizerTraceCheck.check(Seq(trace), Files.createTempFile("differ", ".tsv"))
+  private def check(trace: Path) = NormalizerTraceCheck.check(Seq(trace), tempFile("differ", ".tsv"))
 
   "a trace" should "hear a normaliser built inside it, and every reading it makes, nested ones too" in {
     val trace = traced {

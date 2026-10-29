@@ -112,7 +112,7 @@ object IssuerCertificateFetchingSpec {
   /** The AIA server (plain HTTP, serving the intermediate) and the origin (HTTPS, presenting the
    *  leaf alone). The AIA server starts first: its port goes into the leaf. */
   private[tools] final class Servers(keytool: Keytool) {
-    val dir     = Files.createTempDirectory("issuer-fetching")
+    val dir     = TempDirectories.create("issuer-fetching")
     val issuers = HttpServer.create(new InetSocketAddress(Loopback, 0), 0)
     issuers.start()
     val chain   = Chain.mint(keytool, dir, s"http://127.0.0.1:${issuers.getAddress.getPort}/intermediate.cer")
@@ -133,8 +133,7 @@ object IssuerCertificateFetchingSpec {
 
     def close(): Unit = {
       origin.stop(0); issuers.stop(0)
-      Using.resource(Files.list(dir))(_.forEach(Files.delete(_)))
-      Files.delete(dir)
+      TempDirectories.delete(dir)
     }
   }
 

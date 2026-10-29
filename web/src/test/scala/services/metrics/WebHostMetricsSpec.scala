@@ -1,5 +1,6 @@
 package services.metrics
 
+import tools.ScratchDirectories
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -31,7 +32,7 @@ import java.nio.file.{Files, Path, Paths}
  * that format is a kernel interface and a tidied-up sample is exactly where a
  * units bug hides.
  */
-class WebHostMetricsSpec extends AnyFlatSpec with Matchers {
+class WebHostMetricsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Meminfo =
     """MemTotal:        1009836 kB
@@ -61,7 +62,7 @@ class WebHostMetricsSpec extends AnyFlatSpec with Matchers {
   /** A cgroup v2 directory holding the two files the reader consults. `null`
    *  for either writes no file at all, which is the not-containerised shape. */
   private def cgroupDir(max: String, current: String): Path = {
-    val dir = Files.createTempDirectory("cgroup")
+    val dir = tempDirectory("cgroup")
     if (max != null) Files.writeString(dir.resolve("memory.max"), max + "\n")
     if (current != null) Files.writeString(dir.resolve("memory.current"), current + "\n")
     dir
@@ -116,13 +117,13 @@ class WebHostMetricsSpec extends AnyFlatSpec with Matchers {
   /** `Meminfo` on disk, for the tests that vary the CGROUP and so cannot use
    *  `withMeminfo`, which fixes the cgroup at "absent". */
   private def meminfoAt(contents: String): Path = {
-    val file = Files.createTempFile("meminfo", ".txt")
+    val file = tempFile("meminfo", ".txt")
     Files.writeString(file, contents)
     file
   }
 
   private def withMeminfo(contents: String)(check: String => Unit): Unit = {
-    val file = Files.createTempFile("meminfo", ".txt")
+    val file = tempFile("meminfo", ".txt")
     try {
       Files.writeString(file, contents)
       check(render(file))

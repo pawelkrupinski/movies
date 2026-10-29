@@ -17,10 +17,12 @@ import scala.util.Using
  * from a git hook hands its test JVMs the hook's GIT_DIR, which beats the directory a command
  * runs in, so a scratch commit would otherwise land in the repository every worktree shares.
  */
-final class ScratchGitRepository private (val root: Path, private var tick: Int) {
+final class ScratchGitRepository private (val root: Path, private var tick: Int, temp: String => Path) {
 
-  def this() = {
-    this(Files.createTempDirectory("scratch-git"), 0)
+  /** A new repository whose directories (its own, its copies', its scripts') `temp` makes: a suite passes its
+   *  `ScratchDirectories.tempDirectory`, so they go when the suite ends. */
+  def this(temp: String => Path) = {
+    this(temp("scratch-git"), 0, temp)
     git("init", "-q", "-b", "main")
   }
 
@@ -50,7 +52,7 @@ final class ScratchGitRepository private (val root: Path, private var tick: Int)
    *  same history many times and lets each run mutate its own (bisect state, new commits):
    *  building it once and copying is a fraction of the ~30 `git` spawns a rebuild costs. */
   def copy(): ScratchGitRepository = {
-    val target = Files.createTempDirectory("scratch-git")
+    val target = temp("scratch-git")
     Using.resource(Files.walk(root)) { paths =>
       paths.forEach { source =>
         val dest = target.resolve(root.relativize(source))
@@ -58,12 +60,12 @@ final class ScratchGitRepository private (val root: Path, private var tick: Int)
         else Files.copy(source, dest, StandardCopyOption.COPY_ATTRIBUTES)
       }
     }
-    new ScratchGitRepository(target, tick)
+    new ScratchGitRepository(target, tick, temp)
   }
 
   /** An executable script in the repository's sibling scratch space (never committed). */
   def script(name: String, body: String): Path = {
-    val file = Files.createTempDirectory("scratch-bin").resolve(name)
+    val file = temp("scratch-bin").resolve(name)
     Files.writeString(file, "#!/usr/bin/env bash\n" + body)
     file.toFile.setExecutable(true)
     file

@@ -99,7 +99,7 @@ object Chrome {
    *  needed. */
   def tryStart(browser: Option[CdpBrowserBinary], proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] =
     findExecutable(browser).flatMap { exe =>
-    val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
+    val userDirectory = TempDirectories.create("chrome-cdp-test-")
     val pb = new ProcessBuilder(
       (Seq(
         exe.toString,

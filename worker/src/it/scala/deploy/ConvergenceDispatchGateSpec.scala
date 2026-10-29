@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -17,7 +18,7 @@ import scala.sys.process.*
  * only 44% of main's commits touched a pipeline path. This runs the real gate script over a
  * scratch repository with a stub `gh` that records what was dispatched.
  */
-class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
+class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration with ScratchDirectories {
 
   private val Script = Paths.get(".github/scripts/kick-convergence.sh").toAbsolutePath
 
@@ -35,8 +36,8 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
    *  finds no run of the head queued or running. */
   private def kickWithStatus(repo: ScratchGitRepository, head: String, lastRun: String,
                              refuse: String = "", flaky: String = ""): (Int, Seq[String]) = {
-    val dispatched = Files.createTempFile("dispatched", ".log")
-    val flakedOnce = Files.createTempFile("flaked", ".once")
+    val dispatched = tempFile("dispatched", ".log")
+    val flakedOnce = tempFile("flaked", ".once")
     Files.delete(flakedOnce)
     val gh = repo.script("gh",
       s"""case "$$1 $$2" in
@@ -56,7 +57,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   }
 
   private def repoWithBase(): (ScratchGitRepository, String) = {
-    val repo = new ScratchGitRepository
+    val repo = new ScratchGitRepository(tempDirectory)
     (repo, repo.commit("base", "worker/src/main/Pipeline.scala" -> "v1\n"))
   }
 

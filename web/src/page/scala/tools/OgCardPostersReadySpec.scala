@@ -20,7 +20,7 @@ import java.nio.file.Files
  * when Chrome isn't installed (CI images without a browser get cancelled
  * tests, same pattern as `PageJsBehaviourSpec`).
  */
-class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with SuiteConfiguration {
+class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with SuiteConfiguration with ScratchDirectories {
 
   private var chrome: Option[Chrome] = None
 
@@ -52,7 +52,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private def withHtml(html: String)(body: CdpPage => Unit): Unit = chrome match {
     case None => cancel("Chrome not installed — skipping CDP poster-ready spec")
     case Some(c) =>
-      val tmp = Files.createTempFile("og-posters-ready-", ".html")
+      val tmp = tempFile("og-posters-ready-", ".html")
       Files.writeString(tmp, html)
       try c.openPage(tmp.toUri.toString) { page =>
         page.useScript(OgCardGenerator.PageScript)
@@ -92,7 +92,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private def withRepertoireUrl(posters: String)(body: (Chrome, String) => Unit): Unit = chrome match {
     case None => cancel("Chrome not installed — skipping CDP poster-ready spec")
     case Some(c) =>
-      val tmp = Files.createTempFile("og-repertoire-", ".html")
+      val tmp = tempFile("og-repertoire-", ".html")
       Files.writeString(tmp, repertoireHtml(posters))
       try body(c, tmp.toUri.toString) finally Files.deleteIfExists(tmp)
   }

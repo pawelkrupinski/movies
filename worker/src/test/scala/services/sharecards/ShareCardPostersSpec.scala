@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +12,7 @@ import java.nio.file.Files
 import javax.imageio.ImageIO
 
 /** The cases that run a real vips child are in [[ShareCardPostersIntegrationSpec]]. */
-class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
+class ShareCardPostersSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val url = "https://cdn.example/poster-a.jpg"
 
@@ -52,7 +53,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     val primary  = "https://multikino.example/403.jpg"
     val series   = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val download = new CountingDownload(failing = Set(primary, "https://gone.example/a.jpg", "https://gone.example/b.jpg"))
-    val posters  = new ShareCardPosters(tempStore(), download, newJavaShrinker(), series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen)
+    val posters  = new ShareCardPosters(tempStore(tempDirectory), download, newJavaShrinker(), series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen)
 
     posters.load(film1, Seq(primary, url)) shouldBe defined
     posters.load("fother", Seq("https://gone.example/a.jpg", "https://gone.example/b.jpg")) shouldBe None
@@ -75,7 +76,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
     import scala.concurrent.{Await, Future, Promise}
     given scala.concurrent.ExecutionContext = tools.DedicatedThreads
     val (busy, idle) = (new Rig(), new Rig())
-    val file    = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val file    = Files.write(tempFile("poster-", ".jpg"), posterJpeg)
     val holding = Promise[Unit](); val release = Promise[Unit]()
     val holder  = Future(busy.shrinker.gate.withPermit { holding.success(()); Await.ready(release.future, SpecTimeouts.Io) })
     try {
@@ -93,7 +94,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
   }
 
   "The shrinker" should "decode with the bounded JDK reader when vips is not installed" in {
-    val file = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val file = Files.write(tempFile("poster-", ".jpg"), posterJpeg)
     try new VipsPosterShrinker(binary = None).coverSlot(file).map(i => (i.getWidth, i.getHeight)) shouldBe Right((420, 630))
     finally Files.delete(file)
   }

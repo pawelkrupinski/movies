@@ -6,7 +6,6 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.{Listing, ScreeningDays}
 import services.movies.ListingKey
 
-import java.nio.file.Files
 import java.time.LocalDate
 
 /** A lean read's season-only listing keeps, through a capture's file, the year of its first day as well as its season —
@@ -14,7 +13,7 @@ import java.time.LocalDate
  *  opening year, UK Regal Stowmarket's "Song Sung Blue- The Music of Neil Diamond", first screening in 2027, replayed as
  *  a 2026 listing, current for the 2025 film the live capture held it was not current for: the capture replayed to other
  *  takes than it captured (Identity capture #2084, #2104). */
-class UnmatchedClustersSeasonSpec extends AnyFlatSpec with Matchers {
+class UnmatchedClustersSeasonSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   private val uk = Country.all.find(_.code == "uk").get
 
   private def listing(title: String, screenings: ScreeningDays): Listing = {
@@ -24,7 +23,7 @@ class UnmatchedClustersSeasonSpec extends AnyFlatSpec with Matchers {
   }
 
   private def throughItsFile(listings: Seq[Listing]): Seq[Listing] = {
-    val file = Files.createTempDirectory("capture-season").resolve("uk.json.gz")
+    val file = tempDirectory("capture-season").resolve("uk.json.gz")
     UnmatchedClusters.write(file, UnmatchedClusters.Capture(uk, listings, Nil, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty))
     UnmatchedClusters.read(file).listings.sortBy(_.rawTitle)
   }

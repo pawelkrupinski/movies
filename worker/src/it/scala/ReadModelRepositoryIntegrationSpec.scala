@@ -1,5 +1,6 @@
 package integration
 
+import tools.ScratchDirectories
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -20,7 +21,7 @@ import tools.Eventually.eventually
  * `Set()` against `Set("backfillstitchprobe|1904")`). In a database nobody else writes,
  * both reads see exactly the rows seeded here, so a single read is the assertion.
  */
-class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
+class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite with ScratchDirectories {
 
   private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "readmodel-repository")
   private val db       = isolated.database
@@ -50,7 +51,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
       rm.upsertScreening(CityScreening(_id = s"$film|poznan|$cinema", filmId = film, city = "poznan", cinema = cinema, filmUrl = None, showtimes = Nil))
     }
     rm.upsertScreening(CityScreening(_id = "fitelsewhere|krakow|Kijów", filmId = "fitelsewhere", city = "krakow", cinema = "Kijów", filmUrl = None, showtimes = Nil))
-    val store = new services.sharecards.ShareCardStore(java.nio.file.Files.createTempDirectory("city-cards-it-"))
+    val store = new services.sharecards.ShareCardStore(tempDirectory("city-cards-it-"))
     assert(store.usable)
     // A poster cached for every film, each its own colour: the first tile is the widest-shown film's.
     def poster(colour: java.awt.Color) = {

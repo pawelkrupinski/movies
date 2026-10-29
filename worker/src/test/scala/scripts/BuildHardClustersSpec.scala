@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.HardClusters.{Reason, Seed}
@@ -7,7 +8,7 @@ import tools.HardClusters.{Reason, Seed}
 import java.nio.file.Files
 
 /** What the hard-cluster ratchet adds: the findings it reads, the ones it already holds, and the corpora it grows from. */
-class BuildHardClustersSpec extends AnyFlatSpec with Matchers {
+class BuildHardClustersSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   import BuildHardClusters._
 
@@ -24,7 +25,7 @@ class BuildHardClustersSpec extends AnyFlatSpec with Matchers {
   }
 
   "The extensions" should "grow each country from its own corpus, and skip a country with none or a code no country has" in {
-    val dir = Files.createTempDirectory("hard-clusters")
+    val dir = tempDirectory("hard-clusters")
     try {
       val de = Files.writeString(dir.resolve("cinema-scrapes-de.json.gz"), "")
       corporaIn(dir.toString) shouldBe Seq(models.Country.Germany -> de)

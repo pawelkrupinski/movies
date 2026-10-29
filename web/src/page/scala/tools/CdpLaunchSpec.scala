@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
  * installed". Chrome now picks and binds its port itself, and the driver reads it from the
  * profile only that Chrome writes, checking the browser that answers is the one named there.
  */
-class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
+class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration with ScratchDirectories {
 
   /** The pids of the browser processes answering on `chrome`'s DevTools port. */
   private def answeringBrowsers(chrome: Chrome): Seq[Long] = {
@@ -46,7 +46,7 @@ class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
   }
 
   "A profile whose DevToolsActivePort names another browser's port" should "not be taken as this Chrome's" in withChrome { other =>
-    val profile = Files.createTempDirectory("chrome-cdp-test-foreign-")
+    val profile = tempDirectory("chrome-cdp-test-foreign-")
     val alive   = new ProcessBuilder("sleep", "30").start()
     try {
       Files.writeString(profile.resolve("DevToolsActivePort"),
@@ -57,7 +57,7 @@ class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   // Main #2146: Chrome exited with 133 at launch and the failure said only that, its own CHECK message discarded.
   "A browser that exits at launch" should "fail naming its exit code and what it printed" in {
-    val dir     = Files.createTempDirectory("chrome-cdp-test-crasher-")
+    val dir     = tempDirectory("chrome-cdp-test-crasher-")
     val crasher = dir.resolve("chrome")
     Files.writeString(crasher, "#!/bin/sh\necho 'FATAL: Check failed: shared memory' >&2\nexit 133\n")
     crasher.toFile.setExecutable(true)

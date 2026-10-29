@@ -1,5 +1,6 @@
 package modules
 
+import tools.ScratchDirectories
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
 import ch.qos.logback.classic.spi.ILoggingEvent
@@ -20,10 +21,10 @@ import scala.jdk.CollectionConverters._
  * finds the file appender on the root logger, and asserts it is a rolling file
  * appender rooted at KINOWO_LOG_DIR that actually writes an event to disk.
  */
-class WorkerFileLoggingSpec extends AnyFlatSpec with Matchers {
+class WorkerFileLoggingSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   "the worker logback.xml" should "send root logs to a rolling file under KINOWO_LOG_DIR (survives a restart)" in {
-    val directory: Path = Files.createTempDirectory("kinowo-log-test")
+    val directory: Path = tempDirectory("kinowo-log-test")
     // Handed to THIS context only: logback resolves ${KINOWO_LOG_DIR} from the context's own
     // properties before system properties and the OS environment, so the spec names the
     // directory without a JVM-wide property every other suite would see.
@@ -56,7 +57,7 @@ class WorkerFileLoggingSpec extends AnyFlatSpec with Matchers {
    *  pair a log call adds arrive as fields (`tools.JsonLineEncoder`); the file on the volume, read by a person after a
    *  restart, stays text with the pairs appended. */
   it should "write stdout as one JSON object per line, with the build and a call's pairs as fields, and the file as text with them" in {
-    val directory: Path = Files.createTempDirectory("kinowo-log-test")
+    val directory: Path = tempDirectory("kinowo-log-test")
     val context = new LoggerContext()
     context.setMDCAdapter(new ch.qos.logback.classic.util.LogbackMDCAdapter)
     context.putProperty("KINOWO_LOG_DIR", directory.toString)

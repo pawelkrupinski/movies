@@ -360,7 +360,7 @@ object OgCardGenerator {
    *  `Scale`×. Returns Base64 PNG bytes. */
   private def renderCard(chrome: Chrome, backgroundPng: String, cityLine: String, country: Country): String = {
     val html = cardHtml(backgroundPng, cityLine, country)
-    val tmp  = Files.createTempFile("og-card-", ".html")
+    val tmp  = TempDirectories.createFile("og-card-", ".html")
     Files.writeString(tmp, html)
     try chrome.openPage(tmp.toUri.toString) { page =>
       setMetrics(page, Width, Height, Scale)

@@ -1,5 +1,6 @@
 package integration
 
+import tools.ScratchDirectories
 import tools.SpecTimeouts
 
 
@@ -25,7 +26,7 @@ import scala.util.Try
  * card. Each worker is its own Mongo client and its own `ShareCardService`; both saw the film's
  * two versions asked in the same order, as both read the same read model.
  */
-class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
+class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite with ScratchDirectories {
 
   /** A JPEG as a reader finds it: starting at its start-of-image and ending at its end-of-image. */
   private def whole(bytes: Array[Byte]): Boolean =
@@ -34,7 +35,7 @@ class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
 
   "two workers rendering one film's card at once" should "leave the latest version, and never let a reader see a torn file" in
     ConcurrentInstances.withInstances(mongoTarget, "share-cards-two-workers") { instances =>
-      val store = tempStore()
+      val store = tempStore(tempDirectory)
       val services = instances.map { instance =>
         val posters = new ShareCardPosters(store, new CountingDownload(), newJavaShrinker(), ShareCardMetrics.noop, _root_.tools.Stopwatch.System)
         val queue   = new MongoTaskQueue(Some(instance.database))

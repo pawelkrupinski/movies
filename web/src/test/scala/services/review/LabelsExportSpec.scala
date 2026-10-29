@@ -1,12 +1,13 @@
 package services.review
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.file.Files
 import java.time.Instant
 
-class LabelsExportSpec extends AnyFlatSpec with Matchers {
+class LabelsExportSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val at = Instant.parse("2026-10-06T08:00:00Z")
   private val opalenica = ReviewMember("Kino Opalenica", "FRANZ KAFKA", Some("https://b24/kafka"))
@@ -118,7 +119,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
   }
 
   "exporting" should "take only the answers given since the last export, and mark them used for the next" in {
-    val dir   = Files.createTempDirectory("labels")
+    val dir   = tempDirectory("labels")
     val path  = dir.resolve("labels.tsv")
     val later = answer(ReviewVerdict.Wrong, shown = Some(dawnWall), members = Seq(opalenica.copy(venue = "Kino Muza")))
       .copy(at = at.plusSeconds(60))
@@ -136,7 +137,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "take back the rows of an exported answer withdrawn since, and restore a row it flipped" in {
-    val dir   = Files.createTempDirectory("labels")
+    val dir   = tempDirectory("labels")
     val path  = dir.resolve("labels.tsv")
     val hand  = LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "wrong", "by hand")
     val other = LabelRow("pl", "*", "Dune", "tmdb:438631", "right", "by hand")
@@ -163,7 +164,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave the rows of an exported answer replaced since by one that gives them too" in {
-    val dir   = Files.createTempDirectory("labels")
+    val dir   = tempDirectory("labels")
     val path  = dir.resolve("labels.tsv")
     val hand  = LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "wrong", "by hand")
     val right = answer(ReviewVerdict.Right)
@@ -181,7 +182,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep a withdrawn answer's row another standing answer also gives" in {
-    val dir   = Files.createTempDirectory("labels")
+    val dir   = tempDirectory("labels")
     val path  = dir.resolve("labels.tsv")
     val muza  = ReviewMember("Kino Muza", "FRANZ KAFKA", Some("https://muza/kafka"))
     val both  = answer(ReviewVerdict.Right, members = Seq(opalenica, muza))           // FRANZ KAFKA under *
@@ -197,7 +198,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
   "the judgements file" should "round-trip byte for byte through read and write, its opening comments kept" in {
     val path  = LabelsTsv.locate()
     val bytes = Files.readAllBytes(path)
-    val copy  = Files.createTempFile("identity-judgements", ".tsv")
+    val copy  = tempFile("identity-judgements", ".tsv")
     try {
       Files.copy(path, copy, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       LabelsTsv.write(copy, LabelsTsv.read(path))

@@ -11,11 +11,11 @@ import scala.jdk.CollectionConverters._
 
 /** The one reader of the identity judgements in Scala ([[IdentityJudgements]]): it keys a billing as the Python reader
  *  does, reads each row's verdict as a label, and each gate's tolerance off the rows' state and scope. */
-class IdentityJudgementsSpec extends AnyFlatSpec with Matchers {
+class IdentityJudgementsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Header = IdentityJudgements.Columns.mkString("\t")
   private def file(lines: String*): Path = {
-    val path = Files.createTempFile("identity-judgements", ".tsv")
+    val path = tempFile("identity-judgements", ".tsv")
     Files.writeString(path, lines.mkString("", "\n", "\n"), StandardCharsets.UTF_8)
     path
   }

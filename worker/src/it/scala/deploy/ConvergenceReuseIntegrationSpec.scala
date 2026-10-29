@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -10,7 +11,7 @@ import scala.sys.process.*
  * The cases of [[ConvergenceReuseSpec]] that run the real `scripts/ci/convergence_reuse.py` (python3): the judgement
  * over the cases that must NOT reuse, and the rows main expects.
  */
-class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers {
+class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Script = "scripts/ci/convergence_reuse.py"
   private def leg    = RepoFile.read(".github/workflows/country-convergence-leg.yml")
@@ -21,7 +22,7 @@ class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers {
       |"takes-countries": "", "takes-no-store": "false", "takes-skip": "shadow"}""".stripMargin
 
   private def json(text: String): Path = {
-    val file = Files.createTempFile("reuse", ".json")
+    val file = tempFile("reuse", ".json")
     Files.writeString(file, text)
     file
   }

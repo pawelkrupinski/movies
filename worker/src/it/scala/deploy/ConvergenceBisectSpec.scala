@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -19,7 +20,7 @@ import scala.sys.process.*
  *    before (a flake or a recording change), or no pipeline commit is in range;
  *  - it refuses to bisect a full-leg failure the sample cannot reproduce.
  */
-class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
+class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration with ScratchDirectories {
 
   private val Script     = Paths.get(".github/scripts/convergence-bisect.sh").toAbsolutePath
   private val PathsFile  = Paths.get(".github/convergence-paths.txt").toAbsolutePath
@@ -39,10 +40,10 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
 
     /** Exits 1 (bad) once the bug is in, 0 before; logs the subject of every commit it
      *  was asked to replay — the last green `base` first, confirmed before any bisecting. */
-    val steps: Path = Files.createTempFile("bisect-steps", ".log")
+    val steps: Path = tempFile("bisect-steps", ".log")
     /** The script's clock: a `date` that answers `+%s` from a file each replay advances by
      *  STEP_MINUTES, so a budget of real hours is spent in milliseconds. */
-    val clock: Path = Files.writeString(Files.createTempFile("bisect-clock", ".txt"), "1000000\n")
+    val clock: Path = Files.writeString(tempFile("bisect-clock", ".txt"), "1000000\n")
     val date: Path = repo.script("date",
       s"""if [ "$${1:-}" = "+%s" ]; then cat "$clock"; else exec /bin/date "$$@"; fi
          |""".stripMargin)
@@ -69,7 +70,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
     def withBugAt(badAt: Int): Mainline = synchronized(built.getOrElseUpdate(badAt, build(badAt)))
 
     private def build(badAt: Int): Mainline = {
-      val repo = new ScratchGitRepository
+      val repo = new ScratchGitRepository(tempDirectory)
       val good = repo.commit("base", "worker/src/main/State.scala" -> "ok\n")
       val pipeline = (1 to 6).map { n =>
         if (n == 3) repo.commit("ios: tweak", "ios/App.swift" -> "// app only\n")
@@ -83,8 +84,8 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
   }
 
   private def bisect(history: History, good: String, bad: String, env: (String, String)*): (Int, String, Option[String]) = {
-    val verdict  = Files.createTempFile("bisect-verdict", ".md")
-    val firstBad = Files.createTempFile("bisect-first-bad", ".txt")
+    val verdict  = tempFile("bisect-verdict", ".md")
+    val firstBad = tempFile("bisect-first-bad", ".txt")
     Files.delete(firstBad)
     val all = Seq(
       "COUNTRY" -> "poland", "STEP_COMMAND" -> history.step.toString, "STEP_MINUTES" -> "1",

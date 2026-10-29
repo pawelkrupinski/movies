@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters.*
  * An allocation budget is a two-sided ratchet — red above its band (a regression) and below it (a stale
  * figure) — while a ceiling bounds only from above and an operation count is exact.
  */
-class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
+class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   import ScalaSourceScan.{TestRoots, codeOf, scalaFiles}
 
@@ -43,7 +43,7 @@ class PerformanceBudgetsSpec extends AnyFlatSpec with Matchers {
     budgets.filter(b => b.unit == PerformanceBudget.Measure.Bytes && b.limit <= 0) shouldBe empty
   }
 
-  private val Fixtures     = Files.createTempFile("performance-budgets-fixture", ".tsv")
+  private val Fixtures     = tempFile("performance-budgets-fixture", ".tsv")
   private val FixtureNames = Set("path", "noisy path", "bound", "count", "none")
   private def fixtureRows(f: Path): Seq[String] =
     if (Files.exists(f)) Files.readAllLines(f).asScala.toSeq.map(_.split('\t').head).filter(FixtureNames) else Nil

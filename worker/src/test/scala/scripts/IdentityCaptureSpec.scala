@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -8,7 +9,7 @@ import scala.jdk.CollectionConverters._
 
 /** `scripts/identity-capture.sh`'s decisions: what it reads from its arguments and the environment, what each country's
  *  JVM is handed, when a recording's corpus and tree are fetched again, and what it reports. */
-class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
+class IdentityCaptureSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   import IdentityCapture._
 
   private val layout = Layout(Path.of("/repo"), Path.of("/repo/target/identity-capture"))
@@ -63,7 +64,7 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   /** A run over the caller's own corpus, tree and family seed — nothing fetched, nothing exported — each country's JVM
    *  answered by `jvm`: its success, what it printed, and what the run said. */
   private def runOf(countries: Seq[String], jvm: Job => Ran): (Boolean, String) = {
-    val dir = java.nio.file.Files.createTempDirectory("identity-capture-spec")
+    val dir = tempDirectory("identity-capture-spec")
     val effects = new Effects {
       def newestRecording(): Option[String] = fail("the caller's corpus needs no lookup")
       def fetchCorpus(run: String, cc: String, layout: Layout): Long = fail("the caller's corpus is not fetched")
@@ -232,7 +233,7 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   // ── artefact currency ──
 
   "The newest recording" should "be the run scripts/identity-capture.sh found and handed over, none when it found none" in {
-    val repo = java.nio.file.Files.createTempDirectory("identity-capture-spec")
+    val repo = tempDirectory("identity-capture-spec")
     new Live(repo, Map(NewestRecordingVariable -> " 37407719592\n")).newestRecording() shouldBe Some("37407719592")
     new Live(repo, Map(NewestRecordingVariable -> "")).newestRecording() shouldBe None
     new Live(repo, Map.empty).newestRecording() shouldBe None

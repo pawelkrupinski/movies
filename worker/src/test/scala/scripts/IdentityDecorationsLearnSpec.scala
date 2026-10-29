@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
@@ -8,10 +9,10 @@ import services.identity.TitleDecorations
 import java.nio.file.{Files, Path}
 
 /** The decorations relearn: what it keeps of the artefact it relearns on top of, and what it writes. */
-class IdentityDecorationsLearnSpec extends AnyFlatSpec with Matchers {
+class IdentityDecorationsLearnSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def withDirectory(test: Path => Unit): Unit = {
-    val dir = Files.createTempDirectory("decorations-learn")
+    val dir = tempDirectory("decorations-learn")
     try test(dir) finally Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete(_))
   }
   private def nothingRecorded(dir: Path) = RecordedCorpora(dir.resolve("corpora"), dir.resolve("fixtures"), dir.resolve("hard-clusters"))

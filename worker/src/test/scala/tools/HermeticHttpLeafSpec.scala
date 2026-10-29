@@ -11,7 +11,7 @@ import java.nio.file.{Files, Paths}
  * failure ("record this file") rather than a live fill that quietly makes the verdict
  * depend on whether Cinemeta was up.
  */
-class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
+class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   "the hermetic leaf" should "refuse every verb and remember each request once" in {
     val missing = new MissingFixtures
@@ -71,7 +71,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
     an [Exception] should be thrownBy leaf.post("https://api.test/token", "grant_type=client_credentials&client_secret=secret",
       "application/x-www-form-urlencoded")
 
-    val file = java.nio.file.Files.createTempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
+    val file = tempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
     missing.writeRefetches(file) shouldBe 5
     val lines = java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq
     lines.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe Seq(
@@ -101,7 +101,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
     an [Exception] should be thrownBy leaf.getBytes("https://cdn.test/poster.jpg?sig=secret")
     an [Exception] should be thrownBy leaf.get("https://api.themoviedb.org/3/movie/1?api_key=secret")
 
-    val file = Files.createTempDirectory("refetch").resolve("enrichment-pl.refetch.tsv")
+    val file = tempDirectory("refetch").resolve("enrichment-pl.refetch.tsv")
     missing.writeRefetches(file) shouldBe 1
     Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
       Seq(MissingFixtures.Refetch("GET", "https://api.themoviedb.org/3/movie/1?api_key=***"))
@@ -119,7 +119,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
     an [Exception] should be thrownBy leaf.get(s"$search&x=1", services.enrichment.WikidataClient.UserAgentHeader + ("Authorization" -> "Bearer x"))
     an [Exception] should be thrownBy leaf.get("https://api.test/ua", services.enrichment.WikidataClient.UserAgentHeader)
 
-    val file = Files.createTempDirectory("refetch").resolve("enrichment-de.refetch.tsv")
+    val file = tempDirectory("refetch").resolve("enrichment-de.refetch.tsv")
     missing.writeRefetches(file) shouldBe 1
     Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
       Seq(MissingFixtures.Refetch("GET", search))
@@ -136,7 +136,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
     list(CachingEnrichmentFetch.Replayed("GET", "https://firestore.test/doc?key=secret", None, failed))
     list(CachingEnrichmentFetch.Replayed("GET", "https://www.flicks.us/movie/a/", None, failed))
 
-    val file = Files.createTempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
+    val file = tempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
     missing.writeRefetches(file) shouldBe 2
     Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe Seq(
       MissingFixtures.Refetch("GET", "https://api.themoviedb.org/3/movie/2?api_key=***"),

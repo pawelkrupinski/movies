@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.TempDirectories
 import models.{CityScreening, Country, ResolvedMovie, ResolvedRatings, Showtime}
 import services.readmodel.InMemoryReadModelRepository
 import services.tasks.InMemoryTaskQueue
@@ -18,8 +19,10 @@ object ShareCardTestKit {
   val T0: Instant = Instant.parse("2026-06-01T10:00:00Z")
   def clockAt(at: Instant): Clock = Clock.fixed(at, ZoneOffset.UTC)
 
-  def tempStore(): ShareCardStore = {
-    val store = new ShareCardStore(Files.createTempDirectory("share-cards-"))
+  /** A store over a fresh directory `temp` makes: a suite passes its `ScratchDirectories.tempDirectory`; a [[Rig]]'s
+   *  default store goes when the test JVM exits ([[TempDirectories]]). */
+  def tempStore(temp: String => Path = TempDirectories.create): ShareCardStore = {
+    val store = new ShareCardStore(temp("share-cards-"))
     assert(store.usable)
     store
   }
@@ -42,7 +45,7 @@ object ShareCardTestKit {
     def fetch(url: String): Either[String, Path] = {
       calls.computeIfAbsent(url, _ => new AtomicInteger()).incrementAndGet()
       if (failing(url)) Left(PosterFailure.Http4xx)
-      else Right(Files.write(Files.createTempFile("poster-", ".img"), posterJpeg))
+      else Right(Files.write(TempDirectories.createFile("poster-", ".img"), posterJpeg))
     }
   }
 

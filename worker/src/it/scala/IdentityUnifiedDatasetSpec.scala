@@ -1,5 +1,6 @@
 package integration
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import integration.IdentityUnifiedDataset.{Judged, Row}
@@ -9,7 +10,7 @@ import java.nio.file.Files
 import java.util.zip.GZIPInputStream
 
 /** The unified training rows' labels — hand before weak, a weak label only where nothing argues against it — and the file. */
-class IdentityUnifiedDatasetSpec extends AnyFlatSpec with Matchers {
+class IdentityUnifiedDatasetSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   import IdentityUnifiedDataset.labelsOf
 
@@ -35,7 +36,7 @@ class IdentityUnifiedDatasetSpec extends AnyFlatSpec with Matchers {
   }
 
   "The training file" should "hold the header and the rows in country, cluster, film order, and the takes file today's takes alone" in {
-    val dir = Files.createTempDirectory("unified")
+    val dir = tempDirectory("unified")
     try {
       def row(country: String, film: String, today: String = "1") = Row(country, "c1", "corpus", "Kino", 1, "Lalka\tx", film, "Lalka", today, "1", "weak", 0, 0, Map.empty)
       val written = IdentityUnifiedDataset.write(dir.resolve("out"), Seq(row("pl", "tmdb:2", today = "0"), row("de", "tmdb:9"), row("pl", "tmdb:1")))

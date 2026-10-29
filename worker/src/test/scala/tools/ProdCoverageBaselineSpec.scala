@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
  * to get wrong and invisible when they are: it compares SHARES rather than counts,
  * and it treats a zero baseline strictly.
  */
-class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
+class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def coverage(films: Int, tmdb: Int = 0, imdb: Int = 0, imdbRating: Int = 0,
                        filmweb: Int = 0, metascore: Int = 0, rt: Int = 0) =
@@ -119,7 +119,7 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
   it should "survive a round-trip through the fixture file" in {
     val baseline  = coverage(films = 727, tmdb = 526, imdb = 515, imdbRating = 478, filmweb = 482, metascore = 308, rt = 354)
     val code      = "roundtrip"
-    val directory = java.nio.file.Files.createTempDirectory("prod-coverage-baseline-spec")
+    val directory = tempDirectory("prod-coverage-baseline-spec")
     try {
       ProdCoverageBaseline.writeIn(directory, code, baseline)
       ProdCoverageBaseline.readIn(directory, code) shouldBe Some(baseline)

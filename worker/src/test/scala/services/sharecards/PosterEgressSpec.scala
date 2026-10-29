@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, HttpStatusException}
@@ -9,7 +10,7 @@ import java.nio.file.{Files, Path}
 /** Posters on a host that refuses our datacenter IP go through the egress its scrapes already use.
  *  Multikino's Cloudflare 403s the k3s worker on every poster (checked 2026-09-24) while its
  *  scrapes read the same site through the residential proxy. */
-class PosterEgressSpec extends AnyFlatSpec with Matchers {
+class PosterEgressSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val refused = new PosterDownload { def fetch(url: String): Either[String, Path] = Left(PosterFailure.Http4xx) }
 
@@ -48,7 +49,7 @@ class PosterEgressSpec extends AnyFlatSpec with Matchers {
   // and answered from the memory until then, without the request. The memory is files in the
   // share-card directory, so a restart (a deploy a day) does not forget it.
   "A poster route that remembers failures" should "not ask again for a failed poster until the memory expires, and forget it on success" in {
-    val dir   = Files.createTempDirectory("failed-posters-")
+    val dir   = tempDirectory("failed-posters-")
     val clock = new tools.MutableClock(java.time.Instant.parse("2026-09-24T12:00:00Z"))
     var answer: Either[String, Path] = Left(PosterFailure.Http4xx)
     var asked = 0
@@ -62,7 +63,7 @@ class PosterEgressSpec extends AnyFlatSpec with Matchers {
     asked shouldBe 2
 
     clock.advanceSeconds(RememberedFailurePosterDownload.RefusedFor.toSeconds + 1)
-    val ok = Files.write(Files.createTempFile("poster-", ".img"), poster)
+    val ok = Files.write(tempFile("poster-", ".img"), poster)
     answer = Right(ok)
     route.fetch("https://www.multikino.pl/a.jpg") shouldBe Right(ok)           // expired: asked, and it works
     asked shouldBe 3

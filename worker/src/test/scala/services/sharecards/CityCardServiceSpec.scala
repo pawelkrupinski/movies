@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.{ScratchDirectories, TempDirectories}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{City, Country}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -16,7 +17,7 @@ import java.nio.file.Files
 import java.time.{Duration, Instant}
 import javax.imageio.ImageIO
 
-class CityCardServiceSpec extends AnyFlatSpec with Matchers {
+class CityCardServiceSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   import CityCardServiceSpec.*
 
   "A city card" should "draw the city's most widely shown film first, from the cached posters, and be a 1200×630 JPEG" in new Setup {
@@ -134,7 +135,7 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
     // done): a burst it must NOT repeat. Hourly ticks over the next week; a claimed render stamps
     // the card's mtime, as `render` does.
     val clock   = new MutableClock(T0)
-    val store   = tempStore()
+    val store   = tempStore(tempDirectory)
     val queue   = new InMemoryTaskQueue
     val country = Country.UnitedStates
     val service = new CityCardService(country, store, new InMemoryReadModelRepository, queue, ShareCardMetrics.noop, clock)
@@ -178,7 +179,7 @@ object CityCardServiceSpec {
     val series    = new ShareCardMetrics.Series(Seq("pl"), new PrometheusRegistry)
     val metrics   = series.forCountry("pl")
     val store     = {
-      val dir = Files.createTempDirectory("share-cards-")
+      val dir = TempDirectories.create("share-cards-")
       val room = if (roomFull) new ShareCardRoom(0L, () => Long.MaxValue, metrics.refused) else ShareCardRoom.Unlimited
       room.measured(overBudget = true)
       val s = new ShareCardStore(dir, room)

@@ -36,7 +36,7 @@ import scala.util.{Try, Using}
  * origin (a throwaway self-signed certificate the child is told to trust) are
  * all on loopback.
  */
-class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with ScratchDirectories {
 
   private lazy val configuration = settings.ProcessConfiguration.resolve()
 
@@ -87,7 +87,7 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeA
   private var minted: Option[(Path, Path, Path)] = None
   private def stores: (Path, Path, Path) = synchronized {
     minted.getOrElse {
-      val dir = Files.createTempDirectory("proxied-after-direct")
+      val dir = tempDirectory("proxied-after-direct")
       val (keyStore, trustStore) = selfSignedStores(new Keytool(configuration.javaHome), dir)
       minted = Some((dir, keyStore, trustStore))
       (dir, keyStore, trustStore)

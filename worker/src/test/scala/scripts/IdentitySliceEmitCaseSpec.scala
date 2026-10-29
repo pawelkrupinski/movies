@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import models.Country
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,14 +14,14 @@ import java.time.Instant
 /** identity-slice --emit-case: a pinned case replays as the slice it was cut from decided, so it carries every answer that
  *  decision read — the recording's, and prod's filed family answers beside them. Without the filed ones the replay's
  *  agreement asks its families afresh (a director's Wikidata search, an IMDb name search) and the case lacks answers. */
-class IdentitySliceEmitCaseSpec extends AnyFlatSpec with Matchers {
+class IdentitySliceEmitCaseSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val uk   = Country.all.find(_.code == "uk").get
   private val seed = ListingKey.Published("Picture House Uckfield", "Gremlins Special Event", None, Nil)
   private val family = new BsonDocument("family", new BsonString("wiki")).append("answer", new BsonString("Q1"))
 
   "An emitted case" should "keep the filed family answers its slice's decision read" in {
-    val root   = Files.createTempDirectory("identity-slice-emit")
+    val root   = tempDirectory("identity-slice-emit")
     val from   = root.resolve("slice")
     val target = root.resolve("case")
     val filed  = tools.FiledAnswers(tools.FiledAnswers.of(uk).capture.copy(families = Map("wiki|joe dante" -> family)), "identity-unmatched/uk.json.gz")
@@ -36,7 +37,7 @@ class IdentitySliceEmitCaseSpec extends AnyFlatSpec with Matchers {
   it should "name its filed answers from the checkout they were read in, wherever the slice ran" in {
     // `--ref` runs the slice in the ref's checkout, while `--families` names the capture of the checkout the tool was
     // called from: its absolute path was kept ("/Users/…/movies-idc-4/test/resources/…").
-    val root     = Files.createTempDirectory("identity-slice-emit")
+    val root     = tempDirectory("identity-slice-emit")
     val checkout = Files.createDirectories(root.resolve("caller"))
     Files.writeString(checkout.resolve(".git"), "gitdir: elsewhere\n")
     val capture  = Files.createDirectories(checkout.resolve("test/resources/fixtures/identity-unmatched")).resolve("uk.json.gz")
@@ -62,7 +63,7 @@ class IdentitySliceEmitCaseSpec extends AnyFlatSpec with Matchers {
     tools.FiledAnswers(tools.FiledAnswers.of(uk).capture.copy(families = Map("wiki|joe dante" -> family)), source)
 
   it should "be pinned under --emit-case, its filed answers named from the checkout --families is in" in {
-    val root    = Files.createTempDirectory("identity-slice-emit")
+    val root    = tempDirectory("identity-slice-emit")
     val capture = checkoutWithCapture(root, "caller")
     val o = IdentitySlice.parse(List("uk", "--families", capture.toString, "--emit-case", root.resolve("cases").toString,
       "--key", s"${seed.venue}|${seed.rawTitle}"))
@@ -82,7 +83,7 @@ class IdentitySliceEmitCaseSpec extends AnyFlatSpec with Matchers {
   it should "be cut apart from the slice another checkout left in the shared work dir" in {
     // The shared work dir (one per recording, every checkout's) kept another checkout's slice, its filed answers named
     // from that checkout; extract merges whatever it finds there, so an emitted case carried them and their path.
-    val root   = Files.createTempDirectory("identity-slice-emit")
+    val root   = tempDirectory("identity-slice-emit")
     val cache  = root.resolve("cache")
     val other  = checkoutWithCapture(root, "another-checkout")
     val o      = IdentitySlice.parse(List("uk", "--emit-case", root.resolve("cases").toString, "--key", s"${seed.venue}|${seed.rawTitle}"))

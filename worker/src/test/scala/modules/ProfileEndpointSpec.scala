@@ -1,5 +1,6 @@
 package modules
 
+import tools.ScratchDirectories
 import com.sun.net.httpserver.HttpServer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,7 +12,7 @@ import scala.concurrent.duration._
 
 /** `/profile` starts a flight recording of the running worker — the one way to see a production
  *  worker's CPU and allocation, since its JRE-only image lets nothing attach from outside. */
-class ProfileEndpointSpec extends AnyFlatSpec with Matchers {
+class ProfileEndpointSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private final class Recorded(answer: Either[String, String] = Right("/data/heapdumps/profile.jfr")) extends FlightRecorder {
     var asked = Seq.empty[FiniteDuration]
@@ -51,7 +52,7 @@ class ProfileEndpointSpec extends AnyFlatSpec with Matchers {
   }
 
   "JfrFlightRecorder" should "write its recording when it ends, and refuse a second while it runs" in {
-    val dir      = HeapDumpDirectory(Files.createTempDirectory("profile"))
+    val dir      = HeapDumpDirectory(tempDirectory("profile"))
     val recorder = new JfrFlightRecorder(dir, clock = _root_.tools.SpecClock.Pinned)
     // Long enough that the second ask lands while it runs on any machine — a one-second recording had ended on a loaded
     // laptop before the second ask — then ended by hand, which writes the file as its own end would.

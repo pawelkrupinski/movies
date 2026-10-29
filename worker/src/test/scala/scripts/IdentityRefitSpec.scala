@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityCalibration
@@ -8,7 +9,7 @@ import services.identity.IdentityMeasures.{Category, Missing, Number}
 import tools.UnmatchedClusters.{Label, Take}
 
 /** The weekly rule refit: what it may move, how far, how it refits a signal's weights, and when it keeps a change. */
-class IdentityRefitSpec extends AnyFlatSpec with Matchers {
+class IdentityRefitSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   import IdentityRefit._
 
   private val shipped = IdentityCalibration.resolver
@@ -156,7 +157,7 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers {
   }
 
   "A refit run" should "write its report, and the versioned refit over the artefact only with --apply and a change kept" in {
-    val dir = java.nio.file.Files.createTempDirectory("refit")
+    val dir = tempDirectory("refit")
     try {
       val fitting  = films(held = false, MinSupport)
       val m = Measured(BoundChange("listing-film", "year.distance >= 27", "year.distance", 27, 30),

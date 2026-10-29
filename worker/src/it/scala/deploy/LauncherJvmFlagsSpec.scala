@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -21,7 +22,7 @@ import scala.sys.process.Process
  * measured and given back -- docs/proposals/2026-10-23-dependency-and-flag-audit.md -- and the file
  * retired.)
  */
-class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
+class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   /** A tier's production JAVA_OPTS, with the paths only the pod has pointed somewhere harmless. */
   private def productionOptions(manifest: String): Seq[String] =
@@ -30,7 +31,7 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers {
       .group(1).trim.split("\\s+").toSeq
       .map(_.replaceAll("^(-XX:(?:HeapDumpPath|ErrorFile))=.*", "$1=" + tmp.resolve("x")))
 
-  private lazy val tmp = java.nio.file.Files.createTempDirectory("launcher-jvm-flags")
+  private lazy val tmp = tempDirectory("launcher-jvm-flags")
 
   private lazy val configuration = settings.ProcessConfiguration.resolve()
 

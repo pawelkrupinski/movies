@@ -12,7 +12,7 @@ import java.time.{Instant, LocalDateTime}
  * a lossy capture would quietly change the corpus a convergence run replays, and
  * the suite asserts byte-identical records across passes.
  */
-class CorpusFixtureSpec extends AnyFlatSpec with Matchers {
+class CorpusFixtureSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val cinema = Cinema.all.head
 
@@ -62,7 +62,7 @@ class CorpusFixtureSpec extends AnyFlatSpec with Matchers {
   // it used to render the whole corpus again (296 MB for the US) just to count it.
   it should "report the size of the JSON it compressed, the same bytes a reader inflates" in {
     val key       = "zz-spec"
-    val directory = java.nio.file.Files.createTempDirectory("corpus-fixture-spec")
+    val directory = tempDirectory("corpus-fixture-spec")
     val written   = CorpusFixture.writeIn(directory, key, rows)
     try {
       written.path shouldBe CorpusFixture.pathIn(directory, key)

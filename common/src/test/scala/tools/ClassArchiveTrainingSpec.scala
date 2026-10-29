@@ -16,7 +16,7 @@ class ClassArchiveTrainingSpec extends AnyFlatSpec with Matchers {
   import ClassArchiveTrainingSpec.*
 
   "The class archive training" should "name every class a jar carries, and nothing else" in {
-    val jar = Files.createTempFile("training", ".jar")
+    val jar = TempDirectories.createFile("training", ".jar")
     Using.resource(new JarOutputStream(Files.newOutputStream(jar))) { out =>
       Seq("a/B.class", "a/B$C.class", "module-info.class", "META-INF/versions/21/a/B.class", "a/notes.txt")
         .foreach { name => out.putNextEntry(new JarEntry(name)); out.closeEntry() }
@@ -38,7 +38,7 @@ class ClassArchiveTrainingSpec extends AnyFlatSpec with Matchers {
   /** A launcher whose classpath carries a class list trains on the classes production loads; one
    *  without (the web) still trains on every class its jars carry. */
   it should "train on the class list when the classpath carries one, and on every jar's classes otherwise" in {
-    val jar = Files.createTempFile("training", ".jar")
+    val jar = TempDirectories.createFile("training", ".jar")
     Using.resource(new JarOutputStream(Files.newOutputStream(jar))) { out =>
       Seq("a/B.class", "a/C.class").foreach { name => out.putNextEntry(new JarEntry(name)); out.closeEntry() }
     }

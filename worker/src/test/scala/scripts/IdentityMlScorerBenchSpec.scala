@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -7,7 +8,7 @@ import java.nio.file.Files
 
 /** The bench's plain-Scala LightGBM evaluator reads a `dump_model()` tree as LightGBM does: `<=` goes left, a NaN
  *  follows `default_left`, and the probability is the logistic of the summed leaves. */
-class IdentityMlScorerBenchSpec extends AnyFlatSpec with Matchers {
+class IdentityMlScorerBenchSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val dump =
     """{"features": ["a", "b"], "model": {"tree_info": [
@@ -20,7 +21,7 @@ class IdentityMlScorerBenchSpec extends AnyFlatSpec with Matchers {
   private def sigmoid(x: Double) = 1.0 / (1.0 + math.exp(-x))
 
   "IdentityMlScorerBench.load" should "score a dumped ensemble as LightGBM does" in {
-    val file = Files.createTempFile("gbm", ".json")
+    val file = tempFile("gbm", ".json")
     try {
       Files.writeString(file, dump)
       val model = IdentityMlScorerBench.load(file)

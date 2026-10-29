@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -7,7 +8,7 @@ import java.nio.file.Files
 import scala.sys.process.Process
 
 /** The cases of [[FluxImageAutomationSpec]] that run the shell CI runs (bash) to build the image tag. */
-class FluxImageAutomationIntegrationSpec extends AnyFlatSpec with Matchers {
+class FluxImageAutomationIntegrationSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   import FluxImageAutomationSpec.policyPattern
 
@@ -19,8 +20,8 @@ class FluxImageAutomationIntegrationSpec extends AnyFlatSpec with Matchers {
 
   /** The tag CI would actually publish for `sha`, produced by running CI's own shell. */
   private def tagBuiltByCi(sha: String): String = {
-    val script = Files.createTempFile("orderable-tag", ".sh")
-    val output = Files.createTempFile("github-output", ".txt")
+    val script = tempFile("orderable-tag", ".sh")
+    val output = tempFile("github-output", ".txt")
     Files.writeString(script, orderableTagScript.replace("${{ github.sha }}", sha))
     val rc = Process(Seq("bash", script.toString), None, "GITHUB_OUTPUT" -> output.toString).!
     rc shouldBe 0

@@ -1,14 +1,14 @@
 package clients.tools
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import settings.FixtureRoot
 import tools.HttpFetch
 
-import java.nio.file.Files
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
-class RecordingHttpFetchSpec extends AnyFlatSpec with Matchers {
+class RecordingHttpFetchSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   // A header-bearing GET (Flicks' `is-ajax-call`) must reach the delegate WITH its headers: the
   // inherited default dropped them and recorded the page a header-less request gets instead.
@@ -20,7 +20,7 @@ class RecordingHttpFetchSpec extends AnyFlatSpec with Matchers {
       override def getBytes(url: String): Array[Byte] = get(url).getBytes("UTF-8")
       def post(url: String, body: String, contentType: String): String = ""
     }
-    val root      = Files.createTempDirectory("recording-spec")
+    val root      = tempDirectory("recording-spec")
     val recording = new RecordingHttpFetch("dir", live, root = FixtureRoot(root))
 
     recording.get("https://example.test/sessions/", Map("is-ajax-call" -> "yes")) shouldBe "ajax page"
@@ -40,7 +40,7 @@ class RecordingHttpFetchSpec extends AnyFlatSpec with Matchers {
       override def getBytes(url: String): Array[Byte] = body
       def post(url: String, body: String, contentType: String): String = ""
     }
-    val root      = Files.createTempDirectory("recording-spec")
+    val root      = tempDirectory("recording-spec")
     val recording = new RecordingHttpFetch("dir", live, root = FixtureRoot(root))
     val url       = "https://www.rottentomatoes.com/m/eternity_2025"
     val _         = recording.getBytes(url)

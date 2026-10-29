@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import ShareCardTestKit.*
@@ -7,12 +8,12 @@ import ShareCardTestKit.*
 import java.nio.file.Files
 
 /** The cases of [[PosterMemoryCapSpec]] that run a real vips child (or a stand-in script as one). */
-class PosterMemoryCapIntegrationSpec extends AnyFlatSpec with Matchers {
+class PosterMemoryCapIntegrationSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   "The progressive pre-check" should "let a real 2764×4096 progressive poster render" in {
     val vips = VipsPosterShrinker.locate(settings.ProcessConfiguration.resolve().executableSearchPath)
     assume(vips.isDefined, "vips is not installed")
-    val dir = Files.createTempDirectory("progressive-")
+    val dir = tempDirectory("progressive-")
     def run(args: String*): Unit = new ProcessBuilder((vips.get.value +: args)*).inheritIO().start().waitFor() shouldBe 0
     run("gaussnoise", dir.resolve("n.v").toString, "2764", "4096")
     run("cast", dir.resolve("n.v").toString, dir.resolve("u.v").toString, "uchar")
@@ -28,7 +29,7 @@ class PosterMemoryCapIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "A vips child that hits its cap" should "fail only itself: no decode of the same poster in the JVM" in {
     val (bin, ran) = PosterMemoryCapSpec.fakeVips(exit = 134)                              // SIGABRT, as libjpeg's "Insufficient memory"
-    val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
+    val poster = Files.write(tempFile("poster-", ".jpg"), posterJpeg)
     new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin))).coverSlot(poster) shouldBe Left(PosterFailure.VipsCap)
     Files.exists(ran) shouldBe true
   }

@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import tools.SpecTimeouts
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -14,10 +15,10 @@ import javax.imageio.ImageIO
 import scala.jdk.CollectionConverters.*
 
 /** Two replicas' renderers and janitors over ONE directory, interleaved. */
-class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
+class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   "Two replicas" should "render and prune one directory at once without losing a card or leaving a partial file" in {
-    val store = tempStore()
+    val store = tempStore(tempDirectory)
     val first = new Rig(store = store)
     val second = new Rig(store = store)
     val readModel = new InMemoryReadModelRepository
@@ -57,7 +58,7 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
   "A store" should "never wait on another store's card write, even one whose lock shares its stripe" in {
     val entered = new CountDownLatch(1)
     val release = new CountDownLatch(1)
-    val first = new ShareCardStore(Files.createTempDirectory("share-cards-a-")) {
+    val first = new ShareCardStore(tempDirectory("share-cards-a-")) {
       override def asked(path: java.nio.file.Path): Option[java.time.Instant] = {   // read under the film's lock
         entered.countDown(); release.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); None
       }
@@ -66,7 +67,7 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
       Math.floorMod(store.lockFor(store.cardPath("film")).toString.hashCode, ShareCardStore.LockStripes)
     // A second directory whose lock file lands on the SAME stripe index, so only stripes shared
     // across stores could make it wait.
-    val second = Iterator.continually(new ShareCardStore(Files.createTempDirectory("share-cards-b-")))
+    val second = Iterator.continually(new ShareCardStore(tempDirectory("share-cards-b-")))
       .find(stripeOf(_) == stripeOf(first)).get
 
     val pool = Executors.newFixedThreadPool(2)

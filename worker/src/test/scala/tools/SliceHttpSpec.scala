@@ -4,12 +4,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.Answer
 
-import java.nio.file.Files
 import scala.jdk.CollectionConverters._
 
 /** An identity slice's HTTP answers ([[SliceHttp]]): noted as the recording answered them, replayed from the notes alone
  *  — a recording's gap read as unknown, a remembered failure thrown again — and a request the notes lack failing loudly. */
-class SliceHttpSpec extends AnyFlatSpec with Matchers {
+class SliceHttpSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   /** A recording: `/body` answers, `/gone` is a remembered 404, anything else is its gap leaf's. */
   private def recording() = {
@@ -71,7 +70,7 @@ class SliceHttpSpec extends AnyFlatSpec with Matchers {
 
   "The notes" should "read back from disk as written" in {
     val notes = noted().noted.asScala.toMap
-    val path  = Files.createTempDirectory("slice-http").resolve("http.jsonl.gz")
+    val path  = tempDirectory("slice-http").resolve("http.jsonl.gz")
     val back  = SliceHttp.read { SliceHttp.write(path, notes); path }
     back.keySet shouldBe notes.keySet
     back.collect { case (r, SliceHttp.Outcome.Bytes(b)) => r.url -> b.toSeq } shouldBe Map("https://h/poster.jpg" -> Seq[Byte](1, 2, 3))

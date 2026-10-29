@@ -7,12 +7,11 @@ import org.scalatest.matchers.should.Matchers
 import services.identity._
 import services.identity.adapters.TmdbKind
 
-import java.nio.file.Files
 
 /** The answers a recording does not hold as an identity slice reads them ([[FiledAnswers]]): prod's family answers
  *  served first, the capture's live TMDB answers only where the recording has none, every one read noted — never one
  *  the slice filed itself from the recording — and kept on disk as read. */
-class FiledAnswersSpec extends AnyFlatSpec with Matchers {
+class FiledAnswersSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val uk = Country.all.find(_.code == "uk").get
   private def doc(answer: String) = new BsonDocument("answer", new BsonString(answer))
@@ -66,7 +65,7 @@ class FiledAnswersSpec extends AnyFlatSpec with Matchers {
 
   they should "be kept in the capture's file, and read back as written" in {
     val capture = filed.capture.copy(live = Map("GET https://v3.sg.media-imdb.com/suggestion/t/treasure.json" -> """{"d":[]}"""))
-    val file    = Files.createTempDirectory("capture").resolve("uk.json.gz")
+    val file    = tempDirectory("capture").resolve("uk.json.gz")
     UnmatchedClusters.write(file, capture)
     UnmatchedClusters.read(file).live shouldBe capture.live
     // read off the file by FiledAnswers itself, which identity-slice drops into refs whose Capture has no `live`
@@ -78,14 +77,14 @@ class FiledAnswersSpec extends AnyFlatSpec with Matchers {
     val lookups = new FiledAnswers.Lookups(recording, filed)
     lookups.candidates(CandidateQuery.Title("Treasure Island"))
     val read = FiledAnswers.read(filed, Map("imdb|title|Treasure Island" -> doc("tt1")), Map("tt1" -> Some(1710881)), Some(lookups))
-    val dir  = Files.createTempDirectory("filed")
+    val dir  = tempDirectory("filed")
     FiledAnswers.write(dir, read)
     val back = FiledAnswers.readFrom(dir, uk)
     back.source shouldBe "uk.json.gz"
     back.families shouldBe read.families
     back.finds shouldBe read.finds
     back.capture.queries shouldBe Map(CandidateQuery.Title("Treasure Island") -> Seq(treasure))
-    FiledAnswers.readFrom(Files.createTempDirectory("none"), uk).isEmpty shouldBe true
+    FiledAnswers.readFrom(tempDirectory("none"), uk).isEmpty shouldBe true
   }
 
   "Prod's own family answers" should "stand over the capture's, the capture's live HTTP answers kept beneath them" in {

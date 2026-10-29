@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
  * leg's tree could not answer, fetched by the next leg's convergence row before its suite, within a budget, into a
  * tree that suite and the legs after it replay.
  */
-class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
+class MissingFixtureFillSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Tree = "enrichment-us"
   private def gap(url: String) = MissingFixtures.Refetch("GET", url)
@@ -29,8 +29,8 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
   }
 
   private def withRoots(test: (settings.FixtureRoot, settings.FixtureRoot) => Unit): Unit = {
-    val held = Files.createTempDirectory("fill-held")
-    val out  = Files.createTempDirectory("fill-out")
+    val held = tempDirectory("fill-held")
+    val out  = tempDirectory("fill-out")
     try test(settings.FixtureRoot(held), settings.FixtureRoot(out))
     finally Seq(held, out).foreach(root => Files.walk(root).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p)))
   }
@@ -66,7 +66,7 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
   // The list the next fills skip (convergence-fill.sh `gaps`): the refused gaps under their own fixture keys, in the
   // refetch list's own format.
   it should "write the gaps it was refused as a list of its own" in {
-    val file = Files.createTempDirectory("refused").resolve("refused.tsv")
+    val file = tempDirectory("refused").resolve("refused.tsv")
     val flaky = MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/flaky/")
     MissingFixtureFill.writeRefused(file, Seq("k-flaky" -> flaky, "k-other" -> gap("https://www.flicks.us/movie/other/")), Seq(flaky))
     Files.readAllLines(file).asScala.toSeq shouldBe Seq("# 1 refused gap(s)", MissingFixtures.Refetch.line("k-flaky", flaky))

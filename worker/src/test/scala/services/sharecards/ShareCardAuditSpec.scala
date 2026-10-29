@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.InMemoryReadModelRepository
@@ -12,13 +13,13 @@ import java.nio.file.attribute.FileTime
  * `web_movies.shareCard` is the `og:image` URL verbatim, so the invariant is concrete: the file
  * it names is on disk, is that film's, and carries the version the URL names.
  */
-class ShareCardAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement {
+class ShareCardAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement with ScratchDirectories {
 
   private val v1 = "1" * 16
   private val v2 = "2" * 16
 
   private class Setup {
-    val store     = tempStore()
+    val store     = tempStore(tempDirectory)
     val readModel = new InMemoryReadModelRepository
     def card(filmId: String, version: String): Unit =
       store.writeAtomically(store.cardPath(filmId), posterJpeg, version)

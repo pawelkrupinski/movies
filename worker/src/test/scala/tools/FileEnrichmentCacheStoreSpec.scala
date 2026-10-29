@@ -12,11 +12,11 @@ import scala.concurrent.duration._
  * there for the next run, which is the one thing an in-memory cache cannot do and
  * the recorded fixture tree — successes only — does not do either.
  */
-class FileEnrichmentCacheStoreSpec extends AnyFlatSpec with Matchers {
+class FileEnrichmentCacheStoreSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def withStore(ttl: FiniteDuration = FileEnrichmentCacheStore.Ttl)
                        (body: (Path, FileEnrichmentCacheStore) => Unit): Unit = {
-    val root = Files.createTempDirectory("enrichment-cache-spec")
+    val root = tempDirectory("enrichment-cache-spec")
     try body(root, new FileEnrichmentCacheStore(root, ttl))
     finally Files.walk(root).sorted(java.util.Comparator.reverseOrder())
       .forEach(path => Files.deleteIfExists(path))

@@ -9,7 +9,7 @@ import java.nio.file.Files
 
 /** The ratchet's machine-readable findings ([[UnmatchedClusters.findings]]): every take as the labels judge it, and every
  *  expected right take that is gone — moved to another film, or lost. */
-class UnmatchedClustersFindingsSpec extends AnyFlatSpec with Matchers {
+class UnmatchedClustersFindingsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def take(venue: String, raw: String, tmdb: Int) =
     Take("de", venue, raw, Some(tmdb), None, "Filled", s"film $tmdb", explanation = Seq("filled by venues.current", "guards passed: bill.several"))
@@ -41,7 +41,7 @@ class UnmatchedClustersFindingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "write one TSV line per finding, a field's tabs and line breaks flattened" in {
-    val path = Files.createTempDirectory("findings").resolve("ratchet-takes.tsv")
+    val path = tempDirectory("findings").resolve("ratchet-takes.tsv")
     UnmatchedClusters.writeFindings(path, Seq(found.find(_.rawTitle == "Wrong").get.copy(title = "a\tb\nc")))
     val lines = Files.readAllLines(path, StandardCharsets.UTF_8)
     lines.get(0) shouldBe UnmatchedClusters.FindingsHeader

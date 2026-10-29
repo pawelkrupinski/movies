@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.tasks.{HandlerOutcome, Task, TaskType}
@@ -10,7 +11,7 @@ import javax.imageio.ImageIO
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
-class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
+class ShareCardServiceSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def renderTask(rig: Rig, inputs: ShareCardInputs, attempts: Int = 1): HandlerOutcome =
     new RenderShareCardHandler(rig.service).handle(Task("t", TaskType.RenderShareCard, "k", inputs.toPayload, attempts))
@@ -67,7 +68,7 @@ class ShareCardServiceSpec extends AnyFlatSpec with Matchers {
 
   it should "count a film without posters whose card cannot be written as failed, and retry the task" in {
     val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
-    val full = new ShareCardStore(Files.createTempDirectory("share-cards-")) {
+    val full = new ShareCardStore(tempDirectory("share-cards-")) {
       override def writeAtomically(target: java.nio.file.Path, bytes: Array[Byte], version: String,
                                    published: Option[java.time.Instant], asked: Option[java.time.Instant]): Unit =
         throw new java.io.IOException("No space left on device")

@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -7,7 +8,7 @@ import java.nio.file.Files
 import scala.sys.process.*
 
 /** The cases of [[K8sTierPathGatingSpec]] that run the real `changed-paths` matcher (bash) over each tier's filter set. */
-class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers {
+class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Matcher = ".github/actions/changed-paths/matches.sh"
 
@@ -16,8 +17,8 @@ class K8sTierPathGatingIntegrationSpec extends AnyFlatSpec with Matchers {
 
   /** The action's own matcher, over a fabricated push. `true` = this tier rebuilds and redeploys. */
   private def matches(patterns: Seq[String], changed: Seq[String]): Boolean = {
-    val patternsFile = Files.createTempFile("changed-paths-patterns", ".txt")
-    val changedFile  = Files.createTempFile("changed-paths-files", ".txt")
+    val patternsFile = tempFile("changed-paths-patterns", ".txt")
+    val changedFile  = tempFile("changed-paths-files", ".txt")
     try {
       Files.writeString(patternsFile, patterns.mkString("", "\n", "\n"))
       Files.writeString(changedFile, changed.mkString("", "\n", "\n"))

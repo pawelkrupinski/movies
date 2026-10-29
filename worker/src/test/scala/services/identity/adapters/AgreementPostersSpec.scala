@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.AgreementStage.PosterQuestion
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *  `test/resources/fixtures/identity-posters`: Kino Patria's "Dyrygent" poster, and TMDB's `/images` answers and 185-wide
  *  prints for Provazník's 2025 "Broken Voices" and Wajda's 1980 "The Conductor"), filed and read back, and asked for on
  *  the queue. */
-class AgreementPostersSpec extends AnyFlatSpec with Matchers {
+class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   private def asker(store: PosterAnswerStore, hashing: PosterHashing, filed: () => Unit = () => (),
                     memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)) =
     AgreementAskers.over(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)(posters = store, hashing = hashing, filed = filed,
@@ -33,7 +34,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     def fetch(url: String): Either[String, Path] = failure.toLeft {
       fetched.incrementAndGet()
       val name = if (url == patria) "venue-patria-dyrygent.jpg" else "tmdb-w185" + url.stripPrefix(PosterAnswers.FilmPosterBase).replace('/', '-')
-      val copy = Files.createTempFile("poster-", ".img")
+      val copy = tempFile("poster-", ".img")
       Files.copy(fixtures.resolve(name), copy, StandardCopyOption.REPLACE_EXISTING)
       copy
     }

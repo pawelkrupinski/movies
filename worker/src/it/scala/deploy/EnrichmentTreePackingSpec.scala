@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -19,7 +20,7 @@ import scala.sys.process.*
  * `ConvergenceLegWiringSpec` asserts the publish is wired into both jobs and that
  * tar's warning status doesn't discard the capture; this spec runs the script.
  */
-class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
+class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration with ScratchDirectories {
 
   private val Packer = ".github/scripts/pack-enrichment-tree.sh"
 
@@ -34,7 +35,9 @@ class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers with tools.Sui
     (status, out.toString)
   }
 
-  private def tempTree(): Path = Files.createTempDirectory("enrichment-tree")
+  /** A tree inside a directory of its own: the archives a test writes beside it (`resolveSibling`) land in that
+   *  directory too, and go with it — not loose, under a fixed name, in the temp directory every run shares. */
+  private def tempTree(): Path = Files.createDirectory(tempDirectory("enrichment-tree").resolve("tree"))
 
   private def write(file: Path, content: String): Unit = {
     Files.createDirectories(file.getParent)
@@ -100,7 +103,7 @@ class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers with tools.Sui
     Process(Seq("tar", "-czf", gz.toString, "-C", tree.toString, "enrichment-uk")).! shouldBe 0
 
     Seq(zst -> "zstd", gz -> "gzip").foreach { case (archive, kind) =>
-      val into = Files.createTempDirectory("unpacked")
+      val into = tempDirectory("unpacked")
       withClue(s"the $kind archive did not unpack: ")(unpack(archive, into) shouldBe 0)
       val restored = Files.walk(into).filter(_.toString.endsWith("responses/a.json")).findFirst()
       withClue(s"the $kind archive's file is missing: ")(restored.isPresent shouldBe true)
@@ -109,9 +112,9 @@ class EnrichmentTreePackingSpec extends AnyFlatSpec with Matchers with tools.Sui
   }
 
   it should "refuse a file that is neither, rather than unpacking nothing and passing" in {
-    val junk = Files.createTempFile("not-an-archive", ".tar.zst")
+    val junk = tempFile("not-an-archive", ".tar.zst")
     Files.writeString(junk, "<html>404</html>")
-    unpack(junk, Files.createTempDirectory("unpacked")) should not be 0
+    unpack(junk, tempDirectory("unpacked")) should not be 0
   }
 
   it should "publish a leg that recorded nothing rather than calling its empty cache a loss" in {

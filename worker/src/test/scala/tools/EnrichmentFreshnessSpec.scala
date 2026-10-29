@@ -14,10 +14,10 @@ import scala.concurrent.duration._
  * or an IMDb rating captured once was replayed indefinitely — the suite would go on
  * asserting last month's numbers while looking entirely healthy.
  */
-class EnrichmentFreshnessSpec extends AnyFlatSpec with Matchers {
+class EnrichmentFreshnessSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def withTree(body: Path => Unit): Unit = {
-    val root = Files.createTempDirectory("enrichment-freshness-spec")
+    val root = tempDirectory("enrichment-freshness-spec")
     try body(root)
     finally Files.walk(root).sorted(java.util.Comparator.reverseOrder())
       .forEach(path => Files.deleteIfExists(path))

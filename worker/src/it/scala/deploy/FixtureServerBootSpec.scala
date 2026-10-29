@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import tools.SpecTimeouts
 
 
@@ -25,7 +26,7 @@ import scala.sys.process.*
  * passed. The loop is now `.github/scripts/fixture-server.sh`, and this spec
  * drives it with a fake server that dies on command.
  */
-class FixtureServerBootSpec extends AnyFlatSpec with Matchers {
+class FixtureServerBootSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val Script = ".github/scripts/fixture-server.sh"
 
@@ -62,7 +63,7 @@ class FixtureServerBootSpec extends AnyFlatSpec with Matchers {
   }
 
   private def withState(test: Path => Unit): Unit = {
-    val dir = Files.createTempDirectory("fixture-server-boot")
+    val dir = tempDirectory("fixture-server-boot")
     try test(dir)
     finally {
       run("stop", dir.toString)()

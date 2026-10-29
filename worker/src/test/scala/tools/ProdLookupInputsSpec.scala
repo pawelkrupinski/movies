@@ -8,7 +8,6 @@ import services.identity._
 import services.identity.adapters.{InMemoryTmdbDocuments, QuestionMemory, TmdbKind, TmdbStore}
 import services.scrapes.{ArchivedScrape, SuccessfulScrape}
 
-import java.nio.file.Files
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.jdk.CollectionConverters._
@@ -16,7 +15,7 @@ import scala.jdk.CollectionConverters._
 /** The live drift check's whole resolve answers its questions as the worker answers its model — prod's TMDB store, venue
  *  pages and question memory first, the recording only where the worker would ask live — over what a recording captured
  *  of them, and resolves the listings prod's model read: the accepted ones. */
-class ProdLookupInputsSpec extends AnyFlatSpec with Matchers {
+class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
   private val clock    = Clock.fixed(Instant.parse("2026-10-25T00:30:00Z"), ZoneOffset.UTC)
   private val poland   = Country.Poland
   private val language = poland.language.toLanguageTag
@@ -83,7 +82,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read back as written, and be none for a recording made before it" in {
-    val root = Files.createTempDirectory("recording")
+    val root = tempDirectory("recording")
     ProdLookupInputs.readFrom(root, "de") shouldBe None
     val whole = ProdLookupInputs.Captured(prod.answers, Map(TmdbKind.Marker -> Map("unanswered|x" -> new BsonDocument("fetchedAt", new org.bson.BsonInt64(5L)))),
       Seq(new BsonDocument("_id", new BsonString("g|p"))))

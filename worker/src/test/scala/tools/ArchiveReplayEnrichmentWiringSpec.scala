@@ -19,7 +19,7 @@ import services.scrapes.InMemoryScrapeArchiveRepository
  * the cache UNDER the throttle would replay every hit through a rate limiter and turn
  * a warm run into a slow one.
  */
-class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
+class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach with ScratchDirectories {
 
   /**
    * A scratch tree per test.
@@ -442,7 +442,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     cache.remember(CachingEnrichmentFetch.keyOf("BYTES", gone), CachedResponse.Failed(Some(404), "GET", "HTTP 404"))
     Seq(passing, refused, gone).foreach(url => an [Exception] should be thrownBy wiring.enrichmentFetch.get(url))
 
-    val file = java.nio.file.Files.createTempDirectory("remembered").resolve("enrichment-pl.refetch.tsv")
+    val file = tempDirectory("remembered").resolve("enrichment-pl.refetch.tsv")
     missing.writeRefetches(file)
     java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
       Seq(MissingFixtures.Refetch("BYTES", passing), MissingFixtures.Refetch("BYTES", refused))

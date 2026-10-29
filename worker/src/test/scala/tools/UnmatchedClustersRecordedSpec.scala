@@ -10,7 +10,7 @@ import java.nio.file.Files
 /** A capture taken without the casts its candidates' evidence asked (through a [[MemoLookups]] that passed none on) or the
  *  records' original languages and genres, filled from a recording's TMDB tree ([[UnmatchedClusters.withRecorded]]), and both kept
  *  through the capture's file and read back by its replay as the store answers them. */
-class UnmatchedClustersRecordedSpec extends AnyFlatSpec with Matchers {
+class UnmatchedClustersRecordedSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val pl = Country.all.find(_.code == "pl").get
   // Kino CK Lublin's "Lalka": Kawalski's 2026 film and Has's 1968 one
@@ -35,7 +35,7 @@ class UnmatchedClustersRecordedSpec extends AnyFlatSpec with Matchers {
     filled.films(kawalski).map(_.genreBits) shouldBe Some(0)
     filled.films(unknown) shouldBe None
 
-    val file = Files.createTempFile("capture", ".json.gz")
+    val file = tempFile("capture", ".json.gz")
     try {
       UnmatchedClusters.write(file, filled)
       val replay = new UnmatchedClusters.Replay(UnmatchedClusters.read(file))

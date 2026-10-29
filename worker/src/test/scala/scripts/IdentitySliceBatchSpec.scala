@@ -1,5 +1,6 @@
 package scripts
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentitySlicing
@@ -7,7 +8,7 @@ import services.movies.ListingKey
 
 /** identity-slice --batch: selectors whose seeds cut the same cluster are ONE slice ([[IdentitySlice.sameCluster]]) — the
  *  UK session stats re-sliced CBeebies' 219-listing cluster once for each of its 210 venues. */
-class IdentitySliceBatchSpec extends AnyFlatSpec with Matchers {
+class IdentitySliceBatchSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def key(venue: String, title: String) = ListingKey.Published(venue, title, None, Nil)
   private val pantoA = key("A", "Panto")
@@ -43,7 +44,7 @@ class IdentitySliceBatchSpec extends AnyFlatSpec with Matchers {
   }
 
   "A slice's result" should "be decided once and read back from its directory after" in {
-    val dir = java.nio.file.Files.createTempDirectory("results").resolve("slice")
+    val dir = tempDirectory("results").resolve("slice")
     var decided = 0
     def decide = { decided += 1; IdentitySlice.SliceResult("## report\n", Seq("a\tb"), Nil) }
     val first = IdentitySlice.kept(Some(dir))(decide)

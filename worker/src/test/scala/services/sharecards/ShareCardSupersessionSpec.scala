@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.TaskFinished
@@ -13,7 +14,7 @@ import ShareCardTestKit.*
  * which a preview cache then keeps for a year. The case that holds the film's lock in a separate process is in
  * [[ShareCardSupersessionIntegrationSpec]].
  */
-class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement {
+class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement with ScratchDirectories {
 
   private val older = film()
   private val newer = film(ratings = ratings.copy(imdb = Some(8.4)))
@@ -46,7 +47,7 @@ class ShareCardSupersessionSpec extends AnyFlatSpec with Matchers with org.scala
   // and its rename lands the older picture under the newer card's URL. What each card was asked
   // for travels in its file, beside its version, and a write never replaces a newer ask's card.
   it should "not overwrite a newer ask's card that ANOTHER replica wrote to the shared directory" in {
-    val store  = tempStore()
+    val store  = tempStore(tempDirectory)
     val podA   = new Rig(store = store, clock = clockAt(T0.plusSeconds(60)))
     val podB   = new Rig(store = store, clock = clockAt(T0))
     podB.service.request(podB.service.inputs(older))               // asked first, on pod B

@@ -1,5 +1,6 @@
 package services.sharecards
 
+import tools.ScratchDirectories
 import com.sun.net.httpserver.HttpServer
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,7 +11,7 @@ import java.net.InetSocketAddress
 
 /** Films whose posters all fail still get a card (without a poster, replaced once one works), and
  *  every poster failure says why. */
-class PosterFallbackSpec extends AnyFlatSpec with Matchers {
+class PosterFallbackSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private final class MetricsRig(countingDownload: CountingDownload) extends Rig(download = countingDownload) {
     val series = new ShareCardMetrics.Series(Seq("pl"), new PrometheusRegistry)
@@ -32,7 +33,7 @@ class PosterFallbackSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "have the poster retried later, and the card replaced once one works" in {
-    val store = tempStore()
+    val store = tempStore(tempDirectory)
     val broken = new Rig(store = store, download = new CountingDownload(failing = Set("https://cdn.example/poster-a.jpg")))
     broken.service.render(broken.service.inputs(film()), Seq(ShareCardReason.NewFilm))
     val noPoster = broken.service.current(film()).get
@@ -63,7 +64,7 @@ class PosterFallbackSpec extends AnyFlatSpec with Matchers {
     try {
       val base = s"http://127.0.0.1:${server.getAddress.getPort}"
       val series = new ShareCardMetrics.Series(Seq("pl"), new PrometheusRegistry)
-      val posters = new ShareCardPosters(tempStore(), new HttpPosterDownload(maxBytes = 1024), new VipsPosterShrinker(binary = None), series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen)
+      val posters = new ShareCardPosters(tempStore(tempDirectory), new HttpPosterDownload(maxBytes = 1024), new VipsPosterShrinker(binary = None), series.forCountry("pl"), _root_.tools.SpecStopwatch.Frozen)
       Seq("missing", "broken", "huge", "garbage").foreach(name => posters.load(s"f$name", Seq(s"$base/$name.jpg")) shouldBe None)
       Seq(PosterFailure.Http4xx, PosterFailure.Http5xx, PosterFailure.TooLarge, PosterFailure.DecodeError)
         .foreach(reason => withClue(reason) { series.posterFetchCount("pl", reason) shouldBe 1 })

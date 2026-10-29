@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -10,13 +11,13 @@ import java.nio.file.Files
  * the git environment of a hook (sbt started by pre-push passes GIT_DIR to its forked test JVMs).
  * A decoy repository stands in for the one being pushed; nothing here touches this checkout.
  */
-class ScratchGitRepositorySpec extends AnyFlatSpec with Matchers {
+class ScratchGitRepositorySpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   "an isolated command" should "act on the directory it runs in, not on a GIT_DIR it inherited" in {
-    val decoy   = new ScratchGitRepository
+    val decoy   = new ScratchGitRepository(tempDirectory)
     val before  = decoy.commit("the decoy's own history", "a" -> "1")
     val config  = Files.readString(decoy.root.resolve(".git/config"))
-    val scratch = new ScratchGitRepository
+    val scratch = new ScratchGitRepository(tempDirectory)
     Files.writeString(scratch.root.resolve("f"), "x")
 
     def asHookChild(command: String*): Int = {
@@ -37,7 +38,7 @@ class ScratchGitRepositorySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not read the developer's global git config" in {
-    val repo = new ScratchGitRepository
+    val repo = new ScratchGitRepository(tempDirectory)
     repo.process(Seq("git", "config", "--global", "--list")).lazyLines_!.toSeq shouldBe empty
   }
 }

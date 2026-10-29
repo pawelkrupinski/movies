@@ -14,10 +14,10 @@ import javax.imageio.{ImageIO, ImageReadParam, ImageReader, ImageTypeSpecifier}
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 /** The case that races a counting reader against ImageIO's first use in a fresh JVM is in [[PosterDecodeIntegrationSpec]]. */
-class PosterDecodeSpec extends AnyFlatSpec with Matchers {
+class PosterDecodeSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private def file(bytes: Array[Byte]): java.io.File = {
-    val f = java.nio.file.Files.createTempFile("poster-", ".img")
+    val f = tempFile("poster-", ".img")
     java.nio.file.Files.write(f, bytes)
     f.toFile.deleteOnExit()
     f.toFile

@@ -1,5 +1,6 @@
 package integration
 
+import tools.TempDirectories
 import clients.TmdbClient
 import play.api.libs.json.{JsArray, Json}
 import services.identity.adapters.{HashedPoster, PosterAnswerStore, PosterHashing}
@@ -28,7 +29,7 @@ final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String,
     def fetch(url: String): Either[String, Path] = {
       val kept = images.resolve(sha1(url))
       val err  = images.resolve(sha1(url) + ".err")
-      def copy(from: Path) = { val to = Files.createTempFile("poster-", ".img"); Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING); to }
+      def copy(from: Path) = { val to = TempDirectories.createFile("poster-", ".img"); Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING); to }
       if (Files.exists(kept)) Right(copy(kept))
       else if (Files.exists(err) || offline) Left(PosterFailure.Http4xx)
       else CachedPosters.this.fetch.fetch(url) match {
