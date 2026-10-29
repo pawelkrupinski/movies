@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # drift-guards.sh over scratch histories: a drift/flip fix lands only with its drift slice, or an explicit
-# `Drift-Slice: none -- <why>`; a red fix changing a resolver rule names its design doc (`Identity-Design:`); anything
-# else passes.
+# `Drift-Slice: none -- <why>`; a red fix changing a resolver rule names its design doc (`Identity-Design:`); a drift
+# harness change carries its self-test or `Drift-Harness-Refactor: <why>`; anything else passes.
 # Run: bash scripts/ci/drift-guards-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -61,6 +61,24 @@ check "a rule change fixing no red passes" 0 "$(guard)"; reset
 
 commit identity/src/main/scala/services/identity/agreement/AgreementStage.scala "$(printf 'Agreement: the corrections budget no longer lags\n\nFixes-Red: 2473\nDrift-Slice: none -- spec case')"
 check "a red fix in the stage's state handling (a mechanism) needs no design doc" 0 "$(guard)"; reset
+
+harness=worker/src/test/scala/scripts/IdentityDrift.scala
+commit "$harness" "Drift harness: the queue files a held answer first"
+check "a harness change without its self-test fails" 1 "$(guard)"; reset
+
+mkdir -p worker/src/test/scala/scripts; echo a >> "$harness"; echo b >> worker/src/test/scala/scripts/IdentityDriftSpec.scala
+git add -A; git commit -qm "Drift harness: the queue files a held answer first, and its replay case"
+check "...with a capture-replay case in the same commit it passes" 0 "$(guard)"; reset
+
+commit scripts/ci/identity-drift-check.sh "$(printf 'Drift check: one helper for the verdict line\n\nDrift-Harness-Refactor: no behaviour moves')"
+check "...a pure refactor says so and passes" 0 "$(guard)"; reset
+
+commit identity/src/main/scala/services/identity/TakeFlips.scala "Flips: a re-scrape is no input change"
+check "...the flip predicate is the harness too" 1 "$(guard)"; reset
+
+commit identity/src/main/scala/services/identity/TakeFlips.scala "Flips: a re-scrape is no input change"
+commit identity/src/test/scala/services/identity/TakeFlipsSpec.scala "Flips: its spec, in a later commit"
+check "...a self-test in another commit of the push does not count" 1 "$(guard)"; reset
 
 check "an unreadable range is no verdict" 2 "$(bash "$REPO_ROOT/scripts/ci/drift-guards.sh" "nosuch..HEAD" > /dev/null 2>&1; echo $?)"
 

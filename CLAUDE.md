@@ -341,7 +341,10 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
   `Fixes-Red:` commit touching rule code needs `Identity-Design: <doc>`. Known flips: the baseline above. The red is
   not closed until its listing's drift slice is committed (`scripts/identity-slice <cc> --venue V --title T
   --emit-drift-slice`; `IdentityDriftSlicesSpec` replays them). Both enforced by pre-push's `driftguards`
-  (`scripts/ci/drift-guards.sh`); details: `docs/design/identity-no-drift.md`, "Fixing a drift or flip red".
+  (`scripts/ci/drift-guards.sh`); details: `docs/design/identity-no-drift.md`, "Fixing a drift or flip red". A change
+  to the drift HARNESS (IdentityDrift, IdentityLiveDrift, TakeFlips, identity-drift-check.sh) carries, in the same
+  commit, a capture-replay case proving the replay behaves as the worker does (IdentityDriftSpec, a drift slice,
+  CorrectionFlipReplaySpec, TakeFlipsSpec), or `Drift-Harness-Refactor: <why>` for a pure refactor.
 - Read `docs/identity-experiments.md` and the entries in `docs/identity-experiments/` before a resolver change; add an
   entry FILE (`<YYYY-MM-DD>-<slug>.md`) for every experiment you drop or park, its code kept as an `experiment/<name>`
   tag, not a stray branch.

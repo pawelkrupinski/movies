@@ -436,7 +436,7 @@ check "a push claiming no red runs no drift check" "0 0" "$code $(calls identity
 code="$(drift_push docs/fix.md $'a doc\n\nFixes-Red: 3726')"
 check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls identity-drift-ci)"
 # A CHECK'S BIRTH LANDS GREEN: the gate's own files, or New-Check:, run every drift row against main's
-code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala 'the harness, tightened')"
+code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala $'the harness, tightened\n\nDrift-Harness-Refactor: the drift guards\' self-test rule is drift-guards-test.sh\'s')"
 check "a push touching the gate itself runs every drift row against main's newest run" "0 1" \
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --against main$")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a new check\n\nNew-Check: settled takes')"

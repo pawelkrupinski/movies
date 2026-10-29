@@ -54,6 +54,11 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
   `scripts.IdentityDriftSlicesSpec` replays every slice through the incremental sequence on 12 seeds in the unit suite
   (Tier 1 of the drift gate; `IdentityDrift --slice`). The fix's push carries the slice, or `Drift-Slice: none --
   <why>` when the red has no listing (a CI script, a timeout).
+- **The harness carries its self-test**: a change to IdentityDrift, IdentityLiveDrift, TakeFlips or
+  identity-drift-check.sh comes with a capture-replay case in the same commit — IdentityDriftSpec, a drift slice,
+  CorrectionFlipReplaySpec, TakeFlipsSpec, identity-drift-check-test.sh — proving the replay does what the worker does
+  (a third of the week's drift reds were the judge's: 91cfbe7e8, 7b586af0f, 5df3295bd). A pure refactor says
+  `Drift-Harness-Refactor: <why>`.
 
 ## The harness
 
