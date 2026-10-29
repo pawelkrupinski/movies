@@ -12,7 +12,7 @@
 #    a rule is identity design, measured on the full corpus in every country, outside red fixing. A commit naming a red
 #    (`Fixes-Red:`) that changes resolver or agreement RULE code (RuleFiles below) carries `Identity-Design: <doc>`,
 #    the design doc that measured it. Mechanism files -- AgreementStage's state handling, the incremental resolver, the
-#    stores, the keys -- need none. The flip gate stays hard: no baseline for known flips.
+#    stores, the keys -- need none. (Known flips wait on identity-flips-baseline.tsv, which only shrinks.)
 #  - A CHANGE TO THE DRIFT HARNESS CARRIES ITS SELF-TEST (G6). A commit changing what replays production's incremental
 #    sequence or judges it (HarnessFiles: IdentityDrift, IdentityLiveDrift, TakeFlips, the drift check script) also
 #    changes a self-test that proves the replay behaves as the worker does (SelfTestFiles: IdentityDriftSpec, the drift
