@@ -63,7 +63,12 @@ jobs:
                   # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  timeout --kill-after=60 80m scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check from ci-runner --
+                  # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
+                  # laptop; every other check/<id> the change's own checks
+                  mode=--checks-only
+                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
+                  timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
