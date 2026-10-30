@@ -350,17 +350,17 @@ client-wide jump.
 
 ### Fixes
 
-- **Grójecki Ośrodek Kultury (Filmweb 1683 → biletyna): `fixed` @9646aba46.** It read white from 10-28. Filmweb
+- **Grójecki Ośrodek Kultury (Filmweb 1683 → biletyna): `fixed` @cb04d7873.** It read white from 10-28. Filmweb
   carried a single slot (Mistyczka, 11-07), just past the Filmweb client's 7-day window. The biletyna place page
   `/Grojec/Grojecki-Osrodek-Kultury` sells **26 `ScreeningEvent`s** from 11-04 to 12-16. Filmweb's `/info` names it
   `"multiplex":"BILETYNA"`, the same desync the 09-26 `thin` sweep found. It joins the `desyncedFilmwebVenues` routing
   test, which replays a 10-30 capture and failed first because the catalog still read Filmweb.
-- **Kino Słońce, Wieruszów (Filmweb 2334 → MSI `kinoslonce.pl`): `fixed` @e71d773ab.** It went green→white on 10-29.
+- **Kino Słońce, Wieruszów (Filmweb 2334 → MSI `kinoslonce.pl`): `fixed` @b0da33cc7.** It went green→white on 10-29.
   Filmweb `[]` for every day to 11-10; the venue's own MSI portal (Wieruszowski Dom Kultury) sells from 11-06
   ("Baranek Shaun i kudłata bestia" 16:00), sale days to 11-21. A new catalog test replays the 10-30 month pages, and
   failed first on the Filmweb fetch. The portal's `Repertoire/GetShortEventsWithFilters` answers an HTML page, so the
   client keeps every slot unlabelled, which is its documented fallback.
-- **Kino Chatka Żaka (Lublin, `umcs.pl`): `fixed` @cfd4cf41c**, the third time this year in the same place. The
+- **Kino Chatka Żaka (Lublin, `umcs.pl`): `fixed` @d7363167c (+ @2573663ed)**, the third time this year in the same place. The
   calendar lists five November DKF films (11-10 to 11-25), but every detail stamp now reads
   `"18.11.26 (środa), godz. 18:00"` (once `godz:`). The clock-after-weekday pattern from 10-07 couldn't step over
   "godz.", so every entry lost its time and was dropped. The pattern now anchors on the `DD.MM.YY` date and allows any
@@ -398,9 +398,9 @@ reasons below.
 
 | Venue | Source | Verdict |
 |---|---|---|
-| Grójecki Ośrodek Kultury | Filmweb 1683 → biletyna | **fixed** @9646aba46 (above) |
-| Kino Słońce (Wieruszów) | Filmweb 2334 → MSI | **fixed** @e71d773ab (above) |
-| Kino Chatka Żaka | own site (umcs.pl) | **fixed** @cfd4cf41c (above) |
+| Grójecki Ośrodek Kultury | Filmweb 1683 → biletyna | **fixed** @cb04d7873 (above) |
+| Kino Słońce (Wieruszów) | Filmweb 2334 → MSI | **fixed** @b0da33cc7 (above) |
+| Kino Chatka Żaka | own site (umcs.pl) | **fixed** @d7363167c (+ @2573663ed) (above) |
 | Kino Zachęta (Kleczew) | Filmweb 2405 | **intentionally-dormant** (green→white 10-29). Filmweb `[]` to 11-10. BCK Kleczew's `kino.html`/`repertuar.html` show no dates (the gmina says the repertoire is posted on Facebook, which could not be read). KupBilecik place 3402 has 0 events; biletyna `/Kleczew` has no `ScreeningEvent`. Filmweb-only; re-check next run. |
 | Kino Sokół Strzyżów | own site `dksokol.eu/kino/` | **intentionally-dormant** (new). The page now says "Brak seansów filmowych w najbliższym czasie"; its last film was 10-27. **Watch:** the venue is moving onto a systembiletowy install, `bilety.dksokol.eu` (`service.php/repertoire/list.json` holds only a "TESTOWE WYDARZENIE" now). Once real films appear there, move the venue onto `SystemBiletowyClient`. |
 | Kino MDK Myszków | own site | **intentionally-dormant** (see the fallback table) |
