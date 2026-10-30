@@ -116,7 +116,7 @@ TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/t
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
   worker/src/fixtures/scala/tools/ProdMirror.scala worker/src/fixtures/scala/tools/IdentityJudgements.scala
-  worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala)
+  worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala common/src/main/scala/tools/TempDirectories.scala)
 
 self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 # A kept JVM's idle exit: as sbt-warm's kept server's (KINOWO_SBT_WARM_IDLE_MINUTES), 10 minutes, not 30 -- each holds a
