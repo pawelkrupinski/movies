@@ -233,8 +233,20 @@ run_on_linux() {
   image="kinowo-script-tests:$(printf '%s' "$LinuxImageRecipe" | git hash-object --stdin | cut -c1-12)"
   if ! "$docker" image inspect "$image" > /dev/null 2>&1; then
     echo "run-script-tests: building $image (once)" >&2
-    printf '%s\n' "$LinuxImageRecipe" | bounded 900 "$docker" build -q -t "$image" - > /dev/null || {
-      echo "run-script-tests: could not build $image" >&2; return 2; }
+    # The mirror sometimes answers "not found" for a blob it served minutes before (precommit-check run 3968,
+    # 2026-10-30; scripts/ci/build-image.sh's reason): then the same base once more from Docker Hub, as that does.
+    local log; log=$(mktemp)
+    if ! printf '%s\n' "$LinuxImageRecipe" | bounded 900 "$docker" build -q -t "$image" - > /dev/null 2> "$log"; then
+      cat "$log" >&2
+      if ! grep -qE 'could not fetch content descriptor|unknown blob' "$log"; then
+        rm -f "$log"; echo "run-script-tests: could not build $image" >&2; return 2
+      fi
+      echo "run-script-tests: mirror.gcr.io could not fetch a blob: building $image from Docker Hub" >&2
+      printf '%s\n' "${LinuxImageRecipe/FROM mirror.gcr.io\/library\//FROM docker.io/library/}" \
+        | bounded 900 "$docker" build -q -t "$image" - > /dev/null \
+        || { rm -f "$log"; echo "run-script-tests: could not build $image" >&2; return 2; }
+    fi
+    rm -f "$log"
   fi
   mounts=(-v "$root:$root:ro")
   git_common="$(cd "$root" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"

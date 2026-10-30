@@ -157,7 +157,8 @@ echo "$*" >> "$DOCKER_CALLS"
 case "$1" in
   info) [ -z "${DOCKER_DOWN:-}" ] || { echo "Cannot connect to the Docker daemon" >&2; exit 1; } ;;
   image) [ -z "${NO_IMAGE:-}" ] || exit 1 ;;
-  build) cat > /dev/null ;;
+  build) from=$(head -1); cat > /dev/null; echo "$from" >> "$DOCKER_CALLS"
+    case "$from" in *mirror.gcr.io*) [ -z "${MIRROR_LOST:-}" ] || { echo "ERROR: $MIRROR_LOST" >&2; exit 1; } ;; esac ;;
   run) cat > "$DOCKER_STDIN"; echo "PASS       0s  in the container" ;;
 esac
 STUB
@@ -195,6 +196,12 @@ check "...with the object directories it borrows from mounted read-only at their
 rm "$tree/.git/objects/info/alternates"
 NO_IMAGE=1 linux scripts/ci > /dev/null
 check "...built once when it is missing" "1" "$(grep -c '^build ' "$work/docker-calls")"
+NO_IMAGE=1 MIRROR_LOST="failed to copy: could not fetch content descriptor sha256:edaf (application/vnd.oci.image.layer.v1.tar+gzip) from remote: not found" \
+  linux scripts/ci > /dev/null
+check "...a blob the mirror lost: built again, from Docker Hub" "2 FROM docker.io/library/ubuntu:26.04" \
+  "$(grep -c '^build ' "$work/docker-calls") $(grep '^FROM' "$work/docker-calls" | tail -1)"
+check "...any other build failure fails, built once" "2 1" \
+  "$(NO_IMAGE=1 MIRROR_LOST="no space left on device" linux scripts/ci) $(grep -c '^build ' "$work/docker-calls")"
 scratch_git "$tree" update-ref refs/remotes/origin/main "$base"
 want="$(run --list --changed origin/main > /dev/null; grep -c . "$work/out")"
 check "with no names, the tests --changed origin/main selects" "0 $want" \
