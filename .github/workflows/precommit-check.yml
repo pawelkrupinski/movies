@@ -71,6 +71,10 @@ jobs:
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
+            # The drift gate's commit rules over the change's commits, whatever paths it touched (scripts/ci/commit-rules-ci.sh):
+            # the hook selects them by path; here no selection can leave them out.
+            - name: The change's commits keep the drift gate's commit rules
+              run: scripts/ci/commit-rules-ci.sh --base "$(git merge-base HEAD origin/main)"
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
             # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
             # `Error:` blocks, sbt's FAILED/[error]: run 3342's 60 `✘` lines filled every head and its error never

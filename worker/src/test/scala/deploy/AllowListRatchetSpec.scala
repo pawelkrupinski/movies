@@ -37,4 +37,14 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
     hook should include("scripts/identity-drift-ci --head \"$head_sha\" --against main")
     RepoFile.read(".github/identity-drift-gate-paths.txt") should include("test/resources/fixtures/identity-flips-allow.tsv")
   }
+
+  /** `git push --no-verify` skips the hook, and with it every rule above: Main's CI and the landing check run them again
+   *  over the commits, whatever paths they touched. */
+  "Main's CI and the landing check" should "run the drift gate's commit rules, unselected by path" in {
+    RepoFile.jobs(RepoFile.read(".github/workflows/ci.yml"))("commit-rules") should include("run: scripts/ci/commit-rules-ci.sh")
+    RepoFile.read(".github/workflows/precommit-check.yml") should include(
+      "scripts/ci/commit-rules-ci.sh --base \"$(git merge-base HEAD origin/main)\"")
+    val script = RepoFile.read("scripts/ci/commit-rules-ci.sh")
+    Seq("allowlists", "driftguards").foreach(set => script should include(set))
+  }
 }
