@@ -305,6 +305,8 @@ if [ -n "$missing" ] || [ "${#unjudged[@]}" -gt 0 ]; then
   echo "NO VERDICT: $({ printf '%s\n' "${unjudged[@]+"${unjudged[@]}"}"; printf '%s\n' "$missing"; } | grep -v '^$' | paste -sd, - | sed 's/,/, /g') not judged"
   exit 2
 fi
-[ -n "$rows" ] || { echo "NO VERDICT: run $run has no takes-drift row"; exit 2; }
+# (--run passes over skipped rows: a run whose every row was skipped -- its setup red, say -- judged nothing)
+judged=$(awk -F'\t' '$3 == "success" || $3 == "failure"' <<< "$rows" | grep -c .)
+[ "$judged" -gt 0 ] || { echo "NO VERDICT: run $run has no takes-drift row that passed or failed"; exit 2; }
 echo "DRIFT CLEAN"
 exit 0

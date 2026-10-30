@@ -140,4 +140,15 @@ check "--countries/--seeds are the dispatch's takes-countries and drift-seeds" "
 check "...a row that did not pass or fail is NO VERDICT, exit 2" "2" "$(cat "$work/partial.rc")"
 check "...naming it" "true" "$(tail -1 "$work/partial.out" | grep -q 'takes-drift-1 (spain) (cancelled)' && echo true || echo false)"
 
+# --run over a run whose every drift row was skipped (its setup red): nothing judged, never DRIFT CLEAN
+jobs 901 "takes-drift-1 (poland):completed:skipped" "takes-drift-2 (poland):completed:skipped"
+echo completed > "$work/state/status-901"
+drift allskipped --run 901
+check "--run: a run whose every drift row was skipped is NO VERDICT, exit 2 -- never DRIFT CLEAN" \
+  "2 NO VERDICT: run 901 has no takes-drift row that passed or failed" "$(cat "$work/allskipped.rc") $(tail -1 "$work/allskipped.out")"
+jobs 901 "takes-drift-1 (poland):completed:success" "takes-drift-1 (spain):completed:skipped"
+drift someskipped --run 901
+check "...a dispatch's left-out countries skipped beside a green row: DRIFT CLEAN, exit 0" "0 DRIFT CLEAN" \
+  "$(cat "$work/someskipped.rc") $(tail -1 "$work/someskipped.out")"
+
 spec_summary
