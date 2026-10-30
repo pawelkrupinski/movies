@@ -284,7 +284,18 @@ check "a kept JVM that never listens is stopped at the deadline, and the call fa
 # through a keeper beside it, as sbt-warm's kept server does -- uncounted, they were up to 6 GB each the slots never saw.
 one_slot="$cache/jvm-slots/1.flock"
 slotted() { KINOWO_JVM_SLOTS=1 slice "$@"; }
-keeper_of() { ps -axo pid=,args= | awk -v jvm="--keep-served $1" 'index($0, jvm) && !/awk/ { print $1 }'; }
+# the keeper itself: not a subshell of its own poll, which carries the same command line for a moment (under CI's load a
+# second pid caught here made the keeper's slot look unheld for the whole wait, precommit-check run 4012)
+keeper_of() {
+  ps -axo pid=,ppid=,args= | awk -v jvm="--keep-served $1" 'index($0, jvm) && !/awk/ { pid[$1] = $2 }
+    END { for (p in pid) if (!(pid[p] in pid)) print p }'
+}
+# a keeper mid-poll: its subshell carries its command line too, and is not the keeper
+printf '( sleep 30; : ) &\nwait\n' > "$work/fake-keeper.sh"
+bash "$work/fake-keeper.sh" --keep-served 424242 & fake=$!
+wait_until "the fake keeper's subshell runs" '[ "$(ps -axo ppid= | grep -cw "$fake")" -ge 1 ]'
+check "keeper_of names the keeper alone, not its poll's subshell" "$fake" "$(keeper_of 424242 | paste -sd' ' -)"
+kill $(ps -axo pid=,ppid= | awk -v p="$fake" '$2 == p { print $1 }') "$fake" 2>/dev/null; wait "$fake" 2>/dev/null
 gone_within() { local pid=$1; wait_until "pid $pid is gone" '! kill -0 "$pid" 2>/dev/null'; }
 rm -f "$work/calls"; slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
 served=$(cat "$cache"/serve/*.pid); keeper=$(keeper_of "$served")
