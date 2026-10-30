@@ -82,6 +82,34 @@ identity_main_ci_over() {
   [ "$rc" -eq 0 ] && echo "$out"
 }
 
+# identity_measure_branch <commit> [tag] -> a fresh `measure/<user>/<short sha>[-<tag>]-<random>` branch name: the
+# pre-push hook checks nothing on a measure/ ref, and the run it carries deletes it as its last job.
+identity_measure_branch() {
+  echo "measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${1:0:9}${2:+-$2}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+}
+
+# identity_dispatch_measure <workflow> <branch> <commit pushed> <purpose> [-f k=v ...] -> DISPATCHED_RUN: <workflow>
+# dispatched on <branch> (scripts/ci/dispatch.sh, sourced by the caller) and its run found by the pushed commit, then
+# recorded as this machine's (agentctl dispatch record: a branch red reaches its owner; best effort, said when not).
+# Fails, IDENTITY_DISPATCH_ERROR saying why, when the dispatch or the find does.
+# shellcheck disable=SC2034 # IDENTITY_DISPATCH_ERROR and DISPATCHED_RUN are the caller's to read
+identity_dispatch_measure() {
+  local workflow=$1 branch=$2 push=$3 purpose=$4 since name
+  shift 4
+  IDENTITY_DISPATCH_ERROR="" DISPATCHED_RUN=""
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  dispatch_workflow "$workflow" "$branch" "$@" || { IDENTITY_DISPATCH_ERROR="could not dispatch $workflow on $branch"; return 1; }
+  find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
+    || { IDENTITY_DISPATCH_ERROR="dispatched, but no run of ${push:0:9} on $branch was found (the run deletes $branch when it ends)"; return 1; }
+  # (A run of 2026-10-29 went unrecorded under a 30 s bound and showed as a branch red of NOBODY: 90 s, and said.)
+  if [ -x "$HOME/bin/agentctl" ]; then
+    name=$(sed -n 's/^name:[[:space:]]*//p' "$(dirname "${BASH_SOURCE[0]}")/../.github/workflows/$workflow" 2> /dev/null | head -1)
+    bounded 90 "$HOME/bin/agentctl" dispatch record --branch "$branch" --run "$DISPATCHED_RUN" --workflow "${name:-$workflow}" \
+      --purpose "$purpose" > /dev/null 2>&1 \
+      || identity_log "could not record run $DISPATCHED_RUN's owner (agentctl dispatch record): its red, if any, reaches nobody"
+  fi
+}
+
 # identity_push_measure_branch <remote> <commit> <branch> -> <commit> pushed as refs/heads/<branch> (bounded), while no
 # other measure/ push of this machine is under way (identity_locked measure-push), git's output passed through. Fails
 # with MEASURE_PUSH_ERROR set to the remote's reason ("remote rejected (unable to migrate objects to permanent storage)").

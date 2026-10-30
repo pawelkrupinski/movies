@@ -261,4 +261,24 @@ check "...main's scripts/ci/ whole: a file main dropped is gone" "absent" \
   "$(cd "$work/overlay" && git cat-file -e "$over:scripts/ci/x.sh" 2> /dev/null && echo present || echo absent)"
 check "...its parent the commit" "true" "$(cd "$work/overlay" && [ "$(git rev-parse "$over^")" = "$(git rev-parse old)" ] && echo true || echo false)"
 
+check "identity_measure_branch: measure/<user>/<short sha>-<tag>-<random>" "true" \
+  "$(bash -c '. "$1"; identity_measure_branch 0123456789abcdef drift' _ "$REPO_ROOT/scripts/identity-tools.sh" | grep -qE '^measure/[A-Za-z0-9._-]+/012345678-drift-[0-9a-f]{6}$' && echo true || echo false)"
+mkdir -p "$work/home/bin"
+printf '#!/usr/bin/env bash\necho "$*" > "%s/recorded"\n' "$work" > "$work/home/bin/agentctl"; chmod +x "$work/home/bin/agentctl"
+dispatch_case() { # <dispatch rc> <find rc>: runs identity_dispatch_measure over stub dispatch functions
+  HOME="$work/home" bash -c '. "$1"; d_rc=$2 f_rc=$3 w=$4
+    dispatch_workflow() { echo "dispatch $*" >> "$w/dispatched"; return "$d_rc"; }
+    find_dispatched_run() { DISPATCHED_RUN=901; return "$f_rc"; }
+    identity_dispatch_measure identity-model-convergence.yml measure/x/b abc123 "a purpose" -f drift-only=true \
+      && echo "run $DISPATCHED_RUN" || echo "failed: $IDENTITY_DISPATCH_ERROR"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$1" "$2" "$work" 2> /dev/null
+}
+rm -f "$work/recorded" "$work/dispatched"
+check "identity_dispatch_measure: dispatched with its inputs, the run found, and recorded as this machine's" \
+  "run 901|dispatch identity-model-convergence.yml measure/x/b -f drift-only=true|dispatch record --branch measure/x/b --run 901 --workflow Identity model convergence --purpose a purpose" \
+  "$(dispatch_case 0 0)|$(cat "$work/dispatched")|$(cat "$work/recorded")"
+rm -f "$work/recorded"
+check "...a dispatch refused says so, and records nothing" "failed: could not dispatch identity-model-convergence.yml on measure/x/b|none" \
+  "$(dispatch_case 1 0)|$([ -f "$work/recorded" ] && echo recorded || echo none)"
+check "...a run not found is told apart: the branch is the run's to delete" "failed: dispatched" "$(dispatch_case 0 1 | cut -c1-18)"
+
 spec_summary

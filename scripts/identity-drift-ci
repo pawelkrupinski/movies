@@ -174,24 +174,17 @@ if [ -z "$run" ]; then
     push=$(identity_main_ci_over "$remote" "$commit" drift) || die "could not lay main's CI over $commit"
     say "${commit:0:9} predates the drift-only dispatch: checking it under $remote/main's .github/ and scripts/ci/ (${push:0:9})"
   fi
-  branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-drift-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+  branch=$(identity_measure_branch "$commit" drift)
   say "commit $(git log --oneline -1 "$commit" | cut -c1-100)"
   identity_push_measure_branch "$remote" "$push" "$branch" || { delete_branch; die "could not push $branch: $MEASURE_PUSH_ERROR"; }
   only=(-f drift-only=true -f tier="$tier")
   [ -z "$countries" ] || only+=(-f takes-countries="$(tr ' ' ',' <<< "$countries")")
   [ "$seeds" = both ] || only+=(-f drift-seeds="$seeds")
-  since=$(date -u +%Y-%m-%dT%H:%M:%SZ) dispatched_at=$SECONDS
-  dispatch_workflow "$workflow" "$branch" "${only[@]}" || { delete_branch; die "could not dispatch $workflow on $branch"; }
-  find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
-    || die "dispatched, but no run of ${push:0:9} on $branch was found (the run deletes $branch when it ends)"
+  dispatched_at=$SECONDS
+  identity_dispatch_measure "$workflow" "$branch" "$push" \
+    "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" "${only[@]}" \
+    || { [[ "$IDENTITY_DISPATCH_ERROR" == dispatched* ]] || delete_branch; die "$IDENTITY_DISPATCH_ERROR"; }
   run=$DISPATCHED_RUN
-  # The run's owner, for agentctl's branch-red routing (AGENTCTL.md "dispatch"); best effort, never a verdict.
-  # (A run of 2026-10-29 went unrecorded under a 30 s bound and showed as a branch red of NOBODY: 90 s, and said.)
-  if [ -x "$HOME/bin/agentctl" ]; then
-    bounded 90 "$HOME/bin/agentctl" dispatch record --branch "$branch" --run "$run" --workflow "Identity model convergence" \
-      --purpose "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" > /dev/null 2>&1 \
-      || say "could not record run $run's owner (agentctl dispatch record): its red, if any, reaches nobody"
-  fi
   say "run $run on $branch: drift-only, $(expected_rows | wc -l | tr -d ' ') row(s) on $tier ($(expected_rows | tr '\n' ',' | sed 's/,$//'))"
   if [ -n "$nowait" ]; then say "not waiting: collect with  scripts/identity-drift-ci --run $run"; echo "$run"; exit 0; fi
 fi

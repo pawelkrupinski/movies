@@ -844,7 +844,7 @@ if [[ "$leg" != *takes-countries* ]] || { [ -n "$no_store" ] && [[ "$leg" != *ta
   say "$commit predates the takes-only dispatch: measuring it under $remote/main's .github/ and scripts/ci/ ($push)"
 fi
 
-branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+branch=$(identity_measure_branch "$commit")
 say "commit $(git log --oneline -1 "$commit")"
 say "base   $(git log --oneline -1 "$base")"
 # A push that fails -- or times out -- may still have made the branch: the clean-up deletes it either way.
@@ -862,11 +862,9 @@ dispatch() { # → measured_run
   [ -z "$no_store" ] || only+=(-f takes-no-store=true)
   [ -z "$tier" ] || only+=(-f tier="$tier")
   say "dispatching (attempt $attempts)"
-  since=$(date -u +%Y-%m-%dT%H:%M:%SZ) dispatched_at=$(date +%s)
-  dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
-    || die "could not dispatch $workflow on $branch"
-  find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
-    || die "dispatched, but no run of $push on $branch was found"
+  dispatched_at=$(date +%s)
+  identity_dispatch_measure "$workflow" "$branch" "$push" "identity-measure ${commit:0:9} against ${base:0:9}" \
+    -f takes-base="$base" ${only[@]+"${only[@]}"} || die "$IDENTITY_DISPATCH_ERROR"
   measured_run=$DISPATCHED_RUN
   say "run $(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$measured_run" --json url --jq .url || echo "$measured_run")"
   say_eta "$measured_run"
