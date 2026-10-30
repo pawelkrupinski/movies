@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <title> - Wieruszowski Dom Kultury w Wieruszowie</title>
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, user-scalable=no" />
+    <meta name="version" content="1.7.31.0 | 2025-11-28 15:43:17">
+    <meta name="theme"  content="msidemo1"/>
+    <link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/normalize-3.0.2.css?v=020822122031" /><link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/bootstrap-3.3.1.min.css?v=020822122031" /><link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/jquery-ui.css?v=020822122031" /><link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/font-awesome-ie7.min.css?v=020822122031" /><link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/font-awesome.min.css?v=020822122031" /><link rel="stylesheet" href="/MSI/Themes/msidemo1/Vendors/Styles/jquery.fancybox.css?v=020822122031" />
+    <link rel="stylesheet" href="/MSI/Themes/msidemo1/Styles/global.css?v=120121022340" />
+    <script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/jquery-1.11.2.min.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/jquery.countdown.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/jquery-ui.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/jquery-ui_datepicker-pl.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/bootstrap.min.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/angular.min.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Vendors/Scripts/angular-filter.js?v=020822122031"></script>
+    <script type="text/javascript">
+        jQuery(document).ready(function ($) {
+
+            // site preloader -- also uncomment the div in the header and the css style for #preloader
+            $(window).load(function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+                console.log("glowny preloader");
+            });
+
+        });
+    </script>
+
+    
+
+    
+
+</head>
+
+<body id="ctl00_MainBody">
+    
+    <div id="preloader" class="preloader"></div>
+    
+    <script type="text/javascript">
+        
+</script>
+    
+<div class="skip-links">
+    <div class="position-fixed ">
+        
+    </div> 
+</div>
+    
+        <!-- Fixed navbar -->
+        <nav class="navbar navbar-default navbar-fixed-top navbar-top-color">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand pull-left" href="http://kinoslonce.pl">
+                        <img src="Themes/msidemo1/Images/logo.png" alt="Wieruszowski Dom Kultury w Wieruszowie" title="Wieruszowski Dom Kultury w Wieruszowie" class="brand" height="40">
+                    </a>
+                </div>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <input name="ctl00$cart1$serverShoppingCartEndDateTime" type="hidden" id="serverShoppingCartEndDateTime" />
+<input name="ctl00$cart1$serverShoppingCartLifeTimeInMinutes" type="hidden" id="serverShoppingCartLifeTimeInMinutes" />
+<div class="shopping-cart-expired-modal recomendedeventmodal-modal modal recomendedeventmodal-fade fade" id="shoppingCartExpiredModal" tabindex="-1" role="dialog">
+    
+    <div class="modal-backdrop fade in" style="bottom: 0"></div>
+    <div class="recomendedeventmodal-modal-dialog" style="word-wrap: break-word;">
+        <div class="recomendedeventmodal-modal-content">
+
+            <div class="recomendedeventmodal-modal-header text-center">
+                <span class="fa fa-warning"></span><strong>Zakończył się czas koszyka!</strong>
+                <button class="close" onclick="closeShoppingCart()" type="button"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="recomendedeventmodal-modal-body modal-body text-center">
+                Czas na zrealizowanie zamówienia niestety dobiegł końca. Prosimy o ponowne wybranie biletów i dodanie ich do koszyka.
+                <p>
+                    <button onclick="closeShoppingCart()" class="btn btn-warning" type="button"><span aria-hidden="true">Zamknij</span></button>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</div>
+<ul class="nav navbar-nav navbar-right">
+    
+    <li>
+        <div class="cart-timer1-tick">
+            <div id="timer-alert" class="timer-alert" role="alert" style="display: none;">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="window.location.reload();">
+                    <span aria-hidden="true">&times;</span>
+                    <strong>Zakończył się czas koszyka!</strong>
+                </button>
+            </div>
+
+            <div id="timer-window" class="timer-window" style="display: none;">
+                Koszyk wygaśnie za: <b><span id="timer"></span></b>
+            </div>
+        </div>
+    </li>
+
+    
+    <li>
+        <a href="ShoppingCart.aspx" data-toggle="tooltip" data-original-title="Twój koszyk jest pusty!">
+            <i class="fa fa-shopping-cart"></i>
+            Twój koszyk jest pusty!
+        </a>
+    </li>
+
+    
+    <li>
+        <a class="aFontImage" href="#" onclick="changeFontSize();" data-toggle="tooltip" data-original-title="Zmień rozmiar czcionki">
+            <span class="nav-supp-icon fontImage"></span>
+            <span class="sr-only">Zmień rozmiar czcionki</span>
+        </a>
+    </li>
+    <li>
+        <a class="aContrastImage" href="#" onclick="changeContrast();" data-toggle="tooltip" data-original-title="Zmień kontrast">
+            <span class="nav-supp-icon contrastImage"></span>
+            <span class="sr-only">Zmień kontrast</span>
+        </a>
+    </li>
+</ul>
+
+<script>
+    function closeShoppingCart() {
+        $(function () {
+            $.ajax({
+                type: "POST",
+                url: "Ajax.aspx/CloseShoppingCart",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    var names = response.d;
+                    console.log(names);
+                    window.location.href = 'mvc/pl';
+                },
+                error: function (response) {
+                    console.log(response);
+                    window.location.href = 'mvc/pl';
+                }
+            });
+        });
+    }
+</script>
+
+                </div>
+                <!--/.nav-collapse -->
+            </div>
+        </nav>
+    
+
+    
+
+    <form method="post" action="./SessionExpired.aspx?aspxerrorpath=%2fMSI%2fmvc%2fpl%2fRepertoire%2fGetShortEventsWithFilters" id="Form1">
+<div class="aspNetHidden">
+<input type="hidden" name="ctl00_ToolkitScriptManager1_HiddenField" id="ctl00_ToolkitScriptManager1_HiddenField" value="" />
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUKLTYzNjkwMzQ4OA9kFgJmD2QWAgICD2QWBAICD2QWBAIEDw8WAh4HVmlzaWJsZWhkZAIFD2QWAgIFDw8WBB4EVGV4dAUHWmFta25pah4LTmF2aWdhdGVVcmwFGmh0dHBzOi8va2lub3Nsb25jZS5wbC9NU0kvZGQCBA8WAh8AaGRkwmfpP/BdAe5I4jXU59KxlDJsLJlhFg0LeB+qksLqSRw=" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['Form1'];
+if (!theForm) {
+    theForm = document.Form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/MSI/WebResource.axd?d=WcRnD17ppbRc90peLoMfcC3xGFoEDe7dmgh2h74t2vlGRe7aItqYfKc5l5Oy3AmwHbMhNefw9WwMuTaSgiwvMIMrwZLWOLaxNqTyd1ILVPw1&amp;t=638286137964787378" type="text/javascript"></script>
+
+
+<script src="/MSI/ScriptResource.axd?d=kB4uD2eOoAC5zvBMxlpl6gWb7RvLlHWU1oOk9eYD0CXz77yZVJo_HTe0uPh7dVM12AdO5gIOUWhlUvjDc2MOO8gAUpu067Z8jUnJQQRu5lsIJICc411uMroxAFfsRrYS0&amp;t=f2cd5c5" type="text/javascript"></script>
+<script src="/MSI/ScriptResource.axd?d=mg3kfNCrpPA9ivVhCmGd2CcWYtzzqlyd7WV7RJBdUuffSYdeDn-h1viX4lIQgpsQd_SyhRbAL-hdhHkefnNZDoTdFr4b5XP_zz9gJlzvfaVKohuDNkg52kv459D1-HKcATPYZu-v7MEBzTxqf_mx-A2&amp;t=f2cd5c5" type="text/javascript"></script>
+        <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('ctl00$ToolkitScriptManager1', 'Form1', [], [], [], 90, 'ctl00');
+//]]>
+</script>
+
+        <input id="cookies_temp" type="hidden" value="ctl00_hdnServer" />
+        <input type="hidden" name="ctl00$hdnServer" id="ctl00_hdnServer" value="Ta witryna wykorzystuje pliki cookies do przechowywania informacji na Twoim komputerze. Pliki cookies stosujemy w celu świadczenia usług na najwyższym poziomie, w tym w sposób dostosowany do indywidualnych potrzeb. Korzystanie z witryny bez zmiany ustawień dotyczących cookies oznacza, że będą one zamieszczane w Twoim urządzeniu końcowym. W każdym momencie możesz dokonać zmiany ustawień dotyczących cookies." />
+        
+
+        <noscript>
+            <div class="col-xs-12">
+                <div class="noJavaScript">
+                    Korzystanie z serwisu wymaga włączenia w przeglądarce obsługi JavaScript.
+                </div>
+            </div>
+        </noscript>
+        <div class="container container-site">
+            
+            
+
+            
+    <div class="row">
+        <div class="col-xs-12 col-sm-12 col-md-8 col-lg-8 col-md-offset-2 col-lg-offset-2">
+            <div class="top-space text-center">
+                <div class="alert alert-danger" role="alert">
+                    <h3>
+                        Twoja sesja wygasła!
+                    </h3>
+                    <p>
+                        Proszę spróbować ponownie.
+                    </p>
+                </div>
+                <div class="top-space text-right">
+                    <a id="ctl00_ContentMain_hlClose" class="btn btn-anuluj" href="https://kinoslonce.pl/MSI/">Zamknij</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            
+            <input type="hidden" id="randomWindowName" value="b1cf27bf4d87478695de75f7cc2d3b4e" />
+            <input type="hidden" id="isNewSessionWindowName" value="True" />
+            <input type="hidden" id="sessionWindowName" value="b1cf27bf4d87478695de75f7cc2d3b4e" />
+            <input type="hidden" id="absoluteHomeUrl" value="/MSI/" />
+        </div>
+    
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="34416BE6" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdAATwwS01TvfJ0VA3dKDMIeEqAuTcNiTVEC0atkCw7PO4NmmgpdtoqfBiQ/dqNzgMeTDRKccUV7gcQNNB83M8vp6eY5u5d9PfeFgDj6kiK1maVIwwtZsLJ4wf3iRUZH/UOCw=" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+(function() {var fn = function() {$get("ctl00_ToolkitScriptManager1_HiddenField").value = '';Sys.Application.remove_init(fn);};Sys.Application.add_init(fn);})();//]]>
+</script>
+</form>
+
+
+    
+    
+    
+<footer class="footer ">
+    <div class="container">
+        <div class="col-sm-3 hidden-sm hidden-xs">
+            
+            <div class="col-sm-12">
+                <div class="footer-container footer-text text-muted text-center">
+                    <p class="footer-title">Autorem serwisu jest Vector Software sp. z o.o. Wszelkie prawa zastrzeżone.</p>
+                </div>
+            </div>
+            
+            <div class="col-sm-12">
+                <a class="" href="./" style="padding-top: 20px;">
+                    <img src="Themes/msidemo1/Images/logo-vectorsoft.png" class="img-responsive center-block" alt="" title="" width="80">
+                </a>
+            </div>
+        </div>
+        <div class="col-sm-5 hidden-sm hidden-xs">
+            <div class="footer-container footer-text text-muted text-left">
+                <div class="col-sm-7">
+                    <p class="footer-title">Kontakt</p>
+                    <span class="fa fa-phone text-color"></span> 604 753 733
+                    
+                    
+                    <br><span class="fa fa-envelope text-color"></span> <a href="mailto:wdk@wdkwieruszow.pl" class="word-wrap">wdk@wdkwieruszow.pl</a>
+					<br><a href="http://bilet.gcf.org.pl/MSI/images/Cennik.pdf" target="_blank">Cennik</a> 
+                </div>
+                <div class="col-sm-5">
+                    <p class="footer-title">Social media</p>
+                    <a target="_blank" href="https://www.facebook.com/Kinoslonce/?fref=ts" title="facebook" class="fa fa-facebook-square fa-2x text-color"></a>
+                    
+                    
+                    
+                    
+                    
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="footer-container footer-text text-muted text-left">
+                <div class="col-sm-12">
+                    <p class="footer-title word-wrap">
+                        Wieruszowski Dom Kultury w Wieruszowie
+                    </p>
+                    <p class="word-wrap">
+                        <span class="fa fa-map-marker text-color"></span>
+                        ul. Rynek 8/9
+                        98-400
+                        Wieruszów
+                    </p>
+                </div>
+                
+                <div class="col-sm-12">
+                    <p class="text-left">
+                        <span class="fa fa-clock-o text-color"></span>&nbsp;Kasę otwieramy godzinę przed seansem
+                    </p>
+                </div>
+                
+                <div class="col-sm-12">
+                    <p class="text-left">
+                        <span class="fa fa-book text-color"></span>&nbsp;997-00-22-449
+                    </p>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+
+
+<input id="width" type="hidden" name="width" />
+<input id="height" type="hidden" name="height" />
+
+    
+    <script type="text/javascript">
+        function ClientRes() {
+            $('width').value = document.body.clientWidth;
+            $('height').value = document.body.clientHeight;
+        }
+
+        function OnButton() {
+            $('TodayButton').src = "Images/dalej.gif";
+        }
+
+        function OffButton() {
+            $('TodayButton').src = "Images/dalej.gif";
+        }
+
+        function Run() { $("#Form1").submit(); }
+
+        function LockBook() {
+            alert("Rezerwacje na wybrane wydarzenie zostały zablokowane. Dokonaj rezerwacji na wydarzenie późniejsze.");
+        }
+
+        function LockSale() {
+            alert("Zakupy na wybrane wydarzenie zostały zablokowane. Dokonaj zakupu na wydarzenie późniejsze.");
+        }
+    </script>
+
+    <script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/main.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/tips.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/controller.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery.ptooltip.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery.fancybox.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/js-cookie.js?v=020822122031"></script><script type="text/javascript" src="/MSI/Themes/msidemo1/Scripts/jquery-cookie.js?v=020822122031"></script>
+    
+
+    <script type="text/javascript">
+        (function ($) {
+            $(".fancybox").fancybox({
+                openEffect: 'none',
+                closeEffect: 'none',
+                type: "image"
+            });
+        })(jQuery);
+    </script>
+    
+
+
+    </body>
+</html>

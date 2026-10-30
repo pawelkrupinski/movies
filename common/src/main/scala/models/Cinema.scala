@@ -725,7 +725,7 @@ case object KinoApolloDzialdowo extends Cinema("Kino Apollo Działdowo", "Apollo
 // wielun
 case object KinoSyrena extends Cinema("Kino-Teatr Syrena", "Syrena")   // Wieluń — filmweb 2034
 case object KinoTeatrSieradz extends Cinema("Kino Teatr Sieradz", "Sieradz")   // Sieradz — MSI bilety.scksieradz.pl
-case object KinoSlonce extends Cinema("Kino Słońce", "Słońce")   // Wieruszów — filmweb 2334
+case object KinoSlonce extends Cinema("Kino Słońce", "Słońce")   // Wieruszów — MSI kinoslonce.pl
 case object KinoSokolniaKepno extends Cinema("Kino Sokolnia Kępno", "Sokolnia")   // Kępno — iKsoris kinosokolnia.org
 // chojnice
 case object KinoChDK extends Cinema("Kino ChDK", "ChDK")   // Chojnice — MSI bilety.ckchojnice.pl

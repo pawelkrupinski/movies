@@ -83,6 +83,7 @@ final class PolishScraperCatalog(
     KinoKryterium                -> MsiVenue(CinemaScraperCatalog.KinoKryteriumUrl, fetch = zyteFetch),
     KinoMillenium                -> MsiVenue("https://bilety.csm.tarnow.pl", mvcPath = "/Kino/mvc/pl"),
     KinoKinomax                  -> MsiVenue("https://bilety.kinomax.info.pl"),
+    KinoSlonce                   -> MsiVenue("https://kinoslonce.pl"),
     KinoCentrumSkarzyskoKamienna -> MsiVenue("https://bilet-mck.skarzysko.pl"),
     KinoWRatuszu                 -> MsiVenue("https://bilety.mdk-zdunskawola.pl"),
     KinoKozienickiDomKultury     -> MsiVenue("http://bilety.dkkozienice.pl"),
@@ -558,7 +559,7 @@ final class PolishScraperCatalog(
     // ── wielun
     filmweb(2034, KinoSyrena),   // Wieluń
     msi(KinoTeatrSieradz),   // Sieradz
-    filmweb(2334, KinoSlonce),   // Wieruszów
+    msi(KinoSlonce),   // Wieruszów
     new IksorisRepertoireClient(http, IksorisOrigin("https://kinosokolnia.org"), KinoSokolniaKepno, today),   // Kępno
     // ── slubice
     // Two towns with one cinema each and nothing else within an hour's drive —

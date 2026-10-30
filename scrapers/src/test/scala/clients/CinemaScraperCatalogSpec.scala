@@ -196,6 +196,17 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       all (movies.flatMap(_.showtimes).flatMap(_.bookingUrl)) should not include "/koncert/"
     }
 
+  // Kino Słońce (Wieruszów) read white from 2026-10-29 on Filmweb 2334, which
+  // listed nothing for the next 12 days, while its own MSI portal sold screenings
+  // from 11-06. Captured live 2026-10-30.
+  it should "scrape Kino Słońce off its own MSI portal, not Filmweb" in {
+    val fixtures = new FakeHttpFetch("msi-kino-slonce")
+    val movies = catalog(direct = fixtures, today = LocalDate.of(2026, 10, 30)).all.find(_.cinema == KinoSlonce).value.fetch()
+    movies.map(_.cinema).toSet shouldBe Set(KinoSlonce)
+    movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("baranek shaun")).value
+      .showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 11, 6, 16, 0))
+  }
+
   // The Filmweb-only venues moved onto their own box offices on 2026-09-27 —
   // biletyna, MSI, systembiletowy, ekobilet and NoveKino — each of which listed
   // more (in total about three times the showtimes) than Filmweb did. Fixtures
