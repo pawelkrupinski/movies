@@ -25,11 +25,12 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
    *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them. */
-  "the landing check" should "run every heavy row the change can move, each in a job of its own" in {
+  "the landing check" should "run every heavy row the change can move, one after another in one job" in {
     val heavy = jobs("heavy")
     jobs("plan") should include("PREPUSH_HEAVY_ROWS=1 scripts/hooks/pre-push --plan")
-    heavy should include("share: ${{ fromJSON(needs.plan.outputs.heavy) }}")
-    heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$SHARE\"")
+    heavy should include("ROWS: ${{ needs.plan.outputs.heavy }}")
+    heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$ROWS\"")
+    heavy should not include "matrix"
     heavy should include("scripts/ci/start-mongo-replset.sh")
     heavy should include("runs-on: ubuntu-24.04")
   }

@@ -21,7 +21,7 @@ permissions:
 
 jobs:
     # WHICH OF MAIN'S HEAVY ROWS THE CHANGE CAN MOVE (scripts/hooks/pre-push --plan with PREPUSH_HEAVY_ROWS=1: `itrest`,
-    # `itidentity`, `e2e`, `e2ecorpus`), as a JSON list for the `heavy` job's matrix. The batch's fast check (check/fast-*) runs none.
+    # `itidentity`, `e2e`, `e2ecorpus`), space-separated, for the `heavy` job. The batch's fast check (check/fast-*) runs none.
     plan:
         runs-on: ubuntu-26.04
         timeout-minutes: 10
@@ -43,7 +43,7 @@ jobs:
                               | PREPUSH_HEAVY_ROWS=1 scripts/hooks/pre-push --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' || true)" ;;
                   esac
                   echo "heavy rows: ${rows:-none}" | tr '\n' ' '
-                  echo "heavy=$(printf '%s' "$rows" | jq -R . | jq -sc 'map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+                  echo "heavy=$(printf '%s' "$rows" | tr '\n' ' ' | sed 's/ *$//')" >> "$GITHUB_OUTPUT"
 
     # THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the hook's selected checks shared
     # between two jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
@@ -331,19 +331,18 @@ jobs:
 
     # MAIN'S HEAVY ROWS, BEFORE MAIN (ci-failures-2026-10-30, recommendation 3): 8 of Main's 14 code reds in five days
     # were in integration-test or e2e rows that nothing ran before the push -- Main was the first place they ran. Each
-    # row the change can move (the plan above) runs here as Main runs it, through the same hook (PREPUSH_ONLY=<row>):
+    # row the change can move (the plan above) runs here as Main runs it, through the same hook (PREPUSH_ONLY=<rows>):
     # `IT_ROW=<row> sbt itAll` against a throwaway MongoDB replica set (on 24.04: mongod 8.3 will not start on 26.04's
     # kernel 7.0, MongoServerVersionParitySpec), `sbt e2eRest` and `sbt e2eCorpus`.
+    # ONE job running the selected rows one after another, not a job a row: four rows at once beside the rest and the
+    # old refs starved the check tier, and an integration spec's loopback server missed its 30 s connect (landing
+    # check run 4131, IssuerCertificateFetchingSpec; itrest took 1403 s against 431 s alone).
     heavy:
-        name: heavy (${{ matrix.share }})
+        name: heavy rows
         needs: [ plan ]
-        if: ${{ needs.plan.outputs.heavy != '[]' && needs.plan.outputs.heavy != '' }}
-        strategy:
-            fail-fast: false
-            matrix:
-                share: ${{ fromJSON(needs.plan.outputs.heavy) }}
+        if: ${{ needs.plan.outputs.heavy != '' }}
         runs-on: ubuntu-24.04
-        timeout-minutes: 60
+        timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
               with:
@@ -351,7 +350,7 @@ jobs:
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             - name: Start MongoDB (single-node replica set, for change streams)
-              if: ${{ !startsWith(matrix.share, 'e2e') }}
+              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
               run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
@@ -367,23 +366,24 @@ jobs:
                       sbt-target-${{ runner.os }}-
             # The deploy specs the rest row runs read the gitops manifests where Main's row checks them out
             - name: Check out the gitops manifests (movies-gitops main, anonymously)
-              if: matrix.share == 'itrest'
+              if: ${{ contains(needs.plan.outputs.heavy, 'itrest') }}
               run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
             - name: Wait for MongoDB, started in the background above
-              if: ${{ !startsWith(matrix.share, 'e2e') }}
+              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
               run: scripts/ci/in-background.sh wait mongo-start 240
-            - name: The change's heavy row
+            - name: The change's heavy rows
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
-                  SHARE: ${{ matrix.share }}
+                  ROWS: ${{ needs.plan.outputs.heavy }}
+                  MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  MONGODB_DB: kinowo
               run: |
                   mkdir -p "$TMPDIR"
-                  case "$SHARE" in e2e*) ;; *) export MONGODB_URI='mongodb://127.0.0.1:27017/kinowo?directConnection=true' MONGODB_DB=kinowo ;; esac
                   rc=0
-                  PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY="$SHARE" timeout --kill-after=60 50m \
+                  PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY="$ROWS" timeout --kill-after=60 80m \
                       scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
-                  [ "$rc" != 124 ] || echo "::error::the $SHARE row ran past 50 minutes and was stopped"
+                  [ "$rc" != 124 ] || echo "::error::the heavy rows ($ROWS) ran past 80 minutes and were stopped"
                   exit "$rc"
             - name: The failed row's lines
               if: failure()

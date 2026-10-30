@@ -1240,7 +1240,10 @@ heavy_row() { # <check> <sbt command> [env...]
     need_jvm "$check" || return 1
     [ -n "${MONGODB_URI:-}" ] || [ "${check#e2e}" != "$check" ] \
         || { warn "$check: no \$MONGODB_URI -- the integration specs need a MongoDB replica set (scripts/ci/start-mongo-replset.sh)"; return 1; }
-    env "$@" sbt -batch "$cmd" > "$tmp/$check.log" 2>&1 \
+    # the e2e rows run as Main's do, with no MongoDB named (the heavy job names one for the integration rows)
+    local without=()
+    case "$check" in e2e*) without=(-u MONGODB_URI -u MONGODB_DB) ;; esac
+    env ${without[@]+"${without[@]}"} "$@" sbt -batch "$cmd" > "$tmp/$check.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|Failed tests:|TEST FAILED' "$tmp/$check.log" | head -80 >&2; warn "full log: $tmp/$check.log"; return 1; }
     grep -E 'Tests: succeeded|All tests passed|Passed: Total' "$tmp/$check.log" | tail -3 || true
 }
