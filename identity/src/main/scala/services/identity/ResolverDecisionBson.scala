@@ -30,8 +30,25 @@ object ResolverDecisionBson {
     .append("candidate", decision.candidate.fold[BsonValue](BsonNull())(best =>
       new BsonDocument("film", BsonInt32(best.film)).append("imdbNumber", BsonInt32(best.imdbNumber))))
     .append("unanswered", BsonInt32(decision.unanswered))
+    .append("awaits", BsonArray.fromIterable(decision.awaits.toSeq.flatMap(awaitedId).sorted.map(BsonString(_))))
     .append("agreed", new BsonDocument(decision.agreed.toSeq.sorted.map { case (family, id) => new org.bson.BsonElement(family, BsonString(id)) }.asJava))
     .append("trace", traceOf(decision))
+
+  /** A question a decision awaits, as stored: the model's own -- a search (`q|` its sort key), a film's record (`f|`), a
+   *  venue page (`p|` its listing key) -- else the agreement's own id ([[Question.id]]). */
+  private[identity] def awaitedId(question: Question): Option[String] = question match {
+    case Question.Candidate(query)   => Some(s"q|${query.sortKey}")
+    case Question.FilmRecord(tmdbId) => Some(s"f|$tmdbId")
+    case Question.VenuePage(listing) => Some(s"p|${services.movies.ListingKey.serialised(listing)}")
+    case other                       => other.id.map("a|" + _)
+  }
+  private[identity] def awaitedOf(stored: String): Option[Question] = stored.split("\\|", 2) match {
+    case Array("q", key)  => CandidateQuery.fromSortKey(key).map(Question.Candidate(_))
+    case Array("f", id)   => id.toIntOption.map(Question.FilmRecord(_))
+    case Array("p", key)  => services.movies.ListingKey.parse(key).map(Question.VenuePage(_))
+    case Array("a", id)   => Question.parse(id)
+    case _                => None
+  }
 
   /** What of the decision's trace the model keeps ([[DecisionTrace.kept]]): the pooled rule, and each member node's
    *  accepted rule and candidate, by the member's place among the decision's members sorted. */
@@ -72,6 +89,7 @@ object ResolverDecisionBson {
     var fallback: Option[ResolverDecision.Fallback] = None
     var leaning, candidate: Option[ResolverDecision.Leaning] = None
     var unanswered                                = 0
+    var awaits                                    = Set.empty[Question]
     var agreed                                    = Map.empty[String, String]
     var trace: Option[BsonDocument]               = None
     BsonFields.document(reader) {
@@ -89,6 +107,13 @@ object ResolverDecisionBson {
       case "leaning"        => leaning = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
       case "candidate"      => candidate = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
       case "unanswered"     => unanswered = BsonFields.when(reader, BsonType.INT32)(reader.readInt32()).getOrElse(0)
+      case "awaits"         => awaits = BsonFields.when(reader, BsonType.ARRAY) {
+                                 val all = Set.newBuilder[Question]
+                                 reader.readStartArray()
+                                 while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) awaitedOf(reader.readString()).foreach(all += _)
+                                 reader.readEndArray()
+                                 all.result()
+                               }.getOrElse(Set.empty)
       case "trace"          => trace = BsonFields.when(reader, BsonType.DOCUMENT)(
                                  new org.bson.codecs.BsonDocumentCodec().decode(reader, org.bson.codecs.DecoderContext.builder().build()))
       case "agreed"         => agreed = BsonFields.when(reader, BsonType.DOCUMENT) {
@@ -100,7 +125,7 @@ object ResolverDecisionBson {
     }
     ResolverDecision(BsonFields.required(members, "members"), film, BsonFields.required(confidence, "confidence").doubleValue,
       ResolverDecision.Basis.valueOf(BsonFields.required(basis, "basis")), BsonFields.required(explanation, "explanation"),
-      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate)(
+      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate, awaits)(
       trace.fold(DecisionTrace.Empty)(keptTrace(_, BsonFields.required(members, "members"))))
   }
 

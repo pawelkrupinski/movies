@@ -60,6 +60,13 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val awaiting = Option.when(awaited.nonEmpty)(s"${awaited.size} record(s) awaited: ${awaited.take(5).mkString(", ")}")
     // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
     val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope, fallbacks)
+    // what a cluster taking no film still waits on (ResolverDecision.awaits: its outcome Pending, not NoFilm): its searches
+    // unanswered, the records its family's pools await, its listings' venue pages not read yet
+    val awaits: Set[Question] =
+      if (film.isDefined || fallback.isDefined) Set.empty
+      else cluster.flatMap(node => queriesOf(node.id)).distinct.filterNot(query => answers(query).isKnown).map(Question.Candidate(_)).toSet ++
+        awaited.map(Question.FilmRecord(_)) ++
+        cluster.flatMap(_.listings).filter(scoring.generation.pagePending).map(listing => Question.VenuePage(listing.key))
     // a film a reused page's copied original title and director alone name ([[Acceptance.copiedBeyondItsBilling]]): facts
     // that agree with it by construction, so no vote of TMDB's for it (DE Scheune Dresden's "Regio Tales", an event on
     // kinoheld's "Heads and Tales" page)
@@ -84,7 +91,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
         apart.take(4) ++ best ++ gaps ++ awaiting ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
         leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
         s"node ${cluster.head.listings.head.key}", contradictions = apart, fallback = fallback, leaning = leaning, unanswered = unknown,
-      candidate = candidate)(
+      candidate = candidate, awaits = awaits)(
       traceOf(cluster, scope, scored, film, basis, edges, ids))
   }
 

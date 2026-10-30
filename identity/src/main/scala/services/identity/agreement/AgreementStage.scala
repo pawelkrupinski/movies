@@ -130,6 +130,17 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         onTmdb = cluster.exists(_.blindAt.isDefined))
     }
 
+  /** What `decision` comes to as the last [[apply]] served it, typed: its film, or no film -- Pending while the model or
+   *  the stage still waits on something ([[ResolverDecision.awaits]], [[waitingOn]]: a verdict's or a correction's
+   *  questions unanswered, a fill's TMDB answers), NoFilm when nothing is. Read, never stored: the served decision stays
+   *  the object the projection diffs by. */
+  def outcomeOf(decision: ResolverDecision): services.identity.Outcome = decision.outcome match {
+    case taken: services.identity.Outcome.Taken => taken
+    case model =>
+      val stage = waitingOn(decision).questions
+      if (stage.isEmpty) model else services.identity.Outcome.Pending(decision.awaits ++ stage)
+  }
+
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it: of a model decision it was handed, or of what
    *  it took one as. Read off maps no apply changes once built, from any thread, allocating nothing; a decision no apply
    *  was handed is keyed by its first listing ([[StoredFamily.idOf]]), as nothing the stage keeps is. */

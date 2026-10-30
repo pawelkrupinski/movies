@@ -26,15 +26,22 @@ import services.movies.ListingKey
  *    agreement stage (`agreement.AgreementStage`) counts beside the other families, never a match on its own.
  *  - `agreed`, for a [[ResolverDecision.Basis.Agreed]] film, each agreeing family's own id of it (`"rt" -> "dune_2021"`):
  *    the signals the agreement rests on, kept with the decision as every other measure's evidence is.
+ *  - `awaits`, for no film, the questions it is still waiting on -- its searches unanswered, the records its family's
+ *    pools await, its listings' venue pages not read, the agreement's own questions: no film YET ([[outcome]]).
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
                                   contradictions: Seq[String] = Nil, fallback: Option[ResolverDecision.Fallback] = None,
                                   leaning: Option[ResolverDecision.Leaning] = None,
                                   unanswered: Int = 0, agreed: Map[String, String] = Map.empty,
-                                  candidate: Option[ResolverDecision.Leaning] = None)(
+                                  candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
+  /** What it comes to, typed: a film taken (TMDB's or a fallback's), no film yet -- [[Outcome.Pending]], naming what it
+   *  awaits -- or no film, nothing pending ([[Outcome.NoFilm]]). */
+  def outcome: Outcome =
+    film.map(id => Outcome.Taken(s"tmdb:$id")).orElse(fallback.map(f => Outcome.Taken(s"${f.source}:${f.id}")))
+      .getOrElse(if (awaits.nonEmpty) Outcome.Pending(awaits) else Outcome.NoFilm(basis))
   def tmdbId: Option[Int]            = film
   /** The verdict in one line, as every screen and script names it: its film (for a no-match, the fallback's `source:id`
    *  it takes, if any), its confidence and its basis. */
@@ -222,4 +229,13 @@ object DecisionTrace {
    *  rule on each side of 0, and "<= -1" and ">= 1" must stay two ids. */
   def id(reason: String): String = reason.toLowerCase(java.util.Locale.ROOT).replace("<= -", " at-most minus ").replace("<=", " at-most ")
     .replaceAll("[^\\p{L}\\p{N}]+", "-").stripPrefix("-").stripSuffix("-")
+}
+
+/** A decision's outcome, typed (docs: identity-flips-structural-2026-10-30): a film taken, no film -- nothing pending, a
+ *  verdict -- or no film YET, the questions it awaits named. What the flip check and the equivalence properties read,
+ *  never the explanation's prose. */
+enum Outcome {
+  case Taken(film: String)
+  case NoFilm(basis: ResolverDecision.Basis)
+  case Pending(awaits: Set[Question])
 }

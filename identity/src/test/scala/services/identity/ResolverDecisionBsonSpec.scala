@@ -21,6 +21,15 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(filmweb)) shouldBe filmweb
   }
 
+  it should "read back with what it awaits, each kind of question: no film yet stays Pending across a restart" in {
+    val awaits = Set[Question](Question.Candidate(CandidateQuery.Title("Snow Leopard")), Question.FilmRecord(-181874839),
+      Question.VenuePage(snowLeopard), Question.Family(agreement.VoterFamily.values.head, "title|Snow Leopard"))
+    val waiting = ResolverDecision(Seq(snowLeopard), None, 0.5, ResolverDecision.Basis.BelowThreshold, Nil, awaits = awaits)()
+    waiting.outcome shouldBe Outcome.Pending(awaits)
+    ResolverDecisionBson.decode(ResolverDecisionBson.encode(waiting)) shouldBe waiting
+    waiting.copy(awaits = Set.empty)(DecisionTrace.Empty).outcome shouldBe Outcome.NoFilm(ResolverDecision.Basis.BelowThreshold)
+  }
+
   it should "read back with each agreeing family's own id of its film" in {
     val agreed = ResolverDecision(Seq(snowLeopard), Some(996584), 1.0, ResolverDecision.Basis.Agreed, Seq("imdb, metacritic, rt agree on 'Snow Leopard'"),
       agreed = Map("imdb" -> "tt13920372", "metacritic" -> "snow-leopard", "rt" -> "snow_leopard_2023"))()

@@ -15,6 +15,11 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   val details = mutable.LinkedHashMap.empty[(String, String), Answer[Option[DetailFacts]]]
   /** Are the films numbered by their TMDB ids ([[IdentityLookups.numbersFilmsByTmdbId]])? */
   def numbersFilmsByTmdbId: Boolean = lookups.numbersFilmsByTmdbId
+  /** Whether `listing`'s venue page is to be read and not answered yet -- read meanwhile as no detail at all: a question
+   *  a decision taking no film awaits ([[ResolverDecision.awaits]]). Read through the lookups, so an incremental model
+   *  files the family as the page's reader. */
+  def pagePending(listing: Listing): Boolean =
+    lookups.hasDetail(listing) && !details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).isKnown
   def detailOf(listing: Listing): Option[DetailFacts] =
     if (!lookups.hasDetail(listing)) None
     else details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).toOption.flatten
