@@ -39,12 +39,13 @@ bounded_step_marked() {
 }
 
 bounded_step_reap() {
-  local dir record id pgid what pids=() survivors=0 p n
+  local dir record id pgid what ids=() pids=() survivors=0 p n clean
   dir=$(bounded_step_dir)
   [ -d "$dir" ] || return 0
   for record in "$dir"/*; do
     [ -f "$record" ] || continue
     id=${record##*/}
+    ids+=("$id")
     read -r pgid what < "$record" || true
     n=0
     if [ -n "$pgid" ] && kill -0 -- "-$pgid" 2>/dev/null; then
@@ -57,13 +58,34 @@ bounded_step_reap() {
     [ "$n" = 1 ] && echo "::warning::ending what a timed-out step left running (${what:-a bounded step}, process group $pgid)"
     pids+=("-$pgid")
   done
+  # The marks are looked for again on every pass, not once: a process mid-exec reads an empty environ, and one the
+  # group starts as it ends (a TERM trap, a daemon's late fork) leaves it after the first look (Tool self-tests #2866).
+  signal_marked() {
+    local signal=$1 id p
+    for id in ${ids[@]+"${ids[@]}"}; do
+      for p in $(bounded_step_marked "$id"); do
+        [ "$p" = "$$" ] && continue
+        kill "-$signal" "$p" 2>/dev/null && pids+=("$p")
+      done
+    done
+    return 0
+  }
   alive() { local q; for q in "${pids[@]}"; do kill -0 -- "$q" 2>/dev/null && return 0; done; return 1; }
+  # Gone only after two clean looks in a row, a pass apart: one can fall inside an exec.
+  wait_gone() {
+    local signal=$1 passes=$2
+    clean=0
+    for _ in $(seq 1 "$passes"); do
+      signal_marked "$signal"
+      if alive; then clean=0; else clean=$((clean + 1)); [ "$clean" -ge 2 ] && return 0; fi
+      sleep 0.1
+    done
+    return 1
+  }
   if [ "${#pids[@]}" -gt 0 ]; then
-    for _ in $(seq 1 100); do alive || break; sleep 0.1; done
-    if alive; then
+    if ! wait_gone TERM 100; then
       for p in "${pids[@]}"; do kill -KILL -- "$p" 2>/dev/null || true; done
-      for _ in $(seq 1 50); do alive || break; sleep 0.1; done
-      alive && survivors=1
+      wait_gone KILL 50 || survivors=1
     fi
   fi
   for record in "$dir"/*; do [ -f "$record" ] && rm -f "$record"; done

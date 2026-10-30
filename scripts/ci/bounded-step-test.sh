@@ -71,6 +71,19 @@ if [ -e /proc/self/environ ] && command -v setsid > /dev/null; then
   wait_until "the step's child recorded its pid" '[ -s "$work/child" ]'
   bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap > /dev/null 2>&1
   check "a daemon that left the group is ended by its BOUNDED_STEP mark" "gone" "$(alive "$(cat "$work/child")")"
+
+  # A daemon that leaves the group while the reap runs: one look at the marks, taken at the TERM, misses what is
+  # mid-exec then (its environ reads empty) or starts a moment later (Tool self-tests #2866). Here the step's shell
+  # answers TERM by starting one a second later: after that first look, before the group is gone. It answers the reap's
+  # later TERMs with a no-op (bash would start the trap over) and its waits carry no mark, so those end only the daemon.
+  : > "$work/child"
+  late=$(step "trap \"trap : TERM; env -u BOUNDED_STEP sleep 1; setsid bash -c 'while :; do sleep 1; done' '$work' & echo \\\$! > '$work/child'; env -u BOUNDED_STEP sleep 0.5; exit 0\" TERM
+echo started > '$work/late'; while :; do sleep 1; done")
+  bash --noprofile --norc -eo pipefail "$late" > /dev/null 2>&1 &
+  wait_until "the late step started" '[ -s "$work/late" ] && [ "$(records)" = 1 ]'
+  bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap > /dev/null 2>&1
+  check "...and so is one that leaves the group while the reap runs" "gone" \
+    "$([ -s "$work/child" ] && alive "$(cat "$work/child")" || echo "never started")"
 fi
 
 # 5. The next bounded step reaps before it starts, so two bounded steps in a row need no reap step between them.
