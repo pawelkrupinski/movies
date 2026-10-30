@@ -498,7 +498,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
           verdict.fold(decision) { v =>
             lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances)
             pieceOf(v, listings).fold(
-            v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, pass.asked, distances,
+            v.agreed.fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken)(taken(decision, _, pass.asked, distances,
               film => synopsisAgainst(id, digest, listings, film))) match {
               // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
               // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
@@ -1008,7 +1008,10 @@ object AgreementStage {
   /** A model no-match the families' agreement took no film for, as the takes read it: its cluster id, listings and their
    *  digest, the families' verdict, and its venue posters' distances to its candidates (and to `also`). */
   private[agreement] final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
-                                   distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]])
+                                   distances: Distances)
+  /** A cluster's venue posters' distances to its candidates and to the film given (an agreed or filled one): what a take
+   *  is screened by ([[AgreementTakes.screened]]). `Unknown` while a poster is not hashed. */
+  private[agreement] type Distances = Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]
   /** One apply at the families' `version`: where its takes and corrections note what they wait on (`asked`: the families'
    *  questions, the IMDb ids TMDB was not asked about, the posters, the catalogue questions and the records to read again
    *  for their day) with the verdicts it moved, the clusters and model takes it read, and its cost. */
@@ -1065,8 +1068,8 @@ object AgreementStage {
 
   /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, refused by
    *  the venue's synopsis (and why), or none to take. */
-  private[agreement] enum Take {
-    case Taken(decision: ResolverDecision)
+  private[agreement] enum Take[+A] {
+    case Taken(decision: A)
     case Pending
     case Vetoed
     case Refused(why: String)

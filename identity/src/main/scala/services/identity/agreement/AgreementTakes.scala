@@ -62,16 +62,17 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]) or
    *  the venue's synopsis another's description (`synopsis`, [[synopsisAgainst]]). */
   private[agreement] def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[Question],
-                         distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]], synopsis: Int => Option[String]): Option[ResolverDecision] =
+                         distances: AgreementStage.Distances, synopsis: Int => Option[String]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
       tmdbFilmOf(fill.tmdb, fill.imdb, finding) match {
         case Answer.Unknown => None
-        case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty &&
-            tmdbFilm.forall(synopsis(_).isEmpty)).flatMap { _ =>
-          val rule = Some(s"fill:${fill.rule}")
-          tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id), rule = rule))
-            .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, rule = rule,
-              fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))))
+        case Answer.Known(tmdbFilm) => screened(tmdbFilm, distances, synopsis)(()) match {
+          case AgreementStage.Take.Taken(_) =>
+            val rule = Some(s"fill:${fill.rule}")
+            tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id), rule = rule))
+              .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, rule = rule,
+                fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))))
+          case _ => None
         }
       }
     }
@@ -90,7 +91,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate;
    *  nor when the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]): REFUSED, saying why. */
   private[agreement] def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[Question],
-                    distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]], synopsis: Int => Option[String]): AgreementStage.Take = {
+                    distances: AgreementStage.Distances, synopsis: Int => Option[String]): AgreementStage.Take[ResolverDecision] = {
     val imdb = agreed.crossId("imdb")
     // read only for a film the families' take may stand on: a find only review sites' agreement waits on is none to ask
     lazy val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb, finding)
@@ -98,23 +99,28 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
       Option.when(agreed.corroborated.nonEmpty)(s", corroborated by ${agreed.corroborated.toSeq.sorted.mkString(", ")}").getOrElse("")
     val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on ${agreed.record.film.titled}${imdb.fold("")(id => s" $id")}"
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
-    def unlessVetoed(film: Option[Int])(take: => ResolverDecision): AgreementStage.Take = distances(film) match {
-      case Answer.Known(found) =>
-        if (PosterEvidence.veto(film, found).nonEmpty) AgreementStage.Take.Vetoed
-        else film.flatMap(synopsis).fold[AgreementStage.Take](AgreementStage.Take.Taken(take))(AgreementStage.Take.Refused(_))
-      case Answer.Unknown      => AgreementStage.Take.Pending
-    }
     // a film only review sites take — their pages name no film a card stands on, and match an event's namesake (DE "André
     // Rieus Weihnachtskonzert 2026: Let it Snow": Metacritic's and RT's 2019 "Let It Snow", the model's best candidate)
     if (!agreed.families.exists(_.namesFilms)) AgreementStage.Take.Untaken
     else tmdb match {
       case Answer.Unknown           => AgreementStage.Take.Pending
-      case Answer.Known(Some(film)) => unlessVetoed(Some(film))(taking(decision)(ResolverDecision.Basis.Agreed, line, film = Some(film), agreed = ids))
-      case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take](AgreementStage.Take.Untaken) { case (source, id) =>
-        unlessVetoed(None)(taking(decision)(ResolverDecision.Basis.Agreed, line,
+      case Answer.Known(Some(film)) => screened(Some(film), distances, synopsis)(taking(decision)(ResolverDecision.Basis.Agreed, line, film = Some(film), agreed = ids))
+      case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken) { case (source, id) =>
+        screened(None, distances, synopsis)(taking(decision)(ResolverDecision.Basis.Agreed, line,
           fallback = Some(AgreementStage.fallbackOn(source, id, Some(agreed.record.film.title), agreed.record.film.year)), agreed = ids)) }
     }
   }
+
+  /** `take` of `film` as the venues' evidence lets it stand — what an agreed film and a filled one are both screened by:
+   *  pending while a venue poster is not hashed, VETOED where one names another candidate ([[PosterEvidence.veto]]),
+   *  REFUSED where the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]), else taken. */
+  private[agreement] def screened[A](film: Option[Int], distances: AgreementStage.Distances, synopsis: Int => Option[String])(take: => A): AgreementStage.Take[A] =
+    distances(film) match {
+      case Answer.Known(found) =>
+        if (PosterEvidence.veto(film, found).nonEmpty) AgreementStage.Take.Vetoed
+        else film.flatMap(synopsis).fold[AgreementStage.Take[A]](AgreementStage.Take.Taken(take))(AgreementStage.Take.Refused(_))
+      case Answer.Unknown      => AgreementStage.Take.Pending
+    }
 
   /** The id a film TMDB holds no record of stands on: its IMDb id, else the own id of the first of [[identities]] that
    *  took it or whose id an agreeing record links — as `(source, id)`, the source a fallback film names. */
