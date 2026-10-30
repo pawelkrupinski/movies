@@ -41,7 +41,10 @@ private[identity] object FeedLink {
   /** How many sources other than the feed's own entry must back a rival the title names to overrule the link. */
   val OverrulingSources = 2
   /** How many venues besides the node's must bill a current release a single source backs for it to overrule a link to an
-   *  older film — more than the link's own venues besides ([[FeedLink.venues]]). */
+   *  older film -- and more of them than bill the link, the node's own venue counted ([[FeedLink.venues]];
+   *  `FamilyScope.currentRelease`: the release's venues besides the node's, `> node.venues.size`). The doc said "more than
+   *  the link's own venues besides", one fewer than the code asks and was measured with (ecedac9aa; the review,
+   *  2026-10-30). */
   val ReleaseVenues = 2
   /** The `sources` of a link overruled by the venue's own title naming another film exactly, no source backing either. */
   val TitledRival = 0
