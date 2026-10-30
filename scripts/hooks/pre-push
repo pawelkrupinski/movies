@@ -66,7 +66,10 @@
 #                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
 #   `driftguards` scripts/ci/drift-guards.sh over each pushed range, on a change to the identity paths, worker/src/main or
-#                 the drift harness (is_drift_path): a red fix changing resolver or agreement RULE code names the design
+#                 the drift harness (is_drift_path): a commit fixing a drift or flip red (`Fixes-Red:` and a message
+#                 about drift/flips) lands with its drift slice (test/resources/fixtures/drift-slices/, cut by
+#                 scripts/identity-slice --emit-drift-slice) or `Drift-Slice: none -- <why>`; a red fix changing
+#                 resolver or agreement RULE code names the design
 #                 doc that measured it (`Identity-Design: <doc>`; red fixers fix incremental state, not rules -- the
 #                 owner, 2026-10-29); and a change to the drift harness
 #                 (IdentityDrift, IdentityLiveDrift, TakeFlips, identity-drift-check.sh) carries its self-test in the same

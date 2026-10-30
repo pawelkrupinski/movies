@@ -338,7 +338,9 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
 - **A drift or flip red** (the convergence `takes-drift-<seed>` rows, `scripts/ci/identity-drift-check.sh`) is fixed in
   the incremental STATE that diverges (a lag, a budget, queue order, a cache, a restart key), never by a new resolver
   rule: a rule change is identity design, measured on the full corpus in every country (the owner, 2026-10-29); a
-  `Fixes-Red:` commit touching rule code needs `Identity-Design: <doc>`. Known flips: the baseline above. A change to
+  `Fixes-Red:` commit touching rule code needs `Identity-Design: <doc>`. Known flips: the baseline above. The red is
+  not closed until its listing's drift slice is committed (`scripts/identity-slice <cc> --venue V --title T
+  --emit-drift-slice`; `IdentityDriftSlicesSpec` replays them all in the unit suite). A change to
   the drift HARNESS (IdentityDrift, IdentityLiveDrift, TakeFlips, identity-drift-check.sh) carries, in the same commit,
   a capture-replay case proving the replay behaves as the worker does (IdentityDriftSpec, CorrectionFlipReplaySpec,
   TakeFlipsSpec, the check's own test), or `Drift-Harness-Refactor: <why>` for a pure refactor. Both enforced by

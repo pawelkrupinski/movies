@@ -49,6 +49,12 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
   handling, the incremental resolver, the stores and keys — need none.
 - **Known flips wait on the shrink-only baseline** ("Known flips" above); new flips and every divergence fail.
   Neither allow-list is edited to get green.
+- **A drift or flip red is not closed until its slice is committed**: `scripts/identity-slice <cc> --venue V --title T
+  --emit-drift-slice` cuts the listing into `test/resources/fixtures/drift-slices/<cc>/<name>/`, widened with every
+  answer the incremental sequence reads, and `scripts.IdentityDriftSlicesSpec` replays every slice through that
+  sequence on 12 seeds in the unit suite (Tier 1 of the drift gate; `IdentityDrift --slice`, at least one listing
+  leaving and returning). The fix's push carries the slice, or `Drift-Slice: none -- <why>` when the red has no
+  listing (a CI script, a timeout).
 - **The harness carries its self-test**: a change to IdentityDrift, IdentityLiveDrift, TakeFlips or
   identity-drift-check.sh comes with a capture-replay case in the same commit — IdentityDriftSpec,
   CorrectionFlipReplaySpec, TakeFlipsSpec, identity-drift-check-test.sh — proving the replay does what the worker does

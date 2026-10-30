@@ -257,7 +257,9 @@ turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final t
   laptop, warm; anything longer is main's CI's. Add a new area by adding its lines and its path test to the hook.
 - **Never edit `identity-drift-allow.tsv` to get green**; performance budgets move only for a deliberate trade.
 - **A drift or flip red** is fixed in the incremental state that diverges, never with a new resolver rule (a
-  `Fixes-Red:` commit touching rule code needs `Identity-Design: <doc>`); a change to the drift harness carries its
+  `Fixes-Red:` commit touching rule code needs `Identity-Design: <doc>`), and is not closed until its listing's drift
+  slice is committed (`scripts/identity-slice <cc> --venue V --title T --emit-drift-slice`) or the fix says
+  `Drift-Slice: none -- <why>`; a change to the drift harness carries its
   capture-replay self-test (or `Drift-Harness-Refactor: <why>`). Pre-push's `driftguards` check
   (`scripts/ci/drift-guards.sh`) holds both; `docs/design/identity-no-drift.md`, "Fixing a drift or flip red".
 - Cancel your own superseded CI runs (`forgejo-gh run cancel <run id>`); never another agent's.
