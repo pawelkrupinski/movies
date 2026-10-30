@@ -7372,9 +7372,10 @@
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Un+anno+di+scuola/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Un+anno+di+scuola",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Un+anno+di+scuola"
+      "filmweb" : 6.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Jeden+szkolny+rok-2025-10090060"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.9,
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Un anno di scuola", "A Year of School" ]
@@ -7395,9 +7396,10 @@
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/Un+anno+di+scuola/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Un+anno+di+scuola",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Un+anno+di+scuola"
+      "filmweb" : 6.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Jeden+szkolny+rok-2025-10090060"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.9,
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Un anno di scuola", "A Year of School" ]

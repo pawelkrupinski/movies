@@ -912,10 +912,10 @@ originalTitle:     Un anno di scuola
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.9
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Jeden+szkolny+rok-2025-10090060
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14628-cinema-italia-oggi-jeden-szkolny-rok/
 cinemaScrapes:
