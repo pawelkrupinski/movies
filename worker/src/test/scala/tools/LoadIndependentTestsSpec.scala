@@ -114,10 +114,7 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
     "common/src/test/scala/tools/ManagedResourcesSpec.scala: stopwatch.elapsed should be < (grace * 2)" ->
       ("the claim IS a duration: one grace for every stuck pool, not one each (3 pools: 3 x grace against < 2 x); the " +
         "pools spin deaf to their interrupt, so nothing but the grace ends the stop"),
-    "common/src/test/scala/tools/RealHttpFetchSpec.scala: elapsed.compareTo(deadline.plusSeconds(3)) should be < 0" -> Timer,
-    "worker/src/test/scala/tools/ArchiveReplayEnrichmentWiringSpec.scala: withClue(s\"$asks refusals on a 200 ms-paced host took ${elapsedMs} ms: \") { elapsedMs should be < pacedMs }" ->
-      ("the bound is the pacing's own floor — 9 paced sleeps of 200 ms, which no sleep undercuts — against refusals that " +
-        "send nothing; to time no refusal, the pacer would need a stepped clock (ArchiveReplayWiring paces on the real one)")
+    "common/src/test/scala/tools/RealHttpFetchSpec.scala: elapsed.compareTo(deadline.plusSeconds(3)) should be < 0" -> Timer
   )
 
   // ── 1. Scala ───────────────────────────────────────────────────────────────
