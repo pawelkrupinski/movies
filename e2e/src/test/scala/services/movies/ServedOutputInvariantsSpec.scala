@@ -6,7 +6,6 @@ import controllers.{CinemaShowtimes, FilmSchedule}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.FixtureTestWiring
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -20,7 +19,7 @@ import java.time.{LocalDate, LocalDateTime}
  * only place a recorded corpus is enriched, so the only place its cards exist. The allowlist both
  * read is [[ServedOutputAllowlist]].
  */
-class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers with StopsItsWirings {
+class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers with StopsItsWirings with ReadsSharedFixtureBoot {
 
   import ServedOutputInvariantsSpec._
 
@@ -133,9 +132,7 @@ class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers with StopsIts
   }
 
   "the fixture boot 08-06-2026" should "serve only cards that keep the served-output invariants" in {
-    val wiring = stoppedAfterAll(new FixtureTestWiring("08-06-2026"))
-    wiring.bootStartup()
-    val cards = ServedOutputInvariants.cardsOf(wiring, Country.Poland, SingleCountryNormalizer.titleNormalizer, FixtureNow)
+    val cards = ServedOutputInvariants.cardsOf(sharedFixtureBoot, Country.Poland, SingleCountryNormalizer.titleNormalizer, FixtureNow)
     info(ServedOutputInvariants.coverage(cards))
     cards.size should be > 100
     withClue("no card joined a stored film with a tmdbId, so the rules reading it held over nothing: ")(
