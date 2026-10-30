@@ -161,6 +161,11 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       "https://biletyna.pl/film/Tedi-i-magiczna-lampa?eid=702412#opis"),
     (KinoZaRogiemChmielno, "wojna z dziadkiem", java.time.LocalDateTime.of(2026, 9, 30, 13, 0),
       "https://biletyna.pl/film/Wojna-z-dziadkiem?eid=699434#opis"),
+    // Grójec (Filmweb 1683) read white from 2026-10-28: Filmweb carried one
+    // 11-07 slot, past its 7-day window, while biletyna sold 26 screenings from
+    // 11-04. Captured live 2026-10-30.
+    (KinoGrojeckiOsrodekKultury, "zapomniana wyspa", java.time.LocalDateTime.of(2026, 11, 4, 17, 0),
+      "https://biletyna.pl/film/Zapomniana-wyspa?eid=717422#opis"),
   )
   for ((cinema, title, when, booking) <- desyncedFilmwebVenues)
     it should s"route ${cinema.displayName} through its biletyna place page, not Filmweb" in {

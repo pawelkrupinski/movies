@@ -570,7 +570,7 @@ case object KinoCKiF extends Cinema("Kino CKiF", "CKiF")   // Sucha Beskidzka �
 // warszawa
 case object KinoGrodziskieCentrumKultury extends Cinema("Kino Grodziskiego Centrum Kultury", "GCK Grodzisk")   // Grodzisk Mazowiecki — bilety24
 case object KinoBajkaBlonie extends Cinema("Kino Bajka Błonie", "Bajka")   // Błonie — kino.blonie.pl
-case object KinoGrojeckiOsrodekKultury extends Cinema("Grójecki Ośrodek Kultury", "Grójec")   // Grójec — filmweb 1683
+case object KinoGrojeckiOsrodekKultury extends Cinema("Grójecki Ośrodek Kultury", "Grójec")   // Grójec — biletyna
 case object KinoUciecha extends Cinema("Kino Uciecha", "Uciecha")   // Góra Kalwaria — biletyna Kino-Uciecha
 case object HeliosWolomin extends Cinema("Helios Wołomin", "Helios Wołomin")   // Wołomin — Helios REST
 case object KinoKulturaWolomin extends Cinema("Kino Kultura Wołomin", "Kultura Wołomin")   // Wołomin — biletyna Kino-Kultura

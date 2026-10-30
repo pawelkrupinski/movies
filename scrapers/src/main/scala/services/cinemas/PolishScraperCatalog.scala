@@ -149,6 +149,7 @@ final class PolishScraperCatalog(
     KinoWawerskaStrefaKultury -> "https://biletyna.pl/Warszawa/Wawerska-Strefa-Kultury-sala-widowiskowa",
     KinoBasn -> "https://biletyna.pl/Piastow/sala-widowiskowa",
     KinoKasynoOficerskie -> "https://biletyna.pl/Nowy-Dwor-Mazowiecki/Kasyno-Oficerskie-Sala-kinowa",
+    KinoGrojeckiOsrodekKultury -> "https://biletyna.pl/Grojec/Grojecki-Osrodek-Kultury",
     KinoNowyPafawag -> "https://biletyna.pl/Wroclaw/Centrum-Kultury-Wroclaw-Zachod",
     TeatrBoto -> "https://biletyna.pl/Sopot/Teatr-Boto",
     TeatrAtelier -> "https://biletyna.pl/Sopot/Teatr-Atelier-Sopot",
@@ -825,7 +826,7 @@ final class PolishScraperCatalog(
     biletyna(KinoKasynoOficerskie),   // Nowy Dwór Mazowiecki
     bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-gminy-grodzisk-mazowiecki-1231", KinoGrodziskieCentrumKultury),   // Grodzisk Mazowiecki
     new KinoBajkaBlonieClient(http, KinoBajkaBlonie, today),   // Błonie
-    filmweb(1683, KinoGrojeckiOsrodekKultury),   // Grójec
+    biletyna(KinoGrojeckiOsrodekKultury),   // Grójec
     biletyna(KinoUciecha),   // Góra Kalwaria
     helios(HeliosNuxt.Wolomin),   // Wołomin
     biletyna(KinoKulturaWolomin),   // Wołomin
