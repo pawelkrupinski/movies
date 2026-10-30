@@ -22,7 +22,7 @@ object FilmwebDiffJson {
   final case class Meta(
     date:        String, // the run's `today`, yyyy-MM-dd
     generatedAt: String, // Instant.now() ISO-8601
-    windowDays:  Int,
+    windowDays:  Option[Int], // None: no window end, everything either side publishes
     commit:      String  // GITHUB_SHA or "unknown"
   )
 
@@ -51,7 +51,7 @@ object FilmwebDiffJson {
       "meta" -> Json.obj(
         "date"        -> meta.date,
         "generatedAt" -> meta.generatedAt,
-        "windowDays"  -> meta.windowDays,
+        "windowDays"  -> meta.windowDays.fold[JsValue](JsNull)(JsNumber(_)),
         "commit"      -> meta.commit
       ),
       "summary" -> summary(sorted),

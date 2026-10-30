@@ -25,15 +25,16 @@ import scala.util.{Failure, Success, Try}
  *
  * For every resolved cinema, fetch both sides — our real `CinemaScraper`, and a
  * `FilmwebShowtimesClient` pointed at Filmweb's JSON seances API — restrict both
- * to the `[today, today+daysAhead]` window, and report per cinema: total
+ * to the `[today, today+daysAhead]` window (`all`: every upcoming showtime either
+ * side publishes, no end), and report per cinema: total
  * showtimes each side, the shared / ours-only / fw-only `LocalDateTime` multisets
  * (all films), and a per-film (normalised title) breakdown. The point is to
  * surface where our scrape is thin (Filmweb has screenings we miss) or stale (we
  * list screenings Filmweb dropped), so the gaps can be chased one cinema at a time.
  *
- * Run by hand or daily in CI (`.github/workflows/filmweb-diff.yml`):
+ * Run by hand or weekly in CI (`.github/workflows/filmweb-diff.yml`, `all`):
  *   sbt "worker/runMain tools.FilmwebDiff 3 out.txt out.csv [city-slug …]"
- * args: [daysAhead] [out.txt] [out.csv] [out.json] [city-slug …] — order-independent for the
+ * args: [daysAhead | all] [out.txt] [out.csv] [out.json] [city-slug …] — order-independent for the
  * paths (a `*.txt` is the text report, a `*.csv` the summary, a `*.json` the deterministic
  * report; each defaulted when omitted); bare city slugs
  * restrict to those cities; anything else stops it with exit 2 before any fetch
@@ -88,19 +89,21 @@ object FilmwebDiff {
     fwByFilm:   Map[String, Seq[LocalDateTime]]
   )
 
-  /** The run asked: the days ahead, the three report paths, and the cities it is restricted to (none: all). */
-  final case class Options(daysAhead: Int = 3, txt: String = "/temporary/filmweb-diff-output.txt",
+  /** The run asked: the days ahead (`None`: no window end, everything published), the three report paths, and the
+   *  cities it is restricted to (none: all). */
+  final case class Options(daysAhead: Option[Int] = Some(3), txt: String = "/temporary/filmweb-diff-output.txt",
                            csv: String = "/temporary/filmweb-diff-summary.csv", json: String = "/temporary/filmweb-diff-output.json",
                            cities: Set[String] = Set.empty)
 
-  /** `[daysAhead] [out.txt] [out.csv] [out.json] [city-slug …]`, the paths classified by extension in any order — or
+  /** `[daysAhead | all] [out.txt] [out.csv] [out.json] [city-slug …]`, the paths classified by extension in any order — or
    *  why not. (A worker `main` tool: testkit's CommandLine is not on its classpath.) The old reading dropped whatever
    *  it could not classify: a mistyped city slug diffed every city, a days count that was no number diffed 3 days, and
    *  a path given first was taken for the days and lost. */
   def parse(args: Seq[String], knownSlugs: Set[String]): Either[String, Options] = {
-    val (days, rest) = args.headOption.flatMap(_.toIntOption) match {
-      case Some(n) if n >= 0 => (n, args.drop(1))
-      case _                 => (Options().daysAhead, args)
+    val (days, rest) = args.headOption match {
+      case Some("all")                                     => (None, args.drop(1))
+      case Some(first) if first.toIntOption.exists(_ >= 0) => (first.toIntOption, args.drop(1))
+      case _                                               => (Options().daysAhead, args)
     }
     rest.foldLeft(Right(Options(daysAhead = days)): Either[String, Options]) { (read, arg) =>
       read.flatMap { o =>
@@ -111,7 +114,7 @@ object FilmwebDiff {
         else if (arg.endsWith(".csv"))  path(o.csv != defaults.csv, _.copy(csv = arg), "CSV")
         else if (arg.endsWith(".json")) path(o.json != defaults.json, _.copy(json = arg), "JSON")
         else if (knownSlugs(arg))       Right(o.copy(cities = o.cities + arg))
-        else Left(s"'$arg' is no report path (*.txt, *.csv, *.json), Polish city slug, or leading days count")
+        else Left(s"'$arg' is no report path (*.txt, *.csv, *.json), Polish city slug, or leading days count / `all`")
       }
     }
   }
@@ -123,13 +126,13 @@ object FilmwebDiff {
     def text: String = out.toString
   }
 
-  /** One run's window — `[today, windowEnd]`, Poland's `now` — and what it reads both sides with. */
+  /** One run's window — `[today, windowEnd]` (no end: everything upcoming), Poland's `now` — and what it reads both
+   *  sides with. */
   private final case class Run(options: Options, clock: java.time.Clock, now: LocalDateTime, http: HttpFetch,
                                titles: services.movies.TitleNormalizer, catalog: CinemaScraperCatalog,
                                commit: String, report: Report) {
     def today: LocalDate     = now.toLocalDate
-    def daysAhead: Int       = options.daysAhead
-    def windowEnd: LocalDate = today.plusDays(daysAhead.toLong)
+    def windowEnd: Option[LocalDate] = options.daysAhead.map(days => today.plusDays(days.toLong))
     def emit(line: String): Unit = report.emit(line)
   }
 
@@ -139,7 +142,8 @@ object FilmwebDiff {
     val run        = setUp(options)
     import run.emit
 
-    emit(s"FilmwebDiff — window [${run.today} .. ${run.windowEnd}] (${run.daysAhead} days ahead)")
+    emit(run.windowEnd.fold(s"FilmwebDiff — window [${run.today} .. ] (everything either side publishes)")(end =>
+      s"FilmwebDiff — window [${run.today} .. $end] (${options.daysAhead.mkString} days ahead)"))
     if (options.cities.nonEmpty) emit(s"Cities: ${options.cities.toSeq.sorted.mkString(", ")}")
     emit("")
 
@@ -241,7 +245,7 @@ object FilmwebDiff {
     val meta = FilmwebDiffJson.Meta(
       date        = run.today.toString,
       generatedAt = run.clock.instant().toString,
-      windowDays  = run.daysAhead,
+      windowDays  = run.options.daysAhead,
       commit      = run.commit
     )
     val json = Json.prettyPrint(FilmwebDiffJson.render((diffs ++ unresolvedDiffs).map(cinemaResult), meta))
@@ -349,12 +353,12 @@ object FilmwebDiff {
    *  midnight (confirmed: a 2026-09-13 23:33 manual run over-reported ~10 such
    *  gaps at Kino Mikro alone that the routine 06:00 run never sees). */
   private[tools] def withinWindow(
-    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: LocalDate, titles: services.movies.TitleNormalizer
+    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: Option[LocalDate], titles: services.movies.TitleNormalizer
   ): Map[String, Seq[LocalDateTime]] = {
-    val endOfDay = windowEnd.plusDays(1).atStartOfDay() // exclusive: whole windowEnd day
+    val endOfDay = windowEnd.map(_.plusDays(1).atStartOfDay()) // exclusive: whole windowEnd day
     movies
       .map(m => FilmwebDiffTitleNormalizer.normalize(m.movie.title, titles) -> m.showtimes
-        .filter(s => s.isUpcoming(now) && s.dateTime.isBefore(endOfDay))
+        .filter(s => s.isUpcoming(now) && endOfDay.forall(s.dateTime.isBefore))
         .map(_.dateTime))
       .filter(_._2.nonEmpty)
       .groupMapReduce(_._1)(_._2)(_ ++ _)
@@ -367,7 +371,7 @@ object FilmwebDiff {
     oursTry:   Try[Seq[CinemaMovie]],
     fwTry:     Try[Seq[CinemaMovie]],
     now:       LocalDateTime,
-    windowEnd: LocalDate,
+    windowEnd: Option[LocalDate],
     titles:    services.movies.TitleNormalizer
   ): CinemaDiff = (oursTry, fwTry) match {
     case (Failure(e), _) =>

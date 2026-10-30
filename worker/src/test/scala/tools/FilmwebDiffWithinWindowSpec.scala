@@ -22,7 +22,7 @@ class FilmwebDiffWithinWindowSpec extends AnyFlatSpec with Matchers {
 
 
   private val now       = LocalDateTime.of(2026, 9, 13, 23, 33)
-  private val windowEnd = now.toLocalDate.plusDays(3)
+  private val windowEnd = Some(now.toLocalDate.plusDays(3))
 
   private def movieWith(title: String, times: LocalDateTime*): CinemaMovie =
     CinemaMovie(
@@ -43,9 +43,17 @@ class FilmwebDiffWithinWindowSpec extends AnyFlatSpec with Matchers {
 
   it should "keep an upcoming showtime inside the window and drop one past windowEnd" in {
     val soon = now.plusHours(1)
-    val late = windowEnd.plusDays(1).atStartOfDay() // the day AFTER windowEnd — excluded
+    val late = windowEnd.get.plusDays(1).atStartOfDay() // the day AFTER windowEnd — excluded
     val result = FilmwebDiff.withinWindow(Seq(movieWith("Film", soon, late)), now, windowEnd, titles)
     result("film") shouldBe Seq(soon)
+  }
+
+  // The weekly run compares everything either side publishes: no end, only the
+  // elapsed are dropped.
+  it should "keep every upcoming showtime, however far out, when the window has no end" in {
+    val farOut  = now.plusYears(1)
+    val elapsed = now.minusMinutes(40)
+    FilmwebDiff.withinWindow(Seq(movieWith("Film", elapsed, farOut)), now, None, titles)("film") shouldBe Seq(farOut)
   }
 
   // The actual regression: apply the SAME pruning to a side standing in for

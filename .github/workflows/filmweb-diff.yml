@@ -1,17 +1,18 @@
 name: Filmweb diff
 
-# Daily diagnostic: compare our scrapers' showtimes against Filmweb's, per
-# cinema, and publish the text report + CSV summary as a dated artifact for
-# trend-watching. This is observability, NOT a gate — it never deploys and its
+# Weekly diagnostic: compare EVERY upcoming showtime our scrapers publish against
+# every one Filmweb publishes (no window end — Filmweb's undated seances feed is a
+# venue's whole programme), per cinema, and publish the text report + CSV summary
+# as a dated artifact for trend-watching. This is observability, NOT a gate — it never deploys and its
 # per-cinema network errors don't fail the job (the tool Try-wraps every fetch
 # and always exits 0).
 on:
-    # 04:00 UTC ≈ 06:00 Europe/Warsaw in summer (CEST, UTC+2); ≈ 05:00 in winter
-    # (CET, UTC+1). GitHub cron is UTC-only and has no DST awareness, so the
+    # Mondays 01:00 UTC = 02:00 Europe/Warsaw in winter (CET, UTC+1); 03:00 in
+    # summer (CEST, UTC+2). Cron is UTC-only and has no DST awareness, so the
     # local wall-clock time drifts by an hour across the DST boundary — fine for
-    # a once-a-day diagnostic.
+    # a once-a-week diagnostic.
     schedule:
-        - cron: '0 4 * * *'
+        - cron: '0 1 * * 1'
     # Manual trigger for an on-demand run.
     workflow_dispatch:
 
@@ -47,7 +48,7 @@ jobs:
               id: stamp
               run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
-            # Compare 3 days ahead. Multikino / biletyna / ck105 refuse a datacenter
+            # Compare everything either side publishes (`all`). Multikino / biletyna / ck105 refuse a datacenter
             # runner, so — as in the worker — they go through the Decodo residential
             # proxy first, direct behind it (no Zyte key: PaidEgressWorkflowSpec).
             # `continue-on-error` is a belt-and-braces guard on top of
@@ -55,7 +56,7 @@ jobs:
             # still lets the artifact upload below run.
             - name: Run FilmwebDiff
               continue-on-error: true
-              run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
+              run: sbt "worker/runMain tools.FilmwebDiff all filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
               env:
                   DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}

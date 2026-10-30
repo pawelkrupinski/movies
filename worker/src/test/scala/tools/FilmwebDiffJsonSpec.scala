@@ -17,7 +17,7 @@ class FilmwebDiffJsonSpec extends AnyFlatSpec with Matchers {
   private def dt(s: String): LocalDateTime = LocalDateTime.parse(s)
 
   private val meta = Meta(
-    date = "2026-06-06", generatedAt = "2026-06-06T19:12:00Z", windowDays = 3, commit = "abc123"
+    date = "2026-06-06", generatedAt = "2026-06-06T19:12:00Z", windowDays = Some(3), commit = "abc123"
   )
 
   // Krakow cinema: one film differs (ours-only + fw-only), one film matches exactly.
@@ -69,6 +69,10 @@ class FilmwebDiffJsonSpec extends AnyFlatSpec with Matchers {
       "krakow"   -> "Kino Muzeum",
       "warszawa" -> "Kino Luna"
     )
+  }
+
+  it should "write a null windowDays for a run with no window end" in {
+    (render(results, meta.copy(windowDays = None)) \ "meta" \ "windowDays").get shouldBe JsNull
   }
 
   it should "list a differing film in discrepancies with SORTED ISO times, and omit exact-match films" in {
