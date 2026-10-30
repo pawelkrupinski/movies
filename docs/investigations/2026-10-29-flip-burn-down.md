@@ -115,3 +115,26 @@ slices that drift 3854 and IdentityDriftSpec passed.
   answer filed, takes the 1962 film its title overlaps over the 2013 film it names by an alternative title. This is
   the CAMOUFLAGE shape (a sibling's presence decides a bare listing). Only a resolver rule changes it, which is
   outside red fixing. The corpus replay meets it only when Filmhaus is among the 3% that leave.
+
+### Madoka: the owner's two options, measured (2026-10-30, identity design), neither landed
+
+The owner said "try 2 then settle on 1 if doesn't work". Option 1 to try: a candidate whose title the listing names as
+its franchise outranks one matched only on a shared word. Option 2 to settle on: a pooled vote that ties at the top
+takes no film.
+
+- **The tie.** Metropol alone measures 42997 ("Rebellion", 1962, released in English as "H.M.S. Defiant") and 212162
+  (2013; its forms include "Puella Magi Madoka Magica - Der Film 3 - Rebellion") as `segment` alike, both at 46.3%.
+  The ranking's order then falls back to the lower id. With Filmhaus present, 212162 gains the venue's title as a
+  form, measures `alternative`, and wins at 95.4%.
+- **Option 1 does not work.** Marked untaken, it leaves Metropol with no film, because an untaken film stays a rival.
+  As a denial (a film named only by a piece is denied when another carries every word of the title), it takes 212162
+  alone but breaks 12 `identity/Test` cases: season and house productions, where the house's record carries the whole
+  billed title and the season's record is named by a piece.
+- **Option 2 does not work.** `Acceptance.tiedAtTop` stopped the calibrated pooled rules on a top tie. The slice
+  passed and so did the identity suite, but measure 3949 was NOT LANDABLE: 2 right DE final takes lost to none. They
+  are Abaton's "Enjô - Conflagration" (97149, Ichikawa's 炎上, 1958) and Filmrauschpalast's "SPECIAL: 2. Dangerous
+  Encounters – Hong Kong im Filmrausch: MADE IN HONG KONG" (26005). Ties the id order happens to break right are real.
+- **Status.** The Madoka slice still flips under IdentityDriftSlicesSpec. That needs the owner's next decision.
+- **Open question, not acted on.** Both venues' kinoheld links use the slug
+  `puella-magi-madoka-magica-der-film-walpurgisnacht-rising`, which is "Walpurgisnacht: Rising" (TMDB 822653, 2026).
+  Their metadata is Rebellion's: the title, Filmhaus's 2013, 116′, the original title 叛逆の物語, and the poster.
