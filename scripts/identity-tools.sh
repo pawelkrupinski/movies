@@ -93,7 +93,7 @@ identity_measure_branch() {
 # recorded as this machine's (agentctl dispatch record: a branch red reaches its owner; best effort, said when not).
 # Fails, IDENTITY_DISPATCH_ERROR saying why, when the dispatch or the find does.
 # shellcheck disable=SC2034 # IDENTITY_DISPATCH_ERROR and DISPATCHED_RUN are the caller's to read
-identity_dispatch_measure() {
+identity_dispatch_measure() { # (IDENTITY_REPO, not BASH_SOURCE: bash 3.2 names the caller's file in a function)
   local workflow=$1 branch=$2 push=$3 purpose=$4 since name
   shift 4
   IDENTITY_DISPATCH_ERROR="" DISPATCHED_RUN=""
@@ -103,7 +103,7 @@ identity_dispatch_measure() {
     || { IDENTITY_DISPATCH_ERROR="dispatched, but no run of ${push:0:9} on $branch was found (the run deletes $branch when it ends)"; return 1; }
   # (A run of 2026-10-29 went unrecorded under a 30 s bound and showed as a branch red of NOBODY: 90 s, and said.)
   if [ -x "$HOME/bin/agentctl" ]; then
-    name=$(sed -n 's/^name:[[:space:]]*//p' "$(dirname "${BASH_SOURCE[0]}")/../.github/workflows/$workflow" 2> /dev/null | head -1)
+    name=$(sed -n 's/^name:[[:space:]]*//p' "$IDENTITY_REPO/.github/workflows/$workflow" 2> /dev/null | head -1)
     bounded 90 "$HOME/bin/agentctl" dispatch record --branch "$branch" --run "$DISPATCHED_RUN" --workflow "${name:-$workflow}" \
       --purpose "$purpose" > /dev/null 2>&1 \
       || identity_log "could not record run $DISPATCHED_RUN's owner (agentctl dispatch record): its red, if any, reaches nobody"
