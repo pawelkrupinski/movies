@@ -38,6 +38,22 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
 - DIVERGENCES (incremental ≠ whole end state) have no baseline: they always fail.
 - A newborn check's own findings go TEMPORARY on `identity-flips-allow.tsv` (`New-Check:`), never a flip that already
   exists.
+## Fixing a drift or flip red (the owner, 2026-10-29)
+
+- **A red fix names and fixes the incremental state that diverges** — a lag, a budget, the queue's order, a cache, a
+  restart's key — so the incremental path ends where a whole resolve does. **Red fixers add no identity resolver rule**
+  as a flip or drift fix: a new or changed rule (IdentityResolver, FeedLink, FamilyScope, the acceptance and scoring
+  rules, the agreement's rules, the title rules) is identity design, measured on the full corpus in every country,
+  outside red fixing. A `Fixes-Red:` commit touching rule code carries `Identity-Design: <doc>`, the design doc that
+  measured it (`scripts/ci/drift-guards.sh`, pre-push's `driftguards`). Mechanism files — AgreementStage's state
+  handling, the incremental resolver, the stores and keys — need none.
+- **Known flips wait on the shrink-only baseline** ("Known flips" above); new flips and every divergence fail.
+  Neither allow-list is edited to get green.
+- **The harness carries its self-test**: a change to IdentityDrift, IdentityLiveDrift, TakeFlips or
+  identity-drift-check.sh comes with a capture-replay case in the same commit — IdentityDriftSpec,
+  CorrectionFlipReplaySpec, TakeFlipsSpec, identity-drift-check-test.sh — proving the replay does what the worker does
+  (a third of the week's drift reds were the judge's: 91cfbe7e8, 7b586af0f, 5df3295bd). A pure refactor says
+  `Drift-Harness-Refactor: <why>`.
 
 ## The harness
 

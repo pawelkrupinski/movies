@@ -37,35 +37,35 @@ check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scr
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "eslint snapshot scripttests actionlint shellcheck sbt page" \
+check "checks come out once each, in run order" "driftguards eslint snapshot scripttests actionlint shellcheck sbt page" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
-check "a judgements change runs the judgements lint, and the identity area's tests" "judgements sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
-check "an expected match runs them" "judgements sbt identity" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
+check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
+check "an expected match runs them" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
 
 # THE AREAS (the owner, 2026-10-26: no pre-merge CI; the basic tests, plus an area's own local tests when it is touched).
-check "the resolver runs the identity area's tests" "sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
-check "a worker identity adapter runs them" "sbt identity" "$(plan worker/src/main/scala/services/identity/Adapter.scala)"
-check "a title rule runs them" "sbt identity|sbt identity" \
+check "the resolver runs the identity area's tests" "driftguards sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
+check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/identity/Adapter.scala)"
+check "a title rule runs them" "driftguards sbt identity|driftguards sbt identity" \
   "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titlerules/Rule.scala)"
-check "an identity spec runs them" "sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
+check "an identity spec runs them" "driftguards sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
 check "a template runs the page area's tests" "sbt page" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
 check "a stylesheet runs them" "sbt page" "$(plan web/src/main/assets/css/main.css)"
 check "a Playwright spec runs ESLint and them" "eslint sbt page" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
 check "a page spec runs them" "sbt page" "$(plan web/src/page/scala/views/PageJsBehaviourSpec.scala)"
-check "a change in both areas runs both" "eslint sbt identity page" \
+check "a change in both areas runs both" "driftguards eslint sbt identity page" \
   "$(plan identity/src/main/scala/services/identity/R.scala web/src/main/assets/js/a.js)"
 check "a web controller is neither area: the basic sbt check only" "sbt" "$(plan web/src/main/scala/controllers/MovieController.scala)"
-check "a worker source outside identity is neither" "sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
+check "a worker source outside identity is neither area (the drift guards: a drift fix may be worker code)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
 check "docs run nothing, no area" "" "$(plan docs/landing-process.md docs/design/x.md)"
 check "the lint itself runs it, the judgements' reader and the take files'" "judgements scripttests sbt judgements scripttests sbt judgements scripttests sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
-check "an unmatched-cluster capture runs the identity area's tests, not the lint" "sbt identity" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
+check "an unmatched-cluster capture runs the identity area's tests, not the lint" "driftguards sbt identity" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 # A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
 check "a file identity-slice drops into old refs compiles the tools into their floors" "sbt oldrefs" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
-check "...and one title-trace drops in (an identity test: the identity area's tests too)" "sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
+check "...and one title-trace drops in (an identity test: the identity area's tests too)" "driftguards sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
 check "a fixtures-config file neither tool drops in does not" "sbt" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
@@ -142,7 +142,7 @@ for mode in --plan --compile-plan --lint-plan; do
   (cd "$planrepo" && printf 'scripts/x.sh\n' | scripts/hooks/pre-push "$mode" > /dev/null 2>&1)
 done
 check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/root-checked" 2>/dev/null | wc -l | tr -d ' ')"
-check "with no local-tests.txt beside the hook, no area is selected" "sbt" \
+check "with no local-tests.txt beside the hook, no area is selected" "driftguards sbt" \
   "$(cd "$planrepo" && printf 'identity/src/main/scala/A.scala\n' | scripts/hooks/pre-push --plan | tr '\n' ' ' | sed 's/ $//')"
 
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
@@ -331,8 +331,9 @@ fi
 printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
-for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
-mkdir -p "$area/scripts/ci"; cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$area/scripts/ci/"
+mkdir -p "$area/scripts/ci"
+for f in hooks/pre-push hooks-path.sh tool-conventions.sh ci/drift-guards.sh; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile
@@ -435,7 +436,7 @@ check "a push claiming no red runs no drift check" "0 0" "$code $(calls identity
 code="$(drift_push docs/fix.md $'a doc\n\nFixes-Red: 3726')"
 check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls identity-drift-ci)"
 # A CHECK'S BIRTH LANDS GREEN: the gate's own files, or New-Check:, run every drift row against main's
-code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala 'the harness, tightened')"
+code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala $'the harness, tightened\n\nDrift-Harness-Refactor: the drift guards\' self-test rule is drift-guards-test.sh\'s')"
 check "a push touching the gate itself runs every drift row against main's newest run" "0 1" \
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --against main$")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a new check\n\nNew-Check: settled takes')"
