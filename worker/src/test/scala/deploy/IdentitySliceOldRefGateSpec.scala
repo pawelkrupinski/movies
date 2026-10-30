@@ -4,14 +4,16 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * ci.yml compiles identity-slice's and title-trace's tool files into a pinned old ref only when a push touches
+ * tool-self-tests.yml (off the gate since 2026-10-30; ci.yml's integration-test ran it before) compiles identity-slice's
+ * and title-trace's tool files into a pinned old ref only when a push touches
  * what the tools bring to that ref: the ref is pinned, so nothing else can change the verdict. The gate lists the
  * tool files by path, so a file added to either's `TOOL_FILES` but not to the gate would ship unchecked — the exact
  * breakage (83b869548's `Capture.live`, 2026-10-17/18's `Listing.properTitle` and TitleFacts: every older ref
  * failed to compile) the check exists to catch.
  */
 class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
-  private lazy val gate = RepoFile.step(RepoFile.read(".github/workflows/ci.yml"),
+  private val Workflow = ".github/workflows/tool-self-tests.yml"
+  private lazy val gate = RepoFile.step(RepoFile.read(Workflow),
     "Did this change touch what identity-slice brings to an old ref?")
 
   /** The `patterns: |` block scalar's lines. */
@@ -43,28 +45,20 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
 
   it should "cover the scripts that lay the ref out and the check itself" in {
     for (f <- tools ++ Seq("scripts/identity-tools.sh", "scripts/tool-conventions.sh",
-                  "scripts/identity-slice-old-ref-test.sh", ".github/workflows/ci.yml"))
+                  "scripts/identity-slice-old-ref-test.sh", Workflow))
       withClue(f) { patterns.exists(covers(_, f)) shouldBe true }
   }
 
-  it should "be what the compile's start and its verdict are conditioned on, on the row that computes it" in {
-    val ci = RepoFile.read(".github/workflows/ci.yml")
-    val condition = "if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'"
-    gate should include("if: matrix.row == 'rest'")
-    val start   = RepoFile.step(ci, "Start identity-slice's old-ref compile, in the background")
-    val verdict = RepoFile.step(ci, "identity-slice's tool files still compile into a ref from before them")
-    start should include(condition)
-    start should include("in-background.sh start old-ref-compile bash scripts/identity-slice-old-ref-test.sh")
-    verdict should include(condition)
-    verdict should include("in-background.sh wait old-ref-compile")
-    // Started before itAll, so the tree it lays out copies the restored target/ before sbt writes to it.
-    ci.indexOf("Start identity-slice's old-ref compile") should be < ci.indexOf("run: sbt itAll")
+  it should "be what the compile is conditioned on" in {
+    val verdict = RepoFile.step(RepoFile.read(Workflow), "identity-slice's tool files still compile into a ref from before them")
+    verdict should include("if: steps.slice-tools.outputs.changed == 'true'")
+    verdict should include("bash scripts/identity-slice-old-ref-test.sh")
   }
 
   /** Kept by a step of its own, red or green: an `actions/cache` step saves only on a green job, so a cold tree that
    *  missed the verdict's ceiling was never kept and every run after started cold again (Main 1820). */
   it should "keep what a red compile got through, under a key of its own the restore's prefix finds" in {
-    val ci      = RepoFile.read(".github/workflows/ci.yml")
+    val ci      = RepoFile.read(Workflow)
     val restore = RepoFile.step(ci, "Restore identity-slice's compiled old ref")
     val keep    = RepoFile.step(ci, "Keep identity-slice's compiled old ref, red or green")
     restore should include("uses: actions/cache/restore@")
@@ -75,30 +69,30 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     keep should include("path: ${{ runner.temp }}/kinowo-identity/refs")
     restore should include("id: old-ref-cache")
     RepoFile.step(ci, "identity-slice's tool files still compile into a ref from before them") should include("id: old-ref-verdict")
-    ci.indexOf("Keep identity-slice's compiled old ref") should be > ci.indexOf("wait old-ref-compile")
+    ci.indexOf("Keep identity-slice's compiled old ref") should be > ci.indexOf("identity-slice-old-ref-test.sh\n")
   }
 
   /** The verdict's wait gives up at its ceiling with the compile still running, and a red verdict is exactly when the
    *  tree is kept: saved mid-write, its class files and zinc analysis disagree for every later restore (as convergence
    *  run #1880's abandoned sbt compiled beside the suite's). */
   it should "end the compile's JVMs before the tree is kept, whenever it is kept" in {
-    val ci   = RepoFile.read(".github/workflows/ci.yml")
+    val ci   = RepoFile.read(Workflow)
     val stop = RepoFile.step(ci, "End the old-ref compile's JVMs before its tree is kept")
     stop should include("""scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"""")
-    stop should include("!cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'")
+    stop should include("!cancelled() && steps.slice-tools.outputs.changed == 'true'")
     stop should not include ("old-ref-verdict")
-    ci.indexOf("End the old-ref compile's JVMs") should be > ci.indexOf("wait old-ref-compile")
+    ci.indexOf("End the old-ref compile's JVMs") should be > ci.indexOf("identity-slice-old-ref-test.sh\n")
     ci.indexOf("End the old-ref compile's JVMs") should be < ci.indexOf("Keep identity-slice's compiled old ref")
   }
 
-  /** The job's checkout is shallow, so a floor the old-ref test compiles into but the start step does not fetch fails
+  /** The job's checkout is shallow, so a floor the old-ref test compiles into but the step does not fetch fails
    *  as "no commit … in this SHALLOW clone": 68370c42d added 9bb54c1a4 to the test only, and Main went red (1807). */
   it should "fetch every floor the old-ref test compiles into" in {
-    val start  = RepoFile.step(RepoFile.read(".github/workflows/ci.yml"),
-      "Start identity-slice's old-ref compile, in the background")
+    val start  = RepoFile.step(RepoFile.read(Workflow),
+      "identity-slice's tool files still compile into a ref from before them")
     val floors = """(?m)^floor\(\)(.*)$""".r.findFirstMatchIn(RepoFile.read("scripts/identity-slice-old-ref-test.sh"))
       .map(m => """\b[0-9a-f]{40}\b""".r.findAllIn(m.group(1)).toSeq).getOrElse(fail("the old-ref test defines no floor()"))
-    val fetch = start.linesIterator.find(_.trim.startsWith("git fetch")).getOrElse(fail("the start step fetches nothing"))
+    val fetch = start.linesIterator.find(_.trim.startsWith("git fetch")).getOrElse(fail("the step fetches nothing"))
     floors should not be empty
     floors.filterNot(fetch.contains) shouldBe empty
   }
@@ -106,11 +100,11 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
   /** The compiled old tree is cached by the tool files: one the key missed would restore a tree compiled with its old
    *  copy as an EXACT hit — no save, and no difference for zinc to see beyond the file's own mtime. */
   it should "restore the compiled old ref before the compile, keyed by every tool file" in {
-    val ci      = RepoFile.read(".github/workflows/ci.yml")
+    val ci      = RepoFile.read(Workflow)
     val restore = RepoFile.step(ci, "Restore identity-slice's compiled old ref")
-    restore should include("if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'")
+    restore should include("if: steps.slice-tools.outputs.changed == 'true'")
     restore should include("path: ${{ runner.temp }}/kinowo-identity/refs")
-    ci.indexOf("Restore identity-slice's compiled old ref") should be < ci.indexOf("Start identity-slice's old-ref compile")
+    ci.indexOf("Restore identity-slice's compiled old ref") should be < ci.indexOf("bash scripts/identity-slice-old-ref-test.sh")
     val hashed = """hashFiles\(([^)]*)\)""".r.findFirstMatchIn(restore).map(_.group(1)).getOrElse(fail("the key hashes no files"))
       .split(",").map(_.trim.stripPrefix("'").stripSuffix("'")).toSeq
     (toolFiles ++ tools).filterNot(f => hashed.exists(covers(_, f))) shouldBe empty

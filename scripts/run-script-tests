@@ -178,7 +178,7 @@ touched_by() { # <test path> <changed paths file>: the test, its tool, or a file
 }
 
 # ── --linux: the selected tests in a container like CI's runner ───────────────────────────────────
-# CI runs these on ubuntu-26.04 (ci.yml's `test` job): GNU coreutils/sed/find/grep, a newer bash and python3. A Mac's
+# CI runs these on ubuntu-26.04 (tool-self-tests.yml's `script-tests` job): GNU coreutils/sed/find/grep, a newer bash and python3. A Mac's
 # BSD tools and /bin/bash 3.2 pass what Linux fails -- 03b3a6825's refit logged `sysctl machdep.cpu.brand_string`,
 # macOS-only, and CI run 38772214523 failed on it. The image is ubuntu:26.04 from mirror.gcr.io (CiImageMirrorSpec:
 # never Docker Hub first) plus the packages below, built once and kept, tagged by this recipe's hash. The checkout is

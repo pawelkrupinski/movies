@@ -36,7 +36,7 @@ env:
 
 # Pipeline shape:
 #
-#   test × 5 (heavy ×2, worker-identity, worker, rest) + script-tests ─┐
+#   test × 5 (heavy ×2, worker-identity, worker, rest) ─┐
 #   integration-test × 2 ───────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
@@ -58,7 +58,7 @@ env:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 5 test + 1 script-tests + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
+# Current split: 5 test + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -142,8 +142,8 @@ jobs:
     # row is cut to roughly equal time from per-suite JUnit times (measure run 3419 and after). One runner running all
     # five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15). The non-sbt checks
     # (roster drift, the read-model stamp, actionlint, …) ride `heavy1`, the lightest row (Main runs 3614-3623: heavy1
-    # 4.1 min against worker-identity 7.2, which carried them until then); the script self-tests are the `script-tests`
-    # job, below; the gitops manifests ride `worker`, whose deploy specs read them.
+    # 4.1 min against worker-identity 7.2, which carried them until then); the script self-tests run off the gate, in
+    # tool-self-tests.yml; the gitops manifests ride `worker`, whose deploy specs read them.
     test:
         name: test (${{ matrix.shard }})
         strategy:
@@ -212,7 +212,7 @@ jobs:
                       scripts/ci/generated-artefacts-drift.sh
                       .github/workflows/ci.yml
 
-            # The generators' own specs (data/**/*_test.py) run with the script self-tests below: this
+            # The generators' own specs (data/**/*_test.py) run with the script self-tests (tool-self-tests.yml): this
             # proves the artefacts match their generators, those that the generators decide what they
             # should. timezonefinder, installed here on a roster change, lets the US zone cases run there.
             - name: Generated roster artefacts match their generators
@@ -313,26 +313,6 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 14
 
-    # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
-    # infra/bin), found by name and run in parallel by scripts/run-script-tests: which checks the pre-push hook selects,
-    # what the preflight jobs accept, how a failed test is judged and ledgered, how the throwaway MongoDB starts, the
-    # identity and release tooling. A new test runs here the moment it exists; one tagged `# script-test: <tag>` runs
-    # where its toolchain is. A JOB OF ITS OWN (2026-10-29): in the background of a unit row (worker-identity, then
-    # heavy1) its ~350 s slowed that row's JDK/sbt/cache restore (setup-sbt-build 85-104 s against ~25 s on the
-    # others) and its wait after the sbt run added 24-35 s, so whichever row carried it was the stage's slowest by
-    # ~1.5-2.5 min (Main runs 3614-3636). It needs no JDK, sbt or build cache: a checkout. Like every job here it gates
-    # the deploy (main.yml's publish jobs `needs: ci`).
-    script-tests:
-        name: script self-tests
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
-        timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@v5
-            - name: Every script self-test
-              run: scripts/run-script-tests
-
     # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the
     # hard-cluster convergence, whose parallel boots fill a runner's cores; `rest` runs every other spec, by
     # exclusion. One runner running all of `itAll` was CPU-bound — 828 s of
@@ -405,68 +385,6 @@ jobs:
                       sbt-target-${{ runner.os }}-
                   target-cache-exact-hit-is-current: 'true'
 
-            # scripts/identity-slice drops this checkout's tool files into every ref it slices; they must compile
-            # into old code too (83b869548 broke every older ref). A real sbt compile of c2974e3aa, seeded from this
-            # job's compiled target/ — here, where sbt and the JDK are set up and off the deploy-gating unit job.
-            # On the `rest` row, IN THE BACKGROUND beside itAll: that row mostly waits on Mongo, and run after
-            # it (and on the `identity` row before that) its 2.5-3 min was the end of the build's longest job.
-            # The old ref is fetched first, so the tree it lays out copies this checkout's restored target/
-            # before itAll's sbt — ~20 s from starting — writes to it.
-            # The old ref is pinned, so only what this checkout brings to it can change the verdict: the tool files
-            # (identity-slice's and title-trace's TOOL_FILES, every one listed below — IdentitySliceOldRefGateSpec), the scripts that
-            # lay the ref out, and the JDK/sbt setup. A push touching none of them skips its 2-3 min, which sat
-            # on the end of this job and made it the build's long pole beside the unit tests (2026-10-15).
-            - name: Did this change touch what identity-slice brings to an old ref?
-              if: matrix.row == 'rest'
-              id: slice-tools
-              uses: ./.github/actions/changed-paths
-              with:
-                  patterns: |
-                      worker/src/test/scala/scripts/IdentitySlice.scala
-                      worker/src/test/scala/scripts/IdentityExplain.scala
-                      worker/src/test/scala/services/identity/IdentitySlicing.scala
-                      worker/src/test/scala/services/identity/OlderRefs.scala
-                      worker/src/test/scala/services/identity/TitleTrace.scala
-                      worker/src/fixtures/scala/tools/**
-                      worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala
-                      common/src/main/scala/tools/TempDirectories.scala
-                      scripts/identity-slice
-                      scripts/title-trace
-                      scripts/identity-tools.sh
-                      scripts/tool-conventions.sh
-                      scripts/forge-gh
-                      scripts/identity-slice-old-ref-test.sh
-                      .github/actions/setup-sbt-build/**
-                      .github/workflows/ci.yml
-
-            # The old ref's laid-out, COMPILED tree, kept across runs: the ref is pinned, so a run that finds it
-            # recompiles only the tool files it drops in. Without it, each run recompiled the whole old tree from
-            # this checkout's target/ (2.5-3 min, 166 s on run 38804880394), and beside itAll that doubled the
-            # row's sbt run (143 s → 308 s on run 38821863769). Keyed by the tool files, so an unchanged set
-            # restores an exact match; a changed set restores the newest tree and compiles the difference.
-            # Saved by its own step after the verdict (below): saved only by a green job, a cold tree that missed the
-            # step's ceiling was never kept, so every later run started cold again (Main 1820: no entry at all, c2974e3aa
-            # and 9bb54c1a4 both compiled from scratch beside itAll, past 900 s).
-            - name: Restore identity-slice's compiled old ref
-              id: old-ref-cache
-              if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
-              uses: actions/cache/restore@v5
-              with:
-                  path: ${{ runner.temp }}/kinowo-identity/refs
-                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
-                  restore-keys: |
-                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}-
-                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
-
-            - name: Start identity-slice's old-ref compile, in the background
-              if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
-              run: |
-                  # every floor scripts/identity-slice-old-ref-test.sh compiles into: the checkout is shallow, so a
-                  # floor not fetched here fails by name (68370c42d added 9bb54c1a4 there, not here: Main 1807, 1814)
-                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9 9bb54c1a4912644383d5ed2f02686fe0ed720ece e90d2b498a0f7a26faa55b7d7cdea51d48285df8
-                  KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
-                      scripts/ci/in-background.sh start old-ref-compile bash scripts/identity-slice-old-ref-test.sh
-
             # Both apps' integration suites in one run (web + worker each have an
             # `it` config); `all` keeps going across them. Still one GH job. The
             # `e2e` module runs in its own parallel job (below) — combining it here
@@ -505,31 +423,6 @@ jobs:
                       */target/performance-budgets.tsv
                   if-no-files-found: ignore
                   retention-days: 14
-
-            # The old-ref compile started beside itAll (above): its verdict, failing as it would have.
-            - name: identity-slice's tool files still compile into a ref from before them
-              id: old-ref-verdict
-              if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
-              run: scripts/ci/in-background.sh wait old-ref-compile 1200
-
-            # What the compile got done, kept when it is news: a red verdict (what a cold tree got through before the
-            # ceiling, so the next run compiles only the rest) or a tool set the restored tree was not compiled for. Under
-            # a key of its own (a cache key is written once), restored by the prefix above; main's alone
-            # (CacheSavePolicySpec).
-            # NOTHING WRITES THE REF'S TREE WHILE THE SAVE READS IT: the verdict's wait gives up at its ceiling with the
-            # compile still running (in-background.sh leaves a chore to the job's end), so a red verdict's save stored
-            # class files mid-write beside an analysis that no longer describes them, for every later restore. Its JVMs
-            # (and any kept --serve JVM) run in the refs tree, so ending every JVM there ends exactly them.
-            - name: End the old-ref compile's JVMs before its tree is kept
-              if: ${{ !cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' }}
-              run: '[ ! -d "$RUNNER_TEMP/kinowo-identity/refs" ] || scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"'
-
-            - name: Keep identity-slice's compiled old ref, red or green
-              if: ${{ !cancelled() && matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' && (steps.old-ref-verdict.outcome != 'success' || !startsWith(steps.old-ref-cache.outputs.cache-matched-key, steps.old-ref-cache.outputs.cache-primary-key)) }}
-              uses: actions/cache/save@v5
-              with:
-                  path: ${{ runner.temp }}/kinowo-identity/refs
-                  key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}
 
     # DISPATCH ORDER. Forgejo hands a free runner the waiting job with the oldest `updated`, then the lowest id
     # (models/actions/task.go GetAvailableJobsForRunner), and creates a workflow's jobs in this file's order. The

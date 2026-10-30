@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# script-test: own-job compiles the tools into old refs through the real sbt (minutes cold); ci.yml's integration job runs it where sbt and a compiled target/ are
+# script-test: own-job compiles the tools into old refs through the real sbt (minutes cold); tool-self-tests.yml's old-ref-compile job runs it, off the gate, where sbt and a restored target/ are
 # scripts/identity-slice and scripts/title-trace drop THIS checkout's tool files (IdentitySlice, FiledAnswers, TitleTrace,
 # …) into every ref they decide under, so those must compile against old code too: a deployed worker's build, a bisect's
 # first commit. 83b869548's FiledAnswers read `Capture.live`, 2026-10-17's IdentitySlice and IdentityExplain

@@ -205,6 +205,11 @@ already released) and watches it for the landed sha (`watch_landed`):
 - **Verdict**: `WATCH OK: Main #n green, convergence #m green`; `WATCH RED: <workflow> #n <failed jobs>` plus the
   `ci-why` summary, the moment either is red; `WATCH UNKNOWN` after 3 h undecided or 10 failed reads.
 
+Outside the watch and the gate: **Tool self-tests** (`tool-self-tests.yml`: every script self-test and
+identity-slice's old-ref compile, on each push to main touching their paths). Their reds are the tooling's, listed by
+`ci-why` outside the gate; they close no push. The same tests run before landing, in the hook's `scripttests` and
+`oldrefs` checks, for every change touching them.
+
 `WATCH RED` names a run that contains your commit, not proof that your commit broke it: read the summary. If it is
 yours, fix forward at once with a `Fixes-Red: <run>` trailer (stage 5). `--no-watch` exits at `LANDED` (scripts).
 

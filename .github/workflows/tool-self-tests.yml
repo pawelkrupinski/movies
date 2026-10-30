@@ -1,0 +1,163 @@
+name: Tool self-tests
+
+# THE DEVELOPMENT TOOLING'S OWN TESTS, OFF THE GATE (ci-failures-2026-10-30, recommendation 1). The script self-tests
+# (scripts/run-script-tests: the pre-push hook, sbt-warm, the JVM gate and its keeper, agent-procs, tool-conventions,
+# the identity tools, the release tooling, ...) and identity-slice's old-ref compile used to run inside Main (ci.yml's
+# `script self-tests` job and integration-test (rest)). None guards a user-visible behaviour, yet in the five days to
+# 2026-10-30 they turned Main red 12 times and failed 8 landing checks, every one about time or process lifecycle on a
+# loaded host, each red closing THE GATE (Main and Identity model convergence) to every other change. The old-ref
+# compile also added ~600 s to integration-test (rest)'s tail beside itAll (Main 3893, 4040).
+#
+# They still guard every change to what they test:
+#   - BEFORE IT LANDS: the pre-push hook's `scripttests` check (scripts/run-script-tests --changed, on Mac and Linux) and
+#     its `oldrefs` check run them for every change touching their paths, on the laptop and in the landing check
+#     (precommit-check.yml), and a failure there blocks that change;
+#   - AFTER: this workflow runs them all on every push to main touching those paths. A red here is the tooling's,
+#     listed by `agentctl ci-why` outside the gate; it closes no push.
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'scripts/**'
+            - '.github/scripts/**'
+            - '.github/actions/**'
+            - 'android/scripts/**'
+            - 'ios/scripts/**'
+            - 'infra/bin/**'
+            - 'data/**'
+            - '.github/workflows/tool-self-tests.yml'
+            # what identity-slice and title-trace drop into an old ref (their TOOL_FILES; IdentitySliceOldRefGateSpec)
+            - 'worker/src/test/scala/scripts/IdentitySlice.scala'
+            - 'worker/src/test/scala/scripts/IdentityExplain.scala'
+            - 'worker/src/test/scala/services/identity/IdentitySlicing.scala'
+            - 'worker/src/test/scala/services/identity/OlderRefs.scala'
+            - 'worker/src/test/scala/services/identity/TitleTrace.scala'
+            - 'worker/src/fixtures/scala/tools/**'
+            - 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala'
+            - 'common/src/main/scala/tools/TempDirectories.scala'
+    workflow_dispatch:
+
+concurrency:
+    group: tool-self-tests-${{ github.ref }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
+    # infra/bin), found by name and run in parallel by scripts/run-script-tests. A new test runs here the moment it
+    # exists; one tagged `# script-test: <tag>` runs where its toolchain is. It needs no JDK, sbt or build cache.
+    script-tests:
+        name: script self-tests
+        runs-on: ubuntu-26.04
+        timeout-minutes: 40
+        steps:
+            - uses: actions/checkout@v5
+            - name: Every script self-test
+              run: scripts/run-script-tests
+
+    # scripts/identity-slice drops this checkout's tool files into every ref it slices; they must compile into old
+    # code too (83b869548 broke every older ref). A real sbt compile of each floor scripts/identity-slice-old-ref-test.sh
+    # names, of the tree kept across runs.
+    old-ref-compile:
+        name: identity-slice old-ref compile
+        runs-on: ubuntu-26.04
+        timeout-minutes: 40
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+
+            # The old ref is pinned, so only what this checkout brings to it can change the verdict: the tool files
+            # (identity-slice's and title-trace's TOOL_FILES, every one listed below -- IdentitySliceOldRefGateSpec),
+            # the scripts that lay the ref out, and the JDK/sbt setup. A push touching none of them skips the compile.
+            - name: Did this change touch what identity-slice brings to an old ref?
+              id: slice-tools
+              uses: ./.github/actions/changed-paths
+              with:
+                  patterns: |
+                      worker/src/test/scala/scripts/IdentitySlice.scala
+                      worker/src/test/scala/scripts/IdentityExplain.scala
+                      worker/src/test/scala/services/identity/IdentitySlicing.scala
+                      worker/src/test/scala/services/identity/OlderRefs.scala
+                      worker/src/test/scala/services/identity/TitleTrace.scala
+                      worker/src/fixtures/scala/tools/**
+                      worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala
+                      common/src/main/scala/tools/TempDirectories.scala
+                      scripts/identity-slice
+                      scripts/title-trace
+                      scripts/identity-tools.sh
+                      scripts/tool-conventions.sh
+                      scripts/forge-gh
+                      scripts/identity-slice-old-ref-test.sh
+                      .github/actions/setup-sbt-build/**
+                      .github/workflows/tool-self-tests.yml
+
+            # sbt, the JDK and a compiled target/ to seed the old tree's compile from, restored only: no build here
+            # is one to save. The integration rows' family first (every module's main + test), then any.
+            - uses: ./.github/actions/setup-sbt-build
+              if: steps.slice-tools.outputs.changed == 'true'
+              with:
+                  target-cache-restore-only: 'true'
+                  target-cache-restore-keys: |
+                      sbt-target-it-${{ runner.os }}-
+                      sbt-target-unit-worker-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+
+            # The old ref's laid-out, COMPILED tree, kept across runs: a run that finds it recompiles only the tool
+            # files it drops in. Keyed by the tool files, so an unchanged set restores an exact match; a changed set
+            # restores the newest tree and compiles the difference.
+            - name: Restore identity-slice's compiled old ref
+              id: old-ref-cache
+              if: steps.slice-tools.outputs.changed == 'true'
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ runner.temp }}/kinowo-identity/refs
+                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
+                  restore-keys: |
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}-
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
+
+            - name: identity-slice's tool files still compile into a ref from before them
+              id: old-ref-verdict
+              if: steps.slice-tools.outputs.changed == 'true'
+              timeout-minutes: 30
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  # every floor scripts/identity-slice-old-ref-test.sh compiles into: the checkout is shallow, so a
+                  # floor not fetched here fails by name (68370c42d added 9bb54c1a4 there, not here: Main 1807, 1814)
+                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9 9bb54c1a4912644383d5ed2f02686fe0ed720ece e90d2b498a0f7a26faa55b7d7cdea51d48285df8
+                  KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" bash scripts/identity-slice-old-ref-test.sh
+
+            # The runner abandons a timed-out step's processes; ended here before anything reads the tree.
+            - name: End the timed-out step's processes
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
+
+            # NOTHING WRITES THE REF'S TREE WHILE THE SAVE READS IT: a JVM left from the compile (or a kept --serve
+            # JVM) runs in the refs tree, so ending every JVM there ends exactly them.
+            - name: End the old-ref compile's JVMs before its tree is kept
+              if: ${{ !cancelled() && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' }}
+              run: '[ ! -d "$RUNNER_TEMP/kinowo-identity/refs" ] || scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"'
+
+            # What the compile got done, kept when it is news: a red verdict (what a cold tree got through, so the next
+            # run compiles only the rest) or a tool set the restored tree was not compiled for. Under a key of its own
+            # (a cache key is written once), restored by the prefix above; main's alone (CacheSavePolicySpec).
+            - name: Keep identity-slice's compiled old ref, red or green
+              if: ${{ !cancelled() && steps.slice-tools.outputs.changed == 'true' && github.ref == 'refs/heads/main' && (steps.old-ref-verdict.outcome != 'success' || !startsWith(steps.old-ref-cache.outputs.cache-matched-key, steps.old-ref-cache.outputs.cache-primary-key)) }}
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ runner.temp }}/kinowo-identity/refs
+                  key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
+    timings:
+        needs: [script-tests, old-ref-compile]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
+        secrets: inherit
