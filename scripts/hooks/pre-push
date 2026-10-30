@@ -769,15 +769,19 @@ fi
 # THREE dots: what the pushed commits changed since they left the base, not how the two tips
 # differ. A fetch by any agent moves origin/main under every worktree of this clone, and a two-dot
 # diff would count those newer commits of main as this push's changes.
-changed=""
+changed="" drift_changed=""
 for r in "${ranges[@]}"; do
     # A diff that fails is not "nothing changed".
     names="$(git diff --name-only --diff-filter=d "${r/../...}")" \
+        && deleted="$(git diff --name-only --diff-filter=D "${r/../...}")" \
         || { printf '\033[33m! pre-push\033[0m cannot diff %s — blocked (bypass with --no-verify)\n' "$r" >&2; exit 1; }
     changed="$changed$names"$'\n'
+    # the drift check's selection counts deletions too: deleting the known-flips baseline tightens the gate
+    drift_changed="$drift_changed$names"$'\n'"$deleted"$'\n'
 done
 changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
-[ -z "$changed" ] && exit 0
+drift_changed="$(printf '%s' "$drift_changed" | grep -v '^$' | LC_ALL=C sort -u)"
+[ -z "$drift_changed" ] && exit 0
 # A commit, not a name: `--range A..HEAD` must compare equal to the checkout's own HEAD.
 head_sha="$(git rev-parse --verify "${ranges[${#ranges[@]}-1]##*..}^{commit}")" || exit 1
 base_sha="${ranges[0]%%..*}"
@@ -797,26 +801,35 @@ if [ -n "${PREPUSH_BASELINE_DIR:-}" ]; then
     fi
 fi
 
-checks="$(printf '%s\n' "$changed" | plan)"
+checks=""; [ -z "$changed" ] || checks="$(printf '%s\n' "$changed" | plan)" # a deletion-only push: the drift check's alone
 # --fast-only: the `sbt` check alone (compiles, lints, the `fast` set), whatever else the paths select
 [ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"
 # THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
 # `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
 drift_reds="" drift_birth=""
-if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-paths.txt ] \
-    && [ "$(printf '%s\n' "$changed" | .github/actions/changed-paths/matches.sh .github/identity-drift-paths.txt 2>/dev/null)" = true ]; then
-    for r in "${ranges[@]}"; do
-        drift_reds+="$(git log --format='%(trailers:key=Red-Unrelated,valueonly,separator=%x2C)%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r" \
-            | awk -F'\t' '$1 == "" { print $2 }' | tr ',; ' '\n' | sed 's/^#//' | grep -E '^[0-9]+$' || true)"$'\n'
-    done
-    drift_reds="$(printf '%s' "$drift_reds" | grep -v '^$' | LC_ALL=C sort -un | tr '\n' ' ' | sed 's/ $//')"
-    # A CHECK'S BIRTH OR TIGHTENING (the header): the gate's own files, or `New-Check:` on a commit of the push
-    if [ -f .github/identity-drift-gate-paths.txt ] \
-        && [ "$(printf '%s\n' "$changed" | .github/actions/changed-paths/matches.sh .github/identity-drift-gate-paths.txt 2>/dev/null)" = true ]; then
+if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-paths.txt ]; then
+    # touches_list <paths file> -> true/false; a matcher that fails blocks the push, never reads as "not touched"
+    touches_list() {
+        local out
+        out="$(printf '%s\n' "$drift_changed" | .github/actions/changed-paths/matches.sh "$1")" && [ -n "$out" ] \
+            || { printf '\033[31m! pre-push\033[0m cannot match the pushed paths against %s -- blocked\n' "$1" >&2; exit 1; }
+        [ "$out" = true ]
+    }
+    drift_touched=""; touches_list .github/identity-drift-paths.txt && drift_touched=1
+    if [ -n "$drift_touched" ]; then
+        for r in "${ranges[@]}"; do
+            drift_reds+="$(git log --format='%(trailers:key=Red-Unrelated,valueonly,separator=%x2C)%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r" \
+                | awk -F'\t' '$1 == "" { print $2 }' | tr ',; ' '\n' | sed 's/^#//' | grep -E '^[0-9]+$' || true)"$'\n'
+        done
+        drift_reds="$(printf '%s' "$drift_reds" | grep -v '^$' | LC_ALL=C sort -un | tr '\n' ' ' | sed 's/ $//')"
+    fi
+    # A CHECK'S BIRTH OR TIGHTENING (the header): the gate's own files -- whatever else the push touches -- or `New-Check:`
+    # on a commit of a push touching a drift path
+    if [ -f .github/identity-drift-gate-paths.txt ] && touches_list .github/identity-drift-gate-paths.txt; then
         drift_birth="the gate's own files"
     fi
     for r in "${ranges[@]}"; do
-        [ -n "$drift_birth" ] && break
+        [ -n "$drift_birth" ] || [ -z "$drift_touched" ] && break
         [ -z "$(git log --format='%(trailers:key=New-Check,valueonly)' "$r" | grep -v '^$' || true)" ] || drift_birth="New-Check:"
     done
     { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
@@ -1216,6 +1229,7 @@ in_place() {
     [ "$(git rev-parse HEAD)" = "$head_sha" ] || return 1
     local path
     while IFS= read -r path; do
+        [ -n "$path" ] || continue # a deletion-only push changed no path still there
         git diff --quiet HEAD -- "$path" || return 1
         [ -z "$(git ls-files --others --exclude-standard -- "$path")" ] || return 1
     done <<< "$changed"

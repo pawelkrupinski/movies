@@ -439,6 +439,14 @@ check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls i
 code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala $'the harness, tightened\n\nDrift-Harness-Refactor: the drift guards\' self-test rule is drift-guards-test.sh\'s')"
 check "a push touching the gate itself runs every drift row against main's newest run" "0 1" \
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --against main$")"
+code="$(drift_push test/resources/fixtures/identity-flips-baseline.tsv 'the baseline, edited alone')"
+check "...and so does a push touching only the known-flips baseline, a gate file on no drift path" "0 1" \
+  "$code $(calls 'against main$')"
+scratch_git "$area" rm -q test/resources/fixtures/identity-flips-baseline.tsv; scratch_git "$area" commit -qm "the baseline, deleted"
+: > "$AREA_CALLS"
+code="$(cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1; echo $?)"
+check "...and so does one deleting it: every flip then fails -- a deletion-only push runs that check alone" "0 1 0" \
+  "$code $(calls 'against main$') $(grep -c 'fatal\|FAILED' "$testroot/area-out")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a new check\n\nNew-Check: settled takes')"
 check "...and so does a New-Check: push touching a drift path" "0 1" "$code $(calls 'against main')"
 code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala 'the harness, tightened' DRIFT_RC=1)"
