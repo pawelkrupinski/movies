@@ -41,8 +41,24 @@ class TakeFlipsSpec extends AnyFlatSpec with Matchers {
 
   "a take lost while answers were missing and found again, or a first take of no film" should "be no flip" in {
     replay(("1 boot", Map(stranger -> own(1429348), other -> TakeFlips.Served("none", "BelowThreshold")), Set.empty),
-      ("2 fill", Map(stranger -> TakeFlips.Served("none", "BelowThreshold"), other -> own(1)), Set(stranger, other)),
+      ("2 fill", Map(stranger -> TakeFlips.Served("none", "NoEvidence", pending = true), other -> own(1)), Set(stranger, other)),
       ("3 answer", Map(stranger -> own(1429348), other -> own(2)), Set(stranger, other))).flips shouldBe empty
+  }
+
+  // The review of 58ea51d22 (2026-10-30): a none counted alike whatever it was left the check blind to a take dropping out
+  // and back at any step where some answer, anywhere, was filed.
+  "a take dropped to no film with nothing pending and given back" should "flip: it left the film and went back" in {
+    val flips = replay(("1 boot", Map(stranger -> own(1429348)), Set.empty),
+      ("2 fill", Map(stranger -> TakeFlips.Served("none", "BelowThreshold")), Set(stranger)),
+      ("3 answer", Map(stranger -> own(1429348)), Set(stranger))).flips
+    flips.map(_.reasons) shouldBe Seq(Seq("back to a film it left"))
+    flips.head.films shouldBe "tmdb:1429348 -> none -> tmdb:1429348"
+  }
+
+  "no film given up and found again, a film between" should "be no flip: none is no film it left" in {
+    replay(("1 boot", Map(stranger -> TakeFlips.Served("none", "BelowThreshold")), Set.empty),
+      ("2 answer", Map(stranger -> own(1)), Set(stranger)),
+      ("3 gone", Map(stranger -> TakeFlips.Served("none", "BelowThreshold")), Set(stranger))).flips shouldBe empty
   }
 
   "a take changing where none of its inputs did" should "flip, even once: an interim take a pending correction overrides" in {

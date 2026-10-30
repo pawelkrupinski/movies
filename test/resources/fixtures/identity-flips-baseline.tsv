@@ -8,3 +8,141 @@
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.
 country	seed	venue	rawTitle	takes	firstSeen	owner	note
+de	1	Zeise Kinos	Do You Love Me	tmdb:1518801 -> none -> tmdb:1518801	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+de	1	CinemaxX Dammtor	Titans	tmdb:869152 -> none -> tmdb:869152	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+de	1	CinemaxX Raschplatz	Titans	tmdb:869152 -> none -> tmdb:869152	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+de	1	CinemaxX Regensburg	Titans	tmdb:869152 -> none -> tmdb:869152	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+de	2	Hasetor-Lichtspiele	Scott & Lila	tmdb:716004 -> none -> tmdb:716004	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+pl	1	Kino Kameralne Cafe	Siostry (1972)	none -> tmdb:22307 -> none -> tmdb:22307	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+pl	2	Centrum Kultury Nowy Pafawag	Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa	none -> tmdb:19721 -> none -> tmdb:19721	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+pl	2	Cinema City Kinepolis	Piesek	tmdb:1319522 -> none -> tmdb:1319522	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+pl	2	Cinema City Punkt 44	Piesek	tmdb:1319522 -> none -> tmdb:1319522	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+uk	1	Savoy Doncaster	Hocus Pocus	tmdb:10439 -> none -> tmdb:10439	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+uk	1	Duke of York's Picturehouse Brighton	Royal Ballet: Swan Lake	tmdb:1702782 -> none -> tmdb:1702782	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+uk	1	Finsbury Park Picturehouse	Royal Ballet: Swan Lake	tmdb:1702782 -> none -> tmdb:1702782	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+uk	1	Picturehouse Ealing Filmworks	Royal Ballet: Swan Lake	tmdb:1702782 -> none -> tmdb:1702782	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+uk	1	Picturehouse East Dulwich	Royal Ballet: Swan Lake	tmdb:1702782 -> none -> tmdb:1702782	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+uk	1	Old Market Hall Shrewsbury	Starlight Express - Live On Stage	tmdb:1748001 -> none -> tmdb:1748001	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Century Corpus Christi 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Century El Con 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Ann Arbor 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Bistro Raleigh	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Carefree Circle	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Cedar Hills 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Bel Mar 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Blue Oaks	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Clackamas Town Center	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Downtown Pleasant Hill 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Huntington Beach 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Jordan Creek 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Orange	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Orleans 18	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Rio Plex 24	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Salt Lake City 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Santa Fe Station 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Century Summit Sierra	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Cielo Vista Mall 14	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Connecticut Post 14	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Egyptian 24	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Harlingen 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Huber Heights 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Lincoln Square Cinemas	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Northeast Mall 18	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Paradise 24	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Seven Bridges Woodridge	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark The Woodlands	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tinseltown El Paso	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tinseltown Louisville	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tinseltown Lubbock	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tinseltown Merriam	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tinseltown Pflugerville	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tinseltown Rochester	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Tulsa 17	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Valley View	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark West Jordan	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark West Plano 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark Willowbrook Mall	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Cinemark at Universal CityWalk Orlando	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Harkins Arrowhead Fountains 18	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Harkins Chandler Fashion 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Harkins Estrella Falls Goodyear	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Harkins Flagstaff 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Harkins Mountain Grove 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Harkins Superstition Springs 25	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Addison	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Bloomington Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Cape West 14	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Cedar Rapids Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Duluth Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Gurnee Mills Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Majestic Brookfield	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Orland Park Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Pickerington	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Ronnie's Cinema St. Louis	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus South Shore Oak Creek	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Valley Grand Cinema Appleton	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus Village Pointe Cinema Omaha	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Marcus West Acres Cinema Fargo	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Movie Tavern Syracuse Township	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Movie Tavern Trexlertown	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	1	Robinson Robinson Township	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Century Corpus Christi 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Ann Arbor 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Bistro Raleigh	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Carefree Circle	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Cedar Hills 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Bel Mar 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Blue Oaks	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Daly City 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Downtown Pleasant Hill 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Huntington Beach 20	Parkway Drive: Home	imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Jordan Creek 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Orange	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Orleans 18	Parkway Drive: Home	imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Salt Lake City 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Santa Fe Station 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Century Summit Sierra	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Cielo Vista Mall 14	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Colonel Glenn	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Egyptian 24	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Fort Collins	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Harlingen 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Lincoln Square Cinemas	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Memorial City	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Northeast Mall 18	Parkway Drive: Home	imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Palace 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Paradise 24	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark San Jose Oakridge 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark The Woodlands	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tinseltown El Paso	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tinseltown Jacksonville	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tinseltown Louisville	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tinseltown Lubbock	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tinseltown Pflugerville	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tinseltown Rochester	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Tulsa 17	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Valley View	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark West Jordan	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark West Plano 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark Willowbrook Mall	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Cinemark at Universal CityWalk Orlando	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Harkins Chandler Fashion 20	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Harkins Estrella Falls Goodyear	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Harkins Flagstaff 16	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Harkins Superstition Springs 25	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Addison	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Bloomington Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Cedar Rapids Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Duluth Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Gurnee Mills Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Majestic Brookfield	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Orland Park Cinema	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus South Shore Oak Creek	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus St. Charles Stadium	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Valley Grand Cinema Appleton	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus Village Pointe Cinema Omaha	Parkway Drive: Home	imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus West Acres Cinema Fargo	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Marcus West End Cinema St Louis Park	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Movie Tavern Roswell	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Movie Tavern Syracuse Township	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
+us	2	Robinson Robinson Township	Parkway Drive: Home	none -> imdb:tt47657111 -> none -> imdb:tt47657111	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left

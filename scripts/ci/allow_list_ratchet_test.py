@@ -153,15 +153,34 @@ class RatchetTest(unittest.TestCase):
         born = self.commit({BASELINE: BHEAD + BROW}, "the known flips")
         self.assertEqual((0, ""), self.ratchet(f"{reg}..{born}"))
 
-    def test_a_row_added_to_the_baseline_is_refused_whatever_the_trailers(self):
+    def test_a_row_added_to_the_baseline_is_refused_but_at_a_tightened_checks_birth(self):
         reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
         more = BROW.replace("CAMOUFLAGE", "Titans")
-        for message in ("one more", "gate\n\nNew-Check: flips", "fix\n\nFixes-Red: 2527"):
-            head = self.commit({BASELINE: BHEAD + BROW + more, PREDICATE: message + "\n"}, message)
+        for message, touches in (("one more", True), ("fix\n\nFixes-Red: 2527", True), ("gate\n\nNew-Check: flips", False)):
+            files = {BASELINE: BHEAD + BROW + more}
+            if touches:
+                files[PREDICATE] = message + "\n"
+            head = self.commit(files, message)
             rc, err = self.ratchet(f"{reg}..{head}")
             self.assertEqual(1, rc, message)
             self.assertIn("only shrinks", err)
             self.scratch("scratch_git", "reset", "-q", "--hard", reg)
+
+    def test_a_tightened_checks_birth_baselines_what_it_finds(self):
+        # the owner, 2026-10-30: a229501a7's precise `none` revealed flips the blind predicate hid -- baselined at its birth
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        found = BROW.replace("CAMOUFLAGE", "Parkway Drive: Home")
+        head = self.commit({BASELINE: BHEAD + BROW + found, PREDICATE: "a precise none\n"}, "flip check\n\nNew-Check: flips")
+        self.assertEqual((0, ""), self.ratchet(f"{reg}..{head}"))
+
+    def test_a_tightened_checks_birth_baselines_no_flip_fixed_before(self):
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        fixed = self.commit({BASELINE: BHEAD}, "CAMOUFLAGE no longer flips")
+        head = self.commit({BASELINE: BHEAD + BROW, PREDICATE: "a precise none\n"}, "flip check\n\nNew-Check: flips")
+        rc, err = self.ratchet(f"{fixed}..{head}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("known flip", err)
+        self.assertNotEqual(reg, head)
 
     def test_removing_a_fixed_flips_row_lands(self):
         reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")

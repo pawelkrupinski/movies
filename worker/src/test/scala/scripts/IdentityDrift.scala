@@ -104,6 +104,14 @@ object IdentityDrift {
 
   /** One listing's take: its film (`tmdb:<id>`, `<source>:<id>` or `none`), the basis, and the decision's last line. */
   final case class Take(film: String, basis: String, why: String)
+  /** The listings served no film while an answer their decision reads was pending -- a lookup unanswerable
+   *  (`NoEvidence`, the decision's gaps), a record awaited by agree-or-none (`FamilyScope`) -- what [[TakeFlips]] does
+   *  not count as a take left. */
+  def pendingOf(resolution: Resolution): Set[ListingKey] = pendingOf(resolution.decisions)
+  def pendingOf(decisions: Iterable[ResolverDecision]): Set[ListingKey] =
+    decisions.iterator.filter(d => d.film.isEmpty && d.fallback.isEmpty && (d.basis == ResolverDecision.Basis.NoEvidence ||
+      d.explanation.exists(line => line.contains("lookup(s) unanswerable") || line.contains("awaiting the record of"))))
+      .flatMap(_.members).toSet
   def takesOf(resolution: Resolution): Map[ListingKey, Take] =
     resolution.decisions.iterator.flatMap { d =>
       val take = Take(filmOf(d), d.basis.toString, d.explanation.lastOption.getOrElse(""))
@@ -421,7 +429,8 @@ object IdentityDrift {
       val answered = events.exists(Answering)
       val scraped  = events.exists(ListingEvents)
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
-      flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}") },
+      val pending = pendingOf(r)
+      flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped))
       clusters = now
       events = Vector.empty

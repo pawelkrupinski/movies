@@ -15,9 +15,12 @@ import scala.collection.mutable
  *  - moves to another film more than once (A -> B -> C), or
  *  - changes at a step where none of its deciding inputs changed: an interim take a pending correction overrides.
  *
- * The films a listing moves between are counted as prod's watch counts them, between films: no film (`none`) between
- * two takes of one is a take lost while answers were missing and found again once they came in (A -> none -> A), and a
- * first take of none is no film left — so neither counts unless no input moved it.
+ * The films a listing moves between are counted as prod's watch counts them, between films: no film (`none`) served
+ * while an answer it reads was PENDING ([[Served.pending]]: a lookup unanswered, a record awaited) between two takes of
+ * one is a take lost while answers were missing and found again once they came in (A -> none -> A), and a first take
+ * of none is no film left -- so neither counts unless no input moved it. A `none` with nothing pending is a take
+ * dropped and given back: A -> none -> A leaves A and goes back to it (the review of 58ea51d22, 2026-10-30: counting
+ * every `none` alike left the check blind to a take dropping out and back at any step where some answer was filed).
  *
  * Only changes are kept, so recording a step costs one look-up a listing.
  */
@@ -61,8 +64,9 @@ object TakeFlips {
   /** No film served: the take of a listing that holds none. */
   val NoFilm = "none"
 
-  /** A listing's served take: its film (`tmdb:<id>`, `<source>:<id>` or `none`) and the path that decided it. */
-  final case class Served(film: String, path: String)
+  /** A listing's served take: its film (`tmdb:<id>`, `<source>:<id>` or `none`) and the path that decided it; `pending`,
+   *  for `none`, whether an answer its decision reads was still pending then. */
+  final case class Served(film: String, path: String, pending: Boolean = false)
 
   private final case class Seen(step: Int, served: Served, moved: Boolean)
 
@@ -80,9 +84,11 @@ object TakeFlips {
 
   object Flip {
     def reasons(takes: Vector[Taken]): Seq[String] = {
-      val films     = takes.map(_.served.film).filter(_ != NoFilm)
+      // a none an answer was pending for is no take; one with nothing pending is a take given up, kept in the sequence
+      val sequence  = takes.map(_.served).filterNot(served => served.film == NoFilm && served.pending).map(_.film)
         .foldLeft(Vector.empty[String])((seen, film) => if (seen.lastOption.contains(film)) seen else seen :+ film)
-      val back      = films.indices.exists(i => films.indexOf(films(i)) < i)
+      val back      = sequence.indices.exists(i => sequence(i) != NoFilm && sequence.indexOf(sequence(i)) < i)
+      val films     = sequence.filter(_ != NoFilm).foldLeft(Vector.empty[String])((seen, film) => if (seen.lastOption.contains(film)) seen else seen :+ film)
       val unchanged = takes.drop(1).filterNot(_.moved).map(_.step)
       Seq(
         Option.when(back)("back to a film it left"),

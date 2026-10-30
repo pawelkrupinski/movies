@@ -160,9 +160,10 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
       check(step)
     }
     private def check(step: String): Unit = {
-      val now = takesOf(model.decisions)
+      val now     = takesOf(model.decisions)
+      val pending = IdentityDrift.pendingOf(model.decisions)
       now shouldBe takesOf(IdentityResolver.resolve(seen, lookups, reads.normalizer, inputs).decisions)
-      flips.record(step, now.view.mapValues(TakeFlips.Served(_, "")), _ => true)
+      flips.record(step, now.map { case (key, film) => key -> TakeFlips.Served(film, "", pending(key)) }, _ => true)
     }
   }
 

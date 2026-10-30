@@ -11,9 +11,12 @@
 #     birth is fixed, never listed.
 # THE KNOWN-FLIPS BASELINE ONLY SHRINKS (test/resources/fixtures/identity-flips-baseline.tsv; the owner, 2026-10-29: "fail
 # build only on new flips, focus in eliminating all old flips and then fail on all flips"): every flip main showed when the
-# gate turned to failing on new flips only is a row there, generated (scripts/ci/identity_flips_baseline.py). No commit
-# adds a row to it, whatever its trailers: no override. Only its creation, once, writes rows; a file that existed before
-# is never made again.
+# gate turned to failing on new flips only is a row there, generated (scripts/ci/identity_flips_baseline.py). Rows are
+# written only by its creation, once (a file that existed before is never made again), and by a TIGHTENED CHECK's birth:
+# a commit carrying `New-Check:` that changes what decides what the gate finds (CHECK_PATHS), never `Fixes-Red:`, may
+# baseline the flips the tightened check finds at birth on main's own run -- generated from that run, each a listing no
+# list or earlier baseline named and no drift slice holds (the owner, 2026-10-30: a229501a7's precise `none` revealed 138
+# flips the blind predicate hid; "baseline them, then burn them down"). Any other added row is refused: no override.
 # A TEMPORARY row is a NEWBORN check's only, never a flip that already exists:
 #   - `New-Check:` alone is not a birth: the same commit must add a check -- change what decides what the gate finds
 #     (CHECK_PATHS: the drift gate's paths, .github/identity-drift-gate-paths.txt, its lists aside, and the convergence
@@ -177,8 +180,18 @@ def check(ranges: list[str], registry: str) -> list[str]:
                 added = [r for r in rows(at(sha, path)) if r not in before]
                 if path in BASELINES:
                     born = not before and not at(parent, path) and not existed_before(sha, path)
-                    refused += [f"{sha[:9]} {path}: {r!r}: the known-flips baseline only shrinks -- a new flip is fixed, never "
-                                "baselined (no override)" for r in added if not born]
+                    if not added or born:
+                        continue
+                    if not (trailers and adds_check and not fixes_red):
+                        refused += [f"{sha[:9]} {path}: {r!r}: the known-flips baseline only shrinks -- a new flip is fixed, "
+                                    f"never baselined; only a tightened check's birth (`{TRAILER}:`, a change to what decides "
+                                    "the gate, no `Fixes-Red:`) baselines what it finds (no override)" for r in added]
+                        continue
+                    if before_known is None:
+                        before_known = known(sha)
+                    refused += [f"{sha[:9]} {path}: {r!r}: a known flip or divergence (an earlier revision of a list or the "
+                                "baseline named it, or a committed drift slice holds it) -- fixed, never baselined again"
+                                for r in added if is_known(listing(r), before_known)]
                     continue
                 drift_list = path in DRIFT_LISTS
                 if added and drift_list and trailers and before_known is None:
