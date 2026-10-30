@@ -378,7 +378,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     // stage-production pooled: one member's stated year is not the cluster's broadcast — it took UK Aldeburgh's
     // "Royal Ballet: The Nutcracker" [2025] as the 2025/26 record, and split Savoy Worksop's "MET:Manon" off the Met's
     takenBy(ranked)(broadcastSeasonRecord(ranked).map(_ -> "season-record").filterNot(_ => RuleAblation.disables("accept:season-record"))
-      .orElse(firstOf(ranked, pooledRules)))
+      .orElse(firstOf(Acceptance.tieBroken(ranked), pooledRules)))
 
   /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
    *  one (it pre-empts every rule, and a season production refused takes nothing), else what `rules` take — either only
@@ -458,6 +458,28 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
 }
 
 private[identity] object Acceptance {
+  /** `ranked` (best first, ties by TMDB id) with an EXACT tie at the top of the takeable broken by the title instead:
+   *  the tied candidate whose best title form covers more of the listing's title -- the share of the listing's title
+   *  tokens one of its forms carries -- first, the TMDB id the last resort. Nothing else moves. The owner's decision
+   *  (2026-10-30, identity design): DE Metropol-Kino-Center's bare "Madoka Magica - Der Film: Rebellion", alone, measured
+   *  1962's "Rebellion" (42997, one token of five) and 2013's "Puella Magi Madoka Magica - Der Film 3 - Rebellion"
+   *  (212162, all five) `segment` alike at 46.3%, and the pooled vote took the 1962 film by its lower id. */
+  private[identity] def tieBroken(ranked: Seq[Scored]): Seq[Scored] = {
+    val takeable = ranked.filter(_.takeable)
+    takeable.headOption.filter(top => takeable.lift(1).exists(_.probability == top.probability)).fold(ranked) { top =>
+      val (above, from) = ranked.span(_.probability > top.probability)
+      val (tied, below) = from.span(_.probability == top.probability)
+      above ++ tied.sortBy(scored => (-titleCoverage(scored), scored.candidate.tmdbId)) ++ below
+    }
+  }
+
+  /** The largest share of the listing's title tokens (any of its own titles) one of the film's title forms carries. */
+  private[identity] def titleCoverage(scored: Scored): Double = {
+    val titles = scored.listing.ownForms.map(_.wordSet).filter(_.nonEmpty)
+    val forms  = scored.candidate.film.forms.map(_.wordSet)
+    titles.iterator.flatMap(title => forms.iterator.map(form => (title intersect form).size.toDouble / title.size)).maxOption.getOrElse(0.0)
+  }
+
   /** The rule a node's alone acceptance (`aloneNamed`'s answer) took `film` by, if it took that film. */
   def ruleTaking(taken: Option[(Accepted, String)], film: Int): Option[String] =
     taken.collect { case ((scored, _), rule) if scored.candidate.tmdbId == film => rule }

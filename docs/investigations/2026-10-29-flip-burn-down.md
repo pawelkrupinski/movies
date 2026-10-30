@@ -138,3 +138,16 @@ takes no film.
 - **Open question, not acted on.** Both venues' kinoheld links use the slug
   `puella-magi-madoka-magica-der-film-walpurgisnacht-rising`, which is "Walpurgisnacht: Rising" (TMDB 822653, 2026).
   Their metadata is Rebellion's: the title, Filmhaus's 2013, 116′, the original title 叛逆の物語, and the poster.
+
+### Madoka: what landed, a better tie-break (the owner's third call, 2026-10-30)
+
+Only when the pooled vote ties EXACTLY at the top of the takeable does the order change: the candidate whose best title
+form carries the larger share of the listing's title tokens goes first, and the TMDB id is the last resort
+(`Acceptance.tieBroken`, the calibrated pooled rules). Metropol's five tokens ("madoka magica der film rebellion") are
+all carried by 212162's "Puella Magi Madoka Magica - Der Film 3 - Rebellion" and one of them by 42997's "Rebellion", so
+Metropol alone takes 212162. Results:
+
+- the slice: `IdentityDriftSpec` passes, and all 10 drift slices pass (IdentityDriftSlicesSpec on conv-guards' branch);
+- the suites: identity 1142, worker 4046;
+- `identity-drift-ci`, all 10 rows: DRIFT CLEAN;
+- `identity-measure`, every country: 0 model and 0 final takes moved. Enjô and Made in Hong Kong are unchanged.
