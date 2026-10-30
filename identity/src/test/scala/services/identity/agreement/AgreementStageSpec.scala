@@ -1027,12 +1027,28 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
       askNow = (_, _) => ())
     stage.loadedAt = Some(1L)
+    stage.firstPass = false
     val (decided, waited, asked, fresh) = (11L, 12L, 13L, 14L)
     stage.file(StoredVerdict("7", decided, Map.empty, None, stage.decidedUnder))
     stage.waiting("8") = AgreementStage.Waiting(waited, Set.empty)
     stage.askedNow += asked
-    Seq(decided, waited, asked, fresh).map(stage.newCluster(_, version = 2)) shouldBe Seq(false, false, false, true)
-    stage.newCluster(fresh, version = 1) shouldBe false   // the first pass meets every cluster
+    Seq(decided, waited, asked, fresh).map(stage.newCluster) shouldBe Seq(false, false, false, true)
+    stage.firstPass = true
+    stage.newCluster(fresh) shouldBe false   // the first pass meets every cluster
+  }
+
+  // The first pass is the stage's first apply, never "no family answer filed since it loaded": a deploy then a record
+  // filed with no family answer between (the drift replay's steps 7 and 8) left every apply a first one, and a take that
+  // moved had its correction's questions left on the queue (UK Chichester's "The Ties That Bind Us", drift slice seed 3).
+  it should "ask inline from its second apply on, whether or not a family answer was filed since the first" in {
+    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
+      askNow = (_, _) => ())
+    stage.apply(resolution, listingOf, version = 1)
+    stage.firstPass shouldBe true
+    stage.apply(resolution, listingOf, version = 1)   // the families' answers unmoved: the same version
+    stage.firstPass shouldBe false
+    stage.newCluster(99L) shouldBe true
   }
 
   // A wait is decided for one shape of its cluster, as a verdict is: kept by the cluster's key alone, a shape that waited

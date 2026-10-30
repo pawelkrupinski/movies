@@ -231,6 +231,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  was down — it alone files them — so a verdict kept under these rules, its listings as they were, stands then without
    *  a single answer read again (prod PL 2026-10-05: re-reading every verdict's answers at boot was a 40 s, 514 MB pass). */
   private[agreement] var loadedAt: Option[Long] = None
+  /** Whether the apply under way is this stage's first: the one that meets every cluster, and asks none inline. Kept apart
+   *  from [[loadedAt]], a version of the families' answers, which moves only when one is filed: judged by it, every apply
+   *  after a deploy was the first until a family answer was filed, and a take that moved meanwhile -- a record filed --
+   *  had its correction's questions left on the queue, the model's film served until they came in (UK Chichester's "The
+   *  Ties That Bind Us": 2008's film from its record's filing to a later queue round, drift slice seed 3). */
+  private[agreement] var firstPass: Boolean = true
   /** Each model decision the stage took, with what it took it as: handed back as that same object while neither moved,
    *  so the projection, which diffs decisions by identity, redrafts an agreed cluster only when its verdict moved. */
   private[agreement] val takenAs = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
@@ -347,6 +353,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val pass    = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)), backfillPerApply)
     held.newPass(); candidateFilms.newPass()
     keying(resolution, pass)
+    firstPass = loadedAt.isEmpty
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
       val year = readNow(Dependency.Year)
@@ -520,16 +527,16 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  what [[askNow]] asks inline. A new key and a known key a scrape reshaped alike: under its kept key, PL "Bez końca" ×7
    *  (2026-10-23, 10-26) gained a listing whose title no family had been asked, waited on the queue, and was published
    *  lost until the answers came in half a minute later — where a cluster new to its key would have read them. */
-  private[agreement] def newCluster(digest: Long, version: Long): Boolean =
-    (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
+  private[agreement] def newCluster(digest: Long): Boolean =
+    (askNow ne AgreementStage.AskNow.Never) && !firstPass &&
       !heldByDigest._1.get(digest).exists(_.listings == digest) && !waiting.valuesIterator.exists(_.listings == digest) &&
       !askedNow(digest)
 
   /** A model take's correction the stage meets in this SHAPE (`digest`, [[correctionDigest]]) for the first time since it
    *  started — none held of that shape under any key, none asked inline — past its first pass: what [[askNow]] asks the
    *  families of inline, as [[newCluster]] does a cluster's. */
-  private[agreement] def newCorrection(digest: Long, version: Long): Boolean =
-    (askNow ne AgreementStage.AskNow.Never) && loadedAt.exists(_ != version) &&
+  private[agreement] def newCorrection(digest: Long): Boolean =
+    (askNow ne AgreementStage.AskNow.Never) && !firstPass &&
       !heldByDigest._2.get(digest).exists(_.listings == digest) && !askedNow(digest)
 
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
@@ -748,7 +755,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val gaps  = mutable.Set.empty[Question]
     val verdicts = {
       val first = verdictsOf(listings, gaps, reads)
-      if (!first.contains(Answer.Unknown) || !newCluster(digest, version)) first
+      if (!first.contains(Answer.Unknown) || !newCluster(digest)) first
       else {
         // a cluster with a newly scraped listing: its families asked now, inline, so its first take reads their answers —
         // and the questions those answers lead to (a search's hits' records), a round each, asking only what no round

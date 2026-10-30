@@ -95,3 +95,23 @@ alike; `2026-10-29-drift-flip-record-awaited.md`). On recording 573:
   files it.
 
 The baseline is empty: the drift gate fails every flip again.
+
+## 2026-10-30: the drift slices (conv-guards' IdentityDriftSlicesSpec) on the two new slices
+
+The slice replay (`IdentityDrift <cc> --slice <dir>`, 12 seeds, a booted listing leaving and returning) flipped both
+slices that drift 3854 and IdentityDriftSpec passed.
+
+- **UK Chichester "The Ties That Bind Us", seeds 3 and 7: a stage lag, fixed.** 1096642 at step 4; at step 8 (fill +
+  answer) the record of 2008's 1460982 is filed and the model takes it. The agreement's correction of it waits on the
+  wiki, IMDb, Rotten Tomatoes and Metacritic records its families' searches name, and lands only at the next queue
+  round (settle). There were two causes. First, the stage judged its first pass by `loadedAt == version`, where the
+  version is the families' answers' and moves only when one is filed. After the step-7 deploy, step 8's apply was
+  still "first", so nothing was asked inline. Now `firstPass` is the stage's first apply. Second, a new correction's
+  inline ask ran one round. Now it follows the questions its answers lead to (`InlineRounds`), as a new cluster's does.
+  Both are needed: either alone still flips.
+- **DE Metropol "Madoka Magica - Der Film: Rebellion", 11 of 12 seeds: real, identity design.** 212162 while Filmhaus
+  (Langerringen)'s listing is present, 42997 "Rebellion" (1962) by PooledMatch when it leaves (step 6), and 212162 when
+  it returns. The whole resolve of the listings present agrees at every step: Metropol's bare listing alone, every
+  answer filed, takes the 1962 film its title overlaps over the 2013 film it names by an alternative title. This is
+  the CAMOUFLAGE shape (a sibling's presence decides a bare listing). Only a resolver rule changes it, which is
+  outside red fixing. The corpus replay meets it only when Filmhaus is among the 3% that leave.

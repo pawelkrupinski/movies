@@ -69,15 +69,31 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       val (correction, waits) = {
         val first  = read()
         val asking = first._2.fold(Set.empty[Question])(_.filter { case question: Question.Family => !tried(question); case _ => false })
-        if (asking.isEmpty || !newCorrection(digest, version)) first
+        if (asking.isEmpty || !newCorrection(digest)) first
         else {
           // a take of a newly met shape — a listing joined it, a scrape reshaped it: the families its correction waits on
           // asked now, inline, as a new cluster's are, so its first take reads their answers — else it was served as the
           // model took it until they came in, and corrected after (PL "Ktoś całkiem obcy", 2026-10-25: 21 s on 2007's film)
           askedNow += digest
           pass.shapes += digest
-          askNow(asking, AgreementStage.AskNowWithin)
-          read()
+          // and the questions those answers lead to (a family's search's records), a round each, asking only what no
+          // round before did, all within the one bound -- as a new cluster's inline ask follows them
+          // ([[AgreementStage.InlineRounds]]). One round left them on the queue: UK Chichester's "The Ties That Bind
+          // Us" took 2008's film when its record was filed, its correction waiting on the wiki, IMDb, Rotten Tomatoes and
+          // Metacritic records the first round's searches named, and was corrected rounds later (drift slice, seed 3)
+          val deadline = clock.millis() + AgreementStage.AskNowWithin.toMillis
+          var asked    = Set.empty[Question]
+          var now      = first
+          var next     = asking
+          var rounds   = 0
+          while (next.nonEmpty && rounds < AgreementStage.InlineRounds && clock.millis() < deadline) {
+            asked ++= next
+            rounds += 1
+            askNow(next, scala.concurrent.duration.Duration(deadline - clock.millis(), java.util.concurrent.TimeUnit.MILLISECONDS))
+            now  = read()
+            next = now._2.fold(Set.empty[Question])(_.filter { case question: Question.Family => !tried(question) && !asked(question); case _ => false })
+          }
+          now
         }
       }
       val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
