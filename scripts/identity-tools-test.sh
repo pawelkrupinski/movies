@@ -246,20 +246,21 @@ check "identity-tools.sh's cache is that one" "/h/.cache/kinowo-identity" \
 
 check "identity_country_code and identity_country_name are inverses over the five" "pl de uk us es|poland germany united-kingdom united-states spain" \
   "$(bash -c '. "$1"; for n in poland germany united-kingdom united-states spain; do identity_country_code $n; done | paste -sd" " -; for c in pl de uk us es; do identity_country_name $c; done | paste -sd" " -' _ "$REPO_ROOT/scripts/identity-tools.sh" | paste -sd'|' -)"
-mkdir -p "$work/overlay" && (
-  cd "$work/overlay" && git init -q -b main && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m root \
-    && mkdir -p .github scripts/ci && echo old > .github/w.yml && echo old > scripts/ci/x.sh && echo own > code.txt \
-    && git add -A && git -c user.email=t@t -c user.name=t commit -qm old && git branch old \
-    && echo new > .github/w.yml && echo new > scripts/ci/y.sh && git rm -q scripts/ci/x.sh && echo main > code.txt \
-    && git add -A && git -c user.email=t@t -c user.name=t commit -qm new && git update-ref refs/remotes/r/main HEAD )
-over=$(cd "$work/overlay" && GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t \
-  bash -c '. "$1"; identity_main_ci_over r old drift' _ "$REPO_ROOT/scripts/identity-tools.sh")
+ov="$work/overlay"
+scratch_repo "$ov" -b main
+ov_commit() { scratch_git "$ov" add -A && scratch_git "$ov" -c user.email=t@t -c user.name=t commit -qm "$1"; }
+mkdir -p "$ov/.github" "$ov/scripts/ci" && echo old > "$ov/.github/w.yml" && echo old > "$ov/scripts/ci/x.sh" && echo own > "$ov/code.txt"
+ov_commit old && scratch_git "$ov" branch old
+echo new > "$ov/.github/w.yml" && echo new > "$ov/scripts/ci/y.sh" && rm "$ov/scripts/ci/x.sh" && echo main > "$ov/code.txt"
+ov_commit new && scratch_git "$ov" update-ref refs/remotes/r/main HEAD
+over=$(cd "$ov" && env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t \
+  GIT_COMMITTER_EMAIL=t@t bash -c '. "$1"; identity_main_ci_over r old drift' _ "$REPO_ROOT/scripts/identity-tools.sh")
 check "identity_main_ci_over: the commit's own code under main's .github/ and scripts/ci/, a child of the commit" \
   "own new new|drift: r/main's CI over" \
-  "$(cd "$work/overlay" && echo "$(git show "$over:code.txt") $(git show "$over:.github/w.yml") $(git show "$over:scripts/ci/y.sh")|$(git log -1 --format=%s "$over" | cut -c1-23)")"
+  "$(scratch_git "$ov" show "$over:code.txt") $(scratch_git "$ov" show "$over:.github/w.yml") $(scratch_git "$ov" show "$over:scripts/ci/y.sh")|$(scratch_git "$ov" log -1 --format=%s "$over" | cut -c1-23)"
 check "...main's scripts/ci/ whole: a file main dropped is gone" "absent" \
-  "$(cd "$work/overlay" && git cat-file -e "$over:scripts/ci/x.sh" 2> /dev/null && echo present || echo absent)"
-check "...its parent the commit" "true" "$(cd "$work/overlay" && [ "$(git rev-parse "$over^")" = "$(git rev-parse old)" ] && echo true || echo false)"
+  "$(scratch_git "$ov" cat-file -e "$over:scripts/ci/x.sh" 2> /dev/null && echo present || echo absent)"
+check "...its parent the commit" "true" "$([ "$(scratch_git "$ov" rev-parse "$over^")" = "$(scratch_git "$ov" rev-parse old)" ] && echo true || echo false)"
 
 check "identity_measure_branch: measure/<user>/<short sha>-<tag>-<random>" "true" \
   "$(bash -c '. "$1"; identity_measure_branch 0123456789abcdef drift' _ "$REPO_ROOT/scripts/identity-tools.sh" | grep -qE '^measure/[A-Za-z0-9._-]+/012345678-drift-[0-9a-f]{6}$' && echo true || echo false)"
