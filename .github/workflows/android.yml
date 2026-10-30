@@ -89,6 +89,10 @@ concurrency:
 permissions:
     contents: read
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     # Seconds, first: the signing secrets are set and the SDK licence Gradle needs is accepted.
     # Without it a missing secret surfaced minutes in, as an UNSIGNED release APK that the

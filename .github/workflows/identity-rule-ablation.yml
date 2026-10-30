@@ -42,6 +42,7 @@ concurrency:
     cancel-in-progress: false
 
 env:
+    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     FIXTURE_RELEASE_TAG: convergence-fixtures
     # ONE row, a round or so at a time: six bisecting rows held every ubuntu slot on ci-runner for hours (run 805), and a
     # runner drain (every ci-runner deploy) waits for its longest job (run 1050 held one for ~2h). A sweep is a chain of

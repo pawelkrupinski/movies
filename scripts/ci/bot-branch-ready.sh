@@ -15,6 +15,10 @@
 # Tested by scripts/ci/bot-branch-ready-test.sh against a stub `gh`.
 set -euo pipefail
 
+# SHADOW (scripts/ci/ci-writes.sh): no ready-to-land issue from a github.com shadow run.
+. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh"
+ci_writes || { ci_writes_skipped "the ready-to-land issue for ${1:-}"; exit 0; }
+
 branch="${1:?branch}"
 title="${2:?title}"
 report="${3:?report file}"

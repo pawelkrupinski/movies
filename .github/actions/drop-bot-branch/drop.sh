@@ -7,6 +7,9 @@
 # Tested by .github/actions/drop-bot-branch/drop-test.sh against a stub `gh`.
 set -uo pipefail
 : "${GH_REPO:?}" "${BRANCH:?}"
+# SHADOW (scripts/ci/ci-writes.sh): a github.com shadow run deletes no branch.
+. "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/ci/ci-writes.sh"
+ci_writes || { ci_writes_skipped "dropping $BRANCH"; exit 0; }
 
 # ON FORGEJO the job image's gh shim has no git/refs API for a branch: git asks the remote itself, with the checkout's
 # credentials (`ls-remote --exit-code`: 2 is no such branch, anything else nonzero a failed read, as above). The delete

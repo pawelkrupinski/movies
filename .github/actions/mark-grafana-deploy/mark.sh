@@ -2,6 +2,9 @@
 # The deploy marker the action posts: inputs in GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN, TIER, SHA, MSG (see action.yml).
 # Runs as the runner runs a `shell: bash` step: -e and pipefail.
 set -eo pipefail
+# SHADOW (scripts/ci/ci-writes.sh): a deploy marker only from the run that deploys.
+. "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/ci/ci-writes.sh"
+ci_writes || { ci_writes_skipped "the Grafana deploy marker"; exit 0; }
 if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
     echo "Grafana annotation secrets unset — skipping deploy marker."
     exit 0

@@ -24,6 +24,11 @@
 #   spec_summary            # prints the tally and exits non-zero on any failure
 #   spec_bounded / spec_still_running   # a case proving a bound cuts off a hung command (HUNG STUBS, below)
 
+# The shadow gate (scripts/ci/ci-writes.sh) would make every writer a no-op when a spec runs on github.com in shadow,
+# and the specs assert the writes their stubs record: every spec sees a primary forge unless it asks otherwise
+# (ci-writes-test.sh does).
+export CI_ROLE=primary
+
 # The JVM gate (scripts/jvm-gate.sh) reads the real Mac's paging and takes machine-wide slots, which a spec's stubbed
 # JVM starts have no business waiting on, and sizes JVMs for a share of the cores, which a spec's command lines would
 # then vary by: all off in every spec unless it asks for it (jvm-gate-test.sh does). So is the governor (~/bin/agentctl

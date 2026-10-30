@@ -26,5 +26,7 @@ runs:
             GRAFANA_URL: ${{ inputs.grafana-url }}
             GRAFANA_ANNOTATION_TOKEN: ${{ inputs.grafana-annotation-token }}
         run: |
+            # SHADOW: printed and summarised on github.com, pushed only by the primary forge (scripts/ci/ci-writes.sh).
+            push=--push; "$GITHUB_WORKSPACE/scripts/ci/ci-writes.sh" || push=
             python3 "$GITHUB_WORKSPACE/scripts/ci/ci_timings.py" --repo "$GITHUB_REPOSITORY" \
-                --run-id "$GITHUB_RUN_ID" --push || true
+                --run-id "$GITHUB_RUN_ID" $push || true

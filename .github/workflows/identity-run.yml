@@ -51,6 +51,7 @@ concurrency:
     group: identity-run${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
     cancel-in-progress: false
 env:
+    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     FIXTURE_RELEASE_TAG: convergence-fixtures
 permissions:
     contents: read

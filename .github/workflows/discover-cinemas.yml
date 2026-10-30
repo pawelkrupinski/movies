@@ -46,8 +46,13 @@ permissions:
     pull-requests: write
     issues: write
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     discover-cinemas:
+        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         timeout-minutes: 30
         steps:
@@ -155,7 +160,7 @@ jobs:
             # the commit to the two source files; the report is the body only (not
             # committed). No diff ⇒ no PR.
             - name: Open discovery PR
-              if: github.server_url == 'https://github.com'
+              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary'
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}

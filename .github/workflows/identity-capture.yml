@@ -58,9 +58,14 @@ concurrency:
 permissions:
     contents: read
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
     preflight:
+        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
         timeout-minutes: 5
         # THE PLAN (WorkflowPlanSpec): the other jobs' decisions, evaluated where `inputs` and `github` are whole.
@@ -286,11 +291,11 @@ jobs:
 
             # A recapture creates the branch afresh; `open-pr` fast-forwards it by the re-baseline.
             - name: Publish the chore/identity-capture branch
-              if: steps.changed.outputs.changed == 'true'
+              if: steps.changed.outputs.changed == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
               run: git push origin "HEAD:refs/heads/$BRANCH"
 
             - name: Open the PR when the ratchet is green
-              if: github.server_url == 'https://github.com' && steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
+              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary' && steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
               env:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   GH_REPO: ${{ github.repository }}

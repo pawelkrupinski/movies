@@ -85,11 +85,16 @@ concurrency:
 permissions:
     contents: read
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
     # rather than hours into a leg. The tunnel key for each leg's corpus capture, the TMDB key for its enrichment recording. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
+        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
         timeout-minutes: 5
         # THE PLAN: every decision the other jobs make, evaluated HERE, where `inputs` and `github` are whole, and read

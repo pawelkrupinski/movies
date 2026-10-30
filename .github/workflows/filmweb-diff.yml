@@ -21,8 +21,13 @@ on:
 permissions:
     contents: read
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     filmweb-diff:
+        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         steps:
             - uses: actions/checkout@v5

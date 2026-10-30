@@ -28,6 +28,10 @@
 # Tested by scripts/ci/scheduled-failure-issue-test.sh against a stub `gh`.
 set -euo pipefail
 
+# SHADOW (scripts/ci/ci-writes.sh): the primary forge's run owns the issue; a github.com shadow run opens none.
+. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh"
+ci_writes || { ci_writes_skipped "the scheduled-run issue (${1:-})"; exit 0; }
+
 verdict="${1:?failed|overdue|alert|recovered}"
 workflow="${2:?workflow name}"
 run_url="${3:?run url}"

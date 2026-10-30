@@ -25,8 +25,14 @@ sha="${3:?usage: $0 <bin> <image repository> <commit sha>}"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+# SHADOW (scripts/ci/ci-writes.sh): a github.com shadow run still BUILDS the image -- the Dockerfile and the staged
+# dist are checked -- but pushes nothing to the registry (a SHA-tagged push is one manifest copy from shipping).
+. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh"
+output=--push
+ci_writes || { ci_writes_skipped "the $bin image push"; output=--load; }
+
 build() {
-  docker buildx build --platform linux/amd64 --push \
+  docker buildx build --platform linux/amd64 "$output" \
       --build-arg BIN="$bin" --build-arg COMMIT_SHA="$sha" \
       --tag "$repo:$sha" --cache-to type=inline "$@" .
 }

@@ -29,10 +29,14 @@ concurrency:
   group: nix-update-${{ github.ref }}
   cancel-in-progress: false
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+  CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
   update:
     # Forgejo only: the token is a ci-bot token, and ci-bot exists only there.
-    if: github.server_url != 'https://github.com'
+    if: ${{ (github.server_url != 'https://github.com') && (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) }}
     runs-on: ubuntu-26.04
     # Two builds of every host from an empty store; most of it comes from cache.nixos.org.
     timeout-minutes: 180

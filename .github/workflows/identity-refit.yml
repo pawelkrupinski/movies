@@ -66,6 +66,10 @@ permissions:
     pull-requests: write
     issues: write
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     # ROUND 1 ON FOUR RUNNERS. It is the refit's measure: ~58 proposals, each the five captures re-resolved, CPU-bound
     # (JFR: 97.5% of the runner in the resolver), 17-21 of the measure step's 20-24 minutes on one 4-vCPU runner, where
@@ -76,7 +80,7 @@ jobs:
     # on Thursday 05:00 UTC, well inside the 20-runner budget (CiRunnerBudgetSpec). At the triggering commit: the refit
     # job merges them only if main has not moved what they measured (below).
     measure:
-        if: ${{ github.event_name == 'schedule' || inputs.sharded }}
+        if: ${{ (github.event_name == 'schedule' || inputs.sharded) && (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) }}
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }} # no Mongo here: the kernel is no matter
         timeout-minutes: 60
         strategy:
@@ -227,7 +231,7 @@ jobs:
                   token: ${{ steps.app-token.outputs.token || github.token }}
 
             - name: Open the refit PR
-              if: github.server_url == 'https://github.com' && steps.changed.outputs.kept == 'true'
+              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary' && steps.changed.outputs.kept == 'true'
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}

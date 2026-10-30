@@ -19,6 +19,10 @@ concurrency:
 permissions:
     contents: read
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
     # WHICH OF MAIN'S HEAVY ROWS THE CHANGE CAN MOVE (scripts/hooks/pre-push --plan with PREPUSH_HEAVY_ROWS=1: `itrest`,
     # `itidentity`, `e2e`, `e2ecorpus`), space-separated, for the `heavy` job. The batch's fast check (check/fast-*) runs none.

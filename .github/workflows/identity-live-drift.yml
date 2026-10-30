@@ -41,6 +41,7 @@ concurrency:
     cancel-in-progress: false
 
 env:
+    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     FIXTURE_RELEASE_TAG: convergence-fixtures
 
 permissions:
@@ -116,7 +117,7 @@ jobs:
               env:
                   GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
                   GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-              run: python3 scripts/ci/identity_live_drift.py "$RUNNER_TEMP/identity-live-drift" --push
+              run: python3 scripts/ci/identity_live_drift.py "$RUNNER_TEMP/identity-live-drift" ${{ (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') && '--push' || '' }}
             - uses: actions/upload-artifact@v6
               if: always()
               with:

@@ -135,6 +135,10 @@ concurrency:
 permissions:
   contents: read
 
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+  CI_ROLE: ${{ vars.CI_ROLE }}
+
 jobs:
   # EVERY HOST MUST STILL EVALUATE, and this is the only job that runs on a pull request.
   #
@@ -326,7 +330,9 @@ jobs:
     # otherwise have built and copied closures from it with the real signing and ssh keys.
     # (Evaluated in `evaluate`, the plan: `(github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # && github.ref == 'refs/heads/main'`; an evaluate that did not succeed stages nothing either way.)
-    if: needs.evaluate.outputs.stage == 'true'
+    # SHADOW: auto-apply ACTIVATES a staged pin, whichever forge staged it -- the most dangerous write there is
+    # (github-return-plan 2026-10-30, 3.1; scripts/ci/ci-writes.sh, WriteGateSpec).
+    if: needs.evaluate.outputs.stage == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
     # STAGING WAITS FOR EVALUATION. While nothing activated on its own, staging was harmless
     # whatever a check said -- a copied closure nobody switches to is inert. It is no longer inert.
     needs: [ evaluate ]

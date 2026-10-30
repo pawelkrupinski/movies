@@ -20,6 +20,10 @@
 # Tested by scripts/ci/gh-release-test.sh against a stub `gh`.
 set -euo pipefail
 
+# SHADOW (scripts/ci/ci-writes.sh): no pre-release, asset or tag move from a github.com shadow run.
+. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh"
+ci_writes || { ci_writes_skipped "the ${1:-} pre-release"; exit 0; }
+
 tag="${1:?tag}"
 title="${2:?title}"
 notes="${3:?notes}"

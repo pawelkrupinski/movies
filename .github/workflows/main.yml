@@ -29,6 +29,7 @@ concurrency:
 # so every fallback below is exactly what this file did before -- which is what keeps going back to
 # GitHub a matter of pushing there, not of reverting anything.
 env:
+    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     IMAGE_REPO: ${{ vars.IMAGE_REPO || format('ghcr.io/{0}', github.repository_owner) }}
     REGISTRY_HOST: ${{ vars.REGISTRY_HOST || 'ghcr.io' }}
     REGISTRY_USER: ${{ vars.REGISTRY_USER || github.actor }}
@@ -292,7 +293,8 @@ jobs:
     # action runs here, so the split bought nothing but a second job hop on every push.
     publish-web:
         needs: [ci, gates]
-        if: needs.gates.outputs.web-changed == 'true'
+        # SHADOW: a registry tag Flux image automation follows is a DEPLOY (scripts/ci/ci-writes.sh, WriteGateSpec).
+        if: needs.gates.outputs.web-changed == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 10
 
@@ -428,6 +430,7 @@ jobs:
                   path: stage
 
             - uses: docker/login-action@v3
+              if: (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') # shadow builds without pushing (build-image.sh)
               with:
                   registry: ${{ env.REGISTRY_HOST }}
                   username: ${{ env.REGISTRY_USER }}
@@ -443,7 +446,8 @@ jobs:
 
     publish-worker:
         needs: [ci, gates, image-worker]
-        if: needs.gates.outputs.worker-changed == 'true'
+        # SHADOW: a registry tag Flux image automation follows is a DEPLOY (scripts/ci/ci-writes.sh, WriteGateSpec).
+        if: needs.gates.outputs.worker-changed == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
         timeout-minutes: 10
 
