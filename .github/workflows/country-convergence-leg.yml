@@ -414,8 +414,10 @@ jobs:
         # but a CI runner is a good deal slower than the machine these are timed on,
         # so the ceiling now sits well clear of the expected run rather than just
         # above it. A leg that approaches this is a signal to re-measure the shape,
-        # not to raise the number again.
-        timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
+        # not to raise the number again. A drift row's is its step's own ceiling plus setup (the step: 75 minutes, 140 when
+        # `drift-twice` replays each seed twice): under the order rows' 55 the step's bound never fired and a slow daily
+        # row was cancelled, no verdict.
+        timeout-minutes: ${{ startsWith(matrix.phase, 'takes-drift-') && (inputs.drift-twice && 150 || 85) || (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
             # see "Publish" below for why that, rather than an artifact. The replay row never
@@ -442,7 +444,7 @@ jobs:
             # `CEILING_LINE`, ci-build-times.rules). The same expression as the job's, which ci_timings_test.py holds it to.
             - name: Report the row's ceiling
               shell: bash
-              run: echo "ci-job-ceiling ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }} minutes"
+              run: echo "ci-job-ceiling ${{ startsWith(matrix.phase, 'takes-drift-') && (inputs.drift-twice && 150 || 85) || (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }} minutes"
             # Each row resolves the pinned pair here, once, and its suite and
             # any bisect it requests all replay that one (`steps.setup.outputs.hermetic-pair`)
             # even if the recorder pins a new pair while this row is running.
@@ -1023,7 +1025,7 @@ jobs:
             - name: Check that the incremental state ends where a whole resolve does
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
               shell: bash
-              timeout-minutes: 75
+              timeout-minutes: ${{ inputs.drift-twice && 140 || 75 }}
               env:
                   HEAP: ${{ inputs.heap }}
                   DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}

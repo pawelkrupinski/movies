@@ -232,6 +232,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   /** The separate `sample` job cost every hermetic leg a second checkout and
    *  convergence-setup (~1 minute) ahead of the full leg, and one more runner per country
    *  per push. */
+  /** A takes-drift row's job ceiling clears its drift step's own, once and replayed twice (`drift-twice`): under the
+   *  order rows' 55 minutes the step's 75 never fired, and a daily row replaying each seed twice was cancelled with no
+   *  verdict. */
+  it should "give a takes-drift row a job ceiling above its drift step's, replayed once or twice" in {
+    val job  = """startsWith\(matrix\.phase, 'takes-drift-'\) && \(inputs\.drift-twice && (\d+) \|\| (\d+)\)""".r
+      .findFirstMatchIn(RepoFile.block(leg, "convergence")).getOrElse(fail("no takes-drift job ceiling"))
+    val step = """timeout-minutes: \$\{\{ inputs\.drift-twice && (\d+) \|\| (\d+) \}\}""".r
+      .findFirstMatchIn(leg).getOrElse(fail("no drift step ceiling"))
+    Seq(1, 2).foreach(i => job.group(i).toInt should be >= step.group(i).toInt + 10)
+  }
+
   it should "hold no sample job, and no `needs:` edge for a row to wait on" in {
     legJobs shouldBe Seq("convergence")
     legDirectives should not include "needs:"
