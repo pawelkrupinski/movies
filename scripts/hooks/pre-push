@@ -834,6 +834,20 @@ if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-path
     done
     { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
 fi
+# THE SPLIT CHECK (.github/workflows/precommit-check.yml): the landing check's jobs share the selected checks and run at
+# once, so the page area's ~40 min no longer queues behind the rest under one 80-min cap (run 4025 ran out of it with
+# oldrefs, ios and identitydrift still to go). PREPUSH_ONLY="<checks>": this run runs only those of the selected checks;
+# PREPUSH_ELSEWHERE="<checks>": every selected check but those, a sibling job's. A check left to another job is said.
+split_out() { # <check> -> true when this run leaves it to another job
+    if [ -n "${PREPUSH_ONLY:-}" ]; then case " $PREPUSH_ONLY " in *" $1 "*) return 1 ;; *) return 0 ;; esac; fi
+    case " ${PREPUSH_ELSEWHERE:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+if [ -n "${PREPUSH_ONLY:-}${PREPUSH_ELSEWHERE:-}" ]; then
+    kept="" for_others=""
+    for c in $checks; do if split_out "$c"; then for_others+=" $c"; else kept+="$c"$'\n'; fi; done
+    [ -z "$for_others" ] || log "left to the landing check's other job(s):$for_others" >&2
+    checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
+fi
 [ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
 
 # ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────

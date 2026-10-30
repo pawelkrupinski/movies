@@ -20,7 +20,16 @@ permissions:
     contents: read
 
 jobs:
+    # THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the hook's selected checks shared
+    # between jobs that run at once. In one job they ran one after another: run 4025 (a 124-path batch) spent 7 min on
+    # scripttests, 8 on sbt, 13 on identity and 37 on page, and ran out of its 80 minutes with oldrefs, ios and
+    # identitydrift still to go. `page` runs the page area alone; `rest` every other selected check.
     check:
+        name: check (${{ matrix.share }})
+        strategy:
+            fail-fast: false
+            matrix:
+                share: [rest, page]
         runs-on: ubuntu-26.04
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
@@ -58,6 +67,7 @@ jobs:
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
+                  SHARE: ${{ matrix.share }}
               run: |
                   mkdir -p "$TMPDIR"
                   # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
@@ -68,12 +78,16 @@ jobs:
                   # laptop; every other check/<id> the change's own checks
                   mode=--checks-only
                   case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
+                  # the fast-only set is the sbt check alone: nothing for the page share
+                  [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
+                  if [ "$SHARE" = page ]; then export PREPUSH_ONLY=page; else export PREPUSH_ELSEWHERE=page; fi
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # The drift gate's commit rules over the change's commits, whatever paths it touched (scripts/ci/commit-rules-ci.sh):
             # the hook selects them by path; here no selection can leave them out.
             - name: The change's commits keep the drift gate's commit rules
+              if: matrix.share == 'rest'
               run: scripts/ci/commit-rules-ci.sh --base "$(git merge-base HEAD origin/main)"
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
             # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
@@ -100,7 +114,7 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: precommit-check-logs
+                  name: precommit-check-logs-${{ matrix.share }}
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
 

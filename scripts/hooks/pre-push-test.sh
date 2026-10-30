@@ -390,6 +390,13 @@ check "a failing identity set blocks the push, naming the check and the failure"
 code="$(area_push web/src/main/twirl/views/x.scala.html PREPUSH_SKIP="eslint lintspecs page")"
 check "PREPUSH_SKIP=page skips the page set, said out loud" "0 0 1" \
   "$code $(calls PageTest) $(grep -c 'page SKIPPED' "$testroot/area-out")"
+code="$(area_push web/src/main/assets/js/b.js PREPUSH_ELSEWHERE=page)"
+check "THE SPLIT CHECK: PREPUSH_ELSEWHERE=page leaves the page set to the other job, said, and runs the rest" "0 0 1 1" \
+  "$code $(calls PageTest) $(basic_ran) $(grep -c "left to the landing check's other job(s): page" "$testroot/area-out")"
+code="$(area_push web/src/main/assets/js/b.js PREPUSH_ONLY=page)"
+check "...and PREPUSH_ONLY=page runs the page set alone" "0 1 0" "$code $(calls PageTest) $(basic_ran)"
+code="$(area_push worker/src/main/scala/services/movies/B.scala PREPUSH_ONLY=page)"
+check "...which a push selecting no page check passes with nothing run" "0 0" "$code $(wc -l < "$AREA_CALLS" | tr -d ' ')"
 
 # ── THE IDENTITY DRIFT CHECK: a Fixes-Red push touching a drift path is judged on the red's drift rows, on CI ──────────────
 # A fake scripts/identity-drift-ci notes its arguments; DRIFT_RC is its exit.
