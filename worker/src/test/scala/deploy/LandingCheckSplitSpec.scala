@@ -9,13 +9,18 @@ import org.scalatest.matchers.should.Matchers
  * 4025 (a 124-path batch) ran out of it with three checks still to go after the page area's 37 minutes.
  */
 class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
-  private lazy val check = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))("check")
+  private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
 
-  "the landing check" should "run the page area in a job of its own, beside every other check" in {
-    check should include("share: [rest, page]")
-    check should include("fail-fast: false")
-    check should include("export PREPUSH_ONLY=page")
-    check should include("export PREPUSH_ELSEWHERE=page")
+  "the landing check" should "run the page area in a job of its own, with a cap of its own, after every other check" in {
+    jobs("check") should include("SHARE: rest")
+    jobs("check-page") should include("SHARE: page")
+    Seq("check", "check-page").foreach { job =>
+      jobs(job) should include("export PREPUSH_ONLY=page")
+      jobs(job) should include("export PREPUSH_ELSEWHERE=page")
+      jobs(job) should include("timeout --kill-after=60 80m scripts/hooks/pre-push")
+    }
+    // beside the rest on the check tier its WebKit rows starved and ran out of the 80 minutes (run 4059)
+    jobs("check-page") should include("needs: [ check ]")
   }
 
   "the pre-push hook" should "run only the checks its share names, and say which it leaves to the other jobs" in {
