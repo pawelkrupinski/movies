@@ -23,10 +23,10 @@ object ScriptTests {
   /** The runner over everything, as a `run:` line: no filter, no tag, at most a pool size or a timeout. */
   private val FullRun = """.*(^|\s)scripts/run-script-tests(\s+--(jobs|timeout)\s+\d+)*\s*""".r
 
-  /** ci.yml runs the runner's full, untagged set. */
+  /** tool-self-tests.yml runs the runner's full, untagged set (off the gate since 2026-10-30; ci.yml did before). */
   lazy val ciRunsAll: Boolean =
-    RepoFile.runSteps(RepoFile.read(".github/workflows/ci.yml")).exists(_.script.linesIterator.exists(FullRun.matches))
+    RepoFile.runSteps(RepoFile.read(".github/workflows/tool-self-tests.yml")).exists(_.script.linesIterator.exists(FullRun.matches))
 
-  /** CI runs `path` through the runner: discovered, untagged, and ci.yml runs the full set. */
+  /** CI runs `path` through the runner: discovered, untagged, and tool-self-tests.yml runs the full set. */
   def runInCi(path: String): Boolean = ciRunsAll && all.exists(test => test.path == path && test.tag.isEmpty)
 }

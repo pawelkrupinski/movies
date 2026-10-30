@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
  * guards nothing: the roster generators' and the convergence findings parser's sat unrun until this spec.
  *
  * Under the script roots a test is found by its NAME — `<tool>-test.sh` or `<tool>_test.py` — by
- * scripts/run-script-tests, which ci.yml runs whole: so each such file must be one the runner lists, and
+ * scripts/run-script-tests, which tool-self-tests.yml runs whole (off the gate; ci.yml did until 2026-10-30): so each such file must be one the runner lists, and
  * no test may hide under another scheme (`test_*.py`, `*-spec.sh`) it would miss. A test tagged
  * `# script-test: <tag> <why>` leaves the default run and says why; unless `manual` (it needs what no CI
  * job has, or tests nothing), some workflow runs it by name where its toolchain is. The `data/` roster
@@ -62,7 +62,7 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     named(OffScheme, RunnerRoots).filterNot(Harness) shouldBe empty
   }
 
-  "ci.yml" should "run every untagged self-test through the runner" in {
+  "tool-self-tests.yml" should "run every untagged self-test through the runner" in {
     ScriptTests.ciRunsAll shouldBe true
   }
 

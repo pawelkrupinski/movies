@@ -29,7 +29,7 @@ class ScriptSelfTestsWiredIntegrationSpec extends AnyFlatSpec with Matchers {
 
   "every self-test a workflow spec leans on" should "be run by CI's script-test runner" in {
     val notRun = Wired.collect { case (path, why) if !ScriptTests.runInCi(path) => s"$path ($why)" }
-    withClue("CI's runner (scripts/run-script-tests, run in full by ci.yml) does not run:\n" + notRun.mkString("\n") + "\n") {
+    withClue("CI's runner (scripts/run-script-tests, run in full by tool-self-tests.yml) does not run:\n" + notRun.mkString("\n") + "\n") {
       notRun shouldBe empty
     }
   }
