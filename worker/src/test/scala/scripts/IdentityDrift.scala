@@ -432,7 +432,10 @@ object IdentityDrift {
       val pending = r.decisions.iterator.filter(d => stage.outcomeOf(d).isInstanceOf[Outcome.Pending]).flatMap(_.members).toSet
       lastPending = pending
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
-        key => answered || inputsMoved(clusters.get(key), now.get(key), scraped))
+        key => answered || inputsMoved(clusters.get(key), now.get(key), scraped) ||
+          // a title's venues moved: what reads the title across the corpus (the stage's venues.current fill) read new input
+          held.get(key).exists(listing => movedTitles(ListingRetention.titleOf(listing, reads.normalizer))))
+      movedTitles = Set.empty
       clusters = now
       events = Vector.empty
       System.err.println(f"[identity-drift] seed $seed projection $projections: ${held.size} listings, " +
@@ -441,8 +444,27 @@ object IdentityDrift {
       r
     }
     def boot(listings: Seq[Listing]): Unit = { event("boot"); held = listings.map(l => l.key -> l).toMap; model.restore(listings) }
-    def scraped(listings: Seq[Listing]): Unit = { event("scrape"); held ++= listings.map(l => l.key -> l); model.batch(seen = listings) }
-    def gone(keys: Seq[ListingKey]): Unit = { event("gone"); held --= keys; model.batch(gone = keys) }
+    /** The listings that left whose facts are kept while a present listing bills their title ([[ListingRetention]]). */
+    val retained = scala.collection.mutable.Set.empty[ListingKey]
+    /** The titles whose listings arrived, came back or left since the last projection. */
+    private var movedTitles = Set.empty[String]
+    private def moved(listings: Iterable[Listing]): Unit = movedTitles ++= listings.map(ListingRetention.titleOf(_, reads.normalizer))
+    // a listing back replaces what was kept of it: its current data wins
+    def scraped(listings: Seq[Listing]): Unit = {
+      event("scrape"); moved(listings); retained --= listings.map(_.key); held ++= listings.map(l => l.key -> l); model.batch(seen = listings)
+    }
+    // a listing leaving loses its showings; its facts stay while a present listing bills its title (ListingRetention), as
+    // the worker's drain keeps them
+    def gone(keys: Seq[ListingKey]): Unit = {
+      event("gone")
+      val leaving = keys.flatMap(held.get)
+      moved(leaving)
+      held --= keys; retained --= keys
+      val left = ListingRetention.leave(leaving, held.values.filterNot(l => retained(l.key)), retained.toSeq.flatMap(held.get), reads.normalizer)
+      held --= left.dropped; retained --= left.dropped
+      held ++= left.kept.map(l => l.key -> l); retained ++= left.kept.map(_.key)
+      model.batch(seen = left.kept, gone = left.dropped)
+    }
     def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = gate.release(fraction, rng)) }
     def answered(): Unit = { event("answer"); answers.answer(stage, releaseFamily) }
     /** A deploy: the model and the stage made anew from their stores; `outrule` — a deploy changing the rules. */
@@ -501,7 +523,8 @@ object IdentityDrift {
     val w = new Worker(reads, seed, gatePercent, clock, filedDocs)
     val checkpoints = Seq.newBuilder[(String, Resolution, Set[ListingKey])]
     def rescrape(checkpoint: String = ""): Resolution = {
-      val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key), checkpoint)
+      // a venue scraped again bills what it bills: never a listing it dropped, kept for its facts alone
+      val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key) && !w.retained(l.key)); w.scraped(again); w.project(again.map(_.key), checkpoint)
     }
     w.boot(initial); w.project()
     w.filled(0.5, rng); w.project()

@@ -8,7 +8,3 @@
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.
 country	seed	venue	rawTitle	takes	firstSeen	owner	note
-de	1	CinemaxX Dammtor	Titans	tmdb:869152 -> none -> tmdb:869152	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
-de	1	CinemaxX Raschplatz	Titans	tmdb:869152 -> none -> tmdb:869152	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
-de	1	CinemaxX Regensburg	Titans	tmdb:869152 -> none -> tmdb:869152	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left
-de	2	Hasetor-Lichtspiele	Scott & Lila	tmdb:716004 -> none -> tmdb:716004	2026-10-30	flip-fixer	convergence #2685 (run 3991, a229501a7): back to a film it left

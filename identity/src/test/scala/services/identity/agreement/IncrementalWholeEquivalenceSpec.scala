@@ -257,6 +257,8 @@ object IncrementalWholeEquivalenceSpec {
     private val world    = new World(seed, of)
     private val rnd      = new Random(seed * 7919)
     private val held     = mutable.LinkedHashMap.empty[ListingKey, Listing]
+    /** The listings that left whose facts are kept ([[services.identity.ListingRetention]]). */
+    private val retained = mutable.Set.empty[ListingKey]
     private val pending  = mutable.Queue.from(rnd.shuffle(of.listings))
     private val asked    = mutable.Set.empty[CandidateQuery]
     private val recorded = mutable.Set.empty[Int]
@@ -314,11 +316,18 @@ object IncrementalWholeEquivalenceSpec {
       case 0 | 1 | 2 | 3 if pending.nonEmpty =>
         val batch = Seq.fill(1 + rnd.nextInt(6))(()).flatMap(_ => Option.when(pending.nonEmpty)(pending.dequeue()))
         batch.foreach(listing => held(listing.key) = listing)
+        retained --= batch.map(_.key)                                     // back: its current data replaces what was kept
         model.batch(seen = batch); s"seen ${batch.size}"
-      case 4 if held.nonEmpty =>
-        val gone = rnd.shuffle(held.keys.toSeq).take(1 + rnd.nextInt(3))
-        pending ++= gone.flatMap(held.remove)
-        model.batch(gone = gone); s"gone ${gone.size}"
+      case 4 if held.keys.exists(k => !retained(k)) =>
+        // a listing leaving: its showings dropped, its facts kept while a present listing bills its title (ListingRetention),
+        // as the worker's drain feeds the model
+        val gone    = rnd.shuffle(held.keys.filterNot(retained).toSeq).take(1 + rnd.nextInt(3))
+        val leaving = gone.flatMap(held.remove)
+        pending ++= leaving
+        val left = services.identity.ListingRetention.leave(leaving, held.values.filterNot(l => retained(l.key)), retained.toSeq.flatMap(held.get), normalizer)
+        left.dropped.foreach(held.remove); retained --= left.dropped
+        left.kept.foreach(l => held(l.key) = l); retained ++= left.kept.map(_.key)
+        model.batch(seen = left.kept, gone = left.dropped); s"gone ${gone.size}"
       case 5 | 6 if world.round < Final => nextRound()
       case 7                            => restart()
       case _                            => "tick"
@@ -331,7 +340,7 @@ object IncrementalWholeEquivalenceSpec {
 
     /** The rest of the history: every listing held, every round filed. */
     private def finish(): String = {
-      if (pending.nonEmpty) { val rest = pending.dequeueAll(_ => true); rest.foreach(l => held(l.key) = l); model.batch(seen = rest) }
+      if (pending.nonEmpty) { val rest = pending.dequeueAll(_ => true); rest.foreach(l => held(l.key) = l); retained --= rest.map(_.key); model.batch(seen = rest) }
       while (world.round < Final) nextRound()
       "finish"
     }

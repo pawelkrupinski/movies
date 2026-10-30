@@ -111,6 +111,32 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     again.drain() shouldBe None                                                           // nothing queued, nothing to do
   }
 
+  // The owner's lifetime of identity facts (2026-10-30, ListingRetention): "Drop showings, keep movie details from all
+  // cinemas data until there are no showtimes in any cinema in the country", "and update the details when it comes back".
+  it should "keep a leaving listing's facts while another venue bills its title, update them when it comes back, and drop them with the last" in {
+    val world   = new World
+    val service = world.service()
+    service.takeUp()
+    def held(cinema: Cinema) = service.peek(10.seconds).get.resolution.decisions.flatMap(_.listings).filter(_.venue == cinema.displayName)
+    def filmOf(cinema: Cinema) = service.peek(10.seconds).get.resolution.decisions.find(_.listings.exists(_.venue == cinema.displayName)).flatMap(_.film)
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    world.scrape(service, Helios, Seq(movie(Helios, "Lalka")))
+    service.drain()
+    filmOf(Helios) shouldBe Some(2)                                              // the dated listing's 2025 film
+    world.scrape(service, Multikino, Nil)                                        // Multikino's run ends; Helios bills it still
+    service.drain()
+    held(Multikino) should not be empty                                          // its facts kept, its showings dropped
+    filmOf(Helios) shouldBe Some(2)
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))  // back, its details changed
+    service.drain()
+    filmOf(Multikino) shouldBe Some(1)                                           // the current data wins, never the kept copy
+    world.scrape(service, Multikino, Nil)
+    world.scrape(service, Helios, Nil)                                           // no venue bills it: every fact goes
+    service.drain()
+    held(Multikino) shouldBe empty
+    held(Helios) shouldBe empty
+  }
+
   it should "forget, in the reads index, the questions of a film no venue lists any more" in {
     val world   = new World
     val service = world.service()

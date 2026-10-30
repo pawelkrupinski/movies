@@ -230,8 +230,11 @@ final class IdentityModelService(
     Option.when(scraped.nonEmpty || changes.nonEmpty || released.nonEmpty) {
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
-      val seen    = admitted.flatMap(_._2) ++ released
-      val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
+      val scrapedSeen = admitted.flatMap(_._2) ++ released
+      val leaving     = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
+      // a listing leaving loses its showings, its facts kept while a present listing of the country bills its title; one
+      // back replaces what was kept of it (ListingRetention, the owner's lifetime of identity facts)
+      val (seen, gone) = retaining(engine, scrapedSeen, leaving)
       kept(engine, seen, gone)
       engine.batch(seen, gone, reads.changedBy(changes))
       val batch = ModelBatch(scraped.size, changes.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
@@ -239,6 +242,35 @@ final class IdentityModelService(
       metrics.batch(batch)
       batched(batch)
       batch
+    }
+  }
+
+  /** The listings left kept for their facts alone ([[ListingRetention]]): no venue bills them now. Lost on a restart,
+   *  whose take-up holds them as billed until their venue's next scrape leaves them again. */
+  private val retained = java.util.concurrent.ConcurrentHashMap.newKeySet[services.movies.ListingKey]()
+  /** Each held listing's title as [[ListingRetention]] reads it, by the listing object it was read off. */
+  private val titles = new java.util.WeakHashMap[Listing, String]()
+  private def titleOf(listing: Listing): String = titles.synchronized {
+    Option(titles.get(listing)).getOrElse { val t = ListingRetention.titleOf(listing, normalizer); titles.put(listing, t); t }
+  }
+
+  /** `seen` and the keys `leaving` as the model is handed them under [[ListingRetention]]: a listing back is billed again,
+   *  one leaving whose title a present listing bills is kept (showings dropped) and seen so, and the rest go -- with every
+   *  listing kept before whose title no present listing bills any more. */
+  private def retaining(engine: IncrementalResolver, seen: Seq[Listing],
+                        leaving: Iterable[services.movies.ListingKey]): (Seq[Listing], Seq[services.movies.ListingKey]) = {
+    seen.foreach(listing => retained.remove(listing.key))
+    val going = leaving.toSet
+    if (going.isEmpty && retained.isEmpty) (seen, Nil)
+    else {
+      going.foreach(retained.remove)
+      val seenKeys = seen.map(_.key).toSet
+      val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)) ++ seen.iterator
+      val left     = ListingRetention.leave(going.toSeq.flatMap(engine.held), retained.asScala.toSeq.flatMap(engine.held),
+        present.map(titleOf).toSet, titleOf)
+      left.dropped.foreach(retained.remove)
+      left.kept.foreach(l => retained.add(l.key))
+      (seen ++ left.kept, left.dropped)
     }
   }
 

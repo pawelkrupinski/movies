@@ -213,3 +213,25 @@ Siostry and Hocus Pocus then diverged at every checkpoint after the deploy.
   change with inputs unchanged (TakeFlips).
 
 What is served is unchanged. The three rows are removed and their three slices committed (replaying clean on 12 seeds).
+
+## 2026-10-30: class D, the lifetime of a listing's identity facts (the owner's decision, identity design)
+
+The owner, 2026-10-30: "Drop showings, keep movie details from all cinemas data until there are no showtimes in any
+cinema in the country", and "update the details when it comes back".
+
+- **The rule (`ListingRetention`).** A listing that leaves loses its showings. Its identity facts stay in the model's
+  input while a present listing of the country bills its title (the model's `t:` key, read before any resolve). They go
+  once none does. A listing that comes back replaces what was kept of it, so the current data always wins.
+- **Where it applies.** The rule is data, applied where listings are fed to the model: the worker's drain
+  (`IdentityModelService`), the drift replay and the equivalence spec's histories. So a whole resolve of the inputs and
+  the incremental model read the same set.
+- **The replay.** A venue scraped again never bills a listing it dropped. A step that moved a title's listings is an
+  input change for every listing billing that title, because the stage's `venues.current` fill reads the title's venues.
+- **Effect.**
+  - DE Metropol's bare "Madoka" keeps Filmhaus's dated facts while Filmhaus is away.
+  - CinemaxX "Titans" keeps its fill.
+  - Hasetor's "Scott & Lila" keeps Filmmuseum München's linked page.
+  - All three slices replay clean, and "Scott & Lila" now has a committed slice.
+- **Tests.** IdentityModelServiceSpec covers a listing kept while another venue bills its title, updated when it comes
+  back with changed details, and dropped with the last.
+- **The baseline is empty:** the four class-D rows are removed, and the drift gate fails every flip again.
