@@ -89,7 +89,8 @@ object TakeFlips {
         .foldLeft(Vector.empty[String])((seen, film) => if (seen.lastOption.contains(film)) seen else seen :+ film)
       val back      = sequence.indices.exists(i => sequence(i) != NoFilm && sequence.indexOf(sequence(i)) < i)
       val films     = sequence.filter(_ != NoFilm).foldLeft(Vector.empty[String])((seen, film) => if (seen.lastOption.contains(film)) seen else seen :+ film)
-      val unchanged = takes.drop(1).filterNot(_.moved).map(_.step)
+      // a step served Pending is skipped (no film YET is no take): neither a take left nor a change with inputs unchanged
+      val unchanged = takes.drop(1).filterNot(t => t.moved || (t.served.film == NoFilm && t.served.pending)).map(_.step)
       Seq(
         Option.when(back)("back to a film it left"),
         Option.when(!back && films.size > 2)(s"moved between films ${films.size - 1} times"),

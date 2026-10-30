@@ -1,5 +1,6 @@
 package services.identity.agreement
 
+import scala.util.chaining.scalaUtilChainingOps
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, Dependency, DetailFacts, Hit, IdentityCalibration, IdentityLookups,
   IdentityMeasures, Listing, ListingShape, Memo, PosterAnswers, PosterEvidence, PosterHash, Question, Resolution, ResolverDecision, StableNames,
   StoredFamily, WaitingOn}
@@ -137,7 +138,15 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   def outcomeOf(decision: ResolverDecision): services.identity.Outcome = decision.outcome match {
     case taken: services.identity.Outcome.Taken => taken
     case model =>
-      val stage = waitingOn(decision).questions
+      // every question its verdict and correction still lack -- an attempted one too: the settle rule decides without an
+      // answer whose ask failed (`tried`), but a failure in its backoff is still pending, not absent (P1). Served as the
+      // settle rule serves it; typed as what it is. PL "Siostry (1972)", "Zemsta", UK "Hocus Pocus" (drift 4161): Agreed ->
+      // none, decided without a family answer whose ask had failed -> Agreed once it was filed
+      val stage = if (decision.members.isEmpty) Set.empty[Question] else {
+        val id = keyOf(decision)
+        waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
+          takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps)
+      }
       if (stage.isEmpty) model else services.identity.Outcome.Pending(decision.awaits ++ stage)
   }
 
@@ -288,6 +297,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  read at: a take's posters, families' questions and finds while the backfill hashes them — none kept once its
    *  evidence is all answered, nor once the take's listings move. */
   private[agreement] val correctionWaits = TrieMap.empty[String, AgreementStage.Waiting]
+  /** The clusters whose agreed take the last apply left pending ([[AgreementStage.Take.Pending]]: a venue poster not
+   *  hashed, an IMDb id not found in TMDB yet), with what it asked: the model's take is served meanwhile, typed Pending
+   *  ([[outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
+   *  posters of the candidates it read again, the model's no film served. */
+  private[agreement] val takeWaits = TrieMap.empty[String, AgreementStage.Waiting]
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
@@ -503,20 +517,23 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
           pass.seen += id
           pass.shapes += digest
           val verdict = verdictOf(decision, id, listings, digest, pass)
+          // what this cluster's take asks -- its posters, its finds -- kept apart, so a take pending on them names them
+          val asking = mutable.Set.empty[Question]
+          takeWaits -= id
           // the venue posters' distances to the cluster's candidates and to the film the families agree on
-          def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, pass.asked)
+          def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, asking)
           // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
           verdict.fold(decision) { v =>
             lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances)
             pieceOf(v, listings).fold(
-            v.agreed.fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken)(taken(decision, _, pass.asked, distances,
+            v.agreed.fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken)(taken(decision, _, asking, distances,
               film => synopsisAgainst(id, digest, listings, film))) match {
               // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
               // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
               case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
                 takeOf(AgreementStage.BroadcastTake, unagreed, pass).getOrElse(agreed)
               case AgreementStage.Take.Taken(agreed) => agreed
-              case AgreementStage.Take.Pending       => decision
+              case AgreementStage.Take.Pending       => takeWaits(id) = AgreementStage.Waiting(digest, asking.toSet); decision
               case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; fellThrough(unagreed, pass)
               // the venue's synopsis naming a namesake's description says why, where nothing else takes one
               case AgreementStage.Take.Refused(why)  =>
@@ -527,7 +544,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                 val fell = fellThrough(unagreed, pass)
                 v.refused.filter(_ => fell eq decision).fold(fell)(why => taking(decision)(decision.basis, why))
             })(line => taking(decision)(decision.basis, line))
-          }
+          }.tap(_ => pass.asked ++= asking)
       }
       if (now eq decision) decision else takenAsBefore(decision, now)
     }
@@ -563,6 +580,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     askedNow.filterInPlace(pass.shapes)
     (candidateFilms.keys.toSet -- pass.seen).foreach(candidateFilms.remove)   // a correction's candidates are read, never kept
     correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
+    takeWaits --= takeWaits.keySet.toSet -- pass.seen
     if (removed.nonEmpty || moved.nonEmpty) {
       stored.replace(removed, moved.toSeq)
       removed.foreach(unfile)

@@ -412,6 +412,8 @@ object IdentityDrift {
     def releaseFamily(id: String): Boolean = docs.held(id) && { docs.release(id); answers.store.noteFiled(id); true }
 
     /** One projection: the stage over the model's decisions now, every listing's take recorded ([[flips]]). */
+    /** The listings the last projection served Pending. */
+    var lastPending: Set[ListingKey] = Set.empty
     def project(republished: Iterable[ListingKey] = Nil, checkpoint: String = ""): Resolution = {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
@@ -428,6 +430,7 @@ object IdentityDrift {
       // the served take's outcome, typed (`AgreementStage.outcomeOf`): no film YET -- the model's or the stage's awaits
       // named -- is no take left (TakeFlips); never read off the explanation's prose
       val pending = r.decisions.iterator.filter(d => stage.outcomeOf(d).isInstanceOf[Outcome.Pending]).flatMap(_.members).toSet
+      lastPending = pending
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped))
       clusters = now
@@ -479,7 +482,8 @@ object IdentityDrift {
   val Leave = 0.03
 
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
-  final case class Replay(checkpoints: Seq[(String, Resolution)], flips: Seq[TakeFlips.Flip])
+  /** Each checkpoint's resolution with the listings its served take leaves Pending ([[Outcome.Pending]]), and the flips. */
+  final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip])
   def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, filedDocs: FiledDocs = Noted,
                /** At least one booted listing leaves and returns: a drift slice's few listings, where [[Leave]] would send
                 *  none away — and a sibling's run ending is what moved DE Werkstattkino's "CAMOUFLAGE" (#2473, ecedac9aa). */
@@ -495,7 +499,7 @@ object IdentityDrift {
     val leaving  = if (drawn.isEmpty && leaveOne && initial.nonEmpty) Seq(initial(rng.nextInt(initial.size))) else drawn
     def half     = rng.shuffle(venues).take(venues.size / 2).toSet
     val w = new Worker(reads, seed, gatePercent, clock, filedDocs)
-    val checkpoints = Seq.newBuilder[(String, Resolution)]
+    val checkpoints = Seq.newBuilder[(String, Resolution, Set[ListingKey])]
     def rescrape(checkpoint: String = ""): Resolution = {
       val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key)); w.scraped(again); w.project(again.map(_.key), checkpoint)
     }
@@ -512,12 +516,12 @@ object IdentityDrift {
     w.deploy(outrule = true); w.project()
     w.filled(0.5, rng); w.project()
     w.scraped(of(arrivals(2))); w.project()
-    checkpoints += "settled" -> w.settled()
+    checkpoints += { val r = w.settled(); ("settled", r, w.lastPending) }
     for (run <- 1 to 2) {
-      checkpoints += s"tick-$run" -> rescrape(s"tick-$run")
+      checkpoints += { val r = rescrape(s"tick-$run"); (s"tick-$run", r, w.lastPending) }
       w.deploy(outrule = run == 2)
-      checkpoints += s"deploy-$run" -> w.project(checkpoint = s"deploy-$run")
-      checkpoints += s"after-deploy-$run" -> rescrape(s"after-deploy-$run")
+      checkpoints += { val r = w.project(checkpoint = s"deploy-$run"); (s"deploy-$run", r, w.lastPending) }
+      checkpoints += { val r = rescrape(s"after-deploy-$run"); (s"after-deploy-$run", r, w.lastPending) }
     }
     Replay(checkpoints.result(), w.flips.flips)
   }
@@ -546,11 +550,12 @@ object IdentityDrift {
       val wholeReads = readsAt(wholeClock)
       val reference  = takesOf(whole(wholeReads, listings, wholeClock, WholeLookups.recorded(wholeReads), filedDocs = filedDocs))
       wholeTakes(seed, reference)
-      replay.checkpoints.flatMap { case (name, resolution) =>
+      replay.checkpoints.flatMap { case (name, resolution, pending) =>
         val now = takesOf(resolution)
         listings.map(_.key).flatMap { key =>
           val (a, b) = (reference.getOrElse(key, Take("none", "absent", "")), now.getOrElse(key, Take("none", "absent", "")))
-          Option.when(a.film != b.film)(Divergence(country.code, seed.toLong, name, key, a, b))
+          // an incremental take Pending -- no film YET, its awaits named -- is below every decided one (P1): no divergence
+          Option.when(a.film != b.film && !(b.film == TakeFlips.NoFilm && pending(key)))(Divergence(country.code, seed.toLong, name, key, a, b))
         }
       }
     }

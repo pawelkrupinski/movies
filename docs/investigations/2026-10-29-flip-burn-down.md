@@ -198,3 +198,18 @@ on the baseline:
 - PL "Siostry (1972)", PL "Zemsta", UK "Hocus Pocus": Agreed → none → Agreed. The stage drops an attempted question from
   what it waits on (the settle rule) and decides without it, then agrees once the answer lands. That is class B, for the
   plan's stage-outcome and budget-invariance steps.
+
+### 2026-10-30: class B in the stage (Siostry, Zemsta, Hocus Pocus): an agreed take pending, served as the model's
+
+The slices showed what the corpus hid. After a restart, the stage reads an agreed cluster's candidates again. It then
+needs those candidates' poster hashes, or an IMDb id found in TMDB, before the agreed take stands
+(`AgreementTakes.taken`: `Take.Pending`). Meanwhile it serves the model's no film, and nothing typed it as a wait.
+Siostry and Hocus Pocus then diverged at every checkpoint after the deploy.
+
+- **Step 4 (the stage emits Pending).** A take left pending keeps what it asked (`AgreementStage.takeWaits`), and
+  `outcomeOf` reads it. It also reads the verdict's own gaps, an attempted question included: a failure still in
+  backoff is pending, not absent (P1).
+- **The replay (P1).** An incremental take that is Pending at a checkpoint is no divergence. A step served Pending is no
+  change with inputs unchanged (TakeFlips).
+
+What is served is unchanged. The three rows are removed and their three slices committed (replaying clean on 12 seeds).

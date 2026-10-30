@@ -71,4 +71,10 @@ class TakeFlipsSpec extends AnyFlatSpec with Matchers {
     replay(("1 boot", Map(other -> own(1)), Set.empty), ("2 scrape", Map(stranger -> own(2), other -> own(1)), Set.empty),
       ("3 gone", Map(other -> own(1)), Set.empty), ("4 re-apply", Map(stranger -> own(2), other -> own(1)), Set.empty)).flips shouldBe empty
   }
+
+  "a take served Pending at a step none of its inputs moved" should "be no change: no film YET is no take" in {
+    replay(("1 boot", Map(stranger -> own(1429348)), Set.empty),
+      ("2 deploy", Map(stranger -> TakeFlips.Served("none", "BelowThreshold", pending = true)), Set.empty),
+      ("3 re-apply", Map(stranger -> own(1429348)), Set(stranger))).flips shouldBe empty
+  }
 }
