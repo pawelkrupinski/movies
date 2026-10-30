@@ -43,7 +43,7 @@ object TakeJudgements {
    *  judgement calling a film right overrules every venue's calling it wrong: PL Kino Iluzjon's "Lalka" is Has' 1968 film,
    *  the bare "Lalka" everywhere else Kawalski's 2026 one. */
   def decide(ids: Set[String], covering: Seq[Judgement]): Option[Boolean] = {
-    val rightHere = covering.filter(j => j.venue != "*" && j.right).map(_.film).toSet
+    val rightHere = rightAtTheVenue(covering)
     val about     = covering.filterNot(j => j.venue == "*" && !j.right && rightHere(j.film))
     val databases = ids.map(_.takeWhile(_ != ':'))
     if (about.exists(j => !j.right && ids(j.film))) Some(false)
@@ -51,6 +51,9 @@ object TakeJudgements {
     else if (about.exists(j => j.right && databases(j.film.takeWhile(_ != ':')))) Some(false)
     else None
   }
+
+  /** The films a venue's own judgement among `covering` calls right: they overrule every venue's calling them wrong. */
+  private def rightAtTheVenue(covering: Seq[Judgement]): Set[String] = covering.filter(j => j.venue != "*" && j.right).map(_.film).toSet
 
   /** The rows of the judgements file's lines that judge a film right or wrong. */
   def parse(lines: Iterator[String]): Seq[Judgement] =
@@ -62,16 +65,18 @@ object TakeJudgements {
   final class Index(judgements: Seq[Judgement]) {
     private val byBilling = judgements.groupBy(j => normalise(j.rawTitle))
     def size: Int = judgements.size
+    /** The judgements covering `rawTitle` at `venue`: its venue's and every venue's ("*"); `None` for a billing none judges. */
+    private def covering(venue: String, rawTitle: String): Option[Seq[Judgement]] =
+      byBilling.get(normalise(rawTitle)).map(_.filter(j => j.venue == "*" || j.venue == venue))
     /** The verdict on `rawTitle` at `venue` taken as a film known by `ids`. */
     def verdict(venue: String, rawTitle: String, ids: Set[String]): Option[Boolean] =
-      byBilling.get(normalise(rawTitle)).flatMap(rows => decide(ids, rows.filter(j => j.venue == "*" || j.venue == venue)))
+      covering(venue, rawTitle).flatMap(decide(ids, _))
     /** The TMDB films a judgement calls wrong for `rawTitle` at `venue`: its venue's or every venue's, unless its venue's
      *  calls the film right ([[decide]]'s precedence). */
     def denied(venue: String, rawTitle: String): Set[Int] =
       if (judgements.isEmpty) Set.empty
-      else byBilling.get(normalise(rawTitle)).fold(Set.empty[Int]) { all =>
-        val rows      = all.filter(j => j.venue == "*" || j.venue == venue)
-        val rightHere = rows.filter(j => j.venue != "*" && j.right).map(_.film).toSet
+      else covering(venue, rawTitle).fold(Set.empty[Int]) { rows =>
+        val rightHere = rightAtTheVenue(rows)
         rows.iterator.filter(j => !j.right && !rightHere(j.film) && j.film.startsWith("tmdb:")).flatMap(_.film.stripPrefix("tmdb:").toIntOption).toSet
       }
   }
