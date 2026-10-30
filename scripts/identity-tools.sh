@@ -61,6 +61,27 @@ identity_locked() {
     exit "$rc" )
 }
 
+# identity_country_code <country name> -> its code (poland -> pl); identity_country_name <code> -> its name. Anything
+# else passes through.
+identity_country_code() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
+identity_country_name() { case "$1" in pl) echo poland ;; de) echo germany ;; uk) echo united-kingdom ;; es) echo spain ;; us) echo united-states ;; *) echo "$1" ;; esac; }
+
+# identity_main_ci_over <remote> <commit> <message prefix> -> a commit whose tree is <commit>'s with <remote>/main's
+# .github/ and scripts/ci/ laid over it (child of <commit>), for a commit whose own workflows predate a dispatch input.
+# <remote>/main must be fetched. Fails, saying nothing, when git does.
+identity_main_ci_over() {
+  local remote=$1 commit=$2 prefix=$3 index tree rc=0 out=""
+  index=$(mktemp) || return 1
+  GIT_INDEX_FILE=$index git read-tree "$commit" \
+    && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
+    && tree=$(GIT_INDEX_FILE=$index git write-tree) \
+    && out=$(git commit-tree "$tree" -p "$commit" -m "$prefix: $remote/main's CI over ${commit:0:9}") || rc=1
+  rm -f "$index"
+  [ "$rc" -eq 0 ] && echo "$out"
+}
+
 # identity_push_measure_branch <remote> <commit> <branch> -> <commit> pushed as refs/heads/<branch> (bounded), while no
 # other measure/ push of this machine is under way (identity_locked measure-push), git's output passed through. Fails
 # with MEASURE_PUSH_ERROR set to the remote's reason ("remote rejected (unable to migrate objects to permanent storage)").

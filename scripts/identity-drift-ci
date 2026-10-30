@@ -87,8 +87,6 @@ countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_coun
 remote=${IDENTITY_MEASURE_REMOTE:-}
 [ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
 
-code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
-name_of() { case "$1" in pl) echo poland ;; de) echo germany ;; uk) echo united-kingdom ;; es) echo spain ;; us) echo united-states ;; *) echo "$1" ;; esac; }
 csv_add() { [[ ",$1," == *",$2,"* ]] && echo "$1" || echo "${1:+$1,}$2"; } # <csv> <item>
 
 # drift_jobs <run id> -> "<name>\t<status>\t<conclusion>" for each takes-drift row of the run (none yet: nothing)
@@ -121,7 +119,7 @@ if [ -n "$for_red" ]; then
   while IFS= read -r row; do
     seed=${row#takes-drift-}; seed=${seed%% *}
     country=${row#*(}; country=${country%)}
-    seen_seeds=$(csv_add "$seen_seeds" "$seed"); countries=$(csv_add "$countries" "$(code_of "$country")")
+    seen_seeds=$(csv_add "$seen_seeds" "$seed"); countries=$(csv_add "$countries" "$(identity_country_code "$country")")
   done <<< "$red_rows"
   case $seen_seeds in 1) seeds=1 ;; 2) seeds=2 ;; *) seeds=both ;; esac
   say "run $for_red's red drift rows: $(tr '\n' ',' <<< "$red_rows" | sed 's/,$//') -> countries $countries, seeds $seeds"
@@ -150,7 +148,7 @@ expected_rows() {
   local cc s
   for cc in ${countries:-pl de uk es us}; do
     for s in 1 2; do
-      { [ "$seeds" = both ] || [ "$seeds" = "$s" ]; } && echo "takes-drift-$s ($(name_of "$cc"))"
+      { [ "$seeds" = both ] || [ "$seeds" = "$s" ]; } && echo "takes-drift-$s ($(identity_country_name "$cc"))"
     done
   done
 }
@@ -171,15 +169,7 @@ if [ -z "$run" ]; then
   leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml" 2> /dev/null) || leg=""
   if [[ "$leg" != *drift-only* ]]; then
     bounded 120 git fetch -q "$remote" main || die "could not fetch $remote main"
-    index=$(mktemp)
-    GIT_INDEX_FILE=$index git read-tree "$commit" \
-      && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
-      && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
-      && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
-      && tree=$(GIT_INDEX_FILE=$index git write-tree) \
-      && push=$(git commit-tree "$tree" -p "$commit" -m "drift: $remote/main's CI over ${commit:0:9}") \
-      || { rm -f "$index"; die "could not lay main's CI over $commit"; }
-    rm -f "$index"
+    push=$(identity_main_ci_over "$remote" "$commit" drift) || die "could not lay main's CI over $commit"
     say "${commit:0:9} predates the drift-only dispatch: checking it under $remote/main's .github/ and scripts/ci/ (${push:0:9})"
   fi
   branch="measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${commit:0:9}-drift-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
@@ -266,7 +256,7 @@ while IFS=$'\t' read -r name _ conclusion; do
   # --run: the countries a drift-only dispatch left out show as skipped rows, which judge nothing
   [ -n "$expected" ] || [ "$conclusion" != skipped ] || continue
   seed=${name#takes-drift-}; seed=${seed%% *}; country=${name#*(}; country=${country%)}
-  dir="$out/identity-drift-$(code_of "$country")-takes-drift-$seed"
+  dir="$out/identity-drift-$(identity_country_code "$country")-takes-drift-$seed"
   echo "$name: $conclusion -- $(cat "$dir/verdict.txt" 2> /dev/null || echo 'no verdict.txt')"
   [ ! -f "$dir/report.txt" ] || grep -E '^## |^  [0-9]+ listing|^      ' "$dir/report.txt" | head -40 | sed 's/^/    /'
   case $conclusion in success) ;; failure) red+=("$name") ;; *) unjudged+=("$name ($conclusion)") ;; esac

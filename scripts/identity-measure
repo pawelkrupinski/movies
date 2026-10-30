@@ -261,7 +261,6 @@ sweep_orphans() {
 if [ -n "$sweep" ]; then sweep_orphans; exit 0; fi
 
 # ── collect: one finished run's takes rows → the table ───────────────────────────────────────────
-code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
 
 # measure_download <run id> <cache dir> -> the run's identity-takes artifacts in <cache>/artifacts, downloaded once: run
 # under identity_locked, so two agents collecting one run never download into (or read) the same directory at once
@@ -293,7 +292,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
     while IFS=$'\t' read -r name conclusion; do
       [ -n "$name" ] || continue
       [ -n "$first" ] || echo ","; first=""
-      printf '"%s": "%s"' "$(code_of "${name% / takes}")" "${conclusion:-unfinished}"
+      printf '"%s": "%s"' "$(identity_country_code "${name% / takes}")" "${conclusion:-unfinished}"
     done <<< "$jobs"
     echo "}"; } > "$rows"
   identity_locked "measure-$id" measure_download "$id" "$cache" || die "run $id's takes could not be downloaded (above)"
@@ -476,7 +475,6 @@ find_measurement() {
 # which would pull it from under the run's tail. IDENTITY_MEASURE_EARLY_COLLECT=1|0 overrides (the self-test).
 early_collect=${IDENTITY_MEASURE_EARLY_COLLECT:-$run_drops_branch}
 [ "$early_collect" = 0 ] && early_collect=""
-name_of() { case "$1" in pl) echo poland ;; de) echo germany ;; uk) echo united-kingdom ;; es) echo spain ;; us) echo united-states ;; *) echo "$1" ;; esac; }
 takes_rows_done() { # <run id> <sha>: every measured country's takes row has ended
   local id=$1 sha=$2 rows url slug cc state
   rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '(.jobs // [])[] | [.name, .status] | @tsv') || return 1
@@ -488,7 +486,7 @@ takes_rows_done() { # <run id> <sha>: every measured country's takes row has end
     rows=$(sed -E 's/^takes \(([a-z-]+)\)/\1 \/ takes/' <<< "$rows")
   fi
   for cc in ${countries//,/ }; do
-    state=$(awk -F'\t' -v n="$(name_of "$cc") / takes" '$1 == n { print $2; exit }' <<< "$rows")
+    state=$(awk -F'\t' -v n="$(identity_country_name "$cc") / takes" '$1 == n { print $2; exit }' <<< "$rows")
     case $state in completed|success|failure|error|cancelled|skipped) ;; *) return 1 ;; esac
   done
 }
@@ -678,7 +676,7 @@ footprint_rule_path() {
   esac
   return 1
 }
-# The takes check's identity paths (its own list, read as scripts/identity-measure-test.sh reads it), and its code_of:
+# The takes check's identity paths (its own list, read as scripts/identity-measure-test.sh reads it), and its country code:
 # the key a side's trace is stored under.
 footprint_code() { # <sha>
   local paths
@@ -842,15 +840,7 @@ leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml") || leg="
 # (takes-countries: the leg that also knows --countries and --recording, 2026-10-21)
 # (takes-no-store: the leg that can resolve without the store, 2026-10-22, for --no-store)
 if [[ "$leg" != *takes-countries* ]] || { [ -n "$no_store" ] && [[ "$leg" != *takes-no-store* ]]; }; then
-  index=$(mktemp)
-  GIT_INDEX_FILE=$index git read-tree "$commit" \
-    && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
-    && tree=$(GIT_INDEX_FILE=$index git write-tree) \
-    && push=$(git commit-tree "$tree" -p "$commit" -m "measure: $remote/main's CI over ${commit:0:9}") \
-    || { rm -f "$index"; die "could not lay main's CI over $commit"; }
-  rm -f "$index"
+  push=$(identity_main_ci_over "$remote" "$commit" measure) || die "could not lay main's CI over $commit"
   say "$commit predates the takes-only dispatch: measuring it under $remote/main's .github/ and scripts/ci/ ($push)"
 fi
 

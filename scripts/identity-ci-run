@@ -61,15 +61,7 @@ commit=$(git rev-parse --verify -q "$head^{commit}") || die "no commit $head"
 push=$commit
 if ! git cat-file -e "$commit:.github/workflows/$workflow" 2> /dev/null; then
   bounded 120 git fetch -q "$remote" main || die "could not fetch $remote main"
-  index=$(mktemp)
-  GIT_INDEX_FILE=$index git read-tree "$commit" \
-    && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
-    && tree=$(GIT_INDEX_FILE=$index git write-tree) \
-    && push=$(git commit-tree "$tree" -p "$commit" -m "measure: $remote/main's CI over ${commit:0:9}") \
-    || { rm -f "$index"; die "could not lay main's CI over $commit"; }
-  rm -f "$index"
+  push=$(identity_main_ci_over "$remote" "$commit" measure) || die "could not lay main's CI over $commit"
   say "$commit predates $workflow: running it under $remote/main's .github/ and scripts/ci/ ($push)"
 fi
 

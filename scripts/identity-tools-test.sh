@@ -244,4 +244,21 @@ check "the identity cache defaults under the home, exported to what a tool start
 check "identity-tools.sh's cache is that one" "/h/.cache/kinowo-identity" \
   "$(env -u KINOWO_IDENTITY_CACHE HOME=/h bash -c '. "$1"; echo "$IDENTITY_CACHE"' _ "$REPO_ROOT/scripts/identity-tools.sh")"
 
+check "identity_country_code and identity_country_name are inverses over the five" "pl de uk us es|poland germany united-kingdom united-states spain" \
+  "$(bash -c '. "$1"; for n in poland germany united-kingdom united-states spain; do identity_country_code $n; done | paste -sd" " -; for c in pl de uk us es; do identity_country_name $c; done | paste -sd" " -' _ "$REPO_ROOT/scripts/identity-tools.sh" | paste -sd'|' -)"
+mkdir -p "$work/overlay" && (
+  cd "$work/overlay" && git init -q -b main && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m root \
+    && mkdir -p .github scripts/ci && echo old > .github/w.yml && echo old > scripts/ci/x.sh && echo own > code.txt \
+    && git add -A && git -c user.email=t@t -c user.name=t commit -qm old && git branch old \
+    && echo new > .github/w.yml && echo new > scripts/ci/y.sh && git rm -q scripts/ci/x.sh && echo main > code.txt \
+    && git add -A && git -c user.email=t@t -c user.name=t commit -qm new && git update-ref refs/remotes/r/main HEAD )
+over=$(cd "$work/overlay" && GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t \
+  bash -c '. "$1"; identity_main_ci_over r old drift' _ "$REPO_ROOT/scripts/identity-tools.sh")
+check "identity_main_ci_over: the commit's own code under main's .github/ and scripts/ci/, a child of the commit" \
+  "own new new|drift: r/main's CI over" \
+  "$(cd "$work/overlay" && echo "$(git show "$over:code.txt") $(git show "$over:.github/w.yml") $(git show "$over:scripts/ci/y.sh")|$(git log -1 --format=%s "$over" | cut -c1-23)")"
+check "...main's scripts/ci/ whole: a file main dropped is gone" "absent" \
+  "$(cd "$work/overlay" && git cat-file -e "$over:scripts/ci/x.sh" 2> /dev/null && echo present || echo absent)"
+check "...its parent the commit" "true" "$(cd "$work/overlay" && [ "$(git rev-parse "$over^")" = "$(git rev-parse old)" ] && echo true || echo false)"
+
 spec_summary
