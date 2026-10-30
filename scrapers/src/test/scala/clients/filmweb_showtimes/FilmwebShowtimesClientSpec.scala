@@ -10,10 +10,9 @@ import services.cinemas.pl.FilmwebShowtimesClient
 import java.time.{LocalDate, LocalDateTime}
 
 /** Replays a recorded Filmweb JSON-API capture (Poznań Multikino, cinemaId 633,
- *  date 2026-06-07) through the client. The capture is the single seances page
- *  for that date plus a `/title/{id}/info` per film on it; with `daysAhead = 0`
- *  and `today` pinned to the capture date the client requests exactly that one
- *  page, so the fixture set is bounded.
+ *  date 2026-06-07) through the client. The capture is that date's seances
+ *  (folded into the undated `/seances` response the client requests) plus a
+ *  `/title/{id}/info` per film on it, so the fixture set is bounded.
  *
  *  Asserts the JSON-API path the old `FilmwebClient.fetch()` used still
  *  resolves: films assembled per id, every row tagged with the injected cinema,
@@ -25,7 +24,7 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   private val captureDate = LocalDate.of(2026, 6, 7)
   private val http        = new FakeHttpFetch("filmweb-showtimes")
-  private val client      = new FilmwebShowtimesClient(http, 633, Multikino, daysAhead = 0, today = captureDate)
+  private val client      = new FilmwebShowtimesClient(http, 633, Multikino)
   // Every case only reads the parsed result, so the fixture is replayed once per suite.
   private lazy val fetched = client.fetch()
 
@@ -101,14 +100,14 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   "FilmwebShowtimesClient with a failing title/info page" should "keep the listing complete when the seance names the film itself" in {
     val (movies, reads) = services.cinemas.common.ListingReads.during(
-      new FilmwebShowtimesClient(withFailingInfo(titled = true), 633, Multikino, daysAhead = 0, today = captureDate).fetch())
+      new FilmwebShowtimesClient(withFailingInfo(titled = true), 633, Multikino).fetch())
     movies.map(_.movie.title) should contain ("Kosmiczny mecz")
     reads.complete shouldBe true
   }
 
   it should "leave the listing incomplete when the film it drops had no title of its own" in {
     val (movies, reads) = services.cinemas.common.ListingReads.during(
-      new FilmwebShowtimesClient(withFailingInfo(titled = false), 633, Multikino, daysAhead = 0, today = captureDate).fetch())
+      new FilmwebShowtimesClient(withFailingInfo(titled = false), 633, Multikino).fetch())
     movies.flatMap(_.externalIds.get("filmweb")) should not contain "582"
     reads.complete shouldBe false
   }
@@ -136,13 +135,13 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   it should "yield None (keeping the /cinema/-<id> fallback) when /info fails" in {
     // cinemaId 4242 has no recorded /info fixture → the fetch throws → tolerant None.
-    val noInfo = new FilmwebShowtimesClient(http, 4242, KinoTatry, daysAhead = 0, today = captureDate)
+    val noInfo = new FilmwebShowtimesClient(http, 4242, KinoTatry)
     noInfo.resolveSourceUrl() shouldBe None
   }
 
   "resolveAll" should "map each resolvable venue to its canonical link, dropping failures" in {
-    val ok   = new FilmwebShowtimesClient(http, 633, Multikino, daysAhead = 0, today = captureDate)
-    val fail = new FilmwebShowtimesClient(http, 4242, KinoTatry, daysAhead = 0, today = captureDate)
+    val ok   = new FilmwebShowtimesClient(http, 633, Multikino)
+    val fail = new FilmwebShowtimesClient(http, 4242, KinoTatry)
     val urls = FilmwebShowtimesClient.resolveAll(Seq(ok, fail))
     urls("Multikino Stary Browar") shouldBe "https://www.filmweb.pl/showtimes/Pozna%C5%84/Multikino+Stary+Browar-633"
     urls.keySet should not contain "Kino Tatry"

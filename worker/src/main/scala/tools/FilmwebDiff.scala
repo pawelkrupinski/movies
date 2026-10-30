@@ -211,7 +211,7 @@ object FilmwebDiff {
       if (i > 0) Thread.sleep(if (consecutiveFwFailures >= 3) 8000L else 1500L)
       val cinema = scraper.cinema
       emit(s"… ${cinema.displayName}")
-      val fwTry = Try(new FilmwebShowtimesClient(run.http, fwIdByCinema(cinema), cinema, run.daysAhead, run.today).fetch())
+      val fwTry = Try(new FilmwebShowtimesClient(run.http, fwIdByCinema(cinema), cinema).fetch())
       consecutiveFwFailures = if (fwTry.isFailure) consecutiveFwFailures + 1 else 0
       val r = resolutionByCinema(cinema)
       diffFor(cinema, r.filmwebId, r.source, ourResults(cinema), fwTry, run.now, run.windowEnd, run.titles)

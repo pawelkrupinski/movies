@@ -215,7 +215,10 @@ emit this list.
 517 green PL venues. Most are cultural centres whose next film really is days
 or weeks away (Bielański OK: 29 days; MCK Tkacz; Karolinka). The high-yield
 subset is **thin + a short span**: every screening falls inside the scrape's
-own short window (Filmweb's ~7 days), with the front of the window empty.
+own short window (Filmweb's 7 days, until 2026-10-30), with the front of the window empty.
+(Since 2026-10-30 the Filmweb client reads a venue's whole published programme, so that
+window no longer exists for Filmweb venues; the shape still applies to other short-window
+sources.)
 All 9 PL Filmweb venues in that shape that day had `/info` `"multiplex":
 "BILETYNA"`. For **7 of them**, biletyna sold screenings in the next 3 days
 that Filmweb didn't list: Polonez (50), Giewont (15), Wołomin (8), Wadowice (7),
@@ -369,7 +372,10 @@ client-wide jump.
   replays the 10-30 capture; it failed first with 0 showtimes. The 10-29 `UNCOVERED` timeout in its fallback doc was
   a one-off; the last 3 buckets fetched fine.
 
-**Heads-up, not fixed: the Filmweb client's 7-day window is a horizon cap.** `FilmwebShowtimesClient` walks
+**Fixed the same day (follow-up commit "FilmwebShowtimesClient reads a venue's whole programme in one
+request"): the Filmweb client's 7-day window was a horizon cap.** The undated call returns the whole programme with
+no cap: the "200" below was a coincidence. Multikino Targówek returned 231, Cinema City Bonarka 239, and 231 equalled
+the per-day lists summed through 2027-01-10. The original finding: `FilmwebShowtimesClient` walks
 `daysAhead = 6` dated `/seances?date=` pages, which `feedback_never_limit_scrape_horizon` forbids. A subagent found
 that **`/api/v1/cinema/<id>/seances` with no `date`** returns every upcoming seance in one call, each with its own
 `date` (1683: the 11-07 slot; Multikino 633: 200 entries to 12-20, apparently capped at 200, since `?page=2` repeats

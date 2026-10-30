@@ -25,7 +25,7 @@ class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "exclude a Filmweb-fed primary (falling Filmweb back to Filmweb is moot)" in {
-    val filmwebPrimary = new FilmwebShowtimesClient(noHttp, cinemaId = 1, cinema = Multikino, today = _root_.tools.SpecClock.PinnedDay)
+    val filmwebPrimary = new FilmwebShowtimesClient(noHttp, cinemaId = 1, cinema = Multikino)
     FallbackEligibility.eligible(filmwebPrimary) shouldBe false
   }
 

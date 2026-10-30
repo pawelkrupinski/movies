@@ -8,7 +8,6 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.ListingPages
 import services.cinemas.pl.FilmwebShowtimesClient
 
-import java.time.LocalDate
 import scala.util.{Failure, Success}
 
 /**
@@ -21,19 +20,17 @@ import scala.util.{Failure, Success}
  */
 class ListingOutageSpec extends AnyFlatSpec with Matchers {
 
-  private val today = LocalDate.of(2026, 9, 23)
-
-  // A source that HANGS is as down as one that 503s: every day's page times out,
-  // so no day reports anything at all — and "nothing reported" must not read as
+  // A source that HANGS is as down as one that 503s: the programme page times out,
+  // so it reports nothing at all — and "nothing reported" must not read as
   // "nothing failed".
-  "FilmwebShowtimesClient" should "fail the scrape when every day's page timed out, not report it empty" in {
+  "FilmwebShowtimesClient" should "fail the scrape when its programme page timed out, not report it empty" in {
     // Hangs until the test ends, so the abandoned page fetches don't outlive it.
     val release = new java.util.concurrent.CountDownLatch(1)
     val hanging = new tools.HttpFetch {
       def get(url: String): String = { release.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); "[]" }
       def post(url: String, body: String, contentType: String): String = get(url)
     }
-    val client = new FilmwebShowtimesClient(hanging, 2352, KinoDiana, daysAhead = 1, today = today,
+    val client = new FilmwebShowtimesClient(hanging, 2352, KinoDiana,
       pageTimeout = scala.concurrent.duration.DurationInt(50).millis)
     try a[java.util.concurrent.TimeoutException] should be thrownBy client.fetch()
     finally release.countDown()

@@ -10,9 +10,9 @@ import scala.collection.concurrent.TrieMap
 /**
  * Watches the Filmweb-sourced venues for the "Filmweb dropped this venue"
  * failure mode: a venue whose seances feed silently empties or starts 404ing
- * because Filmweb removed it. (`FilmwebShowtimesClient` looks 7 days ahead, so an
- * empty result means NO showings all week — a strong dropped signal, not a quiet
- * night.) After `threshold` consecutive empty-or-failing scrapes a single
+ * because Filmweb removed it. (`FilmwebShowtimesClient` reads the venue's whole
+ * published programme, so an empty result means NO showings at all — a strong
+ * dropped signal, not a quiet night.) After `threshold` consecutive empty-or-failing scrapes a single
  * Telegram alert fires so we migrate the venue to an own-site / platform
  * scraper; a later successful scrape clears it so a fresh drop can re-alert.
  *

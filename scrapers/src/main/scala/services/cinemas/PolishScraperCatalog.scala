@@ -60,7 +60,7 @@ final class PolishScraperCatalog(
   private def noveKino(slug: String, cinema: Cinema): NoveKinoClient =
     new NoveKinoClient(http, slug, cinema)
   private def filmweb(filmwebCinemaId: Int, cinema: Cinema): FilmwebShowtimesClient =
-    new FilmwebShowtimesClient(http, filmwebCinemaId, cinema, today = today)
+    new FilmwebShowtimesClient(http, filmwebCinemaId, cinema)
 
   // ── The four Polish ticketing platforms that host MANY venues ─────────────
   // One table per platform — each venue's page or portal URL (plus the odd

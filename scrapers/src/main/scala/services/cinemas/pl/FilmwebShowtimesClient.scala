@@ -28,12 +28,15 @@ import scala.util.{Failure, Try}
  * Two endpoints, same `api/v1` family the ratings [[services.enrichment.FilmwebClient]]
  * uses:
  *
- *   1. GET /api/v1/cinema/{cinemaId}/seances?date=YYYY-MM-DD
- *      → JSON array, one element per (film, hours) screening at that
- *        cinema/date. `film` is Filmweb's internal film id; `hours` is a
- *        space-separated list of `HH.MM`; `orderLinks` maps each `HH.MM` to a
- *        booking URL; optional `dubbing`/`subtitles`/`lektor` give the
- *        language version.
+ *   1. GET /api/v1/cinema/{cinemaId}/seances (no `date`)
+ *      → JSON array of the cinema's WHOLE published programme, one element
+ *        per (film, date, hours) screening. `film` is Filmweb's internal film
+ *        id; `date` its day; `hours` a space-separated list of `HH.MM`;
+ *        `orderLinks` maps each `HH.MM` to a booking URL; optional
+ *        `dubbing`/`subtitles`/`lektor` give the language version. (The same
+ *        call with `?date=` answers one day; walking seven of those was a
+ *        horizon cap — measured 2026-10-30, the undated list equals the
+ *        per-day ones summed, through every day a venue publishes.)
  *   2. GET /api/v1/title/{filmId}/info
  *      → { title, posterPath, year, ... }. Poster URL is
  *        `https://fwcdn.pl/fpo` + `posterPath.replace("$","3")`.
@@ -43,9 +46,9 @@ import scala.util.{Failure, Try}
  * id. One client instance serves one venue — adding a Filmweb-backed cinema is
  * a new instance with its (cinemaId, cinema) pair, no code change here (OCP).
  *
- * Fetches are tolerant: a day whose seances request fails or returns empty is
- * dropped, not fatal — Filmweb routinely 404s/empties future dates a venue
- * hasn't published yet. TMDB enriches synopsis/cast/director/runtime/genres
+ * The programme page failing — an error, an unparseable body, a hang past
+ * `pageTimeout` — fails the scrape, so a Filmweb that is down never reads as a
+ * quiet venue. TMDB enriches synopsis/cast/director/runtime/genres
  * downstream, so this client leaves those empty and only carries the title,
  * poster, booking links and format tokens Filmweb actually provides.
  */
@@ -53,9 +56,7 @@ class FilmwebShowtimesClient(
   http:     HttpFetch,
   cinemaId: Int,
   override val cinema: Cinema,
-  daysAhead: Int       = 6,
-  today:     => LocalDate,
-  // How long one day's seances page may take before it counts as failed.
+  // How long the seances page may take before it counts as failed.
   pageTimeout: FiniteDuration = 1.minute
 ) extends CinemaScraper {
 
@@ -84,22 +85,14 @@ class FilmwebShowtimesClient(
       .map(info => canonicalSourceUrl(info.name, info.city, cinemaId))
 
   def fetch(): Seq[CinemaMovie] = {
-    val dates = (0 to daysAhead).map(today.plusDays(_))
-
-    // One seances page per date, fetched in parallel and tolerantly: a failed
-    // or unparseable day yields no seances rather than killing the batch — but
-    // EVERY day failing means Filmweb is down, which fails the scrape.
-    val seancesByDate = ParallelDetailFetch.keyed(
-      "filmweb-seances", dates, pageTimeout, maxConcurrent = 1
-    )(d => seancesUrl(cinemaId, d)) { url =>
-      Try(HttpRead.page(http, url)).map(body => parseSeancesForUrl(body, url))
-    }
-    // A day missing from the map timed out — a failed page like any other, or a
-    // Filmweb that hangs on every day would read as a quiet venue.
-    val pages = dates.map(d => seancesByDate.getOrElse(d,
-      Failure(new TimeoutException(s"Filmweb seances for $d took longer than $pageTimeout"))))
-    ListingPages.requireAnyReached(pages)
-    val seances: Seq[RawSeance] = pages.flatMap(_.toOption).flatten
+    // The whole programme in one page. A page that fails, doesn't parse or hangs
+    // past `pageTimeout` (absent from the map) fails the scrape: a Filmweb that is
+    // down must not read as a quiet venue.
+    val url = seancesUrl(cinemaId)
+    val seances: Seq[RawSeance] =
+      ParallelDetailFetch("filmweb-seances", Seq(url), pageTimeout, maxConcurrent = 1) { url =>
+        Try(HttpRead.page(http, url)).map(parseSeances)
+      }.getOrElse(url, Failure(new TimeoutException(s"Filmweb seances took longer than $pageTimeout"))).get
 
     if (seances.isEmpty) return Seq.empty
 
@@ -144,12 +137,16 @@ class FilmwebShowtimesClient(
     }
   }
 
-  /** Parse one seances response. `date` is the calendar day this page was
-   *  requested for; each `hours` token combines with it to form the screening
-   *  `LocalDateTime`. Pure + public so the spec can feed fixture bytes. */
-  def parseSeances(json: String, date: LocalDate): Seq[RawSeance] =
+  /** Parse one seances response: each element's `date` and every one of its
+   *  `hours` tokens form a screening `LocalDateTime`; an element missing either
+   *  is dropped. A body that is not JSON throws — a failed read, not an empty
+   *  programme. Pure + public so the spec can feed fixture bytes. */
+  def parseSeances(json: String): Seq[RawSeance] =
     Json.parse(json).asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty).flatMap { js =>
-      (js \ "film").asOpt[Long].map { filmId =>
+      for {
+        filmId <- (js \ "film").asOpt[Long]
+        date   <- (js \ "date").asOpt[String].flatMap(d => Try(LocalDate.parse(d)).toOption)
+      } yield {
         val format        = formatTokens(js)
         val orderLinks    = (js \ "orderLinks").asOpt[Map[String, String]].getOrElse(Map.empty)
         val fallbackTitle = jsonText(js \ "title")
@@ -160,12 +157,6 @@ class FilmwebShowtimesClient(
         RawSeance(filmId, showtimes, fallbackTitle)
       }
     }
-
-  private def parseSeancesForUrl(json: String, url: String): Seq[RawSeance] =
-    // A day whose body doesn't parse THROWS, so it counts as a failed page for
-    // `ListingPages.requireAnyReached` — swallowed here it counted as a reached, quiet day,
-    // and a Filmweb answering every day with an error page read as a dormant venue.
-    dateOf(url).map(parseSeances(json, _)).getOrElse(Seq.empty)
 
   /** Parse one /title/{id}/info response into title + originalTitle + year +
    *  poster URL. Pure + public so the spec can feed fixture bytes. */
@@ -228,7 +219,6 @@ object FilmwebShowtimesClient extends play.api.Logging {
     } finally executionContext.shutdown()
   }
   private val HourPat     = raw"""^${ScraperParse.ClockPartsDotted}$$""".r
-  private val DateParameter   = """[?&]date=(\d{4}-\d{2}-\d{2})""".r
 
   /** Language-version flags Filmweb sets on a seance, mapped to the project's
    *  format-token vocabulary (mirrors `NoveKinoClient.FormatWord`). Only the
@@ -239,8 +229,7 @@ object FilmwebShowtimesClient extends play.api.Logging {
     "lektor"    -> "LEK"
   )
 
-  def seancesUrl(cinemaId: Int, date: LocalDate): String =
-    s"$ApiBase/cinema/$cinemaId/seances?date=$date"
+  def seancesUrl(cinemaId: Int): String = s"$ApiBase/cinema/$cinemaId/seances"
 
   def titleInfoUrl(filmId: Long): String = s"$ApiBase/title/$filmId/info"
 
@@ -266,9 +255,6 @@ object FilmwebShowtimesClient extends play.api.Logging {
 
   private def hourToTime(token: String): Option[LocalTime] =
     HourPat.findFirstMatchIn(token).flatMap(ScraperParse.clockAt(_, 1))
-
-  private def dateOf(url: String): Option[LocalDate] =
-    DateParameter.findFirstMatchIn(url).flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)
 
   /** One screening row from the seances endpoint: the film id, the parsed
    *  showtimes (date + hour + booking link + format), and Filmweb's optional

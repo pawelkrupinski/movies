@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.FilmwebShowtimesClient
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDateTime
 
 /**
  * Kleczew's Kino Zachęta is the one Konin-catchment independent still scraped off Filmweb by
@@ -19,8 +19,7 @@ import java.time.{LocalDate, LocalDateTime}
 class KoninFilmwebShowtimesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http    = new FakeHttpFetch("filmweb-konin")
-  private val day     = LocalDate.of(2026, 6, 7)
-  private lazy val movies = new FilmwebShowtimesClient(http, 2405, KinoZacheta, daysAhead = 0, today = day).fetch()
+  private lazy val movies = new FilmwebShowtimesClient(http, 2405, KinoZacheta).fetch()
 
   "Kino Zachęta (Filmweb id 2405)" should "resolve to its own non-empty programme with a concrete, real title" in {
     movies.map(_.cinema).toSet shouldBe Set(KinoZacheta)

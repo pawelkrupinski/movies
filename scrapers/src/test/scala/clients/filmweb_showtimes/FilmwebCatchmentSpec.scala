@@ -145,7 +145,7 @@ class FilmwebCatchmentSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   venues.foreach { case (id, cinema, date) =>
     s"${cinema.displayName} (Filmweb id $id)" should "resolve to its own non-empty programme" in {
-      val client = new FilmwebShowtimesClient(http, id, cinema, daysAhead = 0, today = date)
+      val client = new FilmwebShowtimesClient(http, id, cinema)
       val movies = client.fetch()
 
       withClue(s"${cinema.displayName} returned no films for $date — wrong id or empty venue: ") {

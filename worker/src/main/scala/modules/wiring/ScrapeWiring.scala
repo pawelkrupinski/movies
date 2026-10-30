@@ -100,7 +100,7 @@ trait ScrapeWiring { self: WorkerWiring =>
 
   protected def filmwebFallbackFor(cinema: Cinema): Option[CinemaScraper] =
     filmwebFallbackIds.get(cinema).map(id =>
-      new FilmwebShowtimesClient(httpFetch, id, cinema, today = venueClock.todayInPoland))
+      new FilmwebShowtimesClient(httpFetch, id, cinema))
 
   lazy val filmwebFallbackStore: FallbackStore =
     new MongoFallbackStore(mongoConnection.database, stopwatch)
