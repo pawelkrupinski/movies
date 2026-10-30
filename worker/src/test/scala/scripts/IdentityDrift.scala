@@ -104,10 +104,10 @@ object IdentityDrift {
 
   /** One listing's take: its film (`tmdb:<id>`, `<source>:<id>` or `none`), the basis, and the decision's last line. */
   final case class Take(film: String, basis: String, why: String)
-  /** The listings a model's decisions take no film for YET ([[Outcome.Pending]]): what [[TakeFlips]] does not count as a
+  /** The listings a model's decisions take no film for YET ([[TakeOutcome.Pending]]): what [[TakeFlips]] does not count as a
    *  take left. */
   def pendingOf(decisions: Iterable[ResolverDecision]): Set[ListingKey] =
-    decisions.iterator.filter(_.outcome.isInstanceOf[Outcome.Pending]).flatMap(_.members).toSet
+    decisions.iterator.filter(_.outcome.isInstanceOf[TakeOutcome.Pending]).flatMap(_.members).toSet
   def takesOf(resolution: Resolution): Map[ListingKey, Take] =
     resolution.decisions.iterator.flatMap { d =>
       val take = Take(filmOf(d), d.basis.toString, d.explanation.lastOption.getOrElse(""))
@@ -429,7 +429,7 @@ object IdentityDrift {
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
       // the served take's outcome, typed (`AgreementStage.outcomeOf`): no film YET -- the model's or the stage's awaits
       // named -- is no take left (TakeFlips); never read off the explanation's prose
-      val pending = r.decisions.iterator.filter(d => stage.outcomeOf(d).isInstanceOf[Outcome.Pending]).flatMap(_.members).toSet
+      val pending = r.decisions.iterator.filter(d => stage.outcomeOf(d).isInstanceOf[TakeOutcome.Pending]).flatMap(_.members).toSet
       lastPending = pending
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped) ||
@@ -504,7 +504,7 @@ object IdentityDrift {
   val Leave = 0.03
 
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
-  /** Each checkpoint's resolution with the listings its served take leaves Pending ([[Outcome.Pending]]), and the flips. */
+  /** Each checkpoint's resolution with the listings its served take leaves Pending ([[TakeOutcome.Pending]]), and the flips. */
   final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip])
   def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, filedDocs: FiledDocs = Noted,
                /** At least one booted listing leaves and returns: a drift slice's few listings, where [[Leave]] would send

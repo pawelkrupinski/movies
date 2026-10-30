@@ -37,11 +37,11 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
                                   candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
-  /** What it comes to, typed: a film taken (TMDB's or a fallback's), no film yet -- [[Outcome.Pending]], naming what it
-   *  awaits -- or no film, nothing pending ([[Outcome.NoFilm]]). */
-  def outcome: Outcome =
-    film.map(id => Outcome.Taken(s"tmdb:$id")).orElse(fallback.map(f => Outcome.Taken(s"${f.source}:${f.id}")))
-      .getOrElse(if (awaits.nonEmpty) Outcome.Pending(awaits) else Outcome.NoFilm(basis))
+  /** What it comes to, typed: a film taken (TMDB's or a fallback's), no film yet -- [[TakeOutcome.Pending]], naming what it
+   *  awaits -- or no film, nothing pending ([[TakeOutcome.NoFilm]]). */
+  def outcome: TakeOutcome =
+    film.map(id => TakeOutcome.Taken(s"tmdb:$id")).orElse(fallback.map(f => TakeOutcome.Taken(s"${f.source}:${f.id}")))
+      .getOrElse(if (awaits.nonEmpty) TakeOutcome.Pending(awaits) else TakeOutcome.NoFilm(basis))
   def tmdbId: Option[Int]            = film
   /** The verdict in one line, as every screen and script names it: its film (for a no-match, the fallback's `source:id`
    *  it takes, if any), its confidence and its basis. */
@@ -234,7 +234,7 @@ object DecisionTrace {
 /** A decision's outcome, typed (docs: identity-flips-structural-2026-10-30): a film taken, no film -- nothing pending, a
  *  verdict -- or no film YET, the questions it awaits named. What the flip check and the equivalence properties read,
  *  never the explanation's prose. */
-enum Outcome {
+enum TakeOutcome {
   case Taken(film: String)
   case NoFilm(basis: ResolverDecision.Basis)
   case Pending(awaits: Set[Question])

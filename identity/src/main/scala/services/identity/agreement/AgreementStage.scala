@@ -135,8 +135,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  the stage still waits on something ([[ResolverDecision.awaits]], [[waitingOn]]: a verdict's or a correction's
    *  questions unanswered, a fill's TMDB answers), NoFilm when nothing is. Read, never stored: the served decision stays
    *  the object the projection diffs by. */
-  def outcomeOf(decision: ResolverDecision): services.identity.Outcome = decision.outcome match {
-    case taken: services.identity.Outcome.Taken => taken
+  def outcomeOf(decision: ResolverDecision): services.identity.TakeOutcome = decision.outcome match {
+    case taken: services.identity.TakeOutcome.Taken => taken
     case model =>
       // every question its verdict and correction still lack -- an attempted one too: the settle rule decides without an
       // answer whose ask failed (`tried`), but a failure in its backoff is still pending, not absent (P1). Served as the
@@ -147,7 +147,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
           takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps)
       }
-      if (stage.isEmpty) model else services.identity.Outcome.Pending(decision.awaits ++ stage)
+      if (stage.isEmpty) model else services.identity.TakeOutcome.Pending(decision.awaits ++ stage)
   }
 
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it: of a model decision it was handed, or of what

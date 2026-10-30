@@ -25,9 +25,9 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
     val awaits = Set[Question](Question.Candidate(CandidateQuery.Title("Snow Leopard")), Question.FilmRecord(-181874839),
       Question.VenuePage(snowLeopard), Question.Family(agreement.VoterFamily.values.head, "title|Snow Leopard"))
     val waiting = ResolverDecision(Seq(snowLeopard), None, 0.5, ResolverDecision.Basis.BelowThreshold, Nil, awaits = awaits)()
-    waiting.outcome shouldBe Outcome.Pending(awaits)
+    waiting.outcome shouldBe TakeOutcome.Pending(awaits)
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(waiting)) shouldBe waiting
-    waiting.copy(awaits = Set.empty)(DecisionTrace.Empty).outcome shouldBe Outcome.NoFilm(ResolverDecision.Basis.BelowThreshold)
+    waiting.copy(awaits = Set.empty)(DecisionTrace.Empty).outcome shouldBe TakeOutcome.NoFilm(ResolverDecision.Basis.BelowThreshold)
   }
 
   it should "read back with each agreeing family's own id of its film" in {
