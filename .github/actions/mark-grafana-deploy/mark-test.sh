@@ -12,6 +12,9 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cat > "$work/curl" <<'STUB'
 #!/usr/bin/env bash
+# Linux refuses to exec a process with any one environment string over 128 KB (MAX_ARG_STRLEN; macOS has no such cap):
+# held here too, so a case that hands a child an oversized variable fails on every machine as it failed on CI (#2777).
+if [ -n "${MSG+x}" ] && [ "${#MSG}" -gt 131072 ]; then echo "MSG of ${#MSG} bytes: past Linux's per-string exec cap" >&2; exit 7; fi
 while [ $# -gt 0 ]; do [ "$1" = -d ] && printf '%s' "$2" > "$(dirname "$0")/sent"; shift; done
 printf '%s' "$STUB_CODE"
 STUB
@@ -19,8 +22,14 @@ chmod +x "$work/curl"
 
 mark() {  # mark <http code> <commit message>
   rm -f "$work/sent"
-  STUB_CODE="$1" MSG="$2" GRAFANA_URL=https://grafana.test GRAFANA_ANNOTATION_TOKEN=t TIER=worker SHA=0123456789abcdef \
-    PATH="$work:$PATH" bash "$REPO_ROOT/.github/actions/mark-grafana-deploy/mark.sh" > /dev/null 2>&1
+  # In a subshell with its inputs unexported: a message past the pipe's buffer is past what Linux lets one environment
+  # string carry into an exec too, so it is a shell variable of the script's, as the runner's own step shell holds it.
+  ( MSG="$2" GRAFANA_URL=https://grafana.test GRAFANA_ANNOTATION_TOKEN=t TIER=worker SHA=0123456789abcdef
+    export -n MSG GRAFANA_URL GRAFANA_ANNOTATION_TOKEN TIER SHA
+    # shellcheck disable=SC2030 # the stub first on PATH for this case's subshell alone
+    export STUB_CODE="$1" PATH="$work:$PATH"
+    # shellcheck source=.github/actions/mark-grafana-deploy/mark.sh
+    . "$REPO_ROOT/.github/actions/mark-grafana-deploy/mark.sh" ) > /dev/null 2>&1
   echo $?
 }
 subject() { jq -r .text "$work/sent" 2>/dev/null; }
@@ -33,6 +42,7 @@ check "a rejected marker never fails the job" "0" "$(mark 302 'Fix the thing')"
 long="$(printf 'Long subject\n'; head -c 300000 /dev/zero | tr '\0' x)"
 check "a commit message far past a pipe's buffer never fails the job" "0" "$(mark 200 "$long")"
 check "...and still marks its first line" "deploy worker 0123456 — Long subject (0123456789abcdef)" "$(subject)"
+# shellcheck disable=SC2031 # this case sets its own PATH, the stub first
 check "unset secrets skip the marker" "0" "$(STUB_CODE=200 MSG=x GRAFANA_URL='' GRAFANA_ANNOTATION_TOKEN='' TIER=w SHA=s PATH="$work:$PATH" bash "$REPO_ROOT/.github/actions/mark-grafana-deploy/mark.sh" >/dev/null 2>&1; echo $?)"
 
 spec_summary
