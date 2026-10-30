@@ -28,6 +28,15 @@ check "a composite action runs actionlint (its run blocks' shellcheck), the self
   "$(plan .github/actions/convergence-setup/action.yml)"
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
 check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
+# THE HEAVY ROWS: Main's integration-test and e2e rows, in the landing check only (PREPUSH_HEAVY_ROWS=1)
+heavy() { printf '%s\n' "$@" | PREPUSH_HEAVY_ROWS=1 "$REPO_ROOT/scripts/hooks/pre-push" --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ $//'; }
+check "THE HEAVY ROWS: none without PREPUSH_HEAVY_ROWS (the laptop's push)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
+check "...a worker change runs the rest integration row and the e2e rest row" "itrest e2e" "$(heavy worker/src/main/scala/services/movies/A.scala)"
+check "...an identity change the identity rows too" "itrest itidentity e2ecorpus e2e" "$(heavy identity/src/main/scala/services/identity/R.scala)"
+check "...an integration spec runs the integration rows" "itrest" "$(heavy worker/src/it/scala/services/XIntegrationSpec.scala | sed 's/ e2e//')"
+check "...the build runs every row" "itrest itidentity e2ecorpus e2e" "$(heavy build.sbt)"
+check "...a docs change none" "" "$(heavy docs/landing-process.md)"
+check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and the self-tests, its own among them" "scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
 check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "scripttests shellcheck sbt scripttests shellcheck sbt" \
   "$(plan scripts/hooks-path.sh) $(plan scripts/install-hooks.sh)"
@@ -390,6 +399,12 @@ check "a failing identity set blocks the push, naming the check and the failure"
 code="$(area_push web/src/main/twirl/views/x.scala.html PREPUSH_SKIP="eslint lintspecs page")"
 check "PREPUSH_SKIP=page skips the page set, said out loud" "0 0 1" \
   "$code $(calls PageTest) $(grep -c 'page SKIPPED' "$testroot/area-out")"
+code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest MONGODB_URI=mongodb://x)"
+check "THE HEAVY ROWS: the landing check's itrest job runs Main's itAll command, nothing else" "0 1 0" \
+  "$code $(calls '\[-batch\] \[itAll\]') $(basic_ran)"
+code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=itrest MONGODB_URI=)"
+check "...and blocks, naming the fix, without a MongoDB to run it against" "1 1" \
+  "$code $(grep -c 'no \$MONGODB_URI' "$testroot/area-out")"
 code="$(area_push web/src/main/assets/js/b.js PREPUSH_ELSEWHERE=page)"
 check "THE SPLIT CHECK: PREPUSH_ELSEWHERE=page leaves the page set to the other job, said, and runs the rest" "0 0 1 1" \
   "$code $(calls PageTest) $(basic_ran) $(grep -c "left to the landing check's other job(s): page" "$testroot/area-out")"

@@ -37,6 +37,12 @@
 #                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
 #                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
 #                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
+#   `itrest` `itidentity` `e2e` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
+#                 `heavy` job, one row a job): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
+#                 against the job's throwaway MongoDB, $MONGODB_URI), `e2e (rest)` (`sbt e2eRest`) and, with the identity row,
+#                 `e2e (corpus)` (`sbt e2eCorpus`), selected by the paths each row can move (heavy_rows). 8 of Main's 14
+#                 code reds in the five days to 2026-10-30 were in rows nothing ran before main (ci-failures-2026-10-30
+#                 §2.1). Never on the laptop: off CI the variable is unset and none is selected
 #   `basic`       NOT a check of its own: scripts/hooks/local-tests.txt's `basic` lines (all test configs compiled, the
 #                 IntegrationTest compiles, FilmScheduleEndToEnd + ReadModelSnapshot, the worker's DocCommentPlacement,
 #                 RegisteredCollectionLists and deploy specs) ride the `sbt` check's one sbt run, whenever it runs --
@@ -304,7 +310,9 @@ plan() {
     local identity=0 page=0 allowlists=0 driftguards=0
     local tools
     tools=" $(tool_files | tr '\n' ' ') "
+    local all_paths=""
     while IFS= read -r path; do
+        all_paths+="$path"$'\n'
         case "$path" in
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;
         esac
@@ -372,7 +380,31 @@ plan() {
     [ $page = 1 ] && echo page
     [ $oldrefs = 1 ] && echo oldrefs
     [ $ios = 1 ] && echo ios
+    [ "${PREPUSH_HEAVY_ROWS:-}" = 1 ] && [ $sbt = 1 ] && heavy_rows "$all_paths"
     return 0
+}
+
+# THE HEAVY ROWS a set of changed paths can move (the header's `itrest` `itidentity` `e2e`), one per line:
+#   itrest      any change the sbt check selects that reaches compiled code or what the specs read: every integration
+#               spec but the identity row's (build.sbt's IT_ROW split)
+#   itidentity  an identity path, the build, or the fixtures the hard-cluster convergence replays
+#   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them
+#   e2e         what ci.yml's own scope (scripts/ci/ci-row-scope.sh e2e) says the e2e rows can move
+heavy_rows() { # <paths, one per line>
+    local itrest=0 itidentity=0 path
+    while IFS= read -r path; do
+        case "$path" in
+            */src/main/*|*/src/it/*|*/src/test/*|*/src/fixtures/*|build.sbt|project/*|conf/*|test/resources/*) itrest=1 ;;
+        esac
+        is_identity_path "$path" && itidentity=1
+        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*) itidentity=1 ;; esac
+    done <<< "$1"
+    [ $itrest = 1 ] && echo itrest
+    [ $itidentity = 1 ] && echo itidentity
+    # e2e (corpus)'s identity-cutover replay: the identity row's paths (FilmScheduleEndToEnd also runs in `basic`)
+    [ $itidentity = 1 ] && echo e2ecorpus
+    # unreadable: every row runs, as ci.yml's scope job does
+    [ "$(printf '%s\n' "$1" | bash scripts/ci/ci-row-scope.sh e2e 2>/dev/null || echo true)" = false ] || echo e2e
 }
 
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
@@ -1176,6 +1208,21 @@ check_identitydrift() {
 }
 check_driftguards() { commit_rules driftguards; }
 check_page() { run_local_tests page; }
+
+# THE HEAVY ROWS (the header): Main's own commands, with Main's row filter, against the job's MongoDB.
+heavy_row() { # <check> <sbt command> [env...]
+    local check=$1 cmd=$2; shift 2
+    need_jvm "$check" || return 1
+    [ -n "${MONGODB_URI:-}" ] || [ "${check#e2e}" != "$check" ] \
+        || { warn "$check: no \$MONGODB_URI -- the integration specs need a MongoDB replica set (scripts/ci/start-mongo-replset.sh)"; return 1; }
+    env "$@" sbt -batch "$cmd" > "$tmp/$check.log" 2>&1 \
+        || { grep -E '\*\*\* FAILED|\[error\]|Failed tests:|TEST FAILED' "$tmp/$check.log" | head -80 >&2; warn "full log: $tmp/$check.log"; return 1; }
+    grep -E 'Tests: succeeded|All tests passed|Passed: Total' "$tmp/$check.log" | tail -3 || true
+}
+check_itrest() { heavy_row itrest itAll IT_ROW=rest; }
+check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }
+check_e2e() { heavy_row e2e e2eRest; }
+check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }
 
 # The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an
 # incremental compile in the floor's cached tree, minutes only the first time a machine lays it out.

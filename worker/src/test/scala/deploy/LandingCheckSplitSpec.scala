@@ -20,7 +20,32 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
       jobs(job) should include("timeout --kill-after=60 80m scripts/hooks/pre-push")
     }
     // beside the rest on the check tier its WebKit rows starved and ran out of the 80 minutes (run 4059)
-    jobs("check-page") should include("needs: [ check ]")
+    jobs("check-page") should include("needs: [ check, heavy ]")
+  }
+
+  /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
+   *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them. */
+  "the landing check" should "run every heavy row the change can move, each in a job of its own" in {
+    val jobs  = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
+    val heavy = jobs("heavy")
+    jobs("plan") should include("PREPUSH_HEAVY_ROWS=1 scripts/hooks/pre-push --plan")
+    heavy should include("share: ${{ fromJSON(needs.plan.outputs.heavy) }}")
+    heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$SHARE\"")
+    heavy should include("scripts/ci/start-mongo-replset.sh")
+    heavy should include("runs-on: ubuntu-24.04")
+  }
+
+  "the heavy rows" should "run Main's own commands" in {
+    val hook = RepoFile.read("scripts/hooks/pre-push")
+    hook should include("check_itrest() { heavy_row itrest itAll IT_ROW=rest; }")
+    hook should include("check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }")
+    hook should include("check_e2e() { heavy_row e2e e2eRest; }")
+    hook should include("check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }")
+    val ci = RepoFile.read(".github/workflows/ci.yml")
+    ci should include("run: sbt itAll")
+    ci should include("cmd: e2eRest")
+    ci should include("cmd: e2eCorpus")
+    RepoFile.commandAlias("itAll") should not be empty
   }
 
   "the pre-push hook" should "run only the checks its share names, and say which it leaves to the other jobs" in {

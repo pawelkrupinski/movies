@@ -20,6 +20,31 @@ permissions:
     contents: read
 
 jobs:
+    # WHICH OF MAIN'S HEAVY ROWS THE CHANGE CAN MOVE (scripts/hooks/pre-push --plan with PREPUSH_HEAVY_ROWS=1: `itrest`,
+    # `itidentity`, `e2e`, `e2ecorpus`), as a JSON list for the `heavy` job's matrix. The batch's fast check (check/fast-*) runs none.
+    plan:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 10
+        outputs:
+            heavy: ${{ steps.rows.outputs.heavy }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+            - name: Fetch main, the base the change sits on
+              run: git fetch --quiet origin main
+            - name: The heavy rows the change can move
+              id: rows
+              run: |
+                  rows=""
+                  case "$GITHUB_REF_NAME" in
+                      fast-*|check/fast-*) ;;
+                      *) rows="$(git diff --name-only "$(git merge-base HEAD origin/main)" HEAD \
+                              | PREPUSH_HEAVY_ROWS=1 scripts/hooks/pre-push --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' || true)" ;;
+                  esac
+                  echo "heavy rows: ${rows:-none}" | tr '\n' ' '
+                  echo "heavy=$(printf '%s' "$rows" | jq -R . | jq -sc 'map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+
     # THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the hook's selected checks shared
     # between two jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
     # 4025 (a 124-path batch) spent 7 min on scripttests, 8 on sbt, 13 on identity and 37 on page, and ran out of its 80
@@ -118,8 +143,10 @@ jobs:
     check-page:
         name: check (page)
         # AFTER the rest, not beside it: beside it on the check tier its WebKit rows starved (landing check run 4059:
-        # every WebKit test ~40 s, then timed out, past the 80 minutes) -- the reason it runs with a cap of its own
-        needs: [ check ]
+        # every WebKit test ~40 s, then timed out, past the 80 minutes) -- the reason it runs with a cap of its own -- and
+        # after the heavy rows, which run beside the rest
+        needs: [ check, heavy ]
+        if: ${{ !cancelled() && needs.check.result == 'success' && needs.heavy.result != 'failure' }}
         runs-on: ubuntu-26.04
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
@@ -203,9 +230,78 @@ jobs:
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
 
+    # MAIN'S HEAVY ROWS, BEFORE MAIN (ci-failures-2026-10-30, recommendation 3): 8 of Main's 14 code reds in five days
+    # were in integration-test or e2e rows that nothing ran before the push -- Main was the first place they ran. Each
+    # row the change can move (the plan above) runs here as Main runs it, through the same hook (PREPUSH_ONLY=<row>):
+    # `IT_ROW=<row> sbt itAll` against a throwaway MongoDB replica set (on 24.04: mongod 8.3 will not start on 26.04's
+    # kernel 7.0, MongoServerVersionParitySpec), `sbt e2eRest` and `sbt e2eCorpus`.
+    heavy:
+        name: heavy (${{ matrix.share }})
+        needs: [ plan ]
+        if: ${{ needs.plan.outputs.heavy != '[]' && needs.plan.outputs.heavy != '' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                share: ${{ fromJSON(needs.plan.outputs.heavy) }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+            - name: Fetch main, the base the change sits on
+              run: git fetch --quiet origin main
+            - name: Start MongoDB (single-node replica set, for change streams)
+              if: ${{ !startsWith(matrix.share, 'e2e') }}
+              run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+            # The it rows' build-cache family first (every module's main + test + it), restored only
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-restore-only: 'true'
+                  target-cache-restore-keys: |
+                      sbt-target-it-${{ runner.os }}-
+                      sbt-target-unit-worker-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+            # The deploy specs the rest row runs read the gitops manifests where Main's row checks them out
+            - name: Check out the gitops manifests (movies-gitops main, anonymously)
+              if: matrix.share == 'itrest'
+              run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
+            - name: Wait for MongoDB, started in the background above
+              if: ${{ !startsWith(matrix.share, 'e2e') }}
+              run: scripts/ci/in-background.sh wait mongo-start 240
+            - name: The change's heavy row
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+                  TMPDIR: ${{ runner.temp }}/hook
+                  SHARE: ${{ matrix.share }}
+              run: |
+                  mkdir -p "$TMPDIR"
+                  case "$SHARE" in e2e*) ;; *) export MONGODB_URI='mongodb://127.0.0.1:27017/kinowo?directConnection=true' MONGODB_DB=kinowo ;; esac
+                  rc=0
+                  PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY="$SHARE" timeout --kill-after=60 50m \
+                      scripts/hooks/pre-push --checks-only "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  [ "$rc" != 124 ] || echo "::error::the $SHARE row ran past 50 minutes and was stopped"
+                  exit "$rc"
+            - name: The failed row's lines
+              if: failure()
+              env:
+                  HOOK_TMP: ${{ runner.temp }}/hook
+              run: |
+                  find "$HOOK_TMP" -name '*.log' -print0 | while IFS= read -r -d '' log; do
+                      echo "::group::$log"
+                      grep -E -B2 -A8 '\*\*\* FAILED|\[error\]|::error::|^ *Error:|Error: |[0-9]+ failed' "$log" | head -120 || true
+                      echo "-- its last 60 lines:"
+                      tail -60 "$log"
+                      echo "::endgroup::"
+                  done
+
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:
-        needs: [ check, check-page ]
+        needs: [ plan, check, check-page, heavy ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
