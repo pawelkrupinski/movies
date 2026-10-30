@@ -111,8 +111,11 @@ object PerformanceBudgets {
    *  6.52 MB on 7f10382ca, the commit that first set it (at 5.62, which no run reproduces): six of its seven
    *  runs within 0.2%, the seventh the hourly whole read; 7.50 MB with C2 off (`-XX:TieredStopAtLevel=1`).
    *  5.02 MB (5.00 and 5.02, two runs) once the agreement stage stopped reading each of the 3,459 questions it
-   *  waits on every quiet tick (9.35 MB: 4.4 MB of `QuestionMemory` reads, read only once the memory marks). */
-  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.33))
+   *  waits on every quiet tick (9.35 MB: 4.4 MB of `QuestionMemory` reads, read only once the memory marks).
+   *  5.33 -> 3.98 MB on 2026-10-30 with agree-or-none (aed6950bb): Main's e2e row measured 3.98-4.13 on every run since
+   *  (#2617..#2647, 3.98 on run 3932, adopted), 5.21 / 5.85 before; locally 5.32 with its src/main reverted, 4.35 with
+   *  it. Still no venue slot built (`QuietProjectionSlotsBuilt`). */
+  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(3.98))
   /** The whole tick: 34.1 -> 36.1 MB, re-measured 2026-10-24 (35.92 / 36.71 / 36.07 locally on quiet-tick-alloc's
    *  3ef51dd60; Main's e2e row printed 35.01 on ff779d962 — CI's Linux JVM runs ~3% under a Mac's here). */
   val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(36.1))
