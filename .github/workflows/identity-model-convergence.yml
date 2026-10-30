@@ -380,9 +380,51 @@ jobs:
                   RUN_ID: ${{ github.run_id }}
               run: gh workflow run convergence-bisect.yml --ref main -f suite="$SUITE" -f run-id="$RUN_ID"
 
+    # NO FALSE GREEN (scripts/ci/convergence_reuse.py `complete`; convergence-failures 2026-10-29, G7): a run on main is
+    # green for THE GATE only when every `takes` and `takes-drift-<seed>` row of every country ran to a verdict, or the
+    # preflight proved a reuse (`reused-from`). Run 1747 went green with its takes rows skipped and split one 18-hour red
+    # episode in two. A row skipped, cancelled or missing fails this job -- and with it the run: no verdict is no green.
+    verdict-complete:
+        name: verdict complete
+        needs: [ preflight, leg ]
+        if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}
+        runs-on: ${{ needs.preflight.outputs.tier || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 1
+                  # cone mode (WorkflowScriptsRunnableSpec): convergence_reuse.py, and .github for the workflow it reads
+                  sparse-checkout: |
+                      scripts/ci
+                      .github
+            - name: Did every takes and takes-drift row decide?
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN_ID: ${{ github.run_id }}
+                  REUSED_FROM: ${{ needs.preflight.outputs.reused-from }}
+                  ORDER_PHASES: ${{ needs.preflight.outputs.order-phases }}
+                  INPUT_PROFILE: ${{ needs.preflight.outputs.profile }}
+                  INPUT_JVM_OPTIONS: ${{ needs.preflight.outputs.jvm-options }}
+                  INPUT_TAKES_BASE: ${{ needs.preflight.outputs.takes-base }}
+                  INPUT_TAKES_ONLY: ${{ needs.preflight.outputs.takes-only }}
+                  INPUT_DRIFT_ONLY: ${{ needs.preflight.outputs.drift-only }}
+                  INPUT_RECORDING: ${{ needs.preflight.outputs.recording }}
+                  INPUT_TAKES_COUNTRIES: ${{ needs.preflight.outputs.takes-countries }}
+                  INPUT_TAKES_NO_STORE: ${{ needs.preflight.outputs.takes-no-store }}
+                  INPUT_TAKES_SKIP: ${{ needs.preflight.outputs.takes-skip }}
+              run: |
+                  LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs > /dev/null
+                  python3 scripts/ci/convergence_reuse.py complete --run "$RUN_ID" --sha "$GITHUB_SHA" --reused-from "$REUSED_FROM" \
+                      --inputs "$RUNNER_TEMP/leg-inputs.json" --order-phases "$ORDER_PHASES"
+
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ preflight, leg, request-bisect ]
+        needs: [ preflight, leg, request-bisect, verdict-complete ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
