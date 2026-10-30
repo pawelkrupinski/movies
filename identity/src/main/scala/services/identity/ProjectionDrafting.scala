@@ -159,8 +159,9 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
       // The one exception, still carried: the title its first draft read, while it is the same film. It decides no
       // take, only what the IMDb id resolver searches for a film TMDB links no IMDb id for — and that id, kept with the
       // film, would move with it ("Samson i Dalila" (2026) is found as its first listing's "Opera-samson i dalila", not
-      // as its later listings' title). It is current-inputs-only once that resolver searches every title the film's
-      // listings carry (identity-no-drift.md, item 7).
+      // as its later listings' title). That resolver now falls back to every title the film's venues publish (after
+      // its other rungs), so a film whose take came late is still found (Main #2617); this title only decides what it
+      // asks FIRST. Dropping it for the current inputs alone is what is left of identity-no-drift.md, item 7.
       searchTitle   = base.searchTitle.orElse(Some(normalizer.apiQuery(normalizer.recase(anchor)))),
       // A synopsis kept after its venue stopped listing the film is no input any more: no writer files one since the
       // landing's slot drop went, and a projection from scratch would not hold it.

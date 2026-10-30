@@ -2,7 +2,7 @@ package services.enrichment
 
 import tools.SpecClock.given
 
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{ImdbIdMissing, InProcessEventBus}
@@ -261,6 +261,25 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     ladder.addSuppressed(spent)
     ImdbIdResolver.retryDelay(0, ladder, random = 0.0) shouldBe 14.hours
     ImdbIdResolver.retryDelay(0, ladder, random = 1.0) shouldBe 14.hours + 30.seconds // the jitter, so films part
+  }
+
+  /** The search title is one venue's title for the film, and which venue's depends on history: the first draft that
+   *  took the film keeps its title (`ProjectionDrafting`), so a film whose take arrived late -- TMDB down meanwhile --
+   *  searched as its other listings call it. PL "Samson i Dalila" (2026) is found only as "Opera-samson i dalila", and
+   *  lost its IMDb id after an outage (Main #2617). Every title the film's venues publish is searched before the film is
+   *  concluded unmatched; after every other rung, so a film the search title finds asks nothing more. */
+  it should "search the film's other venue titles when its search title finds nothing" in {
+    val listed = MovieRecord(tmdbId = Some(1024),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Mortal Kombat II"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), listed)),
+      normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val resolver = new ImdbIdResolver(cache, imdbAnswering(url =>
+      if (java.net.URLDecoder.decode(url, java.nio.charset.StandardCharsets.UTF_8).toLowerCase(java.util.Locale.ROOT).contains("kombat ii"))
+        loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+      else """{"d":[]}"""), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+
+    resolver.resolveSync("Mortal Kombat 2", Some(2026), "Mortal Kombat 2")
+    cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt17490712")
   }
 
   it should "no-op when the suggestion endpoint returns nothing usable" in {

@@ -232,7 +232,12 @@ class ImdbIdResolver(
         // foreign/regional long tail; corroborated by title+year so a fuzzy hit
         // can't bind a wrong film. Free, no API key.
         () => cinemeta.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year))
-      )*)
+      ) ++
+      // The film's other venue titles, last: the search title is ONE venue's, kept from the first draft that took the
+      // film (`ProjectionDrafting`), so which it is depends on history -- a take that arrived late, TMDB down meanwhile,
+      // searched as the film's other listings call it, and IMDb finds PL "Samson i Dalila" (2026) only as
+      // "Opera-samson i dalila" (Main #2617). After every rung, so a film the search title finds asks nothing more.
+      record.evidence.titles.toSeq.sorted.filterNot(_ == searchTitle).flatMap(title => yearSeq.map(y => () => cachedFindId(title, y)))*)
   }
 
 

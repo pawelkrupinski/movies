@@ -432,7 +432,8 @@ Each step lands with its specs. `IncrementalWholeEquivalenceSpec`, `LateInputEqu
 
 ## What still blocks retiring the checks
 
-1. Item 7's open parts (the first draft's `searchTitle`, the venue slot's prior-slot carry), and receipts of the question memory's outcomes for a
+1. Item 7's open parts (the first draft's `searchTitle` -- since Main #2617 the IMDb-id resolver falls back to every venue
+   title, so it only orders the first ask -- and the venue slot's prior-slot carry), and receipts of the question memory's outcomes for a
    settled family question (an attempt swept from the memory leaves a settled verdict standing; a whole resolve would
    wait).
 2. The deploy's backfill, its progress metric (`state="incomplete"`) reaching 0 in every country.
