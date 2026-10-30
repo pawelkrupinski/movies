@@ -763,19 +763,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         // apply none of its own inputs moved at, another cluster's ask having filed it (UK Rio's "Rocky Horror",
         // convergence #2473: the record of a hit Metacritic's search found)
         askedNow += digest
-        val deadline = clock.millis() + AgreementStage.AskNowWithin.toMillis
-        var asked    = Set.empty[Question]
-        var now      = first
-        var rounds   = 0
-        while (now.contains(Answer.Unknown) && !gaps.subsetOf(asked) && rounds < AgreementStage.InlineRounds && clock.millis() < deadline) {
-          val asking = gaps.toSet -- asked
-          asked ++= asking
-          rounds += 1
-          askNow(asking, scala.concurrent.duration.Duration(deadline - clock.millis(), java.util.concurrent.TimeUnit.MILLISECONDS))
-          gaps.clear(); reads.clear()
-          now = verdictsOf(listings, gaps, reads)
+        askedInline(first, gaps.toSet) { () => gaps.clear(); reads.clear(); verdictsOf(listings, gaps, reads) } { (now, asked) =>
+          if (now.contains(Answer.Unknown)) gaps.toSet -- asked else Set.empty
         }
-        now
       }
     }
     pass.asked ++= gaps
@@ -820,6 +810,26 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         verdict
       }
     }
+  }
+
+  /** The INLINE ASK ([[askNow]]) of a cluster or a take's correction met in a new shape: `first`, read, asks `firstAsking`
+   *  now, reads again, and asks what that read leads to (`asking`, given what was asked) — a round each, asking only what
+   *  no round before did, all rounds within [[AgreementStage.AskNowWithin]] and at most [[AgreementStage.InlineRounds]] of
+   *  them. What the last read came to; a question still open there is handed to the queue as every other is. */
+  private[agreement] def askedInline[A](first: A, firstAsking: Set[Question])(read: () => A)(asking: (A, Set[Question]) => Set[Question]): A = {
+    val deadline = clock.millis() + AgreementStage.AskNowWithin.toMillis
+    var asked    = Set.empty[Question]
+    var now      = first
+    var next     = firstAsking
+    var rounds   = 0
+    while (next.nonEmpty && rounds < AgreementStage.InlineRounds && clock.millis() < deadline) {
+      asked ++= next
+      rounds += 1
+      askNow(next, scala.concurrent.duration.Duration(deadline - clock.millis(), java.util.concurrent.TimeUnit.MILLISECONDS))
+      now  = read()
+      next = asking(now, asked)
+    }
+    now
   }
 
   /** Has the family answered `question` since — any answer, fresh? Read per waiting cluster, per tick: an answer filed

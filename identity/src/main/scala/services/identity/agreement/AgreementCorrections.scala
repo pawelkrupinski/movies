@@ -68,7 +68,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       def read() = { receipt.clear(); receipting(receipt)(correctionOf(decision, AgreementStage.Digested(key, listings, digest), pass.reading, version)) }
       val (correction, waits) = {
         val first  = read()
-        val asking = first._2.fold(Set.empty[Question])(_.filter { case question: Question.Family => !tried(question); case _ => false })
+        val asking = unaskedFamilies(first._2)
         if (asking.isEmpty || !newCorrection(digest)) first
         else {
           // a take of a newly met shape — a listing joined it, a scrape reshaped it: the families its correction waits on
@@ -81,19 +81,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
           // ([[AgreementStage.InlineRounds]]). One round left them on the queue: UK Chichester's "The Ties That Bind
           // Us" took 2008's film when its record was filed, its correction waiting on the wiki, IMDb, Rotten Tomatoes and
           // Metacritic records the first round's searches named, and was corrected rounds later (drift slice, seed 3)
-          val deadline = clock.millis() + AgreementStage.AskNowWithin.toMillis
-          var asked    = Set.empty[Question]
-          var now      = first
-          var next     = asking
-          var rounds   = 0
-          while (next.nonEmpty && rounds < AgreementStage.InlineRounds && clock.millis() < deadline) {
-            asked ++= next
-            rounds += 1
-            askNow(next, scala.concurrent.duration.Duration(deadline - clock.millis(), java.util.concurrent.TimeUnit.MILLISECONDS))
-            now  = read()
-            next = now._2.fold(Set.empty[Question])(_.filter { case question: Question.Family => !tried(question) && !asked(question); case _ => false })
-          }
-          now
+          askedInline(first, asking)(() => read())((now, asked) => unaskedFamilies(now._2).filterNot(asked))
         }
       }
       val verdict = StoredVerdict(key, digest, receipt.toMap, None, decidedUnder, correction = Some(correction))
@@ -118,6 +106,10 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       takenAsBefore(decision, taken)
     }
   }
+
+  /** The families' questions among what a correction waits on (`waits`) not attempted yet: what its inline ask asks. */
+  private def unaskedFamilies(waits: Option[Set[Question]]): Set[Question] =
+    waits.fold(Set.empty[Question])(_.filter { case question: Question.Family => !tried(question); case _ => false })
 
   /** `taken`, what the model's `decision` is taken as now — handed back as the object it was last taken as while the two
    *  are equal ([[takenAs]]). */
