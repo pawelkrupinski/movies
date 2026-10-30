@@ -1,5 +1,6 @@
 package deploy
 
+import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -11,7 +12,7 @@ import ShellCommands.Use
 
 /** The cases of [[WorkflowScriptsRunnableSpec]] that run a real git: the index through `git ls-files`, and the
  *  `git sparse-checkout set` its cone-mode rule rests on. */
-class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers {
+class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   import WorkflowScriptsRunnableSpec.*
 
@@ -73,7 +74,7 @@ class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers {
   // anything out, in the .git the runner's template made -- ci-runner's had no info/ on 2026-10-23 (Archive recording
   // #823). The default template makes info/exclude, so the scratch repository drops it to stand in for that one.
   "a sparse checkout" should "set up in cone mode in a repository with no .git/info" in {
-    val repo = new ScratchGitRepository()
+    val repo = new ScratchGitRepository(tempDirectory)
     val info = repo.root.resolve(".git/info")
     Files.deleteIfExists(info.resolve("exclude"))
     Files.deleteIfExists(info)
