@@ -281,5 +281,16 @@ class NoFalseGreen(unittest.TestCase):
         self.assertEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS, **{"takes-skip": "enforce"})), [])
 
 
+class DriftTwice(unittest.TestCase):
+    """G10: the daily run's determinism double-run is a leg input like the others, a boolean, false on every push's run."""
+
+    def test_it_defaults_false_and_reads_forgejos_string_boolean(self):
+        self.assertEqual(reuse.leg_inputs({})["drift-twice"], "false")
+        self.assertEqual(reuse.leg_inputs({"INPUT_DRIFT_TWICE": "true"})["drift-twice"], "true")
+
+    def test_a_double_run_is_still_mains_suite(self):
+        self.assertEqual(reuse.inputs_unlike_main(dict(MAIN_INPUTS, **{"drift-twice": "true"}), "both"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

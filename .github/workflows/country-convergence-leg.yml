@@ -320,6 +320,13 @@ on:
                 required: false
                 type: string
                 default: shadow
+            # THE DETERMINISM CHECK (identity-drift-check.sh's DRIFT_TWICE; convergence-daily.yml passes it): each
+            # takes-drift row replays its seed a second time and fails when the two runs' drift and flips TSVs differ.
+            drift-twice:
+                description: Each takes-drift row replays its seed twice and diffs the TSVs.
+                required: false
+                type: boolean
+                default: false
             # A complete RECORDING becomes the hermetic pair only when this is true; false still publishes its tree
             # under its run and marks it prod-latest (`convergence-publish`'s `pin`). Record scrape fixtures passes
             # false unless a dispatch asks, while prod-latest proves itself as a landing bar.
@@ -1020,6 +1027,7 @@ jobs:
               env:
                   HEAP: ${{ inputs.heap }}
                   DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}
+                  DRIFT_TWICE: ${{ inputs.drift-twice }}
               run: |
                   . scripts/ci/bounded-step.sh
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
