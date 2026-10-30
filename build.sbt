@@ -172,8 +172,12 @@ def rowSettings(variable: String, config: Configuration, rows: Seq[(String, Stri
 
 // `itAll` on one runner was CPU-bound (828 s of suites on 4 cores, 2026-10-15): `IT_ROW=identity` runs the hard-cluster
 // convergence, whose parallel boots fill a runner's cores; `IT_ROW=rest` every other integration spec.
+// The identity row also takes rest's two longest identity suites (2026-10-30, measure runs 4052/4053 on the 4-CPU
+// measure tier: rest held 873-2561 suite-seconds with IdentityCutover alone 127-364 s, identity 209-693 s in one suite).
 lazy val IdentityIntegrationSuites = Set(
-  "integration.HardClusterConvergenceIntegrationSpec")
+  "integration.HardClusterConvergenceIntegrationSpec",
+  "integration.IdentityCutoverIntegrationSpec",
+  "integration.IdentityQueryCoverageIntegrationSpec")
 lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -> IdentityIntegrationSuites))
 
 // The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split into
