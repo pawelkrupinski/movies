@@ -592,6 +592,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   /** What the apply came to, for [[metrics]]. */
   private[agreement] def report(decisions: Seq[ResolverDecision], pass: AgreementStage.Pass, started: tools.Stopwatch.Started): Unit = {
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
+    val byBasis   = decisions.groupMapReduce(_.basis)(_ => 1)(_ + _)
+    def taken(basis: ResolverDecision.Basis) = byBasis.getOrElse(basis, 0)
     val open      = mutable.Map.empty[VoterFamily, Int]
     var finds, postersOpen, catalogueOpen, undated = 0
     wantedNow.foreach {
@@ -606,12 +608,12 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       agreed = held.values.count(_.agreed.isDefined),
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
       open = open.toMap, finds = finds, resolves = pass.resolves, seconds = started.seconds,
-      takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = pass.posterVetoed, posters = postersOpen,
-      takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast), takenFilled = decisions.count(_.basis == ResolverDecision.Basis.Filled),
-      takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = catalogueOpen, undated = undated,
-      withdrawn = decisions.count(_.basis == ResolverDecision.Basis.Withdrawn), corrected = decisions.count(_.basis == ResolverDecision.Basis.Corrected),
+      takenPoster = taken(ResolverDecision.Basis.Poster), posterVetoed = pass.posterVetoed, posters = postersOpen,
+      takenBroadcast = taken(ResolverDecision.Basis.Broadcast), takenFilled = taken(ResolverDecision.Basis.Filled),
+      takenCatalogue = taken(ResolverDecision.Basis.Catalogue), catalogue = catalogueOpen, undated = undated,
+      withdrawn = taken(ResolverDecision.Basis.Withdrawn), corrected = taken(ResolverDecision.Basis.Corrected),
       correcting = pass.correcting.size, correctionPosters = pass.correctionPosters.size,
-      events = decisions.count(_.basis == ResolverDecision.Basis.Event),
+      events = taken(ResolverDecision.Basis.Event),
       incomplete = held.values.count(_.rules != decidedUnder), validated = pass.validated.read, drifted = pass.validated.drifted))
   }
 
@@ -694,7 +696,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         digestNow(read, listingIn(listings)).contains(recorded)
       })
       // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
-      if (clean && reread) pass.asked ++= kept.reads.keys.flatMap(staleOf)
+      def askStale(): Unit = pass.asked ++= kept.reads.keys.flatMap(staleOf)
+      if (clean && reread) askStale()
       if (clean && pass.validating()) {
         // the full validation's: read again whole, though the index calls it standing — a drift is decided again
         val checked = held.verified(id, kept, digestNow(_, listingIn(listings)))
@@ -702,8 +705,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         checked.drifted == 0
       } else clean || {
         val stands = held.stands(kept, digestNow(_, listingIn(listings)))
-        // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
-        if (stands) { held.check(id, digest, version); pass.asked ++= kept.reads.keys.flatMap(staleOf) }
+        if (stands) { held.check(id, digest, version); askStale() }
         stands
       }
     }
