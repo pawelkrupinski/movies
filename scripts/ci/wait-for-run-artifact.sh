@@ -8,13 +8,14 @@
 #
 # Exits 0 once the artifact is listed, 1 the moment the producing job finishes without it (failed,
 # cancelled or skipped: it will never come) or when the timeout passes. Needs GH_TOKEN with
-# `actions: read`, GITHUB_REPOSITORY and GITHUB_RUN_ID; POLL_SECONDS overrides the 10 s poll.
+# `actions: read`, GITHUB_REPOSITORY and GITHUB_RUN_ID; POLL_SECONDS overrides the 10 s poll -- 60 s on github.com,
+# where GITHUB_TOKEN has 1,000 API requests an hour for the whole repository (github-return-plan 2026-10-30, 3.4).
 set -euo pipefail
 
 name=${1:?artifact name}
 producer=${2:?producing job name fragment}
 timeout=${3:?timeout seconds}
-poll=${POLL_SECONDS:-10}
+if [ "${GITHUB_SERVER_URL:-}" = "https://github.com" ]; then poll=${POLL_SECONDS:-60}; else poll=${POLL_SECONDS:-10}; fi
 run="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
 # Capture the listing, then match it: `gh api … | grep -qx` would let grep exit at its first match

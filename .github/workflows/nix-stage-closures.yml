@@ -167,6 +167,16 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
+      # github.com's hosted runners start with an empty nix: keep the flake inputs' fetcher cache (nixpkgs and the
+      # rest, keyed by the lock) between runs. ci-runner's jobs share a host nix store instead.
+      - name: Cache the flake inputs (github.com)
+        if: github.server_url == 'https://github.com'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/nix
+          key: nix-fetchers-${{ runner.os }}-${{ hashFiles('infra/flake.lock') }}
+          restore-keys: nix-fetchers-${{ runner.os }}-
+
       # THE RULES ARE NOT PART OF ANY HOST'S EVALUATION. `nix eval` type-checks the module that
       # copies nix/files/monitoring/rules into the store; it never opens a file inside, so a rule
       # that fires backwards evaluates perfectly and reaches Prometheus. This runs the same script
