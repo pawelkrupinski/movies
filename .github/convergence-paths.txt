@@ -88,14 +88,18 @@ scripts/ci/recording_health.py
 # The identity takes check every hermetic convergence row runs after its suite: the scripts, and the judgements
 # that accept a move and that the suspect gate reads (an acceptance re-runs the lane, which turns the check green again).
 scripts/ci/identity-takes-check.sh
-# the incremental = whole gate beside it, and the allow-list it reads
+# the incremental = whole gate beside it: its replay harness, the allow-lists and known-flips baseline it reads, and
+# the unmatched families both checks read (ConvergenceReuse's ListedInputs: every input of either check listed)
 scripts/ci/identity-drift-check.sh
+worker/src/test/scala/scripts/IdentityDrift.scala
 test/resources/fixtures/identity-drift-allow.tsv
+test/resources/fixtures/identity-flips-allow.tsv
+test/resources/fixtures/identity-flips-baseline.tsv
+test/resources/fixtures/identity-unmatched/**
 scripts/ci/identity_takes_diff.py
 scripts/ci/identity_takes.py
 scripts/ci/corpus_shape_diff.py
 scripts/ci/report_fields.py
-test/resources/fixtures/identity-takes/**
 # The identity takes check's own tools: it replays listings with identity-slice (and its diff/lint helpers),
 # and identity-slice reads the local-mirror helpers it sources.
 scripts/ci/identity_judgements_lint.py

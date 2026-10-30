@@ -7,6 +7,7 @@ has a case here that fails without it.
 """
 import copy
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -244,6 +245,43 @@ class KeyTest(unittest.TestCase):
         self.assertFalse(reuse.listed("webhook.md", patterns))
         self.assertFalse(reuse.listed("web/x", patterns))
         self.assertTrue(reuse.listed("build.sbt", patterns))
+
+
+class ListedInputs(unittest.TestCase):
+    """The key and Main's kick read .github/convergence-paths.txt: every input a takes or takes-drift row reads is listed
+    there, and every listed path exists -- an unlisted input lets a run's verdict be reused over a changed one (a false
+    green) and leaves a push touching only it without a verdict at all."""
+
+    CHECKS = ("scripts/ci/identity-drift-check.sh", "scripts/ci/identity-takes-check.sh")
+
+    def setUp(self):
+        with open(os.path.join(ROOT, reuse.PATHS_FILE)) as f:
+            self.patterns = reuse.patterns_of(f.read())
+
+    def inputs(self):
+        out = set()
+        for check in self.CHECKS:
+            with open(os.path.join(ROOT, check)) as f:
+                text = f.read()
+            # the recorded corpus is the pinned pair's (hermetic-<code>.txt), not the tree's
+            out |= {"test/resources/fixtures/" + m.replace("$cc", "pl")
+                    for m in re.findall(r"\$fixtures/([A-Za-z0-9_./$-]+)", text) if not m.startswith("corpus")}
+            for config, cls in re.findall(r"worker/(Test|IntegrationTest)/runMain ([A-Za-z.]+)", text):
+                # an IntegrationTest main may live in the test tree, which its classpath holds
+                trees = ("test",) if config == "Test" else ("it", "test")
+                files = [f"worker/src/{t}/scala/" + cls.replace("integration.", "").replace(".", "/") + ".scala" for t in trees]
+                out.add(next((f for f in files if os.path.exists(os.path.join(ROOT, f))), files[0]))
+        return out
+
+    def test_every_input_of_the_takes_and_drift_rows_is_listed(self):
+        inputs = self.inputs()
+        self.assertIn("worker/src/test/scala/scripts/IdentityDrift.scala", inputs)
+        self.assertEqual([p for p in sorted(inputs) if not reuse.listed(p, self.patterns)], [])
+
+    def test_every_listed_path_exists(self):
+        tracked = reuse.git("ls-files").splitlines()
+        missing = [p for p in self.patterns if not p.startswith("!") and not any(reuse._under(t, p) for t in tracked)]
+        self.assertEqual(missing, [])
 
 
 class NoFalseGreen(unittest.TestCase):
