@@ -1035,16 +1035,16 @@ object AgreementStage {
     /** How many clusters the resolver was asked about again — the apply's cost — and how many agreed films a poster vetoed. */
     var resolves     = 0
     var posterVetoed = 0
-    private var budget = corrections
+    private val freshReads    = new Budget(corrections)
+    private val backfillReads = new Budget(backfills)
     /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
-    def fresh(): Boolean = { val left = budget > 0; budget -= 1; left }
-    private var backfillsLeft = backfills
+    def fresh(): Boolean = freshReads.spend()
     /** The clusters whose verdict decided under other rules this apply decided again, by id. */
     val backfilled = mutable.Set.empty[String]
     /** May one more verdict decided under other rules be decided again ([[BackfillPerApply]])? Each asking spends one. */
-    def backfill(): Boolean = { val left = backfillsLeft > 0; backfillsLeft -= 1; left }
+    def backfill(): Boolean = backfillReads.spend()
     /** Did a take or a verdict go unread for want of budget: asked once the budget was spent? */
-    def spent: Boolean = budget < 0 || backfillsLeft < 0
+    def spent: Boolean = freshReads.overdrawn || backfillReads.overdrawn
     /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
      *  take's posters draining behind every other task — those not `tried` yet first, so posters that keep failing hold
      *  no slot another poster could use. */
@@ -1053,6 +1053,14 @@ object AgreementStage {
         else correctionPosters.toSeq.sortBy(poster => (tried(Question.Poster(poster)), PosterAnswers.idOf(poster))).take(postersAtOnce)
       asked.toSet ++ capped.iterator.map(Question.Poster(_))
     }
+  }
+
+  /** One apply's allowance of some costly read: each [[spend]] asks for one, granted while any is left; [[overdrawn]] once
+   *  one was asked for past it — a read left for a later apply. */
+  private[agreement] final class Budget(allowance: Int) {
+    private var left = allowance
+    def spend(): Boolean = { val granted = left > 0; left -= 1; granted }
+    def overdrawn: Boolean = left < 0
   }
 
   /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, refused by
