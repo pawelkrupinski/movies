@@ -1,4 +1,4 @@
-# THE ALLOW-LISTS UNDER THE RATCHET (scripts/ci/allow_list_ratchet.py): a row lands only with the check's birth -- a commit
+# THE ALLOW-LISTS UNDER THE RATCHET (scripts/ci/commit_rules.py): a row lands only with the check's birth -- a commit
 # carrying `New-Check: <what>`, each row `TEMPORARY owner: <who>; remove when <fix>; <why>` -- and otherwise a list only
 # shrinks: a finding after birth is fixed, never listed. Every allow-list file in the repository is registered here
 # (AllowListRatchetSpec), so a new check's list is under the ratchet from the commit that adds it.

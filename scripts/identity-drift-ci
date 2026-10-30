@@ -26,7 +26,7 @@
 #   --against    every requested row held against a run's own verdict for it -- `main`: main's newest decided convergence
 #                run -- in place of "any red row is red": a row worse than there (more open findings, or red where it was
 #                green) is DRIFT RED (exit 1); none worse is `DRIFT NOT WORSE` (exit 0) even while main itself is red.
-#                What a NEW OR TIGHTENED CHECK must show to land (scripts/ci/allow_list_ratchet.py's rule): it finds
+#                What a NEW OR TIGHTENED CHECK must show to land (scripts/ci/commit_rules.py's rule): it finds
 #                nothing main's run does not, every finding at birth on its allow-list as TEMPORARY. And what
 #                identity-landing-check asks of a change while main is red on drift
 #   --tier       the ci-runner tier label (default `landing`: ci-runner's own check-tier runner, 6 slots)

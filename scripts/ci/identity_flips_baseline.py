@@ -4,7 +4,7 @@
 # row per flip main's convergence already showed when the flip gate turned to failing on NEW flips only: the drift check
 # (scripts.IdentityDrift --flips-baseline) passes a baselined listing's flips, counted ("N known flip(s) remaining"),
 # fails every other, and names a row whose listing no longer flips "fixed, remove its row". The file only SHRINKS
-# (scripts/ci/allow_list_ratchet.py refuses any added row, no override); once empty, every flip fails: the strict gate.
+# (scripts/ci/commit_rules.py refuses any added row, no override); once empty, every flip fails: the strict gate.
 #
 # usage:
 #   identity_flips_baseline.py from-tsvs --first-seen DATE --owner WHO --note TEXT FLIPS_TSV...   rows of `flips-<cc>.tsv`
@@ -28,7 +28,7 @@ HEADER = """\
 # generated from a run's flips by scripts/ci/identity_flips_baseline.py -- never typed. The drift check
 # (scripts/ci/identity-drift-check.sh, scripts.IdentityDrift --flips-baseline) passes a flip of a listing named here,
 # counted loudly as "N known flips remaining" (a ::warning and the step summary), and FAILS every other flip.
-# ONLY SHRINKS: a commit adding a row is refused, no override (scripts/ci/allow_list_ratchet.py). A commit fixing a flip
+# ONLY SHRINKS: a commit adding a row is refused, no override (scripts/ci/commit_rules.py). A commit fixing a flip
 # removes its row; a run whose seed shows the listing no longer flips names it "fixed, remove its row".
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.

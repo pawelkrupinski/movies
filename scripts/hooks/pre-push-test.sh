@@ -332,7 +332,7 @@ printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
-for f in hooks/pre-push hooks-path.sh tool-conventions.sh ci/drift-guards.sh; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+for f in hooks/pre-push hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
 cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
@@ -400,7 +400,6 @@ cp "$REPO_ROOT/.github/identity-drift-paths.txt" "$area/.github/identity-drift-p
 cp "$REPO_ROOT/.github/identity-drift-gate-paths.txt" "$area/.github/identity-drift-gate-paths.txt"
 cp "$REPO_ROOT/.github/allow-lists.txt" "$area/.github/allow-lists.txt"
 mkdir -p "$area/scripts/ci" "$area/test/resources/fixtures"
-cp "$REPO_ROOT/scripts/ci/allow_list_ratchet.py" "$area/scripts/ci/allow_list_ratchet.py"
 printf '# reviewed flips\ncountry\tvenue\trawTitle\treason\n' > "$area/test/resources/fixtures/identity-flips-allow.tsv"
 cat > "$area/scripts/identity-drift-ci" <<'STUB'
 #!/usr/bin/env bash
@@ -436,7 +435,7 @@ check "a push claiming no red runs no drift check" "0 0" "$code $(calls identity
 code="$(drift_push docs/fix.md $'a doc\n\nFixes-Red: 3726')"
 check "a Fixes-Red push touching no drift path runs none" "0 0" "$code $(calls identity-drift-ci)"
 # A CHECK'S BIRTH LANDS GREEN: the gate's own files, or New-Check:, run every drift row against main's
-code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala $'the harness, tightened\n\nDrift-Harness-Refactor: the drift guards\' self-test rule is drift-guards-test.sh\'s')"
+code="$(drift_push worker/src/test/scala/scripts/IdentityDrift.scala $'the harness, tightened\n\nDrift-Harness-Refactor: the drift guards\' self-test rule is commit_rules_test.py\'s')"
 check "a push touching the gate itself runs every drift row against main's newest run" "0 1" \
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --against main$")"
 code="$(drift_push test/resources/fixtures/identity-flips-baseline.tsv 'the baseline, edited alone')"

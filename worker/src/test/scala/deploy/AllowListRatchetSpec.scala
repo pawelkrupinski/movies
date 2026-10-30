@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * A NEW CHECK LANDS GREEN; ITS ALLOW-LIST ONLY SHRINKS (scripts/ci/allow_list_ratchet.py, convergence-failures-2026-10-29
+ * A NEW CHECK LANDS GREEN; ITS ALLOW-LIST ONLY SHRINKS (scripts/ci/commit_rules.py, convergence-failures-2026-10-29
  * recommendation 2). The ratchet judges the lists `.github/allow-lists.txt` registers, so every allow-list in the
  * repository must be registered there: a new check's list is under the ratchet from the commit that adds it, whoever
  * writes it and whatever the check is. 15 of that week's 36 red convergence runs came from two checks born red.
@@ -31,7 +31,8 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
 
   "the pre-push hook" should "run the ratchet on a change to a registered list, and the birth check on the gate's files" in {
     val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should include("python3 scripts/ci/allow_list_ratchet.py")
+    hook should include("python3 scripts/ci/commit_rules.py \"$1\"")
+    hook should include("check_allowlists() { commit_rules allowlists; }")
     hook should include("grep -qxF -- \"$path\" .github/allow-lists.txt && allowlists=1")
     hook should include("scripts/identity-drift-ci --head \"$head_sha\" --against main")
     RepoFile.read(".github/identity-drift-gate-paths.txt") should include("test/resources/fixtures/identity-flips-allow.tsv")

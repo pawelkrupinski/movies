@@ -32,7 +32,7 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
 - The drift check (`scripts/ci/identity-drift-check.sh`, `IdentityDrift --flips-baseline`) passes a baselined
   listing's flips, saying "N known flip(s) remaining" as a ::warning and in the step summary; fails every other flip;
   and names a baselined flip that no longer occurs in a seed the row names "remove its row".
-- The baseline ONLY SHRINKS: `scripts/ci/allow_list_ratchet.py` refuses any added row, whatever the commit's trailers;
+- The baseline ONLY SHRINKS: `scripts/ci/commit_rules.py` refuses any added row, whatever the commit's trailers;
   a commit fixing a flip removes its row.
 - **The end state is automatic**: with no row left, every flip fails — the strict gate.
 - DIVERGENCES (incremental ≠ whole end state) have no baseline: they always fail.
@@ -45,7 +45,7 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
   as a flip or drift fix: a new or changed rule (IdentityResolver, FeedLink, FamilyScope, the acceptance and scoring
   rules, the agreement's rules, the title rules) is identity design, measured on the full corpus in every country,
   outside red fixing. A `Fixes-Red:` commit touching rule code carries `Identity-Design: <doc>`, the design doc that
-  measured it (`scripts/ci/drift-guards.sh`, pre-push's `driftguards`). Mechanism files — AgreementStage's state
+  measured it, a file of the commit's tree (`scripts/ci/commit_rules.py`, pre-push's `driftguards`). Mechanism files — AgreementStage's state
   handling, the incremental resolver, the stores and keys — need none.
 - **Known flips wait on the shrink-only baseline** ("Known flips" above); new flips and every divergence fail.
   Neither allow-list is edited to get green.

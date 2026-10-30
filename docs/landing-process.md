@@ -157,6 +157,9 @@ green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's 
 | Check | Runs when the push changes | What it runs | Typical time |
 |---|---|---|---|
 | `judgements` | `identity-judgements.tsv`, `identity-unmatched/*.tsv`, `expected-hard-clusters-*`, `scripts/ci/identity_{judgements,takes}*.py` | `scripts/ci/identity_judgements_lint.py`; for a judgements change also against the takes the newest convergence legs served | seconds (+ a cached artifact download) |
+| `allowlists` | a registered allow-list (`.github/allow-lists.txt`), the registry, `scripts/ci/commit_rules*.py` | `scripts/ci/commit_rules.py allowlists`: a row only at a check's birth (`New-Check:`, TEMPORARY); the known-flips baseline only shrinks | seconds |
+| `driftguards` | the identity paths, `worker/src/main/`, the drift harness (`is_drift_path`) | `scripts/ci/commit_rules.py driftguards`: a red fix touching rule code names its `Identity-Design:` doc; a harness change carries its self-test | seconds |
+| `identitydrift` | to main: a drift path (`.github/identity-drift-paths.txt`) with `Fixes-Red:`, or a gate file (`.github/identity-drift-gate-paths.txt`, deletions too), or `New-Check:` | `scripts/identity-drift-ci --for-red <run>` / `--against main` on ci-runner; not from a CI job | ~12-40 min per run |
 | `eslint` | `web/src/main/assets/js`, page-test JS, `eslint.config.js`, `eslint-rules/`, `package*.json`, Playwright specs | `npm run lint` (`npm ci` once per worktree) | seconds |
 | `drift` | `*/src/main/scala/models/*`, `data/`, the City models, the drift script | `scripts/ci/generated-artefacts-drift.sh` | seconds |
 | `snapshot` | `test/resources/fixtures/08-06-2026/`, its inputs script | `scripts/read-model-snapshot-inputs.sh check` | seconds |
@@ -261,5 +264,5 @@ turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final t
   slice is committed (`scripts/identity-slice <cc> --venue V --title T --emit-drift-slice`) or the fix says
   `Drift-Slice: none -- <why>`; a change to the drift harness carries its
   capture-replay self-test (or `Drift-Harness-Refactor: <why>`). Pre-push's `driftguards` check
-  (`scripts/ci/drift-guards.sh`) holds both; `docs/design/identity-no-drift.md`, "Fixing a drift or flip red".
+  (`scripts/ci/commit_rules.py`) holds both; `docs/design/identity-no-drift.md`, "Fixing a drift or flip red".
 - Cancel your own superseded CI runs (`forgejo-gh run cancel <run id>`); never another agent's.

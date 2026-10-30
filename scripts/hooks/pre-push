@@ -59,13 +59,13 @@
 #                 the drift-check script, the replay harness, the flip predicate, the allow-lists), or carrying
 #                 `New-Check:` and touching a drift path, runs every drift row against main's newest run
 #                 (identity-drift-ci --against main): a row worse than main's refuses the push
-#   `allowlists`  scripts/ci/allow_list_ratchet.py over the pushed commits, on a change to a registered allow-list
+#   `allowlists`  scripts/ci/commit_rules.py allowlists over the pushed commits, on a change to a registered allow-list
 #                 (.github/allow-lists.txt) or the ratchet itself: a row lands only with its check's birth (`New-Check:`,
 #                 the row TEMPORARY with an owner and when it goes); otherwise a list only shrinks
 #   `ios`         scripts/ios-compile-check.sh (app target + XCUITests, Mac and Linux SwiftPM; fails on a concurrency
 #                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
-#   `driftguards` scripts/ci/drift-guards.sh over each pushed range, on a change to the identity paths, worker/src/main or
+#   `driftguards` scripts/ci/commit_rules.py driftguards over the pushed commits, on a change to the identity paths, worker/src/main or
 #                 the drift harness (is_drift_path): a commit fixing a drift or flip red (`Fixes-Red:` and a message
 #                 about drift/flips) lands with its drift slice (test/resources/fixtures/drift-slices/, cut by
 #                 scripts/identity-slice --emit-drift-slice) or `Drift-Slice: none -- <why>`; a red fix changing
@@ -285,7 +285,7 @@ is_drift_path() { # <path>
     is_identity_path "$1" && return 0
     case "$1" in
         worker/src/main/*|worker/src/test/scala/scripts/IdentityDrift*|worker/src/test/scala/scripts/IdentityLiveDrift*|\
-        scripts/ci/identity-drift-check*|scripts/ci/drift-guards*) return 0 ;;
+        scripts/ci/identity-drift-check*|scripts/ci/commit_rules*) return 0 ;;
     esac
     return 1
 }
@@ -346,7 +346,7 @@ plan() {
             scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
         esac
         case "$tools" in *" $path "*) oldrefs=1 ;; esac
-        case "$path" in .github/allow-lists.txt|scripts/ci/allow_list_ratchet*.py) allowlists=1 ;; esac
+        case "$path" in .github/allow-lists.txt|scripts/ci/commit_rules*.py) allowlists=1 ;; esac
         [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
         is_identity_path "$path" && identity=1
         is_drift_path "$path" && driftguards=1
@@ -1121,12 +1121,14 @@ select_identity_tests() { # <the set's sbt lines>...
 }
 check_identity() { run_local_tests identity; }
 # THE RATCHET (the header's `allowlists`): an allow-list row only with its check's birth, TEMPORARY; else lists only shrink
-check_allowlists() {
+# THE DRIFT GATE'S COMMIT RULES (the header's `allowlists` and `driftguards`): one walker, scripts/ci/commit_rules.py
+commit_rules() { # <rule set>
     local args=() r
-    need allowlists python3 "install Python 3 (brew install python)" || return 1
+    need "$1" python3 "install Python 3 (brew install python)" || return 1
     for r in "${ranges[@]}"; do args+=(--range "$r"); done
-    python3 scripts/ci/allow_list_ratchet.py "${args[@]}"
+    python3 scripts/ci/commit_rules.py "$1" "${args[@]}"
 }
+check_allowlists() { commit_rules allowlists; }
 # THE IDENTITY DRIFT CHECK: each claimed red's failed takes-drift rows, on CI (scripts/identity-drift-ci --for-red). 1 blocks; 2
 # (the run could not be made: CI unreachable, no token) warns and passes -- a fix is not held hostage to an outage, and
 # main's own run still judges it.
@@ -1158,11 +1160,7 @@ check_identitydrift() {
     done
     return $rc
 }
-check_driftguards() {
-    local r failed=0
-    for r in "${ranges[@]}"; do bash scripts/ci/drift-guards.sh "$r" || failed=1; done
-    return "$failed"
-}
+check_driftguards() { commit_rules driftguards; }
 check_page() { run_local_tests page; }
 
 # The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an

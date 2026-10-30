@@ -3,7 +3,7 @@
 # a drift path (.github/identity-drift-paths.txt), is a check's birth or tightening: the pre-push hook's `identitydrift`
 # check runs every drift row (scripts/identity-drift-ci --against main) and refuses a row worse than main's own run --
 # a new or tightened check lands green, everything it finds at birth on its allow-list as TEMPORARY
-# (scripts/ci/allow_list_ratchet.py). The flip and drift gates were both born red (9bb54c1a4, a2c684f80): 15 red runs.
+# (scripts/ci/commit_rules.py). The flip and drift gates were both born red (9bb54c1a4, a2c684f80): 15 red runs.
 # The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
 scripts/ci/identity-drift-check.sh
 worker/src/test/scala/scripts/IdentityDrift.scala

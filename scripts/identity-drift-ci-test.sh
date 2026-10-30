@@ -106,7 +106,7 @@ rm -rf "$work/state/artifacts-3726"
 drift nobase --for-red 3726
 check "a red row with no baseline to hold it against is no verdict, exit 2" "2" "$(cat "$work/nobase.rc")"
 
-# --against main: A CHECK'S BIRTH LANDS ONLY IF IT FINDS NOTHING MAIN'S RUN DOES NOT (allow_list_ratchet.py's rule), and an
+# --against main: A CHECK'S BIRTH LANDS ONLY IF IT FINDS NOTHING MAIN'S RUN DOES NOT (commit_rules.py's rule), and an
 # identity change while main is red is held to "no worse". Main's newest decided run with drift rows is 3726.
 jobs 3726 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:failure" \
   "takes-drift-1 (united-kingdom):completed:success" "takes-drift-2 (united-kingdom):completed:success"

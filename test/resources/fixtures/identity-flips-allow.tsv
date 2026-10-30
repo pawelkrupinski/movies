@@ -3,6 +3,6 @@
 # check finds at its birth, in a commit carrying `New-Check:` that adds a gate, a row kind or a predicate, never
 # `Fixes-Red:`, each `TEMPORARY owner: <who>; remove when <fix>; <why>` -- and never a flip that already exists: those are
 # rows of the known-flips baseline (identity-flips-baseline.tsv), which only shrinks (the owner, 2026-10-29: "fail build
-# only on new flips, focus in eliminating all old flips and then fail on all flips"). scripts/ci/allow_list_ratchet.py and
+# only on new flips, focus in eliminating all old flips and then fail on all flips"). scripts/ci/commit_rules.py and
 # IdentityDriftSpec hold it so.
 country	venue	rawTitle	reason

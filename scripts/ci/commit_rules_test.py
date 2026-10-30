@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""allow_list_ratchet.py over a scratch repository (scripts/scratch-git.sh): an allow-list row lands only at a check's
-birth (`New-Check:`), each such row TEMPORARY with an owner and when it goes; otherwise a list only shrinks."""
+"""commit_rules.py over a scratch repository (scripts/scratch-git.sh).
+
+allowlists: an allow-list row lands only at a check's birth (`New-Check:`), each such row TEMPORARY with an owner and
+when it goes; otherwise a list only shrinks, and the known-flips baseline only shrinks, whatever the trailers.
+driftguards: a drift/flip red fix lands with its drift slice or `Drift-Slice: none -- <why>`; a red fix changing a resolver rule names the design doc that measured it; a drift harness change carries
+its self-test or `Drift-Harness-Refactor: <why>`."""
 
 from __future__ import annotations
 
@@ -15,7 +19,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
-TOOL = os.path.join(HERE, "allow_list_ratchet.py")
+TOOL = os.path.join(HERE, "commit_rules.py")
 LIST = "test/resources/fixtures/identity-flips-allow.tsv"
 HEAD = "# reviewed flips\ncountry\tvenue\trawTitle\treason\n"
 BASELINE = "test/resources/fixtures/identity-flips-baseline.tsv"
@@ -62,12 +66,18 @@ class RatchetTest(unittest.TestCase):
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
-    def ratchet(self, rng):
+    def run_rules(self, rule_set, rng):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, "--range", rng], cwd=self.repo, env=env,
+        done = subprocess.run([sys.executable, "-I", TOOL, rule_set, "--range", rng], cwd=self.repo, env=env,
                               capture_output=True, text=True)
         return done.returncode, done.stderr
+
+    def ratchet(self, rng):
+        return self.run_rules("allowlists", rng)
+
+    def guards(self, rng):
+        return self.run_rules("driftguards", rng)[0]
 
     def test_a_row_added_after_birth_is_refused(self):
         head = self.commit({LIST: HEAD + "de\t*\tCAMOUFLAGE\tlooks intended\n"}, "list a flip")
@@ -182,6 +192,17 @@ class RatchetTest(unittest.TestCase):
         self.assertIn("known flip", err)
         self.assertNotEqual(reg, head)
 
+    def test_a_tightened_checks_birth_baselines_a_listing_a_drift_slice_holds(self):
+        # a slice holds a listing's past flip; the tightened check sees a new one of it (CinemaxX "Titans", a229501a7)
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        seeds = ["P\x00CinemaxX Dammtor\x00Titans\x00"]
+        sliced = self.commit_bytes("test/resources/fixtures/drift-slices/de/titans/slice.json.gz",
+                                   gzip.compress(json.dumps({"country": "de", "seeds": seeds}).encode()), "the Titans slice")
+        found = BROW.replace("Werkstattkino e.V.", "CinemaxX Dammtor").replace("CAMOUFLAGE", "Titans")
+        head = self.commit({BASELINE: BHEAD + BROW + found, PREDICATE: "a precise none\n"}, "flip check\n\nNew-Check: flips")
+        self.assertEqual((0, ""), self.ratchet(f"{sliced}..{head}"))
+        self.assertNotEqual(reg, head)
+
     def test_removing_a_fixed_flips_row_lands(self):
         reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
         fixed = self.commit({BASELINE: BHEAD}, "CAMOUFLAGE no longer flips")
@@ -205,16 +226,95 @@ class RatchetTest(unittest.TestCase):
         self.assertIn("known flip", err)
 
 
-    def test_a_tightened_checks_birth_baselines_a_listing_a_drift_slice_holds(self):
-        # a slice holds a listing's past flip; the tightened check sees a new one of it (CinemaxX "Titans", a229501a7)
-        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
-        seeds = ["P\x00CinemaxX Dammtor\x00Titans\x00"]
-        sliced = self.commit_bytes("test/resources/fixtures/drift-slices/de/titans/slice.json.gz",
-                                   gzip.compress(json.dumps({"country": "de", "seeds": seeds}).encode()), "the Titans slice")
-        found = BROW.replace("Werkstattkino e.V.", "CinemaxX Dammtor").replace("CAMOUFLAGE", "Titans")
-        head = self.commit({BASELINE: BHEAD + BROW + found, PREDICATE: "a precise none\n"}, "flip check\n\nNew-Check: flips")
-        self.assertEqual((0, ""), self.ratchet(f"{sliced}..{head}"))
-        self.assertNotEqual(reg, head)
+    # ── found in review (2026-10-30) ──
+    def test_a_row_added_while_resolving_a_merge_is_judged(self):
+        # diff-tree prints nothing for a merge: the rows its resolution added went unjudged
+        base = self.commit({"a.txt": "a\n"}, "base")
+        self.scratch("scratch_git", "checkout", "-q", "-b", "side")
+        self.commit({"side.txt": "side\n"}, "side")
+        self.scratch("scratch_git", "checkout", "-q", "-")
+        self.commit({"a.txt": "b\n"}, "main moves")
+        self.scratch("scratch_git", "merge", "-q", "--no-ff", "--no-commit", "side")
+        with open(os.path.join(self.repo, LIST), "a") as f:
+            f.write("de\t*\tCAMOUFLAGE\tlooks intended\n")
+        self.scratch("scratch_git", "add", "-A")
+        self.scratch("scratch_git", "commit", "-qm", "merge, listing a flip")
+        rc, err = self.ratchet(f"{base}..HEAD")
+        self.assertEqual(1, rc, err)
+        self.assertIn("only shrinks", err)
+
+    def test_a_baseline_shrink_is_no_check_added(self):
+        gate = GATE + BASELINE + "\n"
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW,
+                           ".github/identity-drift-gate-paths.txt": gate}, "born")
+        head = self.commit({BASELINE: BHEAD, LIST: HEAD + f"uk\t*\tNew One\t{BIRTH}\n"}, "shrink\n\nNew-Check: flips")
+        rc, err = self.ratchet(f"{reg}..{head}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("adds no check", err)
+
+    # ── driftguards ──
+    RULE = "identity/src/main/scala/services/identity/FeedLink.scala"
+    HARNESS = "worker/src/test/scala/scripts/IdentityDrift.scala"
+
+    def test_a_commit_fixing_no_red_passes_the_guards(self):
+        head = self.commit({"identity/src/main/A.scala": "a\n", self.RULE: "rule\n"}, "Identity: a feature\n\nNo red.")
+        self.assertEqual(0, self.guards(f"{self.base}..{head}"))
+
+    def test_a_red_fix_changing_a_resolver_or_title_rule_fails(self):
+        head = self.commit({self.RULE: "rule\n"}, "overruled\n\nFixes-Red: 2473")
+        self.assertEqual(1, self.guards(f"{self.base}..{head}"))
+        head = self.commit({"common/src/main/resources/title-rules.tsv": "row\n"}, "Title rules: a row\n\nFixes-Red: 2473")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"))
+
+    def test_a_red_fix_changing_a_rule_passes_with_the_design_doc_that_measured_it(self):
+        head = self.commit({self.RULE: "rule\n", "docs/design/feed-links.md": "measured\n"},
+                           "overruled\n\nFixes-Red: 2473\nIdentity-Design: docs/design/feed-links.md")
+        self.assertEqual(0, self.guards(f"{self.base}..{head}"))
+
+    def test_an_identity_design_trailer_naming_no_document_fails(self):
+        head = self.commit({self.RULE: "rule\n"}, "overruled\n\nFixes-Red: 2473\nIdentity-Design: measured, trust me")
+        rc, err = self.run_rules("driftguards", f"{self.base}..{head}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("names no file", err)
+
+    def test_a_red_fix_in_a_mechanism_needs_no_design_doc(self):
+        head = self.commit({"identity/src/main/scala/services/identity/agreement/AgreementStage.scala": "s\n"},
+                           "Agreement: the budget no longer lags\n\nFixes-Red: 2473")
+        self.assertEqual(0, self.guards(f"{self.base}..{head}"))
+
+    def test_a_harness_change_carries_its_self_test(self):
+        head = self.commit({self.HARNESS: "h\n"}, "Drift harness: the queue files a held answer first")
+        self.assertEqual(1, self.guards(f"{self.base}..{head}"))
+        head = self.commit({self.HARNESS: "h2\n", "worker/src/test/scala/scripts/IdentityDriftSpec.scala": "s\n"}, "and its case")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"))
+        head = self.commit({"scripts/ci/identity-drift-check.sh": "x\n"}, "one helper\n\nDrift-Harness-Refactor: no behaviour moves")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"))
+
+    def test_the_flip_predicate_is_harness_and_a_later_commits_test_does_not_count(self):
+        flips = "identity/src/main/scala/services/identity/TakeFlips.scala"
+        first = self.commit({flips: "f\n"}, "Flips: a re-scrape is no input change")
+        self.commit({"identity/src/test/scala/services/identity/TakeFlipsSpec.scala": "t\n"}, "its spec, later")
+        self.assertEqual(1, self.guards(f"{first}^..HEAD"))
+
+    def test_a_drift_or_flip_red_fix_lands_with_its_slice(self):
+        a = "identity/src/main/A.scala"
+        head = self.commit({a: "1\n"}, "Identity: the agreement keeps its verdicts\n\nFixes-Red: 3726")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"), "a red fix not about drift")
+        head = self.commit({a: "2\n"}, "Identity: CAMOUFLAGE no longer flips\n\nFixes-Red: 3726")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "a flip fix without its slice")
+        head = self.commit({a: "3\n"}, "Identity: the incremental state ends where a whole resolve does (drift)\n\nFixes-Red: 3726")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "a drift fix without its slice")
+        fix = self.commit({a: "4\n"}, "Identity: CAMOUFLAGE no longer flips\n\nFixes-Red: 3726")
+        self.commit({"test/resources/fixtures/drift-slices/de/camouflage/slice.json.gz": "s\n"}, "Drift slice: CAMOUFLAGE")
+        self.assertEqual(0, self.guards(f"{fix}^..HEAD"), "its slice later in the push")
+        head = self.commit({a: "5\n"}, "CI: the drift row times out later\n\nFixes-Red: 3134\nDrift-Slice: none -- a CI script, no listing")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"), "a reasoned Drift-Slice: none")
+        head = self.commit({a: "6\n"}, "CI: the drift row times out later\n\nFixes-Red: 3134\nDrift-Slice: none")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "Drift-Slice: none without a reason")
+
+    def test_an_unreadable_range_is_no_verdict_to_the_guards(self):
+        self.assertEqual(2, self.guards("nosuch..HEAD"))
+
 
 if __name__ == "__main__":
     unittest.main()
