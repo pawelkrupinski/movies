@@ -29,11 +29,9 @@ object TempDirectories {
   def createFile(prefix: String, suffix: String): Path = remember(Files.createTempFile(prefix, suffix))
 
   /** `path` and everything under it gone, quietly: a path already gone, or a file that cannot be removed, is no
-   *  failure of the caller's. */
-  def delete(path: Path): Unit = {
-    deleteTree(path)
-    live.remove(path)
-  }
+   *  failure of the caller's. Only a path made here: any other is left alone, so a wrong argument deletes nothing. */
+  def delete(path: Path): Unit =
+    if (live.remove(path)) deleteTree(path)
 
   /** `body` over a fresh directory, deleted when `body` returns or throws. */
   def within[A](prefix: String)(body: Path => A): A = {

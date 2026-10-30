@@ -41,6 +41,15 @@ class ScratchDirectoriesSpec extends AnyFlatSpec with Matchers {
     Files.exists(root) shouldBe false
   }
 
+  it should "leave alone a path it did not make" in {
+    val made  = TempDirectories.create("scratch-directories-owner")
+    val other = Files.createDirectories(made.resolve("not-made-by-temp-directories"))
+    TempDirectories.delete(other)
+    Files.exists(other) shouldBe true
+    TempDirectories.delete(made)
+    Files.exists(made) shouldBe false
+  }
+
   "TempDirectories.within" should "delete its directory when the body throws" in {
     var seen: Option[Path] = None
     an[IllegalStateException] should be thrownBy TempDirectories.within("scratch-directories-within") { dir =>
