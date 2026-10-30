@@ -11,22 +11,21 @@ import org.scalatest.matchers.should.Matchers
 class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
 
-  "the landing check" should "run the page area in a job of its own, with a cap of its own, after every other check" in {
-    jobs("check") should include("SHARE: rest")
-    jobs("check-page") should include("SHARE: page")
-    Seq("check", "check-page").foreach { job =>
-      jobs(job) should include("export PREPUSH_ONLY=page")
-      jobs(job) should include("export PREPUSH_ELSEWHERE=page")
+  "the landing check" should "run the page area and the old refs in jobs of their own, each with a cap of its own" in {
+    Map("check" -> "rest", "check-oldrefs" -> "oldrefs", "check-page" -> "page").foreach { case (job, share) =>
+      jobs(job) should include(s"SHARE: $share")
+      jobs(job) should include("""if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="page oldrefs"; else export PREPUSH_ONLY="$SHARE"; fi""")
       jobs(job) should include("timeout --kill-after=60 80m scripts/hooks/pre-push")
     }
+    // the old refs from the trees Main keeps: cold, they pushed the rest past its 80 minutes (run 4083)
+    jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
     // beside the rest on the check tier its WebKit rows starved and ran out of the 80 minutes (run 4059)
-    jobs("check-page") should include("needs: [ check, heavy ]")
+    jobs("check-page") should include("needs: [ check, check-oldrefs, heavy ]")
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
    *  push (ci-failures-2026-10-30 §2.1): the landing check runs the ones the change can move, as Main runs them. */
   "the landing check" should "run every heavy row the change can move, each in a job of its own" in {
-    val jobs  = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
     val heavy = jobs("heavy")
     jobs("plan") should include("PREPUSH_HEAVY_ROWS=1 scripts/hooks/pre-push --plan")
     heavy should include("share: ${{ fromJSON(needs.plan.outputs.heavy) }}")
