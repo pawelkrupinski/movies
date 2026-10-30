@@ -1,0 +1,20 @@
+name: Report the runner's peaks
+description: >-
+    The job's peak memory in use and lowest free disk, as .github/actions/free-disk's sampler saw them, on the run's
+    summary and as a warning past the hosted runner's headroom (13 of 16 GB of memory, under 2 GB of disk): the
+    numbers github-return-plan 2026-10-30 (3.4) checks each convergence leg against before github.com is primary.
+    Call it with `if: always()` as a job's last step; nothing to say where free-disk did not run (off github.com).
+
+runs:
+    using: composite
+    steps:
+        - shell: bash
+          run: |
+              peaks="$RUNNER_TEMP/runner-peaks"
+              [ -f "$peaks" ] || exit 0
+              # shellcheck disable=SC1090
+              . "$peaks"
+              echo "runner peaks: ${peak_mem_mb:-?} MB memory in use, ${min_free_disk_mb:-?} MB least free disk"
+              echo "runner peaks: ${peak_mem_mb:-?} MB memory in use at most, ${min_free_disk_mb:-?} MB free disk at least" >> "$GITHUB_STEP_SUMMARY"
+              [ "${peak_mem_mb:-0}" -le 13312 ] || echo "::warning title=Memory past the hosted headroom::peak ${peak_mem_mb} MB of 16 GB: shard this job further"
+              [ "${min_free_disk_mb:-99999}" -ge 2048 ] || echo "::warning title=Disk past the hosted headroom::${min_free_disk_mb} MB free at the lowest"

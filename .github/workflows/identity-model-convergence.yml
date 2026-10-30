@@ -337,7 +337,9 @@ jobs:
             # on a 16 GB runner. The United States (10g heap) only on its convergence, next-day and takes rows, with a
             # 0.5 GB cache: at most 2.0 GB of data there, 14.2 of the 17.2 GB cap at peak, and 2-4 GB less written to
             # the host's disk per row; its order rows stay on disk (`mongo-tmpfs-order`; runs 1258/1276).
-            mongo-tmpfs:                   ${{ matrix.mongo-tmpfs || '' }}
+            # github.com's hosted runners are 16 GB VMs, not ci-runner's 17.2 GB cgroups beside a page cache of their own: the
+            # United States' 10g heap keeps Mongo's data on disk there, ~2-3 GB of RAM back (github-return-plan 3.4, 2c).
+            mongo-tmpfs:                   ${{ (github.server_url != 'https://github.com' || matrix.code != 'us') && matrix.mongo-tmpfs || '' }}
             mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.

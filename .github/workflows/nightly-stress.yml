@@ -43,12 +43,20 @@ env:
 jobs:
     races:
         if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
+        # TWO HALVES ON GITHUB.COM: the 50 iterations ran into this job's 180-minute cap on ci-runner already, and a hosted
+        # 4-core runner is no faster -- 2 x 25 there, each well inside it; one job of all 50 on Forgejo, as before.
+        name: races${{ github.server_url == 'https://github.com' && format(' ({0}/2)', matrix.half) || '' }}
+        strategy:
+            fail-fast: false
+            matrix:
+                half: ${{ fromJSON(github.server_url == 'https://github.com' && '[1, 2]' || '[1]') }}
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
         # fit well inside this, and a hung harness still stops.
         timeout-minutes: 180
         steps:
             - uses: actions/checkout@v5
+            - uses: ./.github/actions/free-disk
 
             # A single-node replica set, as ci.yml's integration-test job starts it (change
             # streams and transactions need one).
@@ -67,9 +75,10 @@ jobs:
             - name: Race harnesses, many times over
               env:
                   ITERATIONS: ${{ inputs.iterations || '50' }}
+                  HALVES: ${{ github.server_url == 'https://github.com' && '2' || '1' }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
-              run: scripts/ci/stress-races.sh "$ITERATIONS" all
+              run: scripts/ci/stress-races.sh "$(( (ITERATIONS + HALVES - 1) / HALVES ))" all
 
             - name: Upload the failing iterations' reports
               if: failure()
@@ -77,7 +86,7 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: stress-races
+                  name: stress-races${{ github.server_url == 'https://github.com' && format('-{0}', matrix.half) || '' }}
                   path: target/stress-races
                   if-no-files-found: ignore
 

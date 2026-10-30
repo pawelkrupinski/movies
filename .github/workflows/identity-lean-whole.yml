@@ -51,6 +51,9 @@ jobs:
             actions: read
         outputs:
             run: ${{ steps.upstream.outputs.run }}
+            # SHARDS: one country a job on github.com's hosted runners (16 GB, 6 h a job: the five countries in one job
+            # ran up to ~5 h on ci-runner's measure tier), all five in one job on Forgejo, as before.
+            shards: ${{ steps.shards.outputs.shards }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -63,24 +66,42 @@ jobs:
                   workflow: Record scrape fixtures
                   run-id: ${{ inputs.run-id }}
                   on-fallback: skip
+            - id: shards
+              shell: bash
+              env:
+                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+                  HOSTED: ${{ github.server_url == 'https://github.com' }}
+              run: |
+                  set -euo pipefail
+                  if [ "$HOSTED" = true ]; then
+                      echo "shards=$(tr ',' '\n' <<< "$COUNTRIES" | jq -Rnc '[inputs | select(length > 0)]')" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "shards=$(jq -nc --arg c "$COUNTRIES" '[$c]')" >> "$GITHUB_OUTPUT"
+                  fi
 
     compare:
         needs: [plan]
         if: needs.plan.outputs.run != ''
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
-        timeout-minutes: 600
+        # github.com caps a job at 6 h: one country's shard there, the whole set on Forgejo.
+        timeout-minutes: ${{ github.server_url == 'https://github.com' && 350 || 600 }}
+        strategy:
+            fail-fast: false
+            matrix:
+                countries: ${{ fromJSON(needs.plan.outputs.shards) }}
         permissions:
             contents: read
             actions: read
         steps:
             - uses: actions/checkout@v5
+            - uses: ./.github/actions/free-disk
             - name: Lay out the recording
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RECORDING: ${{ needs.plan.outputs.run }}
-                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+                  COUNTRIES: ${{ matrix.countries }}
                   KINOWO_REPO: ${{ github.repository }}
               run: |
                   set -euo pipefail
@@ -99,8 +120,9 @@ jobs:
               shell: bash
               env:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
-                  SBT_OPTS: -Xmx11g
-                  COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
+                  # 16 GB hosted runners also hold mongod and the page cache: 10 GB of heap there, 11 on ci-runner.
+                  SBT_OPTS: ${{ github.server_url == 'https://github.com' && '-Xmx10g' || '-Xmx11g' }}
+                  COUNTRIES: ${{ matrix.countries }}
               run: |
                   set -uo pipefail
                   fixtures="$RUNNER_TEMP/recording/pair/test/resources/fixtures" out="$RUNNER_TEMP/identity-lean-whole"
@@ -124,9 +146,11 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: identity-lean-whole
+                  name: identity-lean-whole${{ github.server_url == 'https://github.com' && format('-{0}', matrix.countries) || '' }}
                   path: ${{ runner.temp }}/identity-lean-whole/
                   retention-days: 30
+            - uses: ./.github/actions/runner-peaks
+              if: always()
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
         needs: [plan, compare]

@@ -137,7 +137,8 @@ jobs:
             order-split:                   ${{ matrix.order-split == true }}
             next-day-command:              ${{ matrix.next-day || '' }}
             heap:                          ${{ matrix.heap }}
-            mongo-tmpfs:                   ${{ matrix.mongo-tmpfs || '' }}
+            # The United States' Mongo on disk on github.com's 16 GB VMs (identity-model-convergence.yml's note).
+            mongo-tmpfs:                   ${{ (github.server_url != 'https://github.com' || matrix.code != 'us') && matrix.mongo-tmpfs || '' }}
             mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             mode:                          hermetic

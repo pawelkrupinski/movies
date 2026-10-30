@@ -153,6 +153,7 @@ jobs:
                       rm -rf "$cache/recordings/$run/archive"
                   done
 
+            - uses: ./.github/actions/free-disk
             - uses: ./.github/actions/setup-sbt-build
 
             - name: Start MongoDB (single-node replica set, the replay's throwaway database)

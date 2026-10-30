@@ -1219,6 +1219,10 @@ jobs:
               shell: bash
               run: scripts/ci/cgroup-sampler.sh report || true
 
+            # github.com's hosted runner: the whole VM's peak memory and least free disk (.github/actions/free-disk).
+            - uses: ./.github/actions/runner-peaks
+              if: always()
+
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
             - uses: ./.github/actions/leg-verdict
               if: always()

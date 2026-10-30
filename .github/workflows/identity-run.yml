@@ -88,6 +88,7 @@ jobs:
                   IFS=, read -r -a ccs <<< "$COUNTRIES"
                   scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" "${ccs[@]}"
                   rm -rf "$RUNNER_TEMP/recording/archive"
+            - uses: ./.github/actions/free-disk
             - uses: ./.github/actions/setup-sbt-build
             - name: Start MongoDB (single-node replica set, the command's throwaway database)
               run: scripts/ci/start-mongo-replset.sh

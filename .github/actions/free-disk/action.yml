@@ -1,0 +1,38 @@
+name: Free disk on a github.com hosted runner
+description: >-
+    github.com's hosted ubuntu runners have 4 cores, 16 GB of RAM and ~14 GB free on / (github-return-plan 2026-10-30,
+    3.4): a recording unpacks ~10 GB without ci-runner's shared recording cache, and a convergence leg holds Mongo, the
+    corpus, the enrichment tree and sbt's caches beside it. This removes the toolchains no movies job uses (Android
+    SDK, .NET, GHC, CodeQL, Swift, the preinstalled docker images: roughly 25-30 GB), and starts a sampler of the
+    job's peak memory and lowest free disk that .github/actions/runner-peaks reports at the end. A no-op off
+    github.com: ci-runner's containers bring their own disk.
+
+runs:
+    using: composite
+    steps:
+        - if: github.server_url == 'https://github.com' && runner.os == 'Linux'
+          shell: bash
+          run: |
+              set -uo pipefail
+              before=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
+              start=$SECONDS
+              # Every path is optional: a runner image without one just has less to free.
+              sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+                  /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell /usr/local/julia* || true
+              docker image prune --all --force > /dev/null 2>&1 || true
+              after=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
+              echo "free disk on /: ${before} GB -> ${after} GB in $((SECONDS - start)) s"
+              echo "free-disk: ${before} GB -> ${after} GB free on / ($((SECONDS - start)) s)" >> "$GITHUB_STEP_SUMMARY"
+              # THE SAMPLER: every 5 s, the highest memory in use (MemTotal - MemAvailable) and the least free disk
+              # on / and on the workspace's filesystem, for runner-peaks. Killed with the job's other processes.
+              peaks="$RUNNER_TEMP/runner-peaks"
+              nohup bash -c '
+                  max_mem=0; min_disk=999999
+                  while :; do
+                      mem=$(awk "/^MemTotal:/{t=\$2} /^MemAvailable:/{a=\$2} END{print int((t-a)/1024)}" /proc/meminfo)
+                      disk=$(df -BM --output=avail / "$GITHUB_WORKSPACE" | tail -n +2 | tr -dc "0-9\n" | sort -n | head -1)
+                      [ "$mem" -gt "$max_mem" ] && max_mem=$mem
+                      [ -n "$disk" ] && [ "$disk" -lt "$min_disk" ] && min_disk=$disk
+                      printf "peak_mem_mb=%s\nmin_free_disk_mb=%s\n" "$max_mem" "$min_disk" > "'"$peaks"'.tmp" && mv "'"$peaks"'.tmp" "'"$peaks"'"
+                      sleep 5
+                  done' > /dev/null 2>&1 &
