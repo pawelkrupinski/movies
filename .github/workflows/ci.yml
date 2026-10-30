@@ -878,9 +878,9 @@ jobs:
     # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across two
     # parallel shards (see the e2eCorpus/e2eRest aliases in build.sbt):
     #
-    #   corpus   — FilmScheduleEndToEndSpec (run by name), which boots the whole fixture
-    #              corpus through the identity projection; this row also stages the dists
-    #              Main's image build reads;
+    #   corpus   — FilmScheduleEndToEndSpec and IdentityCutoverEndToEndSpec (run by name),
+    #              each booting the whole fixture corpus through the identity projection;
+    #              this row also stages the dists Main's image build reads;
     #   rest     — every OTHER e2e spec, via `e2e/Test/test -- -l …CorpusReplay`
     #              (tag-EXCLUSION of the @CorpusReplay spec), so a newly-added spec
     #              auto-rides this shard and can't be silently dropped. See the

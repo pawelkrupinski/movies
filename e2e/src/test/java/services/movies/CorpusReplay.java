@@ -15,8 +15,10 @@ import org.scalatest.TagAnnotation;
  * tagged here. A newly-added e2e spec is untagged, so it lands in the "rest"
  * shard automatically and can never be silently dropped.
  *
- * Currently tagged (one shard): the whole-corpus snapshot spec FilmScheduleEndToEndSpec,
- * whose shard also stages the worker distribution the image build reads.
+ * Currently tagged (one shard, both run by name in {@code e2eCorpus}): the whole-corpus snapshot spec
+ * FilmScheduleEndToEndSpec, whose shard also stages the worker distribution the image build reads, and
+ * IdentityCutoverEndToEndSpec, the rest shard's longest suite (199-607 s against FilmSchedule's 153-319 s on
+ * the 4-CPU measure tier, 2026-10-30): beside FilmSchedule it evens the two rows instead of costing a runner.
  *
  * ReScrapeIdempotencySpec — the heaviest single spec, which boots the settled
  * corpus once and runs identical re-scrape ticks against it — was tagged too,

@@ -41,15 +41,18 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
     ownShardSpecs should not be empty
     ownShardSpecs.foreach { name =>
       withClue(s"$name is tagged @CorpusReplay but no alias runs it: ") {
-        buildSbt should include(s"e2e/Test/testOnly services.movies.$name")
+        s"""e2e/Test/testOnly [^;"]*services\\.movies\\.$name\\b""".r.findFirstIn(buildSbt) shouldBe defined
       }
     }
   }
 
+  /** An own-shard alias may run several tagged specs (`e2eCorpus` runs two, evening the rows), so at most one alias
+   *  per tagged spec, and at least one. */
   it should "give every own-shard alias a runner in the ci matrix" in {
     val AliasName = """addCommandAlias\("(e2e[A-Za-z]+)",\s+"e2e/Test/testOnly services\.movies\.""".r
     val aliases   = AliasName.findAllMatchIn(buildSbt).map(_.group(1)).toVector
-    aliases should have size ownShardSpecs.size
+    aliases should not be empty
+    aliases.size should be <= ownShardSpecs.size
     aliases.foreach { alias =>
       withClue(s"$alias has no shard in the e2e matrix: ")(e2eJob should include(s"cmd: $alias"))
     }

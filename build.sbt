@@ -648,7 +648,9 @@ addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit
 // the build's long pole (a WebKit page-test row) with a whole runner to itself,
 // and ci.yml is at its 20-runner cap, so the slot buys more as another WebKit
 // page-test shard than as a fourth e2e one.
-addCommandAlias("e2eCorpus",   "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec")
+// IdentityCutoverEndToEndSpec rides the corpus row (2026-10-30): the rest row held 686-1724 suite-seconds, the corpus
+// row one 153-319 s suite (measure runs 4052/4053); the cutover spec, rest's longest, evens them.
+addCommandAlias("e2eCorpus",   "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec services.movies.IdentityCutoverEndToEndSpec")
 addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay -l services.movies.CountryScoped")
 
 // Per-country convergence legs, one per country, run by `.github/workflows/
