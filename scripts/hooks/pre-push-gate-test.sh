@@ -77,6 +77,19 @@ check "...and names both ids when it refuses" "1" "$(FJ_IMC="[$fjred]" fjpush "$
 check "Forgejo: a running or cancelled newest run says nothing: the decided one before it counts" "1 0" \
   "$(FJ_IMC="[$fjrunning,$fjcancelled,$fjred,$fjgreen]" fjpush "$gbase..$plain") $(FJ_IMC="[$fjcancelled,$fjgreen,$fjred]" fjpush "$gbase..$plain")"
 check "Forgejo: tools-only commits land while red" "0" "$(FJ_IMC="[$fjred]" fjpush "$plain..$tools")"
+# A CHECK GATES ONLY ONCE IT HAS BEEN GREEN: a red run whose failed jobs are all unproven in .github/gating-checks.tsv
+# (scripts/ci/gating_checks.py, its jobs read through scripts/forge-gh, stubbed here) reports and holds no push
+mkdir -p "$grepo/scripts/ci" "$grepo/.github"
+cp "$REPO_ROOT/scripts/ci/gating_checks.py" "$grepo/scripts/ci/"
+printf 'kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\ttest (a)\t5\njob\tmain.yml\tci\taggregate\njob\tmain.yml\tnew check\tunproven\tborn today; owner: x\n' > "$grepo/.github/gating-checks.tsv"
+printf '#!/bin/sh\nprintf "%%s" "$STUB_JOBS"\n' > "$grepo/scripts/forge-gh"; chmod +x "$grepo/scripts/forge-gh"
+unproven='{"jobs":[{"name":"new check","conclusion":"failure"},{"name":"ci","conclusion":"failure"},{"name":"test (a)","conclusion":"success"}]}'
+proven='{"jobs":[{"name":"test (a)","conclusion":"failure"},{"name":"new check","conclusion":"failure"}]}'
+check "Forgejo: a Main red only in an unproven check and its aggregate holds no push, said" "0 1" \
+  "$(STUB_JOBS="$unproven" FJ_MAIN="[$fjred]" fjpush "$gbase..$plain") $(grep -c 'red only in checks no green run has proven yet' "$gate/err")"
+check "...a red in a proven check refuses it as ever" "1" "$(STUB_JOBS="$proven" FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
+check "...and so does a run whose jobs cannot be read" "1" "$(STUB_JOBS="not json" FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
+rm -rf "$grepo/scripts/ci/gating_checks.py" "$grepo/.github/gating-checks.tsv" "$grepo/scripts/forge-gh"
 check "Forgejo: PREPUSH_SKIP=redgate bypasses it" "0" "$(FJ_IMC="[$fjred]" PREPUSH_SKIP=redgate fjpush "$gbase..$plain")"
 rm -f "$gate/argv" "$gate/config"
 FJ_ARGV="$gate/argv" FJ_CONFIG="$gate/config" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain" >/dev/null

@@ -23,11 +23,12 @@ check "a recorded fixture runs the snapshot stamp check" "snapshot" \
 check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
-check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "a workflow runs the gating-checks registry lint, actionlint, and the silenced-read lint" "newchecks actionlint sbt" "$(plan .github/workflows/ci.yml)"
 check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
 check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
+check "the gating-checks registry runs its lint, and the lint specs" "newchecks sbt" "$(plan .github/gating-checks.tsv)"
 # THE HEAVY ROWS: Main's integration-test and e2e rows, in the landing check only (PREPUSH_HEAVY_ROWS=1)
 heavy() { printf '%s\n' "$@" | PREPUSH_HEAVY_ROWS=1 "$REPO_ROOT/scripts/hooks/pre-push" --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ $//'; }
 check "THE HEAVY ROWS: none without PREPUSH_HEAVY_ROWS (the laptop's push)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
@@ -37,7 +38,7 @@ check "...an integration spec runs the integration rows" "itrest" "$(heavy worke
 check "...the build runs every row" "itrest itidentity e2ecorpus e2e" "$(heavy build.sbt)"
 check "...a docs change none" "" "$(heavy docs/landing-process.md)"
 check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
-check "the hook itself runs shellcheck and the self-tests, its own among them" "scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
+check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
 check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "scripttests shellcheck sbt scripttests shellcheck sbt" \
   "$(plan scripts/hooks-path.sh) $(plan scripts/install-hooks.sh)"
 check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
@@ -46,7 +47,7 @@ check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scr
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "driftguards eslint snapshot scripttests actionlint shellcheck sbt page" \
+check "checks come out once each, in run order" "newchecks driftguards eslint snapshot scripttests actionlint shellcheck sbt page" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
 check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
@@ -518,7 +519,7 @@ scratch_git "$hp/clone" checkout -q --detach
 rm -f "$hp/ran"
 echo detached >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam detached
 # the checks this scratch clone cannot run (no run-script-tests, no sbt) skipped: what is left is the warning's verdict
-out="$(PREPUSH_SKIP="scripttests shellcheck sbt" scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"; code=$?
+out="$(PREPUSH_SKIP="scripttests shellcheck sbt newchecks" scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"; code=$?
 check "a detached root checkout is warned about on a push from a worktree" "1" \
   "$(printf '%s\n' "$out" | grep -c "WARNING: the root checkout .* is on a DETACHED HEAD.*Fix: .* checkout main")"
 check "...and the push still lands" "0 new" "$code $(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"

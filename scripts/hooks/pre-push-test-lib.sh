@@ -135,7 +135,7 @@ green="$(run_json 38487614044 completed success 38487614044)"
 cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
 running="$(run_json 38529260149 in_progress "" 38529260149)"
 # Only the gate is under test here: the path checks the pushed paths select are skipped (the cases above cover them).
-pathchecks="judgements eslint drift snapshot dashboards sbt scripttests actionlint shellcheck ios"
+pathchecks="judgements eslint drift snapshot dashboards sbt scripttests actionlint shellcheck ios newchecks"
 push() { # <range> -> exit code; stderr in $gate/err
   (cd "$grepo" && PREPUSH_SKIP="${PREPUSH_SKIP:-} $pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
 # ── The same gate on a Forgejo remote: Forgejo's actions runs API, read by curl, not gh ────────────────────────────

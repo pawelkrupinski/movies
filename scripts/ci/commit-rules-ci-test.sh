@@ -44,6 +44,12 @@ commit identity/src/main/scala/services/identity/FeedLink.scala "rule" "$(printf
 check "a red fix changing a resolver rule fails the driftguards set" "1 1" \
     "$(GREEN=$base ci) $(grep -c 'driftguards: .*RULE code' "$work/out")"
 
+cp "$REPO_ROOT/scripts/ci/gating_checks.py" "$repo/scripts/ci/"
+printf 'kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\tnew\tunproven\n' > "$repo/.github/gating-checks.tsv"
+check "a gating-checks registry out of step fails, though no hook ran" "1 1" \
+    "$(GREEN=$base ci) $(grep -c 'commit rules (gating checks)' "$work/out")"
+rm "$repo/.github/gating-checks.tsv"
+
 check "nothing to judge from (a dispatch, no green run): passes, said" "0 1" \
     "$(BEFORE=0000000000000000000000000000000000000000 ci) $(grep -c 'nothing to judge' "$work/out")"
 

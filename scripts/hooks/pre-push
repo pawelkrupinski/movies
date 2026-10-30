@@ -65,6 +65,10 @@
 #                 the drift-check script, the replay harness, the flip predicate, the allow-lists), or carrying
 #                 `New-Check:` and touching a drift path, runs every drift row against main's newest run
 #                 (identity-drift-ci --against main): a row worse than main's refuses the push
+#   `newchecks`   scripts/ci/gating_checks.py lint, on a change to a workflow, the gating-checks registry or this hook: every
+#                 job, runner label and gate workflow THE GATE reads is registered, a new one `unproven` (with its owner)
+#                 until a green run proves it (`prove`). The red gate below holds no push for a run red only in unproven
+#                 checks: A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN (ci-failures-2026-10-30, recommendation 5)
 #   `allowlists`  scripts/ci/commit_rules.py allowlists over the pushed commits, on a change to a registered allow-list
 #                 (.github/allow-lists.txt) or the ratchet itself: a row lands only with its check's birth (`New-Check:`,
 #                 the row TEMPORARY with an owner and when it goes); otherwise a list only shrinks
@@ -307,7 +311,7 @@ is_page_path() { # <path>
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 page=0 allowlists=0 driftguards=0
+    local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0
     local tools
     tools=" $(tool_files | tr '\n' ' ') "
     local all_paths=""
@@ -359,6 +363,7 @@ plan() {
         is_identity_path "$path" && identity=1
         is_drift_path "$path" && driftguards=1
         is_page_path "$path" && page=1
+        case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
     done
     # an area runs only when local-tests.txt (beside this hook) names tests for it
     has_local_tests identity || identity=0
@@ -367,6 +372,7 @@ plan() {
     [ $page = 1 ] && sbt=1
     [ $judgements = 1 ] && echo judgements
     [ $allowlists = 1 ] && echo allowlists
+    [ $newchecks = 1 ] && echo newchecks
     [ $driftguards = 1 ] && echo driftguards
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
@@ -652,6 +658,15 @@ read_verdict() { # <workflow index>
     return "$rc"
 }
 
+# A CHECK GATES ONLY ONCE IT HAS BEEN GREEN (scripts/ci/gating_checks.py, .github/gating-checks.tsv; ci-failures-2026-10-30
+# recommendation 5): a red run of <workflow index> whose failed jobs are all unproven -- with the aggregates that follow
+# them -- prints why and succeeds. Anything else, the registry or the run's jobs unreadable included, fails: the red gates.
+unproven_only() { # <workflow index> <run id>
+    [ -f scripts/ci/gating_checks.py ] && [ -f .github/gating-checks.tsv ] || return 1
+    FORGEJO_API_TOKEN="${forgejo_token:-${FORGEJO_API_TOKEN:-}}" bounded "$GhSeconds" \
+        python3 scripts/ci/gating_checks.py report-only --workflow-file "${GatingWorkflowFiles[$1]}" --run "$2" 2>/dev/null
+}
+
 # Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit that touches a
 # production path names one of the red runs in a `Fixes-Red: <run id>` trailer -- and while the gate cannot be read
 # at all, unless no pushed commit touches a production path (THE GATE FAILS CLOSED, above). <range>... the pushed commits.
@@ -684,7 +699,10 @@ check_redgate() {
             [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
             read -r conclusion id url api_id <<< "$verdict"
             gate_state="$gate_state $i:$conclusion:$id"
-            if [ "$conclusion" != success ]; then
+            if [ "$conclusion" != success ] && only="$(unproven_only "$i" "${api_id:-$id}")"; then
+                warn "$workflow's run $id is red only in checks no green run has proven yet: it REPORTS, it does not gate ($only; .github/gating-checks.tsv)"
+                gate_state="$gate_state:report-only"
+            elif [ "$conclusion" != success ]; then
                 # On Forgejo a run has two ids: its number in the URL and the API's run id (the one scripts/forge-gh and the
                 # artifact registry use). A Fixes-Red: naming either declares the fix.
                 reds="$reds $id${api_id:+ $api_id}"
@@ -1175,6 +1193,13 @@ commit_rules() { # <rule set>
     python3 scripts/ci/commit_rules.py "$1" "${args[@]}"
 }
 check_allowlists() { commit_rules allowlists; }
+# A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN (the header's `newchecks`): every job, runner label and gate workflow THE
+# GATE reads has its row in .github/gating-checks.tsv -- a new one as `unproven`, with its owner -- so it reports until a
+# green run proves it (scripts/ci/gating_checks.py lint, seconds)
+check_newchecks() {
+    need newchecks python3 "install Python 3 (brew install python)" || return 1
+    python3 scripts/ci/gating_checks.py lint
+}
 # THE IDENTITY DRIFT CHECK: each claimed red's failed takes-drift rows, on CI (scripts/identity-drift-ci --for-red). 1 blocks; 2
 # (the run could not be made: CI unreachable, no token) warns and passes -- a fix is not held hostage to an outage, and
 # main's own run still judges it.

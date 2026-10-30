@@ -236,6 +236,13 @@ for the push itself — when every production commit in it carries `Fixes-Red:` 
 turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final trailer block, beside
 `Co-Authored-By`.
 
+**A new check gates only once it has been green** (`.github/gating-checks.tsv`, `scripts/ci/gating_checks.py`): a new
+job in Main or the convergence workflow, a new runner label, or a new gate workflow lands with its registry row as
+`unproven` (the hook's `newchecks` check and Main's `commit rules` job hold every job to a row). A run red only in
+unproven jobs (and the aggregates that follow them: `ci`, `timings`, a leg's wrapper) is no red for the push gate: it
+reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --workflow-file main.yml --run <run id>
+--number <#n>`, committed.
+
 ## When something blocks you
 
 | Message | Meaning | What to do |

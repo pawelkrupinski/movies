@@ -47,6 +47,10 @@ URL or the API run id), with `$FORGEJO_API_TOKEN` or the `movies` vault's token 
 findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`). The nightly
 recording's capture (Record scrape fixtures) and its hermetic replay (Verify scrape recording) do not gate either;
 `agentctl ci-why` lists their reds as information (`docs/design/convergence-fixture-fill.md`, "Capture, then verify").
+**A new check gates only once it has been green**: every job, runner label and gate workflow THE GATE reads has a row in
+`.github/gating-checks.tsv` with the green run that proved it; a new one lands as `unproven` (owner and why) and only
+reports until then -- a run red only in unproven jobs holds no push. After its first green run on main:
+`scripts/ci/gating_checks.py prove --workflow-file <f> --run <run id> --number <#n>`, and commit the registry.
 
 ## Regenerate the snapshots your change shifts
 

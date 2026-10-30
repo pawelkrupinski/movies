@@ -49,4 +49,11 @@ for set in allowlists driftguards; do
         *) echo "::error title=commit rules ($set)::the range could not be read"; [ "$rc" = 1 ] || rc=2 ;;
     esac
 done
+# A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN: the gating-checks registry in step with the gate's workflows
+# (scripts/ci/gating_checks.py lint), here too, so a push the hook never saw is held to it
+if [ -f .github/gating-checks.tsv ]; then
+    if python3 "$(dirname "${BASH_SOURCE[0]}")/gating_checks.py" lint; then echo "  gating checks: every job, label and gate workflow registered"
+    else echo "::error title=commit rules (gating checks)::.github/gating-checks.tsv is out of step with the gate's workflows -- see the step log"; rc=1
+    fi
+fi
 exit "$rc"

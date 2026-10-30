@@ -1,0 +1,78 @@
+# THE GATING CHECKS REGISTRY (scripts/ci/gating_checks.py): every check THE GATE reads -- a gate workflow, each job a run
+# of one shows, each runner label its jobs ask for -- with the green run on main that PROVED it (its #number). A check
+# lands as `unproven` (its note: owner and why) and REPORTS until its first green run: a gate run red only in unproven
+# jobs, and the aggregates that follow them, holds no push. `scripts/ci/gating_checks.py prove --workflow-file F
+# --run <run id> --number <#n>` records a green run; `lint` keeps every row and every job in step.
+# `aggregate`: a job that fails only because one it waits on did (a reusable call's wrapper, timings, a verdict).
+kind	workflow	name	proven	note
+workflow	main.yml	-	2722	THE GATE (the owner, 2026-10-27)
+workflow	identity-model-convergence.yml	-	2691	THE GATE (the owner, 2026-10-27)
+job	main.yml	ci	aggregate
+job	main.yml	gates	aggregate
+job	main.yml	kick-convergence	2722
+job	main.yml	timings	aggregate
+job	main.yml	scope	2722
+job	main.yml	test (rest)	2722
+job	main.yml	test (heavy1)	2722
+job	main.yml	test (heavy2)	2722
+job	main.yml	test (worker-identity)	2722
+job	main.yml	test (worker)	2722
+job	main.yml	integration-test (identity)	2722
+job	main.yml	integration-test (rest)	2722
+job	main.yml	page tests (safari / pw behaviour 1/2)	2722
+job	main.yml	page tests (safari / pw behaviour 2/2)	2722
+job	main.yml	page tests (safari / pw phones 1/2)	2722
+job	main.yml	page tests (safari / pw phones 2/2)	2722
+job	main.yml	page tests (chrome / stable)	2722
+job	main.yml	page tests (chrome / pw behaviour + desktop)	2722
+job	main.yml	page tests (chrome / pw phones)	2722
+job	main.yml	mobile-local-server	2722
+job	main.yml	e2e (corpus)	2722
+job	main.yml	e2e (rest)	2722
+job	main.yml	report (timings)	aggregate
+label	-	main-lane	2722
+label	-	ubuntu-24.04	2722
+label	-	ubuntu-26.04	2722
+job	main.yml	publish-web	2718
+job	main.yml	image-worker	2718
+job	main.yml	publish-worker	2718
+job	identity-model-convergence.yml	preflight	2691
+job	identity-model-convergence.yml	leg (germany)	aggregate
+job	identity-model-convergence.yml	convergence (germany)	aggregate
+job	identity-model-convergence.yml	order-independence-p01 (germany)	2691
+job	identity-model-convergence.yml	order-independence-p12 (germany)	2691
+job	identity-model-convergence.yml	takes (germany)	2691
+job	identity-model-convergence.yml	takes-drift-1 (germany)	2691
+job	identity-model-convergence.yml	takes-drift-2 (germany)	2691
+job	identity-model-convergence.yml	leg (poland)	aggregate
+job	identity-model-convergence.yml	convergence (poland)	aggregate
+job	identity-model-convergence.yml	takes (poland)	2691
+job	identity-model-convergence.yml	takes-drift-1 (poland)	2691
+job	identity-model-convergence.yml	takes-drift-2 (poland)	2691
+job	identity-model-convergence.yml	leg (spain)	aggregate
+job	identity-model-convergence.yml	convergence (spain)	aggregate
+job	identity-model-convergence.yml	takes (spain)	2691
+job	identity-model-convergence.yml	takes-drift-1 (spain)	2691
+job	identity-model-convergence.yml	takes-drift-2 (spain)	2691
+job	identity-model-convergence.yml	leg (united-kingdom)	aggregate
+job	identity-model-convergence.yml	convergence (united-kingdom)	aggregate
+job	identity-model-convergence.yml	order-independence-p01 (united-kingdom)	2691
+job	identity-model-convergence.yml	order-independence-p12 (united-kingdom)	2691
+job	identity-model-convergence.yml	takes (united-kingdom)	2691
+job	identity-model-convergence.yml	takes-drift-1 (united-kingdom)	2691
+job	identity-model-convergence.yml	takes-drift-2 (united-kingdom)	2691
+job	identity-model-convergence.yml	leg (united-states)	aggregate
+job	identity-model-convergence.yml	convergence (united-states)	aggregate
+job	identity-model-convergence.yml	next-day (united-states)	2691
+job	identity-model-convergence.yml	order-independence-p01 (united-states)	2691
+job	identity-model-convergence.yml	order-independence-p12 (united-states)	2691
+job	identity-model-convergence.yml	takes (united-states)	2691
+job	identity-model-convergence.yml	takes-drift-1 (united-states)	2691
+job	identity-model-convergence.yml	takes-drift-2 (united-states)	2691
+job	identity-model-convergence.yml	verdict complete	aggregate
+job	identity-model-convergence.yml	timings	aggregate
+job	identity-model-convergence.yml	report (timings)	aggregate
+label	-	measure	2691
+job	main.yml	commit rules	unproven	born b1d151a55 (2026-10-30, the review batch); owner: CI structure; proven by its first green Main run
+job	identity-model-convergence.yml	request-bisect	unproven	runs only after a red leg; owner: convergence; proven by its first green run
+job	identity-model-convergence.yml	drop-measure-branch	unproven	runs only on measure/ branches, never on main; owner: convergence
