@@ -382,13 +382,18 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), _root_.tools.SpecStopwatch.Frozen)), new FetchOnlyStorage, fixtureTree,
       settings.FixtureRoot.RepositoryRelative, Some(missing))
     // Paced, n asks sleep at least (n - 1) x 200 ms — a floor a sleep never undercuts — so the bound
-    // sits at that floor, not at a guess of how fast an unpaced run is on a loaded machine.
+    // sits at that floor. Counted as the time this thread spent WAITING (a sleep is one), not as wall
+    // time: a runnable thread a loaded machine starves, or a neighbour's full collection stops, waits
+    // for nothing, and the wall clock read 3 s for ten 1 ms refusals on Main #2687's runner.
     val asks    = 10
     val pacedMs = (asks - 1) * 200L
-    val started = System.nanoTime()
+    val threads = java.lang.management.ManagementFactory.getThreadMXBean
+    threads.setThreadContentionMonitoringEnabled(true)
+    def waitedMs = threads.getThreadInfo(Thread.currentThread.threadId).getWaitedTime
+    val before  = waitedMs
     (1 to asks).foreach(i => an [Exception] should be thrownBy wiring.httpFetch.get(s"https://www.flicks.co.uk/movie/unrecorded-$i/"))
-    val elapsedMs = (System.nanoTime() - started) / 1000000
-    withClue(s"$asks refusals on a 200 ms-paced host took ${elapsedMs} ms: ") { elapsedMs should be < pacedMs }
+    val waited  = waitedMs - before
+    withClue(s"$asks refusals on a 200 ms-paced host waited ${waited} ms: ") { waited should be < pacedMs }
     missing.size should be >= 1
   }
 
