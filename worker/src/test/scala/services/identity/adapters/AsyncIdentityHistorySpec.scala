@@ -4,7 +4,7 @@ package adapters
 import models.{CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{MutableClock, TestWiring}
+import tools.{ManualScheduler, MutableClock, TestWiring}
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
@@ -50,7 +50,10 @@ class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
     val service = new IdentityModelService(
       () => new IncrementalResolver(new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, reads), titles, IdentityCalibration.resolver),
       reads, () => Listing.distinct(Listing.all(Seq(Multikino -> Seq(row(Multikino, "Lalka"))), titles)), titles, 1.second,
-      java.util.concurrent.Executors.newSingleThreadScheduledExecutor(), clock = clock, history = history, build = "b1")
+      // The spec drains on its own thread, so nothing else may: the model is single-threaded. With a real scheduler, every
+      // minute the clock moved put the event's settle deadline in the past, its drain ran at once on the scheduler's
+      // thread beside the spec's, and one drain's release of its prefetched documents broke the other's (Main #2701).
+      new ManualScheduler(clock), clock = clock, history = history, build = "b1")
     service.takeUp()
     (1 to 50).foreach { i =>
       tmdb.people(s"q$i", Seq(i))
