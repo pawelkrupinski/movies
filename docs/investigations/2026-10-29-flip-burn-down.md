@@ -185,3 +185,16 @@ them down". They were baselined at the check's birth (`New-Check:`), generated b
 - **Open, found by slicing:** the widened UK Swan Lake slice shows a DIVERGENCE on seed 3. Empire Halstead's "Swan Lake"
   and Riverside Woodbridge's "Swan Lake (2027)" serve none incrementally where the whole resolve takes the 2026/27
   broadcast 1702782 (at tick and at settle). Its slice is not committed while it replays red.
+
+### 2026-10-30: the structural plan, steps 2–4 (typed outcome)
+
+Following `identity-flips-structural-2026-10-30` (adopted by the owner), a decision now carries `awaits` and a typed
+`outcome`: Taken | NoFilm | Pending(awaits). The stage's `outcomeOf` adds its own waits, and the drift replay reads the
+type instead of prose. Measure 4162: 0 model and 0 final moves in every country. Drift 4161 (all rows): DRIFT CLEAN. PL
+"Piesek" ×2 is fixed: its `none` at the fill was a pending wait. Its rows are removed and its slice committed. Still
+on the baseline:
+
+- DE "Titans" ×3 and "Scott & Lila": sibling leave and return (class D).
+- PL "Siostry (1972)", PL "Zemsta", UK "Hocus Pocus": Agreed → none → Agreed. The stage drops an attempted question from
+  what it waits on (the settle rule) and decides without it, then agrees once the answer lands. That is class B, for the
+  plan's stage-outcome and budget-invariance steps.
