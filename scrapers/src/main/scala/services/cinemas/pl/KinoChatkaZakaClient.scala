@@ -73,7 +73,7 @@ object KinoChatkaZakaClient {
   // venue has spelled that run three ways — "24.06.26 | środa | 18:00",
   // "13.10.26 wtorek 18:00" (October 2026) and "18.11.26 (środa), godz. 18:00" or
   // "godz: 18:00" (November 2026) — sometimes under a banner line.
-  private val DetailTimePat = raw"""\d{1,2}\.\d{1,2}\.\d{2}[^\d\n]{1,30}${ScraperParse.ClockParts}""".r
+  private val DetailTimePat = raw"""\d{1,2}\.\d{1,2}\.\d{2,4}[^\d\n]{1,30}${ScraperParse.ClockParts}""".r
   // The detail meta's "reż. Director[, Director…], Country[/Country…] Year (NN min)"
   // line: the countries are the last comma field before the year.
   private val DetailMetaPat = """(?s)reż\.\s*(.+?),\s*([^(),]+?)\s+(\d{4})\s*\((\d+)\s*min\)""".r
