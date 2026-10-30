@@ -7,7 +7,8 @@ name: Convergence daily full run
 # the takes check also runs in full, in enforce mode, while no full takes row of its country is under 24 hours old
 # (its `takes-full-<cc>.txt` marker on the takes store's release).
 # And its drift rows' DETERMINISM CHECK (`drift-twice`; convergence-failures 2026-10-29, G10): each seed replayed twice,
-# the drift and flips TSVs diffed (scripts/ci/identity-drift-check.sh's DRIFT_TWICE).
+# the drift and flips TSVs diffed (scripts/ci/identity-drift-check.sh's DRIFT_TWICE) -- on a day whose full run is not
+# a push's already in flight for the same commit (then that run, without drift-twice, is the day's, below).
 on:
     schedule:
         - cron: '23 3 * * *'

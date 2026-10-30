@@ -75,7 +75,6 @@ check "a baselined flip that is gone is flagged: remove its row" "0 1" \
 check "divergences have no baseline: they fail beside known flips" "1" "$(FAKE_FOUND=1 FAKE_ALLOWED=0 FAKE_FLIPS=2 FAKE_KNOWN=2 run)"
 FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "the replay reads the baseline" "1" "$(grep -c 'identity-flips-baseline.tsv' "$work/out.args" 2>/dev/null || echo 0)"
-DRIFT_TWICE=true FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "the daily double run: two replays alike pass" "0" "$(DRIFT_TWICE=true FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
 check "...having replayed twice" "1" "$(grep -c deterministic "$work/stdout")"
 check "two replays that differ fail" "1" "$(DRIFT_TWICE=true FAKE_VARY=1 FAKE_FOUND=0 FAKE_ALLOWED=0 run)"

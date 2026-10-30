@@ -1016,9 +1016,10 @@ jobs:
             # every listing whose take at a checkpoint differs from the whole resolve's fails the row, unless
             # identity-drift-allow.tsv names it with why. And every listing's served take is recorded at each projection on
             # the way: one that FLIPS -- back to a film it left, moved more than once, or moved where none of its inputs did
-            # (prod's kinowo_identity_listing_flips; services.identity.TakeFlips) -- fails the row too, the reviewed list
-            # (identity-flips-allow.tsv) kept empty. A property of one commit, not a base-vs-head move: red means this
-            # code drifts. Main's rows only, not a takes-only measurement's (its phases are takes and takes-base).
+            # (prod's kinowo_identity_listing_flips; services.identity.TakeFlips) -- fails the row too, unless a known flip
+            # on the shrink-only baseline (identity-flips-baseline.tsv) or a check's TEMPORARY birth row. A property of
+            # one commit, not a base-vs-head move: red means this code drifts. Main's rows and drift-only runs
+            # (scripts/identity-drift-ci), not a takes-only measurement's (its phases are takes and takes-base).
             # ONE SEED A ROW (`takes-drift-<seed>`), beside the takes check rather than after it: in the takes row the check
             # and the two seeds ran in turn, 30-55 minutes on main (runs 2683-2809), the 55-minute ceiling cancelling
             # half of them.

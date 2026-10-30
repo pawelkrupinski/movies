@@ -277,7 +277,7 @@ if [ -n "$drift" ]; then
   case $drift_rc in
     0) echo "  drift       $(tail -1 "$out/drift.txt")" ;;
     1) echo "  drift       $(tail -1 "$out/drift.txt")"
-       blocked+=("drift	$(tail -1 "$out/drift.txt")	the incremental state ends elsewhere than a whole resolve, or a take flips on the way: each row's verdict and report lines in $out/drift.txt; a fix, never an allow-list entry, unless the listing is intended (identity-drift-allow.tsv / identity-flips-allow.tsv)") ;;
+       blocked+=("drift	$(tail -1 "$out/drift.txt")	the incremental state ends elsewhere than a whole resolve, or a take flips on the way: each row's verdict and report lines in $out/drift.txt; a fix, never an allow-list entry (a list takes rows only at its check's birth: scripts/ci/commit_rules.py)") ;;
     *) echo "  drift       could not check$(why_not "$out/drift.log" identity-drift-ci) ($out/drift.log)"; unknown+=(drift) ;;
   esac
 fi

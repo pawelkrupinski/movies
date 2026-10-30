@@ -6,7 +6,8 @@
 # unless test/resources/fixtures/identity-drift-allow.tsv names it, with its reason. And on any FLIP: a listing whose served
 # take, recorded at every projection of the replay, goes back to a film it left, changes more than once, or changes where
 # none of its deciding inputs did (services.identity.TakeFlips: prod's `kinowo_identity_listing_flips`, which an end-state
-# comparison cannot see) -- unless test/resources/fixtures/identity-flips-allow.tsv names it, and that list stays empty.
+# comparison cannot see) -- unless test/resources/fixtures/identity-flips-allow.tsv names it (a check's TEMPORARY birth rows only) or it is a
+# KNOWN flip on the shrink-only baseline (below).
 #
 # A RED HERE is fixed in the incremental state that diverges (a lag, a budget, queue order, a cache, a restart key), never
 # by a new resolver rule (the owner, 2026-10-29: a rule is identity design, measured on the full corpus).

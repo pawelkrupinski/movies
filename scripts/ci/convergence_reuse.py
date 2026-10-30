@@ -74,7 +74,6 @@ WORKFLOW = ".github/workflows/identity-model-convergence.yml"
 WORKFLOW_FILE = "identity-model-convergence.yml"
 FACTS_ARTIFACT = "convergence-reuse-facts"
 FACTS_NAME = "facts.json"
-CODES = ("pl", "de", "uk", "es", "us")
 # The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix). expected_rows() models
 # exactly this; ConvergenceReuseSpec fails the moment the leg's expression is anything else.
 PHASES_EXPRESSION = (

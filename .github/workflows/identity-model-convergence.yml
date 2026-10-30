@@ -417,15 +417,11 @@ jobs:
                   RUN_ID: ${{ github.run_id }}
                   REUSED_FROM: ${{ needs.preflight.outputs.reused-from }}
                   ORDER_PHASES: ${{ needs.preflight.outputs.order-phases }}
-                  INPUT_PROFILE: ${{ needs.preflight.outputs.profile }}
-                  INPUT_JVM_OPTIONS: ${{ needs.preflight.outputs.jvm-options }}
-                  INPUT_TAKES_BASE: ${{ needs.preflight.outputs.takes-base }}
+                  # only what can leave a takes row out (convergence_reuse.incomplete reads no other input)
                   INPUT_TAKES_ONLY: ${{ needs.preflight.outputs.takes-only }}
                   INPUT_DRIFT_ONLY: ${{ needs.preflight.outputs.drift-only }}
                   INPUT_RECORDING: ${{ needs.preflight.outputs.recording }}
                   INPUT_TAKES_COUNTRIES: ${{ needs.preflight.outputs.takes-countries }}
-                  INPUT_TAKES_NO_STORE: ${{ needs.preflight.outputs.takes-no-store }}
-                  INPUT_TAKES_SKIP: ${{ needs.preflight.outputs.takes-skip }}
               run: |
                   LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs > /dev/null
                   python3 scripts/ci/convergence_reuse.py complete --run "$RUN_ID" --sha "$GITHUB_SHA" --reused-from "$REUSED_FROM" \
