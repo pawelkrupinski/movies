@@ -1017,6 +1017,18 @@ jobs:
                   check_name: e2e tests (${{ matrix.shard }})
                   include_passed: false
 
+            # The stored log loses its last seconds (Main #2647: every rest row's ended ~5 s before sbt did), and the
+            # annotations above with it: a spec failing late, and sbt's summary, never show. The reports still name it.
+            - name: Upload the e2e test reports on failure
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: e2e-test-reports-${{ matrix.shard }}
+                  path: target/test-reports/unit/
+                  if-no-files-found: ignore
+
             # This row's budget figures, for `scripts/adopt-ci-budgets` (see the unit rows).
             - name: Upload the performance budget figures
               if: ${{ !cancelled() }}

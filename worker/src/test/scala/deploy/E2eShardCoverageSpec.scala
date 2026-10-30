@@ -84,6 +84,16 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
       """s"; e2e/Test/testOnly services.movies.$spec ; e2e/Test/testOnly services.movies.OwnSpec services.movies.RestSpec -- -z recorded:$code"""", rest) shouldBe empty
   }
 
+  /** The job's stored log loses its last seconds (Main #2647: every e2e (rest) log ended mid-identityTick, ~5 s before
+   *  sbt did), so a spec failing late -- and sbt's summary -- never reached it, and the red read UNCLEAR. The JUnit
+   *  reports, uploaded when the row fails, still name the failing spec. */
+  it should "upload its JUnit reports when a row fails, since the stored log loses its tail" in {
+    val upload = e2eJob.split("""\n\s*- """).find(step => step.contains("upload-artifact") && step.contains("test-reports/unit"))
+    withClue("no step uploads target/test-reports/unit: ")(upload shouldBe defined)
+    upload.get should include("if: failure()")
+    upload.get should include("name: e2e-test-reports-${{ matrix.shard }}")
+  }
+
   it should "keep the rest shard selecting by exclusion so a new spec can't be dropped" in {
     buildSbt should include("""addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay""")
     e2eJob should include("cmd: e2eRest")
