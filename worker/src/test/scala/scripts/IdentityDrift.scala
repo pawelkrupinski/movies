@@ -434,8 +434,11 @@ object IdentityDrift {
       // pending too: a cluster one of whose listings' venue page is asked and still held, read meanwhile as no detail
       // (US "Parkway Drive: Home" x123, drift 3991: a scraped listing's page held, its IMDb fallback dropped until filed)
       val heldPages = gate.heldDetails
-      val pending   = pendingOf(r) ++ r.decisions.iterator.filter(d => d.film.isEmpty && d.fallback.isEmpty && d.members.exists(heldPages))
-        .flatMap(_.members).toSet
+      // and a cluster the agreement stage still waits on (`AgreementStage.waitingOn`, not settled): its verdict's or its
+      // correction's questions unanswered -- the model's take is served meanwhile (PL "Siostry (1972)", "Zemsta", UK "Hocus
+      // Pocus": Agreed -> none while a re-read waited -> Agreed, drift 4133)
+      val pending   = pendingOf(r) ++ r.decisions.iterator.filter(d => d.film.isEmpty && d.fallback.isEmpty &&
+        (d.members.exists(heldPages) || !stage.waitingOn(d).settled)).flatMap(_.members).toSet
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped))
       clusters = now

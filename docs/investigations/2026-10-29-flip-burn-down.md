@@ -169,3 +169,19 @@ them down". They were baselined at the check's birth (`New-Check:`), generated b
 | uk 1 | "Starlight Express - Live On Stage", "Hocus Pocus" | X → none → X | open |
 | de 1, de 2 | "Do You Love Me", "Scott & Lila" | X → none (6 gone) → X | open |
 | pl 1, pl 2 | "Siostry (1972)", "Festiwal Korelacje: „Zemsta”…" | none → X → none → X | open |
+
+### 2026-10-30: what the pending detection clears, and what stays
+
+- Drift 4133 (the tip, with the awaited-record line and held venue pages) names six rows fixed: UK "Royal Ballet: Swan
+  Lake" ×4 and "Starlight Express - Live On Stage", and DE "Do You Love Me". Their `none`s were pending answers (records,
+  venue pages). The rows are removed, and Starlight's and "Do You Love Me"'s drift slices are committed.
+- The replay now also counts a cluster the agreement stage still waits on (`AgreementStage.waitingOn`, not settled) as
+  pending. This targets PL "Siostry (1972)", PL "Zemsta" and UK "Hocus Pocus": Agreed → none while a re-read waited →
+  Agreed.
+- **Real, sibling leave and return** (identity design, like Madoka): DE CinemaxX "Titans" ×3. The stage's
+  `venues.current` fill holds while enough venues bill the title, drops to none when one CinemaxX listing leaves, and
+  comes back with it. Also DE Hasetor "Scott & Lila": NoCandidate alone, 716004 while Filmmuseum München's linked page
+  is present.
+- **Open, found by slicing:** the widened UK Swan Lake slice shows a DIVERGENCE on seed 3. Empire Halstead's "Swan Lake"
+  and Riverside Woodbridge's "Swan Lake (2027)" serve none incrementally where the whole resolve takes the 2026/27
+  broadcast 1702782 (at tick and at settle). Its slice is not committed while it replays red.
