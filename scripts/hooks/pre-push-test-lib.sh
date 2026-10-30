@@ -10,6 +10,9 @@ set -uo pipefail
 # The caller's PREPUSH_SKIP is the PUSH's: a push skipping `redgate` ran this test with the gate skipped in every scratch
 # push below, and its red-gate cases failed (2026-10-14). Each case names what it skips itself.
 unset PREPUSH_SKIP
+# ...and so are the landing check's shares (precommit-check.yml): run inside its `rest` job, PREPUSH_ELSEWHERE=page left
+# every scratch push's page set to "the other job", and the page cases failed (landing check run 4059).
+unset PREPUSH_ONLY PREPUSH_ELSEWHERE PREPUSH_HEAVY_ROWS
 # Every case re-pushes the same scratch trees under different stubs: a stored pass (the hook's REUSE) would answer the
 # next case instead of its checks. Reuse is off here, and on only in its own cases, with a cache of their own.
 export PREPUSH_NO_REUSE=1
