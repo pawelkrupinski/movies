@@ -356,4 +356,51 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     }
     new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads).film(77) shouldBe Answer.Unknown
   }
+
+  // The review of 082bc97ed (2026-10-30): the failures counted IN A ROW were never reset by an answer, and the give-up
+  // replaced a response TMDB had answered with "absent".
+  it should "count a record's failures again from none once a read answers it" in {
+    val clock   = new tools.MutableClock(TestWiring.FixedInstant)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    var failing = true
+    val service = new HttpFetch {
+      private def answer(url: String): String =
+        if (failing && url.contains("/movie/77?")) throw new HttpStatusException(500, "GET", url, None)
+        else """{"id":77,"title":"Seventy-Seven","results":[],"crew":[],"cast":[]}"""
+      override def get(url: String): String                                    = answer(url)
+      override def get(url: String, headers: Map[String, String]): String      = answer(url)
+      override def post(url: String, body: String, contentType: String): String = answer(url)
+    }
+    def round(): Unit = {
+      fill(store(), service, gaps = _ => AnswersChanged(Set(CandidateQuery.Title("Answered")), Set(77)), memory = Some(memory),
+        fillClock = clock).round()
+      clock.advance(java.time.Duration.ofHours(7))
+    }
+    (1 until QuestionPolicies.RecordGiveUpFailures).foreach(_ => round())
+    failing = false
+    round()                                                              // answered: the run of failures is over
+    memory.failed(Seq(Question.FilmRecord(77))) shouldBe Map(Question.FilmRecord(77) -> 1)
+  }
+
+  it should "keep the response of a record that answered when it gives up on the one that kept failing" in {
+    val clock   = new tools.MutableClock(TestWiring.FixedInstant)
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val tmdb    = store()
+    val service = new HttpFetch {
+      private def answer(url: String): String =
+        if (url.contains("/movie/77?") && url.contains("language=en-US")) throw new HttpStatusException(500, "GET", url, None)
+        else if (url.contains("/movie/77?")) """{"id":77,"title":"Siedemdziesiąt siedem","original_title":"Seventy-Seven","release_date":"2026-01-02","credits":{"crew":[],"cast":[]}}"""
+        else """{"results":[],"crew":[],"cast":[]}"""
+      override def get(url: String): String                                    = answer(url)
+      override def get(url: String, headers: Map[String, String]): String      = answer(url)
+      override def post(url: String, body: String, contentType: String): String = answer(url)
+    }
+    (1 to QuestionPolicies.RecordGiveUpFailures).foreach { _ =>
+      fill(tmdb, service, gaps = _ => AnswersChanged(Set(CandidateQuery.Title("Answered")), Set(77)), memory = Some(memory),
+        fillClock = clock).round()
+      clock.advance(java.time.Duration.ofHours(7))
+    }
+    new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads).film(77).toOption.flatten.map(_.title) shouldBe
+      Some("Siedemdziesiąt siedem")
+  }
 }

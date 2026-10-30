@@ -190,7 +190,7 @@ final class LookupFill(
       val requested = new RequestedHost.Recording
       val known     = RequestedHost.within(requested)(answer.isKnown)
       // A read that failed wins over the deferrals its back-off then caused within the same question.
-      if (known) (LookupFill.Asked.Settled, None)
+      if (known) (LookupFill.Asked.Answered, None)
       else if (budget.failed.get != failed) (LookupFill.Asked.Failed, AgreementQuestions.hostOf(budget.lastFailure.orNull, requested.last))
       else if (budget.deferred.get != deferred) (LookupFill.Asked.Settled, None)
       else (LookupFill.Asked.Unanswered, None)
@@ -199,6 +199,10 @@ final class LookupFill(
       asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> outcome(lookups.candidates(q))) ++
         asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> outcome(lookups.film(id))))
     memory.unanswered(outcomes.collect { case (question, (LookupFill.Asked.Unanswered, _)) => question })
+    // an answer ends a run of failures: else a record that failed seven rounds, then answered, was given up on at its
+    // next failed read a month on (QuestionPolicies.RecordGiveUpFailures counts failures IN A ROW)
+    val answered = outcomes.collect { case (question, (LookupFill.Asked.Answered, _)) => question }.toSet
+    if (answered.nonEmpty) memory.answered(memory.outcomes(answered).collect { case (question, QuestionMemory.Outcome.Failed(_, _, _)) => question })
     val failures = outcomes.collect { case (question, (LookupFill.Asked.Failed, host)) => (question, host) }.groupMap(_._2)(_._1)
       .toSeq.flatMap { case (host, failed) => memory.failed(failed, host).map { case (question, times) => (question, host, times) } }
     // A record whose read keeps failing while its host answers others is filed absent, as a 404 is: never pending for good.
@@ -260,8 +264,10 @@ object LookupFill {
   /** What one asked gap came to in a round. */
   private[identity] sealed trait Asked
   private[identity] object Asked {
-    /** Answered, or deferred for want of budget: nothing to remember. */
+    /** Deferred for want of budget: nothing to remember. */
     case object Settled    extends Asked
+    /** Answered: a run of failures it had is over, and counts again from none. */
+    case object Answered   extends Asked
     /** TMDB answered and left it unanswered (a 404, nothing the store takes): the day's wait. */
     case object Unanswered extends Asked
     /** A read it took failed (5xx, timeout, 429, open breaker): the short failure backoff. */

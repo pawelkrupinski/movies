@@ -93,9 +93,15 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
   }
 
 
-  /** Files film `id`'s record as TMDB's absent one -- both its responses as a 404 files them -- for a record whose read kept
-   *  failing ([[QuestionPolicies.RecordGiveUpFailures]]): the model then reads `Known(None)`, filed, never pending. */
-  def recordAbsent(id: Int): Unit = Partial.values.foreach(p => store.filmPartial(id, p, Json.obj("crew" -> JsArray())))
+  /** Files the responses of film `id`'s record its store does not hold as TMDB's absent ones -- as a 404 files them -- for
+   *  a record whose read kept failing ([[QuestionPolicies.RecordGiveUpFailures]]): the model then reads it filed, never
+   *  pending -- the record of the response that did answer, or `Known(None)` if neither did. A response held is never
+   *  overwritten (the review of 082bc97ed: a good localized response was replaced by "absent" when only the English one
+   *  kept failing). */
+  def recordAbsent(id: Int): Unit = {
+    val held = store.get(TmdbKind.Film, Seq(id.toString)).get(id.toString)
+    Partial.values.filterNot(p => held.exists(_.containsKey(p.field))).foreach(p => store.filmPartial(id, p, Json.obj("crew" -> JsArray())))
+  }
 }
 
 object TmdbNormalizer {
