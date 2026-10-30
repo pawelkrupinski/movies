@@ -87,7 +87,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * checks the real status code instead of trusting `-f`.
    */
   it should "treat anything other than HTTP 200 as a failed Grafana marker" in {
-    val action = RepoFile.read(".github/actions/mark-grafana-deploy/action.yml")
+    val action = RepoFile.read(".github/actions/mark-grafana-deploy/mark.sh")
     action should include("%{http_code}")
     action should not include "curl -fsS"
     action should include("\"$code\" = \"200\"")

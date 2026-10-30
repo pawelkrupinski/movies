@@ -29,7 +29,7 @@ class GrafanaAnnotationSsoBypassSpec extends AnyFlatSpec with Matchers {
 
   private lazy val publicProxyNix = RepoFile.read("infra/nix/modules/roles/public-proxy.nix")
   private lazy val monitoringHost = RepoFile.read("infra/nix/hosts/monitoring-1/default.nix")
-  private lazy val grafanaAction  = RepoFile.read(".github/actions/mark-grafana-deploy/action.yml")
+  private lazy val grafanaAction  = RepoFile.read(".github/actions/mark-grafana-deploy/mark.sh")
 
   /** The `"key" = { ... };` attribute block, matched by brace depth rather than
    *  a line shape — `RepoFile.block` assumes a YAML `key:` line, which a nix
@@ -57,12 +57,12 @@ class GrafanaAnnotationSsoBypassSpec extends AnyFlatSpec with Matchers {
 
   private lazy val grafanaVhost = nixAttrBlock(monitoringHost, "\"grafana.kinowo.net\"")
 
-  /** The path CI's marker actually posts to, read out of the composite action
+  /** The path CI's marker actually posts to, read out of the composite action's script
    *  rather than hard-coded here — so the two cannot drift silently. */
   private lazy val postPath: String = {
     val marker = "-X POST \"${GRAFANA_URL%/}"
     val at = grafanaAction.indexOf(marker)
-    require(at >= 0, "could not find the annotation POST url in mark-grafana-deploy/action.yml")
+    require(at >= 0, "could not find the annotation POST url in mark-grafana-deploy/mark.sh")
     val restStart = at + marker.length
     val endQuote = grafanaAction.indexOf('"', restStart)
     grafanaAction.substring(restStart, endQuote)
