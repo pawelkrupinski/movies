@@ -19,7 +19,7 @@ class PerformanceBudgetArtifactsSpec extends AnyFlatSpec with Matchers {
 
   "the unit, integration and e2e rows" should "upload their budget figures, red or green" in {
     val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/ci.yml"))
-    Seq("test" -> "unit-${{ matrix.shard }}", "integration-test" -> "it-${{ matrix.row }}", "e2e" -> "e2e-${{ matrix.shard }}")
+    Seq("test" -> "unit-${{ matrix.shard }}", "integration-test" -> "it-${{ matrix.shard }}", "e2e" -> "e2e-${{ matrix.shard }}")
       .foreach { case (job, name) =>
         withClue(s"$job: ") {
           uploadsBudgets(jobs(job), name)

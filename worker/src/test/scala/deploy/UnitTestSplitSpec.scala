@@ -77,7 +77,7 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
   }
 
   "ci.yml's integration rows" should "be build.sbt's IT_ROW filters, each running all of itAll" in {
-    RepoFile.matrixRows(itJob).map(_("row")) should contain theSameElementsAs rowsOf("IT_ROW").toSeq
+    RepoFile.matrixRows(itJob).map(_("row")).distinct should contain theSameElementsAs rowsOf("IT_ROW").toSeq
     itJob should include("IT_ROW: ${{ matrix.row }}")
     RepoFile.withoutComments(itJob) should include("run: sbt itAll")
     // Every integration module carries the filter: a module without it would run its suites on both rows.
@@ -93,5 +93,22 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
     names.foreach { name =>
       withClue(name)(RepoFile.exists(s"worker/src/it/scala/${name.stripPrefix("integration.")}.scala") shouldBe true)
     }
+  }
+
+  /** The hard-cluster convergence runs on several `identity` rows, each narrowed to some countries through
+   *  `KINOWO_HARD_CLUSTERS_COUNTRIES`: a country on no row would stop being checked before a deploy, one on two would
+   *  boot twice, and a misspelt code is dropped by the knob's parser without a word. */
+  they should "split the hard-cluster convergence by country, every country on exactly one identity row" in {
+    itJob should include("KINOWO_HARD_CLUSTERS_COUNTRIES: ${{ matrix.countries }}")
+    val identityRows = """-\s*\{([^}]*)}""".r.findAllMatchIn(RepoFile.block(itJob, "matrix")).map(_.group(1))
+      .filter(row => """\brow:\s*identity\b""".r.findFirstIn(row).isDefined).toSeq
+    identityRows should not be empty
+    val codes = identityRows.flatMap { row =>
+      val listed = """countries:\s*'([^']*)'""".r.findFirstMatchIn(row).map(_.group(1)).getOrElse("")
+      withClue(s"an identity row naming no country runs every one: $row\n")(listed should not be empty)
+      listed.split(",").map(_.trim).toSeq
+    }
+    codes.filter(models.Country.byCode(_).isEmpty) shouldBe empty
+    codes should contain theSameElementsAs models.Country.all.map(_.code)
   }
 }

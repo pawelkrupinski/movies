@@ -58,7 +58,7 @@ env:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 4 test + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
+# Current split: 4 test + 3 integration + 2 e2e + 1 mobile + 7 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -337,20 +337,27 @@ jobs:
     # hard-cluster convergence, whose parallel boots fill a runner's cores; `rest` runs every other spec, by
     # exclusion. One runner running all of `itAll` was CPU-bound — 828 s of
     # suites on 4 cores, the build's long pole beside the unit tests (2026-10-15). The slot came from the WebKit
-    # phone shards (4 → 2). Both rows run `itAll`, so `all` still keeps going past a failing module.
+    # phone shards (4 → 2). Every row runs `itAll`, so `all` still keeps going past a failing module.
+    # The hard-cluster convergence is itself split by country over two `identity` rows (2026-10-30), through the spec's
+    # own `KINOWO_HARD_CLUSTERS_COUNTRIES` narrowing: it boots every country's passes at once, CPU-bound, and alone was
+    # the stage's floor (240-693 s of one suite on the 4-CPU measure tier, runs 4052-4095). The rows' countries cover
+    # every country between them, each once (UnitTestSplitSpec); unset (a local or landing-check `IT_ROW=identity`), it
+    # runs them all. The cut is by recorded cinemas: pl+de+es 134, uk+us 135.
     integration-test:
-        name: integration-test (${{ matrix.row }})
+        name: integration-test (${{ matrix.shard }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { row: identity }
-                    - { row: rest }
+                    - { shard: identity-pl-de-es, row: identity, countries: 'pl,de,es' }
+                    - { shard: identity-uk-us,    row: identity, countries: 'uk,us' }
+                    - { shard: rest,              row: rest,     countries: '' }
         runs-on: ${{ inputs.lane || 'ubuntu-24.04' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         # Every sbt step of the row sees the same filter.
         env:
             IT_ROW: ${{ matrix.row }}
+            KINOWO_HARD_CLUSTERS_COUNTRIES: ${{ matrix.countries }}
         permissions:
             contents: read
             checks: write
@@ -488,7 +495,7 @@ jobs:
                   annotate_only: true
                   job_summary: false
                   report_paths: 'target/test-reports/it/**/*.xml'
-                  check_name: integration tests (${{ matrix.row }})
+                  check_name: integration tests (${{ matrix.shard }})
                   include_passed: false
 
             # This row's budget figures, for `scripts/adopt-ci-budgets` (see the unit rows).
@@ -498,7 +505,7 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: performance-budgets-it-${{ matrix.row }}
+                  name: performance-budgets-it-${{ matrix.shard }}
                   path: |
                       target/performance-budgets.tsv
                       */target/performance-budgets.tsv
