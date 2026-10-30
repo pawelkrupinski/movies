@@ -65,8 +65,16 @@ object ForkedTests {
     // second forked test group alone.
     val forkLimit: Tags.Rule => Boolean = rule =>
       rule(Map(Tags.ForkedTestGroup -> 1)) && !rule(Map(Tags.ForkedTestGroup -> 2))
-    (Global / concurrentRestrictions).value.filterNot(forkLimit) :+ Tags.limit(Tags.ForkedTestGroup, forksAtOnce)
+    // sbt's limit on all tasks at once (its default: the cores), the one that also caps how many unforked suites run
+    // side by side. `KINOWO_SBT_TASKS=<n>` replaces it: the integration rows' suites mostly wait on Mongo.
+    val allLimit: Tags.Rule => Boolean = rule => rule(Map(Tags.All -> 1)) && !rule(Map(Tags.All -> 100000))
+    val base = (Global / concurrentRestrictions).value.filterNot(forkLimit) :+ Tags.limit(Tags.ForkedTestGroup, forksAtOnce)
+    tasksAtOnce.fold(base)(n => base.filterNot(allLimit) :+ Tags.limitAll(n))
   }
+
+  /** `KINOWO_SBT_TASKS`, when set: how many sbt tasks run at once, in place of sbt's one per core. */
+  val tasksAtOnce: Option[Int] =
+    sys.env.get("KINOWO_SBT_TASKS").flatMap(n => scala.util.Try(n.trim.toInt).toOption).filter(_ >= 1)
 
   /** `config`'s specs in a forked JVM with at most `heap` (an `-Xmx` value, e.g. "2g"). */
   def settings(config: Configuration, heap: String): Seq[Setting[_]] = Seq(

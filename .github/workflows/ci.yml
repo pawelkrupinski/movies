@@ -352,6 +352,7 @@ jobs:
         # Every sbt step of the row sees the same filter.
         env:
             IT_ROW: ${{ matrix.row }}
+            KINOWO_SBT_TASKS: '8'
         permissions:
             contents: read
             checks: write
