@@ -295,6 +295,7 @@ printf '( sleep 30; : ) &\nwait\n' > "$work/fake-keeper.sh"
 bash "$work/fake-keeper.sh" --keep-served 424242 & fake=$!
 wait_until "the fake keeper's subshell runs" '[ "$(ps -axo ppid= | grep -cw "$fake")" -ge 1 ]'
 check "keeper_of names the keeper alone, not its poll's subshell" "$fake" "$(keeper_of 424242 | paste -sd' ' -)"
+# shellcheck disable=SC2046 # the subshells' pids, one word each
 kill $(ps -axo pid=,ppid= | awk -v p="$fake" '$2 == p { print $1 }') "$fake" 2>/dev/null; wait "$fake" 2>/dev/null
 gone_within() { local pid=$1; wait_until "pid $pid is gone" '! kill -0 "$pid" 2>/dev/null'; }
 rm -f "$work/calls"; slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
