@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{ConvergenceDiagnostics, FixtureTestWiring, SuiteConfiguration}
+import tools.{ConvergenceDiagnostics, SuiteConfiguration}
 
 /** An allowlisted listing: the venue (its `displayName`, the wire key) and the title it published. */
 final case class AllowedListing private (venue: String, listing: String)
@@ -38,7 +38,7 @@ object AllowedListing {
  * recorded corpora move nightly, and a film that stopped screening is not a fix. A recorded corpus
  * that is not on disk CANCELS its tests with where to get it, never passes them.
  */
-abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfiguration with StopsItsWirings {
+abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfiguration with StopsItsWirings with ReadsSharedFixtureBoot {
 
   /** What the rule holds a corpus to, as the test name says it ("hold every field to its shape"). */
   protected def rule: String
@@ -60,12 +60,6 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
    *  not failed, once a corpus no longer breaks them (drop them by hand when every corpus is re-recorded). Every
    *  one must also be an allowlist entry. */
   protected def awaitingReRecord: Set[AllowedListing] = Set.empty
-
-  private lazy val wiring: FixtureTestWiring = {
-    val w = stoppedAfterAll(new FixtureTestWiring("08-06-2026"))
-    w.bootStartup()
-    w
-  }
 
   /** What a corpus's two tests read of it, computed in one pass — the listings themselves are not
    *  kept, so a spec holds five countries' findings rather than five whole corpora. */
@@ -122,7 +116,7 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
     (awaitingReRecord -- allowlist.keySet).toSeq.map(_.toString).sorted shouldBe empty
   }
 
-  private lazy val boot = new Checked(ListingCorpora.fixtureBoot(wiring))
+  private lazy val boot = new Checked(ListingCorpora.fixtureBoot(sharedFixtureBoot))
   register(ListingCorpora.FixtureBootLabel, () => boot)
 
   Country.all.foreach { country =>

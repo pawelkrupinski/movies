@@ -27,8 +27,10 @@ class E2eWiringsStoppedSpec extends AnyFlatSpec with Matchers {
     val unstopped = for {
       (path, text) <- sources.toSeq
       (line, n)    <- text.linesIterator.zipWithIndex
-      name         <- wirings if line.contains(s"new $name") && !line.contains(s"stoppedAfterAll(new $name")
+      name         <- wirings if line.contains(s"new $name") && !line.contains(s"stoppedAfterAll(new $name") &&
+                                  !line.contains(s"stoppedWhenUnheld(new $name")
     } yield s"$path:${n + 1}: ${line.trim}"
-    withClue("wrap it as stoppedAfterAll(new …) in a suite mixing in StopsItsWirings:\n")(unstopped shouldBe empty)
+    withClue("wrap it as stoppedAfterAll(new …) in a suite mixing in StopsItsWirings (or read SharedFixtureBoot's, which stops " +
+      "its own once no suite holds it):\n")(unstopped shouldBe empty)
   }
 }
