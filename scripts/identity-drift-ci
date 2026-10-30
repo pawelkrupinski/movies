@@ -132,7 +132,9 @@ if [ -n "$against" ]; then
     # main's newest decided run whose drift rows ran (a reused or cancelled run judged none)
     for id in $(identity_gh "$DISPATCH_GH_TIMEOUT" run list --workflow "$workflow" --branch main --limit 10 --json databaseId,status \
                   --jq '.[] | select(.status == "completed") | .databaseId') ; do
-      drift_jobs "$id" | awk -F'\t' '$3 == "success" || $3 == "failure"' | grep -q . && { base_ids=$id; break; }
+      # (awk decides alone: under pipefail a `grep -q` ending first would SIGPIPE the writer and pass the run over)
+      drift_jobs "$id" | awk -F'\t' '$3 == "success" || $3 == "failure" { decided = 1 } END { exit !decided }' \
+        && { base_ids=$id; break; }
     done
     [ -n "$base_ids" ] || die "no decided run of $workflow on main judged its drift rows: nothing to hold this one against"
   else
