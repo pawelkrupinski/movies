@@ -528,16 +528,17 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  (2026-10-23, 10-26) gained a listing whose title no family had been asked, waited on the queue, and was published
    *  lost until the answers came in half a minute later — where a cluster new to its key would have read them. */
   private[agreement] def newCluster(digest: Long): Boolean =
-    (askNow ne AgreementStage.AskNow.Never) && !firstPass &&
-      !heldByDigest._1.get(digest).exists(_.listings == digest) && !waiting.valuesIterator.exists(_.listings == digest) &&
-      !askedNow(digest)
+    asksInline(digest, heldByDigest._1) && !waiting.valuesIterator.exists(_.listings == digest)
 
   /** A model take's correction the stage meets in this SHAPE (`digest`, [[correctionDigest]]) for the first time since it
    *  started — none held of that shape under any key, none asked inline — past its first pass: what [[askNow]] asks the
    *  families of inline, as [[newCluster]] does a cluster's. */
-  private[agreement] def newCorrection(digest: Long): Boolean =
-    (askNow ne AgreementStage.AskNow.Never) && !firstPass &&
-      !heldByDigest._2.get(digest).exists(_.listings == digest) && !askedNow(digest)
+  private[agreement] def newCorrection(digest: Long): Boolean = asksInline(digest, heldByDigest._2)
+
+  /** What [[newCluster]] and [[newCorrection]] share: an inline ask is wired, the first pass is over, and no verdict of
+   *  `index` (the clusters' or the corrections') nor an inline ask has met the SHAPE `digest` yet. */
+  private def asksInline(digest: Long, index: mutable.LongMap[StoredVerdict]): Boolean =
+    (askNow ne AgreementStage.AskNow.Never) && !firstPass && !index.get(digest).exists(_.listings == digest) && !askedNow(digest)
 
   /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
    *  corrections and the model's decisions — and store the verdicts `pass` moved. */
