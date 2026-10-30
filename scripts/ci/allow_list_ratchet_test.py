@@ -205,5 +205,16 @@ class RatchetTest(unittest.TestCase):
         self.assertIn("known flip", err)
 
 
+    def test_a_tightened_checks_birth_baselines_a_listing_a_drift_slice_holds(self):
+        # a slice holds a listing's past flip; the tightened check sees a new one of it (CinemaxX "Titans", a229501a7)
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        seeds = ["P\x00CinemaxX Dammtor\x00Titans\x00"]
+        sliced = self.commit_bytes("test/resources/fixtures/drift-slices/de/titans/slice.json.gz",
+                                   gzip.compress(json.dumps({"country": "de", "seeds": seeds}).encode()), "the Titans slice")
+        found = BROW.replace("Werkstattkino e.V.", "CinemaxX Dammtor").replace("CAMOUFLAGE", "Titans")
+        head = self.commit({BASELINE: BHEAD + BROW + found, PREDICATE: "a precise none\n"}, "flip check\n\nNew-Check: flips")
+        self.assertEqual((0, ""), self.ratchet(f"{sliced}..{head}"))
+        self.assertNotEqual(reg, head)
+
 if __name__ == "__main__":
     unittest.main()

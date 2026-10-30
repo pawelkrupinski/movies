@@ -91,9 +91,11 @@ def listing(row: str) -> tuple[str, str, str]:
     return tuple(c.strip() for c in (cols + ["", "", ""])[:3])
 
 
-def known(rev: str) -> set[tuple[str, str, str]]:
+def known(rev: str, slices_too: bool = True) -> set[tuple[str, str, str]]:
     """The listings known before `rev`: every row any earlier revision of the drift or flips list held, and every
-    listing a drift slice committed at `rev`'s parent holds (venue `*` rows match any venue)."""
+    listing a drift slice committed at `rev`'s parent holds (venue `*` rows match any venue) -- `slices_too` False: the
+    lists' and the baseline's alone (a tightened check's baseline birth: a slice holds a listing's past flip, and the
+    tightened check sees a new one of it, baselined while the slice passes it, IdentityDriftSlicesSpec)."""
     out = set()
     for path in DRIFT_LISTS + BASELINES:
         try:
@@ -102,6 +104,8 @@ def known(rev: str) -> set[tuple[str, str, str]]:
             history = []
         for old in history:
             out |= {listing(r) for r in rows(at(old, path))}
+    if not slices_too:
+        return out
     try:
         slices = [p for p in git("ls-tree", "-r", "--name-only", f"{rev}^", "--", SLICES).split("\n") if p.endswith("/slice.json.gz")]
     except subprocess.CalledProcessError:
@@ -187,11 +191,10 @@ def check(ranges: list[str], registry: str) -> list[str]:
                                     f"never baselined; only a tightened check's birth (`{TRAILER}:`, a change to what decides "
                                     "the gate, no `Fixes-Red:`) baselines what it finds (no override)" for r in added]
                         continue
-                    if before_known is None:
-                        before_known = known(sha)
+                    listed_before = known(sha, slices_too=False)
                     refused += [f"{sha[:9]} {path}: {r!r}: a known flip or divergence (an earlier revision of a list or the "
-                                "baseline named it, or a committed drift slice holds it) -- fixed, never baselined again"
-                                for r in added if is_known(listing(r), before_known)]
+                                "baseline named it) -- fixed, never baselined again"
+                                for r in added if is_known(listing(r), listed_before)]
                     continue
                 drift_list = path in DRIFT_LISTS
                 if added and drift_list and trailers and before_known is None:
