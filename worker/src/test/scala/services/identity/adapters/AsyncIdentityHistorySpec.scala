@@ -15,11 +15,13 @@ import scala.concurrent.duration._
  *  whatever was queued is written once the store answers. A blocking insert per write ran Germany's convergence
  *  tick past its 30-minute timeout (red #2301). */
 class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
-  /** A history store that writes nothing until `open` is counted down: every insert waits on it. */
+  /** A history store that writes nothing until `open` is counted down: every insert waits on it. `entered` counts down
+   *  when the first insert has begun waiting. */
   private final class Blocked extends IdentityHistory {
     val open    = new CountDownLatch(1)
+    val entered = new CountDownLatch(1)
     val written = new InMemoryIdentityHistory
-    def append(entries: Seq[HistoryEntry]): Unit = { open.await(); written.append(entries) }
+    def append(entries: Seq[HistoryEntry]): Unit = { entered.countDown(); open.await(); written.append(entries) }
   }
   private def entry(i: Int) = HistoryEntry(HistoryEntry.Failure, s"u$i", i.toLong, None, None, "b1", Some("http 429"))
 
@@ -27,13 +29,18 @@ class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
     val store   = new Blocked
     val dropped = new AtomicLong
     val history = new AsyncIdentityHistory(store, n => { dropped.addAndGet(n); () }, capacity = 10)
-    (1 to 25).foreach(i => history.append(Seq(entry(i))))
-    // the writer holds at most one batch out of the queue while it waits: the rest are dropped, never waited for
-    dropped.get should be >= 14L
+    // The writer holds one batch out of the queue while the store waits; how much of a burst that batch takes depends on
+    // when its thread runs (one entry, or ten more taken mid-burst: 5 dropped on Main #2828's runner). So it is handed
+    // exactly one first, and the burst follows only once the store holds it.
+    history.append(Seq(entry(1)))
+    store.entered.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    (2 to 25).foreach(i => history.append(Seq(entry(i))))
+    // the queue's ten fill, and the other fourteen are dropped — never waited for
+    dropped.get shouldBe 14L
     store.written.all shouldBe empty
     store.open.countDown()
     history.stopWithin(10.seconds)
-    store.written.all.size.toLong shouldBe 25L - dropped.get
+    store.written.all.map(_.id) shouldBe (1 to 11).map(i => s"u$i")
   }
 
   "the model's drains and the TMDB store's filings" should "finish with the history's store blocked outright" in {
