@@ -23,6 +23,10 @@ class IdentityDriftSlicesSpec extends AnyFlatSpec with Matchers {
   private val fixtures = Path.of("test", "resources", "fixtures")
   private val allowed  = IdentityDrift.allowList(fixtures.resolve("identity-drift-allow.tsv"))
   private val flipsOk  = IdentityDrift.flipAllowList(fixtures.resolve("identity-flips-allow.tsv"))
+  /** The known flips (identity-flips-baseline.tsv): a slice of a baselined listing may flip, on any seed, while its row
+   *  stands -- the corpus gate's own rule -- and is held strictly once the fix removes it. A tightened check's birth
+   *  baselines what it newly sees (a229501a7's precise none: CinemaxX "Titans" goes to no film and back). */
+  private val baselined = IdentityDrift.flipBaseline(fixtures.resolve("identity-flips-baseline.tsv"))
   private val slices   = sliceDirs(fixtures.resolve("drift-slices"))
 
   /** Every slice's findings, the slices side by side: each replays its own answers and shares nothing with another. */
@@ -46,7 +50,8 @@ class IdentityDriftSlicesSpec extends AnyFlatSpec with Matchers {
       val open = outcome.findings.open(outcome.country, allowed, flipsOk)
       withClue("divergences from the whole resolve: ")(open.divergences.map(d => s"${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, " +
         s"incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]").distinct shouldBe empty)
-      withClue("flips: ")(open.flips.map { case (seed, f) => s"${f.line} [seed $seed]" }.distinct shouldBe empty)
+      withClue("flips: ")(open.flips.filterNot { case (_, f) => baselined.exists(_.covers(outcome.country, f)) }
+        .map { case (seed, f) => s"${f.line} [seed $seed]" }.distinct shouldBe empty)
     }
   }
 }
