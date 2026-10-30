@@ -5,8 +5,9 @@ import services.movies.{ListingKey, TitleNormalizer}
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details
  * from all cinemas data until there are no showtimes in any cinema in the country", "and update the details when it
- * comes back"). A listing that leaves -- its venue's page or its showings dropped -- loses its showings at once, but its
- * facts (year, runtime, director, original title, poster, the links that decided its film) stay in the model's input
+ * comes back"). A listing that leaves -- its venue's page or its showings dropped -- leaves the cinema data the site
+ * serves at once, but its facts (year, runtime, director, original title, poster, the days it screened on, the links that
+ * decided its film) stay in the model's input
  * while a present listing of the country still bills its title; they go once none does. A listing that comes back
  * replaces what was kept of it: its current data wins, never a frozen copy.
  *
@@ -28,8 +29,12 @@ object ListingRetention {
   /** The title a listing is kept by. */
   def titleOf(listing: Listing, normalizer: TitleNormalizer): String = normalizer.sanitize(listing.title)
 
-  /** A listing as kept: its identity facts, no showings. */
-  def kept(listing: Listing): Listing = listing.copy(screenings = ScreeningDays.None)
+  /** A listing as kept: whole. The model's input holds no showing (time, screen, booking), only the DAYS a listing
+   *  screens on, and those are facts of it: they date the broadcast a relay screens (UK "Royal Ballet and Opera: Alice's
+   *  Adventures in Wonderland" is the 2026/27 staging by its day; kept without its days -- or with its season alone -- it
+   *  joined the 2024/25 one and came back: 11 flips in the drift rows, 2026-10-30). The showings drop from the cinema data
+   *  the site serves, not from the facts the model reads. */
+  def kept(listing: Listing): Listing = listing
 
   /** `gone`, listings that just left, against `present` (those still showing after the leave) and `retained` (those kept
    *  before): each gone listing whose title a present one bills is kept, showings dropped; every other goes, and so does
