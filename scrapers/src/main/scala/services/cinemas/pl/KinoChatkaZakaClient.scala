@@ -68,12 +68,15 @@ object KinoChatkaZakaClient {
 
   // "23.06.2026" off the `<h3>` date header — full year, so no inference.
   private val ListDatePat = """(\d{1,2})\.(\d{1,2})\.(\d{4})""".r
-  // The time off the detail meta description's "DD.MM.YY | day | HH:MM" stamp
-  // — or, from October 2026, the same stamp without pipes ("13.10.26 wtorek
-  // 18:00"), sometimes under a banner line: the clock after the weekday.
-  private val DetailTimePat = raw"""\p{L}+\s*\|?\s*${ScraperParse.ClockParts}""".r
-  // The detail meta's "reż. Director, Country[/Country…] Year (NN min)" line.
-  private val DetailMetaPat = """(?s)reż\.\s*(.+?),\s*([^()]+?)\s+(\d{4})\s*\((\d+)\s*min\)""".r
+  // The time off the detail meta description's stamp: the `DD.MM.YY` date, then
+  // the clock behind a short run of words and punctuation on the same line. The
+  // venue has spelled that run three ways — "24.06.26 | środa | 18:00",
+  // "13.10.26 wtorek 18:00" (October 2026) and "18.11.26 (środa), godz. 18:00" or
+  // "godz: 18:00" (November 2026) — sometimes under a banner line.
+  private val DetailTimePat = raw"""\d{1,2}\.\d{1,2}\.\d{2}[^\d\n]{1,30}${ScraperParse.ClockParts}""".r
+  // The detail meta's "reż. Director[, Director…], Country[/Country…] Year (NN min)"
+  // line: the countries are the last comma field before the year.
+  private val DetailMetaPat = """(?s)reż\.\s*(.+?),\s*([^(),]+?)\s+(\d{4})\s*\((\d+)\s*min\)""".r
   // A trailing "(Original title)" segment on the descriptive list title.
   private val OriginalTitlePat = """^(.*?)\s*\(([^)]+)\)\s*$""".r
 

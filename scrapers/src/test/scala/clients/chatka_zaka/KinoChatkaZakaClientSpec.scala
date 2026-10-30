@@ -71,3 +71,26 @@ class KinoChatkaZakaPipelessDetailSpec extends AnyFlatSpec with Matchers with Op
     film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 14, 18, 0))
   }
 }
+
+/** Replays a 2026-10-30 capture. For November the stamp became
+ *  `"18.11.26 (środa), godz. 18:00"` (once `godz:`), the weekday in brackets and
+ *  the clock behind a "godz." — a third spelling the clock-after-weekday pattern
+ *  missed, so the venue read white again over five DKF screenings. */
+class KinoChatkaZakaBracketedWeekdaySpec extends AnyFlatSpec with Matchers with OptionValues {
+
+  private val movies = new KinoChatkaZakaClient(new FakeHttpFetch("chatka-zaka-2026-11")).fetch()
+
+  "KinoChatkaZakaClient" should "time a screening off a `(weekday), godz. HH:MM` stamp" in {
+    movies.flatMap(_.showtimes) should have size 5
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("naza")).value
+    film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 11, 18, 18, 0))
+    film.movie.runtimeMinutes.value shouldBe 80
+    film.director shouldBe Seq("Yuval Abraham", "Rachel Szor")
+    film.movie.countries shouldBe Seq("Anglia", "USA")
+  }
+
+  it should "time a screening whose `godz:` stamp sits under a banner line" in {
+    val film = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("nakarmić kruki")).value
+    film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 11, 25, 18, 0))
+  }
+}
