@@ -49,8 +49,17 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val best  = scored.headOption.filter(scored => !film.contains(scored.candidate.tmdbId)).map(scored =>
       s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.orElse(scored.untaken).fold("")(why => s", ${if (scored.denied) "denied" else "untaken"}: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
+    // the family's fallback-source scope, built only for a cluster no TMDB film was taken for
+    lazy val fallbacks = new FamilyScope(scope.members, scoring, acceptance, () => (), fallback = true)
+    // the records of the films its family's pools weigh -- TMDB's and the fallback's -- not filed yet, told for a cluster
+    // that takes no film: agree-or-none takes none either reading of one would guess (FamilyScope), and a fallback rests on
+    // its IMDb record. Told only: no take moves by it. US "Parkway Drive: Home" x123 (drift 3991) held no film while its
+    // fallback's record was pending, read as Vetoed with nothing waited on, and took tt47657111 once it was filed
+    val awaited = if (film.isDefined) Nil
+      else (scope.pool ++ fallbacks.pool).filter(_.awaitingRecord).map(_.tmdbId).distinct.sorted
+    val awaiting = Option.when(awaited.nonEmpty)(s"${awaited.size} record(s) awaited: ${awaited.take(5).mkString(", ")}")
     // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
-    val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope)
+    val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope, fallbacks)
     // a film a reused page's copied original title and director alone name ([[Acceptance.copiedBeyondItsBilling]]): facts
     // that agree with it by construction, so no vote of TMDB's for it (DE Scheune Dresden's "Regio Tales", an event on
     // kinoheld's "Heads and Tales" page)
@@ -72,7 +81,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
       (overruled ++ own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
-        apart.take(4) ++ best ++ gaps ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
+        apart.take(4) ++ best ++ gaps ++ awaiting ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
         leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
         s"node ${cluster.head.listings.head.key}", contradictions = apart, fallback = fallback, leaning = leaning, unanswered = unknown,
       candidate = candidate)(
@@ -84,8 +93,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
    *  film the title names, or crediting the listing's director, stood undenied: TMDB then knows a film the listing may
    *  be, and its rules not taking it is no licence to take another source's in its place. UK Cineworld's "Royal Ballet
    *  and Opera: Tosca" ×123 fell back to IMDb's record of the 2025/26 production, which TMDB holds too, unlinked. */
-  private def fallbackOf(cluster: Seq[EvidenceNode], scope: FamilyScope): Option[ResolverDecision.Fallback] = {
-    val fallbacks = new FamilyScope(scope.members, scoring, acceptance, () => (), fallback = true)
+  private def fallbackOf(cluster: Seq[EvidenceNode], scope: FamilyScope, fallbacks: FamilyScope): Option[ResolverDecision.Fallback] = {
     lazy val tmdbNamesake = cluster.exists(node => scope.of(node).exists(scored =>
       !scored.denied && (scored.titleNamesIt || IdentityMeasures.sameDirector(scored.measures))))
     if (fallbacks.pool.isEmpty) None

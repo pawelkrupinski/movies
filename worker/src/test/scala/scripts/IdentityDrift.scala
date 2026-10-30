@@ -105,12 +105,12 @@ object IdentityDrift {
   /** One listing's take: its film (`tmdb:<id>`, `<source>:<id>` or `none`), the basis, and the decision's last line. */
   final case class Take(film: String, basis: String, why: String)
   /** The listings served no film while an answer their decision reads was pending -- a lookup unanswerable
-   *  (`NoEvidence`, the decision's gaps), a record awaited by agree-or-none (`FamilyScope`) -- what [[TakeFlips]] does
-   *  not count as a take left. */
+   *  (`NoEvidence`, the decision's gaps), a record its family's pools await (`ResolverDecisions`' "record(s) awaited",
+   *  agree-or-none's untaken) -- what [[TakeFlips]] does not count as a take left. */
   def pendingOf(resolution: Resolution): Set[ListingKey] = pendingOf(resolution.decisions)
   def pendingOf(decisions: Iterable[ResolverDecision]): Set[ListingKey] =
     decisions.iterator.filter(d => d.film.isEmpty && d.fallback.isEmpty && (d.basis == ResolverDecision.Basis.NoEvidence ||
-      d.explanation.exists(line => line.contains("lookup(s) unanswerable") || line.contains("awaiting the record of"))))
+      d.explanation.exists(line => line.contains("lookup(s) unanswerable") || line.contains("awaiting the record of") || line.contains("record(s) awaited:"))))
       .flatMap(_.members).toSet
   def takesOf(resolution: Resolution): Map[ListingKey, Take] =
     resolution.decisions.iterator.flatMap { d =>
@@ -216,6 +216,8 @@ object IdentityDrift {
         some[ListingKey](details, k => s"d:${ListingKey.serialised(k)}"))
     }
     def pending: Boolean = !queries.isEmpty || !films.isEmpty || !details.isEmpty
+    /** The listings whose venue page was asked and is still held: read meanwhile as no detail at all. */
+    def heldDetails: Set[ListingKey] = details.asScala.toSet
   }
 
   /** The family answers filed so far: a [[Share]] of the capture's family questions not filed until [[release]]d (a
@@ -429,7 +431,11 @@ object IdentityDrift {
       val answered = events.exists(Answering)
       val scraped  = events.exists(ListingEvents)
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
-      val pending = pendingOf(r)
+      // pending too: a cluster one of whose listings' venue page is asked and still held, read meanwhile as no detail
+      // (US "Parkway Drive: Home" x123, drift 3991: a scraped listing's page held, its IMDb fallback dropped until filed)
+      val heldPages = gate.heldDetails
+      val pending   = pendingOf(r) ++ r.decisions.iterator.filter(d => d.film.isEmpty && d.fallback.isEmpty && d.members.exists(heldPages))
+        .flatMap(_.members).toSet
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped))
       clusters = now

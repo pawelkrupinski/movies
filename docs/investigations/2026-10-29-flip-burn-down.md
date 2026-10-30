@@ -162,7 +162,7 @@ them down". They were baselined at the check's birth (`New-Check:`), generated b
 
 | Country, seed | Listings | Shape | Status |
 |---|---|---|---|
-| us 1, us 2 | "Parkway Drive: Home" ×63, ×60 | none → imdb:tt47657111 (the IMDb fallback, at fill) → none (a scrape) → imdb | open: first |
+| us 1, us 2 | "Parkway Drive: Home" ×63, ×60 | none → imdb:tt47657111 (the IMDb fallback, at fill) → none (a scrape) → imdb | **fixed**: its nones were pending (the fallback's IMDb record), but the decision did not say so; it now names the records its pools await |
 | uk 1 | "Royal Ballet: Swan Lake" ×4 | 1702782 → none (2 fill) → 1702782 | open |
 | de 1 | CinemaxX "Titans" ×3 | 869152 → none (13 scrape) → 869152 (Filled at settle) | open |
 | pl 2 | "Piesek" ×2 | 1319522 → none (8 fill+answer) → 1319522 | open |

@@ -231,4 +231,21 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     replay.flips.flips.map(_.line) shouldBe empty
     replay.takes(title).values.toSet shouldBe Set("tmdb:212162")
   }
+
+  "a cluster whose fallback's record is pending" should "take no film, saying what it waits on, and its fallback once filed" in {
+    // Drift 3991 (the precise none, a229501a7): US "Parkway Drive: Home" x123 went none -> tt47657111 -> none -> tt47657111.
+    // Every TMDB candidate is denied it; it falls back to IMDb's tt47657111, whose record (fallback id -181874839) the
+    // seeds' gate held. Held, the cluster takes no film -- agree-or-none, the fallback scope alike -- but its decision told
+    // nothing pending (Vetoed, no lookup unanswerable), so the flip check read a take given up. It now names the records
+    // its pools await.
+    val replay = new SliceReplay("test/resources/fixtures/drift-slices/us/parkway-drive-home-2abd6734")
+    val title  = "Parkway Drive: Home"
+    replay.lookups.held = Set("f:-181874839")
+    replay.scraped("boot", _ => true)
+    replay.takes(title).values.toSet shouldBe Set("none")
+    IdentityDrift.pendingOf(replay.model.decisions).map(_.rawTitle) should contain (title)
+    replay.filed("the fallback's record filed", Set.empty, Set(-181874839))
+    replay.flips.flips.map(_.line) shouldBe empty
+    replay.takes(title).values.toSet shouldBe Set("imdb:tt47657111")
+  }
 }
